@@ -23,7 +23,8 @@ const nextFrame: (cb: (ms: number) => void) => number = typeof scope.requestAnim
   ? (cb) => scope.requestAnimationFrame(cb)
   : (cb) => setTimeout(() => cb(performance.now()), 16) as unknown as number;
 
-let river: { resize: (w: number, h: number, dpr: number) => void; draw: (ms: number, s: RiverState) => void } | null = null;
+// draw returns true while the river is still gliding after a scroll (another frame wanted).
+let river: { resize: (w: number, h: number, dpr: number) => void; draw: (ms: number, s: RiverState) => boolean | void } | null = null;
 let opts: RiverOpts | null = null;
 const state: RiverState = { sy: 0, dark: true, px: -9999, py: -9999, pAt: -1e9 };
 let frame = 0, last = 0, hidden = false, moving = false;
@@ -33,7 +34,7 @@ let frame = 0, last = 0, hidden = false, moving = false;
 const tick = (ms: number) => {
   frame = 0;
   if (!river || !opts || hidden) return;
-  if (opts.still || !moving) { river.draw(ms, state); return; }
+  if (opts.still || !moving) { if (river.draw(ms, state)) frame = nextFrame(tick); return; }
   if (ms - last >= riverGap(opts.phone)) { last = ms; river.draw(ms, state); }
   frame = nextFrame(tick);
 };

@@ -5062,6 +5062,22 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   fibres show; a soft fibre is kept narrower than the curve's radius (a soft minimum, not a hard
   clamp, or its width jumps) or its strip folds over itself round a tight bend; the distance to the
   nearer bend is a soft minimum (a plain `min` put a kink in every fibre halfway between bends).
+- **Every bend the same pattern** (M125b, the owner after the merge: "whenever the lines take left or
+  right, follow that pattern again"; then "everything exact … ultra smooth"): the river is a chain of
+  bends, each the first one's shape (`upperArm`: the fast spread and the swing; `lowerArm`: the round C
+  into an even fan), mirrored at odd bends. Consecutive bends turn opposite ways, so a fibre's rank is
+  `w` at even bends and `1 − w` at odd ones (`rankAt`): the inside of one turn is the outside of the
+  next and fibres never cross over between bends. Odd bends sit 1.55 S to the side (river pixels; the
+  arms then meet in the middle, blended between 30% and 70% of the gap); the camera pans across
+  (`pan`: 0 at even bends, 1 at odd ones; the caller turns it into a shift that puts odd bends at the
+  mirrored hero spot). `riverCamera` now follows the river: at each bend exactly the view at the top
+  of the page (tested), in between nearer, turned a little and soft. The STAGES list is gone. The 3D
+  turn is limited (±0.45 rad) so the fan never pinches into a waist. The per-fibre numbers in `f0` are
+  now four numbers of its own (small reach differences, depth); the shapes come from the rank.
+- **Ultra smooth scrolling:** the scroll the river is drawn at glides to the page's (a 70 ms ease, so
+  wheel and trackpad jumps don't jerk it), lands exactly, and jumps straight there when frames aren't
+  running or with Reduce Motion. `draw` returns true while gliding, and the worker and the page draw
+  another frame then even when the river isn't moving on its own.
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

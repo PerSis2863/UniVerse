@@ -28,23 +28,35 @@ describe('riverFibres', () => {
 
 describe('riverCamera', () => {
   it('shows exactly the drawn river at the top of the page', () => {
-    expect(riverCamera(0, 1280, 800, false)).toEqual({ vs: 0, zoom: 1, rot: 0, ox: 0, oy: 0, focus: 1 });
+    expect(riverCamera(0, 800, false)).toEqual({ vs: 0, zoom: 1, rot: 0, pan: 0, focus: 1 });
   });
   it('moves with the page and softens, nothing more, with Reduce Motion', () => {
-    const c = riverCamera(400, 1280, 800, true);
-    expect(c).toMatchObject({ vs: 400, zoom: 1, rot: 0 });
+    const c = riverCamera(400, 800, true);
+    expect(c).toMatchObject({ vs: 400, zoom: 1, rot: 0, pan: 0 });
     expect(c.focus).toBeCloseTo(0.375);
   });
-  it('changes smoothly as the page scrolls, even when the stages go round again', () => {
-    let prev = riverCamera(0, 1280, 800, false);
+  it('changes smoothly as the page scrolls', () => {
+    let prev = riverCamera(0, 800, false);
     for (let sy = 4; sy < 800 * 20; sy += 4) {
-      const c = riverCamera(sy, 1280, 800, false);
+      const c = riverCamera(sy, 800, false);
       expect(Math.abs(c.vs - prev.vs)).toBeLessThan(5);
       expect(Math.abs(c.zoom - prev.zoom)).toBeLessThan(0.02);
-      expect(Math.abs(c.rot - prev.rot)).toBeLessThan(0.03);
+      expect(Math.abs(c.rot - prev.rot)).toBeLessThan(0.02);
       expect(Math.abs(c.focus - prev.focus)).toBeLessThan(0.03);
-      expect(Math.abs(c.ox - prev.ox) + Math.abs(c.oy - prev.oy)).toBeLessThan(6);
+      expect(Math.abs(c.pan - prev.pan)).toBeLessThan(0.01);
       prev = c;
+    }
+  });
+  it('arrives at every bend with the view the page starts with (mirrored at odd ones)', () => {
+    // Where the camera reaches bend b (its stretch of river at the top of the screen = b gaps down).
+    for (const b of [1, 2, 3]) {
+      let lo = 0, hi = 800 * 40;
+      for (let k = 0; k < 60; k++) { const mid = (lo + hi) / 2; if (riverCamera(mid, 800, false).vs < b * 1.7 * 800) lo = mid; else hi = mid; }
+      const c = riverCamera(lo, 800, false);
+      expect(c.zoom).toBeCloseTo(1, 3);
+      expect(c.rot).toBeCloseTo(0, 3);
+      expect(c.focus).toBeCloseTo(1, 3);
+      expect(c.pan).toBeCloseTo(b % 2, 3);
     }
   });
 });

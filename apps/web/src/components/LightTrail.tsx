@@ -107,7 +107,8 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
       };
     } else {
       // On the page (no background drawing in this browser): the same river, drawn here.
-      let river = makeRiverGL(cv, opts, performance.now());
+      // draw returns true while the river is still gliding after a scroll (another frame wanted).
+      let river: { resize: (w: number, h: number, r: number) => void; draw: (ms: number, s: RiverState) => boolean | void } | null = makeRiverGL(cv, opts, performance.now());
       if (!river) {
         // WebGL 2 may have taken the canvas before failing: draw in 2D on a fresh one.
         let ctx = cv.getContext('2d');
@@ -120,12 +121,12 @@ function River({ tone, hero, strength, className, path }: { tone: 'auto' | 'dark
       river.resize(window.innerWidth, window.innerHeight, window.devicePixelRatio || 1);
       const state: RiverState = { sy: 0, dark: dark(), px: -9999, py: -9999, pAt: -1e9 };
       let frame = 0, last = 0, moving = false;
-      const draw = (ms: number) => { state.sy = scrollY(); state.dark = dark(); river.draw(ms, state); };
+      const draw = (ms: number) => { state.sy = scrollY(); state.dark = dark(); return river.draw(ms, state); };
       // As on the background thread: whether it keeps moving is decided when the frame runs.
       const tick = (ms: number) => {
         frame = 0;
         if (unseen()) return;
-        if (still || !moving) { draw(ms); return; }
+        if (still || !moving) { if (draw(ms)) frame = requestAnimationFrame(tick); return; }
         if (ms - last >= riverGap(phone)) { last = ms; draw(ms); }
         frame = requestAnimationFrame(tick);
       };

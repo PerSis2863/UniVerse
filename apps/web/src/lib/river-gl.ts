@@ -48,68 +48,68 @@ vec2 toScreen(vec2 p) {
 float bY(float b) { return u_bend.x + b * u_bend.y; }
 float sideOf(float b) { return mod(b, 2.0) < 0.5 ? 1.0 : -1.0; }
 float bX(float b) { return (sideOf(b) > 0.0 ? u_bend.z : u_bend.w) + sin(u_t * 0.35 + b) * 8.0; }
-// Each arm opens round from the bend and levels off (m·u^q / (1 + u^q), u the distance over l); the
-// upper one leans out (k) towards the top right once it's a third of a screen from the bend.
+// Each arm opens round from the bend and levels off (m·u^q / (1 + u^q), u the distance over l).
 float arm(float d, float m, float l, float q) { float u = pow(max(d, 0.0) / (l * u_S), q); return m * u_S * u / (1.0 + u); }
-float armUp(float d, float m, float l, float q, float k) { d = max(d, 0.0); float e = 0.4 * u_view.y; return min(u_view.x * 2.0, arm(d, m, l, q) + k * d * d * d / (d * d + e * e)); }
-// Measured on the recording's frames, row by row, and laid over them: a full, round C. Below the
-// bend the fibres sweep out wide (the inner ones nearly sideways); above it the outer ones rise
-// almost upright and the inner ones fan out to the right, leaning on towards the top right.
-// f0: spread at the bend, the lower arm's reach and length, the upper arm's lean; f1: sway size,
-// wavelength, speed (either way), timing; f2.x: where it sits across the bundle (0 outside, 1
-// inside); f3: colour, the upper arm's reach, its own bow from the bend and the bow's length.
-// z: how near the viewer the fibre is as the ribbon turns (-1 behind … 1 in front).
+// Every bend has the same shape (the owner: "whenever the lines take left or right, follow that
+// pattern again"), the first one's, mirrored for bends that open the other way. Consecutive bends turn
+// opposite ways, so the inside of one is the outside of the next: a fibre's rank across a bend
+// (0 outside … 1 inside) is w at even bends and 1 − w at odd ones, and fibres never cross over.
+float rankAt(float b, float w) { return mod(b, 2.0) < 0.5 ? w : 1.0 - w; }
+// Rank across the bundle → even rank far out (most fibres bunch in the middle near the bend).
+float evenRank(float wr) { float c = 2.0 * wr - 1.0; return 0.5 + 0.5 * sign(c) * pow(abs(c), 1.0 / 1.7); }
+// The arm above a bend, d up from its tip, measured on the recording: the fibres leave the bend
+// spreading fast (the inner ones almost sideways, leaving a dark gap), rise, and at d0 the bundle swings
+// over to the far side (a smooth step, each fibre reaching its own way across). Above the first bend
+// (top) the swing eases and rises out of view as the page scrolls, as in the recording.
+float upperArm(float d, float wr, bool top, vec4 j, float ct, float st) {
+  float H = u_view.y, t = evenRank(wr), spread = smoothstep(0.1 * H, 0.6 * H, d);
+  float m = mix(0.06 + 0.5 * wr * wr * wr * wr + (j.z - 0.5) * 0.015, 0.04 + 0.32 * t + (j.x - 0.5) * 0.03, spread);
+  m = 0.2 + (m - 0.2) * ct + (j.w - 0.5) * 0.32 * st;
+  float dx = 0.0125 + (0.025 * wr - 0.0125) * ct + (j.w - 0.5) * 0.03 * st;
+  float d0 = 0.45 * H + (top ? 0.3 * u_sy * u_twist : 0.0);
+  float ease = top ? 1.0 - 0.5 * u_twist * smoothstep(0.0, 0.35 * H, u_sy) : 1.0;
+  float swing = (0.45 + 0.5 * t) * u_S * ease / (1.0 + exp(-(d - d0) / (0.06 * H)));
+  float sw = 2.6 * smoothstep(0.6, 0.95, wr) * d * d / (d + 0.05 * H);
+  if (!top) sw /= 1.0 + sw / (0.7 * H); // between bends it levels off and meets the arm above
+  return dx * u_S + arm(d, m, 0.14 - 0.04 * wr, 2.0) + swing + sw;
+}
+// The arm below a bend, d down from its tip: a round C, sweeping out into an even fan.
+float lowerArm(float d, float wr, vec4 j, float ct, float st, out float z) {
+  float H = u_view.y, t = evenRank(wr), spread = smoothstep(0.1 * H, 0.6 * H, d);
+  float m = mix(0.5 + 0.3 * wr + (j.y - 0.5) * 0.03, 0.34 + 0.6 * t + (j.x - 0.5) * 0.05, spread);
+  float l = (0.26 - 0.1 * wr) * mix(1.0, 1.15 - 0.3 * t, spread);
+  float dD = m - 0.64;
+  m = 0.64 + dD * ct + (j.w - 0.5) * 0.6 * st;
+  float dx = 0.0125 + (0.025 * wr - 0.0125) * ct + (j.w - 0.5) * 0.03 * st;
+  z = -dD / 0.3 * st + (j.w - 0.5) * 2.0 * ct;
+  return dx * u_S + arm(d, m, l, 2.0 - 0.4 * wr);
+}
+// f0: four numbers of the fibre's own (jitter, depth across the ribbon); f1: sway size, wavelength,
+// speed (either way), timing; f2.x: its rank across the first bend; f3: colour, -, its own bow from
+// the bend and the bow's length. z: how near the viewer it is as the ribbon turns (-1 … 1).
 float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3, out float z) {
-  float w = f2.x, breath = 0.25 + 0.5 * fract(f1.w * 1.37);
   float b = floor((y - u_bend.x) / u_bend.y);
-  float br = 1.0 + 0.045 * sin(u_t * breath + f1.w);
+  float br = 1.0 + 0.045 * sin(u_t * (0.25 + 0.5 * fract(f1.w * 1.37)) + f1.w);
   float dn = bY(b + 1.0) - y, dp = b < 0.0 ? 1e6 : y - bY(b);
-  // The owner: the fibres leave the bend packed together in one bright band, each already moving and
-  // bending its own way (gently: they start parallel), drift apart towards the middle and are
-  // scattered by the end. So everything that's a fibre's own grows with the distance from the bend:
-  // its sway, its bow (1 − cos: no corner at the bend), and its reach: near the bend most fibres share
-  // the middle of the bundle (bunched w), far out they spread evenly across a wide fan (t, their
-  // even rank), like the recording's comb of lines at the end, rather than tangling.
-  // The distance to the nearer bend, softened where the two meet halfway (a plain min puts a kink in
-  // every fibre at the same place there).
+  // The owner: the fibres leave each bend packed in one bright band, each already moving and bending
+  // its own way (gently: they start parallel), drift apart towards the middle and spread out by the
+  // end; so a fibre's own sway and bow grow with the distance from the nearer bend (softened where
+  // the two distances meet halfway: a plain min puts a kink in every fibre there).
   float H = u_view.y, dist = min(dn, dp) - 0.06 * H * log(1.0 + exp(-abs(dn - dp) / (0.06 * H)));
   float spread = smoothstep(0.1 * H, 0.6 * H, dist);
   float own = f1.x * (0.3 + 0.8 * spread) * smoothstep(0.0, 0.25 * H, dist) * sin(y / f1.y + u_t * f1.z + f1.w)
     + f3.z * u_S * (1.0 - cos(dist / (f3.w * u_S))) * (1.0 + 0.3 * sin(u_t * f1.z * 0.4 + f1.w));
-  float c = 2.0 * w - 1.0, t = 0.5 + 0.5 * sign(c) * pow(abs(c), 1.0 / 1.7);
-  float r1 = fract(f1.w * 0.6180339 + 0.37) - 0.5;
-  float upM = mix(f3.y, 0.04 + 0.32 * t + r1 * 0.03, spread), downM = mix(f0.y, 0.34 + 0.6 * t + r1 * 0.05, spread);
-  float downL = f0.z * mix(1.0, 1.15 - 0.3 * t, spread);
-  // In 3D, like the recording (the owner: "please work on this also"): the river is a ribbon that
-  // turns as the page scrolls, more the further along it, so the fan narrows and widens and fibres
-  // pass in front of and behind each other. Each fibre has a depth of its own across the ribbon; its
-  // spread from the middle of the fan is turned by the angle (exactly the drawn shape at the top of
-  // the page, where the angle is 0). The upper arm also stands up a little as the page scrolls.
-  float th = u_twist * (u_sy / H * 0.9 + dist / H * 0.7 * min(1.0, u_sy / H * 1.5));
-  float ct = cos(th), st = sin(th), dep = fract(f1.w * 1.913 + 0.29) - 0.5;
-  float dD = downM - 0.64, dU = upM - 0.2;
-  downM = 0.64 + dD * ct + dep * 0.6 * st;
-  upM = 0.2 + dU * ct + dep * 0.32 * st;
-  float dx = 0.0125 + (f0.x - 0.0125) * ct + dep * 0.03 * st;
-  z = (-dD / 0.3 * st + dep * 2.0 * ct) * min(1.0, abs(th) * 1.5);
-  float lean = f0.w * (1.0 - 0.35 * u_twist * smoothstep(0.0, 0.45 * H, u_sy));
-  // Above the first bend (the top of the page) the river arrives from the top right, as in the
-  // recording: the fibres leave the bend spreading fast (the inner ones almost sideways), rise, and
-  // halfway up the screen the whole bundle swings over towards the top-right corner (a smooth step,
-  // its height d0, each fibre reaching its own way across). As the page scrolls the swing eases and
-  // rises out of view (the ribbon turning). Between bends the arm leans on as before.
-  float d0 = 0.45 * H + 0.3 * u_sy * u_twist;
-  float swing = (0.45 + 0.5 * t) * u_S * (1.0 - 0.5 * u_twist * smoothstep(0.0, 0.35 * H, u_sy)) / (1.0 + exp(-(dn - d0) / (0.06 * H)));
-  // The innermost fibres (about a quarter) leave the bend almost sideways and keep going (under the
-  // recording's card), leaving a dark gap between them and the packed band that rises.
-  float sideways = 2.6 * smoothstep(0.6, 0.95, w) * dn * dn / (dn + 0.05 * H);
-  float up = b < 0.0 ? arm(dn, upM, 0.14 - 0.04 * w, 2.0) + swing + sideways : armUp(dn, upM, 0.2 - 0.05 * w, 2.0, lean);
-  float nx = bX(b + 1.0) + sideOf(b + 1.0) * (dx * u_S + br * up + own);
-  if (b < 0.0) return nx;
-  float px = bX(b) + sideOf(b) * (dx * u_S + br * arm(dp, downM, downL, 2.0 - 0.4 * w) + own);
-  // Over to the next bend in the second half of the way, so each arm keeps its own shape first.
-  float f = clamp((dp / u_bend.y - 0.45) / 0.55, 0.0, 1.0);
-  return mix(px, nx, f * f * (3.0 - 2.0 * f));
+  // In 3D: the ribbon turns a little as the page scrolls, more further along it, so the fan narrows
+  // and widens and fibres pass in front of and behind each other (never so far that it pinches).
+  float th = u_twist * 0.45 * sin(u_sy / H * 0.9 + dist / H * 0.7);
+  float ct = cos(th), st = sin(th), zl;
+  float nx = bX(b + 1.0) + sideOf(b + 1.0) * br * upperArm(dn, rankAt(b + 1.0, f2.x), b < 0.0, f0, ct, st);
+  float px = b < 0.0 ? nx : bX(b) + sideOf(b) * br * lowerArm(dp, rankAt(b, f2.x), f0, ct, st, zl);
+  if (b < 0.0) zl = (f0.w - 0.5) * 2.0 * ct;
+  z = zl * min(1.0, abs(th) * 3.0);
+  // Over to the next bend in the middle of the way, where both arms run straight.
+  float f = b < 0.0 ? 1.0 : smoothstep(0.3, 0.7, dp / u_bend.y);
+  return mix(px, nx, f) + own;
 }
 // Fibres near the pointer lean away from it, like hair.
 float part(float x, float y) {
@@ -269,11 +269,12 @@ export function riverFibres(n: number): Float32Array {
     const blue = !bright && hash(i, 4) < 0.12 + 0.3 * w;
     const level = hash(i, 5);
     const o = i * 16;
-    // Spread at the bend; the lower arm's reach and length; the upper arm's lean (its reach is o + 13).
-    out.set([w * 0.025, 0.5 + 0.3 * w + (hash(i, 6) - 0.5) * 0.03, 0.26 - 0.1 * w, 0.3 + 0.5 * w], o);
+    // Four numbers of its own (small differences in reach; its depth across the ribbon). The bends'
+    // shapes come from its rank (below), the same at every bend (the shader, upperArm and lowerArm).
+    out.set([hash(i, 6), hash(i, 7), hash(i, 19), hash(i, 20)], o);
     // Its own sway: size, wavelength, speed (running up or down the fibre) and timing.
     out.set([6 + hash(i, 8) * 18, 130 + hash(i, 9) * 320, (0.35 + hash(i, 10) * 0.8) * (hash(i, 11) < 0.5 ? -1 : 1), hash(i, 12) * 6.283], o + 4);
-    // Where it sits across the bundle; width, blur (the out-of-focus ones) and brightness.
+    // Its rank across the first bend; width, blur (the out-of-focus ones) and brightness.
     out.set([
       w,
       bright ? 1.2 + hash(i, 14) * 0.4 : far ? 2 + hash(i, 14) * 2 : 0.6 + hash(i, 14) * 0.5,
@@ -281,7 +282,6 @@ export function riverFibres(n: number): Float32Array {
       (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.2 : 0)) * edge,
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
-    out[o + 13] = 0.06 + 0.5 * w * w * w * w + (hash(i, 19) - 0.5) * 0.015;
     out[o + 14] = (0.004 + hash(i, 16) * 0.009) * (hash(i, 17) < 0.5 ? -1 : 1);
     out[o + 15] = 0.1 + hash(i, 18) * 0.12;
   }
@@ -300,42 +300,30 @@ function compile(gl: WebGL2RenderingContext, vs: string, fs: string): WebGLProgr
   return gl.getProgramParameter(p, gl.LINK_STATUS) ? p : null;
 }
 
+/** How far apart the bends are, in screen heights. */
+const RIVER_GAP = 1.7;
 const smooth = (a: number, b: number, x: number) => { const t = Math.min(1, Math.max(0, (x - a) / (b - a))); return t * t * (3 - 2 * t); };
 const softplus = (x: number, k: number) => k * Math.log1p(Math.exp(x / k));
 
-// The camera's stages down the page, in screens scrolled, after the recording's sections: the
-// drawn river at the top; a screen down, the S on the right, getting soft; two screens down, a wide,
-// very soft ribbon from bottom left to top right; then a big soft arc; around seven screens down it
-// comes sharp again and runs across the bottom of the screen; then round again from the soft ribbon.
-// Turn (radians, + is clockwise), nearness, focus (1 sharp … 0 very soft), shift (screen widths and heights).
-const STAGES = {
-  at: [0, 0.6, 1.1, 2, 3, 4.2, 5.5, 7, 8.5],
-  rot: [0, 0, 0.25, 0.7, 0.45, 0.15, 0.6, 1.35, 0.7],
-  zoom: [1, 1.05, 1.3, 1.9, 1.8, 1.6, 1.4, 1.15, 1.9],
-  focus: [1, 0.95, 0.6, 0.05, 0.08, 0.15, 0.3, 1, 0.05],
-  ox: [0, 0, 0.05, -0.3, -0.05, -0.1, 0, 0, -0.3],
-  oy: [0, 0, 0, -0.2, 0, 0, 0, 0.25, -0.2],
-};
-
 /**
- * The camera for a scroll position, as in the Relay recording (the owner: "the animation when someone
- * scrolls is totally different"): the river stays on screen behind every section and the camera flies
- * past it. At the top it is exactly the drawn river; for the first screen it moves with the page, then
- * drifts more slowly behind it while the camera moves through STAGES (eased from one to the next).
- * Reduce Motion: it simply moves with the page and softens. `vs` is the river's y at the top of the
- * screen; `rot` in radians.
+ * The camera for a scroll position, as in the Relay recording: the river stays on screen behind every
+ * section and the camera flies past it. The river is a chain of bends, each the first one's shape
+ * (mirrored when it opens the other way; the owner: "whenever the lines take left or right, follow
+ * that pattern again"). The camera moves with the page for the first screen, then drifts more slowly
+ * behind it and follows the river from bend to bend: at each bend it is exactly the view at the top of
+ * the page (mirrored at odd bends); in between it comes nearer, turns a little and goes soft, and
+ * sharpens again as the next bend arrives. Reduce Motion: it simply moves with the page and softens.
+ * `vs` is the river's y at the top of the screen; `rot` in radians; `pan` 0 at even bends, 1 at odd
+ * ones (the caller turns it into a sideways shift).
  */
-export function riverCamera(sy: number, W: number, H: number, still: boolean) {
+export function riverCamera(sy: number, H: number, still: boolean) {
   const q = Math.max(0, sy) / H;
-  if (still) return { vs: sy, zoom: 1, rot: 0, ox: 0, oy: 0, focus: Math.max(0, 1 - q / 0.8) };
+  if (still) return { vs: sy, zoom: 1, rot: 0, pan: 0, focus: Math.max(0, 1 - q / 0.8) };
   const vs = H * (q - 0.6 * (softplus(q - 0.7, 0.25) - softplus(-0.7, 0.25)));
-  const { at } = STAGES, last = at[at.length - 1];
-  const qq = q <= last ? q : at[3] + ((q - at[3]) % (last - at[3]));
-  let i = 0;
-  while (i < at.length - 2 && qq >= at[i + 1]) i++;
-  const f = smooth(at[i], at[i + 1], qq);
-  const mix = (v: number[]) => v[i] + (v[i + 1] - v[i]) * f;
-  return { vs, zoom: mix(STAGES.zoom), rot: mix(STAGES.rot), ox: mix(STAGES.ox) * W, oy: mix(STAGES.oy) * H, focus: mix(STAGES.focus) };
+  const c = vs / (RIVER_GAP * H), seg = Math.floor(c), fr = c - seg;
+  const bump = Math.sin(Math.PI * fr) ** 2;
+  const soft = smooth(0.32, 0.55, fr) * (1 - smooth(0.78, 0.98, fr));
+  return { vs, zoom: 1 + 0.5 * bump, rot: 0.3 * bump * (seg % 2 === 0 ? 1 : -1), pan: 0.5 - 0.5 * Math.cos(Math.PI * c), focus: 1 - 0.85 * soft };
 }
 
 /** A river drawn with WebGL 2 into `cv`, or null where the browser can't (the 2D painter then draws). */
@@ -398,6 +386,8 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
   let W = 0, H = 0, dpr = 1, samples = 0;
   const step = phone ? 9 : 6;
   let pv = 0;
+  // The scroll the river is drawn at (gliding after the page's), and when the last frame was drawn.
+  let glide = 0, lastMs = -1e9;
 
   const resize = (w: number, h: number, ratio: number) => {
     W = w; H = h;
@@ -413,18 +403,20 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
   };
 
   const draw = (ms: number, s: RiverState) => {
-    if (gl.isContextLost() || !W) return;
+    if (gl.isContextLost() || !W) return false;
     const { sy, px, py, pAt } = s;
     const t = still ? 8 : ms / 1000;
     const dark = tone === 'dark' || s.dark;
     const pal = dark ? DARK : LIGHT;
     const k = (dark ? 1 : 0.75) * strength;
     const wide = W >= 1024;
-    // The bends, in page pixels: the first beside the hero's paragraph, then one every D further
-    // down, alternating sides (even ones open to the right).
-    const D = H * 1.7, Y0 = H * (hero ? 0.684 : 0.55);
-    const leftX = W * (wide ? 0.345 : phone ? 0.2 : 0.28), rightX = W - leftX;
+    // The bends, in the river's own pixels: the first beside the hero's paragraph, then one every D
+    // further down, alternating sides (even ones open to the right). Far enough apart sideways that
+    // each bend's arms meet the next one's (the camera pans across); with Reduce Motion, within the
+    // screen as before.
+    const D = H * RIVER_GAP, Y0 = H * (hero ? 0.684 : 0.55);
     const S = Math.min(H, W * 0.9);
+    const leftX = W * (wide ? 0.345 : phone ? 0.2 : 0.28), rightX = still ? W - leftX : leftX + 1.55 * S;
     const bendY = (b: number) => Y0 + b * D;
     const bendX = (b: number) => (b % 2 === 0 ? leftX : rightX) + Math.sin(t * 0.35 + b) * 8;
     const dir = (b: number) => (b % 2 === 0 ? 1 : -1);
@@ -432,10 +424,15 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     const eased = 1 - Math.pow(1 - grow, 3);
     // The camera for this scroll (see riverCamera) and what it shows of the river: the screen's corners
     // taken back into the river's own coordinates.
-    const cam = riverCamera(sy, W, H, still);
-    const cs = Math.cos(cam.rot), sn = Math.sin(cam.rot);
-    const toScr = (x: number, y: number) => { const qx = x - W / 2, qy = y - cam.vs - H / 2; return [(cs * qx - sn * qy) * cam.zoom + W / 2 + cam.ox, (sn * qx + cs * qy) * cam.zoom + H / 2 + cam.oy] as const; };
-    const toRiver = (X: number, Y: number) => { const qx = (X - W / 2 - cam.ox) / cam.zoom, qy = (Y - H / 2 - cam.oy) / cam.zoom; return [cs * qx + sn * qy + W / 2, -sn * qx + cs * qy + H / 2 + cam.vs] as const; };
+    // The scroll glides to where the page is (a wheel or trackpad moves it in jumps), so the river
+    // moves ultra smoothly; it lands exactly, and jumps straight there when frames aren't running.
+    const dt = ms - lastMs;
+    lastMs = ms;
+    glide = still || !(dt > 0 && dt < 120) || Math.abs(sy - glide) < 0.3 ? sy : glide + (sy - glide) * (1 - Math.exp(-dt / 70));
+    const cam = riverCamera(glide, H, still);
+    const cs = Math.cos(cam.rot), sn = Math.sin(cam.rot), ox = cam.pan * (W - leftX - rightX), oy = 0;
+    const toScr = (x: number, y: number) => { const qx = x - W / 2, qy = y - cam.vs - H / 2; return [(cs * qx - sn * qy) * cam.zoom + W / 2 + ox, (sn * qx + cs * qy) * cam.zoom + H / 2 + oy] as const; };
+    const toRiver = (X: number, Y: number) => { const qx = (X - W / 2 - ox) / cam.zoom, qy = (Y - H / 2 - oy) / cam.zoom; return [cs * qx + sn * qy + W / 2, -sn * qx + cs * qy + H / 2 + cam.vs] as const; };
     // A wide margin: soft fibres are up to ~250 px wide, and their cut ends mustn't show.
     const ys = [[-260, -260], [W + 260, -260], [-260, H + 260], [W + 260, H + 260]].map(([X, Y]) => toRiver(X, Y)[1]);
     const y0 = Math.min(...ys);
@@ -449,10 +446,10 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     for (let b = Math.max(0, Math.floor((y0 - H * 0.6 - Y0) / D)); bendY(b) < y1 + H * 0.6; b++) bends.push(b);
 
     const path = (u: (n: string) => WebGLUniformLocation | null) => {
-      gl.uniform2f(u('u_view'), W, H); gl.uniform1f(u('u_sy'), sy); gl.uniform1f(u('u_t'), t);
+      gl.uniform2f(u('u_view'), W, H); gl.uniform1f(u('u_sy'), glide); gl.uniform1f(u('u_t'), t);
       gl.uniform1f(u('u_S'), S); gl.uniform1f(u('u_twist'), still ? 0 : 1);
       gl.uniform4f(u('u_bend'), Y0, D, leftX, rightX); gl.uniform3f(u('u_ptr'), rpx, rpy, pv);
-      gl.uniform4f(u('u_cam'), cam.vs, cam.zoom, cs, sn); gl.uniform2f(u('u_camOff'), cam.ox, cam.oy);
+      gl.uniform4f(u('u_cam'), cam.vs, cam.zoom, cs, sn); gl.uniform2f(u('u_camOff'), ox, oy);
     };
     const strands = (blur: number, alpha: number, halo: number) => {
       const u = U.strand;
@@ -532,6 +529,8 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     gl.uniform1f(U.comp('u_gain'), gain); gl.uniform1f(U.comp('u_dark'), dark ? 1 : 0); gl.uniform1f(U.comp('u_t'), still ? 0 : t % 100);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
     gl.bindVertexArray(null);
+    // Still gliding: the caller draws another frame even when the river isn't moving on its own.
+    return glide !== sy;
   };
 
   return { resize, draw };
