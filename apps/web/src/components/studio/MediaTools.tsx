@@ -83,7 +83,7 @@ function Icon() {
     c.width = px; c.height = px; const g = c.getContext('2d')!, r = v.shape === 'circle' ? px / 2 : v.shape === 'round' ? px * 0.22 : 0;
     g.clearRect(0, 0, px, px); const grad = g.createLinearGradient(0, 0, px, px); grad.addColorStop(0, v.a); grad.addColorStop(1, v.b);
     g.fillStyle = grad; g.beginPath(); g.roundRect(0, 0, px, px, r); g.fill();
-    g.fillStyle = v.ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `800 ${(px * v.size) / 100}px Urbanist, system-ui, sans-serif`;
+    g.fillStyle = v.ink; g.textAlign = 'center'; g.textBaseline = 'middle'; g.font = `800 ${(px * v.size) / 100}px Inter, system-ui, sans-serif`;
     g.fillText(v.text.slice(0, 3), px / 2, px * 0.53);
   }, [v]);
   const big = useRef<HTMLCanvasElement>(null), small = useRef<(HTMLCanvasElement | null)[]>([]);

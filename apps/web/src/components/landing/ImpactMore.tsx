@@ -154,7 +154,7 @@ export function GreenMore() {
 // ── Play ──
 
 const CODE = 'K7Q2MX';
-const SEATS = ['#6366f1', '#fe81d1', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
+const SEATS = ['#6366f1', '#4f8ef7', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
 // M112 (the council): the public page shows the worlds for everyone; Night Shift (18+) and STORMFALL
 // (16+) are on /play behind the age check, not on the page a head teacher sees first.
 const WORLDS: GameId[] = ['obby', 'voyager', 'reef'];

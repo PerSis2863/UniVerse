@@ -83,14 +83,6 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
 
 type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
 // The quiet links under the two main buttons (Get the app, Scan a sample).
-// M81: what a first-time visitor is here for, and where that starts.
-const HERE_FOR: [string, string][] = [
-  ['Learn', '/register?app=campus&as=student'],
-  ['Teach', '/register?app=campus&as=teacher'],
-  ['Protect my brand', '/register?app=trace'],
-  ['Help people', '/register?app=relief'],
-  ['Look around', '/t/demo'],
-];
 // The hero's two buttons, a size up to sit under the bigger headline (M116).
 const HERO_BTN = 'h-12 px-6 text-[15px]';
 /** The hero's CSS entrance (`.hero-in`), a step later for each part (M117). */
@@ -177,15 +169,15 @@ export default function ShowcasePage() {
       {/* Opened as the installed app (an older install whose start address is still "/"): go to
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
-      <div data-cursor-light className="mkt-smooth dark min-h-screen overflow-x-clip font-sans" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
+      <div data-cursor-light className="mkt-smooth flip-light min-h-screen overflow-x-clip font-sans bg-[var(--background)] text-white">
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
         {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
           {/* One river of light from the top of the page to the bottom: it pours in on arrival and
               bends in the gap between the hero's words and its card. */}
-          <LightTrail tone="dark" hero className="opacity-70 lg:opacity-100" />
-          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(214,170,92,0.12), transparent)' }} />
-          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(98,136,176,0.12), transparent)' }} />
+          <LightTrail own hero className="opacity-70 lg:opacity-100" />
+          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(59,126,240,0.12), transparent)' }} />
+          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,142,247,0.10), transparent)' }} />
         </div>
 
         <MarketingNav />
@@ -209,7 +201,7 @@ export default function ShowcasePage() {
                   <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
                     {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable where
                         the river runs straight behind it on a phone (one column, no gap to bend into). */}
-                    <h1 className="mt-8 text-[3.25rem] sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-[-0.04em] leading-[0.98] text-white max-lg:[text-shadow:0_2px_22px_rgba(11,11,12,0.85)]">
+                    <h1 className="mt-8 text-[3.25rem] sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-[-0.04em] leading-[0.98] text-white max-lg:dark:[text-shadow:0_2px_22px_rgba(12,13,16,0.85)]">
                       {/* A real space after each word (not a margin): screen readers, search engines and
                           copy-paste read "The school day…", not "Theschoolday…". */}
                       {hero.words.map((w, i) => (
@@ -217,18 +209,11 @@ export default function ShowcasePage() {
                       ))}
                       <span className="hero-in inline-block" style={rise(60 + hero.words.length * 50)}><Accent>{hero.accent}</Accent></span>
                     </h1>
-                    <p className="hero-in mt-6 text-lg sm:text-xl text-zinc-300 max-w-md leading-relaxed max-lg:[text-shadow:0_1px_14px_rgba(11,11,12,0.9)]" style={rise(320)}>{hero.text}</p>
+                    <p className="hero-in mt-6 text-lg sm:text-xl text-zinc-300 max-w-md leading-relaxed max-lg:dark:[text-shadow:0_1px_14px_rgba(12,13,16,0.9)]" style={rise(320)}>{hero.text}</p>
                     <div className="hero-in mt-9 flex flex-wrap items-center gap-3" style={rise(380)}>
                       <Link href={`/register?app=${app}`} data-magnetic className={cn(primary, HERO_BTN)}>Get started <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" /></Link>
                       <Link href={`/login?app=${app}`} data-magnetic className={cn(ghost, HERO_BTN)}>Sign in</Link>
                     </div>
-                    {/* M81: first visit: say what you're here for, go straight to the right start. */}
-                    <nav aria-label="What are you here for?" className="mt-6 flex flex-wrap items-center gap-2">
-                      <span className="text-xs text-zinc-400 me-1">Here to</span>
-                      {HERE_FOR.map(([label, href]) => (
-                        <Link key={label} href={href} className="rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 text-xs font-medium text-zinc-200 transition-[background-color,border-color] hover:border-aqua-300/50 hover:bg-white/[0.08] focus-visible:outline-2 focus-visible:outline-aqua-300">{label}</Link>
-                      ))}
-                    </nav>
                     <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2">
                       <button type="button" onClick={handleInstallClick} className={SMALL}><Smartphone className="w-4 h-4" aria-hidden /> {installed ? 'Open the app' : 'Get the app'}</button>
                       {hero.extra}

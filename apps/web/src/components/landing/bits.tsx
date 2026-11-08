@@ -109,8 +109,8 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
   return <span ref={ref} className={cn('tabular-nums', className)}>{prefix}0{suffix}</span>;
 }
 
-/** The page's one bright action: a white pill (M91). */
-export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-bold text-[#111113] bg-white shadow-[0_8px_24px_-14px_rgba(0,0,0,0.7)] hover:bg-zinc-100 active:scale-[0.98] transition-[transform,background-color] duration-150';
-export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition-[transform,background-color] duration-150';
+/** The page's one bright action: lime on the dark page (the Relay recording), ink on the light one (M124). */
+export const primary = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl text-sm font-bold text-[var(--cta-ink)] bg-[var(--cta)] shadow-[0_8px_24px_-14px_rgba(0,0,0,0.7)] hover:bg-[var(--cta-hover)] active:scale-[0.98] transition-[transform,background-color] duration-150';
+export const ghost = 'mkt-cta group inline-flex items-center justify-center gap-2 h-11 px-5 rounded-xl text-sm font-semibold text-white border border-white/12 bg-white/[0.04] hover:bg-white/[0.08] active:scale-[0.98] transition-[transform,background-color] duration-150';
 /** A solid dark card with a hairline (§8: no glass, no see-through fills). */
-export const tile = 'rounded-3xl border border-white/[0.08] bg-[#111113]';
+export const tile = 'rounded-3xl border border-white/[0.08] bg-[var(--surface)]';

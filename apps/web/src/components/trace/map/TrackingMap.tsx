@@ -41,7 +41,7 @@ interface Ship {
 }
 
 const WORLD: Box = [-170, -56, 180, 76];
-const PINK = '#fe81d1', PINK_SOFT = '#ff9fdc';
+const PINK = '#4f8ef7', PINK_SOFT = '#7aaefa';
 const STATUS: Record<string, { label: string; cls: string }> = {
   IN_TRANSIT: { label: 'On the move', cls: 'bg-pink-500/12 text-pink-700 dark:text-pink-200' },
   DELIVERED: { label: 'Delivered', cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' },
@@ -156,7 +156,7 @@ export function TrackingMap() {
         // A faint wide line under a crisp one (M65: a blurred shadow here was redrawn every frame).
         ctx.lineCap = 'round'; ctx.lineJoin = 'round';
         ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp);
-        if (f.dark) { ctx.strokeStyle = 'rgba(254,129,209,0.18)'; ctx.lineWidth = s.id === selected ? 8 : 6; ctx.stroke(); }
+        if (f.dark) { ctx.strokeStyle = 'rgba(79,142,247,0.18)'; ctx.lineWidth = s.id === selected ? 8 : 6; ctx.stroke(); }
         ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3 : 2.2; ctx.stroke();
         ctx.restore();
         // Older trail points fade out.
@@ -169,7 +169,7 @@ export function TrackingMap() {
         if (from) {
           const d = sx(s.dest.lng, s.dest.lat);
           ctx.save(); ctx.setLineDash([7, 6]); ctx.lineDashOffset = still ? 0 : -t / 45;
-          ctx.strokeStyle = f.dark ? 'rgba(255,159,220,0.7)' : 'rgba(193,58,146,0.6)'; ctx.lineWidth = 2;
+          ctx.strokeStyle = f.dark ? 'rgba(122,174,250,0.7)' : 'rgba(193,58,146,0.6)'; ctx.lineWidth = 2;
           ctx.beginPath(); ctx.moveTo(...from); ctx.lineTo(...d); ctx.stroke(); ctx.restore();
           // The destination: a flag in a slow pulse.
           const p = still ? 0 : (t % 2200) / 2200;
@@ -344,7 +344,7 @@ export function TrackingMap() {
             </AnimatePresence>
             <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
               <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-zinc-600 dark:bg-zinc-300 rounded" />Done</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#fe81d1]" />Live trail</span>
+              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#4f8ef7]" />Live trail</span>
               <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-pink-500" />Still to go</span>
             </div>
           </WorldCanvas>
@@ -470,7 +470,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
   return (
     <motion.article layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 8) * 0.03, type: 'spring', stiffness: 380, damping: 34 }}
       onMouseEnter={() => onHover(true)} onMouseLeave={() => onHover(false)}
-      className={cn('panel overflow-hidden transition-shadow', open && 'ring-2 ring-pink-500/50 shadow-[0_12px_40px_-16px_rgba(254,129,209,0.55)]')}>
+      className={cn('panel overflow-hidden transition-shadow', open && 'ring-2 ring-pink-500/50 shadow-[0_12px_40px_-16px_rgba(79,142,247,0.55)]')}>
       <button type="button" onClick={onOpen} aria-expanded={open} className="w-full text-left p-4">
         <div className="flex items-start gap-3">
           <span className={cn('w-10 h-10 shrink-0 rounded-2xl grid place-items-center', s.status === 'IN_TRANSIT' ? 'bg-pink-500/12 text-pink-600 dark:text-pink-300' : 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300')}>

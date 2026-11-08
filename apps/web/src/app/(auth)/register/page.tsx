@@ -103,11 +103,8 @@ export default function RegisterPage() {
   // M113: from a teacher's class link, a student account that opens straight away (an independent
   // learner's: no student card for an admin to check first), so the class can start the same day.
   const [classInvite, setClassInvite] = useState(false);
-  // M81: the landing's "Here to: Learn / Teach" picks the role (they still confirm with Continue).
   useEffect(() => {
-    const as = new URLSearchParams(window.location.search).get('as');
     if (campus && pendingInvite()) queueMicrotask(() => { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setClassInvite(true); });
-    else if (campus && (as === 'student' || as === 'teacher')) queueMicrotask(() => { setSelectedRole(as === 'student' ? 'STUDENT' : 'TEACHER'); if (as === 'student') setIndividual('STUDENT'); });
   }, [campus]);
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);

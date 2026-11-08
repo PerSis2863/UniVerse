@@ -4915,3 +4915,63 @@ one commit and one note each, then ask the owner before merging.
 **Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
 site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
 mark the 31 Oct error report resolved in the console.
+
+## M124: the Ballast look in light mode, the Relay look in dark mode, the river remade (the owner, 8 Nov 2026)
+
+The owner sent three "Ballast" reels ("make the whole website like this, professional, modern, futuristic,
+ultra smooth"), then: blue accent and black buttons, dark stays the default with a switch on the website,
+keep the river and the attractive animations, and finally the "Relay" recording: "I want the river to look
+exactly like this… keep this theme for dark mode and colour". Merged at the owner's request (an
+exception to the launch-focus pause, asked and answered).
+
+- **Light mode (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft
+  shadow, ink text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's
+  chosen; the side menu white with the chosen entry a raised white card. All in the **M124 block** in
+  `globals.css` (it replaces the M91 block: same variable names; Tailwind's indigo / violet / purple /
+  pink / fuchsia / aqua are re-pointed to the blue in light mode and to lime in dark mode).
+- **Dark mode (Relay, the default):** near-black (#070808), lime (#c6f24a) as the accent: main buttons
+  lime with ink text (`--cta`, `.btn-primary`), chosen tabs, chart marks (`--ins-hot`), focus. **Trap:**
+  white text on a solid accent fill would be unreadable on lime; one rule turns it ink in dark mode
+  (`.dark :is(.bg-indigo-500, …, .bg-primary)`). Use `text-white` on accent fills only if that rule
+  covers the class.
+- **Type:** Inter (`/fonts/inter`, variable, OFL) everywhere; the headline's key word (`<Accent>`) in
+  Instrument Serif italic (`/fonts/instrument-serif`, OFL), as in the recording. Canvas text says
+  `Inter, system-ui` (games, tools, maps). Urbanist is gone.
+- **The website follows the theme** (it was always dark): `ThemeSwitch` in its top bar
+  (`src/components/marketing/ThemeSwitch.tsx`, the circular reveal from `applyTheme`). Parts drawn for a
+  dark page carry **`.flip-light`**: in light mode their white and black swap and their greys run the
+  other way. Parts that look the same in both themes opt out: `.flip-keep` (light cards), `.dark` /
+  `.on-dark` (dark bands such as the planet section), `.live-card`. Use `bg-[var(--surface)]` and
+  friends, not hard-coded `#111113`, inside the website. The "Here to…" row (M81) is removed, with its
+  `?as=` sign-up link support.
+- **The river** (`src/lib/river-paint.ts`, rewritten after many rounds with the owner; compare with the
+  Relay frames before changing it): fine fibres wrap round a round U-shaped bend and fan out: each arm
+  is a power of the distance from the bend (upper 1.4, lower 1.6), eased in near the tip by
+  d² / (d² + R²) so the turn is round; the outer fibres stay steep, the inner ones turn tighter (the
+  lower arm sweeps out almost flat). **Every fibre follows the river's path but moves in its own way**
+  (its own sway, wavelength, speed, timing and breath, growing with the distance from the bend so the
+  bend stays tight): the owner's words, "each fibre follows its own way of motion but follows the
+  lines". Earlier rounds failed both ways: fibres taking different paths looked messy; all fibres
+  moving as one looked like a single line. Mostly faint green strands, a few bright white-lime ones, pale cyan
+  scattered through, a quarter out of focus behind (depth). Each fibre is **one smooth curve**
+  (quadratic through midpoints; straight segments looked "not smooth"). A smooth olive glow round each
+  bend and along the upper arm (`glowAt`: 24-step bell falloff, and a fixed grain over the soft layer,
+  or the glow shows rings), specks near the bend, bends alternating sides down the page. **Depth of
+  field:** sharp at the top of a page, out of focus a screen further down (`focus`; no CSS filter).
+  Drawn at up to 2× (≤4.2 M pixels) so the fine lines are crisp. Light mode: the same river in blues.
+  The landing's own river is `<LightTrail own hero />` (follows the theme); sign-in keeps `own tone="dark"`.
+- **Motion kept** (the owner: "I need the river and good and attractive animations"): sparks, ripples,
+  pointer light, tilt, magnetic buttons, card sheen and the section entrances all stay, recoloured from
+  pink to the accent. Page entrances no longer animate a blur filter (§8: filters repaint every frame);
+  they rise, scale a little and fade.
+- **Libraries and skills:** framer-motion 14.10.1 (Motion; the owner's "add motion"). Skills added at
+  the owner's request, each with a `SOURCE.md` (what was left out and why): `design-review` (no usage
+  ping, no paid upload), `web-design-guidelines` (rules kept locally), `frontend-design`, `ui-ux-pro-max`
+  (local search data), `design-taste-frontend` (written guidance only, no hook or scripts). The Apple
+  design skill stays off the repo (no licence; Apple's text): `sh tools/setup-apple-design.sh`.
+  Impeccable is unchanged (4.7.1; a newer copy exists, ask before updating).
+- **Tested:** `pnpm check`; axe (serious/critical) clean with no sideways scrolling on `/`, `/login`,
+  `/student`, `/hub`, `/student/settings` at 390 and 1280 px in both themes; the river compared frame by
+  frame with the recording; the production build.
+- **Left:** the iPhone launch screens (`public/splash`) still use the previous page colours (a shade
+  off); the live cards' moving pictures keep their own dark look.

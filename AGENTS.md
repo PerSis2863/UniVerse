@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M117 is the latest).
+  builds on it). The newest notes are at the end (M124 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,7 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
 - **On `main`** (merged 6 Nov, live): everything through **M123**.
-  - **Look and motion:** the CreditKarma look (M91–M94, §8); smooth scrolling, maps and loading
+  - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
+    remade (M124, §8; the owner's exception to the pause, 8 Nov); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
@@ -133,7 +134,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M124**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M125**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
@@ -290,28 +291,32 @@ file used only from config goes in its `BY_CONFIG` list).
 
 ## 8. Design and motion
 
-**The look (M91, the owner, 4 Nov 2026: "use this photos and make website like this", the
-CreditKarma photos; "keep pink" as the one accent).** Black and white with soft warm light (gold, steel
-blue, olive) in the page's corners; solid cards with a hairline (white in light mode, #151517 in dark);
-the main button and every chosen tab a white pill in dark mode and an ink pill in light mode; the side
-menu near-black in both themes with a white pill for the chosen entry; headline cards in the photos'
-frosts (`--karma-dusk` steel blue into warm brown, `--karma-gold` honey, `--karma-olive` moss) with a
-thin-line icon in a circle (`.karma-icon`) and a round arrow button (`.karma-go`); big numbers in
-Urbanist with a small unit. **Pink only for the river, live dots and the number that matters**
-(`--ins-hot`); amber, green and red only for states. **No glass:** no `backdrop-filter` on cards, bars,
-the tab bar, the side menu or toasts, and no see-through card fills (they cost the most while
-scrolling on phones). The Tailwind scales are re-pointed in the M91 block at the end of `globals.css`:
-`indigo/violet/purple` are ink (light) or graphite (dark), `aqua` is white in dark mode, `zinc` neutral.
-Since M94 no component keeps the old navy or aqua, except documents printed on white (`src/server/`,
-certificates, CVs, report cards) and colours people choose (slide themes, course colours, accents).
+**The look (M124, the owner, 8 Nov 2026: the "Ballast" reels for light mode, the "Relay" recording for
+dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
+**Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
+text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
+side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), lime
+(#c6f24a) as the accent: main buttons lime with ink text, chosen things, chart marks (`--ins-hot`),
+focus; white headings. Green, amber and red only for states. The tokens and the Tailwind re-pointing
+(indigo / violet / purple / pink / fuchsia / aqua = the accent; zinc = neutral greys) are the **M124
+block** in `globals.css`; white text on a solid accent fill turns ink in dark mode there (lime). Type:
+**Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
+website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
+black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **The river**
+(`river-paint.ts`, after the Relay recording): fine fibres round a glowing hairpin bend, spraying in an
+orderly fan that never crosses, moving together; sharp at the top of a page and out of focus a screen
+further down. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
+navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
+colours people choose (slide themes, course colours, accents).
 
 **Rules that carry over from the earlier looks:** `.panel`, `.card`, `.btn-primary` and
 `.ios-segmented` carry the look, so new screens get it by using them (`.btn-primary` takes a person's own
-accent when they chose one: `:root[data-accent]`). Type is Urbanist, served from `/fonts/urbanist` (no
-outside service); cards round with `--radius-card` (`corner-shape: squircle` where the browser has it). A
-heading's key word is two-tone (`<Accent>`: grey heading, bright word, M93); no eyebrow labels above
-headings; mono only for numbers and data. The river is the brand, even where design guides call it
-"AI-looking". Older notes (M34, M52–M57) describe looks this one replaced: ignore their colours.
+accent when they chose one: `:root[data-accent]`). Fonts are served from `/fonts` (no outside service);
+cards round with `--radius-card` (`corner-shape: squircle` where the browser has it). A heading's key
+word: `<Accent>` (light mode: grey heading, ink word; dark: white, the word in the serif italic); no
+eyebrow labels above headings; mono only for numbers and data. The river is the brand, even where design
+guides call it "AI-looking". Older notes (M34, M52–M57, M91–M94) describe looks this one replaced:
+ignore their colours.
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),
@@ -347,7 +352,15 @@ skill only when the task needs it. These rules win any clash with a tool's advic
   secrets, money, files and public routes.
 - **Screens and motion:** `impeccable` (`/impeccable`, with `generate` and `live` for choices to pick
   from, `animate`, `bolder`, `critique`, `audit`…; its engine downloads on first use) and Emil
-  Kowalski's `emil-design-eng`, `review-animations`, `animation-performance`, `mobile-native`.
+  Kowalski's `emil-design-eng`, `review-animations`, `animation-performance`, `mobile-native`. Added
+  8 Nov 2026 at the owner's request: `design-review` (a ranked critique of a page, screenshot or
+  component), `web-design-guidelines` (Vercel's interface rules, kept in the skill, not fetched),
+  `frontend-design` (Anthropic), `ui-ux-pro-max` (searchable styles, palettes, type pairings, UX
+  rules; its search scripts work on local files) and `design-taste-frontend` (taste-skill's written
+  guidance only). The Apple design skill (Apple's Human Interface Guidelines) stays off the repo
+  (no licence; the guideline text is Apple's): `sh tools/setup-apple-design.sh` installs it on the
+  machine. Motion (motiondivision/motion) is the animation library the app already uses, as
+  `framer-motion` (14.x).
 - **Hooks:** `protect-secrets.mjs` (blocks the secret files) and `suggest-compact.mjs` (after 60 tool
   calls, suggest a fresh conversation at the next finished item). Changing `.claude/settings.json`
   needs the owner's approval.
@@ -356,7 +369,9 @@ skill only when the task needs it. These rules win any clash with a tool's advic
   only: software the owner owns or may examine.
 - **Where they came from:** Impeccable (github.com/pbakaus/impeccable, Apache-2.0) and Ponytail
   (github.com/DietrichGebert/ponytail, MIT), both without their hooks (see each skill's
-  `SOURCE.md`); Emil Kowalski's skills (MIT); from Everything Claude Code only the commands,
+  `SOURCE.md`); design-review (MIT) without its usage ping and paid upload mode, web-design-guidelines
+  (MIT), frontend-design (Apache-2.0), ui-ux-pro-max (MIT) and taste-skill (MIT) without its hook,
+  scripts and 38 MB of pictures (each skill's `SOURCE.md`); Emil Kowalski's skills (MIT); from Everything Claude Code only the commands,
   reviewers and hooks above plus `security-review` and `strategic-compact` (the full pack is left
   out: its catalogue slows every request, its hooks and "proactive" agents clash with this project).
   Design references studied: AgentGPT (page loading), the Relay video (landing, light river), the

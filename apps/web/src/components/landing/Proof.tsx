@@ -17,7 +17,7 @@ function Wave() {
     <svg ref={ref} viewBox="0 0 360 64" className="w-full h-auto" aria-hidden>
       <defs>
         <linearGradient id="wave-fill" x1="0" x2="0" y1="0" y2="1"><stop offset="0" stopColor="#58617f" stopOpacity="0.35" /><stop offset="1" stopColor="#58617f" stopOpacity="0" /></linearGradient>
-        <linearGradient id="wave-line" x1="0" x2="1"><stop offset="0" stopColor="#58617f" /><stop offset="1" stopColor="#ff9fdc" /></linearGradient>
+        <linearGradient id="wave-line" x1="0" x2="1"><stop offset="0" stopColor="#58617f" /><stop offset="1" stopColor="#7aaefa" /></linearGradient>
       </defs>
       <motion.path d={`${d} L360 64 L0 64 Z`} fill="url(#wave-fill)" initial={{ opacity: 0 }} animate={{ opacity: seen ? 1 : 0 }} transition={{ duration: 1, delay: 0.8 }} />
       <motion.path d={d} fill="none" stroke="url(#wave-line)" strokeWidth="2" strokeLinecap="round" initial={{ pathLength: 0 }} animate={{ pathLength: seen ? 1 : 0 }} transition={{ duration: 1.6, ease: EASE }} />

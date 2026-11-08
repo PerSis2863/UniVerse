@@ -34,9 +34,9 @@ export function Radar({ blips, label, className }: { blips: Blip[]; label: strin
       const wedge = 0.9;
       const g = ctx.createConicGradient ? ctx.createConicGradient(beam - wedge, cx, cy) : null;
       if (g) {
-        g.addColorStop(0, 'rgba(254,129,209,0)');
-        g.addColorStop(wedge / (Math.PI * 2), 'rgba(254,129,209,0.32)');
-        g.addColorStop(wedge / (Math.PI * 2) + 0.001, 'rgba(254,129,209,0)');
+        g.addColorStop(0, 'rgba(79,142,247,0)');
+        g.addColorStop(wedge / (Math.PI * 2), 'rgba(79,142,247,0.32)');
+        g.addColorStop(wedge / (Math.PI * 2) + 0.001, 'rgba(79,142,247,0)');
         ctx.fillStyle = g;
         ctx.beginPath(); ctx.moveTo(cx, cy); ctx.arc(cx, cy, R, beam - wedge, beam); ctx.closePath(); ctx.fill();
       }
@@ -49,7 +49,7 @@ export function Radar({ blips, label, className }: { blips: Blip[]; label: strin
     }
 
     // The blips: brightest just after the beam has passed.
-    ctx.font = '600 11px Urbanist, system-ui, sans-serif';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
     ctx.textBaseline = 'middle';
     for (const b of model) {
       const since = (((beam - b.a) % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);

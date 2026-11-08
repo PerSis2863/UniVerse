@@ -93,7 +93,7 @@ function nameTag(text: string) {
   const c = document.createElement('canvas');
   c.width = 256; c.height = 64;
   const g = c.getContext('2d')!;
-  g.font = '700 34px Urbanist, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
+  g.font = '700 34px Inter, system-ui, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle';
   g.lineWidth = 8; g.strokeStyle = 'rgba(0,0,0,0.7)'; g.strokeText(text, 128, 34);
   g.fillStyle = '#ffffff'; g.fillText(text, 128, 34);
   const tex = new THREE.CanvasTexture(c); tex.colorSpace = THREE.SRGBColorSpace;

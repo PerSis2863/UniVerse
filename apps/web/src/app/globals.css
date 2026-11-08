@@ -5,15 +5,13 @@
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */
-/* The look (M52, the owner, 31 Oct 2026, after the "Globynk" palette): Midnight Abyss navy (#111113)
-   with Aqua Jade (#f0cc8a) glowing up from the bottom and Baby Pink (#FE81D1) as the light (the main
-   button, the river of light, live states). Urbanist (a rounded geometric face, served from /fonts,
-   no outside service), pill buttons, squircle cards (kept from M34's "Karma"). indigo / violet /
-   purple classes are the navy scale (indigo-600 = #27272a, 900 = #111113); pink is Baby Pink
-   (pink-500), fuchsia an orchid beside it, aqua-* is Aqua Jade. The M34 → M52 part further down sets
-   the tokens and the shared parts (cards, buttons, tabs, the page's glows). */
-@font-face { font-family: 'Urbanist'; src: url('/fonts/urbanist/urbanist-latin.woff2') format('woff2'); font-weight: 300 800; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
-@font-face { font-family: 'Urbanist'; src: url('/fonts/urbanist/urbanist-latin-ext.woff2') format('woff2'); font-weight: 300 800; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+/* The look is M124 "Ballast" (the block near the end of this file): a light-grey page, white cards,
+   ink text, black main buttons and one blue. Inter, served from /fonts/inter (no outside service). The
+   older looks' tokens below are overridden there. */
+@font-face { font-family: 'Inter'; src: url('/fonts/inter/inter-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Inter'; src: url('/fonts/inter/inter-latin-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif/instrument-serif-italic-latin.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif/instrument-serif-italic-latin-ext.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @theme {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -24,12 +22,12 @@
   /* Tint for text and icons: a lighter indigo on dark backgrounds so it stays readable. */
   --color-tint-text: var(--tint-text);
   --color-secondary: #32ade6;
-  --font-display: "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  --font-sans: "Urbanist", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
 
   /* UniVerse's colours on Tailwind's names (the owner, 31 Oct 2026, after the "Globynk" palette):
-     Midnight Abyss navy (#111113) for the UI, Baby Pink (#FE81D1) for the light, Aqua Jade (#f0cc8a)
+     Midnight Abyss navy (#111113) for the UI, Baby Pink (#4f8ef7) for the light, Aqua Jade (#f0cc8a)
      for the glow. */
   /* indigo: navy (600 = #27272a, 900 = Midnight Abyss): the normal UI colour */
   --color-indigo-50: #eef2fb; --color-indigo-100: #e1e6f2; --color-indigo-200: #cbd2e6; --color-indigo-300: #a1a1aa; --color-indigo-400: #52525b; --color-indigo-500: #3f3f46; --color-indigo-600: #27272a; --color-indigo-700: #1d1d20; --color-indigo-800: #151517; --color-indigo-900: #111113; --color-indigo-950: #0e0e10;
@@ -40,7 +38,7 @@
   /* fuchsia: an orchid beside the Baby Pink: lights, glows and animations */
   --color-fuchsia-50: #fdf2fc; --color-fuchsia-100: #fbe4f8; --color-fuchsia-200: #f8c8f1; --color-fuchsia-300: #f4a6ea; --color-fuchsia-400: #ef88e3; --color-fuchsia-500: #e46bdb; --color-fuchsia-600: #b447ae; --color-fuchsia-700: #93378e; --color-fuchsia-800: #762d72; --color-fuchsia-900: #5f275c; --color-fuchsia-950: #3d0d3a;
   /* pink: Baby Pink at 500; 600 and deeper hold white text at 4.5:1 */
-  --color-pink-50: #fff1fa; --color-pink-100: #ffe6f6; --color-pink-200: #ffd6f0; --color-pink-300: #ffc0e6; --color-pink-400: #ff9fdc; --color-pink-500: #fe81d1; --color-pink-600: #c13a92; --color-pink-700: #a32c7b; --color-pink-800: #82245f; --color-pink-900: #6b1f50; --color-pink-950: #420a2f;
+  --color-pink-50: #fff1fa; --color-pink-100: #ffe6f6; --color-pink-200: #ffd6f0; --color-pink-300: #9cc3fb; --color-pink-400: #7aaefa; --color-pink-500: #4f8ef7; --color-pink-600: #c13a92; --color-pink-700: #a32c7b; --color-pink-800: #82245f; --color-pink-900: #6b1f50; --color-pink-950: #420a2f;
   /* aqua: Aqua Jade at 300, the glow rising from the bottom of the page; 700 reads as text on white */
   --color-aqua-50: #ecfffc; --color-aqua-100: #faf3e2; --color-aqua-200: #f6e7c1; --color-aqua-300: #f0cc8a; --color-aqua-400: #e3c98e; --color-aqua-500: #cfae66; --color-aqua-600: #0fa89c; --color-aqua-700: #0b7a72; --color-aqua-800: #106963; --color-aqua-900: #115752; --color-aqua-950: #033432;
 
@@ -126,12 +124,12 @@ html:not(.dark) {
   --color-indigo-50: #eef2fb; --color-indigo-100: #e1e6f2; --color-indigo-200: #cbd2e6; --color-indigo-300: #a1a1aa; --color-indigo-500: #3f3f46; --color-indigo-600: #27272a; --color-indigo-700: #1d1d20; --color-indigo-800: #151517; --color-indigo-900: #111113; --color-indigo-950: #0e0e10;
   --color-violet-50: #eef2fb; --color-violet-100: #e1e6f2; --color-violet-200: #cbd2e6; --color-violet-300: #a1a1aa; --color-violet-500: #3f3f46; --color-violet-600: #27272a; --color-violet-700: #1d1d20; --color-violet-800: #151517; --color-violet-900: #111113; --color-violet-950: #0e0e10;
   --color-purple-50: #eef2fb; --color-purple-100: #e1e6f2; --color-purple-200: #cbd2e6; --color-purple-300: #a1a1aa; --color-purple-500: #3f3f46; --color-purple-600: #27272a; --color-purple-700: #1d1d20; --color-purple-800: #151517; --color-purple-900: #111113; --color-purple-950: #0e0e10;
-  --color-pink-50: #fff1fa; --color-pink-100: #ffe6f6; --color-pink-200: #ffd6f0; --color-pink-300: #ffc0e6; --color-pink-400: #ff9fdc; --color-pink-500: #fe81d1; --color-pink-600: #c13a92; --color-pink-700: #a32c7b; --color-pink-800: #82245f; --color-pink-900: #6b1f50; --color-pink-950: #420a2f;
+  --color-pink-50: #fff1fa; --color-pink-100: #ffe6f6; --color-pink-200: #ffd6f0; --color-pink-300: #9cc3fb; --color-pink-400: #7aaefa; --color-pink-500: #4f8ef7; --color-pink-600: #c13a92; --color-pink-700: #a32c7b; --color-pink-800: #82245f; --color-pink-900: #6b1f50; --color-pink-950: #420a2f;
   --color-fuchsia-50: #fdf2fc; --color-fuchsia-100: #fbe4f8; --color-fuchsia-200: #f8c8f1; --color-fuchsia-300: #f4a6ea; --color-fuchsia-400: #ef88e3; --color-fuchsia-500: #e46bdb; --color-fuchsia-600: #b447ae; --color-fuchsia-700: #93378e; --color-fuchsia-800: #762d72; --color-fuchsia-900: #5f275c; --color-fuchsia-950: #3d0d3a;
   --color-zinc-50: #f5f7fc; --color-zinc-100: #eceff7; --color-zinc-200: #e1e6f2; --color-zinc-300: #cbd2e6; --color-zinc-700: #3a3a40; --color-zinc-800: #27272a; --color-zinc-900: #151517; --color-zinc-950: #111113; }
 /* Dark mode: blue and pink text without its own dark: colour is lifted so it reads on the navy. */
 .dark .text-indigo-500:not([class*="dark:text-"]) { color: #c4c4cb; }
-.dark :is(.text-fuchsia-500, .text-pink-500):not([class*="dark:text-"]) { color: #ff9fdc; }
+.dark :is(.text-fuchsia-500, .text-pink-500):not([class*="dark:text-"]) { color: #7aaefa; }
 /* ...and so is the other coloured text written for light backgrounds (the 600 shades, no dark:
    colour of its own; red, blue and violet were under 4.5:1 on navy). Not on white chips. */
 .dark :is(.text-emerald-600, .text-green-600, .text-teal-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #4ade80; }
@@ -139,7 +137,7 @@ html:not(.dark) {
 .dark :is(.text-red-600, .text-rose-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #fb7185; }
 .dark :is(.text-blue-600, .text-sky-600, .text-cyan-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #60a5fa; }
 .dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #cbd2e6; }
-.dark :is(.text-fuchsia-600, .text-pink-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #ffc0e6; }
+.dark :is(.text-fuchsia-600, .text-pink-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #9cc3fb; }
 /* Keyboard focus is always visible: unlayered, so a utility's outline-none can't hide it. Not on
    things focused only by code (tabindex -1: sheets, the page itself after "Skip to content"). */
 :where(a, button, [role="button"], [role="tab"], [role="switch"], [role="menuitem"], summary, [tabindex]:not([tabindex="-1"])):focus-visible {
@@ -336,7 +334,7 @@ html:not(.dark) {
     transition-property: background-color, color, box-shadow, scale, translate, opacity, filter;
   }
   /* Primary: a Baby Pink pill with navy text (the M52 part below sets the glow). */
-  .btn-primary { color: #111113; background: #fe81d1; }
+  .btn-primary { color: #111113; background: #4f8ef7; }
   .btn-primary:not(:disabled):active { filter: brightness(0.9); }
 
   /* Accent colours (Settings → Appearance, src/lib/display-prefs.ts): the same tokens as indigo's
@@ -567,7 +565,7 @@ html:not(.dark) {
   .sidebar-pill, .dark .sidebar-pill {
     position: absolute; inset: 0; border-radius: inherit;
     background: linear-gradient(100deg, #27272a, #52525b);
-    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 3px 0 0 #fe81d1, 0 8px 22px -10px rgba(254, 129, 209, 0.75);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12), inset 3px 0 0 #4f8ef7, 0 8px 22px -10px rgba(79, 142, 247, 0.75);
   }
   /* M29: a soft highlight that glides under the pointer from row to row (mouse and trackpad only;
      touch screens keep the plain :hover). The rows' own hover fill steps aside for it. */
@@ -1118,7 +1116,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
     radial-gradient(70vmax 26vmax at 50% 112%, rgba(240, 204, 138, 0.2), transparent 70%),
     radial-gradient(40vmax 26vmax at 0% 106%, rgba(240, 204, 138, 0.09), transparent 70%),
     radial-gradient(40vmax 26vmax at 100% 104%, rgba(240, 204, 138, 0.1), transparent 70%),
-    radial-gradient(38vmax 30vmax at 102% 2%, rgba(254, 129, 209, 0.06), transparent 70%),
+    radial-gradient(38vmax 30vmax at 102% 2%, rgba(79, 142, 247, 0.06), transparent 70%),
     linear-gradient(180deg, #0b0b0c 0%, #0e0e10 40%, #111113 72%, #141312 100%);
 }
 /* Film grain over the glows, like a printed poster. */
@@ -1129,7 +1127,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .dark .ambient-bg::after { opacity: 0.08; mix-blend-mode: screen; }
 
 /* Pull-to-refresh ring (installed app): an aqua → pink arc that fills as you pull. */
-.ptr-ring { background: conic-gradient(from 0deg, #f0cc8a, #fe81d1, #fe81d1, transparent 85%); }
+.ptr-ring { background: conic-gradient(from 0deg, #f0cc8a, #4f8ef7, #4f8ef7, transparent 85%); }
 
 /* ─── Materials: frosted, in the two tones ─── */
 /* Bars: translucent and blurred so content glides underneath them, tinted indigo → fuchsia. */
@@ -1157,7 +1155,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .dark .tone-panel {
   background:
     radial-gradient(120% 60% at 0% 100%, rgba(240, 204, 138, 0.10), transparent 70%),
-    radial-gradient(120% 60% at 100% 0%, rgba(254, 129, 209, 0.14), transparent 70%),
+    radial-gradient(120% 60% at 100% 0%, rgba(79, 142, 247, 0.14), transparent 70%),
     #1a2249;
 }
 
@@ -1215,7 +1213,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
   transition: background-color 240ms var(--ease-ios), box-shadow 240ms var(--ease-ios), -webkit-backdrop-filter 240ms var(--ease-ios), backdrop-filter 240ms var(--ease-ios);
 }
 html[data-scrolled] .nav-edge {
-  background: linear-gradient(90deg, rgba(39, 39, 42, 0.1), transparent 45%, rgba(254, 129, 209, 0.08)), var(--topbar-bg);
+  background: linear-gradient(90deg, rgba(39, 39, 42, 0.1), transparent 45%, rgba(79, 142, 247, 0.08)), var(--topbar-bg);
   box-shadow: 0 0.5px 0 var(--topbar-border);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
@@ -1367,7 +1365,7 @@ button, [role="tab"], [role="button"], [role="switch"], nav, .ios-tabbar, .mobil
   align-items: center; justify-content: center;
   background:
     radial-gradient(80% 50% at 0% 0%, rgba(39, 39, 42, 0.38), transparent 70%),
-    radial-gradient(80% 50% at 100% 100%, rgba(254, 129, 209, 0.28), transparent 70%),
+    radial-gradient(80% 50% at 100% 100%, rgba(79, 142, 247, 0.28), transparent 70%),
     #111113;
 }
 @media (display-mode: standalone) { .launch-splash { display: flex; } }
@@ -1553,7 +1551,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 
 /* ═══ M34 → M52 · The look everywhere ════════════════════════════════════════════════════════════
    M52 (the owner, 31 Oct 2026, after the "Globynk" palette: Aqua Jade #f0cc8a, Midnight Abyss
-   #111113, Baby Pink #FE81D1): dark mode (the default) is a Midnight Abyss page with Aqua Jade glowing
+   #111113, Baby Pink #4f8ef7): dark mode (the default) is a Midnight Abyss page with Aqua Jade glowing
    up from the bottom and a little Baby Pink, raised navy cards with a hairline, white pills; light mode
    is an ice-white page with the same glows, white cards, navy pills. The main button is a Baby Pink
    pill with navy text in both themes (the design's call to action). Baby Pink is the light (the river,
@@ -1565,7 +1563,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
   /* Light mode (M53): Marshmallow White, white cards, black pills, Galactic Violet accents. */
   --ink: #141320; --ink-contrast: #ffffff; --ink-soft: #2b2a38;
   --tint: #533ff6; --tint-rgb: 83 63 246; --tint-text: #3f2bd6;
-  --aqua: #f0cc8a; --aqua-rgb: 240 204 138; --baby-pink: #fe81d1; --baby-pink-rgb: 254 129 209; --abyss: #111113;
+  --aqua: #f0cc8a; --aqua-rgb: 240 204 138; --baby-pink: #4f8ef7; --baby-pink-rgb: 79 142 247; --abyss: #111113;
   --violet: #533ff6; --bubblegum: #ec74ce; --marshmallow: #f0f0f0;
   --background: #f0f0f0;
   --surface: #ffffff; --surface-2: #f7f7f8;
@@ -1617,8 +1615,8 @@ body { font-weight: 450; letter-spacing: 0; }
 
 /* Buttons: the main one is a Baby Pink pill with Midnight Abyss text (7:1) in both themes, glowing
    pink; secondary pills are outlined; an accent chosen in Settings keeps its own colours. */
-:root:not([data-accent]) .btn-primary { color: #111113; background: #fe81d1; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px -12px rgba(254, 129, 209, 0.75); }
-:root:not([data-accent]) .btn-primary:not(:disabled):hover { filter: none; background: #ff9bdb; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 34px -12px rgba(254, 129, 209, 0.9); }
+:root:not([data-accent]) .btn-primary { color: #111113; background: #4f8ef7; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px -12px rgba(79, 142, 247, 0.75); }
+:root:not([data-accent]) .btn-primary:not(:disabled):hover { filter: none; background: #ff9bdb; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 34px -12px rgba(79, 142, 247, 0.9); }
 /* Light mode (M53): Bubblegum Pink with ink text (7:1), a violet-pink glow. */
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #141320; background: #ec74ce; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.35), 0 10px 26px -12px rgba(236, 116, 206, 0.75); }
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #f28fd9; box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45), 0 14px 34px -12px rgba(140, 90, 240, 0.6); }
@@ -1645,11 +1643,11 @@ body { font-weight: 450; letter-spacing: 0; }
 
 /* The side menu: deep navy in both themes, a Baby Pink glow at the top and Aqua Jade rising from the
    bottom (like the design's page); the chosen entry is a white pill (navy text) with a pink edge. */
-.glass-sidebar, .dark .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(130% 34% at 0% 0%, rgba(254, 129, 209, 0.14), transparent 70%), radial-gradient(140% 40% at 50% 104%, rgba(240, 204, 138, 0.16), transparent 70%), linear-gradient(180deg, #0e0e10, #131b42 70%, #12233f); }
+.glass-sidebar, .dark .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(130% 34% at 0% 0%, rgba(79, 142, 247, 0.14), transparent 70%), radial-gradient(140% 40% at 50% 104%, rgba(240, 204, 138, 0.16), transparent 70%), linear-gradient(180deg, #0e0e10, #131b42 70%, #12233f); }
 /* Light mode (M53): the menu is violet-black, Bubblegum Pink at the top and Galactic Violet at the bottom. */
 html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, rgba(236, 116, 206, 0.16), transparent 70%), radial-gradient(140% 40% at 50% 104%, rgba(83, 63, 246, 0.32), transparent 70%), linear-gradient(180deg, #15121f, #181428 70%, #1d1638); }
-.sidebar-pill, .dark .sidebar-pill { background: #eef2fb; box-shadow: inset 3px 0 0 #fe81d1, 0 10px 26px -12px rgba(254, 129, 209, 0.6); }
-[dir="rtl"] .sidebar-pill { box-shadow: inset -3px 0 0 #fe81d1, 0 10px 26px -12px rgba(254, 129, 209, 0.6); }
+.sidebar-pill, .dark .sidebar-pill { background: #eef2fb; box-shadow: inset 3px 0 0 #4f8ef7, 0 10px 26px -12px rgba(79, 142, 247, 0.6); }
+[dir="rtl"] .sidebar-pill { box-shadow: inset -3px 0 0 #4f8ef7, 0 10px 26px -12px rgba(79, 142, 247, 0.6); }
 .sidebar-item.active, .sidebar-item.pill-host.active { color: var(--sidebar-item-active-color); }
 .sidebar-item.active svg { color: inherit; }
 
@@ -1795,15 +1793,15 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 /* ═══ Landing page (src/components/landing/, the owner's Relay video in UniVerse's two tones) ═══ */
 /* M13 · The flow card (FlowCard.tsx): one light runs through the job, a step every 2 s (8 s a round):
    a comet along each line (.flow-comet, arriving as its step lights), the step's box and row lit. */
-.flow-comet { stroke-dasharray: 22 130; stroke-dashoffset: 22; opacity: 0; filter: drop-shadow(0 0 3px #fe81d1); animation: flow-comet 8s linear infinite; }
+.flow-comet { stroke-dasharray: 22 130; stroke-dashoffset: 22; opacity: 0; filter: drop-shadow(0 0 3px #4f8ef7); animation: flow-comet 8s linear infinite; }
 @keyframes flow-comet { 0% { stroke-dashoffset: 22; opacity: 1; } 22% { stroke-dashoffset: -100; opacity: 1; } 23%, 100% { stroke-dashoffset: -100; opacity: 0; } }
 .flow-on { animation: flow-on 8s ease-in-out infinite; }
-@keyframes flow-on { 0%, 30%, 100% { box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.8); } 5%, 22% { box-shadow: 0 0 0 1px rgb(255 159 220 / 0.6), 0 0 28px -4px rgb(254 129 209 / 0.7); } }
+@keyframes flow-on { 0%, 30%, 100% { box-shadow: 0 10px 30px -12px rgb(0 0 0 / 0.8); } 5%, 22% { box-shadow: 0 0 0 1px rgb(122 174 250 / 0.6), 0 0 28px -4px rgb(79 142 247 / 0.7); } }
 .flow-row { animation: flow-row 8s ease-in-out infinite; }
 @keyframes flow-row { 0%, 30%, 100% { background-color: transparent; } 5%, 22% { background-color: rgb(255 255 255 / 0.06); } }
 /* The role chain's dots light up one after another. */
 .bento-step { animation: bento-step 2s ease-in-out infinite; }
-@keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px #fe81d1; } }
+@keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); box-shadow: 0 0 10px #4f8ef7; } }
 @media (prefers-reduced-motion: reduce) { .flow-on, .flow-row, .bento-step { animation: none; } .flow-comet { display: none; } }
 html.reduce-motion :is(.flow-on, .flow-row, .bento-step) { animation: none; }
 html.reduce-motion .flow-comet { display: none; }
@@ -1813,7 +1811,7 @@ html.reduce-motion .flow-comet { display: none; }
 @media (hover: hover) and (pointer: fine) {
   :is(.panel, .card, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
   :is(.panel, .card, .card-hover):hover { border-color: rgba(39, 39, 42, 0.28); box-shadow: var(--card-shadow), 0 18px 44px -28px rgba(39, 39, 42, 0.45); }
-  .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(255, 159, 220, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(255, 159, 220, 0.08), 0 24px 60px -30px rgba(254, 129, 209, 0.55); }
+  .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(122, 174, 250, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(122, 174, 250, 0.08), 0 24px 60px -30px rgba(79, 142, 247, 0.55); }
 }
 
 /* ═══ M11 · Light that answers people (src/lib/light-motion.ts, scroll-motion.ts) ═══════════════
@@ -1824,14 +1822,14 @@ html.reduce-motion .flow-comet { display: none; }
 .bar-glint::after { content: ''; position: absolute; inset: 0; background: linear-gradient(100deg, transparent 30%, rgb(255 255 255 / 0.55) 50%, transparent 70%); transform: translateX(-120%); animation: bar-glint 3.8s ease-in-out 0.5s infinite; pointer-events: none; }
 @keyframes bar-glint { 0% { transform: translateX(-120%); } 40%, 100% { transform: translateX(120%); } }
 /* The page bar: a comet with a bright head. */
-.nav-comet::after { content: ''; position: absolute; inset-inline-end: -3px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #ff9fdc 45%, transparent 70%); box-shadow: 0 0 12px 3px rgb(255 159 220 / 0.7); }
+.nav-comet::after { content: ''; position: absolute; inset-inline-end: -3px; top: 50%; width: 8px; height: 8px; margin-top: -4px; border-radius: 50%; background: radial-gradient(circle, #fff 0%, #7aaefa 45%, transparent 70%); box-shadow: 0 0 12px 3px rgb(122 174 250 / 0.7); }
 /* Sparks from a press (light-motion.ts). */
 .spark-burst { position: fixed; z-index: 250; width: 0; height: 0; pointer-events: none; }
 .spark-burst span { position: absolute; left: 0; top: 0; width: 5px; height: 5px; border-radius: 50%; box-shadow: 0 0 8px currentColor; }
-.spark-burst i { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid rgb(255 192 230 / 0.8); box-shadow: 0 0 14px rgb(255 159 220 / 0.5); }
+.spark-burst i { position: absolute; left: 0; top: 0; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid rgb(156 195 251 / 0.8); box-shadow: 0 0 14px rgb(122 174 250 / 0.5); }
 /* Loading placeholders shimmer in the two tones. */
-.skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(177 168 167 / 0.38) 45%, rgb(255 192 230 / 0.3) 55%, transparent 80%); }
-.dark .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(116 110 122 / 0.1) 45%, rgb(255 159 220 / 0.08) 55%, transparent 80%); }
+.skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(177 168 167 / 0.38) 45%, rgb(156 195 251 / 0.3) 55%, transparent 80%); }
+.dark .skeleton::after { background-image: linear-gradient(100deg, transparent 20%, rgb(116 110 122 / 0.1) 45%, rgb(122 174 250 / 0.08) 55%, transparent 80%); }
 @media (prefers-reduced-motion: reduce) { .bar-glint::after { animation: none; } }
 html.reduce-motion .bar-glint::after { animation: none; }
 
@@ -1839,16 +1837,16 @@ html.reduce-motion .bar-glint::after { animation: none; }
    The header's grid and pulse line, the slow ring round icon tiles, the line chart wiping in, the
    live dot, and the cards' two-tone top edge (a background image: no ::before, no positioning). */
 .deck-grid { background-image: linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(110% 90% at 25% 0%, #000 25%, transparent 75%); }
-.deck-pulse { stroke-dasharray: 90 1000; stroke-dashoffset: 90; filter: drop-shadow(0 0 4px #fe81d1); animation: deck-pulse 7s linear infinite; }
+.deck-pulse { stroke-dasharray: 90 1000; stroke-dashoffset: 90; filter: drop-shadow(0 0 4px #4f8ef7); animation: deck-pulse 7s linear infinite; }
 @keyframes deck-pulse { to { stroke-dashoffset: -1000; } }
 .deck-ping { animation: deck-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes deck-ping { 0% { box-shadow: 0 0 0 0 rgb(255 159 220 / 0.55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(255 159 220 / 0); } }
+@keyframes deck-ping { 0% { box-shadow: 0 0 0 0 rgb(122 174 250 / 0.55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(122 174 250 / 0); } }
 .deck-glow { background: radial-gradient(closest-side, rgb(82 82 91 / 0.22), transparent); animation: mkt-drift-a 18s ease-in-out infinite; }
 .deck-draw { animation: deck-draw 1.4s var(--ease-glide, ease-out) backwards; }
 @keyframes deck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
 @layer components {
-  .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(39 39 42 / 0.3), rgb(254 129 209 / 0.3), transparent 92%); background-size: 100% 1px; background-repeat: no-repeat; }
-  .dark .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(82 82 91 / 0.45), rgb(255 159 220 / 0.4), transparent 92%); }
+  .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(39 39 42 / 0.3), rgb(79 142 247 / 0.3), transparent 92%); background-size: 100% 1px; background-repeat: no-repeat; }
+  .dark .deck-card { background-image: linear-gradient(90deg, transparent 8%, rgb(82 82 91 / 0.45), rgb(122 174 250 / 0.4), transparent 92%); }
   .console-deck table th { font-family: var(--font-mono, ui-monospace, monospace); font-size: 0.6875rem; letter-spacing: 0.06em; text-transform: uppercase; }
   .console-deck tbody tr { transition: background-color 0.15s; }
   .console-deck tbody tr:hover { background-color: rgb(39 39 42 / 0.05); }
@@ -1894,11 +1892,11 @@ html.reduce-motion
 [dir='rtl'] .msg-arrive-theirs { transform-origin: bottom right; }
 @keyframes msg-arrive { from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.92); } }
 /* Bubbles: yours with a soft sheen and glow in your colour, theirs as dark glass. */
-.bubble-mine { background-image: linear-gradient(135deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 45%), linear-gradient(160deg, transparent 40%, rgb(254 129 209 / 0.28)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 6px 18px -8px rgb(var(--tint-rgb, 79 70 229) / 0.7); }
+.bubble-mine { background-image: linear-gradient(135deg, rgb(255 255 255 / 0.2), rgb(255 255 255 / 0) 45%), linear-gradient(160deg, transparent 40%, rgb(79 142 247 / 0.28)); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.22), 0 6px 18px -8px rgb(var(--tint-rgb, 79 70 229) / 0.7); }
 :root:not([data-accent]) .bubble-mine { background-image: linear-gradient(135deg, rgb(255 255 255 / 0.18), rgb(255 255 255 / 0) 45%), linear-gradient(135deg, #27272a, #c13a92 65%, #c13a92); }
 .dark .bubble-theirs { background-color: rgb(255 255 255 / 0.07); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), inset 0 1px 0 rgb(255 255 255 / 0.06); }
 /* The search box glows in the two tones while you type in it. */
-.msg-search:focus { box-shadow: 0 0 0 2px rgb(39 39 42 / 0.45), 0 0 26px -6px rgb(254 129 209 / 0.55); }
+.msg-search:focus { box-shadow: 0 0 0 2px rgb(39 39 42 / 0.45), 0 0 26px -6px rgb(79 142 247 / 0.55); }
 /* The send button turns in when there's something to send (it takes the microphone's place). */
 .send-in { animation: send-in 260ms var(--ease-glide); }
 @keyframes send-in { from { opacity: 0; transform: scale(0.8) rotate(-25deg); } }
@@ -1911,7 +1909,7 @@ html.reduce-motion :is(.typing-dots i, .badge-bump, .menu-pop, .chat-glide, .msg
    squares lighting up in turn. */
 .collab-hero { isolation: isolate; }
 .collab-hero::before { content: ''; position: absolute; inset: -40% -10% auto auto; width: 70%; height: 180%; z-index: -1; pointer-events: none;
-  background: radial-gradient(closest-side, rgb(39 39 42 / 0.22), transparent 70%), radial-gradient(closest-side at 70% 60%, rgb(254 129 209 / 0.18), transparent 70%);
+  background: radial-gradient(closest-side, rgb(39 39 42 / 0.22), transparent 70%), radial-gradient(closest-side at 70% 60%, rgb(79 142 247 / 0.18), transparent 70%);
   animation: collab-aurora 16s ease-in-out infinite alternate; }
 @keyframes collab-aurora { to { transform: translate3d(-18%, 12%, 0) rotate(8deg); } }
 .activity-cell { background: rgb(90 106 115 / 0.12); animation: activity-in 420ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 14ms); }
@@ -1948,15 +1946,15 @@ html.reduce-motion :is(.msg-fx-slam, .msg-fx-loud, .msg-fx-gentle, .ink-specks, 
 
 /* ═══ M17 · The Messages deck, folder rail, pinned bubbles and auras (components/chat) ═════════ */
 .comms-deck { background: rgb(255 255 255 / 0.7); box-shadow: inset 0 0 0 1px rgb(39 39 42 / 0.14), 0 18px 40px -26px rgb(39 39 42 / 0.5); backdrop-filter: blur(16px); }
-.dark .comms-deck { background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 18px 40px -26px rgb(254 129 209 / 0.55); }
+.dark .comms-deck { background: rgb(255 255 255 / 0.04); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 18px 40px -26px rgb(79 142 247 / 0.55); }
 /* The liquid highlight: a bright head and a softer tail that lags behind it. */
-.comms-head { background: linear-gradient(120deg, #151517, #27272a 55%, #52525b); box-shadow: 0 8px 22px -8px rgb(254 129 209 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.25); }
-.comms-tail { background: linear-gradient(120deg, rgb(39 39 42 / 0.5), rgb(254 129 209 / 0.55)); transform: scale(1.04, 1.12); }
+.comms-head { background: linear-gradient(120deg, #151517, #27272a 55%, #52525b); box-shadow: 0 8px 22px -8px rgb(79 142 247 / 0.75), inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.comms-tail { background: linear-gradient(120deg, rgb(39 39 42 / 0.5), rgb(79 142 247 / 0.55)); transform: scale(1.04, 1.12); }
 .comms-icon-on { animation: comms-icon 520ms var(--ease-glide); }
 @keyframes comms-icon { 0% { transform: scale(0.6) rotate(-20deg); } 60% { transform: scale(1.18) rotate(6deg); } }
 /* The folder rail (Telegram desktop): the chosen folder's pill and edge glide between icons. */
-.rail-pill { background: linear-gradient(140deg, #151517, #27272a 55%, #52525b); box-shadow: 0 6px 18px -6px rgb(254 129 209 / 0.75); }
-.rail-edge { background: linear-gradient(#a1a1aa, #ff9fdc); box-shadow: 0 0 10px rgb(255 159 220 / 0.8); }
+.rail-pill { background: linear-gradient(140deg, #151517, #27272a 55%, #52525b); box-shadow: 0 6px 18px -6px rgb(79 142 247 / 0.75); }
+.rail-edge { background: linear-gradient(#a1a1aa, #7aaefa); box-shadow: 0 0 10px rgb(122 174 250 / 0.8); }
 /* Pinned chats float gently, each a little out of step (iMessage's pinned bubbles). */
 .pin-typing { animation: pin-typing 1.4s ease-in-out infinite; }
 @keyframes pin-typing { 50% { transform: translate3d(0, -2px, 0) scale(1.06); } }
@@ -1974,16 +1972,16 @@ html.reduce-motion :is(.comms-icon-on, .pin-typing, .streak > i) { animation: no
 .poster-bg { background: radial-gradient(130% 90% at 15% 0%, color-mix(in srgb, var(--aura, #c13a92) 75%, white), var(--aura, #c13a92) 40%, #111113 100%); }
 @media (hover: hover) { .poster:hover { transform: translate3d(0, -4px, 0) rotate(-1.5deg); box-shadow: 0 22px 44px -16px var(--aura, #c13a92); } }
 @keyframes poster-in { from { opacity: 0; transform: translate3d(0, 16px, 0) scale(0.94); } }
-.call-timeline::before { content: ''; position: absolute; inset-inline-start: 21px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(#52525b, #52525b 55%, rgb(255 159 220 / 0)); opacity: 0.55; }
+.call-timeline::before { content: ''; position: absolute; inset-inline-start: 21px; top: 6px; bottom: 6px; width: 2px; border-radius: 2px; background: linear-gradient(#52525b, #52525b 55%, rgb(122 174 250 / 0)); opacity: 0.55; }
 .call-card { transition: transform 200ms var(--ease-out-soft); }
 @media (hover: hover) { .call-timeline li:hover .call-card { transform: translate3d(4px, 0, 0); } [dir='rtl'] .call-timeline li:hover .call-card { transform: translate3d(-4px, 0, 0); } }
-.insight-bar { background: linear-gradient(to top, #27272a, #c13a92); transform-origin: bottom; animation: bar-rise 700ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 60ms); box-shadow: 0 0 14px -4px rgb(254 129 209 / 0.6); }
+.insight-bar { background: linear-gradient(to top, #27272a, #c13a92); transform-origin: bottom; animation: bar-rise 700ms var(--ease-glide) backwards; animation-delay: calc(var(--i, 0) * 60ms); box-shadow: 0 0 14px -4px rgb(79 142 247 / 0.6); }
 @keyframes bar-rise { from { transform: scaleY(0); } }
 @media (prefers-reduced-motion: reduce) { .poster, .insight-bar { animation: none; } }
 html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
 
 /* ═══ M17 · Notifications: priority, and stacks that fan out (components/notifications) ═══════ */
-.note-priority { background: linear-gradient(140deg, rgb(39 39 42 / 0.1), rgb(254 129 209 / 0.1)); box-shadow: inset 0 0 0 1px rgb(254 129 209 / 0.25), 0 16px 40px -28px rgb(254 129 209 / 0.7); }
+.note-priority { background: linear-gradient(140deg, rgb(39 39 42 / 0.1), rgb(79 142 247 / 0.1)); box-shadow: inset 0 0 0 1px rgb(79 142 247 / 0.25), 0 16px 40px -28px rgb(79 142 247 / 0.7); }
 .note-peek { position: absolute; inset-inline: 0; bottom: 0; height: 100%; border-radius: 1rem; background: rgb(255 255 255 / 0.85); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06); transition: transform 300ms var(--ease-glide); }
 .dark .note-peek { background: rgb(36 38 66 / 0.92); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.09); }
 .note-peek-1 { transform: translate3d(0, 10px, 0) scale(0.95); z-index: 1; }
@@ -1997,7 +1995,7 @@ html.reduce-motion :is(.poster, .insight-bar) { animation: none; }
 @keyframes push-in { from { opacity: 0; transform: translate3d(0, -28px, 0) scale(0.92); } }
 .phone-sent { animation: phone-sent 900ms var(--ease-glide); }
 @keyframes phone-sent { 30% { transform: scale(0.97) rotate(-1deg); } 60% { transform: scale(1.02) rotate(0.5deg); } }
-.broadcast-icon::before, .broadcast-icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgb(254 129 209 / 0.5); animation: broadcast 2.6s var(--ease-out-soft) infinite; }
+.broadcast-icon::before, .broadcast-icon::after { content: ''; position: absolute; inset: 0; border-radius: inherit; border: 2px solid rgb(79 142 247 / 0.5); animation: broadcast 2.6s var(--ease-out-soft) infinite; }
 .broadcast-icon::after { animation-delay: 1.3s; }
 @keyframes broadcast { from { transform: scale(1); opacity: 0.8; } to { transform: scale(1.8); opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .push-card, .phone-sent, .broadcast-icon::before, .broadcast-icon::after { animation: none; } }
@@ -2005,23 +2003,23 @@ html.reduce-motion :is(.push-card, .phone-sent) { animation: none; }
 html.reduce-motion .broadcast-icon::before, html.reduce-motion .broadcast-icon::after { animation: none; }
 
 /* M17: every page's section tabs: a soft two-tone tail lagging behind the highlight as it moves. */
-.ios-segment-tail { position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none; background: linear-gradient(120deg, rgb(39 39 42 / 0.45), rgb(254 129 209 / 0.5)); transform: scale(1.04, 1.12); }
+.ios-segment-tail { position: absolute; inset: 0; z-index: -2; border-radius: inherit; pointer-events: none; background: linear-gradient(120deg, rgb(39 39 42 / 0.45), rgb(79 142 247 / 0.5)); transform: scale(1.04, 1.12); }
 
 /* ─── Instrument boards (the owner's "Instrumental" reference, 24 Oct 2026; components/instruments) ───
    A framed board, cells a shade lighter than it, instruments in the text colour with hot pink for
    what matters. Everything moves with transform and opacity; Reduce Motion stops it all. */
-:root { --ins-hot: #d6449f; } /* Bubblegum Pink deepened to 3:1 on white for chart marks (light mode) */
-.dark { --ins-hot: #fe81d1; }
+:root { --ins-hot: #2563eb; } /* Bubblegum Pink deepened to 3:1 on white for chart marks (light mode) */
+.dark { --ins-hot: #4f8ef7; }
 .ins-board { position: relative; border-radius: 30px; padding: 6px; background: rgb(39 39 42 / 0.05); box-shadow: inset 0 0 0 1px rgb(39 39 42 / 0.08); }
 .dark .ins-board { background: rgb(255 255 255 / 0.025); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05), 0 30px 60px -40px rgb(0 0 0 / 0.8); }
-.ins-board::before { content: ''; position: absolute; inset-inline: 18%; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgb(254 129 209 / 0.65), rgb(228 107 219 / 0.5), transparent); pointer-events: none; }
+.ins-board::before { content: ''; position: absolute; inset-inline: 18%; top: 0; height: 1px; background: linear-gradient(90deg, transparent, rgb(79 142 247 / 0.65), rgb(228 107 219 / 0.5), transparent); pointer-events: none; }
 .ins-board-inner { border-radius: 24px; padding: 16px; background: #f5f7fc; box-shadow: inset 0 0 0 1px rgb(39 39 42 / 0.07); }
 .dark .ins-board-inner { background: #0f0f11; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.05); }
 @media (min-width: 640px) { .ins-board-inner { padding: 20px; } }
 .ins-cell { position: relative; min-width: 0; border-radius: 18px; background: #ffffff; box-shadow: inset 0 0 0 1px rgb(39 39 42 / 0.08), 0 1px 2px rgb(17 17 19 / 0.04); transition: box-shadow 250ms var(--ease-glide); }
 .dark .ins-cell { background: rgb(255 255 255 / 0.035); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06), inset 0 1px 0 rgb(255 255 255 / 0.04); }
-@media (hover: hover) { .ins-cell:not(.is-open):hover { box-shadow: inset 0 0 0 1px rgb(254 129 209 / 0.35), 0 14px 30px -20px rgb(254 129 209 / 0.6); } }
-.ins-cell.is-open { box-shadow: inset 0 0 0 1px rgb(254 129 209 / 0.3), 0 24px 50px -30px rgb(254 129 209 / 0.55); }
+@media (hover: hover) { .ins-cell:not(.is-open):hover { box-shadow: inset 0 0 0 1px rgb(79 142 247 / 0.35), 0 14px 30px -20px rgb(79 142 247 / 0.6); } }
+.ins-cell.is-open { box-shadow: inset 0 0 0 1px rgb(79 142 247 / 0.3), 0 24px 50px -30px rgb(79 142 247 / 0.55); }
 .ins-cell.is-warn { box-shadow: inset 0 0 0 1px rgb(245 158 11 / 0.45); }
 .ins-draw { stroke-dasharray: 1; animation: ins-draw 1.2s var(--ease-glide) both; }
 @keyframes ins-draw { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
@@ -2050,17 +2048,17 @@ html.reduce-motion .ins-draw { stroke-dasharray: none; }
    Genuine is blue-and-pink, "be careful" amber, unknown red. Reduce Motion keeps it still. */
 .passport { background: radial-gradient(120% 70% at 50% -10%, #1d1d20 0%, #0f0f11 55%, #111113 100%); }
 .passport-glow { position: absolute; border-radius: 9999px; pointer-events: none; filter: blur(10px); }
-.passport-glow-a { width: 520px; height: 520px; top: -220px; left: -180px; background: radial-gradient(closest-side, rgb(254 129 209 / 0.32), transparent); animation: pp-drift 14s ease-in-out infinite alternate; }
+.passport-glow-a { width: 520px; height: 520px; top: -220px; left: -180px; background: radial-gradient(closest-side, rgb(79 142 247 / 0.32), transparent); animation: pp-drift 14s ease-in-out infinite alternate; }
 .passport-glow-b { width: 560px; height: 560px; bottom: -260px; right: -200px; background: radial-gradient(closest-side, rgb(240 204 138 / 0.2), rgb(39 39 42 / 0.4) 50%, transparent); animation: pp-drift 18s ease-in-out infinite alternate-reverse; }
 @keyframes pp-drift { to { transform: translate3d(60px, 40px, 0); } }
-.passport-pill { padding: 0.25rem 0.7rem; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: rgb(254 129 209 / 0.14); color: #ffd6f0; box-shadow: inset 0 0 0 1px rgb(254 129 209 / 0.35); }
+.passport-pill { padding: 0.25rem 0.7rem; border-radius: 9999px; font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; background: rgb(79 142 247 / 0.14); color: #ffd6f0; box-shadow: inset 0 0 0 1px rgb(79 142 247 / 0.35); }
 .passport-card { border-radius: 24px; background: rgb(255 255 255 / 0.045); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 24px 50px -30px rgb(0 0 0 / 0.8); }
-.passport-reward { box-shadow: inset 0 0 0 1px rgb(254 129 209 / 0.3), 0 24px 50px -30px rgb(254 129 209 / 0.5); }
+.passport-reward { box-shadow: inset 0 0 0 1px rgb(79 142 247 / 0.3), 0 24px 50px -30px rgb(79 142 247 / 0.5); }
 .passport-alert { background: linear-gradient(135deg, rgb(244 63 94 / 0.16), rgb(245 158 11 / 0.08)); box-shadow: inset 0 0 0 1px rgb(244 63 94 / 0.45); }
 .passport-win { background: radial-gradient(120% 90% at 50% 0%, rgb(251 191 36 / 0.18), transparent 70%); box-shadow: inset 0 0 0 1px rgb(251 191 36 / 0.4), 0 24px 50px -30px rgb(251 191 36 / 0.6); }
 .passport-seal { position: relative; width: 168px; height: 168px; display: grid; place-items: center; }
-.passport-seal-ring { position: absolute; inset: 0; border-radius: 9999px; background: conic-gradient(from 0deg, #27272a, #fe81d1, #e46bdb, #ffc0e6, #27272a); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); animation: pp-spin 1.4s cubic-bezier(0.22, 1, 0.36, 1) both, pp-breathe 3.2s ease-in-out 1.4s infinite; }
-.passport-seal-core { width: 132px; height: 132px; border-radius: 9999px; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 30% 25%, #52525b, #27272a 55%, #151517); box-shadow: 0 0 60px -6px rgb(254 129 209 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.15); }
+.passport-seal-ring { position: absolute; inset: 0; border-radius: 9999px; background: conic-gradient(from 0deg, #27272a, #4f8ef7, #e46bdb, #9cc3fb, #27272a); -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); mask: radial-gradient(farthest-side, transparent calc(100% - 7px), #000 calc(100% - 6px)); animation: pp-spin 1.4s cubic-bezier(0.22, 1, 0.36, 1) both, pp-breathe 3.2s ease-in-out 1.4s infinite; }
+.passport-seal-core { width: 132px; height: 132px; border-radius: 9999px; display: grid; place-items: center; color: #fff; background: radial-gradient(circle at 30% 25%, #52525b, #27272a 55%, #151517); box-shadow: 0 0 60px -6px rgb(79 142 247 / 0.65), inset 0 1px 0 rgb(255 255 255 / 0.15); }
 .is-warn .passport-seal-ring { background: conic-gradient(from 0deg, #92400e, #f59e0b, #fcd34d, #92400e); }
 .is-warn .passport-seal-core { background: radial-gradient(circle at 30% 25%, #b45309, #78350f 60%, #451a03); box-shadow: 0 0 60px -6px rgb(245 158 11 / 0.6); }
 .is-bad .passport-seal-ring { background: conic-gradient(from 0deg, #7f1d1d, #ef4444, #fca5a5, #7f1d1d); }
@@ -2071,8 +2069,8 @@ html.reduce-motion .ins-draw { stroke-dasharray: none; }
 @keyframes pp-pop { from { transform: scale(0.7); opacity: 0; } }
 .pp-rise { animation: pp-rise 650ms var(--ease-glide) both; }
 @keyframes pp-rise { from { transform: translate3d(0, 16px, 0); opacity: 0; } }
-.pp-node { box-shadow: 0 0 0 0 rgb(254 129 209 / 0.6); animation: pp-node 2s ease-out infinite; }
-@keyframes pp-node { 70% { box-shadow: 0 0 0 10px rgb(254 129 209 / 0); } 100% { box-shadow: 0 0 0 0 rgb(254 129 209 / 0); } }
+.pp-node { box-shadow: 0 0 0 0 rgb(79 142 247 / 0.6); animation: pp-node 2s ease-out infinite; }
+@keyframes pp-node { 70% { box-shadow: 0 0 0 10px rgb(79 142 247 / 0); } 100% { box-shadow: 0 0 0 0 rgb(79 142 247 / 0); } }
 @media (prefers-reduced-motion: reduce) { .passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node { animation: none !important; } }
 html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node) { animation: none !important; }
 
@@ -2161,8 +2159,8 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 @keyframes arena-fade { from { opacity: 0; } }
 .arena-glow {
   background:
-    radial-gradient(70% 55% at 50% -12%, color-mix(in srgb, var(--arena, #fe81d1) 32%, transparent), transparent 70%),
-    radial-gradient(55% 45% at 102% 104%, rgba(254, 129, 209, 0.14), transparent 70%),
+    radial-gradient(70% 55% at 50% -12%, color-mix(in srgb, var(--arena, #4f8ef7) 32%, transparent), transparent 70%),
+    radial-gradient(55% 45% at 102% 104%, rgba(79, 142, 247, 0.14), transparent 70%),
     radial-gradient(45% 45% at -2% 104%, rgba(240, 204, 138, 0.12), transparent 70%);
 }
 /* The grain without a blend mode (M118): blending made the browser redraw the whole arena into a
@@ -2234,19 +2232,19 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 /* ═══ M41 · Motion everywhere (src/lib/light-motion.ts) ═══════════════════════════════════════════
    The press ripple, the cursor light, clickable cards that lift, fields that glow as you type. Transform, opacity and box-shadow only; Reduce Motion: none. */
 .has-ripple { overflow: hidden; isolation: isolate; }
-.press-ripple { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, rgb(254 129 209 / 0.35), rgb(254 129 209 / 0.12) 60%, transparent 72%); transform: scale(0); opacity: 1; animation: press-ripple 620ms var(--ease-out-soft, ease-out) forwards; }
+.press-ripple { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, rgb(79 142 247 / 0.35), rgb(79 142 247 / 0.12) 60%, transparent 72%); transform: scale(0); opacity: 1; animation: press-ripple 620ms var(--ease-out-soft, ease-out) forwards; }
 @keyframes press-ripple { to { transform: scale(1); opacity: 0; } }
 [data-cursor-light] { position: relative; }
 [data-cursor-light]::before { content: ''; position: absolute; z-index: 1; pointer-events: none; inset: 0; opacity: 0; transition: opacity 400ms ease;
-  background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(254 129 209 / 0.09), transparent 60%); }
+  background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(79 142 247 / 0.09), transparent 60%); }
 @media (hover: hover) and (pointer: fine) { [data-cursor-light]:hover::before { opacity: 1; } }
 [data-magnetic], [data-tilt] { will-change: transform; transform-style: preserve-3d; }
 @media (hover: hover) {
   a.card, a.panel, button.card, button.panel, .card-hover { transition-property: transform, box-shadow, border-color, background-color; transition-duration: 260ms; transition-timing-function: var(--ease-glide); }
-  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -22px rgb(254 129 209 / 0.45); }
+  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: translateY(-3px); box-shadow: 0 18px 40px -22px rgb(79 142 247 / 0.45); }
 }
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { transition: border-color 200ms ease, box-shadow 260ms var(--ease-glide, ease-out); }
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(254 129 209 / 0.18), 0 0 24px -6px rgb(254 129 209 / 0.45); }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(79 142 247 / 0.18), 0 0 24px -6px rgb(79 142 247 / 0.45); }
 @media (prefers-reduced-motion: reduce) { .press-ripple { display: none; } [data-cursor-light]::before { display: none; } a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: none; } }
 html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before { display: none; }
 
@@ -2261,7 +2259,7 @@ html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before
   background:
     radial-gradient(120% 70% at 50% 120%, rgb(240 204 138 / 0.2), transparent 62%),
     radial-gradient(80% 50% at 50% 112%, rgb(34 160 170 / 0.22), transparent 70%),
-    radial-gradient(70% 60% at 100% 0%, rgb(254 129 209 / 0.12), transparent 65%),
+    radial-gradient(70% 60% at 100% 0%, rgb(79 142 247 / 0.12), transparent 65%),
     radial-gradient(60% 50% at 0% 0%, rgb(98 136 176 / 0.12), transparent 70%),
     linear-gradient(180deg, #141b3e, #111113 60%, #18264a);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), inset 0 1px 0 rgb(255 255 255 / 0.06), 0 18px 40px -24px rgb(0 0 0 / 0.55);
@@ -2275,8 +2273,8 @@ html:not(.dark) .live-card {
     linear-gradient(180deg, #17142b, #19152f 60%, #221a45);
 }
 @media (min-width: 768px) { .live-card { padding: 1.5rem; } }
-.live-dot { width: 6px; height: 6px; border-radius: 9999px; background: #fe81d1; box-shadow: 0 0 0 0 rgb(254 129 209 / 0.6); animation: live-dot 2s var(--ease-out-soft, ease-out) infinite; }
-@keyframes live-dot { 0% { box-shadow: 0 0 0 0 rgb(254 129 209 / 0.55); } 70%, 100% { box-shadow: 0 0 0 7px rgb(254 129 209 / 0); } }
+.live-dot { width: 6px; height: 6px; border-radius: 9999px; background: #4f8ef7; box-shadow: 0 0 0 0 rgb(79 142 247 / 0.6); animation: live-dot 2s var(--ease-out-soft, ease-out) infinite; }
+@keyframes live-dot { 0% { box-shadow: 0 0 0 0 rgb(79 142 247 / 0.55); } 70%, 100% { box-shadow: 0 0 0 7px rgb(79 142 247 / 0); } }
 @media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
 @supports (corner-shape: squircle) { .live-card { corner-shape: squircle; border-radius: calc(var(--radius-card) * 1.6); } }
 /* M50 · The level gauge's liquid (src/components/live/Tank.tsx) sways slowly. */
@@ -2291,8 +2289,8 @@ html:not(.dark) .live-card {
   box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.35), inset 0 -1px 0 rgb(0 0 0 / 0.25), inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 30px 50px -28px rgb(0 0 0 / 0.65), 0 8px 16px -8px rgb(0 0 0 / 0.35); }
 .wcard::before { content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.5; background: repeating-radial-gradient(circle at 82% 40%, rgb(255 255 255 / 0.07) 0 1px, transparent 1.5px 16px); }
 .wcard::after { content: ''; position: absolute; inset: 0; z-index: -1; opacity: 0.35; mix-blend-mode: overlay; background: repeating-linear-gradient(100deg, rgb(255 255 255 / 0.06) 0 1px, transparent 1px 3px); }
-.wcard-abyss { background: radial-gradient(90% 80% at 88% 10%, rgb(254 129 209 / 0.3), transparent 60%), radial-gradient(90% 90% at 8% 112%, rgb(240 204 138 / 0.32), transparent 58%), linear-gradient(135deg, #2c2c30, #111113 48%, #0b0b0c); }
-.wcard-pink { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.45), transparent 55%), linear-gradient(135deg, #ffc0e6, #fe81d1 50%, #ea6cc0); }
+.wcard-abyss { background: radial-gradient(90% 80% at 88% 10%, rgb(79 142 247 / 0.3), transparent 60%), radial-gradient(90% 90% at 8% 112%, rgb(240 204 138 / 0.32), transparent 58%), linear-gradient(135deg, #2c2c30, #111113 48%, #0b0b0c); }
+.wcard-pink { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.45), transparent 55%), linear-gradient(135deg, #9cc3fb, #4f8ef7 50%, #ea6cc0); }
 .wcard-aqua { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.5), transparent 55%), linear-gradient(135deg, #faf3e2, #f0cc8a 50%, #3fe0cf); }
 .wcard-blue { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.45), transparent 55%), linear-gradient(135deg, #d6dcff, #a9b4ff 50%, #8c9bff); }
 .wcard-emboss { text-shadow: 0 1px 0 rgb(255 255 255 / 0.25), 0 -1px 0 rgb(0 0 0 / 0.35), 0 2px 3px rgb(0 0 0 / 0.2); }
@@ -2308,7 +2306,7 @@ html:not(.dark) .live-card {
 .wcard-thumb { width: 3.25rem; aspect-ratio: 1.586; border-radius: 0.45rem; position: relative; overflow: hidden; opacity: 0.6; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.2); transition: opacity 200ms var(--ease-out-soft), transform 200ms var(--ease-out-soft), box-shadow 200ms var(--ease-out-soft); }
 .wcard-thumb::before, .wcard-thumb::after { display: none; }
 .wcard-thumb:hover { opacity: 0.9; }
-.wcard-thumb.is-on { opacity: 1; transform: translateY(-2px); box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #fe81d1; }
+.wcard-thumb.is-on { opacity: 1; transform: translateY(-2px); box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #4f8ef7; }
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
    aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
@@ -2325,7 +2323,8 @@ html:not(.dark) .live-card {
 .world-glass { border-radius: 1.5rem; border: 1px solid rgb(255 255 255 / 0.18); background: rgb(16 28 58 / 0.58); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 /* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. M57: it fades
    out completely before the bottom edge (it was cut there, a hard line under the landing's first screen). */
-.horizon { background: radial-gradient(60% 20% at 50% 80%, rgb(240 204 138 / 0.13), transparent 100%), radial-gradient(85% 28% at 50% 72%, rgb(34 160 170 / 0.12), transparent 100%); }
+/* M124: a faint dot grid behind the landing's first screen in dark mode (the owner's Relay recording). */
+html.dark .horizon::before { content: ''; position: absolute; inset: 0; pointer-events: none; background-image: radial-gradient(rgb(255 255 255 / 0.08) 1px, transparent 1.5px); background-size: 26px 26px; -webkit-mask-image: radial-gradient(70% 60% at 18% 30%, #000, transparent 75%); mask-image: radial-gradient(70% 60% at 18% 30%, #000, transparent 75%); }
 
 /* M54 · More Aqua Jade in dark mode (the owner: "there is way less aqua jade colour"). Pink stays the
    action (the main button, the river, live dots); Aqua Jade is now everything chosen, pointed at or
@@ -2367,7 +2366,7 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #f0cc8a; }
   html.dark .panel { -webkit-backdrop-filter: blur(18px) saturate(140%); backdrop-filter: blur(18px) saturate(140%); }
 }
 html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); backdrop-filter: blur(22px) saturate(150%);
-  background: radial-gradient(130% 30% at 0% 0%, rgba(254, 129, 209, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(240, 204, 138, 0.22), transparent 70%), linear-gradient(180deg, rgba(11, 11, 12, 0.92), rgba(11, 20, 50, 0.86) 60%, rgba(11, 34, 56, 0.82)); }
+  background: radial-gradient(130% 30% at 0% 0%, rgba(79, 142, 247, 0.1), transparent 70%), radial-gradient(140% 36% at 50% 106%, rgba(240, 204, 138, 0.22), transparent 70%), linear-gradient(180deg, rgba(11, 11, 12, 0.92), rgba(11, 20, 50, 0.86) 60%, rgba(11, 34, 56, 0.82)); }
 
 /* Sign in and sign up's picture (AuthShowcase): the scenes (up to 500 px: UniVersity's, M117, so its
    third card fits) shrink on shorter screens so the page fits without scrolling, and go on the shortest. */
@@ -2384,170 +2383,177 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 .text-pool { position: relative; isolation: isolate; }
 .text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(11 11 12 / 0.86), rgb(11 11 12 / 0.6) 55%, transparent); }
 
-/* ═══ M91 · The owner's CreditKarma photos (4 Nov 2026: "use this photos and make website like this";
-   pink kept as the one accent). Black and white with soft warm light (gold, steel blue, olive) behind
-   the page; solid cards with a hairline (white in light mode, near-black in dark); the main button and
-   every chosen tab a white pill in dark mode and an ink pill in light mode; headline cards in the
-   photos' frosts (dusk: steel blue into warm brown; gold; olive). Pink only for the river, live dots
-   and the number that matters (--ins-hot). Surfaces are solid: no see-through cards and no glass behind
-   bars or the side menu (frosted layers were the biggest drawing cost while scrolling on a phone).
-   Unlayered and last, so it wins over the M52–M57 tokens above. ═══ */
+/* ═══ M124 · Ballast (the owner, 8 Nov 2026, three "Ballast" reels: "make the whole website like this,
+   professional and modern and futuristic… ultra smooth… no bad design and no unnecessary animations").
+   Light by default: a cool light-grey page, white cards with a hairline and a soft shadow, ink text,
+   black main buttons (white in dark mode), one calm blue for charts, icons, links, focus and what's
+   chosen; green, amber and red only for states. Inter (served from /fonts/inter). No glows, glass,
+   gradients or lights behind the page. Unlayered and last among the looks, so it wins over the older
+   tokens above. Tailwind's indigo / violet / purple / pink / fuchsia / aqua are all this blue, zinc /
+   slate / gray a cool neutral grey. ═══ */
 html:not(.dark) {
-  /* indigo / violet / purple: the ink scale (accents are black in light mode) */
-  --color-indigo-50: #f4f4f5; --color-indigo-100: #e8e8eb; --color-indigo-200: #d4d4d8; --color-indigo-300: #a8a8b0; --color-indigo-400: #71717a; --color-indigo-500: #52525b; --color-indigo-600: #27272a; --color-indigo-700: #1d1d20; --color-indigo-800: #161618; --color-indigo-900: #111113; --color-indigo-950: #09090b;
-  --color-violet-50: #f4f4f5; --color-violet-100: #e8e8eb; --color-violet-200: #d4d4d8; --color-violet-300: #a8a8b0; --color-violet-400: #71717a; --color-violet-500: #52525b; --color-violet-600: #27272a; --color-violet-700: #1d1d20; --color-violet-800: #161618; --color-violet-900: #111113; --color-violet-950: #09090b;
-  --color-purple-50: #f4f4f5; --color-purple-100: #e8e8eb; --color-purple-200: #d4d4d8; --color-purple-300: #a8a8b0; --color-purple-400: #71717a; --color-purple-500: #52525b; --color-purple-600: #27272a; --color-purple-700: #1d1d20; --color-purple-800: #161618; --color-purple-900: #111113; --color-purple-950: #09090b;
-  --color-aqua-50: #f4f4f5; --color-aqua-100: #e8e8eb; --color-aqua-200: #d4d4d8; --color-aqua-300: #a8a8b0; --color-aqua-400: #71717a; --color-aqua-500: #52525b; --color-aqua-600: #3f3f46; --color-aqua-700: #27272a; --color-aqua-800: #1d1d20; --color-aqua-900: #111113; --color-aqua-950: #09090b;
-  /* neutral greys (400–600 read at 4.5:1 on the page and on white) */
-  --color-zinc-50: #f7f7f8; --color-zinc-100: #f0f0f1; --color-zinc-200: #e4e4e7; --color-zinc-300: #d4d4d8; --color-zinc-400: #5f5f69; --color-zinc-500: #55555e; --color-zinc-600: #3f3f46; --color-zinc-700: #303036; --color-zinc-800: #232326; --color-zinc-900: #18181b; --color-zinc-950: #0d0d0f;
-  --color-slate-400: #5f5f69; --color-slate-500: #55555e; --color-slate-600: #3f3f46;
-  --color-gray-400: #5f5f69; --color-gray-500: #55555e; --color-gray-600: #3f3f46;
+  --color-indigo-50: #eef4ff; --color-indigo-100: #dce8fe; --color-indigo-200: #bfd5fd; --color-indigo-300: #93b9fa; --color-indigo-400: #5f97f5; --color-indigo-500: #3b7ef0; --color-indigo-600: #2563eb; --color-indigo-700: #1d4fd7; --color-indigo-800: #1e40af; --color-indigo-900: #1e3a8a; --color-indigo-950: #172554;
+  --color-violet-50: #eef4ff; --color-violet-100: #dce8fe; --color-violet-200: #bfd5fd; --color-violet-300: #93b9fa; --color-violet-400: #5f97f5; --color-violet-500: #3b7ef0; --color-violet-600: #2563eb; --color-violet-700: #1d4fd7; --color-violet-800: #1e40af; --color-violet-900: #1e3a8a; --color-violet-950: #172554;
+  --color-purple-50: #eef4ff; --color-purple-100: #dce8fe; --color-purple-200: #bfd5fd; --color-purple-300: #93b9fa; --color-purple-400: #5f97f5; --color-purple-500: #3b7ef0; --color-purple-600: #2563eb; --color-purple-700: #1d4fd7; --color-purple-800: #1e40af; --color-purple-900: #1e3a8a; --color-purple-950: #172554;
+  --color-pink-50: #eef4ff; --color-pink-100: #dce8fe; --color-pink-200: #bfd5fd; --color-pink-300: #93b9fa; --color-pink-400: #5f97f5; --color-pink-500: #3b7ef0; --color-pink-600: #2563eb; --color-pink-700: #1d4fd7; --color-pink-800: #1e40af; --color-pink-900: #1e3a8a; --color-pink-950: #172554;
+  --color-fuchsia-50: #f0f6ff; --color-fuchsia-100: #e0edff; --color-fuchsia-200: #c6defe; --color-fuchsia-300: #a0c8fc; --color-fuchsia-400: #73acf8; --color-fuchsia-500: #4d93f3; --color-fuchsia-600: #2f74e6; --color-fuchsia-700: #2259c9; --color-fuchsia-800: #1f47a3; --color-fuchsia-900: #1e3b80; --color-fuchsia-950: #15264f;
+  --color-aqua-50: #eef4ff; --color-aqua-100: #dce8fe; --color-aqua-200: #bfd5fd; --color-aqua-300: #93b9fa; --color-aqua-400: #5f97f5; --color-aqua-500: #3b7ef0; --color-aqua-600: #2563eb; --color-aqua-700: #1d4fd7; --color-aqua-800: #1e40af; --color-aqua-900: #1e3a8a; --color-aqua-950: #172554;
+  /* cool neutral greys (400–600 read at 4.5:1 on the page and on white) */
+  --color-zinc-50: #f7f8fa; --color-zinc-100: #f1f2f4; --color-zinc-200: #e4e6ea; --color-zinc-300: #d0d4da; --color-zinc-400: #5e6573; --color-zinc-500: #59606d; --color-zinc-600: #434955; --color-zinc-700: #343843; --color-zinc-800: #23262d; --color-zinc-900: #17191e; --color-zinc-950: #0e0f12;
+  --color-slate-400: #5e6573; --color-slate-500: #59606d; --color-slate-600: #434955;
+  --color-gray-400: #5e6573; --color-gray-500: #59606d; --color-gray-600: #434955;
 }
 .dark, .on-dark {
-  /* indigo / violet / purple: graphite (light shades for text on black, deep ones for fills) */
-  --color-indigo-50: #fafafa; --color-indigo-100: #f4f4f5; --color-indigo-200: #e4e4e7; --color-indigo-300: #d4d4d8; --color-indigo-400: #a1a1aa; --color-indigo-500: #3f3f46; --color-indigo-600: #34343a; --color-indigo-700: #27272a; --color-indigo-800: #1f1f22; --color-indigo-900: #18181b; --color-indigo-950: #0f0f11;
-  --color-violet-50: #fafafa; --color-violet-100: #f4f4f5; --color-violet-200: #e4e4e7; --color-violet-300: #d4d4d8; --color-violet-400: #a1a1aa; --color-violet-500: #3f3f46; --color-violet-600: #34343a; --color-violet-700: #27272a; --color-violet-800: #1f1f22; --color-violet-900: #18181b; --color-violet-950: #0f0f11;
-  --color-purple-50: #fafafa; --color-purple-100: #f4f4f5; --color-purple-200: #e4e4e7; --color-purple-300: #d4d4d8; --color-purple-400: #a1a1aa; --color-purple-500: #3f3f46; --color-purple-600: #34343a; --color-purple-700: #27272a; --color-purple-800: #1f1f22; --color-purple-900: #18181b; --color-purple-950: #0f0f11;
-  /* aqua: what was Aqua Jade (chosen, highlighted) is white now */
-  --color-aqua-50: #ffffff; --color-aqua-100: #fafafa; --color-aqua-200: #f4f4f5; --color-aqua-300: #ededef; --color-aqua-400: #d4d4d8; --color-aqua-500: #a1a1aa; --color-aqua-600: #71717a; --color-aqua-700: #3f3f46; --color-aqua-800: #27272a; --color-aqua-900: #18181b; --color-aqua-950: #0b0b0c;
-  --color-zinc-50: #fafafa; --color-zinc-100: #f4f4f5; --color-zinc-200: #e4e4e7; --color-zinc-300: #d4d4d8; --color-zinc-400: #b4b4bc; --color-zinc-500: #a1a1aa; --color-zinc-600: #8f8f98; --color-zinc-700: #3f3f46; --color-zinc-800: #27272a; --color-zinc-900: #18181b; --color-zinc-950: #0f0f11;
-  --color-slate-400: #b4b4bc; --color-slate-500: #a1a1aa; --color-slate-600: #8f8f98;
-  --color-gray-400: #b4b4bc; --color-gray-500: #a1a1aa; --color-gray-600: #8f8f98;
+  --color-indigo-50: #f7fee7; --color-indigo-100: #ecfccb; --color-indigo-200: #dcfa9a; --color-indigo-300: #cff56b; --color-indigo-400: #c6f24a; --color-indigo-500: #b4e43a; --color-indigo-600: #9fd02c; --color-indigo-700: #6f9a1c; --color-indigo-800: #4a6a14; --color-indigo-900: #2f4410; --color-indigo-950: #1a260a;
+  --color-violet-50: #f7fee7; --color-violet-100: #ecfccb; --color-violet-200: #dcfa9a; --color-violet-300: #cff56b; --color-violet-400: #c6f24a; --color-violet-500: #b4e43a; --color-violet-600: #9fd02c; --color-violet-700: #6f9a1c; --color-violet-800: #4a6a14; --color-violet-900: #2f4410; --color-violet-950: #1a260a;
+  --color-purple-50: #f7fee7; --color-purple-100: #ecfccb; --color-purple-200: #dcfa9a; --color-purple-300: #cff56b; --color-purple-400: #c6f24a; --color-purple-500: #b4e43a; --color-purple-600: #9fd02c; --color-purple-700: #6f9a1c; --color-purple-800: #4a6a14; --color-purple-900: #2f4410; --color-purple-950: #1a260a;
+  --color-pink-50: #f7fee7; --color-pink-100: #ecfccb; --color-pink-200: #dcfa9a; --color-pink-300: #cff56b; --color-pink-400: #c6f24a; --color-pink-500: #b4e43a; --color-pink-600: #9fd02c; --color-pink-700: #6f9a1c; --color-pink-800: #4a6a14; --color-pink-900: #2f4410; --color-pink-950: #1a260a;
+  --color-fuchsia-50: #f7fee7; --color-fuchsia-100: #ecfccb; --color-fuchsia-200: #dcfa9a; --color-fuchsia-300: #cff56b; --color-fuchsia-400: #c6f24a; --color-fuchsia-500: #b4e43a; --color-fuchsia-600: #9fd02c; --color-fuchsia-700: #6f9a1c; --color-fuchsia-800: #4a6a14; --color-fuchsia-900: #2f4410; --color-fuchsia-950: #1a260a;
+  --color-aqua-50: #f7fee7; --color-aqua-100: #ecfccb; --color-aqua-200: #dcfa9a; --color-aqua-300: #cff56b; --color-aqua-400: #c6f24a; --color-aqua-500: #b4e43a; --color-aqua-600: #9fd02c; --color-aqua-700: #6f9a1c; --color-aqua-800: #4a6a14; --color-aqua-900: #2f4410; --color-aqua-950: #1a260a;
+  --color-zinc-50: #f7f7f8; --color-zinc-100: #efeff1; --color-zinc-200: #e4e4e7; --color-zinc-300: #cfcfd4; --color-zinc-400: #b4b4bb; --color-zinc-500: #a0a0a8; --color-zinc-600: #8c8c94; --color-zinc-700: #3a3a40; --color-zinc-800: #26262a; --color-zinc-900: #19191c; --color-zinc-950: #111113;
+  --color-slate-400: #b4b4bb; --color-slate-500: #a0a0a8; --color-slate-600: #8c8c94;
+  --color-gray-400: #b4b4bb; --color-gray-500: #a0a0a8; --color-gray-600: #8c8c94;
 }
-/* Coloured text written for light backgrounds, in the new scales (was violet and navy-grey). */
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600) { color: #27272a; }
-:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-violet-400, .text-purple-400) { color: #55555e; }
-.dark .text-indigo-500:not([class*="dark:text-"]) { color: #d4d4d8; }
-.dark :is(.text-indigo-600, .text-violet-600, .text-purple-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #e4e4e7; }
+/* Blue text written for light backgrounds reads at 4.5:1: the bright shades are deepened on white… */
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-indigo-500, .text-violet-400, .text-violet-500, .text-purple-400, .text-purple-500, .text-pink-400, .text-pink-500, .text-fuchsia-400, .text-fuchsia-500, .text-aqua-400, .text-aqua-500, .text-blue-500, .text-sky-500) { color: #2563eb; }
+:where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-600, .text-violet-600, .text-purple-600, .text-pink-600, .text-fuchsia-600) { color: #2563eb; }
+/* …and lifted on the dark page when no dark: colour of its own is given. */
+.dark :is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600, .text-pink-500, .text-pink-600, .text-fuchsia-500, .text-fuchsia-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #cff56b; }
 
 :root {
-  --ink: #111113; --ink-contrast: #ffffff; --ink-soft: #27272a;
-  --tint: #111113; --tint-rgb: 17 17 19; --tint-text: #111113;
-  --background: #ececec;
-  --surface: #ffffff; --surface-2: #f6f6f7;
-  --fill: rgba(0, 0, 0, 0.05); --fill-strong: rgba(0, 0, 0, 0.09);
-  --separator: rgba(0, 0, 0, 0.08); --hairline: rgba(0, 0, 0, 0.16);
-  --material: rgba(255, 255, 255, 0.96); --material-thick: rgba(255, 255, 255, 0.98); --material-highlight: rgba(255, 255, 255, 0.9);
-  --card-bg: #ffffff; --card-border: rgba(0, 0, 0, 0.06); --card-hover-bg: #ffffff; --card-hover-border: rgba(0, 0, 0, 0.14);
-  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 18px 40px -28px rgba(0, 0, 0, 0.28);
-  --sidebar-bg: #0e0e10; --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-item-color: #c9c9cf; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.07); --sidebar-item-hover-color: #ffffff;
-  --sidebar-item-active-bg: #f4f4f5; --sidebar-item-active-color: #111113;
-  --topbar-bg: rgba(236, 236, 236, 0.96); --topbar-border: rgba(0, 0, 0, 0.07);
-  --toast-bg: rgba(255, 255, 255, 0.98);
-  --input-bg: #ffffff; --input-border: rgba(0, 0, 0, 0.13); --input-placeholder: #6e6e78;
-  --text-primary: #111113; --text-secondary: #3f3f46; --text-muted: #55555e;
-  --pill-on-bg: #111113; --pill-on-color: #ffffff;
-  --btn-ghost-hover-bg: rgba(0, 0, 0, 0.06);
-  /* The photos' frosts. Dusk (white text): steel blue into warm brown. Gold (dark text): pale honey.
-     Olive (white text): moss green. Deep enough that white text reads at 4.5:1 on every part. */
-  --karma-dusk: radial-gradient(70% 90% at 12% 92%, #7b5236 0%, transparent 62%), radial-gradient(80% 90% at 92% 18%, #3f6a8c 0%, transparent 62%), linear-gradient(135deg, #5a4a40, #3d566c);
-  --karma-gold: radial-gradient(90% 110% at 0% 0%, #fffaf0 0%, transparent 60%), linear-gradient(135deg, #f2e2b6, #e3c98e);
-  --karma-olive: radial-gradient(80% 100% at 85% 15%, #7c8436 0%, transparent 62%), linear-gradient(135deg, #3a4020, #565e2c 60%, #646b30);
+  --ink: #111318; --ink-contrast: #ffffff; --ink-soft: #2a2e36;
+  --tint: #2563eb; --tint-rgb: 37 99 235; --tint-text: #1d4fd7;
+  --background: #f1f2f4;
+  --surface: #ffffff; --surface-2: #f6f7f9;
+  --fill: rgba(16, 24, 40, 0.045); --fill-strong: rgba(16, 24, 40, 0.08);
+  --separator: rgba(16, 24, 40, 0.08); --hairline: rgba(16, 24, 40, 0.14);
+  --material: #ffffff; --material-thick: #ffffff; --material-highlight: rgba(255, 255, 255, 0.9);
+  --card-bg: #ffffff; --card-border: rgba(16, 24, 40, 0.07); --card-hover-bg: #ffffff; --card-hover-border: rgba(16, 24, 40, 0.15);
+  --card-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+  --radius-card: 1rem;
+  --sidebar-bg: #ffffff; --sidebar-border: rgba(16, 24, 40, 0.07);
+  --sidebar-item-color: #3d4350; --sidebar-item-hover-bg: rgba(16, 24, 40, 0.045); --sidebar-item-hover-color: #111318;
+  --sidebar-item-active-bg: #ffffff; --sidebar-item-active-color: #111318;
+  --topbar-bg: #f1f2f4; --topbar-border: rgba(16, 24, 40, 0.07);
+  --toast-bg: #ffffff;
+  --input-bg: #ffffff; --input-border: rgba(16, 24, 40, 0.13); --input-placeholder: #6b717d;
+  --text-primary: #111318; --text-secondary: #3d4350; --text-muted: #5e6573;
+  --pill-on-bg: #111318; --pill-on-color: #ffffff;
+  --btn-ghost-hover-bg: rgba(16, 24, 40, 0.05);
+  --badge-blue-bg: #e8f0fe; --badge-blue-color: #1d4fd7;
+  --ins-hot: #2563eb;
+  --cta: #111318; --cta-ink: #ffffff; --cta-hover: #2a2e36;
+  /* The headline cards (names kept from M34): ink, pale blue and blue, flat. */
+  --karma-dusk: #111318; --karma-gold: #e8f0fe; --karma-olive: #1f55d6;
 }
 .dark {
-  --ink: #f4f4f5; --ink-contrast: #111113; --ink-soft: #27272a;
-  --tint: #34343a; --tint-rgb: 244 244 245; --tint-text: #f4f4f5;
-  --background: #0b0b0c;
-  --surface: #151517; --surface-2: #1d1d20;
-  --fill: rgba(255, 255, 255, 0.06); --fill-strong: rgba(255, 255, 255, 0.11);
-  --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.16);
-  --material: rgba(21, 21, 23, 0.96); --material-thick: rgba(24, 24, 27, 0.98); --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #151517; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #19191c; --card-hover-border: rgba(255, 255, 255, 0.16);
-  --card-shadow: 0 24px 48px -30px rgba(0, 0, 0, 0.85);
-  --sidebar-bg: #0e0e10; --sidebar-border: rgba(255, 255, 255, 0.06);
-  --sidebar-item-color: #c9c9cf; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.07); --sidebar-item-hover-color: #ffffff;
-  --sidebar-item-active-bg: #f4f4f5; --sidebar-item-active-color: #111113;
-  --topbar-bg: rgba(11, 11, 12, 0.96); --topbar-border: rgba(255, 255, 255, 0.07);
-  --toast-bg: rgba(28, 28, 31, 0.98);
-  --input-bg: rgba(255, 255, 255, 0.05); --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8e8e96;
-  --text-primary: #f4f4f5; --text-secondary: #c4c4cb; --text-muted: #a1a1aa;
-  --pill-on-bg: #f4f4f5; --pill-on-color: #111113;
-  --badge-blue-bg: rgba(255, 255, 255, 0.1); --badge-blue-color: #e4e4e7;
-  --karma-dusk: radial-gradient(70% 90% at 10% 92%, #5c3d2a 0%, transparent 62%), radial-gradient(80% 90% at 92% 15%, #34536e 0%, transparent 62%), linear-gradient(135deg, #2a2420, #1f2c38);
-  --karma-gold: radial-gradient(90% 110% at 0% 0%, rgba(226, 184, 104, 0.34) 0%, transparent 60%), linear-gradient(135deg, #26200f, #352b16);
-  --karma-olive: radial-gradient(80% 100% at 85% 15%, #626a2b 0%, transparent 62%), linear-gradient(135deg, #1d2111, #303719 60%, #434a20);
+  --ink: #f3f4f6; --ink-contrast: #0b0c0d; --ink-soft: #26262a;
+  --tint: #c6f24a; --tint-rgb: 198 242 74; --tint-text: #cff56b;
+  --background: #070808;
+  --surface: #111213; --surface-2: #17181a;
+  --fill: rgba(255, 255, 255, 0.05); --fill-strong: rgba(255, 255, 255, 0.09);
+  --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.15);
+  --material: #111213; --material-thick: #141517; --material-highlight: rgba(255, 255, 255, 0.06);
+  --card-bg: #111213; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151618; --card-hover-border: rgba(198, 242, 74, 0.28);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  --sidebar-bg: #0a0b0c; --sidebar-border: rgba(255, 255, 255, 0.06);
+  --sidebar-item-color: #c4c4cb; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.05); --sidebar-item-hover-color: #ffffff;
+  --sidebar-item-active-bg: #18191b; --sidebar-item-active-color: #ffffff;
+  --topbar-bg: #070808; --topbar-border: rgba(255, 255, 255, 0.07);
+  --toast-bg: #17181a;
+  --input-bg: #0d0e0f; --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8c8c94;
+  --text-primary: #f4f4f5; --text-secondary: #c4c4cb; --text-muted: #a0a0a8;
+  --pill-on-bg: #f4f4f5; --pill-on-color: #0b0c0d;
+  --badge-blue-bg: rgba(198, 242, 74, 0.14); --badge-blue-color: #d9fb6c;
+  --ins-hot: #c6f24a;
+  --cta: #c6f24a; --cta-ink: #0b0c0d; --cta-hover: #d4f86a;
+  --karma-dusk: #18191b; --karma-gold: #1b2410; --karma-olive: #2c4a10;
 }
-:root:not([data-accent]) .dark, :root.dark:not([data-accent]) { --btn-secondary-color: #f4f4f5; --btn-ghost-color: #e4e4e7; }
-:root:not([data-accent]) { --btn-secondary-color: #111113; --btn-ghost-color: #27272a; --btn-ghost-hover-bg: rgba(0, 0, 0, 0.06); }
+:root:not([data-accent]) .dark, :root.dark:not([data-accent]) { --btn-secondary-color: #f3f4f6; --btn-ghost-color: #e2e5ea; }
+:root:not([data-accent]) { --btn-secondary-color: #111318; --btn-ghost-color: #23262d; --btn-ghost-hover-bg: rgba(16, 24, 40, 0.05); }
 
-/* The page: warm light in the corners, like the photos' blurred backgrounds. Still, one layer. */
-.ambient-bg {
-  background:
-    radial-gradient(60vmax 42vmax at -6% -8%, rgba(236, 196, 112, 0.42), transparent 70%),
-    radial-gradient(50vmax 40vmax at 108% 26%, rgba(126, 162, 198, 0.3), transparent 70%),
-    radial-gradient(60vmax 34vmax at 40% 112%, rgba(214, 150, 78, 0.24), transparent 70%),
-    #ececec;
-}
-.dark .ambient-bg {
-  background:
-    radial-gradient(56vmax 40vmax at -8% -10%, rgba(214, 160, 84, 0.16), transparent 70%),
-    radial-gradient(50vmax 36vmax at 108% 30%, rgba(98, 136, 176, 0.11), transparent 70%),
-    radial-gradient(64vmax 30vmax at 50% 114%, rgba(146, 154, 76, 0.1), transparent 70%),
-    #0b0b0c;
-}
-.text-pool::before { background: radial-gradient(closest-side, rgb(11 11 12 / 0.86), rgb(11 11 12 / 0.6) 55%, transparent); }
+/* The page: one flat colour. */
+.ambient-bg, .dark .ambient-bg { background: var(--background); }
+.text-pool::before { background: none; }
 
-/* Buttons: the main one a white pill (dark) or an ink pill (light); no glow. */
-:root:not([data-accent]) .btn-primary { color: #111113; background: #f4f4f5; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.4) inset, 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
-:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #ffffff; box-shadow: 0 1px 0 rgba(255, 255, 255, 0.5) inset, 0 14px 30px -16px rgba(0, 0, 0, 0.8); }
-:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #ffffff; background: #111113; box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.55); }
-:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #27272a; box-shadow: 0 14px 30px -16px rgba(0, 0, 0, 0.6); }
+/* Buttons: rounded rectangles, as in the reels. The main one ink (white in dark mode); no glow. */
+.btn-primary, .btn-secondary, .btn-ghost, .btn-danger { border-radius: 0.625rem; font-weight: 600; letter-spacing: -0.006em; }
+:root:not([data-accent]) .btn-primary { color: #0b0c0d; background: #c6f24a; box-shadow: 0 8px 24px -14px rgba(198, 242, 74, 0.55); }
+:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #d4f86a; box-shadow: 0 10px 28px -14px rgba(198, 242, 74, 0.65); }
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #ffffff; background: #111318; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
+:root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #2a2e36; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
+.btn-secondary { background-color: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline); }
+.btn-secondary:not(:disabled):hover { background-color: var(--surface-2); box-shadow: inset 0 0 0 1px var(--hairline); }
 
-/* Solid surfaces: cards, the side menu, bars, the tab bar and toasts have no glass behind them. */
+/* Cards and panels: solid white, a hairline, a soft shadow, calm corners; hover only darkens the edge. */
 .panel, .dark .panel, html.dark .panel, .card, .card-hover, .glass, .kpi-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+.card, .card-hover { border-radius: var(--radius-card); }
+.card-hover:hover { transform: none; box-shadow: 0 2px 8px -2px rgba(16, 24, 40, 0.08); }
+@media (hover: hover) {
+  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { border-color: var(--card-hover-border); box-shadow: 0 2px 8px -2px rgba(16, 24, 40, 0.08); }
+}
 .glass { background-color: var(--surface); }
-html.dark .glass-sidebar, html:not(.dark) .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: radial-gradient(120% 28% at 0% 0%, rgba(214, 170, 92, 0.1), transparent 70%), #0e0e10; }
-.sidebar-pill, .dark .sidebar-pill, html.dark .sidebar-pill { background: #f4f4f5; box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
-[dir="rtl"] .sidebar-pill, html.dark[dir="rtl"] .sidebar-pill { box-shadow: 0 10px 24px -16px rgba(0, 0, 0, 0.7); }
-.glass-bar { background: rgba(236, 236, 236, 0.97); -webkit-backdrop-filter: none; backdrop-filter: none; }
-.dark .glass-bar { background: rgba(11, 11, 12, 0.97); }
+
+/* The side menu: white (near-black in dark mode) with a hairline; the chosen entry a raised white
+   card (a hairline and a small shadow), as in the reels. */
+html.dark .glass-sidebar, html:not(.dark) .glass-sidebar { -webkit-backdrop-filter: none; backdrop-filter: none; background: var(--sidebar-bg); box-shadow: inset -1px 0 0 var(--sidebar-border); }
+[dir="rtl"] .glass-sidebar, html.dark[dir="rtl"] .glass-sidebar { box-shadow: inset 1px 0 0 var(--sidebar-border); }
+.sidebar-pill, .dark .sidebar-pill, html.dark .sidebar-pill, [dir="rtl"] .sidebar-pill, html.dark[dir="rtl"] .sidebar-pill { background: var(--sidebar-item-active-bg); box-shadow: 0 0 0 1px rgba(16, 24, 40, 0.08), 0 1px 2px rgba(16, 24, 40, 0.06); }
+html.dark .sidebar-pill, .dark .sidebar-pill { box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08), 0 1px 2px rgba(0, 0, 0, 0.4); }
+/* Bars, the tab bar and toasts: solid, no glass. */
+.glass-bar { background: var(--topbar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.dark .glass-bar { background: var(--topbar-bg); }
 .ios-glass { background: var(--material-thick); -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-scrolled] .nav-edge { background: var(--topbar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-sonner-toaster] [data-sonner-toast] { -webkit-backdrop-filter: none; backdrop-filter: none; }
-html.dark .ios-segment-thumb { box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.8); }
-.dark .ios-segment-thumb { box-shadow: 0 8px 22px -14px rgba(0, 0, 0, 0.8); }
 
-/* Chart lines and bars in white on black (pink stays for what matters, --ins-hot). */
-html.dark .ins-cell :is(svg, .ins-pop) { color: #e4e4e7; }
-.ptr-ring { background: conic-gradient(from 0deg, #f4f4f5, #fe81d1, #fe81d1, transparent 85%); }
+/* Segmented controls: a white thumb on a grey track (dark: a lifted grey). */
+.ios-segment-thumb, html.dark .ios-segment-thumb, .dark .ios-segment-thumb { box-shadow: 0 1px 2px rgba(16, 24, 40, 0.1), 0 0 0 0.5px rgba(16, 24, 40, 0.06); }
+html.dark .ios-segment-thumb, .dark .ios-segment-thumb { box-shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 0 0 0.5px rgba(255, 255, 255, 0.08); }
 
-/* Lights that followed the pointer and focus glows were pink: neutral now. */
-input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(var(--tint-rgb) / 0.14); }
-@media (hover: hover) {
-  a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { box-shadow: 0 18px 40px -24px rgba(0, 0, 0, 0.4); }
-}
-[data-cursor-light]::before { background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(255 255 255 / 0.06), transparent 60%); }
-.dark .sheen { background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgb(255 255 255 / 0.06), transparent 62%); }
+/* Fields: a hairline that turns blue with a soft ring when focused. */
+.input { border-radius: 0.625rem; }
+input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible, .input:focus { border-color: rgb(var(--tint-rgb) / 0.7); box-shadow: 0 0 0 3px rgb(var(--tint-rgb) / 0.16); }
 
-/* Wallet cards (hub): the idle sway on touch screens as a CSS animation (compositor only), and the
-   finishes in the photos' colours (black, honey gold, steel; pink stays). */
-@keyframes wcard-sway {
-  0%, 100% { transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); }
-  25% { transform: perspective(1100px) rotateY(-3deg) rotateX(11deg); }
-  50% { transform: perspective(1100px) rotateY(-9deg) rotateX(12deg); }
-  75% { transform: perspective(1100px) rotateY(-17deg) rotateX(7deg); }
-}
-.wcard-sway { animation: wcard-sway 16s ease-in-out infinite; }
-@media (prefers-reduced-motion: reduce) { .wcard-sway { animation: none; transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); } }
-html.reduce-motion .wcard-sway { animation: none; transform: perspective(1100px) rotateY(-10deg) rotateX(9deg); }
-.wcard-abyss { background: radial-gradient(90% 80% at 88% 10%, rgb(254 129 209 / 0.26), transparent 60%), radial-gradient(90% 90% at 8% 112%, rgb(214 170 92 / 0.3), transparent 58%), linear-gradient(135deg, #2c2c30, #151517 48%, #0b0b0c); }
-.wcard-aqua { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.5), transparent 55%), linear-gradient(135deg, #f6e7c1, #e3c98e 50%, #cfae66); }
-.wcard-blue { background: radial-gradient(90% 90% at 10% 0%, rgb(255 255 255 / 0.45), transparent 55%), linear-gradient(135deg, #dde6ee, #a4bacd 50%, #839db5); }
+/* Charts: blue marks (dark: a lighter blue); the number that matters is the same blue (--ins-hot). */
+.ins-cell :is(svg, .ins-pop) { color: #3b7ef0; }
+html.dark .ins-cell :is(svg, .ins-pop) { color: #c6f24a; }
+.ptr-ring { background: conic-gradient(from 0deg, var(--tint), var(--tint) 85%, transparent 85%); }
+
+/* Dark mode's accent is lime: white text on a solid accent fill (buttons, badges, initials) turns ink. */
+.dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
+.dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
+.dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+/* The headline's key word in an italic serif (the recording's "themselves."), in both themes. */
+.accent-word { font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
+html.dark :is(h1, h2, h3):has(.accent-word) { color: var(--text-primary); }
+
+/* Wallet cards (hub): flat finishes, no sway. */
+.wcard-abyss { background: #111318; }
+.wcard-aqua { background: #e8f0fe; }
+.wcard-blue { background: #2563eb; }
 .wcard-thumb.is-on { box-shadow: 0 0 0 2px var(--background), 0 0 0 4px var(--ink); }
 
-/* Hero cards (hub, Trace): near-black with the photos' warm light low down and steel blue at the top
-   (dark in both themes, like the photos' black band under a light page). */
-.trace-hero, html:not(.dark) .trace-hero { background: radial-gradient(70% 45% at 50% 120%, rgb(214 170 92 / 0.24), transparent 70%), radial-gradient(80% 60% at 0% 0%, rgb(98 136 176 / 0.16), transparent 70%), radial-gradient(60% 50% at 100% 8%, rgb(146 120 90 / 0.14), transparent 70%), linear-gradient(180deg, #171719 0%, #111113 55%, #151412 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -38px rgb(0 0 0 / 0.7); }
-.passport-glow-a { background: radial-gradient(closest-side, rgb(214 170 92 / 0.26), transparent); }
-.passport-glow-b { background: radial-gradient(closest-side, rgb(98 136 176 / 0.2), rgb(20 20 22 / 0.4) 50%, transparent); }
-.passport-pill { background: rgb(255 255 255 / 0.08); color: #e4e4e7; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.16); }
-/* Grey text inside a hero card reads on its dark ground in both themes. */
-.trace-hero { --color-zinc-300: #d4d4d8; --color-zinc-400: #b4b4bc; --color-zinc-500: #a1a1aa; --color-zinc-600: #8f8f98; }
+/* Dark cards that stay dark in both themes (the live cards, hero cards, passports): solid ink. */
+.trace-hero, html:not(.dark) .trace-hero { background: #111318; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.06); }
+.passport-glow-a, .passport-glow-b { display: none; }
+.passport-pill { background: rgb(255 255 255 / 0.08); color: #e4e6ea; box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.14); }
+.trace-hero { --color-zinc-300: #d0d4da; --color-zinc-400: #b3b8c2; --color-zinc-500: #9aa0aa; --color-zinc-600: #878d98; }
 /* Hand-made cards (a rounded, bordered box with a see-through fill in dark mode) are solid too unless
-   they sit inside another card: the river no longer shows through, and the compositor needn't blend
-   them over the moving river on every frame. */
+   they sit inside another card. */
 .dark :is([class*="rounded-2xl"], [class*="rounded-3xl"], [class*="rounded-[2"])[class*="border"]:is([class*="dark:bg-white/"], [class*="dark:bg-zinc-900/"], [class*="dark:bg-black/"], [class*="dark:bg-indigo-"]):not(:is(.panel, .card, [class*="rounded-2xl"][class*="border"], [class*="rounded-3xl"][class*="border"]) *) { background-color: var(--card-bg); }
+
+/* M124 · Parts drawn for a dark page (.flip-light: the website, the side menu) follow the theme now
+   (the owner's switch in the website's top bar): in light mode their white and black swap and their
+   greys run the other way, so white-on-dark text, hairlines and tints become ink-on-light. Parts that
+   look the same in both themes keep the plain colours: light cards (.flip-keep) and dark bands (.dark,
+   .on-dark, the live cards). */
+html:not(.dark) .flip-light {
+  --color-white: #111318; --color-black: #ffffff;
+  --color-zinc-50: #0e0f12; --color-zinc-100: #17191e; --color-zinc-200: #2a2e36; --color-zinc-300: #3d4350; --color-zinc-400: #4d5360; --color-zinc-500: #59606d; --color-zinc-600: #5e6573; --color-zinc-700: #d0d4da; --color-zinc-800: #e4e6ea; --color-zinc-900: #f1f2f4; --color-zinc-950: #f7f8fa;
+}
+.flip-light :is(.dark, .on-dark, .flip-keep, .live-card, .trace-hero) { --color-white: #ffffff; --color-black: #000000; }
+html:not(.dark) .flip-light .flip-keep { --color-zinc-50: #f7f8fa; --color-zinc-100: #f1f2f4; --color-zinc-200: #e4e6ea; --color-zinc-300: #d0d4da; --color-zinc-400: #5e6573; --color-zinc-500: #59606d; --color-zinc-600: #434955; --color-zinc-700: #343843; --color-zinc-800: #23262d; --color-zinc-900: #17191e; --color-zinc-950: #0e0f12; }
 
 /* ═══ M92 · The owner console, professional (the owner: "doesn't look professional, it looks like it
    was made by AI"; the CreditKarma photos): plain solid cards, no gradient hairlines, beams, glows or
@@ -2573,7 +2579,7 @@ html.dark :is(button, a, [role="tab"]):has(> .tab-pill) { color: #111113; }
 /* ═══ M93 · Two-tone headings, as in the owner's photos ("Where Credit Meets Confidence"): the heading in
    a quiet grey, its key word bright (white in dark mode, ink in light). No italic serif, no gradient. ═══ */
 :is(h1, h2, h3):has(.accent-word) { color: var(--text-muted); font-weight: 500; }
-.accent-word { color: var(--text-primary); font-style: normal; font-family: inherit; font-weight: inherit; }
+.accent-word { color: var(--text-primary); }
 /* The landing's planet section: dark with the photos' warm light under the planet (it was navy into
    Aqua Jade), and its notes solid near-black (no glass). */
 .world::before { background:
@@ -2588,7 +2594,7 @@ html.dark :is(button, a, [role="tab"]):has(> .tab-pill) { color: #111113; }
 .live-card, html:not(.dark) .live-card {
   background:
     radial-gradient(120% 70% at 50% 122%, rgb(226 184 104 / 0.18), transparent 62%),
-    radial-gradient(70% 60% at 100% 0%, rgb(254 129 209 / 0.1), transparent 65%),
+    radial-gradient(70% 60% at 100% 0%, rgb(79 142 247 / 0.1), transparent 65%),
     radial-gradient(60% 50% at 0% 0%, rgb(98 136 176 / 0.12), transparent 70%),
     linear-gradient(180deg, #161618, #111113 60%, #141311);
   box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.08), 0 18px 40px -24px rgb(0 0 0 / 0.6);

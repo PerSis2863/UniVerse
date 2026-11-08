@@ -4,7 +4,7 @@
 
 /** The light (M52, the "Globynk" palette): Baby Pink, Aqua Jade, a periwinkle blue and a cool white. */
 // shortcut: the keys keep their M52 names; since M91 (the photos' look) "aqua" is warm gold and "blue" steel.
-export const TONES = { pink: '254,129,209', blue: '150,180,208', aqua: '240,204,138', white: '244,244,245' } as const;
+export const TONES = { pink: '79,142,247', blue: '150,180,208', aqua: '240,204,138', white: '244,244,245' } as const;
 export type Tone = keyof typeof TONES;
 export const TONE_ORDER: Tone[] = ['pink', 'blue', 'aqua', 'white'];
 

@@ -8,6 +8,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowRight, Menu, X } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { cn } from '@/lib/utils';
+import { ThemeSwitch } from './ThemeSwitch';
 
 const LINKS: { href: string; label: string; app?: AppId }[] = [
   { href: '/#apps', label: 'Apps' },
@@ -38,7 +39,7 @@ export function MarketingNav() {
           // nothing is laid out again while it changes (§8: transform and opacity, named properties).
           'mx-auto mt-3 max-w-6xl flex items-center justify-between gap-4 rounded-full px-4 sm:px-5 h-14 border transition-[background-color,border-color,box-shadow] duration-300',
           scrolled
-            ? 'bg-[#0e0e10] border-white/[0.08] shadow-2xl shadow-black/40'
+            ? 'bg-[var(--surface)] border-white/[0.08] shadow-2xl shadow-black/40'
             : 'bg-transparent border-transparent',
         )}
         style={{ width: 'calc(100% - 24px)' }}
@@ -57,12 +58,13 @@ export function MarketingNav() {
         </div>
 
         <div className="flex items-center gap-2">
+          <ThemeSwitch />
           <Link href={`/login?app=${app}`} className="hidden sm:inline-flex px-4 py-2 text-sm font-semibold text-zinc-300 hover:text-white transition-colors">
             Sign in
           </Link>
           <Link
             href={`/register?app=${app}`}
-            className="group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-[#111113] text-sm font-bold bg-white hover:bg-zinc-100 shadow-[0_6px_24px_-12px_rgba(0,0,0,0.6)] transition-colors"
+            className="group shrink-0 whitespace-nowrap inline-flex items-center gap-1.5 h-10 px-4 rounded-xl text-[var(--cta-ink)] text-sm font-bold bg-[var(--cta)] hover:bg-[var(--cta-hover)] shadow-[0_6px_24px_-12px_rgba(0,0,0,0.6)] transition-colors"
           >
             Get started <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
           </Link>
@@ -79,7 +81,7 @@ export function MarketingNav() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden mx-3 mt-2 rounded-3xl bg-[#0e0e10] border border-white/[0.08] p-3 shadow-2xl"
+            className="md:hidden mx-3 mt-2 rounded-3xl bg-[var(--surface)] border border-white/[0.08] p-3 shadow-2xl"
           >
             {[...LINKS, { href: '/login', label: 'Sign in' }].map((l) => (
               <Link key={l.href} href={l.href} onClick={() => setOpen(false)} className="block px-4 py-3 rounded-2xl text-zinc-200 font-medium hover:bg-white/[0.06]">

@@ -31,7 +31,7 @@ type Route = ReturnType<typeof plan>[number];
 
 interface Cam { z: number; tz: number; x: number; y: number; tx: number; ty: number; last: number; init: boolean; w: number; h: number }
 const Z_MIN = 1, Z_MAX = 3.4;
-const CARS = ['#e9edf7', '#9aa3bd', '#3f3f46', '#232326', '#f0cc8a', '#fe81d1', '#f4d36b', '#c8ccd8'];
+const CARS = ['#e9edf7', '#9aa3bd', '#3f3f46', '#232326', '#f0cc8a', '#4f8ef7', '#f4d36b', '#c8ccd8'];
 
 export function CityView({ vans, label, className }: { vans: Van[]; label: string; className?: string }) {
   const layer = useRef<Layer | null>(null);
@@ -151,9 +151,9 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       if (r.v.state === 'parked') return;
       // Done: a wide soft glow under a bright line, brightest just behind the van (its trail).
       ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = `rgba(254,129,209,${lit ? 0.35 : 0.2})`; ctx.lineWidth = 7;
+      ctx.strokeStyle = `rgba(79,142,247,${lit ? 0.35 : 0.2})`; ctx.lineWidth = 7;
       path(r, 0, p); ctx.stroke();
-      ctx.strokeStyle = `rgba(255,159,220,${lit ? 1 : 0.8})`; ctx.lineWidth = 1.8;
+      ctx.strokeStyle = `rgba(122,174,250,${lit ? 1 : 0.8})`; ctx.lineWidth = 1.8;
       path(r, 0, p); ctx.stroke();
       if (moving) {
         ctx.strokeStyle = 'rgba(255,240,248,0.9)'; ctx.lineWidth = 2.4;
@@ -175,7 +175,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     routes.forEach((r, i) => {
       const k = grow(i);
       if (k <= 0 || r.v.state === 'parked') return;
-      ctx.strokeStyle = `rgba(254,129,209,${i === near ? 0.4 : 0.16})`;
+      ctx.strokeStyle = `rgba(79,142,247,${i === near ? 0.4 : 0.16})`;
       path(r, 0, r.v.progress * k); ctx.stroke();
       // And the van, as a soft light, in case a tower stands in front of it.
       const v = at(r, r.v.progress * k), [x, y] = iso(v.x, v.y, 0.05);
@@ -232,7 +232,7 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
     ctx.restore();
 
     // 6 · Names (on screen, the same size at any zoom): pills for vans on the move (any van when pointed at), a gold tick where one arrived.
-    ctx.font = '600 11px Urbanist, system-ui, sans-serif';
+    ctx.font = '600 11px Inter, system-ui, sans-serif';
     ctx.textBaseline = 'middle'; ctx.textAlign = 'start';
     const placed: [number, number, number, number][] = [];
     routes.forEach((r, i) => {
@@ -258,12 +258,12 @@ export function CityView({ vans, label, className }: { vans: Van[]; label: strin
       while (placed.some(([px, py, pw, ph]) => x < px + pw && x + bw > px && y < py + ph && y + bh > py)) y -= bh + 4;
       placed.push([x, y, bw, bh]);
       ctx.globalAlpha = k * (near < 0 || lit ? 1 : 0.6);
-      ctx.strokeStyle = 'rgba(255,159,220,0.6)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(122,174,250,0.6)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(vx, vy - 4); ctx.lineTo(vx, y + bh); ctx.stroke();
       ctx.fillStyle = 'rgba(12,12,14,0.9)';
       ctx.beginPath(); ctx.roundRect(x, y, bw, bh, 10); ctx.fill();
-      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(240,204,138,0.6)' : 'rgba(254,129,209,0.6)'; ctx.stroke();
-      ctx.fillStyle = r.v.state === 'done' ? '#f0cc8a' : '#fe81d1';
+      ctx.strokeStyle = r.v.state === 'done' ? 'rgba(240,204,138,0.6)' : 'rgba(79,142,247,0.6)'; ctx.stroke();
+      ctx.fillStyle = r.v.state === 'done' ? '#f0cc8a' : '#4f8ef7';
       ctx.beginPath(); ctx.arc(x + 9, y + bh / 2, 2.6, 0, Math.PI * 2); ctx.fill();
       ctx.fillStyle = '#fff';
       ctx.fillText(text, x + 15, y + bh / 2 + 0.5);
@@ -469,7 +469,7 @@ function build(key: string, w: number, h: number, dpr: number, G: number, s: num
       antennas.push(iso(cx, cy, z + 0.3));
     }
     if (b.neon) {
-      quad(cg, [iso(x1 - 0.015, y1, z * 0.15), iso(x1, y1 - 0.015, z * 0.15), iso(x1, y1 - 0.015, z * 0.9), iso(x1 - 0.015, y1, z * 0.9)], 'rgba(255,159,220,0.95)');
+      quad(cg, [iso(x1 - 0.015, y1, z * 0.15), iso(x1, y1 - 0.015, z * 0.15), iso(x1, y1 - 0.015, z * 0.9), iso(x1 - 0.015, y1, z * 0.9)], 'rgba(122,174,250,0.95)');
       neon.push(iso(x1, y1, z * 0.55));
     }
   }

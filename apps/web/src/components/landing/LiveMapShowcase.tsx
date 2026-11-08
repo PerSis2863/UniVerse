@@ -14,7 +14,7 @@ import { useCalm } from './bits';
 const TOURS: Box[] = [[-12, 34, 32, 60], [64, 5, 94, 33], [-126, 14, -62, 54], [-20, -40, 150, 62]];
 const FACTORIES: [number, number][] = [[37.78, -3.78], [18.52, 73.86], [22.54, 114.06]];
 const ROUTE: [number, number][] = [[37.78, -3.78], [39.45, -0.32], [45.76, 4.84], [48.86, 2.35]];
-const PINK = '#fe81d1', AMBER = '#f59e0b';
+const PINK = '#4f8ef7', AMBER = '#f59e0b';
 
 /** A stable pseudo-random number for an index. */
 const noise = (i: number) => { const x = Math.sin(i * 12.9898) * 43758.5453; return x - Math.floor(x); };
@@ -55,14 +55,14 @@ export function LiveMapShowcase({ className }: { className?: string }) {
     // Flows and their comets.
     for (const fl of model.flows) {
       const c = arcPoints([sx(fl.f[0]), sy(fl.f[1])], [sx(fl.c.bx), sy(fl.c.by)], 0.2);
-      ctx.strokeStyle = 'rgba(254,129,209,0.22)'; ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(79,142,247,0.22)'; ctx.lineWidth = 1;
       ctx.beginPath(); ctx.moveTo(c[0], c[1]); ctx.quadraticCurveTo(c[2], c[3], c[4], c[5]); ctx.stroke();
       if (!still) {
         const p = (t / 4200 + fl.phase) % 1;
         for (let j = 0; j < 5; j++) {
           const q = p - j * 0.02; if (q < 0) continue;
           const [px, py] = quad(c, q);
-          ctx.globalAlpha = (1 - j / 5) * 0.9; ctx.fillStyle = j ? '#ff9fdc' : '#fff';
+          ctx.globalAlpha = (1 - j / 5) * 0.9; ctx.fillStyle = j ? '#7aaefa' : '#fff';
           ctx.beginPath(); ctx.arc(px, py, 1.8 - j * 0.25, 0, Math.PI * 2); ctx.fill();
         }
         ctx.globalAlpha = 1;
@@ -81,7 +81,7 @@ export function LiveMapShowcase({ className }: { className?: string }) {
     model.cities.forEach((c) => {
       const x = sx(c.bx), y = sy(c.by);
       if (x < -10 || x > f.w + 10 || y < -10 || y > f.h + 10) return;
-      ctx.fillStyle = '#ff9fdc'; ctx.strokeStyle = 'rgba(10,23,33,0.9)'; ctx.lineWidth = 1.2;
+      ctx.fillStyle = '#7aaefa'; ctx.strokeStyle = 'rgba(10,23,33,0.9)'; ctx.lineWidth = 1.2;
       ctx.beginPath(); ctx.arc(x, y, 1.5 + c.w * 3, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
     });
     // Factories.
