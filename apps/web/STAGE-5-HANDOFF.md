@@ -5037,6 +5037,14 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   the whole bundle swings over to the top-right corner (a smooth step 0.45–0.95 of the screen height
   across, at 0.45 of a screen above the bend). Only above the first bend; as the page scrolls the swing
   eases and rises out of view. The band at the bend is narrower (`f0.x` up to 0.025).
+- **The same number of lines as the recording** (the owner: "I need exactly the same amount of lines
+  that video has"): counted by finding the strands along rows of clean parts of the frames (no text or
+  card) at four brightness levels; 30 fibres (26 on phones) give the recording's counts within a line or
+  two (about 25 faint, 20 clear, 10–15 bright across the river at most heights). Near the bend the
+  recording's fibres overlap into one glowing band (fewer separate lines): the rising fibres are packed
+  tighter there (`f3.y` 0.06 + 0.5·w⁴), a little softer within a tenth of a screen of a bend, the
+  innermost quarter leave almost sideways (`sideways`) leaving a dark gap, and the bend's glow is
+  stronger.
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

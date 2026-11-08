@@ -305,7 +305,7 @@ block** in `globals.css`; white text on a solid accent fill turns ink in dark mo
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **The river**
 (M125, `river-gl.ts`, WebGL 2, after the Relay recording; `river-paint.ts` only where WebGL 2 is
-missing): 36 soft glowing fibres with gaps between them round a full, round C-shaped bend (measured on
+missing): 30 soft glowing fibres (the recording's count) with gaps between them round a full, round C-shaped bend (measured on
 the recording's frames), packed at the bend and spreading into an even fan, each bowed and moving its own way, light
 running along it; a ribbon that turns as the page scrolls (3D); glitter and bokeh; sharp at the top of a page and out of focus a screen further down. Compare with the
 recording's frames before changing it. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
