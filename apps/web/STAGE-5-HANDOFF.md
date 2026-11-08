@@ -5009,6 +5009,16 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   bowed a little from the bend on (`f3.z`, `f3.w`), swaying with its own size, wavelength, speed and
   direction, and light running along it up or down; about 20–25 across the river at any height, the
   same as the recording.
+- **Packed at the bend, scattered at the end** (the owner's next round, comparing the lower arm with the
+  recording: "when it bends all the lines are stuck together and become bright … at the bottom the lines
+  are scattered … each line moves different from the start, after the middle, and scattered again in the
+  end"): most fibres sit in the middle of the bundle (`riverFibres`: `w` bunched round 0.5, a few fainter
+  ones either side), so they leave the bend in one bright band; everything that's a fibre's own grows
+  with the distance from the bend (`spread` in `fibreX`): its sway, its bow (`1 − cos`, so the fibres
+  start parallel) and its reach, which turns from the orderly fan into one of its own (from the timing
+  `f1.w`) so the fibres cross and fan out downwards by the end. The final pass keeps the hue as light
+  piles up (only the hottest spot at the bend goes towards white), so the band stays yellow-lime; a
+  green haze follows the lower arm; denser glitter and bokeh spread wider further from the bend.
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

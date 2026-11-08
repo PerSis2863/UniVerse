@@ -56,14 +56,21 @@ float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3) {
   float b = floor((y - u_bend.x) / u_bend.y);
   float br = 1.0 + 0.045 * sin(u_t * breath + f1.w);
   float dn = bY(b + 1.0) - y, dp = b < 0.0 ? 1e6 : y - bY(b);
-  // Each fibre its own way (the owner): bowed a little from the bend on, and a wave of its own that
-  // runs up or down it.
-  float dist = min(dn, dp);
-  float own = f1.x * min(1.0, dist / (u_view.y * 0.15)) * sin(y / f1.y + u_t * f1.z + f1.w)
-    + f3.z * u_S * sin(dist / (f3.w * u_S)) * (1.0 + 0.3 * sin(u_t * f1.z * 0.4 + f1.w));
-  float nx = bX(b + 1.0) + sideOf(b + 1.0) * (f0.x * u_S + br * armUp(dn, f3.y, 0.2 - 0.05 * w, 2.0, f0.w) + own);
+  // The owner: the fibres leave the bend packed together in one bright band, each already moving and
+  // bending its own way (gently: they start parallel), drift apart towards the middle and are
+  // scattered by the end. So everything that's a fibre's own grows with the distance from the bend:
+  // its sway, its bow (1 − cos: no corner at the bend), and its reach, which turns from the orderly
+  // fan near the bend into a reach of its own far out, so the fibres cross and spread.
+  float dist = min(dn, dp), H = u_view.y;
+  float spread = smoothstep(0.12 * H, 0.65 * H, dist);
+  float own = f1.x * (0.25 + 1.5 * spread) * smoothstep(0.0, 0.25 * H, dist) * sin(y / f1.y + u_t * f1.z + f1.w)
+    + f3.z * u_S * (1.0 - cos(dist / (f3.w * u_S))) * (1.0 + 0.3 * sin(u_t * f1.z * 0.4 + f1.w));
+  float r1 = fract(f1.w * 0.6180339 + 0.37), r2 = fract(f1.w * 2.7182818 + 0.11);
+  float upM = mix(f3.y, 0.08 + 0.6 * r1, spread * 0.8), downM = mix(f0.y, 0.45 + 0.4 * r1, spread * 0.85);
+  float downL = f0.z * mix(1.0, 0.75 + 0.6 * r2, spread);
+  float nx = bX(b + 1.0) + sideOf(b + 1.0) * (f0.x * u_S + br * armUp(dn, upM, 0.2 - 0.05 * w, 2.0, f0.w) + own);
   if (b < 0.0) return nx;
-  float px = bX(b) + sideOf(b) * (f0.x * u_S + br * arm(dp, f0.y, f0.z, 2.0 - 0.4 * w) + own);
+  float px = bX(b) + sideOf(b) * (f0.x * u_S + br * arm(dp, downM, downL, 2.0 - 0.4 * w) + own);
   // Over to the next bend in the second half of the way, so each arm keeps its own shape first.
   float f = clamp((dp / u_bend.y - 0.45) / 0.55, 0.0, 1.0);
   return mix(px, nx, f * f * (3.0 - 2.0 * f));
@@ -100,7 +107,7 @@ void main() {
   // Brightest by the bends, fading along the arms; drawn in from the top on arrival.
   float b = floor((y - u_bend.x) / u_bend.y);
   float near = min(abs(y - bY(b)), abs(bY(b + 1.0) - y));
-  float lit = a_f2.w * (0.36 + 0.5 * exp(-near / (u_view.y * 0.42)) + 0.5 * exp(-near / (u_view.y * 0.07))) * clamp((u_y1 - y) / 140.0, 0.0, 1.0) * u_alpha;
+  float lit = a_f2.w * (0.62 + 0.3 * exp(-near / (u_view.y * 0.42)) + 1.4 * exp(-near / (u_view.y * 0.05))) * clamp((u_y1 - y) / 140.0, 0.0, 1.0) * u_alpha;
   // Light running along it, each fibre its own way and pace, from the bend on.
   lit *= 0.72 + 0.28 * sin(y / (a_f1.y * 0.8) - u_t * a_f1.z * 2.6 + a_f1.w * 3.0);
   v_d = a_v.y * hw; v_s = s; v_c = u_pal[int(a_f3.x)];
@@ -132,7 +139,7 @@ void main() {
   float ph = fract(u_t * a_q.w + a_p.w);
   float d = (a_p.x + ph * 0.14) * u_view.y;
   float y = a_q.x > 0.5 ? bY(u_b) - d : bY(u_b) + d;
-  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3); x += part(x, y) + sideOf(u_b) * a_p.y;
+  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3); x += part(x, y) + sideOf(u_b) * a_p.y * (0.3 + 2.5 * d / u_view.y);
   gl_Position = clip(vec2(x, y - u_sy));
   gl_PointSize = a_p.z * u_dpr;
   float tw = a_q.y < 0.5 ? 0.55 + 0.45 * sin(u_t * 2.2 + a_p.w * 40.0) : 1.0;
@@ -184,7 +191,11 @@ void main() {
   vec4 c = (texture(u_main, v_uv) + texture(u_glow, v_uv)) * u_gain;
   float n = fract(sin(dot(gl_FragCoord.xy + u_t, vec2(12.9898, 78.233))) * 43758.5453) - 0.5;
   if (u_dark > 0.5) {
-    vec3 m = 1.0 - exp(-c.rgb * 1.35);
+    // Keep the hue as light piles up (the recording's band stays yellow-lime); only the hottest
+    // spot, right at the bend, goes towards white.
+    float L = max(c.r, max(c.g, c.b));
+    vec3 m = c.rgb * (1.0 - exp(-L * 1.35)) / max(L, 1e-4);
+    m = mix(m, vec3(max(m.r, max(m.g, m.b))), smoothstep(1.2, 4.5, L) * 0.65);
     float a = max(m.r, max(m.g, m.b));
     m = clamp(m + n * 0.012 * step(0.004, a), 0.0, 1.0);
     o = vec4(m, max(a, max(m.r, max(m.g, m.b))));
@@ -201,16 +212,18 @@ const hash = (i: number, k: number) => { const x = Math.sin(i * 127.1 + k * 311.
 /** The fibres, fixed for a river's life (16 numbers each, as the shader reads them). */
 export function riverFibres(n: number): Float32Array {
   const out = new Float32Array(n * 16);
-  // Spread evenly across the bundle with a little jitter, so there's a gap between neighbours.
+  // Most fibres in the middle of the bundle (they leave the bend packed in one bright band), a few
+  // fainter ones on either side; still in order, with a little jitter, so neighbours never pile up.
   for (let i = 0; i < n; i++) {
-    const w = Math.min(1, Math.max(0, (i + 0.5 + (hash(i, 2) - 0.5) * 0.6) / n));
+    const c = Math.min(1, Math.max(-1, (2 * (i + 0.5 + (hash(i, 2) - 0.5) * 0.6)) / n - 1));
+    const w = 0.5 + 0.5 * Math.sign(c) * Math.pow(Math.abs(c), 1.7), edge = 1 - 0.45 * c * c;
     const r = hash(i, 3);
     const bright = r > 0.86, far = !bright && r < 0.18;
-    const blue = !bright && hash(i, 4) < 0.05 + 0.25 * w;
+    const blue = !bright && hash(i, 4) < 0.12 + 0.3 * w;
     const level = hash(i, 5);
     const o = i * 16;
     // Spread at the bend; the lower arm's reach and length; the upper arm's lean (its reach is o + 13).
-    out.set([w * 0.056, 0.5 + 0.3 * w + (hash(i, 6) - 0.5) * 0.03, 0.26 - 0.1 * w, 0.3 + 0.5 * w], o);
+    out.set([w * 0.06, 0.5 + 0.3 * w + (hash(i, 6) - 0.5) * 0.03, 0.26 - 0.1 * w, 0.3 + 0.5 * w], o);
     // Its own sway: size, wavelength, speed (running up or down the fibre) and timing.
     out.set([6 + hash(i, 8) * 18, 130 + hash(i, 9) * 320, (0.35 + hash(i, 10) * 0.8) * (hash(i, 11) < 0.5 ? -1 : 1), hash(i, 12) * 6.283], o + 4);
     // Where it sits across the bundle; width, blur (the out-of-focus ones) and brightness.
@@ -218,7 +231,7 @@ export function riverFibres(n: number): Float32Array {
       w,
       bright ? 1.2 + hash(i, 14) * 0.4 : far ? 2 + hash(i, 14) * 2 : 0.6 + hash(i, 14) * 0.5,
       far ? 2.5 + hash(i, 15) * 4.5 : 0,
-      bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.2 : 0),
+      (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.2 : 0)) * edge,
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
     out[o + 13] = 0.12 + 0.48 * w + (hash(i, 19) - 0.5) * 0.03;
@@ -255,13 +268,13 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
   const fibres = riverFibres(N);
   // Glitter along the arms near each bend, and soft bokeh round the river: 24 numbers each (the
   // fibre it rides on (16), then where, how far off, size, timing; up or down, kind, brightness, drift).
-  const nSpeck = phone ? 240 : 680, nBokeh = phone ? 10 : 22;
+  const nSpeck = phone ? 320 : 950, nBokeh = phone ? 14 : 36;
   const dots = new Float32Array((nSpeck + nBokeh) * 24);
   for (let i = 0; i < nSpeck + nBokeh; i++) {
     const bk = i >= nSpeck, f = Math.floor(hash(i, 20) * N), o = i * 24;
     dots.set(fibres.subarray(f * 16, f * 16 + 16), o);
-    dots.set([0.01 + Math.pow(hash(i, 21), bk ? 1 : 1.6) * (bk ? 0.55 : 0.6), (hash(i, 22) - 0.5) * (bk ? 320 : 60), bk ? 7 + hash(i, 23) * 16 : 2.4 + hash(i, 23) * 3, hash(i, 24)], o + 16);
-    dots.set([hash(i, 25) < 0.68 ? 1 : 0, bk ? 1 : 0, bk ? 0.08 + hash(i, 26) * 0.16 : 0.7 + hash(i, 26) * 1.1, still ? 0 : bk ? 0.004 : 0.012 + hash(i, 27) * 0.02], o + 20);
+    dots.set([0.01 + Math.pow(hash(i, 21), bk ? 1 : 1.6) * (bk ? 0.55 : 0.6), (hash(i, 22) - 0.5) * (bk ? 90 : 50), bk ? 6 + hash(i, 23) * 14 : 2.2 + hash(i, 23) * 3, hash(i, 24)], o + 16);
+    dots.set([hash(i, 25) < 0.5 ? 1 : 0, bk ? 1 : 0, bk ? 0.12 + hash(i, 26) * 0.2 : 0.7 + hash(i, 26) * 1.1, still ? 0 : bk ? 0.004 : 0.012 + hash(i, 27) * 0.02], o + 20);
   }
 
   const fibreBuf = gl.createBuffer(), stripBuf = gl.createBuffer(), dotBuf = gl.createBuffer();
@@ -377,8 +390,11 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
       // …and along the upper arm, where the recording's light spreads out with the fibres.
       const d = H * 0.34, up = S * 0.25;
       blobAt(bendX(b) + dir(b) * up, bendY(b) - d - sy, m * 0.5, pal.glow[2], fade * scale * 0.8);
-      // …and down the lower arm.
-      blobAt(bendX(b) + dir(b) * S * 0.3, bendY(b) + H * 0.32 - sy, m * 0.45, pal.glow[2], fade * scale * 0.7);
+      // …and down the lower arm, along the middle of the fibres (the recording's green haze there).
+      for (const [dd, r, a] of [[0.14, 0.26, 0.75], [0.34, 0.34, 0.65], [0.58, 0.42, 0.55]] as const) {
+        const u = Math.pow(dd * H / (0.22 * S), 1.8);
+        blobAt(bendX(b) + dir(b) * 0.62 * S * u / (1 + u), bendY(b) + dd * H - sy, m * r, pal.glow[2], fade * scale * a);
+      }
     }
     if (hero && dark && sy < H * 1.5) blobAt(W * 0.82, H * 0.16 - sy, Math.max(W, H) * 0.55, pal.haze, fade * scale);
     if (pv > 0.01) blobAt(px, py, 170, pal.glow[1], pv * k * scale);
