@@ -7,16 +7,14 @@ import { BadRequestException } from './http';
 
 const isoDate = z.string().refine((s) => !Number.isNaN(Date.parse(s)), { message: 'must be a valid ISO 8601 date string' });
 
-export const CreateQuizDto = z
-  .object({
-    courseId: z.string(),
-    title: z.string(),
-    description: z.string().optional(),
-    dueDate: isoDate.optional(),
-    timeLimit: z.number().int().optional(),
-    status: z.nativeEnum(QuizStatus).optional(),
-  })
-  .strict();
+export const CreateQuizDto = z.strictObject({
+  courseId: z.string(),
+  title: z.string(),
+  description: z.string().optional(),
+  dueDate: isoDate.optional(),
+  timeLimit: z.number().int().optional(),
+  status: z.enum(QuizStatus).optional(),
+});
 export const UpdateQuizDto = CreateQuizDto.partial();
 
 const credentialFields = {
@@ -32,39 +30,33 @@ const credentialFields = {
     .refine((s) => /^https?:\/\/[^\s/$.?#].[^\s]*$/i.test(s), { message: 'evidenceUrl must be a full URL (https://...)' })
     .optional(),
 };
-export const RequestCredentialDto = z.object(credentialFields).strict();
-export const IssueCredentialDto = z.object({ ...credentialFields, studentId: z.string().min(1) }).strict();
-export const CredentialDecisionDto = z.object({ reason: z.string().max(500).optional() }).strict();
+export const RequestCredentialDto = z.strictObject(credentialFields);
+export const IssueCredentialDto = z.strictObject({ ...credentialFields, studentId: z.string().min(1) });
+export const CredentialDecisionDto = z.strictObject({ reason: z.string().max(500).optional() });
 
-export const CreateAnnouncementDto = z
-  .object({
-    title: z.string(),
-    body: z.string(),
-    target: z.nativeEnum(AnnouncementTarget).optional(),
-    courseId: z.string().optional(),
-  })
-  .strict();
+export const CreateAnnouncementDto = z.strictObject({
+  title: z.string(),
+  body: z.string(),
+  target: z.enum(AnnouncementTarget).optional(),
+  courseId: z.string().optional(),
+});
 export const UpdateAnnouncementDto = CreateAnnouncementDto.partial();
 
-export const CreateKnowledgeHubDto = z
-  .object({
-    title: z.string(),
-    description: z.string().optional(),
-    category: z.string().optional(),
-    url: z.string().url().refine((u) => /^https?:\/\//i.test(u), 'must start with http:// or https://').optional(),
-    courseId: z.string().optional(),
-    isPublic: z.boolean().optional(),
-  })
-  .strict();
+export const CreateKnowledgeHubDto = z.strictObject({
+  title: z.string(),
+  description: z.string().optional(),
+  category: z.string().optional(),
+  url: z.url().refine((u) => /^https?:\/\//i.test(u), 'must start with http:// or https://').optional(),
+  courseId: z.string().optional(),
+  isPublic: z.boolean().optional(),
+});
 export const UpdateKnowledgeHubDto = CreateKnowledgeHubDto.partial();
 
-export const CreateTicketDto = z
-  .object({
-    subject: z.string().min(1),
-    description: z.string().min(1),
-    category: z.string().min(1),
-  })
-  .strict();
+export const CreateTicketDto = z.strictObject({
+  subject: z.string().min(1),
+  description: z.string().min(1),
+  category: z.string().min(1),
+});
 
 // Explicit types: with `strict: false` in tsconfig, z.infer would mark every field optional.
 export interface CreateQuizDto { courseId: string; title: string; description?: string; dueDate?: string; timeLimit?: number; status?: QuizStatus }
@@ -82,7 +74,7 @@ export type UpdateKnowledgeHubDto = Partial<CreateKnowledgeHubDto>;
 export interface CreateTicketDto { subject: string; description: string; category: string }
 
 /** Validates a request body, answering 400 with the list of problems like NestJS's ValidationPipe. */
-export function validate<T>(schema: z.ZodTypeAny, body: unknown): T {
+export function validate<T>(schema: z.ZodType, body: unknown): T {
   const result = schema.safeParse(body ?? {});
   if (result.success) return result.data as T;
   const message = result.error.issues.map((i) =>

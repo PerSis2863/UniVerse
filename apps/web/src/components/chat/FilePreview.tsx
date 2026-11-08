@@ -84,8 +84,8 @@ export function PdfViewer({ url, name, onClose }: { url: string; name: string; o
   useEffect(() => {
     let gone = false;
     let opened: PDFDocumentProxy | null = null;
-    openPdf(url).then((d) => { if (gone) { void d.destroy(); return; } opened = d; setDoc(d); }).catch(() => { if (!gone) setFailed(true); });
-    return () => { gone = true; void opened?.destroy(); };
+    openPdf(url).then((d) => { if (gone) { void d.loadingTask.destroy(); return; } opened = d; setDoc(d); }).catch(() => { if (!gone) setFailed(true); });
+    return () => { gone = true; void opened?.loadingTask.destroy(); };
   }, [url]);
   useEffect(() => {
     const el = scroller.current;

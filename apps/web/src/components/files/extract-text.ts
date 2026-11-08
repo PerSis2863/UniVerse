@@ -20,7 +20,7 @@ export async function extractText(file: File): Promise<string | null> {
         out += tc.items.map((it) => ('str' in it ? `${it.str}${it.hasEOL ? '\n' : ' '}` : '')).join('') + '\n';
         pg.cleanup();
       }
-      void doc.destroy();
+      void doc.loadingTask.destroy();
       return out.trim().slice(0, LIMIT) || null;
     }
     if (name.endsWith('.docx')) {

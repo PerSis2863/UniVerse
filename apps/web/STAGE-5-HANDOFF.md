@@ -3403,3 +3403,20 @@ and "people must be signed in to open a shared link"): "please do both of this a
   "accessed before it is declared").
 - **Tested:** `landing-here-ui.mjs` (390 and 1280: five choices, each lands where it should, the role
   is picked, axe and no sideways scroll); `pnpm check`.
+
+## M82: pdf.js 6 and zod 4 (the last of M62's open list)
+
+- **`pdfjs-dist` 5.7 → 6.5.** Two changes reached our code: a document is closed with
+  `doc.loadingTask.destroy()` (`PDFDocumentProxy.destroy` is gone; six places), and the
+  `isEvalSupported` option no longer exists because pdf.js 6 never compiles fonts with `eval`
+  (`src/lib/pdf.ts` `SAFE` keeps `enableXfa: false`). Still the legacy build, the worker still
+  copied to `/pdfjs`. pdf.js 6 can also draw in a second "renderer" worker, but only when
+  `GlobalWorkerOptions.rendererSrc` is set; we don't set it, so nothing new to copy or allow.
+- **`zod` 3 → 4** (only `src/server/dto.ts`): `z.strictObject` instead of `.object().strict()`,
+  `z.enum(PrismaEnum)` instead of `z.nativeEnum`, `z.url()`, `z.ZodType`. Unknown properties are still
+  refused as "property X should not exist"; zod's own wording of other problems changed (e.g. "Invalid
+  input: expected string, received undefined" for a missing field). eslint's react-hooks plugin keeps
+  its own zod 3; that's fine.
+- **Tested:** `pnpm check` (1,437 tests, incl. the new `dto.test.ts`); pdf.js 6 in Chromium under a
+  CSP without `unsafe-eval` (opens by address and from bytes, draws a page, reads its text, closes); the
+  Create PDF editor on the dev server draws an uploaded PDF's pages.

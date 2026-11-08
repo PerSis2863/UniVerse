@@ -76,7 +76,7 @@
     "next": "16.4.4",
     "next-themes": "^0.3.0",
     "pdf-lib": "1.17.1",
-    "pdfjs-dist": "^5.7.284",
+    "pdfjs-dist": "^6.5.438",
     "pyodide": "^0.28.3",
     "react": "19.2.8",
     "react-dom": "19.2.8",
@@ -96,7 +96,7 @@
     "y-codemirror.next": "^0.3.6",
     "y-protocols": "^1.0.7",
     "yjs": "^13.6.33",
-    "zod": "^3.23.8",
+    "zod": "^4.6.7",
     "zustand": "^5.0.15"
   },
   "devDependencies": {

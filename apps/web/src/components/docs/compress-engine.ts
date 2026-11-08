@@ -173,7 +173,7 @@ async function pdfAsPictures(lib: PdfLib, bytes: Uint8Array, spec: LevelSpec, on
     }
     pg.cleanup();
   }
-  await src.destroy();
+  await src.loadingTask.destroy();
   return out.save({ useObjectStreams: true });
 }
 

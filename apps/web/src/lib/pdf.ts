@@ -18,8 +18,9 @@ function pdfjs() {
 
 // PDFs come from other people (chats, uploads): nothing in one may run code here. Pages are drawn
 // with getDocument only (no viewer, so no PDF scripting; GHSA-hq66-cqwq-w95j needs the viewer's
-// enableScripting), fonts without eval, and no XFA forms.
-const SAFE = { isEvalSupported: false, enableXfa: false } as const;
+// enableScripting) and no XFA forms. pdf.js 6 never compiles fonts with eval (its old
+// isEvalSupported switch is gone).
+const SAFE = { enableXfa: false } as const;
 
 export async function openPdf(url: string): Promise<PDFDocumentProxy> {
   const m = await pdfjs();
@@ -62,7 +63,7 @@ export async function firstPage(url: string, width: number): Promise<{ src: stri
     thumbs.set(url, out);
     return out;
   } finally {
-    void doc.destroy();
+    void doc.loadingTask.destroy();
   }
 }
 

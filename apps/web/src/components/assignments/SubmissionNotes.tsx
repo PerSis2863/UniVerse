@@ -169,7 +169,7 @@ function PdfPages({ url, ...rest }: { url: string; notes: Note[]; number: Map<st
       try {
         const { openPdf, drawPage } = await import('@/lib/pdf');
         const doc = await openPdf(url);
-        close = () => void doc.destroy();
+        close = () => void doc.loadingTask.destroy();
         if (!live) return;
         const n = Math.min(doc.numPages, MAX_PAGES);
         setPages(n);
