@@ -5045,6 +5045,23 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   tighter there (`f3.y` 0.06 + 0.5·w⁴), a little softer within a tenth of a screen of a bend, the
   innermost quarter leave almost sideways (`sideways`) leaving a dark gap, and the bend's glow is
   stronger.
+- **The scroll, like the recording** (the owner: "the animation when someone will scroll is totally
+  different"): the recording's river never scrolls away: it stays on screen behind every section and
+  changes as if a camera flew past it. `riverCamera(sy, W, H, still)` gives, for a scroll position, which
+  stretch of the river is at the top of the screen (`vs`: with the page for the first screen, then
+  drifting at 0.4 of the page's speed, eased by a softplus), how near it is (`zoom`), how it's turned
+  (`rot`), a shift and the focus. It eases between `STAGES` taken from the recording's sections: the
+  drawn river at the top (exactly, the test checks); a screen down the S on the right, softening; two
+  screens down a wide, very soft ribbon from bottom left to top right; soft arcs; around seven screens
+  down sharp again across the bottom; then round again from the soft ribbon (no jump: tested). The
+  shader draws the river in its own coordinates and `toScreen` applies the camera; the glows are placed
+  through the same camera in JS (`toScr`) and the pointer is taken back into the river's coordinates
+  (`toRiver`). Out of focus the fibres move into the quarter-size glow layer (wide blurred bands) and
+  fade from the sharp one. Reduce Motion: it just moves with the page and softens, as before.
+  **Traps fixed on the way:** the drawn stretch needs a wide margin (260 px) or the cut ends of soft
+  fibres show; a soft fibre is kept narrower than the curve's radius (a soft minimum, not a hard
+  clamp, or its width jumps) or its strip folds over itself round a tight bend; the distance to the
+  nearer bend is a soft minimum (a plain `min` put a kink in every fibre halfway between bends).
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on
