@@ -22,11 +22,12 @@ type Surface = HTMLCanvasElement | OffscreenCanvas;
 type RGB = readonly [number, number, number];
 const hex = (h: string): RGB => [parseInt(h.slice(1, 3), 16) / 255, parseInt(h.slice(3, 5), 16) / 255, parseInt(h.slice(5, 7), 16) / 255];
 
-// Fibre colours 0–5 lime and yellow-green (5 the white-lime of the brightest), 6–8 the pale blues.
+// Fibre colours 0–5 lime and yellow-green (5 the white-lime of the brightest), 6–8 the sky blues (M126:
+// as saturated as the recording's, where they read as blue lines among the lime, not grey-green).
 const DARK = {
-  fibres: ['#c4ec3e', '#b2e030', '#d0f055', '#a4d62e', '#d9f36a', '#ebfaae', '#8fd6f2', '#6cc3ea', '#a6e2f6'].map(hex),
+  fibres: ['#c4ec3e', '#b2e030', '#d0f055', '#a4d62e', '#d9f36a', '#ebfaae', '#5cb2ea', '#4a9fe0', '#7ec6f2'].map(hex),
   glow: [[0.9, 1, 0.62, 0.8], [0.72, 0.9, 0.3, 0.46], [0.36, 0.5, 0.1, 0.2]] as const,
-  haze: [0.42, 0.56, 0.14, 0.1] as const, speck: hex('#f4ffd0'), bokeh: [hex('#d8f27c'), hex('#8fd3ec')],
+  haze: [0.42, 0.56, 0.14, 0.1] as const, speck: hex('#f4ffd0'), bokeh: [hex('#d8f27c'), hex('#6fbbee')],
 };
 const LIGHT = {
   fibres: ['#2563eb', '#3b7ef0', '#1d4fd7', '#5b8def', '#4f46e5', '#3a6fe6', '#0891b2', '#0e7490', '#38bdf8'].map(hex),
@@ -281,7 +282,7 @@ export function riverFibres(n: number): Float32Array {
     const w = 0.5 + 0.5 * Math.sign(c) * Math.pow(Math.abs(c), 1.7), edge = 1 - 0.45 * c * c;
     const r = hash(i, 3);
     const bright = r > 0.86, far = !bright && r < 0.18;
-    const blue = !bright && hash(i, 4) < 0.12 + 0.3 * w;
+    const blue = !bright && hash(i, 4) < 0.2 + 0.25 * w;
     const level = hash(i, 5);
     const o = i * 16;
     // Four numbers of its own (small differences in reach; its depth across the ribbon). The bends'
@@ -294,7 +295,7 @@ export function riverFibres(n: number): Float32Array {
       w,
       bright ? 1.2 + hash(i, 14) * 0.4 : far ? 2 + hash(i, 14) * 2 : 0.6 + hash(i, 14) * 0.5,
       far ? 2.5 + hash(i, 15) * 4.5 : 0,
-      (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.2 : 0)) * edge,
+      (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.3 : 0)) * edge,
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
     out[o + 14] = (0.004 + hash(i, 16) * 0.009) * (hash(i, 17) < 0.5 ? -1 : 1);

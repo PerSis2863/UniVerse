@@ -5114,3 +5114,13 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   read it returned errors unrelated to the river.
 - **Left:** a WebGL context restore; the 2D fallback keeps the M124 shape.
 
+
+## M126: the river's sky-blue fibres, as in the recording (the owner, 8 Nov 2026)
+
+The owner after M125: "not everything is perfect … see that and fix it". Compared at the recording's own
+size (1766 × 1222) and in close crops, the shape, bend, glow, glitter and the light and phone versions
+matched; the one clear difference was colour: the recording's river has distinct sky-blue fibres (and
+blue specks) among the lime, mostly towards the top right, where ours showed pale grey-green ones.
+`river-gl.ts`: the blue fibres (colours 6–8) are now a saturated sky blue (#5cb2ea, #4a9fe0, #7ec6f2),
+a little more common (20–45% by rank instead of 12–42%) and brighter (+0.3), and the blue bokeh matches.
+**Tested:** `river-gl.test.ts`, eslint, `tsc`; the landing compared with the recording's frame.
