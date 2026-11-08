@@ -37,7 +37,7 @@ const LIGHT = {
 // The river's path, shared by the fibres and the glitter (pixels of the page; `u_S` is the size the
 // shape scales with, about the screen's height).
 const PATH = `
-uniform vec2 u_view; uniform float u_sy, u_t, u_S; uniform vec4 u_bend; uniform vec3 u_ptr;
+uniform vec2 u_view; uniform float u_sy, u_t, u_S, u_twist; uniform vec4 u_bend; uniform vec3 u_ptr;
 float bY(float b) { return u_bend.x + b * u_bend.y; }
 float sideOf(float b) { return mod(b, 2.0) < 0.5 ? 1.0 : -1.0; }
 float bX(float b) { return (sideOf(b) > 0.0 ? u_bend.z : u_bend.w) + sin(u_t * 0.35 + b) * 8.0; }
@@ -51,7 +51,8 @@ float armUp(float d, float m, float l, float q, float k) { d = max(d, 0.0); floa
 // f0: spread at the bend, the lower arm's reach and length, the upper arm's lean; f1: sway size,
 // wavelength, speed (either way), timing; f2.x: where it sits across the bundle (0 outside, 1
 // inside); f3: colour, the upper arm's reach, its own bow from the bend and the bow's length.
-float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3) {
+// z: how near the viewer the fibre is as the ribbon turns (-1 behind … 1 in front).
+float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3, out float z) {
   float w = f2.x, breath = 0.25 + 0.5 * fract(f1.w * 1.37);
   float b = floor((y - u_bend.x) / u_bend.y);
   float br = 1.0 + 0.045 * sin(u_t * breath + f1.w);
@@ -68,11 +69,32 @@ float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3) {
     + f3.z * u_S * (1.0 - cos(dist / (f3.w * u_S))) * (1.0 + 0.3 * sin(u_t * f1.z * 0.4 + f1.w));
   float c = 2.0 * w - 1.0, t = 0.5 + 0.5 * sign(c) * pow(abs(c), 1.0 / 1.7);
   float r1 = fract(f1.w * 0.6180339 + 0.37) - 0.5;
-  float upM = mix(f3.y, 0.08 + 0.62 * t + r1 * 0.04, spread), downM = mix(f0.y, 0.34 + 0.6 * t + r1 * 0.05, spread);
+  float upM = mix(f3.y, 0.04 + 0.32 * t + r1 * 0.03, spread), downM = mix(f0.y, 0.34 + 0.6 * t + r1 * 0.05, spread);
   float downL = f0.z * mix(1.0, 1.15 - 0.3 * t, spread);
-  float nx = bX(b + 1.0) + sideOf(b + 1.0) * (f0.x * u_S + br * armUp(dn, upM, 0.2 - 0.05 * w, 2.0, f0.w) + own);
+  // In 3D, like the recording (the owner: "please work on this also"): the river is a ribbon that
+  // turns as the page scrolls, more the further along it, so the fan narrows and widens and fibres
+  // pass in front of and behind each other. Each fibre has a depth of its own across the ribbon; its
+  // spread from the middle of the fan is turned by the angle (exactly the drawn shape at the top of
+  // the page, where the angle is 0). The upper arm also stands up a little as the page scrolls.
+  float th = u_twist * (u_sy / H * 0.9 + dist / H * 0.7 * min(1.0, u_sy / H * 1.5));
+  float ct = cos(th), st = sin(th), dep = fract(f1.w * 1.913 + 0.29) - 0.5;
+  float dD = downM - 0.64, dU = upM - 0.2;
+  downM = 0.64 + dD * ct + dep * 0.6 * st;
+  upM = 0.2 + dU * ct + dep * 0.32 * st;
+  float dx = 0.0125 + (f0.x - 0.0125) * ct + dep * 0.03 * st;
+  z = (-dD / 0.3 * st + dep * 2.0 * ct) * min(1.0, abs(th) * 1.5);
+  float lean = f0.w * (1.0 - 0.35 * u_twist * smoothstep(0.0, 0.45 * H, u_sy));
+  // Above the first bend (the top of the page) the river arrives from the top right, as in the
+  // recording: the fibres leave the bend spreading fast (the inner ones almost sideways), rise, and
+  // halfway up the screen the whole bundle swings over towards the top-right corner (a smooth step,
+  // its height d0, each fibre reaching its own way across). As the page scrolls the swing eases and
+  // rises out of view (the ribbon turning). Between bends the arm leans on as before.
+  float d0 = 0.45 * H + 0.3 * u_sy * u_twist;
+  float swing = (0.45 + 0.5 * t) * u_S * (1.0 - 0.5 * u_twist * smoothstep(0.0, 0.35 * H, u_sy)) / (1.0 + exp(-(dn - d0) / (0.06 * H)));
+  float up = b < 0.0 ? arm(dn, upM, 0.14 - 0.04 * w, 2.0) + swing : armUp(dn, upM, 0.2 - 0.05 * w, 2.0, lean);
+  float nx = bX(b + 1.0) + sideOf(b + 1.0) * (dx * u_S + br * up + own);
   if (b < 0.0) return nx;
-  float px = bX(b) + sideOf(b) * (f0.x * u_S + br * arm(dp, downM, downL, 2.0 - 0.4 * w) + own);
+  float px = bX(b) + sideOf(b) * (dx * u_S + br * arm(dp, downM, downL, 2.0 - 0.4 * w) + own);
   // Over to the next bend in the second half of the way, so each arm keeps its own shape first.
   float f = clamp((dp / u_bend.y - 0.45) / 0.55, 0.0, 1.0);
   return mix(px, nx, f * f * (3.0 - 2.0 * f));
@@ -99,10 +121,12 @@ uniform vec3 u_pal[9];
 out float v_d; out float v_s; out vec3 v_c; out float v_a; out float v_h;
 void main() {
   float y = u_y0 + a_v.x * u_step;
-  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3); x += part(x, y);
-  float x2 = fibreX(y + 2.0, a_f0, a_f1, a_f2, a_f3); x2 += part(x2, y + 2.0);
+  float z, z2;
+  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3, z); x += part(x, y);
+  float x2 = fibreX(y + 2.0, a_f0, a_f1, a_f2, a_f3, z2); x2 += part(x2, y + 2.0);
   vec2 tg = normalize(vec2(x2 - x, 2.0));
-  float w = a_f2.y, blur = a_f2.z + u_blur;
+  // Turned away (behind): softer and dimmer; turned towards the viewer: brighter.
+  float w = a_f2.y, blur = a_f2.z + u_blur + max(0.0, -z) * 1.6;
   float s = sqrt(0.25 * w * w + blur * blur + 0.16);
   float hw = 3.0 * max(s, u_halo > 0.0 ? 3.2 : 0.0) + 1.5;
   gl_Position = clip(vec2(x, y - u_sy) + vec2(tg.y, -tg.x) * a_v.y * hw);
@@ -111,7 +135,7 @@ void main() {
   float near = min(abs(y - bY(b)), abs(bY(b + 1.0) - y));
   float lit = a_f2.w * (0.62 + 0.3 * exp(-near / (u_view.y * 0.42)) + 1.4 * exp(-near / (u_view.y * 0.05))) * clamp((u_y1 - y) / 140.0, 0.0, 1.0) * u_alpha;
   // Light running along it, each fibre its own way and pace, from the bend on.
-  lit *= 0.72 + 0.28 * sin(y / (a_f1.y * 0.8) - u_t * a_f1.z * 2.6 + a_f1.w * 3.0);
+  lit *= (0.72 + 0.28 * sin(y / (a_f1.y * 0.8) - u_t * a_f1.z * 2.6 + a_f1.w * 3.0)) * clamp(1.0 + 0.3 * z, 0.6, 1.4);
   v_d = a_v.y * hw; v_s = s; v_c = u_pal[int(a_f3.x)];
   v_a = lit * w / (s * 2.5066); v_h = lit * u_halo;
 }`;
@@ -141,7 +165,8 @@ void main() {
   float ph = fract(u_t * a_q.w + a_p.w);
   float d = (a_p.x + ph * 0.14) * u_view.y;
   float y = a_q.x > 0.5 ? bY(u_b) - d : bY(u_b) + d;
-  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3); x += part(x, y) + sideOf(u_b) * a_p.y * (0.3 + 2.5 * d / u_view.y);
+  float z;
+  float x = fibreX(y, a_f0, a_f1, a_f2, a_f3, z); x += part(x, y) + sideOf(u_b) * a_p.y * (0.3 + 2.5 * d / u_view.y);
   gl_Position = clip(vec2(x, y - u_sy));
   gl_PointSize = a_p.z * u_dpr;
   float tw = a_q.y < 0.5 ? 0.55 + 0.45 * sin(u_t * 2.2 + a_p.w * 40.0) : 1.0;
@@ -225,7 +250,7 @@ export function riverFibres(n: number): Float32Array {
     const level = hash(i, 5);
     const o = i * 16;
     // Spread at the bend; the lower arm's reach and length; the upper arm's lean (its reach is o + 13).
-    out.set([w * 0.06, 0.5 + 0.3 * w + (hash(i, 6) - 0.5) * 0.03, 0.26 - 0.1 * w, 0.3 + 0.5 * w], o);
+    out.set([w * 0.025, 0.5 + 0.3 * w + (hash(i, 6) - 0.5) * 0.03, 0.26 - 0.1 * w, 0.3 + 0.5 * w], o);
     // Its own sway: size, wavelength, speed (running up or down the fibre) and timing.
     out.set([6 + hash(i, 8) * 18, 130 + hash(i, 9) * 320, (0.35 + hash(i, 10) * 0.8) * (hash(i, 11) < 0.5 ? -1 : 1), hash(i, 12) * 6.283], o + 4);
     // Where it sits across the bundle; width, blur (the out-of-focus ones) and brightness.
@@ -236,7 +261,7 @@ export function riverFibres(n: number): Float32Array {
       (bright ? 1 : far ? 0.35 + level * 0.3 : (0.22 + 0.6 * level * level) * (1 - 0.2 * w) + (blue ? 0.2 : 0)) * edge,
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
-    out[o + 13] = 0.12 + 0.48 * w + (hash(i, 19) - 0.5) * 0.03;
+    out[o + 13] = 0.05 + 0.35 * w + (hash(i, 19) - 0.5) * 0.02;
     out[o + 14] = (0.004 + hash(i, 16) * 0.009) * (hash(i, 17) < 0.5 ? -1 : 1);
     out[o + 15] = 0.1 + hash(i, 18) * 0.12;
   }
@@ -357,7 +382,7 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
 
     const path = (u: (n: string) => WebGLUniformLocation | null) => {
       gl.uniform2f(u('u_view'), W, H); gl.uniform1f(u('u_sy'), sy); gl.uniform1f(u('u_t'), t);
-      gl.uniform1f(u('u_S'), S);
+      gl.uniform1f(u('u_S'), S); gl.uniform1f(u('u_twist'), still ? 0 : 1);
       gl.uniform4f(u('u_bend'), Y0, D, leftX, rightX); gl.uniform3f(u('u_ptr'), px, py, pv);
     };
     const strands = (blur: number, alpha: number, halo: number) => {

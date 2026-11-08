@@ -5025,6 +5025,18 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   instead of crossing at random; their sway and bow are smaller; the glow round the fibres and the
   haze along the lower arm are stronger. **Trap:** no backticks inside the shader text (it's a
   template string); a comment with one broke the build of the test page.
+- **In 3D, changing with the scroll** (the owner: "please work on this also", about the recording's
+  river changing shape as the page scrolls): the river is a ribbon that turns as the page scrolls
+  (`u_twist`, off with Reduce Motion): an angle that grows with the scroll and further along the river
+  turns each fibre's spread from the middle of the fan against a depth of its own across the ribbon,
+  so the fan narrows and widens and fibres pass in front of and behind each other (behind: softer and
+  dimmer; in front: brighter). At the top of the page the angle is 0, the drawn shape exactly.
+- **The top of the page** (the owner: "see how the upper line starts and how it bends before all the
+  lines merge at the middle point"): measured row by row on the recording's first frame, the fibres
+  leave the bend spreading fast (inner ones almost sideways, `f3.y` 0.05–0.4) and halfway up the screen
+  the whole bundle swings over to the top-right corner (a smooth step 0.45–0.95 of the screen height
+  across, at 0.45 of a screen above the bend). Only above the first bend; as the page scrolls the swing
+  eases and rises out of view. The band at the bend is narrower (`f0.x` up to 0.025).
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

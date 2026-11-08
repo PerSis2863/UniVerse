@@ -17,8 +17,10 @@ describe('riverFibres', () => {
   });
   it('spreads the fibres across the bundle with gaps between them', () => {
     const f = riverFibres(36);
-    const spread = Array.from({ length: 36 }, (_, i) => f[i * 16]).sort((a, b) => a - b);
-    expect(spread[35] - spread[0]).toBeGreaterThan(0.05);
+    // Where each fibre sits across the bundle (0 outside … 1 inside): the whole width is used.
+    const spread = Array.from({ length: 36 }, (_, i) => f[i * 16 + 8]).sort((a, b) => a - b);
+    expect(spread[0]).toBeLessThan(0.05);
+    expect(spread[35]).toBeGreaterThan(0.95);
     // Neighbours keep apart: no two of them pile on the same spot.
     expect(spread.slice(1).filter((x, i) => x - spread[i] < 1e-4)).toHaveLength(0);
   });
