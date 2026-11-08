@@ -5078,6 +5078,17 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   wheel and trackpad jumps don't jerk it), lands exactly, and jumps straight there when frames aren't
   running or with Reduce Motion. `draw` returns true while gliding, and the worker and the page draw
   another frame then even when the river isn't moving on its own.
+- **Back to a river that belongs to the page, with lines that keep travelling** (M125c, the owner after
+  seeing the camera version: "this is totally different … the lines travel like when you made the pink
+  background lines earlier … should continue travelling even when I don't scroll, and when I scroll it
+  should travel a little fast"): the flying camera is gone (no zoom, turn, pan or stage list); the river
+  scrolls with the page again, bends alternating on the page as the pink river did, each the first
+  one's pattern (`upperArm` / `lowerArm`, ranks flipping per bend), a little softer further down
+  (`riverFocus`, never below 0.6 so the travelling lines stay clear). A flow clock (`u_flow`) runs all
+  the time and up to twice as fast while the page scrolls (the scroll speed, eased over 0.3 s): it
+  drives every fibre's sway, a soft swell running down each fibre, and, as in the pink river, short
+  bright dashes (brightest at the head, with the soft layer's glow) travelling down every other fibre,
+  and the glitter's drift. The scroll still glides (70 ms).
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on
