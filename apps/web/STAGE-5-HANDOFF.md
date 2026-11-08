@@ -5019,6 +5019,12 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   `f1.w`) so the fibres cross and fan out downwards by the end. The final pass keeps the hue as light
   piles up (only the hottest spot at the bend goes towards white), so the band stays yellow-lime; a
   green haze follows the lower arm; denser glitter and bokeh spread wider further from the bend.
+- **An even fan at the end, not a tangle** (the owner: "your lines are not scattered properly … and it
+  glows more"): far from the bend each fibre's reach comes from its even rank across the bundle (`t`,
+  the inverse of the bunched `w`), so the fibres spread out evenly like a comb, as in the recording,
+  instead of crossing at random; their sway and bow are smaller; the glow round the fibres and the
+  haze along the lower arm are stronger. **Trap:** no backticks inside the shader text (it's a
+  template string); a comment with one broke the build of the test page.
 - **Where it runs:** first choice everywhere, on the background thread (`river.worker.ts`) or the page
   (`LightTrail.tsx`). Where WebGL 2 is missing the 2D painter (`river-paint.ts`, unchanged) draws; if
   WebGL took the canvas and then failed, the worker reports `unsupported` and the page draws in 2D on

@@ -59,15 +59,17 @@ float fibreX(float y, vec4 f0, vec4 f1, vec4 f2, vec4 f3) {
   // The owner: the fibres leave the bend packed together in one bright band, each already moving and
   // bending its own way (gently: they start parallel), drift apart towards the middle and are
   // scattered by the end. So everything that's a fibre's own grows with the distance from the bend:
-  // its sway, its bow (1 − cos: no corner at the bend), and its reach, which turns from the orderly
-  // fan near the bend into a reach of its own far out, so the fibres cross and spread.
+  // its sway, its bow (1 − cos: no corner at the bend), and its reach: near the bend most fibres share
+  // the middle of the bundle (bunched w), far out they spread evenly across a wide fan (t, their
+  // even rank), like the recording's comb of lines at the end, rather than tangling.
   float dist = min(dn, dp), H = u_view.y;
-  float spread = smoothstep(0.12 * H, 0.65 * H, dist);
-  float own = f1.x * (0.25 + 1.5 * spread) * smoothstep(0.0, 0.25 * H, dist) * sin(y / f1.y + u_t * f1.z + f1.w)
+  float spread = smoothstep(0.1 * H, 0.6 * H, dist);
+  float own = f1.x * (0.3 + 0.8 * spread) * smoothstep(0.0, 0.25 * H, dist) * sin(y / f1.y + u_t * f1.z + f1.w)
     + f3.z * u_S * (1.0 - cos(dist / (f3.w * u_S))) * (1.0 + 0.3 * sin(u_t * f1.z * 0.4 + f1.w));
-  float r1 = fract(f1.w * 0.6180339 + 0.37), r2 = fract(f1.w * 2.7182818 + 0.11);
-  float upM = mix(f3.y, 0.08 + 0.6 * r1, spread * 0.8), downM = mix(f0.y, 0.45 + 0.4 * r1, spread * 0.85);
-  float downL = f0.z * mix(1.0, 0.75 + 0.6 * r2, spread);
+  float c = 2.0 * w - 1.0, t = 0.5 + 0.5 * sign(c) * pow(abs(c), 1.0 / 1.7);
+  float r1 = fract(f1.w * 0.6180339 + 0.37) - 0.5;
+  float upM = mix(f3.y, 0.08 + 0.62 * t + r1 * 0.04, spread), downM = mix(f0.y, 0.34 + 0.6 * t + r1 * 0.05, spread);
+  float downL = f0.z * mix(1.0, 1.15 - 0.3 * t, spread);
   float nx = bX(b + 1.0) + sideOf(b + 1.0) * (f0.x * u_S + br * armUp(dn, upM, 0.2 - 0.05 * w, 2.0, f0.w) + own);
   if (b < 0.0) return nx;
   float px = bX(b) + sideOf(b) * (f0.x * u_S + br * arm(dp, downM, downL, 2.0 - 0.4 * w) + own);
@@ -235,7 +237,7 @@ export function riverFibres(n: number): Float32Array {
     ], o + 8);
     out[o + 12] = bright ? 5 : blue ? 6 + (i % 3) : [0, 1, 2, 3, 4][i % 5];
     out[o + 13] = 0.12 + 0.48 * w + (hash(i, 19) - 0.5) * 0.03;
-    out[o + 14] = (0.006 + hash(i, 16) * 0.012) * (hash(i, 17) < 0.5 ? -1 : 1);
+    out[o + 14] = (0.004 + hash(i, 16) * 0.009) * (hash(i, 17) < 0.5 ? -1 : 1);
     out[o + 15] = 0.1 + hash(i, 18) * 0.12;
   }
   return out;
@@ -391,7 +393,7 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
       const d = H * 0.34, up = S * 0.25;
       blobAt(bendX(b) + dir(b) * up, bendY(b) - d - sy, m * 0.5, pal.glow[2], fade * scale * 0.8);
       // …and down the lower arm, along the middle of the fibres (the recording's green haze there).
-      for (const [dd, r, a] of [[0.14, 0.26, 0.75], [0.34, 0.34, 0.65], [0.58, 0.42, 0.55]] as const) {
+      for (const [dd, r, a] of [[0.14, 0.28, 0.9], [0.34, 0.38, 0.85], [0.58, 0.46, 0.8]] as const) {
         const u = Math.pow(dd * H / (0.22 * S), 1.8);
         blobAt(bendX(b) + dir(b) * 0.62 * S * u / (1 + u), bendY(b) + dd * H - sy, m * r, pal.glow[2], fade * scale * a);
       }
@@ -403,7 +405,7 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     path(U.strand);
     gl.uniform3fv(U.strand('u_pal'), pal.fibres.flat());
     gl.uniform1f(U.strand('u_y0'), y0); gl.uniform1f(U.strand('u_step'), step); gl.uniform1f(U.strand('u_y1'), y1);
-    strands(6 + (1 - focus) * 6, fade * scale * (dark ? 0.7 : 0.3), 0);
+    strands(7 + (1 - focus) * 6, fade * scale * (dark ? 1.15 : 0.3), 0);
 
     // 2 · The fibres themselves (full size): sharp at the top, softer as the page scrolls on; a thin
     // glow round each. In the app a little quieter, so text in front stays easy to read.
@@ -411,7 +413,7 @@ export function makeRiverGL(cv: Surface, opts: RiverOpts, born: number) {
     gl.viewport(0, 0, main.w, main.h);
     gl.clear(gl.COLOR_BUFFER_BIT);
     const sharp = fade * (hero ? 1 : phone ? 0.55 : 0.65);
-    strands((1 - focus) * 3.5, sharp * scale, dark ? 0.09 : 0.04);
+    strands((1 - focus) * 3.5, sharp * scale, dark ? 0.15 : 0.04);
     // 3 · Glitter drifting along the arms, bokeh round them.
     gl.useProgram(dot);
     gl.bindVertexArray(dotVao);
