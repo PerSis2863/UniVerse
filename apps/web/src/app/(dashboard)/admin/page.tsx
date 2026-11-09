@@ -157,7 +157,7 @@ export default function AdminDashboard() {
               <div className="space-y-3">
                 {recentPayments.map((p, i) => (
                   <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
                       {p.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="flex-1 min-w-0">

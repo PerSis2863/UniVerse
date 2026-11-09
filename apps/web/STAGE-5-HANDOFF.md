@@ -5398,3 +5398,24 @@ is Ballast's colours since M124); the app scenes stay behind the pages.
   tables and lists page by page.
 - **Tested:** `pnpm check`; axe on the teacher's and the student's home, light and dark (dev server);
   screenshots in both themes.
+
+## M135: every area inside the app in the Ballast style (the owner, 9 Nov 2026)
+
+The owner: "i need every area of project needs to look like this inside and should be ultra smooth".
+Rules for the app's page area (`main#main`, DashboardShell: every signed-in page), so all pages follow
+without being edited one by one (the M135 block at the end of `globals.css`):
+
+- **Density:** on computers every rem is 15 px (`html:has(main#main)`), the reels' compact sizes; phones
+  keep 16 px; `text-xs` stays 11.25 px (above the 11 px floor).
+- **Icon squares:** a small rounded square with a gradient and no picture (`w-7`…`w-14`, rounded-lg/xl/2xl)
+  becomes Ballast's flat tinted square (13 % of the app's accent) with the icon in the accent.
+- **Progress fills:** an empty rounded bar with a gradient is one colour, the accent.
+- **Buttons and badges:** buttons 13.5 px on computers; badges 6 px corners, semibold (secondary buttons
+  were already outlined, M124).
+- **Fixed on the way:** the admin home's initials squares (blue on a 30 % blue tint) failed contrast in
+  light mode; the tint is 10 % there now.
+- **Rules:** a new icon tile or progress bar that should keep its gradient (a person's own colours, a
+  picture) needs an `img` inside or a class outside the matched shapes; don't add page-by-page density.
+- **Tested:** `pnpm check`; axe on eight app pages (teacher, student, courses, grades, attendance, admin,
+  hub, Trace) in light and dark on the dev server; screenshots.
+- **Left:** Ballast's card headers ("···") and tables page by page.

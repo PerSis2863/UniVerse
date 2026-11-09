@@ -2795,3 +2795,21 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 .side-shell .sidebar-item:not(.active) svg { color: var(--text-muted); }
 .side-shell .sidebar-item.active svg { color: var(--text-primary); }
 .app-topbar .btn-icon { width: 36px; height: 36px; border-radius: 9999px; border: 1px solid var(--hairline); background: var(--surface); }
+
+/* ═══ M135 · Every area inside the app in the Ballast reels' style (the owner, 9 Nov 2026: "every area of
+   project needs to look like this inside and should be ultra smooth"). Rules for the app's page area
+   (main#main, DashboardShell), so every page follows without being edited one by one:
+   · density: on computers the app's sizes are the reels' compact ones (every rem 15 px, not 16; text-xs
+     stays 11.25 px); phones keep 16 px;
+   · icon squares: the gradient tiles turn Ballast's flat tinted squares with the icon in the accent (a
+     small rounded square with a gradient, no picture in it);
+   · progress fills: one colour, the accent, not a gradient (an empty rounded bar with a gradient);
+   · buttons and badges the reels' size (secondary buttons are already outlined, M124). */
+@media (min-width: 1024px) { html:has(main#main) { font-size: 15px; } }
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) {
+  background-image: none; background-color: color-mix(in srgb, var(--tint) 13%, var(--surface)); color: var(--tint-text); box-shadow: none;
+}
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) svg { color: var(--tint-text); }
+#main [class*="bg-gradient-to-r"][class*="rounded-full"]:empty { background-image: none; background-color: var(--tint); }
+@media (min-width: 1024px) { #main :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) { font-size: 13.5px; } }
+#main .badge { border-radius: 6px; font-weight: 600; }
