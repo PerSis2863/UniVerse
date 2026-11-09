@@ -5377,3 +5377,24 @@ smoothing … scrolling the main page, and switching apps or pages" (the 3D back
   stops); on the built Worker `scripts/checks/motion-pass-ui.mjs` (now also the landing's scroll timed,
   its scroll-tied parts on scroll timelines, and the app's page switches timed), `world-globe-ui`,
   `app-colours-ui` and `app-backdrop-ui` (axe in dark and light).
+
+## M134: inside the app, the Ballast reels' shapes (first pass) (the owner, 9 Nov 2026)
+
+The owner sent the three Ballast reels again: "can you make the design and ui of these video exactly
+the same". Asked: inside the app only (the website keeps its look); dark stays the default (light mode
+is Ballast's colours since M124); the app scenes stay behind the pages.
+
+- **Side menu:** compact rows (13.5 px, 34 px tall on computers), plain grey icons, the chosen one in ink
+  on its raised card; the brand 15 px semibold; the app switcher a light card with a hairline. **Bug
+  fixed:** the switcher's app name was white on white in light mode (invisible).
+- **Top bar:** the title 20 px semibold with a 12 px grey line; the search a white field with a hairline
+  and ⌘K; the round buttons (theme, language, bell) wear a hairline ring (`.app-topbar .btn-icon`).
+- **Number tiles** (`KpiCard`): Ballast's metric card: the name on top with a small grey icon, the figure
+  under it, a change as a small tinted badge. The Karma look's first-two-tiles colouring (`.kpi-row`
+  first black, second blue) is gone: all plain cards. `color` is kept on KpiCard only for callers.
+- **Cards:** 12 px corners (`--radius-card`, the M134 block at the end of `globals.css`).
+- **Left for the next pass:** gradient icon tiles and progress bars (Your day, Finish setting up…) to
+  Ballast's flat tinted squares and one-colour bars; Ballast's card headers (title, grey line, "···");
+  tables and lists page by page.
+- **Tested:** `pnpm check`; axe on the teacher's and the student's home, light and dark (dev server);
+  screenshots in both themes.

@@ -1655,11 +1655,6 @@ html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, 
 .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 16px 36px -18px rgba(0, 0, 0, 0.35); }
 .dark .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 18px 40px -16px rgba(0, 0, 0, 0.8); }
 
-/* Headline-number rows (.kpi-row): the first card dusk (navy into aqua frost), the second gold (pale aqua). */
-.kpi-row > :first-child { background: var(--karma-dusk); border-color: transparent; color: #ffffff; }
-.kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
-.kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.9; }
-.kpi-row > :nth-child(2) { background: var(--karma-gold); border-color: transparent; }
 .kpi-row > * > [aria-hidden].absolute { display: none; }
 
 /* The M34 details, for any card: a thin-line icon in a circle, and a round ink arrow button. */
@@ -2786,3 +2781,17 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
     html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
   }
 }
+
+/* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
+   design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes
+   stay). Both themes take the shapes; light mode is Ballast's colours (M124). Cards round at 12 px; the
+   side menu's rows are compact with plain grey icons (the chosen one in ink on its raised card); the top
+   bar's round buttons wear a hairline ring; headline-number tiles are all plain cards (KpiCard). */
+:root { --radius-card: 0.75rem; }
+@media (min-width: 1024px) {
+  .side-shell .sidebar-item { font-size: 13.5px; min-height: 34px; padding-block: 6px; border-radius: 8px; }
+  .side-shell .sidebar-item svg { width: 16px; height: 16px; }
+}
+.side-shell .sidebar-item:not(.active) svg { color: var(--text-muted); }
+.side-shell .sidebar-item.active svg { color: var(--text-primary); }
+.app-topbar .btn-icon { width: 36px; height: 36px; border-radius: 9999px; border: 1px solid var(--hairline); background: var(--surface); }
