@@ -2891,3 +2891,8 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   .tpl-card:hover, .tpl-card:active { transform: none; }
   .tpl-check { animation: none; }
 }
+
+/* ═══ M143 · The cards' small column charts rise in one after another (components/instruments/MiniColumns.tsx). */
+.mini-col { transform-origin: bottom; animation: mini-col 0.5s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(var(--i, 0) * 30ms + 80ms); }
+@keyframes mini-col { from { transform: scaleY(0.15); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mini-col { animation-name: tl-fade; animation-delay: 0s; } }

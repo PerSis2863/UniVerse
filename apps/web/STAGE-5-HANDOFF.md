@@ -5595,3 +5595,25 @@ After the reels' "New agent" window:
 - **Tested:** `pnpm check`; `scripts/checks/template-windows-ui.mjs` (six kinds; Lab course sets 4
   credits, ticks and writes; unticking rewrites and counts; arrow keys; the event's cards; axe with each
   window open at 1280 and 390, light and dark).
+
+## M143: a teacher's courses as the reels' "Agent Center" (the owner, 9 Nov 2026: "see what else is left and work on it")
+
+What was left in the videos after M134–M142 was the Agent Center page. Its match is `/teacher/courses`:
+- **Header:** the summary line under the title ("2 courses · 10 students · 77 hand-ins in 14 days"), a
+  status pill ("● 2 of 2 active this fortnight") and a black "New course" (the M142 window; the page's
+  old create form is gone, the edit form stays).
+- **Three summary cards:** Students by course (bars), Hand-ins (the 14 days' total and a column chart),
+  Active courses (the `Ring`, which now takes `text` for a count in place of a percentage).
+- **A card per course:** its emoji in a tinted square, name and code, an Active / Quiet label
+  (`StatusBadge`: a hand-in in 14 days or not), Students / Materials / Hand-ins, a 14-day column chart
+  (`components/instruments/MiniColumns.tsx`: older days grey, the last five in the accent, rising in one
+  after another), then Edit, Delete and **Open board** (the course's board). Real buttons in place of a
+  clickable box. **Removed:** the old details window, which listed made-up students ("ST" three times).
+- **Data:** `GET /courses/my/activity` (teachers; their own courses, up to 90; `tz`; the newest 5,000
+  hand-ins in 15 days) through `dailyCounts` in `src/lib/daily-counts.ts` (tested); a sample answer in
+  `src/lib/sample/router.ts`.
+- **Left out on purpose:** the reels' side-menu section headings and count badges (the owner chose the
+  simpler menus, M27), and their "autonomy" menu on each card (nothing here works that way).
+- **Tested:** `pnpm check` (`daily-counts.test.ts`); `scripts/checks/courses-center-ui.mjs` (summary line,
+  pill, the three cards, 14 columns per course, New course opens, Open board goes to the board; axe at
+  1280 and 390, light and dark).

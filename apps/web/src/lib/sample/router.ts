@@ -1618,6 +1618,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
 
 
+  // M143: the courses page's small charts: a made-up fortnight of hand-ins per course, busier lately.
+  [/^\/courses\/my\/activity$/, ({ db: d }) => ok(Object.fromEntries(d.courses.map((c, k) => [c.id, Array.from({ length: 14 }, (_, i) => (i * 7 + k * 3) % 5 + (i > 9 ? 3 : 0))])))],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
