@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M139 is the latest).
+  builds on it). The newest notes are at the end (M140 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -122,7 +122,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     PostHog after "Accept all" (off until the owner sets the key), the landing's other apps built ahead
     once the tabs are approached, failed background threads handled quietly; M138, card titles and
     tables in the reels' style on every page (shared rules); M139, the cards' "···" menu (full screen,
-    copy, CSV) on the main pages and every chart board (`CardHead` / `CardMenu`).
+    copy, CSV) on the main pages and every chart board (`CardHead` / `CardMenu`); M140, the reels'
+    calendar: a Timeline view (days down, hours across, a Now line) and a date range picker.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -153,10 +154,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
-  page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
+  page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); left from the videos: the activity heatmap, the log table's filter tabs with counts and coloured outcomes, and the "New …" window with template cards; **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M140**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M141**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the

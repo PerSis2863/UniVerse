@@ -1,5 +1,6 @@
 'use client';
 
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -536,24 +537,9 @@ export function AnalyticsWarehousePanel() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Period Start</label>
-                <input
-                  type="date"
-                  value={exportStart}
-                  onChange={(e) => setExportStart(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-xs font-bold text-zinc-700 dark:text-zinc-300">Period End</label>
-                <input
-                  type="date"
-                  value={exportEnd}
-                  onChange={(e) => setExportEnd(e.target.value)}
-                  className="w-full rounded-xl border border-zinc-300 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 text-xs text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                />
+              <div className="space-y-1 sm:col-span-2">
+                <span className="block text-xs font-bold text-zinc-700 dark:text-zinc-300">Period</span>
+                <DateRangePicker label="Period" value={{ from: exportStart, to: exportEnd }} onChange={(v) => { setExportStart(v.from); setExportEnd(v.to); }} className="w-full justify-start" />
               </div>
 
               <div className="space-y-1">

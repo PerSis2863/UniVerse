@@ -1,5 +1,6 @@
 'use client';
 
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -167,11 +168,7 @@ export default function AdminAuditLog() {
               </option>
             ))}
           </select>
-          <div className="flex items-center gap-2">
-            <input type="date" className={input} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From date" />
-            <span className="text-zinc-400 text-sm">–</span>
-            <input type="date" className={input} value={to} onChange={(e) => setTo(e.target.value)} aria-label="To date" />
-          </div>
+          <DateRangePicker value={{ from, to }} onChange={(v) => { setFrom(v.from); setTo(v.to); }} clearable />
           {filtered && (
             <button onClick={clear} className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white">
               <X className="w-4 h-4" /> Clear

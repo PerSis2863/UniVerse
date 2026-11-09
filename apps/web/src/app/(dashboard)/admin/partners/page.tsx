@@ -1,5 +1,6 @@
 'use client';
 
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
@@ -78,10 +79,7 @@ export default function SponsorPortalPage() {
                   </select>
                   <input className="input" placeholder="Title, e.g. 2026 Scholarship Sponsorship" value={form.title} maxLength={120} onChange={(e) => setForm({ ...form, title: e.target.value })} />
                   <textarea className={`input min-h-[80px]`} placeholder="What the partnership covers (optional)" value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-                  <div className="grid grid-cols-2 gap-3">
-                    <label className="text-xs text-zinc-500">Start<input type="date" className="input" value={form.startDate} onChange={(e) => setForm({ ...form, startDate: e.target.value })} /></label>
-                    <label className="text-xs text-zinc-500">End<input type="date" className="input" value={form.endDate} onChange={(e) => setForm({ ...form, endDate: e.target.value })} /></label>
-                  </div>
+                  <DateRangePicker label="Partnership dates" presets={[]} clearable value={{ from: form.startDate, to: form.endDate }} onChange={(v) => setForm({ ...form, startDate: v.from, endDate: v.to })} className="w-full justify-start" />
                   <button onClick={save} disabled={busy || !form.title.trim()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Save</button>
                 </>
               )}

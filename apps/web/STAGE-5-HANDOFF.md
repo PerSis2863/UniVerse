@@ -5516,3 +5516,33 @@ The Ballast cards end their header with "···". `src/components/ui/CardMenu.ts
   hooks lint).
 - **Tested:** `pnpm check`; `scripts/checks/card-menu-ui.mjs` (all three actions, Full screen's menu,
   no CSV without a table, a sheet on phones, axe on five pages at 390 and 1280, light and dark).
+
+## M140: the reels' calendar and date range picker (the owner, 9 Nov 2026: "the timetable or calender changes that video had… the same way in all of the project", "cover everything in that video… ultra smoothly animated")
+
+- **Timeline** (`components/calendar/Timeline.tsx`), the reel's Dock calendar: the days down the side, the
+  hours across (24-hour labels, a hairline at each), each class a small two-line card (title with its
+  course's dot, then what and where), a "Now 10:42" pill on the hours (the labels beside it hide, as in
+  the reel) and a line through every day. Done is the accent (solid today, faint before), on now is ink,
+  coming up a white card, a clash or a deadline an amber edge; a key above. Overlaps go in lanes
+  (`laneDay`); a deadline gets an hour of room, kept inside the hours shown. Under it, the reel's two
+  cards: **Busy this week** (bars per day) and **Coming up** (the next four, with "in 25 min" / "Tue").
+- **Where:** the shared calendar (`TimeGrid`) has a **Timeline** view, the first one on computers
+  (student and teacher calendars); phones keep 4 Days (no Timeline in their switch). The admin's
+  timetable shows the week on it above the class list (`WeekTimeline`), with the real clashes
+  (`clash` prop: a teacher or room twice, a room too small); a class jumps to its row in the list.
+- **Date range picker** (`components/ui/DateRangePicker.tsx`): quick choices down the side (Today,
+  Last 7/30/90 days, Last 12 months, This quarter, Year to date; "Custom" ticked otherwise), two months
+  side by side (one on a phone), the first and last day in ink with a band between, the span written out
+  ("Oct 31 to Nov 6, 2026 · 7 days"), Cancel / Apply (nothing changes before Apply), Clear for a filter.
+  Arrow keys move through the days (one Tab stop). In: the audit log's filter, impact reports' period,
+  the analytics export's period, partnership dates (`presets={[]}`). Left as they were: single dates,
+  and the report-card round's dates (in a sheet: a popover over a sheet is a trap).
+- **Motion** (the M140 block in `globals.css`): the cards settle in one after another on a first look
+  (a spring, transform and opacity), lift under the pointer and give on a press; "Now" glides to each
+  new minute (one transform); the months slide the way they turn; Reduce Motion: fades only.
+- **Shared change:** `Popover` takes `panelClass` (its panel's size).
+- **Left out:** the reel's "compare with the previous period" switch (no chart here can draw a second
+  period yet).
+- **Tested:** `pnpm check`; `scripts/checks/calendar-ballast-ui.mjs` (the three calendars in sample
+  mode, a class opens, the admin's clashes in amber, phones without the Timeline; the picker's quick
+  choice, Apply, arrow keys, Cancel; axe at 1280 and 390, light and dark).

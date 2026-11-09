@@ -2839,3 +2839,32 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   background-color: var(--background); transform: none; animation: none; filter: none;
   -webkit-backdrop-filter: none; backdrop-filter: none;
 }
+
+/* ═══ M140 · The calendar's Timeline (components/calendar/Timeline.tsx), after the reels' Dock calendar.
+   A hairline at every hour; the cards settle in one after another on a first look (transform and
+   opacity only, a spring), lift a little under the pointer, give on a press; "Now" glides to the next
+   minute (one transform, the compositor's). Reduce Motion: they just appear. */
+.tl-track { background-image: linear-gradient(to right, var(--separator) 1px, transparent 1px); }
+[dir="rtl"] .tl-track { background-image: linear-gradient(to left, var(--separator) 1px, transparent 1px); }
+.tl-now { transform: translateX(var(--x, 0%)); transition: transform 0.9s var(--ease-glide); }
+[dir="rtl"] .tl-now { transform: translateX(calc(var(--x, 0%) * -1)); }
+.tl-block { transition: transform 0.35s var(--spring-press, ease), box-shadow 0.2s ease; }
+@media (hover: hover) { .tl-block:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgb(16 24 40 / 0.18); z-index: 2; } }
+.tl-block:active { transform: scale(0.98); }
+.tl-in { animation: tl-in 0.55s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 30) * 22ms); }
+@keyframes tl-in { from { opacity: 0; transform: translateX(-10px) scale(0.96); } }
+[dir="rtl"] .tl-in { animation-name: tl-in-rtl; }
+@keyframes tl-in-rtl { from { opacity: 0; transform: translateX(10px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .tl-in { animation-name: tl-fade; animation-duration: 0.2s; animation-delay: 0s; }
+  .tl-now, .tl-block { transition: none; }
+}
+@keyframes tl-fade { from { opacity: 0; } }
+/* The date range picker's months (components/ui/DateRangePicker.tsx) slide a little the way they turn. */
+.drp-months[data-dir] { animation: drp-turn 0.32s var(--ease-glide) backwards; }
+.drp-months[data-dir="back"] { animation-name: drp-turn-back; }
+@keyframes drp-turn { from { opacity: 0; transform: translateX(14px); } }
+@keyframes drp-turn-back { from { opacity: 0; transform: translateX(-14px); } }
+.drp-cell { transition: background-color 0.12s ease; }
+.drp-day:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) { .drp-months[data-dir] { animation-name: tl-fade; } .drp-day:active { transform: none; } }

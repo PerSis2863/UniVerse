@@ -16,12 +16,14 @@ import { cn } from '@/lib/utils';
 
 const TRIGGER = 'h-8 min-w-8 px-1.5 rounded-lg inline-flex items-center justify-center gap-1 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/10 disabled:opacity-40';
 
-export function Popover({ label, button, children, disabled, className, title, wide }: {
+export function Popover({ label, button, children, disabled, className, title, wide, panelClass }: {
   /** The button's name for screen readers (and its tooltip unless `title`). */
   label: string;
   button: React.ReactNode;
   children: (close: () => void) => React.ReactNode;
   disabled?: boolean; className?: string; title?: string; wide?: boolean;
+  /** The panel's own size, in place of `wide` (M140: the date range picker's two months). */
+  panelClass?: string;
 }) {
   const [open, setOpen] = useState(false);
   const btn = useRef<HTMLButtonElement>(null);
@@ -75,7 +77,7 @@ export function Popover({ label, button, children, disabled, className, title, w
             // Placed by `place` above (a plain box, so nothing re-renders it back).
             <div key="panel" ref={panel} id={id} data-popover style={{ position: 'fixed', top: -9999, left: -9999 }} className="z-[70]">
               <motion.div initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-                className={cn('rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100 max-h-[70vh] overflow-y-auto', wide ? 'w-80' : 'min-w-52 max-w-72')}>
+                className={cn('rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100 max-h-[80vh] overflow-y-auto', panelClass ?? (wide ? 'w-80' : 'min-w-52 max-w-72'))}>
                 {children(close)}
               </motion.div>
             </div>
