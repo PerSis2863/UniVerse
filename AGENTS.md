@@ -100,7 +100,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M128** (M124–M128, the river, merged 8–9 Nov).
+- **On `main`** (live): everything through **M130** (M129–M130 merged 9 Nov, PR #117).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -108,9 +108,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M129, each app's own scene behind
-    the page in place of the river (§8; the owner's exception to the pause, 9 Nov); M130, the motion pass
-    (the landing's app switch without a long frame, loaded content and new list rows gliding in).
+  - **The app scenes and the motion pass (9 Nov, the owner's exception to the pause):** each app's own
+    scene behind the page in place of the river (M129, §8); the landing's app switch without a long
+    frame, loaded content and new list rows gliding in (M130).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
