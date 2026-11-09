@@ -5457,3 +5457,19 @@ person hit a new problem since 7 Nov) the owner asked for all six suggestions. T
   built ahead for a visitor who never reaches for the tabs (phones: the touch itself).
 - **Tested:** `pnpm check` (`analytics.test.ts`); on the dev server the tabs build all five apps' sections
   (four hidden), a switch shows exactly one, no page errors.
+
+## M138: Ballast card titles and tables, for every page (the sweep's item 3, the owner, 9 Nov 2026)
+
+The reels' cards have a small semibold title with a grey line under it, and plain tables (grey column
+names in sentence case, 13.5 px rows, a soft row hover). Done as shared rules (the M138 block in
+`globals.css`), like M135, so every signed-in page gets it without page-by-page edits:
+- on computers (1024 px and up), inside `#main`: a `.panel` / `.card` heading (`h2`, `h3`) is 15 px
+  semibold, the paragraph right after it 12 px in `--text-muted`; table headers 12 px, weight 500,
+  muted, no capitals or letter spacing; cells 13.5 px;
+- every table body row: a background hover (`--fill`), hover-capable screens only.
+- **Left on purpose:** the reels' "···" menu in each card header (it needs a real menu per card, not
+  CSS); phones keep their sizes.
+- **Rule:** a card title that must stay big (a hero number, a page heading inside a card) needs a class
+  that sets its own size after this block, or an element other than `h2`/`h3`.
+- **Tested:** `pnpm check`; axe (serious/critical) clean on /teacher, /student, /student/courses,
+  /student/grades, /teacher/attendance, /admin, /hub and /trace in light and dark.
