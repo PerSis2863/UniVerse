@@ -5419,3 +5419,16 @@ without being edited one by one (the M135 block at the end of `globals.css`):
 - **Tested:** `pnpm check`; axe on eight app pages (teacher, student, courses, grades, attendance, admin,
   hub, Trace) in light and dark on the dev server; screenshots.
 - **Left:** Ballast's card headers ("···") and tables page by page.
+
+## M136: phones at full frame rate and sharpness (the owner, 9 Nov 2026)
+
+The owner: "the mobile website and app both are downgrade please increase the frame". Phones had been
+given less on purpose to save work (M91, M92): the live pictures (`live/canvas.ts`: the planet on the
+page, the live cards) drew every other frame (30 a second) at 1.5x; the landing's planet on its
+background thread at 30 a second; the app scenes (`backdrop.ts`) at 60 a second and at most 1.5x.
+
+- Now every frame the screen gives (60, 90 or 120 a second) on phones too, the live pictures at 2x like
+  computers, the app scenes up to 2.5x (at most 3.5 M pixels).
+- **Rule:** don't bring the phone limits back without the owner: they asked for full frames. If a weak
+  phone struggles, lighten the drawing (fewer dots), not the frame rate.
+- **Tested:** `pnpm check` (the frame-loop tests).

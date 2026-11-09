@@ -39,7 +39,7 @@ const frame = (ms: number) => {
   raf = 0;
   if (!ctx || !w || !h) return;
   if (!start) start = ms;
-  // Touch screens: every other frame (30 a second), the same motion for half the work (M91).
+  // `gap`: a pause between frames (0 since M136: every frame the screen gives, phones too).
   if (gap && !still && drawn && ms - drawn < gap) { if (seen && !hidden) raf = nextFrame(frame); return; }
   drawn = ms;
   ctx.clearRect(0, 0, w, h);

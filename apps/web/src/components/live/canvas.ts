@@ -35,17 +35,16 @@ export function useLiveCanvas(draw: (f: Frame) => void, wake?: unknown) {
     let pointer: Frame['pointer'] = null;
     // The layout size, not getBoundingClientRect: a page's entrance animation scales it for a moment,
     // and a card measured then stayed squashed and blurry (M85).
-    // Touch screens: drawn at 1.5× (not 2×), about half the pixels to draw and hand over each frame (M92).
-    const touch = !!window.matchMedia?.('(hover: none)').matches;
     const size = (cw: number, ch: number) => {
-      const dpr = Math.min(touch ? 1.5 : 2, window.devicePixelRatio || 1);
+      const dpr = Math.min(2, window.devicePixelRatio || 1);
       w = cw; h = ch;
       cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     };
-    // Touch screens draw every other frame (30 a second): the same motion, half the work while the
-    // page scrolls (M91).
-    const gap = touch ? 30 : 0;
+    // M136 (the owner: "the mobile website and app both are downgrade please increase the frame"):
+    // phones draw every frame the screen gives and as sharp as computers (M91 drew every other frame,
+    // 30 a second, at 1.5x).
+    const gap = 0;
     let drawn = 0;
     const frame = (ms: number) => {
       raf = 0;
