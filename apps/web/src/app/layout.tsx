@@ -15,6 +15,7 @@ import { Suspense } from 'react';
 import { NavProgress } from '@/components/layout/NavProgress';
 import { recoveryScript } from '@/lib/recovery-script';
 import { bootstrapPrefetchScript } from '@/lib/bootstrap';
+import { appHeadScript } from '@/lib/apps';
 import { DISPLAY_PREFS_SCRIPT } from '@/lib/display-prefs';
 import { BARS_SCRIPT } from '@/lib/theme';
 
@@ -83,6 +84,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: recoveryScript }} />
         {/* Dashboards: start loading the first screen's data now, in parallel with the app's code */}
         <script dangerouslySetInnerHTML={{ __html: bootstrapPrefetchScript }} />
+        {/* M133: the page's app colour before the first paint (src/lib/apps.ts). */}
+        <script dangerouslySetInnerHTML={{ __html: appHeadScript }} />
         {/* The Karma look's face, before the stylesheet asks for it */}
         <link rel="preload" href="/fonts/inter/inter-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* PWA: iOS touch icon */}

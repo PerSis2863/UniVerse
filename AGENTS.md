@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M130 is the latest).
+  builds on it). The newest notes are at the end (M133 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,7 +100,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M128** (M124–M128, the river, merged 8–9 Nov).
+- **On `main`** (live): everything through **M130** (M129–M130 merged 9 Nov, PR #117).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -108,9 +108,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M129, each app's own scene behind
-    the page in place of the river (§8; the owner's exception to the pause, 9 Nov); M130, the motion pass
-    (the landing's app switch without a long frame, loaded content and new list rows gliding in).
+  - **The app scenes and the motion pass (9 Nov, the owner's exception to the pause):** each app's own
+    scene behind the page in place of the river (M129, §8); the landing's app switch without a long
+    frame, loaded content and new list rows gliding in (M130).
+  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M131, the landing's globe you can
+    use (drag, zoom, click an app for its card; still on a background thread); M132, each app its own
+    colour everywhere (§8); M133, realistic movement (springs, depth on page changes, the globe's
+    momentum) and the landing's scroll effects tied to the scroll on the compositor.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -138,10 +142,11 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
-  modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
+  owner's 9 Nov answer after M132: **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
+  main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M131**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M134**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
@@ -319,7 +324,9 @@ sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the
 is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
 with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
 on computers and 60 a second on phones, its motion easing in; a new app needs its scene there
-(TypeScript asks). No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
+(TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).
 
@@ -343,7 +350,9 @@ answering a tap) and never makes anyone wait; nothing animated on things used ma
 ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `--ease-out-soft`,
 `spring`); UI motion under 300 ms, exits faster than entrances; nothing grows from scale 0 (start
 at 0.85–0.95); menus grow from where they were opened; name the properties (`transition-[transform,opacity]`,
-not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; Reduce Motion
+not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; things settle on a spring (M133: `--spring-press` for presses,
+`--spring-glide` / `springGlide()` for arrivals, CSS `linear()` curves the compositor runs); motion tied
+to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
 without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
 stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string

@@ -5294,3 +5294,86 @@ looks, the owner's exception).
   every signed-in page is the error page.
 - **Left:** the shared `fadeUp` preset (168 uses) and the other framer `x` / `y` animations stay as they
   are: many are on `layout` elements, where a `transform` string would fight the layout animation.
+
+## M131: the landing's globe you can use (the owner, 9 Nov 2026)
+
+The owner, with a screenshot of the landing's planet: "make this globe ultra smooth and functional and
+more detailing and people can click on it and see details like that".
+
+- **What it does:** drag to turn it (a finger sideways only, so the page still scrolls), pinch, ctrl +
+  scroll or the + / − buttons to zoom; click an app on it, or its button in the row under the heading
+  (keyboards and screen readers), and the planet turns to face that app (the short way round), the app
+  wears a bright breathing ring, and a card opens: the app's name (Lab when it is), its tagline and line
+  from `apps.ts`, three more things it does (`DETAILS` in `WorldSection.tsx`: only what the product
+  really does), "Start with …" (sign-up with that app) and "Show me …" (switches the landing's app tab and
+  glides to the top). Close with ×, by picking the same button again, or another app.
+- **Still smooth:** a new Planet mode, `turnable`: steered like `interactive` (Trace's Live globe) but with
+  the full look (net, sparks, every name, ripples) and drawn on the background thread
+  (`planet.worker.ts`: `drag`, `zoom`, `focus`, `selected`, `pick` → `picked`). The page side only sends
+  pointer moves; the click is picked on the thread (`nearestPlace`, shared with the page planet).
+- **More detail:** the lattice is finer on big screens (up to 18 000 points, 0.62 r², was 14 000 / 0.5).
+- **Rules for code that builds on it:** `interactive` changes the look (no net over the sea, names only
+  for the chosen); use `turnable` to steer a look-only planet. The zoom buttons take a `corner` (the
+  landing keeps the end corner for its notes).
+- **Tested:** `pnpm check` (`planet-paint.test.ts`: the click picks the nearest place within 18 px; a
+  turnable planet turns to face the chosen place); `scripts/checks/world-globe-ui.mjs` on the dev server
+  and the built Worker (an app's button opens its card, a click in the planet's middle picks the app it
+  turned to, close, no sideways scrolling, axe with the card open at 390 and 1280, light and dark).
+
+## M132: each app its own colour, everywhere (the owner, 9 Nov 2026)
+
+The owner: "the colour synchronization is not proper"; asked, chose "each app its own colour" (pick Trace
+and the whole page turns Trace pink: buttons, highlights, the chosen tab, the background; UniVersity keeps
+lime). In the same message: "everything is not ultra smooth" (scrolling the landing; switching apps or
+pages) and "realistic graphics animations" (realistic 3D backgrounds and realistic movement everywhere):
+those are the next items (see "Next up" in AGENTS.md), not this one.
+
+- **How:** `AppBackdrop` sets `<html data-app>` to the page's app (the landing's and sign-in's tab; in
+  the app `appFor(path)`, shared pages the chosen app). The M132 block at the end of `globals.css`
+  re-points, per app and theme, the palettes the M124 block points at the accent (indigo, violet,
+  purple, pink, fuchsia, aqua) and the tokens (`--tint`, `--cta`, `--ins-hot`, badges, card hover).
+  Dark: Tailwind's 400 is the accent with ink text; light: a shade with white text at 4.5:1 (pink-600,
+  fuchsia-600; orange and emerald one step darker, 700). UniVersity keeps M124 (lime / blue) and its
+  scene now wears it too (`CAMPUS` in `backdrop.ts`). The landing's tab pill is `var(--tint)` with
+  `--ink-contrast` text. The main buttons ease into the new colour (0.45 s) as the scene changes.
+- **Rules:** a person's own accent (Settings → Appearance, `[data-accent]`) wins over the app's. The
+  M132 block was generated (Tailwind's pink / orange / emerald / fuchsia); change a shade there for
+  both palettes and tokens. A new app needs its block (or it keeps the M124 accent).
+- **Tested:** `pnpm check`; `scripts/checks/app-colours-ui.mjs` on the built Worker: the landing for each
+  app and `/trace`, `/relief`, `/green`, `/play` signed in, dark and light: `data-app` right, the main
+  button in the app's colour, axe clean (contrast included).
+
+## M133: realistic movement, and the landing's scroll in step (the owner, 9 Nov 2026)
+
+The owner asked for "realistic movement everywhere: spring, momentum and depth across the site, plus
+smoothing … scrolling the main page, and switching apps or pages" (the 3D backgrounds are the next item).
+
+- **Springs, run by the compositor:** two real spring curves as CSS `linear()` (generated from a damped
+  spring: press damping 0.55, 12 % give; glide damping 0.8, 1.5 %): `--spring-press` and `--spring-glide`
+  in the M133 block at the end of `globals.css`, `SPRING_GLIDE` / `springGlide()` in `page-transition.ts`
+  (falls back to the old glide where `linear()` is missing). Buttons go down at once and spring back;
+  cards lift and settle; the page's entrance and its parts settle on the spring.
+- **Depth on page changes:** the page you leave sinks back a little (scale 0.985 with its slide), the new
+  one comes forward out of a little depth.
+- **The landing's reveals** (`Reveal` in `bits.tsx`) animate one `transform` string on a framer spring
+  (bounce 0.16): compositor-run, so they don't stutter while the page scrolls.
+- **Momentum:** the landing's globe (and Trace's Live globe) keeps turning when thrown and slows down
+  (`turnBy` / `letGo` in `planet-paint.ts`, shared by the page and the background thread); let go after
+  holding still and it stays.
+- **Scrolling the landing:** the parts that follow the scroll (`.scrub`), the reading-progress line and the
+  hero picture's drift were framer scroll listeners and springs on the page's thread (they lagged when it
+  was busy); now CSS scroll-driven animations (`animation-timeline: view()` / `scroll(root)`), in step with
+  the scroll itself. Without scroll timelines (Firefox today) they stand still and the line is hidden.
+- **The colour on a switch (M132's cost):** a new `data-app` restyles the whole page (about 35 ms), so
+  `AppBackdrop` now applies it when the page is idle after a switch (the buttons still ease into it with
+  the scene), and a head script (`appHeadScript` in `apps.ts`, the same rules as `appFor` and
+  `useChosenApp`) sets the first one before the first paint: no flash of the wrong colour.
+- **Measured on the built Worker:** scrolling the whole landing, 1 of 223 frames over 34 ms (worst 50);
+  the landing's app switches 50 ms after the first visit to each app (the first two 100 ms: those apps'
+  sections mounting); the app's page switches 50–67 ms.
+- **Rules:** motion tied to the scroll: a CSS scroll timeline, never a scroll listener. An arrival that
+  must settle: `--spring-glide` (CSS) or `springGlide()` (WAAPI). Keep the two curves in sync.
+- **Tested:** `pnpm check` (`planet-paint.test.ts`: thrown, it carries on and slows; held still, it
+  stops); on the built Worker `scripts/checks/motion-pass-ui.mjs` (now also the landing's scroll timed,
+  its scroll-tied parts on scroll timelines, and the app's page switches timed), `world-globe-ui`,
+  `app-colours-ui` and `app-backdrop-ui` (axe in dark and light).

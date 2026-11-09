@@ -54,11 +54,19 @@ export const APPS: ImpactApp[] = [
 
 const under = (path: string, base: string) => path === base || path.startsWith(`${base}/`);
 
+const SHARED = ['/collab', '/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files', '/calls', '/call', '/notifications', '/people', '/hub', '/console', '/admin/announcements'];
+const SHARED_ROLE = /^\/(student|teacher|admin)\/(inbox|settings)(\/|$)/;
+
 /** Shared tools every app uses (Messages and Settings live at each role's own address). */
 export function isShared(path: string) {
-  return /^\/(student|teacher|admin)\/(inbox|settings)(\/|$)/.test(path) || under(path, '/admin/announcements')
-    || ['/collab', '/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files', '/calls', '/call', '/notifications', '/people', '/hub', '/console'].some((b) => under(path, b));
+  return SHARED_ROLE.test(path) || SHARED.some((b) => under(path, b));
 }
+
+/** M133: the page's app on <html data-app> before the first paint (the root layout's head script), so a
+ *  page never shows the wrong app's colour first (globals.css M132); AppBackdrop keeps it right after.
+ *  The same rules as appFor and useChosenApp: the address's app, otherwise ?app=, the app chosen in
+ *  this tab, UniVersity. */
+export const appHeadScript = `try{var p=location.pathname,A=${JSON.stringify(APPS.map((a) => [a.id, a.paths]))},u=function(b){return p===b||p.indexOf(b+'/')===0},a=null;if(!(${SHARED_ROLE}.test(p)||${JSON.stringify(SHARED)}.some(u)))A.some(function(x){return x[1].some(u)&&(a=x[0])});if(!a){var c=new URLSearchParams(location.search).get('app')||sessionStorage.getItem('uv-app');a=A.some(function(x){return x[0]===c})?c:'campus'}document.documentElement.dataset.app=a}catch(e){}`;
 
 /** The app an address belongs to (null: the hub or a shared tool). */
 export function appFor(path: string): ImpactApp | null {

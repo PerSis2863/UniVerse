@@ -4,7 +4,7 @@ import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
 import { Fragment, useDeferredValue, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
+import { AnimatePresence, MotionConfig, m as motion } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
@@ -139,10 +139,7 @@ export default function ShowcasePage() {
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [guide, setGuide] = useState(false);
-  const { scrollYProgress, scrollY } = useScroll();
-  const progress = useSpring(scrollYProgress, { stiffness: 140, damping: 30 });
-  // The hero picture drifts up a little slower than the page as you scroll (parallax).
-  const sceneY = useSpring(useTransform(scrollY, [0, 800], [0, -90]), { stiffness: 120, damping: 26 });
+  // The hero picture drifts up a little slower than the page as you scroll (parallax): `.hero-drift`, M133.
 
   useEffect(() => {
     if (user) router.replace(homeFor(user));
@@ -177,7 +174,8 @@ export default function ShowcasePage() {
           the app's start (sign in, or your dashboard) instead of the website's landing page. */}
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
       <div data-cursor-light className="mkt-smooth flip-light min-h-screen overflow-x-clip font-sans bg-[var(--background)] text-white">
-        <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
+        {/* M133: tied to the scroll in CSS (`.scroll-progress`), on the compositor. */}
+        <div aria-hidden className="scroll-progress fixed top-0 inset-x-0 h-[2px] z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
         {/* Behind everything: the chosen app's own scene (M129), fading to the next when a tab is picked. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
           <AppBackdrop own app={app} />
@@ -226,13 +224,13 @@ export default function ShowcasePage() {
                   </motion.div>
                 </AnimatePresence>
               </div>
-              <div className="hero-in" style={rise(200, 800)}><Live><motion.div style={{ y: sceneY }}>
+              <div className="hero-in" style={rise(200, 800)}><Live><div className="hero-drift">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={later} initial={{ opacity: 0, transform: 'translateY(40px) rotateX(12deg)' }} animate={{ opacity: 1, transform: 'translateY(0px) rotateX(0deg)' }} exit={{ opacity: 0, transform: 'translateY(-20px) rotateX(0deg)', transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
                   <div data-tilt className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
                 </motion.div>
               </AnimatePresence>
-              </motion.div></Live></div>
+              </div></Live></div>
             </div>
           </section>
 
@@ -241,7 +239,7 @@ export default function ShowcasePage() {
               it was pulled up with a negative margin, which covered the hero's last row and its
               picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
           {later === 'campus' && <ProductWindow />}
-          <WorldSection app={later} />
+          <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
           <AnimatePresence mode="wait">
