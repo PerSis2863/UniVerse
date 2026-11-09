@@ -7,7 +7,7 @@ import './globals.css';
 import { Toaster } from 'sonner';
 import ErrorMonitorBootstrap from '@/components/ErrorMonitorBootstrap';
 import { MotionProvider } from '@/components/MotionProvider';
-import { LightTrail } from '@/components/LightTrail';
+import { AppBackdrop } from '@/components/AppBackdrop';
 import { ScrollMotion } from '@/components/ScrollMotion';
 import { CallHost } from '@/components/call/CallHost';
 import { UpdateNotifier } from '@/components/pwa/UpdateNotifier';
@@ -94,7 +94,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <UiTranslatorGate />
           {/* The Karma glows behind every page: amber and gold from the top left, blue-grey from the right, grain. */}
           <div aria-hidden className="ambient-bg" />
-          <LightTrail />
+          <AppBackdrop />
           <MotionProvider>{children}<CallHost /><ScrollMotion /></MotionProvider>
           <Suspense fallback={null}><NavProgress /></Suspense>
           {/* iOS notification banners: drop in at the top, frosted, rounded. */}

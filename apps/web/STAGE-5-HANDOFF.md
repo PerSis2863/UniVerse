@@ -5208,3 +5208,53 @@ nine zones (knot, outside the bend, inside the C, both arms, top right, bottom, 
   page (local dev server) at 1440 × 900 2× and 390 × 844 3×.
 - **Left:** the hero layout is UniVerse's own, so the bend sits beside our words (0.345 of the width), not
   the template's (0.31).
+
+## M129: each app's own scene behind the page, the river removed (the owner, 9 Nov 2026)
+
+The owner: "can you remove the river line and start working on the background as a good one for each app
+and when i switch up to any app in the main page of website the background needs to change according to
+that", then mid-way: "everything needs to be ultra smooth and transition also when i switch to another
+app". Asked first (the launch focus pauses new looks): the owner chose to do it now, the river removed
+everywhere, a scene per app on the website and inside the apps, themed animated scenes.
+
+- **What shows:** one slow scene per app in its colour (`APPS[].color`, a second colour in `ALT`):
+  UniVersity stars joined into constellations, sheets of paper rising; Trace a dotted globe turning
+  (continents from 3D noise, 6000 points, 3000 on phones), shipments arcing between places with a ring
+  where each lands; Relief a contour map (marching squares on a noise field, every third line bolder)
+  drifting, requests and helpers pulsing, dashed routes of help with a dot travelling; Green an aurora
+  (bands stacked along a wave on the soft layer), leaves drifting down, fireflies; Play a neon floor
+  running to the horizon, triangle / circle / square / cross floating above.
+- **Where:** the website and sign-in follow their app tabs (`<AppBackdrop own app={app} />`); in the
+  app, `appFor(path)`; on shared pages (hub, Messages, Settings) the app chosen last (`useChosenApp`).
+  Strength 1 on the website, 0.85 on sign-in, 0.7 in the app.
+- **Smooth:** a switch is a 1 s transition (opacity eases in and out; the old scene drifts towards you,
+  zoom 1 → 1.06, the new one settles from 0.94; only the fade with Reduce Motion); the first scene
+  arrives in 1.1 s from 0.97; the scenes' own motion eases in (`pace`) instead of starting with a jolt.
+  Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives on computers, 60 a
+  second on phones (was 30 for the river). On the worker it keeps moving while the page scrolls; on the
+  page fallback it rests while `html[data-scrolling]`, as the CSS loops do. Rests for a hidden tab and
+  `data-arena`.
+- **Files:** `src/lib/backdrop.ts` (scenes, painter `makeBackdrop`, frame loop `backdropLoop`, shared by
+  the worker and the page), `src/components/backdrop.worker.ts`, `src/components/AppBackdrop.tsx`. Gone:
+  `LightTrail.tsx`, `river.worker.ts` (+ test), `river-gl.ts` (+ test), `river-paint.ts`; `.light-river`
+  is `.app-backdrop`; the landing's and sign-in's two drifting blue glows (the scenes carry their own).
+- **Rules for code that builds on it:**
+  - In a scene, every alpha is `a * …` (`a` carries the transition and the strength); turn shapes with
+    `turned()` (it keeps the transition's zoom); never `setTransform` to a fixed matrix inside a scene.
+  - Positions as fractions of the screen, read from `v.w` / `v.h` while drawing: a resize (a phone's
+    address bar) never rebuilds a scene. Relief caches its contour map and rebuilds only when the width
+    changes or the screen grows taller than it was built for.
+  - No `Path2D`, `roundRect` or `filter` (workers, Safari); soft things go in `soft()` (the quarter-size
+    layer stretched is the blur).
+  - A new app: add it to `SCENES`, `ALT`, `SEED` (TypeScript asks).
+- **Trap:** a tab switch on the landing still has one long page frame (117–133 ms on the built Worker,
+  headless with software graphics): the landing's own content being built for the new app (React, the
+  new app's pictures, e.g. Green's globe maths 43 ms). Not the background: it's drawn on its own thread,
+  so its transition carries on through that frame.
+- **Tested:** `pnpm check`; `backdrop.test.ts` (contours round a hill, every scene dark and light on a
+  computer and a phone, the transition timings, the loop moving / held for Reduce Motion / resting);
+  each scene drawn at 1280 × 800 dark and light and 390 × 844; the real landing (dev) through every tab,
+  mid-switch, light mode, a phone, sign-in with `?app=green`; the built Worker:
+  `scripts/checks/app-backdrop-ui.mjs` (one canvas, every tab, sign-in, `/student`, `/trace`, axe at 390
+  and 1280 light and dark) passes.
+- **Left:** the long page frame on a tab switch above (the landing's content, not part of this item).

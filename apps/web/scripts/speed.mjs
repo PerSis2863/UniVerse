@@ -9,7 +9,7 @@
 // Reports per page and visit: first paint (FCP), largest paint (LCP), main-thread blocking (the
 // long tasks' time over 50 ms each, like Lighthouse's TBT), what was downloaded (scripts / all, kB
 // as sent), and after the return visit how much of the time the processor is free 8 s later (the
-// page's own animations; the river holds still on a phone it would keep busy). Good on phones: FCP under 1.8 s, LCP under 2.5 s, blocking under 200 ms (a local
+// page's own animations; the app's scene starts moving only once the page has loaded). Good on phones: FCP under 1.8 s, LCP under 2.5 s, blocking under 200 ms (a local
 // server answers faster than Cloudflare does, so real first visits add the server's time).
 import { writeFileSync } from 'node:fs';
 import { baseUrl, launch, signedIn } from './browser-session.mjs';

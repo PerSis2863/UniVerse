@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { MarketingNav } from '@/components/marketing/MarketingNav';
 import { MarketingFooter } from '@/components/marketing/MarketingFooter';
-import { LightTrail } from '@/components/LightTrail';
+import { AppBackdrop } from '@/components/AppBackdrop';
 import dynamic from 'next/dynamic';
 import { CampusScene } from '@/components/landing/HeroScenes';
 import { Proof } from '@/components/landing/Proof';
@@ -45,8 +45,8 @@ const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((
 const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.PlayMore));
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 
-// The public landing page, in the style of the owner's Relay video (a dark page, one river of light
-// from top to bottom, a live flow card, numbers that draw themselves as you scroll) and in
+// The public landing page, in the style of the owner's Relay video (a dark page, a live flow card,
+// numbers that draw themselves as you scroll; behind it the chosen app's own scene, M129) and in
 // the M91 look (black and white, pink as the one accent); UniVersity's home pictured under its hero
 // (M116), then the planet section. Every claim on it is about what the product does; no
 // invented usage numbers or quotes. UniVerse Impact is a home for several apps (src/lib/apps.ts): the
@@ -171,13 +171,9 @@ export default function ShowcasePage() {
       <script dangerouslySetInnerHTML={{ __html: "if(window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone){location.replace('/app')}" }} />
       <div data-cursor-light className="mkt-smooth flip-light min-h-screen overflow-x-clip font-sans bg-[var(--background)] text-white">
         <motion.div style={{ scaleX: progress }} className="fixed top-0 inset-x-0 h-[2px] origin-left z-[60] bg-gradient-to-r from-aqua-300 via-pink-400 to-pink-500" />
-        {/* The page's two-tone glow and the river of light, behind everything below the hero. */}
+        {/* Behind everything: the chosen app's own scene (M129), fading to the next when a tab is picked. */}
         <div aria-hidden className="fixed inset-0 pointer-events-none z-0">
-          {/* One river of light from the top of the page to the bottom: it pours in on arrival and
-              bends in the gap between the hero's words and its card. */}
-          <LightTrail own hero className="opacity-70 lg:opacity-100" />
-          <div className="mkt-drift-a absolute top-[30%] start-[-30%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(59,126,240,0.12), transparent)' }} />
-          <div className="mkt-drift-b absolute bottom-[-25%] end-[-35%] w-[max(70vw,700px)] h-[max(70vw,700px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(79,142,247,0.10), transparent)' }} />
+          <AppBackdrop own app={app} />
         </div>
 
         <MarketingNav />
@@ -199,8 +195,8 @@ export default function ShowcasePage() {
                 <AnimatePresence mode="wait" initial={false}>
                   {/* Transform and opacity only (§8: a blur filter repaints every frame). */}
                   <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
-                    {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable where
-                        the river runs straight behind it on a phone (one column, no gap to bend into). */}
+                    {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable over the
+                        app's scene on a phone (one column, the scene right behind the words). */}
                     <h1 className="mt-8 text-[3.25rem] sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-[-0.04em] leading-[0.98] text-white max-lg:dark:[text-shadow:0_2px_22px_rgba(12,13,16,0.85)]">
                       {/* A real space after each word (not a margin): screen readers, search engines and
                           copy-paste read "The school day…", not "Theschoolday…". */}

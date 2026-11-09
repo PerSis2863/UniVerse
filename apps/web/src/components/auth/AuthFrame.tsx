@@ -4,26 +4,27 @@ import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { ApiWarmup } from '@/components/ApiWarmup';
 import { MaintenanceGate } from '@/components/MaintenanceGate';
-import { LightTrail } from '@/components/LightTrail';
+import { AppBackdrop } from '@/components/AppBackdrop';
+import { useChosenApp } from '@/lib/chosen-app';
 import { AuthShowcase } from '@/components/landing/AuthShowcase';
 
-// Sign in and sign up, in the landing page's look (src/app/page.tsx): the dark page with its river
-// of light, the same headline and flow card on the left, the form in a glass card on the right.
+// Sign in and sign up, in the landing page's look (src/app/page.tsx): the dark page with the chosen
+// app's own scene behind it (M129), the same headline and flow card on the left, the form in a card
+// on the right.
 // On a laptop screen the whole thing fits without scrolling: the left side never sets the page's
 // height (its picture shrinks, `.auth-scene`) and `short:` tightens the spacing.
-// M96: one client component for the whole frame. The layout used to reference each part (the river,
-// links, the logo…) itself, and since the root layout references some of the same parts, every page
-// on the site loaded this layout's file (with the sign-in picture and the landing's flow card).
+// M96: one client component for the whole frame. The layout used to reference each part (the
+// background, links, the logo…) itself, and since the root layout references some of the same parts,
+// every page on the site loaded this layout's file (with the sign-in picture and the landing's flow card).
 
 export function AuthFrame({ children }: { children: React.ReactNode }) {
+  const app = useChosenApp();
   return (
     // Dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
     <div data-cursor-light className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
       <ApiWarmup />
       <div aria-hidden className="horizon fixed inset-0 pointer-events-none z-0">
-        <LightTrail own tone="dark" strength={0.85} className="opacity-60 lg:opacity-90" />
-        <div className="mkt-drift-a absolute top-[-20%] start-[-25%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(140,155,255,0.14), transparent)' }} />
-        <div className="mkt-drift-b absolute bottom-[-25%] end-[-30%] w-[max(60vw,600px)] h-[max(60vw,600px)] rounded-full" style={{ background: 'radial-gradient(closest-side, rgba(240,204,138,0.12), transparent)' }} />
+        <AppBackdrop own app={app} tone="dark" strength={0.85} />
       </div>
 
       {/* ── Left: what UniVerse does (wide screens) ── */}

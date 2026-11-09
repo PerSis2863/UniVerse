@@ -808,7 +808,7 @@ const collaborateArea = () => cards('collab', 'Collaborate', 'Collaborate: every
 ], 4);
 
 const designArea = () => cards('look', 'The look', 'The look and the motion: the rules every page follows', C.owner, [
-  ['Colours', 'Dark blue for everything you use; hot pink with a little purple for the light lines, glows and animations'], ['The light river', 'Fine strands of light down every page, answering the pointer'],
+  ['Colours', 'Dark blue for everything you use; hot pink with a little purple for the light lines, glows and animations'], ['App scenes', 'Each app has its own slow scene behind its pages (stars, a globe, a map, an aurora, a neon floor); it fades to the next when you switch apps'],
   ['Cards', 'Dark, slightly see-through, a two-tone edge glow on hover'], ['Type', 'Text that means something is 11 px or more; lines near 75 characters'],
   ['Entering', 'Ease-out, never ease-in; nothing grows from nothing (start at 0.9)'], ['Speed', 'Presses 100–160 ms, menus 150–250, sheets up to 500; exits faster'],
   ['Lists', 'Items arrive one after another, 30–80 ms apart'], ['Every day things', 'What you use many times a day barely moves'],
