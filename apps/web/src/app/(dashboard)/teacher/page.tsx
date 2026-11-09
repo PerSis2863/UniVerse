@@ -1,6 +1,6 @@
 'use client';
+import { NewCourseSheet } from '@/components/dashboard/NewCourseSheet';
 import { CardHead } from '@/components/ui/CardMenu';
-import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
@@ -8,8 +8,8 @@ import { DailyBrief } from '@/components/dashboard/DailyBrief';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
 import { useAuthStore } from '@/store/auth';
-import { Users, BookOpen, FileText, BarChart3, X, Plus, ChevronRight, TrendingUp } from 'lucide-react';
-import { m as motion, AnimatePresence } from 'framer-motion';
+import { Users, BookOpen, FileText, BarChart3, Plus, ChevronRight, TrendingUp } from 'lucide-react';
+import { m as motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { WhenVisible } from '@/components/ui/WhenVisible';
 import { HomeBoard } from '@/components/home/HomeBoard';
@@ -21,12 +21,11 @@ import { useHome } from '@/components/home/use-home';
 const chartSkeleton = () => <div className="h-full w-full rounded-xl skeleton" />;
 const GradeDistributionChart = dynamic(() => import('./TeacherCharts').then((m) => m.GradeDistributionChart), { ssr: false, loading: chartSkeleton });
 const PerformanceTrendChart = dynamic(() => import('./TeacherCharts').then((m) => m.PerformanceTrendChart), { ssr: false, loading: chartSkeleton });
-import { toast } from 'sonner';
 import { useState } from 'react';
 import { useLanguageStore } from '@/store/language';
 
 import useSWR from 'swr';
-import { fetcher, api } from '@/lib/fetcher';
+import { fetcher } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 import { TeacherLive } from '@/components/live/HomeLive';
 
@@ -41,31 +40,6 @@ export default function TeacherDashboard() {
   const greeting = hour < 12 ? t('dashboard.greeting_morning') : hour < 18 ? t('dashboard.greeting_afternoon') : t('dashboard.greeting_evening');
   
   const [showCourseModal, setShowCourseModal] = useState(false);
-  const [courseName, setCourseName] = useState('');
-  const [courseCode, setCourseCode] = useState('');
-  const [courseCapacity, setCourseCapacity] = useState('3');
-  const [courseDesc, setCourseDesc] = useState('');
-  const [creating, setCreating] = useState(false);
-
-  const handleCreateCourse = async () => {
-    if (!courseName || !courseCode) {
-      toast.error('Please fill in the course name and code.');
-      return;
-    }
-    setCreating(true);
-    try {
-      await api.post('/courses', { name: courseName.trim(), code: courseCode.trim().toUpperCase(), credits: Math.min(Math.max(parseInt(courseCapacity) || 3, 1), 12), description: courseDesc.trim() || undefined });
-      setShowCourseModal(false);
-      setCourseName(''); setCourseCode(''); setCourseCapacity('3'); setCourseDesc('');
-      toast.success(`Course "${courseName}" created`, { description: 'It starts as a draft. Your admin can enroll students, and you can post materials on Blackboard.' });
-      router.push('/teacher/blackboard');
-    } catch (e) {
-      toast.error(errorMessage(e, 'Could not create the course'));
-    } finally {
-      setCreating(false);
-    }
-  };
-
   const { data, isLoading, error } = useSWR('/dashboard/teacher', fetcher);
   const home = useHome();
 
@@ -212,77 +186,7 @@ export default function TeacherDashboard() {
         }} />
       </div>
 
-      {/* Create Course Modal */}
-      <AnimatePresence>
-        {showCourseModal && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={e => e.target === e.currentTarget && setShowCourseModal(false)}
-          >
-            <motion.div
-              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-6 w-full max-w-lg shadow-2xl"
-            >
-              <div className="flex items-center justify-between mb-5">
-                <h3 className="font-bold text-zinc-900 dark:text-white text-lg flex items-center gap-2">
-                  <BookOpen className="w-5 h-5 text-indigo-500" /> Create New Course
-                </h3>
-                <button aria-label="Close" onClick={() => setShowCourseModal(false)} className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors">
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Course Name *</label>
-                  <input
-                    type="text" value={courseName} onChange={e => setCourseName(e.target.value)}
-                    placeholder="e.g. Introduction to Machine Learning"
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors placeholder:text-zinc-400"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Course Code *</label>
-                    <input
-                      type="text" value={courseCode} onChange={e => setCourseCode(e.target.value.toUpperCase())}
-                      placeholder="e.g. CS501"
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors placeholder:text-zinc-400 font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Credits</label>
-                    <input
-                      type="number" min={1} max={12} value={courseCapacity} onChange={e => setCourseCapacity(e.target.value)}
-                      placeholder="3"
-                      className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors"
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider mb-1.5 block">Description</label>
-                  <textarea
-                    value={courseDesc} onChange={e => setCourseDesc(e.target.value)}
-                    placeholder="Brief description of the course content..."
-                    rows={3}
-                    className="w-full bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-xl px-4 py-2.5 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-colors resize-none placeholder:text-zinc-400"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-3 mt-6">
-                <button onClick={() => setShowCourseModal(false)} className="flex-1 btn-secondary py-2.5 text-sm">Cancel</button>
-                <button onClick={handleCreateCourse} aria-busy={creating || undefined} disabled={creating} className="flex-1 btn-primary py-2.5 text-sm flex items-center justify-center gap-2">
-                  {creating ? (
-                    <><motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" /> Creating...</>
-                  ) : (
-                    <><Plus className="w-4 h-4" /> Create Course</>
-                  )}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {showCourseModal && <NewCourseSheet onClose={() => setShowCourseModal(false)} />}
     </>
   );
 }

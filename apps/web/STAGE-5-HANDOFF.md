@@ -5571,3 +5571,27 @@ The Ballast cards end their header with "···". `src/components/ui/CardMenu.ts
 - **Tested:** `pnpm check` (`activity-heat.test.ts`, `audit-outcome.test.ts`);
   `scripts/checks/activity-log-ui.mjs` (168 squares, the words for screen readers, every row labelled,
   a tab's count matches its rows, details open; axe at 1280 and 390, light and dark).
+
+## M142: "New …" windows with "Start from" cards (the owner, 9 Nov 2026: "please do all this")
+
+After the reels' "New agent" window:
+- **`components/ui/TemplateCards.tsx`**: a grid of choices (a radio group): each card has its icon in a
+  grey square, a name, two grey lines and a round check that fills when chosen. Arrow keys move and
+  choose; Tab enters on the chosen one. The cards settle in one after another as the window opens,
+  lift under the pointer, give on a press; the check's dot pops in (the M142 block in `globals.css`).
+- **A teacher's New course** (`components/dashboard/NewCourseSheet.tsx`, from the teacher home's "New
+  course" and Create card): start from Lecture, Lab, Seminar, Project, Online or scratch (it sets the
+  credits and what students will do); Name, Code, Credits in one row; **What students will do**: the
+  kind's activities as ticks ("3 of 4 chosen"; grey placeholder rows and "Pick a kind first" before a
+  kind is chosen); the description writes itself from the kind and the ticks until the teacher types
+  their own. Footer: "You can change all of this later.", Cancel, Create course. It's a `Sheet`
+  (a real dialog: focus kept inside, Escape closes) in place of the old hand-made window, whose
+  blurred backdrop and missing dialog role it replaces. Same `POST /courses` as before.
+- **The calendar's New event** (`EventSheet`): a new event starts from cards (Personal, Study or
+  focus, Meeting, Office hours for teachers, Deadline); editing keeps the compact menu.
+- **Trap (checks):** in the test browser's phone emulation a tap right after a page arrives can hit an
+  older frame's layout (the calendar's toolbar before it wrapped); the page runs at 60 a second, so
+  `template-windows-ui.mjs` presses that button directly on phones.
+- **Tested:** `pnpm check`; `scripts/checks/template-windows-ui.mjs` (six kinds; Lab course sets 4
+  credits, ticks and writes; unticking rewrites and counts; arrow keys; the event's cards; axe with each
+  window open at 1280 and 390, light and dark).

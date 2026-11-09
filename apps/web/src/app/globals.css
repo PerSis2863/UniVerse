@@ -2877,3 +2877,17 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 .log-row { transition: background-color 0.15s ease; }
 @media (hover: hover) { .log-row:hover { background-color: var(--fill); } }
 .tab-count { font-size: 11px; font-variant-numeric: tabular-nums; padding: 0 0.375rem; border-radius: 0.3rem; background: rgb(113 113 122 / 0.12); }
+
+/* ═══ M142 · "Start from" cards (components/ui/TemplateCards.tsx): they settle in one after another as
+   the window opens, lift under the pointer, give on a press; the chosen one's dot pops in on a spring. */
+.tpl-card { animation: tpl-in 0.42s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 8) * 40ms + 60ms); transition: transform 0.3s var(--spring-press, ease), border-color 0.15s ease, box-shadow 0.15s ease; }
+@keyframes tpl-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@media (hover: hover) { .tpl-card:hover { transform: translateY(-1px); } }
+.tpl-card:active { transform: scale(0.98); }
+.tpl-check { animation: tpl-pop 0.35s var(--spring-press, ease) backwards; }
+@keyframes tpl-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .tpl-card { animation-name: tl-fade; animation-delay: 0s; transition: none; }
+  .tpl-card:hover, .tpl-card:active { transform: none; }
+  .tpl-check { animation: none; }
+}
