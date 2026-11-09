@@ -2868,3 +2868,12 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 .drp-cell { transition: background-color 0.12s ease; }
 .drp-day:active { transform: scale(0.94); }
 @media (prefers-reduced-motion: reduce) { .drp-months[data-dir] { animation-name: tl-fade; } .drp-day:active { transform: none; } }
+
+/* ═══ M141 · The activity heatmap's squares answer the pointer (components/instruments/DayHourHeat.tsx). */
+.heat-cell { transition: transform 0.25s var(--spring-press, ease); }
+@media (hover: hover) { .heat-cell:hover { transform: scale(1.35); box-shadow: 0 0 0 1.5px var(--card-bg, #fff); position: relative; z-index: 1; } }
+@media (prefers-reduced-motion: reduce) { .heat-cell { transition: none; } .heat-cell:hover { transform: none; } }
+/* The log's rows answer the pointer; the tabs' counts are small grey chips (M141). */
+.log-row { transition: background-color 0.15s ease; }
+@media (hover: hover) { .log-row:hover { background-color: var(--fill); } }
+.tab-count { font-size: 11px; font-variant-numeric: tabular-nums; padding: 0 0.375rem; border-radius: 0.3rem; background: rgb(113 113 122 / 0.12); }

@@ -76,7 +76,7 @@ function WeekTimeline({ slots, clashes }: { slots: Slot[]; clashes: Map<string, 
   };
   if (!ms) return null;
   return (
-    <section className="hidden md:block card p-0 overflow-hidden" aria-label="The week's classes on a timeline">
+    <section className="hidden md:block card overflow-hidden" style={{ padding: 0 }} aria-label="The week's classes on a timeline">
       <Timeline days={days} today={today} nowMin={now.getHours() * 60 + now.getMinutes()} lo={lo} hi={hi} on={on} when={(e) => `${e.data.startTime}–${e.data.endTime}`}
         onOpen={show} animate clash={(e) => clashes.has(e.id)} />
     </section>

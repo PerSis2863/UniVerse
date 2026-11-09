@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
@@ -2143,6 +2144,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/me$/, ({ db: d }) => ok(d.profile)],
 
   // ── Admin ──
+  // The activity log (M141, src/lib/sample/audit.ts).
+  [/^\/audit$/, ({ q }) => ok(sampleAudit(q))],
+  [/^\/audit\/heat$/, ({ q }) => ok(sampleAuditHeat(q))],
+  [/^\/audit\/actions$/, () => ok(sampleAuditActions())],
   [/^\/users$/, ({ db: d, q }) => ok(d.users.filter((u) => !q.get('role') || u.role === q.get('role')))],
   [/^\/courses\/admin\/all$/, ({ db: d }) => ok(d.courses.map((c) => ({ ...c, teacher: { id: c.teacher.id, name: c.teacher.name }, _count: { enrollments: d.classmates.length + 1, ...counts(d, c.id) } })))],
   [/^\/announcements$/, ({ db: d }) => ok(d.adminAnnouncements)],

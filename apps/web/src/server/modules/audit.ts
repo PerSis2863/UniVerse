@@ -2,6 +2,8 @@ import type { Prisma } from '@prisma/client';
 import type { Router } from '../router';
 import prisma from '@/lib/db';
 import { schoolsOf, usersIn, type SchoolIds } from '../school-scope';
+import { num } from '../trace';
+import { heatOf } from '@/lib/activity-heat';
 
 // Activity & audit log (admins only). Entries are written by audit() in ../audit.ts.
 // A school's admins see only entries by their own school's people (the platform owner sees all,
@@ -80,6 +82,13 @@ export default function auditModule(router: Router) {
   r.get('actions', async ({ user }) => {
     const rows = await prisma.auditLog.groupBy({ by: ['action'], where: actorScope(await schoolsOf(user)), _count: { _all: true }, orderBy: { action: 'asc' } });
     return rows.map((row) => ({ action: row.action, count: row._count._all }));
+  });
+
+  // M141: when things happen (the activity page's heatmap and totals): the filtered entries by weekday
+  // and hour in the viewer's time zone (`tz`: minutes east of UTC), and by area, from the newest 10,000.
+  r.get('heat', async ({ query, user }) => {
+    const rows = await prisma.auditLog.findMany({ where: await withActorEmail(query, await schoolsOf(user)), select: { createdAt: true, action: true }, orderBy: { createdAt: 'desc' }, take: 10_000 });
+    return heatOf(rows, num(query.tz, -840, 840) ?? 0);
   });
 
   // CSV of the filtered entries (up to 10,000).

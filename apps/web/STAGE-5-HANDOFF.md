@@ -5546,3 +5546,28 @@ The Ballast cards end their header with "···". `src/components/ui/CardMenu.ts
 - **Tested:** `pnpm check`; `scripts/checks/calendar-ballast-ui.mjs` (the three calendars in sample
   mode, a class opens, the admin's clashes in amber, phones without the Timeline; the picker's quick
   choice, Apply, arrow keys, Cancel; axe at 1280 and 390, light and dark).
+
+## M141: the activity log as the reels' "Agent Activity" (the owner, 9 Nov 2026: "please do all this")
+
+`/admin/audit` (Activity Log) now reads like the reel:
+- **When things happen** (`components/instruments/DayHourHeat.tsx`): the days down the side, 24 hours
+  across, each square shaded in five steps of the accent by how much happened then ("Less … More");
+  the squares fill in one by one (scroll-motion's `data-cells`) and grow under the pointer; screen
+  readers get the three busiest times in words. Data: `GET /audit/heat` (admins, same scope and
+  filters as the log; `tz` minutes east of UTC; the newest 10,000) through `heatOf` in
+  `src/lib/activity-heat.ts` (tested), which also counts by area.
+- **Totals**: the number of actions, one bar split by area, the top five with their share.
+- **Log**: tabs with counts (All and each area, in these dates and this search: the heat route ignores
+  the area filter so the counts stay), then a table: Area (a dot), What happened, **Outcome** (a
+  `StatusBadge`: green kept or given, red refused or removed, amber waiting, blue a plain change, from
+  `outcomeOf` in `src/lib/audit-outcome.ts`, tested), By (initial, name, role), When, and the details.
+  On phones the same rows stack (the table's cells go `lg:contents`).
+- **Shared:** `components/ui/StatusBadge.tsx` (tones green, amber, red, blue, grey) for any outcome or
+  state label.
+- **Sample mode:** `/audit`, `/audit/heat` and `/audit/actions` now answer (`src/lib/sample/audit.ts`:
+  a made-up fortnight), so the demo isn't empty.
+- **Trap:** `.card`'s padding comes from an unlayered rule, so a `p-0` class doesn't remove it: use
+  `style={{ padding: 0 }}` (done here and on the admin timetable's timeline).
+- **Tested:** `pnpm check` (`activity-heat.test.ts`, `audit-outcome.test.ts`);
+  `scripts/checks/activity-log-ui.mjs` (168 squares, the words for screen readers, every row labelled,
+  a tab's count matches its rows, details open; axe at 1280 and 390, light and dark).
