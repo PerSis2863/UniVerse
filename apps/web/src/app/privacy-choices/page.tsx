@@ -45,8 +45,9 @@ export default function PrivacyChoicesPage() {
       <Section title="Cookies">
         <p>
           Essential cookies keep the platform working: keeping you signed in, remembering your theme and language, and security. These can’t be
-          switched off without breaking sign-in. We use no analytics, advertising or social media trackers today. If we ever add optional ones,
-          they only run if you choose <strong>Accept all</strong>, and never when your browser sends Global Privacy Control.
+          switched off without breaking sign-in. One optional thing: if you choose <strong>Accept all</strong>, we count which pages are
+          visited (PostHog, in the EU) with a random number kept on this device, never your name, and with any ids or links in the address
+          blanked. It never runs when your browser sends Global Privacy Control. No advertising or social media trackers.
         </p>
         <p>Your choice on this device (change it whenever you like):</p>
         <CookieChoiceControl />

@@ -5432,3 +5432,28 @@ background thread at 30 a second; the app scenes (`backdrop.ts`) at 60 a second 
 - **Rule:** don't bring the phone limits back without the owner: they asked for full frames. If a weak
   phone struggles, lighten the drawing (fewer dots), not the frame rate.
 - **Tested:** `pnpm check` (the frame-loop tests).
+
+## M137: the improvement sweep (the owner, 9 Nov 2026: "please do from 1 to 6 all of them")
+
+After the review of the live `error_reports` (every NEW report is the sample world's, ids `smp…`; no real
+person hit a new problem since 7 Nov) the owner asked for all six suggestions. This item is 1, 2, 4, 6;
+3 (Ballast card headers and tables) and 5 (realistic 3D backgrounds) are their own items.
+
+- **1 · the console's People list ("too many SQL variables", 31 Oct):** already fixed by M73 (1 Nov:
+  lists that read an ordered related list go in pages of 90); no change. The owner marks it resolved.
+- **2 · an old tab after a release:** the recovery script (`recovery-script.ts`) already reloads a tab
+  whose files are gone and catches blank pages. The gap: the app scene's and the planet's background
+  threads failing to load in such a tab were reported as errors, though both fall back to drawing on
+  the page. Their `onerror` now marks it handled (`preventDefault`).
+- **4 · which pages people use:** `src/lib/analytics.ts` + `components/Analytics.tsx` (root layout): one
+  `$pageview` per page to PostHog EU (`eu.i.posthog.com`, added to connect-src in `security-headers.ts`),
+  no library. Only with "Accept all" and no Global Privacy Control (`optionalCookiesAllowed`); no
+  person profiles; a random id on the device (`uv-aid`); ids and tokens in the address blanked
+  (`cleanPath`, tested). **Off until the owner sets `NEXT_PUBLIC_POSTHOG_KEY`** (the project's public
+  ingest key) in Cloudflare's build variables. The privacy choices and policies pages say so.
+- **6 · the landing's first switch to an app:** once the visitor points at or focuses the app tabs
+  (`warm`), the other apps' sections are built ahead, hidden, in React's `<Activity>` (no effects or loops
+  while hidden), so the first switch shows them at once; `.app-in` fades the shown app in. Nothing is
+  built ahead for a visitor who never reaches for the tabs (phones: the touch itself).
+- **Tested:** `pnpm check` (`analytics.test.ts`); on the dev server the tabs build all five apps' sections
+  (four hidden), a switch shows exactly one, no page errors.

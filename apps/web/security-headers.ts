@@ -31,7 +31,7 @@ const csp = `
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: ${FILES_ORIGIN} https://i.ytimg.com https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://covers.openlibrary.org;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://apis.google.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://generativelanguage.googleapis.com;
+    connect-src 'self' ${FILES_ORIGIN} https://eu.i.posthog.com https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://apis.google.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://generativelanguage.googleapis.com;
     media-src 'self' blob: ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com;
     object-src 'none';
     worker-src 'self' blob:;

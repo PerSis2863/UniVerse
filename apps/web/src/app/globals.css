@@ -2813,3 +2813,7 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 #main [class*="bg-gradient-to-r"][class*="rounded-full"]:empty { background-image: none; background-color: var(--tint); }
 @media (min-width: 1024px) { #main :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) { font-size: 13.5px; } }
 #main .badge { border-radius: 6px; font-weight: 600; }
+
+/* M137: a landing app's sections fade in when shown (they may have been built ahead, hidden). */
+@keyframes app-in { from { opacity: 0; } }
+.app-in { animation: app-in 0.4s var(--ease-glide) both; }

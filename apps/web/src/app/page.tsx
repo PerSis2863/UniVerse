@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
-import { Fragment, useDeferredValue, useEffect, useState } from 'react';
+import { Activity, Fragment, useDeferredValue, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
@@ -134,6 +134,9 @@ export default function ShowcasePage() {
   // and everything below follow a moment later in a render React can pause between frames (it was
   // all one 120 ms frame: the page's own content, rebuilt for the new app).
   const later = useDeferredValue(app);
+  // M137: the visitor reached for the app tabs: build the other apps' sections ahead (below).
+  const [warm, setWarm] = useState(false);
+  const warmAll = () => { warmApps(); setWarm(true); };
   const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -195,7 +198,7 @@ export default function ShowcasePage() {
                     script: about 4 s on a budget phone over slow mobile data. Tab switches still glide
                     with framer (AnimatePresence `initial={false}` only skips the first render). */}
                 <div className="hero-in" style={rise(40)}>
-                  <div onPointerEnter={warmApps} onFocus={warmApps}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
+                  <div onPointerEnter={warmAll} onFocus={warmAll}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
                 </div>
                 <AnimatePresence mode="wait" initial={false}>
                   {/* Transform and opacity only (§8: a blur filter repaints every frame), as one `transform`
@@ -242,17 +245,16 @@ export default function ShowcasePage() {
           <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
-          <AnimatePresence mode="wait">
-            <motion.div key={later} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
-              {/* Each part's looping demos run only while it is on screen (Live). */}
-              {/* Each section arrives its own way (M63, bits.tsx `Motion`). */}
-              {later === 'campus' && <><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></>}
-              {later === 'trace' && <><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></>}
-              {later === 'relief' && <><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></>}
-              {later === 'green' && <><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></>}
-              {later === 'play' && <><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></>}
-            </motion.div>
-          </AnimatePresence>
+          {/* M137: each app's sections. Once the visitor reaches for the tabs (`warm`), the other apps'
+              sections are built ahead, hidden (React's Activity: no effects, no loops while hidden), so the
+              first switch to an app shows them at once instead of building them in that frame. Each part's
+              looping demos run only while it is on screen (Live); each section arrives its own way (M63,
+              bits.tsx `Motion`); `.app-in` fades a newly shown app in. */}
+          {(warm || later === 'campus') && <Activity mode={later === 'campus' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></></div></Activity>}
+          {(warm || later === 'trace') && <Activity mode={later === 'trace' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></></div></Activity>}
+          {(warm || later === 'relief') && <Activity mode={later === 'relief' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></></div></Activity>}
+          {(warm || later === 'green') && <Activity mode={later === 'green' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></></div></Activity>}
+          {(warm || later === 'play') && <Activity mode={later === 'play' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></></div></Activity>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 
