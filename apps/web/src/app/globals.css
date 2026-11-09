@@ -1512,7 +1512,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 @media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b { animation: none; } }
 html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 
-/* ─── M1 · Living motion (src/lib/scroll-motion.ts; the light behind pages is M4's LightTrail) ─── */
+/* ─── M1 · Living motion (src/lib/scroll-motion.ts; the scene behind pages is M129's AppBackdrop) ─── */
 
 /* Cards under the pointer (computers): a soft light follows it and the edge lights up; cards that
    open something lift a little. Set by one pointer listener (scroll-motion.ts), only on cards
@@ -1670,10 +1670,10 @@ html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, 
 .karma-frost { background: var(--karma-dusk); color: #fff; border-color: transparent; }
 .karma-frost-olive { background: var(--karma-olive); color: #fff; border-color: transparent; }
 
-/* M9 · The river of light behind every page (src/components/LightTrail.tsx): a canvas the size of
-   the screen, behind the page; it draws the stretch of the river that's in view. */
-.light-river { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-@media print { .light-river { display: none; } }
+/* M129 · Each app's own scene behind every page (src/components/AppBackdrop.tsx): a canvas the size
+   of the screen, behind the page. */
+.app-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+@media print { .app-backdrop { display: none; } }
 
 /* ═══ M5 · Folders that open (src/components/files/FolderCard.tsx, the owner's folder video) ═══
    Back panel (tab top right) · the folder's files · a frosted front flap (tab top left). Pointing at
@@ -2310,7 +2310,7 @@ html:not(.dark) .live-card {
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
    aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
-   sides, so there's no edge where it ends and the river flows on out of it. M57: deep navy sinking into a
+   sides, so there's no edge where it ends. M57: deep navy sinking into a
    dark teal, the Aqua Jade a glow at the horizon instead of a pale blue fill. */
 .world { isolation: isolate; }
 .world::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background:
@@ -2378,7 +2378,7 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 @media (max-height: 760px) { .auth-scene { height: 275px; } .auth-scene > * { scale: 0.55; } }
 @media (max-height: 700px) { .auth-scene { display: none; } }
 
-/* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
+/* M56 · A pool of the page's navy behind words the app's scene passes under (the landing's scroll story):
    the light dims there and the words stay crisp. */
 .text-pool { position: relative; isolation: isolate; }
 .text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(11 11 12 / 0.86), rgb(11 11 12 / 0.6) 55%, transparent); }
@@ -2645,8 +2645,8 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 
 /* M121 · Messages, professional (the owner, 6 Nov 2026: "make it look like more professional"). One
    solid workspace: the rail, the list and the open chat share one frame with hairline dividers
-   (MessagingHub `.msg-ws`), nothing shows through them (the river stays behind the page, not
-   behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
+   (MessagingHub `.msg-ws`), nothing shows through them (the app's scene stays behind the page,
+   not behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
    person's own accent, theirs plain on a quiet chat background. The glowing rings, halos, edges and
    floating avatars round people and rows are gone. */
 .msg-ws { --msg-chat: #f4f4f6; --msg-rail: #f6f6f7; --msg-theirs: #ffffff; --msg-theirs-line: rgba(0, 0, 0, 0.07); }
