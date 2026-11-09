@@ -5319,3 +5319,26 @@ more detailing and people can click on it and see details like that".
   turnable planet turns to face the chosen place); `scripts/checks/world-globe-ui.mjs` on the dev server
   and the built Worker (an app's button opens its card, a click in the planet's middle picks the app it
   turned to, close, no sideways scrolling, axe with the card open at 390 and 1280, light and dark).
+
+## M132: each app its own colour, everywhere (the owner, 9 Nov 2026)
+
+The owner: "the colour synchronization is not proper"; asked, chose "each app its own colour" (pick Trace
+and the whole page turns Trace pink: buttons, highlights, the chosen tab, the background; UniVersity keeps
+lime). In the same message: "everything is not ultra smooth" (scrolling the landing; switching apps or
+pages) and "realistic graphics animations" (realistic 3D backgrounds and realistic movement everywhere):
+those are the next items (see "Next up" in AGENTS.md), not this one.
+
+- **How:** `AppBackdrop` sets `<html data-app>` to the page's app (the landing's and sign-in's tab; in
+  the app `appFor(path)`, shared pages the chosen app). The M132 block at the end of `globals.css`
+  re-points, per app and theme, the palettes the M124 block points at the accent (indigo, violet,
+  purple, pink, fuchsia, aqua) and the tokens (`--tint`, `--cta`, `--ins-hot`, badges, card hover).
+  Dark: Tailwind's 400 is the accent with ink text; light: a shade with white text at 4.5:1 (pink-600,
+  fuchsia-600; orange and emerald one step darker, 700). UniVersity keeps M124 (lime / blue) and its
+  scene now wears it too (`CAMPUS` in `backdrop.ts`). The landing's tab pill is `var(--tint)` with
+  `--ink-contrast` text. The main buttons ease into the new colour (0.45 s) as the scene changes.
+- **Rules:** a person's own accent (Settings → Appearance, `[data-accent]`) wins over the app's. The
+  M132 block was generated (Tailwind's pink / orange / emerald / fuchsia); change a shade there for
+  both palettes and tokens. A new app needs its block (or it keeps the M124 accent).
+- **Tested:** `pnpm check`; `scripts/checks/app-colours-ui.mjs` on the built Worker: the landing for each
+  app and `/trace`, `/relief`, `/green`, `/play` signed in, dark and light: `data-app` right, the main
+  button in the app's colour, axe clean (contrast included).

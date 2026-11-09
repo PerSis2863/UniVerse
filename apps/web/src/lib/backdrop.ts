@@ -44,6 +44,8 @@ const wrap = (x: number, m: number) => ((x % m) + m) % m;
 const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], play: [34, 211, 238] };
 /** Green's fireflies. */
 const FIREFLY: Rgb = [217, 249, 157];
+/** M132: UniVersity wears the site's own accent (lime in dark mode, blue in light), as its buttons do. */
+const CAMPUS = { dark: { base: [198, 242, 74] as Rgb, alt: [45, 212, 191] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
 const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, play: 53 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */
@@ -577,7 +579,8 @@ export function makeBackdrop(cv: Surface, ctx: Ctx, soft: Surface, sctx: Ctx, op
       if (cur?.id === id) return;
       // Switched again mid-way: whichever of the two shows more is the one giving way.
       prev = prev && (ms - from) / span < 0.5 ? prev : cur;
-      cur = { id, scene: SCENES[id](v, rng(SEED[id]), { base: hex(appById(id).color), alt: ALT[id] }) };
+      const hue: Hue = id === 'campus' ? { get base() { return (v.dark ? CAMPUS.dark : CAMPUS.light).base; }, get alt() { return (v.dark ? CAMPUS.dark : CAMPUS.light).alt; } } : { base: hex(appById(id).color), alt: ALT[id] };
+      cur = { id, scene: SCENES[id](v, rng(SEED[id]), hue) };
       span = prev ? 1000 : 1100;
       from = ms;
     },

@@ -44,7 +44,8 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
   // The background thread said no (no 2D drawing there): draw on the page instead.
   const [onPage, setOnPage] = useState(false);
 
-  useEffect(() => { current.current = app; drive.current?.app(app); }, [app]);
+  // M132: the page's app also colours the page (globals.css html[data-app]: buttons, chosen things).
+  useEffect(() => { current.current = app; drive.current?.app(app); document.documentElement.dataset.app = app; }, [app]);
 
   useEffect(() => {
     const box = host.current;

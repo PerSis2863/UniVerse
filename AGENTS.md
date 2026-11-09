@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M131 is the latest).
+  builds on it). The newest notes are at the end (M132 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -112,7 +112,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     scene behind the page in place of the river (M129, §8); the landing's app switch without a long
     frame, loaded content and new list rows gliding in (M130).
   - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M131, the landing's globe you can
-    use (drag, zoom, click an app for its card; still on a background thread).
+    use (drag, zoom, click an app for its card; still on a background thread); M132, each app its own
+    colour everywhere (§8).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -140,10 +141,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
-  modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
+  owner's 9 Nov answers after M132: **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
+  main thread, a lighter version on weak phones) and **realistic movement everywhere** (spring and
+  momentum, depth on page changes), with smoothness where the owner feels it (scrolling the landing,
+  switching apps or pages); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M132**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M133**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
@@ -321,7 +325,9 @@ sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the
 is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
 with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
 on computers and 60 a second on phones, its motion easing in; a new app needs its scene there
-(TypeScript asks). No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
+(TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).
 

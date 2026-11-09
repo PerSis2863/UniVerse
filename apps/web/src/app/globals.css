@@ -2655,3 +2655,105 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 :root:not([data-accent]) .bubble-mine { background-color: #b5307d; }
 .bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
 .msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }
+
+/* ═══ M132 · Each app its own colour (the owner, 9 Nov 2026: "the colour synchronization is not proper";
+   chose "each app its own colour"). The page's app (html[data-app], set by AppBackdrop: the landing's
+   and sign-in's tab, or the app a page belongs to) re-points the accent everywhere: buttons, chosen
+   things, chart marks, the palettes the M124 block points at the accent. UniVersity keeps the M124
+   accent (lime / blue). Dark: Tailwind's 400 is the accent with ink text; light: a shade that carries
+   white text at 4.5:1 or more (orange and emerald one step darker). A person's own accent wins
+   (Settings → Appearance: [data-accent]). Generated with the M132 note's script; edit together. */
+:root[data-app="trace"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fdf2f8; --color-indigo-100: #fce7f3; --color-indigo-200: #fbcfe8; --color-indigo-300: #f9a8d4; --color-indigo-400: #f472b6; --color-indigo-500: #ec4899; --color-indigo-600: #db2777; --color-indigo-700: #be185d; --color-indigo-800: #9d174d; --color-indigo-900: #831843; --color-indigo-950: #500724;
+  --color-violet-50: #fdf2f8; --color-violet-100: #fce7f3; --color-violet-200: #fbcfe8; --color-violet-300: #f9a8d4; --color-violet-400: #f472b6; --color-violet-500: #ec4899; --color-violet-600: #db2777; --color-violet-700: #be185d; --color-violet-800: #9d174d; --color-violet-900: #831843; --color-violet-950: #500724;
+  --color-purple-50: #fdf2f8; --color-purple-100: #fce7f3; --color-purple-200: #fbcfe8; --color-purple-300: #f9a8d4; --color-purple-400: #f472b6; --color-purple-500: #ec4899; --color-purple-600: #db2777; --color-purple-700: #be185d; --color-purple-800: #9d174d; --color-purple-900: #831843; --color-purple-950: #500724;
+  --color-pink-50: #fdf2f8; --color-pink-100: #fce7f3; --color-pink-200: #fbcfe8; --color-pink-300: #f9a8d4; --color-pink-400: #f472b6; --color-pink-500: #ec4899; --color-pink-600: #db2777; --color-pink-700: #be185d; --color-pink-800: #9d174d; --color-pink-900: #831843; --color-pink-950: #500724;
+  --color-fuchsia-50: #fdf2f8; --color-fuchsia-100: #fce7f3; --color-fuchsia-200: #fbcfe8; --color-fuchsia-300: #f9a8d4; --color-fuchsia-400: #f472b6; --color-fuchsia-500: #ec4899; --color-fuchsia-600: #db2777; --color-fuchsia-700: #be185d; --color-fuchsia-800: #9d174d; --color-fuchsia-900: #831843; --color-fuchsia-950: #500724;
+  --color-aqua-50: #fdf2f8; --color-aqua-100: #fce7f3; --color-aqua-200: #fbcfe8; --color-aqua-300: #f9a8d4; --color-aqua-400: #f472b6; --color-aqua-500: #ec4899; --color-aqua-600: #db2777; --color-aqua-700: #be185d; --color-aqua-800: #9d174d; --color-aqua-900: #831843; --color-aqua-950: #500724;
+  --tint: #db2777; --tint-rgb: 219 39 119; --tint-text: #be185d; --ins-hot: #db2777;
+  --cta: #db2777; --cta-ink: #ffffff; --cta-hover: #be185d;
+  --badge-blue-bg: #fdf2f8; --badge-blue-color: #be185d;
+}
+:root[data-app="trace"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="trace"]:not([data-accent]).dark {
+  --color-indigo-50: #fdf2f8; --color-indigo-100: #fce7f3; --color-indigo-200: #fbcfe8; --color-indigo-300: #f9a8d4; --color-indigo-400: #f472b6; --color-indigo-500: #ec4899; --color-indigo-600: #db2777; --color-indigo-700: #be185d; --color-indigo-800: #9d174d; --color-indigo-900: #831843; --color-indigo-950: #500724;
+  --color-violet-50: #fdf2f8; --color-violet-100: #fce7f3; --color-violet-200: #fbcfe8; --color-violet-300: #f9a8d4; --color-violet-400: #f472b6; --color-violet-500: #ec4899; --color-violet-600: #db2777; --color-violet-700: #be185d; --color-violet-800: #9d174d; --color-violet-900: #831843; --color-violet-950: #500724;
+  --color-purple-50: #fdf2f8; --color-purple-100: #fce7f3; --color-purple-200: #fbcfe8; --color-purple-300: #f9a8d4; --color-purple-400: #f472b6; --color-purple-500: #ec4899; --color-purple-600: #db2777; --color-purple-700: #be185d; --color-purple-800: #9d174d; --color-purple-900: #831843; --color-purple-950: #500724;
+  --color-pink-50: #fdf2f8; --color-pink-100: #fce7f3; --color-pink-200: #fbcfe8; --color-pink-300: #f9a8d4; --color-pink-400: #f472b6; --color-pink-500: #ec4899; --color-pink-600: #db2777; --color-pink-700: #be185d; --color-pink-800: #9d174d; --color-pink-900: #831843; --color-pink-950: #500724;
+  --color-fuchsia-50: #fdf2f8; --color-fuchsia-100: #fce7f3; --color-fuchsia-200: #fbcfe8; --color-fuchsia-300: #f9a8d4; --color-fuchsia-400: #f472b6; --color-fuchsia-500: #ec4899; --color-fuchsia-600: #db2777; --color-fuchsia-700: #be185d; --color-fuchsia-800: #9d174d; --color-fuchsia-900: #831843; --color-fuchsia-950: #500724;
+  --color-aqua-50: #fdf2f8; --color-aqua-100: #fce7f3; --color-aqua-200: #fbcfe8; --color-aqua-300: #f9a8d4; --color-aqua-400: #f472b6; --color-aqua-500: #ec4899; --color-aqua-600: #db2777; --color-aqua-700: #be185d; --color-aqua-800: #9d174d; --color-aqua-900: #831843; --color-aqua-950: #500724;
+  --tint: #f472b6; --tint-rgb: 244 114 182; --tint-text: #f9a8d4; --ins-hot: #f472b6;
+  --cta: #f472b6; --cta-ink: #0b0c0d; --cta-hover: #f9a8d4;
+  --badge-blue-bg: rgba(244, 114, 182, 0.14); --badge-blue-color: #f9a8d4;
+  --card-hover-border: rgba(244, 114, 182, 0.28);
+}
+:root[data-app="relief"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fff7ed; --color-indigo-100: #ffedd5; --color-indigo-200: #fed7aa; --color-indigo-300: #fdba74; --color-indigo-400: #fb923c; --color-indigo-500: #ea580c; --color-indigo-600: #c2410c; --color-indigo-700: #9a3412; --color-indigo-800: #7c2d12; --color-indigo-900: #431407; --color-indigo-950: #431407;
+  --color-violet-50: #fff7ed; --color-violet-100: #ffedd5; --color-violet-200: #fed7aa; --color-violet-300: #fdba74; --color-violet-400: #fb923c; --color-violet-500: #ea580c; --color-violet-600: #c2410c; --color-violet-700: #9a3412; --color-violet-800: #7c2d12; --color-violet-900: #431407; --color-violet-950: #431407;
+  --color-purple-50: #fff7ed; --color-purple-100: #ffedd5; --color-purple-200: #fed7aa; --color-purple-300: #fdba74; --color-purple-400: #fb923c; --color-purple-500: #ea580c; --color-purple-600: #c2410c; --color-purple-700: #9a3412; --color-purple-800: #7c2d12; --color-purple-900: #431407; --color-purple-950: #431407;
+  --color-pink-50: #fff7ed; --color-pink-100: #ffedd5; --color-pink-200: #fed7aa; --color-pink-300: #fdba74; --color-pink-400: #fb923c; --color-pink-500: #ea580c; --color-pink-600: #c2410c; --color-pink-700: #9a3412; --color-pink-800: #7c2d12; --color-pink-900: #431407; --color-pink-950: #431407;
+  --color-fuchsia-50: #fff7ed; --color-fuchsia-100: #ffedd5; --color-fuchsia-200: #fed7aa; --color-fuchsia-300: #fdba74; --color-fuchsia-400: #fb923c; --color-fuchsia-500: #ea580c; --color-fuchsia-600: #c2410c; --color-fuchsia-700: #9a3412; --color-fuchsia-800: #7c2d12; --color-fuchsia-900: #431407; --color-fuchsia-950: #431407;
+  --color-aqua-50: #fff7ed; --color-aqua-100: #ffedd5; --color-aqua-200: #fed7aa; --color-aqua-300: #fdba74; --color-aqua-400: #fb923c; --color-aqua-500: #ea580c; --color-aqua-600: #c2410c; --color-aqua-700: #9a3412; --color-aqua-800: #7c2d12; --color-aqua-900: #431407; --color-aqua-950: #431407;
+  --tint: #c2410c; --tint-rgb: 194 65 12; --tint-text: #9a3412; --ins-hot: #c2410c;
+  --cta: #c2410c; --cta-ink: #ffffff; --cta-hover: #9a3412;
+  --badge-blue-bg: #fff7ed; --badge-blue-color: #9a3412;
+}
+:root[data-app="relief"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="relief"]:not([data-accent]).dark {
+  --color-indigo-50: #fff7ed; --color-indigo-100: #ffedd5; --color-indigo-200: #fed7aa; --color-indigo-300: #fdba74; --color-indigo-400: #fb923c; --color-indigo-500: #f97316; --color-indigo-600: #ea580c; --color-indigo-700: #c2410c; --color-indigo-800: #9a3412; --color-indigo-900: #7c2d12; --color-indigo-950: #431407;
+  --color-violet-50: #fff7ed; --color-violet-100: #ffedd5; --color-violet-200: #fed7aa; --color-violet-300: #fdba74; --color-violet-400: #fb923c; --color-violet-500: #f97316; --color-violet-600: #ea580c; --color-violet-700: #c2410c; --color-violet-800: #9a3412; --color-violet-900: #7c2d12; --color-violet-950: #431407;
+  --color-purple-50: #fff7ed; --color-purple-100: #ffedd5; --color-purple-200: #fed7aa; --color-purple-300: #fdba74; --color-purple-400: #fb923c; --color-purple-500: #f97316; --color-purple-600: #ea580c; --color-purple-700: #c2410c; --color-purple-800: #9a3412; --color-purple-900: #7c2d12; --color-purple-950: #431407;
+  --color-pink-50: #fff7ed; --color-pink-100: #ffedd5; --color-pink-200: #fed7aa; --color-pink-300: #fdba74; --color-pink-400: #fb923c; --color-pink-500: #f97316; --color-pink-600: #ea580c; --color-pink-700: #c2410c; --color-pink-800: #9a3412; --color-pink-900: #7c2d12; --color-pink-950: #431407;
+  --color-fuchsia-50: #fff7ed; --color-fuchsia-100: #ffedd5; --color-fuchsia-200: #fed7aa; --color-fuchsia-300: #fdba74; --color-fuchsia-400: #fb923c; --color-fuchsia-500: #f97316; --color-fuchsia-600: #ea580c; --color-fuchsia-700: #c2410c; --color-fuchsia-800: #9a3412; --color-fuchsia-900: #7c2d12; --color-fuchsia-950: #431407;
+  --color-aqua-50: #fff7ed; --color-aqua-100: #ffedd5; --color-aqua-200: #fed7aa; --color-aqua-300: #fdba74; --color-aqua-400: #fb923c; --color-aqua-500: #f97316; --color-aqua-600: #ea580c; --color-aqua-700: #c2410c; --color-aqua-800: #9a3412; --color-aqua-900: #7c2d12; --color-aqua-950: #431407;
+  --tint: #fb923c; --tint-rgb: 251 146 60; --tint-text: #fdba74; --ins-hot: #fb923c;
+  --cta: #fb923c; --cta-ink: #0b0c0d; --cta-hover: #fdba74;
+  --badge-blue-bg: rgba(251, 146, 60, 0.14); --badge-blue-color: #fdba74;
+  --card-hover-border: rgba(251, 146, 60, 0.28);
+}
+:root[data-app="green"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #059669; --color-indigo-600: #047857; --color-indigo-700: #065f46; --color-indigo-800: #064e3b; --color-indigo-900: #022c22; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #059669; --color-violet-600: #047857; --color-violet-700: #065f46; --color-violet-800: #064e3b; --color-violet-900: #022c22; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #059669; --color-purple-600: #047857; --color-purple-700: #065f46; --color-purple-800: #064e3b; --color-purple-900: #022c22; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #059669; --color-pink-600: #047857; --color-pink-700: #065f46; --color-pink-800: #064e3b; --color-pink-900: #022c22; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #059669; --color-fuchsia-600: #047857; --color-fuchsia-700: #065f46; --color-fuchsia-800: #064e3b; --color-fuchsia-900: #022c22; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #059669; --color-aqua-600: #047857; --color-aqua-700: #065f46; --color-aqua-800: #064e3b; --color-aqua-900: #022c22; --color-aqua-950: #022c22;
+  --tint: #047857; --tint-rgb: 4 120 87; --tint-text: #065f46; --ins-hot: #047857;
+  --cta: #047857; --cta-ink: #ffffff; --cta-hover: #065f46;
+  --badge-blue-bg: #ecfdf5; --badge-blue-color: #065f46;
+}
+:root[data-app="green"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="green"]:not([data-accent]).dark {
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #10b981; --color-indigo-600: #059669; --color-indigo-700: #047857; --color-indigo-800: #065f46; --color-indigo-900: #064e3b; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #10b981; --color-violet-600: #059669; --color-violet-700: #047857; --color-violet-800: #065f46; --color-violet-900: #064e3b; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #10b981; --color-purple-600: #059669; --color-purple-700: #047857; --color-purple-800: #065f46; --color-purple-900: #064e3b; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #10b981; --color-pink-600: #059669; --color-pink-700: #047857; --color-pink-800: #065f46; --color-pink-900: #064e3b; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #10b981; --color-fuchsia-600: #059669; --color-fuchsia-700: #047857; --color-fuchsia-800: #065f46; --color-fuchsia-900: #064e3b; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #10b981; --color-aqua-600: #059669; --color-aqua-700: #047857; --color-aqua-800: #065f46; --color-aqua-900: #064e3b; --color-aqua-950: #022c22;
+  --tint: #34d399; --tint-rgb: 52 211 153; --tint-text: #6ee7b7; --ins-hot: #34d399;
+  --cta: #34d399; --cta-ink: #0b0c0d; --cta-hover: #6ee7b7;
+  --badge-blue-bg: rgba(52, 211, 153, 0.14); --badge-blue-color: #6ee7b7;
+  --card-hover-border: rgba(52, 211, 153, 0.28);
+}
+:root[data-app="play"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
+  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
+  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
+  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
+  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
+  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
+  --tint: #c026d3; --tint-rgb: 192 38 211; --tint-text: #a21caf; --ins-hot: #c026d3;
+  --cta: #c026d3; --cta-ink: #ffffff; --cta-hover: #a21caf;
+  --badge-blue-bg: #fdf4ff; --badge-blue-color: #a21caf;
+}
+:root[data-app="play"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="play"]:not([data-accent]).dark {
+  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
+  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
+  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
+  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
+  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
+  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
+  --tint: #e879f9; --tint-rgb: 232 121 249; --tint-text: #f0abfc; --ins-hot: #e879f9;
+  --cta: #e879f9; --cta-ink: #0b0c0d; --cta-hover: #f0abfc;
+  --badge-blue-bg: rgba(232, 121, 249, 0.14); --badge-blue-color: #f0abfc;
+  --card-hover-border: rgba(232, 121, 249, 0.28);
+}
+/* The switch reads as one change: the main buttons ease into the new colour with the scene behind. */
+.mkt-cta, .btn-primary { transition: background-color 0.45s var(--ease-glide), color 0.45s var(--ease-glide), border-color 0.45s var(--ease-glide), box-shadow 0.45s var(--ease-glide), transform 0.16s var(--ease-glide), scale 0.16s var(--ease-glide); }
