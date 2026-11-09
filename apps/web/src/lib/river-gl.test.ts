@@ -41,8 +41,11 @@ describe('riverFibres', () => {
     expect(ranks[109]).toBeGreaterThan(0.97);
     // No tenth of the bundle is left empty.
     for (let k = 0; k < 10; k++) expect(ranks.some((r) => r >= k / 10 && r < (k + 1) / 10)).toBe(true);
-    // The lines keep the halo threshold above them, so they still glow.
-    expect(Array.from({ length: 30 }, (_, i) => f[i * 16 + 11]).filter((v) => v > 0.2).length).toBeGreaterThan(20);
+    // M128 (the template: many fine lines, a few bright): over a third of the lines glow (above the
+    // halo threshold), and every line is thin (the out-of-focus ones aside).
+    const lines = Array.from({ length: 30 }, (_, i) => f.subarray(i * 16, i * 16 + 16));
+    expect(lines.filter((l) => l[11] > 0.2).length).toBeGreaterThan(10);
+    expect(lines.filter((l) => l[10] === 0).every((l) => l[9] < 0.9)).toBe(true);
   });
 });
 

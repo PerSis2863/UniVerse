@@ -5164,3 +5164,47 @@ across the band, a line-direction field, the band's edges row by row and the col
   390 × 844, light mode, scrolled 1300 and 2600 px, and the arrival in frames.
 - **Left:** the river further down the page (the chain of bends) keeps the M125d shape; the recording only
   shows its first bend that way.
+
+
+## M128: the river as sharp as the template, measured on the template's own preview (the owner, 9 Nov 2026)
+
+The owner after M127: "still it doesn't look … as sharp as it should be … there are a lot of changes please
+look for that take your time and build it", then the source of the design: GetLayers' **Relay** template
+(getlayers.ai/templates?layer=relay, a premium template by Textura agency). Its prompt and source code are
+paid (the plan includes a commercial licence); only its public preview videos were used, as a picture to
+measure against (`storage.getlayers.ai/templates/relay-4ee0729d77-desktop.mp4`, 4320 × 3080, the hero at
+2210 × 1450 device pixels in the first frame, at rest). **Rule:** never copy or reverse-engineer its code
+(the owner asked; declined: it's GetLayers' paid work, not the owner's). If the owner buys the plan, its
+source can be used directly. A personal environment "UniVerse" was created to reach storage.getlayers.ai.
+
+How it was measured (renders at the template's geometry, 1440 × 945 at 1.535, aligned on the bend's knot):
+line cross-sections (core width and glow), line counts across both arms at three strengths, brightness in
+nine zones (knot, outside the bend, inside the C, both arms, top right, bottom, far left), pixel zooms.
+
+- **Why it looked soft:** (1) the canvas was capped at 2× and 4.2 M pixels, so an iPhone (3×) and big Mac
+  windows stretched it; now up to 3× and 7.5 M pixels (`resize`). (2) The quarter-size glow layer drew every
+  line at full strength with a 7 px blur: it carried more light than the line itself, every line a 8–10 px
+  smear. Now a 14 px blur at 2.2 (dark): a smooth light between the lines, which keeps them crisp. (3) A
+  width formula padded every line 40% wider; now the width has a floor of half a device pixel (`u_dpr`,
+  shared by both programs in `PATH`). (4) The halo round each line was nearly half the line's brightness and
+  the lines were bright enough for the tone map to flatten them, so the halo read as wide as the line: now
+  0.07 and the lines dimmer (0.9). (5) Lines further back were blurred (1.6 px per unit of depth): the
+  template's are all crisp; now only dimmer. Result: the template's line profile (0.70 at ±1 device px,
+  0.47 at ±2) against ours 0.84 / 0.55 (was 0.94 / 0.82 / 8–10 px).
+- **Lines:** 60 lines and 30 threads on computers (40 + 20 phones, 44 + 24 Reduce Motion): counts across the
+  arms now the template's (e.g. 36/29/15 against 39/30/14 at prominence 6/15/40). Most lines faint
+  (0.12 + 0.65 level²), 12% bright, widths 0.4–0.65 (bright 0.6–0.85, threads 0.35–0.55), the outer ranks
+  dimmer (`edge` 1 − 0.5c²), only 5% out-of-focus ones. Colours back to vivid lime, sky blue a touch softer.
+- **The bend:** a hot knot (strands +2.2 within 0.035 H, the core glow tighter and stronger) and its bloom
+  outside the bend too (`m * 0.26` at the knot), a glow just above the bend on the rising arm; the rising
+  arm's outer lines lean right a little sooner (near-bend reach 0.2 + 0.32 w²).
+- **Glitter:** 2000 specks (600 phones), 85% sharp pin-points (2.4–4.6 px, a tight core), clustered close
+  to the bends; a dot's kind is now explicit (`a_q.y`: 0 spark, 0.5 dust, 1 bokeh; it was guessed from the
+  size). 80 bokeh discs (24 phones) spread wider, as round the template's arms and top right.
+- **Further down the page:** the dashes no longer show in the wide glow layer (blurred across but not along,
+  each was a box with a hard end); out of focus is gentler (the lines stay clear).
+- **Tested:** `pnpm check`; `river-gl.test.ts` (updated: a third of the lines glow, all thin); renders at the
+  template's geometry, 1440 × 900 at 2×, 390 × 844 at 3×, light mode, scrolled 1300 and 2600; the real landing
+  page (local dev server) at 1440 × 900 2× and 390 × 844 3×.
+- **Left:** the hero layout is UniVerse's own, so the bend sits beside our words (0.345 of the width), not
+  the template's (0.31).
