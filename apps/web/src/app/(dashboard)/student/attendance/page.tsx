@@ -1,4 +1,5 @@
 "use client";
+import { CardHead } from '@/components/ui/CardMenu';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useState } from 'react';
@@ -86,8 +87,7 @@ export default function AttendancePage() {
 
         {/* Detailed List */}
         <div className="card">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="font-bold text-zinc-900 dark:text-white">Recent Classes</h2>
+          <CardHead title="Recent Classes" className="items-center mb-6">
             <select aria-label="Course"
               value={selectedCourse}
               onChange={(e) => setSelectedCourse(e.target.value)}
@@ -98,7 +98,7 @@ export default function AttendancePage() {
                 <option key={i} value={course}>{course}</option>
               ))}
             </select>
-          </div>
+          </CardHead>
 
           <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="Recent classes">
             <table className="w-full text-start border-collapse">

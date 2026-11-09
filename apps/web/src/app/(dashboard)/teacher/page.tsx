@@ -1,4 +1,5 @@
 'use client';
+import { CardHead } from '@/components/ui/CardMenu';
 import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
@@ -167,17 +168,13 @@ export default function TeacherDashboard() {
           charts: (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="card">
-                <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-indigo-500" /> {t('teacher.grade_distribution')}
-                </h2>
+                <CardHead icon={BarChart3} title={t('teacher.grade_distribution')} className="mb-5" />
                 <WhenVisible className="h-64" placeholder={chartSkeleton()}>
                   <GradeDistributionChart data={gradeDistributionData} />
                 </WhenVisible>
               </div>
               <div className="card">
-                <h2 className="font-bold text-zinc-900 dark:text-white mb-5 flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-emerald-500" /> {t('teacher.performance_trend')}
-                </h2>
+                <CardHead icon={TrendingUp} title={t('teacher.performance_trend')} className="mb-5" />
                 <WhenVisible className="h-64" placeholder={chartSkeleton()}>
                   <PerformanceTrendChart data={performanceTrendData} />
                 </WhenVisible>
@@ -187,10 +184,9 @@ export default function TeacherDashboard() {
           create: <CreateCard onNewCourse={() => setShowCourseModal(true)} />,
           recent: (
             <div className="card">
-              <div className="flex items-center justify-between mb-5">
-                <h2 className="font-bold text-zinc-900 dark:text-white">{t('teacher.recent_students')}</h2>
+              <CardHead title={t('teacher.recent_students')} className="items-center mb-5">
                 <button className="text-xs text-indigo-600 dark:text-indigo-400 hover:underline font-medium" onClick={() => router.push('/teacher/students')}>{t('dashboard.view_all')}</button>
-              </div>
+              </CardHead>
               <div className="space-y-3">
                 {recentStudents.map((s: RecentStudent, i: number) => (
                   <div key={i} className="flex items-center gap-3 p-3 rounded-xl hover:bg-zinc-50 dark:hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => router.push('/teacher/grades')}>

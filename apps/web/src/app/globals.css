@@ -2831,3 +2831,11 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 }
 #main table tbody tr { transition: background-color 0.15s ease; }
 @media (hover: hover) { #main table tbody tr:hover { background-color: var(--fill); } }
+
+/* ═══ M139 · A card shown full screen from its "···" menu (components/ui/CardMenu.tsx): the page's own
+   colour behind it, room around it, its own scroll; nothing that would move the menu panel opened in it. */
+:is([data-card], .panel, .card, .ins-board, section):fullscreen {
+  overflow: auto; padding: clamp(1rem, 4vw, 3rem); border-radius: 0; border: 0;
+  background-color: var(--background); transform: none; animation: none; filter: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}

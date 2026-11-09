@@ -5494,3 +5494,25 @@ A plan for the item that builds it (take the next M number):
   stutter, as in Play's worlds); free every geometry, texture and the context on a switch and on close.
 - **Tests:** `scripts/checks/app-backdrop-ui.mjs` (one canvas, the page's frames through each switch, axe)
   plus the fallback forced on; the deploy size alarm (M110).
+
+## M139: the cards' "···" menu (the owner, 9 Nov 2026: "please do this", the part M138 left out)
+
+The Ballast cards end their header with "···". `src/components/ui/CardMenu.tsx`:
+- **`CardMenu`** (the button and its menu, the shared `Menu`: a popover on computers, a sheet on
+  phones) works on the card it sits in (the nearest `[data-card]`, `.panel`, `.card`, `.ins-board` or
+  `section`), read when it's pressed or focused: **Full screen** (where the browser can; Exit full
+  screen inside it), **Copy** (the card's text), **Download as CSV** (only when the card has a table:
+  its column names and rows as shown, through `downloadCsv`, so cells starting with = + - @ are made
+  safe). A card can put its own actions first (`items`).
+- **`CardHead`**: the Ballast header in one piece: title (optional grey icon), the grey line, the card's
+  own controls (`children`), then "···". Use it for new cards.
+- **Where it is now:** the student's home (its panels, Up next, Daily goal, Your day), grades (3 cards),
+  attendance; the teacher's home (charts, Recent students, Needs attention, Create); the admin's home
+  (3 cards); every chart board (`InstrumentBoard`: console, insights, analytics, Trace, the wallet).
+  Other pages get it when they're next touched (swap the heading for `CardHead`).
+- **Shared change:** `Menu`'s panel opens inside the full-screen element when there is one (the rest of
+  the page is hidden then). The M139 block in `globals.css` styles a card in full screen.
+- **Trap:** the menu's items are built from state set on press, never from a ref while drawing (the
+  hooks lint).
+- **Tested:** `pnpm check`; `scripts/checks/card-menu-ui.mjs` (all three actions, Full screen's menu,
+  no CSV without a table, a sheet on phones, axe on five pages at 390 and 1280, light and dark).

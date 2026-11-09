@@ -81,7 +81,8 @@ export function Popover({ label, button, children, disabled, className, title, w
             </div>
           )}
         </AnimatePresence>,
-        document.body,
+        // M139: a card shown full screen hides the rest of the page, so the panel opens inside it.
+        document.fullscreenElement ?? document.body,
       )}
     </>
   );
