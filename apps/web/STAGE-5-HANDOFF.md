@@ -5342,3 +5342,38 @@ those are the next items (see "Next up" in AGENTS.md), not this one.
 - **Tested:** `pnpm check`; `scripts/checks/app-colours-ui.mjs` on the built Worker: the landing for each
   app and `/trace`, `/relief`, `/green`, `/play` signed in, dark and light: `data-app` right, the main
   button in the app's colour, axe clean (contrast included).
+
+## M133: realistic movement, and the landing's scroll in step (the owner, 9 Nov 2026)
+
+The owner asked for "realistic movement everywhere: spring, momentum and depth across the site, plus
+smoothing … scrolling the main page, and switching apps or pages" (the 3D backgrounds are the next item).
+
+- **Springs, run by the compositor:** two real spring curves as CSS `linear()` (generated from a damped
+  spring: press damping 0.55, 12 % give; glide damping 0.8, 1.5 %): `--spring-press` and `--spring-glide`
+  in the M133 block at the end of `globals.css`, `SPRING_GLIDE` / `springGlide()` in `page-transition.ts`
+  (falls back to the old glide where `linear()` is missing). Buttons go down at once and spring back;
+  cards lift and settle; the page's entrance and its parts settle on the spring.
+- **Depth on page changes:** the page you leave sinks back a little (scale 0.985 with its slide), the new
+  one comes forward out of a little depth.
+- **The landing's reveals** (`Reveal` in `bits.tsx`) animate one `transform` string on a framer spring
+  (bounce 0.16): compositor-run, so they don't stutter while the page scrolls.
+- **Momentum:** the landing's globe (and Trace's Live globe) keeps turning when thrown and slows down
+  (`turnBy` / `letGo` in `planet-paint.ts`, shared by the page and the background thread); let go after
+  holding still and it stays.
+- **Scrolling the landing:** the parts that follow the scroll (`.scrub`), the reading-progress line and the
+  hero picture's drift were framer scroll listeners and springs on the page's thread (they lagged when it
+  was busy); now CSS scroll-driven animations (`animation-timeline: view()` / `scroll(root)`), in step with
+  the scroll itself. Without scroll timelines (Firefox today) they stand still and the line is hidden.
+- **The colour on a switch (M132's cost):** a new `data-app` restyles the whole page (about 35 ms), so
+  `AppBackdrop` now applies it when the page is idle after a switch (the buttons still ease into it with
+  the scene), and a head script (`appHeadScript` in `apps.ts`, the same rules as `appFor` and
+  `useChosenApp`) sets the first one before the first paint: no flash of the wrong colour.
+- **Measured on the built Worker:** scrolling the whole landing, 1 of 223 frames over 34 ms (worst 50);
+  the landing's app switches 50 ms after the first visit to each app (the first two 100 ms: those apps'
+  sections mounting); the app's page switches 50–67 ms.
+- **Rules:** motion tied to the scroll: a CSS scroll timeline, never a scroll listener. An arrival that
+  must settle: `--spring-glide` (CSS) or `springGlide()` (WAAPI). Keep the two curves in sync.
+- **Tested:** `pnpm check` (`planet-paint.test.ts`: thrown, it carries on and slows; held still, it
+  stops); on the built Worker `scripts/checks/motion-pass-ui.mjs` (now also the landing's scroll timed,
+  its scroll-tied parts on scroll timelines, and the app's page switches timed), `world-globe-ui`,
+  `app-colours-ui` and `app-backdrop-ui` (axe in dark and light).

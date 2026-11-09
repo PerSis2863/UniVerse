@@ -7,7 +7,7 @@ import { reducedMotion } from '@/lib/page-transition';
 import { usePinchWheel } from '@/lib/use-pinch-wheel';
 import { cn } from '@/lib/utils';
 import { useLiveCanvas, type Frame } from './canvas';
-import { MASK, drawPlanet, landLookup, nearestPlace, planetLinks, planetPoints, planetState, type Place } from './planet-paint';
+import { MASK, drawPlanet, landLookup, letGo, nearestPlace, turnBy, planetLinks, planetPoints, planetState, type Place } from './planet-paint';
 
 export type { Place } from './planet-paint';
 
@@ -153,13 +153,13 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, turnable =
       wk.postMessage({ t: 'drag', dx, dy, mouse: e.pointerType === 'mouse' });
     };
     const press = (e: PointerEvent) => { if (turnable) down = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; };
-    const release = (e: PointerEvent) => { if (down && down.moved < 4) wk.postMessage({ t: 'pick', ...at(e) }); down = null; };
+    const release = (e: PointerEvent) => { if (down && down.moved < 4) wk.postMessage({ t: 'pick', ...at(e) }); else if (down) wk.postMessage({ t: 'release' }); down = null; };
     const leave = () => wk.postMessage({ t: 'leave' });
     document.addEventListener('visibilitychange', onVisible);
     cv.addEventListener('pointermove', move);
     cv.addEventListener('pointerdown', press);
     cv.addEventListener('pointerup', release);
-    cv.addEventListener('pointercancel', () => { down = null; });
+    cv.addEventListener('pointercancel', () => { if (down) wk.postMessage({ t: 'release' }); down = null; });
     cv.addEventListener('pointerleave', leave);
     return () => {
       live = false;
@@ -210,16 +210,14 @@ function PagePlanet({ places, arcs, label, className, pings = true, interactive 
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       d.moved += Math.abs(dx) + Math.abs(dy); d.x = e.clientX; d.y = e.clientY;
       if (d.moved < 4) return;
-      if (!s.drag) e.currentTarget.setPointerCapture(e.pointerId);
+      if (!s.held) e.currentTarget.setPointerCapture(e.pointerId);
       // A finger turns it sideways only (the page still scrolls up and down); a mouse both ways.
-      const k = 1 / Math.max(80, s.r * s.zoom);
-      s.drag = true; s.cy -= dx * k;
-      if (e.pointerType === 'mouse') s.cp = Math.max(-1.2, Math.min(1.2, s.cp + dy * k));
-      s.idleAt = s.lastT + 5;
+      turnBy(s, dx, dy, e.pointerType === 'mouse', performance.now());
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
       const d = down.current, s = st.current;
       down.current = null;
+      if (d && d.moved >= 4) letGo(s, performance.now());
       if (!d || d.moved >= 4 || !onPick) { setWake((n) => n + 1); return; }
       const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
       const pick = nearestPlace(s.xy, x, y);

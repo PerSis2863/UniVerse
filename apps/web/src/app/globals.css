@@ -2755,5 +2755,34 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: rgba(232, 121, 249, 0.14); --badge-blue-color: #f0abfc;
   --card-hover-border: rgba(232, 121, 249, 0.28);
 }
-/* The switch reads as one change: the main buttons ease into the new colour with the scene behind. */
-.mkt-cta, .btn-primary { transition: background-color 0.45s var(--ease-glide), color 0.45s var(--ease-glide), border-color 0.45s var(--ease-glide), box-shadow 0.45s var(--ease-glide), transform 0.16s var(--ease-glide), scale 0.16s var(--ease-glide); }
+
+
+/* ═══ M133 · Realistic movement (the owner, 9 Nov 2026: "spring, momentum and depth across the site";
+   smooth scrolling on the landing). Springs as CSS `linear()` curves (the compositor runs them): press
+   damping 0.55 (12% give: a key that springs back), glide damping 0.8 (1.5%: settles). The same glide
+   curve is SPRING_GLIDE in page-transition.ts. Where a browser lacks `linear()` it ignores the value
+   and keeps the previous easing. */
+:root {
+  --spring-press: linear(0, 0.0531, 0.1839, 0.3545, 0.5353, 0.7049, 0.85, 0.9638, 1.045, 1.0959, 1.121, 1.126, 1.1168, 1.0989, 1.0768, 1.0541, 1.0332, 1.0157, 1.0021, 0.9927, 0.987, 0.9844, 0.9842, 0.9856, 0.9881, 0.9909, 0.9937, 0.9963, 0.9984, 1, 1.0011, 1.0017, 1.002, 1.002, 1.0018, 1.0014, 1);
+  --spring-glide: linear(0, 0.0252, 0.0887, 0.1752, 0.2733, 0.3746, 0.4734, 0.5657, 0.6492, 0.7228, 0.7861, 0.8394, 0.8833, 0.9188, 0.9468, 0.9685, 0.9847, 0.9965, 1.0047, 1.0101, 1.0133, 1.0148, 1.0152, 1.0147, 1.0136, 1.0123, 1.0108, 1.0093, 1.0078, 1.0064, 1.0051, 1.0041, 1.0031, 1.0023, 1.0017, 1.0012, 1);
+}
+/* Pressed: down at once, back up with a little give; a new app's colour eases in with its scene (M132). */
+.mkt-cta, .btn-primary { transition: background-color 0.45s var(--ease-glide), color 0.45s var(--ease-glide), border-color 0.45s var(--ease-glide), box-shadow 0.45s var(--ease-glide), transform 0.5s var(--spring-press), scale 0.5s var(--spring-press); }
+.btn-secondary, .btn-ghost, .btn-danger { transition-property: transform, scale, background-color, color, border-color, box-shadow; transition-duration: 0.5s, 0.5s, 0.2s, 0.2s, 0.2s, 0.2s; transition-timing-function: var(--spring-press), var(--spring-press), ease, ease, ease, ease; }
+/* Cards lift and settle on a spring under the pointer. */
+a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-duration: 0.45s; transition-timing-function: var(--spring-glide); }
+
+/* Scroll-tied motion run by the compositor in step with the scroll itself (it ran on the page's thread
+   and lagged whenever the page was busy): the landing's sections that follow the scroll (.scrub, bits.tsx),
+   its reading-progress line and the hero picture's slower drift. Without scroll timelines: standing still. */
+@keyframes scrub-rise { from { opacity: 0; transform: translate3d(0, var(--scrub-y, 70px), 0); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes scroll-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hero-drift { to { transform: translate3d(0, -90px, 0); } }
+.scroll-progress { transform-origin: 0 50%; display: none; }
+@supports (animation-timeline: scroll()) {
+  .scroll-progress { display: block; animation: scroll-progress linear both; animation-timeline: scroll(root); }
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) .scrub { animation: scrub-rise linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+    html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
+  }
+}

@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { usePendingNav } from '@/lib/nav-pending';
-import { EASE_GLIDE, EASE_IOS, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts, calmFrames, lightFrames, sweepTitle } from '@/lib/page-transition';
+import { EASE_GLIDE, EASE_IOS, springGlide, LEAVE_MS, REVEAL_GAP_MS, REVEAL_MS, enterFrames, enterMs, isTall, leaveFrames, movingParts, pageEntranceShown, pageMotion, reducedMotion, revealFrames, revealParts, calmFrames, lightFrames, sweepTitle } from '@/lib/page-transition';
 import { PageSkeleton, skeletonFor } from './PageSkeleton';
 import { ZOOM_MS, takeOrigin, zoomFrames } from '@/lib/tap-motion';
 
@@ -118,12 +118,12 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
       return;
     }
     if (m === 'push' || m === 'pop' || m === 'shared' || reducedMotion()) {
-      animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: EASE_GLIDE });
+      animate(running, targets(m), enterFrames(m), { duration: enterMs(m), easing: springGlide() });
       return;
     }
     for (const a of running.current) a.cancel();
     running.current = revealParts(page(), m).filter((t) => typeof (t as HTMLElement).animate === 'function')
-      .map((t, i) => t.animate(lightFrames(revealFrames(i, isTall(t))), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: EASE_GLIDE, fill: 'backwards' }));
+      .map((t, i) => t.animate(lightFrames(revealFrames(i, isTall(t))), { duration: REVEAL_MS, delay: Math.min(i, 8) * REVEAL_GAP_MS, easing: springGlide(), fill: 'backwards' }));
     // The page's title sweeps in (not between tabs: the title stays put there).
     if (m !== 'tab') sweepTitle(page());
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps

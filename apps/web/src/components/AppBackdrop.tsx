@@ -44,8 +44,21 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
   // The background thread said no (no 2D drawing there): draw on the page instead.
   const [onPage, setOnPage] = useState(false);
 
-  // M132: the page's app also colours the page (globals.css html[data-app]: buttons, chosen things).
-  useEffect(() => { current.current = app; drive.current?.app(app); document.documentElement.dataset.app = app; }, [app]);
+  useEffect(() => {
+    current.current = app;
+    drive.current?.app(app);
+    // M132: the page's app also colours the page (globals.css html[data-app]: buttons, chosen things).
+    // M133: a new colour restyles the whole page (about 35 ms), so on a switch it follows when the page
+    // is idle, not in the switch's own frame (the buttons then ease into it with the scene). The head
+    // script (appHeadScript) set the first one before the first paint.
+    const d = document.documentElement;
+    if (d.dataset.app === app) return;
+    if (!d.dataset.app) { d.dataset.app = app; return; }
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    const set = () => { d.dataset.app = app; };
+    const id = w.requestIdleCallback ? w.requestIdleCallback(set, { timeout: 300 }) : window.setTimeout(set, 120);
+    return () => { if (w.cancelIdleCallback) w.cancelIdleCallback(id); else window.clearTimeout(id); };
+  }, [app]);
 
   useEffect(() => {
     const box = host.current;

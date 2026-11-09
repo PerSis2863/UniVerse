@@ -3,12 +3,13 @@
 // at (the hub's, the landing's) hand their canvas here, the page says what changed (size, places,
 // land, pointer, on screen or not) and every frame is drawn here with the page's own code
 // (planet-paint.ts), so thousands of dots a frame never take time from taps, typing or scrolling.
-import { drawPlanet, landLookup, nearestPlace, planetLinks, planetPoints, planetState, type Place, type PlanetProps } from './planet-paint';
+import { drawPlanet, landLookup, letGo, nearestPlace, turnBy, planetLinks, planetPoints, planetState, type Place, type PlanetProps } from './planet-paint';
 
 type Msg =
   | { t: 'init'; canvas: OffscreenCanvas; still: boolean; gap: number; pings: boolean; places: Place[]; arcs?: [number, number][]; bits: Uint8Array | null; font: string; turnable?: boolean }
   // M131: the landing's globe, turned by hand: a drag, a zoom, a place to face, the chosen, a click.
   | { t: 'drag'; dx: number; dy: number; mouse: boolean }
+  | { t: 'release' }
   | { t: 'zoom'; by: number }
   | { t: 'focus'; focus: { lat: number; lon: number } | null }
   | { t: 'selected'; selected: number[] }
@@ -82,15 +83,8 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
     case 'leave': pointer = null; if (still) kick(); break;
     case 'seen': seen = m.seen; if (seen) kick(); break;
     case 'hidden': hidden = m.hidden; if (!hidden) kick(); break;
-    case 'drag': {
-      // As on the page (Planet.tsx): a finger turns it sideways only, a mouse both ways.
-      const k = 1 / Math.max(80, s.r * s.zoom);
-      s.drag = true; s.cy -= m.dx * k;
-      if (m.mouse) s.cp = Math.max(-1.2, Math.min(1.2, s.cp + m.dy * k));
-      s.idleAt = s.lastT + 5;
-      kick();
-      break;
-    }
+    case 'drag': turnBy(s, m.dx, m.dy, m.mouse, performance.now()); kick(); break;
+    case 'release': letGo(s, performance.now()); kick(); break;
     case 'zoom': s.tz = Math.max(1, Math.min(2.6, s.tz * m.by)); kick(); break;
     case 'focus': props.focus = m.focus; kick(); break;
     case 'selected': props.selected = m.selected; kick(); break;

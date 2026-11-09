@@ -151,9 +151,21 @@ export interface PaintFrame { ctx: Ctx2D; w: number; h: number; t: number; point
 /** What a planet remembers between frames (its lattice, camera, the turn by hand…). */
 export const planetState = () => ({
   model: null as Model | null, land: null as unknown, landAt: 0, body: null as ReturnType<typeof bodySprite> | null, r: 0, yaw: 0, pitch: 0, widths: new Map<string, number>(),
-  cy: -0.6, cp: 0.38, drag: false, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null as unknown,
+  cy: -0.6, cp: 0.38, drag: false, held: false, vy: 0, dragAt: 0, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null as unknown,
 });
 export type PlanetState = ReturnType<typeof planetState>;
+
+/** M133: a turn by hand (a drag of dx, dy px at `ms`): a finger turns it sideways only, a mouse both
+ *  ways; its speed is kept for the throw. */
+export function turnBy(s: PlanetState, dx: number, dy: number, mouse: boolean, ms: number) {
+  const k = 1 / Math.max(80, s.r * s.zoom), dt = Math.max(8, ms - s.dragAt) / 1000;
+  s.drag = true; s.held = true; s.cy -= dx * k;
+  if (mouse) s.cp = Math.max(-1.2, Math.min(1.2, s.cp + dy * k));
+  s.vy = Math.max(-6, Math.min(6, s.vy * 0.4 + ((-dx * k) / dt) * 0.6));
+  s.dragAt = ms; s.idleAt = s.lastT + 5;
+}
+/** Let go: it carries on at the speed it was thrown (none if the hand had stopped) and slows down. */
+export function letGo(s: PlanetState, ms: number) { s.held = false; if (ms - s.dragAt > 80) s.vy = 0; }
 
 /** The place drawn nearest (x, y), within `max` px, or -1 (a click on the globe). */
 export function nearestPlace(xy: Float32Array, x: number, y: number, max = 18) {
@@ -187,6 +199,8 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
       const d = ((((ty - s.cy) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
       s.cy += d * ease; s.cp += (tp - s.cp) * ease;
     } else if (!s.drag && !still && t > s.idleAt) s.cy += dt * 0.05;
+    // Momentum: thrown, it keeps turning and slows down (half a second to lose most of its speed).
+    if (!s.held && Math.abs(s.vy) > 0.002 && !still) { s.cy += s.vy * dt; s.vy *= Math.exp(-dt / 0.5); }
   }
   const r = R * (0.9 + 0.1 * grow) * (steer ? s.zoom : 1);
   const landIn = still ? 1 : easeOut((t - s.landAt) / 0.9);
