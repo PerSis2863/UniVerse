@@ -24,6 +24,29 @@ describe('riverFibres', () => {
     // Neighbours keep apart: no two of them pile on the same spot.
     expect(spread.slice(1).filter((x, i) => x - spread[i] < 1e-4)).toHaveLength(0);
   });
+  it('adds the fine threads after the lines: faint (no halo), thin, and spread across the whole bundle', () => {
+    const f = riverFibres(30, 110);
+    expect(f).toHaveLength(140 * 16);
+    expect(f.every(Number.isFinite)).toBe(true);
+    const ranks: number[] = [];
+    for (let i = 30; i < 140; i++) {
+      const o = i * 16;
+      expect(f[o + 11]).toBeLessThan(0.2); // the shader draws these without a halo
+      expect(f[o + 9]).toBeLessThan(0.8);
+      expect(f[o + 10]).toBe(0);
+      ranks.push(f[o + 8]);
+    }
+    ranks.sort((a, b) => a - b);
+    expect(ranks[0]).toBeLessThan(0.03);
+    expect(ranks[109]).toBeGreaterThan(0.97);
+    // No tenth of the bundle is left empty.
+    for (let k = 0; k < 10; k++) expect(ranks.some((r) => r >= k / 10 && r < (k + 1) / 10)).toBe(true);
+    // M128 (the template: many fine lines, a few bright): over a third of the lines glow (above the
+    // halo threshold), and every line is thin (the out-of-focus ones aside).
+    const lines = Array.from({ length: 30 }, (_, i) => f.subarray(i * 16, i * 16 + 16));
+    expect(lines.filter((l) => l[11] > 0.2).length).toBeGreaterThan(10);
+    expect(lines.filter((l) => l[10] === 0).every((l) => l[9] < 0.9)).toBe(true);
+  });
 });
 
 describe('riverFocus', () => {

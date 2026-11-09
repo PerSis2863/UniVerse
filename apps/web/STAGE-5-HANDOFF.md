@@ -5114,3 +5114,97 @@ little shrink" (the M124 bend was a narrow point; the recording's is a full, rou
   read it returned errors unrelated to the river.
 - **Left:** a WebGL context restore; the 2D fallback keeps the M124 shape.
 
+
+## M126: the river's sky-blue fibres, as in the recording (the owner, 8 Nov 2026)
+
+The owner after M125: "not everything is perfect … see that and fix it". Compared at the recording's own
+size (1766 × 1222) and in close crops, the shape, bend, glow, glitter and the light and phone versions
+matched; the one clear difference was colour: the recording's river has distinct sky-blue fibres (and
+blue specks) among the lime, mostly towards the top right, where ours showed pale grey-green ones.
+`river-gl.ts`: the blue fibres (colours 6–8) are now a saturated sky blue (#5cb2ea, #4a9fe0, #7ec6f2),
+a little more common (20–45% by rank instead of 12–42%) and brighter (+0.3), and the blue bokeh matches.
+**Tested:** `river-gl.test.ts`, eslint, `tsc`; the landing compared with the recording's frame.
+
+
+## M127: the river's detail and exact shape, fitted to the recording pixel by pixel (the owner, 8 Nov 2026)
+
+The owner after M126: "the river lines still doesn't match properly with the video so match it exactly the
+way it looks and it needs to be detailing". Rendered `river-gl.ts` at the recording's own size (1766 × 1222,
+headless Chromium with SwiftShader) and compared with its frames (the hero at 3.1 s) by brightness profiles
+across the band, a line-direction field, the band's edges row by row and the colours at each brightness.
+
+- **Detail:** across the lower arm the recording has about 22 clear strands on a glowing base (many fine
+  threads too faint to separate); ours had 12 and no base. `riverFibres(n, hairs)` now adds fine, faint
+  threads after the clear lines (110 on computers, 44 on phones, 60 with Reduce Motion): width 0.45–0.75,
+  brightness 0.07–0.19, ranks almost even across the bundle. The clear lines are less bunched (power 1.3),
+  thinner (0.5–0.9), a few more bright ones, and dimmed less at the bundle's edges. **Rule:** a fibre with
+  brightness under 0.2 gets no halo in the sharp pass (its strip stays a few pixels wide), which keeps the
+  extra threads cheap; keep the threads under that line.
+- **Smooth arcs:** the recording's lines never wave. Sway is 3–9 px over 520–1080 px (was 6–24 over
+  130–450), and each fibre's bow is one arc across the arm (`f3.w` 0.3–0.55 of S, so `1 − cos` stays below
+  π), not a wave along it.
+- **The top arm runs on as diagonals:** above the swing the recording's lines lie at about 30° into the top
+  right corner; ours went upright again. `topArm`: a smaller step ((0.35 + 0.5 t) S at 0.4 H, width 0.04 H)
+  plus `run`, a soft ramp of slope 1.6 (scaled by S, so phones don't lose the arm off the right edge) from
+  0.5 H, both easing with the scroll as before. Fitted to the recording's left edge row by row (mean error
+  8 px). The innermost quarter now rise about 80 px before turning sideways (`sw` is a softplus that is 0 at
+  the bend: a non-zero value there put a notch in the tip), so the C is hollow and round as in the recording.
+- **The lower fan is wider:** near the bend `bendArm` reaches 0.25 + 0.67 w² over 0.23 − 0.08 w (inner lines
+  leave almost flat, outer ones drop steeply), fitted by drawing the model's curves over the frame; the far
+  values (0.34 + 0.6 t) are unchanged, so the chain to the next bends is as before (checked on a
+  three-screen plot). **Trap:** a narrower band at the tip (0.03 S) looked closer in a zoom but made the bend
+  pointed at full size; the M125d width (0.05 S) stays.
+- **Light and colour:** the lime is paler (blue raised about 35 in each lime), the river brighter below its
+  first bend than above it, blue fibres lime inside the bright band and turning blue as the fan spreads (above
+  the first bend only in the top right), the bend's glow centred a little inside the C and less saturated,
+  more haze top right. Glitter: 1300 specks (420 on phones), most of them soft dust (3.5–7.5 px, a flatter
+  profile, kind 0.5 in the dot shader) close to the bends inside the band, 14% sharp sparks; bokeh softer.
+- **Tested:** `pnpm check` (all passed); `river-gl.test.ts` (a new test for the threads); renders compared
+  with the recording at 1766 × 1222 (bend, both arms, top right, colours, brightness levels), 1280 × 800,
+  390 × 844, light mode, scrolled 1300 and 2600 px, and the arrival in frames.
+- **Left:** the river further down the page (the chain of bends) keeps the M125d shape; the recording only
+  shows its first bend that way.
+
+
+## M128: the river as sharp as the template, measured on the template's own preview (the owner, 9 Nov 2026)
+
+The owner after M127: "still it doesn't look … as sharp as it should be … there are a lot of changes please
+look for that take your time and build it", then the source of the design: GetLayers' **Relay** template
+(getlayers.ai/templates?layer=relay, a premium template by Textura agency). Its prompt and source code are
+paid (the plan includes a commercial licence); only its public preview videos were used, as a picture to
+measure against (`storage.getlayers.ai/templates/relay-4ee0729d77-desktop.mp4`, 4320 × 3080, the hero at
+2210 × 1450 device pixels in the first frame, at rest). **Rule:** never copy or reverse-engineer its code
+(the owner asked; declined: it's GetLayers' paid work, not the owner's). If the owner buys the plan, its
+source can be used directly. A personal environment "UniVerse" was created to reach storage.getlayers.ai.
+
+How it was measured (renders at the template's geometry, 1440 × 945 at 1.535, aligned on the bend's knot):
+line cross-sections (core width and glow), line counts across both arms at three strengths, brightness in
+nine zones (knot, outside the bend, inside the C, both arms, top right, bottom, far left), pixel zooms.
+
+- **Why it looked soft:** (1) the canvas was capped at 2× and 4.2 M pixels, so an iPhone (3×) and big Mac
+  windows stretched it; now up to 3× and 7.5 M pixels (`resize`). (2) The quarter-size glow layer drew every
+  line at full strength with a 7 px blur: it carried more light than the line itself, every line a 8–10 px
+  smear. Now a 14 px blur at 2.2 (dark): a smooth light between the lines, which keeps them crisp. (3) A
+  width formula padded every line 40% wider; now the width has a floor of half a device pixel (`u_dpr`,
+  shared by both programs in `PATH`). (4) The halo round each line was nearly half the line's brightness and
+  the lines were bright enough for the tone map to flatten them, so the halo read as wide as the line: now
+  0.07 and the lines dimmer (0.9). (5) Lines further back were blurred (1.6 px per unit of depth): the
+  template's are all crisp; now only dimmer. Result: the template's line profile (0.70 at ±1 device px,
+  0.47 at ±2) against ours 0.84 / 0.55 (was 0.94 / 0.82 / 8–10 px).
+- **Lines:** 60 lines and 30 threads on computers (40 + 20 phones, 44 + 24 Reduce Motion): counts across the
+  arms now the template's (e.g. 36/29/15 against 39/30/14 at prominence 6/15/40). Most lines faint
+  (0.12 + 0.65 level²), 12% bright, widths 0.4–0.65 (bright 0.6–0.85, threads 0.35–0.55), the outer ranks
+  dimmer (`edge` 1 − 0.5c²), only 5% out-of-focus ones. Colours back to vivid lime, sky blue a touch softer.
+- **The bend:** a hot knot (strands +2.2 within 0.035 H, the core glow tighter and stronger) and its bloom
+  outside the bend too (`m * 0.26` at the knot), a glow just above the bend on the rising arm; the rising
+  arm's outer lines lean right a little sooner (near-bend reach 0.2 + 0.32 w²).
+- **Glitter:** 2000 specks (600 phones), 85% sharp pin-points (2.4–4.6 px, a tight core), clustered close
+  to the bends; a dot's kind is now explicit (`a_q.y`: 0 spark, 0.5 dust, 1 bokeh; it was guessed from the
+  size). 80 bokeh discs (24 phones) spread wider, as round the template's arms and top right.
+- **Further down the page:** the dashes no longer show in the wide glow layer (blurred across but not along,
+  each was a box with a hard end); out of focus is gentler (the lines stay clear).
+- **Tested:** `pnpm check`; `river-gl.test.ts` (updated: a third of the lines glow, all thin); renders at the
+  template's geometry, 1440 × 900 at 2×, 390 × 844 at 3×, light mode, scrolled 1300 and 2600; the real landing
+  page (local dev server) at 1440 × 900 2× and 390 × 844 3×.
+- **Left:** the hero layout is UniVerse's own, so the bend sits beside our words (0.345 of the width), not
+  the template's (0.31).
