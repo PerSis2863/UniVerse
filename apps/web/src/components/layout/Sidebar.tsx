@@ -319,11 +319,11 @@ function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; o
   return (
     <div className="relative px-3 pb-2">
       <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-2xl px-2.5 py-2 bg-white/[0.05] hover:bg-white/[0.09] border border-white/[0.07] transition-colors text-start">
+        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2 bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start">
         <AppIcon id={app ?? 'hub'} size={32} />
         <span className="side-label min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
-          <span className="block text-[11px] text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
+          <span className="block text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
+          <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
         </span>
         <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />
       </button>
@@ -419,7 +419,7 @@ function NavItemComponent({
                     // M29: the rows ripple in as the group opens (35 ms apart; a fade only with Reduce Motion).
                     <motion.div key={sub.href} initial={{ opacity: 0, y: calm ? 0 : -4 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.035 }}>
                       <Link href={sub.href} data-vt="fade" data-tour-href={sub.href.split('?')[0]} onClick={onClose} onPointerEnter={() => onHover(sub.href)} aria-current={on ? 'page' : undefined}
-                        className={cn('sidebar-item pill-host glide-host relative block text-[15px] py-1.5', on && 'active')}>
+                        className={cn('sidebar-item pill-host glide-host relative block text-[13.5px] py-1.5', on && 'active')}>
                         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
                         {hoverPill(sub.href, on)}
                         <span className="relative block truncate">{t(sub.label)}</span>
@@ -554,7 +554,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <div className="side-brand flex items-center gap-3 px-5 h-16 overflow-hidden touch-none lg:touch-manipulation">
         <UniverseLogo size="md" animated={false} withGlow={false} />
         <div className="side-label min-w-0">
-          <div className="font-bold text-[17px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse Impact</div>
+          <div className="font-semibold text-[15px] leading-tight tracking-tight text-zinc-900 dark:text-white">UniVerse Impact</div>
           <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Member'}</div>
         </div>
       </div>

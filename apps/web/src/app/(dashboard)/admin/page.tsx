@@ -1,4 +1,5 @@
 'use client';
+import { CardHead } from '@/components/ui/CardMenu';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
 import { useRouter } from 'next/navigation';
@@ -88,7 +89,7 @@ export default function AdminDashboard() {
           orbit: data ? <AdminLive departments={departments} students={data.totalStudents ?? 0} teachers={data.totalTeachers ?? 0} courses={data.totalCourses ?? 0} /> : null,
           departments: (
             <div className="card">
-              <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.departments')}</h2>
+              <CardHead title={t('admin.departments')} className="mb-5" />
               <div className="space-y-4">
                 {departments.map((d, i) => (
                   <div key={i} className="flex items-center gap-4">
@@ -119,7 +120,7 @@ export default function AdminDashboard() {
           ),
           approvals: (
             <div className="card">
-              <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.pending_approvals')}</h2>
+              <CardHead title={t('admin.pending_approvals')} className="mb-5" />
               <div className="space-y-2">
                 {pendingUsers.length === 0 ? (
                   <div className="text-sm text-zinc-500 dark:text-zinc-500 py-4 text-center">No pending approvals.</div>
@@ -153,11 +154,11 @@ export default function AdminDashboard() {
           ),
           payments: (
             <div className="card">
-              <h2 className="font-bold text-zinc-900 dark:text-white mb-5">{t('admin.recent_payments')}</h2>
+              <CardHead title={t('admin.recent_payments')} className="mb-5" />
               <div className="space-y-3">
                 {recentPayments.map((p, i) => (
                   <div key={i} className="flex items-center gap-3 py-2 border-b border-white/[0.04] last:border-0">
-                    <div className="w-8 h-8 rounded-full bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-indigo-600/10 dark:bg-indigo-600/30 flex items-center justify-center text-xs font-bold text-indigo-700 dark:text-indigo-300 flex-shrink-0">
                       {p.name.split(' ').map(n => n[0]).join('')}
                     </div>
                     <div className="flex-1 min-w-0">

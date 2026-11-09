@@ -170,13 +170,13 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
       </div>
 
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
-      <header className="hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 min-h-16 py-2 items-center justify-between gap-4">
+      <header className="app-topbar hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 min-h-16 py-2 items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
           {leftNode}
           <div className="min-w-0">
             <Breadcrumb title={title} />
-            <h1 data-shared={sharedId} className="font-bold text-[22px] leading-tight tracking-tight text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
-            {subtitle && <p className="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-1 max-w-xl">{subtitle ?? `${t('common.greeting')}, ${user?.name?.split(' ')[0]}!`}</p>}
+            <h1 data-shared={sharedId} className="font-semibold text-[20px] leading-tight tracking-[-0.01em] text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
+            {subtitle && <p className="text-[12px] mt-0.5 text-zinc-500 dark:text-zinc-400 line-clamp-1 max-w-xl">{subtitle ?? `${t('common.greeting')}, ${user?.name?.split(' ')[0]}!`}</p>}
           </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
@@ -187,7 +187,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             type="button"
             data-tour="search"
             onClick={openCommandPalette}
-            className="hidden sm:flex items-center gap-2 h-9 w-56 rounded-[10px] bg-[var(--fill)] px-3 text-[15px] text-zinc-500 dark:text-zinc-400 hover:bg-[var(--fill-strong)] transition-colors"
+            className="hidden sm:flex items-center gap-2 h-9 w-56 rounded-[10px] bg-[var(--surface)] border border-[var(--hairline)] px-3 text-[13px] text-zinc-500 dark:text-zinc-400 hover:border-zinc-400 transition-colors"
           >
             <Search className="w-4 h-4" />
             <span className="flex-1 text-start">{t('common.search')}</span>

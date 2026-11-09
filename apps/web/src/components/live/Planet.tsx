@@ -118,7 +118,7 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, turnable =
       wk = new Worker(new URL('./planet.worker.ts', import.meta.url));
       const off = cv.transferControlToOffscreen();
       const [ps, pa] = latest.current;
-      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: window.matchMedia?.('(hover: none)').matches ? 30 : 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(FONT_FILE, location.href).href, turnable }, [off]);
+      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(FONT_FILE, location.href).href, turnable }, [off]);
       wk.postMessage({ t: 'focus', focus: view.current.focus });
       wk.postMessage({ t: 'selected', selected: view.current.selected });
     } catch {
@@ -131,7 +131,7 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, turnable =
       if (e.data?.t === 'unsupported') onFail(true);
       else if (e.data?.t === 'picked' && (e.data.i ?? -1) >= 0) pick.current?.(e.data.i!);
     };
-    wk.onerror = () => onFail(true);
+    wk.onerror = (e) => { e.preventDefault(); onFail(true); }; // handled: drawn on the page (M137)
     let live = true;
     landBits().then((bits) => { land.current = bits; if (live) wk.postMessage({ t: 'land', bits }); }).catch(() => { /* no land: an even planet */ });
     // Its layout size, as on the page (useLiveCanvas): not mid-way through the page's entrance.

@@ -1655,11 +1655,6 @@ html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, 
 .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 16px 36px -18px rgba(0, 0, 0, 0.35); }
 .dark .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 18px 40px -16px rgba(0, 0, 0, 0.8); }
 
-/* Headline-number rows (.kpi-row): the first card dusk (navy into aqua frost), the second gold (pale aqua). */
-.kpi-row > :first-child { background: var(--karma-dusk); border-color: transparent; color: #ffffff; }
-.kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
-.kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.9; }
-.kpi-row > :nth-child(2) { background: var(--karma-gold); border-color: transparent; }
 .kpi-row > * > [aria-hidden].absolute { display: none; }
 
 /* The M34 details, for any card: a thin-line icon in a circle, and a round ink arrow button. */
@@ -2786,3 +2781,118 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
     html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
   }
 }
+
+/* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
+   design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes
+   stay). Both themes take the shapes; light mode is Ballast's colours (M124). Cards round at 12 px; the
+   side menu's rows are compact with plain grey icons (the chosen one in ink on its raised card); the top
+   bar's round buttons wear a hairline ring; headline-number tiles are all plain cards (KpiCard). */
+:root { --radius-card: 0.75rem; }
+@media (min-width: 1024px) {
+  .side-shell .sidebar-item { font-size: 13.5px; min-height: 34px; padding-block: 6px; border-radius: 8px; }
+  .side-shell .sidebar-item svg { width: 16px; height: 16px; }
+}
+.side-shell .sidebar-item:not(.active) svg { color: var(--text-muted); }
+.side-shell .sidebar-item.active svg { color: var(--text-primary); }
+.app-topbar .btn-icon { width: 36px; height: 36px; border-radius: 9999px; border: 1px solid var(--hairline); background: var(--surface); }
+
+/* ═══ M135 · Every area inside the app in the Ballast reels' style (the owner, 9 Nov 2026: "every area of
+   project needs to look like this inside and should be ultra smooth"). Rules for the app's page area
+   (main#main, DashboardShell), so every page follows without being edited one by one:
+   · density: on computers the app's sizes are the reels' compact ones (every rem 15 px, not 16; text-xs
+     stays 11.25 px); phones keep 16 px;
+   · icon squares: the gradient tiles turn Ballast's flat tinted squares with the icon in the accent (a
+     small rounded square with a gradient, no picture in it);
+   · progress fills: one colour, the accent, not a gradient (an empty rounded bar with a gradient);
+   · buttons and badges the reels' size (secondary buttons are already outlined, M124). */
+@media (min-width: 1024px) { html:has(main#main) { font-size: 15px; } }
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) {
+  background-image: none; background-color: color-mix(in srgb, var(--tint) 13%, var(--surface)); color: var(--tint-text); box-shadow: none;
+}
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) svg { color: var(--tint-text); }
+#main [class*="bg-gradient-to-r"][class*="rounded-full"]:empty { background-image: none; background-color: var(--tint); }
+@media (min-width: 1024px) { #main :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) { font-size: 13.5px; } }
+#main .badge { border-radius: 6px; font-weight: 600; }
+
+/* M137: a landing app's sections fade in when shown (they may have been built ahead, hidden). */
+@keyframes app-in { from { opacity: 0; } }
+.app-in { animation: app-in 0.4s var(--ease-glide) both; }
+
+/* ═══ M138 · The Ballast reels' card titles and tables, on every app page (the owner's sweep, item 3).
+   A card's own title (an h2 / h3 heading inside a .panel or .card, the way pages build their cards) is
+   the reels' small semibold title, and the line right under it their grey 12 px one; tables read like
+   the reels' log: a quiet grey header row, 13.5 px rows on a hairline, a soft row highlight under the
+   pointer. Big figures and page titles aren't headings inside cards, so they keep their size. */
+@media (min-width: 1024px) {
+  #main :is(.panel, .card) :is(h2, h3):not(.sr-only) { font-size: 15px; font-weight: 600; letter-spacing: -0.006em; line-height: 1.35; }
+  #main :is(.panel, .card) :is(h2, h3):not(.sr-only) + p { font-size: 12px; color: var(--text-muted); }
+  #main table th { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+  #main table td { font-size: 13.5px; }
+}
+#main table tbody tr { transition: background-color 0.15s ease; }
+@media (hover: hover) { #main table tbody tr:hover { background-color: var(--fill); } }
+
+/* ═══ M139 · A card shown full screen from its "···" menu (components/ui/CardMenu.tsx): the page's own
+   colour behind it, room around it, its own scroll; nothing that would move the menu panel opened in it. */
+:is([data-card], .panel, .card, .ins-board, section):fullscreen {
+  overflow: auto; padding: clamp(1rem, 4vw, 3rem); border-radius: 0; border: 0;
+  background-color: var(--background); transform: none; animation: none; filter: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
+/* ═══ M140 · The calendar's Timeline (components/calendar/Timeline.tsx), after the reels' Dock calendar.
+   A hairline at every hour; the cards settle in one after another on a first look (transform and
+   opacity only, a spring), lift a little under the pointer, give on a press; "Now" glides to the next
+   minute (one transform, the compositor's). Reduce Motion: they just appear. */
+.tl-track { background-image: linear-gradient(to right, var(--separator) 1px, transparent 1px); }
+[dir="rtl"] .tl-track { background-image: linear-gradient(to left, var(--separator) 1px, transparent 1px); }
+.tl-now { transform: translateX(var(--x, 0%)); transition: transform 0.9s var(--ease-glide); }
+[dir="rtl"] .tl-now { transform: translateX(calc(var(--x, 0%) * -1)); }
+.tl-block { transition: transform 0.35s var(--spring-press, ease), box-shadow 0.2s ease; }
+@media (hover: hover) { .tl-block:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgb(16 24 40 / 0.18); z-index: 2; } }
+.tl-block:active { transform: scale(0.98); }
+.tl-in { animation: tl-in 0.55s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 30) * 22ms); }
+@keyframes tl-in { from { opacity: 0; transform: translateX(-10px) scale(0.96); } }
+[dir="rtl"] .tl-in { animation-name: tl-in-rtl; }
+@keyframes tl-in-rtl { from { opacity: 0; transform: translateX(10px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .tl-in { animation-name: tl-fade; animation-duration: 0.2s; animation-delay: 0s; }
+  .tl-now, .tl-block { transition: none; }
+}
+@keyframes tl-fade { from { opacity: 0; } }
+/* The date range picker's months (components/ui/DateRangePicker.tsx) slide a little the way they turn. */
+.drp-months[data-dir] { animation: drp-turn 0.32s var(--ease-glide) backwards; }
+.drp-months[data-dir="back"] { animation-name: drp-turn-back; }
+@keyframes drp-turn { from { opacity: 0; transform: translateX(14px); } }
+@keyframes drp-turn-back { from { opacity: 0; transform: translateX(-14px); } }
+.drp-cell { transition: background-color 0.12s ease; }
+.drp-day:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) { .drp-months[data-dir] { animation-name: tl-fade; } .drp-day:active { transform: none; } }
+
+/* ═══ M141 · The activity heatmap's squares answer the pointer (components/instruments/DayHourHeat.tsx). */
+.heat-cell { transition: transform 0.25s var(--spring-press, ease); }
+@media (hover: hover) { .heat-cell:hover { transform: scale(1.35); box-shadow: 0 0 0 1.5px var(--card-bg, #fff); position: relative; z-index: 1; } }
+@media (prefers-reduced-motion: reduce) { .heat-cell { transition: none; } .heat-cell:hover { transform: none; } }
+/* The log's rows answer the pointer; the tabs' counts are small grey chips (M141). */
+.log-row { transition: background-color 0.15s ease; }
+@media (hover: hover) { .log-row:hover { background-color: var(--fill); } }
+.tab-count { font-size: 11px; font-variant-numeric: tabular-nums; padding: 0 0.375rem; border-radius: 0.3rem; background: rgb(113 113 122 / 0.12); }
+
+/* ═══ M142 · "Start from" cards (components/ui/TemplateCards.tsx): they settle in one after another as
+   the window opens, lift under the pointer, give on a press; the chosen one's dot pops in on a spring. */
+.tpl-card { animation: tpl-in 0.42s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 8) * 40ms + 60ms); transition: transform 0.3s var(--spring-press, ease), border-color 0.15s ease, box-shadow 0.15s ease; }
+@keyframes tpl-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@media (hover: hover) { .tpl-card:hover { transform: translateY(-1px); } }
+.tpl-card:active { transform: scale(0.98); }
+.tpl-check { animation: tpl-pop 0.35s var(--spring-press, ease) backwards; }
+@keyframes tpl-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .tpl-card { animation-name: tl-fade; animation-delay: 0s; transition: none; }
+  .tpl-card:hover, .tpl-card:active { transform: none; }
+  .tpl-check { animation: none; }
+}
+
+/* ═══ M143 · The cards' small column charts rise in one after another (components/instruments/MiniColumns.tsx). */
+.mini-col { transform-origin: bottom; animation: mini-col 0.5s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(var(--i, 0) * 30ms + 80ms); }
+@keyframes mini-col { from { transform: scaleY(0.15); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mini-col { animation-name: tl-fade; animation-delay: 0s; } }

@@ -168,7 +168,7 @@ export function Hourglass({ fill, running = true }: { fill: number; running?: bo
 }
 
 /** A ring of ticks: the share that's good in the text colour, the rest in hot pink; the value inside. */
-export function Ring({ pct, label, size = 112 }: { pct: number; label?: string; size?: number }) {
+export function Ring({ pct, label, size = 112, text }: { pct: number; label?: string; size?: number; /** In place of the percentage (M143: a count). */ text?: string }) {
   const t = Math.max(0, Math.min(100, pct)) / 100;
   const N = 60;
   return (
@@ -179,7 +179,7 @@ export function Ring({ pct, label, size = 112 }: { pct: number; label?: string; 
         return <line key={i} x1={60 + 44 * Math.cos(a)} y1={60 + 44 * Math.sin(a)} x2={60 + 54 * Math.cos(a)} y2={60 + 54 * Math.sin(a)} strokeWidth="2.2" strokeLinecap="round"
           className={cn('ins-pop', on ? 'stroke-current' : 'stroke-[var(--ins-hot)]')} strokeOpacity={on ? 0.9 : 0.85} style={{ animationDelay: `${i * 10}ms` }} />;
       })}
-      <text x="60" y="62" textAnchor="middle" fontSize="17" className="fill-current font-mono">{fmt(pct, pct % 1 ? 1 : 0)}</text>
+      <text x="60" y="62" textAnchor="middle" fontSize="17" className="fill-current font-mono">{text ?? fmt(pct, pct % 1 ? 1 : 0)}</text>
       {label && <text x="60" y="76" textAnchor="middle" fontSize="7.5" letterSpacing="1" className="fill-current font-mono uppercase" opacity="0.55">{label}</text>}
     </svg>
   );

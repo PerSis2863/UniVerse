@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M133 is the latest).
+  builds on it). The newest notes are at the end (M143 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,7 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M130** (M129–M130 merged 9 Nov, PR #117).
+- **On `main`** (live): everything through **M143** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -111,10 +112,22 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   - **The app scenes and the motion pass (9 Nov, the owner's exception to the pause):** each app's own
     scene behind the page in place of the river (M129, §8); the landing's app switch without a long
     frame, loaded content and new list rows gliding in (M130).
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M131, the landing's globe you can
-    use (drag, zoom, click an app for its card; still on a background thread); M132, each app its own
-    colour everywhere (§8); M133, realistic movement (springs, depth on page changes, the globe's
-    momentum) and the landing's scroll effects tied to the scroll on the compositor.
+  - **Also 9 Nov (PR #118):** the landing's globe you can use (M131: drag, zoom, click an app for its
+    card); each app its own colour everywhere (M132, §8); realistic movement (M133: springs, depth on
+    page changes, the globe's momentum) and the landing's scroll effects tied to the scroll.
+  - **The Ballast reels inside the app (9 Nov, PR #119):** M134, the first pass of the
+    Ballast reels' shapes inside the app (compact side menu, top bar, plain number tiles, 12 px cards);
+    M135, every app page in that style through shared rules (compact sizes on computers, flat icon
+    squares and one-colour progress bars, the reels' button and badge sizes); M136, phones at full frame
+    rate and sharpness (the live pictures, the planet and the app scenes); M137, a sweep: page counts in
+    PostHog after "Accept all" (off until the owner sets the key), the landing's other apps built ahead
+    once the tabs are approached, failed background threads handled quietly; M138, card titles and
+    tables in the reels' style on every page (shared rules); M139, the cards' "···" menu (full screen,
+    copy, CSV) on the main pages and every chart board (`CardHead` / `CardMenu`); M140, the reels'
+    calendar: a Timeline view (days down, hours across, a Now line) and a date range picker; M141, the
+    activity log as the reels' Agent Activity (heatmap, totals, tabs with counts, outcome labels); M142,
+    "New …" windows with "Start from" cards (New course, New event; `TemplateCards`); M143, a teacher's
+    courses as the reels' Agent Center (summary cards, a card per course with a 14-day chart).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -143,12 +156,15 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
-  owner's 9 Nov answer after M132: **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
+  owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
+  inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
+  page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M134**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M144**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
-- **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
+- **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
+  → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
@@ -323,7 +339,7 @@ floor to the horizon, game-pad symbols. `AppBackdrop` shows it behind every page
 sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the chosen app). Switching
 is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
 with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
-on computers and 60 a second on phones, its motion easing in; a new app needs its scene there
+(phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
 (TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
 the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
 blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old

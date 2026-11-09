@@ -10,6 +10,7 @@ import { reducedMotion } from '@/lib/page-transition';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useWeekStart, weekdayNames } from '@/lib/use-week-start';
+import { Timeline, TimelineSummary } from './Timeline';
 
 // The timetable like a phone's calendar app (student and teacher calendars): days side by side
 // under a weekday and date (today in a two-tone circle), hours down the side, every class a solid
@@ -43,12 +44,14 @@ export interface GridEntry<T = unknown> {
   data: T;
 }
 
-export type GridView = 'day' | 'days' | 'week' | 'month' | 'agenda';
+export type GridView = 'timeline' | 'day' | 'days' | 'week' | 'month' | 'agenda';
 
 /** Events without a colour of their own: deep navy, like meetings in a calendar app. */
 export const EVENT_COLOR = '#202023';
 
 const VIEWS: Segment<GridView>[] = [
+  // M140: the reels' Dock calendar, the first view on computers (it needs the width: not on phones).
+  { value: 'timeline', label: 'Timeline' },
   { value: 'day', label: 'Day' },
   { value: 'days', label: '4 Days' },
   { value: 'week', label: 'Week' },
@@ -189,7 +192,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
   const nowMin = now.getHours() * 60 + now.getMinutes();
 
   const [picked, setPicked] = useState<GridView | null>(null);
-  const view: GridView = picked ?? (phone ? 'days' : 'week');
+  const view: GridView = picked && !(phone && picked === 'timeline') ? picked : phone ? 'days' : 'timeline';
   const [focus, setFocus] = useState(() => startOfDay(new Date()));
   const [dir, setDir] = useState(0);
   const dragged = useRef(false);
@@ -218,7 +221,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
   const days: Date[] = [];
   if (view === 'day' || view === 'month') days.push(focus);
   else if (view === 'agenda') for (let i = 0; i < AGENDA_DAYS; i++) days.push(addDays(focus, i));
-  else if (view === 'week') {
+  else if (view === 'week' || view === 'timeline') {
     const weekBegins = startOfWeek(focus, { weekStartsOn: weekFirst });
     for (let i = 0; i < 7; i++) if (keep(addDays(weekBegins, i))) days.push(addDays(weekBegins, i));
   } else {
@@ -233,7 +236,7 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
     let next: Date;
     if (view === 'month') next = addMonths(focus, by);
     else if (view === 'agenda') next = addDays(focus, AGENDA_DAYS * by);
-    else if (view === 'week') next = addDays(focus, 7 * by);
+    else if (view === 'week' || view === 'timeline') next = addDays(focus, 7 * by);
     else if (view === 'day') {
       next = addDays(focus, by);
       for (let i = 0; i < 7 && !shown(next); i++) next = addDays(next, by);
@@ -403,11 +406,22 @@ export function TimeGrid<T>({ entries, loading, onOpen, onMove, onCreate, label,
         </div>
       </div>
       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-        <Segmented segments={VIEWS} value={view} onChange={pickView} label="Show" large className="w-full sm:w-auto" />
+        <Segmented segments={phone ? VIEWS.slice(1) : VIEWS} value={view} onChange={pickView} label="Show" large className="w-full sm:w-auto" />
         {toolbarEnd}
       </div>
 
-      {view === 'agenda' ? (
+      {view === 'timeline' ? (
+        <>
+          <section aria-label={`${label}, ${title}`} className={cn(frame, 'overflow-hidden')}>
+            <AnimatePresence initial={false} custom={dir} mode="popLayout">
+              <motion.div key={pageKey} {...pager} drag={false} className="w-full">
+                <Timeline days={days} today={today} nowMin={nowMin} lo={lo} hi={hi} on={on} when={(e) => timeRange(e.start, e.end)} onOpen={open} animate={dir === 0} />
+              </motion.div>
+            </AnimatePresence>
+          </section>
+          <TimelineSummary days={days} today={today} nowMin={nowMin} on={on} when={(e) => timeRange(e.start, e.end)} onOpen={open} />
+        </>
+      ) : view === 'agenda' ? (
         <section aria-label={`${label}, ${title}`} className={cn(frame, 'overflow-hidden')}>
           <Agenda days={days} today={today} on={on} loading={loading} onOpen={open} />
         </section>

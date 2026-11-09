@@ -1,5 +1,6 @@
 'use client';
 
+import { CardMenu } from '@/components/ui/CardMenu';
 import { useEffect, useId, useRef, useState, type ReactNode } from 'react';
 import { LayoutGroup, m as motion } from 'framer-motion';
 import { X, type LucideIcon } from 'lucide-react';
@@ -61,6 +62,7 @@ export function InstrumentBoard<R extends string>({ icon: Icon, title, subtitle,
           {live && <span className="inline-flex items-center gap-1.5 px-2.5 h-7 rounded-full text-xs font-semibold bg-zinc-100 dark:bg-white/[0.06] text-zinc-800 dark:text-zinc-100"><span className="relative w-1.5 h-1.5 rounded-full bg-[var(--ins-hot)]"><span className="absolute inset-0 rounded-full bg-[var(--ins-hot)] ins-live" /></span>Live</span>}
           <span className="hidden md:inline font-mono text-[11px] text-zinc-500 dark:text-zinc-400">Click a cell to open it</span>
           {ranges && range && onRange && <Chips ranges={ranges} range={range} onRange={onRange} id={`${storageKey}-head`} />}
+          <CardMenu title={title} />
         </header>
         <LayoutGroup id={storageKey}>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 [grid-auto-flow:dense]">

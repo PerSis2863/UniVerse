@@ -1,5 +1,6 @@
 'use client';
 
+import { CardMenu } from '@/components/ui/CardMenu';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
@@ -116,6 +117,7 @@ export function DailyBrief() {
           )}
           <span className="text-xs text-zinc-500 hidden sm:inline">Each morning</span>
           <Switch checked={data.push} onChange={(v) => void setPush(v)} label="Get your day as a notification each morning" />
+          <CardMenu title="Your day" />
         </div>
       </div>
 

@@ -1,4 +1,5 @@
 'use client';
+import { DateRangePicker } from '@/components/ui/DateRangePicker';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 
 import { useMemo, useState } from 'react';
@@ -73,9 +74,8 @@ export default function ImpactReportsPage() {
                 <option value="">All organisations</option>
                 {data?.organizations.map((o) => <option key={o.name} value={o.name}>{o.name} ({o.credentials})</option>)}
               </select></label>
-            <div className="grid grid-cols-2 gap-2">
-              <label className="block"><span className="text-xs font-semibold text-zinc-500">From</span><input type="date" value={form.from} onChange={(e) => setForm({ ...form, from: e.target.value })} className="mt-1 w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-2 py-2 text-sm text-zinc-900 dark:text-white" /></label>
-              <label className="block"><span className="text-xs font-semibold text-zinc-500">To</span><input type="date" value={form.to} onChange={(e) => setForm({ ...form, to: e.target.value })} className="mt-1 w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-2 py-2 text-sm text-zinc-900 dark:text-white" /></label>
+            <div className="block"><span className="block text-xs font-semibold text-zinc-500 mb-1">Period</span>
+              <DateRangePicker label="Period" value={{ from: form.from, to: form.to }} onChange={(v) => setForm({ ...form, from: v.from, to: v.to })} className="w-full justify-start" />
             </div>
             <div className="flex gap-2 pt-1">
               <button onClick={() => run('preview')} disabled={!!busy} className="flex-1 inline-flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-zinc-100 dark:bg-white/[0.06] text-sm font-semibold text-zinc-700 dark:text-zinc-200 disabled:opacity-60">{busy === 'preview' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />} Preview</button>

@@ -5377,3 +5377,243 @@ smoothing … scrolling the main page, and switching apps or pages" (the 3D back
   stops); on the built Worker `scripts/checks/motion-pass-ui.mjs` (now also the landing's scroll timed,
   its scroll-tied parts on scroll timelines, and the app's page switches timed), `world-globe-ui`,
   `app-colours-ui` and `app-backdrop-ui` (axe in dark and light).
+
+## M134: inside the app, the Ballast reels' shapes (first pass) (the owner, 9 Nov 2026)
+
+The owner sent the three Ballast reels again: "can you make the design and ui of these video exactly
+the same". Asked: inside the app only (the website keeps its look); dark stays the default (light mode
+is Ballast's colours since M124); the app scenes stay behind the pages.
+
+- **Side menu:** compact rows (13.5 px, 34 px tall on computers), plain grey icons, the chosen one in ink
+  on its raised card; the brand 15 px semibold; the app switcher a light card with a hairline. **Bug
+  fixed:** the switcher's app name was white on white in light mode (invisible).
+- **Top bar:** the title 20 px semibold with a 12 px grey line; the search a white field with a hairline
+  and ⌘K; the round buttons (theme, language, bell) wear a hairline ring (`.app-topbar .btn-icon`).
+- **Number tiles** (`KpiCard`): Ballast's metric card: the name on top with a small grey icon, the figure
+  under it, a change as a small tinted badge. The Karma look's first-two-tiles colouring (`.kpi-row`
+  first black, second blue) is gone: all plain cards. `color` is kept on KpiCard only for callers.
+- **Cards:** 12 px corners (`--radius-card`, the M134 block at the end of `globals.css`).
+- **Left for the next pass:** gradient icon tiles and progress bars (Your day, Finish setting up…) to
+  Ballast's flat tinted squares and one-colour bars; Ballast's card headers (title, grey line, "···");
+  tables and lists page by page.
+- **Tested:** `pnpm check`; axe on the teacher's and the student's home, light and dark (dev server);
+  screenshots in both themes.
+
+## M135: every area inside the app in the Ballast style (the owner, 9 Nov 2026)
+
+The owner: "i need every area of project needs to look like this inside and should be ultra smooth".
+Rules for the app's page area (`main#main`, DashboardShell: every signed-in page), so all pages follow
+without being edited one by one (the M135 block at the end of `globals.css`):
+
+- **Density:** on computers every rem is 15 px (`html:has(main#main)`), the reels' compact sizes; phones
+  keep 16 px; `text-xs` stays 11.25 px (above the 11 px floor).
+- **Icon squares:** a small rounded square with a gradient and no picture (`w-7`…`w-14`, rounded-lg/xl/2xl)
+  becomes Ballast's flat tinted square (13 % of the app's accent) with the icon in the accent.
+- **Progress fills:** an empty rounded bar with a gradient is one colour, the accent.
+- **Buttons and badges:** buttons 13.5 px on computers; badges 6 px corners, semibold (secondary buttons
+  were already outlined, M124).
+- **Fixed on the way:** the admin home's initials squares (blue on a 30 % blue tint) failed contrast in
+  light mode; the tint is 10 % there now.
+- **Rules:** a new icon tile or progress bar that should keep its gradient (a person's own colours, a
+  picture) needs an `img` inside or a class outside the matched shapes; don't add page-by-page density.
+- **Tested:** `pnpm check`; axe on eight app pages (teacher, student, courses, grades, attendance, admin,
+  hub, Trace) in light and dark on the dev server; screenshots.
+- **Left:** Ballast's card headers ("···") and tables page by page.
+
+## M136: phones at full frame rate and sharpness (the owner, 9 Nov 2026)
+
+The owner: "the mobile website and app both are downgrade please increase the frame". Phones had been
+given less on purpose to save work (M91, M92): the live pictures (`live/canvas.ts`: the planet on the
+page, the live cards) drew every other frame (30 a second) at 1.5x; the landing's planet on its
+background thread at 30 a second; the app scenes (`backdrop.ts`) at 60 a second and at most 1.5x.
+
+- Now every frame the screen gives (60, 90 or 120 a second) on phones too, the live pictures at 2x like
+  computers, the app scenes up to 2.5x (at most 3.5 M pixels).
+- **Rule:** don't bring the phone limits back without the owner: they asked for full frames. If a weak
+  phone struggles, lighten the drawing (fewer dots), not the frame rate.
+- **Tested:** `pnpm check` (the frame-loop tests).
+
+## M137: the improvement sweep (the owner, 9 Nov 2026: "please do from 1 to 6 all of them")
+
+After the review of the live `error_reports` (every NEW report is the sample world's, ids `smp…`; no real
+person hit a new problem since 7 Nov) the owner asked for all six suggestions. This item is 1, 2, 4, 6;
+3 (Ballast card headers and tables) and 5 (realistic 3D backgrounds) are their own items.
+
+- **1 · the console's People list ("too many SQL variables", 31 Oct):** already fixed by M73 (1 Nov:
+  lists that read an ordered related list go in pages of 90); no change. The owner marks it resolved.
+- **2 · an old tab after a release:** the recovery script (`recovery-script.ts`) already reloads a tab
+  whose files are gone and catches blank pages. The gap: the app scene's and the planet's background
+  threads failing to load in such a tab were reported as errors, though both fall back to drawing on
+  the page. Their `onerror` now marks it handled (`preventDefault`).
+- **4 · which pages people use:** `src/lib/analytics.ts` + `components/Analytics.tsx` (root layout): one
+  `$pageview` per page to PostHog EU (`eu.i.posthog.com`, added to connect-src in `security-headers.ts`),
+  no library. Only with "Accept all" and no Global Privacy Control (`optionalCookiesAllowed`); no
+  person profiles; a random id on the device (`uv-aid`); ids and tokens in the address blanked
+  (`cleanPath`, tested). **Off until the owner sets `NEXT_PUBLIC_POSTHOG_KEY`** (the project's public
+  ingest key) in Cloudflare's build variables. The privacy choices and policies pages say so.
+- **6 · the landing's first switch to an app:** once the visitor points at or focuses the app tabs
+  (`warm`), the other apps' sections are built ahead, hidden, in React's `<Activity>` (no effects or loops
+  while hidden), so the first switch shows them at once; `.app-in` fades the shown app in. Nothing is
+  built ahead for a visitor who never reaches for the tabs (phones: the touch itself).
+- **Tested:** `pnpm check` (`analytics.test.ts`); on the dev server the tabs build all five apps' sections
+  (four hidden), a switch shows exactly one, no page errors.
+
+## M138: Ballast card titles and tables, for every page (the sweep's item 3, the owner, 9 Nov 2026)
+
+The reels' cards have a small semibold title with a grey line under it, and plain tables (grey column
+names in sentence case, 13.5 px rows, a soft row hover). Done as shared rules (the M138 block in
+`globals.css`), like M135, so every signed-in page gets it without page-by-page edits:
+- on computers (1024 px and up), inside `#main`: a `.panel` / `.card` heading (`h2`, `h3`) is 15 px
+  semibold, the paragraph right after it 12 px in `--text-muted`; table headers 12 px, weight 500,
+  muted, no capitals or letter spacing; cells 13.5 px;
+- every table body row: a background hover (`--fill`), hover-capable screens only.
+- **Left on purpose:** the reels' "···" menu in each card header (it needs a real menu per card, not
+  CSS); phones keep their sizes.
+- **Rule:** a card title that must stay big (a hero number, a page heading inside a card) needs a class
+  that sets its own size after this block, or an element other than `h2`/`h3`.
+- **Tested:** `pnpm check`; axe (serious/critical) clean on /teacher, /student, /student/courses,
+  /student/grades, /teacher/attendance, /admin, /hub and /trace in light and dark.
+
+## Next: realistic 3D app backgrounds (the sweep's item 5; plan only, not started)
+
+The owner asked for it twice (9 Nov: "realistic graphics animations", then "please do from 1 to 6").
+A plan for the item that builds it (take the next M number):
+- **Where:** inside the scene's background thread (`components/backdrop.worker.ts`). three.js (already
+  installed, 0.180) draws on the `OffscreenCanvas` it already gets; it's imported only there, so no page
+  bundle grows. The 2D scenes of M129 (`lib/backdrop.ts`) stay as the fallback: no WebGL2 in the
+  thread, weak phones (`navigator.deviceMemory` ≤ 4 or `hardwareConcurrency` ≤ 4), drawn on the page.
+- **Each app, lit with depth:** one hemisphere and one directional light, fog for distance, a camera that
+  drifts slowly and leans a little towards the pointer (the page sends the pointer; nothing while
+  scrolling). UniVersity: stars and constellation lines in 3D, paper sheets rising and turning in the
+  light. Trace: a lit globe of dots, shipments as glowing arcs. Relief: a terrain with contour lines,
+  pins pulsing, routes. Green: aurora ribbons (additive), instanced leaves, fireflies. Play: a neon grid
+  floor to the horizon, floating game-pad shapes.
+- **Rules to keep:** the app's colour (`APPS[].color`, `ALT`, dark and light); the 1 s switch (fade the
+  old scene while the camera moves on); rest while hidden or under `data-arena`; Reduce Motion: one held
+  frame; decide materials and effects when a scene is made, never while it runs (a shader rebuild is a
+  stutter, as in Play's worlds); free every geometry, texture and the context on a switch and on close.
+- **Tests:** `scripts/checks/app-backdrop-ui.mjs` (one canvas, the page's frames through each switch, axe)
+  plus the fallback forced on; the deploy size alarm (M110).
+
+## M139: the cards' "···" menu (the owner, 9 Nov 2026: "please do this", the part M138 left out)
+
+The Ballast cards end their header with "···". `src/components/ui/CardMenu.tsx`:
+- **`CardMenu`** (the button and its menu, the shared `Menu`: a popover on computers, a sheet on
+  phones) works on the card it sits in (the nearest `[data-card]`, `.panel`, `.card`, `.ins-board` or
+  `section`), read when it's pressed or focused: **Full screen** (where the browser can; Exit full
+  screen inside it), **Copy** (the card's text), **Download as CSV** (only when the card has a table:
+  its column names and rows as shown, through `downloadCsv`, so cells starting with = + - @ are made
+  safe). A card can put its own actions first (`items`).
+- **`CardHead`**: the Ballast header in one piece: title (optional grey icon), the grey line, the card's
+  own controls (`children`), then "···". Use it for new cards.
+- **Where it is now:** the student's home (its panels, Up next, Daily goal, Your day), grades (3 cards),
+  attendance; the teacher's home (charts, Recent students, Needs attention, Create); the admin's home
+  (3 cards); every chart board (`InstrumentBoard`: console, insights, analytics, Trace, the wallet).
+  Other pages get it when they're next touched (swap the heading for `CardHead`).
+- **Shared change:** `Menu`'s panel opens inside the full-screen element when there is one (the rest of
+  the page is hidden then). The M139 block in `globals.css` styles a card in full screen.
+- **Trap:** the menu's items are built from state set on press, never from a ref while drawing (the
+  hooks lint).
+- **Tested:** `pnpm check`; `scripts/checks/card-menu-ui.mjs` (all three actions, Full screen's menu,
+  no CSV without a table, a sheet on phones, axe on five pages at 390 and 1280, light and dark).
+
+## M140: the reels' calendar and date range picker (the owner, 9 Nov 2026: "the timetable or calender changes that video had… the same way in all of the project", "cover everything in that video… ultra smoothly animated")
+
+- **Timeline** (`components/calendar/Timeline.tsx`), the reel's Dock calendar: the days down the side, the
+  hours across (24-hour labels, a hairline at each), each class a small two-line card (title with its
+  course's dot, then what and where), a "Now 10:42" pill on the hours (the labels beside it hide, as in
+  the reel) and a line through every day. Done is the accent (solid today, faint before), on now is ink,
+  coming up a white card, a clash or a deadline an amber edge; a key above. Overlaps go in lanes
+  (`laneDay`); a deadline gets an hour of room, kept inside the hours shown. Under it, the reel's two
+  cards: **Busy this week** (bars per day) and **Coming up** (the next four, with "in 25 min" / "Tue").
+- **Where:** the shared calendar (`TimeGrid`) has a **Timeline** view, the first one on computers
+  (student and teacher calendars); phones keep 4 Days (no Timeline in their switch). The admin's
+  timetable shows the week on it above the class list (`WeekTimeline`), with the real clashes
+  (`clash` prop: a teacher or room twice, a room too small); a class jumps to its row in the list.
+- **Date range picker** (`components/ui/DateRangePicker.tsx`): quick choices down the side (Today,
+  Last 7/30/90 days, Last 12 months, This quarter, Year to date; "Custom" ticked otherwise), two months
+  side by side (one on a phone), the first and last day in ink with a band between, the span written out
+  ("Oct 31 to Nov 6, 2026 · 7 days"), Cancel / Apply (nothing changes before Apply), Clear for a filter.
+  Arrow keys move through the days (one Tab stop). In: the audit log's filter, impact reports' period,
+  the analytics export's period, partnership dates (`presets={[]}`). Left as they were: single dates,
+  and the report-card round's dates (in a sheet: a popover over a sheet is a trap).
+- **Motion** (the M140 block in `globals.css`): the cards settle in one after another on a first look
+  (a spring, transform and opacity), lift under the pointer and give on a press; "Now" glides to each
+  new minute (one transform); the months slide the way they turn; Reduce Motion: fades only.
+- **Shared change:** `Popover` takes `panelClass` (its panel's size).
+- **Left out:** the reel's "compare with the previous period" switch (no chart here can draw a second
+  period yet).
+- **Tested:** `pnpm check`; `scripts/checks/calendar-ballast-ui.mjs` (the three calendars in sample
+  mode, a class opens, the admin's clashes in amber, phones without the Timeline; the picker's quick
+  choice, Apply, arrow keys, Cancel; axe at 1280 and 390, light and dark).
+
+## M141: the activity log as the reels' "Agent Activity" (the owner, 9 Nov 2026: "please do all this")
+
+`/admin/audit` (Activity Log) now reads like the reel:
+- **When things happen** (`components/instruments/DayHourHeat.tsx`): the days down the side, 24 hours
+  across, each square shaded in five steps of the accent by how much happened then ("Less … More");
+  the squares fill in one by one (scroll-motion's `data-cells`) and grow under the pointer; screen
+  readers get the three busiest times in words. Data: `GET /audit/heat` (admins, same scope and
+  filters as the log; `tz` minutes east of UTC; the newest 10,000) through `heatOf` in
+  `src/lib/activity-heat.ts` (tested), which also counts by area.
+- **Totals**: the number of actions, one bar split by area, the top five with their share.
+- **Log**: tabs with counts (All and each area, in these dates and this search: the heat route ignores
+  the area filter so the counts stay), then a table: Area (a dot), What happened, **Outcome** (a
+  `StatusBadge`: green kept or given, red refused or removed, amber waiting, blue a plain change, from
+  `outcomeOf` in `src/lib/audit-outcome.ts`, tested), By (initial, name, role), When, and the details.
+  On phones the same rows stack (the table's cells go `lg:contents`).
+- **Shared:** `components/ui/StatusBadge.tsx` (tones green, amber, red, blue, grey) for any outcome or
+  state label.
+- **Sample mode:** `/audit`, `/audit/heat` and `/audit/actions` now answer (`src/lib/sample/audit.ts`:
+  a made-up fortnight), so the demo isn't empty.
+- **Trap:** `.card`'s padding comes from an unlayered rule, so a `p-0` class doesn't remove it: use
+  `style={{ padding: 0 }}` (done here and on the admin timetable's timeline).
+- **Tested:** `pnpm check` (`activity-heat.test.ts`, `audit-outcome.test.ts`);
+  `scripts/checks/activity-log-ui.mjs` (168 squares, the words for screen readers, every row labelled,
+  a tab's count matches its rows, details open; axe at 1280 and 390, light and dark).
+
+## M142: "New …" windows with "Start from" cards (the owner, 9 Nov 2026: "please do all this")
+
+After the reels' "New agent" window:
+- **`components/ui/TemplateCards.tsx`**: a grid of choices (a radio group): each card has its icon in a
+  grey square, a name, two grey lines and a round check that fills when chosen. Arrow keys move and
+  choose; Tab enters on the chosen one. The cards settle in one after another as the window opens,
+  lift under the pointer, give on a press; the check's dot pops in (the M142 block in `globals.css`).
+- **A teacher's New course** (`components/dashboard/NewCourseSheet.tsx`, from the teacher home's "New
+  course" and Create card): start from Lecture, Lab, Seminar, Project, Online or scratch (it sets the
+  credits and what students will do); Name, Code, Credits in one row; **What students will do**: the
+  kind's activities as ticks ("3 of 4 chosen"; grey placeholder rows and "Pick a kind first" before a
+  kind is chosen); the description writes itself from the kind and the ticks until the teacher types
+  their own. Footer: "You can change all of this later.", Cancel, Create course. It's a `Sheet`
+  (a real dialog: focus kept inside, Escape closes) in place of the old hand-made window, whose
+  blurred backdrop and missing dialog role it replaces. Same `POST /courses` as before.
+- **The calendar's New event** (`EventSheet`): a new event starts from cards (Personal, Study or
+  focus, Meeting, Office hours for teachers, Deadline); editing keeps the compact menu.
+- **Trap (checks):** in the test browser's phone emulation a tap right after a page arrives can hit an
+  older frame's layout (the calendar's toolbar before it wrapped); the page runs at 60 a second, so
+  `template-windows-ui.mjs` presses that button directly on phones.
+- **Tested:** `pnpm check`; `scripts/checks/template-windows-ui.mjs` (six kinds; Lab course sets 4
+  credits, ticks and writes; unticking rewrites and counts; arrow keys; the event's cards; axe with each
+  window open at 1280 and 390, light and dark).
+
+## M143: a teacher's courses as the reels' "Agent Center" (the owner, 9 Nov 2026: "see what else is left and work on it")
+
+What was left in the videos after M134–M142 was the Agent Center page. Its match is `/teacher/courses`:
+- **Header:** the summary line under the title ("2 courses · 10 students · 77 hand-ins in 14 days"), a
+  status pill ("● 2 of 2 active this fortnight") and a black "New course" (the M142 window; the page's
+  old create form is gone, the edit form stays).
+- **Three summary cards:** Students by course (bars), Hand-ins (the 14 days' total and a column chart),
+  Active courses (the `Ring`, which now takes `text` for a count in place of a percentage).
+- **A card per course:** its emoji in a tinted square, name and code, an Active / Quiet label
+  (`StatusBadge`: a hand-in in 14 days or not), Students / Materials / Hand-ins, a 14-day column chart
+  (`components/instruments/MiniColumns.tsx`: older days grey, the last five in the accent, rising in one
+  after another), then Edit, Delete and **Open board** (the course's board). Real buttons in place of a
+  clickable box. **Removed:** the old details window, which listed made-up students ("ST" three times).
+- **Data:** `GET /courses/my/activity` (teachers; their own courses, up to 90; `tz`; the newest 5,000
+  hand-ins in 15 days) through `dailyCounts` in `src/lib/daily-counts.ts` (tested); a sample answer in
+  `src/lib/sample/router.ts`.
+- **Left out on purpose:** the reels' side-menu section headings and count badges (the owner chose the
+  simpler menus, M27), and their "autonomy" menu on each card (nothing here works that way).
+- **Tested:** `pnpm check` (`daily-counts.test.ts`); `scripts/checks/courses-center-ui.mjs` (summary line,
+  pill, the three cards, 14 columns per course, New course opens, Open board goes to the board; axe at
+  1280 and 390, light and dark).

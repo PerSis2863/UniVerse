@@ -90,7 +90,9 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
         return;
       }
       worker.onmessage = (e: MessageEvent<{ t: string }>) => { if (e.data?.t === 'unsupported') setOnPage(true); };
-      worker.onerror = () => setOnPage(true);
+      // M137: an old tab after a release can't load the thread's file (importScripts): that's handled
+      // (drawn on the page instead), not an error to report; the page itself recovers on its next load.
+      worker.onerror = (e) => { e.preventDefault(); setOnPage(true); };
       d = {
         size: () => worker.postMessage({ t: 'size', w: window.innerWidth, h: window.innerHeight, dpr: dpr() }),
         theme: () => worker.postMessage({ t: 'dark', dark: isDark() }),

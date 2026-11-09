@@ -1,5 +1,6 @@
 'use client';
 
+import { CardMenu } from '@/components/ui/CardMenu';
 import { format, isToday, isTomorrow } from 'date-fns';
 import { m as motion } from 'framer-motion';
 import { BookOpen, CalendarClock, CheckCircle2, ClipboardCheck, FileText, PenLine, Sparkles, Video } from 'lucide-react';
@@ -54,10 +55,13 @@ export function UpNextCard({ items, loading, empty }: { items: UpNextItem[] | un
       className="relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-5 md:p-6 overflow-hidden">
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.07] via-transparent to-emerald-500/[0.06] pointer-events-none" />
       <div className="relative">
-        <h2 id="upnext-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
-          <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-emerald-500/15 border border-indigo-500/20 flex items-center justify-center"><ClipboardCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /></span>
-          Up next
-        </h2>
+        <div className="flex items-center justify-between gap-2 mb-4">
+          <h2 id="upnext-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+            <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-emerald-500/15 border border-indigo-500/20 flex items-center justify-center"><ClipboardCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /></span>
+            Up next
+          </h2>
+          <CardMenu title="Up next" />
+        </div>
         {loading && !items ? <div className="h-20 rounded-2xl skeleton" /> : !first ? (
           <div className="flex items-center gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-dashed border-zinc-200 dark:border-white/[0.08]">
             <Sparkles className="w-5 h-5 text-indigo-500 shrink-0" />

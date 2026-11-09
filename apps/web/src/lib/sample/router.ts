@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
@@ -1617,6 +1618,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
 
 
+  // M143: the courses page's small charts: a made-up fortnight of hand-ins per course, busier lately.
+  [/^\/courses\/my\/activity$/, ({ db: d }) => ok(Object.fromEntries(d.courses.map((c, k) => [c.id, Array.from({ length: 14 }, (_, i) => (i * 7 + k * 3) % 5 + (i > 9 ? 3 : 0))])))],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -2143,6 +2146,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/me$/, ({ db: d }) => ok(d.profile)],
 
   // ── Admin ──
+  // The activity log (M141, src/lib/sample/audit.ts).
+  [/^\/audit$/, ({ q }) => ok(sampleAudit(q))],
+  [/^\/audit\/heat$/, ({ q }) => ok(sampleAuditHeat(q))],
+  [/^\/audit\/actions$/, () => ok(sampleAuditActions())],
   [/^\/users$/, ({ db: d, q }) => ok(d.users.filter((u) => !q.get('role') || u.role === q.get('role')))],
   [/^\/courses\/admin\/all$/, ({ db: d }) => ok(d.courses.map((c) => ({ ...c, teacher: { id: c.teacher.id, name: c.teacher.name }, _count: { enrollments: d.classmates.length + 1, ...counts(d, c.id) } })))],
   [/^\/announcements$/, ({ db: d }) => ok(d.adminAnnouncements)],

@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { toast } from 'sonner';
-import { CalendarPlus, Loader2, Trash2 } from 'lucide-react';
+import { CalendarPlus, DoorOpen, Flag, Loader2, Target, Trash2, User, Users } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
+import { TemplateCards, type TemplateOption } from '@/components/ui/TemplateCards';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api, errorMessage } from '@/lib/api';
 import { googleCalendarLink } from '@/lib/google-calendar-link';
@@ -31,12 +32,13 @@ export interface EventDraft {
   batch?: string | null;
 }
 
-const KINDS: { value: EventKind; label: string; teacher?: boolean }[] = [
-  { value: 'PERSONAL', label: 'Personal' },
-  { value: 'FOCUS', label: 'Study or focus time' },
-  { value: 'MEETING', label: 'Meeting' },
-  { value: 'OFFICE_HOURS', label: 'Office hours', teacher: true },
-  { value: 'DEADLINE', label: 'Deadline' },
+// M142: a new event starts from one of these cards (the reels' "Start from"); editing keeps a menu.
+const KINDS: (TemplateOption<EventKind> & { label: string; teacher?: boolean })[] = [
+  { value: 'PERSONAL', label: 'Personal', title: 'Personal', sub: 'Sport, a club, an appointment', icon: User },
+  { value: 'FOCUS', label: 'Study or focus time', title: 'Study or focus', sub: 'Time kept free to revise or work', icon: Target },
+  { value: 'MEETING', label: 'Meeting', title: 'Meeting', sub: 'With classmates, a teacher or a group', icon: Users },
+  { value: 'OFFICE_HOURS', label: 'Office hours', title: 'Office hours', sub: 'When students can drop in', icon: DoorOpen, teacher: true },
+  { value: 'DEADLINE', label: 'Deadline', title: 'Deadline', sub: 'Something due: a moment, not a block', icon: Flag },
 ];
 const COLOURS: { value: string; name: string }[] = [
   { value: '#27272a', name: 'Indigo' },
@@ -133,16 +135,24 @@ export function EventSheet({ draft, teacher, courses, onClose, onSaved }: {
       </div>
     }>
       <form id="event-form" onSubmit={save} className="space-y-3">
+        {!editing && (
+          <div>
+            <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200 mb-2">Start from</p>
+            <TemplateCards options={KINDS.filter((k) => teacher || !k.teacher)} value={f.type} onChange={(type) => set({ type })} label="Kind of event" />
+          </div>
+        )}
         <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">Title
           <input required maxLength={200} value={f.title} onChange={(e) => set({ title: e.target.value })} className="input mt-1" placeholder={f.type === 'FOCUS' ? 'Revise chapter 4' : 'Football practice'} />
         </label>
         <div className="grid grid-cols-2 gap-3">
-          <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Kind
-            <select value={f.type} onChange={(e) => set({ type: e.target.value as EventKind })} className="input mt-1">
-              {KINDS.filter((k) => teacher || !k.teacher).map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
-            </select>
-          </label>
-          <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Day
+          {editing && (
+            <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Kind
+              <select value={f.type} onChange={(e) => set({ type: e.target.value as EventKind })} className="input mt-1">
+                {KINDS.filter((k) => teacher || !k.teacher).map((k) => <option key={k.value} value={k.value}>{k.label}</option>)}
+              </select>
+            </label>
+          )}
+          <label className={cn('text-sm font-medium text-zinc-800 dark:text-zinc-200', !editing && 'col-span-2')}>Day
             <input type="date" required value={f.day} onChange={(e) => e.target.value && set({ day: e.target.value })} className="input mt-1" />
           </label>
         </div>
