@@ -100,7 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M133** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118).
+- **On `main`** (live): everything through **M143** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -114,7 +115,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   - **Also 9 Nov (PR #118):** the landing's globe you can use (M131: drag, zoom, click an app for its
     card); each app its own colour everywhere (M132, §8); realistic movement (M133: springs, depth on
     page changes, the globe's momentum) and the landing's scroll effects tied to the scroll.
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M134, the first pass of the
+  - **The Ballast reels inside the app (9 Nov, PR #119):** M134, the first pass of the
     Ballast reels' shapes inside the app (compact side menu, top bar, plain number tiles, 12 px cards);
     M135, every app page in that style through shared rules (compact sizes on computers, flat icon
     squares and one-colour progress bars, the reels' button and badge sizes); M136, phones at full frame
