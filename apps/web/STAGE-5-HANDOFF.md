@@ -5294,3 +5294,28 @@ looks, the owner's exception).
   every signed-in page is the error page.
 - **Left:** the shared `fadeUp` preset (168 uses) and the other framer `x` / `y` animations stay as they
   are: many are on `layout` elements, where a `transform` string would fight the layout animation.
+
+## M131: the landing's globe you can use (the owner, 9 Nov 2026)
+
+The owner, with a screenshot of the landing's planet: "make this globe ultra smooth and functional and
+more detailing and people can click on it and see details like that".
+
+- **What it does:** drag to turn it (a finger sideways only, so the page still scrolls), pinch, ctrl +
+  scroll or the + / − buttons to zoom; click an app on it, or its button in the row under the heading
+  (keyboards and screen readers), and the planet turns to face that app (the short way round), the app
+  wears a bright breathing ring, and a card opens: the app's name (Lab when it is), its tagline and line
+  from `apps.ts`, three more things it does (`DETAILS` in `WorldSection.tsx`: only what the product
+  really does), "Start with …" (sign-up with that app) and "Show me …" (switches the landing's app tab and
+  glides to the top). Close with ×, by picking the same button again, or another app.
+- **Still smooth:** a new Planet mode, `turnable`: steered like `interactive` (Trace's Live globe) but with
+  the full look (net, sparks, every name, ripples) and drawn on the background thread
+  (`planet.worker.ts`: `drag`, `zoom`, `focus`, `selected`, `pick` → `picked`). The page side only sends
+  pointer moves; the click is picked on the thread (`nearestPlace`, shared with the page planet).
+- **More detail:** the lattice is finer on big screens (up to 18 000 points, 0.62 r², was 14 000 / 0.5).
+- **Rules for code that builds on it:** `interactive` changes the look (no net over the sea, names only
+  for the chosen); use `turnable` to steer a look-only planet. The zoom buttons take a `corner` (the
+  landing keeps the end corner for its notes).
+- **Tested:** `pnpm check` (`planet-paint.test.ts`: the click picks the nearest place within 18 px; a
+  turnable planet turns to face the chosen place); `scripts/checks/world-globe-ui.mjs` on the dev server
+  and the built Worker (an app's button opens its card, a click in the planet's middle picks the app it
+  turned to, close, no sideways scrolling, axe with the card open at 390 and 1280, light and dark).

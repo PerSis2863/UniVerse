@@ -241,7 +241,7 @@ export default function ShowcasePage() {
               it was pulled up with a negative margin, which covered the hero's last row and its
               picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
           {later === 'campus' && <ProductWindow />}
-          <WorldSection app={later} />
+          <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
           <AnimatePresence mode="wait">

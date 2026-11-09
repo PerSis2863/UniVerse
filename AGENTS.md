@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M130 is the latest).
+  builds on it). The newest notes are at the end (M131 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -111,6 +111,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   - **The app scenes and the motion pass (9 Nov, the owner's exception to the pause):** each app's own
     scene behind the page in place of the river (M129, §8); the landing's app switch without a long
     frame, loaded content and new list rows gliding in (M130).
+  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M131, the landing's globe you can
+    use (drag, zoom, click an app for its card; still on a background thread).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -141,7 +143,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M131**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M132**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
