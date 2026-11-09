@@ -5473,3 +5473,24 @@ names in sentence case, 13.5 px rows, a soft row hover). Done as shared rules (t
   that sets its own size after this block, or an element other than `h2`/`h3`.
 - **Tested:** `pnpm check`; axe (serious/critical) clean on /teacher, /student, /student/courses,
   /student/grades, /teacher/attendance, /admin, /hub and /trace in light and dark.
+
+## Next: realistic 3D app backgrounds (the sweep's item 5; plan only, not started)
+
+The owner asked for it twice (9 Nov: "realistic graphics animations", then "please do from 1 to 6").
+A plan for the item that builds it (take the next M number):
+- **Where:** inside the scene's background thread (`components/backdrop.worker.ts`). three.js (already
+  installed, 0.180) draws on the `OffscreenCanvas` it already gets; it's imported only there, so no page
+  bundle grows. The 2D scenes of M129 (`lib/backdrop.ts`) stay as the fallback: no WebGL2 in the
+  thread, weak phones (`navigator.deviceMemory` ≤ 4 or `hardwareConcurrency` ≤ 4), drawn on the page.
+- **Each app, lit with depth:** one hemisphere and one directional light, fog for distance, a camera that
+  drifts slowly and leans a little towards the pointer (the page sends the pointer; nothing while
+  scrolling). UniVersity: stars and constellation lines in 3D, paper sheets rising and turning in the
+  light. Trace: a lit globe of dots, shipments as glowing arcs. Relief: a terrain with contour lines,
+  pins pulsing, routes. Green: aurora ribbons (additive), instanced leaves, fireflies. Play: a neon grid
+  floor to the horizon, floating game-pad shapes.
+- **Rules to keep:** the app's colour (`APPS[].color`, `ALT`, dark and light); the 1 s switch (fade the
+  old scene while the camera moves on); rest while hidden or under `data-arena`; Reduce Motion: one held
+  frame; decide materials and effects when a scene is made, never while it runs (a shader rebuild is a
+  stutter, as in Play's worlds); free every geometry, texture and the context on a switch and on close.
+- **Tests:** `scripts/checks/app-backdrop-ui.mjs` (one canvas, the page's frames through each switch, axe)
+  plus the fallback forced on; the deploy size alarm (M110).
