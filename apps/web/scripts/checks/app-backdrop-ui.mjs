@@ -61,6 +61,7 @@ try {
     const page = await ctx.newPage();
     await page.goto(base + path, { waitUntil: 'load', timeout: 240_000 });
     await page.waitForTimeout(3000);
+    if (await page.getByText('This page hit a problem').count()) fail.push(`${path}: the page hit a problem`);
     if ((await canvases(page)) !== 1) fail.push(`${path}: ${await canvases(page)} background canvases (want 1)`);
     out.push(path);
     await ctx.close();

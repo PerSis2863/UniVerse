@@ -10,6 +10,7 @@ import { EASE_GLIDE, reducedMotion } from './page-transition';
 // M1: figures, bars and lines play on every page, not only below the fold, and on computers a soft
 // light follows the pointer over cards (.sheen in globals.css). M3: grids of small squares
 // (heatmaps, bins, seats) fill in one by one, and a figure that changes rolls into its new value.
+// M130: content replacing a loading placeholder, and a row added to a list, glide in (`arrive`).
 
 const BLOCK = 'section, article, .panel, .card, [data-reveal], [class*="rounded-2xl"], [class*="rounded-3xl"]';
 const SKIP = '[data-no-motion], [role="dialog"], [role="menu"], [role="listbox"], [aria-modal="true"], .stagger, nav, header, footer, table, form, .fixed, .sticky, [data-page-skeleton], [role="status"]';
@@ -250,6 +251,49 @@ function rollChanged(records: MutationRecord[]) {
 }
 
 /** Starts scroll motion for the whole app (once). Returns a stop function. */
+const LOADING = '.skeleton, [aria-busy="true"]';
+const LIST = 'ul, ol, tbody, [role="list"], [role="feed"], [role="log"]';
+
+/** Already moving: a part of the page's entrance (WAAPI, PendingPage runs it first), its own CSS
+ *  animation (a message's arrival) or framer-motion (inline opacity / transform while it plays). */
+function moving(el: HTMLElement) {
+  if (el.style.opacity || el.style.transform || el.getAnimations().length) return true;
+  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) if (p.getAnimations().some((a) => !(a instanceof CSSAnimation) && !(a instanceof CSSTransition))) return true;
+  return false;
+}
+
+/**
+ * M130: what replaces a loading placeholder glides in (it popped in once the page's entrance was
+ * over), and one to three rows added to a list that's already there glide in too (a task you add, a
+ * reply). A big arrival (a whole dashboard) brings in its blocks one after another, as the page's
+ * entrance does. Only on screen (below it the scroll reveal takes over), at most 8, 40 ms apart;
+ * transform and opacity only (the compositor runs it). Rows that only moved (a sort) stay still.
+ */
+function arrive(records: MutationRecord[]) {
+  const lost = new Set<Node>(), removed = new Set<Node>(), added = new Map<Element, HTMLElement[]>();
+  for (const rec of records) {
+    for (const n of rec.removedNodes) {
+      removed.add(n);
+      if (n instanceof Element && (n.matches(LOADING) || n.querySelector(LOADING))) lost.add(rec.target);
+    }
+    for (const n of rec.addedNodes) if (n instanceof HTMLElement && rec.target instanceof Element) added.set(rec.target, [...(added.get(rec.target) ?? []), n]);
+  }
+  const fold = window.innerHeight, parts: HTMLElement[] = [];
+  for (const [target, els] of added) {
+    if (els.some((el) => removed.has(el))) continue; // moved, not new
+    const grew = target.matches(LIST) && els.length <= 3 && target.children.length > els.length;
+    if (!lost.has(target) && !grew) continue;
+    for (const el of els) {
+      if (el.matches(LOADING) || el.closest('[data-no-motion]')) continue;
+      const big = el.getBoundingClientRect().height > fold * 0.6 && el.children.length > 1;
+      parts.push(...(big ? (Array.from(el.children) as HTMLElement[]) : [el]));
+    }
+  }
+  // Reads first (one layout), then the writes.
+  const shown = parts.filter((el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el); }).slice(0, 8);
+  shown.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translate3d(0, 10px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: i * 40, easing: EASE_GLIDE, fill: 'backwards' }));
+}
+
 export function startScrollMotion(): () => void {
   if (typeof window === 'undefined' || mo || reducedMotion()) return () => {};
   stopSheen = startSheen();
@@ -261,7 +305,7 @@ export function startScrollMotion(): () => void {
   mo = new MutationObserver((records) => {
     for (const rec of records) for (const n of rec.addedNodes) if (n.nodeType === Node.ELEMENT_NODE && queued.length < 200) queued.push(n as Element);
     if (queued.length && !timer) timer = setTimeout(flush, 120);
-    if (!reducedMotion()) rollChanged(records);
+    if (!reducedMotion()) { rollChanged(records); arrive(records); }
   });
   mo.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan(document);

@@ -5258,3 +5258,39 @@ everywhere, a scene per app on the website and inside the apps, themed animated 
   `scripts/checks/app-backdrop-ui.mjs` (one canvas, every tab, sign-in, `/student`, `/trace`, axe at 390
   and 1280 light and dark) passes.
 - **Left:** the long page frame on a tab switch above (the landing's content, not part of this item).
+
+## M130: the motion pass, smoother and more alive where it counts (the owner, 9 Nov 2026)
+
+The owner: "can you make things more animated and ultra smooth and use all the plugins and connectors
+and dont make it like ai slop", then chose "the whole site" (asked first; the launch focus pauses new
+looks, the owner's exception).
+
+- **What was found:** the site already moves a lot (page entrances, the scroll reveal, count-ups, the
+  menu's gliding pill, sheets, the theme reveal), so this pass adds motion only where things popped or
+  stalled; nothing decorative. Sources: Emil Kowalski's skill (purpose, ease-out, under 300 ms, nothing
+  from scale 0), Motion's own performance audit via Context7 (`x` / `y` / `scale` run on the page's
+  thread; a literal `transform` string runs on the compositor; never mix it with `layout`). PostHog has
+  never received an event from the site and the database keeps no page visits, so the order came from the
+  launch focus: the landing, then UniVersity's daily pages.
+- **The landing's app switch:** the words, the tabs and the scene behind change at once; the hero's
+  picture and everything below render a moment later through `useDeferredValue(app)` (`later` in
+  `src/app/page.tsx`), which React can pause between frames. The hero's two entrances animate one
+  `transform` string. The other apps' code starts loading when the pointer or focus reaches the tabs
+  (`warmApps`). Worst page frame per switch on the built Worker: 33–50 ms (was 117–133); the first
+  switch to Relief still 83–100 ms (its sections' first mount).
+- **Content arriving:** `arrive()` in `src/lib/scroll-motion.ts`: what replaces a loading placeholder
+  (`.skeleton`, `aria-busy`) glides in (280 ms, a 10 px rise, 40 ms apart, at most 8, on screen only); a
+  big arrival brings in its blocks one by one; one to three rows added to a list already there glide in
+  (a task added, a reply). Skipped: rows that only moved (a sort), anything already moving (the page's
+  entrance, a message's own CSS arrival, framer's inline styles), `data-no-motion`, Reduce Motion.
+- **Rules for code that builds on it:** don't add per-page loading fades: `arrive` does it. A list that
+  animates its own rows with framer keeps doing so (`arrive` sees the inline styles and stays out). For
+  a new entrance that must stay smooth during a page load, animate a `transform` string, not `x` / `y`
+  (but never on a `layout` element).
+- **Checks:** `scripts/checks/motion-pass-ui.mjs` (built Worker: the landing's switches timed, a glide on
+  the teacher's home, none with Reduce Motion); `app-backdrop-ui.mjs` now fails a page that shows "This
+  page hit a problem" (a local database without tables gave error pages that still had the canvas).
+- **Trap (local):** `local:serve` uses its own database: after a fresh session run `pnpm local:setup`, or
+  every signed-in page is the error page.
+- **Left:** the shared `fadeUp` preset (168 uses) and the other framer `x` / `y` animations stay as they
+  are: many are on `layout` elements, where a `transform` string would fight the layout animation.

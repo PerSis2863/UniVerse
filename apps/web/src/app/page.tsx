@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
-import { Fragment, useEffect, useState } from 'react';
+import { Fragment, useDeferredValue, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
@@ -44,6 +44,9 @@ const PricingSection = dynamic(() => import('@/components/landing/Business').the
 const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.GreenMore));
 const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.PlayMore));
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
+/** M130: the other apps' parts start loading when the pointer or focus reaches the tabs, so the first
+ *  switch to an app doesn't wait for (and stall on) its code. */
+const warmApps = () => { void import('@/components/landing/HeroScenesLab'); void import('@/components/landing/TraceSection'); void import('@/components/landing/Business'); void import('@/components/landing/ImpactMore'); };
 
 // The public landing page, in the style of the owner's Relay video (a dark page, a live flow card,
 // numbers that draw themselves as you scroll; behind it the chosen app's own scene, M129) and in
@@ -127,6 +130,10 @@ export default function ShowcasePage() {
   const { user } = useAuthStore();
   const app = useChosenApp();
   const hero = HERO[app];
+  // M130: a tab switch changes the words, the tabs and the scene behind at once; the hero's picture
+  // and everything below follow a moment later in a render React can pause between frames (it was
+  // all one 120 ms frame: the page's own content, rebuilt for the new app).
+  const later = useDeferredValue(app);
   const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -190,11 +197,12 @@ export default function ShowcasePage() {
                     script: about 4 s on a budget phone over slow mobile data. Tab switches still glide
                     with framer (AnimatePresence `initial={false}` only skips the first render). */}
                 <div className="hero-in" style={rise(40)}>
-                  <AppTabs value={app} onChange={pick} label="Choose an app" />
+                  <div onPointerEnter={warmApps} onFocus={warmApps}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
                 </div>
                 <AnimatePresence mode="wait" initial={false}>
-                  {/* Transform and opacity only (§8: a blur filter repaints every frame). */}
-                  <motion.div key={app} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8, transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
+                  {/* Transform and opacity only (§8: a blur filter repaints every frame), as one `transform`
+                    so the compositor runs it (framer's x / y run on the page's thread, M130). */}
+                  <motion.div key={app} initial={{ opacity: 0, transform: 'translateY(14px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transform: 'translateY(-8px)', transition: { duration: 0.15 } }} transition={{ duration: 0.45, ease: EASE }}>
                     {/* M116: bigger (the owner: "really big"); the text shadow keeps it readable over the
                         app's scene on a phone (one column, the scene right behind the words). */}
                     <h1 className="mt-8 text-[3.25rem] sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-[-0.04em] leading-[0.98] text-white max-lg:dark:[text-shadow:0_2px_22px_rgba(12,13,16,0.85)]">
@@ -220,8 +228,8 @@ export default function ShowcasePage() {
               </div>
               <div className="hero-in" style={rise(200, 800)}><Live><motion.div style={{ y: sceneY }}>
               <AnimatePresence mode="wait" initial={false}>
-                <motion.div key={app} initial={{ opacity: 0, y: 40, rotateX: 12 }} animate={{ opacity: 1, y: 0, rotateX: 0 }} exit={{ opacity: 0, y: -20, transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                  <div data-tilt className="w-full flex justify-center lg:justify-end">{hero.card}</div>
+                <motion.div key={later} initial={{ opacity: 0, transform: 'translateY(40px) rotateX(12deg)' }} animate={{ opacity: 1, transform: 'translateY(0px) rotateX(0deg)' }} exit={{ opacity: 0, transform: 'translateY(-20px) rotateX(0deg)', transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
+                  <div data-tilt className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
                 </motion.div>
               </AnimatePresence>
               </motion.div></Live></div>
@@ -232,19 +240,19 @@ export default function ShowcasePage() {
               tall first screen because the hero is 9rem shorter than the screen on wide screens (M117);
               it was pulled up with a negative margin, which covered the hero's last row and its
               picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
-          {app === 'campus' && <ProductWindow />}
-          <WorldSection app={app} />
+          {later === 'campus' && <ProductWindow />}
+          <WorldSection app={later} />
           <LiveTotals />
 
           <AnimatePresence mode="wait">
-            <motion.div key={app} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
+            <motion.div key={later} initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.15 } }} transition={{ duration: 0.4 }}>
               {/* Each part's looping demos run only while it is on screen (Live). */}
               {/* Each section arrives its own way (M63, bits.tsx `Motion`). */}
-              {app === 'campus' && <><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></>}
-              {app === 'trace' && <><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></>}
-              {app === 'relief' && <><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></>}
-              {app === 'green' && <><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></>}
-              {app === 'play' && <><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></>}
+              {later === 'campus' && <><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></>}
+              {later === 'trace' && <><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></>}
+              {later === 'relief' && <><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></>}
+              {later === 'green' && <><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></>}
+              {later === 'play' && <><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></>}
             </motion.div>
           </AnimatePresence>
 
@@ -253,11 +261,11 @@ export default function ShowcasePage() {
           <section id="faq" className="px-6 py-24 scroll-mt-24">
             <div className="max-w-3xl mx-auto">
               <Reveal delay={0.05}><h2 className="mt-5 mb-8 text-4xl md:text-5xl font-bold tracking-tight text-white">Questions, <Accent>answered.</Accent></h2></Reveal>
-              {[...FAQ.all, ...FAQ[app]].map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
+              {[...FAQ.all, ...FAQ[later]].map((f, i) => <FaqItem key={f.q} {...f} i={i} />)}
             </div>
           </section>
 
-          <SplitCta app={app} />
+          <SplitCta app={later} />
         </main>
 
         <MarketingFooter />

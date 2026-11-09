@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M129 is the latest).
+  builds on it). The newest notes are at the end (M130 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -109,7 +109,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
   - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M129, each app's own scene behind
-    the page in place of the river (§8; the owner's exception to the pause, 9 Nov).
+    the page in place of the river (§8; the owner's exception to the pause, 9 Nov); M130, the motion pass
+    (the landing's app switch without a long frame, loaded content and new list rows gliding in).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -140,7 +141,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M130**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M131**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
@@ -331,7 +332,9 @@ eyebrow labels above headings; mono only for numbers and data. Older notes (M34,
 ignore their colours; the river's notes (M9–M128) describe what M129 removed.
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
-(`src/lib/page-transition.ts`), titles sweep in, figures count up, bars fill, charts draw (`src/lib/scroll-motion.ts`), cards glow under the mouse
+(`src/lib/page-transition.ts`), titles sweep in, figures count up, bars fill, charts draw, content that
+replaces a loading placeholder and a row added to a list glide in (`src/lib/scroll-motion.ts`, M130),
+cards glow under the mouse
 (`.sheen`); opt a part out with `data-no-motion`. Decorative loops pause while the page scrolls
 (`html[data-scrolling]`, M97): add new ones to that list, never ending the selector in `*` or `> *` (that
 restyles the whole page, M98); never animate a custom property, `filter` or `background` (they repaint
@@ -342,7 +345,9 @@ ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `
 at 0.85–0.95); menus grow from where they were opened; name the properties (`transition-[transform,opacity]`,
 not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
-without hover on touch screens.
+without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
+stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string
+(the compositor runs it), but never on an element with `layout` (M130).
 
 **Reading:** meaningful text 11 px or more (12 px running text; no new `text-[10px]`); running text
 near 75 characters a line; grey text 4.5:1 against what's really behind it, in both themes; no
