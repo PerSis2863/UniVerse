@@ -292,7 +292,18 @@ export const sampleTraceProducts = () => PRODUCTS.map((p, i) => ({
   rewardPoints: 25, warrantyMonths: 0, sample: true, batches: batches(i).map(({ dest, ...b }) => { void dest; return b; }), _count: { codes: 6_800 + i * 1_300 },
   // M108: the olive oil has its Digital Product Passport filled in (GS1 keeps prefix 952 for examples).
   ...(i === 0 && { gtin: '09520123456788', dpp: JSON.stringify(SAMPLE_DPP) }),
+  // M146: the olive oil's bottles come back for recycling.
+  ...(i === 0 && { takeBackHow: 'Bring the empty bottle to any Aurora shop', takeBackPoints: 20 }),
 }));
+
+/** M146: bottles on their way back, one waiting at the counter and one already in. */
+export const sampleTraceTakebacks = () => {
+  const ago = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+  return [
+    { id: 'smp-tb1', code: 'SMPL-AUR1-0042', product: PRODUCTS[0].name, status: 'ASKED', dropCode: 'K7Q2MX', points: 20, createdAt: ago(1), receivedAt: null },
+    { id: 'smp-tb2', code: 'SMPL-AUR1-0017', product: PRODUCTS[0].name, status: 'RECEIVED', dropCode: 'B4N9TR', points: 20, createdAt: ago(6), receivedAt: ago(4) },
+  ];
+};
 
 const SAMPLE_DPP = {
   madeIn: 'Spain', manufacturer: { name: 'Aurora Foods S.L. (sample)', address: 'Camino de las Lomas 12, 23001 Jaén, Spain', website: null },

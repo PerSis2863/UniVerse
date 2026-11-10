@@ -6623,6 +6623,9 @@ model TraceProduct {
   /// M108: the EU Digital Product Passport, JSON cleaned by src/lib/dpp.ts parseDpp.
   dpp          String?
   dppUpdatedAt DateTime?
+  /// M146: take-back for recycling: how to hand it in (null: not offered) and its owner's points.
+  takeBackHow    String?
+  takeBackPoints Int       @default(0)
   @@index([organizationId])
   @@map("trace_products")
 }
@@ -6939,6 +6942,25 @@ model TraceRepair {
   @@index([codeId, createdAt])
   @@index([brandId, createdAt])
   @@map("trace_repairs")
+}
+
+/// M146: a unit returned for recycling: asked by its owner (ASKED), received by the brand (RECEIVED).
+model TraceTakeback {
+  id           String    @id @default(cuid())
+  codeId       String    @unique
+  brandId      String
+  productId    String
+  userId       String
+  status       String    @default("ASKED")
+  dropCode     String
+  points       Int       @default(0)
+  receivedById String?
+  receivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([brandId, status, createdAt])
+  @@index([userId])
+  @@map("trace_takebacks")
 }
 
 model TraceOwner {

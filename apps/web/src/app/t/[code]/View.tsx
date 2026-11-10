@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, Recycle, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
@@ -41,7 +41,10 @@ interface Passport {
   footprint?: Footprint | null;
   /** M145: its repairs; whether you can add one (the brand's team, its owner). */
   history?: { repairs: Repair[]; canLog: boolean };
+  /** M146: the brand takes it back for recycling (how, points), and its take-back if any. */
+  takeBack?: TakeBack | null;
 }
+type TakeBack = { how: string | null; points: number; status: string | null; at: string | null; yours: boolean; dropCode: string | null };
 type Repair = { by: string; what: string; parts: string | null; createdAt: string };
 type Answer = Passport | { result: 'UNKNOWN' };
 
@@ -215,6 +218,7 @@ export default function View() {
             {data.code !== 'DEMO' && data.warranty && <WarrantyCard code={code!} warranty={data.warranty} suspect={data.result === 'SUSPECT'} />}
             <ReviewsCard code={code!} data={data} />
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && <OwnerCard code={code!} owner={data.owner} signedIn={signedIn} />}
+            {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.takeBack && <TakeBackCard code={code!} brand={data.brand.name} owned={!!data.owner?.you} signedIn={signedIn} initial={data.takeBack} />}
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.history && <HistoryCard code={code!} brand={data.brand.name} owners={data.owner?.owners ?? 0} history={data.history} />}
             {data.brand.slug && (
               <Link href={`/b/${data.brand.slug}`} className="passport-card mt-4 p-4 flex items-center gap-3 pp-rise hover:bg-white/[0.07] transition-colors">
@@ -392,6 +396,49 @@ function ReviewsCard({ code, data }: { code: string; data: Passport }) {
             </div>
           )}
         </div>
+      )}
+    </section>
+  );
+}
+
+/**
+ * M146: take-back for recycling. The offer (how to hand it in, the points); its owner asks and gets a
+ * drop-off code; once the brand has it, everyone sees it was returned (a resold recycled unit shows).
+ */
+function TakeBackCard({ code, brand, owned, signedIn, initial }: { code: string; brand: string; owned: boolean; signedIn: boolean; initial: TakeBack }) {
+  const [t, setT] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const ask = async () => {
+    setBusy(true);
+    try { const { data: r } = await api.post<TakeBack>(`/trace/scan/${encodeURIComponent(code)}/takeback`); setT(r); toast.success('Your drop-off code is ready'); }
+    catch (err) { toast.error(errorMessage(err, 'Could not start the return.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="takeback-h">
+      <h2 id="takeback-h" className="font-bold flex items-center gap-2"><Recycle className="w-4 h-4 text-pink-300" aria-hidden />{t.status === 'RECEIVED' ? 'Returned for recycling' : 'Return it for recycling'}</h2>
+      {t.status === 'RECEIVED' ? (
+        <p className="mt-2 text-sm text-zinc-200">{brand} received it for recycling on {day(t.at)}.{t.yours && t.points > 0 ? ` You earned ${t.points} points.` : ''}</p>
+      ) : t.status === 'ASKED' && t.yours ? (
+        <>
+          <p className="mt-2 text-sm text-zinc-300">Your drop-off code</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-white" translate="no">{t.dropCode}</p>
+          {t.how && <p className="mt-2 text-sm text-zinc-200">{t.how}</p>}
+          <p className="mt-2 text-xs text-zinc-400">Show this code when you hand it in.{t.points > 0 ? ` You’ll get ${t.points} points once ${brand} has it.` : ''}</p>
+        </>
+      ) : t.status === 'ASKED' ? (
+        <p className="mt-2 text-sm text-zinc-300">Its owner is returning it to {brand} for recycling.</p>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-zinc-200">When it’s worn out, {brand} takes it back for recycling{t.points > 0 ? <> and gives its owner <b className="text-white">{t.points} points</b></> : ''}.</p>
+          {t.how && <p className="mt-1 text-sm text-zinc-300">{t.how}</p>}
+          {owned ? (
+            <button type="button" onClick={() => void ask()} disabled={busy} className="mt-3 btn-primary w-full justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Recycle className="w-4 h-4" />}Return it for recycling</button>
+          ) : signedIn ? (
+            <p className="mt-2 text-xs text-zinc-400">Only its owner can return it: add it to your vault first.</p>
+          ) : (
+            <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to return it</Link>
+          )}
+        </>
       )}
     </section>
   );

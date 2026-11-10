@@ -5,6 +5,7 @@ import { forecast, isDiverted, journeyCarbon, tierFor, toBase32, trustScore } fr
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, type Body } from './body';
 import { brandOf, cfPosition, idOf, num, ownBatch, short } from './trace';
+import { takeBackView } from './trace-takeback';
 
 // UniVerse Trace, the second wave (migration 0179). On the passport: recalls the brand issued for the
 // batch, a blocked (stolen) batch, an instant win on the first check, warranty registration, buyer
@@ -21,7 +22,7 @@ const N = (v: unknown) => Number(v ?? 0) || 0;
 const q = <T = Row,>(sql: string, ...args: unknown[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args).catch(() => [] as T[]);
 const claimCode = () => toBase32(crypto.randomBytes(8), 10);
 
-type BatchWithProduct = { id: string; brandId: string | null; productId: string; secret: string; allowedCountries: string | null; blockedAt: Date | null; product: { id: string; name: string; warrantyMonths: number; winOdds: number | null; winPrize: string | null } };
+type BatchWithProduct = { id: string; brandId: string | null; productId: string; secret: string; allowedCountries: string | null; blockedAt: Date | null; product: { id: string; name: string; warrantyMonths: number; winOdds: number | null; winPrize: string | null; takeBackHow: string | null; takeBackPoints: number } };
 
 /** True when this unit wins: decided by the batch's secret, so it's fixed per unit and can't be farmed by rescanning. */
 export const wins = (secret: string, codeId: string, odds: number | null) =>
@@ -33,7 +34,7 @@ export const divertedScan = (batch: { allowedCountries: string | null }, country
 /** What the passport adds for this unit: recall, block, prize, warranty, reviews, owner. */
 export async function passportExtras(batch: BatchWithProduct, codeId: string, opts: { first: boolean; genuine: boolean; place: string | null; user: SessionUser | null }) {
   const brandId = batch.brandId;
-  const [recall, warranty, owner, rating, myReview, existingWin, repairs, member] = await Promise.all([
+  const [recall, warranty, owner, rating, myReview, existingWin, repairs, member, takeBack] = await Promise.all([
     prisma.traceRecall.findFirst({ where: { batchId: batch.id, status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, select: { reason: true, advice: true, severity: true, createdAt: true } }),
     prisma.traceWarranty.findUnique({ where: { codeId }, select: { endsAt: true, name: true } }),
     prisma.traceOwner.findUnique({ where: { codeId }, select: { userId: true, owners: true, since: true } }),
@@ -43,6 +44,8 @@ export async function passportExtras(batch: BatchWithProduct, codeId: string, op
     // M145: its repairs, and whether the one checking is on the brand's team (they can add one).
     prisma.traceRepair.findMany({ where: { codeId }, orderBy: { createdAt: 'desc' }, take: 20, select: { by: true, what: true, parts: true, createdAt: true } }),
     opts.user && brandId ? prisma.traceBrandMember.findFirst({ where: { userId: opts.user.id, brandId }, select: { userId: true } }) : null,
+    // M146: whether it's been returned for recycling.
+    prisma.traceTakeback.findUnique({ where: { codeId }, select: { status: true, dropCode: true, userId: true, createdAt: true, receivedAt: true } }),
   ]);
   // The first genuine check of a winning unit creates the prize and shows its claim code (only now).
   let win: { prize: string; claimCode: string | null; redeemed: boolean } | null = existingWin ? { prize: existingWin.prize, claimCode: null, redeemed: !!existingWin.redeemedAt } : null;
@@ -58,6 +61,7 @@ export async function passportExtras(batch: BatchWithProduct, codeId: string, op
     reviews: { avg: rating[0]?.n ? Math.round(N(rating[0].avg) * 10) / 10 : null, count: N(rating[0]?.n), mine: myReview, recent: reviews },
     owner: owner ? { owners: owner.owners, since: owner.since, you: !!opts.user && owner.userId === opts.user.id } : null,
     history: { repairs, canLog: !!member || (!!opts.user && owner?.userId === opts.user.id) },
+    takeBack: takeBackView(batch.product, takeBack, opts.user?.id ?? null),
   };
 }
 
@@ -89,7 +93,7 @@ async function unit(raw: string) {
   if (!code || !code.brandId || code.scanCount < 1) throw new NotFoundException('Scan the code first.');
   return code as typeof code & { brandId: string };
 }
-async function noCopy(codeId: string, status: string) {
+export async function noCopy(codeId: string, status: string) {
   if (status === 'FLAGGED' || (await prisma.traceScan.count({ where: { codeId, verdict: 'SUSPECT' } }))) throw new ForbiddenException('This label may be a copy, so it can’t be used for this.');
 }
 

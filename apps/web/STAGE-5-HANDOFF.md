@@ -5652,3 +5652,29 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check`; `scripts/checks/trace-history-api.mjs` (a brand, a batch, a unit owned by
   someone else; the owner's and the brand's repairs, a stranger refused, an empty one refused, the
   passport lists both newest first); axe on the passport with the card at 430 and 1280.
+
+## M146: Trace, take-back and recycling (the owner, 10 Nov 2026: the eight features)
+
+- **The brand offers it per product** (console → a product's settings, `ProductExtras`): "How to hand it
+  in" (empty: not offered) and "Points for its owner" (`trace_products.takeBackHow`, `takeBackPoints`,
+  through `extrasData`).
+- **The owner returns it** (passport card "Return it for recycling", `POST /trace/scan/:code/takeback`):
+  only the registered owner (`trace_owners`), never on a likely copy, once per unit (unique `codeId`);
+  they get a 6-character drop-off code, shown only to them. Others see "Its owner is returning it".
+- **The brand receives it** (console → **Take-backs**, shown once a product offers it; find by drop-off
+  code; `GET /trace/takebacks`, `POST /trace/takebacks/:id/receive`, `brandOf`): a guarded update claims
+  it once; then the owner gets the points (`award`, kind `TAKEBACK`, on the hash chain; the wallet labels
+  it "Returned for recycling"), a **Green** RECYCLE action of the unit's weight, confirmed by whoever
+  received it (so it counts for the challenge and leaderboards), and an in-app note (no email). The
+  passport then tells everyone it was returned, so a recycled unit resold as new shows.
+- **Code:** `src/server/trace-takeback.ts` (`takeBackView` feeds `passportExtras`); migration **0196**
+  (`trace_takebacks`, two product columns); sample answers (`sampleTraceTakebacks`, the sample olive
+  oil offers it).
+- **Trap (local):** `pnpm local:dev`'s parent restarts its server when the one on port 3000 is killed, so
+  a schema change can keep being served by an old process: stop the whole tree (every `local/dev.mjs`,
+  `next dev` and `next-server` process by number), clear `.next/dev` and `.next/cache/webpack`, start
+  one again.
+- **Tested:** `pnpm check`; `scripts/checks/trace-takeback-api.mjs` (the offer on the passport; not
+  before owning it; asking twice and a stranger refused; the code hidden from others; only the brand
+  lists and receives, once; TAKEBACK points and the Green action; the passport after); axe on the
+  passport card and the console list (sample mode) at 390 and 1280, light and dark.

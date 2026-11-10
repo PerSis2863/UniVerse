@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowDownLeft, ArrowUpRight, Banknote, Gift, Loader2, Megaphone, RotateCcw, ScanLine, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { ArrowDownLeft, ArrowUpRight, Banknote, Gift, Loader2, Megaphone, Recycle, RotateCcw, ScanLine, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
@@ -36,6 +36,7 @@ const KIND: Record<string, { label: string; icon: typeof Gift; cls: string }> = 
   CAMPAIGN: { label: 'Campaign bonus', icon: Megaphone, cls: 'text-fuchsia-600 dark:text-fuchsia-300 bg-fuchsia-500/10' },
   CASHOUT: { label: 'Cash-out', icon: ArrowUpRight, cls: 'text-zinc-600 dark:text-zinc-300 bg-zinc-500/10' },
   REFUND: { label: 'Points returned', icon: RotateCcw, cls: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/10' },
+  TAKEBACK: { label: 'Returned for recycling', icon: Recycle, cls: 'text-emerald-600 dark:text-emerald-300 bg-emerald-500/10' },
 };
 
 export default function WalletPage() {

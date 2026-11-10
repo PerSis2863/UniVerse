@@ -156,6 +156,9 @@ function extrasData(b: Body) {
     ...('winPrize' in b && { winPrize: short(b.winPrize, 120) }),
     ...('maxTempC' in b && { maxTempC: num(b.maxTempC, -80, 80) }),
     ...('weightKg' in b && { weightKg: num(b.weightKg, 0.001, 100_000) ?? 1 }),
+    // M146: take-back for recycling: how to hand it in (empty: not offered) and its owner's points.
+    ...('takeBackHow' in b && { takeBackHow: short(b.takeBackHow, 300) }),
+    ...('takeBackPoints' in b && { takeBackPoints: Math.round(num(b.takeBackPoints, 0, 10_000) ?? 0) }),
   };
 }
 

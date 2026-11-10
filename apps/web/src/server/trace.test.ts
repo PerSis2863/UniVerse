@@ -9,6 +9,7 @@ vi.mock('@/lib/db', () => ({
     traceRecall: { findFirst: vi.fn() }, traceWarranty: { findUnique: vi.fn() }, traceOwner: { findUnique: vi.fn() },
     traceReview: { findUnique: vi.fn(), findMany: vi.fn() }, traceWin: { findUnique: vi.fn(), create: vi.fn() },
     traceRepair: { findMany: vi.fn(async () => []) },
+    traceTakeback: { findUnique: vi.fn(async () => null) },
     $queryRawUnsafe: vi.fn(),
     traceProduct: { findUnique: vi.fn(), findMany: vi.fn(async () => []) },
     traceBrand: { findUnique: vi.fn() },

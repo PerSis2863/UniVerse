@@ -1026,6 +1026,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
+  [/^\/trace\/takebacks$/, () => ok(impact.sampleTraceTakebacks())],
   [/^\/trace\/products\/[^/]+\/supply$/, () => ok(impact.sampleTraceSupply())],
   [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],
   [/^\/trace\/map\/market$/, ({ q }) => ok(impact.sampleTraceMarket(Number(q.get('days')) || 30, q.get('product')))],
