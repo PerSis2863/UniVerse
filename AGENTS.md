@@ -100,8 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M143** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
-  M134–M143, PR #119).
+- **On `main`** (live): everything through **M157** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -128,8 +128,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     activity log as the reels' Agent Activity (heatmap, totals, tabs with counts, outcome labels); M142,
     "New …" windows with "Start from" cards (New course, New event; `TemplateCards`); M143, a teacher's
     courses as the reels' Agent Center (summary cards, a card per course with a 14-day chart).
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet (10 Nov, the owner's exception to the
-    pause: eight new Trace and Relief features, M144–M151):** M144, Trace's footprint story on every
+  - **Eight new Trace and Relief features (10 Nov, the owner's exception to the pause, M144–M151; PR #120):** M144, Trace's footprint story on every
     passport (making plus trip, a car-distance equivalent, against others of its kind); M145, repair and
     resale history on the passport (the brand's and the owner's repairs, the number of owners); M146,
     take-back for recycling (drop-off code, the brand receives it: points plus a Green action); M147,
@@ -138,7 +137,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     matching (helpers' skills with their alerts; a need asking for one alerts them first); M150, the
     "I'm safe" check-in (coordinators declare an emergency; people tell only those they talk with);
     M151, traceable aid (a code and QR label per aid box; donors follow its trip on `/aid/<code>`).
-  - **Also on that branch (10 Nov, the owner: "please do this… upgrade all the existing features…"):**
+  - **Their upgrades and a sweep (10 Nov, the owner: "please do this… upgrade all the existing features…"; PR #120):**
     M152, emails for the new alerts (emergencies may use the essential allowance; nearby needs only for
     helpers who tick "Also email me"); M153, emergency texts (SMS) to helpers who add their number,
     behind the owner's "Relief emergency texts" switch (off; Twilio); M154, aid boxes on a map (rounded to
