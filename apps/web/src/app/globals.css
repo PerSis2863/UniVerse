@@ -2365,12 +2365,11 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 
 /* Sign in and sign up's picture (AuthShowcase): the scenes (up to 500 px: UniVersity's, M117, so its
    third card fits) shrink on shorter screens so the page fits without scrolling, and go on the shortest. */
-.auth-scene { height: 500px; }
-.auth-scene > * { transform-origin: top left; }
-[dir="rtl"] .auth-scene > * { transform-origin: top right; }
-@media (max-height: 960px) { .auth-scene { height: 400px; } .auth-scene > * { scale: 0.8; } }
-@media (max-height: 860px) { .auth-scene { height: 325px; } .auth-scene > * { scale: 0.65; } }
-@media (max-height: 760px) { .auth-scene { height: 275px; } .auth-scene > * { scale: 0.55; } }
+/* M158: the sign-in picture shrinks with `zoom` (its layout shrinks with it: no empty box left under it,
+   nothing pinned to a corner), in gentler steps so its text stays readable; too short a screen hides it. */
+@media (max-height: 960px) { .auth-scene > * { zoom: 0.86; } }
+@media (max-height: 860px) { .auth-scene > * { zoom: 0.78; } }
+@media (max-height: 780px) { .auth-scene > * { zoom: 0.7; } }
 @media (max-height: 700px) { .auth-scene { display: none; } }
 
 /* M56 · A pool of the page's navy behind words the app's scene passes under (the landing's scroll story):

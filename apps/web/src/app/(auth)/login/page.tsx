@@ -488,11 +488,6 @@ export default function LoginPage() {
           </div>
         </div>
         )}
-        <p className="mt-6 text-center text-xs text-zinc-400">
-          <Link href="/terms" className="hover:text-indigo-400">Terms and Conditions</Link>
-          {' · '}
-          <Link href="/privacy" className="hover:text-indigo-400">Privacy Policy</Link>
-        </p>
       </div>
     </>
   );

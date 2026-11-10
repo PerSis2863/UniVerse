@@ -105,7 +105,7 @@ function Campus() {
           {feed.map((i, k) => {
             const d = DAY[i % DAY.length];
             return (
-              <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96 }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 - k * 0.02 }} exit={{ opacity: 0, y: 14, transition: { duration: 0.2 } }}
+              <motion.li key={i} layout initial={{ opacity: 0, y: -18, scale: 0.96 }} animate={{ opacity: 1 - k * 0.28, y: 0, scale: 1 }} exit={{ opacity: 0, y: 14, transition: { duration: 0.2 } }}
                 transition={{ type: 'spring', stiffness: 260, damping: 28 }}
                 className={cn('flex items-center gap-3 rounded-2xl px-3.5 py-2.5 ring-1', k === 0 ? 'bg-[var(--surface-2)] ring-pink-400/30 shadow-[0_10px_40px_-18px_rgba(79,142,247,0.7)]' : 'bg-[var(--surface)] ring-white/10')}>
                 <span className={cn('grid h-8 w-8 shrink-0 place-items-center rounded-xl', k === 0 ? 'bg-pink-500/20' : 'bg-white/5')}><d.icon className="h-4 w-4 text-pink-200" aria-hidden /></span>

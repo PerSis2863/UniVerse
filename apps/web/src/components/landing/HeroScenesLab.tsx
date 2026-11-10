@@ -29,7 +29,7 @@ function Trace() {
   const { s, calm } = useStep(9);
   const scanned = s >= 2;
   return (
-    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A product label scanned as genuine while its journey draws across a map">
+    <div className="relative h-[520px] w-full max-w-[520px]" role="img" aria-label="A product label scanned as genuine while its journey draws across a map">
       <svg viewBox="0 0 480 220" className="absolute inset-x-0 top-6 w-full opacity-80" aria-hidden>
         {DOTS.map(([x, y], i) => <circle key={i} cx={x} cy={y} r="1.8" fill="rgba(122,174,250,0.32)" />)}
         {ARCS.map(([a, b], i) => {

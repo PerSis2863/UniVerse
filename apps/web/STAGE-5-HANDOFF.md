@@ -5933,3 +5933,24 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Checks run on the build:** live-ui, world-ui, app-backdrop-ui, home-ui, card-menu-ui,
   calendar-ballast-ui, activity-log-ui, template-windows-ui, courses-center-ui, and the seven Trace and
   Relief API checks: all pass.
+
+## M158: the sign-in page lined up (the owner, 10 Nov 2026: "the animations and text doesn't align properly")
+
+- **The picture** (`.auth-scene`, `AuthShowcase`): on screens under 960 px tall it was shrunk with
+  `scale` from the top-left corner: tiny text, pinned to the corner, and a box of its full size left
+  behind. Now `zoom` (its layout shrinks with it), in gentler steps (0.86, 0.78, 0.7; hidden under 700 px),
+  so it lines up with the headline's left edge and its text stays readable. **Trap:** `scale`/`transform`
+  never shrinks the space an element takes; `zoom` does (all current browsers).
+- **The activity cards** under the campus picture kept a "depth" narrowing (each older card 2 % narrower)
+  that read as misalignment: now one width (opacity still fades the older ones). Also on the landing.
+- **Trace's passport card** stood 40 px out of its picture's box, onto the line under it: the box is
+  520 px tall now. (Relief's apparent spill is only its spinning sweep's box, clipped inside the disc.)
+- **The headline** sits on `.text-pool` (the landing's soft pool), so the scene's lines and paper sheets
+  pass under the words.
+- **The footer:** "© 2026 … · Made with ♥ by Aditya Bhatt" together on the left (the credit used to float
+  mid-page), and the Terms and Privacy links moved from under each form into the right column's foot
+  (`AuthFrame`), level with it.
+- **Branch note:** after PR #120 was squash-merged the branch restarted from `main`; its old commits are
+  recorded with a merge that keeps `main`'s files (`git merge -s ours`), so pushes never need force.
+- **Tested:** screenshots at 1280×720, 1440×900, 1600×830, 1920×1080 for the five app tabs; nothing
+  spills out of its box (measured); axe on /login, /register and a Lab tab at 390 and 1280, light and dark.
