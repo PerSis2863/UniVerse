@@ -2230,9 +2230,10 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 .press-ripple { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, rgb(79 142 247 / 0.35), rgb(79 142 247 / 0.12) 60%, transparent 72%); transform: scale(0); opacity: 1; animation: press-ripple 620ms var(--ease-out-soft, ease-out) forwards; }
 @keyframes press-ripple { to { transform: scale(1); opacity: 0; } }
 [data-cursor-light] { position: relative; }
-[data-cursor-light]::before { content: ''; position: absolute; z-index: 1; pointer-events: none; inset: 0; opacity: 0; transition: opacity 400ms ease;
-  background: radial-gradient(520px circle at var(--mx, -999px) var(--my, -999px), rgb(79 142 247 / 0.09), transparent 60%); }
-@media (hover: hover) and (pointer: fine) { [data-cursor-light]:hover::before { opacity: 1; } }
+/* M159: the light is one 1040 px element moved with transform (light-motion.ts), shown while the pointer is in. */
+.cursor-glow { position: absolute; top: 0; left: 0; z-index: 1; width: 1040px; height: 1040px; pointer-events: none; opacity: 0; will-change: transform;
+  background: radial-gradient(circle closest-side, rgb(79 142 247 / 0.09), transparent 60%); transition: opacity 400ms ease; }
+@media (hover: hover) and (pointer: fine) { [data-cursor-light]:hover > .cursor-glow { opacity: 1; } }
 [data-magnetic], [data-tilt] { will-change: transform; transform-style: preserve-3d; }
 @media (hover: hover) {
   a.card, a.panel, button.card, button.panel, .card-hover { transition-property: transform, box-shadow, border-color, background-color; transition-duration: 260ms; transition-timing-function: var(--ease-glide); }
@@ -2240,8 +2241,8 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 }
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select { transition: border-color 200ms ease, box-shadow 260ms var(--ease-glide, ease-out); }
 input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visible, textarea:focus-visible, select:focus-visible { box-shadow: 0 0 0 3px rgb(79 142 247 / 0.18), 0 0 24px -6px rgb(79 142 247 / 0.45); }
-@media (prefers-reduced-motion: reduce) { .press-ripple { display: none; } [data-cursor-light]::before { display: none; } a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: none; } }
-html.reduce-motion .press-ripple, html.reduce-motion [data-cursor-light]::before { display: none; }
+@media (prefers-reduced-motion: reduce) { .press-ripple { display: none; } .cursor-glow { display: none; } a.card:hover, a.panel:hover, button.card:hover, button.panel:hover, .card-hover:hover { transform: none; } }
+html.reduce-motion .press-ripple, html.reduce-motion .cursor-glow { display: none; }
 
 /* A landing part off screen (`Live` in src/components/landing/bits.tsx): its CSS loops hold still. */
 [data-away] * { animation-play-state: paused !important; }
@@ -2940,3 +2941,7 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
 @keyframes swap-next { from { opacity: 0; transform: translateX(22px); } }
 @keyframes swap-back { from { opacity: 0; transform: translateX(-22px); } }
 @media (prefers-reduced-motion: reduce) { .swap[data-dir] { animation-name: tl-fade; } }
+
+/* ═══ M159 · The landing's smaller planet: its stars and glow fade out before the canvas's edge, so no
+   square shows round it (a mask on the canvas alone; the zoom buttons beside it stay sharp). */
+.world-planet canvas { -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); }

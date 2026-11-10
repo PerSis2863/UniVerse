@@ -10,11 +10,21 @@ import { TOTAL_KEYS, totalLabel, type TotalKey, type Totals } from '@/lib/site-t
 
 const LABEL: Record<TotalKey, string> = { people: 'people', co2Kg: 'kg of CO₂ saved', helped: 'people helped', games: 'games played', scans: 'products checked' };
 
-export function LiveTotals() {
+/** The site's totals, asked once per visit and shared (the strip and the globe's app list, M159). */
+let asked: Promise<Totals | null> | null = null;
+export function useTotals() {
   const [totals, setTotals] = useState<Totals | null>(null);
   useEffect(() => {
-    fetch('/api/impact/totals').then((r) => (r.ok ? r.json() : null)).then((d: { totals?: Totals } | null) => setTotals(d?.totals ?? null)).catch(() => {});
+    asked ??= fetch('/api/impact/totals').then((r) => (r.ok ? r.json() : null)).then((d: { totals?: Totals } | null) => d?.totals ?? null).catch(() => null);
+    let live = true;
+    void asked.then((t) => { if (live) setTotals(t); });
+    return () => { live = false; };
   }, []);
+  return totals;
+}
+
+export function LiveTotals() {
+  const totals = useTotals();
   const shown = TOTAL_KEYS.filter((k) => (totals?.[k] ?? 0) >= 10);
   if (!shown.length) return null;
   return (

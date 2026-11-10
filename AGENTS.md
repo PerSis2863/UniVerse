@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M162 is the latest; M159 is the landing globe, in progress).
+  builds on it). The newest notes are at the end (M159 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -152,7 +152,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
     M161, fields that line up (a field written under its label sits under it; date and time fields never
     narrower than "09:00 AM"); M162, arrow buttons answer a press everywhere (the arrow darts its way, the
-    button sinks) and what they change slides in (`.swap` with `data-dir`).
+    button sinks) and what they change slides in (`.swap` with `data-dir`); M159, the landing's globe smaller,
+    beside the five apps as a list that steers it (real daily totals, a way in), and the pointer light
+    moved by `transform` (dragging the globe went from 9 slow frames in 40 to none).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -186,7 +188,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M163** (M159, M161 and M162 are taken: the globe, time boxes, arrow buttons). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M163**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the

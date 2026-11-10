@@ -6003,3 +6003,25 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`tap-motion.test.ts`: `arrowWay`); `scripts/checks/arrows-ui.mjs` (on the staff
   register: the arrow's `translate`, the button's `scale` and the day's `.swap` run; on the calendar the
   arrow darts).
+
+## M159: the landing's globe, smaller and useful, and smooth (the owner, 10 Nov 2026: "reduce the size of the globe map and make it more functional… make everything ultra smooth specially the globe")
+
+- **Smaller:** the planet's box went from 1152 × 600 (the section 1,196 px tall) to at most 480 × 460 beside a
+  list (the section about 1,075 px with the list and notes), 320 px tall on phones. Its stars and glow
+  fade out before the canvas's edge (`.world-planet canvas` mask, 88 %), so no square shows round it.
+- **More useful** (`WorldSection.tsx`): the five apps as a list that steers the planet: pointing at (or
+  focusing) a row turns the planet to that app, choosing it opens the row in place (what it does, three
+  things it really does, "Start with …" and "Show me …"), and a pick on the planet opens the same row. Each
+  row shows the app's real number from the site's daily totals (`useTotals` in `LiveTotals.tsx`, one
+  request shared with the totals strip; Trace products checked, Relief people helped, Green kg of CO₂,
+  Play games played; none for UniVersity; under 10 isn't sent). The two notes ("One wallet", "Live
+  everywhere") sit under it instead of floating round it; "Start free" closes the section.
+- **Smooth:** the pointer light on the landing and sign-in pages (`[data-cursor-light]`) wrote `--mx/--my`
+  on the page's outer box every frame, which restyled the whole page and repainted a page-sized
+  gradient: dragging the globe with a mouse had 9 slow frames in 40 (CPU slowed 4×). Now one 1040 px
+  element (`.cursor-glow`) moved with `transform` (`light-motion.ts`): 0 slow frames in 97. On a phone
+  the globe idles and drags at 60 a second. **Rule:** never write a custom property on a big ancestor
+  each frame; move one element with `transform`.
+- **Tested:** `pnpm check`; `world-ui.mjs` (the planet draws, axe on the landing at 390 and 1280),
+  `app-backdrop-ui.mjs`; frame times idle, dragging and opening a row at 390 and 1280; a row opens with its
+  "Start with" link; axe on the section with a row open.
