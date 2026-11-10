@@ -5964,3 +5964,20 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   its parent pages (real navigation, not a repeat of the menu).
 - (M159, the landing globe, was asked first and is in progress; M161 and M162 are the time boxes and the
   arrow buttons from the same message.)
+
+## M161: fields that line up (the owner, 10 Nov 2026: "09:00 AM" cut off, labels not aligned, "for everywhere")
+
+- **The cause, everywhere:** a field written inside its label with a top margin (`<label>Day starts<input
+  className="input mt-1 w-32" /></label>`) meant "under the label", but inputs are inline: with a fixed
+  width (`w-32`) it fitted beside the label's text, so rows lost their line, and at 120 px a time field
+  with AM/PM and its clock icon (128 px) was cut ("09:00 AI").
+- **Two rules in `globals.css` (the M161 block):** `label > .input` with an `mt-*` class is `display:
+  block` (under its label, as written); every date, time, date-time, month and week field has `min-width:
+  max-content` (never narrower than what it holds, whatever width it was given). A field meant to sit in a
+  sentence keeps `inline-block` (a utility wins).
+- **Found by measuring** each date/time field's width against the width its content needs, on the pages
+  that have them, for three roles at 1280 and 390: the timetable's "Plan a week" (the owner's picture)
+  and Student life → Rooms (a date field cut at 178 of 190 px) were the cut ones; now none.
+  `scripts/checks/fields-ui.mjs` keeps checking it (plus no sideways scroll).
+- **Rule for new screens:** a field under its label: `mt-1` on the field (or a `flex flex-col` label); don't
+  give date or time fields a width under what they hold.

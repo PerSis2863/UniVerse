@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M160 is the latest; M159 is the landing globe, in progress).
+  builds on it). The newest notes are at the end (M161 is the latest; M159 is the landing globe, in progress).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -149,7 +149,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
   - **After PR #120, on the branch `claude/great-hamilton-8g8xdm` (10 Nov, the owner's fixes):** M158, the
     sign-in page lined up (the picture shrinks with `zoom`, not pinned to a corner; cards one width; the
-    footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful).
+    footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
+    M161, fields that line up (a field written under its label sits under it; date and time fields never
+    narrower than "09:00 AM").
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,

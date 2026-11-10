@@ -2923,3 +2923,10 @@ html[data-scrolling] .pulse-ring::after { animation-play-state: paused; }
 .bar-in { transform-origin: left; animation: bar-in 0.8s var(--ease-glide) both 0.35s; }
 [dir="rtl"] .bar-in { transform-origin: right; }
 @media (prefers-reduced-motion: reduce) { .bar-in { animation: none; } }
+
+/* ═══ M161 · Fields that line up (the owner, 10 Nov 2026: "09:00 AM" cut off, labels not aligned) ═══
+   A field written under its label (a top margin, `mt-1`) sits under it: inline, a field with a fixed width
+   (`w-32`) slid up beside the label's text instead, the rows lost their line. And a date or time field is
+   never narrower than what it holds (the time with AM/PM, the picker's icon), whatever width it was given. */
+label > .input:is([class^="mt-"], [class*=" mt-"]) { display: block; }
+input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], [type="week"]) { min-width: max-content; }
