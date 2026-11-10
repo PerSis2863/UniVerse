@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, Recycle, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Flag, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, Recycle, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
@@ -144,6 +144,7 @@ export default function View() {
         {data && 'product' in data && (
           <>
             {data.win && <WinCard win={data.win} brand={data.brand.name} />}
+            {data.result === 'SUSPECT' && data.code !== 'DEMO' && <ReportFakeCard code={code!} brand={data.brand.name} signedIn={signedIn} />}
             <section className="passport-card mt-6 p-5 pp-rise" style={{ animationDelay: '120ms' }}>
               <div className="flex gap-4">
                 {data.product.imageUrl
@@ -439,6 +440,42 @@ function TakeBackCard({ code, brand, owned, signedIn, initial }: { code: string;
             <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to return it</Link>
           )}
         </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * M147: on a likely copy, where did you get it? A shop or website, a rough area, the price: the brand
+ * sees where copies are sold (never who said it). Signed in, once per unit; a position only if allowed.
+ */
+function ReportFakeCard({ code, brand, signedIn }: { code: string; brand: string; signedIn: boolean }) {
+  const [f, setF] = useState({ shop: '', area: '', price: '' });
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try { await api.post(`/trace/scan/${encodeURIComponent(code)}/report`, { ...f, ...(await here()) }); setSent(true); }
+    catch (err) { toast.error(errorMessage(err, 'Could not send the report.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-6 p-5 pp-rise" aria-labelledby="fake-h">
+      <h2 id="fake-h" className="font-bold flex items-center gap-2"><Flag className="w-4 h-4 text-amber-300" aria-hidden />Where did you get it?</h2>
+      {sent ? (
+        <p className="mt-2 text-sm text-zinc-200">Thank you. {brand} will see where copies are being sold. If you paid for it as genuine, ask the seller for your money back.</p>
+      ) : signedIn ? (
+        <form onSubmit={(e) => void send(e)} className="mt-3 grid gap-2">
+          <p className="text-sm text-zinc-300">Telling {brand} where copies are sold helps stop them. They won’t see who you are.</p>
+          <input required maxLength={80} value={f.shop} onChange={(e) => setF({ ...f, shop: e.target.value })} placeholder="Shop name or website" aria-label="Shop name or website" className={FIELD} />
+          <div className="grid grid-cols-2 gap-2">
+            <input maxLength={80} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })} placeholder="Town or area" aria-label="Town or area" className={FIELD} />
+            <input maxLength={20} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="Price paid" aria-label="Price paid" className={FIELD} />
+          </div>
+          <button type="submit" disabled={busy || !f.shop.trim()} className="btn-primary justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />}Report the seller</button>
+        </form>
+      ) : (
+        <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to report where you got it</Link>
       )}
     </section>
   );

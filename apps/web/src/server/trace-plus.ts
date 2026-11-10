@@ -222,7 +222,7 @@ export async function redeemWin(u: SessionUser, raw: string) {
 export async function radar(u: SessionUser) {
   const brand = await brandOf(u);
   const since = new Date(Date.now() - 30 * DAY);
-  const [suspect, diverted, blocked, recalls, flagged, cold] = await Promise.all([
+  const [suspect, diverted, blocked, recalls, flagged, cold, copiesSold] = await Promise.all([
     prisma.traceScan.findMany({ where: { brandId: brand.id, verdict: 'SUSPECT', createdAt: { gt: since } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, codeId: true, place: true, country: true, createdAt: true, productId: true } }),
     prisma.traceScan.findMany({ where: { brandId: brand.id, diverted: true, createdAt: { gt: since } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, codeId: true, place: true, country: true, createdAt: true, productId: true } }),
     prisma.traceBatch.findMany({ where: { brandId: brand.id, blockedAt: { not: null } }, select: { id: true, label: true, blockedAt: true, product: { select: { name: true } } } }),
@@ -232,6 +232,9 @@ export async function radar(u: SessionUser) {
        FROM trace_readings r JOIN trace_batches b ON b.id = r.batchId JOIN trace_products pr ON pr.id = b.productId
        WHERE r.brandId = ? AND pr.maxTempC IS NOT NULL AND r.tempC > pr.maxTempC AND r.createdAt > ?
        GROUP BY r.batchId ORDER BY last DESC LIMIT 30`, brand.id, iso(since.getTime())),
+    // M147: where buyers say they got copies (90 days), by shop, never who said it.
+    q(`SELECT lower(trim(shop)) AS k, MAX(shop) AS shop, MAX(area) AS area, MAX(country) AS country, COUNT(*) AS n, MAX(createdAt) AS last, MIN(price) AS price
+       FROM trace_fake_reports WHERE brandId = ? AND createdAt > ? GROUP BY k ORDER BY n DESC, last DESC LIMIT 12`, brand.id, iso(Date.now() - 90 * DAY)),
   ]);
   const productIds = [...new Set([...suspect, ...diverted].map((s) => s.productId).filter((x): x is string => !!x))];
   const batchIds = [...new Set(recalls.map((r) => r.batchId))];
@@ -247,7 +250,34 @@ export async function radar(u: SessionUser) {
     blocked: blocked.map((b) => ({ id: b.id, label: b.label, product: b.product.name, at: b.blockedAt })),
     recalls: recalls.map((r) => { const b = batches.find((x) => x.id === r.batchId); return { id: r.id, batchId: r.batchId, batch: b?.label ?? 'A batch', product: b?.product.name ?? '', reason: r.reason, advice: r.advice, severity: r.severity, status: r.status, at: r.createdAt, endedAt: r.endedAt }; }),
     cold: cold.map((c) => ({ batchId: c.batchId as string, label: c.label as string, product: c.product as string, maxT: N(c.maxT), limit: N(c.limitT), readings: N(c.n), last: c.last as string })),
+    copiesSold: copiesSold.map((c) => ({ shop: c.shop as string, area: (c.area as string | null) ?? null, country: (c.country as string | null) ?? null, reports: N(c.n), last: c.last as string, price: (c.price as string | null) ?? null })),
   };
+}
+
+/**
+ * M147: POST /trace/scan/:code/report { shop, area?, price?, lat?, lng? }: where the buyer got a unit
+ * whose label looks like a copy (a suspect check, or a code the brand flagged). Signed in, once per
+ * person per unit; the area falls back to the request's city; a position is kept to 0.1°.
+ */
+export async function reportFake(raw: string, user: SessionUser, body: Body, req: Request) {
+  const id = idOf(raw);
+  const code = id ? await prisma.traceCode.findUnique({ where: { id }, select: { id: true, brandId: true, productId: true, status: true } }) : null;
+  if (!code?.brandId) throw new NotFoundException('Scan the code first.');
+  const suspect = code.status === 'FLAGGED' || (await prisma.traceScan.count({ where: { codeId: code.id, verdict: 'SUSPECT' } })) > 0;
+  if (!suspect) throw new BadRequestException('This one checks out as genuine.');
+  const shop = short(body.shop, 80);
+  if (!shop) throw new BadRequestException('Where did you buy it? A shop’s name or a website.');
+  const { cf } = cfPosition(req);
+  const lat = num(body.lat, -90, 90), lng = num(body.lng, -180, 180);
+  const saved = await prisma.traceFakeReport.create({
+    data: {
+      codeId: code.id, brandId: code.brandId, productId: code.productId, userId: user.id, shop,
+      area: short(body.area, 80) ?? ([cf?.city, cf?.country].filter(Boolean).join(', ') || null), price: short(body.price, 20),
+      lat: lat === null ? null : Math.round(lat * 10) / 10, lng: lng === null ? null : Math.round(lng * 10) / 10, country: cf?.country ?? null,
+    },
+  }).catch(() => null);
+  if (!saved) throw new BadRequestException('You’ve already reported this one. Thank you!');
+  return { ok: true };
 }
 
 /** GET /trace/insights: forecast, busiest hours, CO₂ per shipment, reviews, best shops, prizes, warranties, trust. */

@@ -474,6 +474,11 @@ export function sampleTraceRadar() {
       { id: 'sample-r2', batchId: 'sample-b20', batch: 'Batch 2026-20', product: PRODUCTS[2].name, reason: 'Wrong best-before date on the label', advice: null, severity: 'MEDIUM', status: 'ENDED', at: iso(now - 40 * DAY), endedAt: iso(now - 33 * DAY) },
     ],
     cold: [{ batchId: 'sample-b01', label: 'Batch 2026-11', product: PRODUCTS[0].name, maxT: 11.4, limit: 8, readings: 6, last: iso(now - 3_600_000) }],
+    // M147: where buyers said they got copies.
+    copiesSold: [
+      { shop: 'GourmetDeals24 (online)', area: 'Marseille, FR', country: 'FR', reports: 4, last: iso(now - 2 * 3_600_000), price: '€6.90' },
+      { shop: 'Corner market, Rue de la Paix', area: 'Lyon, FR', country: 'FR', reports: 2, last: iso(now - 26 * 3_600_000), price: '€7.50' },
+    ],
   };
 }
 

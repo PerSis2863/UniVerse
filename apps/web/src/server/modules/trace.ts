@@ -11,7 +11,7 @@ import { ownerTrace } from '../trace-owner';
 import { aircraft } from '../aircraft';
 import { askSupplier, closeSupplyRequest, newSupplyLink, publicDpp, saveDpp, supplierAnswer, supplierView, supplyRequests, useSupplyAnswer } from '../trace-dpp';
 import { featureOff } from '../moderation';
-import { endRecall, insights, logRepair, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
+import { endRecall, insights, logRepair, reportFake, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 import { askTakeBack, brandTakebacks, receiveTakeBack } from '../trace-takeback';
 
 // UniVerse Trace (src/server/trace*.ts): every product gets a passport. Anyone can check a code or
@@ -46,6 +46,7 @@ export default function traceModule(router: Router) {
   r.post('wallet/cashouts', ({ user, body }) => requestCashout(user, body ?? {}));
   // Signed in: the ownership vault
   r.post<{ code: string }>('scan/:code/own', ({ params, user }) => ownUnit(params.code, user));
+  r.post<{ code: string }>('scan/:code/report', { status: 200 }, ({ params, user, body, req }) => reportFake(params.code, user, body ?? {}, req));
   r.post<{ code: string }>('scan/:code/takeback', { status: 200 }, ({ params, user }) => askTakeBack(params.code, user));
   r.post<{ code: string }>('scan/:code/repairs', { status: 200 }, ({ params, user, body }) => logRepair(params.code, user, body ?? {}));
   r.get('vault', ({ user }) => vault(user));

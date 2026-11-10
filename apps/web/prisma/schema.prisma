@@ -6963,6 +6963,26 @@ model TraceTakeback {
   @@map("trace_takebacks")
 }
 
+/// M147: where a buyer got a likely copy (shop, rough area, price); the brand sees them by shop, never who.
+model TraceFakeReport {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String
+  shop      String
+  area      String?
+  price     String?
+  lat       Float?
+  lng       Float?
+  country   String?
+  createdAt DateTime @default(now())
+
+  @@unique([codeId, userId], map: "trace_fake_reports_once")
+  @@index([brandId, createdAt])
+  @@map("trace_fake_reports")
+}
+
 model TraceOwner {
   id            String    @id @default(cuid())
   codeId        String    @unique

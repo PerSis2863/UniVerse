@@ -5678,3 +5678,22 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   before owning it; asking twice and a stranger refused; the code hidden from others; only the brand
   lists and receives, once; TAKEBACK points and the Green action; the passport after); axe on the
   passport card and the console list (sample mode) at 390 and 1280, light and dark.
+
+## M147: Trace, reports of fake labels (the owner, 10 Nov 2026: the eight features)
+
+- **The buyer** (passport, only when this check says **Be careful**): "Where did you get it?": a shop
+  or website (required), town or area, price paid; signed in; one report per person per unit
+  (`POST /trace/scan/:code/report`, `reportFake` in `src/server/trace-plus.ts`). Accepted only for a
+  unit with a suspect check or a code the brand flagged ("This one checks out as genuine" otherwise).
+  The area falls back to the request's city; a position (only if the person allowed it) is kept to 0.1°.
+- **The brand** (Radar → **Where copies are sold**): the last 90 days grouped by shop (case and spaces
+  ignored), with the area, the lowest price and the number of reports; never who reported (the Radar's
+  answer has no user ids or emails). Part of `GET /trace/radar` (`copiesSold`), so no new GET route;
+  the sample Radar has two shops.
+- **Fixed on the way (the Radar page, axe):** a recall's "high" label (amber 700 → 800 for contrast)
+  and the likely-copies list, which scrolls, can now be reached with the keyboard.
+- **Data:** migration **0197** `trace_fake_reports` (unique per unit and person).
+- **Tested:** `pnpm check`; `scripts/checks/trace-fakes-api.mjs` (a genuine unit refused; a check far
+  from the first one is a likely copy and can be reported once, not signed out, not without a shop; the
+  Radar lists it without the reporter); axe on the form (a check from far away) and on the Radar
+  (sample mode) at 390/430 and 1280.
