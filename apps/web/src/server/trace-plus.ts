@@ -33,13 +33,16 @@ export const divertedScan = (batch: { allowedCountries: string | null }, country
 /** What the passport adds for this unit: recall, block, prize, warranty, reviews, owner. */
 export async function passportExtras(batch: BatchWithProduct, codeId: string, opts: { first: boolean; genuine: boolean; place: string | null; user: SessionUser | null }) {
   const brandId = batch.brandId;
-  const [recall, warranty, owner, rating, myReview, existingWin] = await Promise.all([
+  const [recall, warranty, owner, rating, myReview, existingWin, repairs, member] = await Promise.all([
     prisma.traceRecall.findFirst({ where: { batchId: batch.id, status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, select: { reason: true, advice: true, severity: true, createdAt: true } }),
     prisma.traceWarranty.findUnique({ where: { codeId }, select: { endsAt: true, name: true } }),
     prisma.traceOwner.findUnique({ where: { codeId }, select: { userId: true, owners: true, since: true } }),
     q(`SELECT AVG(stars) AS avg, COUNT(*) AS n FROM trace_reviews WHERE productId = ?`, batch.productId),
     prisma.traceReview.findUnique({ where: { codeId }, select: { stars: true, text: true } }),
     prisma.traceWin.findUnique({ where: { codeId }, select: { prize: true, redeemedAt: true } }),
+    // M145: its repairs, and whether the one checking is on the brand's team (they can add one).
+    prisma.traceRepair.findMany({ where: { codeId }, orderBy: { createdAt: 'desc' }, take: 20, select: { by: true, what: true, parts: true, createdAt: true } }),
+    opts.user && brandId ? prisma.traceBrandMember.findFirst({ where: { userId: opts.user.id, brandId }, select: { userId: true } }) : null,
   ]);
   // The first genuine check of a winning unit creates the prize and shows its claim code (only now).
   let win: { prize: string; claimCode: string | null; redeemed: boolean } | null = existingWin ? { prize: existingWin.prize, claimCode: null, redeemed: !!existingWin.redeemedAt } : null;
@@ -54,7 +57,29 @@ export async function passportExtras(batch: BatchWithProduct, codeId: string, op
     warranty: batch.product.warrantyMonths > 0 ? { months: batch.product.warrantyMonths, registered: !!warranty, endsAt: warranty?.endsAt ?? null } : null,
     reviews: { avg: rating[0]?.n ? Math.round(N(rating[0].avg) * 10) / 10 : null, count: N(rating[0]?.n), mine: myReview, recent: reviews },
     owner: owner ? { owners: owner.owners, since: owner.since, you: !!opts.user && owner.userId === opts.user.id } : null,
+    history: { repairs, canLog: !!member || (!!opts.user && owner?.userId === opts.user.id) },
   };
+}
+
+/**
+ * M145: POST /trace/scan/:code/repairs { what, parts }: a repair on the unit's passport, by the brand's
+ * team (shown as checked by the brand) or its owner at the time. Not on a likely copy; 5 a day at most.
+ */
+export async function logRepair(raw: string, user: SessionUser, body: Body) {
+  const code = await unit(raw);
+  await noCopy(code.id, code.status);
+  const what = short(body.what, 200), parts = short(body.parts, 200);
+  if (!what) throw new BadRequestException('Say what was repaired.');
+  const [owner, member, today] = await Promise.all([
+    prisma.traceOwner.findUnique({ where: { codeId: code.id }, select: { userId: true } }),
+    prisma.traceBrandMember.findFirst({ where: { userId: user.id, brandId: code.brandId }, select: { userId: true } }),
+    prisma.traceRepair.count({ where: { codeId: code.id, createdAt: { gte: new Date(Date.now() - DAY) } } }),
+  ]);
+  const by = member ? 'BRAND' : owner?.userId === user.id ? 'OWNER' : null;
+  if (!by) throw new ForbiddenException('Only the brand or the owner can add a repair.');
+  if (today >= 5) throw new BadRequestException('That’s enough repairs on this one for today.');
+  const r = await prisma.traceRepair.create({ data: { codeId: code.id, brandId: code.brandId, productId: code.productId, userId: user.id, by, what, parts }, select: { by: true, what: true, parts: true, createdAt: true } });
+  return r;
 }
 
 /** The unit behind a printed code (it must have been checked at least once). */

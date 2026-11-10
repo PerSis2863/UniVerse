@@ -6924,6 +6924,23 @@ model TraceWarranty {
   @@map("trace_warranties")
 }
 
+/// M145: a repair to a unit, logged by the brand's team (BRAND) or its owner at the time (OWNER).
+model TraceRepair {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String?
+  by        String   @default("OWNER")
+  what      String
+  parts     String?
+  createdAt DateTime @default(now())
+
+  @@index([codeId, createdAt])
+  @@index([brandId, createdAt])
+  @@map("trace_repairs")
+}
+
 model TraceOwner {
   id            String    @id @default(cuid())
   codeId        String    @unique

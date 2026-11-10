@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
@@ -39,7 +39,10 @@ interface Passport {
   owner: { owners: number; since: string; you: boolean } | null;
   /** M144: its CO₂, making and trip, and against others of its kind. */
   footprint?: Footprint | null;
+  /** M145: its repairs; whether you can add one (the brand's team, its owner). */
+  history?: { repairs: Repair[]; canLog: boolean };
 }
+type Repair = { by: string; what: string; parts: string | null; createdAt: string };
 type Answer = Passport | { result: 'UNKNOWN' };
 
 const SEAL: Record<Verdict | 'UNKNOWN', { title: string; tone: string; icon: typeof ShieldCheck }> = {
@@ -212,6 +215,7 @@ export default function View() {
             {data.code !== 'DEMO' && data.warranty && <WarrantyCard code={code!} warranty={data.warranty} suspect={data.result === 'SUSPECT'} />}
             <ReviewsCard code={code!} data={data} />
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && <OwnerCard code={code!} owner={data.owner} signedIn={signedIn} />}
+            {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.history && <HistoryCard code={code!} brand={data.brand.name} owners={data.owner?.owners ?? 0} history={data.history} />}
             {data.brand.slug && (
               <Link href={`/b/${data.brand.slug}`} className="passport-card mt-4 p-4 flex items-center gap-3 pp-rise hover:bg-white/[0.07] transition-colors">
                 <BadgeCheck className="w-5 h-5 text-pink-300" aria-hidden /><span className="flex-1 text-sm">See {data.brand.name}’s trust score and other products</span><ChevronRight className="w-4 h-4 text-zinc-400" aria-hidden />
@@ -389,6 +393,65 @@ function ReviewsCard({ code, data }: { code: string; data: Passport }) {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+const FIELD = 'h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400';
+const ORDINAL = ['', 'Original', 'Second', 'Third', 'Fourth', 'Fifth'];
+
+/**
+ * M145: its life after the shop: how many owners it has had and every repair, the brand's marked as
+ * checked by the brand. The brand's team and its owner can add one. Shown once there's anything to show.
+ */
+function HistoryCard({ code, brand, owners, history }: { code: string; brand: string; owners: number; history: NonNullable<Passport['history']> }) {
+  const [repairs, setRepairs] = useState(history.repairs);
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ what: '', parts: '' });
+  const [busy, setBusy] = useState(false);
+  if (!repairs.length && !history.canLog && owners < 2) return null;
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data: r } = await api.post<Repair>(`/trace/scan/${encodeURIComponent(code)}/repairs`, f);
+      setRepairs([r, ...repairs]); setF({ what: '', parts: '' }); setOpen(false); toast.success('Repair added to its passport');
+    } catch (err) { toast.error(errorMessage(err, 'Could not add the repair.')); } finally { setBusy(false); }
+  };
+  const byBrand = repairs.filter((r) => r.by === 'BRAND').length;
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="history-h">
+      <h2 id="history-h" className="font-bold flex items-center gap-2"><Wrench className="w-4 h-4 text-pink-300" aria-hidden />Repairs and owners</h2>
+      <p className="mt-2 text-sm text-zinc-200">
+        {owners > 1 ? `${ORDINAL[owners] ?? `Owner number ${owners}:`} owner, resold ${owners - 1} time${owners > 2 ? 's' : ''}` : owners === 1 ? 'Still with its first owner' : 'Not registered to an owner yet'}
+        {' · '}{repairs.length ? `${repairs.length} repair${repairs.length === 1 ? '' : 's'}${byBrand ? `, ${byBrand} by ${brand}` : ''}` : 'no repairs'}
+      </p>
+      {repairs.length > 0 && (
+        <ol className="mt-4 relative ms-2 border-s border-white/15 space-y-3">
+          {repairs.map((r, i) => (
+            <li key={i} className="relative ps-5">
+              <span aria-hidden className="absolute -start-[6px] top-1.5 w-3 h-3 rounded-full bg-zinc-200" />
+              <p className="font-semibold">{r.what}</p>
+              {r.parts && <p className="text-sm text-zinc-300">Parts: {r.parts}</p>}
+              <p className="mt-0.5 font-mono text-[11px] text-zinc-400 flex items-center gap-1">
+                {day(r.createdAt)} · {r.by === 'BRAND' ? <><BadgeCheck className="w-3 h-3 text-pink-300" aria-hidden />by {brand}</> : 'by its owner'}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {history.canLog && (open ? (
+        <form onSubmit={save} className="mt-4 grid gap-2">
+          <input required maxLength={200} value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} placeholder="What was repaired" aria-label="What was repaired" className={FIELD} />
+          <input maxLength={200} value={f.parts} onChange={(e) => setF({ ...f, parts: e.target.value })} placeholder="Parts replaced (optional)" aria-label="Parts replaced" className={FIELD} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button type="submit" disabled={busy || !f.what.trim()} className="btn-primary flex-1 justify-center">{busy && <Loader2 className="w-4 h-4 animate-spin" />}Add the repair</button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="mt-4 btn-secondary w-full justify-center"><Wrench className="w-4 h-4" />Add a repair</button>
+      ))}
     </section>
   );
 }

@@ -5633,3 +5633,22 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   points stay on the server: the browser still gets places by name only.
 - **The sample passport** (`/t/demo`) has one (a 0.6 kg bottle from Jaén to Paris).
 - **Tested:** `pnpm check` (`trace.test.ts`: footprint); axe on `/t/demo` at 390 and 1280, dark and light.
+
+## M145: Trace, repair and resale history on the passport (the owner, 10 Nov 2026: the eight features)
+
+- **What people see** (`/t/<code>`, under "Proof of ownership"): **Repairs and owners**: "Second owner,
+  resold 1 time · 2 repairs, 1 by <brand>", then each repair (what, the parts, the date, "by <brand>" with
+  a check mark or "by its owner"). Shown once there is anything: a repair, a resale, or someone who may
+  add one. A second-hand buyer gets the unit's story; the existing transfer (vault) keeps the owner count.
+- **Who can add one** (`logRepair` in `src/server/trace-plus.ts`, `POST /trace/scan/:code/repairs`
+  { what, parts }, signed in): the brand's team (`trace_brand_members` of the unit's brand: `by`
+  BRAND) or its owner at the time (`trace_owners.userId`: OWNER); anyone else 403; never on a likely
+  copy (`noCopy`); 5 a day per unit; text through `short` (200 characters).
+- **Data:** migration **0195** `trace_repairs` (model `TraceRepair`); the passport reads the last 20 in
+  the same round as its other extras (`passportExtras`).
+- **Trap (local):** after a schema change the running `pnpm local:dev` keeps the old database client in
+  its bundle cache: stop it, `rm -rf .next/dev .next/cache/webpack`, start it again. The Trace unit
+  tests' Prisma mock needs every new table the scan reads (`trace.test.ts`).
+- **Tested:** `pnpm check`; `scripts/checks/trace-history-api.mjs` (a brand, a batch, a unit owned by
+  someone else; the owner's and the brand's repairs, a stranger refused, an empty one refused, the
+  passport lists both newest first); axe on the passport with the card at 430 and 1280.

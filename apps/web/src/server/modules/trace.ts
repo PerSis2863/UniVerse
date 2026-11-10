@@ -11,7 +11,7 @@ import { ownerTrace } from '../trace-owner';
 import { aircraft } from '../aircraft';
 import { askSupplier, closeSupplyRequest, newSupplyLink, publicDpp, saveDpp, supplierAnswer, supplierView, supplyRequests, useSupplyAnswer } from '../trace-dpp';
 import { featureOff } from '../moderation';
-import { endRecall, insights, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
+import { endRecall, insights, logRepair, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 
 // UniVerse Trace (src/server/trace*.ts): every product gets a passport. Anyone can check a code or
 // share a shipment's position from a driver's link (no sign-in); anyone signed in has a wallet and can
@@ -45,6 +45,7 @@ export default function traceModule(router: Router) {
   r.post('wallet/cashouts', ({ user, body }) => requestCashout(user, body ?? {}));
   // Signed in: the ownership vault
   r.post<{ code: string }>('scan/:code/own', ({ params, user }) => ownUnit(params.code, user));
+  r.post<{ code: string }>('scan/:code/repairs', { status: 200 }, ({ params, user, body }) => logRepair(params.code, user, body ?? {}));
   r.get('vault', ({ user }) => vault(user));
   r.post('vault/receive', { status: 200 }, ({ user, body }) => receiveTransfer(user, body ?? {}));
   r.post<{ id: string }>('vault/:id/transfer', { status: 200 }, ({ user, params }) => startTransfer(user, params.id));
