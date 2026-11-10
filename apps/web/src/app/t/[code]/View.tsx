@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Flag, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, Recycle, ShieldCheck, Sparkles, Star, Vault, Wrench } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
 import { api, errorMessage } from '@/lib/api';
-import { STAGE_LABEL, STAGE_SHORT, type Stage, type Verdict } from '@/lib/trace';
+import { STAGE_LABEL, STAGE_SHORT, type Footprint, type Stage, type Verdict } from '@/lib/trace';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { Journey } from '@/components/live/Journey';
@@ -37,7 +37,15 @@ interface Passport {
   /** M108: the EU Digital Product Passport, when the brand filled it in. */
   gtin?: string | null; dpp?: Dpp | null;
   owner: { owners: number; since: string; you: boolean } | null;
+  /** M144: its CO₂, making and trip, and against others of its kind. */
+  footprint?: Footprint | null;
+  /** M145: its repairs; whether you can add one (the brand's team, its owner). */
+  history?: { repairs: Repair[]; canLog: boolean };
+  /** M146: the brand takes it back for recycling (how, points), and its take-back if any. */
+  takeBack?: TakeBack | null;
 }
+type TakeBack = { how: string | null; points: number; status: string | null; at: string | null; yours: boolean; dropCode: string | null };
+type Repair = { by: string; what: string; parts: string | null; createdAt: string };
 type Answer = Passport | { result: 'UNKNOWN' };
 
 const SEAL: Record<Verdict | 'UNKNOWN', { title: string; tone: string; icon: typeof ShieldCheck }> = {
@@ -136,6 +144,7 @@ export default function View() {
         {data && 'product' in data && (
           <>
             {data.win && <WinCard win={data.win} brand={data.brand.name} />}
+            {data.result === 'SUSPECT' && data.code !== 'DEMO' && <ReportFakeCard code={code!} brand={data.brand.name} signedIn={signedIn} />}
             <section className="passport-card mt-6 p-5 pp-rise" style={{ animationDelay: '120ms' }}>
               <div className="flex gap-4">
                 {data.product.imageUrl
@@ -180,6 +189,7 @@ export default function View() {
               </ol>
             </section>
 
+            {data.footprint && <FootprintCard f={data.footprint} category={data.product.category} />}
             {data.dpp && <DppCard dpp={data.dpp} gtin={data.gtin ?? null} />}
 
             {data.product.rewardPoints > 0 && data.result !== 'SUSPECT' && (
@@ -209,6 +219,8 @@ export default function View() {
             {data.code !== 'DEMO' && data.warranty && <WarrantyCard code={code!} warranty={data.warranty} suspect={data.result === 'SUSPECT'} />}
             <ReviewsCard code={code!} data={data} />
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && <OwnerCard code={code!} owner={data.owner} signedIn={signedIn} />}
+            {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.takeBack && <TakeBackCard code={code!} brand={data.brand.name} owned={!!data.owner?.you} signedIn={signedIn} initial={data.takeBack} />}
+            {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.history && <HistoryCard code={code!} brand={data.brand.name} owners={data.owner?.owners ?? 0} history={data.history} />}
             {data.brand.slug && (
               <Link href={`/b/${data.brand.slug}`} className="passport-card mt-4 p-4 flex items-center gap-3 pp-rise hover:bg-white/[0.07] transition-colors">
                 <BadgeCheck className="w-5 h-5 text-pink-300" aria-hidden /><span className="flex-1 text-sm">See {data.brand.name}’s trust score and other products</span><ChevronRight className="w-4 h-4 text-zinc-400" aria-hidden />
@@ -242,6 +254,38 @@ function Seal({ data }: { data: Answer }) {
       </span>
       <h2 className="mt-5 text-4xl sm:text-5xl font-black tracking-tight">{s.title}</h2>
       <p className="mt-2 max-w-md text-zinc-300">{text}</p>
+    </section>
+  );
+}
+
+/**
+ * M144: its footprint story: the total, a car-distance equivalent, making against the trip, and how the
+ * making compares with the middle of other products of its kind on UniVerse that published a figure.
+ */
+function FootprintCard({ f, category }: { f: Footprint; category: string | null }) {
+  const made = f.kg ? (f.madeKg / f.kg) * 100 : 0;
+  const kind = category ? `${category.toLowerCase()} products` : 'products of its kind';
+  const near = f.vsTypical !== null && Math.abs(f.vsTypical) < 10;
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" style={{ animationDelay: '260ms' }} aria-labelledby="foot-h">
+      <h2 id="foot-h" className="font-bold flex items-center gap-2"><Leaf className="w-4 h-4 text-pink-300" aria-hidden />Its footprint</h2>
+      <p className="mt-3 flex items-baseline gap-2"><span className="text-3xl font-black tabular-nums">{f.kg.toLocaleString()}</span><span className="text-sm text-zinc-300">kg CO₂e</span></p>
+      <p className="mt-1 text-sm text-zinc-300">About the same as driving {f.carKm.toLocaleString()} km in a car.</p>
+      {f.madeKg > 0 && f.tripKg > 0 && (
+        <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-white/10 bar-in" data-no-motion aria-hidden>
+          <span className="h-full bg-pink-300" style={{ width: `${made}%` }} />
+          <span className="h-full bg-zinc-300" style={{ width: `${100 - made}%` }} />
+        </div>
+      )}
+      <dl className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs">
+        {f.madeKg > 0 && <Fact k="Making it" v={`${f.madeKg} kg`} />}
+        {f.km > 0 && <Fact k={`Its trip, ${f.km.toLocaleString()} km`} v={`${f.tripKg} kg`} />}
+      </dl>
+      {f.vsTypical !== null && f.typicalKg !== null && (
+        <p className="mt-3 text-sm text-zinc-200">
+          {near ? <>Making it gave off <b className="text-white">about the same</b> as</> : <>Making it gave off <b className="text-white">{Math.abs(f.vsTypical)}% {f.vsTypical < 0 ? 'less' : 'more'}</b> than</>} the middle of {f.compared} other {kind} on UniVerse ({f.typicalKg} kg).
+        </p>
+      )}
     </section>
   );
 }
@@ -354,6 +398,144 @@ function ReviewsCard({ code, data }: { code: string; data: Passport }) {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+/**
+ * M146: take-back for recycling. The offer (how to hand it in, the points); its owner asks and gets a
+ * drop-off code; once the brand has it, everyone sees it was returned (a resold recycled unit shows).
+ */
+function TakeBackCard({ code, brand, owned, signedIn, initial }: { code: string; brand: string; owned: boolean; signedIn: boolean; initial: TakeBack }) {
+  const [t, setT] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const ask = async () => {
+    setBusy(true);
+    try { const { data: r } = await api.post<TakeBack>(`/trace/scan/${encodeURIComponent(code)}/takeback`); setT(r); toast.success('Your drop-off code is ready'); }
+    catch (err) { toast.error(errorMessage(err, 'Could not start the return.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="takeback-h">
+      <h2 id="takeback-h" className="font-bold flex items-center gap-2"><Recycle className="w-4 h-4 text-pink-300" aria-hidden />{t.status === 'RECEIVED' ? 'Returned for recycling' : 'Return it for recycling'}</h2>
+      {t.status === 'RECEIVED' ? (
+        <p className="mt-2 text-sm text-zinc-200">{brand} received it for recycling on {day(t.at)}.{t.yours && t.points > 0 ? ` You earned ${t.points} points.` : ''}</p>
+      ) : t.status === 'ASKED' && t.yours ? (
+        <>
+          <p className="mt-2 text-sm text-zinc-300">Your drop-off code</p>
+          <p className="mt-1 font-mono text-3xl font-bold tracking-[0.25em] text-white" translate="no">{t.dropCode}</p>
+          {t.how && <p className="mt-2 text-sm text-zinc-200">{t.how}</p>}
+          <p className="mt-2 text-xs text-zinc-400">Show this code when you hand it in.{t.points > 0 ? ` You’ll get ${t.points} points once ${brand} has it.` : ''}</p>
+        </>
+      ) : t.status === 'ASKED' ? (
+        <p className="mt-2 text-sm text-zinc-300">Its owner is returning it to {brand} for recycling.</p>
+      ) : (
+        <>
+          <p className="mt-2 text-sm text-zinc-200">When it’s worn out, {brand} takes it back for recycling{t.points > 0 ? <> and gives its owner <b className="text-white">{t.points} points</b></> : ''}.</p>
+          {t.how && <p className="mt-1 text-sm text-zinc-300">{t.how}</p>}
+          {owned ? (
+            <button type="button" onClick={() => void ask()} disabled={busy} className="mt-3 btn-primary w-full justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Recycle className="w-4 h-4" />}Return it for recycling</button>
+          ) : signedIn ? (
+            <p className="mt-2 text-xs text-zinc-400">Only its owner can return it: add it to your vault first.</p>
+          ) : (
+            <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to return it</Link>
+          )}
+        </>
+      )}
+    </section>
+  );
+}
+
+/**
+ * M147: on a likely copy, where did you get it? A shop or website, a rough area, the price: the brand
+ * sees where copies are sold (never who said it). Signed in, once per unit; a position only if allowed.
+ */
+function ReportFakeCard({ code, brand, signedIn }: { code: string; brand: string; signedIn: boolean }) {
+  const [f, setF] = useState({ shop: '', area: '', price: '' });
+  const [busy, setBusy] = useState(false);
+  const [sent, setSent] = useState(false);
+  const send = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try { await api.post(`/trace/scan/${encodeURIComponent(code)}/report`, { ...f, ...(await here()) }); setSent(true); }
+    catch (err) { toast.error(errorMessage(err, 'Could not send the report.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-6 p-5 pp-rise" aria-labelledby="fake-h">
+      <h2 id="fake-h" className="font-bold flex items-center gap-2"><Flag className="w-4 h-4 text-amber-300" aria-hidden />Where did you get it?</h2>
+      {sent ? (
+        <p className="mt-2 text-sm text-zinc-200">Thank you. {brand} will see where copies are being sold. If you paid for it as genuine, ask the seller for your money back.</p>
+      ) : signedIn ? (
+        <form onSubmit={(e) => void send(e)} className="mt-3 grid gap-2">
+          <p className="text-sm text-zinc-300">Telling {brand} where copies are sold helps stop them. They won’t see who you are.</p>
+          <input required maxLength={80} value={f.shop} onChange={(e) => setF({ ...f, shop: e.target.value })} placeholder="Shop name or website" aria-label="Shop name or website" className={FIELD} />
+          <div className="grid grid-cols-2 gap-2">
+            <input maxLength={80} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })} placeholder="Town or area" aria-label="Town or area" className={FIELD} />
+            <input maxLength={20} value={f.price} onChange={(e) => setF({ ...f, price: e.target.value })} placeholder="Price paid" aria-label="Price paid" className={FIELD} />
+          </div>
+          <button type="submit" disabled={busy || !f.shop.trim()} className="btn-primary justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <Flag className="w-4 h-4" />}Report the seller</button>
+        </form>
+      ) : (
+        <Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="mt-3 btn-secondary w-full justify-center">Sign in to report where you got it</Link>
+      )}
+    </section>
+  );
+}
+
+const FIELD = 'h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400';
+const ORDINAL = ['', 'Original', 'Second', 'Third', 'Fourth', 'Fifth'];
+
+/**
+ * M145: its life after the shop: how many owners it has had and every repair, the brand's marked as
+ * checked by the brand. The brand's team and its owner can add one. Shown once there's anything to show.
+ */
+function HistoryCard({ code, brand, owners, history }: { code: string; brand: string; owners: number; history: NonNullable<Passport['history']> }) {
+  const [repairs, setRepairs] = useState(history.repairs);
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ what: '', parts: '' });
+  const [busy, setBusy] = useState(false);
+  if (!repairs.length && !history.canLog && owners < 2) return null;
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      const { data: r } = await api.post<Repair>(`/trace/scan/${encodeURIComponent(code)}/repairs`, f);
+      setRepairs([r, ...repairs]); setF({ what: '', parts: '' }); setOpen(false); toast.success('Repair added to its passport');
+    } catch (err) { toast.error(errorMessage(err, 'Could not add the repair.')); } finally { setBusy(false); }
+  };
+  const byBrand = repairs.filter((r) => r.by === 'BRAND').length;
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="history-h">
+      <h2 id="history-h" className="font-bold flex items-center gap-2"><Wrench className="w-4 h-4 text-pink-300" aria-hidden />Repairs and owners</h2>
+      <p className="mt-2 text-sm text-zinc-200">
+        {owners > 1 ? `${ORDINAL[owners] ?? `Owner number ${owners}:`} owner, resold ${owners - 1} time${owners > 2 ? 's' : ''}` : owners === 1 ? 'Still with its first owner' : 'Not registered to an owner yet'}
+        {' · '}{repairs.length ? `${repairs.length} repair${repairs.length === 1 ? '' : 's'}${byBrand ? `, ${byBrand} by ${brand}` : ''}` : 'no repairs'}
+      </p>
+      {repairs.length > 0 && (
+        <ol className="mt-4 relative ms-2 border-s border-white/15 space-y-3">
+          {repairs.map((r, i) => (
+            <li key={i} className="relative ps-5">
+              <span aria-hidden className="absolute -start-[6px] top-1.5 w-3 h-3 rounded-full bg-zinc-200" />
+              <p className="font-semibold">{r.what}</p>
+              {r.parts && <p className="text-sm text-zinc-300">Parts: {r.parts}</p>}
+              <p className="mt-0.5 font-mono text-[11px] text-zinc-400 flex items-center gap-1">
+                {day(r.createdAt)} · {r.by === 'BRAND' ? <><BadgeCheck className="w-3 h-3 text-pink-300" aria-hidden />by {brand}</> : 'by its owner'}
+              </p>
+            </li>
+          ))}
+        </ol>
+      )}
+      {history.canLog && (open ? (
+        <form onSubmit={save} className="mt-4 grid gap-2">
+          <input required maxLength={200} value={f.what} onChange={(e) => setF({ ...f, what: e.target.value })} placeholder="What was repaired" aria-label="What was repaired" className={FIELD} />
+          <input maxLength={200} value={f.parts} onChange={(e) => setF({ ...f, parts: e.target.value })} placeholder="Parts replaced (optional)" aria-label="Parts replaced" className={FIELD} />
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setOpen(false)} className="btn-secondary flex-1 justify-center">Cancel</button>
+            <button type="submit" disabled={busy || !f.what.trim()} className="btn-primary flex-1 justify-center">{busy && <Loader2 className="w-4 h-4 animate-spin" />}Add the repair</button>
+          </div>
+        </form>
+      ) : (
+        <button type="button" onClick={() => setOpen(true)} className="mt-4 btn-secondary w-full justify-center"><Wrench className="w-4 h-4" />Add a repair</button>
+      ))}
     </section>
   );
 }

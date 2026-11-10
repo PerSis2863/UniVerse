@@ -5617,3 +5617,319 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`daily-counts.test.ts`); `scripts/checks/courses-center-ui.mjs` (summary line,
   pill, the three cards, 14 columns per course, New course opens, Open board goes to the board; axe at
   1280 and 390, light and dark).
+
+## M144: Trace, the footprint story on every passport (the owner, 10 Nov 2026: "can we improve the trace and relief app… more unique features", then "do all of them" for the eight proposed; the owner's exception to the launch focus)
+
+- **What a buyer sees** (`/t/<code>`, after "Its journey"): **Its footprint**: the total kg CO₂e, "about
+  the same as driving N km in a car", a bar of making against the trip, the two figures, and how its
+  making compares with the middle of other products of its kind on UniVerse that published a figure
+  ("32% less than the middle of 5 other food products").
+- **Where the numbers come from** (`footprint` in `src/lib/trace.ts`, tested): making = the EU passport's
+  `carbonKg` (M108); the trip = `journeyCarbon` over the journey's stops with the product's weight; a
+  car's 0.2 kg a km from `src/lib/green.ts`; the comparison only with 3 or more others (their median),
+  and only when this product published its own figure. Nothing is invented: no figure, no card.
+- **Server** (`scan` in `src/server/trace.ts`, `unitFootprint`): one extra query (others of the same
+  category with a passport, up to 200) only when the product has a making figure. The journey's exact
+  points stay on the server: the browser still gets places by name only.
+- **The sample passport** (`/t/demo`) has one (a 0.6 kg bottle from Jaén to Paris).
+- **Tested:** `pnpm check` (`trace.test.ts`: footprint); axe on `/t/demo` at 390 and 1280, dark and light.
+
+## M145: Trace, repair and resale history on the passport (the owner, 10 Nov 2026: the eight features)
+
+- **What people see** (`/t/<code>`, under "Proof of ownership"): **Repairs and owners**: "Second owner,
+  resold 1 time · 2 repairs, 1 by <brand>", then each repair (what, the parts, the date, "by <brand>" with
+  a check mark or "by its owner"). Shown once there is anything: a repair, a resale, or someone who may
+  add one. A second-hand buyer gets the unit's story; the existing transfer (vault) keeps the owner count.
+- **Who can add one** (`logRepair` in `src/server/trace-plus.ts`, `POST /trace/scan/:code/repairs`
+  { what, parts }, signed in): the brand's team (`trace_brand_members` of the unit's brand: `by`
+  BRAND) or its owner at the time (`trace_owners.userId`: OWNER); anyone else 403; never on a likely
+  copy (`noCopy`); 5 a day per unit; text through `short` (200 characters).
+- **Data:** migration **0195** `trace_repairs` (model `TraceRepair`); the passport reads the last 20 in
+  the same round as its other extras (`passportExtras`).
+- **Trap (local):** after a schema change the running `pnpm local:dev` keeps the old database client in
+  its bundle cache: stop it, `rm -rf .next/dev .next/cache/webpack`, start it again. The Trace unit
+  tests' Prisma mock needs every new table the scan reads (`trace.test.ts`).
+- **Tested:** `pnpm check`; `scripts/checks/trace-history-api.mjs` (a brand, a batch, a unit owned by
+  someone else; the owner's and the brand's repairs, a stranger refused, an empty one refused, the
+  passport lists both newest first); axe on the passport with the card at 430 and 1280.
+
+## M146: Trace, take-back and recycling (the owner, 10 Nov 2026: the eight features)
+
+- **The brand offers it per product** (console → a product's settings, `ProductExtras`): "How to hand it
+  in" (empty: not offered) and "Points for its owner" (`trace_products.takeBackHow`, `takeBackPoints`,
+  through `extrasData`).
+- **The owner returns it** (passport card "Return it for recycling", `POST /trace/scan/:code/takeback`):
+  only the registered owner (`trace_owners`), never on a likely copy, once per unit (unique `codeId`);
+  they get a 6-character drop-off code, shown only to them. Others see "Its owner is returning it".
+- **The brand receives it** (console → **Take-backs**, shown once a product offers it; find by drop-off
+  code; `GET /trace/takebacks`, `POST /trace/takebacks/:id/receive`, `brandOf`): a guarded update claims
+  it once; then the owner gets the points (`award`, kind `TAKEBACK`, on the hash chain; the wallet labels
+  it "Returned for recycling"), a **Green** RECYCLE action of the unit's weight, confirmed by whoever
+  received it (so it counts for the challenge and leaderboards), and an in-app note (no email). The
+  passport then tells everyone it was returned, so a recycled unit resold as new shows.
+- **Code:** `src/server/trace-takeback.ts` (`takeBackView` feeds `passportExtras`); migration **0196**
+  (`trace_takebacks`, two product columns); sample answers (`sampleTraceTakebacks`, the sample olive
+  oil offers it).
+- **Trap (local):** `pnpm local:dev`'s parent restarts its server when the one on port 3000 is killed, so
+  a schema change can keep being served by an old process: stop the whole tree (every `local/dev.mjs`,
+  `next dev` and `next-server` process by number), clear `.next/dev` and `.next/cache/webpack`, start
+  one again.
+- **Tested:** `pnpm check`; `scripts/checks/trace-takeback-api.mjs` (the offer on the passport; not
+  before owning it; asking twice and a stranger refused; the code hidden from others; only the brand
+  lists and receives, once; TAKEBACK points and the Green action; the passport after); axe on the
+  passport card and the console list (sample mode) at 390 and 1280, light and dark.
+
+## M147: Trace, reports of fake labels (the owner, 10 Nov 2026: the eight features)
+
+- **The buyer** (passport, only when this check says **Be careful**): "Where did you get it?": a shop
+  or website (required), town or area, price paid; signed in; one report per person per unit
+  (`POST /trace/scan/:code/report`, `reportFake` in `src/server/trace-plus.ts`). Accepted only for a
+  unit with a suspect check or a code the brand flagged ("This one checks out as genuine" otherwise).
+  The area falls back to the request's city; a position (only if the person allowed it) is kept to 0.1°.
+- **The brand** (Radar → **Where copies are sold**): the last 90 days grouped by shop (case and spaces
+  ignored), with the area, the lowest price and the number of reports; never who reported (the Radar's
+  answer has no user ids or emails). Part of `GET /trace/radar` (`copiesSold`), so no new GET route;
+  the sample Radar has two shops.
+- **Fixed on the way (the Radar page, axe):** a recall's "high" label (amber 700 → 800 for contrast)
+  and the likely-copies list, which scrolls, can now be reached with the keyboard.
+- **Data:** migration **0197** `trace_fake_reports` (unique per unit and person).
+- **Tested:** `pnpm check`; `scripts/checks/trace-fakes-api.mjs` (a genuine unit refused; a check far
+  from the first one is a likely copy and can be reported once, not signed out, not without a shop; the
+  Radar lists it without the reporter); axe on the form (a check from far away) and on the Radar
+  (sample mode) at 390/430 and 1280.
+
+## M148: Relief, the shelter and supply board (the owner, 10 Nov 2026: the eight features)
+
+- **Everyone in Relief** (under the live map: **Places to go**, `components/relief/PlacesBoard.tsx`): the
+  organisations that said how they are this week: open or closed, "12 of 40 beds free" with a bar,
+  water / food / charging as green yes, amber running low, red none, a short note, "Updated 2 h ago"
+  (older than a day: dashed and grey, "Not updated today"); filters (a bed, water, food, charging);
+  "On the map" flies the map there. Order (`rankPlaces` in `src/lib/relief.ts`, tested): open places that
+  spoke today first, nearest first when you shared your position, else the newest word; then stale;
+  then closed. `GET /relief/places` (signed in; the last 7 days; bases already rounded to about 500 m;
+  no join code, number or people).
+- **Coordinators** (an organisation's Overview → **Live status**, `PUT /relief/orgs/:id/status`,
+  coordinator only through `member(u, id, true)`): open now, beds free and in all (free never above
+  all), water / food / charging (YES, LOW, NO; anything else is left empty), a note; saved with the time.
+  Volunteers see it read-only. It needs a base (Edit) to show on the board.
+- **Data:** migration **0198**: eight columns on `relief_orgs` (`openNow`, `bedsFree`, `bedsTotal`, `water`,
+  `food`, `power`, `statusNote`, `statusAt`); the org's own answer includes them. Sample answers:
+  `sampleReliefPlaces` (six places).
+- **Trap:** `CardHead` sets no id, so a section using it is labelled with `aria-label`, not
+  `aria-labelledby`; and no `opacity` on a card with text (it fails contrast): use a dashed border.
+- **Tested:** `pnpm check` (`relief.test.ts`); `scripts/checks/relief-places-api.mjs` (a coordinator
+  shares, a volunteer can't, beds clamped, bad values emptied, the board leaks nothing, signed out
+  refused); axe on the board (sample mode) and on Live status at 390/430 and 1280.
+
+## M149: Relief, skills matching (the owner, 10 Nov 2026: the eight features)
+
+- **Helpers** (Mine → "Tell me about needs near me" → **What I can do**): first aid, doctor or nurse,
+  driving, a boat, translating, cooking for many, building and repairs, looking after children,
+  listening and comfort, phones and tech (`SKILLS` in `src/lib/relief.ts`), saved with their alert
+  (`relief_watches.skills`, only listed skills kept).
+- **A need** (the "Ask or offer help" form): "Needs someone who can…" (optional, needs only; offers keep
+  none); shown on the request card and in the list ("needs: first aid").
+- **Who hears** (`whoToAlert` in `src/lib/relief.ts`, tested; used by `alertWatchers`): helpers within
+  their radius with that skill hear **"Your skill is needed: First aid"** even if they asked for urgent
+  needs only or chose other kinds; everyone else gets the usual alert under their own filters; never the
+  person who asked; 80 at most, the skilled first. The haversine distance moved to `kmBetween` there.
+- **Data:** migration **0199** (`relief_watches.skills`, `relief_posts.skill`).
+- **Tested:** `pnpm check` (`relief.test.ts`); `scripts/checks/relief-skills-api.mjs` (a first-aider with
+  narrow filters hears "Your skill is needed", a helper who wants everything hears the usual alert, the
+  asker hears nothing, a made-up skill dropped, an offer keeps no skill); axe on the settings (sample
+  mode) at 390 and 1280, light and dark.
+
+## M150: Relief, the "I'm safe" check-in (the owner, 10 Nov 2026: the eight features)
+
+- **Coordinators** (an organisation's Overview → **Emergency check-in**, owners and coordinators only):
+  say what is happening, an area name (optional), within 5/20/50/100 km and for 1 day / 3 days / 1 week;
+  the area is drawn around the organisation's base (a base is needed). At most 3 going on per
+  organisation; **End it** stops it at once. Helpers whose nearby alert falls inside the area are asked
+  "Emergency near you: …" in the app and on their phone (no email; 200 at most; never the declarer).
+- **Everyone in Relief** (`SafetyCheck` at the top of the Relief page, while one is going on): **I'm safe**
+  opens "Tell people you're safe": a list of the people they already have a **direct conversation** with
+  (Messages, not groups or communities; 20 at a time); only the ticked ones are told ("Sam is safe", in
+  the app and on their phone), and only they see it, under the banner ("Priya, Tom told you they're
+  safe"). Telling more later adds them; nobody is told twice. **I need help** opens the request form set
+  to Critical.
+- **Server:** `src/server/relief-safety.ts` (`contactsOf`, `reliefIncidents`, `declareIncident`,
+  `endIncident`, `markSafe`); routes `GET/POST /relief/incidents`, `POST /relief/incidents/:id/end`,
+  `POST /relief/incidents/:id/safe`, `GET /relief/contacts`, all signed in. Who is safe is never public:
+  the list returns names only to the people told, no ids or emails. Out-of-range numbers fall back to the
+  defaults (20 km, 3 days).
+- **Data:** migration **0200**: `relief_incidents`, `relief_safe` (one row per person and emergency),
+  `relief_safe_told` (who was told). Sample answers: `sampleReliefIncidents`, `sampleReliefContacts`.
+- **Also:** the number tiles' small unit text (`FactorCard`, "of 8", "6 shifts") was too faint in light
+  mode for axe; now 80% instead of 60%.
+- **Rule for code that builds on it:** "tell" lists are always filtered through `contactsOf` on the
+  server, so the check-in can't be used to message strangers; keep it that way.
+- **Tested:** `pnpm check` (`relief-safety.test.ts`: contacts once each, newest first; only contacts told,
+  nobody twice; refused after the end; volunteers can't declare); `scripts/checks/relief-safety-api.mjs`
+  (volunteer and outsider refused, defaults, only the contact told and sees it, the notification, ended
+  means refused and gone, signed out refused); axe on the banner, the window and the card (sample mode)
+  at 390 and 1280, light and dark.
+
+## M151: Relief, traceable aid (the owner, 10 Nov 2026: the eight features)
+
+- **Organisations** (an organisation's page → **Aid boxes**, a new tab): coordinators **pack a box** (what
+  is in it, how many boxes, from where (their base's town by default), going to a town or area; 300 a
+  day) and get a **label** with a QR code, the code and a link to send donors (Print uses the existing
+  `.print-sheet` print rules). Any member logs **On the way** (the town now, a note) as many times as
+  needed and **Delivered** (the destination by default); delivered is final, claimed by a guarded update.
+- **Donors** (`/aid/<code>`, public, kept out of search; `/aid/demo` is a sample): what is in it, who
+  sent it, going where, a three-step bar (packed, on the way, delivered) that fills as the page opens,
+  and the trip (towns, notes, times). Signed in, **Follow this box**: told at each step in the app and on
+  the phone (no email; 200 at most). Signed out: "Sign in to follow it".
+- **Never people:** the public answer has exactly the contents, counts, towns, notes, times, the
+  organisation's name, kind and town, and the number following: no ids, no join code, nobody who
+  packed, carried or received it. The step window reminds members not to name people. Codes are 10 of
+  32 look-alike-free characters (50 bits, `crypto.getRandomValues`), typed with or without dashes.
+- **Server:** `src/server/relief-aid.ts`; routes `GET/POST /relief/orgs/:id/aid` (members / coordinators),
+  `POST /relief/aid/:id/step` (members), `GET /relief/aid/:code` (**public**, listed in
+  `route-gates.test.ts` with its reason), `GET/POST /relief/aid/:code/follow` (signed in). Rules in
+  `src/lib/relief.ts`: `AID_STEPS`, `aidMayMove`, `aidCodeOf`, `demoAid` (tested). `/aid` is a Relief
+  path in `APPS` (its colour and scene).
+- **Data:** migration **0201**: `relief_aid`, `relief_aid_steps`, `relief_aid_follows`. Sample answers:
+  `sampleReliefAid`, `sampleAidTrip`.
+- **Also:** the Relief API checks (`relief-places-api`, `relief-safety-api`, `relief-aid-api`) reuse
+  their test organisation from an earlier run (a person can start 5), so they can be run again and
+  again on one computer.
+- **Tested:** `pnpm check` (`relief.test.ts`: steps forward only, codes read); `scripts/checks/relief-aid-api.mjs`
+  (a volunteer can't pack, an outsider can't see or move, no going back, delivered defaults to the
+  destination and is final, the public trip's exact fields, the follower hears both steps, unfollow, a
+  wrong code 404, the sample); axe on `/aid/<code>` signed out and in, `/aid/demo`, the Aid boxes tab, the
+  label and the step window at 390 and 1280, light and dark.
+
+## M152: emails for the new alerts (the owner, 10 Nov 2026: "please do this" for what M144–M151 left out)
+
+- **Now by email too** (each person's own Settings → Notifications switch still decides, and the site's
+  email allowance, `claimEmails`): "Emergency near you" and "<name> is safe" (M150) as **urgent**, so they
+  may use the part of the allowance kept for essential emails (`NotifyInput.urgent`); an aid box you
+  follow moving or arriving (M151); a brand receiving your take-back (M146).
+- **Nearby-need alerts** (M22, M149) can come several times a day, so they email only helpers who tick
+  **Also email me** on their alert (Relief → Mine → "Tell me about needs near me"; `relief_watches.email`,
+  migration **0202**, off by default). The guide's Relief rule changed from "never email" to that.
+- **Rule for code that builds on it:** a new alert that can repeat often stays in-app and on the phone
+  unless the person chooses email; rare, personal ones may email by the person's setting.
+- **Tested:** `pnpm check` (`relief.test.ts`: only the ticked helper is emailed, the other gets the same
+  alert without email); the Relief API checks (skills, safety, aid) still pass; the setting saves; axe
+  on Relief → Mine at 390 and 1280, light and dark.
+
+## M153: Relief emergency texts (the owner, 10 Nov 2026: "please do this"; [owner] to turn on)
+
+- **Helpers** (Relief → Mine → "Tell me about needs near me"): **Text me in an emergency** plus their
+  number with the country code (checked by `textNumber`; refused otherwise). Kept on their alert
+  (`relief_watches.smsTo`, migration **0203**), returned only to them, never shown to anyone. The option
+  only shows when texts are on (`GET /relief/sms` → `{ on }`; the sample answer says on, so the demo
+  shows it).
+- **When an organisation declares an emergency** (M150), the helpers asked "Are you safe?" who gave a
+  number also get **one text** (`textEmergency` in `src/server/relief-sms.ts`, run after the answer with
+  `later`): plain ASCII under 160 characters so it is one paid message (`emergencyText` in
+  `src/lib/relief.ts`, tested): "Relief: emergency near you: <title>. Are you safe? <link> (reply STOP
+  to end)". One per person per emergency (`relief_sms_sent`, recorded before sending), at most **100 an
+  emergency and 300 a day**; about ten queries whatever the number of people.
+- **Off until the owner** turns on **Relief emergency texts** (console → Server → Feature switches, an
+  opt-in switch) and sets `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` (their Twilio
+  number, or a Messaging Service SID starting MG). Twilio charges per message.
+- **Tested:** `pnpm check` (`relief-sms.test.ts`: nothing while off or without the settings, once per
+  person, the daily cap; `relief.test.ts`: the text's length and characters); `relief-safety-api.mjs`
+  now also checks a bad number is refused, a good one kept, and texts are off locally; axe on the
+  setting (ticked) at 390 and 1280, light and dark.
+
+## M154: aid boxes on a map, helpers' names by choice (the owner, 10 Nov 2026: "please do this")
+
+- **The owner asked for exact locations and for people to be shown.** Done as far as is safe: aid in
+  transit and the people with it can be targeted, and Relief's rule rounds every position to about
+  500 m, so **positions are rounded to about 500 m** (`snap`) and **only helpers who choose** show their
+  **first name**; the people who receive aid are **never** shown.
+- **Members** (organisation → Aid boxes → On the way / Delivered): **Add where it is now, for the map**
+  (the device's location, rounded when saved; removable before saving) and **Show my first name (Jane)
+  to donors** (remembered on that device; also on "Pack a box"). Packing takes the organisation's base
+  (already rounded) as its position. `firstName` in `src/lib/relief.ts` skips titles ("Dr. Jane Smith" →
+  "Jane"; tested).
+- **Donors** (`/aid/<code>`): an **On the map** card (`src/components/relief/AidMap.tsx`, loaded only on
+  that page with `next/dynamic`): the places joined by a dashed orange route that flows while the box is
+  on its way, the latest place glowing (still with Reduce Motion or once delivered); the map's own city
+  names for those places are left out (`skipCities`); the map doesn't take scrolling or dragging. Steps
+  say "packed by / carried by / delivered by <first name>" when chosen.
+- **Data:** migration **0204**: `relief_aid_steps.lat`, `lng`, `byName`. The public answer's step fields
+  are now exactly status, place, note, lat, lng, byName, createdAt (checked).
+- **Tested:** `pnpm check` (`relief.test.ts`: `firstName`); `relief-aid-api.mjs` (a position rounded to
+  0.005°, packing at the base, no position when none was shared, a first name only when chosen); axe on
+  the donor page (with the map), the Aid boxes tab and the step window at 390 and 1280, light and dark.
+
+## M155: upgrades for the eight features (the owner, 10 Nov 2026: "see what else you can add… upgrade all the existing features")
+
+- **Live, not waiting a minute:** `publish(ids, { type: 'refresh', keys })` (`src/server/realtime.ts`) now
+  reloads the right screen at once: the emergency banner for the helpers asked "Are you safe?" and for
+  the people told "<name> is safe" (`/relief/incidents`); an aid box's page and the organisation's box
+  list for its members and followers when it moves (`/relief/orgs/<id>/aid`, `/relief/aid/*`). The donor
+  page also refreshes itself every minute while the box is on its way (`useActivePoll`), never after.
+- **Coordinators see how many said they're safe** (a number, never who): `safeCount` on
+  `GET /relief/incidents`, only for an emergency's own coordinators (null for everyone else; checked);
+  shown on the organisation's Emergency check-in card.
+- **Share:** "Share" on the donor page and "Share the link" on the box label (`shareLink` in
+  `src/lib/share-link.ts`: the phone's share sheet, else copy; cancelling isn't an error).
+- **Directions** on every place in "Places to go": opens the phone's maps app searching the place's
+  name and town (the saved spot is rounded, so the name finds the real door).
+- **Trace: brands hear about fake-label reports at once** (`reportFake`, M147): "A copy of <product>
+  was reported" to the brand's team (in the app, by email per their setting), at most 5 an hour, never
+  who reported.
+- **Checks made rerunnable:** `trace-fakes-api.mjs` uses a new shop name each run.
+- **Tested:** `pnpm check`; `relief-safety-api.mjs` (the coordinator's count, null for a volunteer),
+  `trace-fakes-api.mjs` (the brand's notice, no reporter), `relief-aid-api.mjs`, `relief-places-api.mjs`;
+  axe on the banner, the org card, the donor page, the Aid tab and "Places to go" at 390 and 1280, light
+  and dark.
+
+## M156: motion for the eight features (the owner, 10 Nov 2026: "upgrade the animations and make everything ultra smooth")
+
+- **Already free from the motion layer** (`scroll-motion.ts`): cards glide in, numbers count up and roll,
+  bars fill (the shelters' beds), new list rows glide in. M156 adds motion for *changes*:
+- **Filtering "Places to go"** slides each place to its new spot and new ones grow in from 0.94:
+  `morph(list, update)` in `src/lib/view-transition.ts` (FLIP: measure, `flushSync` the change, play the
+  difference as one transform per item with the Web Animations API on `SPRING_GLIDE`; items carry
+  `data-key`; instant with Reduce Motion). **Trap:** a View Transition was tried first; it snapshots the
+  whole page, and beside Relief's live map it made the filter slower (9 slow frames to 2 at 4× CPU).
+  With FLIP the slow frames are the page's own (the same without the sliding), in the local dev build.
+- **Arrivals on the spring** (`globals.css`, the M156 block): `.drop-in` (the emergency banner drops in a
+  few pixels), `.pop-in` (the trip's three steps one after another; an aid box's status badge when it
+  changes, keyed by status). The aid progress bar fills on arrival and now **glides on** when a live step
+  moves it (`animation-fill-mode: backwards` plus a transform transition).
+- **Attention ring** `.pulse-ring`: a soft copy of the element's own fill spreads out behind it (the
+  emergency's siren, the box's current step while it moves); transform and opacity only, rests while
+  the page scrolls (`html[data-scrolling]`), none with Reduce Motion.
+- **The footprint's two-part bar** grows as one piece (`.bar-in`, `data-no-motion`): the motion layer
+  would grow each part from its own edge, leaving a gap.
+- **Measured** (390 px, CPU slowed 4×): the donor page opening 1 slow frame in 90, its moving map 0 in
+  121 (60 a second).
+- **Tested:** `pnpm check`; the sliding plays on a filter (`getAnimations`); axe on the banner, org card,
+  donor page, Aid tab and windows, "Places to go" and the passport's footprint at 390/430 and 1280.
+
+## M157: a sweep for problems (the owner, 10 Nov 2026: "check if any other bugs or errors are there in system or app")
+
+- **The live error log** (production `error_reports`, read-only): rows with ids `smp…` are the console's
+  sample data, not real. Four real ones: the People list's "too many SQL variables" (fixed earlier; the
+  owner marks it resolved), two chunk errors from bots (ignored automatically), and one visit on 7 Nov
+  that met a deploy halfway ("Blank page: styles came from elsewhere", then a background thread's file
+  gone): the recovery script reloaded it by itself. The other two map threads were fixed in M137; the
+  **world map's thread** (`engine.ts`, Trace and Relief maps and now the aid map) still let a handled
+  failure reach the page as an error: now `e.preventDefault()` like the others (it draws on the page).
+- **A crawl of the built site** (`pnpm local:build` passed: 49.4 of 64 MB, 5.6 minutes): every page in
+  the menus as a student, a teacher and an admin (199 pages): no crash screens, no blank pages, no server
+  errors except `/api/calendar-link` (503 by design until the owner sets `SESSION_SECRET`; the calendar
+  card explains it). A rare React hydration mismatch (#418) showed twice in about 400 loads on different
+  pages (Meetings, Users, Play) and not in 100 targeted loads; React redraws that part itself and it is
+  not in the live error log. Not chased further: if it shows up there, start from what changes the DOM
+  before the dashboard frame hydrates.
+- **Fixed in the new Relief code:** the emergency banner showed every emergency in the world to everyone
+  in Relief; now only to the people it concerns (`reliefIncidents`: the organisation's members, helpers
+  whose alert is inside the area, the place the browser already shared, sent as `?lat&lng` and rounded,
+  anyone told "<name> is safe", anyone who said they're safe; tested). Saving the alert while texts are
+  off no longer wipes the helper's phone number (`smsTo` left as it is when not sent).
+- **Fixed elsewhere:** the student home's "Question" label (`DailyBrief`) was 10 px and too faint in light
+  mode: 11 px, a darker shade. Two checks (`live-ui`, `world-ui`) read pictures with `getContext`, which
+  throws on canvases drawn on a background thread since M85/M136: they now measure a screenshot
+  (`litPixels` in `scripts/browser-session.mjs`), and pass.
+- **Checks run on the build:** live-ui, world-ui, app-backdrop-ui, home-ui, card-menu-ui,
+  calendar-ballast-ui, activity-log-ui, template-windows-ui, courses-center-ui, and the seven Trace and
+  Relief API checks: all pass.

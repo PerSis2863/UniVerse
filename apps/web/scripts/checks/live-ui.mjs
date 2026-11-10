@@ -3,7 +3,7 @@
 // sideways, and axe finds nothing serious, at 390 and 1280 px, light and dark.
 //   node scripts/checks/live-ui.mjs [http://localhost:3000]
 import { createRequire } from 'node:module';
-import { baseUrl, launch, signedIn } from '../browser-session.mjs';
+import { baseUrl, launch, litPixels, signedIn } from '../browser-session.mjs';
 
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
@@ -40,11 +40,7 @@ try {
         await card.scrollIntoViewIfNeeded();
         await page.waitForTimeout(2500);
         const pictured = (await card.locator('canvas').count()) > 0;
-        const lit = !pictured ? 999 : await card.locator('canvas').first().evaluate((c) => {
-          const x = c.getContext('2d').getImageData(0, 0, c.width, c.height).data;
-          let n = 0; for (let i = 3; i < x.length; i += 16) if (x[i] > 40) n++;
-          return n;
-        }).catch(() => 0);
+        const lit = !pictured ? 999 : await litPixels(card.locator('canvas').first()).catch(() => 0);
         if (lit < 50) fail.push(`${what}: the picture didn't draw (${lit})`);
         if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) fail.push(`${what}: sideways scrolling`);
         await page.addScriptTag({ path: AXE });

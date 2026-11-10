@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M143 is the latest).
+  builds on it). The newest notes are at the end (M157 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,8 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M143** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
-  M134–M143, PR #119).
+- **On `main`** (live): everything through **M157** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -128,6 +128,25 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     activity log as the reels' Agent Activity (heatmap, totals, tabs with counts, outcome labels); M142,
     "New …" windows with "Start from" cards (New course, New event; `TemplateCards`); M143, a teacher's
     courses as the reels' Agent Center (summary cards, a card per course with a 14-day chart).
+  - **Eight new Trace and Relief features (10 Nov, the owner's exception to the pause, M144–M151; PR #120):** M144, Trace's footprint story on every
+    passport (making plus trip, a car-distance equivalent, against others of its kind); M145, repair and
+    resale history on the passport (the brand's and the owner's repairs, the number of owners); M146,
+    take-back for recycling (drop-off code, the brand receives it: points plus a Green action); M147,
+    reports of fake labels (where copies are sold, on the brand's Radar); M148, Relief's shelter and
+    supply board ("Places to go": live beds, water, food, charging from organisations); M149, skills
+    matching (helpers' skills with their alerts; a need asking for one alerts them first); M150, the
+    "I'm safe" check-in (coordinators declare an emergency; people tell only those they talk with);
+    M151, traceable aid (a code and QR label per aid box; donors follow its trip on `/aid/<code>`).
+  - **Their upgrades and a sweep (10 Nov, the owner: "please do this… upgrade all the existing features…"; PR #120):**
+    M152, emails for the new alerts (emergencies may use the essential allowance; nearby needs only for
+    helpers who tick "Also email me"); M153, emergency texts (SMS) to helpers who add their number,
+    behind the owner's "Relief emergency texts" switch (off; Twilio); M154, aid boxes on a map (rounded to
+    about 500 m) and helpers' first names by their choice (receivers never shown); M155, live updates
+    (the safety banner, aid pages and lists), coordinators' safe count, share and directions, brands told
+    of fake-label reports; M156, their motion (FLIP for filters, arrivals on the spring, an attention
+    ring that rests while scrolling); M157, a sweep for problems (the live error log, a 199-page crawl of the
+    built site for three roles, 15 checks): emergencies shown only to the people they concern, a phone
+    number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -160,16 +179,18 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
-  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M144**. Never reuse a number: take the next one after the
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
+- **Work numbers:** the next item is **M158**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
-  `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
+  `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for emergency
+  texts to helpers (M153), also set `TWILIO_ACCOUNT_SID` and `TWILIO_FROM` (the Twilio number) and turn on
+  "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0195`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0205`** (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -261,8 +282,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   `trace_readings` (`recordReading` in `trace-map.ts`). Maps: `src/components/trace/map` (d3-geo,
   no tile service): one canvas, land cached, frames only while something moves.
 - **Relief** (`src/server/relief.ts`): positions rounded to about 500 m when saved; nothing older
-  than 30 days on the map; nearby alerts (`relief_watches`) never email and never show where a
-  watcher is.
+  than 30 days on the map; nearby alerts (`relief_watches`) email only helpers who ticked "Also email
+  me" (M152) and never show where a watcher is.
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
 - **Play's 3D worlds** (`src/components/play/world/core.ts`): the graphics choice and frame pacing are in
   `world/gfx.ts` (M118); never change shadows or the effects chain while a world runs (every shader is
@@ -368,7 +389,9 @@ ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `
 at 0.85–0.95); menus grow from where they were opened; name the properties (`transition-[transform,opacity]`,
 not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; things settle on a spring (M133: `--spring-press` for presses,
 `--spring-glide` / `springGlide()` for arrivals, CSS `linear()` curves the compositor runs); motion tied
-to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; Reduce Motion
+to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; a list that
+changes in place (a filter) slides its items with `morph()` (`src/lib/view-transition.ts`, FLIP: only the
+items move; a View Transition snapshots the whole page, too heavy beside a live map, M156); Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
 without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
 stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string

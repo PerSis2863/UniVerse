@@ -38,7 +38,7 @@ export const APPS: ImpactApp[] = [
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
     impact: 'Needs and offers, matched on a live map.',
-    paths: ['/relief'], lab: true,
+    paths: ['/relief', '/aid'], lab: true,
   },
   {
     id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',

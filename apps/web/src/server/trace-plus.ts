@@ -5,6 +5,8 @@ import { forecast, isDiverted, journeyCarbon, tierFor, toBase32, trustScore } fr
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, type Body } from './body';
 import { brandOf, cfPosition, idOf, num, ownBatch, short } from './trace';
+import { takeBackView } from './trace-takeback';
+import { notifyMany } from './email';
 
 // UniVerse Trace, the second wave (migration 0179). On the passport: recalls the brand issued for the
 // batch, a blocked (stolen) batch, an instant win on the first check, warranty registration, buyer
@@ -21,7 +23,7 @@ const N = (v: unknown) => Number(v ?? 0) || 0;
 const q = <T = Row,>(sql: string, ...args: unknown[]) => prisma.$queryRawUnsafe<T[]>(sql, ...args).catch(() => [] as T[]);
 const claimCode = () => toBase32(crypto.randomBytes(8), 10);
 
-type BatchWithProduct = { id: string; brandId: string | null; productId: string; secret: string; allowedCountries: string | null; blockedAt: Date | null; product: { id: string; name: string; warrantyMonths: number; winOdds: number | null; winPrize: string | null } };
+type BatchWithProduct = { id: string; brandId: string | null; productId: string; secret: string; allowedCountries: string | null; blockedAt: Date | null; product: { id: string; name: string; warrantyMonths: number; winOdds: number | null; winPrize: string | null; takeBackHow: string | null; takeBackPoints: number } };
 
 /** True when this unit wins: decided by the batch's secret, so it's fixed per unit and can't be farmed by rescanning. */
 export const wins = (secret: string, codeId: string, odds: number | null) =>
@@ -33,13 +35,18 @@ export const divertedScan = (batch: { allowedCountries: string | null }, country
 /** What the passport adds for this unit: recall, block, prize, warranty, reviews, owner. */
 export async function passportExtras(batch: BatchWithProduct, codeId: string, opts: { first: boolean; genuine: boolean; place: string | null; user: SessionUser | null }) {
   const brandId = batch.brandId;
-  const [recall, warranty, owner, rating, myReview, existingWin] = await Promise.all([
+  const [recall, warranty, owner, rating, myReview, existingWin, repairs, member, takeBack] = await Promise.all([
     prisma.traceRecall.findFirst({ where: { batchId: batch.id, status: 'ACTIVE' }, orderBy: { createdAt: 'desc' }, select: { reason: true, advice: true, severity: true, createdAt: true } }),
     prisma.traceWarranty.findUnique({ where: { codeId }, select: { endsAt: true, name: true } }),
     prisma.traceOwner.findUnique({ where: { codeId }, select: { userId: true, owners: true, since: true } }),
     q(`SELECT AVG(stars) AS avg, COUNT(*) AS n FROM trace_reviews WHERE productId = ?`, batch.productId),
     prisma.traceReview.findUnique({ where: { codeId }, select: { stars: true, text: true } }),
     prisma.traceWin.findUnique({ where: { codeId }, select: { prize: true, redeemedAt: true } }),
+    // M145: its repairs, and whether the one checking is on the brand's team (they can add one).
+    prisma.traceRepair.findMany({ where: { codeId }, orderBy: { createdAt: 'desc' }, take: 20, select: { by: true, what: true, parts: true, createdAt: true } }),
+    opts.user && brandId ? prisma.traceBrandMember.findFirst({ where: { userId: opts.user.id, brandId }, select: { userId: true } }) : null,
+    // M146: whether it's been returned for recycling.
+    prisma.traceTakeback.findUnique({ where: { codeId }, select: { status: true, dropCode: true, userId: true, createdAt: true, receivedAt: true } }),
   ]);
   // The first genuine check of a winning unit creates the prize and shows its claim code (only now).
   let win: { prize: string; claimCode: string | null; redeemed: boolean } | null = existingWin ? { prize: existingWin.prize, claimCode: null, redeemed: !!existingWin.redeemedAt } : null;
@@ -54,7 +61,30 @@ export async function passportExtras(batch: BatchWithProduct, codeId: string, op
     warranty: batch.product.warrantyMonths > 0 ? { months: batch.product.warrantyMonths, registered: !!warranty, endsAt: warranty?.endsAt ?? null } : null,
     reviews: { avg: rating[0]?.n ? Math.round(N(rating[0].avg) * 10) / 10 : null, count: N(rating[0]?.n), mine: myReview, recent: reviews },
     owner: owner ? { owners: owner.owners, since: owner.since, you: !!opts.user && owner.userId === opts.user.id } : null,
+    history: { repairs, canLog: !!member || (!!opts.user && owner?.userId === opts.user.id) },
+    takeBack: takeBackView(batch.product, takeBack, opts.user?.id ?? null),
   };
+}
+
+/**
+ * M145: POST /trace/scan/:code/repairs { what, parts }: a repair on the unit's passport, by the brand's
+ * team (shown as checked by the brand) or its owner at the time. Not on a likely copy; 5 a day at most.
+ */
+export async function logRepair(raw: string, user: SessionUser, body: Body) {
+  const code = await unit(raw);
+  await noCopy(code.id, code.status);
+  const what = short(body.what, 200), parts = short(body.parts, 200);
+  if (!what) throw new BadRequestException('Say what was repaired.');
+  const [owner, member, today] = await Promise.all([
+    prisma.traceOwner.findUnique({ where: { codeId: code.id }, select: { userId: true } }),
+    prisma.traceBrandMember.findFirst({ where: { userId: user.id, brandId: code.brandId }, select: { userId: true } }),
+    prisma.traceRepair.count({ where: { codeId: code.id, createdAt: { gte: new Date(Date.now() - DAY) } } }),
+  ]);
+  const by = member ? 'BRAND' : owner?.userId === user.id ? 'OWNER' : null;
+  if (!by) throw new ForbiddenException('Only the brand or the owner can add a repair.');
+  if (today >= 5) throw new BadRequestException('That’s enough repairs on this one for today.');
+  const r = await prisma.traceRepair.create({ data: { codeId: code.id, brandId: code.brandId, productId: code.productId, userId: user.id, by, what, parts }, select: { by: true, what: true, parts: true, createdAt: true } });
+  return r;
 }
 
 /** The unit behind a printed code (it must have been checked at least once). */
@@ -64,7 +94,7 @@ async function unit(raw: string) {
   if (!code || !code.brandId || code.scanCount < 1) throw new NotFoundException('Scan the code first.');
   return code as typeof code & { brandId: string };
 }
-async function noCopy(codeId: string, status: string) {
+export async function noCopy(codeId: string, status: string) {
   if (status === 'FLAGGED' || (await prisma.traceScan.count({ where: { codeId, verdict: 'SUSPECT' } }))) throw new ForbiddenException('This label may be a copy, so it can’t be used for this.');
 }
 
@@ -193,7 +223,7 @@ export async function redeemWin(u: SessionUser, raw: string) {
 export async function radar(u: SessionUser) {
   const brand = await brandOf(u);
   const since = new Date(Date.now() - 30 * DAY);
-  const [suspect, diverted, blocked, recalls, flagged, cold] = await Promise.all([
+  const [suspect, diverted, blocked, recalls, flagged, cold, copiesSold] = await Promise.all([
     prisma.traceScan.findMany({ where: { brandId: brand.id, verdict: 'SUSPECT', createdAt: { gt: since } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, codeId: true, place: true, country: true, createdAt: true, productId: true } }),
     prisma.traceScan.findMany({ where: { brandId: brand.id, diverted: true, createdAt: { gt: since } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, codeId: true, place: true, country: true, createdAt: true, productId: true } }),
     prisma.traceBatch.findMany({ where: { brandId: brand.id, blockedAt: { not: null } }, select: { id: true, label: true, blockedAt: true, product: { select: { name: true } } } }),
@@ -203,6 +233,9 @@ export async function radar(u: SessionUser) {
        FROM trace_readings r JOIN trace_batches b ON b.id = r.batchId JOIN trace_products pr ON pr.id = b.productId
        WHERE r.brandId = ? AND pr.maxTempC IS NOT NULL AND r.tempC > pr.maxTempC AND r.createdAt > ?
        GROUP BY r.batchId ORDER BY last DESC LIMIT 30`, brand.id, iso(since.getTime())),
+    // M147: where buyers say they got copies (90 days), by shop, never who said it.
+    q(`SELECT lower(trim(shop)) AS k, MAX(shop) AS shop, MAX(area) AS area, MAX(country) AS country, COUNT(*) AS n, MAX(createdAt) AS last, MIN(price) AS price
+       FROM trace_fake_reports WHERE brandId = ? AND createdAt > ? GROUP BY k ORDER BY n DESC, last DESC LIMIT 12`, brand.id, iso(Date.now() - 90 * DAY)),
   ]);
   const productIds = [...new Set([...suspect, ...diverted].map((s) => s.productId).filter((x): x is string => !!x))];
   const batchIds = [...new Set(recalls.map((r) => r.batchId))];
@@ -218,7 +251,43 @@ export async function radar(u: SessionUser) {
     blocked: blocked.map((b) => ({ id: b.id, label: b.label, product: b.product.name, at: b.blockedAt })),
     recalls: recalls.map((r) => { const b = batches.find((x) => x.id === r.batchId); return { id: r.id, batchId: r.batchId, batch: b?.label ?? 'A batch', product: b?.product.name ?? '', reason: r.reason, advice: r.advice, severity: r.severity, status: r.status, at: r.createdAt, endedAt: r.endedAt }; }),
     cold: cold.map((c) => ({ batchId: c.batchId as string, label: c.label as string, product: c.product as string, maxT: N(c.maxT), limit: N(c.limitT), readings: N(c.n), last: c.last as string })),
+    copiesSold: copiesSold.map((c) => ({ shop: c.shop as string, area: (c.area as string | null) ?? null, country: (c.country as string | null) ?? null, reports: N(c.n), last: c.last as string, price: (c.price as string | null) ?? null })),
   };
+}
+
+/**
+ * M147: POST /trace/scan/:code/report { shop, area?, price?, lat?, lng? }: where the buyer got a unit
+ * whose label looks like a copy (a suspect check, or a code the brand flagged). Signed in, once per
+ * person per unit; the area falls back to the request's city; a position is kept to 0.1°.
+ */
+export async function reportFake(raw: string, user: SessionUser, body: Body, req: Request) {
+  const id = idOf(raw);
+  const code = id ? await prisma.traceCode.findUnique({ where: { id }, select: { id: true, brandId: true, productId: true, status: true } }) : null;
+  if (!code?.brandId) throw new NotFoundException('Scan the code first.');
+  const suspect = code.status === 'FLAGGED' || (await prisma.traceScan.count({ where: { codeId: code.id, verdict: 'SUSPECT' } })) > 0;
+  if (!suspect) throw new BadRequestException('This one checks out as genuine.');
+  const shop = short(body.shop, 80);
+  if (!shop) throw new BadRequestException('Where did you buy it? A shop’s name or a website.');
+  const { cf } = cfPosition(req);
+  const lat = num(body.lat, -90, 90), lng = num(body.lng, -180, 180);
+  const saved = await prisma.traceFakeReport.create({
+    data: {
+      codeId: code.id, brandId: code.brandId, productId: code.productId, userId: user.id, shop,
+      area: short(body.area, 80) ?? ([cf?.city, cf?.country].filter(Boolean).join(', ') || null), price: short(body.price, 20),
+      lat: lat === null ? null : Math.round(lat * 10) / 10, lng: lng === null ? null : Math.round(lng * 10) / 10, country: cf?.country ?? null,
+    },
+  }).catch(() => null);
+  if (!saved) throw new BadRequestException('You’ve already reported this one. Thank you!');
+  // M155: the brand's team hears at once (never who reported), at most 5 times an hour; the rest wait on the Radar.
+  const lately = await prisma.traceFakeReport.count({ where: { brandId: code.brandId, createdAt: { gt: new Date(Date.now() - 3_600_000) } } });
+  if (lately <= 5) {
+    const [team, product] = await Promise.all([
+      prisma.traceBrandMember.findMany({ where: { brandId: code.brandId }, select: { userId: true }, take: 20 }),
+      code.productId ? prisma.traceProduct.findUnique({ where: { id: code.productId }, select: { name: true } }) : null,
+    ]);
+    await notifyMany(team.map((m) => m.userId), { type: 'trace', title: `A copy of ${product?.name ?? 'your product'} was reported`, body: `Someone bought a likely copy at “${shop}”${saved.area ? ` (${saved.area})` : ''}. See where copies are sold on your Radar.`, link: '/trace/radar' });
+  }
+  return { ok: true };
 }
 
 /** GET /trace/insights: forecast, busiest hours, CO₂ per shipment, reviews, best shops, prizes, warranties, trust. */

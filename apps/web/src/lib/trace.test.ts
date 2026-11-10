@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_LEN, MAX_BATCH, cleanCode, decodeSerial, encodeSerial, forecast, formatCode, isDiverted, journeyCarbon, splitCode, tierFor, toBase32, trustScore, verdictFor } from './trace';
+import { CODE_LEN, MAX_BATCH, cleanCode, decodeSerial, encodeSerial, forecast, formatCode, isDiverted, journeyCarbon, splitCode, tierFor, toBase32, trustScore, verdictFor, footprint } from './trace';
 
 describe('trace codes', () => {
   it('round-trips serial numbers', () => {
@@ -105,5 +105,17 @@ describe('trace plus helpers', () => {
   it('scores trust from genuine scans, ratings and recalls', () => {
     expect(trustScore({ genuinePct: 100, rating: 5, recalls: 0, recallsWithAdvice: 0 })).toBe(100);
     expect(trustScore({ genuinePct: 90, rating: 4, recalls: 2, recallsWithAdvice: 1 })).toBeLessThan(90);
+  });
+});
+
+describe('footprint (M144)', () => {
+  it('adds making and the trip, gives a car distance, and compares making with the middle of others', () => {
+    const f = footprint(1.4, { km: 1800, kg: 0.2 }, [1.0, 2.0, 3.0, 0]);
+    expect(f).toEqual({ kg: 1.6, madeKg: 1.4, tripKg: 0.2, km: 1800, carKm: 8, typicalKg: 2, vsTypical: -30, compared: 3 });
+  });
+  it('compares only with three or more, and only when the making figure is known', () => {
+    expect(footprint(1.4, { km: 0, kg: 0 }, [1, 2])?.vsTypical).toBeNull();
+    expect(footprint(null, { km: 500, kg: 0.06 }, [1, 2, 3])).toMatchObject({ madeKg: 0, typicalKg: null, vsTypical: null });
+    expect(footprint(null, { km: 0, kg: 0 }, [1, 2, 3])).toBeNull();
   });
 });

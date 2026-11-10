@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowRight, Ban, Crown, ExternalLink, FileCheck2, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
+import { ArrowRight, Ban, Crown, ExternalLink, FileCheck2, Globe2, Loader2, MapPin, Megaphone, Package, Plus, Printer, Recycle, Rocket, ScanLine, Settings2, ShieldAlert, ShieldCheck, Sparkles, Trash2, Truck, Wallet, Wand2 } from 'lucide-react';
 import { DPP_PARTS, dppScore, readDpp } from '@/lib/dpp';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
@@ -36,7 +36,7 @@ const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) 
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
 interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
 interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null; allowedCountries?: string | null; blockedAt?: string | null; recall?: { id: string; reason: string; severity: string } | null }
-interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null }
+interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null; takeBackHow?: string | null; takeBackPoints?: number }
 interface Overview {
   days: number; products: number; batches: number; units: number; scanned: number; claimed: number; points: number;
   scans: number[]; suspect: number[]; first: number; seen: number; suspects: number;
@@ -253,6 +253,8 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
         <div className="grid lg:grid-cols-2 gap-4">{products.map((p) => <ProductCard key={p.id} p={p} onChange={reload} />)}</div>
       </section>
 
+      {products.some((p) => p.takeBackHow) && <Takebacks />}
+
       <div className="grid lg:grid-cols-2 gap-4">
         <section className="panel p-5" aria-labelledby="recent-h">
           <h2 id="recent-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-indigo-500" />Latest scans</h2>
@@ -408,7 +410,7 @@ function ProductCard({ p, onChange }: { p: Product; onChange: () => void }) {
         <span className="w-11 h-11 shrink-0 rounded-2xl grid place-items-center bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"><Package className="w-5 h-5" /></span>
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-2">{p.name}{p.sample && <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-pink-500/10 px-2 py-0.5 text-[10px] font-semibold text-pink-700 dark:text-pink-200"><Sparkles className="w-3 h-3" aria-hidden />sample</span>}</h3>
-          <p className="text-xs text-zinc-500">{[p.category, `${p.rewardPoints} points per unit`, p.warrantyMonths ? `${p.warrantyMonths}-month warranty` : null, p.winOdds && p.winPrize ? `1 in ${p.winOdds.toLocaleString()} wins ${p.winPrize}` : null, p.maxTempC != null ? `kept at ${p.maxTempC} °C or colder` : null].filter(Boolean).join(' · ')}</p>
+          <p className="text-xs text-zinc-500">{[p.category, `${p.rewardPoints} points per unit`, p.warrantyMonths ? `${p.warrantyMonths}-month warranty` : null, p.winOdds && p.winPrize ? `1 in ${p.winOdds.toLocaleString()} wins ${p.winPrize}` : null, p.maxTempC != null ? `kept at ${p.maxTempC} °C or colder` : null, p.takeBackHow ? 'taken back for recycling' : null].filter(Boolean).join(' · ')}</p>
         </div>
         <span className="shrink-0 font-mono text-[11px] text-zinc-500">{p._count.codes.toLocaleString()} scanned</span>
         <button type="button" onClick={() => setExtrasOpen((v) => !v)} aria-expanded={extrasOpen} aria-label={`Settings for ${p.name}`} title="Prize, cold chain and weight" className="shrink-0 w-8 h-8 grid place-items-center rounded-full text-zinc-400 hover:text-pink-600 hover:bg-pink-500/10 transition-colors"><Settings2 className="w-4 h-4" /></button>
@@ -486,9 +488,48 @@ function BatchRow({ batch, onChange }: { batch: Batch; onChange: () => void }) {
   );
 }
 
+type Takeback = { id: string; code: string; product: string; status: string; dropCode: string; points: number; createdAt: string; receivedAt: string | null };
+
+/** M146: units coming back for recycling: find one by its drop-off code and mark it received (it pays the owner). */
+function Takebacks() {
+  const { data, mutate } = useSWR<Takeback[]>('/trace/takebacks', fetcher);
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState<string | null>(null);
+  const rows = (data ?? []).filter((r) => !q.trim() || r.dropCode.includes(q.trim().toUpperCase()) || r.code.includes(q.trim().toUpperCase()));
+  const waiting = (data ?? []).filter((r) => r.status === 'ASKED').length;
+  const receive = async (r: Takeback) => {
+    setBusy(r.id);
+    try { await api.post(`/trace/takebacks/${r.id}/receive`); toast.success(r.points ? `Received: ${r.points} points sent to its owner` : 'Received'); void mutate(); }
+    catch (err) { toast.error(errorMessage(err, 'Could not mark it received.')); } finally { setBusy(null); }
+  };
+  return (
+    <section className="panel p-5" aria-labelledby="takebacks-h">
+      <div className="flex flex-wrap items-center gap-3">
+        <h2 id="takebacks-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 me-auto"><Recycle className="w-4 h-4 text-indigo-500" aria-hidden />Take-backs{waiting > 0 && <span className="text-xs font-semibold rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-200 px-2 py-0.5">{waiting} waiting</span>}</h2>
+        <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Drop-off code" aria-label="Find by drop-off code" className="input w-40 font-mono uppercase" />
+      </div>
+      {!data ? <div className="mt-3 h-16 rounded-xl skeleton" /> : rows.length === 0 ? (
+        <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">{data.length ? 'No take-back with that code.' : 'None yet: owners start one from the passport.'}</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06]">
+          {rows.slice(0, 30).map((r) => (
+            <li key={r.id} className="py-2.5 flex flex-wrap items-center gap-3">
+              <span className="font-mono text-sm font-semibold tracking-widest text-zinc-900 dark:text-white" translate="no">{r.dropCode}</span>
+              <span className="min-w-0 flex-1 text-sm text-zinc-700 dark:text-zinc-300 truncate">{r.product}<span className="text-zinc-500 dark:text-zinc-400"> · unit {r.code}</span></span>
+              {r.status === 'RECEIVED'
+                ? <span className="text-xs text-emerald-700 dark:text-emerald-300">Received {new Date(r.receivedAt ?? r.createdAt).toLocaleDateString()}</span>
+                : <button type="button" onClick={() => void receive(r)} disabled={busy !== null} className="btn-primary btn-sm">{busy === r.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Received'}</button>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 /** A product's extras: an instant win on the first check, cold chain and weight (for each shipment's CO₂). */
 function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
-  const [f, setF] = useState({ winOdds: p.winOdds ? String(p.winOdds) : '', winPrize: p.winPrize ?? '', maxTempC: p.maxTempC != null ? String(p.maxTempC) : '', weightKg: String(p.weightKg ?? 1) });
+  const [f, setF] = useState({ winOdds: p.winOdds ? String(p.winOdds) : '', winPrize: p.winPrize ?? '', maxTempC: p.maxTempC != null ? String(p.maxTempC) : '', weightKg: String(p.weightKg ?? 1), takeBackHow: p.takeBackHow ?? '', takeBackPoints: String(p.takeBackPoints ?? 0) });
   const [saving, setSaving] = useState(false);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -504,6 +545,9 @@ function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">The prize</span><input maxLength={120} value={f.winPrize} onChange={set('winPrize')} className="input mt-1" placeholder="A free bottle" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Keep at or below (°C, empty if it doesn’t matter)</span><input type="number" step="0.1" min={-80} max={80} value={f.maxTempC} onChange={set('maxTempC')} className="input mt-1" placeholder="8" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Weight of one unit (kg)</span><input type="number" step="0.001" min={0.001} value={f.weightKg} onChange={set('weightKg')} className="input mt-1" /></label>
+      <p className="sm:col-span-2 text-xs text-zinc-600 dark:text-zinc-300"><b>Take it back for recycling:</b> its owner asks on the passport and gets a drop-off code; when you mark it received they get the points and a recycling action in Green.</p>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How to hand it in (empty: not offered)</span><input maxLength={300} value={f.takeBackHow} onChange={set('takeBackHow')} className="input mt-1" placeholder="Bring it to any of our shops" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Points for its owner</span><input type="number" min={0} max={10000} value={f.takeBackPoints} onChange={set('takeBackPoints')} className="input mt-1" /></label>
       <div className="sm:col-span-2 flex justify-end gap-2"><button type="button" onClick={onDone} className="btn-secondary btn-sm">Cancel</button><button type="submit" disabled={saving} className="btn-primary btn-sm">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Save'}</button></div>
     </form>
   );

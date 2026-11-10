@@ -27,11 +27,13 @@ interface Radar {
   blocked: { id: string; label: string; product: string; at: string }[];
   recalls: { id: string; batchId: string; batch: string; product: string; reason: string; advice: string | null; severity: string; status: string; at: string; endedAt: string | null }[];
   cold: { batchId: string; label: string; product: string; maxT: number; limit: number; readings: number; last: string }[];
+  /** M147: where buyers say they got copies (90 days), by shop. */
+  copiesSold?: { shop: string; area: string | null; country: string | null; reports: number; last: string; price: string | null }[];
 }
 
 const ago = (d: string) => formatDistanceToNow(new Date(d), { addSuffix: true });
 const flag = (cc: string | null) => (cc && /^[A-Z]{2}$/.test(cc) ? String.fromCodePoint(...[...cc].map((c) => 127397 + c.charCodeAt(0))) : '');
-const SEVERITY: Record<string, string> = { CRITICAL: 'bg-rose-500/15 text-rose-700 dark:text-rose-200', HIGH: 'bg-amber-500/15 text-amber-700 dark:text-amber-200', MEDIUM: 'bg-sky-500/12 text-sky-700 dark:text-sky-200' };
+const SEVERITY: Record<string, string> = { CRITICAL: 'bg-rose-500/15 text-rose-700 dark:text-rose-200', HIGH: 'bg-amber-500/15 text-amber-800 dark:text-amber-200', MEDIUM: 'bg-sky-500/12 text-sky-700 dark:text-sky-200' };
 
 export default function RadarPage() {
   return (
@@ -91,6 +93,23 @@ function RadarBody() {
         <ScanList title="Grey market" icon={Globe2} rows={data.diverted} empty="Every check came from the countries each batch was sold to." hint="Checks from outside the countries a batch was meant for (set them on the batch in the console): stock sold on where it shouldn’t be." />
       </div>
 
+      {(data.copiesSold?.length ?? 0) > 0 && (
+        <section className="panel p-5" aria-labelledby="sold-h">
+          <h2 id="sold-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Flag className="w-4 h-4 text-amber-500" aria-hidden />Where copies are sold</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Shops and websites buyers named after a check said their label was likely a copy (the last 90 days). Reported by buyers, not checked; you never see who.</p>
+          <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06]">
+            {data.copiesSold!.map((c) => (
+              <li key={`${c.shop}:${c.area}`} className="py-2.5 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span className="font-medium text-zinc-900 dark:text-white" translate="no">{c.shop}</span>
+                <span className="text-sm text-zinc-500 dark:text-zinc-400 flex-1 min-w-0 truncate">{[c.area, c.price ? `from ${c.price}` : null].filter(Boolean).join(' · ')}</span>
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">{ago(c.last)}</span>
+                <span className="text-xs font-semibold rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-200 px-2 py-0.5 tabular-nums">{c.reports} report{c.reports === 1 ? '' : 's'}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
       {data.cold.length > 0 && (
         <section className="panel p-5" aria-labelledby="cold-h">
           <h2 id="cold-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Thermometer className="w-4 h-4 text-sky-500" aria-hidden />Warm shipments</h2>
@@ -144,7 +163,7 @@ function ScanList({ title, icon: Icon, rows, empty, hint }: { title: string; ico
       <h2 className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Icon className="w-4 h-4 text-amber-500" aria-hidden />{title}</h2>
       <p className="text-xs text-zinc-500">{hint}</p>
       {rows.length === 0 ? <p className="mt-3 text-sm text-zinc-500">{empty}</p> : (
-        <ul className="mt-3 max-h-80 overflow-y-auto divide-y divide-zinc-200/70 dark:divide-white/5">
+        <ul tabIndex={0} className="mt-3 max-h-80 overflow-y-auto rounded-md outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 divide-y divide-zinc-200/70 dark:divide-white/5">
           {rows.map((r) => (
             <li key={r.id} className="py-2 flex items-center gap-2 text-sm">
               <span className="w-6 text-center" aria-hidden>{flag(r.country)}</span>

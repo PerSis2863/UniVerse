@@ -98,3 +98,100 @@ export function guessNeed(text: string): { kind: ReliefKind; people: number; urg
   const title = t.length <= 80 ? t : `${t.slice(0, 78).replace(/\s+\S*$/, '')}…`;
   return { kind, people, urgency, title };
 }
+
+// ─── M148: the shelter and supply board ─────────────────────────────────────────────────────────
+export const STOCK = ['YES', 'LOW', 'NO'] as const;
+export type Stock = (typeof STOCK)[number];
+export const STOCK_LABEL: Record<Stock, string> = { YES: 'Yes', LOW: 'Running low', NO: 'None' };
+
+export interface Place { id: string; name: string; kind: string; place: string | null; lat: number; lng: number; openNow: boolean | null; bedsFree: number | null; bedsTotal: number | null; water: Stock | null; food: Stock | null; power: Stock | null; statusNote: string | null; statusAt: string }
+
+/** How fresh a place's word is: said in the last 6 hours, today, or older (shown greyed). */
+export const freshness = (statusAt: string, now: number) => {
+  const h = (now - Date.parse(statusAt)) / 3_600_000;
+  return h < 6 ? 'fresh' : h < 24 ? 'today' : 'old';
+};
+
+/**
+ * The board's order: open places that said something today first, then by distance when we know
+ * where you are (otherwise the newest word first); closed or quiet ones last.
+ */
+export function rankPlaces<P extends Pick<Place, 'lat' | 'lng' | 'openNow' | 'statusAt'>>(places: P[], here: { lat: number; lng: number } | null, now: number): P[] {
+  const km = (p: P) => (here ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : 0);
+  const tier = (p: P) => (p.openNow === false ? 2 : freshness(p.statusAt, now) === 'old' ? 1 : 0);
+  return [...places].sort((a, b) => tier(a) - tier(b) || (here ? km(a) - km(b) : Date.parse(b.statusAt) - Date.parse(a.statusAt)));
+}
+
+// ─── M149: skills matching ──────────────────────────────────────────────────────────────────────
+export const SKILLS = ['FIRST_AID', 'MEDICAL', 'DRIVING', 'BOAT', 'TRANSLATING', 'COOKING', 'BUILDING', 'CHILDCARE', 'COUNSELLING', 'TECH'] as const;
+export type Skill = (typeof SKILLS)[number];
+export const SKILL_LABEL: Record<Skill, string> = {
+  FIRST_AID: 'First aid', MEDICAL: 'Doctor or nurse', DRIVING: 'Driving', BOAT: 'A boat', TRANSLATING: 'Translating',
+  COOKING: 'Cooking for many', BUILDING: 'Building and repairs', CHILDCARE: 'Looking after children', COUNSELLING: 'Listening and comfort', TECH: 'Phones and tech',
+};
+
+/** Kilometres between two points (haversine). */
+export const kmBetween = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+};
+
+type AlertWatch = { userId: string; lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills: string | null };
+type AlertPost = { userId: string; kind: string; urgency: string; skill: string | null; lat: number; lng: number };
+
+/**
+ * Who hears about a new need (80 at most): helpers within their radius who have the skill it asks for
+ * (whatever else they filtered: their skill is the point), then the others as before (urgent only if
+ * they said so, their kinds if they chose some). Never the person who asked.
+ */
+export function whoToAlert(watches: AlertWatch[], post: AlertPost): { skilled: string[]; others: string[] } {
+  const urgent = post.urgency === 'HIGH' || post.urgency === 'CRITICAL';
+  const skilled: string[] = [], others: string[] = [];
+  for (const w of watches) {
+    if (w.userId === post.userId || kmBetween(w, post) > w.radiusKm) continue;
+    if (post.skill && w.skills?.split(',').includes(post.skill)) skilled.push(w.userId);
+    else if ((!w.urgentOnly || urgent) && (!w.kinds || w.kinds.split(',').includes(post.kind))) others.push(w.userId);
+  }
+  return { skilled: skilled.slice(0, 80), others: others.slice(0, Math.max(0, 80 - skilled.length)) };
+}
+
+/** M151: an aid box's trip. "On the way" can be logged more than once (each stop); delivered is the end. */
+export const AID_STEPS = ['PACKED', 'ON_THE_WAY', 'DELIVERED'] as const;
+export type AidStep = (typeof AID_STEPS)[number];
+export const AID_LABEL: Record<AidStep, string> = { PACKED: 'Packed', ON_THE_WAY: 'On the way', DELIVERED: 'Delivered' };
+/** Whether a box at `from` may be logged as `to`. */
+export const aidMayMove = (from: string, to: string) => to !== 'PACKED' && from !== 'DELIVERED' && (AID_STEPS as readonly string[]).includes(to);
+/** An aid code from what someone typed or scanned: letters and digits, upper case. */
+export const aidCodeOf = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
+
+/** M151: the sample trip at /aid/demo (and in "Explore with sample data"), so anyone can see one. */
+export function demoAid(now: number) {
+  const at = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  return {
+    code: 'DEMO', contents: 'Hygiene kits and drinking water for 20 families', boxes: 12, fromPlace: 'Chennai', toPlace: 'Kochi', status: 'ON_THE_WAY' as AidStep,
+    createdAt: at(30), updatedAt: at(3), followers: 18,
+    org: { name: 'Riverside Food Bank', kind: 'FOOD_BANK', place: 'Chennai' },
+    steps: [
+      { status: 'PACKED' as AidStep, place: 'Chennai', note: 'Packed by the weekend team' as string | null, lat: 13.085 as number | null, lng: 80.27 as number | null, byName: 'Priya' as string | null, createdAt: at(30) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Coimbatore', note: 'Left the warehouse by truck', lat: 11.015, lng: 76.955, byName: null, createdAt: at(14) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Thrissur', note: null, lat: 10.525, lng: 76.215, byName: 'Arun', createdAt: at(3) },
+    ],
+  };
+}
+export type AidTrip = ReturnType<typeof demoAid>;
+
+/**
+ * M153: an emergency text: plain ASCII (an accent would make it a 70-character text) and under 160
+ * characters, so it stays one paid message.
+ */
+export function emergencyText(title: string, link: string) {
+  const t = title.normalize('NFKD').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim().slice(0, 45).trim();
+  return `Relief: emergency near you${t ? `: ${t}` : ''}. Are you safe? ${link} (reply STOP to end)`.slice(0, 160);
+}
+
+/** M154: the first name a helper shows donors when they choose to ("Dr. Jane Smith" → "Jane"). */
+export function firstName(name: string | null | undefined) {
+  const word = (name ?? '').trim().split(/\s+/).find((w) => w && !w.endsWith('.'));
+  return word ? word.slice(0, 30) : null;
+}

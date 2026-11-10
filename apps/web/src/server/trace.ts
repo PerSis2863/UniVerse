@@ -1,9 +1,9 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { KEY_LEN, MAX_BATCH, PLAN_UNITS, SIG_LEN, STAGES, encodeSerial, formatCode, splitCode, toBase32, verdictFor, type Verdict } from '@/lib/trace';
+import { KEY_LEN, MAX_BATCH, PLAN_UNITS, SIG_LEN, STAGES, encodeSerial, footprint, formatCode, journeyCarbon, splitCode, toBase32, verdictFor, type Verdict } from '@/lib/trace';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
-import { parseDpp, unitDpp } from '@/lib/dpp';
+import { parseDpp, readDpp, unitDpp } from '@/lib/dpp';
 import { oneOf, str, type Body } from './body';
 import { requestCf } from './request-cf';
 import { award, brandBalance } from './trace-wallet';
@@ -156,6 +156,9 @@ function extrasData(b: Body) {
     ...('winPrize' in b && { winPrize: short(b.winPrize, 120) }),
     ...('maxTempC' in b && { maxTempC: num(b.maxTempC, -80, 80) }),
     ...('weightKg' in b && { weightKg: num(b.weightKg, 0.001, 100_000) ?? 1 }),
+    // M146: take-back for recycling: how to hand it in (empty: not offered) and its owner's points.
+    ...('takeBackHow' in b && { takeBackHow: short(b.takeBackHow, 300) }),
+    ...('takeBackPoints' in b && { takeBackPoints: Math.round(num(b.takeBackPoints, 0, 10_000) ?? 0) }),
   };
 }
 
@@ -326,25 +329,41 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
     ]);
   }
   const [events, brand, extras] = await Promise.all([
-    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, createdAt: true } }),
+    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, createdAt: true, lat: true, lng: true } }),
     batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true, slug: true } }) : null,
     passportExtras(batch, id, { first: !again && existing.scanCount === 0, genuine: verdict === 'FIRST', place: code.firstPlace, user }),
   ]);
   const p = batch.product;
+  const dpp = unitDpp(p);
   return {
     result: verdict,
     code: formatCode(id), serial: parts.serial + 1,
     brand: { name: brand?.name ?? 'UniVerse', logoUrl: brand?.logoUrl ?? null, slug: brand?.slug ?? null },
     product: { name: p.name, category: p.category, description: p.description, story: p.story, imageUrl: p.imageUrl, warrantyMonths: p.warrantyMonths, rewardPoints: p.rewardPoints },
     batch: { label: batch.label, origin: batch.origin, madeAt: batch.madeAt, quantity: batch.quantity },
-    journey: events,
+    // The places by name only: the stops' exact points stay on the server (they give the trip below).
+    journey: events.map(({ stage, place, createdAt }) => ({ stage, place, createdAt })),
+    footprint: await unitFootprint(p, dpp.dpp?.carbonKg ?? null, events),
     scans: code.scanCount, firstScanAt: code.firstScanAt, firstPlace: code.firstPlace,
     claimed: !!code.claimedById, claimedByYou: !!user && code.claimedById === user.id,
     canClaim: !!user && !code.claimedById && verdict !== 'SUSPECT' && !extras.blocked && p.rewardPoints > 0,
     ...extras,
     // M108: the EU Digital Product Passport, when the brand has filled it in (src/server/trace-dpp.ts).
-    ...unitDpp(p),
+    ...dpp,
   };
+}
+
+/**
+ * M144: the unit's footprint story (src/lib/trace.ts footprint): its making from the passport, its trip
+ * from the journey's points and the product's weight, and the making figures of up to 200 other products
+ * of the same kind that published one (one query, only when this one did).
+ */
+async function unitFootprint(p: { id: string; category: string | null; weightKg: number }, madeKg: number | null, stops: { place: string | null; lat: number | null; lng: number | null }[]) {
+  const others = madeKg && p.category
+    ? (await prisma.traceProduct.findMany({ where: { category: p.category, dpp: { not: null }, id: { not: p.id } }, select: { dpp: true }, take: 200 }))
+      .map((o) => readDpp(o.dpp)?.carbonKg ?? 0)
+    : [];
+  return footprint(madeKg, journeyCarbon(stops, p.weightKg), others);
 }
 
 /** The sample passport's EU Digital Product Passport (M108), as a brand would fill it in. */
@@ -376,6 +395,8 @@ function demoPassport() {
     journey: [{ stage: 'MADE', place: 'Jaén, Spain', createdAt: ago(20) }, { stage: 'SHIPPED', place: 'Port of Valencia', createdAt: ago(9) }, { stage: 'WAREHOUSE', place: 'Lyon', createdAt: ago(6) }, { stage: 'DISTRIBUTOR', place: 'Paris, Rungis', createdAt: ago(3) }, { stage: 'SHOP', place: 'Paris 11e', createdAt: ago(1) }],
     scans: 1, firstScanAt: new Date().toISOString(), firstPlace: null, claimed: false, claimedByYou: false, canClaim: false,
     recall: null, blocked: false, win: null, warranty: null, owner: null,
+    // M144: a 0.6 kg bottle's trip along the stops above, against five made-up oils of its kind.
+    footprint: footprint(DEMO_DPP.carbonKg, journeyCarbon([{ place: 'Jaén', lat: 37.77, lng: -3.79 }, { place: 'Port of Valencia', lat: 39.45, lng: -0.32 }, { place: 'Lyon', lat: 45.76, lng: 4.84 }, { place: 'Paris, Rungis', lat: 48.75, lng: 2.35 }, { place: 'Paris 11e', lat: 48.86, lng: 2.38 }], 0.6), [1.9, 2.3, 1.6, 2.8, 2.1]),
     gtin: '09520123456788', dpp: DEMO_DPP, // GS1 keeps prefix 952 for examples: nobody's real product
     reviews: { avg: 4.8, count: 312, mine: null, recent: [
       { stars: 5, text: 'You can taste the difference. Good to know it’s the real one.', place: 'Lyon, FR', createdAt: ago(2) },
