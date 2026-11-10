@@ -3,7 +3,10 @@ import { reducedMotion } from './page-transition';
 // Motion that answers a tap (M2), like iOS:
 // - a tab bar or side menu icon gives a short spring bounce when tapped (SF Symbols' "bounce");
 // - a card that opens a page is remembered for a moment, so the page can grow out of it
-//   (iOS 18's zoom transition; PendingPage plays it with zoomFrames).
+//   (iOS 18's zoom transition; PendingPage plays it with zoomFrames);
+// - M162: any arrow button (previous/next, back, "open", a dropdown's chevron) answers: the button sinks
+//   a touch and its arrow darts the way it points and springs back (individual `scale` and `translate`,
+//   so a chevron's own CSS rotation is untouched).
 // One listener for the whole app; nothing for Reduce Motion.
 
 const NAV_ICON = '.ios-tabbar :is(a, button), aside[aria-label="Navigation"] a';
@@ -20,6 +23,29 @@ export const BOUNCE: Keyframe[] = [
   { transform: 'scale(0.97)', offset: 0.82 },
   { transform: 'scale(1)' },
 ];
+
+/** M162: the arrows lucide draws, and which way each points. */
+const ARROW = 'svg[class*="lucide-chevron"], svg[class*="lucide-arrow"], svg[class*="lucide-move-"]';
+export function arrowWay(cls: string): [number, number] {
+  const x = /(^|-)left(\b|-)/.test(cls) ? -1 : /(^|-)right(\b|-)/.test(cls) ? 1 : 0;
+  const y = /(^|-)up(\b|-)/.test(cls) ? -1 : /(^|-)down(\b|-)/.test(cls) ? 1 : 0;
+  return [x, y];
+}
+/** The arrow darts `d` px its way and springs back; the button sinks a touch (both on the compositor). */
+function nudge(button: HTMLElement, svg: SVGElement) {
+  const name = [...svg.classList].find((c) => /^lucide-(chevron|arrow|move)/.test(c)) ?? '';
+  let [x, y] = arrowWay(name.replace(/^lucide-/, ''));
+  // An arrow turned round for right-to-left pages (rtl:rotate-180) points the other way.
+  const m = getComputedStyle(svg).transform;
+  if (m.startsWith('matrix(') && Number(m.slice(7).split(',')[0]) < 0) { x = -x; y = -y; }
+  if (!x && !y) return;
+  const d = 5;
+  svg.animate([{ translate: '0 0' }, { translate: `${x * d}px ${y * d}px`, offset: 0.35 }, { translate: `${-x * 1.5}px ${-y * 1.5}px`, offset: 0.7 }, { translate: '0 0' }], { duration: 420, easing: 'cubic-bezier(0.22, 1, 0.36, 1)' });
+  // The .btn-* buttons already press on their own spring (globals.css); others sink here.
+  if (!button.matches('.btn-primary, .btn-secondary, .btn-ghost, .btn-danger, .mkt-cta')) {
+    button.animate([{ scale: '1' }, { scale: '0.9', offset: 0.3 }, { scale: '1.03', offset: 0.65 }, { scale: '1' }], { duration: 380, easing: 'ease-out' });
+  }
+}
 
 const pathOf = (href: string) => { try { return new URL(href, location.href).pathname; } catch { return ''; } };
 
@@ -54,6 +80,10 @@ export function startTapMotion(): () => void {
     const target = e.target as Element | null;
     const icon = target?.closest?.(NAV_ICON)?.querySelector('svg');
     if (icon && typeof icon.animate === 'function') icon.animate(BOUNCE, { duration: 460, easing: 'ease-out' });
+    // M162: an arrow button (not the menus, which bounce above): its arrow darts the way it points.
+    const button = !icon ? (target?.closest?.('button, a[href], [role="button"]') as HTMLElement | null) : null;
+    const arrow = button?.querySelector?.(ARROW) as SVGElement | null;
+    if (button && arrow && !(button as HTMLButtonElement).disabled && typeof arrow.animate === 'function') nudge(button, arrow);
     // A link inside a page (not the menus): remember the card it sits in.
     const link = target?.closest?.('main a[href]') as HTMLAnchorElement | null;
     if (!link || link.target === '_blank') return;

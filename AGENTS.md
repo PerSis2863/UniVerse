@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M161 is the latest; M159 is the landing globe, in progress).
+  builds on it). The newest notes are at the end (M162 is the latest; M159 is the landing globe, in progress).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -151,7 +151,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     sign-in page lined up (the picture shrinks with `zoom`, not pinned to a corner; cards one width; the
     footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
     M161, fields that line up (a field written under its label sits under it; date and time fields never
-    narrower than "09:00 AM").
+    narrower than "09:00 AM"); M162, arrow buttons answer a press everywhere (the arrow darts its way, the
+    button sinks) and what they change slides in (`.swap` with `data-dir`).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -396,7 +397,8 @@ not `transition-all`); animate transform and opacity only; stagger lists 30–80
 `--spring-glide` / `springGlide()` for arrivals, CSS `linear()` curves the compositor runs); motion tied
 to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; a list that
 changes in place (a filter) slides its items with `morph()` (`src/lib/view-transition.ts`, FLIP: only the
-items move; a View Transition snapshots the whole page, too heavy beside a live map, M156); Reduce Motion
+items move; a View Transition snapshots the whole page, too heavy beside a live map, M156); content an arrow
+changes (a month, a day, a page) slides in from that side: a keyed `.swap` with `data-dir` next/back (M162); Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
 without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
 stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string

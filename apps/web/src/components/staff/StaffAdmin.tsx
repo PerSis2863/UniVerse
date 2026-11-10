@@ -61,17 +61,21 @@ export function StaffAdmin() {
 
 function TodayView() {
   const [date, setDate] = useState(() => ymd(new Date()));
-  const { data, error, mutate } = useSWR<Register>(`/api/staff/register?date=${date}`, authedJson, { refreshInterval: 60_000 });
+  const { data, error, mutate } = useSWR<Register>(`/api/staff/register?date=${date}`, authedJson, { refreshInterval: 60_000, keepPreviousData: true });
+  // M162: the day an arrow moves to slides in from that side.
+  const [dir, setDir] = useState(0);
+  const go = (n: number) => { setDir(n); setDate(ymd(addDays(new Date(`${date}T12:00:00`), n))); };
   if (error && !data) return <LoadError onRetry={() => mutate()} />;
   if (!data) return <ContentSkeleton variant="list" />;
   const groups: [RegisterRow['status'], string][] = [['missing', 'Not in yet'], ['in', 'In'], ['leave', 'On leave']];
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <button type="button" aria-label="Previous day" onClick={() => setDate(ymd(addDays(new Date(`${date}T12:00:00`), -1)))} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button>
-        <input type="date" aria-label="Day" value={date} onChange={(e) => e.target.value && setDate(e.target.value)} className="input w-auto" />
-        <button type="button" aria-label="Next day" onClick={() => setDate(ymd(addDays(new Date(`${date}T12:00:00`), 1)))} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>
+        <button type="button" aria-label="Previous day" onClick={() => go(-1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button>
+        <input type="date" aria-label="Day" value={date} onChange={(e) => { if (e.target.value) { setDir(Math.sign(e.target.value.localeCompare(date))); setDate(e.target.value); } }} className="input w-auto" />
+        <button type="button" aria-label="Next day" onClick={() => go(1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>
       </div>
+      <div key={date} className="swap space-y-3" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
       <div className="grid grid-cols-3 gap-2">
         {[['In', data.counts.in, 'text-emerald-700 dark:text-emerald-300'], ['On leave', data.counts.leave, 'text-indigo-700 dark:text-indigo-300'], ['Not in yet', data.counts.missing, 'text-amber-800 dark:text-amber-300']].map(([k, v, tone]) => (
           <div key={k as string} className={`${card} p-3`}><p className={cn('text-2xl font-black tabular-nums', tone as string)}>{v as number}</p><p className="text-[11px] text-zinc-500">{k as string}</p></div>
@@ -96,6 +100,7 @@ function TodayView() {
         );
       })}
       {data.rows.length === 0 && <p className={`${card} p-8 text-center text-sm text-zinc-500`}>No staff accounts yet.</p>}
+      </div>
     </div>
   );
 }
@@ -204,13 +209,14 @@ function CoverView() {
   const [from, setFrom] = useState(() => { const d = new Date(); d.setDate(d.getDate() - ((d.getDay() + 6) % 7)); return ymd(d); });
   const to = ymd(addDays(new Date(`${from}T12:00:00`), 6));
   const key = `/api/staff/cover?from=${from}&to=${to}`;
-  const { data, error, mutate } = useSWR<Cover>(key, authedJson);
+  const { data, error, mutate } = useSWR<Cover>(key, authedJson, { keepPreviousData: true });
+  const [dir, setDir] = useState(0);
   const days = useMemo(() => {
     const out: { date: string; needs: Need[] }[] = [];
     for (const n of data?.needs ?? []) { const last = out.at(-1); if (last?.date === n.date) last.needs.push(n); else out.push({ date: n.date, needs: [n] }); }
     return out;
   }, [data]);
-  const shift = (n: number) => setFrom(ymd(addDays(new Date(`${from}T12:00:00`), n * 7)));
+  const shift = (n: number) => { setDir(n); setFrom(ymd(addDays(new Date(`${from}T12:00:00`), n * 7))); };
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
@@ -218,6 +224,7 @@ function CoverView() {
         <p className="text-sm font-semibold text-zinc-900 dark:text-white">{dayLabel(from)} – {dayLabel(to)}</p>
         <button type="button" aria-label="Next week" onClick={() => shift(1)} className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-black/5 dark:hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>
       </div>
+      <div key={from} className="swap space-y-3" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
       {error && !data ? <LoadError onRetry={() => mutate()} />
         : !data ? <ContentSkeleton variant="list" />
         : days.length === 0 ? <p className={`${card} p-8 text-center text-sm text-zinc-500`}>No approved leave this week, so no classes to cover.</p>
@@ -234,6 +241,7 @@ function CoverView() {
             ))}
           </>
         )}
+      </div>
     </div>
   );
 }

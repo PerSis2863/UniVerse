@@ -34,7 +34,9 @@ export function CalendarView({ cards, lists, canEdit, onOpen, onMove }: Props) {
   const byDay = new Map<string, ViewCard[]>();
   for (const c of cards) if (c.dueAt) { const k = dayKey(new Date(c.dueAt)); byDay.set(k, [...(byDay.get(k) ?? []), c]); }
   const undated = cards.filter((c) => !c.dueAt && !c.doneAt);
-  const shift = (n: number) => setMonth(({ y, m }) => { const d = new Date(y, m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; });
+  // M162: the month slides in from the side the arrow points to.
+  const [dir, setDir] = useState(0);
+  const shift = (n: number) => { setDir(n); setMonth(({ y, m }) => { const d = new Date(y, m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
   const label = new Date(month.y, month.m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   return (
     <div className="max-w-5xl mx-auto space-y-3">
@@ -42,13 +44,13 @@ export function CalendarView({ cards, lists, canEdit, onOpen, onMove }: Props) {
         <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button>
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white w-36 text-center">{label}</h2>
         <button type="button" onClick={() => shift(1)} aria-label="Next month" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>
-        <button type="button" onClick={() => { const d = new Date(); setMonth({ y: d.getFullYear(), m: d.getMonth() }); }} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 px-2">Today</button>
+        <button type="button" onClick={() => { const d = new Date(); setDir(Math.sign(d.getFullYear() * 12 + d.getMonth() - (month.y * 12 + month.m))); setMonth({ y: d.getFullYear(), m: d.getMonth() }); }} className="text-xs font-semibold text-indigo-600 dark:text-indigo-400 px-2">Today</button>
         <span className="flex-1" />
         <Legend lists={lists} />
       </div>
       <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] overflow-hidden bg-white/70 dark:bg-white/[0.03]">
         <div className="grid grid-cols-7 text-[11px] font-semibold text-zinc-500 border-b border-zinc-200/80 dark:border-white/[0.07]">{weekdayNames(first).map((d) => <div key={d} className="px-2 py-1.5">{d}</div>)}</div>
-        <div className="grid grid-cols-7">
+        <div key={`${month.y}-${month.m}`} className="swap grid grid-cols-7" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
           {days.map((d) => {
             const k = dayKey(d);
             const inMonth = d.getMonth() === month.m;
@@ -88,7 +90,8 @@ export function TimelineView({ cards, lists, onOpen }: Omit<Props, 'canEdit' | '
   const rows = cards.map((c) => ({ c, span: barSpan(new Date(c.createdAt), c.dueAt ? new Date(c.dueAt) : null, start, days) })).filter((r) => r.span)
     .sort((a, b) => a.span!.to - b.span!.to);
   const undated = cards.filter((c) => !c.dueAt).length;
-  const shift = (weeks: number) => setStart((s) => { const n = new Date(s); n.setDate(n.getDate() + weeks * 7); return n; });
+  const [dir, setDir] = useState(0);
+  const shift = (weeks: number) => { setDir(weeks); setStart((s) => { const n = new Date(s); n.setDate(n.getDate() + weeks * 7); return n; }); };
   const pct = (i: number) => `${(i / days) * 100}%`;
   return (
     <div className="max-w-5xl mx-auto space-y-3">
@@ -100,7 +103,7 @@ export function TimelineView({ cards, lists, onOpen }: Omit<Props, 'canEdit' | '
         <Legend lists={lists} />
       </div>
       <div className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] overflow-x-auto">
-        <div className="min-w-[640px]">
+        <div key={start.getTime()} className="swap min-w-[640px]" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
           <div className="relative h-7 border-b border-zinc-200/80 dark:border-white/[0.07] text-[10px] text-zinc-500">
             {Array.from({ length: WEEKS }, (_, w) => {
               const d = new Date(start); d.setDate(d.getDate() + w * 7);

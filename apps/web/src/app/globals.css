@@ -2930,3 +2930,13 @@ html[data-scrolling] .pulse-ring::after { animation-play-state: paused; }
    never narrower than what it holds (the time with AM/PM, the picker's icon), whatever width it was given. */
 label > .input:is([class^="mt-"], [class*=" mt-"]) { display: block; }
 input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], [type="week"]) { min-width: max-content; }
+
+/* ═══ M162 · Content an arrow changes slides in from the side it moves towards (data-dir next/back on a
+   keyed `.swap`, so each change plays once); mirrored right to left; a fade with Reduce Motion. */
+.swap[data-dir] { animation: swap-next 0.34s var(--ease-glide) backwards; }
+.swap[data-dir="back"] { animation-name: swap-back; }
+[dir="rtl"] .swap[data-dir="next"] { animation-name: swap-back; }
+[dir="rtl"] .swap[data-dir="back"] { animation-name: swap-next; }
+@keyframes swap-next { from { opacity: 0; transform: translateX(22px); } }
+@keyframes swap-back { from { opacity: 0; transform: translateX(-22px); } }
+@media (prefers-reduced-motion: reduce) { .swap[data-dir] { animation-name: tl-fade; } }

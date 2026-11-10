@@ -5981,3 +5981,25 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   `scripts/checks/fields-ui.mjs` keeps checking it (plus no sideways scroll).
 - **Rule for new screens:** a field under its label: `mt-1` on the field (or a `flex flex-col` label); don't
   give date or time fields a width under what they hold.
+
+## M162: arrow buttons answer a press, everywhere (the owner, 10 Nov 2026: "when i click on any arrow button it should show some animations… fix this for everywhere")
+
+- **Every arrow button at once** (`src/lib/tap-motion.ts`, the app's one click listener): a button or link
+  holding a lucide chevron or arrow (`lucide-chevron-*`, `lucide-arrow-*`, `lucide-move-*`) makes its arrow
+  dart 5 px the way it points and spring back (`arrowWay` reads the way from the icon's name, tested; an
+  arrow turned round for right-to-left counts as the other way), and a plain button sinks to 0.9 and
+  settles (`.btn-*` already press on their own spring). Individual `translate` and `scale`, so a chevron's
+  own CSS rotation (open/closed) is untouched; on the compositor; nothing with Reduce Motion; disabled
+  buttons don't move. The side menu and tab bar keep their bounce.
+- **What an arrow changes slides in from that side** (`.swap[data-dir="next"|"back"]` in `globals.css`, the
+  M162 block: 22 px and a fade on `--ease-glide`, mirrored right to left, a fade with Reduce Motion; the
+  element is keyed by what changed so each change plays once): the tasks board's month calendar and
+  timeline, the staff register's day and the cover week (both also keep their arrows while the next one
+  loads: `keepPreviousData`), Trace's label print pages, the revision reels' words, the call agenda's
+  item. Already sliding before: the calendar's weeks (`TimeGrid`), the date range picker's months, the
+  photo viewer; the lesson flashcards flip in.
+- **Found by** listing every file with a back or forward arrow (22 with ChevronLeft) and checking which
+  change content in place without motion.
+- **Tested:** `pnpm check` (`tap-motion.test.ts`: `arrowWay`); `scripts/checks/arrows-ui.mjs` (on the staff
+  register: the arrow's `translate`, the button's `scale` and the day's `.swap` run; on the calendar the
+  arrow darts).

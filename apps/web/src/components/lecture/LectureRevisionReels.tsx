@@ -40,6 +40,7 @@ export function LectureRevisionReels({
 
   // Reels Story State
   const [activeReelIdx, setActiveReelIdx] = useState<number>(0);
+  const [reelDir, setReelDir] = useState(0); // M162: the next reel's words slide in from that side
   const [isPlaying, setIsPlaying] = useState<boolean>(true);
   const [progress, setProgress] = useState<number>(0);
   const [playbackSpeed, setPlaybackSpeed] = useState<number>(1);
@@ -121,6 +122,7 @@ export function LectureRevisionReels({
       void trackView(activeReel.id);
     }
     if (activeReelIdx < lesson.reels.length - 1) {
+      setReelDir(1);
       setActiveReelIdx((prev) => prev + 1);
       setProgress(0);
     } else {
@@ -131,6 +133,7 @@ export function LectureRevisionReels({
 
   const handlePrevReel = useCallback(() => {
     if (activeReelIdx > 0) {
+      setReelDir(-1);
       setActiveReelIdx((prev) => prev - 1);
       setProgress(0);
       setIsPlaying(true);
@@ -328,6 +331,7 @@ export function LectureRevisionReels({
                   key={r.id}
                   className="h-1.5 flex-1 cursor-pointer overflow-hidden rounded-full bg-white/25 backdrop-blur-md"
                   onClick={() => {
+                    setReelDir(Math.sign(idx - activeReelIdx));
                     setActiveReelIdx(idx);
                     setProgress(0);
                     setIsPlaying(true);
@@ -390,7 +394,7 @@ export function LectureRevisionReels({
             </div>
 
             {/* Center Visual Content / Core Takeaway Card */}
-            <div className="relative z-20 flex flex-col items-center justify-center px-6 text-center text-white">
+            <div key={activeReelIdx} className="swap relative z-20 flex flex-col items-center justify-center px-6 text-center text-white" data-dir={reelDir > 0 ? 'next' : reelDir < 0 ? 'back' : undefined}>
               <div className="mb-3 rounded-2xl bg-white/10 p-4 shadow-lg backdrop-blur-md border border-white/20">
                 <div className="mb-2 flex items-center justify-center gap-1 text-[11px] font-bold uppercase tracking-wider text-amber-300">
                   <Sparkles className="h-3 w-3" /> Core Exam Takeaway
