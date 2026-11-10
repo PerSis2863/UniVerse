@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { AID_LABEL, aidCodeOf, aidMayMove, demoAid, runsOrg, type AidStep } from '@/lib/relief';
+import { AID_LABEL, aidCodeOf, aidMayMove, demoAid, firstName, runsOrg, snap, type AidStep } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, type Body } from './body';
 import { notifyMany } from './email';
@@ -11,13 +11,22 @@ import { num, short } from './trace';
 // M151: Relief's traceable aid (the owner, 10 Nov 2026). An organisation's coordinators give each aid box
 // (or pallet) a code with what is in it and where it goes; any member logs its trip (on the way, with the
 // town; delivered). Anyone with the link or QR code sees the trip on /aid/<code>: the organisation, the
-// contents, towns and times, never who packed, carried or received it. Signed-in donors follow a box and
-// are told at each step.
+// contents, towns and times, never who received it; M154: where each step was, rounded to about 500 m,
+// and a helper's first name only when they choose. Signed-in donors follow a box and are told each step.
 
 // 32 letters and digits without look-alikes (no I, O, 0, 1): 10 of them is 50 bits, not guessable.
 const ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
 const newCode = () => [...crypto.getRandomValues(new Uint8Array(10))].map((x) => ALPHABET[x & 31]).join('');
 const DAY = 86_400_000;
+
+/** M154: where a step happened, rounded to about 500 m (never an exact spot), or the fallback, or none. */
+function where(b: Body, fallback?: { lat: number | null; lng: number | null } | null) {
+  const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
+  if (lat !== null && lng !== null) return { lat: snap(lat), lng: snap(lng) };
+  return fallback?.lat != null && fallback.lng != null ? { lat: fallback.lat, lng: fallback.lng } : {};
+}
+/** M154: the helper's first name, only when they ticked "show my first name". */
+const shown = (u: SessionUser, b: Body) => (b.showName === true ? firstName(u.name) : null);
 
 /** GET /relief/orgs/:id/aid: the organisation's boxes, newest first (members only). */
 export async function orgAid(u: SessionUser, orgId: string) {
@@ -38,12 +47,13 @@ export async function createAid(u: SessionUser, orgId: string, b: Body) {
   if (!contents) throw new BadRequestException('Say what is in it.');
   if (!toPlace) throw new BadRequestException('Say where it is going (a town or an area).');
   if ((await prisma.reliefAid.count({ where: { orgId, createdAt: { gt: new Date(Date.now() - DAY) } } })) >= 300) throw new BadRequestException('That’s 300 boxes today. Add more tomorrow.');
-  const org = await prisma.reliefOrg.findUnique({ where: { id: orgId }, select: { place: true } });
+  const org = await prisma.reliefOrg.findUnique({ where: { id: orgId }, select: { place: true, lat: true, lng: true } });
   const fromPlace = short(b.fromPlace, 120) ?? org?.place ?? null;
   const aid = await prisma.reliefAid.create({
     data: { orgId, code: newCode(), contents, boxes: Math.round(num(b.boxes, 1, 10_000) ?? 1), fromPlace, toPlace, createdById: u.id },
   });
-  await prisma.reliefAidStep.create({ data: { aidId: aid.id, status: 'PACKED', place: fromPlace } });
+  // M154: packed at the organisation's base (already rounded), unless the coordinator shared where.
+  await prisma.reliefAidStep.create({ data: { aidId: aid.id, status: 'PACKED', place: fromPlace, ...where(b, org), byName: shown(u, b) } });
   return aid;
 }
 
@@ -59,7 +69,7 @@ export async function stepAid(u: SessionUser, id: string, b: Body) {
   const moved = await prisma.reliefAid.updateMany({ where: { id, status: { not: 'DELIVERED' } }, data: { status, updatedAt: new Date() } });
   if (!moved.count) throw new BadRequestException('That box was already delivered.');
   const place = short(b.place, 120) ?? (status === 'DELIVERED' ? aid.toPlace : null);
-  const step = await prisma.reliefAidStep.create({ data: { aidId: id, status, place, note: short(b.note, 200) } });
+  const step = await prisma.reliefAidStep.create({ data: { aidId: id, status, place, note: short(b.note, 200), ...where(b), byName: shown(u, b) } });
   await tellFollowers(aid, status, place).catch((e) => console.error('relief aid followers failed:', e));
   return { ok: true, status, step };
 }
@@ -87,7 +97,7 @@ export async function aidPublic(raw: string) {
   const aid = await byCode(raw);
   const [org, steps, followers] = await Promise.all([
     prisma.reliefOrg.findUnique({ where: { id: aid.orgId }, select: { name: true, kind: true, place: true } }),
-    prisma.reliefAidStep.findMany({ where: { aidId: aid.id }, orderBy: { createdAt: 'asc' }, take: 50, select: { status: true, place: true, note: true, createdAt: true } }),
+    prisma.reliefAidStep.findMany({ where: { aidId: aid.id }, orderBy: { createdAt: 'asc' }, take: 50, select: { status: true, place: true, note: true, lat: true, lng: true, byName: true, createdAt: true } }),
     prisma.reliefAidFollow.count({ where: { aidId: aid.id } }),
   ]);
   return {

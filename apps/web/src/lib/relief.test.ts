@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aidCodeOf, aidMayMove, emergencyText, freshness, rankPlaces, whoToAlert } from './relief';
+import { aidCodeOf, aidMayMove, emergencyText, firstName, freshness, rankPlaces, whoToAlert } from './relief';
 
 describe('rankPlaces (M148)', () => {
   const now = Date.parse('2026-11-10T12:00:00Z');
@@ -56,5 +56,13 @@ describe('emergencyText (M153)', () => {
     expect(m.length).toBeLessThanOrEqual(160);
     expect(m).toMatch(/^[\x20-\x7E]+$/);
     expect(m).toContain('Are you safe? https://universeimpact.com/relief');
+  });
+});
+
+describe('firstName (M154)', () => {
+  it('shows only a first name, skipping titles', () => {
+    expect(firstName('Dr. Jane Smith')).toBe('Jane');
+    expect(firstName('Priya')).toBe('Priya');
+    expect(firstName('  ')).toBeNull();
   });
 });

@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
@@ -15,10 +16,14 @@ import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 
 // M151: an aid box's trip, for donors (public: the code in the link or on the box's QR label). What is
-// in it, who sent it, the towns it passed and when; never who packed, carried or received it. Signed-in
-// visitors can follow it and are told at each step.
+// in it, who sent it, the towns it passed and when; M154: the trip on a map (rounded to about 500 m) and a
+// helper's first name when they chose to show it; never who received it. Signed-in visitors can follow it.
 
 const ICON: Record<AidStep, typeof Package> = { PACKED: Package, ON_THE_WAY: Truck, DELIVERED: PackageCheck };
+/** M154: who logged a step, when they chose to show their first name. */
+const BY: Record<AidStep, string> = { PACKED: 'packed by', ON_THE_WAY: 'carried by', DELIVERED: 'delivered by' };
+// The map loads only on this page, after the trip (it brings the world's shapes).
+const AidMap = dynamic(() => import('@/components/relief/AidMap'), { ssr: false, loading: () => <div className="h-56 sm:h-64 rounded-xl skeleton" /> });
 
 export default function View() {
   const code = usePathParams('/aid/[code]')?.code;
@@ -48,6 +53,7 @@ export default function View() {
 function Trip({ code, d }: { code: string; d: AidTrip }) {
   const at = AID_STEPS.indexOf(d.status);
   const last = d.steps[d.steps.length - 1];
+  const points = useMemo(() => d.steps.flatMap((s) => (s.lat != null && s.lng != null ? [{ lat: s.lat, lng: s.lng, place: s.place }] : [])), [d.steps]);
   return (
     <>
       <h1 className="mt-8 text-2xl sm:text-3xl font-bold tracking-tight text-zinc-900 dark:text-white" translate="no">{d.contents}</h1>
@@ -77,6 +83,14 @@ function Trip({ code, d }: { code: string; d: AidTrip }) {
         </p>
       </section>
 
+      {points.length > 0 && (
+        <section className="card mt-4" aria-labelledby="map-h">
+          <h2 id="map-h" className="font-semibold text-zinc-900 dark:text-white">On the map</h2>
+          <p className="mt-0.5 mb-3 text-xs text-zinc-500 dark:text-zinc-400">Places are rounded to about 500 m, never an exact spot.</p>
+          <AidMap points={points} moving={d.status !== 'DELIVERED'} />
+        </section>
+      )}
+
       <section className="card mt-4" aria-labelledby="trip-h">
         <h2 id="trip-h" className="font-semibold text-zinc-900 dark:text-white">Its trip</h2>
         <ol className="mt-3 relative">
@@ -88,6 +102,7 @@ function Trip({ code, d }: { code: string; d: AidTrip }) {
                 <span className={cn('relative w-8 h-8 shrink-0 rounded-full grid place-items-center', i === 0 ? 'bg-indigo-600 text-white' : 'bg-[var(--fill)] text-zinc-600 dark:text-zinc-300')} aria-hidden><Icon className="w-4 h-4" /></span>
                 <div className="min-w-0 pt-1">
                   <p className="text-sm font-medium text-zinc-900 dark:text-white">{AID_LABEL[s.status] ?? s.status}{s.place && <span className="font-normal text-zinc-600 dark:text-zinc-300"> · <MapPin className="inline w-3.5 h-3.5 -mt-0.5" aria-hidden /> <span translate="no">{s.place}</span></span>}</p>
+                  {s.byName && <p className="text-xs text-zinc-600 dark:text-zinc-300">{BY[s.status] ?? 'by'} <span translate="no">{s.byName}</span></p>}
                   {s.note && <p className="text-sm text-zinc-600 dark:text-zinc-300" translate="no">{s.note}</p>}
                   <p className="text-xs text-zinc-500 dark:text-zinc-400"><time dateTime={s.createdAt}>{format(new Date(s.createdAt), 'EEE d MMM, HH:mm')}</time></p>
                 </div>
@@ -98,7 +113,7 @@ function Trip({ code, d }: { code: string; d: AidTrip }) {
       </section>
 
       <Follow code={code} followers={d.followers} delivered={d.status === 'DELIVERED'} demo={d.code === 'DEMO'} />
-      <p className="mt-6 text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-[60ch] mx-auto">Only towns and times are shown here, never the people who pack, carry or receive aid. Code <span className="font-mono">{d.code}</span>.</p>
+      <p className="mt-6 text-xs text-zinc-500 dark:text-zinc-400 text-center max-w-[60ch] mx-auto">Places are rounded to about 500 m. Helpers’ first names show only when they choose; the people who receive aid are never shown. Code <span className="font-mono">{d.code}</span>.</p>
     </>
   );
 }

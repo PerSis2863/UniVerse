@@ -173,9 +173,9 @@ export function demoAid(now: number) {
     createdAt: at(30), updatedAt: at(3), followers: 18,
     org: { name: 'Riverside Food Bank', kind: 'FOOD_BANK', place: 'Chennai' },
     steps: [
-      { status: 'PACKED' as AidStep, place: 'Chennai', note: 'Packed by the weekend team', createdAt: at(30) },
-      { status: 'ON_THE_WAY' as AidStep, place: 'Coimbatore', note: 'Left the warehouse by truck', createdAt: at(14) },
-      { status: 'ON_THE_WAY' as AidStep, place: 'Thrissur', note: null, createdAt: at(3) },
+      { status: 'PACKED' as AidStep, place: 'Chennai', note: 'Packed by the weekend team' as string | null, lat: 13.085 as number | null, lng: 80.27 as number | null, byName: 'Priya' as string | null, createdAt: at(30) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Coimbatore', note: 'Left the warehouse by truck', lat: 11.015, lng: 76.955, byName: null, createdAt: at(14) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Thrissur', note: null, lat: 10.525, lng: 76.215, byName: 'Arun', createdAt: at(3) },
     ],
   };
 }
@@ -188,4 +188,10 @@ export type AidTrip = ReturnType<typeof demoAid>;
 export function emergencyText(title: string, link: string) {
   const t = title.normalize('NFKD').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim().slice(0, 45).trim();
   return `Relief: emergency near you${t ? `: ${t}` : ''}. Are you safe? ${link} (reply STOP to end)`.slice(0, 160);
+}
+
+/** M154: the first name a helper shows donors when they choose to ("Dr. Jane Smith" → "Jane"). */
+export function firstName(name: string | null | undefined) {
+  const word = (name ?? '').trim().split(/\s+/).find((w) => w && !w.endsWith('.'));
+  return word ? word.slice(0, 30) : null;
 }

@@ -5835,3 +5835,25 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   person, the daily cap; `relief.test.ts`: the text's length and characters); `relief-safety-api.mjs`
   now also checks a bad number is refused, a good one kept, and texts are off locally; axe on the
   setting (ticked) at 390 and 1280, light and dark.
+
+## M154: aid boxes on a map, helpers' names by choice (the owner, 10 Nov 2026: "please do this")
+
+- **The owner asked for exact locations and for people to be shown.** Done as far as is safe: aid in
+  transit and the people with it can be targeted, and Relief's rule rounds every position to about
+  500 m, so **positions are rounded to about 500 m** (`snap`) and **only helpers who choose** show their
+  **first name**; the people who receive aid are **never** shown.
+- **Members** (organisation → Aid boxes → On the way / Delivered): **Add where it is now, for the map**
+  (the device's location, rounded when saved; removable before saving) and **Show my first name (Jane)
+  to donors** (remembered on that device; also on "Pack a box"). Packing takes the organisation's base
+  (already rounded) as its position. `firstName` in `src/lib/relief.ts` skips titles ("Dr. Jane Smith" →
+  "Jane"; tested).
+- **Donors** (`/aid/<code>`): an **On the map** card (`src/components/relief/AidMap.tsx`, loaded only on
+  that page with `next/dynamic`): the places joined by a dashed orange route that flows while the box is
+  on its way, the latest place glowing (still with Reduce Motion or once delivered); the map's own city
+  names for those places are left out (`skipCities`); the map doesn't take scrolling or dragging. Steps
+  say "packed by / carried by / delivered by <first name>" when chosen.
+- **Data:** migration **0204**: `relief_aid_steps.lat`, `lng`, `byName`. The public answer's step fields
+  are now exactly status, place, note, lat, lng, byName, createdAt (checked).
+- **Tested:** `pnpm check` (`relief.test.ts`: `firstName`); `relief-aid-api.mjs` (a position rounded to
+  0.005°, packing at the base, no position when none was shared, a first name only when chosen); axe on
+  the donor page (with the map), the Aid boxes tab and the step window at 390 and 1280, light and dark.

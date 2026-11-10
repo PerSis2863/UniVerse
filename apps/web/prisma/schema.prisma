@@ -7050,13 +7050,18 @@ model ReliefAid {
   @@map("relief_aid")
 }
 
-/// M151: each step of an aid box's trip: where and when, never who.
+/// M151: each step of an aid box's trip: where and when (M154: a helper's first name only by their choice).
 model ReliefAidStep {
   id        String   @id @default(cuid())
   aidId     String
   status    String
   place     String?
   note      String?
+  /// M154: where it was, rounded to about 500 m (snap), or null.
+  lat       Float?
+  lng       Float?
+  /// M154: the first name of the member who logged it, only when they chose to show it.
+  byName    String?
   createdAt DateTime @default(now())
 
   @@index([aidId, createdAt], map: "relief_aid_steps_aid_idx")

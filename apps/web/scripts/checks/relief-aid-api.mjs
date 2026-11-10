@@ -2,7 +2,8 @@
 // student, who starts an organisation) packs a box; a volunteer who joined can't pack but logs it on the
 // way; someone outside can't. Signed out, the public trip shows the organisation, towns and notes but no
 // people, ids or join code; a signed-in donor follows it and hears "delivered"; after delivery nothing
-// moves it; a wrong code is 404; /aid/demo is a sample.
+// moves it; a wrong code is 404; /aid/demo is a sample. M154: a step's position is rounded to about
+// 500 m (packing takes the base's), and a helper's first name shows only when they choose.
 //   node scripts/checks/relief-aid-api.mjs [http://localhost:8787]
 const root = process.argv.find((a) => a.startsWith('http')) ?? 'http://localhost:3100';
 const fail = [];
@@ -44,7 +45,7 @@ else {
     if (byOutsider.status !== 404) fail.push(`an outsider moving it: ${byOutsider.status}`);
     const back = await call('POST', `/relief/aid/${id}/step`, VOL, { status: 'PACKED' });
     if (back.status !== 400) fail.push(`moving it back to packed: ${back.status}`);
-    const way = await call('POST', `/relief/aid/${id}/step`, VOL, { status: 'ON_THE_WAY', place: 'Coimbatore', note: 'By truck' });
+    const way = await call('POST', `/relief/aid/${id}/step`, VOL, { status: 'ON_THE_WAY', place: 'Coimbatore', note: 'By truck', lat: 11.01683, lng: 76.95583, showName: true });
     if (way.data?.status !== 'ON_THE_WAY') fail.push(`on the way: ${way.status} ${JSON.stringify(way.data)}`);
     const done = await call('POST', `/relief/aid/${id}/step`, COORD, { status: 'DELIVERED', note: 'Handed to the camp kitchen' });
     if (done.data?.step?.place !== 'Kochi') fail.push(`delivered (place defaults to the destination): ${JSON.stringify(done.data)}`);
@@ -59,7 +60,12 @@ else {
       const keys = (o) => Object.keys(o ?? {}).sort().join(',');
       if (keys(trip) !== 'boxes,code,contents,createdAt,followers,fromPlace,org,status,steps,toPlace,updatedAt') fail.push(`the trip's fields: ${keys(trip)}`);
       if (keys(trip.org) !== 'kind,name,place') fail.push(`the organisation's fields: ${keys(trip.org)}`);
-      if (trip.steps.some((st) => keys(st) !== 'createdAt,note,place,status')) fail.push(`a step's fields: ${keys(trip.steps[0])}`);
+      if (trip.steps.some((st) => keys(st) !== 'byName,createdAt,lat,lng,note,place,status')) fail.push(`a step's fields: ${keys(trip.steps[0])}`);
+      // M154: positions rounded to about 500 m (the base's for packing); a name only when chosen.
+      const [packed, onWay, delivered] = trip.steps;
+      if (Math.abs(onWay.lat - 11.015) > 1e-9 || Math.abs(onWay.lng - 76.955) > 1e-9) fail.push(`not rounded: ${onWay.lat}, ${onWay.lng}`);
+      if (packed.lat == null || delivered.lat != null) fail.push(`positions: packed ${packed.lat}, delivered ${delivered.lat}`);
+      if (!onWay.byName || onWay.byName.includes(' ') || packed.byName || delivered.byName) fail.push(`names: ${trip.steps.map((st) => st.byName).join(', ')}`);
       if (!trip.org?.name?.startsWith('Check ')) fail.push(`the organisation: ${JSON.stringify(trip.org)}`);
       out.push(`${trip.contents}: ${trip.steps.map((s) => `${s.status} ${s.place ?? ''}`.trim()).join(' → ')}; ${trip.followers} following`);
     }
