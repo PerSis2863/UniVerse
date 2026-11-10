@@ -204,7 +204,7 @@ function swot() {
   const s = section('swot', '4 · Strengths and risks');
   const q: [string, string, string][] = [
     ['Strengths', C.teacher, bullets('Everything a school needs in one place, one sign-in', 'Runs on Cloudflare’s network: fast everywhere, low cost', 'Works on phones, installs as an app, many languages', '  (Arabic and Urdu read right to left)', 'Accessible: screens checked with axe, light and dark', 'AI built in, with a daily allowance and an off switch')],
-    ['Weaknesses', C.parent, bullets('So many features it can feel complicated', '  (breadcrumbs and simpler menus help)', 'One D1 database: at most 100 values a query', '  and 50 queries a request, so code must be careful', 'Some features wait on owner accounts (SMS, stores)', 'Tested mostly in Chrome: Safari needs checking')],
+    ['Weaknesses', C.parent, bullets('So many features it can feel complicated', '  (simpler menus help)', 'One D1 database: at most 100 values a query', '  and 50 queries a request, so code must be careful', 'Some features wait on owner accounts (SMS, stores)', 'Tested mostly in Chrome: Safari needs checking')],
     ['Opportunities', C.student, bullets('Schools want one tool instead of ten', 'Many schools on one site (each admin sees only theirs)', 'Course and curriculum marketplace', 'Parents, sponsors and partner schools on the platform', 'Phone app in the app stores')],
     ['Threats', C.admin, bullets('Big rivals: Google Classroom, Canvas, Moodle', 'Price or limit changes at Cloudflare, Firebase, AI providers', 'Children’s data: privacy laws (GDPR and others)', 'Attacks on sign-in and payments', 'Outages of the services it depends on')],
   ];

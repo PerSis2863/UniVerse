@@ -5954,3 +5954,13 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   recorded with a merge that keeps `main`'s files (`git merge -s ours`), so pushes never need force.
 - **Tested:** screenshots at 1280×720, 1440×900, 1600×830, 1920×1080 for the five app tabs; nothing
   spills out of its box (measured); axe on /login, /register and a Lab tab at 390 and 1280, light and dark.
+
+## M160: no breadcrumb row above page titles (the owner, 10 Nov 2026: "remove like top row because it is not useful")
+
+- The top bar's "Academics › Knowledge & library" row (M3's `Breadcrumb` in `Topbar.tsx`, from
+  `src/lib/breadcrumbs.ts`) is gone on computers and phones, with its helper and test. The side menu
+  already shows where you are (the chosen entry), and the page title says the rest.
+- **Kept on purpose:** `DocBreadcrumb` inside Docs, Sheets and Slides: there it links a sub-page back to
+  its parent pages (real navigation, not a repeat of the menu).
+- (M159, the landing globe, was asked first and is in progress; M161 and M162 are the time boxes and the
+  arrow buttons from the same message.)
