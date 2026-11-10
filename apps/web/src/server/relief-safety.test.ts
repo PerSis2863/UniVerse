@@ -15,7 +15,7 @@ vi.mock('@/lib/db', () => ({
     reliefWatch: { findMany: vi.fn().mockResolvedValue([]) },
   },
 }));
-vi.mock('./email', () => ({ notifyMany: vi.fn().mockResolvedValue(1) }));
+vi.mock('./email', () => ({ notifyMany: vi.fn().mockResolvedValue(1), later: vi.fn() }));
 vi.mock('./services/push.service', () => ({ pushService: { sendToMany: vi.fn().mockResolvedValue(1) } }));
 
 const me = { id: 'me', name: 'Sam' } as SessionUser;

@@ -180,3 +180,12 @@ export function demoAid(now: number) {
   };
 }
 export type AidTrip = ReturnType<typeof demoAid>;
+
+/**
+ * M153: an emergency text: plain ASCII (an accent would make it a 70-character text) and under 160
+ * characters, so it stays one paid message.
+ */
+export function emergencyText(title: string, link: string) {
+  const t = title.normalize('NFKD').replace(/[^\x20-\x7E]/g, '').replace(/\s+/g, ' ').trim().slice(0, 45).trim();
+  return `Relief: emergency near you${t ? `: ${t}` : ''}. Are you safe? ${link} (reply STOP to end)`.slice(0, 160);
+}

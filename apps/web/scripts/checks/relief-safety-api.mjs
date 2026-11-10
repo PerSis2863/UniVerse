@@ -3,6 +3,7 @@
 // code and someone outside can't, nor can anyone end it. The teacher says "I'm safe" and tells the student
 // (they have a conversation) and Alice (they don't): only the student is told and sees it; telling again
 // adds nobody twice. Once it's ended, "I'm safe" is refused and it leaves the list. Signed out: nothing.
+// M153: a helper's phone number for emergency texts is checked and kept; texts are off locally.
 //   node scripts/checks/relief-safety-api.mjs [http://localhost:8787]
 const root = process.argv.find((a) => a.startsWith('http')) ?? 'http://localhost:3100';
 const fail = [];
@@ -32,6 +33,13 @@ else {
   const code = (await call('GET', `/relief/orgs/${orgId}`, COORD)).data?.org?.code;
   await call('POST', '/relief/orgs/join', VOL, { code });
   const title = `Check flood ${Date.now()}`;
+  // M153: emergency texts: a bad number is refused, a good one kept for the helper alone; off locally.
+  const badPhone = await call('PUT', '/relief/watch', STRANGER, { lat: 13.0827, lng: 80.2707, radiusKm: 5, sms: true, smsTo: '12345' });
+  if (badPhone.status !== 400) fail.push(`a bad phone number: ${badPhone.status}`);
+  const phone = await call('PUT', '/relief/watch', STRANGER, { lat: 13.0827, lng: 80.2707, radiusKm: 5, sms: true, smsTo: '+91 98765 43210' });
+  if (phone.data?.smsTo !== '+919876543210') fail.push(`the phone number: ${JSON.stringify(phone.data)}`);
+  const smsOn = await call('GET', '/relief/sms', STRANGER);
+  if (smsOn.data?.on !== false) fail.push(`emergency texts should be off locally: ${JSON.stringify(smsOn.data)}`);
   const byVol = await call('POST', '/relief/incidents', VOL, { orgId, title });
   if (byVol.status !== 403) fail.push(`a volunteer declaring: ${byVol.status}`);
   const byStranger = await call('POST', '/relief/incidents', STRANGER, { orgId, title });
@@ -82,6 +90,7 @@ else {
     const after = (await call('GET', '/relief/incidents', COORD)).data?.incidents ?? [];
     if (after.some((i) => i.id === id)) fail.push('still listed after the end');
   }
+  await call('DELETE', '/relief/watch', STRANGER);
   const anon = await call('GET', '/relief/incidents', null);
   if (anon.status !== 401) fail.push(`signed out: ${anon.status}`);
 }

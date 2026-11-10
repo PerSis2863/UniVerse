@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, runsOrg, snap, whoToAlert } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, runsOrg, snap, textNumber, whoToAlert } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { notifyMany } from './email';
 import { pushService } from './services/push.service';
@@ -136,7 +136,10 @@ export async function setReliefWatch(u: SessionUser, b: Body) {
   const kinds = Array.isArray(b.kinds) ? [...new Set(b.kinds.filter((k): k is string => oneOf(RELIEF_KINDS, k)))].join(',') || null : null;
   // M149: what this helper can do (comma-separated SKILLS).
   const skills = Array.isArray(b.skills) ? [...new Set(b.skills.filter((k): k is string => oneOf(SKILLS, k)))].join(',') || null : null;
-  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds, skills, email: b.email === true };
+  // M153: a phone number for emergency texts, only when the helper asks for them.
+  const smsTo = b.sms === true ? textNumber(b.smsTo) : null;
+  if (b.sms === true && !smsTo) throw new BadRequestException('Enter your number with the country code, like +91 98765 43210.');
+  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds, skills, email: b.email === true, smsTo };
   return prisma.reliefWatch.upsert({ where: { userId: u.id }, create: { userId: u.id, ...data }, update: data });
 }
 

@@ -54,7 +54,7 @@ export default function ReliefMinePage() {
   );
 }
 
-interface Watch { lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills?: string | null; email?: boolean }
+interface Watch { lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills?: string | null; email?: boolean; smsTo?: string | null }
 
 /** "Tell me about needs near me" (PUT /relief/watch): a place, a radius, urgent only or all, which kinds. */
 function Alerts() {
@@ -64,14 +64,18 @@ function Alerts() {
   const [kinds, setKinds] = useState<Set<ReliefKind> | null>(null);
   const [skills, setSkills] = useState<Set<Skill> | null>(null);
   const [email, setEmail] = useState<boolean | null>(null);
+  const [sms, setSms] = useState<boolean | null>(null);
+  const [phone, setPhone] = useState<string | null>(null);
+  const { data: smsOn } = useSWR<{ on: boolean }>('/relief/sms', fetcher);
   const [busy, setBusy] = useState(false);
   const r = radius ?? data?.radiusKm ?? 5, u = urgentOnly ?? data?.urgentOnly ?? true;
   const k = kinds ?? new Set((data?.kinds?.split(',') ?? []) as ReliefKind[]);
   const sk = skills ?? new Set((data?.skills?.split(',') ?? []) as Skill[]);
   const em = email ?? data?.email ?? false;
+  const tx = sms ?? !!data?.smsTo, num = phone ?? data?.smsTo ?? '';
   const save = (pos: { lat: number; lng: number }) => {
     setBusy(true);
-    api.put('/relief/watch', { ...pos, radiusKm: r, urgentOnly: u, kinds: [...k], skills: [...sk], email: em })
+    api.put('/relief/watch', { ...pos, radiusKm: r, urgentOnly: u, kinds: [...k], skills: [...sk], email: em, ...(smsOn?.on ? { sms: tx, smsTo: num } : {}) })
       .then(() => { toast.success(`Alerts on: new ${u ? 'urgent ' : ''}needs within ${r} km`); void mutate(); })
       .catch((e) => toast.error(errorMessage(e, 'Could not save the alert.')))
       .finally(() => setBusy(false));
@@ -107,6 +111,14 @@ function Alerts() {
           <button key={x} type="button" aria-pressed={k.has(x)} onClick={() => toggle(x)} className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors', k.has(x) ? 'bg-orange-500 text-white' : 'bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-white/5 dark:text-zinc-300 dark:hover:bg-white/10')}>{RELIEF_KIND_LABEL[x]}</button>
         ))}
       </div>
+      {/* M153: a text in an emergency, only when the owner has emergency texts on */}
+      {smsOn?.on && (
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={tx} onChange={(e) => setSms(e.target.checked)} className="accent-orange-500" />Text me in an emergency</label>
+          {tx && <input type="tel" inputMode="tel" autoComplete="tel" value={num} onChange={(e) => setPhone(e.target.value)} placeholder="+91 98765 43210" aria-label="Your phone number, with the country code" className="input w-52 py-1.5" />}
+          {tx && <p className="basis-full text-xs text-zinc-500 dark:text-zinc-400">One text when an organisation declares an emergency near you. Your number is never shown to anyone.</p>}
+        </div>
+      )}
       {/* M149: helpers with a skill hear when a need nearby asks for it, whatever they filtered above */}
       <p className="mt-4 text-sm font-medium text-zinc-700 dark:text-zinc-200">What I can do</p>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">When a need near you asks for one of these, you hear about it even if it isn’t urgent.</p>

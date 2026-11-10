@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { aidCodeOf, aidMayMove, freshness, rankPlaces, whoToAlert } from './relief';
+import { aidCodeOf, aidMayMove, emergencyText, freshness, rankPlaces, whoToAlert } from './relief';
 
 describe('rankPlaces (M148)', () => {
   const now = Date.parse('2026-11-10T12:00:00Z');
@@ -48,4 +48,13 @@ describe('aid boxes (M151)', () => {
     expect(aidMayMove('PACKED', 'LOST')).toBe(false);
   });
   it('reads a typed code', () => expect(aidCodeOf(' ab-cd 23x/')).toBe('ABCD23X'));
+});
+
+describe('emergencyText (M153)', () => {
+  it('stays one plain text message', () => {
+    const m = emergencyText('Flooding near Thrissur’s old bridge — move to higher ground now, everyone', 'https://universeimpact.com/relief');
+    expect(m.length).toBeLessThanOrEqual(160);
+    expect(m).toMatch(/^[\x20-\x7E]+$/);
+    expect(m).toContain('Are you safe? https://universeimpact.com/relief');
+  });
 });

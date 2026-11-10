@@ -1019,6 +1019,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/relief\/places$/, () => ok(impact.sampleReliefPlaces())],
   [/^\/relief\/incidents$/, () => ok(impact.sampleReliefIncidents())],
   [/^\/relief\/contacts$/, () => ok(impact.sampleReliefContacts())],
+  [/^\/relief\/sms$/, () => ok({ on: true })],
   [/^\/relief\/orgs\/[^/]+\/aid$/, () => ok(impact.sampleReliefAid())],
   [/^\/relief\/aid\/[^/]+\/follow$/, () => ok({ following: false })],
   [/^\/relief\/aid\/[^/]+$/, () => ok(impact.sampleAidTrip())],

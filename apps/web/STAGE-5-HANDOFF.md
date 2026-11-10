@@ -5814,3 +5814,24 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`relief.test.ts`: only the ticked helper is emailed, the other gets the same
   alert without email); the Relief API checks (skills, safety, aid) still pass; the setting saves; axe
   on Relief → Mine at 390 and 1280, light and dark.
+
+## M153: Relief emergency texts (the owner, 10 Nov 2026: "please do this"; [owner] to turn on)
+
+- **Helpers** (Relief → Mine → "Tell me about needs near me"): **Text me in an emergency** plus their
+  number with the country code (checked by `textNumber`; refused otherwise). Kept on their alert
+  (`relief_watches.smsTo`, migration **0203**), returned only to them, never shown to anyone. The option
+  only shows when texts are on (`GET /relief/sms` → `{ on }`; the sample answer says on, so the demo
+  shows it).
+- **When an organisation declares an emergency** (M150), the helpers asked "Are you safe?" who gave a
+  number also get **one text** (`textEmergency` in `src/server/relief-sms.ts`, run after the answer with
+  `later`): plain ASCII under 160 characters so it is one paid message (`emergencyText` in
+  `src/lib/relief.ts`, tested): "Relief: emergency near you: <title>. Are you safe? <link> (reply STOP
+  to end)". One per person per emergency (`relief_sms_sent`, recorded before sending), at most **100 an
+  emergency and 300 a day**; about ten queries whatever the number of people.
+- **Off until the owner** turns on **Relief emergency texts** (console → Server → Feature switches, an
+  opt-in switch) and sets `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN` and `TWILIO_FROM` (their Twilio
+  number, or a Messaging Service SID starting MG). Twilio charges per message.
+- **Tested:** `pnpm check` (`relief-sms.test.ts`: nothing while off or without the settings, once per
+  person, the daily cap; `relief.test.ts`: the text's length and characters); `relief-safety-api.mjs`
+  now also checks a bad number is refused, a good one kept, and texts are off locally; axe on the
+  setting (ticked) at 390 and 1280, light and dark.

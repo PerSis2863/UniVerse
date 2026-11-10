@@ -7073,6 +7073,18 @@ model ReliefAidFollow {
   @@map("relief_aid_follows")
 }
 
+/// M153: one emergency text per person per emergency (and the daily cap).
+model ReliefSmsSent {
+  incidentId String
+  userId     String
+  ok         Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId])
+  @@index([createdAt], map: "relief_sms_sent_day_idx")
+  @@map("relief_sms_sent")
+}
+
 model ReliefIncident {
   id          String   @id @default(cuid())
   orgId       String
@@ -7124,6 +7136,8 @@ model ReliefWatch {
   skills     String?
   /// M152: also send these alerts by email (off by default; they can come often).
   email      Boolean  @default(false)
+  /// M153: the helper's phone number for emergency texts (only theirs to see), or null.
+  smsTo      String?
   createdAt  DateTime @default(now())
 
   @@index([lat, lng])

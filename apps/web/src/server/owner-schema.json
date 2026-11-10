@@ -49247,6 +49247,57 @@
    ]
   },
   {
+   "name": "ReliefSmsSent",
+   "delegate": "reliefSmsSent",
+   "table": "relief_sms_sent",
+   "fields": [
+    {
+     "name": "incidentId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "userId",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "ok",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "createdAt",
+     "type": "DateTime",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    }
+   ]
+  },
+  {
    "name": "ReliefIncident",
    "delegate": "reliefIncident",
    "table": "relief_incidents",
@@ -49545,6 +49596,17 @@
      "id": false,
      "unique": false,
      "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "smsTo",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
      "updatedAt": false
     },
     {

@@ -3,7 +3,8 @@ import type { SessionUser } from '@/lib/server-auth';
 import { kmBetween, runsOrg, snap } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { strings, type Body } from './body';
-import { notifyMany } from './email';
+import { later, notifyMany } from './email';
+import { textEmergency } from './relief-sms';
 import { pushService } from './services/push.service';
 import { orgRole } from './relief-orgs';
 import { num, short } from './trace';
@@ -98,6 +99,8 @@ async function askNearby(i: { id: string; title: string; lat: number; lng: numbe
   const n = { title: `Emergency near you: ${i.title}`, body: 'Are you safe? Tell the people close to you in one tap, or ask for help, on Relief.', link: '/relief', tag: `relief-incident-${i.id}` };
   await notifyMany(ids, { type: 'relief', title: n.title, body: n.body, link: n.link, urgent: true });
   await pushService.sendToMany(ids, { title: n.title, body: n.body, url: n.link, tag: n.tag }).catch(() => 0);
+  // M153: a text too for the ones who asked, when the owner has emergency texts on (after the answer).
+  later(() => textEmergency(i, ids));
 }
 
 /** POST /relief/incidents/:id/end: its organisation's coordinators end it. */

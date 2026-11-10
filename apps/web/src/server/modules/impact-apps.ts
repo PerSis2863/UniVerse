@@ -7,6 +7,7 @@ import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine
 import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply, reliefPlaces, setReliefOrgStatus } from '../relief-orgs';
 import { closeReliefText, inboundText } from '../relief-texts';
 import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents } from '../relief-safety';
+import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
@@ -31,6 +32,7 @@ export default function impactAppsModule(router: Router) {
   relief.post<{ id: string }>('incidents/:id/end', { status: 200 }, ({ user, params }) => endIncident(user, params.id));
   relief.post<{ id: string }>('incidents/:id/safe', { status: 200 }, ({ user, params, body }) => markSafe(user, params.id, body ?? {}));
   relief.get('contacts', ({ user }) => reliefContacts(user));
+  relief.get('sms', () => reliefSmsOn());
   relief.get<{ id: string }>('orgs/:id/aid', ({ user, params }) => orgAid(user, params.id));
   relief.post<{ id: string }>('orgs/:id/aid', ({ user, params, body }) => createAid(user, params.id, body ?? {}));
   relief.post<{ id: string }>('aid/:id/step', { status: 200 }, ({ user, params, body }) => stepAid(user, params.id, body ?? {}));
