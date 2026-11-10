@@ -54,7 +54,7 @@ export default function ReliefMinePage() {
   );
 }
 
-interface Watch { lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills?: string | null }
+interface Watch { lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills?: string | null; email?: boolean }
 
 /** "Tell me about needs near me" (PUT /relief/watch): a place, a radius, urgent only or all, which kinds. */
 function Alerts() {
@@ -63,13 +63,15 @@ function Alerts() {
   const [urgentOnly, setUrgentOnly] = useState<boolean | null>(null);
   const [kinds, setKinds] = useState<Set<ReliefKind> | null>(null);
   const [skills, setSkills] = useState<Set<Skill> | null>(null);
+  const [email, setEmail] = useState<boolean | null>(null);
   const [busy, setBusy] = useState(false);
   const r = radius ?? data?.radiusKm ?? 5, u = urgentOnly ?? data?.urgentOnly ?? true;
   const k = kinds ?? new Set((data?.kinds?.split(',') ?? []) as ReliefKind[]);
   const sk = skills ?? new Set((data?.skills?.split(',') ?? []) as Skill[]);
+  const em = email ?? data?.email ?? false;
   const save = (pos: { lat: number; lng: number }) => {
     setBusy(true);
-    api.put('/relief/watch', { ...pos, radiusKm: r, urgentOnly: u, kinds: [...k], skills: [...sk] })
+    api.put('/relief/watch', { ...pos, radiusKm: r, urgentOnly: u, kinds: [...k], skills: [...sk], email: em })
       .then(() => { toast.success(`Alerts on: new ${u ? 'urgent ' : ''}needs within ${r} km`); void mutate(); })
       .catch((e) => toast.error(errorMessage(e, 'Could not save the alert.')))
       .finally(() => setBusy(false));
@@ -89,7 +91,7 @@ function Alerts() {
         <span className="w-10 h-10 shrink-0 grid place-items-center rounded-xl bg-orange-500/12 text-orange-600 dark:text-orange-300"><BellRing className="w-5 h-5" aria-hidden /></span>
         <div className="min-w-0 flex-1">
           <h2 id="alerts-h" className="font-bold text-zinc-900 dark:text-white">Tell me about needs near me</h2>
-          <p className="text-sm text-zinc-500">{isLoading ? '…' : data ? `On: new ${data.urgentOnly ? 'urgent ' : ''}needs within ${data.radiusKm} km of the place you set reach your phone.` : 'Get a notification when someone near you asks for help. Your place is rounded to about 500 m and never shown to anyone.'}</p>
+          <p className="text-sm text-zinc-500">{isLoading ? '…' : data ? `On: new ${data.urgentOnly ? 'urgent ' : ''}needs within ${data.radiusKm} km of the place you set reach your phone${data.email ? ' and your email' : ''}.` : 'Get a notification when someone near you asks for help. Your place is rounded to about 500 m and never shown to anyone.'}</p>
         </div>
       </div>
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -97,6 +99,8 @@ function Alerts() {
           <select value={r} onChange={(e) => setRadius(Number(e.target.value))} className="input ms-2 inline-block w-auto py-1.5">{[1, 2, 5, 10, 25].map((n) => <option key={n} value={n}>{n} km</option>)}</select>
         </label>
         <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={u} onChange={(e) => setUrgentOnly(e.target.checked)} className="accent-orange-500" />Urgent only</label>
+        {/* M152: by email too (off by default: these can come often) */}
+        <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={em} onChange={(e) => setEmail(e.target.checked)} className="accent-orange-500" />Also email me</label>
       </div>
       <div className="mt-3 flex flex-wrap gap-1.5" role="group" aria-label="Which kinds (none chosen means all)">
         {RELIEF_KINDS.map((x) => (

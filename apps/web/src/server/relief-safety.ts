@@ -69,7 +69,8 @@ export async function reliefIncidents(u: SessionUser) {
 /**
  * POST /relief/incidents { orgId, title, place?, lat?, lng?, radiusKm?, hours? }: a coordinator declares an
  * emergency (around the organisation's base unless a place is given), 3 at a time per organisation;
- * helpers with nearby alerts in the area are asked if they're safe (in the app and on their phone).
+ * helpers with nearby alerts in the area are asked if they're safe (in the app, by email if they get
+ * emails, and on their phone).
  */
 export async function declareIncident(u: SessionUser, b: Body) {
   const orgId = typeof b.orgId === 'string' ? b.orgId : '';
@@ -95,7 +96,7 @@ async function askNearby(i: { id: string; title: string; lat: number; lng: numbe
   const ids = near.filter((w) => w.userId !== i.createdById && kmBetween(w, i) <= i.radiusKm).map((w) => w.userId).slice(0, 200);
   if (!ids.length) return;
   const n = { title: `Emergency near you: ${i.title}`, body: 'Are you safe? Tell the people close to you in one tap, or ask for help, on Relief.', link: '/relief', tag: `relief-incident-${i.id}` };
-  await notifyMany(ids, { type: 'relief', title: n.title, body: n.body, link: n.link, email: false });
+  await notifyMany(ids, { type: 'relief', title: n.title, body: n.body, link: n.link, urgent: true });
   await pushService.sendToMany(ids, { title: n.title, body: n.body, url: n.link, tag: n.tag }).catch(() => 0);
 }
 
@@ -124,7 +125,7 @@ export async function markSafe(u: SessionUser, id: string, b: Body) {
   for (const to of fresh) await prisma.reliefSafeTold.create({ data: { incidentId: id, userId: u.id, toUserId: to } }).catch(() => null);
   if (fresh.length) {
     const n = { title: `${u.name} is safe`, body: `${u.name} told you they’re safe during “${i.title}”.`, link: '/relief' };
-    await notifyMany(fresh, { type: 'relief', ...n, email: false });
+    await notifyMany(fresh, { type: 'relief', ...n, urgent: true });
     await pushService.sendToMany(fresh, { title: n.title, body: n.body, url: n.link, tag: `relief-safe-${id}-${u.id}` }).catch(() => 0);
   }
   return { ok: true, told: already.size + fresh.length };

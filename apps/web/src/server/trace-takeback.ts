@@ -62,7 +62,7 @@ export async function receiveTakeBack(u: SessionUser, id: string) {
   await Promise.all([
     row.points > 0 ? award(row.userId, b.id, 'TAKEBACK', row.points, { codeId: row.codeId, note: `Returned ${what} for recycling` }) : null,
     prisma.greenAction.create({ data: { userId: row.userId, kind: 'RECYCLE', amount: kg, co2Kg: co2For('RECYCLE', kg), note: `Returned ${what} to ${b.name} for recycling`, verifiedBy: u.id, verifiedAt: new Date() } }),
-    notify(row.userId, { title: `${b.name} received your ${what}`, body: `Thank you for returning it for recycling${row.points > 0 ? `: ${row.points} points are in your wallet` : ''}. It also counts as a recycling action in Green.`, link: row.points > 0 ? '/trace/wallet' : '/green', email: false }),
+    notify(row.userId, { title: `${b.name} received your ${what}`, body: `Thank you for returning it for recycling${row.points > 0 ? `: ${row.points} points are in your wallet` : ''}. It also counts as a recycling action in Green.`, link: row.points > 0 ? '/trace/wallet' : '/green' }),
   ]);
   return { ok: true };
 }

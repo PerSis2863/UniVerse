@@ -57,6 +57,8 @@ export interface NotifyInput {
   link?: string;
   type?: string; // info, grade, credential, chat, reminder …
   email?: boolean; // default true: also email people who have email notifications on
+  /** M152: an emergency: its emails may use the allowance kept back for essential ones. */
+  urgent?: boolean;
   /** The course it's about (Stage 5 · Q9): shown in the notification centre. */
   courseId?: string | null;
 }
@@ -104,7 +106,7 @@ export async function notifyMany(userIds: string[], n: NotifyInput): Promise<num
     const key = process.env.RESEND_API_KEY;
     const wanted = n.email === false || !key ? [] : people.filter((p) => p.emailNotifications && p.email);
     // Within the plan's allowance (the rest still get the in-app notification).
-    const to = wanted.slice(0, await claimEmails(wanted.length, 'routine'));
+    const to = wanted.slice(0, await claimEmails(wanted.length, n.urgent ? 'essential' : 'routine'));
     const { html, text } = layout(n.title, n.body, n.link);
     for (let i = 0; i < to.length; i += 100) {
       const res = await fetch('https://api.resend.com/emails/batch', {

@@ -108,21 +108,27 @@ export async function alertWatchers(post: { id: string; userId: string; kind: st
   const dLat = 0.25, dLng = dLat / Math.max(0.2, Math.cos((post.lat * Math.PI) / 180));
   const near = await prisma.reliefWatch.findMany({ where: { lat: { gte: post.lat - dLat, lte: post.lat + dLat }, lng: { gte: post.lng - dLng, lte: post.lng + dLng }, userId: { not: post.userId } }, take: 400 });
   const { skilled, others } = whoToAlert(near, { ...post, skill: post.skill ?? null });
+  // M152: by email too for the helpers who ticked "Also email me" on their alert.
+  const emails = new Set(near.filter((w) => w.email).map((w) => w.userId));
+  const split = async (ids: string[], n: Omit<Parameters<typeof tell>[1], 'email'>) => {
+    await tell(ids.filter((id) => emails.has(id)), { ...n, email: true });
+    await tell(ids.filter((id) => !emails.has(id)), { ...n, email: false });
+  };
   const urgent = post.urgency === 'HIGH' || post.urgency === 'CRITICAL';
   const kind = RELIEF_KIND_LABEL[post.kind as keyof typeof RELIEF_KIND_LABEL] ?? 'Help';
   const where = post.place ? ` · ${post.place}` : '';
   const link = `/relief?post=${post.id}`;
   if (skilled.length && post.skill) {
-    await tell(skilled, { title: `Your skill is needed: ${SKILL_LABEL[post.skill as keyof typeof SKILL_LABEL] ?? post.skill}`, body: `${post.title}${where}. You listed it with your alerts: open the map to help.`, link, tag: `relief-near-${post.id}`, email: false });
+    await split(skilled, { title: `Your skill is needed: ${SKILL_LABEL[post.skill as keyof typeof SKILL_LABEL] ?? post.skill}`, body: `${post.title}${where}. You listed it with your alerts: open the map to help.`, link, tag: `relief-near-${post.id}` });
   }
-  if (others.length) await tell(others, { title: `${urgent ? 'Urgent: ' : ''}${kind} needed near you`, body: `${post.title}${where}. Open the map to help.`, link, tag: `relief-near-${post.id}`, email: false });
+  if (others.length) await split(others, { title: `${urgent ? 'Urgent: ' : ''}${kind} needed near you`, body: `${post.title}${where}. Open the map to help.`, link, tag: `relief-near-${post.id}` });
   return skilled.length + others.length;
 }
 
 /** GET /relief/watch: my alert, or null. */
 export const reliefWatch = (u: SessionUser) => prisma.reliefWatch.findUnique({ where: { userId: u.id } });
 
-/** PUT /relief/watch { lat, lng, radiusKm, urgentOnly, kinds? }: hear about new needs near this place. */
+/** PUT /relief/watch { lat, lng, radiusKm, urgentOnly, kinds?, skills?, email? }: hear about new needs near this place. */
 export async function setReliefWatch(u: SessionUser, b: Body) {
   const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
   if (lat === null || lng === null) throw new BadRequestException('Choose where: use your location or tap the map.');
@@ -130,7 +136,7 @@ export async function setReliefWatch(u: SessionUser, b: Body) {
   const kinds = Array.isArray(b.kinds) ? [...new Set(b.kinds.filter((k): k is string => oneOf(RELIEF_KINDS, k)))].join(',') || null : null;
   // M149: what this helper can do (comma-separated SKILLS).
   const skills = Array.isArray(b.skills) ? [...new Set(b.skills.filter((k): k is string => oneOf(SKILLS, k)))].join(',') || null : null;
-  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds, skills };
+  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds, skills, email: b.email === true };
   return prisma.reliefWatch.upsert({ where: { userId: u.id }, create: { userId: u.id, ...data }, update: data });
 }
 

@@ -7122,6 +7122,8 @@ model ReliefWatch {
   kinds      String?
   /// M149: comma-separated SKILLS this helper offers (src/lib/relief.ts).
   skills     String?
+  /// M152: also send these alerts by email (off by default; they can come often).
+  email      Boolean  @default(false)
   createdAt  DateTime @default(now())
 
   @@index([lat, lng])

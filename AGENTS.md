@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M151 is the latest).
+  builds on it). The newest notes are at the end (M152 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -138,6 +138,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     matching (helpers' skills with their alerts; a need asking for one alerts them first); M150, the
     "I'm safe" check-in (coordinators declare an emergency; people tell only those they talk with);
     M151, traceable aid (a code and QR label per aid box; donors follow its trip on `/aid/<code>`).
+  - **Also on that branch (10 Nov, the owner: "please do this… upgrade all the existing features…"):**
+    M152, emails for the new alerts (emergencies may use the essential allowance; nearby needs only for
+    helpers who tick "Also email me").
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -171,7 +174,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M152**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M153**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
@@ -179,7 +182,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0202`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0203`** (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -271,8 +274,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   `trace_readings` (`recordReading` in `trace-map.ts`). Maps: `src/components/trace/map` (d3-geo,
   no tile service): one canvas, land cached, frames only while something moves.
 - **Relief** (`src/server/relief.ts`): positions rounded to about 500 m when saved; nothing older
-  than 30 days on the map; nearby alerts (`relief_watches`) never email and never show where a
-  watcher is.
+  than 30 days on the map; nearby alerts (`relief_watches`) email only helpers who ticked "Also email
+  me" (M152) and never show where a watcher is.
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
 - **Play's 3D worlds** (`src/components/play/world/core.ts`): the graphics choice and frame pacing are in
   `world/gfx.ts` (M118); never change shadows or the effects chain while a world runs (every shader is

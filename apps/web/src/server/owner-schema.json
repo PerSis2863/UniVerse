@@ -49537,6 +49537,17 @@
      "updatedAt": false
     },
     {
+     "name": "email",
+     "type": "Boolean",
+     "kind": "scalar",
+     "list": false,
+     "optional": false,
+     "id": false,
+     "unique": false,
+     "hasDefault": true,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",

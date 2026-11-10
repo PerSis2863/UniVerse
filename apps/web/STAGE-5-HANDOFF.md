@@ -5799,3 +5799,18 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   destination and is final, the public trip's exact fields, the follower hears both steps, unfollow, a
   wrong code 404, the sample); axe on `/aid/<code>` signed out and in, `/aid/demo`, the Aid boxes tab, the
   label and the step window at 390 and 1280, light and dark.
+
+## M152: emails for the new alerts (the owner, 10 Nov 2026: "please do this" for what M144–M151 left out)
+
+- **Now by email too** (each person's own Settings → Notifications switch still decides, and the site's
+  email allowance, `claimEmails`): "Emergency near you" and "<name> is safe" (M150) as **urgent**, so they
+  may use the part of the allowance kept for essential emails (`NotifyInput.urgent`); an aid box you
+  follow moving or arriving (M151); a brand receiving your take-back (M146).
+- **Nearby-need alerts** (M22, M149) can come several times a day, so they email only helpers who tick
+  **Also email me** on their alert (Relief → Mine → "Tell me about needs near me"; `relief_watches.email`,
+  migration **0202**, off by default). The guide's Relief rule changed from "never email" to that.
+- **Rule for code that builds on it:** a new alert that can repeat often stays in-app and on the phone
+  unless the person chooses email; rare, personal ones may email by the person's setting.
+- **Tested:** `pnpm check` (`relief.test.ts`: only the ticked helper is emailed, the other gets the same
+  alert without email); the Relief API checks (skills, safety, aid) still pass; the setting saves; axe
+  on Relief → Mine at 390 and 1280, light and dark.

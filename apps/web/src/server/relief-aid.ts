@@ -70,7 +70,7 @@ async function tellFollowers(aid: { id: string; code: string; contents: string; 
   const org = await prisma.reliefOrg.findUnique({ where: { id: aid.orgId }, select: { name: true } });
   const title = status === 'DELIVERED' ? 'The aid you follow was delivered' : 'The aid you follow is on the way';
   const body = `${aid.contents} from ${org?.name ?? 'a Relief organisation'}: ${AID_LABEL[status].toLowerCase()}${place ? ` in ${place}` : ''}.`;
-  await notifyMany(ids, { type: 'relief', title, body, link: `/aid/${aid.code}`, email: false });
+  await notifyMany(ids, { type: 'relief', title, body, link: `/aid/${aid.code}` });
   await pushService.sendToMany(ids, { title, body, url: `/aid/${aid.code}`, tag: `relief-aid-${aid.id}` }).catch(() => 0);
 }
 
