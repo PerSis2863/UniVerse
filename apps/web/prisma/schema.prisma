@@ -7032,6 +7032,47 @@ model TraceWin {
 
 /// Relief alerts (migration 0181): new needs near this place, within radiusKm, urgent only by default.
 /// M150: an emergency an organisation declared for an area, until endsAt.
+/// M151: an aid box (or pallet) an organisation sends, followed by its code (relief_aid).
+model ReliefAid {
+  id          String   @id @default(cuid())
+  orgId       String
+  code        String   @unique(map: "relief_aid_code_key")
+  contents    String
+  boxes       Int      @default(1)
+  fromPlace   String?
+  toPlace     String
+  status      String   @default("PACKED")
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([orgId, createdAt], map: "relief_aid_org_idx")
+  @@map("relief_aid")
+}
+
+/// M151: each step of an aid box's trip: where and when, never who.
+model ReliefAidStep {
+  id        String   @id @default(cuid())
+  aidId     String
+  status    String
+  place     String?
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([aidId, createdAt], map: "relief_aid_steps_aid_idx")
+  @@map("relief_aid_steps")
+}
+
+/// M151: signed-in people following an aid box, told at each step.
+model ReliefAidFollow {
+  aidId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@id([aidId, userId])
+  @@map("relief_aid_follows")
+}
+
 model ReliefIncident {
   id          String   @id @default(cuid())
   orgId       String

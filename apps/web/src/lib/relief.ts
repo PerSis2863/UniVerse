@@ -155,3 +155,28 @@ export function whoToAlert(watches: AlertWatch[], post: AlertPost): { skilled: s
   }
   return { skilled: skilled.slice(0, 80), others: others.slice(0, Math.max(0, 80 - skilled.length)) };
 }
+
+/** M151: an aid box's trip. "On the way" can be logged more than once (each stop); delivered is the end. */
+export const AID_STEPS = ['PACKED', 'ON_THE_WAY', 'DELIVERED'] as const;
+export type AidStep = (typeof AID_STEPS)[number];
+export const AID_LABEL: Record<AidStep, string> = { PACKED: 'Packed', ON_THE_WAY: 'On the way', DELIVERED: 'Delivered' };
+/** Whether a box at `from` may be logged as `to`. */
+export const aidMayMove = (from: string, to: string) => to !== 'PACKED' && from !== 'DELIVERED' && (AID_STEPS as readonly string[]).includes(to);
+/** An aid code from what someone typed or scanned: letters and digits, upper case. */
+export const aidCodeOf = (raw: string) => raw.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 16);
+
+/** M151: the sample trip at /aid/demo (and in "Explore with sample data"), so anyone can see one. */
+export function demoAid(now: number) {
+  const at = (h: number) => new Date(now - h * 3_600_000).toISOString();
+  return {
+    code: 'DEMO', contents: 'Hygiene kits and drinking water for 20 families', boxes: 12, fromPlace: 'Chennai', toPlace: 'Kochi', status: 'ON_THE_WAY' as AidStep,
+    createdAt: at(30), updatedAt: at(3), followers: 18,
+    org: { name: 'Riverside Food Bank', kind: 'FOOD_BANK', place: 'Chennai' },
+    steps: [
+      { status: 'PACKED' as AidStep, place: 'Chennai', note: 'Packed by the weekend team', createdAt: at(30) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Coimbatore', note: 'Left the warehouse by truck', createdAt: at(14) },
+      { status: 'ON_THE_WAY' as AidStep, place: 'Thrissur', note: null, createdAt: at(3) },
+    ],
+  };
+}
+export type AidTrip = ReturnType<typeof demoAid>;

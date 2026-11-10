@@ -16,6 +16,7 @@ import { fetcher } from '@/lib/fetcher';
 import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, RELIEF_ORG_ROLES, RELIEF_ORG_ROLE_LABEL, STOCK, STOCK_LABEL, mayChangeRole, needScore, runsOrg, type ReliefKind, type ReliefOrgKind, type ReliefOrgRole, type Stock } from '@/lib/relief';
 import { useNow } from '@/lib/use-now';
 import type { Incident } from './SafetyCheck';
+import { AidBoxes } from './AidBoxes';
 import { cn } from '@/lib/utils';
 import { KIND_ICON, PostCard, type ReliefPost } from './ReliefApp';
 import { OrgFields, Sheet, ShiftCard, type ShiftView } from './ReliefOrgs';
@@ -43,9 +44,9 @@ interface OrgData {
   handling: ReliefPost[];
   near: ReliefPost[];
 }
-type Tab = 'overview' | 'needs' | 'supplies' | 'shifts' | 'members';
+type Tab = 'overview' | 'needs' | 'supplies' | 'aid' | 'shifts' | 'members';
 const TABS: { value: Tab; label: string }[] = [
-  { value: 'overview', label: 'Overview' }, { value: 'needs', label: 'Needs' }, { value: 'supplies', label: 'Supplies' },
+  { value: 'overview', label: 'Overview' }, { value: 'needs', label: 'Needs' }, { value: 'supplies', label: 'Supplies' }, { value: 'aid', label: 'Aid boxes' },
   { value: 'shifts', label: 'Shifts' }, { value: 'members', label: 'Members' },
 ];
 const label = 'text-xs font-medium text-zinc-600 dark:text-zinc-300';
@@ -72,6 +73,7 @@ export function OrgDashboard({ id, tab: start }: { id: string; tab: string | nul
               {tab === 'overview' && <Overview d={data} run={run} go={setTab} onChange={refresh} />}
               {tab === 'needs' && <Needs d={data} run={run} onChange={refresh} />}
               {tab === 'supplies' && <Supplies d={data} run={run} onChange={refresh} />}
+              {tab === 'aid' && <AidBoxes orgId={data.org.id} place={data.org.place} />}
               {tab === 'shifts' && <Shifts d={data} run={run} onChange={refresh} />}
               {tab === 'members' && <Members d={data} onChange={refresh} />}
             </>

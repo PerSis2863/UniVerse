@@ -13,7 +13,9 @@ const call = async (method, path, who, body) => {
 };
 const COORD = 'demo@student.com', VOL = 'demo@teacher.com', ANYONE = 'alice@student.com';
 const name = `Check Shelter ${Date.now()}`;
-const org = await call('POST', '/relief/orgs', COORD, { name, kind: 'SHELTER', place: 'Chennai', lat: 13.0827, lng: 80.2707 });
+// Reuse a test organisation from an earlier run (a person can start 5).
+const had = ((await call('GET', '/relief/orgs', COORD)).data?.orgs ?? []).find((o) => o.role === 'OWNER' && o.name.startsWith('Check '));
+const org = had ? { data: had } : await call('POST', '/relief/orgs', COORD, { name, kind: 'SHELTER', place: 'Chennai', lat: 13.0827, lng: 80.2707 });
 const id = org.data?.id ?? org.data?.org?.id;
 if (!id) fail.push(`organisation: ${org.status} ${JSON.stringify(org.data).slice(0, 200)}`);
 else {

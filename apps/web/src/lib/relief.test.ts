@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freshness, rankPlaces, whoToAlert } from './relief';
+import { aidCodeOf, aidMayMove, freshness, rankPlaces, whoToAlert } from './relief';
 
 describe('rankPlaces (M148)', () => {
   const now = Date.parse('2026-11-10T12:00:00Z');
@@ -36,4 +36,16 @@ describe('whoToAlert (M149)', () => {
   it('without a skill, only the usual filters', () => {
     expect(whoToAlert([w('a', { skills: 'FIRST_AID' }), w('b', { urgentOnly: false })], { ...post, skill: null, urgency: 'CRITICAL' })).toEqual({ skilled: [], others: ['a', 'b'] });
   });
+});
+
+describe('aid boxes (M151)', () => {
+  it('moves forward only, with as many stops on the way as needed', () => {
+    expect(aidMayMove('PACKED', 'ON_THE_WAY')).toBe(true);
+    expect(aidMayMove('ON_THE_WAY', 'ON_THE_WAY')).toBe(true);
+    expect(aidMayMove('PACKED', 'DELIVERED')).toBe(true);
+    expect(aidMayMove('ON_THE_WAY', 'PACKED')).toBe(false);
+    expect(aidMayMove('DELIVERED', 'ON_THE_WAY')).toBe(false);
+    expect(aidMayMove('PACKED', 'LOST')).toBe(false);
+  });
+  it('reads a typed code', () => expect(aidCodeOf(' ab-cd 23x/')).toBe('ABCD23X'));
 });

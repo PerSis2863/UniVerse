@@ -2,7 +2,7 @@ import { ahead, type AirTraffic, type Plane } from '@/lib/aircraft';
 import { CITIES } from '@/components/trace/map/cities';
 import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
-import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
+import { URGENCIES, demoAid, snap, type AidStep, type ReliefKind } from '@/lib/relief';
 import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
@@ -103,6 +103,27 @@ export function sampleReliefIncidents() {
 export function sampleReliefContacts() {
   return { contacts: ['Priya Sharma', 'Tom Walker', 'Alice Chen', 'Bob Martinez', 'Tara Okafor', 'Mia Rossi', 'Daniel Kim'].map((name, i) => ({ id: `sample-contact-${i}`, name })) };
 }
+
+/** GET /relief/orgs/:id/aid (M151): an organisation's aid boxes. */
+export function sampleReliefAid() {
+  const now = Date.now();
+  const rows: [string, number, string, AidStep, number, number][] = [
+    ['Hygiene kits and drinking water for 20 families', 12, 'Kochi', 'ON_THE_WAY', 3, 18],
+    ['Rice, lentils and cooking oil', 40, 'Thrissur', 'DELIVERED', 26, 31],
+    ['Blankets and children’s clothes', 8, 'Alappuzha', 'PACKED', 1, 2],
+    ['First-aid kits', 5, 'Kottayam', 'DELIVERED', 70, 9],
+  ];
+  return {
+    run: true,
+    boxes: rows.map(([contents, boxes, toPlace, status, h, followers], i) => ({
+      id: `sample-aid-${i}`, code: i === 0 ? 'DEMO' : `SMPL${i}AB7KQ`, contents, boxes, fromPlace: 'Chennai', toPlace, status,
+      createdAt: new Date(now - (h + 20) * 3_600_000).toISOString(), updatedAt: new Date(now - h * 3_600_000).toISOString(), followers,
+    })),
+  };
+}
+
+/** GET /relief/aid/:code (M151): every code shows the sample trip. */
+export const sampleAidTrip = () => demoAid(Date.now());
 
 function reliefPosts(me: { id: string; name: string }) {
   const r = rng(7), now = Date.now();

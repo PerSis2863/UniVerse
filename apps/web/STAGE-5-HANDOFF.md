@@ -5768,3 +5768,34 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   (volunteer and outsider refused, defaults, only the contact told and sees it, the notification, ended
   means refused and gone, signed out refused); axe on the banner, the window and the card (sample mode)
   at 390 and 1280, light and dark.
+
+## M151: Relief, traceable aid (the owner, 10 Nov 2026: the eight features)
+
+- **Organisations** (an organisation's page → **Aid boxes**, a new tab): coordinators **pack a box** (what
+  is in it, how many boxes, from where (their base's town by default), going to a town or area; 300 a
+  day) and get a **label** with a QR code, the code and a link to send donors (Print uses the existing
+  `.print-sheet` print rules). Any member logs **On the way** (the town now, a note) as many times as
+  needed and **Delivered** (the destination by default); delivered is final, claimed by a guarded update.
+- **Donors** (`/aid/<code>`, public, kept out of search; `/aid/demo` is a sample): what is in it, who
+  sent it, going where, a three-step bar (packed, on the way, delivered) that fills as the page opens,
+  and the trip (towns, notes, times). Signed in, **Follow this box**: told at each step in the app and on
+  the phone (no email; 200 at most). Signed out: "Sign in to follow it".
+- **Never people:** the public answer has exactly the contents, counts, towns, notes, times, the
+  organisation's name, kind and town, and the number following: no ids, no join code, nobody who
+  packed, carried or received it. The step window reminds members not to name people. Codes are 10 of
+  32 look-alike-free characters (50 bits, `crypto.getRandomValues`), typed with or without dashes.
+- **Server:** `src/server/relief-aid.ts`; routes `GET/POST /relief/orgs/:id/aid` (members / coordinators),
+  `POST /relief/aid/:id/step` (members), `GET /relief/aid/:code` (**public**, listed in
+  `route-gates.test.ts` with its reason), `GET/POST /relief/aid/:code/follow` (signed in). Rules in
+  `src/lib/relief.ts`: `AID_STEPS`, `aidMayMove`, `aidCodeOf`, `demoAid` (tested). `/aid` is a Relief
+  path in `APPS` (its colour and scene).
+- **Data:** migration **0201**: `relief_aid`, `relief_aid_steps`, `relief_aid_follows`. Sample answers:
+  `sampleReliefAid`, `sampleAidTrip`.
+- **Also:** the Relief API checks (`relief-places-api`, `relief-safety-api`, `relief-aid-api`) reuse
+  their test organisation from an earlier run (a person can start 5), so they can be run again and
+  again on one computer.
+- **Tested:** `pnpm check` (`relief.test.ts`: steps forward only, codes read); `scripts/checks/relief-aid-api.mjs`
+  (a volunteer can't pack, an outsider can't see or move, no going back, delivered defaults to the
+  destination and is final, the public trip's exact fields, the follower hears both steps, unfollow, a
+  wrong code 404, the sample); axe on `/aid/<code>` signed out and in, `/aid/demo`, the Aid boxes tab, the
+  label and the step window at 390 and 1280, light and dark.

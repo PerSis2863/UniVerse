@@ -23,7 +23,9 @@ if (!volContacts.some((c) => c.id === coordId)) fail.push(`the teacher's contact
 const strangerIsContact = volContacts.some((c) => c.id === strangerId);
 if (volContacts.some((c) => 'email' in c)) fail.push('contacts carry emails');
 
-const org = await call('POST', '/relief/orgs', COORD, { name: `Check Safety ${Date.now()}`, kind: 'NGO', place: 'Chennai', lat: 13.0827, lng: 80.2707 });
+// Reuse a test organisation from an earlier run (a person can start 5).
+const had = ((await call('GET', '/relief/orgs', COORD)).data?.orgs ?? []).find((o) => o.role === 'OWNER' && o.name.startsWith('Check '));
+const org = had ? { data: had } : await call('POST', '/relief/orgs', COORD, { name: `Check Safety ${Date.now()}`, kind: 'NGO', place: 'Chennai', lat: 13.0827, lng: 80.2707 });
 const orgId = org.data?.id ?? org.data?.org?.id;
 if (!orgId) fail.push(`organisation: ${org.status} ${JSON.stringify(org.data).slice(0, 200)}`);
 else {
