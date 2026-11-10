@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
 import { BatteryCharging, BedDouble, Droplets, MapPin, Navigation, Utensils, type LucideIcon } from 'lucide-react';
@@ -11,6 +11,7 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { RELIEF_ORG_KIND_LABEL, STOCK_LABEL, freshness, rankPlaces, type Place, type Stock } from '@/lib/relief';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { morph } from '@/lib/view-transition';
 
 // M148: Relief's shelter and supply board: the places (organisations) that said how they are this week,
 // open ones that spoke today first, nearest first when you shared your position. Beds free, water,
@@ -33,7 +34,9 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
   const { data } = useSWR<{ places: Place[] }>('/relief/places', fetcher, { refreshInterval: useActivePoll(60_000), keepPreviousData: true });
   const [need, setNeed] = useState<Set<Need>>(new Set());
   const places = useMemo(() => rankPlaces((data?.places ?? []).filter((p) => [...need].every((n) => has(p, n))), here, now || 0), [data, need, here, now]);
-  const toggle = (n: Need) => setNeed((s) => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t; });
+  const list = useRef<HTMLUListElement>(null);
+  // M156: filtering slides each place to its new spot (morph: FLIP on the compositor).
+  const toggle = (n: Need) => morph(list.current, () => setNeed((s) => { const t = new Set(s); if (t.has(n)) t.delete(n); else t.add(n); return t; }));
   return (
     <section className="card" aria-label="Places to go">
       <CardHead title="Places to go" sub={here ? 'Shelters, food banks and groups near you, open ones first' : 'Shelters, food banks and groups that said how they are this week'} />
@@ -48,11 +51,11 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
       {!data ? <div className="h-32 rounded-xl skeleton" /> : places.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{need.size ? 'No place has that right now.' : 'No place has said how it is this week. Organisations post it from their page: Overview → Live status.'}</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul ref={list} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {places.slice(0, 24).map((p) => {
             const fresh = now ? freshness(p.statusAt, now) : 'fresh';
             return (
-              <li key={p.id} className={cn('rounded-xl border border-zinc-200 dark:border-white/[0.1] p-4 flex flex-col gap-3', fresh === 'old' && 'border-dashed bg-zinc-50 dark:bg-white/[0.02]')}>
+              <li key={p.id} data-key={p.id} className={cn('rounded-xl border border-zinc-200 dark:border-white/[0.1] p-4 flex flex-col gap-3', fresh === 'old' && 'border-dashed bg-zinc-50 dark:bg-white/[0.02]')}>
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-[14px] text-zinc-900 dark:text-white truncate" translate="no">{p.name}</p>

@@ -5880,3 +5880,27 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   `trace-fakes-api.mjs` (the brand's notice, no reporter), `relief-aid-api.mjs`, `relief-places-api.mjs`;
   axe on the banner, the org card, the donor page, the Aid tab and "Places to go" at 390 and 1280, light
   and dark.
+
+## M156: motion for the eight features (the owner, 10 Nov 2026: "upgrade the animations and make everything ultra smooth")
+
+- **Already free from the motion layer** (`scroll-motion.ts`): cards glide in, numbers count up and roll,
+  bars fill (the shelters' beds), new list rows glide in. M156 adds motion for *changes*:
+- **Filtering "Places to go"** slides each place to its new spot and new ones grow in from 0.94:
+  `morph(list, update)` in `src/lib/view-transition.ts` (FLIP: measure, `flushSync` the change, play the
+  difference as one transform per item with the Web Animations API on `SPRING_GLIDE`; items carry
+  `data-key`; instant with Reduce Motion). **Trap:** a View Transition was tried first; it snapshots the
+  whole page, and beside Relief's live map it made the filter slower (9 slow frames to 2 at 4× CPU).
+  With FLIP the slow frames are the page's own (the same without the sliding), in the local dev build.
+- **Arrivals on the spring** (`globals.css`, the M156 block): `.drop-in` (the emergency banner drops in a
+  few pixels), `.pop-in` (the trip's three steps one after another; an aid box's status badge when it
+  changes, keyed by status). The aid progress bar fills on arrival and now **glides on** when a live step
+  moves it (`animation-fill-mode: backwards` plus a transform transition).
+- **Attention ring** `.pulse-ring`: a soft copy of the element's own fill spreads out behind it (the
+  emergency's siren, the box's current step while it moves); transform and opacity only, rests while
+  the page scrolls (`html[data-scrolling]`), none with Reduce Motion.
+- **The footprint's two-part bar** grows as one piece (`.bar-in`, `data-no-motion`): the motion layer
+  would grow each part from its own edge, leaving a gap.
+- **Measured** (390 px, CPU slowed 4×): the donor page opening 1 slow frame in 90, its moving map 0 in
+  121 (60 a second).
+- **Tested:** `pnpm check`; the sliding plays on a filter (`getAnimations`); axe on the banner, org card,
+  donor page, Aid tab and windows, "Places to go" and the passport's footprint at 390/430 and 1280.

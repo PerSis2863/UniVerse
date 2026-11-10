@@ -72,7 +72,7 @@ function Trip({ code, d }: { code: string; d: AidTrip }) {
             const Icon = ICON[s], done = i <= at;
             return (
               <li key={s} className="flex flex-col items-center text-center gap-2">
-                <span className={cn('w-10 h-10 rounded-full grid place-items-center transition-colors duration-300', done ? 'bg-indigo-600 text-white' : 'bg-[var(--fill)] text-zinc-500 dark:text-zinc-400')} aria-hidden><Icon className="w-5 h-5" /></span>
+                <span className={cn('pop-in w-10 h-10 rounded-full grid place-items-center transition-colors duration-300', done ? 'bg-indigo-600 text-white' : 'bg-[var(--fill)] text-zinc-500 dark:text-zinc-400', i === at && d.status !== 'DELIVERED' && 'pulse-ring')} style={{ animationDelay: `${120 + i * 90}ms` }} aria-hidden><Icon className="w-5 h-5" /></span>
                 <span className={cn('text-[13px] font-medium', done ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 dark:text-zinc-400')}>{AID_LABEL[s]}{i === at && <span className="sr-only"> (now)</span>}</span>
               </li>
             );

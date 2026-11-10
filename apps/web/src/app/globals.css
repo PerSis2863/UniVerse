@@ -2899,5 +2899,28 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
 
 /* M151: the aid tracker's progress bar fills up to where the box is when the page opens (transform only). */
 @keyframes aid-fill { from { transform: scaleX(0); } }
-.aid-fill { animation: aid-fill 0.7s var(--ease-glide) both 0.15s; }
-@media (prefers-reduced-motion: reduce) { .aid-fill { animation: none; } }
+/* M156: "backwards" so that once it has filled, a live step (on the way → delivered) glides on with the transition. */
+.aid-fill { animation: aid-fill 0.7s var(--ease-glide) backwards 0.15s; transition: transform 0.6s var(--spring-glide, var(--ease-glide)); }
+@media (prefers-reduced-motion: reduce) { .aid-fill { animation: none; transition: none; } }
+
+/* ═══ M156 · Motion for the eight Trace and Relief features (the owner, 10 Nov 2026: "ultra smooth") ═══
+   Transform and opacity only, on the compositor; springs for arrivals; Reduce Motion leaves fades. */
+/* What needs attention now (an emergency, the box's current step): a soft copy of its fill spreads out
+   behind it. Rests while the page scrolls; none with Reduce Motion. */
+.pulse-ring { position: relative; isolation: isolate; }
+.pulse-ring::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: inherit; opacity: 0; pointer-events: none; animation: pulse-ring 2.4s var(--ease-out-soft) infinite; }
+@keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.45; } 70%, 100% { transform: scale(1.7); opacity: 0; } }
+html[data-scrolling] .pulse-ring::after { animation-play-state: paused; }
+/* Things arriving one after another (the trip's steps, a badge that changed): from 0.9, on the spring. */
+@keyframes pop-in { from { opacity: 0; transform: scale(0.9); } }
+.pop-in { animation: pop-in 0.5s var(--spring-glide, var(--ease-glide)) both; }
+/* A banner that arrives at the top of a page (an emergency): drops in a few pixels. */
+@keyframes drop-in { from { opacity: 0; transform: translateY(-10px) scale(0.98); } }
+.drop-in { animation: drop-in 0.55s var(--spring-glide, var(--ease-glide)) both; }
+@media (prefers-reduced-motion: reduce) { .pulse-ring::after { animation: none; } .pop-in, .drop-in { animation-name: app-in; } }
+/* A bar made of parts (the footprint's making + trip) grows as one piece from its start (the motion
+   layer would grow each part from its own edge); the container carries data-no-motion. */
+@keyframes bar-in { from { transform: scaleX(0); } }
+.bar-in { transform-origin: left; animation: bar-in 0.8s var(--ease-glide) both 0.35s; }
+[dir="rtl"] .bar-in { transform-origin: right; }
+@media (prefers-reduced-motion: reduce) { .bar-in { animation: none; } }

@@ -28,9 +28,9 @@ export function SafetyCheck({ onNeedHelp }: { onNeedHelp: () => void }) {
   return (
     <div className="space-y-3">
       {data.incidents.map((i) => (
-        <section key={i.id} aria-label={`Emergency: ${i.title}`} className="app-in rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] p-4 sm:p-5">
+        <section key={i.id} aria-label={`Emergency: ${i.title}`} className="drop-in rounded-2xl border border-rose-500/30 bg-rose-500/[0.06] p-4 sm:p-5">
           <div className="flex flex-wrap items-start gap-3">
-            <span className="w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-rose-600 text-white" aria-hidden><Siren className="w-5 h-5" /></span>
+            <span className="pulse-ring w-10 h-10 shrink-0 rounded-xl grid place-items-center bg-rose-600 text-white" aria-hidden><Siren className="w-5 h-5" /></span>
             <div className="min-w-0 flex-1">
               <p className="font-semibold text-zinc-900 dark:text-white">{i.title}</p>
               <p className="text-sm text-zinc-600 dark:text-zinc-300">{[i.place, i.org ? `declared by ${i.org.name}` : null, `until ${format(new Date(i.endsAt), 'EEE d MMM, HH:mm')}`].filter(Boolean).join(' · ')}</p>

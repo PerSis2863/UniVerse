@@ -64,7 +64,7 @@ export function AidBoxes({ orgId, place }: { orgId: string; place: string | null
                   <p className="text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{b.contents}{b.boxes > 1 && <span className="font-normal text-zinc-500 dark:text-zinc-400"> · {b.boxes} boxes</span>}</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400"><span translate="no">{b.fromPlace ? `${b.fromPlace} → ` : 'To '}{b.toPlace}</span> · <span className="font-mono">{b.code}</span> · {b.followers} following · {formatDistanceToNow(new Date(b.updatedAt), { addSuffix: true })}</p>
                 </div>
-                <StatusBadge tone={TONE[b.status]}>{AID_LABEL[b.status]}</StatusBadge>
+                <span key={b.status} className="pop-in"><StatusBadge tone={TONE[b.status]}>{AID_LABEL[b.status]}</StatusBadge></span>
                 <div className="flex flex-wrap gap-1.5">
                   <button type="button" onClick={() => setLabel(b)} className="btn-ghost btn-sm"><QrIcon className="w-4 h-4" aria-hidden />Label</button>
                   {b.status !== 'DELIVERED' && <>

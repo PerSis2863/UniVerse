@@ -272,7 +272,7 @@ function FootprintCard({ f, category }: { f: Footprint; category: string | null 
       <p className="mt-3 flex items-baseline gap-2"><span className="text-3xl font-black tabular-nums">{f.kg.toLocaleString()}</span><span className="text-sm text-zinc-300">kg CO₂e</span></p>
       <p className="mt-1 text-sm text-zinc-300">About the same as driving {f.carKm.toLocaleString()} km in a car.</p>
       {f.madeKg > 0 && f.tripKg > 0 && (
-        <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-white/10" aria-hidden>
+        <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-white/10 bar-in" data-no-motion aria-hidden>
           <span className="h-full bg-pink-300" style={{ width: `${made}%` }} />
           <span className="h-full bg-zinc-300" style={{ width: `${100 - made}%` }} />
         </div>
