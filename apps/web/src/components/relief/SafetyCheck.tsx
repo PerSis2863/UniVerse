@@ -21,8 +21,11 @@ export interface Incident {
   safeCount?: number | null;
 }
 
-export function SafetyCheck({ onNeedHelp }: { onNeedHelp: () => void }) {
-  const { data, mutate } = useSWR<{ incidents: Incident[] }>('/relief/incidents', fetcher, { refreshInterval: useActivePoll(60_000), keepPreviousData: true });
+export function SafetyCheck({ here, onNeedHelp }: { here: { lat: number; lng: number } | null; onNeedHelp: () => void }) {
+  // Only the emergencies that concern this person (their organisations, their alert's area, where they
+  // are when the browser already shared it, rounded here and again on the server).
+  const key = here ? `/relief/incidents?lat=${here.lat.toFixed(2)}&lng=${here.lng.toFixed(2)}` : '/relief/incidents';
+  const { data, mutate } = useSWR<{ incidents: Incident[] }>(key, fetcher, { refreshInterval: useActivePoll(60_000), keepPreviousData: true });
   const [telling, setTelling] = useState<Incident | null>(null);
   if (!data?.incidents.length) return null;
   return (

@@ -25,7 +25,8 @@ function shapes(url: string): Promise<WorldShapes> {
   return new Promise<WorldShapes>((resolve, reject) => {
     const w = new Worker(new URL('./world.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<WorldShapes | { error: string }>) => { w.terminate(); if ('error' in e.data) reject(new Error(e.data.error)); else resolve(e.data); };
-    w.onerror = (e) => { w.terminate(); reject(new Error(e.message)); };
+    // Handled: drawn here instead (a thread whose file is gone after an update; M137 did the same for the others).
+    w.onerror = (e) => { e.preventDefault(); w.terminate(); reject(new Error(e.message)); };
     w.postMessage({ url });
   }).catch(here);
 }

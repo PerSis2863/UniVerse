@@ -5904,3 +5904,32 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   121 (60 a second).
 - **Tested:** `pnpm check`; the sliding plays on a filter (`getAnimations`); axe on the banner, org card,
   donor page, Aid tab and windows, "Places to go" and the passport's footprint at 390/430 and 1280.
+
+## M157: a sweep for problems (the owner, 10 Nov 2026: "check if any other bugs or errors are there in system or app")
+
+- **The live error log** (production `error_reports`, read-only): rows with ids `smp…` are the console's
+  sample data, not real. Four real ones: the People list's "too many SQL variables" (fixed earlier; the
+  owner marks it resolved), two chunk errors from bots (ignored automatically), and one visit on 7 Nov
+  that met a deploy halfway ("Blank page: styles came from elsewhere", then a background thread's file
+  gone): the recovery script reloaded it by itself. The other two map threads were fixed in M137; the
+  **world map's thread** (`engine.ts`, Trace and Relief maps and now the aid map) still let a handled
+  failure reach the page as an error: now `e.preventDefault()` like the others (it draws on the page).
+- **A crawl of the built site** (`pnpm local:build` passed: 49.4 of 64 MB, 5.6 minutes): every page in
+  the menus as a student, a teacher and an admin (199 pages): no crash screens, no blank pages, no server
+  errors except `/api/calendar-link` (503 by design until the owner sets `SESSION_SECRET`; the calendar
+  card explains it). A rare React hydration mismatch (#418) showed twice in about 400 loads on different
+  pages (Meetings, Users, Play) and not in 100 targeted loads; React redraws that part itself and it is
+  not in the live error log. Not chased further: if it shows up there, start from what changes the DOM
+  before the dashboard frame hydrates.
+- **Fixed in the new Relief code:** the emergency banner showed every emergency in the world to everyone
+  in Relief; now only to the people it concerns (`reliefIncidents`: the organisation's members, helpers
+  whose alert is inside the area, the place the browser already shared, sent as `?lat&lng` and rounded,
+  anyone told "<name> is safe", anyone who said they're safe; tested). Saving the alert while texts are
+  off no longer wipes the helper's phone number (`smsTo` left as it is when not sent).
+- **Fixed elsewhere:** the student home's "Question" label (`DailyBrief`) was 10 px and too faint in light
+  mode: 11 px, a darker shade. Two checks (`live-ui`, `world-ui`) read pictures with `getContext`, which
+  throws on canvases drawn on a background thread since M85/M136: they now measure a screenshot
+  (`litPixels` in `scripts/browser-session.mjs`), and pass.
+- **Checks run on the build:** live-ui, world-ui, app-backdrop-ui, home-ui, card-menu-ui,
+  calendar-ballast-ui, activity-log-ui, template-windows-ui, courses-center-ui, and the seven Trace and
+  Relief API checks: all pass.

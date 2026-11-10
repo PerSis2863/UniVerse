@@ -1,18 +1,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
 import { notifyMany } from './email';
-import { contactsOf, declareIncident, markSafe } from './relief-safety';
+import { contactsOf, declareIncident, markSafe, reliefIncidents } from './relief-safety';
 import type { SessionUser } from '@/lib/server-auth';
 
 vi.mock('@/lib/db', () => ({
   default: {
     conversationParticipant: { findMany: vi.fn() },
-    reliefOrgMember: { findUnique: vi.fn() },
-    reliefOrg: { findUnique: vi.fn() },
-    reliefIncident: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn() },
-    reliefSafe: { upsert: vi.fn() },
-    reliefSafeTold: { findMany: vi.fn(), create: vi.fn().mockResolvedValue({}) },
-    reliefWatch: { findMany: vi.fn().mockResolvedValue([]) },
+    reliefOrgMember: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+    reliefOrg: { findUnique: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+    reliefIncident: { findUnique: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    reliefSafe: { upsert: vi.fn(), findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    reliefSafeTold: { findMany: vi.fn(), create: vi.fn().mockResolvedValue({}), groupBy: vi.fn().mockResolvedValue([]) },
+    reliefWatch: { findMany: vi.fn().mockResolvedValue([]), findUnique: vi.fn().mockResolvedValue(null) },
   },
 }));
 vi.mock('./email', () => ({ notifyMany: vi.fn().mockResolvedValue(1), later: vi.fn() }));
@@ -56,5 +56,19 @@ describe('the "I’m safe" check-in', () => {
     vi.mocked(prisma.reliefOrgMember.findUnique).mockResolvedValueOnce({ role: 'VOLUNTEER' } as never);
     await expect(declareIncident(me, { orgId: 'o1', title: 'Flood' })).rejects.toThrow('coordinators');
     expect(prisma.reliefIncident.create).not.toHaveBeenCalled();
+  });
+
+  it('shows an emergency only to the people it concerns, not the whole world', async () => {
+    const flood = { id: 'i1', orgId: 'o1', title: 'Flood', place: 'Kochi', lat: 9.93, lng: 76.27, radiusKm: 20, endsAt: new Date(Date.now() + 3_600_000), createdAt: new Date() };
+    vi.mocked(prisma.reliefIncident.findMany).mockResolvedValue([flood] as never);
+    vi.mocked(prisma.reliefSafeTold.findMany).mockResolvedValue([]);
+    expect((await reliefIncidents(me)).incidents).toHaveLength(0); // far away, no alert, no organisation
+    expect((await reliefIncidents(me, { lat: '9.95', lng: '76.3' })).incidents).toHaveLength(1); // the browser's place is inside
+    vi.mocked(prisma.reliefWatch.findUnique).mockResolvedValueOnce({ lat: 9.9, lng: 76.25 } as never);
+    expect((await reliefIncidents(me)).incidents).toHaveLength(1); // my alert's area is inside
+    vi.mocked(prisma.reliefOrgMember.findMany).mockResolvedValueOnce([{ orgId: 'o1', role: 'VOLUNTEER' }] as never);
+    const member = (await reliefIncidents(me, { lat: '51.5', lng: '-0.12' })).incidents;
+    expect(member).toHaveLength(1); // a member far away still sees their organisation's emergency
+    expect(member[0].canEnd).toBe(false);
   });
 });

@@ -38,6 +38,9 @@ else {
   if (badPhone.status !== 400) fail.push(`a bad phone number: ${badPhone.status}`);
   const phone = await call('PUT', '/relief/watch', STRANGER, { lat: 13.0827, lng: 80.2707, radiusKm: 5, sms: true, smsTo: '+91 98765 43210' });
   if (phone.data?.smsTo !== '+919876543210') fail.push(`the phone number: ${JSON.stringify(phone.data)}`);
+  // Saving the alert without the text setting (texts off) keeps the number.
+  const kept = await call('PUT', '/relief/watch', STRANGER, { lat: 13.0827, lng: 80.2707, radiusKm: 5, email: false });
+  if (kept.data?.smsTo !== '+919876543210') fail.push(`the number was wiped: ${kept.data?.smsTo}`);
   const smsOn = await call('GET', '/relief/sms', STRANGER);
   if (smsOn.data?.on !== false) fail.push(`emergency texts should be off locally: ${JSON.stringify(smsOn.data)}`);
   const byVol = await call('POST', '/relief/incidents', VOL, { orgId, title });
@@ -57,6 +60,11 @@ else {
     const endByVol = await call('POST', `/relief/incidents/${id}/end`, VOL);
     if (endByVol.status !== 403) fail.push(`a volunteer ending it: ${endByVol.status}`);
 
+    // Only the people it concerns: Bob (no alert, not a member) doesn't see it, unless he is inside the area.
+    const bobFar = (await call('GET', '/relief/incidents?lat=51.5&lng=-0.12', 'bob@student.com')).data?.incidents ?? [];
+    if (bobFar.some((i) => i.id === id)) fail.push('someone far away with no alert sees the emergency');
+    const bobIn = (await call('GET', '/relief/incidents?lat=13.09&lng=80.28', 'bob@student.com')).data?.incidents ?? [];
+    if (!bobIn.some((i) => i.id === id)) fail.push('someone inside the area does not see the emergency');
     const seen = (await call('GET', '/relief/incidents', STRANGER)).data?.incidents?.find((i) => i.id === id);
     if (!seen) fail.push('someone outside the organisation does not see the emergency');
     else if (seen.canEnd || seen.safeAt) fail.push(`the outsider's view: ${JSON.stringify(seen)}`);

@@ -27,7 +27,7 @@ export default function impactAppsModule(router: Router) {
   relief.get('mine', ({ user }) => reliefMine(user));
   relief.get('watch', ({ user }) => reliefWatch(user));
   // M150: the "I'm safe" check-in (src/server/relief-safety.ts).
-  relief.get('incidents', ({ user }) => reliefIncidents(user));
+  relief.get('incidents', ({ user, query }) => reliefIncidents(user, query));
   relief.post('incidents', ({ user, body }) => declareIncident(user, body ?? {}));
   relief.post<{ id: string }>('incidents/:id/end', { status: 200 }, ({ user, params }) => endIncident(user, params.id));
   relief.post<{ id: string }>('incidents/:id/safe', { status: 200 }, ({ user, params, body }) => markSafe(user, params.id, body ?? {}));

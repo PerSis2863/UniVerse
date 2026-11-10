@@ -189,7 +189,7 @@ export function ReliefApp() {
   const s = data?.stats;
   return (
     <div className="space-y-4">
-      <SafetyCheck onNeedHelp={() => { setDraft({ ...EMPTY, urgency: 'CRITICAL' }); setPicked(here); setPosting(true); }} />
+      <SafetyCheck here={here} onNeedHelp={() => { setDraft({ ...EMPTY, urgency: 'CRITICAL' }); setPicked(here); setPosting(true); }} />
       <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
         {[
           // Darker shades on the light page so the numbers keep 4.5:1.
