@@ -1,3 +1,4 @@
+import { GREEN_FACTORS } from './green';
 import { distanceM } from './attendance-rules';
 
 // UniVerse Trace: every product gets a passport (the owner, 24 Oct 2026). Shared rules for the codes
@@ -169,3 +170,27 @@ export function trustScore(x: { genuinePct: number; rating: number | null; recal
   const recalls = x.recalls ? x.recallsWithAdvice / x.recalls : 1;
   return Math.round(Math.max(0, Math.min(100, x.genuinePct * 0.6 + rating * 25 + recalls * 15)));
 }
+
+/**
+ * M144: a unit's footprint story. Made: the passport's own figure (cradle to gate); the trip: its
+ * journey's transport (journeyCarbon); a car-distance equivalent (the Green app's 0.2 kg a km); and how
+ * its making compares with the middle of other products of its kind that published a figure (at least
+ * three, so one odd product can't set the bar). Null when there's nothing to tell.
+ */
+export function footprint(madeKg: number | null, trip: { km: number; kg: number }, others: number[]) {
+  const made = madeKg && madeKg > 0 ? madeKg : 0;
+  const kg = Math.round((made + trip.kg) * 100) / 100;
+  if (kg <= 0) return null;
+  const sorted = others.filter((n) => n > 0).sort((a, b) => a - b);
+  const mid = sorted.length >= 3 ? (sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2) : null;
+  return {
+    kg, madeKg: Math.round(made * 100) / 100, tripKg: Math.round(trip.kg * 100) / 100, km: trip.km,
+    carKm: Math.max(1, Math.round(kg / CAR_KG_PER_KM)),
+    typicalKg: made && mid ? Math.round(mid * 100) / 100 : null,
+    vsTypical: made && mid ? Math.round((made / mid - 1) * 100) : null,
+    compared: sorted.length,
+  };
+}
+/** A car's CO₂ a km (the Green app's figure for a km cycled instead of driven). */
+const CAR_KG_PER_KM = GREEN_FACTORS.CYCLE.kg;
+export type Footprint = NonNullable<ReturnType<typeof footprint>>;

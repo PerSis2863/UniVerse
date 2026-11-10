@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Ban, ChevronRight, Clock, Gift, KeyRound, Leaf, Loader2, MapPin, Package, PartyPopper, SearchX, ShieldAlert, ShieldCheck, Sparkles, Star, Vault } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
 import { api, errorMessage } from '@/lib/api';
-import { STAGE_LABEL, STAGE_SHORT, type Stage, type Verdict } from '@/lib/trace';
+import { STAGE_LABEL, STAGE_SHORT, type Footprint, type Stage, type Verdict } from '@/lib/trace';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
 import { Journey } from '@/components/live/Journey';
@@ -37,6 +37,8 @@ interface Passport {
   /** M108: the EU Digital Product Passport, when the brand filled it in. */
   gtin?: string | null; dpp?: Dpp | null;
   owner: { owners: number; since: string; you: boolean } | null;
+  /** M144: its CO₂, making and trip, and against others of its kind. */
+  footprint?: Footprint | null;
 }
 type Answer = Passport | { result: 'UNKNOWN' };
 
@@ -180,6 +182,7 @@ export default function View() {
               </ol>
             </section>
 
+            {data.footprint && <FootprintCard f={data.footprint} category={data.product.category} />}
             {data.dpp && <DppCard dpp={data.dpp} gtin={data.gtin ?? null} />}
 
             {data.product.rewardPoints > 0 && data.result !== 'SUSPECT' && (
@@ -242,6 +245,38 @@ function Seal({ data }: { data: Answer }) {
       </span>
       <h2 className="mt-5 text-4xl sm:text-5xl font-black tracking-tight">{s.title}</h2>
       <p className="mt-2 max-w-md text-zinc-300">{text}</p>
+    </section>
+  );
+}
+
+/**
+ * M144: its footprint story: the total, a car-distance equivalent, making against the trip, and how the
+ * making compares with the middle of other products of its kind on UniVerse that published a figure.
+ */
+function FootprintCard({ f, category }: { f: Footprint; category: string | null }) {
+  const made = f.kg ? (f.madeKg / f.kg) * 100 : 0;
+  const kind = category ? `${category.toLowerCase()} products` : 'products of its kind';
+  const near = f.vsTypical !== null && Math.abs(f.vsTypical) < 10;
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" style={{ animationDelay: '260ms' }} aria-labelledby="foot-h">
+      <h2 id="foot-h" className="font-bold flex items-center gap-2"><Leaf className="w-4 h-4 text-pink-300" aria-hidden />Its footprint</h2>
+      <p className="mt-3 flex items-baseline gap-2"><span className="text-3xl font-black tabular-nums">{f.kg.toLocaleString()}</span><span className="text-sm text-zinc-300">kg CO₂e</span></p>
+      <p className="mt-1 text-sm text-zinc-300">About the same as driving {f.carKm.toLocaleString()} km in a car.</p>
+      {f.madeKg > 0 && f.tripKg > 0 && (
+        <div className="mt-4 flex h-2 rounded-full overflow-hidden bg-white/10" aria-hidden>
+          <span className="h-full bg-pink-300" style={{ width: `${made}%` }} />
+          <span className="h-full bg-zinc-300" style={{ width: `${100 - made}%` }} />
+        </div>
+      )}
+      <dl className="mt-3 grid grid-cols-2 gap-2 font-mono text-xs">
+        {f.madeKg > 0 && <Fact k="Making it" v={`${f.madeKg} kg`} />}
+        {f.km > 0 && <Fact k={`Its trip, ${f.km.toLocaleString()} km`} v={`${f.tripKg} kg`} />}
+      </dl>
+      {f.vsTypical !== null && f.typicalKg !== null && (
+        <p className="mt-3 text-sm text-zinc-200">
+          {near ? <>Making it gave off <b className="text-white">about the same</b> as</> : <>Making it gave off <b className="text-white">{Math.abs(f.vsTypical)}% {f.vsTypical < 0 ? 'less' : 'more'}</b> than</>} the middle of {f.compared} other {kind} on UniVerse ({f.typicalKg} kg).
+        </p>
+      )}
     </section>
   );
 }

@@ -5617,3 +5617,19 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`daily-counts.test.ts`); `scripts/checks/courses-center-ui.mjs` (summary line,
   pill, the three cards, 14 columns per course, New course opens, Open board goes to the board; axe at
   1280 and 390, light and dark).
+
+## M144: Trace, the footprint story on every passport (the owner, 10 Nov 2026: "can we improve the trace and relief app… more unique features", then "do all of them" for the eight proposed; the owner's exception to the launch focus)
+
+- **What a buyer sees** (`/t/<code>`, after "Its journey"): **Its footprint**: the total kg CO₂e, "about
+  the same as driving N km in a car", a bar of making against the trip, the two figures, and how its
+  making compares with the middle of other products of its kind on UniVerse that published a figure
+  ("32% less than the middle of 5 other food products").
+- **Where the numbers come from** (`footprint` in `src/lib/trace.ts`, tested): making = the EU passport's
+  `carbonKg` (M108); the trip = `journeyCarbon` over the journey's stops with the product's weight; a
+  car's 0.2 kg a km from `src/lib/green.ts`; the comparison only with 3 or more others (their median),
+  and only when this product published its own figure. Nothing is invented: no figure, no card.
+- **Server** (`scan` in `src/server/trace.ts`, `unitFootprint`): one extra query (others of the same
+  category with a passport, up to 200) only when the product has a making figure. The journey's exact
+  points stay on the server: the browser still gets places by name only.
+- **The sample passport** (`/t/demo`) has one (a 0.6 kg bottle from Jaén to Paris).
+- **Tested:** `pnpm check` (`trace.test.ts`: footprint); axe on `/t/demo` at 390 and 1280, dark and light.
