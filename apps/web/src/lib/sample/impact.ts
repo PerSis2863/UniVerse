@@ -85,6 +85,25 @@ export function sampleReliefPlaces() {
   };
 }
 
+/** GET /relief/incidents (M150): one emergency going on, two friends who said they're safe. */
+export function sampleReliefIncidents() {
+  const now = Date.now();
+  return {
+    incidents: [{
+      id: 'sample-incident-1', title: 'River flooding in the old town', place: BIG[0][0], lat: BIG[0][1], lng: BIG[0][2], radiusKm: 20,
+      endsAt: new Date(now + 52 * 3_600_000).toISOString(), createdAt: new Date(now - 20 * 3_600_000).toISOString(),
+      org: { id: 'sample-org-food', name: 'Riverside Food Bank' }, safeAt: null, told: 0,
+      safeContacts: [{ name: 'Priya Sharma', at: new Date(now - 3 * 3_600_000).toISOString() }, { name: 'Tom Walker', at: new Date(now - 5 * 3_600_000).toISOString() }],
+      canEnd: true,
+    }],
+  };
+}
+
+/** GET /relief/contacts (M150) */
+export function sampleReliefContacts() {
+  return { contacts: ['Priya Sharma', 'Tom Walker', 'Alice Chen', 'Bob Martinez', 'Tara Okafor', 'Mia Rossi', 'Daniel Kim'].map((name, i) => ({ id: `sample-contact-${i}`, name })) };
+}
+
 function reliefPosts(me: { id: string; name: string }) {
   const r = rng(7), now = Date.now();
   return Array.from({ length: 140 }, (_, i) => {

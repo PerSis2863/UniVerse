@@ -1017,6 +1017,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
   [/^\/relief\/places$/, () => ok(impact.sampleReliefPlaces())],
+  [/^\/relief\/incidents$/, () => ok(impact.sampleReliefIncidents())],
+  [/^\/relief\/contacts$/, () => ok(impact.sampleReliefContacts())],
   [/^\/relief\/mine$/, ({ db: d }) => ok(impact.sampleReliefMine(d.me))],
   [/^\/relief\/orgs$/, ({ db: d }) => ok(impact.sampleReliefOrgs(d.me))],
   [/^\/relief\/orgs\/([^/]+)$/, ({ db: d, m }) => { const o = impact.sampleReliefOrg(d.me, decodeURIComponent(m[1])); return o ? ok(o) : fail('That organisation is gone, or you aren’t in it.', 404); }],

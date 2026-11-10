@@ -5738,3 +5738,33 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   narrow filters hears "Your skill is needed", a helper who wants everything hears the usual alert, the
   asker hears nothing, a made-up skill dropped, an offer keeps no skill); axe on the settings (sample
   mode) at 390 and 1280, light and dark.
+
+## M150: Relief, the "I'm safe" check-in (the owner, 10 Nov 2026: the eight features)
+
+- **Coordinators** (an organisation's Overview → **Emergency check-in**, owners and coordinators only):
+  say what is happening, an area name (optional), within 5/20/50/100 km and for 1 day / 3 days / 1 week;
+  the area is drawn around the organisation's base (a base is needed). At most 3 going on per
+  organisation; **End it** stops it at once. Helpers whose nearby alert falls inside the area are asked
+  "Emergency near you: …" in the app and on their phone (no email; 200 at most; never the declarer).
+- **Everyone in Relief** (`SafetyCheck` at the top of the Relief page, while one is going on): **I'm safe**
+  opens "Tell people you're safe": a list of the people they already have a **direct conversation** with
+  (Messages, not groups or communities; 20 at a time); only the ticked ones are told ("Sam is safe", in
+  the app and on their phone), and only they see it, under the banner ("Priya, Tom told you they're
+  safe"). Telling more later adds them; nobody is told twice. **I need help** opens the request form set
+  to Critical.
+- **Server:** `src/server/relief-safety.ts` (`contactsOf`, `reliefIncidents`, `declareIncident`,
+  `endIncident`, `markSafe`); routes `GET/POST /relief/incidents`, `POST /relief/incidents/:id/end`,
+  `POST /relief/incidents/:id/safe`, `GET /relief/contacts`, all signed in. Who is safe is never public:
+  the list returns names only to the people told, no ids or emails. Out-of-range numbers fall back to the
+  defaults (20 km, 3 days).
+- **Data:** migration **0200**: `relief_incidents`, `relief_safe` (one row per person and emergency),
+  `relief_safe_told` (who was told). Sample answers: `sampleReliefIncidents`, `sampleReliefContacts`.
+- **Also:** the number tiles' small unit text (`FactorCard`, "of 8", "6 shifts") was too faint in light
+  mode for axe; now 80% instead of 60%.
+- **Rule for code that builds on it:** "tell" lists are always filtered through `contactsOf` on the
+  server, so the check-in can't be used to message strangers; keep it that way.
+- **Tested:** `pnpm check` (`relief-safety.test.ts`: contacts once each, newest first; only contacts told,
+  nobody twice; refused after the end; volunteers can't declare); `scripts/checks/relief-safety-api.mjs`
+  (volunteer and outsider refused, defaults, only the contact told and sees it, the notification, ended
+  means refused and gone, signed out refused); axe on the banner, the window and the card (sample mode)
+  at 390 and 1280, light and dark.

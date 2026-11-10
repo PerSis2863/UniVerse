@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
-import { ArrowLeft, Building2, CalendarClock, Check, Copy, HandHeart, History, Loader2, LogOut, MapPin, MessageSquareText, Minus, Pencil, Plus, RefreshCw, Trash2, TriangleAlert, Users } from 'lucide-react';
+import { ArrowLeft, Building2, CalendarClock, Check, Copy, HandHeart, History, Loader2, LogOut, MapPin, MessageSquareText, Minus, Pencil, Plus, RefreshCw, Siren, Trash2, TriangleAlert, Users } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { FactorCard } from '@/components/ui/FactorCard';
@@ -15,6 +15,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, RELIEF_ORG_ROLES, RELIEF_ORG_ROLE_LABEL, STOCK, STOCK_LABEL, mayChangeRole, needScore, runsOrg, type ReliefKind, type ReliefOrgKind, type ReliefOrgRole, type Stock } from '@/lib/relief';
 import { useNow } from '@/lib/use-now';
+import type { Incident } from './SafetyCheck';
 import { cn } from '@/lib/utils';
 import { KIND_ICON, PostCard, type ReliefPost } from './ReliefApp';
 import { OrgFields, Sheet, ShiftCard, type ShiftView } from './ReliefOrgs';
@@ -104,11 +105,62 @@ function Overview({ d, run, go, onChange }: { d: OrgData; run: boolean; go: (t: 
         <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap max-w-[75ch]" translate="no">{d.org.about || 'No description yet.'}</p>
         <p className="mt-2 text-xs text-zinc-500">{d.org.lat === null ? 'No base set: set one to see the needs near you.' : `Base set${d.org.place ? ` in ${d.org.place}` : ''} (rounded to about 500 m).`} Started {new Date(d.org.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
       </section>
+      {run && <Emergency d={d} />}
       <LiveStatus d={d} run={run} onChange={onChange} />
       {run && d.org.code && <Invite org={d.org} onChange={onChange} />}
       <LeaveButton org={d.org} />
       <AnimatePresence>{editing && <EditSheet d={d} onClose={() => setEditing(false)} onDone={() => { setEditing(false); onChange(); }} />}</AnimatePresence>
     </div>
+  );
+}
+
+/**
+ * M150: coordinators declare an emergency around their base (or a place they name) for a while; helpers
+ * with nearby alerts there are asked if they're safe, and Relief shows "I'm safe" / "I need help" at the top.
+ */
+function Emergency({ d }: { d: OrgData }) {
+  const { data, mutate } = useSWR<{ incidents: Incident[] }>('/relief/incidents', fetcher);
+  const mine = (data?.incidents ?? []).filter((i) => i.org?.id === d.org.id);
+  const [f, setF] = useState({ title: '', place: '', radiusKm: '20', hours: '72' });
+  const [busy, setBusy] = useState<string | null>(null);
+  const declare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy('new');
+    try {
+      await api.post('/relief/incidents', { orgId: d.org.id, title: f.title, place: f.place || undefined, radiusKm: Number(f.radiusKm), hours: Number(f.hours) });
+      toast.success('Emergency declared', { description: 'Helpers nearby were asked if they’re safe.' });
+      setF({ ...f, title: '', place: '' }); void mutate();
+    } catch (err) { toast.error(errorMessage(err, 'Could not declare it.')); } finally { setBusy(null); }
+  };
+  const end = async (id: string) => {
+    setBusy(id);
+    try { await api.post(`/relief/incidents/${id}/end`, {}); toast.success('Emergency ended'); void mutate(); }
+    catch (err) { toast.error(errorMessage(err, 'Could not end it.')); } finally { setBusy(null); }
+  };
+  return (
+    <section className="panel p-5" aria-labelledby="emergency-h">
+      <h2 id="emergency-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Siren className="w-5 h-5 text-rose-600 dark:text-rose-400" aria-hidden />Emergency check-in</h2>
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 max-w-[75ch]">Declare an emergency and everyone on Relief sees “I’m safe” and “I need help” at the top; helpers with alerts in the area are asked straight away. Nobody sees who is safe except the people each person chooses to tell.</p>
+      {mine.length > 0 && (
+        <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.07]">
+          {mine.map((i) => (
+            <li key={i.id} className="flex flex-wrap items-center gap-3 py-2.5">
+              <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white"><b translate="no">{i.title}</b><span className="text-zinc-500 dark:text-zinc-400"> · until {new Date(i.endsAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span></span>
+              <button type="button" onClick={() => void end(i.id)} disabled={busy === i.id} className="btn-secondary btn-sm">{busy === i.id && <Loader2 className="w-4 h-4 animate-spin" />}End it</button>
+            </li>
+          ))}
+        </ul>
+      )}
+      {d.org.lat === null ? <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200">Set a base first (Edit, above): the area is drawn around it.</p> : mine.length < 3 && (
+        <form onSubmit={(e) => void declare(e)} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_auto_auto] sm:items-end">
+          <label className="text-sm text-zinc-700 dark:text-zinc-200">What is happening<input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder="e.g. River flooding in the old town" /></label>
+          <label className="text-sm text-zinc-700 dark:text-zinc-200">Area name (optional)<input maxLength={120} value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} className="input mt-1" placeholder={d.org.place ?? 'Around our base'} /></label>
+          <label className="text-sm text-zinc-700 dark:text-zinc-200">Within<select value={f.radiusKm} onChange={(e) => setF({ ...f, radiusKm: e.target.value })} className="input mt-1">{['5', '20', '50', '100'].map((r) => <option key={r} value={r}>{r} km</option>)}</select></label>
+          <label className="text-sm text-zinc-700 dark:text-zinc-200">For<select value={f.hours} onChange={(e) => setF({ ...f, hours: e.target.value })} className="input mt-1">{[['24', '1 day'], ['72', '3 days'], ['168', '1 week']].map(([v, l]) => <option key={v} value={v}>{l}</option>)}</select></label>
+          <button type="submit" disabled={busy === 'new' || !f.title.trim()} className="btn-primary btn-sm sm:col-span-4 justify-self-start">{busy === 'new' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Siren className="w-4 h-4" />}Declare an emergency</button>
+        </form>
+      )}
+    </section>
   );
 }
 

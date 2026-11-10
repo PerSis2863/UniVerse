@@ -7031,6 +7031,46 @@ model TraceWin {
 }
 
 /// Relief alerts (migration 0181): new needs near this place, within radiusKm, urgent only by default.
+/// M150: an emergency an organisation declared for an area, until endsAt.
+model ReliefIncident {
+  id          String   @id @default(cuid())
+  orgId       String
+  createdById String?
+  title       String
+  place       String?
+  lat         Float
+  lng         Float
+  radiusKm    Float    @default(20)
+  endsAt      DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([endsAt])
+  @@index([orgId])
+  @@map("relief_incidents")
+}
+
+/// M150: someone said they're safe in an emergency.
+model ReliefSafe {
+  incidentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId])
+  @@map("relief_safe")
+}
+
+/// M150: who they told (only people they already have a conversation with).
+model ReliefSafeTold {
+  incidentId String
+  userId     String
+  toUserId   String
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId, toUserId])
+  @@index([toUserId, incidentId])
+  @@map("relief_safe_told")
+}
+
 model ReliefWatch {
   userId     String   @id
   lat        Float
