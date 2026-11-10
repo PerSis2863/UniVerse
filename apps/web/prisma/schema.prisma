@@ -7039,6 +7039,8 @@ model ReliefWatch {
   urgentOnly Boolean  @default(true)
   /// Comma-separated RELIEF_KINDS, or null for every kind.
   kinds      String?
+  /// M149: comma-separated SKILLS this helper offers (src/lib/relief.ts).
+  skills     String?
   createdAt  DateTime @default(now())
 
   @@index([lat, lng])
@@ -7054,6 +7056,8 @@ model ReliefPost {
   details   String?
   people    Int       @default(1)
   urgency   String    @default("MEDIUM")
+  /// M149: the one skill a need asks for (SKILLS), or null.
+  skill     String?
   lat       Float
   lng       Float
   place     String?

@@ -14,7 +14,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { distanceM } from '@/lib/attendance-rules';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type ReliefKind, type Urgency } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type ReliefKind, type Skill, type Urgency } from '@/lib/relief';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
@@ -37,6 +37,8 @@ export interface ReliefPost {
   by: { id: string; name: string } | null; helper: { id: string; name: string } | null; mine: boolean; helping: boolean;
   /** M106: posted in an organisation's name / taken on by an organisation. */
   org?: { id: string; name: string } | null; helperOrg?: { id: string; name: string } | null;
+  /** M149: the skill a need asks for. */
+  skill?: Skill | null;
 }
 interface ReliefMap {
   posts: ReliefPost[]; recent: ReliefPost[]; done: { lat: number; lng: number; people: number; kind: string }[];
@@ -47,8 +49,8 @@ export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, 
 const OFFER = '#14b8a6', DONE = '#22c55e';
 
 /** The "Ask or offer help" form, kept here so tapping the map for the place doesn't lose what was typed. */
-interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string }
-const EMPTY: Draft = { type: 'NEED', kind: 'FOOD', title: '', details: '', people: '1', urgency: 'MEDIUM', place: '', orgId: '', textId: '' };
+interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string; skill: Skill | '' }
+const EMPTY: Draft = { type: 'NEED', kind: 'FOOD', title: '', details: '', people: '1', urgency: 'MEDIUM', place: '', orgId: '', textId: '', skill: '' };
 const WORLD: Box = [-170, -56, 180, 76];
 
 /** The actions a person can take on a post. */
@@ -279,7 +281,7 @@ export function ReliefApp() {
                 <span className="min-w-0 flex-1">
                   <span className="block font-semibold text-sm text-zinc-900 dark:text-white truncate">{p.title}</span>
                   <span className="block text-[11px] text-zinc-500 truncate">{p.type === 'OFFER' ? 'Offer' : `${URGENCY_LABEL[p.urgency]} · ${p.people} ${p.people === 1 ? 'person' : 'people'}`} · {p.place ?? 'nearby'}{here ? ` · ${(distanceM(here, p) / 1000).toFixed(1)} km` : ''}</span>
-                  <span className="block text-[11px] text-zinc-400">{formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}{p.status === 'TAKEN' ? ` · ${p.helper?.name ?? 'someone'} is helping` : ''}</span>
+                  <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">{formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}{p.status === 'TAKEN' ? ` · ${p.helper?.name ?? 'someone'} is helping` : ''}{p.skill ? ` · needs: ${SKILL_LABEL[p.skill].toLowerCase()}` : ''}</span>
                 </span>
               </motion.button>
             );
@@ -311,6 +313,7 @@ export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now
       {p.details && <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{p.details}</p>}
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
         <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" aria-hidden />{p.people} {p.people === 1 ? 'person' : 'people'}</span>
+        {p.skill && <span className="inline-flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-200">Needs: {SKILL_LABEL[p.skill].toLowerCase()}</span>}
         <span className="inline-flex items-center gap-1"><MapPin className="w-3.5 h-3.5" aria-hidden />{p.place ?? 'Area shown on the map'}{here ? ` · ${(distanceM(here, p) / 1000).toFixed(1)} km away` : ''}</span>
         <span>{now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : ''}</span>
         {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helperOrg ? `${p.helperOrg.name} is helping` : p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
@@ -377,6 +380,8 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
           <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{f.type === 'NEED' ? 'How many people' : 'How many people it can help'}</span><input type="number" min={1} max={10000} value={f.people} onChange={(e) => setF({ ...f, people: e.target.value })} className="input mt-1" /></label>
           {f.type === 'NEED' && <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How urgent</span><select value={f.urgency} onChange={(e) => setF({ ...f, urgency: e.target.value as Urgency })} className="input mt-1">{URGENCIES.map((u) => <option key={u} value={u}>{URGENCY_LABEL[u]}</option>)}</select></label>}
         </div>
+        {/* M149: helpers nearby with this skill hear about it first */}
+        {f.type === 'NEED' && <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Needs someone who can… (optional)</span><select value={f.skill} onChange={(e) => setF({ ...f, skill: e.target.value as Skill | '' })} className="input mt-1"><option value="">Anyone can help</option>{SKILLS.map((k) => <option key={k} value={k}>{SKILL_LABEL[k]}</option>)}</select></label>}
         {runs.length > 0 && (
           <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Post as</span>
             <select value={f.orgId} disabled={!!f.textId} onChange={(e) => setF({ ...f, orgId: e.target.value })} className="input mt-1"><option value="">Myself</option>{runs.map((o) => <option key={o.id} value={o.id}>{o.name}</option>)}</select>

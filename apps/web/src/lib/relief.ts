@@ -121,3 +121,37 @@ export function rankPlaces<P extends Pick<Place, 'lat' | 'lng' | 'openNow' | 'st
   const tier = (p: P) => (p.openNow === false ? 2 : freshness(p.statusAt, now) === 'old' ? 1 : 0);
   return [...places].sort((a, b) => tier(a) - tier(b) || (here ? km(a) - km(b) : Date.parse(b.statusAt) - Date.parse(a.statusAt)));
 }
+
+// ─── M149: skills matching ──────────────────────────────────────────────────────────────────────
+export const SKILLS = ['FIRST_AID', 'MEDICAL', 'DRIVING', 'BOAT', 'TRANSLATING', 'COOKING', 'BUILDING', 'CHILDCARE', 'COUNSELLING', 'TECH'] as const;
+export type Skill = (typeof SKILLS)[number];
+export const SKILL_LABEL: Record<Skill, string> = {
+  FIRST_AID: 'First aid', MEDICAL: 'Doctor or nurse', DRIVING: 'Driving', BOAT: 'A boat', TRANSLATING: 'Translating',
+  COOKING: 'Cooking for many', BUILDING: 'Building and repairs', CHILDCARE: 'Looking after children', COUNSELLING: 'Listening and comfort', TECH: 'Phones and tech',
+};
+
+/** Kilometres between two points (haversine). */
+export const kmBetween = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
+  const dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
+  return 2 * 6371 * Math.asin(Math.sqrt(h));
+};
+
+type AlertWatch = { userId: string; lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; skills: string | null };
+type AlertPost = { userId: string; kind: string; urgency: string; skill: string | null; lat: number; lng: number };
+
+/**
+ * Who hears about a new need (80 at most): helpers within their radius who have the skill it asks for
+ * (whatever else they filtered: their skill is the point), then the others as before (urgent only if
+ * they said so, their kinds if they chose some). Never the person who asked.
+ */
+export function whoToAlert(watches: AlertWatch[], post: AlertPost): { skilled: string[]; others: string[] } {
+  const urgent = post.urgency === 'HIGH' || post.urgency === 'CRITICAL';
+  const skilled: string[] = [], others: string[] = [];
+  for (const w of watches) {
+    if (w.userId === post.userId || kmBetween(w, post) > w.radiusKm) continue;
+    if (post.skill && w.skills?.split(',').includes(post.skill)) skilled.push(w.userId);
+    else if ((!w.urgentOnly || urgent) && (!w.kinds || w.kinds.split(',').includes(post.kind))) others.push(w.userId);
+  }
+  return { skilled: skilled.slice(0, 80), others: others.slice(0, Math.max(0, 80 - skilled.length)) };
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { freshness, rankPlaces } from './relief';
+import { freshness, rankPlaces, whoToAlert } from './relief';
 
 describe('rankPlaces (M148)', () => {
   const now = Date.parse('2026-11-10T12:00:00Z');
@@ -16,5 +16,24 @@ describe('rankPlaces (M148)', () => {
     expect(freshness(at(2), now)).toBe('fresh');
     expect(freshness(at(10), now)).toBe('today');
     expect(freshness(at(30), now)).toBe('old');
+  });
+});
+
+describe('whoToAlert (M149)', () => {
+  const at = { lat: 13.08, lng: 80.27 };
+  const w = (userId: string, o: Partial<{ radiusKm: number; urgentOnly: boolean; kinds: string | null; skills: string | null; lat: number }> = {}) => ({ userId, ...at, radiusKm: 5, urgentOnly: true, kinds: null, skills: null, ...o });
+  const post = { userId: 'asker', kind: 'MEDICAL', urgency: 'MEDIUM', skill: 'FIRST_AID', ...at };
+  it('tells helpers with the skill even when they asked for urgent needs or other kinds only; others as before', () => {
+    const got = whoToAlert([
+      w('medic', { skills: 'FIRST_AID,DRIVING', kinds: 'FOOD' }), // their skill wins over their filters
+      w('cook', { skills: 'COOKING' }),                             // urgent only, not urgent: no
+      w('anyone', { urgentOnly: false }),                           // all needs: yes, as an "other"
+      w('far medic', { skills: 'FIRST_AID', lat: 14 }),             // out of their radius: no
+      w('asker', { skills: 'FIRST_AID' }),                          // never the person who asked
+    ], post);
+    expect(got).toEqual({ skilled: ['medic'], others: ['anyone'] });
+  });
+  it('without a skill, only the usual filters', () => {
+    expect(whoToAlert([w('a', { skills: 'FIRST_AID' }), w('b', { urgentOnly: false })], { ...post, skill: null, urgency: 'CRITICAL' })).toEqual({ skilled: [], others: ['a', 'b'] });
   });
 });

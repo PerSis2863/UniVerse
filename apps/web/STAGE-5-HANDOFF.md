@@ -5720,3 +5720,21 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`relief.test.ts`); `scripts/checks/relief-places-api.mjs` (a coordinator
   shares, a volunteer can't, beds clamped, bad values emptied, the board leaks nothing, signed out
   refused); axe on the board (sample mode) and on Live status at 390/430 and 1280.
+
+## M149: Relief, skills matching (the owner, 10 Nov 2026: the eight features)
+
+- **Helpers** (Mine → "Tell me about needs near me" → **What I can do**): first aid, doctor or nurse,
+  driving, a boat, translating, cooking for many, building and repairs, looking after children,
+  listening and comfort, phones and tech (`SKILLS` in `src/lib/relief.ts`), saved with their alert
+  (`relief_watches.skills`, only listed skills kept).
+- **A need** (the "Ask or offer help" form): "Needs someone who can…" (optional, needs only; offers keep
+  none); shown on the request card and in the list ("needs: first aid").
+- **Who hears** (`whoToAlert` in `src/lib/relief.ts`, tested; used by `alertWatchers`): helpers within
+  their radius with that skill hear **"Your skill is needed: First aid"** even if they asked for urgent
+  needs only or chose other kinds; everyone else gets the usual alert under their own filters; never the
+  person who asked; 80 at most, the skilled first. The haversine distance moved to `kmBetween` there.
+- **Data:** migration **0199** (`relief_watches.skills`, `relief_posts.skill`).
+- **Tested:** `pnpm check` (`relief.test.ts`); `scripts/checks/relief-skills-api.mjs` (a first-aider with
+  narrow filters hears "Your skill is needed", a helper who wants everything hears the usual alert, the
+  asker hears nothing, a made-up skill dropped, an offer keeps no skill); axe on the settings (sample
+  mode) at 390 and 1280, light and dark.

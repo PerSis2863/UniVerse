@@ -49077,6 +49077,17 @@
      "updatedAt": false
     },
     {
+     "name": "skills",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "createdAt",
      "type": "DateTime",
      "kind": "scalar",
@@ -49180,6 +49191,17 @@
      "id": false,
      "unique": false,
      "hasDefault": true,
+     "updatedAt": false
+    },
+    {
+     "name": "skill",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
      "updatedAt": false
     },
     {
