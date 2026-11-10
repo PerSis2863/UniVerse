@@ -13,7 +13,7 @@ import { FactorCard } from '@/components/ui/FactorCard';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, RELIEF_ORG_ROLES, RELIEF_ORG_ROLE_LABEL, mayChangeRole, needScore, runsOrg, type ReliefKind, type ReliefOrgKind, type ReliefOrgRole } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, RELIEF_ORG_ROLES, RELIEF_ORG_ROLE_LABEL, STOCK, STOCK_LABEL, mayChangeRole, needScore, runsOrg, type ReliefKind, type ReliefOrgKind, type ReliefOrgRole, type Stock } from '@/lib/relief';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { KIND_ICON, PostCard, type ReliefPost } from './ReliefApp';
@@ -28,7 +28,9 @@ interface Supply { id: string; name: string; kind: ReliefKind; unit: string; qua
 interface Member { id: string; name: string; role: ReliefOrgRole; since: string; me: boolean }
 interface Text { id: string; channel: 'SMS' | 'WHATSAPP'; from: string; body: string; status: 'NEW' | 'POSTED' | 'CLOSED'; postId: string | null; createdAt: string }
 interface OrgData {
-  org: { id: string; name: string; kind: ReliefOrgKind; about: string | null; place: string | null; lat: number | null; lng: number | null; createdAt: string; code: string | null; textNumber: string | null };
+  org: { id: string; name: string; kind: ReliefOrgKind; about: string | null; place: string | null; lat: number | null; lng: number | null; createdAt: string; code: string | null; textNumber: string | null }
+    /** M148: its live status for the shelter board. */
+    & { openNow?: boolean | null; bedsFree?: number | null; bedsTotal?: number | null; water?: Stock | null; food?: Stock | null; power?: Stock | null; statusNote?: string | null; statusAt?: string | null };
   role: ReliefOrgRole;
   /** M107: text requests are switched on (the owner) and set up (Twilio); coordinators only see `texts`. */
   textsOn: boolean;
@@ -102,10 +104,57 @@ function Overview({ d, run, go, onChange }: { d: OrgData; run: boolean; go: (t: 
         <p className="mt-2 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap max-w-[75ch]" translate="no">{d.org.about || 'No description yet.'}</p>
         <p className="mt-2 text-xs text-zinc-500">{d.org.lat === null ? 'No base set: set one to see the needs near you.' : `Base set${d.org.place ? ` in ${d.org.place}` : ''} (rounded to about 500 m).`} Started {new Date(d.org.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
       </section>
+      <LiveStatus d={d} run={run} onChange={onChange} />
       {run && d.org.code && <Invite org={d.org} onChange={onChange} />}
       <LeaveButton org={d.org} />
       <AnimatePresence>{editing && <EditSheet d={d} onClose={() => setEditing(false)} onDone={() => { setEditing(false); onChange(); }} />}</AnimatePresence>
     </div>
+  );
+}
+
+/**
+ * M148: how the place is right now, for Relief's shelter board: open, beds free, water, food,
+ * charging, a note. Coordinators update it (it says when); volunteers see it.
+ */
+function LiveStatus({ d, run, onChange }: { d: OrgData; run: boolean; onChange: () => void }) {
+  const o = d.org;
+  const [f, setF] = useState({ openNow: o.openNow ?? true, bedsFree: o.bedsFree != null ? String(o.bedsFree) : '', bedsTotal: o.bedsTotal != null ? String(o.bedsTotal) : '', water: o.water ?? 'YES', food: o.food ?? 'YES', power: o.power ?? 'YES', statusNote: o.statusNote ?? '' });
+  const [busy, setBusy] = useState(false);
+  const save = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    try {
+      await api.put(`/relief/orgs/${o.id}/status`, { ...f, bedsFree: f.bedsFree === '' ? null : Number(f.bedsFree), bedsTotal: f.bedsTotal === '' ? null : Number(f.bedsTotal) });
+      toast.success('Status shared on the Relief board'); onChange();
+    } catch (err) { toast.error(errorMessage(err, 'Could not share the status.')); } finally { setBusy(false); }
+  };
+  const stockRow = (k: 'water' | 'food' | 'power', label: string) => (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="w-20 text-sm text-zinc-700 dark:text-zinc-200">{label}</span>
+      <Segmented<Stock> segments={STOCK.map((v) => ({ value: v, label: STOCK_LABEL[v] }))} value={f[k] as Stock} onChange={(v) => setF({ ...f, [k]: v })} label={label} />
+    </div>
+  );
+  return (
+    <section className="panel p-5" aria-labelledby="status-h">
+      <h2 id="status-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><MapPin className="w-5 h-5 text-orange-500" aria-hidden />Live status</h2>
+      <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{o.statusAt ? `Shared ${formatDistanceToNow(new Date(o.statusAt), { addSuffix: true })} on Relief’s “Places to go”.` : 'Not shared yet. Share it and people looking for a bed, water, food or a charge will find you on Relief.'}{o.lat === null ? ' Set a base first (Edit, above), so people can find you.' : ''}</p>
+      {run ? (
+        <form onSubmit={(e) => void save(e)} className="mt-4 space-y-3">
+          <label className="flex items-center gap-3 text-sm text-zinc-800 dark:text-zinc-100"><input type="checkbox" checked={f.openNow} onChange={(e) => setF({ ...f, openNow: e.target.checked })} className="w-4 h-4 accent-indigo-600" />Open now</label>
+          <div className="grid grid-cols-2 gap-3 max-w-sm">
+            <label className="text-sm text-zinc-700 dark:text-zinc-200">Beds free<input type="number" min={0} max={100000} value={f.bedsFree} onChange={(e) => setF({ ...f, bedsFree: e.target.value })} className="input mt-1" /></label>
+            <label className="text-sm text-zinc-700 dark:text-zinc-200">Beds in all<input type="number" min={0} max={100000} value={f.bedsTotal} onChange={(e) => setF({ ...f, bedsTotal: e.target.value })} className="input mt-1" /></label>
+          </div>
+          {stockRow('water', 'Water')}
+          {stockRow('food', 'Food')}
+          {stockRow('power', 'Charging')}
+          <label className="block text-sm text-zinc-700 dark:text-zinc-200">A short note (optional)<input maxLength={200} value={f.statusNote} onChange={(e) => setF({ ...f, statusNote: e.target.value })} className="input mt-1" placeholder="Bring ID if you have it; pets welcome" /></label>
+          <button type="submit" disabled={busy || o.lat === null} className="btn-primary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}Share the status</button>
+        </form>
+      ) : o.statusAt ? (
+        <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200">{[o.openNow === false ? 'Closed' : 'Open', o.bedsTotal ? `${o.bedsFree ?? 0} of ${o.bedsTotal} beds free` : null, o.water && `water: ${STOCK_LABEL[o.water].toLowerCase()}`, o.food && `food: ${STOCK_LABEL[o.food].toLowerCase()}`, o.power && `charging: ${STOCK_LABEL[o.power].toLowerCase()}`].filter(Boolean).join(' · ')}</p>
+      ) : null}
+    </section>
   );
 }
 

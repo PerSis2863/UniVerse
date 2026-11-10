@@ -5697,3 +5697,26 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
   from the first one is a likely copy and can be reported once, not signed out, not without a shop; the
   Radar lists it without the reporter); axe on the form (a check from far away) and on the Radar
   (sample mode) at 390/430 and 1280.
+
+## M148: Relief, the shelter and supply board (the owner, 10 Nov 2026: the eight features)
+
+- **Everyone in Relief** (under the live map: **Places to go**, `components/relief/PlacesBoard.tsx`): the
+  organisations that said how they are this week: open or closed, "12 of 40 beds free" with a bar,
+  water / food / charging as green yes, amber running low, red none, a short note, "Updated 2 h ago"
+  (older than a day: dashed and grey, "Not updated today"); filters (a bed, water, food, charging);
+  "On the map" flies the map there. Order (`rankPlaces` in `src/lib/relief.ts`, tested): open places that
+  spoke today first, nearest first when you shared your position, else the newest word; then stale;
+  then closed. `GET /relief/places` (signed in; the last 7 days; bases already rounded to about 500 m;
+  no join code, number or people).
+- **Coordinators** (an organisation's Overview → **Live status**, `PUT /relief/orgs/:id/status`,
+  coordinator only through `member(u, id, true)`): open now, beds free and in all (free never above
+  all), water / food / charging (YES, LOW, NO; anything else is left empty), a note; saved with the time.
+  Volunteers see it read-only. It needs a base (Edit) to show on the board.
+- **Data:** migration **0198**: eight columns on `relief_orgs` (`openNow`, `bedsFree`, `bedsTotal`, `water`,
+  `food`, `power`, `statusNote`, `statusAt`); the org's own answer includes them. Sample answers:
+  `sampleReliefPlaces` (six places).
+- **Trap:** `CardHead` sets no id, so a section using it is labelled with `aria-label`, not
+  `aria-labelledby`; and no `opacity` on a card with text (it fails contrast): use a dashed border.
+- **Tested:** `pnpm check` (`relief.test.ts`); `scripts/checks/relief-places-api.mjs` (a coordinator
+  shares, a volunteer can't, beds clamped, bad values emptied, the board leaks nothing, signed out
+  refused); axe on the board (sample mode) and on Live status at 390/430 and 1280.

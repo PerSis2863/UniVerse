@@ -1,5 +1,6 @@
 'use client';
 
+import { PlacesBoard } from './PlacesBoard';
 import { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -285,6 +286,9 @@ export function ReliefApp() {
           })}
         </section>
       </div>
+
+      {/* M148: shelters, food banks and groups that said how they are */}
+      <PlacesBoard here={here} onShow={(p) => { map.current?.flyTo([p.lng - 0.06, p.lat - 0.04, p.lng + 0.06, p.lat + 0.04], { maxZoom: 150 }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
 
       <AnimatePresence>
         {posting && <PostForm f={draft} setF={setDraft} at={picked} onPick={() => { setPosting(false); setPicking(true); }} onClose={() => { setPosting(false); setPicked(null); setDraft(EMPTY); }} onDone={(p) => { setPosting(false); setPicked(null); setDraft(EMPTY); void mutate(); if (p) setTimeout(() => focus(p), 400); }} />}

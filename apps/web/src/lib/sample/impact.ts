@@ -69,6 +69,22 @@ export function sampleWallet(me: { id: string }) {
 const NEEDS: [ReliefKind, string][] = [['FOOD', 'Food for a family of'], ['WATER', 'Drinking water for'], ['SHELTER', 'Shelter tonight for'], ['MEDICAL', 'Insulin and a ride to the clinic for'], ['CLOTHES', 'Warm clothes for'], ['TRANSPORT', 'A van to move supplies for'], ['FOOD', 'Baby formula for']];
 const OFFERS: [ReliefKind, string][] = [['TRANSPORT', 'I can drive supplies on weekends'], ['SHELTER', 'Spare room for two nights'], ['FOOD', 'Hot meals every evening'], ['WATER', '40 L of water every day'], ['MEDICAL', 'First aid, I’m a nurse'], ['CLOTHES', 'Winter coats to give away']];
 
+/** M148: the shelter board: a few places in the sample's big cities that said how they are. */
+export function sampleReliefPlaces() {
+  const now = Date.now();
+  const KINDS = ['SHELTER', 'FOOD_BANK', 'NGO', 'SHELTER', 'COMMUNITY', 'SHELTER'];
+  const NAMES = ['Harbour Night Shelter', 'Eastside Food Bank', 'Red Door Relief', 'St Anne’s Hall', 'Neighbours United', 'Riverside Sports Centre'];
+  return {
+    places: BIG.slice(0, 6).map((c, i) => ({
+      id: `sample-place-${i}`, name: NAMES[i], kind: KINDS[i], place: c[0], lat: c[1] + 0.01 * i, lng: c[2] - 0.01 * i,
+      openNow: i !== 3, bedsFree: KINDS[i] === 'SHELTER' ? [12, 0, 31][i % 3] : null, bedsTotal: KINDS[i] === 'SHELTER' ? [40, 25, 120][i % 3] : null,
+      water: (['YES', 'LOW', 'YES', 'NO', 'YES', 'YES'] as const)[i], food: (['YES', 'YES', 'LOW', 'NO', 'YES', 'LOW'] as const)[i], power: (['YES', null, 'LOW', 'NO', 'YES', 'YES'] as const)[i],
+      statusNote: i === 0 ? 'Pets welcome; bring ID if you have it.' : i === 5 ? 'Camp beds in the main hall, hot showers.' : null,
+      statusAt: new Date(now - [1, 3, 9, 30, 0.5, 2][i] * 3_600_000).toISOString(),
+    })),
+  };
+}
+
 function reliefPosts(me: { id: string; name: string }) {
   const r = rng(7), now = Date.now();
   return Array.from({ length: 140 }, (_, i) => {

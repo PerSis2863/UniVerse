@@ -98,3 +98,26 @@ export function guessNeed(text: string): { kind: ReliefKind; people: number; urg
   const title = t.length <= 80 ? t : `${t.slice(0, 78).replace(/\s+\S*$/, '')}…`;
   return { kind, people, urgency, title };
 }
+
+// ─── M148: the shelter and supply board ─────────────────────────────────────────────────────────
+export const STOCK = ['YES', 'LOW', 'NO'] as const;
+export type Stock = (typeof STOCK)[number];
+export const STOCK_LABEL: Record<Stock, string> = { YES: 'Yes', LOW: 'Running low', NO: 'None' };
+
+export interface Place { id: string; name: string; kind: string; place: string | null; lat: number; lng: number; openNow: boolean | null; bedsFree: number | null; bedsTotal: number | null; water: Stock | null; food: Stock | null; power: Stock | null; statusNote: string | null; statusAt: string }
+
+/** How fresh a place's word is: said in the last 6 hours, today, or older (shown greyed). */
+export const freshness = (statusAt: string, now: number) => {
+  const h = (now - Date.parse(statusAt)) / 3_600_000;
+  return h < 6 ? 'fresh' : h < 24 ? 'today' : 'old';
+};
+
+/**
+ * The board's order: open places that said something today first, then by distance when we know
+ * where you are (otherwise the newest word first); closed or quiet ones last.
+ */
+export function rankPlaces<P extends Pick<Place, 'lat' | 'lng' | 'openNow' | 'statusAt'>>(places: P[], here: { lat: number; lng: number } | null, now: number): P[] {
+  const km = (p: P) => (here ? Math.hypot((p.lat - here.lat) * 111, (p.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) : 0);
+  const tier = (p: P) => (p.openNow === false ? 2 : freshness(p.statusAt, now) === 'old' ? 1 : 0);
+  return [...places].sort((a, b) => tier(a) - tier(b) || (here ? km(a) - km(b) : Date.parse(b.statusAt) - Date.parse(a.statusAt)));
+}

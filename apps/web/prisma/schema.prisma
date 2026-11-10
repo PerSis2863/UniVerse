@@ -7090,6 +7090,17 @@ model ReliefOrg {
   createdById String?
   createdAt   DateTime @default(now())
 
+  /// M148: its live status for the shelter board (water, food, power: YES, LOW or NO).
+  openNow    Boolean?
+  bedsFree   Int?
+  bedsTotal  Int?
+  water      String?
+  food       String?
+  power      String?
+  statusNote String?
+  statusAt   DateTime?
+
+  @@index([statusAt])
   @@map("relief_orgs")
 }
 

@@ -1,7 +1,7 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { RELIEF_KINDS, RELIEF_ORG_KINDS, RELIEF_ORG_ROLES, mayChangeRole, nextQuantity, runsOrg, snap, supplyLow, textNumber, type ReliefOrgRole } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_ORG_KINDS, RELIEF_ORG_ROLES, STOCK, mayChangeRole, nextQuantity, runsOrg, snap, supplyLow, textNumber, type ReliefOrgRole } from '@/lib/relief';
 import { toBase32 } from '@/lib/trace';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, type Body } from './body';
@@ -172,7 +172,9 @@ export async function reliefOrg(u: SessionUser, orgId: string) {
     org: null, helperOrg: p.helperOrgId === orgId ? { id: org.id, name: org.name } : null,
   });
   return {
-    org: { id: org.id, name: org.name, kind: org.kind, about: org.about, place: org.place, lat: org.lat, lng: org.lng, createdAt: org.createdAt, code: run ? org.code : null, textNumber: run ? org.textNumber : null },
+    org: { id: org.id, name: org.name, kind: org.kind, about: org.about, place: org.place, lat: org.lat, lng: org.lng, createdAt: org.createdAt, code: run ? org.code : null, textNumber: run ? org.textNumber : null,
+      // M148: its live status (public on the board anyway).
+      openNow: org.openNow, bedsFree: org.bedsFree, bedsTotal: org.bedsTotal, water: org.water, food: org.food, power: org.power, statusNote: org.statusNote, statusAt: org.statusAt },
     role,
     textsOn: on,
     texts: run ? texts.map((t) => ({ id: t.id, channel: t.channel, from: t.fromNumber, body: t.body, status: t.status, postId: t.postId, createdAt: t.createdAt })) : null,
@@ -399,4 +401,35 @@ export async function shiftReminders(room: () => number): Promise<{ done: boolea
     sent += ids.length;
   }
   return { done: true, info: sent };
+}
+
+// ─── M148: the shelter and supply board ─────────────────────────────────────────────────────────
+
+/** PUT /relief/orgs/:id/status: a coordinator says how the place is now (open, beds, water, food, charging, a note). */
+export async function setReliefOrgStatus(u: SessionUser, orgId: string, b: Body) {
+  await member(u, orgId, true);
+  const total = num(b.bedsTotal, 0, 100_000), free = num(b.bedsFree, 0, 100_000);
+  const stock = (v: unknown) => (oneOf(STOCK, v) ? v : null);
+  const statusAt = new Date();
+  await prisma.reliefOrg.update({
+    where: { id: orgId },
+    data: {
+      openNow: typeof b.openNow === 'boolean' ? b.openNow : null,
+      bedsTotal: total === null ? null : Math.round(total),
+      bedsFree: free === null ? null : Math.round(total === null ? free : Math.min(free, total)),
+      water: stock(b.water), food: stock(b.food), power: stock(b.power),
+      statusNote: short(b.statusNote, 200), statusAt,
+    },
+  });
+  return { ok: true, statusAt };
+}
+
+/** GET /relief/places: the places that gave their status in the last 7 days (bases are rounded to about 500 m when saved). */
+export async function reliefPlaces() {
+  const places = await prisma.reliefOrg.findMany({
+    where: { statusAt: { gt: new Date(Date.now() - 7 * DAY) }, lat: { not: null }, lng: { not: null } },
+    orderBy: { statusAt: 'desc' }, take: 200,
+    select: { id: true, name: true, kind: true, place: true, lat: true, lng: true, openNow: true, bedsFree: true, bedsTotal: true, water: true, food: true, power: true, statusNote: true, statusAt: true },
+  });
+  return { places };
 }

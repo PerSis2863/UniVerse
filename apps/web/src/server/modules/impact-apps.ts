@@ -4,7 +4,7 @@ import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
-import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply } from '../relief-orgs';
+import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply, reliefPlaces, setReliefOrgStatus } from '../relief-orgs';
 import { closeReliefText, inboundText } from '../relief-texts';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
@@ -23,6 +23,9 @@ export default function impactAppsModule(router: Router) {
   relief.get('map', ({ user }) => reliefMap(user));
   relief.get('mine', ({ user }) => reliefMine(user));
   relief.get('watch', ({ user }) => reliefWatch(user));
+  // M148: the shelter and supply board (src/server/relief-orgs.ts).
+  relief.get('places', () => reliefPlaces());
+  relief.put<{ id: string }>('orgs/:id/status', ({ user, params, body }) => setReliefOrgStatus(user, params.id, body ?? {}));
   relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));
   relief.delete('watch', ({ user }) => clearReliefWatch(user));
   relief.post('posts', ({ user, body }) => createReliefPost(user, body ?? {}));
