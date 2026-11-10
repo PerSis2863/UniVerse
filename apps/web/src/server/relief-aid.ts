@@ -6,6 +6,7 @@ import { oneOf, type Body } from './body';
 import { notifyMany } from './email';
 import { pushService } from './services/push.service';
 import { orgRole } from './relief-orgs';
+import { publish } from './realtime';
 import { num, short } from './trace';
 
 // M151: Relief's traceable aid (the owner, 10 Nov 2026). An organisation's coordinators give each aid box
@@ -71,6 +72,9 @@ export async function stepAid(u: SessionUser, id: string, b: Body) {
   const place = short(b.place, 120) ?? (status === 'DELIVERED' ? aid.toPlace : null);
   const step = await prisma.reliefAidStep.create({ data: { aidId: id, status, place, note: short(b.note, 200), ...where(b), byName: shown(u, b) } });
   await tellFollowers(aid, status, place).catch((e) => console.error('relief aid followers failed:', e));
+  // M155: the organisation's list and any open trip page move at once for its members.
+  const members = await prisma.reliefOrgMember.findMany({ where: { orgId: aid.orgId }, select: { userId: true }, take: 200 });
+  publish(members.map((m) => m.userId), { type: 'refresh', keys: [`/relief/orgs/${aid.orgId}/aid`, '/relief/aid/*'] });
   return { ok: true, status, step };
 }
 
@@ -82,6 +86,7 @@ async function tellFollowers(aid: { id: string; code: string; contents: string; 
   const body = `${aid.contents} from ${org?.name ?? 'a Relief organisation'}: ${AID_LABEL[status].toLowerCase()}${place ? ` in ${place}` : ''}.`;
   await notifyMany(ids, { type: 'relief', title, body, link: `/aid/${aid.code}` });
   await pushService.sendToMany(ids, { title, body, url: `/aid/${aid.code}`, tag: `relief-aid-${aid.id}` }).catch(() => 0);
+  publish(ids, { type: 'refresh', keys: ['/relief/aid/*'] }); // M155: a follower's open trip page moves at once
 }
 
 async function byCode(raw: string) {

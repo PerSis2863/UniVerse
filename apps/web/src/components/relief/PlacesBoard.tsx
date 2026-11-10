@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
-import { BatteryCharging, BedDouble, Droplets, MapPin, Utensils, type LucideIcon } from 'lucide-react';
+import { BatteryCharging, BedDouble, Droplets, MapPin, Navigation, Utensils, type LucideIcon } from 'lucide-react';
 import { CardHead } from '@/components/ui/CardMenu';
 import { StatusBadge, type Tone } from '@/components/ui/StatusBadge';
 import { fetcher } from '@/lib/fetcher';
@@ -75,6 +75,8 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                 <div className="mt-auto flex items-center gap-2 pt-1">
                   <span className="text-xs text-zinc-500 dark:text-zinc-400 me-auto">{fresh === 'old' ? 'Not updated today' : `Updated ${formatDistanceToNow(new Date(p.statusAt), { addSuffix: true })}`}</span>
                   {onShow && <button type="button" onClick={() => onShow(p)} className="btn-ghost btn-sm"><MapPin className="w-3.5 h-3.5" aria-hidden />On the map</button>}
+                  {/* M155: directions in the phone's maps app, by name and town (the saved spot is rounded) */}
+                  <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([p.name, p.place].filter(Boolean).join(', '))}`} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm"><Navigation className="w-3.5 h-3.5" aria-hidden />Directions<span className="sr-only"> to {p.name} (opens a map)</span></a>
                 </div>
               </li>
             );

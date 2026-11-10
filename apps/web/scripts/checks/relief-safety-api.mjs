@@ -70,6 +70,8 @@ else {
     const coordView = (await call('GET', '/relief/incidents', COORD)).data?.incidents?.find((i) => i.id === id);
     const told = coordView?.safeContacts ?? [];
     if (told.length !== 1 || !coordView.canEnd) fail.push(`the student's view: ${JSON.stringify(coordView)}`);
+    // M155: the coordinator sees how many said they're safe; nobody else gets the number.
+    if (coordView?.safeCount !== 1) fail.push(`the coordinator's safe count: ${coordView?.safeCount}`);
     if (told.some((t) => 'email' in t || 'id' in t)) fail.push('who is safe carries ids or emails');
     if (!strangerIsContact) {
       const strangerView = (await call('GET', '/relief/incidents', STRANGER)).data?.incidents?.find((i) => i.id === id);
@@ -77,6 +79,7 @@ else {
     }
     const volView = (await call('GET', '/relief/incidents', VOL)).data?.incidents?.find((i) => i.id === id);
     if (!volView?.safeAt || volView.told !== safe.data?.told) fail.push(`the teacher's own view: ${JSON.stringify(volView)}`);
+    if (volView?.safeCount !== null) fail.push(`a volunteer sees the safe count: ${volView?.safeCount}`);
     out.push(`told ${safe.data?.told}; the student sees: ${told.map((t) => t.name).join(', ')}`);
 
     const n = await call('GET', '/notifications', COORD, null, '/api');

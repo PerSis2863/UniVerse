@@ -17,6 +17,8 @@ import { useActivePoll } from '@/lib/realtime-client';
 export interface Incident {
   id: string; title: string; place: string | null; endsAt: string; org: { id: string; name: string } | null;
   safeAt: string | null; told: number; safeContacts: { name: string; at: string }[]; canEnd: boolean;
+  /** M155: for its coordinators, how many said they're safe (never who); null for everyone else. */
+  safeCount?: number | null;
 }
 
 export function SafetyCheck({ onNeedHelp }: { onNeedHelp: () => void }) {

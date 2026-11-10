@@ -94,7 +94,7 @@ export function sampleReliefIncidents() {
       endsAt: new Date(now + 52 * 3_600_000).toISOString(), createdAt: new Date(now - 20 * 3_600_000).toISOString(),
       org: { id: 'sample-org-food', name: 'Riverside Food Bank' }, safeAt: null, told: 0,
       safeContacts: [{ name: 'Priya Sharma', at: new Date(now - 3 * 3_600_000).toISOString() }, { name: 'Tom Walker', at: new Date(now - 5 * 3_600_000).toISOString() }],
-      canEnd: true,
+      canEnd: true, safeCount: 23,
     }],
   };
 }

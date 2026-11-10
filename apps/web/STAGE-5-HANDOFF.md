@@ -5857,3 +5857,26 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Tested:** `pnpm check` (`relief.test.ts`: `firstName`); `relief-aid-api.mjs` (a position rounded to
   0.005°, packing at the base, no position when none was shared, a first name only when chosen); axe on
   the donor page (with the map), the Aid boxes tab and the step window at 390 and 1280, light and dark.
+
+## M155: upgrades for the eight features (the owner, 10 Nov 2026: "see what else you can add… upgrade all the existing features")
+
+- **Live, not waiting a minute:** `publish(ids, { type: 'refresh', keys })` (`src/server/realtime.ts`) now
+  reloads the right screen at once: the emergency banner for the helpers asked "Are you safe?" and for
+  the people told "<name> is safe" (`/relief/incidents`); an aid box's page and the organisation's box
+  list for its members and followers when it moves (`/relief/orgs/<id>/aid`, `/relief/aid/*`). The donor
+  page also refreshes itself every minute while the box is on its way (`useActivePoll`), never after.
+- **Coordinators see how many said they're safe** (a number, never who): `safeCount` on
+  `GET /relief/incidents`, only for an emergency's own coordinators (null for everyone else; checked);
+  shown on the organisation's Emergency check-in card.
+- **Share:** "Share" on the donor page and "Share the link" on the box label (`shareLink` in
+  `src/lib/share-link.ts`: the phone's share sheet, else copy; cancelling isn't an error).
+- **Directions** on every place in "Places to go": opens the phone's maps app searching the place's
+  name and town (the saved spot is rounded, so the name finds the real door).
+- **Trace: brands hear about fake-label reports at once** (`reportFake`, M147): "A copy of <product>
+  was reported" to the brand's team (in the app, by email per their setting), at most 5 an hour, never
+  who reported.
+- **Checks made rerunnable:** `trace-fakes-api.mjs` uses a new shop name each run.
+- **Tested:** `pnpm check`; `relief-safety-api.mjs` (the coordinator's count, null for a volunteer),
+  `trace-fakes-api.mjs` (the brand's notice, no reporter), `relief-aid-api.mjs`, `relief-places-api.mjs`;
+  axe on the banner, the org card, the donor page, the Aid tab and "Places to go" at 390 and 1280, light
+  and dark.

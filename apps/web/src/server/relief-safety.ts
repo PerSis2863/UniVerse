@@ -7,6 +7,7 @@ import { later, notifyMany } from './email';
 import { textEmergency } from './relief-sms';
 import { pushService } from './services/push.service';
 import { orgRole } from './relief-orgs';
+import { publish } from './realtime';
 import { num, short } from './trace';
 
 // M150: Relief's "I'm safe" check-in (the owner, 10 Nov 2026). An organisation's coordinators declare an
@@ -53,6 +54,9 @@ export async function reliefIncidents(u: SessionUser) {
     prisma.reliefSafeTold.groupBy({ by: ['incidentId'], where: { userId: u.id, incidentId: { in: ids } }, _count: { _all: true } }),
     prisma.reliefOrgMember.findMany({ where: { userId: u.id, orgId: { in: [...new Set(list.map((i) => i.orgId))] }, role: { in: ['OWNER', 'COORDINATOR'] } }, select: { orgId: true } }),
   ]);
+  // M155: for the coordinators of an emergency, how many said they're safe (a number, never who).
+  const runIds = list.filter((i) => runs.some((r) => r.orgId === i.orgId)).map((i) => i.id);
+  const safeCounts = runIds.length ? await prisma.reliefSafe.groupBy({ by: ['incidentId'], where: { incidentId: { in: runIds } }, _count: { _all: true } }) : [];
   const people = toldMe.length ? await prisma.user.findMany({ where: { id: { in: [...new Set(toldMe.map((t) => t.userId))] } }, select: { id: true, name: true } }) : [];
   const name = (id: string) => people.find((p) => p.id === id)?.name ?? 'Someone';
   return {
@@ -63,6 +67,7 @@ export async function reliefIncidents(u: SessionUser) {
       told: myTold.find((t) => t.incidentId === i.id)?._count._all ?? 0,
       safeContacts: toldMe.filter((t) => t.incidentId === i.id).map((t) => ({ name: name(t.userId), at: t.createdAt })),
       canEnd: runs.some((r) => r.orgId === i.orgId),
+      safeCount: runIds.includes(i.id) ? (safeCounts.find((c) => c.incidentId === i.id)?._count._all ?? 0) : null,
     })),
   };
 }
@@ -99,6 +104,7 @@ async function askNearby(i: { id: string; title: string; lat: number; lng: numbe
   const n = { title: `Emergency near you: ${i.title}`, body: 'Are you safe? Tell the people close to you in one tap, or ask for help, on Relief.', link: '/relief', tag: `relief-incident-${i.id}` };
   await notifyMany(ids, { type: 'relief', title: n.title, body: n.body, link: n.link, urgent: true });
   await pushService.sendToMany(ids, { title: n.title, body: n.body, url: n.link, tag: n.tag }).catch(() => 0);
+  publish(ids, { type: 'refresh', keys: ['/relief/incidents'] }); // M155: the banner shows at once for those open
   // M153: a text too for the ones who asked, when the owner has emergency texts on (after the answer).
   later(() => textEmergency(i, ids));
 }
@@ -130,6 +136,7 @@ export async function markSafe(u: SessionUser, id: string, b: Body) {
     const n = { title: `${u.name} is safe`, body: `${u.name} told you they’re safe during “${i.title}”.`, link: '/relief' };
     await notifyMany(fresh, { type: 'relief', ...n, urgent: true });
     await pushService.sendToMany(fresh, { title: n.title, body: n.body, url: n.link, tag: `relief-safe-${id}-${u.id}` }).catch(() => 0);
+    publish(fresh, { type: 'refresh', keys: ['/relief/incidents'] }); // M155: "<name> told you they're safe", live
   }
   return { ok: true, told: already.size + fresh.length };
 }

@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Bell, BellOff, Check, Loader2, MapPin, Package, PackageCheck, Truck, Users } from 'lucide-react';
+import { Bell, BellOff, Check, Loader2, MapPin, Package, PackageCheck, Share2, Truck, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { LogoMark } from '@/components/ui/LogoMark';
 import { usePathParams } from '@/hooks/usePathParams';
@@ -13,6 +13,8 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { AID_LABEL, AID_STEPS, RELIEF_ORG_KIND_LABEL, type AidStep, type AidTrip } from '@/lib/relief';
 import { useAuthStore } from '@/store/auth';
+import { useActivePoll } from '@/lib/realtime-client';
+import { shareLink } from '@/lib/share-link';
 import { cn } from '@/lib/utils';
 
 // M151: an aid box's trip, for donors (public: the code in the link or on the box's QR label). What is
@@ -27,7 +29,9 @@ const AidMap = dynamic(() => import('@/components/relief/AidMap'), { ssr: false,
 
 export default function View() {
   const code = usePathParams('/aid/[code]')?.code;
-  const { data, error } = useSWR<AidTrip>(code ? `/relief/aid/${encodeURIComponent(code)}` : null, fetcher, { shouldRetryOnError: false });
+  // M155: while it's on its way, the page keeps up by itself (and at once for members and followers).
+  const poll = useActivePoll(60_000);
+  const { data, error } = useSWR<AidTrip>(code ? `/relief/aid/${encodeURIComponent(code)}` : null, fetcher, { shouldRetryOnError: false, refreshInterval: (d) => (d && d.status !== 'DELIVERED' ? poll : 0) });
   return (
     <main className="min-h-[100dvh] px-4 py-8 sm:py-14 overflow-x-hidden" style={{ backgroundColor: 'var(--background)' }}>
       <div className="max-w-xl mx-auto">
@@ -134,6 +138,7 @@ function Follow({ code, followers, delivered, demo }: { code: string; followers:
   };
   return (
     <section className="card mt-4 flex flex-wrap items-center gap-3" aria-label="Follow this box">
+      <ShareButton code={code} />
       <p className="me-auto text-sm text-zinc-700 dark:text-zinc-200 flex items-center gap-2"><Users className="w-4 h-4 text-zinc-500 dark:text-zinc-400" aria-hidden />{count === 1 ? '1 person follows this box' : `${count} people follow this box`}</p>
       {delivered ? <span className="text-sm text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5"><Check className="w-4 h-4" aria-hidden />It arrived</span>
         : demo ? <span className="text-sm text-zinc-600 dark:text-zinc-300">This is a sample box.</span>
@@ -141,4 +146,15 @@ function Follow({ code, followers, delivered, demo }: { code: string; followers:
         : <button type="button" onClick={() => void toggle()} disabled={busy || !data} className={data?.following ? 'btn-secondary btn-sm' : 'btn-primary btn-sm'}>{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : data?.following ? <BellOff className="w-4 h-4" aria-hidden /> : <Bell className="w-4 h-4" aria-hidden />}{data?.following ? 'Stop following' : 'Follow this box'}</button>}
     </section>
   );
+}
+
+/** M155: share the box's page (the phone's share sheet, or copy the link). */
+function ShareButton({ code }: { code: string }) {
+  const [copied, setCopied] = useState(false);
+  const share = async () => {
+    const r = await shareLink('Follow this aid box', `${window.location.origin}/aid/${code}`);
+    if (r === 'copied') { setCopied(true); setTimeout(() => setCopied(false), 1600); }
+    if (r === 'failed') toast.error('Could not share it. Copy the address from the browser.');
+  };
+  return <button type="button" onClick={() => void share()} className="btn-secondary btn-sm order-last sm:order-none">{copied ? <Check className="w-4 h-4" aria-hidden /> : <Share2 className="w-4 h-4" aria-hidden />}{copied ? 'Link copied' : 'Share'}</button>;
 }

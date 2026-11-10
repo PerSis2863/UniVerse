@@ -6,6 +6,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 import { oneOf, str, type Body } from './body';
 import { brandOf, cfPosition, idOf, num, ownBatch, short } from './trace';
 import { takeBackView } from './trace-takeback';
+import { notifyMany } from './email';
 
 // UniVerse Trace, the second wave (migration 0179). On the passport: recalls the brand issued for the
 // batch, a blocked (stolen) batch, an instant win on the first check, warranty registration, buyer
@@ -277,6 +278,15 @@ export async function reportFake(raw: string, user: SessionUser, body: Body, req
     },
   }).catch(() => null);
   if (!saved) throw new BadRequestException('You’ve already reported this one. Thank you!');
+  // M155: the brand's team hears at once (never who reported), at most 5 times an hour; the rest wait on the Radar.
+  const lately = await prisma.traceFakeReport.count({ where: { brandId: code.brandId, createdAt: { gt: new Date(Date.now() - 3_600_000) } } });
+  if (lately <= 5) {
+    const [team, product] = await Promise.all([
+      prisma.traceBrandMember.findMany({ where: { brandId: code.brandId }, select: { userId: true }, take: 20 }),
+      code.productId ? prisma.traceProduct.findUnique({ where: { id: code.productId }, select: { name: true } }) : null,
+    ]);
+    await notifyMany(team.map((m) => m.userId), { type: 'trace', title: `A copy of ${product?.name ?? 'your product'} was reported`, body: `Someone bought a likely copy at “${shop}”${saved.area ? ` (${saved.area})` : ''}. See where copies are sold on your Radar.`, link: '/trace/radar' });
+  }
   return { ok: true };
 }
 

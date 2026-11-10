@@ -14,6 +14,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { AID_LABEL, firstName, type AidStep } from '@/lib/relief';
 import { useAuthStore } from '@/store/auth';
+import { shareLink } from '@/lib/share-link';
 
 // M151: an organisation's aid boxes. Coordinators pack one (what's in it, how many, where it goes) and
 // get a code with a QR label; any member logs it on the way (with the town) and delivered. Donors follow
@@ -115,14 +116,15 @@ function PackForm({ orgId, place, onDone }: { orgId: string; place: string | nul
 function LabelSheet({ box, onClose }: { box: AidBox; onClose: () => void }) {
   const [copied, setCopied] = useState(false);
   const copy = async () => {
-    try { await navigator.clipboard.writeText(link(box.code)); setCopied(true); setTimeout(() => setCopied(false), 1600); }
-    catch { toast.error('Could not copy. Select the link and copy it.'); }
+    const r = await shareLink(`Follow our aid box: ${box.contents}`, link(box.code));
+    if (r === 'copied') { setCopied(true); setTimeout(() => setCopied(false), 1600); }
+    if (r === 'failed') toast.error('Could not copy. Select the link and copy it.');
   };
   return (
     <Sheet title="Box label" onClose={onClose} footer={
       <div className="flex flex-wrap items-center gap-2">
         <Link href={`/aid/${box.code}`} className="btn-ghost btn-sm me-auto"><Eye className="w-4 h-4" aria-hidden />What donors see</Link>
-        <button type="button" onClick={() => void copy()} className="btn-secondary btn-sm">{copied ? <Check className="w-4 h-4" aria-hidden /> : <Copy className="w-4 h-4" aria-hidden />}{copied ? 'Copied' : 'Copy the link'}</button>
+        <button type="button" onClick={() => void copy()} className="btn-secondary btn-sm">{copied ? <Check className="w-4 h-4" aria-hidden /> : <Copy className="w-4 h-4" aria-hidden />}{copied ? 'Copied' : 'Share the link'}</button>
         <button type="button" onClick={() => window.print()} className="btn-primary btn-sm"><Printer className="w-4 h-4" aria-hidden />Print</button>
       </div>
     }>

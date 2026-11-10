@@ -147,7 +147,8 @@ function Emergency({ d }: { d: OrgData }) {
         <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.07]">
           {mine.map((i) => (
             <li key={i.id} className="flex flex-wrap items-center gap-3 py-2.5">
-              <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white"><b translate="no">{i.title}</b><span className="text-zinc-500 dark:text-zinc-400"> · until {new Date(i.endsAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span></span>
+              <span className="min-w-0 flex-1 text-sm text-zinc-900 dark:text-white"><b translate="no">{i.title}</b><span className="text-zinc-500 dark:text-zinc-400"> · until {new Date(i.endsAt).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                {i.safeCount != null && <span className="block text-xs text-emerald-800 dark:text-emerald-300"><span className="tabular-nums font-semibold">{i.safeCount}</span> {i.safeCount === 1 ? 'person has' : 'people have'} said they’re safe</span>}</span>
               <button type="button" onClick={() => void end(i.id)} disabled={busy === i.id} className="btn-secondary btn-sm">{busy === i.id && <Loader2 className="w-4 h-4 animate-spin" />}End it</button>
             </li>
           ))}

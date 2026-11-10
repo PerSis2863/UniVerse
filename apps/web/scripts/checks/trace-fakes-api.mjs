@@ -11,6 +11,7 @@ const call = async (method, path, who, body) => {
   return { status: r.status, data: await r.json().catch(() => null) };
 };
 const BRAND = 'demo@student.com', BUYER = 'alice@student.com';
+const SHOP = `Bargain Perfumes ${Date.now()}`; // a new shop each run, so runs don't add up
 await call('POST', '/trace/brand', BRAND, { name: 'Check Outdoor Co' });
 const product = await call('POST', '/trace/products', BRAND, { name: `Perfume ${Date.now()}`, category: 'Beauty', rewardPoints: 0 });
 const batch = await call('POST', `/trace/products/${product.data?.id}/batches`, BRAND, { label: 'Fakes check', quantity: 2 });
@@ -29,15 +30,20 @@ else {
   if (anon.status !== 401) fail.push(`signed out: ${anon.status}`);
   const empty = await call('POST', `/trace/scan/${copied}/report`, BUYER, { shop: ' ' });
   if (empty.status !== 400) fail.push(`no shop: ${empty.status}`);
-  const sent = await call('POST', `/trace/scan/${copied}/report`, BUYER, { shop: 'Bargain Perfumes', area: 'Sydney', price: '$12', lat: -33.8612, lng: 151.2099 });
+  const sent = await call('POST', `/trace/scan/${copied}/report`, BUYER, { shop: SHOP, area: 'Sydney', price: '$12', lat: -33.8612, lng: 151.2099 });
   if (!sent.data?.ok) fail.push(`report: ${sent.status} ${JSON.stringify(sent.data)}`);
-  const again = await call('POST', `/trace/scan/${copied}/report`, BUYER, { shop: 'Bargain Perfumes' });
+  const again = await call('POST', `/trace/scan/${copied}/report`, BUYER, { shop: SHOP });
   if (again.status !== 400) fail.push(`reporting twice: ${again.status}`);
   const radar = await call('GET', '/trace/radar', BRAND);
-  const row = (radar.data?.copiesSold ?? []).find((c) => c.shop === 'Bargain Perfumes');
+  const row = (radar.data?.copiesSold ?? []).find((c) => c.shop === SHOP);
   if (!row || row.reports !== 1 || row.area !== 'Sydney') fail.push(`radar: ${JSON.stringify(radar.data?.copiesSold)}`);
   if (JSON.stringify(radar.data).includes('alice')) fail.push('the radar names the reporter');
   out.push(`radar: ${row ? `${row.shop}, ${row.area}, ${row.reports} report` : 'missing'}`);
+  // M155: the brand's team hears about it at once, without who reported it.
+  const n = await (await fetch(base.replace(/\/core$/, '') + '/notifications', { headers: { Authorization: `Bearer mock-token-${BRAND}` } })).json().catch(() => null);
+  const notes = (Array.isArray(n) ? n : n?.notifications ?? n?.items ?? []).filter((x) => /was reported$/.test(x.title ?? '') && (x.body ?? '').includes(SHOP));
+  if (!notes.length) fail.push('the brand was not told about the report');
+  if (notes.some((x) => /alice/i.test(`${x.title} ${x.body}`))) fail.push('the notice names the reporter');
 }
 console.log(JSON.stringify({ out, fail }, null, 2));
 process.exit(fail.length ? 1 : 0);
