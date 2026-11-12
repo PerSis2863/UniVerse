@@ -30,9 +30,16 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
   }
 }
 
-/** Same check as getSessionUser, for server actions (which receive the token as an argument). */
-export async function getUserFromToken(token: string | null | undefined): Promise<SessionUser | null> {
+/**
+ * Same check as getSessionUser, for server actions (which receive the token as an argument). `pass`
+ * is an admin's two-step pass (twoStepPass() in the browser): an action's request doesn't carry the
+ * app's headers, so without it every admin was refused once two-step sign-in was on. `write`: the
+ * action changes something, so the read-only demo admin is refused like on any other write.
+ */
+export async function getUserFromToken(token: string | null | undefined, pass?: string | null, write = false): Promise<SessionUser | null> {
   // Server actions change things: never for the owner's read-only "view as".
   if (!token || isViewAsToken(token)) return null;
-  return getSessionUser(new Request('http://internal', { headers: { authorization: `Bearer ${token}` } }));
+  const headers: Record<string, string> = { authorization: `Bearer ${token}` };
+  if (pass) headers['x-uv-pass'] = pass;
+  return getSessionUser(new Request('http://internal', { method: write ? 'POST' : 'GET', headers }));
 }

@@ -268,7 +268,7 @@ export function LectureRevisionReels({
         <div className="flex rounded-xl bg-slate-100 p-1 dark:bg-slate-800">
           <button
             onClick={() => { setActiveTab('reels'); setIsPlaying(true); }}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === 'reels'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -279,7 +279,7 @@ export function LectureRevisionReels({
           </button>
           <button
             onClick={() => setActiveTab('recap')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === 'recap'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -290,7 +290,7 @@ export function LectureRevisionReels({
           </button>
           <button
             onClick={() => setActiveTab('mindmap')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === 'mindmap'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -301,7 +301,7 @@ export function LectureRevisionReels({
           </button>
           <button
             onClick={() => setActiveTab('quiz')}
-            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition-all ${
+            className={`flex items-center gap-2 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
               activeTab === 'quiz'
                 ? 'bg-white text-indigo-600 shadow-sm dark:bg-slate-900 dark:text-indigo-400'
                 : 'text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-white'
@@ -318,7 +318,7 @@ export function LectureRevisionReels({
         <div className="flex flex-col items-center justify-center">
           {/* Vertical Container (Mobile Dimensions Styled Centered) */}
           <div
-            className="relative flex h-[620px] w-full max-w-[380px] flex-col justify-between overflow-hidden rounded-3xl shadow-2xl transition-all"
+            className="relative flex h-[620px] w-full max-w-[380px] flex-col justify-between overflow-hidden rounded-3xl shadow-2xl transition"
             style={{ background: activeReel.gradient }}
           >
             {/* Top Overlay: Story Progress Bars */}
@@ -334,7 +334,7 @@ export function LectureRevisionReels({
                   }}
                 >
                   <div
-                    className="h-full bg-white transition-all duration-100 ease-linear"
+                    className="h-full bg-white transition-[width] duration-100 ease-linear"
                     style={{
                       width:
                         idx < activeReelIdx
@@ -468,7 +468,7 @@ export function LectureRevisionReels({
                   setProgress(0);
                   setIsPlaying(true);
                 }}
-                className={`flex-1 rounded-xl p-2 text-start transition-all ${
+                className={`flex-1 rounded-xl p-2 text-start transition ${
                   activeReelIdx === idx
                     ? 'ring-2 ring-indigo-500 bg-indigo-50 dark:bg-indigo-950/40'
                     : 'bg-white hover:bg-slate-50 dark:bg-slate-800'
@@ -502,7 +502,7 @@ export function LectureRevisionReels({
             <div className="mt-6 flex items-center gap-4">
               <button
                 onClick={toggleAudioRecapSpeech}
-                className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition-all hover:bg-indigo-700 active:scale-95"
+                className="flex items-center gap-2 rounded-2xl bg-indigo-600 px-6 py-3 font-semibold text-white shadow-lg shadow-indigo-500/25 transition hover:bg-indigo-700 active:scale-95"
               >
                 {audioPlaying ? (
                   <>
@@ -593,7 +593,7 @@ export function LectureRevisionReels({
                   <div
                     key={branch.id}
                     onClick={() => setSelectedNode(branch)}
-                    className={`cursor-pointer rounded-2xl border p-4 transition-all ${
+                    className={`cursor-pointer rounded-2xl border p-4 transition ${
                       selectedNode?.id === branch.id
                         ? 'border-indigo-500 bg-indigo-50/50 shadow-md ring-2 ring-indigo-500/20 dark:bg-indigo-950/30'
                         : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900'
@@ -702,7 +702,7 @@ export function LectureRevisionReels({
                           key={optIdx}
                           disabled={isSubmitted}
                           onClick={() => handleAnswerSelect(q.id, optIdx)}
-                          className={`rounded-xl border p-3 text-start text-xs transition-all ${btnStyle}`}
+                          className={`rounded-xl border p-3 text-start text-xs transition ${btnStyle}`}
                         >
                           <span className="me-2 font-bold opacity-60">
                             {String.fromCharCode(65 + optIdx)}.

@@ -86,11 +86,11 @@ function MyScoreCard({ entry, levelInfo }: { entry: LeaderboardEntry | null; lev
           </div>
         </div>
         <div className="flex gap-2">
-          <button onClick={shareTwitter} className="flex items-center gap-1.5 text-xs bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20 px-3 py-2 rounded-xl transition-all font-semibold">
+          <button onClick={shareTwitter} className="flex items-center gap-1.5 text-xs bg-sky-500/10 border border-sky-500/20 text-sky-700 dark:text-sky-400 hover:bg-sky-500/20 px-3 py-2 rounded-xl transition font-semibold">
             <TwitterIcon className="w-3.5 h-3.5" /> Share
           </button>
           <button aria-label="Copy link" onClick={() => { navigator.clipboard.writeText(`I'm Level ${info.current.level} "${info.current.title}" on UniVerse Impact! 🌍`); toast.success('Copied!'); }}
-            className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white px-3 py-2 rounded-xl transition-all">
+            className="flex items-center gap-1.5 text-xs bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-white px-3 py-2 rounded-xl transition">
             <Copy className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -297,7 +297,7 @@ export default function LeaderboardPage() {
             <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 hide-scrollbar">
               {timeframes.map(t => (
                 <button key={t} onClick={() => setTimeframe(t)}
-                  className={cn('relative isolate px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-all',
+                  className={cn('relative isolate px-4 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition',
                     timeframe === t ? 'text-white' : 'bg-white dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-50 dark:hover:bg-zinc-800/50')}>{timeframe === t && <TabPill id="dent-impact-leaderboard-page-0" />}
                   {t}
                 </button>

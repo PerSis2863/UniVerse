@@ -65,7 +65,7 @@ export function ThemeToggle() {
                   <button
                     key={t}
                     onClick={(e) => handleSet(t, e)}
-                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition-all"
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-lg transition"
                     style={{
                       background: theme === t ? 'rgba(39,39,42,0.12)' : 'transparent',
                       color: theme === t ? 'var(--sidebar-item-active-color)' : 'var(--text-secondary)',

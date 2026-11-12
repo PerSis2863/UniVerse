@@ -26,7 +26,7 @@ export function OralRoom({ oral, onBack }: { oral: OralSession; onBack: () => vo
         <h2 id="oral-live-title" className="font-semibold text-zinc-900 dark:text-white">{info?.topic || 'With the AI examiner'}</h2>
         {info?.attempt && phase === 'live' && <p className="mt-1 text-xs font-semibold text-rose-700 dark:text-rose-300 inline-flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse" aria-hidden /> Recording for your teacher</p>}
       </div>
-      <div className={cn('w-24 h-24 mx-auto rounded-full flex items-center justify-center transition-all', phase === 'live' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow-xl shadow-fuchsia-500/30' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500', speaking && 'scale-110')}>
+      <div className={cn('w-24 h-24 mx-auto rounded-full flex items-center justify-center transition', phase === 'live' ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white shadow-xl shadow-fuchsia-500/30' : 'bg-zinc-100 dark:bg-white/[0.06] text-zinc-500', speaking && 'scale-110')}>
         {phase !== 'live' ? <Loader2 className="w-9 h-9 animate-spin" /> : speaking ? <Volume2 className="w-9 h-9" /> : <Mic className="w-9 h-9" />}
       </div>
       <p className="text-sm text-zinc-700 dark:text-zinc-300" role="status">

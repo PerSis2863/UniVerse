@@ -112,7 +112,7 @@ function Flexbox() {
       </div>
       <div className="flex flex-wrap items-end gap-3"><Field label={`Gap: ${s.gap}px`}><input type="range" min={0} max={40} value={s.gap} onChange={(e) => setS({ ...s, gap: +e.target.value })} className="accent-pink-500" /></Field><div className="flex items-center gap-1"><Btn onClick={() => setS({ ...s, n: Math.max(1, s.n - 1) })}><Minus className="w-3.5 h-3.5" aria-hidden /><span className="sr-only">One box fewer</span></Btn><span className="font-mono tabular-nums text-zinc-900 dark:text-white">{s.n}</span><Btn onClick={() => setS({ ...s, n: Math.min(14, s.n + 1) })}><Plus className="w-3.5 h-3.5" aria-hidden /><span className="sr-only">One more box</span></Btn></div></div>
       <div className="h-64 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] ring-1 ring-zinc-200 dark:ring-white/10 p-3 overflow-hidden" style={{ display: 'flex', flexDirection: s.dir as React.CSSProperties['flexDirection'], flexWrap: s.wrap as React.CSSProperties['flexWrap'], justifyContent: s.justify, alignItems: s.align, gap: s.gap }} role="img" aria-label="Flexbox preview">
-        {Array.from({ length: s.n }, (_, i) => <div key={i} className="grid place-items-center rounded-lg bg-pink-500 font-bold text-[#111113] transition-all duration-300" style={{ minWidth: 48 + (i % 3) * 16, minHeight: 40 + (i % 2) * 18 }}>{i + 1}</div>)}
+        {Array.from({ length: s.n }, (_, i) => <div key={i} className="grid place-items-center rounded-lg bg-pink-500 font-bold text-[#111113] transition duration-300" style={{ minWidth: 48 + (i % 3) * 16, minHeight: 40 + (i % 2) * 18 }}>{i + 1}</div>)}
       </div>
       <pre className="rounded-xl bg-zinc-950 p-3 text-xs text-zinc-100">{css}</pre>
       <CopyBtn text={css} label="Copy the CSS" />

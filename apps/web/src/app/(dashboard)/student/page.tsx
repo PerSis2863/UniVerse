@@ -168,7 +168,7 @@ export default function StudentDashboard() {
             </Link>
             <Link
               href="/student/impact/dashboard"
-              className="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-1.5 transition-all"
+              className="flex-1 md:flex-none px-4 py-2 rounded-xl text-xs font-semibold bg-white dark:bg-zinc-900/80 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700 flex items-center justify-center gap-1.5 transition"
             >
               {t('dashboard.ledger')}
             </Link>

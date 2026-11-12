@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { CAMPUS_KINDS, cleanCampusItem } from '@/lib/campus';
+import { keepInSchool } from '@/server/school-scope';
 
 // GET ?kind=SERVICE|LINK|EVENT|MENU — campus info for any signed-in user (events: upcoming first).
-// Admins also get `createdBy` (name, email, role) and can pass ?past=1 to include past events.
+// Admins also get `createdBy` (name, email, role; their own school's people) and can pass ?past=1 to include past events.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -21,8 +22,9 @@ export async function GET(req: Request) {
   });
   if (!isAdmin) return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } });
 
-  // Admins also see who added each item (one extra query for all creators).
-  const creatorIds = [...new Set(items.map((i) => i.createdById).filter((id): id is string => !!id))];
+  // Admins also see who added each item (one extra query for all creators): only their own school's
+  // people (another school's admin stays a name-less entry, M129).
+  const creatorIds = await keepInSchool(user, [...new Set(items.map((i) => i.createdById).filter((id): id is string => !!id))]);
   // (D1 allows ~100 bound values per query, so ids go in chunks of 90.)
   const chunks: string[][] = [];
   for (let i = 0; i < creatorIds.length; i += 90) chunks.push(creatorIds.slice(i, i + 90));

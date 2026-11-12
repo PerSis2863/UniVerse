@@ -59,7 +59,7 @@ export default function CoursesPage() {
               <div key={course.id} className="relative">
                 <Link href={`/student/blackboard?course=${course.id}`}
                   onClick={(e) => { if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return; e.preventDefault(); navigateWithTransition(router, `/student/blackboard?course=${course.id}`); }}
-                  className="group block h-full rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-6 hover:border-indigo-500/40 hover:shadow-lg transition-all">
+                  className="group block h-full rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-6 hover:border-indigo-500/40 hover:shadow-lg transition">
                   <div className="flex items-start justify-between mb-5">
                     <div className="w-12 h-12 rounded-xl flex items-center justify-center text-white font-bold text-sm" style={{ background: courseShade(mine[course.code] ?? course.color, course.code), viewTransitionName: vtName('course', course.id) }}>{course.code.slice(-3)}</div>
                     <span className="text-xs font-mono text-zinc-500">{course.code} · {course.credits} cr</span>

@@ -54,7 +54,7 @@ export function BlogList() {
                     <p className="text-xs text-zinc-400">{postDate(p.publishedAt)} · {p.minutes} min read{p.authorName ? ` · ${p.authorName}` : ''}</p>
                     <h2 className="mt-1.5 text-lg sm:text-xl font-bold text-white break-words">{p.title}</h2>
                     {p.summary && <p className="mt-1.5 text-sm text-zinc-300 line-clamp-3">{p.summary}</p>}
-                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-indigo-300 group-hover:gap-2 transition-all">Read<span className="sr-only">: {p.title}</span><ArrowRight className="w-4 h-4" aria-hidden /></span>
+                    <span className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-indigo-300 group-hover:gap-2 transition-[gap]">Read<span className="sr-only">: {p.title}</span><ArrowRight className="w-4 h-4" aria-hidden /></span>
                   </div>
                   {p.coverUrl && i !== 0 && <Photo src={p.coverUrl} shown={112} loading="lazy" className="hidden sm:block w-28 h-28 rounded-xl object-cover shrink-0" />}
                 </div>

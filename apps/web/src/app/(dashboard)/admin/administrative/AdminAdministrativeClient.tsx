@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import { openPrivateFile } from '@/lib/private-file';
 import Link from '@/components/ui/Link';
 import { api } from '@/lib/api';
-import { getAuthToken } from '@/lib/auth-token';
+import { getAuthToken, twoStepPass } from '@/lib/auth-token';
 import { isSampleMode } from '@/lib/sample-mode';
 import { safeHref } from '@/lib/safe-href';
 import { useAuthStore } from '@/store/auth';
@@ -81,7 +81,7 @@ async function loadAll() {
   let payments: Payment[] = [];
   let paymentsError: string | null = null;
   try {
-    payments = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken())) as Payment[];
+    payments = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken(), twoStepPass())) as Payment[];
   } catch {
     paymentsError = 'Could not load payments.';
   }

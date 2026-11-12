@@ -196,7 +196,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
         <div className="glass-bar border-b border-zinc-200/70 dark:border-white/[0.06] px-4 sm:px-8 py-3 flex gap-2 overflow-x-auto scrollbar-none">
           {courses.map((c) => (
             <button key={c.id} onClick={() => { setCourseId(c.id); setThreadId(null); }}
-              className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition-all',
+              className={cn('flex items-center gap-2 px-4 py-2 rounded-xl text-sm whitespace-nowrap border transition',
                 courseId === c.id ? 'text-white border-transparent shadow-lg' : 'bg-white/60 dark:bg-white/[0.04] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-indigo-400/40')}
               style={courseId === c.id ? { background: courseShade(c.color, c.code) } : undefined}>
               <span className="font-bold">{c.code}</span>

@@ -5208,3 +5208,50 @@ nine zones (knot, outside the bend, inside the C, both arms, top right, bottom, 
   page (local dev server) at 1440 × 900 2× and 390 × 844 3×.
 - **Left:** the hero layout is UniVerse's own, so the bend sits beside our words (0.345 of the width), not
   the template's (0.31).
+
+
+## M129: a sweep for problems: security, live errors, motion (the owner, 12 Nov 2026)
+
+The owner: "analysis the project and make new things and enchance the security … make everything eltra
+smooth … find any errors or bugs". New things are paused until 5 Dec (said once); the rest was done.
+
+- **Server Actions are outside the route test (M114).** `src/app/actions/transaction.ts` (the only
+  `'use server'` file) let any school's admin list the last 500 payments of every school with names,
+  emails and phones, and record a payment against anyone's account. Now `peopleWhere(caller)` on both.
+  **Rule:** a new Server Action checks who is asking and their school itself; nothing tests it for you.
+- **Two-step sign-in and Server Actions:** an action's request doesn't carry the app's `X-UV-Pass`
+  header, so `getUserFromToken` refused every real admin once two-step is on (`SESSION_SECRET` +
+  `RESEND_API_KEY`): Finances and Administrative would have gone empty. `getUserFromToken(token, pass,
+  write)`: the screens pass `twoStepPass()`; `write` makes the request a POST so the read-only demo admin
+  is refused (it could record payments before).
+- **`madeInSchool(user, makerId)`** (`school-scope.ts`): for records with no school of their own, the
+  maker's school decides (nobody named: the main school). Used for deleting a group's message as a school
+  admin, editing or deleting campus info, an event's check-in code, and the creator details in the campus
+  list (`keepInSchool`). **Left:** campus info itself is still one list for every school (no
+  `organizationId` on `campus_items`): a database change, when a second school really joins.
+- **Stray posts to pages** (`pageRequestOk` in `cloudflare/page-match.ts`, used in `worker.ts`): a page
+  takes GET, HEAD and a POST with `Next-Action` (a Server Action); anything else gets 405 before Next.js
+  starts. The live report of 10 Nov ("No boundary string in Content-Type header", a 500 on `/`) was a
+  bot's broken upload form; reproduced on the local Worker, now 405. **Trap:** a form that posts to a
+  page (`<form action={serverAction}>` without JavaScript) would be refused: the app has none; keep
+  calling actions as functions.
+- **The blank-page guard** (`recovery-script.ts`): a stylesheet whose rules can't be read (the page shown
+  through a translation or archive site; Firefox while a sheet still loads) counted as "styles came from
+  elsewhere" and reloaded the page, ending on the Reload screen (the 7 Nov report). Not proof of anything:
+  now the text check decides.
+- **Motion:** all 108 `transition-all` are `transition` (colours, shadow, opacity, transform) or the
+  property that changes (`transition-[width]` for progress bars, `[top,left,width,height]` for the tour's
+  spotlight, `[stroke-width]`, `[gap]`, `[height,background-color]`). `src/lib/motion-rules.test.ts` fails
+  a new one. Buttons, sheets and page changes were already within the §8 rules; nothing else changed.
+- **Looked at, left alone:** the other live reports are sample data (`smp…` ids) or already fixed
+  (M58, M73); the importScripts report of 7 Nov is an old tab after a deploy (the recovery script reloads
+  it). Library advisories (6: glob, minimatch, serialize-javascript, deepmerge) are all in build tools,
+  none reaches the browser or the Worker; no safe pinned release without a major jump, so not changed.
+  Raw SQL: all values bound. Admin modules in `src/server/modules`: scoped (F2).
+- **Tested:** `pnpm check`; new unit tests (school-scope, page-routes, motion-rules); the local Worker:
+  broken upload POST `/` 405 (was 500), GET 200, a `Next-Action` POST reaches Next.js; `scripts/crawl.mjs`
+  on the built site, 208 pages as student, teacher, admin and parent: 201 clean, the rest expected (Trace
+  pages asked by an account with no brand: 403; this machine's network).
+- **[owner]:** in the console → Errors, mark resolved: the 10 Nov "POST failed … boundary", the two
+  "Blank page: styles came from elsewhere", the importScripts one, and the old `/api/core/owner/people`.
+

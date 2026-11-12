@@ -98,7 +98,7 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
                   onClick={() => onSelect(id)}
                   disabled={isCurrent || loadingPlan != null}
                   className={cn(
-                    'mt-8 w-full h-12 rounded-full font-bold text-sm transition-all inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed',
+                    'mt-8 w-full h-12 rounded-full font-bold text-sm transition inline-flex items-center justify-center gap-2 disabled:cursor-not-allowed',
                     isCurrent
                       ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/30'
                       : plan.highlight

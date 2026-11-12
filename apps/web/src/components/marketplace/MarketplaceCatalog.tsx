@@ -631,7 +631,7 @@ export function MarketplaceCatalog() {
               {packs.map((pack) => (
                 <div
                   key={pack.id}
-                  className="group flex flex-col justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-800/60 transition-all"
+                  className="group flex flex-col justify-between rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm hover:shadow-md hover:border-indigo-300 dark:hover:border-indigo-800/60 transition"
                 >
                   <div className="space-y-3">
                     {/* Header Tags */}

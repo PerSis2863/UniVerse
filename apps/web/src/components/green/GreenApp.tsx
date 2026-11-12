@@ -159,7 +159,7 @@ export function GreenApp() {
           <h2 id="log-h" className="font-bold text-zinc-900 dark:text-white">Log an action</h2>
           <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label="What you did">
             {GREEN_KINDS.map((k) => { const I = GREEN_ICON[k]; return (
-              <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn('flex flex-col items-center gap-1 rounded-2xl border py-3 text-[11px] font-semibold transition-all active:scale-95', kind === k ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 shadow-[0_6px_20px_-10px_#10b981]' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn('flex flex-col items-center gap-1 rounded-2xl border py-3 text-[11px] font-semibold transition active:scale-95', kind === k ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 shadow-[0_6px_20px_-10px_#10b981]' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
                 <I className="w-5 h-5" aria-hidden /><span className="text-center leading-tight px-1">{GREEN_FACTORS[k].label.split(' ').slice(0, 2).join(' ')}</span>
               </button>
             ); })}

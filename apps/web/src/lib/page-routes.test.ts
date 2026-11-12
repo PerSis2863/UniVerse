@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { PAGE_ROUTES } from '../../cloudflare/page-routes.gen';
-import { isBuiltPage, pageFor } from '../../cloudflare/page-match';
+import { isBuiltPage, pageFor, pageRequestOk } from '../../cloudflare/page-match';
 import { pageTable } from '../../scripts/gen-api-routes.mjs';
 
 // The Worker answers pages with parameters with the page built once ahead of time (or a redirect), so
@@ -50,5 +50,14 @@ describe('pages answered without starting Next.js', () => {
     expect(pageFor('/join/ABC123', '?utm_source=wa')).toEqual({ redirect: '/join?code=ABC123&utm_source=wa' });
     expect(pageFor('/student/courses/c1', '')).toEqual({ redirect: '/student/blackboard?course=c1' });
     expect(pageFor('/join/%E0%A4%A', '')).toBeNull(); // bad %-encoding: Next.js answers it
+  });
+
+  it('a page takes reads and Server Actions; any other post is refused before Next.js starts', () => {
+    expect(pageRequestOk('GET', false)).toBe(true);
+    expect(pageRequestOk('HEAD', false)).toBe(true);
+    expect(pageRequestOk('POST', true)).toBe(true);
+    expect(pageRequestOk('POST', false)).toBe(false);
+    expect(pageRequestOk('PUT', true)).toBe(false);
+    expect(pageRequestOk('DELETE', false)).toBe(false);
   });
 });

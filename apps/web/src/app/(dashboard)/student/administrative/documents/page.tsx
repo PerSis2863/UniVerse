@@ -160,7 +160,7 @@ export default function DocumentsPage() {
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
                   key={doc.id} 
-                  className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition-all"
+                  className="group relative p-5 rounded-2xl bg-zinc-50 dark:bg-white/[0.02] border border-zinc-200 dark:border-white/[0.05] hover:border-indigo-500/30 hover:bg-white/[0.04] transition"
                 >
                   <div className="flex justify-between items-start mb-4">
                     <div className="w-12 h-12 rounded-xl bg-zinc-200 dark:bg-white/[0.06] flex items-center justify-center text-zinc-500 dark:text-zinc-400 group-hover:text-indigo-400 group-hover:bg-indigo-500/10 transition-colors">
@@ -245,7 +245,7 @@ export default function DocumentsPage() {
                         </div>
                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-indigo-500 transition-all duration-200 ease-out"
+                            className="h-full bg-indigo-500 transition-[width] duration-200 ease-out"
                             style={{ width: `${uploadProgress}%` }}
                           />
                         </div>

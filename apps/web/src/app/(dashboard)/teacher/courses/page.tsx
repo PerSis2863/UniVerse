@@ -93,7 +93,7 @@ export default function TeacherCourses() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {courses.map((course) => (
-              <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition-all flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
+              <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
                 
                 {/* Actions Overlay */}
                 <div className="absolute top-4 end-4 z-10 flex gap-2 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>

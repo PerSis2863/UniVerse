@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M128 is the latest).
+  builds on it). The newest notes are at the end (M129 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -99,7 +99,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M128** (M124–M128, the river, merged 8–9 Nov).
+- **On `main`** (live): everything through **M128** (M124–M128, the river, merged 8–9 Nov). **On the branch
+  `claude/funny-galileo-y4mz9r`, not merged:** M129 (12 Nov: payments and other admin actions kept to the
+  admin's own school, stray posts to pages refused, the blank-page guard, 108 transitions named).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, merged 8 Nov, PR #114), then its detail, shape and sharpness fitted pixel by pixel to the
@@ -136,7 +138,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
   modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M129**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M130**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set

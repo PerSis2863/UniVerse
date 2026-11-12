@@ -180,7 +180,7 @@ function GradeDonut({ grades, avg }: { grades: { grade: string; percentage: numb
                 transition={{ duration: 1, delay: 0.3 + i * 0.2, ease: 'easeOut' }}
                 onMouseEnter={() => setHovered(slice.label)}
                 onMouseLeave={() => setHovered(null)}
-                className="cursor-pointer transition-all"
+                className="cursor-pointer transition-[stroke-width]"
                 style={{ transformOrigin: `${cx}px ${cy}px`, transform: 'rotate(-90deg)' }}
               />
             );

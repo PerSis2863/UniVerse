@@ -360,7 +360,7 @@ export function AnalyticsWarehousePanel() {
                 {termData.terms.map((t, idx) => (
                   <div
                     key={t.term}
-                    className={`rounded-2xl border p-5 shadow-sm transition-all ${
+                    className={`rounded-2xl border p-5 shadow-sm transition ${
                       idx === 0
                         ? 'border-indigo-300 dark:border-indigo-800/80 bg-white dark:bg-zinc-900 shadow-md ring-1 ring-indigo-500/10'
                         : 'border-zinc-200 dark:border-zinc-800 bg-white/80 dark:bg-zinc-900/80'

@@ -69,7 +69,7 @@ export default function CareerPage() {
 
               <div className="grid gap-4">
                 {opportunities.map((job) => (
-                  <div key={job.id} className="card p-0 overflow-hidden transition-all hover:border-indigo-500/50 group">
+                  <div key={job.id} className="card p-0 overflow-hidden transition hover:border-indigo-500/50 group">
                     <div className="p-6">
                       <div className="flex flex-col sm:flex-row gap-4 justify-between items-start">
                         <div className="flex gap-4">
