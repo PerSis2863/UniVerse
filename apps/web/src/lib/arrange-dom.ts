@@ -1,18 +1,23 @@
 import { arranged, cleanKey, moved, overlap, readStore, uniqueKeys, writeStore, type Entry, type PageLayout, type Size, type Store } from './arrange';
 import { SPRING_GLIDE } from './page-transition';
 
-// M165: the part of "Arrange this page" that touches the page. It never moves a node (React owns the
+// M165: the part of "arrange any page" that touches the page. It never moves a node (React owns the
 // tree): a new place is the CSS `order` of the children of one container, a new size is an inline width,
 // grid span or height, so nothing a page renders can be broken by it, and a page nobody arranged is
-// never touched. While arranging, anything in a group of 2 to 24 things can be dragged (cards, rows of
-// cards, buttons, tabs), and a card's right and bottom edges resize it. Everything that moves does so
-// with `transform` on the compositor (the dragged thing under the pointer, its neighbours by FLIP).
+// never touched. There is no mode and nothing is drawn (the owner, 12 Nov: "just want to use the mouse…
+// no need to show any lines"): anything in a group of 2 to 24 things (cards, rows of cards, buttons,
+// tabs) moves when the mouse presses it and travels, and a card's right and bottom edges resize it. A
+// press that doesn't travel is still a click; fields, text being selected, maps, drawings and anything
+// that drags by itself are left alone. Everything that moves does so with `transform` on the compositor.
 
 const CONTROL = 'button, a[href], [role="tab"], [role="button"], select, summary';
 const BLOCK = 'section, article, form, .panel, .card, .ins-board, [data-card], li, [class*="rounded-xl"], [class*="rounded-2xl"], [class*="rounded-3xl"]';
 /** Never arranged: the feature's own bar, overlays, tables, the side menu, the phone's tab bar. */
 const SKIP = '[data-arrange-ui], [data-no-arrange], [role="dialog"], [role="menu"], [role="listbox"], table, aside, .ios-tabbar';
-const EDGE = 12, MAX_GROUP = 24;
+/** Never grabbed: what is typed in, played, drawn on, or drags by itself. */
+const NOGRAB = '[data-arrange-ui], [data-no-arrange], input, textarea, select, option, [contenteditable=""], [contenteditable="true"], .ProseMirror, canvas, iframe, video, audio, [draggable="true"], [role="slider"], [role="separator"], [role="scrollbar"], [role="dialog"], [role="menu"], [role="listbox"]';
+const TITLE = 'h1, h2, h3, h4, h5, h6, legend, label, [data-card-title]';
+const EDGE = 8, MAX_GROUP = 24, TRAVEL = 6, HOLD = 350;
 
 type Kind = 'block' | 'control';
 const cls = (el: Element) => (typeof el.className === 'string' ? el.className : '');
@@ -29,13 +34,22 @@ function nameOf(el: HTMLElement): string {
   return cleanKey(h?.textContent?.replace(/\d+/g, ''));
 }
 
+// shortcut: whether a component handles the press itself (an editor's canvas, a calendar's grid, a
+// swipe row) is read from the props React keeps on the node (`__reactProps$…`, the same since React 17);
+// if React ever renames it this finds nothing and such parts need `data-no-arrange`.
+let propsKey: string | undefined;
+function pressHandled(el: HTMLElement): boolean {
+  propsKey ??= Object.keys(el).find((k) => k.startsWith('__reactProps$'));
+  const p = propsKey ? (el as unknown as Record<string, Record<string, unknown> | undefined>)[propsKey] : undefined;
+  return !!p && !!(p.onPointerDown || p.onMouseDown || p.onTouchStart || p.onPointerDownCapture || p.onMouseDownCapture || p.onDragStart);
+}
+
 interface Group { parent: HTMLElement; kids: HTMLElement[]; keys: string[] }
 
 export class Arranger {
   private store: Store;
   private layout: PageLayout = [];
   private path = '';
-  private on = false;
   private undoStack: string[] = [];
   private owner = new WeakMap<HTMLElement, Entry>();
   private mo: MutationObserver;
@@ -43,17 +57,32 @@ export class Arranger {
   private busy = false; // a drag or resize is going on: the page isn't re-read under it
   private drag: null | (() => void) = null; // ends the current gesture
   private hot: HTMLElement | null = null; // the card wearing a resize cursor
+  private seen = 0; // the frame that looks under the pointer for an edge
 
-  constructor(private root: HTMLElement, private userId: string | null, private changed: (s: { canUndo: boolean; arranged: boolean }) => void, private leave: () => void) {
+  constructor(private root: HTMLElement, private userId: string | null, private changed: (s: { canUndo: boolean; arranged: boolean }) => void) {
     this.store = readStore(userId);
     this.mo = new MutationObserver(() => this.schedule());
     this.mo.observe(root, { childList: true, subtree: true });
+    // After the page's own handlers (bubble), so something that drags by itself is seen to have started.
+    document.addEventListener('pointerdown', this.down);
+    document.addEventListener('pointermove', this.hover, { passive: true });
+    document.addEventListener('keydown', this.key, true);
+    document.addEventListener('touchmove', this.touch, { capture: true, passive: false });
+    document.addEventListener('contextmenu', this.touch, true);
+    document.addEventListener('dragstart', this.native, true);
   }
 
   destroy() {
-    this.setMode(false);
+    this.drag?.();
+    document.removeEventListener('pointerdown', this.down);
+    document.removeEventListener('pointermove', this.hover);
+    document.removeEventListener('keydown', this.key, true);
+    document.removeEventListener('touchmove', this.touch, true);
+    document.removeEventListener('contextmenu', this.touch, true);
+    document.removeEventListener('dragstart', this.native, true);
     this.mo.disconnect();
     cancelAnimationFrame(this.frame);
+    cancelAnimationFrame(this.seen);
     this.clear();
   }
 
@@ -67,41 +96,12 @@ export class Arranger {
     this.tell();
   }
 
-  setMode(on: boolean) {
-    if (on === this.on) return;
-    this.on = on;
-    const html = document.documentElement;
-    if (on) {
-      html.dataset.arranging = '';
-      document.addEventListener('pointerdown', this.down, true);
-      document.addEventListener('pointermove', this.hover, { capture: true, passive: true });
-      document.addEventListener('click', this.block, true);
-      document.addEventListener('keydown', this.key, true);
-      document.addEventListener('touchmove', this.touch, { capture: true, passive: false });
-      this.mark();
-    } else {
-      this.drag?.();
-      delete html.dataset.arranging;
-      document.removeEventListener('pointerdown', this.down, true);
-      document.removeEventListener('pointermove', this.hover, true);
-      document.removeEventListener('click', this.block, true);
-      document.removeEventListener('keydown', this.key, true);
-      document.removeEventListener('touchmove', this.touch, true);
-      for (const el of this.root.querySelectorAll<HTMLElement>('[data-arr]')) {
-        delete el.dataset.arr;
-        if (el.dataset.arrTab) { el.removeAttribute('tabindex'); delete el.dataset.arrTab; }
-        el.style.cursor = '';
-      }
-    }
-  }
-
   reset() {
     if (!this.layout.length) return;
     this.remember();
     this.layout = [];
     this.save();
     this.clear();
-    if (this.on) this.mark();
   }
 
   undo() {
@@ -111,7 +111,6 @@ export class Arranger {
     this.save();
     this.clear();
     this.apply();
-    if (this.on) this.mark();
   }
 
   // ── What is kept ──
@@ -135,8 +134,8 @@ export class Arranger {
 
   // ── Reading the page ──
   private schedule() {
-    if (this.busy || this.frame || (!this.on && !this.layout.length)) return;
-    this.frame = requestAnimationFrame(() => { this.frame = 0; this.apply(); if (this.on) this.mark(); });
+    if (this.busy || this.frame || !this.layout.length) return;
+    this.frame = requestAnimationFrame(() => { this.frame = 0; this.apply(); });
   }
 
   private groupOf(parent: HTMLElement): Group | null {
@@ -230,68 +229,91 @@ export class Arranger {
     this.owner = new WeakMap();
   }
 
-  /** While arranging: everything that can be moved says so (an outline and a hand, from CSS). */
-  private mark() {
-    for (const g of this.groups()) {
-      for (const k of g.kids) {
-        if (k.dataset.arr || k.matches(SKIP) || k.matches('.sr-only, .absolute, .fixed')) continue;
-        const r = k.getBoundingClientRect();
-        const kind: Kind = k.matches(CONTROL) && r.height < 72 ? 'control' : 'block';
-        k.dataset.arr = kind;
-        if (k.tabIndex < 0) { k.tabIndex = 0; k.dataset.arrTab = ''; }
-      }
-    }
-  }
-
   // ── Gestures ──
-  private item(target: EventTarget | null): { el: HTMLElement; g: Group } | null {
-    const t = target instanceof Element ? target : null;
-    if (!t || t.closest('[data-arrange-ui], [data-no-arrange]')) return null;
-    const el = t.closest<HTMLElement>('[data-arr]');
-    if (!el || !this.root.contains(el) || !el.parentElement) return null;
+  /** A card (it can be resized) or a control (a button, a tab: only moved). */
+  private kind(el: HTMLElement): Kind { return el.matches(CONTROL) && el.getBoundingClientRect().height < 72 ? 'control' : 'block'; }
+
+  /** `el` as one of the things its container arranges, if it is. */
+  private member(el: HTMLElement): Group | null {
+    if (!el.parentElement || el === this.root || el.matches(SKIP) || el.matches('.sr-only, .absolute, .fixed')) return null;
     const g = this.groupOf(el.parentElement);
-    return g && g.kids.includes(el) ? { el, g } : null;
+    return g && g.kids.includes(el) ? g : null;
   }
 
-  /** In this mode a click arranges, it doesn't press: buttons and links stay still. */
-  private block = (e: Event) => {
+  /** What the pointer is on: the nearest card whose edge it is at (to resize), else the nearest thing that can move. */
+  private item(target: EventTarget | null, x: number, y: number, edgesOnly = false): { el: HTMLElement; g: Group; r: boolean; b: boolean } | null {
+    const t = target instanceof HTMLElement || target instanceof SVGElement ? target : null;
+    if (!t || !this.root.contains(t) || t.closest(NOGRAB)) return null;
+    let first: { el: HTMLElement; g: Group } | null = null;
+    for (let el: Element | null = t; el && el !== this.root; el = el.parentElement) {
+      if (!(el instanceof HTMLElement)) continue;
+      // Something that handles the finger or the mouse itself (a board, a slider someone built).
+      if (getComputedStyle(el).touchAction === 'none' || el.getAttribute('draggable') === 'false' || pressHandled(el)) return null;
+      const q = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
+      const r = rtl ? x < q.left + EDGE : x > q.right - EDGE, b = y > q.bottom - EDGE;
+      if (!r && !b && (first || edgesOnly)) continue;
+      const g = this.member(el);
+      if (!g) continue;
+      if ((r || b) && this.kind(el) === 'block') return { el, g, r, b };
+      first ??= { el, g };
+    }
+    return first && !edgesOnly ? { ...first, r: false, b: false } : null;
+  }
+
+  /** A finger that is dragging a card doesn't also scroll the page or open the long-press menu. */
+  private touch = (e: Event) => { if (this.busy) e.preventDefault(); };
+  /** The browser's own dragging of links and pictures would take the pointer away mid-move. */
+  private native = (e: DragEvent) => {
     const t = e.target instanceof Element ? e.target : null;
-    if (t && this.root.contains(t) && !t.closest('[data-arrange-ui], [data-no-arrange]')) { e.preventDefault(); e.stopPropagation(); }
+    if (t && this.root.contains(t) && !t.closest('[draggable="true"], [data-no-arrange]')) e.preventDefault();
   };
-  /** A finger that is dragging a card doesn't also scroll the page. */
-  private touch = (e: TouchEvent) => { if (this.busy) e.preventDefault(); };
 
-  private edges(el: HTMLElement, x: number, y: number) {
-    if (el.dataset.arr !== 'block') return { r: false, b: false };
-    const q = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
-    return { r: rtl ? x < q.left + EDGE : x > q.right - EDGE, b: y > q.bottom - EDGE };
-  }
-
-  /** Near a card's edge the pointer shows it can be pulled. */
+  /** At a card's edge the pointer shows it can be pulled (looked up once a frame, only while no button is down). */
   private hover = (e: PointerEvent) => {
-    if (this.busy || e.pointerType === 'touch') return;
-    const hit = this.item(e.target);
-    if (this.hot && this.hot !== hit?.el) { this.hot.style.cursor = ''; this.hot = null; }
-    if (!hit) return;
-    const { r, b } = this.edges(hit.el, e.clientX, e.clientY);
-    hit.el.style.cursor = r && b ? 'nwse-resize' : r ? 'ew-resize' : b ? 'ns-resize' : '';
-    this.hot = hit.el;
+    if (this.busy || e.pointerType === 'touch' || e.buttons || this.seen) return;
+    const { target, clientX: x, clientY: y } = e;
+    this.seen = requestAnimationFrame(() => {
+      this.seen = 0;
+      if (this.busy) return;
+      const hit = this.item(target, x, y, true);
+      if (this.hot && this.hot !== hit?.el) { this.hot.style.cursor = ''; this.hot = null; }
+      if (!hit) return;
+      hit.el.style.cursor = hit.r && hit.b ? 'nwse-resize' : hit.r ? 'ew-resize' : 'ns-resize';
+      this.hot = hit.el;
+    });
   };
 
   private down = (e: PointerEvent) => {
-    if (e.button !== 0 || this.busy) return;
-    const hit = this.item(e.target);
-    if (!hit) return;
-    const { el, g } = hit, { r, b } = this.edges(el, e.clientX, e.clientY);
+    if (e.button !== 0 || this.busy || e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
+    const t = e.target instanceof Element ? e.target : null;
+    if (!t) return;
+    // Its own scrollbar, or something that already took the pointer for itself.
+    if (t instanceof HTMLElement && ((t.offsetWidth - t.clientWidth > 4 && e.offsetX > t.clientWidth) || (t.offsetHeight - t.clientHeight > 4 && e.offsetY > t.clientHeight))) return;
     const x0 = e.clientX, y0 = e.clientY, touch = e.pointerType === 'touch';
-    if (!touch) e.preventDefault(); // no text selection, no focus ring jumping about
+    // (A finger is always captured by what it touched; only a mouse tells us something took it.)
+    if (!touch) for (let a: Element | null = t; a; a = a.parentElement) if (a.hasPointerCapture(e.pointerId)) return;
+    const hit = this.item(t, x0, y0);
+    if (!hit) return;
+    const { el, g, r, b } = hit, edge = r || b;
+    // Words that can be selected stay selectable: on them the mouse (like a finger anywhere) holds still a moment to grab.
+    const words = !edge && !t.closest(CONTROL) && !t.closest(TITLE) && getComputedStyle(t).userSelect !== 'none'
+      && Array.from(t.childNodes).some((n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 0);
     let begun = false;
-    const begin = () => { begun = true; stop(); if (r || b) this.resize(el, g, e, r, b); else this.move(el, g, e, x0, y0); };
-    // A finger holds still a moment first (a swipe still scrolls the page); a mouse just moves.
-    const hold = touch && !(r || b) ? window.setTimeout(begin, 220) : 0;
+    const begin = () => {
+      begun = true; stop();
+      getSelection()?.removeAllRanges();
+      // The press that ends a move isn't a click on what was moved.
+      const quiet = (c: Event) => { c.preventDefault(); c.stopPropagation(); };
+      document.addEventListener('click', quiet, true);
+      const lift = () => { setTimeout(() => document.removeEventListener('click', quiet, true), 0); document.removeEventListener('pointerup', lift, true); document.removeEventListener('pointercancel', lift, true); };
+      document.addEventListener('pointerup', lift, true);
+      document.addEventListener('pointercancel', lift, true);
+      if (edge) this.resize(el, g, e, r, b); else this.move(el, g, e, x0, y0);
+    };
+    const hold = (touch || words) && !edge ? window.setTimeout(begin, HOLD) : 0;
     const moving = (m: PointerEvent) => {
       const far = Math.hypot(m.clientX - x0, m.clientY - y0);
-      if (hold) { if (far > 8) stop(); } else if (far > 4 && !begun) begin();
+      if (hold) { if (far > 8) stop(); } else if (far > (edge ? 3 : TRAVEL) && !begun) begin();
     };
     const stop = () => { clearTimeout(hold); document.removeEventListener('pointermove', moving, true); document.removeEventListener('pointerup', stop, true); document.removeEventListener('pointercancel', stop, true); };
     document.addEventListener('pointermove', moving, true);
@@ -302,6 +324,7 @@ export class Arranger {
   /** Follows one pointer until it lifts; `frame` runs at most once a frame with the latest position. */
   private follow(e: PointerEvent, frame: (x: number, y: number) => void, done: () => void) {
     this.busy = true;
+    document.documentElement.dataset.arrBusy = '';
     let x = e.clientX, y = e.clientY, raf = 0;
     const tick = () => { raf = 0; frame(x, y); };
     const moving = (m: PointerEvent) => { if (m.pointerId !== e.pointerId) return; x = m.clientX; y = m.clientY; if (!raf) raf = requestAnimationFrame(tick); };
@@ -313,6 +336,7 @@ export class Arranger {
       cancelAnimationFrame(raf);
       this.drag = null;
       this.busy = false;
+      delete document.documentElement.dataset.arrBusy;
       done();
     };
     document.addEventListener('pointermove', moving, true);
@@ -421,20 +445,26 @@ export class Arranger {
     });
   }
 
-  /** Keys: arrows move the focused thing, Shift + arrows resize a card, Escape leaves. */
+  /** Keys: Alt + Shift + arrows move the focused thing, with Ctrl as well they resize a card; Ctrl/⌘ + Z takes a change back. */
   private key = (e: KeyboardEvent) => {
-    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); this.leave(); return; }
-    if (!e.key.startsWith('Arrow') || e.altKey || e.ctrlKey || e.metaKey) return;
-    const el = document.activeElement instanceof HTMLElement && document.activeElement.dataset.arr ? document.activeElement : null;
-    const g = el?.parentElement ? this.groupOf(el.parentElement) : null;
-    if (!el || !g || !g.kids.includes(el)) return;
+    const at = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
+      if (!this.undoStack.length || at?.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .ProseMirror')) return;
+      e.preventDefault(); e.stopPropagation(); this.undo();
+      return;
+    }
+    if (!e.key.startsWith('Arrow') || !e.altKey || !e.shiftKey || e.metaKey || !at || !this.root.contains(at) || at.closest(NOGRAB)) return;
+    let el: HTMLElement | null = at, g: Group | null = null;
+    for (; el && el !== this.root; el = el.parentElement) { g = this.member(el); if (g) break; }
+    if (!el || !g) return;
+    const sizing = e.ctrlKey;
     e.preventDefault(); e.stopPropagation();
     const step = e.key === 'ArrowLeft' || e.key === 'ArrowUp' ? -1 : 1;
     this.remember();
     const entry = this.entryFor(g);
     const { grid, gap } = this.ready(g);
-    if (e.shiftKey) {
-      if (el.dataset.arr !== 'block') return;
+    if (sizing) {
+      if (this.kind(el) !== 'block') return;
       const k = g.keys[g.kids.indexOf(el)], size: Size = { ...(entry.sizes?.[k] ?? {}) }, q = el.getBoundingClientRect();
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') size.h = Math.max(60, Math.round((size.h ?? q.height) / 8) * 8 + step * 40);
       else if (grid) size.span = Math.max(1, Math.min(12, (size.span ?? 1) + step));

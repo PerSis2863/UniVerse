@@ -158,8 +158,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     button sinks) and what they change slides in (`.swap` with `data-dir`); M164, the landing's globe smaller,
     beside the five apps as a list that steers it (real daily totals, a way in), and the pointer light
     moved by `transform` (dragging the globe went from 9 slow frames in 40 to none). M165 (12 Nov, the owner's exception to the pause),
-    "Arrange this page": a top-bar button to drag cards and buttons into another order and resize cards on
-    every page (kept per person per page on the device), and dividers to drag between Quick notes' panes.
+    arrange any page with the mouse alone (no mode, nothing drawn): drag a card, button or pane to another
+    place, pull a card's edge to resize it; kept per person per page on the device, "Put this page back" in
+    the top bar; dividers to drag between Quick notes' panes.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -405,7 +406,7 @@ not `transition-all`); animate transform and opacity only; stagger lists 30–80
 to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; a list that
 changes in place (a filter) slides its items with `morph()` (`src/lib/view-transition.ts`, FLIP: only the
 items move; a View Transition snapshots the whole page, too heavy beside a live map, M156); content an arrow
-changes (a month, a day, a page) slides in from that side: a keyed `.swap` with `data-dir` next/back (M162); a person may rearrange any page (M165, `src/lib/arrange-dom.ts`: CSS `order` and sizes, never moved nodes): mark what must stay put `data-no-arrange`, give a steady name with `data-arrange-key`, and use `Splitter` (`components/ui`) for panes to drag apart; Reduce Motion
+changes (a month, a day, a page) slides in from that side: a keyed `.swap` with `data-dir` next/back (M162); a person may rearrange any page by dragging, with no mode and nothing drawn (M165, `src/lib/arrange-dom.ts`: CSS `order` and sizes, never moved nodes; it leaves alone fields, canvases and anything with its own press handler): mark what must stay put `data-no-arrange`, give a steady name with `data-arrange-key`, and use `Splitter` (`components/ui`) for panes to drag apart; Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
 without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
 stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string

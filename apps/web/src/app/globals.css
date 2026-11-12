@@ -2946,15 +2946,10 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
    square shows round it (a mask on the canvas alone; the zoom buttons beside it stay sharp). */
 .world-planet canvas { -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); }
 
-/* ═══ M165 · Arrange this page (src/lib/arrange-dom.ts): while arranging, what can be moved wears a dashed
-   outline and a hand; the thing being carried lifts; a stack that was rearranged is a wrapping row. */
-html[data-arranging] #main [data-arr] { cursor: grab; outline: 1.5px dashed rgb(var(--tint-rgb) / 0.45); outline-offset: 2px; touch-action: pan-y; -webkit-user-select: none; user-select: none; transition: outline-color 0.15s ease; }
-html[data-arranging] #main [data-arr="control"] { outline-offset: 1px; }
-html[data-arranging] #main [data-arr]:hover, html[data-arranging] #main [data-arr]:focus-visible { outline-style: solid; outline-color: rgb(var(--tint-rgb) / 0.9); }
-html[data-arranging] #main :is(iframe, canvas, video) { pointer-events: none; }
-#main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; outline-style: solid !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
-#main .arr-size { outline: 2px solid rgb(var(--tint-rgb) / 0.9) !important; transition: none !important; }
+/* ═══ M165 · Arrange any page with the mouse (src/lib/arrange-dom.ts): nothing is drawn until something
+   is carried; the thing being carried lifts; a stack that was rearranged is a wrapping row. */
+html[data-arr-busy] #main :is(iframe, canvas, video) { pointer-events: none; }
+html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !important; user-select: none !important; }
+#main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
+#main .arr-size { transition: none !important; }
 [data-arranged="col"] > :not(.sr-only, .absolute, .fixed) { margin-block: 0 !important; flex: 0 0 auto; width: 100%; min-width: 0; }
-.arrange-bar { animation: drop-up 0.4s var(--spring-glide, var(--ease-glide)) both; }
-@keyframes drop-up { from { opacity: 0; transform: translateY(12px) scale(0.98); } }
-@media (prefers-reduced-motion: reduce) { .arrange-bar { animation-name: app-in; } }
