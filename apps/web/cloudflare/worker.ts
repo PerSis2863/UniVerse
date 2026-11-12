@@ -12,7 +12,7 @@ import * as Y from 'yjs';
 import nextApp from '../.open-next/worker.js';
 import { callerOrg, fastApi } from './fast-api';
 import { apiDirect } from './api-direct';
-import { isBuiltPage, pageFor } from './page-match';
+import { isBuiltPage, pageFor, pageRequestOk } from './page-match';
 import { fanOut, readRelay } from '../src/lib/fanout';
 import { cleanRoomCode } from '../src/lib/play';
 import { GameRoom } from './game-room';
@@ -272,6 +272,7 @@ export default {
     // Workers Free allows 10 ms), and "Meet" showed Cloudflare's error 1101 page. The built page
     // comes from the cache without starting Next.js.
     if (JUNK.test(url.pathname)) return new Response('Not found', { status: 404, headers: { 'Content-Type': 'text/plain', 'Cache-Control': 'public, max-age=86400' } });
+    if (!pageRequestOk(request.method, request.headers.has('next-action'))) return new Response('Method not allowed', { status: 405, headers: { Allow: 'GET, HEAD', 'Content-Type': 'text/plain', 'Cache-Control': 'no-store' } });
     const known = request.method === 'GET' ? pageFor(url.pathname, url.search) : null;
     if (known && 'redirect' in known) return Response.redirect(`${url.origin}${known.redirect}`, 302);
     // Link prefetches to such a page, or from one, get nothing. Next.js's router knows the page as

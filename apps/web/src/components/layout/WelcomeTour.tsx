@@ -165,7 +165,7 @@ export function WelcomeTour({ role }: { role?: string }) {
     >
       {spot ? (
         // The spotlight: a ring around the real button, everything else dimmed.
-        <div aria-hidden className="absolute rounded-2xl ring-2 ring-white/90 transition-all duration-300 ease-out pointer-events-none"
+        <div aria-hidden className="absolute rounded-2xl ring-2 ring-white/90 transition-[top,left,width,height] duration-300 ease-out pointer-events-none"
           style={{ top: spot.top - pad, left: spot.left - pad, width: spot.width + pad * 2, height: spot.height + pad * 2, boxShadow: '0 0 0 9999px rgba(0,0,0,0.55)' }} />
       ) : <div aria-hidden className="absolute inset-0 bg-black/55" />}
       <div className={cn('absolute rounded-3xl glass-sidebar border border-zinc-200 dark:border-white/10 shadow-2xl p-5', !spot && 'start-3 end-3 bottom-3 sm:left-1/2 sm:end-auto sm:bottom-auto sm:top-1/2 sm:-translate-x-1/2 sm:-translate-y-1/2 sm:w-[24rem]')} style={card}>
@@ -173,7 +173,7 @@ export function WelcomeTour({ role }: { role?: string }) {
         <h2 id="tour-title" className="mt-1.5 font-bold text-lg text-zinc-900 dark:text-white leading-snug">{stop.title}</h2>
         <p id="tour-text" className="text-sm text-zinc-600 dark:text-zinc-300 mt-1">{stop.text}{spot?.via ? ` ${spot.via}` : ''}</p>
         <div className="mt-3 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-          <div className="h-full rounded-full bg-indigo-600 transition-all" style={{ width: `${((step + 1) / stops.length) * 100}%` }} />
+          <div className="h-full rounded-full bg-indigo-600 transition-[width]" style={{ width: `${((step + 1) / stops.length) * 100}%` }} />
         </div>
         <div className="mt-4 flex items-center gap-1.5">
           <button type="button" onClick={finish} className="btn-ghost btn-sm">Skip tour</button>

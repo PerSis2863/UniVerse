@@ -78,9 +78,12 @@ function blank(){
   var css=document.querySelectorAll('link[rel="stylesheet"]');
   for(var i=0;i<css.length;i++){
     var l=css[i];if(l.disabled||String(l.href).indexOf('/_next/static/')<0)continue;
-    // No sheet, or one that isn't readable or is empty: the file that arrived wasn't our stylesheet.
+    // No sheet, or an empty one: the file that arrived wasn't our stylesheet. One that can't be read
+    // is no proof of that (the page shown through a translation or archive site, whose address
+    // differs from the stylesheet's; Firefox while a sheet is still loading): a reload can't change
+    // it, and it used to end on the Reload screen over a page that was fine. The text check decides.
     if(!l.sheet)return 'styles did not load';
-    try{if(!l.sheet.cssRules.length)return 'styles were empty';}catch(x){return 'styles came from elsewhere';}
+    try{if(!l.sheet.cssRules.length)return 'styles were empty';}catch(x){}
   }
   if(!window.next&&document.querySelector('script[src*="/_next/static/"]'))return 'app code did not start';
   return (b.innerText||'').replace(/\\s+/g,'').length<2?'nothing on screen':'';

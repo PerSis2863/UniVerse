@@ -2230,7 +2230,7 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 .press-ripple { position: absolute; z-index: 0; pointer-events: none; border-radius: 9999px; background: radial-gradient(closest-side, rgb(79 142 247 / 0.35), rgb(79 142 247 / 0.12) 60%, transparent 72%); transform: scale(0); opacity: 1; animation: press-ripple 620ms var(--ease-out-soft, ease-out) forwards; }
 @keyframes press-ripple { to { transform: scale(1); opacity: 0; } }
 [data-cursor-light] { position: relative; }
-/* M159: the light is one 1040 px element moved with transform (light-motion.ts), shown while the pointer is in. */
+/* M164: the light is one 1040 px element moved with transform (light-motion.ts), shown while the pointer is in. */
 .cursor-glow { position: absolute; top: 0; left: 0; z-index: 1; width: 1040px; height: 1040px; pointer-events: none; opacity: 0; will-change: transform;
   background: radial-gradient(circle closest-side, rgb(79 142 247 / 0.09), transparent 60%); transition: opacity 400ms ease; }
 @media (hover: hover) and (pointer: fine) { [data-cursor-light]:hover > .cursor-glow { opacity: 1; } }
@@ -2366,7 +2366,7 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 
 /* Sign in and sign up's picture (AuthShowcase): the scenes (up to 500 px: UniVersity's, M117, so its
    third card fits) shrink on shorter screens so the page fits without scrolling, and go on the shortest. */
-/* M158: the sign-in picture shrinks with `zoom` (its layout shrinks with it: no empty box left under it,
+/* M163: the sign-in picture shrinks with `zoom` (its layout shrinks with it: no empty box left under it,
    nothing pinned to a corner), in gentler steps so its text stays readable; too short a screen hides it. */
 @media (max-height: 960px) { .auth-scene > * { zoom: 0.86; } }
 @media (max-height: 860px) { .auth-scene > * { zoom: 0.78; } }
@@ -2942,6 +2942,6 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
 @keyframes swap-back { from { opacity: 0; transform: translateX(-22px); } }
 @media (prefers-reduced-motion: reduce) { .swap[data-dir] { animation-name: tl-fade; } }
 
-/* ═══ M159 · The landing's smaller planet: its stars and glow fade out before the canvas's edge, so no
+/* ═══ M164 · The landing's smaller planet: its stars and glow fade out before the canvas's edge, so no
    square shows round it (a mask on the canvas alone; the zoom buttons beside it stay sharp). */
 .world-planet canvas { -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); }

@@ -45,7 +45,7 @@ export default function PoliciesPage() {
             <div className="flex items-start gap-3">
               <FileText className="w-5 h-5 text-indigo-400 shrink-0 mt-0.5" />
               <div className="min-w-0">
-                <p className="font-semibold text-white inline-flex items-center gap-1.5">{d.title} <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 rtl:translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all" /></p>
+                <p className="font-semibold text-white inline-flex items-center gap-1.5">{d.title} <ArrowRight className="w-4 h-4 opacity-0 -translate-x-1 rtl:translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition" /></p>
                 <p className="mt-1 text-sm text-zinc-400">{d.text}</p>
               </div>
             </div>

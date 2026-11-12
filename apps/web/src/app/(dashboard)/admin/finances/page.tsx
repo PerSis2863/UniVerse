@@ -6,7 +6,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 
 import { createTransaction, getTransactions } from '@/app/actions/transaction';
-import { getAuthToken } from '@/lib/auth-token';
+import { getAuthToken, twoStepPass } from '@/lib/auth-token';
 import { isSampleMode } from '@/lib/sample-mode';
 import { AdminSearch, PersonCell, matchesQuery, personText } from '@/components/admin/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
@@ -22,7 +22,7 @@ export default function AdminFinances() {
   useEffect(() => {
     const fetchTransactions = async () => {
       try {
-        const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
+        const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken(), twoStepPass()));
         setTransactions(data);
       } catch (e) {
         console.error('Failed to load transactions', e);
@@ -120,14 +120,14 @@ export default function AdminFinances() {
         description: formData.type,
         status: formData.status.toUpperCase(),
         userEmail: formData.user // Note: using the input as email for now
-      });
+      }, twoStepPass());
       if ('error' in newTrx) throw new Error(newTrx.error);
 
       toast.success('Transaction added manually.');
       setIsAddTrxModalOpen(false);
       
       // Refresh list
-      const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken()));
+      const data = (isSampleMode() ? (await import('@/lib/sample/router')).sampleTransactions() : await getTransactions(await getAuthToken(), twoStepPass()));
       setTransactions(data);
     } catch (e) {
       toast.error(`Error: ${(e as Error).message}`);
@@ -226,13 +226,13 @@ export default function AdminFinances() {
               </div>
             </div>
             <div className="flex gap-3 w-full sm:w-auto">
-              <button onClick={() => setIsStripeModalOpen(true)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition-all shadow-sm">
+              <button onClick={() => setIsStripeModalOpen(true)} className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-white transition shadow-sm">
                 <Settings className="w-4 h-4" /> Setup Stripe
               </button>
               <button 
                 onClick={handleExport}
                 disabled={isExporting}
-                className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl hover:bg-zinc-200 transition-all font-medium shadow-[0_0_20px_rgba(255,255,255,0.1)]"
+                className="flex-1 sm:flex-none flex justify-center items-center gap-2 px-5 py-2.5 bg-white text-black rounded-xl hover:bg-zinc-200 transition font-medium shadow-[0_0_20px_rgba(255,255,255,0.1)]"
               >
                 {isExporting ? <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin" /> : <Download className="w-4 h-4" />} 
                 {isExporting ? 'Exporting...' : 'Export Report'}
@@ -243,7 +243,7 @@ export default function AdminFinances() {
           {/* Stats Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {stats.map((stat, i) => (
-              <div key={i} className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 relative overflow-hidden group hover:bg-white dark:bg-zinc-900/80 transition-all duration-300">
+              <div key={i} className="bg-white dark:bg-zinc-900/40 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800/50 rounded-2xl p-6 relative overflow-hidden group hover:bg-white dark:bg-zinc-900/80 transition duration-300">
                 <div className={`absolute -end-6 -top-6 w-32 h-32 rounded-full bg-gradient-to-br ${stat.color} opacity-[0.03] group-hover:opacity-[0.08] blur-2xl transition-opacity duration-500`}></div>
                 
                 <div className="flex justify-between items-start mb-4">
@@ -287,7 +287,7 @@ export default function AdminFinances() {
                     ${m.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                   <div
-                    className="w-full min-h-[2px] rounded-t-[4px] bg-indigo-500/60 group-hover:bg-indigo-500 transition-all duration-500"
+                    className="w-full min-h-[2px] rounded-t-[4px] bg-indigo-500/60 group-hover:bg-indigo-500 transition-[height,background-color] duration-500"
                     style={{ height: `${(m.total / maxMonthlyRevenue) * 88}%` }}
                   />
                 </div>

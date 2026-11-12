@@ -99,7 +99,7 @@ function startFollow(): () => void {
 }
 
 /**
- * A soft light under the pointer inside [data-cursor-light]. M159: one fixed-size light moved by
+ * A soft light under the pointer inside [data-cursor-light]. M164: one fixed-size light moved by
  * `transform` (the compositor), not --mx / --my written on the page's outer box each frame: that restyled
  * the whole page and repainted a page-sized gradient on every move (slow frames while dragging the globe).
  */

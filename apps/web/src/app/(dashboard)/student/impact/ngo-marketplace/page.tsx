@@ -95,7 +95,7 @@ export default function NGOMarketplacePage() {
             <div className="flex gap-2 overflow-x-auto">
               {types.map(t => (
                 <button key={t} onClick={() => setSelectedType(t)}
-                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
+                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition",
                     selectedType === t ? "text-white border-transparent" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-emerald-500/50")}>{selectedType === t && <TabPill id="-impact-ngo-marketplace-page-0" />}
                   {t}
                 </button>
@@ -120,7 +120,7 @@ export default function NGOMarketplacePage() {
                 const isApplied = applied.includes(project.id);
                 return (
                   <div key={project.id}
-                    className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition-all group flex flex-col justify-between">
+                    className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-emerald-500/40 transition group flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex justify-between items-start">
                         <div className="flex items-center gap-3">
@@ -157,7 +157,7 @@ export default function NGOMarketplacePage() {
                       <button 
                         onClick={() => !isApplied && setSelected(project)}
                         disabled={isApplied}
-                        className={cn("w-full py-2.5 rounded-xl text-sm font-semibold transition-all flex items-center justify-center gap-2",
+                        className={cn("w-full py-2.5 rounded-xl text-sm font-semibold transition flex items-center justify-center gap-2",
                           isApplied ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20" : "bg-emerald-700 hover:bg-emerald-600 text-white shadow-lg shadow-emerald-700/20"
                         )}>
                         {isApplied ? <><CheckCircle2 className="w-4 h-4" /> Application Submitted</> : <>View Details & Apply <ArrowUpRight className="w-4 h-4" /></>}
@@ -232,7 +232,7 @@ export default function NGOMarketplacePage() {
                 <button 
                   onClick={() => handleApply(selected)}
                   aria-busy={applying || undefined} disabled={applying}
-                  className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-700/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50">
+                  className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-3 rounded-xl font-bold shadow-lg shadow-emerald-700/30 transition flex items-center justify-center gap-2 disabled:opacity-50">
                   {applying ? <Loader2 className="w-5 h-5 animate-spin" /> : <><CheckCircle2 className="w-5 h-5" /> Submit Application</>}
                 </button>
               </div>

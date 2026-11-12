@@ -511,7 +511,7 @@ export function MarketMap() {
             const lockedLayer = id === 'market' && market?.locked;
             return (
               <button key={id} type="button" aria-pressed={layers[id]} onClick={() => { if (lockedLayer) { setLocked(true); return; } setLayers((l) => ({ ...l, [id]: !l[id] })); }}
-                className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-all active:scale-[0.97]',
+                className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition active:scale-[0.97]',
                   layers[id] ? 'border-pink-500/50 bg-pink-500/10 text-pink-700 dark:text-pink-200' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 hover:border-zinc-300 dark:hover:border-white/20')}>
                 <span aria-hidden className={cn('w-2 h-2 rounded-full', id === 'copies' ? 'bg-amber-500' : id === 'market' ? 'bg-fuchsia-500' : id === 'flows' ? 'bg-zinc-400' : 'bg-pink-500', !layers[id] && 'opacity-40')} />
                 {label}{lockedLayer && <Lock className="w-3 h-3" aria-label="PRO" />}

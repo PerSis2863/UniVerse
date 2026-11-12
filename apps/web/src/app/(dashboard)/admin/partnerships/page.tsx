@@ -235,7 +235,7 @@ export default function AdminPartnershipsPage() {
                   <button onClick={() => handleReviewProject(project.id, 'Rejected')} className="px-4 py-2 rounded-xl text-xs font-semibold bg-red-600/10 text-red-600 dark:text-red-400 hover:bg-red-600/20 transition-colors flex items-center gap-1">
                     <XCircle className="w-4 h-4" /> Reject
                   </button>
-                  <button onClick={() => handleReviewProject(project.id, 'Active')} className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition-all flex items-center gap-1">
+                  <button onClick={() => handleReviewProject(project.id, 'Active')} className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white transition flex items-center gap-1">
                     <CheckCircle className="w-4 h-4" /> Approve
                   </button>
                 </ProjectRow>

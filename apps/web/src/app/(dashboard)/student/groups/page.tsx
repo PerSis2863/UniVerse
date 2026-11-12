@@ -215,7 +215,7 @@ export default function GroupsPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
-                  className="relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 focus-within:border-indigo-500/60 active:scale-[0.985] transition-all cursor-pointer group"
+                  className="relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 focus-within:border-indigo-500/60 active:scale-[0.985] transition cursor-pointer group"
                 >
                   {/* Header */}
                   <div className="flex items-start justify-between mb-4">
@@ -292,7 +292,7 @@ export default function GroupsPage() {
               <motion.button
                 initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
                 onClick={() => setShowNewGroup(true)}
-                className="bg-white dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 h-full min-h-[200px] flex flex-col items-center justify-center hover:border-indigo-500/60 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition-all cursor-pointer group"
+                className="bg-white dark:bg-zinc-900/50 border-2 border-dashed border-zinc-200 dark:border-white/[0.06] rounded-2xl p-5 h-full min-h-[200px] flex flex-col items-center justify-center hover:border-indigo-500/60 hover:bg-indigo-50/30 dark:hover:bg-indigo-500/5 transition cursor-pointer group"
               >
                 <div className="w-12 h-12 rounded-2xl bg-zinc-100 dark:bg-zinc-800 group-hover:bg-indigo-100 dark:group-hover:bg-indigo-500/20 flex items-center justify-center mb-3 transition-colors">
                   <Plus className="w-6 h-6 text-zinc-400 group-hover:text-indigo-500 transition-colors" />

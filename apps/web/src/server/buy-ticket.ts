@@ -4,13 +4,14 @@ import { HOLD_MINUTES } from '@/lib/student-life';
 import { dropExpiredHolds, seatsTaken } from './campus-life';
 import { BadRequestException, NotFoundException } from './http';
 import { createUnifiedPaymentOrder } from './payments/provider';
+import { campusOf } from './school-scope';
 
 // Buying a ticket (Stage 5 · Q17): a seat is held for HOLD_MINUTES while the buyer pays by card on
 // Stripe's page (which closes after 30 minutes); src/server/event-tickets.ts turns it into a ticket.
 
 /** POST /api/campus/events/[id]/buy: returns Stripe's page to pay on. */
 export async function buyTicket(user: SessionUser, itemId: string, origin?: string) {
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true, price: true, currency: true } });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true, price: true, currency: true } });
   if (!item) throw new NotFoundException('Event not found.');
   if (!item.price) throw new BadRequestException('This event is free: just say you’re going.');
   if (item.startAt && item.startAt.getTime() < Date.now()) throw new BadRequestException('This event has started.');

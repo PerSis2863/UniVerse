@@ -109,7 +109,7 @@ export default function StudentSupport() {
                 placeholder="Search for articles, tutorials, and FAQs..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full ps-12 pe-4 py-4 bg-white dark:bg-zinc-900/80 border border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all text-lg shadow-xl"
+                className="w-full ps-12 pe-4 py-4 bg-white dark:bg-zinc-900/80 border border-zinc-700 rounded-xl text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition text-lg shadow-xl"
               />
             </div>
           </div>

@@ -5,7 +5,7 @@ import { cleanOrderItems, dishesOf, pickupOk, prepList } from '@/lib/student-lif
 import type { Body } from './body';
 import { notify } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
-import { peopleWhere } from './school-scope';
+import { campusOf, peopleWhere } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Cafeteria pre-orders (Stage 5 · Q17): order from today's or tomorrow's menu (campus_items kind MENU,
@@ -21,7 +21,7 @@ const DAY = 86_400_000;
 export async function mealMenus(user: SessionUser) {
   const now = Date.now();
   const [menus, mine] = await Promise.all([
-    prisma.campusItem.findMany({ where: { kind: 'MENU', startAt: { gte: new Date(now - 13 * 3_600_000), lte: new Date(now + 37 * 3_600_000) } }, orderBy: { startAt: 'asc' }, take: 20, select: { id: true, title: true, category: true, location: true, startAt: true, description: true } }),
+    prisma.campusItem.findMany({ where: { AND: [await campusOf(user)], kind: 'MENU', startAt: { gte: new Date(now - 13 * 3_600_000), lte: new Date(now + 37 * 3_600_000) } }, orderBy: { startAt: 'asc' }, take: 20, select: { id: true, title: true, category: true, location: true, startAt: true, description: true } }),
     prisma.mealOrder.findMany({ where: { userId: user.id, pickupAt: { gte: new Date(now - DAY) } }, orderBy: { pickupAt: 'asc' }, take: 20, select: { id: true, items: true, pickupAt: true, note: true, code: true, status: true, menu: { select: { title: true, category: true, location: true } } } }),
   ]);
   return {
@@ -33,7 +33,7 @@ export async function mealMenus(user: SessionUser) {
 /** POST /api/campus/meals { menuId, items: [{ dish, qty }], pickupAt, note? } */
 export async function placeMealOrder(user: SessionUser, b: Body) {
   if (user.role === 'GUARDIAN') throw new ForbiddenException('Pre-orders are for students and staff.');
-  const menu = await prisma.campusItem.findFirst({ where: { id: typeof b.menuId === 'string' ? b.menuId : '', kind: 'MENU' }, select: { id: true, startAt: true, description: true } });
+  const menu = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: typeof b.menuId === 'string' ? b.menuId : '', kind: 'MENU' }, select: { id: true, startAt: true, description: true } });
   if (!menu?.startAt) throw new NotFoundException('That menu isn’t available.');
   const items = cleanOrderItems(b.items, dishesOf(menu.description));
   if (!items) throw new BadRequestException('Pick at least one dish from the menu (up to 5 of each).');
@@ -61,7 +61,7 @@ export async function kitchenOrders(user: SessionUser, day: string | null) {
   // Only orders by the admin's own school's people (school-scope.ts).
   const mine = await peopleWhere(user);
   const menus = await prisma.campusItem.findMany({
-    where: { kind: 'MENU', startAt: { gte: new Date(d.getTime() - 14 * 3_600_000), lte: new Date(d.getTime() + 14 * 3_600_000) } }, orderBy: { startAt: 'asc' }, take: 20,
+    where: { AND: [await campusOf(user)], kind: 'MENU', startAt: { gte: new Date(d.getTime() - 14 * 3_600_000), lte: new Date(d.getTime() + 14 * 3_600_000) } }, orderBy: { startAt: 'asc' }, take: 20,
     select: { id: true, title: true, category: true, location: true, startAt: true, mealOrders: { where: { user: mine }, orderBy: { pickupAt: 'asc' }, take: 500, select: { id: true, items: true, pickupAt: true, note: true, code: true, status: true, user: { select: { name: true } } } } },
   });
   return {

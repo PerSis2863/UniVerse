@@ -100,7 +100,7 @@ export default function Scholarships() {
             <div className="flex rounded-2xl bg-zinc-100 p-1 dark:bg-zinc-800">
               <button
                 onClick={() => setScholarshipView('exchange')}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
                   scholarshipView === 'exchange'
                     ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-900 dark:text-indigo-400'
                     : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'
@@ -111,7 +111,7 @@ export default function Scholarships() {
               </button>
               <button
                 onClick={() => setScholarshipView('traditional')}
-                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition-all ${
+                className={`flex items-center gap-2 rounded-xl px-4 py-2 text-xs font-bold transition ${
                   scholarshipView === 'traditional'
                     ? 'bg-white text-indigo-600 shadow-sm dark:bg-zinc-900 dark:text-indigo-400'
                     : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white'

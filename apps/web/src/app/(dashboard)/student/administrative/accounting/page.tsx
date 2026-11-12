@@ -278,7 +278,7 @@ function AccountingContent() {
                 transition={{ delay: Math.min(i, 6) * 0.03 }}
                 key={i}
                 onClick={() => setActiveModal(action.id)}
-                className={`panel text-start p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition-all cursor-pointer group ${action.border}`}
+                className={`panel text-start p-5 flex flex-col items-start justify-center hover:bg-white/[0.02] transition cursor-pointer group ${action.border}`}
               >
                 <div className={`w-12 h-12 rounded-xl ${action.bg} ${action.color} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
                   <action.icon className="w-6 h-6" />

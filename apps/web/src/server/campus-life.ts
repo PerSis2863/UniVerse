@@ -6,7 +6,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { createCommunity, addMembers, joinCommunity } from './communities';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
-import { peopleWhere } from './school-scope';
+import { campusOf, peopleWhere } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Campus super-app (upgrade 7): events with RSVP and QR check-in, lost & found, room "free now"
@@ -114,7 +114,7 @@ const upcoming = () => ({ kind: 'EVENT', startAt: { gte: new Date(Date.now() - D
 /** GET /api/campus/events: upcoming events with seats taken and my place. */
 export async function listEvents(user: SessionUser) {
   await dropExpiredHolds();
-  const items = await prisma.campusItem.findMany({ where: upcoming(), orderBy: { startAt: 'asc' }, take: 100 });
+  const items = await prisma.campusItem.findMany({ where: { AND: [await campusOf(user)], ...upcoming() }, orderBy: { startAt: 'asc' }, take: 100 });
   const ids = items.map((i) => i.id);
   const [counts, mine] = ids.length ? await Promise.all([
     prisma.eventRsvp.groupBy({ by: ['itemId', 'status'], where: { itemId: { in: ids.slice(0, 90) } }, _count: { _all: true } }),
@@ -134,7 +134,7 @@ export const seatsTaken = (itemId: string) => prisma.eventRsvp.count({ where: { 
 
 /** POST /api/campus/events/[id]/rsvp { going }: take a seat (or join the waiting list), or give it up. */
 export async function rsvp(user: SessionUser, itemId: string, going: boolean) {
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true, price: true } });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true, price: true } });
   if (!item) throw new NotFoundException('Event not found.');
   if (item.startAt && item.startAt.getTime() < Date.now() - 6 * 3600_000) throw new BadRequestException('This event is over.');
   const existing = await prisma.eventRsvp.findUnique({ where: { itemId_userId: { itemId, userId: user.id } } });
@@ -167,7 +167,7 @@ export async function rsvp(user: SessionUser, itemId: string, going: boolean) {
 export async function checkIn(user: SessionUser, code: unknown) {
   const itemId = typeof code === 'string' ? readCheckinCode(code.trim()) : null;
   if (!itemId) throw new BadRequestException('This code has expired. Scan the one on the screen now.');
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, price: true } });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, price: true } });
   if (!item) throw new NotFoundException('Event not found.');
   const mine = await prisma.eventRsvp.findUnique({ where: { itemId_userId: { itemId, userId: user.id } } });
   if (mine?.checkedInAt) return { title: item.title, checkedInAt: mine.checkedInAt, already: true };
@@ -187,9 +187,9 @@ export async function checkIn(user: SessionUser, code: unknown) {
 /** GET /api/campus/events/[id]/attendees (admin): who's coming, waiting and checked in, plus the live code. */
 export async function attendees(user: SessionUser, itemId: string) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Only admins can see attendees.');
-  const item = await prisma.campusItem.findFirst({ where: { id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true } });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true } });
   if (!item) throw new NotFoundException('Event not found.');
-  // Only the admin's own school's people (school-scope.ts); the event itself is shared.
+  // Only the admin's own school's people (school-scope.ts); the event is their school's too (M159).
   const people = await prisma.eventRsvp.findMany({
     where: { itemId, user: await peopleWhere(user) }, orderBy: { createdAt: 'asc' }, take: 1000,
     select: { id: true, status: true, checkedInAt: true, createdAt: true, user: { select: { id: true, name: true, email: true } } },

@@ -35,7 +35,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
         <div className="hero-in my-auto py-10 short:py-4">
           <AuthShowcase />
         </div>
-        {/* M158: both notes together on the left, on the same line as the right side's links. */}
+        {/* M163: both notes together on the left, on the same line as the right side's links. */}
         <p className="text-xs text-zinc-400">© 2026 UniVerse Impact Network · Made with <span className="text-fuchsia-400">♥</span> by Aditya Bhatt</p>
       </div>
 
@@ -49,7 +49,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
         <div style={{ animationDelay: '120ms' }} className="hero-in w-full max-w-md mx-auto flex-1 flex flex-col justify-center pb-8 lg:pb-0">
           <MaintenanceGate>{children}</MaintenanceGate>
         </div>
-        {/* M158: at the foot of the column, level with the left side's notes (it used to float under the form). */}
+        {/* M163: at the foot of the column, level with the left side's notes (it used to float under the form). */}
         <p className="text-center text-xs text-zinc-400">
           <Link href="/terms" className="hover:text-white">Terms and Conditions</Link>
           {' · '}

@@ -144,7 +144,7 @@ export default function View() {
                 <span key={i} className={cn('absolute inset-0 rounded-full border border-pink-400/40', sharing && 'carry-wave')} style={{ animationDelay: `${i * 0.8}s` }} />
               ))}
               <span className="absolute inset-8 rounded-full bg-pink-500/10" />
-              <span className={cn('relative w-24 h-24 rounded-full grid place-items-center transition-all duration-500', sharing ? 'bg-pink-500 shadow-[0_0_60px_rgba(79,142,247,0.7)]' : 'bg-white/10')}>
+              <span className={cn('relative w-24 h-24 rounded-full grid place-items-center transition duration-500', sharing ? 'bg-pink-500 shadow-[0_0_60px_rgba(79,142,247,0.7)]' : 'bg-white/10')}>
                 <Radio className="w-10 h-10" />
               </span>
             </div>

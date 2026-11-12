@@ -1057,6 +1057,8 @@ model CampusItem {
   price       Int?
   currency    String?
   createdById String?
+  /// M159: the school it belongs to (null: the main school, people in no school), as on users
+  organizationId String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
   rsvps       EventRsvp[]
@@ -1067,6 +1069,7 @@ model CampusItem {
 
   @@index([kind])
   @@index([buildingId])
+  @@index([organizationId, kind])
   @@map("campus_items")
 }
 

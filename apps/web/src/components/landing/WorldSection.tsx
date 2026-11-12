@@ -20,7 +20,7 @@ import { totalLabel, type TotalKey } from '@/lib/site-totals';
 // details"): drag to turn it, pinch or the buttons to zoom; click an app on it (or its button below the
 // heading, for keyboards and screen readers) and the planet turns to face it, it wears a bright ring and
 // a card says what the app does, with a way to start or to see it on this page. Still drawn on a
-// background thread (Planet `turnable`). M159: smaller, beside the apps as a list that steers it.
+// background thread (Planet `turnable`). M164: smaller, beside the apps as a list that steers it.
 
 const PLACES: Place[] = [
   { label: 'UniVersity', lat: 50, lon: 4, tone: 'pink' },
@@ -42,14 +42,14 @@ const DETAILS: Record<AppId, string[]> = {
 };
 const short = (id: AppId) => appById(id).name.replace('UniVerse ', '');
 
-/** M159: each app's real number from the site's daily totals (none for UniVersity; under 10 isn't sent). */
+/** M164: each app's real number from the site's daily totals (none for UniVersity; under 10 isn't sent). */
 const TOTAL: Partial<Record<AppId, [TotalKey, string]>> = {
   trace: ['scans', 'products checked'], relief: ['helped', 'people helped'], green: ['co2Kg', 'kg of CO₂ saved'], play: ['games', 'games played'],
 };
 
 export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId) => void }) {
   const [chosen, setChosen] = useState<number | null>(null);
-  // M159: pointing at an app in the list turns the planet to it too (a preview); choosing keeps it there.
+  // M164: pointing at an app in the list turns the planet to it too (a preview); choosing keeps it there.
   const [hover, setHover] = useState<number | null>(null);
   const totals = useTotals();
   const facing = hover ?? chosen;
@@ -61,7 +61,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
         <Reveal><h2 id="world-h" className="text-4xl md:text-6xl font-bold tracking-[-0.03em] leading-[1.05] text-white">One account. <Accent>One planet.</Accent></h2></Reveal>
         <Reveal delay={0.06}><p className="mt-5 mx-auto max-w-xl text-lg text-zinc-300 leading-relaxed">School, products, help, climate and games share one sign-in, one wallet and one inbox, on any phone, in 13 languages.</p></Reveal>
       </div>
-      {/* M159 (the owner: "reduce the size of the globe… make it more functional"): a smaller planet beside the
+      {/* M164 (the owner: "reduce the size of the globe… make it more functional"): a smaller planet beside the
           five apps as a list that steers it: point at an app and the planet turns to it, choose it and its row
           opens (what it does, its real number, a way in); a pick on the planet opens the same row. */}
       <div className="relative max-w-5xl mx-auto mt-10 grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-12">

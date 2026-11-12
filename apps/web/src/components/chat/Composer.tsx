@@ -436,7 +436,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       {uploadProgress !== null && (
         <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading… {uploadProgress}%
-          <div className="flex-1 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full bg-indigo-500 transition-all" style={{ width: `${uploadProgress}%` }} /></div>
+          <div className="flex-1 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full bg-indigo-500 transition-[width]" style={{ width: `${uploadProgress}%` }} /></div>
         </div>
       )}
 

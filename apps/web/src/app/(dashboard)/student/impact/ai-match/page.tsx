@@ -149,7 +149,7 @@ function ProjectMatchCard({ match }: { match: MatchedProject }) {
 
           {/* Apply button */}
           <button onClick={handleApply} aria-busy={applying || undefined} disabled={applied || applying}
-            className={cn('flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition-all',
+            className={cn('flex items-center gap-2 text-xs font-bold px-4 py-2 rounded-xl transition',
               applied
                 ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-700 dark:text-emerald-400 cursor-default'
                 : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20')}>

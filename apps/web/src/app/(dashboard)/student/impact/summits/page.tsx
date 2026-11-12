@@ -108,7 +108,7 @@ export default function GlobalSummitsPage() {
                 return (
                   <div
                     key={summit.id}
-                    className={`rounded-3xl border border-zinc-200 dark:border-zinc-800/80 bg-gradient-to-r ${bannerGradient} p-8 hover:border-indigo-500/40 transition-all shadow-xl space-y-6`}
+                    className={`rounded-3xl border border-zinc-200 dark:border-zinc-800/80 bg-gradient-to-r ${bannerGradient} p-8 hover:border-indigo-500/40 transition shadow-xl space-y-6`}
                   >
                     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-6">
                       <div className="space-y-2">
@@ -172,7 +172,7 @@ export default function GlobalSummitsPage() {
                         <button
                           onClick={() => handleRegister(summit.id)}
                           aria-busy={applying || undefined} disabled={isRegistered || applying}
-                          className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-2 ${
+                          className={`w-full sm:w-auto px-6 py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-2 ${
                             isRegistered
                               ? 'bg-emerald-600/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30'
                               : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-600/30'

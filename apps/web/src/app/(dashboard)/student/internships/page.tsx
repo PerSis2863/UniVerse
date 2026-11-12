@@ -109,7 +109,7 @@ export default function StudentInternships() {
                 placeholder="Search by role, company, or skills..." 
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full ps-10 pe-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition-all"
+                className="w-full ps-10 pe-4 py-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-lg text-zinc-900 dark:text-white placeholder:text-zinc-500 dark:text-zinc-500 focus:outline-none focus:border-indigo-500 transition"
               />
             </div>
             <button onClick={() => setShowFilterDrawer(true)} className="flex items-center gap-2 bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300 px-4 py-2 rounded-lg transition-colors whitespace-nowrap">
@@ -282,7 +282,7 @@ export default function StudentInternships() {
                     onChange={e => setFormData({ ...formData, coverLetter: e.target.value })}
                     rows={4} 
                     placeholder={`Why are you a great fit for the ${activeApplication.title} role?`}
-                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition-all resize-none"
+                    className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 text-sm text-zinc-900 dark:text-white outline-none focus:border-indigo-500 transition resize-none"
                   ></textarea>
                 </div>
 

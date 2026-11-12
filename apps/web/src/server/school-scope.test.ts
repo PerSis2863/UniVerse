@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
-import { assertInSchool, inSchools, keepInSchool, orgIn, schoolSql, schoolsOf, usersIn } from './school-scope';
+import { assertInSchool, inSchools, keepInSchool, madeInSchool, orgIn, schoolSql, schoolsOf, usersIn } from './school-scope';
 
 vi.mock('@/lib/db', () => ({ default: { organization: { findUnique: vi.fn() }, user: { findFirst: vi.fn(), findMany: vi.fn() } } }));
 vi.mock('./auth', () => ({ isOwner: () => false }));
@@ -42,5 +42,17 @@ describe('an admin sees only their own school (security fix)', () => {
     expect(db.user.findFirst.mock.calls[0][0].where).toEqual({ id: 'someone-in-orgB', organizationId: { in: ['orgA'] } });
     db.user.findMany.mockResolvedValue([{ id: 'p1' }]);
     expect(await keepInSchool({ id: 'f', organizationId: 'orgA' }, ['p1', 'p2'])).toEqual(['p1']);
+  });
+
+  it('a group or campus notice belongs to its maker’s school (nobody named: the main school)', async () => {
+    db.organization.findUnique.mockResolvedValue(null);
+    db.user.findFirst.mockResolvedValue(null);
+    expect(await madeInSchool({ id: 'g', organizationId: 'orgA' }, 'maker-in-orgB')).toBe(false);
+    expect(db.user.findFirst.mock.calls[0][0].where).toEqual({ id: 'maker-in-orgB', organizationId: { in: ['orgA'] } });
+    db.user.findFirst.mockResolvedValue({ id: 'maker' });
+    expect(await madeInSchool({ id: 'h', organizationId: 'orgA' }, 'maker')).toBe(true);
+    expect(await madeInSchool({ id: 'i', organizationId: 'orgA' }, null)).toBe(false);
+    expect(await madeInSchool({ id: 'j', organizationId: null }, null)).toBe(true);
+    expect(await madeInSchool({ id: 'k', owner: true }, 'anyone')).toBe(true);
   });
 });

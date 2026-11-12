@@ -119,7 +119,7 @@ export default function StartupIncubatorPage() {
             <div className="flex gap-2 overflow-x-auto">
               {stages.map(s => (
                 <button key={s} onClick={() => setSelectedStage(s)}
-                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition-all",
+                  className={cn("relative isolate px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap border transition",
                     selectedStage === s ? "text-white border-transparent" : "bg-white dark:bg-zinc-900 border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:border-indigo-500/50")}>{selectedStage === s && <TabPill id="student-impact-startups-page-0" />}
                   {s}
                 </button>
@@ -144,7 +144,7 @@ export default function StartupIncubatorPage() {
                 const isJoined = joined.includes(startup.id);
                 return (
                   <motion.div key={startup.id} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
-                    className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition-all group flex flex-col justify-between">
+                    className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 hover:border-indigo-500/40 hover:shadow-lg hover:shadow-indigo-500/5 transition group flex flex-col justify-between">
                     <div className="space-y-4">
                       <div className="flex items-start justify-between gap-3">
                         <div className={`w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center text-white font-black text-sm flex-shrink-0`}>
@@ -177,7 +177,7 @@ export default function StartupIncubatorPage() {
                       <button onClick={() => setSelected(startup)} className="flex-1 btn-secondary text-xs py-2">Details</button>
                       <button onClick={() => { if (!isJoined) setSelected(startup); }}
                         disabled={isJoined}
-                        className={cn("flex-1 text-xs py-2 rounded-xl font-semibold transition-all flex items-center justify-center gap-1.5",
+                        className={cn("flex-1 text-xs py-2 rounded-xl font-semibold transition flex items-center justify-center gap-1.5",
                           isJoined ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-500/20" : "bg-indigo-600 hover:bg-indigo-500 text-white shadow-md shadow-indigo-600/20")}>
                         {isJoined ? <><CheckCircle2 className="w-3.5 h-3.5" /> Applied</> : <>Join Team <ArrowUpRight className="w-3.5 h-3.5" /></>}
                       </button>

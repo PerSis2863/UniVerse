@@ -150,7 +150,7 @@ export default function StudentSkills() {
                     </div>
                     <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
                       <div 
-                        className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(levelVal)}`}
+                        className={`h-full rounded-full transition-[width] duration-1000 ${getLevelColor(levelVal)}`}
                         style={{ width: `${levelVal}%` }}
                       ></div>
                     </div>
@@ -186,7 +186,7 @@ export default function StudentSkills() {
                       </div>
                       <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800/50 rounded-full overflow-hidden">
                         <div 
-                          className={`h-full rounded-full transition-all duration-1000 ${getLevelColor(levelVal)}`}
+                          className={`h-full rounded-full transition-[width] duration-1000 ${getLevelColor(levelVal)}`}
                           style={{ width: `${levelVal}%` }}
                         ></div>
                       </div>

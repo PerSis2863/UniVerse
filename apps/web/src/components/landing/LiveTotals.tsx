@@ -10,7 +10,7 @@ import { TOTAL_KEYS, totalLabel, type TotalKey, type Totals } from '@/lib/site-t
 
 const LABEL: Record<TotalKey, string> = { people: 'people', co2Kg: 'kg of CO₂ saved', helped: 'people helped', games: 'games played', scans: 'products checked' };
 
-/** The site's totals, asked once per visit and shared (the strip and the globe's app list, M159). */
+/** The site's totals, asked once per visit and shared (the strip and the globe's app list, M164). */
 let asked: Promise<Totals | null> | null = null;
 export function useTotals() {
   const [totals, setTotals] = useState<Totals | null>(null);

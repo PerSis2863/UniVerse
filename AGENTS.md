@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M159 is the latest).
+  builds on it). The newest notes are at the end (M164 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,8 +100,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M157** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
-  M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120).
+- **On `main`** (live): everything through **M159** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
+  admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
+  transition named, the build libraries' advisories 6 → 1).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
     match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
@@ -147,12 +149,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     ring that rests while scrolling); M157, a sweep for problems (the live error log, a 199-page crawl of the
     built site for three roles, 15 checks): emergencies shown only to the people they concern, a phone
     number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
-  - **After PR #120, on the branch `claude/great-hamilton-8g8xdm` (10 Nov, the owner's fixes):** M158, the
+  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet (10 Nov, the owner's fixes; numbered
+    after PR #121's M158–M159):** M163, the
     sign-in page lined up (the picture shrinks with `zoom`, not pinned to a corner; cards one width; the
     footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
     M161, fields that line up (a field written under its label sits under it; date and time fields never
     narrower than "09:00 AM"); M162, arrow buttons answer a press everywhere (the arrow darts its way, the
-    button sinks) and what they change slides in (`.swap` with `data-dir`); M159, the landing's globe smaller,
+    button sinks) and what they change slides in (`.swap` with `data-dir`); M164, the landing's globe smaller,
     beside the five apps as a list that steers it (real daily totals, a way in), and the pointer light
     moved by `transform` (dragging the globe went from 9 slow frames in 40 to none).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
@@ -188,7 +191,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M163**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M165**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
@@ -198,7 +201,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0205`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0206`** (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
