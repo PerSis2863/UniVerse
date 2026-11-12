@@ -65,3 +65,11 @@ export function pageFor(pathname: string, search: string): { rewrite: string } |
   if (!r.built || pathname === r.built) return null;
   return { rewrite: r.built };
 }
+
+/**
+ * Whether a request to a page address is one the app makes: reading the page, or a Server Action
+ * (always sent with its Next-Action header; no form in the app posts to a page). Anything else is a
+ * probe, refused without starting Next.js: a broken upload form posted to "/" made Next.js fail with
+ * a 500 (the live error report of 10 Nov 2026), and each such request cost a page render.
+ */
+export const pageRequestOk = (method: string, serverAction: boolean): boolean => method === 'GET' || method === 'HEAD' || (method === 'POST' && serverAction);

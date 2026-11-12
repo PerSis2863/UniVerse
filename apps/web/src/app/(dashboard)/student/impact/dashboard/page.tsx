@@ -55,7 +55,7 @@ export default function MySocialImpactPage() {
         rightNode={
           <button
             onClick={() => router.push('/student/credentials')}
-            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition-all"
+            className="flex items-center gap-2 bg-gradient-to-r from-indigo-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 text-white px-4 py-2 rounded-xl text-xs font-bold shadow-lg shadow-indigo-600/30 transition"
           >
             <Award className="w-4 h-4" /> My Credentials
           </button>

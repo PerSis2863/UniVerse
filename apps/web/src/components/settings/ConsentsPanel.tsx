@@ -269,7 +269,7 @@ export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
               <button
                 type="button"
                 onClick={() => setShowGrievanceModal(true)}
-                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition-all"
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold shadow-sm transition"
               >
                 <Send className="w-3.5 h-3.5" /> File DPDP Request
               </button>
@@ -565,7 +565,7 @@ export function ConsentsPanel({ embedded = false }: { embedded?: boolean }) {
                   <button
                     type="submit"
                     disabled={submittingGrievance}
-                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition-all"
+                    className="px-5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold flex items-center gap-2 shadow-lg shadow-indigo-600/30 transition"
                   >
                     {submittingGrievance ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
                     Submit Request

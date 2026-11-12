@@ -2,20 +2,24 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { cleanCampusItem } from '@/lib/campus';
+import { campusOf } from '@/server/school-scope';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-async function requireAdmin(req: Request) {
+// An admin changes their own school's campus info (M159: `organizationId`; another school's looks not found).
+async function requireAdmin(req: Request, id: string) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Only admins can change campus info.' }, { status: 403 });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id }, select: { id: true } });
+  if (!item) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   return null;
 }
 
 export async function PATCH(req: Request, { params }: Ctx) {
-  const denied = await requireAdmin(req);
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireAdmin(req, id);
+  if (denied) return denied;
   const data = cleanCampusItem(await req.json().catch(() => ({})));
   if (!data.title) return NextResponse.json({ error: 'Title is required.' }, { status: 400 });
   const item = await prisma.campusItem.update({ where: { id }, data: { ...data, title: data.title } }).catch(() => null);
@@ -24,9 +28,9 @@ export async function PATCH(req: Request, { params }: Ctx) {
 }
 
 export async function DELETE(req: Request, { params }: Ctx) {
-  const denied = await requireAdmin(req);
-  if (denied) return denied;
   const { id } = await params;
+  const denied = await requireAdmin(req, id);
+  if (denied) return denied;
   await prisma.campusItem.delete({ where: { id } }).catch(() => null);
   return NextResponse.json({ ok: true });
 }

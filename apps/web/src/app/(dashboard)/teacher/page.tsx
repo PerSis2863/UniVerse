@@ -109,7 +109,7 @@ export default function TeacherDashboard() {
                     whileHover={{ scale: 1.01 }}
                     transition={{ type: 'spring', stiffness: 400, damping: 25 }}
                     key={i}
-                    className="p-4 rounded-xl bg-white/[0.03] border border-zinc-100 dark:border-white/[0.06] hover:border-indigo-500/20 transition-all cursor-pointer group"
+                    className="p-4 rounded-xl bg-white/[0.03] border border-zinc-100 dark:border-white/[0.06] hover:border-indigo-500/20 transition cursor-pointer group"
                     onClick={() => router.push('/teacher/blackboard')}
                   >
                     <div className="flex items-center justify-between mb-3">

@@ -248,7 +248,7 @@ export function ImpactScholarshipExchange() {
               return (
                 <div
                   key={pool.id}
-                  className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-xs transition-all hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+                  className="flex flex-col justify-between rounded-3xl border border-slate-200 bg-white p-5 shadow-xs transition hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div>
                     <div className="flex items-center justify-between">
@@ -298,7 +298,7 @@ export function ImpactScholarshipExchange() {
                     <button
                       onClick={() => setClaimingPool(pool)}
                       disabled={!eligible}
-                      className={`w-full rounded-xl py-2.5 text-xs font-bold transition-all ${
+                      className={`w-full rounded-xl py-2.5 text-xs font-bold transition ${
                         eligible
                           ? 'bg-indigo-600 text-white shadow-md shadow-indigo-500/20 hover:bg-indigo-700 active:scale-98'
                           : 'bg-slate-100 text-slate-400 cursor-not-allowed dark:bg-slate-800 dark:text-slate-500'

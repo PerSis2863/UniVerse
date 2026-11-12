@@ -8,6 +8,7 @@ import { audit } from './audit';
 import { text, type Body } from './body';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { taughtBy } from '@/lib/course-access';
+import { campusOf } from './school-scope';
 
 // Stage 5 · D15, the classroom twin (live campus map). The campus drawn as buildings on a simple map
 // (admins place them); each building's rooms, with what's on in each today from the class timetable
@@ -55,7 +56,7 @@ export async function campusMap(user: SessionUser, q: URLSearchParams) {
     prisma.classroomSession.findMany({ where: { endedAt: null, startedAt: { gte: new Date(now - 5 * HOUR) } }, select: { courseId: true, startedAt: true, course: { select: { code: true, name: true } }, _count: { select: { checkins: true } } }, take: 200 }),
     // Online class calls on now.
     prisma.scheduledCall.findMany({ where: { courseId: { not: null }, startAt: { lte: new Date(now + 5 * 60_000), gte: new Date(now - 6 * HOUR) } }, select: { id: true, title: true, startAt: true, durationMin: true, courseId: true, course: { select: { code: true, name: true } } }, take: 200 }),
-    prisma.campusItem.findMany({ where: { kind: 'EVENT', startAt: { gte: new Date(now - 3 * HOUR), lte: new Date(now + 3 * HOUR) } }, orderBy: { startAt: 'asc' }, select: { id: true, title: true, location: true, startAt: true, buildingId: true }, take: 30 }),
+    prisma.campusItem.findMany({ where: { AND: [await campusOf(user)], kind: 'EVENT', startAt: { gte: new Date(now - 3 * HOUR), lte: new Date(now + 3 * HOUR) } }, orderBy: { startAt: 'asc' }, select: { id: true, title: true, location: true, startAt: true, buildingId: true }, take: 30 }),
     // Online classes are listed for the people in them (admins see all).
     mineOnly ? prisma.course.findMany({ where: mineOnly, select: { id: true }, take: 300 }) : null,
   ]);
@@ -202,7 +203,7 @@ export async function placeEvent(user: SessionUser, id: string, b: Body) {
   admin(user);
   const buildingId = typeof b.buildingId === 'string' && b.buildingId ? b.buildingId : null;
   if (buildingId && !(await prisma.campusBuilding.findUnique({ where: { id: buildingId }, select: { id: true } }))) throw new NotFoundException('That building isn’t on the map any more.');
-  const item = await prisma.campusItem.findFirst({ where: { id, kind: 'EVENT' }, select: { id: true } });
+  const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id, kind: 'EVENT' }, select: { id: true } });
   if (!item) throw new NotFoundException('That event was removed.');
   return prisma.campusItem.update({ where: { id }, data: { buildingId }, select: { id: true, buildingId: true } });
 }

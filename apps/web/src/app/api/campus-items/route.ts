@@ -2,9 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { CAMPUS_KINDS, cleanCampusItem } from '@/lib/campus';
+import { campusOf, keepInSchool } from '@/server/school-scope';
 
-// GET ?kind=SERVICE|LINK|EVENT|MENU — campus info for any signed-in user (events: upcoming first).
-// Admins also get `createdBy` (name, email, role) and can pass ?past=1 to include past events.
+// GET ?kind=SERVICE|LINK|EVENT|MENU — the campus info of the person's own school (M159; events: upcoming first).
+// Admins also get `createdBy` (name, email, role; their own school's people) and can pass ?past=1 to include past events.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
@@ -15,14 +16,15 @@ export async function GET(req: Request) {
   const isAdmin = user.role === 'ADMIN';
   const withPast = isAdmin && new URL(req.url).searchParams.get('past') === '1';
   const items = await prisma.campusItem.findMany({
-    where: { kind, ...((kind === 'EVENT' || kind === 'MENU') && !withPast ? { startAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } : {}) },
+    where: { AND: [await campusOf(user)], kind, ...((kind === 'EVENT' || kind === 'MENU') && !withPast ? { startAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } : {}) },
     orderBy: kind === 'EVENT' || kind === 'MENU' ? [{ startAt: withPast ? 'desc' : 'asc' }, { category: 'asc' }] : [{ category: 'asc' }, { title: 'asc' }],
     take: 200,
   });
   if (!isAdmin) return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } });
 
-  // Admins also see who added each item (one extra query for all creators).
-  const creatorIds = [...new Set(items.map((i) => i.createdById).filter((id): id is string => !!id))];
+  // Admins also see who added each item (one extra query for all creators): only their own school's
+  // people (another school's admin stays a name-less entry, M158).
+  const creatorIds = await keepInSchool(user, [...new Set(items.map((i) => i.createdById).filter((id): id is string => !!id))]);
   // (D1 allows ~100 bound values per query, so ids go in chunks of 90.)
   const chunks: string[][] = [];
   for (let i = 0; i < creatorIds.length; i += 90) chunks.push(creatorIds.slice(i, i + 90));
@@ -50,6 +52,6 @@ export async function POST(req: Request) {
   if (kind === 'LINK' && !data.url) return NextResponse.json({ error: 'Enter a valid link (https://…).' }, { status: 400 });
   if (kind === 'EVENT' && !data.startAt) return NextResponse.json({ error: 'Pick a date and time for the event.' }, { status: 400 });
   if (kind === 'MENU' && !data.startAt) return NextResponse.json({ error: 'Pick the day this menu is for.' }, { status: 400 });
-  const item = await prisma.campusItem.create({ data: { ...data, title: data.title, kind, createdById: user.id } });
+  const item = await prisma.campusItem.create({ data: { ...data, title: data.title, kind, createdById: user.id, organizationId: user.organizationId ?? null } });
   return NextResponse.json(item, { status: 201 });
 }

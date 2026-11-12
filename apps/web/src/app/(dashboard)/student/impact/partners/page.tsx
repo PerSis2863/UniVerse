@@ -90,7 +90,7 @@ export default function GlobalPartnersPage() {
                 <button
                   key={type}
                   onClick={() => setFilterType(type)}
-                  className={`relative isolate px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+                  className={`relative isolate px-4 py-2 rounded-xl text-xs font-semibold transition ${
                     filterType === type
                       ? 'text-white'
                       : 'bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -124,7 +124,7 @@ export default function GlobalPartnersPage() {
                   initial={{ opacity: 0, y: 12 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 8) * 0.04 }}
-                  className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 hover:border-indigo-500/30 transition-all flex flex-col gap-4 group"
+                  className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-zinc-800/80 rounded-2xl p-6 hover:border-indigo-500/30 transition flex flex-col gap-4 group"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex items-center gap-3.5 min-w-0">

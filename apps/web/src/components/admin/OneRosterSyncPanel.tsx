@@ -131,7 +131,7 @@ export function OneRosterSyncPanel() {
         </div>
 
         <div className="flex flex-col sm:flex-row items-center gap-3 w-full md:w-auto">
-          <label className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm cursor-pointer shadow-lg shadow-indigo-600/30 transition-all flex items-center justify-center gap-2">
+          <label className="w-full sm:w-auto px-5 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs sm:text-sm cursor-pointer shadow-lg shadow-indigo-600/30 transition flex items-center justify-center gap-2">
             <UploadCloud className="w-4 h-4" /> Select OneRoster CSVs
             <input
               type="file"
@@ -197,7 +197,7 @@ export function OneRosterSyncPanel() {
             <button
               onClick={() => void executeSync()}
               disabled={syncing}
-              className="px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+              className="px-6 py-2.5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
             >
               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
               Execute Roster Sync
@@ -263,7 +263,7 @@ export function OneRosterSyncPanel() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all ${
+                  className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition ${
                     activeTab === tab.id
                       ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white'
                       : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'

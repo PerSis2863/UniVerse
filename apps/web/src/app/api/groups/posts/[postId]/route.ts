@@ -3,13 +3,14 @@ import { publishGroup } from '@/server/groups-live';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { groupRole, postSelect, MAX_POST_LENGTH } from '@/lib/groups';
+import { madeInSchool } from '@/server/school-scope';
 
 type Ctx = { params: Promise<{ postId: string }> };
 
 async function loadOwnPost(req: Request, postId: string) {
   const user = await getSessionUser(req);
   if (!user) return { error: NextResponse.json({ error: 'Please sign in.' }, { status: 401 }) };
-  const post = await prisma.groupPost.findUnique({ where: { id: postId }, select: { id: true, authorId: true, groupId: true } });
+  const post = await prisma.groupPost.findUnique({ where: { id: postId }, select: { id: true, authorId: true, groupId: true, group: { select: { createdById: true } } } });
   if (!post) return { error: NextResponse.json({ error: 'Message not found.' }, { status: 404 }) };
   return { user, post };
 }
@@ -30,13 +31,13 @@ export async function PATCH(req: Request, { params }: Ctx) {
   return NextResponse.json(post);
 }
 
-// Delete your own message (group admins/moderators and platform admins can remove any).
+// Delete your own message (the group's admins and moderators, and the admins of its school, can remove any).
 export async function DELETE(req: Request, { params }: Ctx) {
   const { postId } = await params;
   const r = await loadOwnPost(req, postId);
   if ('error' in r) return r.error;
   const role = await groupRole(r.post.groupId, r.user.id);
-  const canModerate = r.user.role === 'ADMIN' || role === 'ADMIN' || role === 'MODERATOR';
+  const canModerate = role === 'ADMIN' || role === 'MODERATOR' || (r.user.role === 'ADMIN' && (await madeInSchool(r.user, r.post.group.createdById)));
   if (r.post.authorId !== r.user.id && !canModerate) {
     return NextResponse.json({ error: 'You can only delete your own messages.' }, { status: 403 });
   }

@@ -154,7 +154,7 @@ function RequestCredentialModal({ onClose, onRequested, initial }: { onClose: ()
               className={`${inputCls} resize-none`} />
           </div>
           <button type="submit" aria-busy={loading || undefined} disabled={loading}
-            className="w-full bg-gradient-to-r from-indigo-400 to-indigo-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-500/20">
+            className="w-full bg-gradient-to-r from-indigo-400 to-indigo-600 hover:from-emerald-500 hover:to-teal-500 disabled:opacity-50 text-white font-bold rounded-xl py-3 text-sm flex items-center justify-center gap-2 transition shadow-lg shadow-emerald-500/20">
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
             {loading ? 'Submitting…' : 'Submit for Verification'}
           </button>
@@ -183,7 +183,7 @@ function CredentialCard({ cred }: { cred: Credential }) {
   const certInfo = { title: cred.title, holderName, organization: cred.organization, projectName: cred.projectName, issuedAt: cred.issuedAt, certificateCode: cred.certificateCode };
 
   return (
-    <div className="bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 transition-all">
+    <div className="bg-white/80 dark:bg-zinc-900/60 border border-zinc-200 dark:border-zinc-800 rounded-2xl overflow-hidden hover:border-zinc-300 dark:hover:border-zinc-700 transition">
       <div className="p-5">
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500/20 to-teal-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
@@ -246,28 +246,28 @@ function CredentialCard({ cred }: { cred: Credential }) {
         {isVerified && (
           <div className="flex flex-wrap gap-2 mt-4">
             <button onClick={shareLinkedIn}
-              className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-blue-700 dark:text-blue-400 hover:text-blue-500 dark:hover:text-blue-300 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/20 px-3 py-1.5 rounded-lg transition font-semibold">
               <LinkedinIcon className="w-3 h-3" /> LinkedIn
             </button>
             <button onClick={shareTwitter}
-              className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-sky-700 dark:text-sky-400 hover:text-sky-500 dark:hover:text-sky-300 bg-sky-500/10 hover:bg-sky-500/20 border border-sky-500/20 px-3 py-1.5 rounded-lg transition font-semibold">
               <TwitterIcon className="w-3 h-3" /> Twitter / X
             </button>
             <CopyLinkButton url={cred.verifyUrl!}
-              className="dark text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all" />
+              className="dark text-zinc-300 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition" />
             <CertificateQrButton url={cred.verifyUrl!} cert={certInfo} label="QR certificate"
-              className="text-fuchsia-300 hover:text-fuchsia-200 bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 hover:from-indigo-500/25 hover:to-fuchsia-500/25 border border-fuchsia-500/25 px-3 py-1.5 rounded-lg transition-all" />
+              className="text-fuchsia-300 hover:text-fuchsia-200 bg-gradient-to-r from-indigo-500/15 to-fuchsia-500/15 hover:from-indigo-500/25 hover:to-fuchsia-500/25 border border-fuchsia-500/25 px-3 py-1.5 rounded-lg transition" />
             <button onClick={() => downloadFile(`/api/passport/badge/${cred.id}`, 'open-badge.jwt').then(() => toast.success('Open Badge downloaded')).catch((e) => toast.error(e.message))}
               title="Signed Open Badges 3.0 credential for digital wallets and badge platforms"
-              className="flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-violet-700 dark:text-violet-400 hover:text-violet-500 dark:hover:text-violet-300 bg-violet-500/10 hover:bg-violet-500/20 border border-violet-500/20 px-3 py-1.5 rounded-lg transition font-semibold">
               <Download className="w-3 h-3" /> Open Badge
             </button>
             <a href={`/verify/${cred.id}`} target="_blank" rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition-all font-semibold">
+              className="flex items-center gap-1.5 text-xs text-emerald-700 dark:text-emerald-400 hover:text-emerald-500 dark:hover:text-emerald-300 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 px-3 py-1.5 rounded-lg transition font-semibold">
               <ExternalLink className="w-3 h-3" /> Public Page
             </a>
             <button onClick={() => setExpanded(v => !v)}
-              className="dark flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition-all ms-auto">
+              className="dark flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white bg-zinc-800 hover:bg-zinc-700 px-3 py-1.5 rounded-lg transition ms-auto">
               {expanded ? <><ChevronUp className="w-3 h-3" /> Hide Proof</> : <><ChevronDown className="w-3 h-3" /> Show Proof</>}
             </button>
           </div>
@@ -393,7 +393,7 @@ export default function VerifiedCredentialsPage() {
               Your Credentials <span className="text-zinc-500 font-normal text-sm">({credentials.length}{pendingCount > 0 ? `, ${pendingCount} pending` : ''})</span>
             </h2>
             <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition-all shadow-lg shadow-emerald-500/20">
+              className="flex items-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-xs font-bold px-4 py-2 rounded-xl transition shadow-lg shadow-emerald-500/20">
               <Plus className="w-4 h-4" /> Request Credential
             </button>
           </div>

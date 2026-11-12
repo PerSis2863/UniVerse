@@ -334,7 +334,7 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
         {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
           const Icon = ROLE_INFO[r].icon;
           return (
-            <button key={r} onClick={() => onPick(r)} className="tone-panel text-start p-5 rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition-all">
+            <button key={r} onClick={() => onPick(r)} className="tone-panel text-start p-5 rounded-2xl border border-zinc-200/80 dark:border-white/[0.08] hover:border-indigo-500/50 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-indigo-500/10 transition">
               <RoleIcon icon={Icon} />
               <p className="mt-3 font-semibold text-zinc-900 dark:text-white">{ROLE_INFO[r].label}</p>
               <p className="mt-1 text-sm text-zinc-500">{ROLE_INFO[r].blurb}</p>

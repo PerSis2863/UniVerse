@@ -5933,3 +5933,79 @@ What was left in the videos after M134–M142 was the Agent Center page. Its mat
 - **Checks run on the build:** live-ui, world-ui, app-backdrop-ui, home-ui, card-menu-ui,
   calendar-ballast-ui, activity-log-ui, template-windows-ui, courses-center-ui, and the seven Trace and
   Relief API checks: all pass.
+
+
+## M158: a sweep for problems: security, live errors, motion (the owner, 12 Nov 2026)
+
+The owner: "analysis the project and make new things and enchance the security … make everything eltra
+smooth … find any errors or bugs". New things are paused until 5 Dec (said once); the rest was done.
+
+- **Numbers:** written on a branch cut at M128 as M129 and M130; main had gone on to M157 meanwhile (other
+  sessions), so they were renumbered M158 and M159 when main was merged in, and the database update 0195
+  became 0205.
+- **Server Actions are outside the route test (M114).** `src/app/actions/transaction.ts` (the only
+  `'use server'` file) let any school's admin list the last 500 payments of every school with names,
+  emails and phones, and record a payment against anyone's account. Now `peopleWhere(caller)` on both.
+  **Rule:** a new Server Action checks who is asking and their school itself; nothing tests it for you.
+- **Two-step sign-in and Server Actions:** an action's request doesn't carry the app's `X-UV-Pass`
+  header, so `getUserFromToken` refused every real admin once two-step is on (`SESSION_SECRET` +
+  `RESEND_API_KEY`): Finances and Administrative would have gone empty. `getUserFromToken(token, pass,
+  write)`: the screens pass `twoStepPass()`; `write` makes the request a POST so the read-only demo admin
+  is refused (it could record payments before).
+- **`madeInSchool(user, makerId)`** (`school-scope.ts`): for records with no school of their own, the
+  maker's school decides (nobody named: the main school). Used for deleting a group's message as a school
+  admin, editing or deleting campus info, an event's check-in code, and the creator details in the campus
+  list (`keepInSchool`). **Left:** campus info itself is still one list for every school (no
+  `organizationId` on `campus_items`): a database change, when a second school really joins.
+- **Stray posts to pages** (`pageRequestOk` in `cloudflare/page-match.ts`, used in `worker.ts`): a page
+  takes GET, HEAD and a POST with `Next-Action` (a Server Action); anything else gets 405 before Next.js
+  starts. The live report of 10 Nov ("No boundary string in Content-Type header", a 500 on `/`) was a
+  bot's broken upload form; reproduced on the local Worker, now 405. **Trap:** a form that posts to a
+  page (`<form action={serverAction}>` without JavaScript) would be refused: the app has none; keep
+  calling actions as functions.
+- **The blank-page guard** (`recovery-script.ts`): a stylesheet whose rules can't be read (the page shown
+  through a translation or archive site; Firefox while a sheet still loads) counted as "styles came from
+  elsewhere" and reloaded the page, ending on the Reload screen (the 7 Nov report). Not proof of anything:
+  now the text check decides.
+- **Motion:** all 108 `transition-all` are `transition` (colours, shadow, opacity, transform) or the
+  property that changes (`transition-[width]` for progress bars, `[top,left,width,height]` for the tour's
+  spotlight, `[stroke-width]`, `[gap]`, `[height,background-color]`). `src/lib/motion-rules.test.ts` fails
+  a new one. Buttons, sheets and page changes were already within the §8 rules; nothing else changed.
+- **Looked at, left alone:** the other live reports are sample data (`smp…` ids) or already fixed
+  (M58, M73); the importScripts report of 7 Nov is an old tab after a deploy (the recovery script reloads
+  it). Library advisories (6: glob, minimatch, serialize-javascript, deepmerge) are all in build tools,
+  none reaches the browser or the Worker; no safe pinned release without a major jump, so not changed.
+  Raw SQL: all values bound. Admin modules in `src/server/modules`: scoped (F2).
+- **Tested:** `pnpm check`; new unit tests (school-scope, page-routes, motion-rules); the local Worker:
+  broken upload POST `/` 405 (was 500), GET 200, a `Next-Action` POST reaches Next.js; `scripts/crawl.mjs`
+  on the built site, 208 pages as student, teacher, admin and parent: 201 clean, the rest expected (Trace
+  pages asked by an account with no brand: 403; this machine's network).
+- **[owner]:** in the console → Errors, mark resolved: the 10 Nov "POST failed … boundary", the two
+  "Blank page: styles came from elsewhere", the importScripts one, and the old `/api/core/owner/people`.
+
+
+## M159: campus info per school; the build libraries' advisories (the owner, 12 Nov 2026)
+
+The owner, after M158's "left out on purpose" list: "please do all these".
+
+- **Campus info per school** (migration `0205_campus_items_school.sql`): `campus_items.organizationId`
+  (null: the main school, as on users), filled from each item's maker. `campusOf(user)`
+  (`school-scope.ts`) is the filter; put it in `AND: [await campusOf(user)]` (it can be an `OR`, and
+  search has its own). Every read and change uses it: the lists (`/api/campus-items`,
+  `/api/campus/events`, meals, the campus map, search), sign-up, buying a ticket, check-in, the kitchen's
+  orders, an admin's attendee list (it showed every school's people before), door code, edits and the
+  map's "place event". A new item takes its maker's school. **Rule:** any new `campusItem` query takes
+  `campusOf`. `madeInSchool` (M158) now serves groups only.
+- **Not scoped on purpose:** `event-tickets.ts` (a paid order finds its own event by id, from Stripe's
+  callback: no person is asking).
+- **Libraries** (root `package.json` overrides, each release two weeks old or more): glob 9–14.0.1 →
+  14.0.3, minimatch 7–11.0.0 → 11.0.3, serialize-javascript → 7.1.3. All three are build tools (the
+  Cloudflare adapter, the offline worker's builder). `pnpm audit --prod`: 6 → 1; the one left, deepmerge
+  (low, inside the offline worker's builder), has no fixed release.
+- **Tested:** `pnpm local:build` (passed, 4.7 minutes), then on the built Worker with two test events
+  (one in another school, removed after): the main school's admin lists only the main school's; another
+  school's event answers 404 for the door code, attendees and sign-up; a student of a different school
+  sees neither. `pnpm check`.
+- **New things (the pause):** the owner chose "something for the first class" over the games; a proposal
+  was put to them (a "Since your last visit" card on the student and teacher home). Not started.
+- **Next database update: 0206.**

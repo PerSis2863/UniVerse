@@ -208,7 +208,7 @@ export default function QuizzesPage() {
                     <motion.div
                       initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 6) * 0.03 }}
                       key={quiz.id}
-                      className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-6 hover:border-indigo-500/30 transition-all group relative overflow-hidden"
+                      className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-6 hover:border-indigo-500/30 transition group relative overflow-hidden"
                     >
                       <div className={`absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-3xl opacity-10 -me-16 -mt-16`} />
                       <div className="flex justify-between items-start mb-4 relative z-10">
@@ -276,7 +276,7 @@ export default function QuizzesPage() {
                     </motion.div>
                   ))}
                   {completedQuizzesList.length > 3 && (
-                    <button className="w-full mt-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex justify-center items-center gap-1 transition-all" onClick={() => setShowAllResults(!showAllResults)}>
+                    <button className="w-full mt-4 py-2 text-sm font-semibold text-indigo-600 dark:text-indigo-400 hover:underline flex justify-center items-center gap-1 transition" onClick={() => setShowAllResults(!showAllResults)}>
                       {showAllResults ? 'Hide results' : 'View all results'} <ChevronRight className={`w-4 h-4 transition-transform ${showAllResults ? 'rotate-90' : ''}`} />
                     </button>
                   )}
@@ -353,7 +353,7 @@ export default function QuizzesPage() {
                     <span>{answeredCount} answered</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-6 overflow-hidden">
-                    <div className="h-full rounded-full bg-indigo-500 transition-all" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
+                    <div className="h-full rounded-full bg-indigo-500 transition-[width]" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
                   </div>
                   {activeQuiz.plainWords !== false ? (
                     // Reading help (Stage 5 · D9), unless the teacher turned it off: the question in

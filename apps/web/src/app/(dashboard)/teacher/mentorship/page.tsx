@@ -139,7 +139,7 @@ export default function MentorshipPage() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: Math.min(i, 6) * 0.03 }}
                   key={mentor.id}
-                  className="p-5 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition-all group min-w-0"
+                  className="p-5 rounded-xl border border-zinc-200 dark:border-white/[0.06] bg-zinc-50 dark:bg-white/[0.02] hover:bg-zinc-100 dark:hover:bg-white/[0.04] transition group min-w-0"
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex items-center gap-4 min-w-0">

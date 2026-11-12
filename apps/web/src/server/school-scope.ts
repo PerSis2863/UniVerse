@@ -87,3 +87,22 @@ export async function keepInSchool(user: Who, ids: string[]): Promise<string[]> 
   }
   return ids.filter((id) => found.has(id));
 }
+
+/**
+ * Whether a record with no school of its own (a group, a campus notice) belongs to the admin's
+ * school: its maker's school, or the main school when nobody is named.
+ */
+export async function madeInSchool(user: Who, makerId: string | null | undefined): Promise<boolean> {
+  const schools = await schoolsOf(user);
+  if (schools === 'all') return true;
+  if (!makerId) return schools.includes(null);
+  return !!(await prisma.user.findFirst({ where: { id: makerId, ...usersIn(schools) }, select: { id: true } }));
+}
+
+/**
+ * Campus info (services, links, events, menus) is each school's own (M159, `campus_items.organizationId`):
+ * a Prisma filter, for `AND`, to what this person's school has (an admin: the schools they run).
+ */
+export async function campusOf(user: Who) {
+  return orgIn(await schoolsOf(user));
+}

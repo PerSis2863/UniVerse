@@ -160,7 +160,7 @@ export function TrustClient() {
             {systems.map((s) => (
               <div
                 key={s.name}
-                className="p-4 rounded-2xl border border-white/[0.06] bg-black/30 flex items-start justify-between gap-3 hover:border-white/15 transition-all"
+                className="p-4 rounded-2xl border border-white/[0.06] bg-black/30 flex items-start justify-between gap-3 hover:border-white/15 transition"
               >
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -198,7 +198,7 @@ export function TrustClient() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition ${
                     isSel
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/30'
                       : 'text-zinc-400 hover:text-white hover:bg-white/[0.05]'
@@ -516,13 +516,13 @@ export function TrustClient() {
           <div className="flex flex-wrap items-center gap-3">
             <Link
               href={settingsHref}
-              className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2"
+              className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-sm shadow-lg shadow-indigo-600/30 transition flex items-center gap-2"
             >
               Account Settings <ChevronRight className="w-4 h-4" />
             </Link>
             <a
               href="mailto:dpo@universeimpact.com"
-              className="px-5 py-3 rounded-2xl border border-white/15 bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 font-semibold text-sm transition-all"
+              className="px-5 py-3 rounded-2xl border border-white/15 bg-white/[0.05] hover:bg-white/[0.1] text-zinc-200 font-semibold text-sm transition"
             >
               Contact DPO
             </a>
