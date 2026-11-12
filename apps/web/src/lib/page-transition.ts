@@ -51,11 +51,18 @@ export const EASE_OUT = 'cubic-bezier(0.22, 1, 0.36, 1)';
 export const EASE_IOS = 'cubic-bezier(0.32, 0.72, 0, 1)';
 /** Arrivals: most of the way at once, then a long soft glide into place (AgentGPT's springs). */
 export const EASE_GLIDE = 'cubic-bezier(0.16, 1, 0.3, 1)';
+/** M133: a real spring (damping 0.8: it settles with 1.5% of give), as one CSS `linear()` curve so the
+ *  compositor runs it (globals.css --spring-glide is the same curve). */
+export const SPRING_GLIDE = 'linear(0, 0.0252, 0.0887, 0.1752, 0.2733, 0.3746, 0.4734, 0.5657, 0.6492, 0.7228, 0.7861, 0.8394, 0.8833, 0.9188, 0.9468, 0.9685, 0.9847, 0.9965, 1.0047, 1.0101, 1.0133, 1.0148, 1.0152, 1.0147, 1.0136, 1.0123, 1.0108, 1.0093, 1.0078, 1.0064, 1.0051, 1.0041, 1.0031, 1.0023, 1.0017, 1.0012, 1)';
+let springOk: boolean | null = null;
+/** The spring where the browser has `linear()` easing (Chrome 113, Safari 17.2, Firefox 112), the glide otherwise. */
+export const springGlide = () => (springOk ??= typeof CSS !== 'undefined' && !!CSS.supports?.('transition-timing-function', 'linear(0, 1)')) ? SPRING_GLIDE : EASE_GLIDE;
 
 /** The old page as a tap leaves it: dims and drifts the way the new one will come from. */
 export function leaveFrames(m: PageMotion): Keyframe[] {
   if (m === 'shared') return [{ opacity: 1 }, { opacity: 0.4 }];
-  const to = m === 'push' ? 'translate3d(-18px, 0, 0)' : m === 'pop' ? 'translate3d(18px, 0, 0)' : m === 'tab' ? 'translate3d(0, 4px, 0)' : 'translate3d(0, 6px, 0) scale(0.996)';
+  // M133: depth: the page you leave sinks back a little as it goes.
+  const to = m === 'push' ? 'translate3d(-18px, 0, 0) scale(0.985)' : m === 'pop' ? 'translate3d(18px, 0, 0) scale(0.985)' : m === 'tab' ? 'translate3d(0, 4px, 0) scale(0.99)' : 'translate3d(0, 6px, 0) scale(0.985)';
   // M124: no blur (a blur filter repaints the whole page every frame); the fade and drift stay.
   return [{ opacity: 1, transform: 'none' }, { opacity: m === 'tab' ? 0.35 : 0.4, transform: to }];
 }
@@ -64,7 +71,8 @@ export function leaveFrames(m: PageMotion): Keyframe[] {
 export function enterFrames(m: PageMotion): Keyframe[] {
   // Never from fully transparent: the first frames would show an empty screen.
   if (m === 'shared') return [{ opacity: 0.3 }, { opacity: 1 }];
-  const from = m === 'push' ? 'translate3d(56px, 0, 0)' : m === 'pop' ? 'translate3d(-56px, 0, 0)' : m === 'tab' ? 'translate3d(0, 16px, 0)' : 'translate3d(0, 20px, 0) scale(0.99)';
+  // M133: and the new one comes forward out of a little depth, settling on a spring.
+  const from = m === 'push' ? 'translate3d(56px, 0, 0) scale(0.985)' : m === 'pop' ? 'translate3d(-56px, 0, 0) scale(0.985)' : m === 'tab' ? 'translate3d(0, 16px, 0) scale(0.99)' : 'translate3d(0, 20px, 0) scale(0.975)';
   return [{ opacity: 0.3, transform: from }, { opacity: 1, transform: 'none' }];
 }
 

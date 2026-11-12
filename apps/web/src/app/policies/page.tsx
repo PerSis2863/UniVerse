@@ -10,7 +10,7 @@ const DOCS = [
   { href: '/privacy', title: 'Privacy Policy', text: 'What personal data we collect, why, who we share it with, and your rights.' },
   { href: '/privacy-choices', title: 'Your Privacy Choices', text: 'The settings you control and how to access, download or delete your data.' },
   { href: '/terms', title: 'Acceptable Use', text: 'What is and isn’t allowed on UniVerse (Terms of Service, section 4).' },
-  { href: '/privacy-choices', title: 'Cookie Notice', text: 'We only use essential cookies and storage: no analytics or advertising trackers.' },
+  { href: '/privacy-choices', title: 'Cookie Notice', text: 'Essential cookies and storage; with Accept all, an anonymous count of which pages are visited (PostHog, EU). No advertising trackers.' },
   { href: '/security', title: 'Product Security', text: 'How we protect data, and how to report a vulnerability responsibly.' },
   { href: '/accessibility', title: 'Accessibility', text: 'Our accessibility commitment, known limitations, and how to report a barrier.' },
   { href: '/legal-notice', title: 'Legal Notice', text: 'Who publishes UniVerse and who hosts it (mentions légales).' },

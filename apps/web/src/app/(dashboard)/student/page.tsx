@@ -1,4 +1,5 @@
 'use client';
+import { CardMenu } from '@/components/ui/CardMenu';
 import { letter } from '@/lib/gradebook';
 import { useGradeScale } from '@/lib/use-grade-scale';
 import useSWR from 'swr';
@@ -53,7 +54,7 @@ function Panel({ title, icon: Icon, action, children, className, delay = 0 }: {
           </span>
           {title}
         </h2>
-        {action}
+        <div className="flex items-center gap-1">{action}<CardMenu title={title} /></div>
       </div>
       {children}
     </section>

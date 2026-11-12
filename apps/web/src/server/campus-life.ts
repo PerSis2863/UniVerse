@@ -189,7 +189,7 @@ export async function attendees(user: SessionUser, itemId: string) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Only admins can see attendees.');
   const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true, title: true, capacity: true, startAt: true } });
   if (!item) throw new NotFoundException('Event not found.');
-  // Only the admin's own school's people (school-scope.ts); the event is their school's too (M130).
+  // Only the admin's own school's people (school-scope.ts); the event is their school's too (M159).
   const people = await prisma.eventRsvp.findMany({
     where: { itemId, user: await peopleWhere(user) }, orderBy: { createdAt: 'asc' }, take: 1000,
     select: { id: true, status: true, checkedInAt: true, createdAt: true, user: { select: { id: true, name: true, email: true } } },

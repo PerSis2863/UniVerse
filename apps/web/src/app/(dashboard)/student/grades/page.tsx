@@ -1,4 +1,5 @@
 'use client';
+import { CardHead } from '@/components/ui/CardMenu';
 import { errorMessage } from '@/lib/api';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
@@ -423,10 +424,7 @@ export default function GradesPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {/* GPA Trend Chart */}
           <div className="card">
-            <h3 className="font-bold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-indigo-500" /> GPA Trend
-            </h3>
-            <p className="text-xs text-zinc-500 mb-4">Your cumulative GPA over semesters</p>
+            <CardHead as="h3" icon={TrendingUp} title="GPA Trend" sub="Your cumulative GPA over semesters" />
             {gpaHistory.length >= 2 ? <GpaSparkline data={gpaHistory} /> : (
               <p className="text-sm text-zinc-500 py-6">Your trend appears once you have grades from at least two terms{gpaHistory[0] ? ` (so far: ${gpaHistory[0].sem}, GPA ${gpaHistory[0].gpa.toFixed(2)})` : ''}.</p>
             )}
@@ -434,20 +432,14 @@ export default function GradesPage() {
 
           {/* Grade Distribution Donut */}
           <div className="card">
-            <h3 className="font-bold text-zinc-900 dark:text-white mb-1 flex items-center gap-2">
-              <Award className="w-4 h-4 text-emerald-500" /> Grade Distribution
-            </h3>
-            <p className="text-xs text-zinc-500 mb-4">Letter grades across {semester === 'All courses' ? 'all your courses' : semester}</p>
+            <CardHead as="h3" icon={Award} title="Grade Distribution" sub={`Letter grades across ${semester === 'All courses' ? 'all your courses' : semester}`} />
             <GradeDonut grades={gradesData} avg={avg} />
           </div>
         </div>
 
         {/* Transcript Table */}
         <div className="card">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
-              <FileBadge className="w-5 h-5 text-indigo-500" /> Academic Transcript
-            </h2>
+          <CardHead icon={FileBadge} title="Academic Transcript" className="flex-wrap mb-6">
             <select
               value={semester}
               onChange={e => setSemester(e.target.value)}
@@ -456,7 +448,7 @@ export default function GradesPage() {
             >
               {Object.keys(allGradesData).map(s => <option key={s}>{s}</option>)}
             </select>
-          </div>
+          </CardHead>
 
           <div className="overflow-x-auto" role="region" aria-label="Transcript" tabIndex={0}>
             <table className="w-full text-start border-collapse">

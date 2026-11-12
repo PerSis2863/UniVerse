@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
-import { animate, m as motion, useInView, useScroll, useSpring, useTransform } from 'framer-motion';
+import { animate, m as motion, useInView } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
 // Small parts shared by the landing page's sections (src/app/page.tsx).
@@ -57,19 +57,20 @@ export type MotionKind = 'up' | 'tilt' | 'sweep' | 'fan' | 'depth' | 'mask' | 's
 const Kind = createContext<MotionKind>('up');
 export const Motion = ({ kind, children }: { kind: MotionKind; children: React.ReactNode }) => <Kind.Provider value={kind}>{children}</Kind.Provider>;
 
-/** A starting pose per kind; `n` alternates sides for `fan` (from the delay, which grows with the index). */
-function pose(kind: MotionKind, n: number, rtl: boolean): Record<string, number | string> {
+/** A starting pose per kind and the pose it settles in, each one `transform` (M133: the compositor runs
+ *  it, so a reveal never stutters while the page scrolls; framer's x / y run on the page's thread).
+ *  `n` alternates sides for `fan` (from the delay, which grows with the index). */
+function pose(kind: MotionKind, n: number, rtl: boolean): [Record<string, number | string>, Record<string, number | string>] {
   const side = (n % 2 ? 1 : -1) * (rtl ? -1 : 1);
   switch (kind) {
-    case 'tilt': return { opacity: 0, y: 48, rotateX: 16, transformPerspective: 1100 };
-    case 'sweep': return { opacity: 0, x: rtl ? 56 : -56 };
-    case 'fan': return { opacity: 0, x: side * 44, y: 18, rotate: side * 2.5 };
-    case 'depth': return { opacity: 0, scale: 0.9, y: 22 };
-    case 'mask': return { y: '105%' };
-    default: return { opacity: 0, y: 26 };
+    case 'tilt': return [{ opacity: 0, transform: 'perspective(1100px) translateY(48px) rotateX(16deg)' }, { opacity: 1, transform: 'perspective(1100px) translateY(0px) rotateX(0deg)' }];
+    case 'sweep': return [{ opacity: 0, transform: `translateX(${rtl ? 56 : -56}px)` }, { opacity: 1, transform: 'translateX(0px)' }];
+    case 'fan': return [{ opacity: 0, transform: `translateX(${side * 44}px) translateY(18px) rotate(${side * 2.5}deg)` }, { opacity: 1, transform: 'translateX(0px) translateY(0px) rotate(0deg)' }];
+    case 'depth': return [{ opacity: 0, transform: 'translateY(22px) scale(0.9)' }, { opacity: 1, transform: 'translateY(0px) scale(1)' }];
+    case 'mask': return [{ transform: 'translateY(105%)' }, { transform: 'translateY(0%)' }];
+    default: return [{ opacity: 0, transform: 'translateY(26px)' }, { opacity: 1, transform: 'translateY(0px)' }];
   }
 }
-const REST = { opacity: 1, x: 0, y: 0, scale: 1, rotate: 0, rotateX: 0 };
 const useRtl = () => useSyncExternalStore(() => () => {}, () => document.documentElement.dir === 'rtl', () => false);
 
 /** Arrives once, when scrolled into view, the way its section's `Motion` says. */
@@ -77,23 +78,20 @@ export function Reveal({ children, delay = 0, className, role }: { children: Rea
   const kind = useContext(Kind);
   const rtl = useRtl();
   if (kind === 'scrub') return <Scrub delay={delay} className={className} role={role}>{children}</Scrub>;
-  const n = Math.round(delay * 100);
-  const move = <motion.div role={kind === 'mask' ? undefined : role} initial={pose(kind, n, rtl)} whileInView={REST} viewport={{ once: true, margin: '-80px' }}
-    transition={{ duration: kind === 'mask' ? 0.9 : 0.8, delay, ease: EASE }} className={kind === 'mask' ? undefined : className} style={kind === 'tilt' ? { transformOrigin: '50% 100%' } : undefined}>{children}</motion.div>;
+  const [from, to] = pose(kind, Math.round(delay * 100), rtl);
+  // M133: settles like a real thing (a spring with a little give), not a slide on rails.
+  const move = <motion.div role={kind === 'mask' ? undefined : role} initial={from} whileInView={to} viewport={{ once: true, margin: '-80px' }}
+    transition={{ type: 'spring', visualDuration: kind === 'mask' ? 0.8 : 0.7, bounce: kind === 'mask' ? 0 : 0.16, delay }} className={kind === 'mask' ? undefined : className} style={kind === 'tilt' ? { transformOrigin: '50% 100%' } : undefined}>{children}</motion.div>;
   return kind === 'mask' ? <div role={role} className={cn('overflow-hidden pb-1', className)}>{move}</div> : move;
 }
 
-/** Tied to the scroll: rises from 70 px below and fades in as it crosses the lower part of the
- *  screen, through a spring so a trackpad's or a wheel's steps come out as one smooth glide. */
+/** Tied to the scroll: rises from 70 px below and fades in as it crosses the lower part of the screen.
+ *  M133: a CSS scroll-driven animation (`.scrub` in globals.css), run by the compositor in step with the
+ *  scroll itself (it used framer's scroll and spring on the page's thread, which lagged whenever the page
+ *  was busy). Where the browser has no scroll timelines it simply stands still. */
 function Scrub({ children, delay, className, role }: { children: React.ReactNode; delay: number; className?: string; role?: 'listitem' }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const calm = useReduce();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start 0.55'] });
-  const soft = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.6 });
   // Later parts (bigger delay) start a little lower, so a row lands one after another.
-  const y = useTransform(soft, [0, 1], [calm ? 0 : 70 + delay * 120, 0]);
-  const opacity = useTransform(soft, [0, 0.6], [calm ? 1 : 0, 1]);
-  return <motion.div ref={ref} role={role} className={className} style={{ y, opacity }}>{children}</motion.div>;
+  return <div role={role} className={cn('scrub', className)} style={{ '--scrub-y': `${70 + delay * 120}px` } as React.CSSProperties}>{children}</div>;
 }
 
 /** A number that counts up from 0 when it comes into view (written straight into the text: no re-renders). */

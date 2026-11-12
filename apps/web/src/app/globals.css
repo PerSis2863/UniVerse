@@ -1512,7 +1512,7 @@ html.reduce-motion *, html.reduce-motion *::before, html.reduce-motion *::after 
 @media (prefers-reduced-motion: reduce) { .aurora-a, .aurora-b { animation: none; } }
 html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 
-/* ─── M1 · Living motion (src/lib/scroll-motion.ts; the light behind pages is M4's LightTrail) ─── */
+/* ─── M1 · Living motion (src/lib/scroll-motion.ts; the scene behind pages is M129's AppBackdrop) ─── */
 
 /* Cards under the pointer (computers): a soft light follows it and the edge lights up; cards that
    open something lift a little. Set by one pointer listener (scroll-motion.ts), only on cards
@@ -1655,11 +1655,6 @@ html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, 
 .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 16px 36px -18px rgba(0, 0, 0, 0.35); }
 .dark .ios-glass { box-shadow: 0 0 0 1px var(--card-border), 0 18px 40px -16px rgba(0, 0, 0, 0.8); }
 
-/* Headline-number rows (.kpi-row): the first card dusk (navy into aqua frost), the second gold (pale aqua). */
-.kpi-row > :first-child { background: var(--karma-dusk); border-color: transparent; color: #ffffff; }
-.kpi-row > :first-child :is(.text-zinc-900, .text-zinc-800, .text-zinc-700, .text-zinc-600, .text-zinc-500, .text-zinc-400, [class*="dark:text-"]) { color: inherit; }
-.kpi-row > :first-child :is(.text-xs, .text-sm, .text-\[11px\], .text-\[12px\]) { opacity: 0.9; }
-.kpi-row > :nth-child(2) { background: var(--karma-gold); border-color: transparent; }
 .kpi-row > * > [aria-hidden].absolute { display: none; }
 
 /* The M34 details, for any card: a thin-line icon in a circle, and a round ink arrow button. */
@@ -1670,10 +1665,10 @@ html:not(.dark) .glass-sidebar { background: radial-gradient(130% 34% at 0% 0%, 
 .karma-frost { background: var(--karma-dusk); color: #fff; border-color: transparent; }
 .karma-frost-olive { background: var(--karma-olive); color: #fff; border-color: transparent; }
 
-/* M9 · The river of light behind every page (src/components/LightTrail.tsx): a canvas the size of
-   the screen, behind the page; it draws the stretch of the river that's in view. */
-.light-river { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
-@media print { .light-river { display: none; } }
+/* M129 · Each app's own scene behind every page (src/components/AppBackdrop.tsx): a canvas the size
+   of the screen, behind the page. */
+.app-backdrop { position: fixed; inset: 0; width: 100%; height: 100%; z-index: -1; pointer-events: none; }
+@media print { .app-backdrop { display: none; } }
 
 /* ═══ M5 · Folders that open (src/components/files/FolderCard.tsx, the owner's folder video) ═══
    Back panel (tab top right) · the folder's files · a frosted front flap (tab top left). Pointing at
@@ -2310,7 +2305,7 @@ html:not(.dark) .live-card {
 /* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
    into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
    aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
-   sides, so there's no edge where it ends and the river flows on out of it. M57: deep navy sinking into a
+   sides, so there's no edge where it ends. M57: deep navy sinking into a
    dark teal, the Aqua Jade a glow at the horizon instead of a pale blue fill. */
 .world { isolation: isolate; }
 .world::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background:
@@ -2378,7 +2373,7 @@ html.dark .glass-sidebar { -webkit-backdrop-filter: blur(22px) saturate(150%); b
 @media (max-height: 760px) { .auth-scene { height: 275px; } .auth-scene > * { scale: 0.55; } }
 @media (max-height: 700px) { .auth-scene { display: none; } }
 
-/* M56 · A pool of the page's navy behind words the river passes under (the landing's scroll story):
+/* M56 · A pool of the page's navy behind words the app's scene passes under (the landing's scroll story):
    the light dims there and the words stay crisp. */
 .text-pool { position: relative; isolation: isolate; }
 .text-pool::before { content: ''; position: absolute; inset: -20% -18%; z-index: -1; pointer-events: none; background: radial-gradient(closest-side, rgb(11 11 12 / 0.86), rgb(11 11 12 / 0.6) 55%, transparent); }
@@ -2645,8 +2640,8 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 
 /* M121 · Messages, professional (the owner, 6 Nov 2026: "make it look like more professional"). One
    solid workspace: the rail, the list and the open chat share one frame with hairline dividers
-   (MessagingHub `.msg-ws`), nothing shows through them (the river stays behind the page, not
-   behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
+   (MessagingHub `.msg-ws`), nothing shows through them (the app's scene stays behind the page,
+   not behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
    person's own accent, theirs plain on a quiet chat background. The glowing rings, halos, edges and
    floating avatars round people and rows are gone. */
 .msg-ws { --msg-chat: #f4f4f6; --msg-rail: #f6f6f7; --msg-theirs: #ffffff; --msg-theirs-line: rgba(0, 0, 0, 0.07); }
@@ -2655,3 +2650,277 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 :root:not([data-accent]) .bubble-mine { background-color: #b5307d; }
 .bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
 .msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }
+
+/* ═══ M132 · Each app its own colour (the owner, 9 Nov 2026: "the colour synchronization is not proper";
+   chose "each app its own colour"). The page's app (html[data-app], set by AppBackdrop: the landing's
+   and sign-in's tab, or the app a page belongs to) re-points the accent everywhere: buttons, chosen
+   things, chart marks, the palettes the M124 block points at the accent. UniVersity keeps the M124
+   accent (lime / blue). Dark: Tailwind's 400 is the accent with ink text; light: a shade that carries
+   white text at 4.5:1 or more (orange and emerald one step darker). A person's own accent wins
+   (Settings → Appearance: [data-accent]). Generated with the M132 note's script; edit together. */
+:root[data-app="trace"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fdf2f8; --color-indigo-100: #fce7f3; --color-indigo-200: #fbcfe8; --color-indigo-300: #f9a8d4; --color-indigo-400: #f472b6; --color-indigo-500: #ec4899; --color-indigo-600: #db2777; --color-indigo-700: #be185d; --color-indigo-800: #9d174d; --color-indigo-900: #831843; --color-indigo-950: #500724;
+  --color-violet-50: #fdf2f8; --color-violet-100: #fce7f3; --color-violet-200: #fbcfe8; --color-violet-300: #f9a8d4; --color-violet-400: #f472b6; --color-violet-500: #ec4899; --color-violet-600: #db2777; --color-violet-700: #be185d; --color-violet-800: #9d174d; --color-violet-900: #831843; --color-violet-950: #500724;
+  --color-purple-50: #fdf2f8; --color-purple-100: #fce7f3; --color-purple-200: #fbcfe8; --color-purple-300: #f9a8d4; --color-purple-400: #f472b6; --color-purple-500: #ec4899; --color-purple-600: #db2777; --color-purple-700: #be185d; --color-purple-800: #9d174d; --color-purple-900: #831843; --color-purple-950: #500724;
+  --color-pink-50: #fdf2f8; --color-pink-100: #fce7f3; --color-pink-200: #fbcfe8; --color-pink-300: #f9a8d4; --color-pink-400: #f472b6; --color-pink-500: #ec4899; --color-pink-600: #db2777; --color-pink-700: #be185d; --color-pink-800: #9d174d; --color-pink-900: #831843; --color-pink-950: #500724;
+  --color-fuchsia-50: #fdf2f8; --color-fuchsia-100: #fce7f3; --color-fuchsia-200: #fbcfe8; --color-fuchsia-300: #f9a8d4; --color-fuchsia-400: #f472b6; --color-fuchsia-500: #ec4899; --color-fuchsia-600: #db2777; --color-fuchsia-700: #be185d; --color-fuchsia-800: #9d174d; --color-fuchsia-900: #831843; --color-fuchsia-950: #500724;
+  --color-aqua-50: #fdf2f8; --color-aqua-100: #fce7f3; --color-aqua-200: #fbcfe8; --color-aqua-300: #f9a8d4; --color-aqua-400: #f472b6; --color-aqua-500: #ec4899; --color-aqua-600: #db2777; --color-aqua-700: #be185d; --color-aqua-800: #9d174d; --color-aqua-900: #831843; --color-aqua-950: #500724;
+  --tint: #db2777; --tint-rgb: 219 39 119; --tint-text: #be185d; --ins-hot: #db2777;
+  --cta: #db2777; --cta-ink: #ffffff; --cta-hover: #be185d;
+  --badge-blue-bg: #fdf2f8; --badge-blue-color: #be185d;
+}
+:root[data-app="trace"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="trace"]:not([data-accent]).dark {
+  --color-indigo-50: #fdf2f8; --color-indigo-100: #fce7f3; --color-indigo-200: #fbcfe8; --color-indigo-300: #f9a8d4; --color-indigo-400: #f472b6; --color-indigo-500: #ec4899; --color-indigo-600: #db2777; --color-indigo-700: #be185d; --color-indigo-800: #9d174d; --color-indigo-900: #831843; --color-indigo-950: #500724;
+  --color-violet-50: #fdf2f8; --color-violet-100: #fce7f3; --color-violet-200: #fbcfe8; --color-violet-300: #f9a8d4; --color-violet-400: #f472b6; --color-violet-500: #ec4899; --color-violet-600: #db2777; --color-violet-700: #be185d; --color-violet-800: #9d174d; --color-violet-900: #831843; --color-violet-950: #500724;
+  --color-purple-50: #fdf2f8; --color-purple-100: #fce7f3; --color-purple-200: #fbcfe8; --color-purple-300: #f9a8d4; --color-purple-400: #f472b6; --color-purple-500: #ec4899; --color-purple-600: #db2777; --color-purple-700: #be185d; --color-purple-800: #9d174d; --color-purple-900: #831843; --color-purple-950: #500724;
+  --color-pink-50: #fdf2f8; --color-pink-100: #fce7f3; --color-pink-200: #fbcfe8; --color-pink-300: #f9a8d4; --color-pink-400: #f472b6; --color-pink-500: #ec4899; --color-pink-600: #db2777; --color-pink-700: #be185d; --color-pink-800: #9d174d; --color-pink-900: #831843; --color-pink-950: #500724;
+  --color-fuchsia-50: #fdf2f8; --color-fuchsia-100: #fce7f3; --color-fuchsia-200: #fbcfe8; --color-fuchsia-300: #f9a8d4; --color-fuchsia-400: #f472b6; --color-fuchsia-500: #ec4899; --color-fuchsia-600: #db2777; --color-fuchsia-700: #be185d; --color-fuchsia-800: #9d174d; --color-fuchsia-900: #831843; --color-fuchsia-950: #500724;
+  --color-aqua-50: #fdf2f8; --color-aqua-100: #fce7f3; --color-aqua-200: #fbcfe8; --color-aqua-300: #f9a8d4; --color-aqua-400: #f472b6; --color-aqua-500: #ec4899; --color-aqua-600: #db2777; --color-aqua-700: #be185d; --color-aqua-800: #9d174d; --color-aqua-900: #831843; --color-aqua-950: #500724;
+  --tint: #f472b6; --tint-rgb: 244 114 182; --tint-text: #f9a8d4; --ins-hot: #f472b6;
+  --cta: #f472b6; --cta-ink: #0b0c0d; --cta-hover: #f9a8d4;
+  --badge-blue-bg: rgba(244, 114, 182, 0.14); --badge-blue-color: #f9a8d4;
+  --card-hover-border: rgba(244, 114, 182, 0.28);
+}
+:root[data-app="relief"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fff7ed; --color-indigo-100: #ffedd5; --color-indigo-200: #fed7aa; --color-indigo-300: #fdba74; --color-indigo-400: #fb923c; --color-indigo-500: #ea580c; --color-indigo-600: #c2410c; --color-indigo-700: #9a3412; --color-indigo-800: #7c2d12; --color-indigo-900: #431407; --color-indigo-950: #431407;
+  --color-violet-50: #fff7ed; --color-violet-100: #ffedd5; --color-violet-200: #fed7aa; --color-violet-300: #fdba74; --color-violet-400: #fb923c; --color-violet-500: #ea580c; --color-violet-600: #c2410c; --color-violet-700: #9a3412; --color-violet-800: #7c2d12; --color-violet-900: #431407; --color-violet-950: #431407;
+  --color-purple-50: #fff7ed; --color-purple-100: #ffedd5; --color-purple-200: #fed7aa; --color-purple-300: #fdba74; --color-purple-400: #fb923c; --color-purple-500: #ea580c; --color-purple-600: #c2410c; --color-purple-700: #9a3412; --color-purple-800: #7c2d12; --color-purple-900: #431407; --color-purple-950: #431407;
+  --color-pink-50: #fff7ed; --color-pink-100: #ffedd5; --color-pink-200: #fed7aa; --color-pink-300: #fdba74; --color-pink-400: #fb923c; --color-pink-500: #ea580c; --color-pink-600: #c2410c; --color-pink-700: #9a3412; --color-pink-800: #7c2d12; --color-pink-900: #431407; --color-pink-950: #431407;
+  --color-fuchsia-50: #fff7ed; --color-fuchsia-100: #ffedd5; --color-fuchsia-200: #fed7aa; --color-fuchsia-300: #fdba74; --color-fuchsia-400: #fb923c; --color-fuchsia-500: #ea580c; --color-fuchsia-600: #c2410c; --color-fuchsia-700: #9a3412; --color-fuchsia-800: #7c2d12; --color-fuchsia-900: #431407; --color-fuchsia-950: #431407;
+  --color-aqua-50: #fff7ed; --color-aqua-100: #ffedd5; --color-aqua-200: #fed7aa; --color-aqua-300: #fdba74; --color-aqua-400: #fb923c; --color-aqua-500: #ea580c; --color-aqua-600: #c2410c; --color-aqua-700: #9a3412; --color-aqua-800: #7c2d12; --color-aqua-900: #431407; --color-aqua-950: #431407;
+  --tint: #c2410c; --tint-rgb: 194 65 12; --tint-text: #9a3412; --ins-hot: #c2410c;
+  --cta: #c2410c; --cta-ink: #ffffff; --cta-hover: #9a3412;
+  --badge-blue-bg: #fff7ed; --badge-blue-color: #9a3412;
+}
+:root[data-app="relief"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="relief"]:not([data-accent]).dark {
+  --color-indigo-50: #fff7ed; --color-indigo-100: #ffedd5; --color-indigo-200: #fed7aa; --color-indigo-300: #fdba74; --color-indigo-400: #fb923c; --color-indigo-500: #f97316; --color-indigo-600: #ea580c; --color-indigo-700: #c2410c; --color-indigo-800: #9a3412; --color-indigo-900: #7c2d12; --color-indigo-950: #431407;
+  --color-violet-50: #fff7ed; --color-violet-100: #ffedd5; --color-violet-200: #fed7aa; --color-violet-300: #fdba74; --color-violet-400: #fb923c; --color-violet-500: #f97316; --color-violet-600: #ea580c; --color-violet-700: #c2410c; --color-violet-800: #9a3412; --color-violet-900: #7c2d12; --color-violet-950: #431407;
+  --color-purple-50: #fff7ed; --color-purple-100: #ffedd5; --color-purple-200: #fed7aa; --color-purple-300: #fdba74; --color-purple-400: #fb923c; --color-purple-500: #f97316; --color-purple-600: #ea580c; --color-purple-700: #c2410c; --color-purple-800: #9a3412; --color-purple-900: #7c2d12; --color-purple-950: #431407;
+  --color-pink-50: #fff7ed; --color-pink-100: #ffedd5; --color-pink-200: #fed7aa; --color-pink-300: #fdba74; --color-pink-400: #fb923c; --color-pink-500: #f97316; --color-pink-600: #ea580c; --color-pink-700: #c2410c; --color-pink-800: #9a3412; --color-pink-900: #7c2d12; --color-pink-950: #431407;
+  --color-fuchsia-50: #fff7ed; --color-fuchsia-100: #ffedd5; --color-fuchsia-200: #fed7aa; --color-fuchsia-300: #fdba74; --color-fuchsia-400: #fb923c; --color-fuchsia-500: #f97316; --color-fuchsia-600: #ea580c; --color-fuchsia-700: #c2410c; --color-fuchsia-800: #9a3412; --color-fuchsia-900: #7c2d12; --color-fuchsia-950: #431407;
+  --color-aqua-50: #fff7ed; --color-aqua-100: #ffedd5; --color-aqua-200: #fed7aa; --color-aqua-300: #fdba74; --color-aqua-400: #fb923c; --color-aqua-500: #f97316; --color-aqua-600: #ea580c; --color-aqua-700: #c2410c; --color-aqua-800: #9a3412; --color-aqua-900: #7c2d12; --color-aqua-950: #431407;
+  --tint: #fb923c; --tint-rgb: 251 146 60; --tint-text: #fdba74; --ins-hot: #fb923c;
+  --cta: #fb923c; --cta-ink: #0b0c0d; --cta-hover: #fdba74;
+  --badge-blue-bg: rgba(251, 146, 60, 0.14); --badge-blue-color: #fdba74;
+  --card-hover-border: rgba(251, 146, 60, 0.28);
+}
+:root[data-app="green"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #059669; --color-indigo-600: #047857; --color-indigo-700: #065f46; --color-indigo-800: #064e3b; --color-indigo-900: #022c22; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #059669; --color-violet-600: #047857; --color-violet-700: #065f46; --color-violet-800: #064e3b; --color-violet-900: #022c22; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #059669; --color-purple-600: #047857; --color-purple-700: #065f46; --color-purple-800: #064e3b; --color-purple-900: #022c22; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #059669; --color-pink-600: #047857; --color-pink-700: #065f46; --color-pink-800: #064e3b; --color-pink-900: #022c22; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #059669; --color-fuchsia-600: #047857; --color-fuchsia-700: #065f46; --color-fuchsia-800: #064e3b; --color-fuchsia-900: #022c22; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #059669; --color-aqua-600: #047857; --color-aqua-700: #065f46; --color-aqua-800: #064e3b; --color-aqua-900: #022c22; --color-aqua-950: #022c22;
+  --tint: #047857; --tint-rgb: 4 120 87; --tint-text: #065f46; --ins-hot: #047857;
+  --cta: #047857; --cta-ink: #ffffff; --cta-hover: #065f46;
+  --badge-blue-bg: #ecfdf5; --badge-blue-color: #065f46;
+}
+:root[data-app="green"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="green"]:not([data-accent]).dark {
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #10b981; --color-indigo-600: #059669; --color-indigo-700: #047857; --color-indigo-800: #065f46; --color-indigo-900: #064e3b; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #10b981; --color-violet-600: #059669; --color-violet-700: #047857; --color-violet-800: #065f46; --color-violet-900: #064e3b; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #10b981; --color-purple-600: #059669; --color-purple-700: #047857; --color-purple-800: #065f46; --color-purple-900: #064e3b; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #10b981; --color-pink-600: #059669; --color-pink-700: #047857; --color-pink-800: #065f46; --color-pink-900: #064e3b; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #10b981; --color-fuchsia-600: #059669; --color-fuchsia-700: #047857; --color-fuchsia-800: #065f46; --color-fuchsia-900: #064e3b; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #10b981; --color-aqua-600: #059669; --color-aqua-700: #047857; --color-aqua-800: #065f46; --color-aqua-900: #064e3b; --color-aqua-950: #022c22;
+  --tint: #34d399; --tint-rgb: 52 211 153; --tint-text: #6ee7b7; --ins-hot: #34d399;
+  --cta: #34d399; --cta-ink: #0b0c0d; --cta-hover: #6ee7b7;
+  --badge-blue-bg: rgba(52, 211, 153, 0.14); --badge-blue-color: #6ee7b7;
+  --card-hover-border: rgba(52, 211, 153, 0.28);
+}
+:root[data-app="play"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
+  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
+  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
+  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
+  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
+  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
+  --tint: #c026d3; --tint-rgb: 192 38 211; --tint-text: #a21caf; --ins-hot: #c026d3;
+  --cta: #c026d3; --cta-ink: #ffffff; --cta-hover: #a21caf;
+  --badge-blue-bg: #fdf4ff; --badge-blue-color: #a21caf;
+}
+:root[data-app="play"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="play"]:not([data-accent]).dark {
+  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
+  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
+  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
+  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
+  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
+  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
+  --tint: #e879f9; --tint-rgb: 232 121 249; --tint-text: #f0abfc; --ins-hot: #e879f9;
+  --cta: #e879f9; --cta-ink: #0b0c0d; --cta-hover: #f0abfc;
+  --badge-blue-bg: rgba(232, 121, 249, 0.14); --badge-blue-color: #f0abfc;
+  --card-hover-border: rgba(232, 121, 249, 0.28);
+}
+
+
+/* ═══ M133 · Realistic movement (the owner, 9 Nov 2026: "spring, momentum and depth across the site";
+   smooth scrolling on the landing). Springs as CSS `linear()` curves (the compositor runs them): press
+   damping 0.55 (12% give: a key that springs back), glide damping 0.8 (1.5%: settles). The same glide
+   curve is SPRING_GLIDE in page-transition.ts. Where a browser lacks `linear()` it ignores the value
+   and keeps the previous easing. */
+:root {
+  --spring-press: linear(0, 0.0531, 0.1839, 0.3545, 0.5353, 0.7049, 0.85, 0.9638, 1.045, 1.0959, 1.121, 1.126, 1.1168, 1.0989, 1.0768, 1.0541, 1.0332, 1.0157, 1.0021, 0.9927, 0.987, 0.9844, 0.9842, 0.9856, 0.9881, 0.9909, 0.9937, 0.9963, 0.9984, 1, 1.0011, 1.0017, 1.002, 1.002, 1.0018, 1.0014, 1);
+  --spring-glide: linear(0, 0.0252, 0.0887, 0.1752, 0.2733, 0.3746, 0.4734, 0.5657, 0.6492, 0.7228, 0.7861, 0.8394, 0.8833, 0.9188, 0.9468, 0.9685, 0.9847, 0.9965, 1.0047, 1.0101, 1.0133, 1.0148, 1.0152, 1.0147, 1.0136, 1.0123, 1.0108, 1.0093, 1.0078, 1.0064, 1.0051, 1.0041, 1.0031, 1.0023, 1.0017, 1.0012, 1);
+}
+/* Pressed: down at once, back up with a little give; a new app's colour eases in with its scene (M132). */
+.mkt-cta, .btn-primary { transition: background-color 0.45s var(--ease-glide), color 0.45s var(--ease-glide), border-color 0.45s var(--ease-glide), box-shadow 0.45s var(--ease-glide), transform 0.5s var(--spring-press), scale 0.5s var(--spring-press); }
+.btn-secondary, .btn-ghost, .btn-danger { transition-property: transform, scale, background-color, color, border-color, box-shadow; transition-duration: 0.5s, 0.5s, 0.2s, 0.2s, 0.2s, 0.2s; transition-timing-function: var(--spring-press), var(--spring-press), ease, ease, ease, ease; }
+/* Cards lift and settle on a spring under the pointer. */
+a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-duration: 0.45s; transition-timing-function: var(--spring-glide); }
+
+/* Scroll-tied motion run by the compositor in step with the scroll itself (it ran on the page's thread
+   and lagged whenever the page was busy): the landing's sections that follow the scroll (.scrub, bits.tsx),
+   its reading-progress line and the hero picture's slower drift. Without scroll timelines: standing still. */
+@keyframes scrub-rise { from { opacity: 0; transform: translate3d(0, var(--scrub-y, 70px), 0); } 60% { opacity: 1; } to { opacity: 1; transform: none; } }
+@keyframes scroll-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+@keyframes hero-drift { to { transform: translate3d(0, -90px, 0); } }
+.scroll-progress { transform-origin: 0 50%; display: none; }
+@supports (animation-timeline: scroll()) {
+  .scroll-progress { display: block; animation: scroll-progress linear both; animation-timeline: scroll(root); }
+  @media (prefers-reduced-motion: no-preference) {
+    html:not(.reduce-motion) .scrub { animation: scrub-rise linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
+    html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
+  }
+}
+
+/* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
+   design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes
+   stay). Both themes take the shapes; light mode is Ballast's colours (M124). Cards round at 12 px; the
+   side menu's rows are compact with plain grey icons (the chosen one in ink on its raised card); the top
+   bar's round buttons wear a hairline ring; headline-number tiles are all plain cards (KpiCard). */
+:root { --radius-card: 0.75rem; }
+@media (min-width: 1024px) {
+  .side-shell .sidebar-item { font-size: 13.5px; min-height: 34px; padding-block: 6px; border-radius: 8px; }
+  .side-shell .sidebar-item svg { width: 16px; height: 16px; }
+}
+.side-shell .sidebar-item:not(.active) svg { color: var(--text-muted); }
+.side-shell .sidebar-item.active svg { color: var(--text-primary); }
+.app-topbar .btn-icon { width: 36px; height: 36px; border-radius: 9999px; border: 1px solid var(--hairline); background: var(--surface); }
+
+/* ═══ M135 · Every area inside the app in the Ballast reels' style (the owner, 9 Nov 2026: "every area of
+   project needs to look like this inside and should be ultra smooth"). Rules for the app's page area
+   (main#main, DashboardShell), so every page follows without being edited one by one:
+   · density: on computers the app's sizes are the reels' compact ones (every rem 15 px, not 16; text-xs
+     stays 11.25 px); phones keep 16 px;
+   · icon squares: the gradient tiles turn Ballast's flat tinted squares with the icon in the accent (a
+     small rounded square with a gradient, no picture in it);
+   · progress fills: one colour, the accent, not a gradient (an empty rounded bar with a gradient);
+   · buttons and badges the reels' size (secondary buttons are already outlined, M124). */
+@media (min-width: 1024px) { html:has(main#main) { font-size: 15px; } }
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) {
+  background-image: none; background-color: color-mix(in srgb, var(--tint) 13%, var(--surface)); color: var(--tint-text); box-shadow: none;
+}
+#main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) svg { color: var(--tint-text); }
+#main [class*="bg-gradient-to-r"][class*="rounded-full"]:empty { background-image: none; background-color: var(--tint); }
+@media (min-width: 1024px) { #main :is(.btn-primary, .btn-secondary, .btn-ghost, .btn-danger) { font-size: 13.5px; } }
+#main .badge { border-radius: 6px; font-weight: 600; }
+
+/* M137: a landing app's sections fade in when shown (they may have been built ahead, hidden). */
+@keyframes app-in { from { opacity: 0; } }
+.app-in { animation: app-in 0.4s var(--ease-glide) both; }
+
+/* ═══ M138 · The Ballast reels' card titles and tables, on every app page (the owner's sweep, item 3).
+   A card's own title (an h2 / h3 heading inside a .panel or .card, the way pages build their cards) is
+   the reels' small semibold title, and the line right under it their grey 12 px one; tables read like
+   the reels' log: a quiet grey header row, 13.5 px rows on a hairline, a soft row highlight under the
+   pointer. Big figures and page titles aren't headings inside cards, so they keep their size. */
+@media (min-width: 1024px) {
+  #main :is(.panel, .card) :is(h2, h3):not(.sr-only) { font-size: 15px; font-weight: 600; letter-spacing: -0.006em; line-height: 1.35; }
+  #main :is(.panel, .card) :is(h2, h3):not(.sr-only) + p { font-size: 12px; color: var(--text-muted); }
+  #main table th { font-size: 12px; font-weight: 500; color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+  #main table td { font-size: 13.5px; }
+}
+#main table tbody tr { transition: background-color 0.15s ease; }
+@media (hover: hover) { #main table tbody tr:hover { background-color: var(--fill); } }
+
+/* ═══ M139 · A card shown full screen from its "···" menu (components/ui/CardMenu.tsx): the page's own
+   colour behind it, room around it, its own scroll; nothing that would move the menu panel opened in it. */
+:is([data-card], .panel, .card, .ins-board, section):fullscreen {
+  overflow: auto; padding: clamp(1rem, 4vw, 3rem); border-radius: 0; border: 0;
+  background-color: var(--background); transform: none; animation: none; filter: none;
+  -webkit-backdrop-filter: none; backdrop-filter: none;
+}
+
+/* ═══ M140 · The calendar's Timeline (components/calendar/Timeline.tsx), after the reels' Dock calendar.
+   A hairline at every hour; the cards settle in one after another on a first look (transform and
+   opacity only, a spring), lift a little under the pointer, give on a press; "Now" glides to the next
+   minute (one transform, the compositor's). Reduce Motion: they just appear. */
+.tl-track { background-image: linear-gradient(to right, var(--separator) 1px, transparent 1px); }
+[dir="rtl"] .tl-track { background-image: linear-gradient(to left, var(--separator) 1px, transparent 1px); }
+.tl-now { transform: translateX(var(--x, 0%)); transition: transform 0.9s var(--ease-glide); }
+[dir="rtl"] .tl-now { transform: translateX(calc(var(--x, 0%) * -1)); }
+.tl-block { transition: transform 0.35s var(--spring-press, ease), box-shadow 0.2s ease; }
+@media (hover: hover) { .tl-block:hover { transform: translateY(-1px); box-shadow: 0 6px 16px -6px rgb(16 24 40 / 0.18); z-index: 2; } }
+.tl-block:active { transform: scale(0.98); }
+.tl-in { animation: tl-in 0.55s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 30) * 22ms); }
+@keyframes tl-in { from { opacity: 0; transform: translateX(-10px) scale(0.96); } }
+[dir="rtl"] .tl-in { animation-name: tl-in-rtl; }
+@keyframes tl-in-rtl { from { opacity: 0; transform: translateX(10px) scale(0.96); } }
+@media (prefers-reduced-motion: reduce) {
+  .tl-in { animation-name: tl-fade; animation-duration: 0.2s; animation-delay: 0s; }
+  .tl-now, .tl-block { transition: none; }
+}
+@keyframes tl-fade { from { opacity: 0; } }
+/* The date range picker's months (components/ui/DateRangePicker.tsx) slide a little the way they turn. */
+.drp-months[data-dir] { animation: drp-turn 0.32s var(--ease-glide) backwards; }
+.drp-months[data-dir="back"] { animation-name: drp-turn-back; }
+@keyframes drp-turn { from { opacity: 0; transform: translateX(14px); } }
+@keyframes drp-turn-back { from { opacity: 0; transform: translateX(-14px); } }
+.drp-cell { transition: background-color 0.12s ease; }
+.drp-day:active { transform: scale(0.94); }
+@media (prefers-reduced-motion: reduce) { .drp-months[data-dir] { animation-name: tl-fade; } .drp-day:active { transform: none; } }
+
+/* ═══ M141 · The activity heatmap's squares answer the pointer (components/instruments/DayHourHeat.tsx). */
+.heat-cell { transition: transform 0.25s var(--spring-press, ease); }
+@media (hover: hover) { .heat-cell:hover { transform: scale(1.35); box-shadow: 0 0 0 1.5px var(--card-bg, #fff); position: relative; z-index: 1; } }
+@media (prefers-reduced-motion: reduce) { .heat-cell { transition: none; } .heat-cell:hover { transform: none; } }
+/* The log's rows answer the pointer; the tabs' counts are small grey chips (M141). */
+.log-row { transition: background-color 0.15s ease; }
+@media (hover: hover) { .log-row:hover { background-color: var(--fill); } }
+.tab-count { font-size: 11px; font-variant-numeric: tabular-nums; padding: 0 0.375rem; border-radius: 0.3rem; background: rgb(113 113 122 / 0.12); }
+
+/* ═══ M142 · "Start from" cards (components/ui/TemplateCards.tsx): they settle in one after another as
+   the window opens, lift under the pointer, give on a press; the chosen one's dot pops in on a spring. */
+.tpl-card { animation: tpl-in 0.42s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(min(var(--i, 0), 8) * 40ms + 60ms); transition: transform 0.3s var(--spring-press, ease), border-color 0.15s ease, box-shadow 0.15s ease; }
+@keyframes tpl-in { from { opacity: 0; transform: translateY(8px) scale(0.97); } }
+@media (hover: hover) { .tpl-card:hover { transform: translateY(-1px); } }
+.tpl-card:active { transform: scale(0.98); }
+.tpl-check { animation: tpl-pop 0.35s var(--spring-press, ease) backwards; }
+@keyframes tpl-pop { from { transform: scale(0.4); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .tpl-card { animation-name: tl-fade; animation-delay: 0s; transition: none; }
+  .tpl-card:hover, .tpl-card:active { transform: none; }
+  .tpl-check { animation: none; }
+}
+
+/* ═══ M143 · The cards' small column charts rise in one after another (components/instruments/MiniColumns.tsx). */
+.mini-col { transform-origin: bottom; animation: mini-col 0.5s var(--spring-glide, var(--ease-glide)) backwards; animation-delay: calc(var(--i, 0) * 30ms + 80ms); }
+@keyframes mini-col { from { transform: scaleY(0.15); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .mini-col { animation-name: tl-fade; animation-delay: 0s; } }
+
+/* M151: the aid tracker's progress bar fills up to where the box is when the page opens (transform only). */
+@keyframes aid-fill { from { transform: scaleX(0); } }
+/* M156: "backwards" so that once it has filled, a live step (on the way → delivered) glides on with the transition. */
+.aid-fill { animation: aid-fill 0.7s var(--ease-glide) backwards 0.15s; transition: transform 0.6s var(--spring-glide, var(--ease-glide)); }
+@media (prefers-reduced-motion: reduce) { .aid-fill { animation: none; transition: none; } }
+
+/* ═══ M156 · Motion for the eight Trace and Relief features (the owner, 10 Nov 2026: "ultra smooth") ═══
+   Transform and opacity only, on the compositor; springs for arrivals; Reduce Motion leaves fades. */
+/* What needs attention now (an emergency, the box's current step): a soft copy of its fill spreads out
+   behind it. Rests while the page scrolls; none with Reduce Motion. */
+.pulse-ring { position: relative; isolation: isolate; }
+.pulse-ring::after { content: ''; position: absolute; inset: 0; z-index: -1; border-radius: inherit; background: inherit; opacity: 0; pointer-events: none; animation: pulse-ring 2.4s var(--ease-out-soft) infinite; }
+@keyframes pulse-ring { 0% { transform: scale(1); opacity: 0.45; } 70%, 100% { transform: scale(1.7); opacity: 0; } }
+html[data-scrolling] .pulse-ring::after { animation-play-state: paused; }
+/* Things arriving one after another (the trip's steps, a badge that changed): from 0.9, on the spring. */
+@keyframes pop-in { from { opacity: 0; transform: scale(0.9); } }
+.pop-in { animation: pop-in 0.5s var(--spring-glide, var(--ease-glide)) both; }
+/* A banner that arrives at the top of a page (an emergency): drops in a few pixels. */
+@keyframes drop-in { from { opacity: 0; transform: translateY(-10px) scale(0.98); } }
+.drop-in { animation: drop-in 0.55s var(--spring-glide, var(--ease-glide)) both; }
+@media (prefers-reduced-motion: reduce) { .pulse-ring::after { animation: none; } .pop-in, .drop-in { animation-name: app-in; } }
+/* A bar made of parts (the footprint's making + trip) grows as one piece from its start (the motion
+   layer would grow each part from its own edge); the container carries data-no-motion. */
+@keyframes bar-in { from { transform: scaleX(0); } }
+.bar-in { transform-origin: left; animation: bar-in 0.8s var(--ease-glide) both 0.35s; }
+[dir="rtl"] .bar-in { transform-origin: right; }
+@media (prefers-reduced-motion: reduce) { .bar-in { animation: none; } }

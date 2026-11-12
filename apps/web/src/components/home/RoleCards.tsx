@@ -1,5 +1,6 @@
 'use client';
 
+import { CardMenu } from '@/components/ui/CardMenu';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { m as motion } from 'framer-motion';
 import { AlertTriangle, BookOpen, CalendarPlus, CheckCircle2, ClipboardList, FilePlus2, HelpCircle, Megaphone, PenLine, Plus, ShieldAlert, Target, UserCheck, Users, Wallet, type LucideIcon } from 'lucide-react';
@@ -14,12 +15,15 @@ import type { Attention, LiveNumbers } from './use-home';
 
 const card = 'relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-5 md:p-6';
 
-function Title({ icon: Icon, children, id }: { icon: LucideIcon; children: React.ReactNode; id: string }) {
+function Title({ icon: Icon, children, id }: { icon: LucideIcon; children: string; id: string }) {
   return (
-    <h2 id={id} className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4">
-      <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 border border-indigo-500/20 flex items-center justify-center"><Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /></span>
-      {children}
-    </h2>
+    <div className="flex items-center justify-between gap-2 mb-4">
+      <h2 id={id} className="font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+        <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-fuchsia-500/15 border border-indigo-500/20 flex items-center justify-center"><Icon className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /></span>
+        {children}
+      </h2>
+      <CardMenu title={children} />
+    </div>
   );
 }
 

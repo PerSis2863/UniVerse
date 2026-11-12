@@ -53,7 +53,8 @@ interface Model { dots: Dot[]; mesh: [number, number][]; proj: Float32Array }
 /** The lattice for a globe of radius r (px). Land needs many points to show its shape, so the lattice
  *  is fine (5,000 to 14,000 points) and every land point is kept but only every third sea point. */
 function lattice(r: number, land: ((lat: number, lon: number) => boolean) | null): Model {
-  const n = Math.max(5000, Math.min(14000, Math.round(r * r * 0.5)));
+  // M131: finer on big screens (the landing's globe at full width), drawn on a background thread there.
+  const n = Math.max(5000, Math.min(18000, Math.round(r * r * 0.62)));
   const golden = Math.PI * (3 - Math.sqrt(5));
   const dots: Dot[] = [];
   for (let i = 0; i < n; i++) {
@@ -136,6 +137,9 @@ export interface PlanetProps {
   links: [number, number][];
   land: ((lat: number, lon: number) => boolean) | null;
   interactive: boolean;
+  /** M131: turned by hand and by `focus` like `interactive`, but with the full look (net, sparks,
+   *  every name, ripples): the landing's globe. `selected` places get a bright ring. */
+  turnable?: boolean;
   focus: { lat: number; lon: number } | null;
   selected?: number[];
   pings: boolean;
@@ -147,12 +151,32 @@ export interface PaintFrame { ctx: Ctx2D; w: number; h: number; t: number; point
 /** What a planet remembers between frames (its lattice, camera, the turn by hand…). */
 export const planetState = () => ({
   model: null as Model | null, land: null as unknown, landAt: 0, body: null as ReturnType<typeof bodySprite> | null, r: 0, yaw: 0, pitch: 0, widths: new Map<string, number>(),
-  cy: -0.6, cp: 0.38, drag: false, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null as unknown,
+  cy: -0.6, cp: 0.38, drag: false, held: false, vy: 0, dragAt: 0, idleAt: 0, lastT: 0, zoom: 1, tz: 1, xy: new Float32Array(0), focusKey: '', sw: new Float32Array(0), swAt: -1, swOf: null as unknown,
 });
 export type PlanetState = ReturnType<typeof planetState>;
 
+/** M133: a turn by hand (a drag of dx, dy px at `ms`): a finger turns it sideways only, a mouse both
+ *  ways; its speed is kept for the throw. */
+export function turnBy(s: PlanetState, dx: number, dy: number, mouse: boolean, ms: number) {
+  const k = 1 / Math.max(80, s.r * s.zoom), dt = Math.max(8, ms - s.dragAt) / 1000;
+  s.drag = true; s.held = true; s.cy -= dx * k;
+  if (mouse) s.cp = Math.max(-1.2, Math.min(1.2, s.cp + dy * k));
+  s.vy = Math.max(-6, Math.min(6, s.vy * 0.4 + ((-dx * k) / dt) * 0.6));
+  s.dragAt = ms; s.idleAt = s.lastT + 5;
+}
+/** Let go: it carries on at the speed it was thrown (none if the hand had stopped) and slows down. */
+export function letGo(s: PlanetState, ms: number) { s.held = false; if (ms - s.dragAt > 80) s.vy = 0; }
+
+/** The place drawn nearest (x, y), within `max` px, or -1 (a click on the globe). */
+export function nearestPlace(xy: Float32Array, x: number, y: number, max = 18) {
+  let best = max, pick = -1;
+  for (let i = 0; i < xy.length / 2; i++) { const d = Math.hypot(xy[i * 2] - x, xy[i * 2 + 1] - y); if (d < best) { best = d; pick = i; } }
+  return pick;
+}
+
 /** Draws one frame of the planet. `dpr`: the screen's pixel ratio (capped at 2), for its shading. */
-export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: PaintFrame, { pts, links, land, interactive, focus, selected, pings, swarm }: PlanetProps, dpr: number) {
+export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: PaintFrame, { pts, links, land, interactive, turnable, focus, selected, pings, swarm }: PlanetProps, dpr: number) {
+  const steer = interactive || !!turnable;
   const R = Math.max(40, Math.min(w * 0.4, h * 0.4));
   if (!s.model || Math.abs(s.r - R) > 4 || s.land !== land) {
     if (s.land !== land) s.landAt = t;
@@ -166,7 +190,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
   const dt = s.lastT ? Math.min(0.05, Math.max(0, t - s.lastT)) : 0.016;
   s.lastT = t;
   const ease = still ? 1 : 1 - Math.exp(-dt / 0.12);
-  if (interactive) {
+  if (steer) {
     s.zoom += (s.tz - s.zoom) * ease;
     const fk = focus ? `${focus.lat},${focus.lon}` : '';
     if (fk !== s.focusKey) { s.focusKey = fk; s.drag = false; }
@@ -175,14 +199,16 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
       const d = ((((ty - s.cy) % (2 * Math.PI)) + 3 * Math.PI) % (2 * Math.PI)) - Math.PI;
       s.cy += d * ease; s.cp += (tp - s.cp) * ease;
     } else if (!s.drag && !still && t > s.idleAt) s.cy += dt * 0.05;
+    // Momentum: thrown, it keeps turning and slows down (half a second to lose most of its speed).
+    if (!s.held && Math.abs(s.vy) > 0.002 && !still) { s.cy += s.vy * dt; s.vy *= Math.exp(-dt / 0.5); }
   }
-  const r = R * (0.9 + 0.1 * grow) * (interactive ? s.zoom : 1);
+  const r = R * (0.9 + 0.1 * grow) * (steer ? s.zoom : 1);
   const landIn = still ? 1 : easeOut((t - s.landAt) / 0.9);
 
   // The pointer leans the planet a little; it settles back when the pointer leaves.
-  const tyaw = pointer && !interactive ? (pointer.x / w - 0.5) * 0.9 : 0, tpitch = pointer && !interactive ? (pointer.y / h - 0.5) * 0.35 : 0;
+  const tyaw = pointer && !steer ? (pointer.x / w - 0.5) * 0.9 : 0, tpitch = pointer && !steer ? (pointer.y / h - 0.5) * 0.35 : 0;
   s.yaw += (tyaw - s.yaw) * 0.06; s.pitch += (tpitch - s.pitch) * 0.06;
-  const yaw = interactive ? s.cy : -0.6 + t * 0.07 + s.yaw, pitch = interactive ? s.cp : 0.38 + s.pitch;
+  const yaw = steer ? s.cy : -0.6 + t * 0.07 + s.yaw, pitch = steer ? s.cp : 0.38 + s.pitch;
   const cY = Math.cos(yaw), sY = Math.sin(yaw), cP = Math.cos(pitch), sP = Math.sin(pitch);
   const rot = (v: V3): V3 => {
     const x1 = v[0] * cY - v[2] * sY, z1 = v[0] * sY + v[2] * cY;
@@ -364,7 +390,7 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
   if (s.xy.length !== pts.length * 2) s.xy = new Float32Array(pts.length * 2);
   // Interactive: the place pointed at (within 16 px) also gets its name.
   let hover = -1;
-  if (interactive && pointer) {
+  if (steer && pointer) {
     let best = 16;
     pts.forEach((_, i) => { const q = P[i]; if (q[2] < 0.05) return; const d = Math.hypot(cx + q[0] * r - pointer.x, cy - q[1] * r - pointer.y); if (d < best) { best = d; hover = i; } });
   }
@@ -382,6 +408,12 @@ export function drawPlanet(s: PlanetState, { ctx, w, h, t, pointer, still }: Pai
     ctx.strokeStyle = `rgba(${TONES[p.tone]},${(1 - rp) * 0.7})`;
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.arc(x, y, 4 + rp * 12, 0, Math.PI * 2); ctx.stroke();
+    // M131: the chosen place (and the one pointed at) wears a bright ring that breathes.
+    if (turnable && (selected?.includes(i) || i === hover)) {
+      ctx.strokeStyle = `rgba(${TONES[p.tone]},${0.75 + 0.25 * Math.sin(t * 3)})`;
+      ctx.lineWidth = 1.6;
+      ctx.beginPath(); ctx.arc(x, y, 8.5 + (still ? 0 : Math.sin(t * 3) * 1.2), 0, Math.PI * 2); ctx.stroke();
+    }
     ctx.globalCompositeOperation = 'source-over';
     ctx.fillStyle = '#fff';
     ctx.beginPath(); ctx.arc(x, y, 2.2, 0, Math.PI * 2); ctx.fill();

@@ -8,7 +8,7 @@ vi.mock('./email', () => ({ notifyMany: vi.fn().mockResolvedValue(1) }));
 vi.mock('./services/push.service', () => ({ pushService: { sendToMany: vi.fn().mockResolvedValue(1) } }));
 
 const post = { id: 'p1', userId: 'asker', kind: 'WATER', title: 'Water for 4', urgency: 'HIGH', people: 4, lat: 48.86, lng: 2.35, place: 'Paris' };
-const watch = (userId: string, o: Partial<{ lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null }> = {}) => ({ userId, lat: 48.86, lng: 2.35, radiusKm: 5, urgentOnly: true, kinds: null, createdAt: new Date(), ...o });
+const watch = (userId: string, o: Partial<{ lat: number; lng: number; radiusKm: number; urgentOnly: boolean; kinds: string | null; email: boolean }> = {}) => ({ userId, lat: 48.86, lng: 2.35, radiusKm: 5, urgentOnly: true, kinds: null, createdAt: new Date(), ...o });
 
 beforeEach(() => vi.clearAllMocks());
 
@@ -29,5 +29,12 @@ describe('relief alerts', () => {
     vi.mocked(prisma.reliefWatch.findMany).mockResolvedValue([watch('urgent-only'), watch('all', { urgentOnly: false })] as never);
     expect(await alertWatchers({ ...post, urgency: 'LOW' })).toBe(1);
     expect(vi.mocked(notifyMany).mock.calls[0][0]).toEqual(['all']);
+  });
+
+  it('emails only the helpers who ticked "Also email me" (M152)', async () => {
+    vi.mocked(prisma.reliefWatch.findMany).mockResolvedValue([watch('plain'), watch('mailed', { email: true })] as never);
+    expect(await alertWatchers(post)).toBe(2);
+    const calls = vi.mocked(notifyMany).mock.calls.map(([ids, n]) => [ids, n.email]);
+    expect(calls).toEqual([[['mailed'], true], [['plain'], false]]);
   });
 });

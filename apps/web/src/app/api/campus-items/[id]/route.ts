@@ -6,7 +6,7 @@ import { campusOf } from '@/server/school-scope';
 
 type Ctx = { params: Promise<{ id: string }> };
 
-// An admin changes their own school's campus info (M130: `organizationId`; another school's looks not found).
+// An admin changes their own school's campus info (M159: `organizationId`; another school's looks not found).
 async function requireAdmin(req: Request, id: string) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });

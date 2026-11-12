@@ -17,11 +17,11 @@ export function AppTabs({ value, onChange, label = 'Choose an app', small, layou
         const on = a.id === value;
         return (
           <button key={a.id} type="button" role="tab" aria-selected={on} onClick={() => onChange(a.id)}
-            className={cn('relative shrink-0 inline-flex items-center gap-2 rounded-full font-semibold transition-colors', small ? 'flex-1 justify-center px-2.5 py-2 text-xs' : 'px-3.5 py-2 text-sm', on ? 'text-white' : 'text-zinc-400 hover:text-white')}>
-            {on && <motion.span layoutId={layoutId} className="absolute inset-0 rounded-full" style={{ background: `linear-gradient(135deg, ${a.color}cc, ${a.color}66)`, boxShadow: `0 6px 24px -8px ${a.color}` }} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
+            className={cn('relative shrink-0 inline-flex items-center gap-2 rounded-full font-semibold transition-colors', small ? 'flex-1 justify-center px-2.5 py-2 text-xs' : 'px-3.5 py-2 text-sm', on ? 'text-[var(--ink-contrast)]' : 'text-zinc-400 hover:text-white')}>
+            {on && <motion.span layoutId={layoutId} className="absolute inset-0 rounded-full" style={{ background: 'var(--tint)', boxShadow: '0 6px 24px -8px var(--tint)' }} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
             <span className="relative"><AppIcon id={a.id} size={small ? 18 : 22} /></span>
             <span className="relative whitespace-nowrap">{a.name.replace('UniVerse ', '')}</span>
-            {a.lab && !small && <LabTag className={cn('relative', on ? 'border-white/40 text-white' : 'border-white/20 text-zinc-400')} />}
+            {a.lab && !small && <LabTag className={cn('relative', on ? 'border-current text-current' : 'border-white/20 text-zinc-400')} />}
           </button>
         );
       })}

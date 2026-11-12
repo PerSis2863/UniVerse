@@ -3,10 +3,17 @@
 // at (the hub's, the landing's) hand their canvas here, the page says what changed (size, places,
 // land, pointer, on screen or not) and every frame is drawn here with the page's own code
 // (planet-paint.ts), so thousands of dots a frame never take time from taps, typing or scrolling.
-import { drawPlanet, landLookup, planetLinks, planetPoints, planetState, type Place, type PlanetProps } from './planet-paint';
+import { drawPlanet, landLookup, letGo, nearestPlace, turnBy, planetLinks, planetPoints, planetState, type Place, type PlanetProps } from './planet-paint';
 
 type Msg =
-  | { t: 'init'; canvas: OffscreenCanvas; still: boolean; gap: number; pings: boolean; places: Place[]; arcs?: [number, number][]; bits: Uint8Array | null; font: string }
+  | { t: 'init'; canvas: OffscreenCanvas; still: boolean; gap: number; pings: boolean; places: Place[]; arcs?: [number, number][]; bits: Uint8Array | null; font: string; turnable?: boolean }
+  // M131: the landing's globe, turned by hand: a drag, a zoom, a place to face, the chosen, a click.
+  | { t: 'drag'; dx: number; dy: number; mouse: boolean }
+  | { t: 'release' }
+  | { t: 'zoom'; by: number }
+  | { t: 'focus'; focus: { lat: number; lon: number } | null }
+  | { t: 'selected'; selected: number[] }
+  | { t: 'pick'; x: number; y: number }
   | { t: 'size'; w: number; h: number; dpr: number }
   | { t: 'places'; places: Place[]; arcs?: [number, number][] }
   | { t: 'land'; bits: Uint8Array }
@@ -32,7 +39,7 @@ const frame = (ms: number) => {
   raf = 0;
   if (!ctx || !w || !h) return;
   if (!start) start = ms;
-  // Touch screens: every other frame (30 a second), the same motion for half the work (M91).
+  // `gap`: a pause between frames (0 since M136: every frame the screen gives, phones too).
   if (gap && !still && drawn && ms - drawn < gap) { if (seen && !hidden) raf = nextFrame(frame); return; }
   drawn = ms;
   ctx.clearRect(0, 0, w, h);
@@ -53,7 +60,7 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
   switch (m.t) {
     case 'init': {
       if (!scope.fonts || typeof FontFace === 'undefined') { scope.postMessage({ t: 'unsupported' }); return; }
-      cv = m.canvas; still = m.still; gap = m.gap; props.pings = m.pings;
+      cv = m.canvas; still = m.still; gap = m.gap; props.pings = m.pings; props.turnable = !!m.turnable;
       show(m.places, m.arcs);
       if (m.bits) props.land = landLookup(m.bits);
       // The names are in Inter, and a background thread has its own fonts: load the page's file
@@ -76,5 +83,11 @@ scope.onmessage = (e: MessageEvent<Msg>) => {
     case 'leave': pointer = null; if (still) kick(); break;
     case 'seen': seen = m.seen; if (seen) kick(); break;
     case 'hidden': hidden = m.hidden; if (!hidden) kick(); break;
+    case 'drag': turnBy(s, m.dx, m.dy, m.mouse, performance.now()); kick(); break;
+    case 'release': letGo(s, performance.now()); kick(); break;
+    case 'zoom': s.tz = Math.max(1, Math.min(2.6, s.tz * m.by)); kick(); break;
+    case 'focus': props.focus = m.focus; kick(); break;
+    case 'selected': props.selected = m.selected; kick(); break;
+    case 'pick': scope.postMessage({ t: 'picked', i: nearestPlace(s.xy, m.x, m.y) }); break;
   }
 };

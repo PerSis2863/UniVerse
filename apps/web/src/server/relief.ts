@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, URGENCIES, runsOrg, snap } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, runsOrg, snap, textNumber, whoToAlert } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { notifyMany } from './email';
 import { pushService } from './services/push.service';
@@ -19,7 +19,7 @@ import { textPosted, textToPost } from './relief-texts';
 // deliver or give back what it took.
 
 const DAY = 86_400_000;
-const PUBLIC = { id: true, type: true, kind: true, title: true, details: true, people: true, urgency: true, lat: true, lng: true, place: true, status: true, createdAt: true, takenAt: true, doneAt: true, userId: true, helperId: true, orgId: true, helperOrgId: true } as const;
+const PUBLIC = { id: true, type: true, kind: true, title: true, details: true, people: true, urgency: true, lat: true, lng: true, place: true, skill: true, status: true, createdAt: true, takenAt: true, doneAt: true, userId: true, helperId: true, orgId: true, helperOrgId: true } as const;
 type Row = { id: string; userId: string; helperId: string | null; orgId: string | null; helperOrgId: string | null; [k: string]: unknown };
 
 /**
@@ -84,7 +84,7 @@ export async function createReliefPost(u: SessionUser, b: Body) {
   // From a text request (M107): checked first, marked as put on the map after.
   const text = typeof b.textId === 'string' && b.textId ? await textToPost(u, b.textId, orgId) : null;
   const post = await prisma.reliefPost.create({
-    data: { userId: u.id, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120) },
+    data: { userId: u.id, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120), skill: b.type === 'NEED' && oneOf(SKILLS, b.skill) ? b.skill : null },
   });
   if (text) await textPosted(u, text, post.id);
   if (post.type === 'NEED') await alertWatchers(post).catch((e) => console.error('relief alerts failed:', e));
@@ -99,39 +99,48 @@ async function tell(userIds: string[], n: { title: string; body: string; link: s
   await pushService.sendToMany(ids, { title: n.title, body: n.body.slice(0, 140), url: n.link, tag: n.tag }).catch(() => 0);
 }
 
-const R = 6371;
-const kmBetween = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-  const dLat = ((b.lat - a.lat) * Math.PI) / 180, dLng = ((b.lng - a.lng) * Math.PI) / 180;
-  const h = Math.sin(dLat / 2) ** 2 + Math.cos((a.lat * Math.PI) / 180) * Math.cos((b.lat * Math.PI) / 180) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-};
-
-/** Helpers who asked to hear about needs near them: within their radius, their kinds, urgent ones unless they want all. */
-export async function alertWatchers(post: { id: string; userId: string; kind: string; title: string; urgency: string; people: number; lat: number; lng: number; place: string | null }) {
-  // About 25 km around (the largest radius allowed); the exact distance is checked below.
+/**
+ * Helpers who asked to hear about needs near them (whoToAlert in src/lib/relief.ts): those with the
+ * skill a need asks for hear "your skill is needed", the others the usual alert (M149).
+ */
+export async function alertWatchers(post: { id: string; userId: string; kind: string; title: string; urgency: string; people: number; lat: number; lng: number; place: string | null; skill?: string | null }) {
+  // About 25 km around (the largest radius allowed); the exact distance is checked in whoToAlert.
   const dLat = 0.25, dLng = dLat / Math.max(0.2, Math.cos((post.lat * Math.PI) / 180));
   const near = await prisma.reliefWatch.findMany({ where: { lat: { gte: post.lat - dLat, lte: post.lat + dLat }, lng: { gte: post.lng - dLng, lte: post.lng + dLng }, userId: { not: post.userId } }, take: 400 });
+  const { skilled, others } = whoToAlert(near, { ...post, skill: post.skill ?? null });
+  // M152: by email too for the helpers who ticked "Also email me" on their alert.
+  const emails = new Set(near.filter((w) => w.email).map((w) => w.userId));
+  const split = async (ids: string[], n: Omit<Parameters<typeof tell>[1], 'email'>) => {
+    await tell(ids.filter((id) => emails.has(id)), { ...n, email: true });
+    await tell(ids.filter((id) => !emails.has(id)), { ...n, email: false });
+  };
   const urgent = post.urgency === 'HIGH' || post.urgency === 'CRITICAL';
-  const ids = near.filter((w) => (!w.urgentOnly || urgent) && (!w.kinds || w.kinds.split(',').includes(post.kind)) && kmBetween(w, post) <= w.radiusKm).map((w) => w.userId).slice(0, 80);
-  if (!ids.length) return 0;
-  await tell(ids, {
-    title: `${urgent ? 'Urgent: ' : ''}${RELIEF_KIND_LABEL[post.kind as keyof typeof RELIEF_KIND_LABEL] ?? 'Help'} needed near you`,
-    body: `${post.title}${post.place ? ` · ${post.place}` : ''}. Open the map to help.`,
-    link: `/relief?post=${post.id}`, tag: `relief-near-${post.id}`, email: false,
-  });
-  return ids.length;
+  const kind = RELIEF_KIND_LABEL[post.kind as keyof typeof RELIEF_KIND_LABEL] ?? 'Help';
+  const where = post.place ? ` · ${post.place}` : '';
+  const link = `/relief?post=${post.id}`;
+  if (skilled.length && post.skill) {
+    await split(skilled, { title: `Your skill is needed: ${SKILL_LABEL[post.skill as keyof typeof SKILL_LABEL] ?? post.skill}`, body: `${post.title}${where}. You listed it with your alerts: open the map to help.`, link, tag: `relief-near-${post.id}` });
+  }
+  if (others.length) await split(others, { title: `${urgent ? 'Urgent: ' : ''}${kind} needed near you`, body: `${post.title}${where}. Open the map to help.`, link, tag: `relief-near-${post.id}` });
+  return skilled.length + others.length;
 }
 
 /** GET /relief/watch: my alert, or null. */
 export const reliefWatch = (u: SessionUser) => prisma.reliefWatch.findUnique({ where: { userId: u.id } });
 
-/** PUT /relief/watch { lat, lng, radiusKm, urgentOnly, kinds? }: hear about new needs near this place. */
+/** PUT /relief/watch { lat, lng, radiusKm, urgentOnly, kinds?, skills?, email? }: hear about new needs near this place. */
 export async function setReliefWatch(u: SessionUser, b: Body) {
   const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
   if (lat === null || lng === null) throw new BadRequestException('Choose where: use your location or tap the map.');
   const radiusKm = num(b.radiusKm, 1, 25) ?? 5;
   const kinds = Array.isArray(b.kinds) ? [...new Set(b.kinds.filter((k): k is string => oneOf(RELIEF_KINDS, k)))].join(',') || null : null;
-  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds };
+  // M149: what this helper can do (comma-separated SKILLS).
+  const skills = Array.isArray(b.skills) ? [...new Set(b.skills.filter((k): k is string => oneOf(SKILLS, k)))].join(',') || null : null;
+  // M153: a phone number for emergency texts, only when the helper asks for them. Left as it is when
+  // the setting isn't sent (it only shows while texts are on), so saving then doesn't wipe the number.
+  const smsTo = b.sms === undefined ? undefined : b.sms === true ? textNumber(b.smsTo) : null;
+  if (b.sms === true && !smsTo) throw new BadRequestException('Enter your number with the country code, like +91 98765 43210.');
+  const data = { lat: snap(lat), lng: snap(lng), radiusKm, urgentOnly: b.urgentOnly !== false, kinds, skills, email: b.email === true, smsTo };
   return prisma.reliefWatch.upsert({ where: { userId: u.id }, create: { userId: u.id, ...data }, update: data });
 }
 

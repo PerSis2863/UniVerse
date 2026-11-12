@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M130 is the latest).
+  builds on it). The newest notes are at the end (M159 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -84,7 +84,8 @@ switcher under the brand), phone tabs (`app-tabs.ts`), landing tab and sign-in /
 person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 
 **A new app needs:** an `APPS` entry, its nav and tabs, a landing tab section, a card on `/hub`
-(`GET /hub`, `src/server/hub.ts`) and sample answers (`src/lib/sample/impact.ts`).
+(`GET /hub`, `src/server/hub.ts`), sample answers (`src/lib/sample/impact.ts`) and its scene behind
+the page (`src/lib/backdrop.ts`).
 
 ## 4. Where things stand (5 November 2026)
 
@@ -99,16 +100,55 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M128** (M124–M128, the river, merged 8–9 Nov). **On the branch
-  `claude/funny-galileo-y4mz9r`, not merged:** M129 (12 Nov: payments and other admin actions kept to the
-  admin's own school, stray posts to pages refused, the blank-page guard, 108 transitions named). M130 (campus info per
-  school, database update 0195; build libraries' advisories 6 → 1).
+- **On `main`** (live): everything through **M159** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+  M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
+  admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
+  transition named, the build libraries' advisories 6 → 1).
   - **Look and motion:** the Ballast look in light mode and the Relay look in dark mode, the river
     remade (M124, §8; the owner's exception to the pause, 8 Nov), then redrawn on the graphics chip to
-    match the recording (M125, merged 8 Nov, PR #114), then its detail, shape and sharpness fitted pixel by pixel to the
-    recording and the template's own preview (M126–M128); before it the CreditKarma look (M91–M94); smooth scrolling, maps and loading
+    match the recording (M125, PR #114; M125b–d, PR #115, merged 8 Nov), then its detail, shape and
+    sharpness fitted pixel by pixel to the recording and the template's own preview (M126–M128); before it
+    the CreditKarma look (M91–M94); smooth scrolling, maps and loading
     (M86, M89, M96–M98); the pink river and the planet drawn on a background thread (M84, M85); glides,
     sheets and motion that answers the pointer (M29, M41, M45, M63).
+  - **The app scenes and the motion pass (9 Nov, the owner's exception to the pause):** each app's own
+    scene behind the page in place of the river (M129, §8); the landing's app switch without a long
+    frame, loaded content and new list rows gliding in (M130).
+  - **Also 9 Nov (PR #118):** the landing's globe you can use (M131: drag, zoom, click an app for its
+    card); each app its own colour everywhere (M132, §8); realistic movement (M133: springs, depth on
+    page changes, the globe's momentum) and the landing's scroll effects tied to the scroll.
+  - **The Ballast reels inside the app (9 Nov, PR #119):** M134, the first pass of the
+    Ballast reels' shapes inside the app (compact side menu, top bar, plain number tiles, 12 px cards);
+    M135, every app page in that style through shared rules (compact sizes on computers, flat icon
+    squares and one-colour progress bars, the reels' button and badge sizes); M136, phones at full frame
+    rate and sharpness (the live pictures, the planet and the app scenes); M137, a sweep: page counts in
+    PostHog after "Accept all" (off until the owner sets the key), the landing's other apps built ahead
+    once the tabs are approached, failed background threads handled quietly; M138, card titles and
+    tables in the reels' style on every page (shared rules); M139, the cards' "···" menu (full screen,
+    copy, CSV) on the main pages and every chart board (`CardHead` / `CardMenu`); M140, the reels'
+    calendar: a Timeline view (days down, hours across, a Now line) and a date range picker; M141, the
+    activity log as the reels' Agent Activity (heatmap, totals, tabs with counts, outcome labels); M142,
+    "New …" windows with "Start from" cards (New course, New event; `TemplateCards`); M143, a teacher's
+    courses as the reels' Agent Center (summary cards, a card per course with a 14-day chart).
+  - **Eight new Trace and Relief features (10 Nov, the owner's exception to the pause, M144–M151; PR #120):** M144, Trace's footprint story on every
+    passport (making plus trip, a car-distance equivalent, against others of its kind); M145, repair and
+    resale history on the passport (the brand's and the owner's repairs, the number of owners); M146,
+    take-back for recycling (drop-off code, the brand receives it: points plus a Green action); M147,
+    reports of fake labels (where copies are sold, on the brand's Radar); M148, Relief's shelter and
+    supply board ("Places to go": live beds, water, food, charging from organisations); M149, skills
+    matching (helpers' skills with their alerts; a need asking for one alerts them first); M150, the
+    "I'm safe" check-in (coordinators declare an emergency; people tell only those they talk with);
+    M151, traceable aid (a code and QR label per aid box; donors follow its trip on `/aid/<code>`).
+  - **Their upgrades and a sweep (10 Nov, the owner: "please do this… upgrade all the existing features…"; PR #120):**
+    M152, emails for the new alerts (emergencies may use the essential allowance; nearby needs only for
+    helpers who tick "Also email me"); M153, emergency texts (SMS) to helpers who add their number,
+    behind the owner's "Relief emergency texts" switch (off; Twilio); M154, aid boxes on a map (rounded to
+    about 500 m) and helpers' first names by their choice (receivers never shown); M155, live updates
+    (the safety banner, aid pages and lists), coordinators' safe count, share and directions, brands told
+    of fake-label reports; M156, their motion (FLIP for filters, arrivals on the spring, an attention
+    ring that rests while scrolling); M157, a sweep for problems (the live error log, a 199-page crawl of the
+    built site for three roles, 15 checks): emergencies shown only to the people they concern, a phone
+    number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -136,17 +176,23 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): a
-  modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
-  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); a sweep of the site for problems.
-- **Work numbers:** the next item is **M131**. Never reuse a number: take the next one after the
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
+  owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
+  inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
+  page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
+  main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
+- **Work numbers:** the next item is **M160**. Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
-- **[owner]:** decide whether the spending guard should still pause the whole site at 90% of the
+- **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
+  → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
-  `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
+  `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for emergency
+  texts to helpers (M153), also set `TWILIO_ACCOUNT_SID` and `TWILIO_FROM` (the Twilio number) and turn on
+  "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0196`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0206`** (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -238,8 +284,8 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   `trace_readings` (`recordReading` in `trace-map.ts`). Maps: `src/components/trace/map` (d3-geo,
   no tile service): one canvas, land cached, frames only while something moves.
 - **Relief** (`src/server/relief.ts`): positions rounded to about 500 m when saved; nothing older
-  than 30 days on the map; nearby alerts (`relief_watches`) never email and never show where a
-  watcher is.
+  than 30 days on the map; nearby alerts (`relief_watches`) email only helpers who ticked "Also email
+  me" (M152) and never show where a watcher is.
 - **Green** (`src/server/green.ts`): positions rounded to 0.1°; CO₂ factors only from `src/lib/green.ts`.
 - **Play's 3D worlds** (`src/components/play/world/core.ts`): the graphics choice and frame pacing are in
   `world/gfx.ts` (M118); never change shadows or the effects chain while a world runs (every shader is
@@ -307,16 +353,19 @@ focus; white headings. Green, amber and red only for states. The tokens and the 
 block** in `globals.css`; white text on a solid accent fill turns ink in dark mode there (lime). Type:
 **Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
-black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **The river**
-(M125, `river-gl.ts`, WebGL 2, after the Relay recording; `river-paint.ts` only where WebGL 2 is
-missing): since M128 matched to the template's own sharp preview (GetLayers' Relay; the owner's source, a paid template:
-never copy its code): 60 hair-thin lines (about one device pixel, drawn at the screen's full sharpness) and 30 fainter
-threads, a hot knot and bloom at a round, hollow C-shaped bend (measured on the recording's frames), pin-point glitter,
-the top arm running on as straight diagonals into the top right corner, packed at the bend and spreading into an even fan, each bowed and moving its own way, light
-running along it; belonging to the page like the pink river, every bend a smooth round C with the first one's pattern,
-the later ones out at the screen's edges, drawn in on arrival as in the recording; light dashes travelling down the lines all the time, faster while scrolling
-(`u_flow`); the scroll gliding; glitter and bokeh; sharp at the top of a page and out of focus a screen further down. Compare with the
-recording's frames before changing it. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
+black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **Each app's scene**
+(M129, the owner, 9 Nov 2026; it replaced the river of M9–M128): `src/lib/backdrop.ts` draws one slow
+scene per app in its colour (`APPS[].color`, plus `ALT`): UniVersity stars joined into constellations
+and sheets of paper rising; Trace a dotted globe turning, shipments arcing between places; Relief a
+contour map, requests pulsing, dashed routes of help; Green an aurora, leaves and fireflies; Play a neon
+floor to the horizon, game-pad symbols. `AppBackdrop` shows it behind every page: the website and
+sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the chosen app). Switching
+is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
+with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
+(phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
+(TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).
 
@@ -325,13 +374,13 @@ colours people choose (slide themes, course colours, accents).
 accent when they chose one: `:root[data-accent]`). Fonts are served from `/fonts` (no outside service);
 cards round with `--radius-card` (`corner-shape: squircle` where the browser has it). A heading's key
 word: `<Accent>` (light mode: grey heading, ink word; dark: white, the word in the serif italic); no
-eyebrow labels above headings; mono only for numbers and data. The river is the brand, even where design
-guides call it "AI-looking". Older notes (M34, M52–M57, M91–M94) describe looks this one replaced:
-ignore their colours.
+eyebrow labels above headings; mono only for numbers and data. Older notes (M34, M52–M57, M91–M94) describe looks this one replaced:
+ignore their colours; the river's notes (M9–M128) describe what M129 removed.
 
 **The motion layer works on every page by itself**: pages assemble out of a blur
-(`src/lib/page-transition.ts`), titles sweep in, a light trail runs down the page (`LightTrail`),
-figures count up, bars fill, charts draw (`src/lib/scroll-motion.ts`), cards glow under the mouse
+(`src/lib/page-transition.ts`), titles sweep in, figures count up, bars fill, charts draw, content that
+replaces a loading placeholder and a row added to a list glide in (`src/lib/scroll-motion.ts`, M130),
+cards glow under the mouse
 (`.sheen`); opt a part out with `data-no-motion`. Decorative loops pause while the page scrolls
 (`html[data-scrolling]`, M97): add new ones to that list, never ending the selector in `*` or `> *` (that
 restyles the whole page, M98); never animate a custom property, `filter` or `background` (they repaint
@@ -340,9 +389,15 @@ answering a tap) and never makes anyone wait; nothing animated on things used ma
 ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `--ease-out-soft`,
 `spring`); UI motion under 300 ms, exits faster than entrances; nothing grows from scale 0 (start
 at 0.85–0.95); menus grow from where they were opened; name the properties (`transition-[transform,opacity]`,
-not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; Reduce Motion
+not `transition-all`); animate transform and opacity only; stagger lists 30–80 ms; things settle on a spring (M133: `--spring-press` for presses,
+`--spring-glide` / `springGlide()` for arrivals, CSS `linear()` curves the compositor runs); motion tied
+to the scroll uses CSS scroll timelines (`animation-timeline`), never a scroll listener; a list that
+changes in place (a filter) slides its items with `morph()` (`src/lib/view-transition.ts`, FLIP: only the
+items move; a View Transition snapshots the whole page, too heavy beside a live map, M156); Reduce Motion
 leaves only fades; never animate what sits under full-screen frosted glass; hover-only extras show
-without hover on touch screens.
+without hover on touch screens. framer-motion's `x` / `y` / `scale` run on the page's thread (they
+stutter while a page loads): for an entrance that must stay smooth, animate one `transform` string
+(the compositor runs it), but never on an element with `layout` (M130).
 
 **Reading:** meaningful text 11 px or more (12 px running text; no new `text-[10px]`); running text
 near 75 characters a line; grey text 4.5:1 against what's really behind it, in both themes; no

@@ -2,7 +2,7 @@ import { ahead, type AirTraffic, type Plane } from '@/lib/aircraft';
 import { CITIES } from '@/components/trace/map/cities';
 import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { newest, weekly, type WalletEvent } from '@/lib/impact-wallet';
-import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
+import { URGENCIES, demoAid, snap, type AidStep, type ReliefKind } from '@/lib/relief';
 import { GAMES, GAME_IDS, isGame, type GameId } from '@/lib/play';
 
 // Sample answers for the impact apps (the hub, Trace, Relief and Green) while sample mode is on, so a
@@ -68,6 +68,62 @@ export function sampleWallet(me: { id: string }) {
 
 const NEEDS: [ReliefKind, string][] = [['FOOD', 'Food for a family of'], ['WATER', 'Drinking water for'], ['SHELTER', 'Shelter tonight for'], ['MEDICAL', 'Insulin and a ride to the clinic for'], ['CLOTHES', 'Warm clothes for'], ['TRANSPORT', 'A van to move supplies for'], ['FOOD', 'Baby formula for']];
 const OFFERS: [ReliefKind, string][] = [['TRANSPORT', 'I can drive supplies on weekends'], ['SHELTER', 'Spare room for two nights'], ['FOOD', 'Hot meals every evening'], ['WATER', '40 L of water every day'], ['MEDICAL', 'First aid, I’m a nurse'], ['CLOTHES', 'Winter coats to give away']];
+
+/** M148: the shelter board: a few places in the sample's big cities that said how they are. */
+export function sampleReliefPlaces() {
+  const now = Date.now();
+  const KINDS = ['SHELTER', 'FOOD_BANK', 'NGO', 'SHELTER', 'COMMUNITY', 'SHELTER'];
+  const NAMES = ['Harbour Night Shelter', 'Eastside Food Bank', 'Red Door Relief', 'St Anne’s Hall', 'Neighbours United', 'Riverside Sports Centre'];
+  return {
+    places: BIG.slice(0, 6).map((c, i) => ({
+      id: `sample-place-${i}`, name: NAMES[i], kind: KINDS[i], place: c[0], lat: c[1] + 0.01 * i, lng: c[2] - 0.01 * i,
+      openNow: i !== 3, bedsFree: KINDS[i] === 'SHELTER' ? [12, 0, 31][i % 3] : null, bedsTotal: KINDS[i] === 'SHELTER' ? [40, 25, 120][i % 3] : null,
+      water: (['YES', 'LOW', 'YES', 'NO', 'YES', 'YES'] as const)[i], food: (['YES', 'YES', 'LOW', 'NO', 'YES', 'LOW'] as const)[i], power: (['YES', null, 'LOW', 'NO', 'YES', 'YES'] as const)[i],
+      statusNote: i === 0 ? 'Pets welcome; bring ID if you have it.' : i === 5 ? 'Camp beds in the main hall, hot showers.' : null,
+      statusAt: new Date(now - [1, 3, 9, 30, 0.5, 2][i] * 3_600_000).toISOString(),
+    })),
+  };
+}
+
+/** GET /relief/incidents (M150): one emergency going on, two friends who said they're safe. */
+export function sampleReliefIncidents() {
+  const now = Date.now();
+  return {
+    incidents: [{
+      id: 'sample-incident-1', title: 'River flooding in the old town', place: BIG[0][0], lat: BIG[0][1], lng: BIG[0][2], radiusKm: 20,
+      endsAt: new Date(now + 52 * 3_600_000).toISOString(), createdAt: new Date(now - 20 * 3_600_000).toISOString(),
+      org: { id: 'sample-org-food', name: 'Riverside Food Bank' }, safeAt: null, told: 0,
+      safeContacts: [{ name: 'Priya Sharma', at: new Date(now - 3 * 3_600_000).toISOString() }, { name: 'Tom Walker', at: new Date(now - 5 * 3_600_000).toISOString() }],
+      canEnd: true, safeCount: 23,
+    }],
+  };
+}
+
+/** GET /relief/contacts (M150) */
+export function sampleReliefContacts() {
+  return { contacts: ['Priya Sharma', 'Tom Walker', 'Alice Chen', 'Bob Martinez', 'Tara Okafor', 'Mia Rossi', 'Daniel Kim'].map((name, i) => ({ id: `sample-contact-${i}`, name })) };
+}
+
+/** GET /relief/orgs/:id/aid (M151): an organisation's aid boxes. */
+export function sampleReliefAid() {
+  const now = Date.now();
+  const rows: [string, number, string, AidStep, number, number][] = [
+    ['Hygiene kits and drinking water for 20 families', 12, 'Kochi', 'ON_THE_WAY', 3, 18],
+    ['Rice, lentils and cooking oil', 40, 'Thrissur', 'DELIVERED', 26, 31],
+    ['Blankets and children’s clothes', 8, 'Alappuzha', 'PACKED', 1, 2],
+    ['First-aid kits', 5, 'Kottayam', 'DELIVERED', 70, 9],
+  ];
+  return {
+    run: true,
+    boxes: rows.map(([contents, boxes, toPlace, status, h, followers], i) => ({
+      id: `sample-aid-${i}`, code: i === 0 ? 'DEMO' : `SMPL${i}AB7KQ`, contents, boxes, fromPlace: 'Chennai', toPlace, status,
+      createdAt: new Date(now - (h + 20) * 3_600_000).toISOString(), updatedAt: new Date(now - h * 3_600_000).toISOString(), followers,
+    })),
+  };
+}
+
+/** GET /relief/aid/:code (M151): every code shows the sample trip. */
+export const sampleAidTrip = () => demoAid(Date.now());
 
 function reliefPosts(me: { id: string; name: string }) {
   const r = rng(7), now = Date.now();
@@ -292,7 +348,18 @@ export const sampleTraceProducts = () => PRODUCTS.map((p, i) => ({
   rewardPoints: 25, warrantyMonths: 0, sample: true, batches: batches(i).map(({ dest, ...b }) => { void dest; return b; }), _count: { codes: 6_800 + i * 1_300 },
   // M108: the olive oil has its Digital Product Passport filled in (GS1 keeps prefix 952 for examples).
   ...(i === 0 && { gtin: '09520123456788', dpp: JSON.stringify(SAMPLE_DPP) }),
+  // M146: the olive oil's bottles come back for recycling.
+  ...(i === 0 && { takeBackHow: 'Bring the empty bottle to any Aurora shop', takeBackPoints: 20 }),
 }));
+
+/** M146: bottles on their way back, one waiting at the counter and one already in. */
+export const sampleTraceTakebacks = () => {
+  const ago = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+  return [
+    { id: 'smp-tb1', code: 'SMPL-AUR1-0042', product: PRODUCTS[0].name, status: 'ASKED', dropCode: 'K7Q2MX', points: 20, createdAt: ago(1), receivedAt: null },
+    { id: 'smp-tb2', code: 'SMPL-AUR1-0017', product: PRODUCTS[0].name, status: 'RECEIVED', dropCode: 'B4N9TR', points: 20, createdAt: ago(6), receivedAt: ago(4) },
+  ];
+};
 
 const SAMPLE_DPP = {
   madeIn: 'Spain', manufacturer: { name: 'Aurora Foods S.L. (sample)', address: 'Camino de las Lomas 12, 23001 Jaén, Spain', website: null },
@@ -463,6 +530,11 @@ export function sampleTraceRadar() {
       { id: 'sample-r2', batchId: 'sample-b20', batch: 'Batch 2026-20', product: PRODUCTS[2].name, reason: 'Wrong best-before date on the label', advice: null, severity: 'MEDIUM', status: 'ENDED', at: iso(now - 40 * DAY), endedAt: iso(now - 33 * DAY) },
     ],
     cold: [{ batchId: 'sample-b01', label: 'Batch 2026-11', product: PRODUCTS[0].name, maxT: 11.4, limit: 8, readings: 6, last: iso(now - 3_600_000) }],
+    // M147: where buyers said they got copies.
+    copiesSold: [
+      { shop: 'GourmetDeals24 (online)', area: 'Marseille, FR', country: 'FR', reports: 4, last: iso(now - 2 * 3_600_000), price: '€6.90' },
+      { shop: 'Corner market, Rue de la Paix', area: 'Lyon, FR', country: 'FR', reports: 2, last: iso(now - 26 * 3_600_000), price: '€7.50' },
+    ],
   };
 }
 

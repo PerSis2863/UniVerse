@@ -47,3 +47,23 @@ export async function signedIn(browser, base, email, viewport = { width: 1366, h
 }
 
 export const baseUrl = () => process.argv.find((a) => a.startsWith('http')) ?? 'http://localhost:3100';
+
+/**
+ * How much of a canvas is drawn (sampled pixels that differ from its corner), read from a screenshot so it
+ * works for canvases drawn on a background thread too (M85, M136: `getContext` throws on those). The
+ * picture is decoded in a blank page of the same browser (no site rules in the way).
+ */
+export async function litPixels(locator) {
+  const png = await locator.screenshot();
+  const scratch = await locator.page().context().newPage();
+  try {
+    return await scratch.evaluate(async (b64) => {
+      const img = new Image(); img.src = `data:image/png;base64,${b64}`; await img.decode();
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+      const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      const x = g.getImageData(0, 0, c.width, c.height).data;
+      let n = 0; for (let i = 0; i < x.length; i += 16) if (Math.abs(x[i] - x[0]) + Math.abs(x[i + 1] - x[1]) + Math.abs(x[i + 2] - x[2]) > 60) n++;
+      return n;
+    }, png.toString('base64'));
+  } finally { await scratch.close(); }
+}

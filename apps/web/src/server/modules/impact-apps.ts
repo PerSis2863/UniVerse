@@ -4,8 +4,11 @@ import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
-import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply } from '../relief-orgs';
+import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply, reliefPlaces, setReliefOrgStatus } from '../relief-orgs';
 import { closeReliefText, inboundText } from '../relief-texts';
+import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents } from '../relief-safety';
+import { reliefSmsOn } from '../relief-sms';
+import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -23,6 +26,22 @@ export default function impactAppsModule(router: Router) {
   relief.get('map', ({ user }) => reliefMap(user));
   relief.get('mine', ({ user }) => reliefMine(user));
   relief.get('watch', ({ user }) => reliefWatch(user));
+  // M150: the "I'm safe" check-in (src/server/relief-safety.ts).
+  relief.get('incidents', ({ user, query }) => reliefIncidents(user, query));
+  relief.post('incidents', ({ user, body }) => declareIncident(user, body ?? {}));
+  relief.post<{ id: string }>('incidents/:id/end', { status: 200 }, ({ user, params }) => endIncident(user, params.id));
+  relief.post<{ id: string }>('incidents/:id/safe', { status: 200 }, ({ user, params, body }) => markSafe(user, params.id, body ?? {}));
+  relief.get('contacts', ({ user }) => reliefContacts(user));
+  relief.get('sms', () => reliefSmsOn());
+  relief.get<{ id: string }>('orgs/:id/aid', ({ user, params }) => orgAid(user, params.id));
+  relief.post<{ id: string }>('orgs/:id/aid', ({ user, params, body }) => createAid(user, params.id, body ?? {}));
+  relief.post<{ id: string }>('aid/:id/step', { status: 200 }, ({ user, params, body }) => stepAid(user, params.id, body ?? {}));
+  relief.get<{ code: string }>('aid/:code', { public: true }, ({ params }) => aidPublic(params.code));
+  relief.get<{ code: string }>('aid/:code/follow', ({ user, params }) => aidFollowing(user, params.code));
+  relief.post<{ code: string }>('aid/:code/follow', { status: 200 }, ({ user, params, body }) => followAid(user, params.code, body ?? {}));
+  // M148: the shelter and supply board (src/server/relief-orgs.ts).
+  relief.get('places', () => reliefPlaces());
+  relief.put<{ id: string }>('orgs/:id/status', ({ user, params, body }) => setReliefOrgStatus(user, params.id, body ?? {}));
   relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));
   relief.delete('watch', ({ user }) => clearReliefWatch(user));
   relief.post('posts', ({ user, body }) => createReliefPost(user, body ?? {}));

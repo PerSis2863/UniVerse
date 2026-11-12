@@ -7,7 +7,7 @@ import { reducedMotion } from '@/lib/page-transition';
 import { usePinchWheel } from '@/lib/use-pinch-wheel';
 import { cn } from '@/lib/utils';
 import { useLiveCanvas, type Frame } from './canvas';
-import { MASK, drawPlanet, landLookup, planetLinks, planetPoints, planetState, type Place } from './planet-paint';
+import { MASK, drawPlanet, landLookup, letGo, nearestPlace, turnBy, planetLinks, planetPoints, planetState, type Place } from './planet-paint';
 
 export type { Place } from './planet-paint';
 
@@ -57,6 +57,9 @@ interface PlanetProps {
    *  / buttons to zoom; it turns to `focus` (smoothly, the short way); no net or sparks over the land;
    *  only `selected` places (and the one pointed at) carry a name; `onPick` hears a click on a place. */
   interactive?: boolean;
+  /** M131 (the landing's globe): turned by hand, zoomed, faced to `focus` and clicked (`onPick`) like
+   *  `interactive`, but with the full look and drawn on a background thread. */
+  turnable?: boolean;
   focus?: { lat: number; lon: number } | null;
   selected?: number[];
   onPick?: (i: number) => void;
@@ -75,9 +78,20 @@ export function Planet(props: PlanetProps) {
 }
 
 /** The look-only planet, drawn on a background thread. */
-function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: PlanetProps & { onFail: (onPage: boolean) => void }) {
+function WorkerPlanet({ places, arcs, label, className, pings = true, turnable = false, focus = null, selected, onPick, onFail }: PlanetProps & { onFail: (onPage: boolean) => void }) {
   const host = useRef<HTMLSpanElement>(null);
+  const box = useRef<HTMLDivElement>(null);
   const worker = useRef<Worker | null>(null);
+  const pick = useRef(onPick);
+  const view = useRef({ focus, selected: selected ?? [] });
+  useEffect(() => {
+    pick.current = onPick;
+    view.current = { focus, selected: selected ?? [] };
+    worker.current?.postMessage({ t: 'focus', focus });
+    worker.current?.postMessage({ t: 'selected', selected: selected ?? [] });
+  }, [onPick, focus, selected]);
+  const zoomBy = (by: number) => worker.current?.postMessage({ t: 'zoom', by });
+  usePinchWheel(box, (e) => zoomBy(Math.exp(-e.deltaY * 0.01)), turnable);
   // The hub makes a new list on every render: send the places only when they really change.
   const key = JSON.stringify([places, arcs ?? null]);
   const shown = useMemo(() => JSON.parse(key) as [Place[], [number, number][] | null], [key]);
@@ -104,15 +118,20 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
       wk = new Worker(new URL('./planet.worker.ts', import.meta.url));
       const off = cv.transferControlToOffscreen();
       const [ps, pa] = latest.current;
-      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: window.matchMedia?.('(hover: none)').matches ? 30 : 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(FONT_FILE, location.href).href }, [off]);
+      wk.postMessage({ t: 'init', canvas: off, still: reducedMotion(), gap: 0, pings, places: ps, arcs: pa ?? undefined, bits: land.current, font: new URL(FONT_FILE, location.href).href, turnable }, [off]);
+      wk.postMessage({ t: 'focus', focus: view.current.focus });
+      wk.postMessage({ t: 'selected', selected: view.current.selected });
     } catch {
       cv.remove();
       queueMicrotask(() => onFail(true));
       return;
     }
     worker.current = wk;
-    wk.onmessage = (e: MessageEvent<{ t: string }>) => { if (e.data?.t === 'unsupported') onFail(true); };
-    wk.onerror = () => onFail(true);
+    wk.onmessage = (e: MessageEvent<{ t: string; i?: number }>) => {
+      if (e.data?.t === 'unsupported') onFail(true);
+      else if (e.data?.t === 'picked' && (e.data.i ?? -1) >= 0) pick.current?.(e.data.i!);
+    };
+    wk.onerror = (e) => { e.preventDefault(); onFail(true); }; // handled: drawn on the page (M137)
     let live = true;
     landBits().then((bits) => { land.current = bits; if (live) wk.postMessage({ t: 'land', bits }); }).catch(() => { /* no land: an even planet */ });
     // Its layout size, as on the page (useLiveCanvas): not mid-way through the page's entrance.
@@ -121,10 +140,26 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
     const io = new IntersectionObserver(([e]) => wk.postMessage({ t: 'seen', seen: e.isIntersecting }));
     io.observe(cv);
     const onVisible = () => wk.postMessage({ t: 'hidden', hidden: document.hidden });
-    const move = (e: PointerEvent) => { const b = cv.getBoundingClientRect(); wk.postMessage({ t: 'pointer', x: e.clientX - b.left, y: e.clientY - b.top }); };
+    // Turnable: a drag turns it (past 4 px), a click picks the place under it.
+    let down: { x: number; y: number; moved: number; id: number } | null = null;
+    const at = (e: PointerEvent) => { const b = cv.getBoundingClientRect(); return { x: e.clientX - b.left, y: e.clientY - b.top }; };
+    const move = (e: PointerEvent) => {
+      wk.postMessage({ t: 'pointer', ...at(e) });
+      if (!turnable || !down || down.id !== e.pointerId) return;
+      const dx = e.clientX - down.x, dy = e.clientY - down.y;
+      down.moved += Math.abs(dx) + Math.abs(dy); down.x = e.clientX; down.y = e.clientY;
+      if (down.moved < 4) return;
+      if (!cv.hasPointerCapture(e.pointerId)) cv.setPointerCapture(e.pointerId);
+      wk.postMessage({ t: 'drag', dx, dy, mouse: e.pointerType === 'mouse' });
+    };
+    const press = (e: PointerEvent) => { if (turnable) down = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; };
+    const release = (e: PointerEvent) => { if (down && down.moved < 4) wk.postMessage({ t: 'pick', ...at(e) }); else if (down) wk.postMessage({ t: 'release' }); down = null; };
     const leave = () => wk.postMessage({ t: 'leave' });
     document.addEventListener('visibilitychange', onVisible);
     cv.addEventListener('pointermove', move);
+    cv.addEventListener('pointerdown', press);
+    cv.addEventListener('pointerup', release);
+    cv.addEventListener('pointercancel', () => { if (down) wk.postMessage({ t: 'release' }); down = null; });
     cv.addEventListener('pointerleave', leave);
     return () => {
       live = false;
@@ -134,11 +169,12 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
       worker.current = null;
       cv.remove();
     };
-  }, [pings, label, onFail]);
+  }, [pings, label, onFail, turnable]);
 
   return (
-    <div className={cn('relative', className)}>
+    <div ref={box} className={cn('relative', turnable && 'cursor-grab active:cursor-grabbing select-none', className)}>
       <span ref={host} className="contents" />
+      {turnable && <ZoomButtons zoomBy={zoomBy} corner="start-3 bottom-3" />}
       {places.length > 0 && (
         <ul className="sr-only">
           {places.map((p, i) => <li key={`${p.label}-${i}`}>{p.value ? `${p.label}: ${p.value}` : p.label}</li>)}
@@ -149,7 +185,8 @@ function WorkerPlanet({ places, arcs, label, className, pings = true, onFail }: 
 }
 
 /** The planet drawn on the page: the globe you turn, and browsers without background drawing. */
-function PagePlanet({ places, arcs, label, className, pings = true, interactive = false, focus = null, selected, onPick, swarm }: PlanetProps) {
+function PagePlanet({ places, arcs, label, className, pings = true, interactive = false, turnable = false, focus = null, selected, onPick, swarm }: PlanetProps) {
+  const steer = interactive || turnable;
   const [land, setLand] = useState<((lat: number, lon: number) => boolean) | null>(null);
   useEffect(() => {
     let live = true;
@@ -160,12 +197,12 @@ function PagePlanet({ places, arcs, label, className, pings = true, interactive 
   const links = useMemo(() => planetLinks(places, arcs), [arcs, places]);
   const st = useRef(planetState());
   const [wake, setWake] = useState(0);
-  const ref = useLiveCanvas((f: Frame) => drawPlanet(st.current, f, { pts, links, land, interactive, focus, selected, pings, swarm }, Math.min(2, window.devicePixelRatio || 1)), `${String(!!land)}${wake}`);
+  const ref = useLiveCanvas((f: Frame) => drawPlanet(st.current, f, { pts, links, land, interactive, turnable, focus, selected, pings, swarm }, Math.min(2, window.devicePixelRatio || 1)), `${String(!!land)}${wake}`);
 
   // Turning it by hand, zooming, picking a place (interactive only).
   const down = useRef<{ x: number; y: number; moved: number; id: number } | null>(null);
   const zoomBy = (f: number) => { const s = st.current; s.tz = Math.max(1, Math.min(3.2, s.tz * f)); setWake((n) => n + 1); };
-  const handlers = interactive ? {
+  const handlers = steer ? {
     onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => { if ((e.target as HTMLElement).closest('button')) return; down.current = { x: e.clientX, y: e.clientY, moved: 0, id: e.pointerId }; },
     onPointerMove: (e: React.PointerEvent<HTMLDivElement>) => {
       const d = down.current, s = st.current;
@@ -173,40 +210,43 @@ function PagePlanet({ places, arcs, label, className, pings = true, interactive 
       const dx = e.clientX - d.x, dy = e.clientY - d.y;
       d.moved += Math.abs(dx) + Math.abs(dy); d.x = e.clientX; d.y = e.clientY;
       if (d.moved < 4) return;
-      if (!s.drag) e.currentTarget.setPointerCapture(e.pointerId);
+      if (!s.held) e.currentTarget.setPointerCapture(e.pointerId);
       // A finger turns it sideways only (the page still scrolls up and down); a mouse both ways.
-      const k = 1 / Math.max(80, s.r * s.zoom);
-      s.drag = true; s.cy -= dx * k;
-      if (e.pointerType === 'mouse') s.cp = Math.max(-1.2, Math.min(1.2, s.cp + dy * k));
-      s.idleAt = s.lastT + 5;
+      turnBy(s, dx, dy, e.pointerType === 'mouse', performance.now());
     },
     onPointerUp: (e: React.PointerEvent<HTMLDivElement>) => {
       const d = down.current, s = st.current;
       down.current = null;
+      if (d && d.moved >= 4) letGo(s, performance.now());
       if (!d || d.moved >= 4 || !onPick) { setWake((n) => n + 1); return; }
       const r = e.currentTarget.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
-      let best = 18, pick = -1;
-      for (let i = 0; i < s.xy.length / 2; i++) { const dd = Math.hypot(s.xy[i * 2] - x, s.xy[i * 2 + 1] - y); if (dd < best) { best = dd; pick = i; } }
+      const pick = nearestPlace(s.xy, x, y);
       if (pick >= 0) onPick(pick);
     },
   } : {};
   const box = useRef<HTMLDivElement>(null);
-  usePinchWheel(box, (e) => zoomBy(Math.exp(-e.deltaY * 0.01)), interactive);
+  usePinchWheel(box, (e) => zoomBy(Math.exp(-e.deltaY * 0.01)), steer);
 
   return (
-    <div ref={box} className={cn('relative', interactive && 'cursor-grab active:cursor-grabbing select-none', className)} {...handlers}>
+    <div ref={box} className={cn('relative', steer && 'cursor-grab active:cursor-grabbing select-none', className)} {...handlers}>
       <canvas ref={ref} role="img" aria-label={label} className="absolute inset-0 h-full w-full touch-pan-y" />
-      {interactive && (
-        <div className="absolute end-3 bottom-3 flex flex-col gap-1.5">
-          <button type="button" onClick={() => zoomBy(1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom in on the globe"><Plus className="w-4 h-4" aria-hidden /></button>
-          <button type="button" onClick={() => zoomBy(1 / 1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom out of the globe"><Minus className="w-4 h-4" aria-hidden /></button>
-        </div>
-      )}
+      {steer && <ZoomButtons zoomBy={zoomBy} corner={interactive ? 'end-3 bottom-3' : 'start-3 bottom-3'} />}
       {places.length > 0 && (
         <ul className="sr-only">
           {places.map((p, i) => <li key={`${p.label}-${i}`}>{p.value ? `${p.label}: ${p.value}` : p.label}</li>)}
         </ul>
       )}
+    </div>
+  );
+}
+
+/** Zoom in and out (the globe also zooms with a pinch or ctrl + scroll). `corner`: where (the landing's
+ *  globe keeps the end corner for its notes). */
+function ZoomButtons({ zoomBy, corner }: { zoomBy: (by: number) => void; corner: string }) {
+  return (
+    <div className={cn('absolute z-10 flex flex-col gap-1.5', corner)}>
+      <button type="button" onClick={() => zoomBy(1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom in on the globe"><Plus className="w-4 h-4" aria-hidden /></button>
+      <button type="button" onClick={() => zoomBy(1 / 1.35)} className="w-9 h-9 grid place-items-center rounded-full bg-[#111113]/85 text-white ring-1 ring-white/15 hover:bg-[#1d1d20]" aria-label="Zoom out of the globe"><Minus className="w-4 h-4" aria-hidden /></button>
     </div>
   );
 }

@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
 import { buildSampleDb, levelInfo, LEVELS, sid, at, type SampleDb } from './data';
@@ -1015,6 +1016,13 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
   [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
+  [/^\/relief\/places$/, () => ok(impact.sampleReliefPlaces())],
+  [/^\/relief\/incidents$/, () => ok(impact.sampleReliefIncidents())],
+  [/^\/relief\/contacts$/, () => ok(impact.sampleReliefContacts())],
+  [/^\/relief\/sms$/, () => ok({ on: true })],
+  [/^\/relief\/orgs\/[^/]+\/aid$/, () => ok(impact.sampleReliefAid())],
+  [/^\/relief\/aid\/[^/]+\/follow$/, () => ok({ following: false })],
+  [/^\/relief\/aid\/[^/]+$/, () => ok(impact.sampleAidTrip())],
   [/^\/relief\/mine$/, ({ db: d }) => ok(impact.sampleReliefMine(d.me))],
   [/^\/relief\/orgs$/, ({ db: d }) => ok(impact.sampleReliefOrgs(d.me))],
   [/^\/relief\/orgs\/([^/]+)$/, ({ db: d, m }) => { const o = impact.sampleReliefOrg(d.me, decodeURIComponent(m[1])); return o ? ok(o) : fail('That organisation is gone, or you aren’t in it.', 404); }],
@@ -1025,6 +1033,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
+  [/^\/trace\/takebacks$/, () => ok(impact.sampleTraceTakebacks())],
   [/^\/trace\/products\/[^/]+\/supply$/, () => ok(impact.sampleTraceSupply())],
   [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],
   [/^\/trace\/map\/market$/, ({ q }) => ok(impact.sampleTraceMarket(Number(q.get('days')) || 30, q.get('product')))],
@@ -1617,6 +1626,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   }],
 
 
+  // M143: the courses page's small charts: a made-up fortnight of hand-ins per course, busier lately.
+  [/^\/courses\/my\/activity$/, ({ db: d }) => ok(Object.fromEntries(d.courses.map((c, k) => [c.id, Array.from({ length: 14 }, (_, i) => (i * 7 + k * 3) % 5 + (i > 9 ? 3 : 0))])))],
   [/^\/courses\/my$/, ({ db: d }) => d.teacherView
     ? ok(d.taught.map((c) => ({ ...c, _count: { enrollments: d.classmates.length, ...counts(d, c.id) } })))
     : ok(d.courses.map((c, i) => ({ enrolledAt: at(-90 + i), course: { ...c, teacher: { id: c.teacher.id, name: c.teacher.name, avatar: null }, _count: counts(d, c.id) } })))],
@@ -2143,6 +2154,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/me$/, ({ db: d }) => ok(d.profile)],
 
   // ── Admin ──
+  // The activity log (M141, src/lib/sample/audit.ts).
+  [/^\/audit$/, ({ q }) => ok(sampleAudit(q))],
+  [/^\/audit\/heat$/, ({ q }) => ok(sampleAuditHeat(q))],
+  [/^\/audit\/actions$/, () => ok(sampleAuditActions())],
   [/^\/users$/, ({ db: d, q }) => ok(d.users.filter((u) => !q.get('role') || u.role === q.get('role')))],
   [/^\/courses\/admin\/all$/, ({ db: d }) => ok(d.courses.map((c) => ({ ...c, teacher: { id: c.teacher.id, name: c.teacher.name }, _count: { enrollments: d.classmates.length + 1, ...counts(d, c.id) } })))],
   [/^\/announcements$/, ({ db: d }) => ok(d.adminAnnouncements)],

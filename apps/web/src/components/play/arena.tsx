@@ -58,7 +58,7 @@ export function Arena({ game, onExit, side, children }: {
   const info = GAMES[game];
 
   // Open: lock the page behind, take focus; close: give both back. While the arena covers the page,
-  // <html data-arena> rests what moves behind it (the river, LightTrail.tsx), so the game has the
+  // <html data-arena> rests what moves behind it (the app's scene, AppBackdrop.tsx), so the game has the
   // graphics chip to itself (M118).
   useEffect(() => {
     const before = document.activeElement as HTMLElement | null, html = document.documentElement, overflow = html.style.overflow;

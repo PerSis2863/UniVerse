@@ -4,7 +4,7 @@ import { getSessionUser } from '@/lib/server-auth';
 import { CAMPUS_KINDS, cleanCampusItem } from '@/lib/campus';
 import { campusOf, keepInSchool } from '@/server/school-scope';
 
-// GET ?kind=SERVICE|LINK|EVENT|MENU — the campus info of the person's own school (M130; events: upcoming first).
+// GET ?kind=SERVICE|LINK|EVENT|MENU — the campus info of the person's own school (M159; events: upcoming first).
 // Admins also get `createdBy` (name, email, role; their own school's people) and can pass ?past=1 to include past events.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -23,7 +23,7 @@ export async function GET(req: Request) {
   if (!isAdmin) return NextResponse.json(items, { headers: { 'Cache-Control': 'no-store' } });
 
   // Admins also see who added each item (one extra query for all creators): only their own school's
-  // people (another school's admin stays a name-less entry, M129).
+  // people (another school's admin stays a name-less entry, M158).
   const creatorIds = await keepInSchool(user, [...new Set(items.map((i) => i.createdById).filter((id): id is string => !!id))]);
   // (D1 allows ~100 bound values per query, so ids go in chunks of 90.)
   const chunks: string[][] = [];

@@ -7,7 +7,7 @@ import { peopleWhere } from '@/server/school-scope';
 
 // Server actions are public HTTP endpoints, so every action verifies the caller's token.
 // Students can only see and create (pending) payments for themselves; admins manage their own
-// school's (src/server/school-scope.ts: before M129 an admin saw every school's payments, with
+// school's (src/server/school-scope.ts: before M158 an admin saw every school's payments, with
 // names, emails and phone numbers, and could record one against anyone's account).
 
 const MAX_AMOUNT = 1_000_000;

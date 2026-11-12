@@ -1,5 +1,5 @@
 // M118 on the built Worker: a 3D game's Graphics button (Balanced → Sharp → Smooth → Balanced, kept
-// on the device, its name saying the choice), none on the two flat games, the river resting while a
+// on the device, its name saying the choice), none on the two flat games, the app's scene resting while a
 // game covers the page (<html data-arena>) and waking after, and each round giving its WebGL context
 // back when it ends. Axe on the game screen at 1280 and 390 (a touch phone), light and dark.
 // The canvas is shrunk: WebGL here is drawn in software (SwiftShader), which is slow at full size.

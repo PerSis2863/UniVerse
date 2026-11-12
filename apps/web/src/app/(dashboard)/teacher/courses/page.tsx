@@ -4,40 +4,37 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { useState } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
-import { BookOpen, Users, FileText, ChevronRight, Edit, Trash2, Plus, X, Upload } from 'lucide-react';
+import { BookOpen, ChevronRight, Edit, Trash2, Plus, X, Upload } from 'lucide-react';
 import { toast } from 'sonner';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 import { SectionTabs, TEACHER_COURSE_TABS } from '@/components/layout/SectionTabs';
+import { NewCourseSheet } from '@/components/dashboard/NewCourseSheet';
+import { CardHead } from '@/components/ui/CardMenu';
+import { StatusBadge } from '@/components/ui/StatusBadge';
+import { MiniColumns } from '@/components/instruments/MiniColumns';
+import { Ring } from '@/components/instruments/parts';
 
 interface TeacherCourse { id: string; name: string; code: string; description?: string | null; color?: string | null; emoji?: string | null; _count?: { enrollments?: number; materials?: number } }
 
 export default function TeacherCourses() {
   const router = useRouter();
   const { data: courses = [], isLoading, mutate } = useSWR<TeacherCourse[]>('/courses/my', fetcher);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newOpen, setNewOpen] = useState(false);
   const [showEditModal, setShowEditModal] = useState<TeacherCourse | null>(null);
-  const [showDetailsModal, setShowDetailsModal] = useState<TeacherCourse | null>(null);
   
-  const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#27272a' });
+  // M143: each course's hand-ins per day over 14 days (the cards' small charts, the summary).
+  const { data: activity } = useSWR<Record<string, number[]>>(courses.length ? '/courses/my/activity' : null, (u: string) => api.get(`${u}?tz=${-new Date().getTimezoneOffset()}`).then((r) => r.data));
+  const DAYS = 14;
+  const daily = Array.from({ length: DAYS }, (_, i) => courses.reduce((n, c) => n + (activity?.[c.id]?.[i] ?? 0), 0));
+  const handIns = daily.reduce((a, b) => a + b, 0);
+  const students = courses.reduce((n, c) => n + (c._count?.enrollments ?? 0), 0);
+  const active = courses.filter((c) => (activity?.[c.id] ?? []).some((n) => n > 0)).length;
+  const most = Math.max(1, ...courses.map((c) => c._count?.enrollments ?? 0));
 
-  const handleCreate = async () => {
-    if (!formData.name || !formData.code) {
-      toast.error('Code and Name are required.');
-      return;
-    }
-    try {
-      await api.post('/courses', formData);
-      await mutate();
-      setShowCreateModal(false);
-      setFormData({ code: '', name: '', description: '', emoji: '📚', color: '#27272a' });
-      toast.success('Course created successfully!');
-    } catch (e) {
-      toast.error(errorMessage(e, 'Failed to create course'));
-    }
-  };
+  const [formData, setFormData] = useState({ code: '', name: '', description: '', emoji: '📚', color: '#27272a' });
 
   const handleEdit = async () => {
     try {
@@ -68,167 +65,106 @@ export default function TeacherCourses() {
 
   return (
     <>
-      <Topbar title="My Courses" subtitle="Manage your created courses" />
+      <Topbar title="My Courses"
+        subtitle={courses.length ? `${courses.length} course${courses.length === 1 ? '' : 's'} · ${students} student${students === 1 ? '' : 's'} · ${handIns} hand-in${handIns === 1 ? '' : 's'} in ${DAYS} days` : 'Manage your created courses'}
+        rightNode={<>
+          {courses.length > 0 && activity && (
+            <span className="inline-flex items-center gap-2 h-9 px-3 rounded-full border border-zinc-200 dark:border-white/[0.12] bg-[var(--card-bg)] text-[13px] font-medium text-zinc-800 dark:text-zinc-100">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" aria-hidden />{active} of {courses.length} active this fortnight
+            </span>
+          )}
+          <button type="button" onClick={() => setNewOpen(true)} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New course</button>
+        </>} />
       <SectionTabs tabs={TEACHER_COURSE_TABS} />
-      <div className="flex-1 p-8 overflow-y-auto">
-        <div className="flex justify-end mb-6">
-          <button 
-            onClick={() => setShowCreateModal(true)}
-            className="btn-primary"
-          >
-            <Plus className="w-4 h-4" /> Create Course
-          </button>
-        </div>
-
+      <div className="flex-1 p-4 sm:p-8 overflow-y-auto space-y-6">
         {isLoading ? (
-          <div className="flex-1 flex items-center justify-center">
-            <ContentSkeleton variant="grid" />
-          </div>
+          <ContentSkeleton variant="grid" />
         ) : courses.length === 0 ? (
           <div className="card text-center py-12">
-            <BookOpen className="w-12 h-12 text-zinc-600 mx-auto mb-4" />
+            <BookOpen className="w-12 h-12 text-zinc-500 mx-auto mb-4" />
             <h2 className="text-xl font-semibold text-zinc-900 dark:text-white mb-2">No courses yet</h2>
             <p className="text-zinc-600 dark:text-zinc-400">You haven’t created any courses.</p>
+            <button type="button" onClick={() => setNewOpen(true)} className="btn-primary mt-5"><Plus className="w-4 h-4" /> New course</button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses.map((course) => (
-              <div key={course.id} className="card p-0 overflow-hidden group border border-white/[0.05] hover:border-indigo-500/50 transition flex flex-col h-full relative cursor-pointer" onClick={() => setShowDetailsModal(course)}>
-                
-                {/* Actions Overlay */}
-                <div className="absolute top-4 end-4 z-10 flex gap-2 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={e => e.stopPropagation()}>
-                  <button aria-label="Edit" onClick={() => openEdit(course)} className="p-2 bg-black/60 hover:bg-black text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button aria-label="Delete" onClick={() => handleDelete(course.id)} className="p-2 bg-black/60 hover:bg-red-500/80 text-zinc-300 hover:text-zinc-900 dark:hover:text-white rounded-md backdrop-blur-md transition-colors">
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+          <>
+            {/* M143: the reels' Agent Center: three summary cards, then a card per course */}
+            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+              <section className="card">
+                <CardHead title="Students by course" sub="Who is enrolled in each" />
+                <ul className="space-y-2.5">
+                  {courses.slice(0, 6).map((c) => (
+                    <li key={c.id} className="grid grid-cols-[minmax(0,8rem)_1fr_2rem] items-center gap-3 text-[13px]">
+                      <span className="truncate text-zinc-700 dark:text-zinc-300" translate="no">{c.name}</span>
+                      <span className="h-2 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.07]"><span className="block h-full rounded-full bg-indigo-600" style={{ width: `${((c._count?.enrollments ?? 0) / most) * 100}%` }} /></span>
+                      <span className="text-end tabular-nums font-medium text-zinc-900 dark:text-white">{c._count?.enrollments ?? 0}</span>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+              <section className="card">
+                <CardHead title="Hand-ins" sub={`Across your courses, the last ${DAYS} days`} />
+                <p className="text-[28px] font-semibold tracking-tight tabular-nums text-zinc-900 dark:text-white leading-none mb-4">{handIns} <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">hand-in{handIns === 1 ? '' : 's'}</span></p>
+                {activity ? <MiniColumns values={daily} /> : <div className="h-16 rounded-lg skeleton" />}
+              </section>
+              <section className="card">
+                <CardHead title="Active courses" sub="With a hand-in in the last 14 days" />
+                <div className="flex items-center gap-4">
+                  <div className="shrink-0 text-zinc-900 dark:text-white">
+                    <Ring pct={courses.length ? (active / courses.length) * 100 : 0} size={96} text={String(active)} label={`of ${courses.length}`} />
+                  </div>
+                  <ul className="space-y-1.5 text-[13px]">
+                    <li className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-indigo-600" aria-hidden /><span className="text-zinc-700 dark:text-zinc-300">Active {active}</span></li>
+                    <li className="flex items-center gap-2"><span className="w-2 h-2 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden /><span className="text-zinc-700 dark:text-zinc-300">Quiet {courses.length - active}</span></li>
+                  </ul>
                 </div>
+              </section>
+            </div>
 
-                <div className="flex flex-col h-full">
-                  <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(course.color, course.code) }}>
-                    <div className="absolute top-4 start-4 text-4xl opacity-50 group-hover:opacity-100 transition-opacity group-hover:scale-110 duration-300">
-                      {course.emoji || '📚'}
-                    </div>
-                    {/* A shade under the text so white reads on any course colour. */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/55 to-transparent" />
-                    <div className="relative bg-black/40 backdrop-blur-sm inline-block px-3 py-1 rounded-full text-xs font-medium text-white w-max mb-2">
-                      {course.code}
-                    </div>
-                    <h2 className="relative text-xl font-bold text-white drop-shadow-md truncate">{course.name}</h2>
-                  </div>
-                  <div className="p-5 flex-1 flex flex-col">
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400 line-clamp-2 mb-4 flex-1">
-                      {course.description || 'No description provided.'}
-                    </p>
-                    
-                    <div className="flex items-center justify-between mt-auto">
-                      <div className="flex items-center gap-2">
-                         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-emerald-500/10 text-emerald-700 dark:text-emerald-400">
-                          Active
-                        </span>
+            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+              {courses.map((course) => {
+                const days = activity?.[course.id] ?? new Array<number>(DAYS).fill(0);
+                const sum = days.reduce((a, b) => a + b, 0);
+                const color = courseColor(course.color, course.code);
+                return (
+                  <article key={course.id} className="card course-card flex flex-col gap-4">
+                    <header className="flex items-start gap-3">
+                      <span className="w-10 h-10 shrink-0 rounded-lg grid place-items-center text-lg" style={{ background: `color-mix(in srgb, ${color} 14%, transparent)` }} aria-hidden>{course.emoji || '📚'}</span>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-[14px] font-semibold text-zinc-900 dark:text-white truncate" translate="no">{course.name}</h2>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate"><span translate="no">{course.code}</span>{course.description ? ` · ${course.description}` : ''}</p>
                       </div>
-                    </div>
-                  </div>
-                  
-                  <div className="px-5 py-3 border-t border-white/[0.05] bg-white/[0.02] flex items-center justify-between">
-                    <div className="flex items-center gap-4 text-xs text-zinc-600 dark:text-zinc-400">
-                      <span className="flex items-center gap-1.5"><Users className="w-3.5 h-3.5"/> {course._count?.enrollments || 0} Students</span>
-                      <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5"/> {course._count?.materials || 0} Materials</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-zinc-600 group-hover:text-indigo-400 transition-colors" />
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                      <StatusBadge tone={sum ? 'green' : 'grey'}>{sum ? 'Active' : 'Quiet'}</StatusBadge>
+                    </header>
+                    <dl className="grid grid-cols-3 gap-2">
+                      <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Students</dt><dd className="text-[15px] font-semibold tabular-nums text-zinc-900 dark:text-white">{course._count?.enrollments ?? 0}</dd></div>
+                      <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Materials</dt><dd className="text-[15px] font-semibold tabular-nums text-zinc-900 dark:text-white">{course._count?.materials ?? 0}</dd></div>
+                      <div><dt className="text-xs text-zinc-500 dark:text-zinc-400">Hand-ins, {DAYS} d</dt><dd className="text-[15px] font-semibold tabular-nums text-zinc-900 dark:text-white">{activity ? sum : '…'}</dd></div>
+                    </dl>
+                    <MiniColumns values={days} />
+                    <footer className="flex items-center gap-1 pt-3 mt-auto border-t border-zinc-200/70 dark:border-white/[0.07]">
+                      <button type="button" aria-label={`Edit ${course.name}`} onClick={() => openEdit(course)} className="btn-ghost btn-icon w-8 h-8 rounded-md"><Edit className="w-4 h-4" /></button>
+                      <button type="button" aria-label={`Delete ${course.name}`} onClick={() => handleDelete(course.id)} className="btn-ghost btn-icon w-8 h-8 rounded-md text-rose-700 dark:text-rose-300"><Trash2 className="w-4 h-4" /></button>
+                      <button type="button" onClick={() => router.push(`/teacher/blackboard?course=${course.id}`)} className="btn-secondary btn-sm ms-auto">Open board<ChevronRight className="w-4 h-4 rtl:rotate-180" /></button>
+                    </footer>
+                  </article>
+                );
+              })}
+            </div>
+          </>
         )}
       </div>
 
-      {/* Course Details Modal */}
-      {showDetailsModal && (
-        <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm" onClick={() => setShowDetailsModal(null)}>
-          <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-2xl rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]" onClick={e => e.stopPropagation()}>
-            <div className="h-32 p-6 flex flex-col justify-end relative" style={{ backgroundColor: courseColor(showDetailsModal.color, showDetailsModal.code) }}>
-               <button aria-label="Close" onClick={() => setShowDetailsModal(null)} className="absolute top-4 end-4 p-1.5 bg-black/40 hover:bg-black/60 rounded-lg text-white transition-colors">
-                <X className="w-5 h-5" />
-              </button>
-              <div className="absolute top-4 start-4 text-4xl opacity-50">
-                {showDetailsModal.emoji || '📚'}
-              </div>
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white drop-shadow-md z-10">{showDetailsModal.name}</h2>
-            </div>
-            
-            <div className="p-6 overflow-y-auto space-y-8 flex-1">
-              <div>
-                <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-2">Description</h3>
-                <p className="text-sm text-zinc-600 dark:text-zinc-400">{showDetailsModal.description}</p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-6">
-                <div>
-                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2"><Users className="w-5 h-5 text-indigo-400" /> Enrolled Students</h3>
-                   <div className="space-y-3">
-                      {[1, 2, 3].map((i) => (
-                        <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
-                           <div className="w-8 h-8 rounded-full bg-indigo-500/20 text-indigo-700 dark:text-indigo-400 flex items-center justify-center text-xs font-bold">
-                             ST
-                           </div>
-                           <div>
-                             <div className="text-sm font-medium text-zinc-900 dark:text-white">Student {i}</div>
-                             <div className="text-xs text-zinc-500 dark:text-zinc-500">student{i}@universe.edu</div>
-                           </div>
-                        </div>
-                      ))}
-                      <button 
-                        onClick={() => {
-                          setShowDetailsModal(null);
-                          router.push('/teacher/students');
-                          toast.success('Navigated to student management');
-                        }}
-                        className="w-full py-2 text-xs font-medium text-indigo-700 dark:text-indigo-400 bg-indigo-500/10 hover:bg-indigo-500/20 rounded-lg transition-colors cursor-pointer"
-                      >
-                        View All {showDetailsModal._count?.enrollments} Students
-                      </button>
-                   </div>
-                </div>
-                <div>
-                   <h3 className="text-lg font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2"><FileText className="w-5 h-5 text-emerald-400" /> Recent Materials</h3>
-                   <div className="space-y-3">
-                      {['Syllabus.pdf', 'Lecture1_Slides.pdf', 'Assignment1.docx'].map((file, i) => (
-                        <div key={i} className="flex items-center gap-3 bg-zinc-100 dark:bg-zinc-800/30 p-2 rounded-lg border border-zinc-200 dark:border-zinc-800/50">
-                           <FileText className="w-4 h-4 text-emerald-500" />
-                           <div className="text-sm text-zinc-600 dark:text-zinc-300 truncate">{file}</div>
-                        </div>
-                      ))}
-                      <button 
-                        onClick={() => {
-                          setShowDetailsModal(null);
-                          router.push('/teacher/knowledge');
-                          toast.success('Navigated to knowledge hub');
-                        }}
-                        className="w-full py-2 text-xs font-medium text-emerald-700 dark:text-emerald-400 bg-emerald-500/10 hover:bg-emerald-500/20 rounded-lg transition-colors cursor-pointer"
-                      >
-                        Manage Materials
-                      </button>
-                   </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Create / Edit Modal */}
-      {(showCreateModal || showEditModal) && (
+      {newOpen && <NewCourseSheet onClose={() => { setNewOpen(false); void mutate(); }} />}
+      {showEditModal && (
         <div className="backdrop-in fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
           <div className="sheet-in tone-panel border border-zinc-200 dark:border-zinc-800 w-full max-w-lg rounded-2xl shadow-2xl p-6 space-y-5">
             <div className="flex items-start justify-between">
               <div>
-                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">{showEditModal ? 'Edit Course' : 'Create New Course'}</h2>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Edit course</h2>
                 <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Fill in the details for this course.</p>
               </div>
-              <button aria-label="Close" onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+              <button aria-label="Close" onClick={() => setShowEditModal(null)} className="p-1.5 rounded-lg text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -259,9 +195,9 @@ export default function TeacherCourses() {
             </div>
             
             <div className="flex items-center justify-end gap-3 pt-2 border-t border-zinc-200 dark:border-zinc-800">
-              <button onClick={() => { setShowCreateModal(false); setShowEditModal(null); }} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
-              <button onClick={showEditModal ? handleEdit : handleCreate} className="btn-primary">
-                <Upload className="w-4 h-4" /> {showEditModal ? 'Save Changes' : 'Create Course'}
+              <button onClick={() => setShowEditModal(null)} className="px-4 py-2 text-sm text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors">Cancel</button>
+              <button onClick={handleEdit} className="btn-primary">
+                <Upload className="w-4 h-4" /> Save changes
               </button>
             </div>
           </div>

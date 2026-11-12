@@ -1,5 +1,6 @@
 'use client';
 
+import { CardMenu } from '@/components/ui/CardMenu';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
@@ -116,6 +117,7 @@ export function DailyBrief() {
           )}
           <span className="text-xs text-zinc-500 hidden sm:inline">Each morning</span>
           <Switch checked={data.push} onChange={(v) => void setPush(v)} label="Get your day as a notification each morning" />
+          <CardMenu title="Your day" />
         </div>
       </div>
 
@@ -224,7 +226,7 @@ export function DailyBrief() {
                     <Link href={`${inbox}?c=${w.conversationId}`} className="flex items-center gap-2.5 rounded-xl -mx-1 px-1 py-1 hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
                       <Avatar name={w.name} src={w.avatar} size={32} />
                       <span className="min-w-0 flex-1">
-                        <span className="flex items-center gap-1.5 text-sm"><span className="font-semibold text-zinc-900 dark:text-white truncate">{w.name}</span>{w.question && <span className="text-[10px] font-bold uppercase text-fuchsia-600 dark:text-fuchsia-300 bg-fuchsia-500/10 rounded px-1">Question</span>}</span>
+                        <span className="flex items-center gap-1.5 text-sm"><span className="font-semibold text-zinc-900 dark:text-white truncate">{w.name}</span>{w.question && <span className="text-[11px] font-bold uppercase text-fuchsia-800 dark:text-fuchsia-300 bg-fuchsia-500/10 rounded px-1">Question</span>}</span>
                         <span className="block text-xs text-zinc-500 truncate">{w.isGroup ? `${w.from}: ` : ''}{w.body}</span>
                       </span>
                       <span className="text-[11px] text-zinc-400 shrink-0">{formatDistanceToNowStrict(new Date(w.at))}</span>

@@ -1,4 +1,8 @@
 'use client';
+import { Timeline } from '@/components/calendar/Timeline';
+import type { GridEntry } from '@/components/calendar/TimeGrid';
+import { useNow } from '@/lib/use-now';
+import { addDays, startOfDay, startOfWeek } from 'date-fns';
 import { confirmDialog } from '@/components/ui/Dialogs';
 
 import { useMemo, useState } from 'react';
@@ -47,6 +51,37 @@ type Slot = {
 };
 const minutes = (t: string) => { const [h, m] = t.split(':').map(Number); return h * 60 + (m || 0); };
 type Data = { slots: Slot[]; courses: { id: string; code: string; name: string }[]; rooms: { id: string; name: string }[] };
+
+/**
+ * M140: the week's classes on the reels' Dock calendar timeline (computers): the days down the side, the
+ * hours across, each class at its time, the real clashes in amber. A class opens its row in the list.
+ */
+function WeekTimeline({ slots, clashes }: { slots: Slot[]; clashes: Map<string, string[]> }) {
+  const ms = useNow();
+  const now = new Date(ms || 0);
+  const today = startOfDay(now);
+  const monday = startOfWeek(today, { weekStartsOn: 1 });
+  const entries: GridEntry<Slot>[] = slots.map((s) => ({
+    id: s.id, weekday: s.dayOfWeek, start: minutes(s.startTime), end: minutes(s.endTime), title: s.course.code,
+    subtitle: s.course.name, location: s.room?.name, color: courseColor(s.course.color, s.course.code), data: s,
+  }));
+  const on = (d: Date) => entries.filter((e) => e.weekday === (d.getDay() + 6) % 7);
+  const days = Array.from({ length: 7 }, (_, i) => addDays(monday, i)).filter((d, i) => i < 5 || on(d).length > 0);
+  const lo = Math.min(8, ...entries.map((e) => Math.floor(e.start / 60)));
+  const hi = Math.min(24, Math.max(18, ...entries.map((e) => Math.ceil(e.end / 60))));
+  const show = (e: GridEntry<Slot>) => {
+    const el = document.getElementById(`slot-${e.id}`);
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    el?.focus({ preventScroll: true });
+  };
+  if (!ms) return null;
+  return (
+    <section className="hidden md:block card overflow-hidden" style={{ padding: 0 }} aria-label="The week's classes on a timeline">
+      <Timeline days={days} today={today} nowMin={now.getHours() * 60 + now.getMinutes()} lo={lo} hi={hi} on={on} when={(e) => `${e.data.startTime}–${e.data.endTime}`}
+        onOpen={show} animate clash={(e) => clashes.has(e.id)} />
+    </section>
+  );
+}
 
 export default function TimetableManagementPage() {
   const { data, isLoading, error, mutate } = useSWR<Data>('/api/admin/timetable', authedJson);
@@ -137,6 +172,8 @@ export default function TimetableManagementPage() {
               action={data?.courses.length ? { label: 'Add class', onClick: open } : { label: 'Create a course', href: '/admin/courses' }}
             />
           ) : (
+            <>
+            <WeekTimeline slots={slots} clashes={clashes} />
             <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
               {DAYS.map((day, d) => {
                 const daySlots = slots.filter((s) => s.dayOfWeek === d);
@@ -146,7 +183,7 @@ export default function TimetableManagementPage() {
                     <h3 className="font-bold text-zinc-900 dark:text-white mb-3">{day}</h3>
                     <ul className="space-y-2">
                       {daySlots.map((s) => (
-                        <li key={s.id} className={`flex items-center gap-3 p-3 rounded-xl bg-zinc-50 dark:bg-white/[0.03] ${clashes.has(s.id) ? 'ring-1 ring-amber-500/60' : ''}`}>
+                        <li key={s.id} id={`slot-${s.id}`} tabIndex={-1} className={`flex items-center gap-3 p-3 rounded-xl scroll-mt-24 outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 bg-zinc-50 dark:bg-white/[0.03] ${clashes.has(s.id) ? 'ring-1 ring-amber-500/60' : ''}`}>
                           <span className="w-1.5 h-10 rounded-full" style={{ backgroundColor: courseColor(s.course.color, s.course.code) }} />
                           <div className="min-w-0 flex-1">
                             <p className="text-sm font-semibold text-zinc-900 dark:text-white truncate">{s.course.code} · {s.course.name}</p>
@@ -166,6 +203,7 @@ export default function TimetableManagementPage() {
                 );
               })}
             </div>
+            </>
           )}
 
           {teachers.length > 0 && (

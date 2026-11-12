@@ -32,7 +32,7 @@ export function FactorCard({ icon: Icon, label, value, unit, viz, tone = 'plain'
       </span>
       <span className="mt-4 max-w-[12rem] text-[15px] font-medium leading-snug">{label}{warn && <span className="sr-only"> (waiting for you)</span>}</span>
       <span className="mt-auto flex items-end justify-between gap-3 pt-4">
-        <span className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{value}{unit && <span className="ms-1 text-sm font-medium opacity-60">{unit}</span>}</span>
+        <span className="text-[40px] font-semibold leading-none tracking-[-0.02em] tabular-nums">{value}{unit && <span className="ms-1 text-sm font-medium opacity-80">{unit}</span>}</span>
         {viz && <span className="mb-1 shrink-0 opacity-90" aria-hidden>{viz}</span>}
       </span>
     </Tag>

@@ -8,20 +8,12 @@ interface KpiCardProps {
   value: string | number;
   icon: LucideIcon;
   change?: number;
+  /** shortcut: kept so callers needn't change; since M134 (Ballast) every tile's icon is plain grey. */
   color?: 'indigo' | 'cyan' | 'green' | 'amber' | 'rose' | 'emerald' | 'fuchsia';
 }
 
-const colors = {
-  indigo: 'text-zinc-900 dark:text-zinc-100',
-  cyan: 'text-cyan-600 dark:text-cyan-400',
-  green: 'text-green-600 dark:text-green-400',
-  amber: 'text-amber-600 dark:text-amber-400',
-  rose: 'text-rose-600 dark:text-rose-400',
-  emerald: 'text-emerald-600 dark:text-emerald-400',
-  fuchsia: 'text-fuchsia-600 dark:text-fuchsia-400',
-};
 
-export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: KpiCardProps) {
+export function KpiCard({ title, value, icon: Icon, change }: KpiCardProps) {
   const isPositive = change !== undefined && change >= 0;
 
   return (
@@ -30,19 +22,21 @@ export function KpiCard({ title, value, icon: Icon, change, color = 'indigo' }: 
       transition={{ type: "spring", stiffness: 300 }}
       className="kpi-card glass-hover"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className={cn('karma-icon', colors[color])}>
-          <Icon className="w-5 h-5" strokeWidth={1.6} aria-hidden />
-        </div>
+      {/* M134: as the Ballast reels' metric cards: the name on top with a small grey icon, the figure
+          under it, a change as a small tinted badge beside it. */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="text-[13px] font-semibold text-zinc-900 dark:text-white">{title}</div>
+        <Icon className="w-4 h-4 shrink-0 text-zinc-400" strokeWidth={1.8} aria-hidden />
+      </div>
+      <div className="mt-3 flex items-baseline gap-2">
+        <div className="text-[26px] leading-none font-semibold tracking-tight text-zinc-900 dark:text-white tabular-nums">{value}</div>
         {change !== undefined && change !== 0 && (
-          <div className={cn('flex items-center gap-1 text-xs font-medium', isPositive ? 'text-green-400' : 'text-rose-400')}>
-            {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-            {Math.abs(change)}%
-          </div>
+          <span className={cn('inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-semibold', isPositive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300')}>
+            {isPositive ? <TrendingUp className="w-3 h-3" aria-hidden /> : <TrendingDown className="w-3 h-3" aria-hidden />}
+            {isPositive ? '+' : '−'}{Math.abs(change)}%
+          </span>
         )}
       </div>
-      <div className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-white mb-1 tabular-nums">{value}</div>
-      <div className="text-sm text-zinc-600 dark:text-zinc-400">{title}</div>
     </motion.div>
   );
 }

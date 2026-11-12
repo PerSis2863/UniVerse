@@ -5,7 +5,7 @@ import { describe, expect, it } from 'vitest';
 // AGENTS.md §8: "name the properties (transition-[transform,opacity], not transition-all)". With
 // `transition-all` a card also animates its width and height whenever the layout moves (the side menu
 // folding, a window resize, a list re-flowing): layout work on every frame for no reason, and a wave
-// of colour on a theme switch. M129 named them all (108 places); this keeps it that way. Use
+// of colour on a theme switch. M158 named them all (108 places); this keeps it that way. Use
 // `transition` (colours, shadow, opacity, transform) or name what changes, e.g. `transition-[width]`.
 const SRC = new URL('../', import.meta.url).pathname;
 const files = (dir: string): string[] =>

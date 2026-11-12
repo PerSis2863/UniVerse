@@ -1057,7 +1057,7 @@ model CampusItem {
   price       Int?
   currency    String?
   createdById String?
-  /// M130: the school it belongs to (null: the main school, people in no school), as on users
+  /// M159: the school it belongs to (null: the main school, people in no school), as on users
   organizationId String?
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -6626,6 +6626,9 @@ model TraceProduct {
   /// M108: the EU Digital Product Passport, JSON cleaned by src/lib/dpp.ts parseDpp.
   dpp          String?
   dppUpdatedAt DateTime?
+  /// M146: take-back for recycling: how to hand it in (null: not offered) and its owner's points.
+  takeBackHow    String?
+  takeBackPoints Int       @default(0)
   @@index([organizationId])
   @@map("trace_products")
 }
@@ -6927,6 +6930,62 @@ model TraceWarranty {
   @@map("trace_warranties")
 }
 
+/// M145: a repair to a unit, logged by the brand's team (BRAND) or its owner at the time (OWNER).
+model TraceRepair {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String?
+  by        String   @default("OWNER")
+  what      String
+  parts     String?
+  createdAt DateTime @default(now())
+
+  @@index([codeId, createdAt])
+  @@index([brandId, createdAt])
+  @@map("trace_repairs")
+}
+
+/// M146: a unit returned for recycling: asked by its owner (ASKED), received by the brand (RECEIVED).
+model TraceTakeback {
+  id           String    @id @default(cuid())
+  codeId       String    @unique
+  brandId      String
+  productId    String
+  userId       String
+  status       String    @default("ASKED")
+  dropCode     String
+  points       Int       @default(0)
+  receivedById String?
+  receivedAt   DateTime?
+  createdAt    DateTime  @default(now())
+
+  @@index([brandId, status, createdAt])
+  @@index([userId])
+  @@map("trace_takebacks")
+}
+
+/// M147: where a buyer got a likely copy (shop, rough area, price); the brand sees them by shop, never who.
+model TraceFakeReport {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String
+  shop      String
+  area      String?
+  price     String?
+  lat       Float?
+  lng       Float?
+  country   String?
+  createdAt DateTime @default(now())
+
+  @@unique([codeId, userId], map: "trace_fake_reports_once")
+  @@index([brandId, createdAt])
+  @@map("trace_fake_reports")
+}
+
 model TraceOwner {
   id            String    @id @default(cuid())
   codeId        String    @unique
@@ -6975,6 +7034,104 @@ model TraceWin {
 }
 
 /// Relief alerts (migration 0181): new needs near this place, within radiusKm, urgent only by default.
+/// M150: an emergency an organisation declared for an area, until endsAt.
+/// M151: an aid box (or pallet) an organisation sends, followed by its code (relief_aid).
+model ReliefAid {
+  id          String   @id @default(cuid())
+  orgId       String
+  code        String   @unique(map: "relief_aid_code_key")
+  contents    String
+  boxes       Int      @default(1)
+  fromPlace   String?
+  toPlace     String
+  status      String   @default("PACKED")
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
+
+  @@index([orgId, createdAt], map: "relief_aid_org_idx")
+  @@map("relief_aid")
+}
+
+/// M151: each step of an aid box's trip: where and when (M154: a helper's first name only by their choice).
+model ReliefAidStep {
+  id        String   @id @default(cuid())
+  aidId     String
+  status    String
+  place     String?
+  note      String?
+  /// M154: where it was, rounded to about 500 m (snap), or null.
+  lat       Float?
+  lng       Float?
+  /// M154: the first name of the member who logged it, only when they chose to show it.
+  byName    String?
+  createdAt DateTime @default(now())
+
+  @@index([aidId, createdAt], map: "relief_aid_steps_aid_idx")
+  @@map("relief_aid_steps")
+}
+
+/// M151: signed-in people following an aid box, told at each step.
+model ReliefAidFollow {
+  aidId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  @@id([aidId, userId])
+  @@map("relief_aid_follows")
+}
+
+/// M153: one emergency text per person per emergency (and the daily cap).
+model ReliefSmsSent {
+  incidentId String
+  userId     String
+  ok         Boolean  @default(false)
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId])
+  @@index([createdAt], map: "relief_sms_sent_day_idx")
+  @@map("relief_sms_sent")
+}
+
+model ReliefIncident {
+  id          String   @id @default(cuid())
+  orgId       String
+  createdById String?
+  title       String
+  place       String?
+  lat         Float
+  lng         Float
+  radiusKm    Float    @default(20)
+  endsAt      DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([endsAt])
+  @@index([orgId])
+  @@map("relief_incidents")
+}
+
+/// M150: someone said they're safe in an emergency.
+model ReliefSafe {
+  incidentId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId])
+  @@map("relief_safe")
+}
+
+/// M150: who they told (only people they already have a conversation with).
+model ReliefSafeTold {
+  incidentId String
+  userId     String
+  toUserId   String
+  createdAt  DateTime @default(now())
+
+  @@id([incidentId, userId, toUserId])
+  @@index([toUserId, incidentId])
+  @@map("relief_safe_told")
+}
+
 model ReliefWatch {
   userId     String   @id
   lat        Float
@@ -6983,6 +7140,12 @@ model ReliefWatch {
   urgentOnly Boolean  @default(true)
   /// Comma-separated RELIEF_KINDS, or null for every kind.
   kinds      String?
+  /// M149: comma-separated SKILLS this helper offers (src/lib/relief.ts).
+  skills     String?
+  /// M152: also send these alerts by email (off by default; they can come often).
+  email      Boolean  @default(false)
+  /// M153: the helper's phone number for emergency texts (only theirs to see), or null.
+  smsTo      String?
   createdAt  DateTime @default(now())
 
   @@index([lat, lng])
@@ -6998,6 +7161,8 @@ model ReliefPost {
   details   String?
   people    Int       @default(1)
   urgency   String    @default("MEDIUM")
+  /// M149: the one skill a need asks for (SKILLS), or null.
+  skill     String?
   lat       Float
   lng       Float
   place     String?
@@ -7034,6 +7199,17 @@ model ReliefOrg {
   createdById String?
   createdAt   DateTime @default(now())
 
+  /// M148: its live status for the shelter board (water, food, power: YES, LOW or NO).
+  openNow    Boolean?
+  bedsFree   Int?
+  bedsTotal  Int?
+  water      String?
+  food       String?
+  power      String?
+  statusNote String?
+  statusAt   DateTime?
+
+  @@index([statusAt])
   @@map("relief_orgs")
 }
 

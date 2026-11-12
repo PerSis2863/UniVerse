@@ -100,7 +100,7 @@ export async function madeInSchool(user: Who, makerId: string | null | undefined
 }
 
 /**
- * Campus info (services, links, events, menus) is each school's own (M130, `campus_items.organizationId`):
+ * Campus info (services, links, events, menus) is each school's own (M159, `campus_items.organizationId`):
  * a Prisma filter, for `AND`, to what this person's school has (an admin: the schools they run).
  */
 export async function campusOf(user: Who) {

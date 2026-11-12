@@ -10,7 +10,7 @@ import { oneOf, str, type Body } from './body';
 // (CAMPAIGN); a cash-out request takes them out at once (CASHOUT) and gives them back if the brand
 // refuses it (REFUND). The brand pays outside UniVerse and marks the request paid.
 
-export type PointKind = 'SCAN' | 'CAMPAIGN' | 'CASHOUT' | 'REFUND';
+export type PointKind = 'SCAN' | 'CAMPAIGN' | 'CASHOUT' | 'REFUND' | 'TAKEBACK';
 
 export function pointHash(e: { userId: string; brandId: string; kind: string; points: number; balanceAfter: number; previousHash: string; at: string }) {
   return crypto.createHash('sha256').update(`${e.userId}:${e.brandId}:${e.kind}:${e.points}:${e.balanceAfter}:${e.previousHash}:${e.at}`).digest('hex');
