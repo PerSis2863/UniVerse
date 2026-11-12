@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/auth';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { ArrangeButton } from '@/components/ArrangeMode';
 import { LanguageMenu } from './LanguageMenu';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
@@ -129,6 +130,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
               {subtitle && <p className="text-[15px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">{subtitle}</p>}
             </div>
           </div>
+          <ArrangeButton className="shrink-0 self-start" />
           {action && (
             <button onClick={action.onClick} className="btn-primary shrink-0">
               <Plus className="w-4 h-4" strokeWidth={2.4} />
@@ -163,6 +165,7 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
             <kbd className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400">⌘K</kbd>
           </button>
 
+          <ArrangeButton />
           <ThemeToggle />
           <LanguageMenu />
 

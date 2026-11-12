@@ -6101,3 +6101,45 @@ The owner, after M158's "left out on purpose" list: "please do all these".
 - **Tested:** `pnpm check`; `world-ui.mjs` (the planet draws, axe on the landing at 390 and 1280),
   `app-backdrop-ui.mjs`; frame times idle, dragging and opening a row at 390 and 1280; a row opens with its
   "Start with" link; axe on the section with a row open.
+
+## M165: Arrange this page (12 Nov 2026)
+
+The owner (12 Nov, with a picture of Quick notes): "resize that quick note page and also change its
+locations just by dragging things from one place to another… in every page of this project even with
+the buttons". Their exception to the launch pause (said once).
+
+- **What it is:** a button in the top bar (and the phone's title row), "Arrange this page"
+  (`ArrangeButton` / `ArrangeMode` in `src/components/ArrangeMode.tsx`, the switch in `src/store/arrange.ts`).
+  With it on, every card, row of buttons and pane inside `#main` wears a dashed outline: drag one to
+  move it among its neighbours (touch: hold 220 ms), pull a card's right or bottom edge to resize it; a
+  bar at the bottom has Undo, Reset this page and Done (Escape leaves). Keys: arrows move the focused
+  thing, Shift + arrows resize it. Clicks press nothing while it is on.
+- **How (`src/lib/arrange-dom.ts`, class `Arranger`):** nothing describes a page, and React owns the tree,
+  so it never moves a node. A group is a container with 2–24 shown children; reordering sets CSS `order`
+  on them (a block container becomes a wrapping flex row, `data-arranged="col"`; `reading-flow` keeps the
+  Tab order with what is seen), sizes are an inline width (share of the row), grid span or height. Things
+  are known by what they say (label, heading, button text without digits: `cleanKey`, `uniqueKeys`), and
+  a saved group belongs to the container holding at least two of its names (`overlap`), so it survives
+  the page changing; a card that is new sits next to what it follows (`arranged`). A MutationObserver
+  puts the arrangement back when the page re-renders.
+- **Kept** per person, per path, on this device: localStorage `uv-arrange:<user id>` (`src/lib/arrange.ts`,
+  `cleanStore` drops anything odd; 150 pages at most). Not in the account (no database change).
+- **Quick notes** (`QuickNotes.tsx`): its three panes are a flex row now, with a divider to drag between
+  them and one under it for the height, any time, without the mode (`Splitter` and `usePaneSizes` in
+  `src/components/ui/Splitter.tsx`: pointer, arrow keys, Home or a double-click puts it back; kept on the
+  device as `uv-quick-notes-panes`). Computers only; phones keep one pane at a time. Its panes also
+  change places in the mode. Reuse `Splitter` for any other split view.
+- **Smooth:** the dragged thing follows the pointer by `transform` once a frame, its neighbours glide to
+  their new places (FLIP, measured only when the order changes), a drop settles on the spring.
+- **Rules for code that builds on it:** `data-no-arrange` on anything that must not be moved (dialogs,
+  tables, the side menu, phone tabs and `divide-` lists are already left alone); `data-arrange-key="…"`
+  to give a thing a steady name when its text changes; never rely on DOM order for what is seen first
+  inside `#main` (a person may have reordered it); the mode's own parts carry `data-arrange-ui`.
+- **Left out on purpose:** following a person to another device (needs a table; say so if asked); rows
+  inside tables and lists with dividers; the side menu; dragging a card from one group into another.
+- **Trap for browser checks:** a page arrives slightly scaled for about a second (the page transition):
+  wait before measuring sizes.
+- **Tested:** `pnpm check` (`src/lib/arrange.test.ts`); `arrange-ui.mjs` (a toolbar button moved and kept
+  after a reload, a card resized, Undo, Reset, Escape, the dividers, panes changing places, axe at 1440
+  and 390 with about 100 movable things on the student home; on the dev server 2–4 slow frames in 120
+  while dragging a pane).

@@ -1,4 +1,5 @@
 'use client';
+import { ArrangeMode } from '@/components/ArrangeMode';
 import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
@@ -207,6 +208,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
         </header>
 
         <SwipeBack enabled={canGoBack} pathname={pathname} onBack={back} />
+        <ArrangeMode />
         <main id="main" tabIndex={-1} className="mobile-main flex-1 flex flex-col min-w-0 overflow-x-clip outline-none">
           <SampleModeBar />
           {/* Re-mount pages when switching between sample and real data so they reload from the right source */}
