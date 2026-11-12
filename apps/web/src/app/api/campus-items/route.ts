@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { CAMPUS_KINDS, cleanCampusItem } from '@/lib/campus';
-import { keepInSchool } from '@/server/school-scope';
+import { campusOf, keepInSchool } from '@/server/school-scope';
 
-// GET ?kind=SERVICE|LINK|EVENT|MENU — campus info for any signed-in user (events: upcoming first).
+// GET ?kind=SERVICE|LINK|EVENT|MENU — the campus info of the person's own school (M130; events: upcoming first).
 // Admins also get `createdBy` (name, email, role; their own school's people) and can pass ?past=1 to include past events.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
@@ -16,7 +16,7 @@ export async function GET(req: Request) {
   const isAdmin = user.role === 'ADMIN';
   const withPast = isAdmin && new URL(req.url).searchParams.get('past') === '1';
   const items = await prisma.campusItem.findMany({
-    where: { kind, ...((kind === 'EVENT' || kind === 'MENU') && !withPast ? { startAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } : {}) },
+    where: { AND: [await campusOf(user)], kind, ...((kind === 'EVENT' || kind === 'MENU') && !withPast ? { startAt: { gte: new Date(Date.now() - 24 * 3600 * 1000) } } : {}) },
     orderBy: kind === 'EVENT' || kind === 'MENU' ? [{ startAt: withPast ? 'desc' : 'asc' }, { category: 'asc' }] : [{ category: 'asc' }, { title: 'asc' }],
     take: 200,
   });
@@ -52,6 +52,6 @@ export async function POST(req: Request) {
   if (kind === 'LINK' && !data.url) return NextResponse.json({ error: 'Enter a valid link (https://…).' }, { status: 400 });
   if (kind === 'EVENT' && !data.startAt) return NextResponse.json({ error: 'Pick a date and time for the event.' }, { status: 400 });
   if (kind === 'MENU' && !data.startAt) return NextResponse.json({ error: 'Pick the day this menu is for.' }, { status: 400 });
-  const item = await prisma.campusItem.create({ data: { ...data, title: data.title, kind, createdById: user.id } });
+  const item = await prisma.campusItem.create({ data: { ...data, title: data.title, kind, createdById: user.id, organizationId: user.organizationId ?? null } });
   return NextResponse.json(item, { status: 201 });
 }

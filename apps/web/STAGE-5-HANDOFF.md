@@ -5255,3 +5255,30 @@ smooth … find any errors or bugs". New things are paused until 5 Dec (said onc
 - **[owner]:** in the console → Errors, mark resolved: the 10 Nov "POST failed … boundary", the two
   "Blank page: styles came from elsewhere", the importScripts one, and the old `/api/core/owner/people`.
 
+
+## M130: campus info per school; the build libraries' advisories (the owner, 12 Nov 2026)
+
+The owner, after M129's "left out on purpose" list: "please do all these".
+
+- **Campus info per school** (migration `0195_campus_items_school.sql`): `campus_items.organizationId`
+  (null: the main school, as on users), filled from each item's maker. `campusOf(user)`
+  (`school-scope.ts`) is the filter; put it in `AND: [await campusOf(user)]` (it can be an `OR`, and
+  search has its own). Every read and change uses it: the lists (`/api/campus-items`,
+  `/api/campus/events`, meals, the campus map, search), sign-up, buying a ticket, check-in, the kitchen's
+  orders, an admin's attendee list (it showed every school's people before), door code, edits and the
+  map's "place event". A new item takes its maker's school. **Rule:** any new `campusItem` query takes
+  `campusOf`. `madeInSchool` (M129) now serves groups only.
+- **Not scoped on purpose:** `event-tickets.ts` (a paid order finds its own event by id, from Stripe's
+  callback: no person is asking).
+- **Libraries** (root `package.json` overrides, each release two weeks old or more): glob 9–14.0.1 →
+  14.0.3, minimatch 7–11.0.0 → 11.0.3, serialize-javascript → 7.1.3. All three are build tools (the
+  Cloudflare adapter, the offline worker's builder). `pnpm audit --prod`: 6 → 1; the one left, deepmerge
+  (low, inside the offline worker's builder), has no fixed release.
+- **Tested:** `pnpm local:build` (passed, 4.7 minutes), then on the built Worker with two test events
+  (one in another school, removed after): the main school's admin lists only the main school's; another
+  school's event answers 404 for the door code, attendees and sign-up; a student of a different school
+  sees neither. `pnpm check`.
+- **New things (the pause):** the owner chose "something for the first class" over the games; a proposal
+  was put to them (a "Since your last visit" card on the student and teacher home). Not started.
+- **Next database update: 0196.**
+

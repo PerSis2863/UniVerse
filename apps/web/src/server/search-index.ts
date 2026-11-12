@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { taughtBy } from '@/lib/course-access';
 import { ftsQuery, plainText } from '@/lib/search-text';
+import { campusOf } from './school-scope';
 
 export { plainText };
 
@@ -100,7 +101,7 @@ export async function searchMine(user: SessionUser, q: string): Promise<FoundIte
     searchIndex(user, q, 12, mine),
     mine.courses.length ? prisma.material.findMany({ where: { courseId: { in: mine.courses.slice(0, 90) }, title: { contains: like } }, take: 5, select: { id: true, title: true, courseId: true, course: { select: { code: true } } } }) : [],
     mine.boards.length ? prisma.taskBoard.findMany({ where: { id: { in: mine.boards.slice(0, 90) }, title: { contains: like } }, take: 4, select: { id: true, title: true } }) : [],
-    prisma.campusItem.findMany({ where: { kind: 'EVENT', OR: [{ title: { contains: like } }, { description: { contains: like } }], startAt: { gte: new Date(Date.now() - 86_400_000) } }, orderBy: { startAt: 'asc' }, take: 4, select: { id: true, title: true, startAt: true, location: true } }),
+    prisma.campusItem.findMany({ where: { AND: [await campusOf(user)], kind: 'EVENT', OR: [{ title: { contains: like } }, { description: { contains: like } }], startAt: { gte: new Date(Date.now() - 86_400_000) } }, orderBy: { startAt: 'asc' }, take: 4, select: { id: true, title: true, startAt: true, location: true } }),
   ]);
   const clip = (t: string) => t.replace(/\s+/g, ' ').trim();
   return [

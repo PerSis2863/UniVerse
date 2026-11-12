@@ -98,3 +98,11 @@ export async function madeInSchool(user: Who, makerId: string | null | undefined
   if (!makerId) return schools.includes(null);
   return !!(await prisma.user.findFirst({ where: { id: makerId, ...usersIn(schools) }, select: { id: true } }));
 }
+
+/**
+ * Campus info (services, links, events, menus) is each school's own (M130, `campus_items.organizationId`):
+ * a Prisma filter, for `AND`, to what this person's school has (an admin: the schools they run).
+ */
+export async function campusOf(user: Who) {
+  return orgIn(await schoolsOf(user));
+}
