@@ -4,7 +4,8 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Accessibility, Bell, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
+import { useArrange } from '@/store/arrange';
+import { Accessibility, Bell, Move, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -14,7 +15,7 @@ import { QuietHoursSetting } from '@/components/settings/QuietHoursSetting';
 import { ParentHoursSetting } from '@/components/settings/ParentHoursSetting';
 import { NotificationPermissionPrompt } from '@/components/pwa/NotificationPermissionPrompt';
 import { NotifyKinds } from './NotifyKinds';
-import { api } from '@/lib/api';
+import { api, errorMessage } from '@/lib/api';
 import { applyTheme, getSavedTheme, type Theme } from '@/lib/theme';
 import { LANGUAGES, type Language } from '@/lib/i18n';
 import { useLanguageStore } from '@/store/language';
@@ -67,7 +68,7 @@ interface Section { id: string; label: string; icon: typeof User; tile: string; 
 
 const SECTIONS: Section[] = [
   { id: 'profile', label: 'Profile', icon: User, tile: '#8e8e93', keywords: 'name photo phone email account picture avatar' },
-  { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation vibration haptics reading level simpler grade dyslexia' },
+  { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation arrange arrangement drag move resize layout sync devices vibration haptics reading level simpler grade dyslexia' },
   { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver 2g weak connection voice only calls' },
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify mute course daily summary digest' },
   { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
@@ -430,6 +431,31 @@ const AIDS: [ReadingAid, LucideIcon, string, string][] = [
   ['underline', Underline, 'Underline links', 'Links in text are underlined, not only coloured.'],
 ];
 
+/** M166: the arrangement a person made by dragging things (src/lib/arrange-dom.ts): on their other devices too, or put back. */
+function ArrangeRows() {
+  const sync = useArrange((s) => s.sync), any = useArrange((s) => s.any);
+  const [busy, setBusy] = useState(false);
+  const flip = (on: boolean) => {
+    setBusy(true);
+    useArrange.getState().setSync(on)
+      .then(() => toast.success(on ? 'Your arrangement now follows you to your other devices' : 'Each device keeps its own arrangement now'))
+      .catch((e) => toast.error(errorMessage(e, 'Could not change it. Try again.')))
+      .finally(() => setBusy(false));
+  };
+  return (
+    <>
+      <Row setting="arrange-sync" icon={Move} title="Use my arrangement on my other devices" desc="Drag any card, button or menu entry to move it, and pull a card’s edge to resize it. On: what you arrange is kept in your account and shows on your phone and other computers. Off: each device keeps its own.">
+        <Switch checked={sync === true} label="Use my arrangement on my other devices" onChange={(on) => { if (!busy && sync !== null) flip(on); }} />
+      </Row>
+      {any && (
+        <Row setting="arrange-reset" title="Put every page back" desc="Every page and menu as it came: nothing moved, nothing resized.">
+          <button type="button" className="btn-secondary btn-sm shrink-0" onClick={() => { useArrange.getState().resetAll(); toast.success('Every page is back as it was'); }}>Put everything back</button>
+        </Row>
+      )}
+    </>
+  );
+}
+
 function Appearance() {
   const [theme, setTheme] = useState<Theme>(() => (typeof window === 'undefined' ? 'dark' : getSavedTheme()));
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
@@ -474,6 +500,7 @@ function Appearance() {
       <Row setting="reduce-motion" icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
       </Row>
+      <ArrangeRows />
       <Row setting="vibration" icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
         <Switch checked={haptics} label="Vibration" onChange={(on) => { setHap(on); setHaptics(on); }} />
       </Row>

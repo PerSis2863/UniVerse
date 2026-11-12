@@ -1,9 +1,17 @@
 import { create } from 'zustand';
 
-// M165: whether the page on screen was rearranged by the person, and how to put it back
-// (src/lib/arrange-dom.ts does the work; the top bar shows "Put this page back" only then).
-export const useArrange = create<{ arranged: boolean; reset: () => void; set: (s: { arranged: boolean; reset: () => void }) => void }>((set) => ({
-  arranged: false,
-  reset: () => undefined,
-  set: (s) => set(s),
+// M165–M166: what the arranging engine (src/lib/arrange-dom.ts, started by ArrangeMode) tells the rest
+// of the app: whether the page or the side menu on screen was rearranged and how to put it back, and
+// whether the person's arrangements follow them to their other devices (null: not known yet).
+interface ArrangeState {
+  arranged: boolean;
+  reset: () => void;
+  /** Anything arranged anywhere, on this device. */
+  any: boolean;
+  resetAll: () => void;
+  sync: boolean | null;
+  setSync: (on: boolean) => Promise<void>;
+}
+export const useArrange = create<ArrangeState>(() => ({
+  arranged: false, reset: () => undefined, any: false, resetAll: () => undefined, sync: null, setSync: async () => undefined,
 }));

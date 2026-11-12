@@ -2953,3 +2953,15 @@ html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !importan
 #main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
 #main .arr-size { transition: none !important; }
 [data-arranged="col"] > :not(.sr-only, .absolute, .fixed) { margin-block: 0 !important; flex: 0 0 auto; width: 100%; min-width: 0; }
+/* M166 · a wrapper opened into its container (its things mix with the container's): they keep the width
+   measured when it opened (inline). A table whose rows changed places is a grid, each row a sub-grid of
+   its columns, where `order` works. A list with lines between its rows keeps them under the order shown. */
+[data-arranged="col"] [data-arr-open] > :not(.sr-only, .absolute, .fixed, [data-arr-open]) { margin-block: 0 !important; min-width: 0; }
+table[data-arr-table] { display: grid; grid-template-columns: var(--arr-cols, 1fr); }
+table[data-arr-table] > :is(thead, tbody, tfoot) { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; }
+table[data-arr-table] > * > tr { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; }
+table[data-arr-table] > colgroup { display: none; }
+[data-arr-div="top"] > :first-child { border-top: 1px solid var(--hairline); }
+[data-arr-div="top"] > [data-arr-edge] { border-top-width: 0 !important; }
+[data-arr-div="bottom"] > :last-child { border-bottom: 1px solid var(--hairline); }
+[data-arr-div="bottom"] > [data-arr-edge] { border-bottom-width: 0 !important; }

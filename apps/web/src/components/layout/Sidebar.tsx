@@ -561,7 +561,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AppSwitcher app={app} role={user.role} onPick={onClose} />
 
       {/* Nav */}
-      <nav id="side-nav" onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav id="side-nav" data-arrange-scope={`${app ?? 'all'}-${user.role}`.toLowerCase()} onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 

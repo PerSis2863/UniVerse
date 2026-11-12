@@ -20,14 +20,18 @@ export function usePaneSizes<T extends Record<string, number>>(key: string, init
   return [sizes, set] as const;
 }
 
-export function Splitter({ axis = 'x', value, min, max, initial, label, onChange, className }: {
+export function Splitter({ axis = 'x', value, min, max, initial, label, onChange, className, pill, target }: {
   /** 'x': between side-by-side panes (drag left and right); 'y': under a pane (drag up and down). */
   axis?: 'x' | 'y'; value: number; min: number; max: number; initial: number; label: string; onChange: (v: number) => void; className?: string;
+  /** A grab bar that always shows (phones: there is no pointer to hover with). */
+  pill?: boolean;
+  /** The pane it sizes, when that isn't the element holding it. */
+  target?: React.RefObject<HTMLElement | null>;
 }) {
   const frame = useRef(0);
   const clamp = (v: number) => Math.round(Math.max(min, Math.min(max, v)));
   // The pane's size as it really is (its parent holds the divider on its edge): right even when the size kept is "the usual".
-  const now = (el: HTMLElement) => { const r = el.parentElement?.getBoundingClientRect(); return r ? (axis === 'x' ? r.width : r.height) : value; };
+  const now = (el: HTMLElement) => { const r = (target ? target.current : el.parentElement)?.getBoundingClientRect(); return r ? (axis === 'x' ? r.width : r.height) : value; };
   const down = (e: React.PointerEvent<HTMLDivElement>) => {
     if (e.button !== 0) return;
     e.preventDefault();
@@ -55,6 +59,7 @@ export function Splitter({ axis = 'x', value, min, max, initial, label, onChange
       aria-valuenow={Math.round(value)} aria-valuemin={min} aria-valuemax={max} onPointerDown={down} onKeyDown={key} onDoubleClick={() => onChange(initial)}
       title={`${label}: drag, or double-click to put it back`}
       className={cn('splitter group absolute z-10 touch-none select-none outline-none', axis === 'x' ? 'inset-y-0 -end-[6px] w-3 cursor-col-resize' : 'inset-x-0 -bottom-[6px] h-3 cursor-row-resize', className)}>
+      {pill && <span aria-hidden className={cn('absolute rounded-full bg-zinc-400/70 dark:bg-zinc-500/80', axis === 'x' ? 'start-1/2 top-1/2 h-9 w-1 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2' : 'start-1/2 top-1/2 h-1 w-10 -translate-x-1/2 -translate-y-1/2 rtl:translate-x-1/2')} />}
       <span aria-hidden className={cn('absolute rounded-full bg-indigo-500 opacity-0 transition-opacity duration-150 group-hover:opacity-100 group-focus-visible:opacity-100 group-data-[dragging]:opacity-100',
         axis === 'x' ? 'inset-y-0 start-[5px] w-0.5' : 'inset-x-0 top-[5px] h-0.5')} />
     </div>

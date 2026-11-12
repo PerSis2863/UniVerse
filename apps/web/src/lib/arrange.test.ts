@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arranged, cleanKey, cleanStore, moved, overlap, uniqueKeys } from './arrange';
+import { arranged, cleanDoc, cleanKey, cleanStore, mergeDocs, moved, overlap, uniqueKeys } from './arrange';
 
 describe('arrange this page', () => {
   it('names things once each', () => {
@@ -23,5 +23,17 @@ describe('arrange this page', () => {
     expect(s).toEqual({ '/home': [{ order: ['a', 'b'], sizes: { a: { pct: 100 } }, maxW: 320 }] });
     expect(cleanStore(null)).toEqual({});
     expect(cleanStore([1])).toEqual({});
+  });
+  it('joins two devices page by page, the later change winning, a page put back staying put back', () => {
+    const phone = { store: { '/a': [{ order: ['x', 'y'] }], '/b': [{ order: ['p', 'q'] }] }, at: { '/a': 10, '/b': 30 } };
+    const laptop = { store: { '/a': [{ order: ['y', 'x'] }], '/c': [{ order: ['m', 'n'] }] }, at: { '/a': 20, '/b': 40, '/c': 5 } };
+    const both = mergeDocs(phone, laptop);
+    expect(both.store).toEqual({ '/a': [{ order: ['y', 'x'] }], '/c': [{ order: ['m', 'n'] }] }); // /b was put back on the laptop, later
+    expect(both.at).toEqual({ '/a': 20, '/b': 40, '/c': 5 });
+    expect(mergeDocs(laptop, phone)).toEqual(both);
+  });
+  it('reads the first version (pages alone) and drops odd times', () => {
+    expect(cleanDoc({ '/a': [{ order: ['x'] }] })).toEqual({ store: { '/a': [{ order: ['x'] }] }, at: {} });
+    expect(cleanDoc({ store: { '/a': [{ order: ['x'], open: ['w', 3] }] }, at: { '/a': 5.4, 'bad': 9, '/z': 'no' } })).toEqual({ store: { '/a': [{ order: ['x'], open: ['w'] }] }, at: { '/a': 5 } });
   });
 });

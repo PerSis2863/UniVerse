@@ -36,13 +36,15 @@ const GROWS = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'cont
 interface Focus { line: number; at: number } // line -1 is the title
 const ICON = 'inline-grid place-items-center w-9 h-9 shrink-0 rounded-full text-zinc-600 dark:text-zinc-300 hover:bg-zinc-900/[0.06] dark:hover:bg-white/[0.08] transition-colors duration-150 disabled:opacity-50';
 
-/** The panes as they start: folders and list in px; height 0 means the usual (78% of the window, 760 at most). */
-const PANES = { folders: 180, list: 270, height: 0 };
+/** The panes as they start: folders and list in px; height 0 means the usual (78% of the window, 760 at most);
+ * peek: on a phone, how much of the list stays above an open note (0: none, pull the bar down for it). */
+const PANES = { folders: 180, list: 270, height: 0, peek: 0 };
 
 export function QuickNotes() {
   const [notes, setNotes] = useKept<Note[]>('uv-quick-notes', []);
   // M165: the panes' widths and the whole thing's height, dragged by their dividers (computers; kept on this device).
   const [panes, setPanes] = usePaneSizes('uv-quick-notes-panes', PANES);
+  const listPane = useRef<HTMLElement>(null);
   const [folders, setFolders] = useKept<string[]>('uv-quick-folders', []);
   const [view, setView] = useState(ALL);
   const [open, setOpen] = useState<string | null>(() => firstIn(notes, ALL));
@@ -154,7 +156,7 @@ export function QuickNotes() {
 
   return (
     <div className="relative md:flex md:h-[var(--qn-h)] border-t border-zinc-900/[0.07] dark:border-white/[0.07]"
-      style={{ '--qn-a': `${panes.folders}px`, '--qn-b': `${panes.list}px`, '--qn-h': panes.height ? `${panes.height}px` : 'min(78vh, 760px)' } as React.CSSProperties}>
+      style={{ '--qn-a': `${panes.folders}px`, '--qn-b': `${panes.list}px`, '--qn-h': panes.height ? `${panes.height}px` : 'min(78vh, 760px)', '--qn-m': `${panes.peek}px` } as React.CSSProperties}>
       {/* Folders (a row of chips on phones) */}
       <nav aria-label="Folders" className={cn('relative min-h-0 md:w-[var(--qn-a)] md:shrink-0 md:border-e border-zinc-900/[0.07] dark:border-white/[0.07] md:bg-zinc-900/[0.025] md:dark:bg-white/[0.025]', reading && 'hidden md:block')}>
         <p className="hidden md:block px-4 pt-4 pb-2 text-[13px] font-semibold text-zinc-500 dark:text-zinc-400">On this device</p>
@@ -181,7 +183,8 @@ export function QuickNotes() {
       </nav>
 
       {/* The list */}
-      <section aria-label={viewName} className={cn('relative flex flex-col min-h-0 md:w-[var(--qn-b)] md:shrink-0 md:border-e border-zinc-900/[0.07] dark:border-white/[0.07]', reading && 'hidden md:flex')}>
+      <section ref={listPane} aria-label={viewName} className={cn('relative flex flex-col min-h-0 md:w-[var(--qn-b)] md:shrink-0 md:border-e border-zinc-900/[0.07] dark:border-white/[0.07]',
+        reading && (panes.peek > 0 ? 'max-md:h-[var(--qn-m)] max-md:overflow-hidden' : 'hidden md:flex'))}>
         <div className="flex items-center gap-2 px-3 pt-3">
           <h2 className="text-xl font-bold text-zinc-900 dark:text-white truncate" translate={view === ALL || view === BIN ? undefined : 'no'}>{q.trim() ? 'Results' : viewName}</h2>
           {folderEdit}
@@ -238,6 +241,10 @@ export function QuickNotes() {
         <p className="px-4 py-2 text-center text-xs text-zinc-500 dark:text-zinc-400 border-t border-zinc-900/[0.06] dark:border-white/[0.06]">{shown.length === 1 ? '1 note' : `${shown.length} notes`}</p>
         <Splitter className="hidden md:block" label="Notes list width" value={panes.list} min={200} max={560} initial={PANES.list} onChange={(list) => setPanes({ list })} />
       </section>
+
+      {/* M166, phones: a bar between the list and the open note; pull it down to keep the list in view above the note. */}
+      {reading && <Splitter axis="y" pill target={listPane} className="md:hidden relative inset-auto bottom-auto h-6 w-full border-y border-zinc-900/[0.07] dark:border-white/[0.07]" label="Notes list height"
+        value={panes.peek} min={0} max={420} initial={PANES.peek} onChange={(peek) => setPanes({ peek: peek < 48 ? 0 : peek })} />}
 
       {/* The note */}
       <div className={cn('min-h-[60vh] md:min-h-0 md:flex-1 md:min-w-0 flex-col', reading ? 'flex' : 'hidden md:flex')}>

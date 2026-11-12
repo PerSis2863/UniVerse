@@ -1027,6 +1027,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/relief\/orgs$/, ({ db: d }) => ok(impact.sampleReliefOrgs(d.me))],
   [/^\/relief\/orgs\/([^/]+)$/, ({ db: d, m }) => { const o = impact.sampleReliefOrg(d.me, decodeURIComponent(m[1])); return o ? ok(o) : fail('That organisation is gone, or you aren’t in it.', 404); }],
   [/^\/relief\/watch$/, () => ok(null)],
+  // M166: arrangements stay on the device while exploring.
+  [/^\/arrange$/, () => ok({ sync: false, doc: null })],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],

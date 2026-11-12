@@ -6157,3 +6157,68 @@ need to show any lines there or message", so there is **no mode and nothing is d
   a reload, a card resized, "Put this page back", Ctrl+Z, the dividers, panes changing places with 0
   slow frames in 127, a phone: a held tile carried past its neighbour; axe at 1440 and 390); selecting
   words with the mouse on the student home and timetable still selects and rearranges nothing.
+
+## M166: arranging everywhere, synced across devices when a person chooses (12 Nov 2026)
+
+The owner (12 Nov), on M165's "left out on purpose": "Can you do all these also and for the saved
+arrangement in another device give this as a setting option where user can select if they want to sync
+that in another device… make sure arrangement feature works properly… ultra smooth and synced properly".
+
+- **Syncing, a person's choice (off by default):** Settings → Appearance → "Use my arrangement on my
+  other devices" (`ArrangeRows` in `SettingsApp.tsx`; also found by searching "arrange", "sync"). On: the
+  whole arrangement is kept in the account, table `user_arrangements` (migration **0206**, one row a
+  person, `data` = the JSON `Doc` of `src/lib/arrange.ts`); no row means off. Routes (`src/server/arrange.ts`,
+  in `impact-apps.ts`): `GET /arrange` (`{ sync, doc }`), `PUT /arrange { doc }` (turns it on and joins
+  this device's copy into the account's), `DELETE /arrange` (off; the account's copy is removed, each
+  device keeps its own). Signed-in only, the person's own row only; the copy is cleaned on the way in and
+  out (`cleanDoc`) and refused over 200 KB. Sample mode answers `{ sync: false }`.
+- **How two devices agree (`mergeDocs`):** page by page, the later change wins, by the time each page was
+  last changed (`Doc.at`); a page put back keeps its time with no groups, so "put back" travels too; the
+  same moment on both sides picks the same copy whoever asks. A change is sent 1.2 s after it is made
+  (`ArrangeMode.tsx`); the server tells the person's other open devices (`publish` refresh `/arrange`),
+  which fetch and join it; a device that comes back joins on its first load (and on focus). A change
+  still waiting when the page closes goes then.
+- **One store a person (`Vault` in `arrange.ts`):** read once, written on every change, shared by the
+  page's arranger and the side menu's, told when another device's copy changes a page that is on screen
+  (it is drawn again unless a hand is arranging it). Old M165 copies (pages alone) are read as they are.
+- **The side menu:** its entries move like everything else (a second `Arranger` on `#side-nav`, `menu`
+  mode: entries move, nothing resizes, no rows open); one arrangement per app's menu and role
+  (`data-arrange-scope` on `#side-nav`, kept under the path `/~menu/<app>-<role>`). "Put this page back"
+  puts the page back first, the menu when only it was changed. A click on an entry still opens it.
+- **Table rows** (`tbody > tr`, up to 60): a table whose rows changed places is drawn as a grid, each row
+  a sub-grid of its columns at the widths they had (`--arr-cols` in shares, so nothing shifts), with
+  `role` table / rowgroup / row / cell added (and removed when put back) so screen readers still read a
+  table. A row is known by everything it says. Only the body's rows move (not the header, not cells).
+- **Lists with lines between their rows** (`divide-y`): the lines follow the order shown
+  (`data-arr-div="top|bottom"` and `data-arr-edge` in CSS), one line between each, none at the ends.
+- **Out of its group and into another:** carry a thing out of its row and the row opens into what holds
+  it (`display: contents` on that row and on wrappers that only wrap it, `unwrap`), its things keeping
+  the widths they had; it then sits among the page's cards. Carry it over another row and that row opens.
+  Kept as `Entry.open` (the opened rows' names; found again by what they hold if their name changed).
+  When a row's things end up side by side again it closes (`close` / `shut`), drawing again only the rows
+  involved. Only plain wrappers open (no fill, edge, shadow, padding, clipping, role or name: `plain`).
+- **Undo a resize:** double-click a card's edge. **Phones:** widths chosen on a wider screen wait (under
+  640 px a page is one column); the order and heights are used. Quick notes on a phone: a grab bar
+  between the list and the open note; pull it down to keep the list in view (`Splitter` `pill`, `target`).
+- **Smooth:** the page is re-read only when things are added or taken away (not when numbers count up or
+  text changes); a row is asked once per carry whether it opens; on a drop only the rows involved are
+  drawn again (it was the whole page: one 600 ms frame on the student home). Carrying a tile out of its
+  row now costs no more than moving the mouse over that page in the test browser.
+- **Rules for code that builds on it:** a page's own wrappers stay plain where they can (that is what lets
+  cards leave their rows); a new store of a person's layout goes through `Vault`, never straight to
+  localStorage; keep `Doc` small (it is one row and one request). `data-no-arrange` still leaves a part
+  alone.
+- **Left out on purpose:** dragging between the side menu and the page; a thing carried into a box that
+  has a look of its own (a card with a fill or padding: it would change how the card looks); table
+  columns (only rows move); rows of a table's header or footer.
+- **Trap for browser checks:** the bottom 56 px of a window scroll the page while something is carried:
+  keep a check's aim above it. The dev server sometimes stalls on its first page: warm the pages first.
+- **Tested:** `pnpm check` (`arrange.test.ts`: joining two devices, the old format; `src/server/arrange.test.ts`:
+  off by default, only the person's row, odd and oversized copies refused, off removes it);
+  `arrange-more-ui.mjs` twice in a row (a grades row moved and kept with columns under their headings,
+  axe clean; people rows keep one line between each; the menu moved, kept, put back, still opens; a tile
+  out of its row and back, Ctrl+Z, put back with no traces left; a resize undone by a double-click; two
+  devices: off shows nothing, on in Settings shows it, put back on one is put back on the other, signed
+  out 401, off removes the copy; axe on Settings; a phone: the notes grab bar, a computer's width unused,
+  its order used); `arrange-ui.mjs` (M165's check) still passes.
+
