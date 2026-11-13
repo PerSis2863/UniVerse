@@ -1517,6 +1517,10 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 /* Cards under the pointer (computers): a soft light follows it and the edge lights up; cards that
    open something lift a little. Set by one pointer listener (scroll-motion.ts), only on cards
    without a background picture of their own. */
+/* M168: the light's position is the card's alone (not passed down to everything inside it), so moving
+   the mouse restyles one card a frame instead of every element in it. */
+@property --mx { syntax: '<length>'; inherits: false; initial-value: -999px; }
+@property --my { syntax: '<length>'; inherits: false; initial-value: -999px; }
 .sheen {
   background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgb(82 82 91 / 0.13), transparent 62%);
   box-shadow: inset 0 0 0 1px rgb(82 82 91 / 0.22), var(--card-shadow, 0 0 #0000);
@@ -2951,7 +2955,12 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
 html[data-arr-busy] #main :is(iframe, canvas, video) { pointer-events: none; }
 html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !important; user-select: none !important; }
 #main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
-#main .arr-size { transition: none !important; }
+/* M168 · a card being resized sits above its neighbours (it may overlap one until the grid makes room)
+   and the resize cursor stays on wherever the hand goes. */
+#main .arr-size { transition: none !important; z-index: 30; will-change: width, height; transform: none !important; }
+html[data-arr-resize="x"], html[data-arr-resize="x"] * { cursor: ew-resize !important; }
+html[data-arr-resize="y"], html[data-arr-resize="y"] * { cursor: ns-resize !important; }
+html[data-arr-resize="xy"], html[data-arr-resize="xy"] * { cursor: nwse-resize !important; }
 /* M167 · a column carried by its heading (its cells move as one, above the others); the thing left behind
    while a likeness of it is carried over the side menu (or the page); a thing drawn inside a card. */
 .arr-cell { position: relative; z-index: 60; background: var(--surface); will-change: transform; transition: none !important; pointer-events: none; }

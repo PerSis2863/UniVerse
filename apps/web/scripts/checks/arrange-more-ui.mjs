@@ -79,7 +79,7 @@ const open = async (ctx, path, wait) => {
   const home = await open(ctx, '/student', '#main .kpi-row');
   const tile = home.locator('#main .kpi-row > *').first();
   await tile.scrollIntoViewIfNeeded();
-  const where = () => home.evaluate(() => { const row = document.querySelector('#main .kpi-row'); const t = row.children[0]; const r = t.getBoundingClientRect(); const others = [...row.children].slice(1).map((k) => k.getBoundingClientRect()); return { open: row.dataset.arrOpen !== undefined, top: Math.round(r.top), width: Math.round(r.width), rowTop: Math.round(Math.min(...others.map((o) => o.top))), w2: Math.round(others[0].width) }; });
+  const where = () => home.evaluate(() => { const row = document.querySelector('#main .kpi-row'); const t = row.children[0]; const r = t.getBoundingClientRect(); const others = [...row.children].slice(1).map((k) => k.getBoundingClientRect()); return { inCard: t.dataset.arrIn !== undefined, open: row.dataset.arrOpen !== undefined, top: Math.round(r.top), width: Math.round(r.width), rowTop: Math.round(Math.min(...others.map((o) => o.top))), w2: Math.round(others[0].width) }; });
   const w0 = await where();
   // Up, out of the row, onto the card above it.
   const t0 = await tile.boundingBox();

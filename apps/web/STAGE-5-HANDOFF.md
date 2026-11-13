@@ -6273,3 +6273,47 @@ table columns and header rows): "Please work on this". No database change (short
   the rows, kept, put back with no traces; axe on each; a phone with shortcuts); `arrange-ui.mjs` and
   `arrange-more-ui.mjs` still pass.
 
+## M168: smooth resizing, and the arranging upgraded (13 Nov 2026)
+
+The owner (13 Nov, after M160–M167 went live): "the resizing is not smooth and animated properly… see
+what else you can improve in the arrangement features and upgrade everything in it", then "make sure
+everything is ultra smooth".
+
+- **Why it wasn't smooth:** a pulled edge moved in steps (widths by 5% of the row or whole grid columns,
+  heights by 8 px), neighbours jumped, nothing eased on letting go; and while pressed, a card's own press
+  effect (it sinks a little) shrank it under the hand.
+- **Resizing now (`resize`, `ease` in `arrange-dom.ts`):** the card follows the hand to the pixel (inline
+  px width and height; in a grid it takes the columns it is nearer to as it goes, drawn above its
+  neighbour meanwhile, `justify-self: start`); a neighbour pushed elsewhere (a row wrapping, a column
+  freed) glides there, from where it was drawn (read before each frame's write; layout positions by
+  `offsetLeft/Top`, so a running glide isn't mistaken for a move); let go, it eases (`ease`: width and
+  height animated, only what changed, `SPRING_GLIDE`, 240 ms) to the size kept: a share of its row in 1%
+  steps (was 5%), its columns, its height to the px. The resize cursor stays on everywhere while
+  pulling (`html[data-arr-resize]`), the card sits above its neighbours and its press effect is off
+  (`.arr-size`). Edges are 18 px wide for a finger (8 px for a mouse).
+- **Eased too:** a double-click on an edge (no page re-read now, `flip`), keyboard resizing, "Put this
+  page back", undo and the new **redo** (Ctrl/⌘+Shift+Z or Ctrl+Y; `redoStack`, cleared by a new
+  change): things glide to their places (`redraw` → `flip`: FLIP of the arranged things on or near the
+  screen, 120 at most).
+- **Carrying:** a card leans up to 2.5° the way it moves and settles level when the hand stops (frames
+  keep coming until it does: `if (tilt) again()`).
+- **Quick notes' dividers (`Splitter`):** the pane is sized directly while dragged (once a frame) and the
+  size is kept once, on letting go; before, every frame re-drew the whole tool and wrote to the device.
+- **Names that hold while a page loads (`steady`):** things are known by their words without numbers,
+  percentages and placeholder dashes ("100%", "—"); and while part of what is kept hasn't found its place
+  (`unmatched`), words changing also make the engine look again, twice a second at most (a page may draw
+  its cards before their numbers arrive; only added or removed elements counted before). Saved names with
+  "%", "—", "–", "·" or "…" written before this are not found again (live since this morning only).
+- **Every page:** the light under the mouse on cards (`.sheen`) had its position passed down to every
+  element inside the card, re-styling all of them on each frame; `@property --mx/--my { inherits: false }`
+  keeps it to the card. Moving the mouse over the student home's cards: style work 321 / 208 ms → 76 /
+  111 ms, slow frames 34 / 10 → 8 / 2 (two runs each, the test browser).
+- **Reduce Motion** (the app's setting or the device's, `calm`): glides and eases are instant, no lean.
+- **Trap for checks:** the test browser has no graphics chip; the student home drops frames by itself when
+  the mouse just moves over it, so compare against that (resizing a tile there cost the same as moving
+  the mouse: 12–23 slow frames in about 44 either way); the Quick notes card resizes with 1 slow frame in
+  about 105.
+- **Tested:** `pnpm check`; `arrange-resize-ui.mjs` (a tile and a card follow the hand to the pixel
+  mid-pull, the neighbour glides, the size eases in, the height to the px, a double-click eases back,
+  undo and redo glide, the divider's pane follows); `arrange-ui`, `arrange-more-ui`, `arrange-cross-ui`.
+

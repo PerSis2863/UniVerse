@@ -25,7 +25,9 @@ const DWELL = 420;
 /** The browser keeps a thing on its card itself (CSS anchor positioning), through animations, scrolling and resizing. */
 const anchors = () => typeof CSS !== 'undefined' && CSS.supports('anchor-name: --a') && CSS.supports('left: anchor(left)');
 let hostIds = 0;
-const EDGE = 8, MAX_GROUP = 24, MAX_ROWS = 60, TRAVEL = 6, HOLD = 350;
+const EDGE = 8, EDGE_TOUCH = 18, MAX_GROUP = 24, MAX_ROWS = 60, TRAVEL = 6, HOLD = 350;
+/** "Reduce motion" (the app's own setting or the device's): things change place and size without moving. */
+const calm = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
 /** Under this width a page is one column: widths chosen on a computer aren't used (the order and heights are). */
 const narrow = () => window.innerWidth < 640;
 
@@ -43,23 +45,26 @@ function onWords(x: number, y: number): boolean {
 const cls = (el: Element) => (typeof el.className === 'string' ? el.className : '');
 const shown = (el: Element): el is HTMLElement => el instanceof HTMLElement && el.tagName !== 'SCRIPT' && el.tagName !== 'STYLE' && (el.offsetParent !== null || el.getClientRects().length > 0);
 
+/** Words without what changes as a page loads and lives: numbers, percentages, placeholder dashes (M168). */
+const steady = (s: string | null | undefined) => (s ?? '').replace(/[\d%—–·…]+/g, '');
+
 /** What a thing is called: its label, its heading, or (a button) its words without the numbers that change. */
 function nameOf(el: HTMLElement): string {
   const own = el.dataset.arrangeKey ?? el.getAttribute('aria-label');
   if (own) return cleanKey(own);
   // A table's header, rows and footer, by the table's headings (steady while its rows change).
   if (/^(THEAD|TBODY|TFOOT)$/.test(el.tagName)) {
-    const head = cleanKey(el.closest('table')?.querySelector('thead')?.textContent?.replace(/\d+/g, '') ?? '').slice(0, 44);
+    const head = cleanKey(steady(el.closest('table')?.querySelector('thead')?.textContent)).slice(0, 44);
     return `${{ THEAD: 'Header', TBODY: 'Rows', TFOOT: 'Footer' }[el.tagName]}: ${head}`;
   }
   const by = el.getAttribute('aria-labelledby');
   if (by) { const t = document.getElementById(by.split(' ')[0])?.textContent; if (t) return cleanKey(t); }
-  if (el.matches(CONTROL)) return cleanKey((el.getAttribute('title') ?? el.textContent ?? '').replace(/\d+/g, ''));
+  if (el.matches(CONTROL)) return cleanKey(steady(el.getAttribute('title') ?? el.textContent));
   // A table's row is what it says (numbers and all: "Week 3" isn't "Week 4").
   if (el.tagName === 'TR') return cleanKey(Array.from(el.children).map((c) => c.textContent?.trim()).join(' '));
   const h = el.querySelector('h1, h2, h3, h4, legend, [data-card-title]');
   // No heading: what it says (a row in a list, a tile).
-  return cleanKey((h ?? el).textContent?.replace(/\d+/g, ''));
+  return cleanKey(steady((h ?? el).textContent));
 }
 
 const opened = (el: Element | null): boolean => el instanceof HTMLElement && el.dataset.arrOpen !== undefined;
@@ -122,6 +127,7 @@ export class Arranger {
   private layout: PageLayout = [];
   private path = '';
   private undoStack: string[] = [];
+  private redoStack: string[] = [];
   private owner = new WeakMap<HTMLElement, Entry>();
   private mo: MutationObserver;
   private frame = 0;
@@ -136,6 +142,9 @@ export class Arranger {
   private slotOf = new Map<HTMLElement, HTMLElement>();
   private ro: ResizeObserver;
   private reslotting = 0;
+  /** Parts of what is kept that the last drawing didn't find on the page (groups, rows to open, cards to go inside). */
+  private unmatched = 0;
+  private retried = 0;
 
   /** `menu`: the root is the side menu (its entries move, nothing resizes). */
   constructor(private root: HTMLElement, private vault: Vault, private changed: (s: { canUndo: boolean; arranged: boolean }) => void, private menu = false, private bridge?: Bridge) {
@@ -143,8 +152,13 @@ export class Arranger {
     this.ro.observe(root);
     // Only things added or taken away matter (numbers counting up, clocks and typing change text alone).
     const things = (l: NodeList) => Array.prototype.some.call(l, (n: Node) => n.nodeType === 1);
-    this.mo = new MutationObserver((list) => { if (list.some((r) => things(r.addedNodes) || things(r.removedNodes))) this.schedule(); });
-    this.mo.observe(root, { childList: true, subtree: true });
+    // (While part of what is kept hasn't found its place yet, words changing count too, twice a second at most:
+    // a page may draw its cards before their names arrive.)
+    this.mo = new MutationObserver((list) => {
+      if (list.some((r) => things(r.addedNodes) || things(r.removedNodes))) this.schedule();
+      else if (this.unmatched && performance.now() - this.retried > 500) { this.retried = performance.now(); this.schedule(); }
+    });
+    this.mo.observe(root, { childList: true, subtree: true, characterData: true });
     // Another device changed this page: show it (not under a finger that is arranging).
     this.unlisten = vault.listen((paths, mine) => { if (!mine && paths.has(this.path) && !this.busy) this.reload(); });
     // After the page's own handlers (bubble), so something that drags by itself is seen to have started.
@@ -195,7 +209,7 @@ export class Arranger {
   private reload() {
     this.clear();
     this.layout = JSON.parse(JSON.stringify(this.vault.get(this.path))) as PageLayout;
-    this.undoStack = [];
+    this.undoStack = []; this.redoStack = [];
     this.apply();
     this.tell();
   }
@@ -211,7 +225,13 @@ export class Arranger {
     this.remember();
     this.layout = [];
     this.save();
-    this.clear();
+    this.redraw(() => this.clear());
+  }
+
+  /** The page drawn again from what is kept (put back, undone, redone), its things gliding to their places. */
+  private redraw(change: () => void) {
+    const els = this.all('[data-arranged], [data-arr-open]').flatMap((p) => held(p)).concat(this.all('[data-arr-sized], [data-arr-in]'));
+    this.flip([...new Set(els)], change);
   }
 
   /**
@@ -233,15 +253,25 @@ export class Arranger {
   undo() {
     const last = this.undoStack.pop();
     if (last === undefined) return;
+    this.redoStack.push(JSON.stringify(this.layout));
     this.layout = JSON.parse(last) as PageLayout;
     this.save();
-    this.clear();
-    this.apply();
+    this.redraw(() => { this.clear(); this.apply(); });
+  }
+
+  /** M168: a change taken back with undo, made again. */
+  redo() {
+    const next = this.redoStack.pop();
+    if (next === undefined) return;
+    this.undoStack.push(JSON.stringify(this.layout));
+    this.layout = JSON.parse(next) as PageLayout;
+    this.save();
+    this.redraw(() => { this.clear(); this.apply(); });
   }
 
   // ── What is kept ──
   private tell() { this.changed({ canUndo: this.undoStack.length > 0, arranged: this.layout.length > 0 }); }
-  private remember() { this.undoStack.push(JSON.stringify(this.layout)); if (this.undoStack.length > 30) this.undoStack.shift(); }
+  private remember() { this.undoStack.push(JSON.stringify(this.layout)); if (this.undoStack.length > 30) this.undoStack.shift(); this.redoStack = []; }
   private save() {
     this.layout = this.layout.filter((e) => e.order.length > 0);
     this.vault.set(this.path, JSON.parse(JSON.stringify(this.layout)) as PageLayout);
@@ -314,6 +344,7 @@ export class Arranger {
     if (!this.layout.length) return;
     const groups = this.groups(), taken = new Set<Group>();
     let hosts: Map<string, HTMLElement> | undefined;
+    this.unmatched = 0;
     for (const entry of this.layout) {
       const open = entry.open ?? [];
       let best: Group | null = null, score = Math.min(2, entry.order.length) - 1;
@@ -324,7 +355,7 @@ export class Arranger {
         const s = overlap(entry, g.keys) + wrappers;
         if (s > score) { best = g; score = s; }
       }
-      if (!best) continue;
+      if (!best) { this.unmatched++; continue; }
       taken.add(best);
       let g = best;
       for (const key of open) {
@@ -336,7 +367,7 @@ export class Arranger {
           const names = uniqueKeys(held(core(k)).map(nameOf));
           return names.length > 0 && names.filter((n) => known.has(n)).length >= Math.min(2, names.length);
         });
-        if (!w || !plain(w)) continue;
+        if (!w || !plain(w)) { this.unmatched++; continue; }
         for (const other of groups) if (other.parent === w) taken.add(other);
         this.unwrap(w, g.parent, key, this.ready(g).gap);
       }
@@ -348,6 +379,7 @@ export class Arranger {
         hosts ??= this.hosts();
         const kid = g.kids[g.keys.indexOf(k)], host = hosts.get(hk);
         if (kid && host && !host.contains(kid) && !kid.contains(host)) this.slot(kid, host);
+        else if (!kid || !host) this.unmatched++;
       }
     }
   }
@@ -471,6 +503,7 @@ export class Arranger {
     else if (grid) {
       const cols = getComputedStyle(parent).gridTemplateColumns.split(' ').length;
       el.style.gridColumn = s.span ? `span ${Math.min(s.span, cols)}` : '';
+      el.style.width = ''; el.style.justifySelf = '';
     } else if (s.pct) {
       delete el.dataset.arrFit;
       el.style.flex = '0 0 auto';
@@ -492,7 +525,7 @@ export class Arranger {
     }
     for (const w of this.all('[data-arr-open]')) { w.style.display = ''; delete w.dataset.arrOpen; }
     for (const el of this.all('[data-arr-sized], [data-arr-fit]')) {
-      el.style.width = ''; el.style.flex = ''; el.style.gridColumn = ''; el.style.height = ''; el.style.overflow = '';
+      el.style.width = ''; el.style.flex = ''; el.style.gridColumn = ''; el.style.height = ''; el.style.overflow = ''; el.style.justifySelf = '';
       delete el.dataset.arrSized; delete el.dataset.arrFit;
     }
     for (const thing of [...this.slotOf.keys()]) this.unslot(thing);
@@ -635,7 +668,7 @@ export class Arranger {
   }
 
   /** What the pointer is on: the nearest card whose edge it is at (to resize), else the nearest thing that can move. */
-  private item(target: EventTarget | null, x: number, y: number, edgesOnly = false): { el: HTMLElement; g: Group; r: boolean; b: boolean } | null {
+  private item(target: EventTarget | null, x: number, y: number, edgesOnly = false, edge = EDGE): { el: HTMLElement; g: Group; r: boolean; b: boolean } | null {
     const t = target instanceof HTMLElement || target instanceof SVGElement ? target : null;
     if (!t || !this.root.contains(t) || t.closest(NOGRAB)) return null;
     let first: { el: HTMLElement; g: Group } | null = null;
@@ -649,7 +682,7 @@ export class Arranger {
       const q = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
       // (An opened wrapper has no box; one column has no widths to pull.)
       const boxed = q.width > 0 && !opened(el);
-      const r = boxed && !narrow() && (rtl ? x < q.left + EDGE : x > q.right - EDGE), b = boxed && y > q.bottom - EDGE;
+      const r = boxed && !narrow() && (rtl ? x < q.left + edge : x > q.right - edge), b = boxed && y > q.bottom - edge;
       if (!r && !b && (first || edgesOnly)) continue;
       const g = this.member(el);
       if (!g) continue;
@@ -691,7 +724,8 @@ export class Arranger {
     const x0 = e.clientX, y0 = e.clientY, touch = e.pointerType === 'touch';
     // (A finger is always captured by what it touched; only a mouse tells us something took it.)
     if (!touch) for (let a: Element | null = t; a; a = a.parentElement) if (a.hasPointerCapture(e.pointerId)) return;
-    const hit = this.item(t, x0, y0);
+    // (A finger gets wider edges to take hold of.)
+    const hit = this.item(t, x0, y0, false, touch ? EDGE_TOUCH : EDGE);
     if (!hit) return;
     const { el, g, r, b } = hit, edge = r || b;
     // Words that can be selected stay selectable: on them the mouse (like a finger anywhere) holds still a moment to grab.
@@ -790,9 +824,13 @@ export class Arranger {
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
     let into: HTMLElement | null = null; // the card it will go inside
+    // M168: a card carried leans a little the way it is moving, and settles level when the hand stops.
+    const leans = !table && !calm() && this.kind(el) === 'block';
+    let vx = 0, lastX = x0, tilt = 0;
     const place = (x: number, y: number) => {
       const tx = upDown ? 0 : x - x0 + (start.left - base.left), ty = column ? 0 : y - y0 + (start.top - base.top);
-      const t = table ? `translate3d(${tx}px, ${ty}px, 0)` : `translate3d(${tx}px, ${ty}px, 0) scale(${into ? 0.97 : 1.02})`;
+      if (leans) { vx = vx * 0.72 + (x - lastX) * 0.28; lastX = x; tilt = Math.abs(vx) < 0.15 ? 0 : Math.max(-2.5, Math.min(2.5, vx * 0.3)); }
+      const t = table ? `translate3d(${tx}px, ${ty}px, 0)` : `translate3d(${tx}px, ${ty}px, 0) rotate(${tilt.toFixed(2)}deg) scale(${into ? 0.97 : 1.02})`;
       el.style.transform = t;
       for (const c of cells) c.style.transform = t;
     };
@@ -917,6 +955,8 @@ export class Arranger {
         }
       }
       place(x, y);
+      // (Still leaning: another frame, so it comes level though the hand has stopped.)
+      if (tilt) again();
     }, () => {
       clearTimeout(restTimer);
       document.removeEventListener('scroll', onScroll, true);
@@ -1054,40 +1094,93 @@ export class Arranger {
 
   private glide(el: HTMLElement, from: string, ms: number) {
     let a: Animation;
+    if (calm()) ms = 0;
     try { a = el.animate([{ transform: from }, { transform: 'none' }], { duration: ms, easing: SPRING_GLIDE }); }
     catch { a = el.animate([{ transform: from }, { transform: 'none' }], { duration: ms, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }); } // no linear()
     a.id = 'arr';
     return a;
   }
 
+  /**
+   * A change of size, eased (M168): from the size the thing has to the one `change` gives it, its
+   * neighbours following as the page makes room. Only what changed (width, height) is animated.
+   */
+  private ease(el: HTMLElement, change: () => void, ms = 240) {
+    for (const a of el.getAnimations()) if (a.id === 'arr-size') a.cancel();
+    const a0 = el.getBoundingClientRect();
+    change();
+    const a1 = el.getBoundingClientRect();
+    const dw = Math.abs(a0.width - a1.width) >= 1, dh = Math.abs(a0.height - a1.height) >= 1;
+    if (calm() || (!dw && !dh)) return;
+    const frame = (r: DOMRect) => ({ ...(dw && { width: `${r.width}px` }), ...(dh && { height: `${r.height}px` }) });
+    let a: Animation;
+    try { a = el.animate([frame(a0), frame(a1)], { duration: ms, easing: SPRING_GLIDE }); }
+    catch { a = el.animate([frame(a0), frame(a1)], { duration: ms, easing: 'cubic-bezier(0.16, 1, 0.3, 1)' }); }
+    a.id = 'arr-size';
+  }
+
+  /**
+   * Pulling a card's edge (M168: smooth). The card follows the hand to the pixel; neighbours pushed to
+   * another place (a row wrapping, a grid's columns freed) glide there; let go, it eases to the size
+   * kept (a share of its row, 1% steps; columns in a grid; a height in px).
+   */
   private resize(el: HTMLElement, g: Group, e: PointerEvent, right: boolean, bottom: boolean) {
     this.remember();
     const entry = this.entryFor(g), key = g.keys[g.kids.indexOf(el)];
     const { grid, gap } = this.ready(g);
+    for (const a of el.getAnimations()) if (a.id === 'arr-size') a.finish();
     const p = g.parent, start = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
     const size: Size = { ...(entry.sizes?.[key] ?? {}) };
+    const html = document.documentElement;
+    html.dataset.arrResize = right && bottom ? 'xy' : right ? 'x' : 'y';
     el.classList.add('arr-size');
     const pcs = getComputedStyle(p), pad = (parseFloat(pcs.paddingLeft) || 0) + (parseFloat(pcs.paddingRight) || 0);
     const capped = pcs.maxWidth !== 'none', room = (p.parentElement?.clientWidth ?? p.clientWidth);
+    const tracks = grid ? pcs.gridTemplateColumns.split(' ') : [], track = parseFloat(tracks[0]) || start.width;
+    // The others, by where the page puts them (not where a glide is drawing them): one that jumps glides.
+    const others = g.kids.filter((k) => k !== el);
+    const spot = (k: HTMLElement) => [k.offsetLeft, k.offsetTop];
+    let was = others.map(spot);
     this.follow(e, (x, y) => {
+      const seen = others.map((k) => k.getBoundingClientRect());
       if (right) {
-        const w = Math.max(80, start.width + (rtl ? e.clientX - x : x - e.clientX));
+        let w = Math.max(80, start.width + (rtl ? e.clientX - x : x - e.clientX));
         if (grid) {
-          const tracks = getComputedStyle(p).gridTemplateColumns.split(' ');
-          const track = parseFloat(tracks[0]) || start.width;
           size.span = Math.max(1, Math.min(tracks.length, Math.round((w + gap) / (track + gap))));
+          const span = `span ${size.span}`;
+          if (el.style.gridColumn !== span) el.style.gridColumn = span;
+          el.style.justifySelf = 'start';
         } else {
           let inner = p.clientWidth - pad;
           // Pulled wider than what holds it: that grows too, up to the room there is.
           if (w > inner + 4 && capped) { entry.maxW = Math.round(Math.min(room, w + pad)); p.style.maxWidth = `${entry.maxW}px`; inner = p.clientWidth - pad; }
-          size.pct = Math.max(20, Math.min(100, Math.round(((w / inner) * 100) / 5) * 5));
+          w = Math.min(w, inner);
+          el.style.flex = '0 0 auto';
+          size.pct = Math.max(8, Math.min(100, Math.round((w / inner) * 100)));
         }
+        el.style.width = `${Math.round(w)}px`;
       }
-      if (bottom) size.h = Math.max(60, Math.round((start.height + y - e.clientY) / 8) * 8);
-      this.size(el, size, grid, gap, p);
+      if (bottom) {
+        size.h = Math.max(60, Math.round(start.height + y - e.clientY));
+        el.style.height = `${size.h}px`; el.style.overflow = 'auto';
+      }
+      el.dataset.arrSized = '';
+      const now = others.map(spot);
+      others.forEach((k, i) => {
+        if (Math.abs(now[i][0] - was[i][0]) + Math.abs(now[i][1] - was[i][1]) <= 12) return;
+        for (const a of k.getAnimations()) if (a.id === 'arr') a.cancel();
+        const q = k.getBoundingClientRect();
+        this.glide(k, `translate(${seen[i].left - q.left}px, ${seen[i].top - q.top}px)`, 280);
+      });
+      was = now;
     }, () => {
-      el.classList.remove('arr-size');
+      delete html.dataset.arrResize;
       (entry.sizes ??= {})[key] = size;
+      // Its size as kept, eased in: a grid card settles to its columns, a row card to its share.
+      const others0 = others.map((k) => k.getBoundingClientRect());
+      this.ease(el, () => this.size(el, size, grid, gap, p));
+      others.forEach((k, i) => { const q = k.getBoundingClientRect(); if (Math.abs(others0[i].left - q.left) + Math.abs(others0[i].top - q.top) > 1) this.glide(k, `translate(${others0[i].left - q.left}px, ${others0[i].top - q.top}px)`, 260); });
+      el.classList.remove('arr-size');
       this.save();
     });
   }
@@ -1103,17 +1196,36 @@ export class Arranger {
     this.remember();
     delete entry.sizes[key];
     if (!Object.keys(entry.sizes).length) delete entry.sizes;
-    delete entry.maxW;
+    const el = hit.el, p = hit.g.parent;
+    this.flip(hit.g.kids.filter((k) => k !== el), () => this.ease(el, () => {
+      el.style.width = ''; el.style.flex = ''; el.style.gridColumn = ''; el.style.height = ''; el.style.overflow = ''; el.style.justifySelf = '';
+      delete el.dataset.arrSized;
+      if (entry.maxW) { delete entry.maxW; p.style.maxWidth = ''; }
+    }));
     this.save();
-    this.clear(); this.apply();
   };
+
+  /** `change`, with `els` gliding from where they were to where it puts them (FLIP: transform only). */
+  private flip(els: HTMLElement[], change: () => void) {
+    const vh = innerHeight, on = els.filter((k) => { const q = k.getBoundingClientRect(); return q.bottom > -200 && q.top < vh + 200; }).slice(0, 120);
+    const before = on.map((k) => k.getBoundingClientRect());
+    change();
+    on.forEach((k, i) => { const q = k.getBoundingClientRect(), dx = before[i].left - q.left, dy = before[i].top - q.top; if (Math.abs(dx) + Math.abs(dy) >= 1) this.glide(k, `translate(${dx}px, ${dy}px)`, 320); });
+  }
 
   /** Keys: Alt + Shift + arrows move the focused thing, with Ctrl as well they resize a card; Ctrl/⌘ + Z takes a change back. */
   private key = (e: KeyboardEvent) => {
     const at = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const typing = at?.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .ProseMirror');
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey && e.key.toLowerCase() === 'z') {
-      if (!this.undoStack.length || at?.closest('input, textarea, select, [contenteditable=""], [contenteditable="true"], .ProseMirror')) return;
+      if (!this.undoStack.length || typing) return;
       e.preventDefault(); e.stopPropagation(); this.undo();
+      return;
+    }
+    // M168: Ctrl/⌘ + Shift + Z (or Ctrl + Y) makes again what was taken back.
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && ((e.shiftKey && e.key.toLowerCase() === 'z') || (!e.shiftKey && e.key.toLowerCase() === 'y'))) {
+      if (!this.redoStack.length || typing) return;
+      e.preventDefault(); e.stopPropagation(); this.redo();
       return;
     }
     if (!e.key.startsWith('Arrow') || !e.altKey || !e.shiftKey || e.metaKey || !at || !this.root.contains(at) || at.closest(NOGRAB)) return;
@@ -1132,7 +1244,7 @@ export class Arranger {
       if (e.key === 'ArrowUp' || e.key === 'ArrowDown') size.h = Math.max(60, Math.round((size.h ?? q.height) / 8) * 8 + step * 40);
       else if (grid) size.span = Math.max(1, Math.min(12, (size.span ?? 1) + step));
       else size.pct = Math.max(20, Math.min(100, (size.pct ?? 100) + step * 10));
-      this.size(el, size, grid, gap, g.parent);
+      this.flip(g.kids.filter((x) => x !== el), () => this.ease(el, () => this.size(el, size, grid, gap, g.parent)));
       (entry.sizes ??= {})[k] = size;
     } else {
       const seq = this.sequence(g), at = seq.indexOf(el), to = at + step;

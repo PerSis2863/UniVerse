@@ -39,12 +39,20 @@ export function Splitter({ axis = 'x', value, min, max, initial, label, onChange
     const way = axis === 'x' && getComputedStyle(el).direction === 'rtl' ? -1 : 1;
     el.setPointerCapture(e.pointerId);
     el.dataset.dragging = '';
-    let at = from;
+    // M168: while dragging, the pane itself is sized (once a frame, nothing else redrawn); let go, the size is kept.
+    const pane = target ? target.current : el.parentElement, prop = axis === 'x' ? 'width' : 'height';
+    let at = from, v = start;
     const move = (m: PointerEvent) => {
       at = axis === 'x' ? m.clientX : m.clientY;
-      if (!frame.current) frame.current = requestAnimationFrame(() => { frame.current = 0; onChange(clamp(start + (at - from) * way)); });
+      if (!frame.current) frame.current = requestAnimationFrame(() => { frame.current = 0; v = clamp(start + (at - from) * way); pane?.style.setProperty(prop, `${v}px`); });
     };
-    const up = () => { delete el.dataset.dragging; el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up); };
+    const up = () => {
+      cancelAnimationFrame(frame.current); frame.current = 0;
+      delete el.dataset.dragging; el.removeEventListener('pointermove', move); el.removeEventListener('pointerup', up); el.removeEventListener('pointercancel', up);
+      onChange(v);
+      // (Once the kept size is drawn, the pane follows it again.)
+      requestAnimationFrame(() => requestAnimationFrame(() => pane?.style.removeProperty(prop)));
+    };
     el.addEventListener('pointermove', move);
     el.addEventListener('pointerup', up);
     el.addEventListener('pointercancel', up);
