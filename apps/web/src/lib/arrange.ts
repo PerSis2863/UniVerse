@@ -21,7 +21,15 @@ export interface Entry {
   maxW?: number;
   /** M166: plain wrappers (by name) opened into this group, so their things and this group's mix. */
   open?: string[];
+  /** M167: things of this group (by name) dropped inside a card with a look of its own (by its key: `hostKeys`). */
+  inside?: Record<string, string>;
 }
+/** M167: a shortcut a person dragged in: onto a page from the side menu, or onto the menu from a page. */
+export interface Pin { href: string; label: string }
+/** Where shortcuts are kept: the side menu's (one for every app), and each page's. */
+export const MENU_PINS = '/~pins/menu';
+export const pagePins = (path: string) => `/~pins${path}`;
+const MAX_PINS = 12;
 /** One page's groups. */
 export type PageLayout = Entry[];
 export type Store = Record<string, PageLayout>;
@@ -102,6 +110,11 @@ export function cleanStore(raw: unknown): Store {
       if (w !== undefined) entry.maxW = w;
       const open = (e as { open?: unknown }).open;
       if (Array.isArray(open)) { const o = open.filter((k): k is string => typeof k === 'string' && k.length > 0 && k.length <= 64).slice(0, 12); if (o.length) entry.open = o; }
+      const inside = (e as { inside?: unknown }).inside;
+      if (inside && typeof inside === 'object' && !Array.isArray(inside)) {
+        const i = Object.entries(inside as Record<string, unknown>).filter((x): x is [string, string] => x[0].length > 0 && x[0].length <= 64 && typeof x[1] === 'string' && x[1].length > 0 && x[1].length <= 64).slice(0, 12);
+        if (i.length) entry.inside = Object.fromEntries(i);
+      }
       entries.push(entry);
     }
     if (entries.length) out[path] = entries;
@@ -111,15 +124,38 @@ export function cleanStore(raw: unknown): Store {
 
 // ── M166: what is kept, with the time each page was last changed, so two devices can be joined ──
 
-/** Everything a person arranged: each page's groups, and when each page was last changed (ms; a page put back keeps its time with no groups). */
-export interface Doc { store: Store; at: Record<string, number> }
-export const emptyDoc = (): Doc => ({ store: {}, at: {} });
+/**
+ * Everything a person arranged: each page's groups, their shortcuts (M167, by `MENU_PINS` / `pagePins`),
+ * and when each was last changed (ms; a page put back keeps its time with nothing in it).
+ */
+export interface Doc { store: Store; at: Record<string, number>; pins: Record<string, Pin[]> }
+export const emptyDoc = (): Doc => ({ store: {}, at: {}, pins: {} });
+
+/** A shortcut fit to keep: a page of this site (a path, never another site or a script), and a short name. */
+export function cleanPin(raw: unknown): Pin | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const { href, label } = raw as { href?: unknown; label?: unknown };
+  if (typeof href !== 'string' || !/^\/(?![/\\])[^\s<>"'`\\]{0,299}$/.test(href)) return null;
+  const name = cleanKey(typeof label === 'string' ? label : '');
+  return name ? { href, label: name } : null;
+}
+export function cleanPins(raw: unknown): Record<string, Pin[]> {
+  const out: Record<string, Pin[]> = {};
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+  for (const [key, list] of Object.entries(raw as Record<string, unknown>).slice(0, MAX_PAGES)) {
+    if (!key.startsWith('/~pins/') || key.length > 210 || !Array.isArray(list)) continue;
+    const seen = new Set<string>(), pins: Pin[] = [];
+    for (const p of list.slice(0, MAX_PINS * 2)) { const c = cleanPin(p); if (c && !seen.has(c.href) && pins.length < MAX_PINS) { seen.add(c.href); pins.push(c); } }
+    if (pins.length) out[key] = pins;
+  }
+  return out;
+}
 /** The most a saved copy may weigh as JSON (the server refuses more). */
 export const MAX_DOC_BYTES = 200_000;
 
 export function cleanDoc(raw: unknown): Doc {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return emptyDoc();
-  const r = raw as { store?: unknown; at?: unknown };
+  const r = raw as { store?: unknown; at?: unknown; pins?: unknown };
   // The first version kept the pages alone.
   const store = cleanStore('store' in r || 'at' in r ? r.store : raw);
   const at: Record<string, number> = {};
@@ -129,25 +165,27 @@ export function cleanDoc(raw: unknown): Doc {
       .sort((a, b) => b[1] - a[1]).slice(0, MAX_PAGES * 2);
     for (const [k, v] of times) at[k] = Math.round(v);
   }
-  return { store, at };
+  return { store, at, pins: cleanPins(r.pins) };
 }
 
 /** Two copies joined: page by page, the one changed last wins (a page put back later stays put back). */
 export function mergeDocs(a: Doc, b: Doc): Doc {
   const out = emptyDoc();
-  for (const path of new Set([...Object.keys(a.at), ...Object.keys(b.at), ...Object.keys(a.store), ...Object.keys(b.store)])) {
+  const keys = [a, b].flatMap((d) => [...Object.keys(d.at), ...Object.keys(d.store), ...Object.keys(d.pins)]);
+  for (const path of new Set(keys)) {
     const ta = a.at[path] ?? 0, tb = b.at[path] ?? 0;
     // The same moment (or none known): whichever has something; both: always the same one, whoever asks.
-    const ja = JSON.stringify(a.store[path] ?? []), jb = JSON.stringify(b.store[path] ?? []);
-    const from = tb > ta ? b : ta > tb ? a : ja === '[]' ? b : jb === '[]' ? a : ja <= jb ? a : b;
+    const ja = JSON.stringify([a.store[path] ?? [], a.pins[path] ?? []]), jb = JSON.stringify([b.store[path] ?? [], b.pins[path] ?? []]);
+    const none = '[[],[]]', from = tb > ta ? b : ta > tb ? a : ja === none ? b : jb === none ? a : ja <= jb ? a : b;
     if (from.store[path]?.length) out.store[path] = from.store[path];
+    if (from.pins[path]?.length) out.pins[path] = from.pins[path];
     const t = Math.max(ta, tb);
     if (t) out.at[path] = t;
   }
   return out;
 }
 
-export const sameDoc = (a: Doc, b: Doc) => JSON.stringify([a.store, a.at]) === JSON.stringify([b.store, b.at]);
+export const sameDoc = (a: Doc, b: Doc) => JSON.stringify([a.store, a.at, a.pins]) === JSON.stringify([b.store, b.at, b.pins]);
 
 const storeKey = (userId: string | null | undefined) => `uv-arrange:${userId || 'me'}`;
 
@@ -166,7 +204,22 @@ export class Vault {
   get(path: string): PageLayout { return this.doc.store[path] ?? []; }
   /** A copy to send or compare. */
   now(): Doc { return JSON.parse(JSON.stringify(this.doc)) as Doc; }
-  any() { return Object.keys(this.doc.store).length > 0; }
+  any() { return Object.keys(this.doc.store).length > 0 || Object.keys(this.doc.pins).length > 0; }
+  /** M167: the shortcuts kept under `key` (`MENU_PINS`, `pagePins(path)`). */
+  pins(key: string): Pin[] { return this.doc.pins[key] ?? []; }
+  /** Every list of shortcuts (a copy, for drawing them). */
+  allPins(): Record<string, Pin[]> { return { ...this.doc.pins }; }
+  /** Shortcuts changed here: several lists at once (a shortcut moved from the menu to a page is one change). */
+  setPins(lists: Record<string, Pin[]>) {
+    const t = Date.now(), paths = new Set<string>();
+    for (const [key, list] of Object.entries(lists)) {
+      const clean = cleanPins({ [key]: list })[key] ?? [];
+      if (clean.length) this.doc.pins[key] = clean; else delete this.doc.pins[key];
+      this.doc.at[key] = t;
+      paths.add(key);
+    }
+    if (paths.size) this.write(paths, true);
+  }
   /** A change made here. */
   set(path: string, layout: PageLayout) {
     if (layout.length) this.doc.store[path] = layout; else delete this.doc.store[path];
@@ -175,15 +228,17 @@ export class Vault {
   }
   /** Every page put back as it was. */
   clearAll() {
-    const paths = new Set(Object.keys(this.doc.store)), t = Date.now();
-    for (const p of paths) { delete this.doc.store[p]; this.doc.at[p] = t; }
+    const paths = new Set([...Object.keys(this.doc.store), ...Object.keys(this.doc.pins)]), t = Date.now();
+    for (const p of paths) { delete this.doc.store[p]; delete this.doc.pins[p]; this.doc.at[p] = t; }
     if (paths.size) this.write(paths, true);
   }
   /** Another device's copy joined in; tells which pages changed here. */
   merge(other: Doc): boolean {
     const next = mergeDocs(this.doc, other);
     const paths = new Set<string>();
-    for (const p of new Set([...Object.keys(next.store), ...Object.keys(this.doc.store)])) if (JSON.stringify(next.store[p] ?? []) !== JSON.stringify(this.doc.store[p] ?? [])) paths.add(p);
+    for (const p of new Set([...Object.keys(next.store), ...Object.keys(this.doc.store), ...Object.keys(next.pins), ...Object.keys(this.doc.pins)])) {
+      if (JSON.stringify([next.store[p] ?? [], next.pins[p] ?? []]) !== JSON.stringify([this.doc.store[p] ?? [], this.doc.pins[p] ?? []])) paths.add(p);
+    }
     const changed = !sameDoc(next, this.doc);
     this.doc = next;
     if (changed) this.write(paths, false);

@@ -2952,6 +2952,11 @@ html[data-arr-busy] #main :is(iframe, canvas, video) { pointer-events: none; }
 html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !important; user-select: none !important; }
 #main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
 #main .arr-size { transition: none !important; }
+/* M167 · a column carried by its heading (its cells move as one, above the others); the thing left behind
+   while a likeness of it is carried over the side menu (or the page); a thing drawn inside a card. */
+.arr-cell { position: relative; z-index: 60; background: var(--surface); will-change: transform; transition: none !important; pointer-events: none; }
+.arr-lent { opacity: 0.4; transition: opacity 150ms var(--ease-out-soft, ease-out) !important; }
+#side-nav .arr-drag { position: relative; z-index: 60; will-change: transform; transition: none !important; pointer-events: none; }
 [data-arranged="col"] > :not(.sr-only, .absolute, .fixed) { margin-block: 0 !important; flex: 0 0 auto; width: 100%; min-width: 0; }
 /* M166 · a wrapper opened into its container (its things mix with the container's): they keep the width
    measured when it opened (inline). A table whose rows changed places is a grid, each row a sub-grid of

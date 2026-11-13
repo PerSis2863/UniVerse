@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arranged, cleanDoc, cleanKey, cleanStore, mergeDocs, moved, overlap, uniqueKeys } from './arrange';
+import { MENU_PINS, arranged, cleanDoc, cleanKey, cleanPin, cleanStore, mergeDocs, moved, overlap, pagePins, uniqueKeys } from './arrange';
 
 describe('arrange this page', () => {
   it('names things once each', () => {
@@ -25,15 +25,31 @@ describe('arrange this page', () => {
     expect(cleanStore([1])).toEqual({});
   });
   it('joins two devices page by page, the later change winning, a page put back staying put back', () => {
-    const phone = { store: { '/a': [{ order: ['x', 'y'] }], '/b': [{ order: ['p', 'q'] }] }, at: { '/a': 10, '/b': 30 } };
-    const laptop = { store: { '/a': [{ order: ['y', 'x'] }], '/c': [{ order: ['m', 'n'] }] }, at: { '/a': 20, '/b': 40, '/c': 5 } };
+    const phone = { pins: {}, store: { '/a': [{ order: ['x', 'y'] }], '/b': [{ order: ['p', 'q'] }] }, at: { '/a': 10, '/b': 30 } };
+    const laptop = { pins: {}, store: { '/a': [{ order: ['y', 'x'] }], '/c': [{ order: ['m', 'n'] }] }, at: { '/a': 20, '/b': 40, '/c': 5 } };
     const both = mergeDocs(phone, laptop);
     expect(both.store).toEqual({ '/a': [{ order: ['y', 'x'] }], '/c': [{ order: ['m', 'n'] }] }); // /b was put back on the laptop, later
     expect(both.at).toEqual({ '/a': 20, '/b': 40, '/c': 5 });
     expect(mergeDocs(laptop, phone)).toEqual(both);
   });
   it('reads the first version (pages alone) and drops odd times', () => {
-    expect(cleanDoc({ '/a': [{ order: ['x'] }] })).toEqual({ store: { '/a': [{ order: ['x'] }] }, at: {} });
-    expect(cleanDoc({ store: { '/a': [{ order: ['x'], open: ['w', 3] }] }, at: { '/a': 5.4, 'bad': 9, '/z': 'no' } })).toEqual({ store: { '/a': [{ order: ['x'], open: ['w'] }] }, at: { '/a': 5 } });
+    expect(cleanDoc({ '/a': [{ order: ['x'] }] })).toEqual({ store: { '/a': [{ order: ['x'] }] }, at: {}, pins: {} });
+    expect(cleanDoc({ store: { '/a': [{ order: ['x'], open: ['w', 3] }] }, at: { '/a': 5.4, 'bad': 9, '/z': 'no' } })).toEqual({ store: { '/a': [{ order: ['x'], open: ['w'] }] }, at: { '/a': 5 }, pins: {} });
+  });
+  it('keeps only shortcuts to pages of this site, once each, with a short name', () => {
+    expect(cleanPin({ href: '/student/grades', label: '  Grades  ' })).toEqual({ href: '/student/grades', label: 'Grades' });
+    for (const href of ['https://evil.test/x', '//evil.test', 'javascript:alert(1)', '/a b', '/\\evil', 'grades', '/x"onmouseover=1']) expect(cleanPin({ href, label: 'x' })).toBeNull();
+    expect(cleanPin({ href: '/a', label: '   ' })).toBeNull();
+    const d = cleanDoc({ pins: { [MENU_PINS]: [{ href: '/a', label: 'A' }, { href: '/a', label: 'again' }, { href: 'http://x', label: 'B' }], '/elsewhere': [{ href: '/b', label: 'B' }] } });
+    expect(d.pins).toEqual({ [MENU_PINS]: [{ href: '/a', label: 'A' }] });
+  });
+  it('joins shortcuts like pages: the later change wins, a shortcut moved from the menu to a page moves', () => {
+    const before = { store: {}, at: { [MENU_PINS]: 10 }, pins: { [MENU_PINS]: [{ href: '/a', label: 'A' }] } };
+    const after = { store: {}, at: { [MENU_PINS]: 20, [pagePins('/student')]: 20 }, pins: { [pagePins('/student')]: [{ href: '/a', label: 'A' }] } };
+    expect(mergeDocs(before, after).pins).toEqual({ [pagePins('/student')]: [{ href: '/a', label: 'A' }] });
+    expect(mergeDocs(after, before)).toEqual(mergeDocs(before, after));
+  });
+  it('keeps what was dropped inside a card', () => {
+    expect(cleanStore({ '/a': [{ order: ['x', 'y'], inside: { x: 'Quick notes', y: 7, '': 'z' } }] })).toEqual({ '/a': [{ order: ['x', 'y'], inside: { x: 'Quick notes' } }] });
   });
 });

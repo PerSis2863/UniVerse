@@ -6222,3 +6222,54 @@ that in another device… make sure arrangement feature works properly… ultra 
   out 401, off removes the copy; axe on Settings; a phone: the notes grab bar, a computer's width unused,
   its order used); `arrange-ui.mjs` (M165's check) still passes.
 
+## M167: the side menu and the page, inside cards, and table columns (13 Nov 2026)
+
+The owner (13 Nov), on M166's "left out on purpose" (the menu and the page, a card with its own look,
+table columns and header rows): "Please work on this". No database change (shortcuts ride in the same
+`user_arrangements` copy, 0206).
+
+- **Side menu ↔ page (`Bridge` in `arrange-dom.ts`, made in `ArrangeMode.tsx`):** a thing carried over
+  the other one (the menu beside the page, never on a phone, where the menu is a sheet) leaves a likeness
+  under the hand (`likeness`: a fixed copy, `inert`, no ids) while the thing itself waits faded
+  (`.arr-lent`) in its place. Dropped there: a menu entry becomes a shortcut on that page (`PageShortcuts`,
+  a row of chips above the content, `data-page-pins`); a link from a page (its one link on this site;
+  with none, the page itself, named by its title) becomes a menu entry (`MenuPins`, after the menu's own
+  entries) at the height it was dropped (`Arranger.placeNext`). The thing stays where it was (a shortcut
+  is made of it); a shortcut carried across moves; one carried back to the menu entry it came from just
+  goes. Each has a × (`Remove the shortcut …`). Kept in `Doc.pins` under `MENU_PINS` (one list for every
+  app's menu) and `pagePins(path)`, joined between devices like pages (`mergeDocs`, by `at`), cleaned by
+  `cleanPin` (a path of this site only: never another site, `//`, a script or quotes; 12 a list).
+- **Inside a card with a look of its own (`slot`, `seat`, `unslot`, `hosts`, `hostAt`):** carried over a
+  card (a fill, an edge or a shadow: `looks`; at least 2.5 times the thing's size) and held still for
+  420 ms (`DWELL`), the card makes room at its foot (its padding grows) and the thing turns slightly
+  smaller; dropped, it is drawn there. It stays where React put it: `position: absolute`, kept on the
+  card by CSS anchor positioning (`anchor-name` on the card, `position-anchor` and `anchor()` on the
+  thing; where that can't anchor, placed by hand and placed again on resize, inner scrolling and
+  animation ends). Kept as `Entry.inside` (the thing's name → the card's name, unique on the page) on the
+  thing's own group; carried out again, it is the group's again. Things inside a card don't resize.
+- **Tables (`tablePart`, `mirror`):** a table's header, rows and footer are a group (the table's grid,
+  each part named "Header: …", "Rows: …", "Footer: …" by the table's headings); the rows of each; and,
+  when the table has one header row, the same number of cells in every row and none spanning two
+  (`columnsOk`), its columns, by the header row: carried by a heading, or sideways (more across than
+  down) from any cell, a column moves with every cell under it (the whole column follows the hand; the
+  others glide; widths go with their columns, `--arr-cols` from `data-arr-w`). The header carried up or
+  down moves as a whole (under the rows, say). Rows and the header move only up and down, columns only
+  sideways. Column headings drag at once (`th` is a title).
+- **Two fixes found on the way:** the parts inside a button or a link (its icon, its words) are never a
+  group of their own (pressing a link near its icon's edge resized the icon); a press on a button or
+  link always takes it, never the card around it. "Hold a moment first" now applies only when the mouse
+  is on words (`onWords`, from the caret under it), not anywhere in a box that has some.
+- **Rules for code that builds on it:** a page's shortcut chips and the menu's are drawn by React from
+  `useArrange((s) => s.pins)`; don't add shortcut lists outside `Doc.pins`. A card that should never take
+  things in: `data-no-arrange` (or no fill, edge or shadow). Anchor names `--arr-h<n>` are the engine's.
+- **Left out on purpose:** a thing carried from the page into a box with no look of its own still joins
+  that box's row (M166) rather than "inside"; columns of tables with merged cells or several header rows;
+  shortcuts dragged on a phone (the menu is a sheet there; × and the Settings reset work everywhere).
+- **Tested:** `pnpm check` (`arrange.test.ts`: shortcuts cleaned and joined, "inside" kept);
+  `arrange-cross-ui.mjs` (menu → page and page → menu at the drop height, nothing opened, kept after a
+  reload, taken back, ×; a button held over the Quick notes card goes inside, the card keeps its look,
+  the button still works, kept after a reload, out again with the room closed; Grades: a column by its
+  heading (0 slow frames in 115) and sideways from a cell, cells under their headings, the header under
+  the rows, kept, put back with no traces; axe on each; a phone with shortcuts); `arrange-ui.mjs` and
+  `arrange-more-ui.mjs` still pass.
+

@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { MAX_DOC_BYTES, cleanDoc, emptyDoc, mergeDocs, type Doc } from '@/lib/arrange';
+import { MAX_DOC_BYTES, cleanDoc, emptyDoc, mergeDocs, sameDoc, type Doc } from '@/lib/arrange';
 import { BadRequestException } from './http';
 import { publish } from './realtime';
 import type { Body } from './body';
@@ -23,10 +23,10 @@ export async function arrangeGet(u: SessionUser) {
 /** PUT /arrange { doc }: turns syncing on and joins this device's copy into the account's. */
 export async function arrangePut(u: SessionUser, b: Body) {
   const row = await prisma.userArrangement.findUnique({ where: { userId: u.id } });
-  const doc = mergeDocs(read(row?.data), cleanDoc(b.doc));
+  const had = read(row?.data), doc = mergeDocs(had, cleanDoc(b.doc));
   const data = JSON.stringify(doc);
   if (data.length > MAX_DOC_BYTES) throw new BadRequestException('That is more arranged pages than can be kept. Put a few pages back first.');
-  if (data !== row?.data) {
+  if (!row || !sameDoc(had, doc)) {
     await prisma.userArrangement.upsert({ where: { userId: u.id }, create: { userId: u.id, data }, update: { data, updatedAt: new Date() } });
     // Their other open devices fetch the joined copy.
     publish([u.id], { type: 'refresh', keys: ['/arrange'] });

@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
+import { MenuPins } from '@/components/ArrangeMode';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
@@ -577,6 +578,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             onTip={showTip}
           />
         ))}
+        <MenuPins onClose={onClose} />
       </nav>
 
       {/* The label of the icon under the pointer, beside the folded menu. */}
