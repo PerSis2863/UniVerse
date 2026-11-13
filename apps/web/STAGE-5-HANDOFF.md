@@ -6514,3 +6514,39 @@ locations where ever it is required", then "please do all these".
 - **Privacy unchanged:** Relief positions stay rounded to ~500 m, Green and Trace to 0.1°.
 - **Frames:** measured against the code before this item on the same machine: the same (this test
   machine draws in software; the map is the slow part of the page there either way).
+
+## M173: Trace across the supply chain (13 Nov 2026)
+
+The owner (13 Nov): "whenever someone scan it the user should get the location, time and other related
+informations… when the driver scan it it will get the limited information not the info like price… do
+this for whole supply chain… modern and professional… ultra smooth animations".
+
+- **Who's scanning decides the view** (`src/lib/trace-chain.ts` `SEES`, `viewFor`, tested; the server
+  leaves out what a role may not see, it doesn't just hide it). `chainRole` (`src/server/trace-chain.ts`):
+  a driver holding the shipment's link (`/carry/<key>` now keeps its key in `localStorage`
+  `uv-carry-key`, sent with the scan, compared timing-safe) → DRIVER; the brand's members → BRAND; its
+  team (`trace_handlers`) → WAREHOUSE, DRIVER or SHOP; everyone else → BUYER (the shopper's passport).
+  - BRAND: everything, the names of who recorded each stop, shopper checks. WAREHOUSE: batch, quantity,
+    handling, destination, no price. DRIVER: handling and destination only, no price, no batch. SHOP:
+    batch, price, handling. BUYER: the passport as before, plus the price and "Checked by you · city ·
+    time".
+- **Staff scans aren't shoppers' checks:** `scan()` hands any non-buyer to `staffView` before it writes
+  anything, so staff never set a unit's first place, trip the copy alarm, win a prize or earn points.
+- **Stops:** `POST /trace/scan/:code/stop` (public; the role is checked inside, listed in
+  `route-gates.test.ts`): each role only its own stops (`ROLE_STOPS`: the driver "Picked up", "Handed
+  to the distributor", "Delivered to the shop"; the warehouse arrived/left; the shop arrived; the brand
+  made/shipped), with the place (the phone's position when allowed, else the network's city), rounded
+  to 0.1°, the time and who; the same stop from the same unit within 10 minutes counts once; the batch's
+  status follows (in transit, delivered); the brand's team sees Tracking refresh live.
+- **The team:** Brand settings → "Supply chain team": an invite link per role (`/trace?join=<code>`,
+  20 at most), the list with remove. Opening a link signed in shows "Join <brand> as a driver" on the
+  Trace page (`JoinTeam`). Migration **0207**: `trace_handlers`, `trace_handler_invites`, a product's
+  `price` and `currency` (Products → settings), `trace_events.role` and `codeId`.
+- **The staff page** (`src/app/t/[code]/Staff.tsx`, inside the passport's dark page): role and what
+  it's for, the product, "This scan" (place and live time), the facts allowed, a button per stop (the
+  next one highlighted), and the trip as a timeline that draws itself, the newest stop pulsing, the
+  next expected stop dashed; a recorded stop glides in. Springs from `lib/motion`; Reduce Motion: fades.
+- **Fixed on the way:** the product settings panel sent its take-back fields, which weren't in the
+  "extras only" list, so saving it wiped the product's description, story, picture and points (M146).
+- **Checked:** every role by API (views, refusals, a wrong key, the 10-minute repeat), the driver on a
+  phone and a warehouse on a computer in the browser, axe clean.
