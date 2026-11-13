@@ -3003,6 +3003,22 @@ html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
 }
 @keyframes tracks-fade { from { opacity: 0; } }
 
+/* M175 · The side menu floats on computers (the owner, 13 Nov: "make the side bar like the oval corner from
+   all the sides… i should able to see the border from the left side"): 10 px from the window's edges,
+   rounded on every corner, its hairline on every side and a soft shadow; the page keeps the same gap
+   (`--side-gap`, used by DashboardShell, AppSkeleton and the menu's tooltips). Phones keep the slide-in
+   sheet. `:root:root` outranks the older side-menu rules (dark, light, right-to-left). */
+:root { --side-gap: 0px; }
+@media (min-width: 1024px) {
+  :root { --side-gap: 10px; }
+  :root:root .side-shell.glass-sidebar {
+    top: var(--side-gap); bottom: var(--side-gap); inset-inline-start: var(--side-gap);
+    border: 1px solid var(--sidebar-border); border-radius: 22px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 34px -20px rgb(0 0 0 / 0.28);
+  }
+  @supports (corner-shape: squircle) { :root:root .side-shell.glass-sidebar { corner-shape: squircle; border-radius: 30px; } }
+}
+
 /* M174 · Studio's focus mode is the whole window (the owner, 13 Nov: "it should cover the whole window
    size like a individual app works"). An arranged page (M165) could leave a max-width or size on the
    tool's box, so it sat centred in the page with the menu beside it: the focus box drops them. While

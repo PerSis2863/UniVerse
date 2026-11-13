@@ -585,7 +585,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AnimatePresence>
         {folded && tip && (
           <motion.div key={tip.label} role="tooltip" initial={{ opacity: 0, x: -4 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, transition: { duration: 0.08 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-            className="pointer-events-none fixed start-[calc(var(--side-w)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
+            className="pointer-events-none fixed start-[calc(var(--side-w)+var(--side-gap)+10px)] z-[120] -translate-y-1/2 whitespace-nowrap rounded-lg border border-white/10 bg-[#0f0f11] px-2.5 py-1.5 text-[13px] font-semibold text-white shadow-xl" style={{ top: tip.y }}>
             {tip.label}
           </motion.div>
         )}

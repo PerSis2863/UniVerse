@@ -6407,3 +6407,35 @@ add something else animations which are functional and unique and it shows the d
 - **UniVersity's scene behind the page** (`backdrop.ts`, `campus`): the stars joined into constellations
   are gone; thin maths signs (π, ∑, √x, x², dy/dx…) drift up faintly in a serif italic, like chalk half
   wiped away, with the sheets of paper as before. Fewer things drawn than the stars and their lines.
+
+## M174: Studio's focus mode covers the whole window (13 Nov 2026)
+
+The owner (13 Nov, a picture of Quick notes in focus mode on the live site, the menu and the top bar's
+bell still showing, the tool narrower than the window): "the focus mode is not working properly…
+it should cover the whole window size like a individual app works".
+
+- **Cause:** arranging a page (M165) can leave a `max-width` on a group's parent (`arrange-dom.ts`,
+  `entry.maxW`); on Studio that parent is the tool's box, so in focus mode the `fixed inset-0` box kept
+  the width and sat centred (`mx-auto`) with the menu beside it. Locally (no arrangement) it looked fine.
+- **Fix:** the focus box carries `.studio-focus` (globals.css block M174), which drops any inline size,
+  max-width and margin, and arrives with a fade and a slight settle. While focused, `html[data-focus]`
+  (set by the Studio page, removed on leaving or unmounting) hides the side menu, the top bar
+  (`.app-topbar`) and the assistant (`.ai-fab`), stops the page behind from scrolling, and clears any
+  transform, filter or containment on the page's wrappers so nothing can trap the fixed box.
+- **Checked** with a made-up arrangement (a 1,100 px max-width on the box): the box is the full
+  1,440 × 900 window, menu, top bar and assistant hidden; Esc brings them back.
+- **For code that builds on it:** another full-window mode can reuse `html[data-focus]`.
+
+## M175: The side menu floats with rounded corners on every side (13 Nov 2026)
+
+The owner (13 Nov, a picture of the folded menu): "make the side bar like the oval corner from all the
+sides like i should able to see the border from the left side".
+
+- On computers the menu sits 10 px from the window's top, bottom and start edges, rounded on every
+  corner (a squircle where the browser has `corner-shape`), its hairline on every side and a soft
+  shadow, open or folded, light or dark (globals.css block M175, `:root:root .side-shell.glass-sidebar`
+  to outrank the older menu rules). The page keeps the same gap: `--side-gap` (10 px on computers, 0 on
+  phones) is added wherever `--side-w` offsets something (DashboardShell, AppSkeleton, the folded
+  menu's tooltips). Phones keep the slide-in sheet.
+- **For code that builds on it:** anything placed beside the menu uses `calc(var(--side-w) +
+  var(--side-gap))`.
