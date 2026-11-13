@@ -27,6 +27,7 @@ import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
 import { Radar } from '@/components/live/Radar';
 import { Journey } from '@/components/live/Journey';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
 // engine as Trace), the most urgent and nearest needs first, "I can help", messages, and delivered.
@@ -88,7 +89,9 @@ export function ReliefApp() {
   const dark = useDarkMode();
   const calm = useReducedMotion();
   const now = useNow();
-  const { data, mutate } = useSWR<ReliefMap>('/relief/map', fetcher, { refreshInterval: 20_000, keepPreviousData: true });
+  // (Only while someone is using the tab: an idle one asked every 20 s all day, M169.)
+  const mapPoll = useActivePoll(20_000);
+  const { data, mutate } = useSWR<ReliefMap>('/relief/map', fetcher, { refreshInterval: mapPoll, keepPreviousData: true });
   const [type, setType] = useState<'ALL' | 'NEED' | 'OFFER'>('ALL');
   const [kinds, setKinds] = useState<Set<ReliefKind>>(new Set());
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);

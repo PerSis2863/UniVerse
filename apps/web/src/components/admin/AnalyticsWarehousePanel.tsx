@@ -5,6 +5,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { authedJson } from '@/lib/authed-fetch';
+import { useActivePoll } from '@/lib/realtime-client';
 import {
   Database,
   Layers,
@@ -115,6 +116,7 @@ export function AnalyticsWarehousePanel() {
     authedJson
   );
 
+  const streamPoll = useActivePoll(5000); // (only while someone is watching, M169)
   const { data: streamData, isLoading: loadingStream, mutate: refreshStream } = useSWR<{
     statements: XApiStatementRecord[];
     total: number;
@@ -123,7 +125,7 @@ export function AnalyticsWarehousePanel() {
       ? `/api/analytics/xapi?${selectedVerb !== 'all' ? `verb=${selectedVerb}&` : ''}limit=40`
       : null,
     authedJson,
-    { refreshInterval: 5000 }
+    { refreshInterval: streamPoll }
   );
 
   const { data: exportsList = [], isLoading: loadingExports, mutate: refreshExports } = useSWR<

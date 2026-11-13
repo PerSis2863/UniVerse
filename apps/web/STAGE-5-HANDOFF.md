@@ -6317,3 +6317,32 @@ everything is ultra smooth".
   mid-pull, the neighbour glides, the size eases in, the height to the px, a double-click eases back,
   undo and redo glide, the divider's pane follows); `arrange-ui`, `arrange-more-ui`, `arrange-cross-ui`.
 
+## M169: CPU and requests for 500 people (13 Nov 2026)
+
+The owner (13 Nov, with the Cloudflare usage card: 11.77k requests, 1.4M CPU ms, 28 Oct–13 Nov): "can
+you reduce cpu time and request… more than 500 people are going to use this for a month… even 500 people
+use it simultaneously".
+
+- **What the numbers say:** about 120 ms of CPU per request (a lean request takes 5–20 ms): the cost is
+  starting code on a fresh copy of the Worker (a few visitors land on fresh copies most of the time;
+  each merge also makes every page's cached copy new). Most of the big savings were already in: pages
+  from Cloudflare's cache (M120), API routes without Next.js (`api-direct.ts`), the busiest calls in
+  plain SQL (`fast-api.ts`), usage tracking batched (one request per 5 minutes at most), speed reports
+  from 1 load in 10, the 15-minute timer checking cheaply before starting anything (`due-check.ts`).
+  The live per-route numbers (`api_timings`) couldn't be read: the Cloudflare tools answered "Service
+  Unavailable" all session. Read them first next time (route, requests, average ms over 7 days).
+- **Requests a person's browser makes:** recorded over 5 page views and a minute idle (`scripts`-free:
+  a Playwright run): one-off requests per page, nothing repeating while the live connection is up (the
+  incoming-call check every 15 s seen locally is the fallback for when it is down: the dev server has
+  no live connection).
+- **Changed:** the screens that still refreshed on a timer whatever the person was doing now pause
+  while the tab isn't being used (`useActivePoll`): Relief's map (every 20 s), parents' and teachers'
+  meetings and the staff register (every minute), office hours, the admissions status page, the admin
+  analytics stream (every 5 s).
+- **Already right for 500 at once:** 300 API calls a minute per person, 6,000 a minute per address (a
+  school's shared Wi-Fi), live updates per person in their own Durable Object (asleep between events).
+- **[owner] The spending guard:** it pauses the whole site at 90% of the included CPU (27M ms). At 500
+  people that can come in the first week of a month, while going past costs about $0.02 a million ms
+  (likely $1–3 a month). Turning pausing off is the secret `CF_GUARD_OFF` (any value; the 70% and 90%
+  emails still come), or a later item can move the pause to a runaway-only ceiling. The owner decides.
+

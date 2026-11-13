@@ -12,6 +12,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { fadeUp } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // A family's private application page (Stage 5 · B15.1; src/server/admissions.ts familyStatus): where
 // the application is, messages from the school, the offer letter with Accept / Decline, and
@@ -27,7 +28,7 @@ const GOOD = ['OFFERED', 'ACCEPTED', 'ENROLLED'], ENDED = ['DECLINED', 'REJECTED
 
 function ApplicationStatusPage({ token }: { token: string }) {
   const key = `/api/admissions/status/${encodeURIComponent(token)}`;
-  const { data, error, mutate } = useSWR<Status>(key, getJson, { refreshInterval: 120_000 });
+  const { data, error, mutate } = useSWR<Status>(key, getJson, { refreshInterval: useActivePoll(120_000) });
   const [busy, setBusy] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
 

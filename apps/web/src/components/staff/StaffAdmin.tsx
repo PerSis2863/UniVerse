@@ -17,6 +17,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { LeaveChip, LEAVE_LABEL, dayLabel, range } from './shared';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Staff for managers (Stage 5 · B15.8; src/server/staff.ts): today's register (in, on leave, not in
 // yet), leave requests to approve or decline, and cover: every class an absent teacher misses this
@@ -61,7 +62,8 @@ export function StaffAdmin() {
 
 function TodayView() {
   const [date, setDate] = useState(() => ymd(new Date()));
-  const { data, error, mutate } = useSWR<Register>(`/api/staff/register?date=${date}`, authedJson, { refreshInterval: 60_000, keepPreviousData: true });
+  const poll = useActivePoll(60_000);
+  const { data, error, mutate } = useSWR<Register>(`/api/staff/register?date=${date}`, authedJson, { refreshInterval: poll, keepPreviousData: true });
   // M162: the day an arrow moves to slides in from that side.
   const [dir, setDir] = useState(0);
   const go = (n: number) => { setDir(n); setDate(ymd(addDays(new Date(`${date}T12:00:00`), n))); };
