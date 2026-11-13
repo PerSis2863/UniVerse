@@ -3025,9 +3025,25 @@ html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
    focused (html[data-focus]) the side menu, top bar and assistant hide, nothing around it can trap a
    fixed box (transform, filter, containment) and the page behind doesn't scroll. It arrives with a fade
    and a slight settle. */
-.studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; animation: studio-focus-in 260ms var(--ease-glide); }
-@keyframes studio-focus-in { from { opacity: 0; transform: scale(0.985); } }
+.studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; }
 html[data-focus] .side-shell, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
 html[data-focus] :is(.side-main, main, .page-stage) { transform: none !important; filter: none !important; contain: none !important; }
 html[data-focus], html[data-focus] body { overflow: hidden; }
-@media (prefers-reduced-motion: reduce) { .studio-focus { animation-name: tracks-fade; } }
+
+/* M176 · Focus mode in and out (the owner, 13 Nov: "when i go in and out of Focus mode it should be ultra
+   smooth animations"). In: the window grows out of the tool's own box (`--fx`/`--fy`: its centre from
+   the window's, `--fs`: its width over the window's, set by the Studio page) and settles on the glide
+   spring; the menu and top bar hide only once it covers them. Out (faster): it shrinks back towards the
+   box and fades, then the box in the page settles in. Transform and opacity only; Reduce Motion: fades. */
+.studio-focus { transform-origin: 50% 50%; animation: studio-focus-in 460ms var(--spring-glide) both; }
+.studio-focus.studio-focus-out { pointer-events: none; animation: studio-focus-out 240ms var(--ease-ios) both; }
+.studio-focus-back { animation: studio-focus-back 280ms var(--ease-glide) both; }
+@keyframes studio-focus-in { from { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } 30% { opacity: 1; } }
+@keyframes studio-focus-out { to { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } }
+@keyframes studio-focus-back { from { opacity: 0; transform: scale(0.985); } }
+html[data-focus] :is(.side-shell, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
+@media (prefers-reduced-motion: reduce) {
+  .studio-focus, .studio-focus-back { animation: tracks-fade 200ms ease both; }
+  .studio-focus.studio-focus-out { animation: studio-fade-out 160ms ease both; }
+}
+@keyframes studio-fade-out { to { opacity: 0; } }

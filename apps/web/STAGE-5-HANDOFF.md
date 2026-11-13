@@ -6462,3 +6462,18 @@ sides like i should able to see the border from the left side".
   no price), the trip as a timeline of checkpoints (place, time, who), access checked on the server.
 - Both are new features during the launch focus (until 5 Dec); the owner asked for them after being
   told of the pause in earlier items.
+
+## M176: Focus mode in and out, smoothly (13 Nov 2026)
+
+The owner (13 Nov): "when i go in and out of Focus mode it should be ultra smooth animations".
+
+- **In:** the Studio page measures the tool's box before focusing (`--fx`/`--fy`: its centre from the
+  window's, `--fs`: its width over the window's, at least 0.4) and the full-window box grows out of it
+  on the glide spring (460 ms, a hair of overshoot), opaque by 30%. The menu, top bar and assistant
+  hide only once they're covered (`visibility` with a 300 ms delay under `html[data-focus]`).
+- **Out (faster, 240 ms):** Esc, the button or a second press plays `studio-focus-out` (back towards
+  the box, fading); `data-focus` comes off at its start so the page is whole beneath it; at its end the
+  box returns to the page and settles in (`studio-focus-back`, 280 ms). `onAnimationEnd` checks the
+  animation's name and that it's the box's own (children have animations too).
+- Measured: in, 840 → 1,446 → 1,440 px wide; out, 1,440 → 884 px fading, then back in the page. Reduce
+  Motion: fades only. Block M176 in `globals.css`.
