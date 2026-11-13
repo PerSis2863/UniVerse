@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOUNCE, takeOrigin, zoomFrames } from './tap-motion';
+import { BOUNCE, arrowWay, takeOrigin, zoomFrames } from './tap-motion';
 
 const rect = (left: number, top: number, width: number, height: number) => ({ left, top, width, height, right: left + width, bottom: top + height, x: left, y: top, toJSON: () => ({}) }) as DOMRect;
 
@@ -23,5 +23,16 @@ describe('tap motion (M2)', () => {
   it('bounces and comes back to rest', () => {
     expect(BOUNCE[0].transform).toBe('scale(1)');
     expect(BOUNCE.at(-1)!.transform).toBe('scale(1)');
+  });
+});
+
+describe('arrowWay (M162)', () => {
+  it('reads which way an arrow points from its icon name', () => {
+    expect(arrowWay('chevron-left')).toEqual([-1, 0]);
+    expect(arrowWay('chevron-right')).toEqual([1, 0]);
+    expect(arrowWay('arrow-up-right')).toEqual([1, -1]);
+    expect(arrowWay('chevron-down')).toEqual([0, 1]);
+    expect(arrowWay('chevrons-left')).toEqual([-1, 0]);
+    expect(arrowWay('arrow-down-to-line')).toEqual([0, 1]);
   });
 });

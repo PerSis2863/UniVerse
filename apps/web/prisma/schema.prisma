@@ -7385,3 +7385,13 @@ model ToolSave {
   @@index([userId, updatedAt])
   @@map("tool_saves")
 }
+
+/// M166: a person's page arrangements, in the account only while they sync them (Settings). One row a
+/// person; `data` is the JSON document of src/lib/arrange.ts (`Doc`). No row = sync is off.
+model UserArrangement {
+  userId    String   @id
+  data      String
+  updatedAt DateTime @default(now())
+
+  @@map("user_arrangements")
+}

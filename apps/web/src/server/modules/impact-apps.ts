@@ -2,6 +2,7 @@ import type { Router } from '../router';
 import { hubStats } from '../hub';
 import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
+import { arrangeGet, arrangeOff, arrangePut } from '../arrange';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
 import { addReliefSupply, cancelReliefShift, createReliefOrg, createReliefShift, deleteReliefSupply, joinReliefOrg, leaveReliefOrg, leaveReliefShift, newReliefOrgCode, reliefOrg, reliefOrgs, setReliefOrgMember, signUpReliefShift, updateReliefOrg, updateReliefSupply, reliefPlaces, setReliefOrgStatus } from '../relief-orgs';
@@ -21,6 +22,11 @@ export default function impactAppsModule(router: Router) {
   hub.get('wallet', ({ user }) => impactWallet(user));
   // Ask UniVerse (M30): proposes one action; the box confirms it through the app's own routes.
   router.controller('ask').post('', { status: 200 }, ({ user, body }) => askUniverse(user, body ?? {}));
+  // M166: a person's page arrangements on their other devices, when they turn it on (src/server/arrange.ts).
+  const arrange = router.controller('arrange');
+  arrange.get('', ({ user }) => arrangeGet(user));
+  arrange.put('', ({ user, body }) => arrangePut(user, body ?? {}));
+  arrange.delete('', ({ user }) => arrangeOff(user));
 
   const relief = router.controller('relief');
   relief.get('map', ({ user }) => reliefMap(user));

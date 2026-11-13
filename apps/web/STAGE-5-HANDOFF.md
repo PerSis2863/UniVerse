@@ -6009,3 +6009,267 @@ The owner, after M158's "left out on purpose" list: "please do all these".
 - **New things (the pause):** the owner chose "something for the first class" over the games; a proposal
   was put to them (a "Since your last visit" card on the student and teacher home). Not started.
 - **Next database update: 0206.**
+
+## M160: no breadcrumb row above page titles (the owner, 10 Nov 2026: "remove like top row because it is not useful")
+
+- The top bar's "Academics › Knowledge & library" row (M3's `Breadcrumb` in `Topbar.tsx`, from
+  `src/lib/breadcrumbs.ts`) is gone on computers and phones, with its helper and test. The side menu
+  already shows where you are (the chosen entry), and the page title says the rest.
+- **Kept on purpose:** `DocBreadcrumb` inside Docs, Sheets and Slides: there it links a sub-page back to
+  its parent pages (real navigation, not a repeat of the menu).
+- (M164, the landing globe, was asked first and is in progress; M161 and M162 are the time boxes and the
+  arrow buttons from the same message.)
+
+## M161: fields that line up (the owner, 10 Nov 2026: "09:00 AM" cut off, labels not aligned, "for everywhere")
+
+- **The cause, everywhere:** a field written inside its label with a top margin (`<label>Day starts<input
+  className="input mt-1 w-32" /></label>`) meant "under the label", but inputs are inline: with a fixed
+  width (`w-32`) it fitted beside the label's text, so rows lost their line, and at 120 px a time field
+  with AM/PM and its clock icon (128 px) was cut ("09:00 AI").
+- **Two rules in `globals.css` (the M161 block):** `label > .input` with an `mt-*` class is `display:
+  block` (under its label, as written); every date, time, date-time, month and week field has `min-width:
+  max-content` (never narrower than what it holds, whatever width it was given). A field meant to sit in a
+  sentence keeps `inline-block` (a utility wins).
+- **Found by measuring** each date/time field's width against the width its content needs, on the pages
+  that have them, for three roles at 1280 and 390: the timetable's "Plan a week" (the owner's picture)
+  and Student life → Rooms (a date field cut at 178 of 190 px) were the cut ones; now none.
+  `scripts/checks/fields-ui.mjs` keeps checking it (plus no sideways scroll).
+- **Rule for new screens:** a field under its label: `mt-1` on the field (or a `flex flex-col` label); don't
+  give date or time fields a width under what they hold.
+
+## M162: arrow buttons answer a press, everywhere (the owner, 10 Nov 2026: "when i click on any arrow button it should show some animations… fix this for everywhere")
+
+- **Every arrow button at once** (`src/lib/tap-motion.ts`, the app's one click listener): a button or link
+  holding a lucide chevron or arrow (`lucide-chevron-*`, `lucide-arrow-*`, `lucide-move-*`) makes its arrow
+  dart 5 px the way it points and spring back (`arrowWay` reads the way from the icon's name, tested; an
+  arrow turned round for right-to-left counts as the other way), and a plain button sinks to 0.9 and
+  settles (`.btn-*` already press on their own spring). Individual `translate` and `scale`, so a chevron's
+  own CSS rotation (open/closed) is untouched; on the compositor; nothing with Reduce Motion; disabled
+  buttons don't move. The side menu and tab bar keep their bounce.
+- **What an arrow changes slides in from that side** (`.swap[data-dir="next"|"back"]` in `globals.css`, the
+  M162 block: 22 px and a fade on `--ease-glide`, mirrored right to left, a fade with Reduce Motion; the
+  element is keyed by what changed so each change plays once): the tasks board's month calendar and
+  timeline, the staff register's day and the cover week (both also keep their arrows while the next one
+  loads: `keepPreviousData`), Trace's label print pages, the revision reels' words, the call agenda's
+  item. Already sliding before: the calendar's weeks (`TimeGrid`), the date range picker's months, the
+  photo viewer; the lesson flashcards flip in.
+- **Found by** listing every file with a back or forward arrow (22 with ChevronLeft) and checking which
+  change content in place without motion.
+- **Tested:** `pnpm check` (`tap-motion.test.ts`: `arrowWay`); `scripts/checks/arrows-ui.mjs` (on the staff
+  register: the arrow's `translate`, the button's `scale` and the day's `.swap` run; on the calendar the
+  arrow darts).
+
+## M163 (first numbered M158 on this branch): the sign-in page lined up (the owner, 10 Nov 2026: "the animations and text doesn't align properly")
+
+- **The picture** (`.auth-scene`, `AuthShowcase`): on screens under 960 px tall it was shrunk with
+  `scale` from the top-left corner: tiny text, pinned to the corner, and a box of its full size left
+  behind. Now `zoom` (its layout shrinks with it), in gentler steps (0.86, 0.78, 0.7; hidden under 700 px),
+  so it lines up with the headline's left edge and its text stays readable. **Trap:** `scale`/`transform`
+  never shrinks the space an element takes; `zoom` does (all current browsers).
+- **The activity cards** under the campus picture kept a "depth" narrowing (each older card 2 % narrower)
+  that read as misalignment: now one width (opacity still fades the older ones). Also on the landing.
+- **Trace's passport card** stood 40 px out of its picture's box, onto the line under it: the box is
+  520 px tall now. (Relief's apparent spill is only its spinning sweep's box, clipped inside the disc.)
+- **The headline** sits on `.text-pool` (the landing's soft pool), so the scene's lines and paper sheets
+  pass under the words.
+- **The footer:** "© 2026 … · Made with ♥ by Aditya Bhatt" together on the left (the credit used to float
+  mid-page), and the Terms and Privacy links moved from under each form into the right column's foot
+  (`AuthFrame`), level with it.
+- **Branch note:** after PR #120 was squash-merged the branch restarted from `main`; its old commits are
+  recorded with a merge that keeps `main`'s files (`git merge -s ours`), so pushes never need force.
+- **Tested:** screenshots at 1280×720, 1440×900, 1600×830, 1920×1080 for the five app tabs; nothing
+  spills out of its box (measured); axe on /login, /register and a Lab tab at 390 and 1280, light and dark.
+
+## M164 (first numbered M159 on this branch): the landing's globe, smaller and useful, and smooth (the owner, 10 Nov 2026: "reduce the size of the globe map and make it more functional… make everything ultra smooth specially the globe")
+
+- **Smaller:** the planet's box went from 1152 × 600 (the section 1,196 px tall) to at most 480 × 460 beside a
+  list (the section about 1,075 px with the list and notes), 320 px tall on phones. Its stars and glow
+  fade out before the canvas's edge (`.world-planet canvas` mask, 88 %), so no square shows round it.
+- **More useful** (`WorldSection.tsx`): the five apps as a list that steers the planet: pointing at (or
+  focusing) a row turns the planet to that app, choosing it opens the row in place (what it does, three
+  things it really does, "Start with …" and "Show me …"), and a pick on the planet opens the same row. Each
+  row shows the app's real number from the site's daily totals (`useTotals` in `LiveTotals.tsx`, one
+  request shared with the totals strip; Trace products checked, Relief people helped, Green kg of CO₂,
+  Play games played; none for UniVersity; under 10 isn't sent). The two notes ("One wallet", "Live
+  everywhere") sit under it instead of floating round it; "Start free" closes the section.
+- **Smooth:** the pointer light on the landing and sign-in pages (`[data-cursor-light]`) wrote `--mx/--my`
+  on the page's outer box every frame, which restyled the whole page and repainted a page-sized
+  gradient: dragging the globe with a mouse had 9 slow frames in 40 (CPU slowed 4×). Now one 1040 px
+  element (`.cursor-glow`) moved with `transform` (`light-motion.ts`): 0 slow frames in 97. On a phone
+  the globe idles and drags at 60 a second. **Rule:** never write a custom property on a big ancestor
+  each frame; move one element with `transform`.
+- **Tested:** `pnpm check`; `world-ui.mjs` (the planet draws, axe on the landing at 390 and 1280),
+  `app-backdrop-ui.mjs`; frame times idle, dragging and opening a row at 390 and 1280; a row opens with its
+  "Start with" link; axe on the section with a row open.
+
+## M165: arrange any page with the mouse (12 Nov 2026)
+
+The owner (12 Nov, with a picture of Quick notes): "resize that quick note page and also change its
+locations just by dragging things from one place to another… in every page of this project even with
+the buttons". Their exception to the launch pause (said once). The first version had a top-bar mode
+with dashed outlines and a bar; the owner the same day: "just want to use the mouse over there… no
+need to show any lines there or message", so there is **no mode and nothing is drawn**.
+
+- **What it is:** on every page inside the app, press a card, a button, a tab or a pane and move the
+  mouse: it follows and takes a new place among its neighbours. A card's right and bottom edges resize
+  it (the pointer turns into a resize arrow within 8 px of them). A press that doesn't travel 6 px is
+  still a click; the press that ends a move isn't. On a phone (and on words that can be selected, with
+  a mouse) hold still 350 ms first, so swipes still scroll and text still selects; headings and labels
+  drag at once. Keys: Alt + Shift + arrows move the focused thing, Ctrl + Alt + Shift + arrows resize
+  a card, Ctrl/⌘ + Z takes a change back (not while typing in a field).
+- **Putting it back:** `ArrangeButton` in the top bar (and the phone's title row) is "Put this page
+  back", shown only on a page the person rearranged (`src/store/arrange.ts`, `ArrangeMode.tsx`).
+- **How (`src/lib/arrange-dom.ts`, class `Arranger`, made once for `#main` in `DashboardShell`):** nothing
+  describes a page, and React owns the tree, so it never moves a node. A group is a container with
+  2–24 shown children; reordering sets CSS `order` on them (a block container becomes a wrapping flex
+  row, `data-arranged="col"`; `reading-flow` keeps the Tab order with what is seen), sizes are an inline
+  width (share of the row), grid span or height. Things are known by what they say (label, heading,
+  button text without digits: `cleanKey`, `uniqueKeys`), and a saved group belongs to the container
+  holding at least two of its names (`overlap`), so it survives the page changing; a card that is new
+  sits next to what it follows (`arranged`). A MutationObserver puts the arrangement back when the page
+  re-renders (only on a page that has one).
+- **What it never grabs** (`NOGRAB`, `item()`): fields, selects, editable text, canvases, iframes, video,
+  sliders, dialogs and menus, `draggable="true"`, tables, `divide-` lists, the side menu, phone tabs;
+  anything with `touch-action: none` or framer's `draggable="false"`; and anything whose React props
+  have a press handler (`onPointerDown`, `onMouseDown`, `onTouchStart`: read from `__reactProps$…`, a
+  marked `shortcut:`), so editors, the calendar grid and swipe rows keep their own dragging. The
+  listener runs after the page's own (bubble) and steps aside if the press was prevented or captured.
+- **Kept** per person, per path, on this device: localStorage `uv-arrange:<user id>` (`src/lib/arrange.ts`,
+  `cleanStore` drops anything odd; 150 pages at most). Not in the account (no database change).
+- **Quick notes** (`QuickNotes.tsx`): its three panes are a flex row, with a divider to drag between
+  them and one under it for the height (`Splitter` and `usePaneSizes` in `src/components/ui/Splitter.tsx`:
+  pointer, arrow keys, Home or a double-click puts it back; kept on the device as
+  `uv-quick-notes-panes`). Computers only; phones keep one pane at a time. Its panes also change
+  places by dragging an empty part or a heading. Reuse `Splitter` for any other split view.
+- **Smooth:** the dragged thing follows the pointer by `transform` once a frame, its neighbours glide to
+  their new places (FLIP, measured only when the order changes), a drop settles on the spring; the edge
+  lookup on hover runs once a frame and only with no button down.
+- **Rules for code that builds on it:** `data-no-arrange` on anything that must not be moved or that
+  drags by itself in a way the list above doesn't catch; `data-arrange-key="…"` to give a thing a steady
+  name when its text changes; never rely on DOM order for what is seen first inside `#main`.
+- **Left out on purpose:** following a person to another device (needs a table; say so if asked); rows
+  inside tables and lists with dividers; the side menu; dragging a card from one group into another.
+- **Trap for browser checks:** a page arrives slightly scaled for about a second (the page transition):
+  wait before measuring sizes. The older drag checks (`cal-ui`, `slides-ui`, `notes-ui`, `guide-ui`) need
+  the built Worker (8787) and were not rerun; the drawing tools were not opened by a check either.
+- **Tested:** `pnpm check` (`src/lib/arrange.test.ts`); `arrange-ui.mjs` on the dev server (a click still
+  presses, sweeping inside a field moves nothing, a toolbar button moved without a click and kept after
+  a reload, a card resized, "Put this page back", Ctrl+Z, the dividers, panes changing places with 0
+  slow frames in 127, a phone: a held tile carried past its neighbour; axe at 1440 and 390); selecting
+  words with the mouse on the student home and timetable still selects and rearranges nothing.
+
+## M166: arranging everywhere, synced across devices when a person chooses (12 Nov 2026)
+
+The owner (12 Nov), on M165's "left out on purpose": "Can you do all these also and for the saved
+arrangement in another device give this as a setting option where user can select if they want to sync
+that in another device… make sure arrangement feature works properly… ultra smooth and synced properly".
+
+- **Syncing, a person's choice (off by default):** Settings → Appearance → "Use my arrangement on my
+  other devices" (`ArrangeRows` in `SettingsApp.tsx`; also found by searching "arrange", "sync"). On: the
+  whole arrangement is kept in the account, table `user_arrangements` (migration **0206**, one row a
+  person, `data` = the JSON `Doc` of `src/lib/arrange.ts`); no row means off. Routes (`src/server/arrange.ts`,
+  in `impact-apps.ts`): `GET /arrange` (`{ sync, doc }`), `PUT /arrange { doc }` (turns it on and joins
+  this device's copy into the account's), `DELETE /arrange` (off; the account's copy is removed, each
+  device keeps its own). Signed-in only, the person's own row only; the copy is cleaned on the way in and
+  out (`cleanDoc`) and refused over 200 KB. Sample mode answers `{ sync: false }`.
+- **How two devices agree (`mergeDocs`):** page by page, the later change wins, by the time each page was
+  last changed (`Doc.at`); a page put back keeps its time with no groups, so "put back" travels too; the
+  same moment on both sides picks the same copy whoever asks. A change is sent 1.2 s after it is made
+  (`ArrangeMode.tsx`); the server tells the person's other open devices (`publish` refresh `/arrange`),
+  which fetch and join it; a device that comes back joins on its first load (and on focus). A change
+  still waiting when the page closes goes then.
+- **One store a person (`Vault` in `arrange.ts`):** read once, written on every change, shared by the
+  page's arranger and the side menu's, told when another device's copy changes a page that is on screen
+  (it is drawn again unless a hand is arranging it). Old M165 copies (pages alone) are read as they are.
+- **The side menu:** its entries move like everything else (a second `Arranger` on `#side-nav`, `menu`
+  mode: entries move, nothing resizes, no rows open); one arrangement per app's menu and role
+  (`data-arrange-scope` on `#side-nav`, kept under the path `/~menu/<app>-<role>`). "Put this page back"
+  puts the page back first, the menu when only it was changed. A click on an entry still opens it.
+- **Table rows** (`tbody > tr`, up to 60): a table whose rows changed places is drawn as a grid, each row
+  a sub-grid of its columns at the widths they had (`--arr-cols` in shares, so nothing shifts), with
+  `role` table / rowgroup / row / cell added (and removed when put back) so screen readers still read a
+  table. A row is known by everything it says. Only the body's rows move (not the header, not cells).
+- **Lists with lines between their rows** (`divide-y`): the lines follow the order shown
+  (`data-arr-div="top|bottom"` and `data-arr-edge` in CSS), one line between each, none at the ends.
+- **Out of its group and into another:** carry a thing out of its row and the row opens into what holds
+  it (`display: contents` on that row and on wrappers that only wrap it, `unwrap`), its things keeping
+  the widths they had; it then sits among the page's cards. Carry it over another row and that row opens.
+  Kept as `Entry.open` (the opened rows' names; found again by what they hold if their name changed).
+  When a row's things end up side by side again it closes (`close` / `shut`), drawing again only the rows
+  involved. Only plain wrappers open (no fill, edge, shadow, padding, clipping, role or name: `plain`).
+- **Undo a resize:** double-click a card's edge. **Phones:** widths chosen on a wider screen wait (under
+  640 px a page is one column); the order and heights are used. Quick notes on a phone: a grab bar
+  between the list and the open note; pull it down to keep the list in view (`Splitter` `pill`, `target`).
+- **Smooth:** the page is re-read only when things are added or taken away (not when numbers count up or
+  text changes); a row is asked once per carry whether it opens; on a drop only the rows involved are
+  drawn again (it was the whole page: one 600 ms frame on the student home). Carrying a tile out of its
+  row now costs no more than moving the mouse over that page in the test browser.
+- **Rules for code that builds on it:** a page's own wrappers stay plain where they can (that is what lets
+  cards leave their rows); a new store of a person's layout goes through `Vault`, never straight to
+  localStorage; keep `Doc` small (it is one row and one request). `data-no-arrange` still leaves a part
+  alone.
+- **Left out on purpose:** dragging between the side menu and the page; a thing carried into a box that
+  has a look of its own (a card with a fill or padding: it would change how the card looks); table
+  columns (only rows move); rows of a table's header or footer.
+- **Trap for browser checks:** the bottom 56 px of a window scroll the page while something is carried:
+  keep a check's aim above it. The dev server sometimes stalls on its first page: warm the pages first.
+- **Tested:** `pnpm check` (`arrange.test.ts`: joining two devices, the old format; `src/server/arrange.test.ts`:
+  off by default, only the person's row, odd and oversized copies refused, off removes it);
+  `arrange-more-ui.mjs` twice in a row (a grades row moved and kept with columns under their headings,
+  axe clean; people rows keep one line between each; the menu moved, kept, put back, still opens; a tile
+  out of its row and back, Ctrl+Z, put back with no traces left; a resize undone by a double-click; two
+  devices: off shows nothing, on in Settings shows it, put back on one is put back on the other, signed
+  out 401, off removes the copy; axe on Settings; a phone: the notes grab bar, a computer's width unused,
+  its order used); `arrange-ui.mjs` (M165's check) still passes.
+
+## M167: the side menu and the page, inside cards, and table columns (13 Nov 2026)
+
+The owner (13 Nov), on M166's "left out on purpose" (the menu and the page, a card with its own look,
+table columns and header rows): "Please work on this". No database change (shortcuts ride in the same
+`user_arrangements` copy, 0206).
+
+- **Side menu ↔ page (`Bridge` in `arrange-dom.ts`, made in `ArrangeMode.tsx`):** a thing carried over
+  the other one (the menu beside the page, never on a phone, where the menu is a sheet) leaves a likeness
+  under the hand (`likeness`: a fixed copy, `inert`, no ids) while the thing itself waits faded
+  (`.arr-lent`) in its place. Dropped there: a menu entry becomes a shortcut on that page (`PageShortcuts`,
+  a row of chips above the content, `data-page-pins`); a link from a page (its one link on this site;
+  with none, the page itself, named by its title) becomes a menu entry (`MenuPins`, after the menu's own
+  entries) at the height it was dropped (`Arranger.placeNext`). The thing stays where it was (a shortcut
+  is made of it); a shortcut carried across moves; one carried back to the menu entry it came from just
+  goes. Each has a × (`Remove the shortcut …`). Kept in `Doc.pins` under `MENU_PINS` (one list for every
+  app's menu) and `pagePins(path)`, joined between devices like pages (`mergeDocs`, by `at`), cleaned by
+  `cleanPin` (a path of this site only: never another site, `//`, a script or quotes; 12 a list).
+- **Inside a card with a look of its own (`slot`, `seat`, `unslot`, `hosts`, `hostAt`):** carried over a
+  card (a fill, an edge or a shadow: `looks`; at least 2.5 times the thing's size) and held still for
+  420 ms (`DWELL`), the card makes room at its foot (its padding grows) and the thing turns slightly
+  smaller; dropped, it is drawn there. It stays where React put it: `position: absolute`, kept on the
+  card by CSS anchor positioning (`anchor-name` on the card, `position-anchor` and `anchor()` on the
+  thing; where that can't anchor, placed by hand and placed again on resize, inner scrolling and
+  animation ends). Kept as `Entry.inside` (the thing's name → the card's name, unique on the page) on the
+  thing's own group; carried out again, it is the group's again. Things inside a card don't resize.
+- **Tables (`tablePart`, `mirror`):** a table's header, rows and footer are a group (the table's grid,
+  each part named "Header: …", "Rows: …", "Footer: …" by the table's headings); the rows of each; and,
+  when the table has one header row, the same number of cells in every row and none spanning two
+  (`columnsOk`), its columns, by the header row: carried by a heading, or sideways (more across than
+  down) from any cell, a column moves with every cell under it (the whole column follows the hand; the
+  others glide; widths go with their columns, `--arr-cols` from `data-arr-w`). The header carried up or
+  down moves as a whole (under the rows, say). Rows and the header move only up and down, columns only
+  sideways. Column headings drag at once (`th` is a title).
+- **Two fixes found on the way:** the parts inside a button or a link (its icon, its words) are never a
+  group of their own (pressing a link near its icon's edge resized the icon); a press on a button or
+  link always takes it, never the card around it. "Hold a moment first" now applies only when the mouse
+  is on words (`onWords`, from the caret under it), not anywhere in a box that has some.
+- **Rules for code that builds on it:** a page's shortcut chips and the menu's are drawn by React from
+  `useArrange((s) => s.pins)`; don't add shortcut lists outside `Doc.pins`. A card that should never take
+  things in: `data-no-arrange` (or no fill, edge or shadow). Anchor names `--arr-h<n>` are the engine's.
+- **Left out on purpose:** a thing carried from the page into a box with no look of its own still joins
+  that box's row (M166) rather than "inside"; columns of tables with merged cells or several header rows;
+  shortcuts dragged on a phone (the menu is a sheet there; × and the Settings reset work everywhere).
+- **Tested:** `pnpm check` (`arrange.test.ts`: shortcuts cleaned and joined, "inside" kept);
+  `arrange-cross-ui.mjs` (menu → page and page → menu at the drop height, nothing opened, kept after a
+  reload, taken back, ×; a button held over the Quick notes card goes inside, the card keeps its look,
+  the button still works, kept after a reload, out again with the room closed; Grades: a column by its
+  heading (0 slow frames in 115) and sideways from a cell, cells under their headings, the header under
+  the rows, kept, put back with no traces; axe on each; a phone with shortcuts); `arrange-ui.mjs` and
+  `arrange-more-ui.mjs` still pass.
+

@@ -27,6 +27,7 @@ export default function PrintPage() {
 function Sheet() {
   const batchId = useSearchParams().get('batch') ?? '';
   const [page, setPage] = useState(0);
+  const [dir, setDir] = useState(0); // M162: the next page of labels slides in from that side
   const { data, error } = useSWR<Codes>(batchId ? `/trace/batches/${batchId}/codes?from=${page * PER_PAGE}&count=${PER_PAGE}` : null, fetcher, { keepPreviousData: true });
   const [exporting, setExporting] = useState(false);
   const origin = useMemo(() => (typeof window === 'undefined' ? '' : window.location.origin), []);
@@ -64,13 +65,13 @@ function Sheet() {
           <div className="print-hide flex items-center justify-between mb-3 text-sm text-zinc-600 dark:text-zinc-300">
             <span>Units {(page * PER_PAGE + 1).toLocaleString()}–{Math.min((page + 1) * PER_PAGE, data.batch.quantity).toLocaleString()} of {data.batch.quantity.toLocaleString()}</span>
             <span className="flex gap-1">
-              <button type="button" onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="btn-secondary btn-sm" aria-label="Previous page"><ChevronLeft className="w-4 h-4" /></button>
-              <button type="button" onClick={() => setPage((p) => Math.min(pages - 1, p + 1))} disabled={page >= pages - 1} className="btn-secondary btn-sm" aria-label="Next page"><ChevronRight className="w-4 h-4" /></button>
+              <button type="button" onClick={() => { setDir(-1); setPage((p) => Math.max(0, p - 1)); }} disabled={page === 0} className="btn-secondary btn-sm" aria-label="Previous page"><ChevronLeft className="w-4 h-4" /></button>
+              <button type="button" onClick={() => { setDir(1); setPage((p) => Math.min(pages - 1, p + 1)); }} disabled={page >= pages - 1} className="btn-secondary btn-sm" aria-label="Next page"><ChevronRight className="w-4 h-4" /></button>
             </span>
           </div>
         )}
         {!data ? <div className="h-96 rounded-3xl skeleton" /> : (
-          <div className="print-sheet grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3">
+          <div key={page} className="swap print-sheet grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-5 gap-3" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
             {data.codes.map((c) => (
               <div key={c.code} className="trace-label rounded-xl border border-[#e1e6f2] bg-white p-3 flex flex-col items-center text-center text-[#111113]">
                 <QrCode value={address(data.batch.gtin, c.code)} size={112} title={`Passport of unit ${c.serial}`} />

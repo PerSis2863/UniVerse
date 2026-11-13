@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
+import { MenuPins } from '@/components/ArrangeMode';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useLanguageStore } from '@/store/language';
@@ -561,7 +562,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
       <AppSwitcher app={app} role={user.role} onPick={onClose} />
 
       {/* Nav */}
-      <nav id="side-nav" onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
+      <nav id="side-nav" data-arrange-scope={`${app ?? 'all'}-${user.role}`.toLowerCase()} onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
         {nav.map((item, i) => (
           <NavItemComponent 
             key={i} 
@@ -577,6 +578,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
             onTip={showTip}
           />
         ))}
+        <MenuPins onClose={onClose} />
       </nav>
 
       {/* The label of the icon under the pointer, beside the folded menu. */}

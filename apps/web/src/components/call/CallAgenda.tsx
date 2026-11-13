@@ -15,6 +15,7 @@ import { cn } from '@/lib/utils';
 export function AgendaBar({ agenda, skew, canRun, onGo, onEdit }: { agenda: Agenda | null; skew: number; canRun: boolean; onGo: (n: number) => void; onEdit: () => void }) {
   const running = !!agenda && agenda.current !== null;
   const now = useTick(running) + skew;
+  const [dir, setDir] = useState(0); // M162: the next item slides in from that side
   if (!agenda) return null;
   const c = agendaClock(agenda, now);
   if (!c) {
@@ -33,17 +34,17 @@ export function AgendaBar({ agenda, skew, canRun, onGo, onEdit }: { agenda: Agen
     <div role="timer" aria-live="off" aria-label={`${c.item.title}: ${c.overrun ? `over by ${clockText(c.left)}` : `${clockText(c.left)} left`}`}
       className={cn('pointer-events-auto rounded-2xl backdrop-blur-xl border px-3 py-2 shadow-xl', c.overrun ? 'bg-rose-950/70 border-rose-400/40' : c.soon ? 'bg-amber-950/60 border-amber-400/40' : 'bg-black/50 border-white/10')}>
       <div className="flex items-center gap-2">
-        <div className="min-w-0 flex-1">
-          <p className="text-[10px] uppercase tracking-wide text-zinc-400">{c.index + 1} of {agenda.items.length}{c.item.who ? ` · ${c.item.who}` : ''}</p>
+        <div key={c.index} className="swap min-w-0 flex-1" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
+          <p className="text-[11px] uppercase tracking-wide text-zinc-400">{c.index + 1} of {agenda.items.length}{c.item.who ? ` · ${c.item.who}` : ''}</p>
           <p className="text-sm font-semibold truncate">{c.item.title}</p>
         </div>
         <p className={cn('text-lg font-bold tabular-nums shrink-0', c.overrun ? 'text-rose-300' : c.soon ? 'text-amber-300' : 'text-white')}>{c.overrun ? `+${clockText(c.left)}` : clockText(c.left)}</p>
         {canRun && (
           <div className="flex items-center shrink-0">
-            <button type="button" onClick={() => onGo(c.index - 1)} disabled={c.index === 0} aria-label="Previous item" className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
+            <button type="button" onClick={() => { setDir(-1); onGo(c.index - 1); }} disabled={c.index === 0} aria-label="Previous item" className="p-1.5 rounded-full hover:bg-white/10 disabled:opacity-30"><ChevronLeft className="w-4 h-4" /></button>
             {c.last
               ? <button type="button" onClick={() => onGo(-1)} className="h-7 px-2.5 rounded-full bg-white text-zinc-900 text-xs font-semibold">Finish</button>
-              : <button type="button" onClick={() => onGo(c.index + 1)} aria-label={`Next: ${c.next?.title ?? ''}`} className="p-1.5 rounded-full hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>}
+              : <button type="button" onClick={() => { setDir(1); onGo(c.index + 1); }} aria-label={`Next: ${c.next?.title ?? ''}`} className="p-1.5 rounded-full hover:bg-white/10"><ChevronRight className="w-4 h-4" /></button>}
             {!c.last && <button type="button" onClick={() => onGo(-1)} aria-label="Stop the agenda" className="p-1.5 rounded-full hover:bg-white/10"><Square className="w-3.5 h-3.5" /></button>}
             <button type="button" onClick={onEdit} aria-label="Edit the agenda" className="p-1.5 rounded-full hover:bg-white/10"><Pencil className="w-3.5 h-3.5" /></button>
           </div>

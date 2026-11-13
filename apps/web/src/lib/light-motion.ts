@@ -98,20 +98,28 @@ function startFollow(): () => void {
   return () => { document.removeEventListener('pointermove', onMove); document.removeEventListener('pointerleave', onLeave); cancelAnimationFrame(frame); };
 }
 
-/** A soft light under the pointer inside [data-cursor-light] (it writes --mx / --my there; CSS draws it). */
+/**
+ * A soft light under the pointer inside [data-cursor-light]. M164: one fixed-size light moved by
+ * `transform` (the compositor), not --mx / --my written on the page's outer box each frame: that restyled
+ * the whole page and repainted a page-sized gradient on every move (slow frames while dragging the globe).
+ */
 function startCursorLight(): () => void {
   if (!window.matchMedia('(hover: hover) and (pointer: fine)').matches) return () => {};
   let frame = 0, x = 0, y = 0, host: HTMLElement | null = null;
-  const draw = () => { frame = 0; if (host) { host.style.setProperty('--mx', `${x}px`); host.style.setProperty('--my', `${y}px`); } };
+  const glow = document.createElement('div');
+  glow.className = 'cursor-glow';
+  glow.setAttribute('aria-hidden', 'true');
+  const draw = () => { frame = 0; glow.style.transform = `translate3d(${x - 520}px, ${y - 520}px, 0)`; };
   const onMove = (e: PointerEvent) => {
-    host = (e.target as Element | null)?.closest?.('[data-cursor-light]') as HTMLElement | null;
+    const now = (e.target as Element | null)?.closest?.('[data-cursor-light]') as HTMLElement | null;
+    if (now !== host) { host = now; if (host) host.appendChild(glow); else glow.remove(); }
     if (!host) return;
     const r = host.getBoundingClientRect();
     x = e.clientX - r.left; y = e.clientY - r.top;
     if (!frame) frame = requestAnimationFrame(draw);
   };
   document.addEventListener('pointermove', onMove, { passive: true });
-  return () => { document.removeEventListener('pointermove', onMove); cancelAnimationFrame(frame); };
+  return () => { document.removeEventListener('pointermove', onMove); cancelAnimationFrame(frame); glow.remove(); };
 }
 
 /** Starts the light that answers presses and pointers, for the whole app (once). Returns a stop function. */

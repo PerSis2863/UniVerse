@@ -478,12 +478,6 @@ export default function RegisterPage() {
         )}
       </div>
 
-      <p className="mt-6 text-center text-xs text-zinc-400">
-        Read our{' '}
-        <Link href="/terms" target="_blank" className="text-indigo-400 hover:underline">Terms and Conditions</Link>
-        {' and '}
-        <Link href="/privacy" target="_blank" className="text-indigo-400 hover:underline">Privacy Policy</Link>.
-      </p>
     </div>
   );
 }
