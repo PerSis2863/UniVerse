@@ -104,10 +104,11 @@ export function SmartWeek({ today, tz }: { today: string; tz: string }) {
       </AnimatePresence>
 
       {isLoading || !data ? (
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-7 gap-2">{Array.from({ length: 7 }, (_, i) => <div key={i} className="h-32 rounded-2xl skeleton" />)}</div>
+        // M178: one height while loading and loaded (md:min-h-80), so a usual week arrives without the page jumping.
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-7 gap-2 md:min-h-80">{Array.from({ length: 7 }, (_, i) => <div key={i} className="h-32 md:h-auto rounded-2xl skeleton" />)}</div>
       ) : (
         <LayoutGroup>
-          <div className="mt-4 grid grid-cols-1 md:grid-cols-7 gap-2">
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-7 gap-2 md:min-h-80">
             {data.days.map((d) => {
               const planned = d.blocks.reduce((n, b) => n + mins(b), 0);
               return (

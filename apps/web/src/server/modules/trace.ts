@@ -13,6 +13,7 @@ import { askSupplier, closeSupplyRequest, newSupplyLink, publicDpp, saveDpp, sup
 import { featureOff } from '../moderation';
 import { endRecall, insights, logRepair, reportFake, ownUnit, protectBatch, publicBrand, radar, recallBatch, receiveTransfer, redeemWin, registerWarranty, reviewUnit, startTransfer, vault } from '../trace-plus';
 import { askTakeBack, brandTakebacks, receiveTakeBack } from '../trace-takeback';
+import { createInvite, join, joinInfo, recordStop, removeHandler, removeInvite, team } from '../trace-chain';
 
 // UniVerse Trace (src/server/trace*.ts): every product gets a passport. Anyone can check a code or
 // share a shipment's position from a driver's link (no sign-in); anyone signed in has a wallet and can
@@ -33,6 +34,8 @@ export default function traceModule(router: Router) {
   // Whoever holds the unit (src/server/trace-plus.ts): its warranty and one review per unit.
   r.post<{ code: string }>('scan/:code/warranty', { public: true, status: 200 }, async ({ params, body, req }) => registerWarranty(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
   r.post<{ code: string }>('scan/:code/review', { public: true, status: 200 }, async ({ params, body, req }) => reviewUnit(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
+  // M173: the brand's people, its supply-chain team or a driver with the shipment's link record a stop.
+  r.post<{ code: string }>('scan/:code/stop', { public: true, status: 200 }, async ({ params, body, req }) => recordStop(params.code, body ?? {}, await getSessionUser(req).catch(() => null), req));
   r.get<{ slug: string }>('public/:slug', { public: true }, ({ params }) => publicBrand(params.slug));
   // The EU Digital Product Passport (M108, src/server/trace-dpp.ts): anyone reads it (also as JSON);
   // a supplier answers from the brand's link without an account.
@@ -61,6 +64,13 @@ export default function traceModule(router: Router) {
     return b;
   });
   r.patch('brand', ({ user, body }) => updateBrand(user, body ?? {}));
+  // M173: the brand's supply-chain team (warehouses, drivers, shops) and the links that invite them.
+  r.get('team', ({ user }) => team(user));
+  r.post('team/invites', ({ user, body }) => createInvite(user, body ?? {}));
+  r.delete<{ code: string }>('team/invites/:code', ({ user, params }) => removeInvite(user, params.code));
+  r.delete<{ id: string }>('team/:id', ({ user, params }) => removeHandler(user, params.id));
+  r.get<{ code: string }>('join/:code', ({ user, params }) => joinInfo(user, params.code));
+  r.post<{ code: string }>('join/:code', { status: 200 }, ({ user, params }) => join(user, params.code));
   r.get('overview', ({ user, query }) => overview(user, Math.min(90, Math.max(7, Number(first(query.days)) || 30))));
   r.get('products', ({ user }) => listProducts(user));
   r.post('products', ({ user, body }) => createProduct(user, body ?? {}));

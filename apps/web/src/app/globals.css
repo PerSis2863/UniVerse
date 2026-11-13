@@ -876,10 +876,6 @@ html, body { overflow-x: clip; max-width: 100%; }
 
   /* Many stacked backdrop blurs make scrolling stutter on phones; cards sit on a solid background anyway */
   .card, .card-hover, .glass, .kpi-card { backdrop-filter: none; -webkit-backdrop-filter: none; }
-  /* Same for Tailwind blur on content cards; bars, sheets, popovers (fixed/sticky/absolute) keep theirs */
-  :is(.backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl, .backdrop-blur-2xl, .backdrop-blur-3xl):not(.fixed):not(.sticky):not(.absolute) {
-    backdrop-filter: none; -webkit-backdrop-filter: none;
-  }
   /* Decorative glow blobs: a smaller blur radius looks the same at phone size and costs far
      less to paint (blur cost grows with the radius). */
   .blur-3xl { --tw-blur: blur(32px); filter: blur(32px); }
@@ -1808,7 +1804,10 @@ html.reduce-motion .flow-comet { display: none; }
 /* M9 · Cards answer the pointer the way the Relay video's glass cards do: a two-tone edge glow
    (dark mode) or a soft indigo lift (light). Border and shadow only: nothing to re-blur. */
 @media (hover: hover) and (pointer: fine) {
-  :is(.panel, .card, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
+  /* M178: plain cards (containers) change edge and shadow at once; a fade repainted the whole card each
+     frame, and a long table's card stalled scrolling as it passed under the mouse. Cards you press keep it. */
+  :is(.panel, .card, .card-hover) { transition: transform 320ms var(--ease-glide); }
+  :is(a.card, a.panel, button.card, button.panel, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
   :is(.panel, .card, .card-hover):hover { border-color: rgba(39, 39, 42, 0.28); box-shadow: var(--card-shadow), 0 18px 44px -28px rgba(39, 39, 42, 0.45); }
   .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(122, 174, 250, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(122, 174, 250, 0.08), 0 24px 60px -30px rgba(79, 142, 247, 0.55); }
 }
@@ -2486,6 +2485,10 @@ html:not(.dark) {
 
 /* Cards and panels: solid white, a hairline, a soft shadow, calm corners; hover only darkens the edge. */
 .panel, .dark .panel, html.dark .panel, .card, .card-hover, .glass, .kpi-card { -webkit-backdrop-filter: none; backdrop-filter: none; }
+/* M177: Tailwind's blur on content cards too, on computers as on phones. Over the app's moving scene
+   every blurred card was blurred again each frame: the homes ran at ~35 frames a second, scrolling
+   stalled. Bars, sheets and popovers (fixed / sticky / absolute) keep theirs. */
+:is(.backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl, .backdrop-blur-2xl, .backdrop-blur-3xl):not(.fixed):not(.sticky):not(.absolute) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 .card, .card-hover { border-radius: var(--radius-card); }
 .card-hover:hover { transform: none; box-shadow: 0 2px 8px -2px rgba(16, 24, 40, 0.08); }
 @media (hover: hover) {

@@ -13,6 +13,7 @@ import Link from '@/components/ui/Link';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
 import { Facts, HeatStrip, Meter, Ring, Spark, Stack } from '@/components/instruments/parts';
 import { TraceTabs } from '@/components/trace/TraceTabs';
+import { ChainTeam, JoinTeam } from '@/components/trace/ChainTeam';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
@@ -36,7 +37,7 @@ const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) 
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
 interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
 interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null; allowedCountries?: string | null; blockedAt?: string | null; recall?: { id: string; reason: string; severity: string } | null }
-interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null; takeBackHow?: string | null; takeBackPoints?: number }
+interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null; takeBackHow?: string | null; takeBackPoints?: number; price?: number | null; currency?: string | null }
 interface Overview {
   days: number; products: number; batches: number; units: number; scanned: number; claimed: number; points: number;
   scans: number[]; suspect: number[]; first: number; seen: number; suspects: number;
@@ -64,6 +65,7 @@ export default function TracePage() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="max-w-6xl mx-auto space-y-6">
           <TraceTabs />
+          <JoinTeam />
           {!data ? <div className="ins-board"><div className="ins-board-inner h-[420px] skeleton" /></div>
             : data.brand ? <BrandConsole info={data as Required<BrandInfo> & { brand: Brand }} onChange={() => void mutate()} />
             : <StartBrand onDone={() => void mutate()} />}
@@ -205,6 +207,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
         {settings && (
           <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }} className="overflow-hidden">
             <BrandSettings brand={brand} pro={info.pro} onDone={() => { setSettings(false); onChange(); }} />
+            <div className="mt-4"><ChainTeam /></div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -529,7 +532,7 @@ function Takebacks() {
 
 /** A product's extras: an instant win on the first check, cold chain and weight (for each shipment's CO₂). */
 function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
-  const [f, setF] = useState({ winOdds: p.winOdds ? String(p.winOdds) : '', winPrize: p.winPrize ?? '', maxTempC: p.maxTempC != null ? String(p.maxTempC) : '', weightKg: String(p.weightKg ?? 1), takeBackHow: p.takeBackHow ?? '', takeBackPoints: String(p.takeBackPoints ?? 0) });
+  const [f, setF] = useState({ winOdds: p.winOdds ? String(p.winOdds) : '', winPrize: p.winPrize ?? '', maxTempC: p.maxTempC != null ? String(p.maxTempC) : '', weightKg: String(p.weightKg ?? 1), takeBackHow: p.takeBackHow ?? '', takeBackPoints: String(p.takeBackPoints ?? 0), price: p.price != null ? String(p.price) : '', currency: p.currency ?? 'EUR' });
   const [saving, setSaving] = useState(false);
   const save = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -537,7 +540,7 @@ function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
     try { await api.patch(`/trace/products/${p.id}`, f); toast.success('Saved'); onDone(); }
     catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setSaving(false); }
   };
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF({ ...f, [k]: e.target.value });
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <form onSubmit={(e) => void save(e)} className="mt-4 rounded-2xl bg-pink-500/[0.05] ring-1 ring-pink-500/15 p-4 grid sm:grid-cols-2 gap-3">
       <p className="sm:col-span-2 text-xs text-zinc-600 dark:text-zinc-300"><b>Instant win:</b> the first person to check a winning unit sees a prize and a code to claim it. Which units win is fixed when they’re made, so rescanning can’t cheat it.</p>
@@ -545,6 +548,9 @@ function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">The prize</span><input maxLength={120} value={f.winPrize} onChange={set('winPrize')} className="input mt-1" placeholder="A free bottle" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Keep at or below (°C, empty if it doesn’t matter)</span><input type="number" step="0.1" min={-80} max={80} value={f.maxTempC} onChange={set('maxTempC')} className="input mt-1" placeholder="8" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Weight of one unit (kg)</span><input type="number" step="0.001" min={0.001} value={f.weightKg} onChange={set('weightKg')} className="input mt-1" /></label>
+      {/* M173: shops and buyers see the price on a scan; drivers and warehouses never do. */}
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Price (shops and buyers see it; drivers and warehouses don’t)</span><input type="number" step="0.01" min={0} value={f.price} onChange={set('price')} className="input mt-1" placeholder="12.50" /></label>
+      <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Currency</span><select value={f.currency} onChange={set('currency')} className="input mt-1">{CURRENCIES.map((c) => <option key={c}>{c}</option>)}</select></label>
       <p className="sm:col-span-2 text-xs text-zinc-600 dark:text-zinc-300"><b>Take it back for recycling:</b> its owner asks on the passport and gets a drop-off code; when you mark it received they get the points and a recycling action in Green.</p>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How to hand it in (empty: not offered)</span><input maxLength={300} value={f.takeBackHow} onChange={set('takeBackHow')} className="input mt-1" placeholder="Bring it to any of our shops" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Points for its owner</span><input type="number" min={0} max={10000} value={f.takeBackPoints} onChange={set('takeBackPoints')} className="input mt-1" /></label>

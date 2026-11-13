@@ -9,6 +9,7 @@ import { requestCf } from './request-cf';
 import { award, brandBalance } from './trace-wallet';
 import { applyCampaigns } from './trace-campaigns';
 import { divertedScan, passportExtras, shopTier } from './trace-plus';
+import { chainRole, staffView } from './trace-chain';
 
 // UniVerse Trace: every product gets a passport (migrations 0177, 0178). Anyone can start a brand
 // for free (trace_brands; no school needed) and add its products and batches; every unit carries a
@@ -24,7 +25,14 @@ const sign = (secret: string, key: string, serial: number) => toBase32(crypto.cr
 export const codeFor = (b: { codeKey: string; secret: string }, serial: number) => `${b.codeKey}${encodeSerial(serial)}${sign(b.secret, b.codeKey, serial)}`;
 /** A code as stored (no dashes, typos fixed), or null when it isn't one. */
 export const idOf = (raw: string) => { const p = splitCode(raw); return p ? `${p.key}${encodeSerial(p.serial)}${p.sig}` : null; };
-const same = (a: string, b: string) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+export const same = (a: string, b: string) => a.length === b.length && crypto.timingSafeEqual(Buffer.from(a), Buffer.from(b));
+/** The unit a printed code stands for (its batch and product), or null when it isn't a real one. */
+export async function unitOf(raw: string) {
+  const parts = splitCode(raw);
+  const batch = parts ? await prisma.traceBatch.findUnique({ where: { codeKey: parts.key }, include: { product: true } }) : null;
+  if (!parts || !batch || parts.serial >= batch.quantity || !same(parts.sig, sign(batch.secret, batch.codeKey, parts.serial))) return null;
+  return { batch, id: idOf(raw)!, serial: parts.serial };
+}
 
 export const num = (v: unknown, min: number, max: number): number | null => {
   const n = typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN;
@@ -156,6 +164,9 @@ function extrasData(b: Body) {
     ...('winPrize' in b && { winPrize: short(b.winPrize, 120) }),
     ...('maxTempC' in b && { maxTempC: num(b.maxTempC, -80, 80) }),
     ...('weightKg' in b && { weightKg: num(b.weightKg, 0.001, 100_000) ?? 1 }),
+    // M173: the price, shown to the brand, shops and buyers (never to drivers or warehouses).
+    ...('price' in b && { price: num(b.price, 0, 100_000_000) }),
+    ...('currency' in b && { currency: /^[A-Za-z]{3}$/.test(str(b.currency) ?? '') ? str(b.currency)!.toUpperCase() : null }),
     // M146: take-back for recycling: how to hand it in (empty: not offered) and its owner's points.
     ...('takeBackHow' in b && { takeBackHow: short(b.takeBackHow, 300) }),
     ...('takeBackPoints' in b && { takeBackPoints: Math.round(num(b.takeBackPoints, 0, 10_000) ?? 0) }),
@@ -174,7 +185,7 @@ export async function updateProduct(u: SessionUser, id: string, body: Body) {
   await ownProduct(await brandOf(u), id);
   const name = short(body.name, 120);
   // Only the extras (the product's settings panel), or the whole product.
-  const onlyExtras = Object.keys(body).every((k) => ['winOdds', 'winPrize', 'maxTempC', 'weightKg'].includes(k));
+  const onlyExtras = Object.keys(body).every((k) => ['winOdds', 'winPrize', 'maxTempC', 'weightKg', 'price', 'currency', 'takeBackHow', 'takeBackPoints'].includes(k));
   return prisma.traceProduct.update({ where: { id }, data: onlyExtras ? extrasData(body) : { ...(name && { name }), ...productData(body) } });
 }
 
@@ -303,10 +314,13 @@ const deviceOf = (req: Request) => {
  */
 export async function scan(raw: string, b: Body, user: SessionUser | null, req: Request) {
   if (raw.trim().toLowerCase() === 'demo') return demoPassport();
-  const parts = splitCode(raw);
-  const batch = parts ? await prisma.traceBatch.findUnique({ where: { codeKey: parts.key }, include: { product: true } }) : null;
-  if (!parts || !batch || parts.serial >= batch.quantity || !same(parts.sig, sign(batch.secret, batch.codeKey, parts.serial))) return { result: 'UNKNOWN' as const };
-  const id = idOf(raw)!;
+  const unit = await unitOf(raw);
+  if (!unit) return { result: 'UNKNOWN' as const };
+  const { batch, id } = unit, parts = { serial: unit.serial };
+  // M173: the brand's people, its supply-chain team and a driver holding the shipment's link get their
+  // own view and record stops; their scans aren't shoppers' checks (no first scan, prize or points).
+  const role = await chainRole(batch, user, b.key);
+  if (role !== 'BUYER') return staffView(unit, role, req);
   const existing = await prisma.traceCode.upsert({ where: { id }, create: { id, batchId: batch.id, productId: batch.productId, brandId: batch.brandId, serial: parts.serial }, update: {} });
   const here = position(b);
   const again = b.again === true;
@@ -329,7 +343,9 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
     ]);
   }
   const [events, brand, extras] = await Promise.all([
-    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, createdAt: true, lat: true, lng: true } }),
+    // At most the newest 200 stops (a batch has a handful): staff record stops from public links (M173),
+    // so a flood of them must not make every shopper's check heavier (M178).
+    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'desc' }, take: 200, select: { stage: true, place: true, createdAt: true, lat: true, lng: true } }).then((e) => e.reverse()),
     batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true, slug: true } }) : null,
     passportExtras(batch, id, { first: !again && existing.scanCount === 0, genuine: verdict === 'FIRST', place: code.firstPlace, user }),
   ]);
@@ -339,7 +355,9 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
     result: verdict,
     code: formatCode(id), serial: parts.serial + 1,
     brand: { name: brand?.name ?? 'UniVerse', logoUrl: brand?.logoUrl ?? null, slug: brand?.slug ?? null },
-    product: { name: p.name, category: p.category, description: p.description, story: p.story, imageUrl: p.imageUrl, warrantyMonths: p.warrantyMonths, rewardPoints: p.rewardPoints },
+    product: { name: p.name, category: p.category, description: p.description, story: p.story, imageUrl: p.imageUrl, warrantyMonths: p.warrantyMonths, rewardPoints: p.rewardPoints, ...(p.price !== null && { price: p.price, currency: p.currency }) },
+    // M173: where and when this check happened (the network's city), shown on the passport.
+    here: { place: [cfPosition(req).cf?.city, cfPosition(req).cf?.country].filter(Boolean).join(', ') || null, at: new Date().toISOString() },
     batch: { label: batch.label, origin: batch.origin, madeAt: batch.madeAt, quantity: batch.quantity },
     // The places by name only: the stops' exact points stay on the server (they give the trip below).
     journey: events.map(({ stage, place, createdAt }) => ({ stage, place, createdAt })),

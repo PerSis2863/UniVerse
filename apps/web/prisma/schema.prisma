@@ -6629,6 +6629,9 @@ model TraceProduct {
   /// M146: take-back for recycling: how to hand it in (null: not offered) and its owner's points.
   takeBackHow    String?
   takeBackPoints Int       @default(0)
+  /// M173: the price (with an ISO currency code), seen by the brand, shops and buyers, never by drivers or warehouses.
+  price          Float?
+  currency       String?
   @@index([organizationId])
   @@map("trace_products")
 }
@@ -6756,9 +6759,40 @@ model TraceEvent {
   note           String?
   actorId        String?
   createdAt      DateTime   @default(now())
+  /// M173: who recorded the stop (BRAND, WAREHOUSE, DRIVER or SHOP) and from which unit's code.
+  role           String?
+  codeId         String?
 
   @@index([batchId, createdAt])
+  @@index([codeId])
   @@map("trace_events")
+}
+
+/// M173: a brand's supply-chain team: warehouses, drivers and shops who scan its products and record stops.
+model TraceHandler {
+  id        String   @id @default(cuid())
+  brandId   String
+  userId    String
+  /// WAREHOUSE, DRIVER or SHOP.
+  role      String
+  createdAt DateTime @default(now())
+
+  @@unique([brandId, userId])
+  @@index([userId])
+  @@map("trace_handlers")
+}
+
+/// M173: a link that adds whoever opens it (signed in) to a brand's team in one role.
+model TraceHandlerInvite {
+  code        String   @id
+  brandId     String
+  role        String
+  createdById String?
+  uses        Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([brandId])
+  @@map("trace_handler_invites")
 }
 
 // ─── The Trace network (migration 0178): free brands, one wallet, campaigns ───

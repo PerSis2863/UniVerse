@@ -1036,6 +1036,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
   [/^\/trace\/takebacks$/, () => ok(impact.sampleTraceTakebacks())],
+  // M173: the brand's supply-chain team and an invite link's preview.
+  [/^\/trace\/team$/, () => ok({ handlers: [{ id: 'h1', role: 'WAREHOUSE', since: new Date(Date.now() - 9 * 86_400_000).toISOString(), name: 'Rotterdam Hub' }, { id: 'h2', role: 'DRIVER', since: new Date(Date.now() - 4 * 86_400_000).toISOString(), name: 'Marco Rossi' }, { id: 'h3', role: 'SHOP', since: new Date(Date.now() - 2 * 86_400_000).toISOString(), name: 'Corner Deli, Lyon' }], invites: [{ code: 'SAMPLEINVITE0001', role: 'DRIVER', uses: 2, createdAt: new Date(Date.now() - 6 * 86_400_000).toISOString() }] })],
+  [/^\/trace\/join\/[^/]+$/, () => ok({ brand: { name: 'Aurora (sample)', logoUrl: null }, role: 'DRIVER', already: null })],
   [/^\/trace\/products\/[^/]+\/supply$/, () => ok(impact.sampleTraceSupply())],
   [/^\/trace\/overview$/, ({ q }) => ok(impact.sampleTraceOverview(Math.min(90, Math.max(7, Number(q.get('days')) || 30))))],
   [/^\/trace\/map\/market$/, ({ q }) => ok(impact.sampleTraceMarket(Number(q.get('days')) || 30, q.get('product')))],

@@ -6514,3 +6514,106 @@ locations where ever it is required", then "please do all these".
 - **Privacy unchanged:** Relief positions stay rounded to ~500 m, Green and Trace to 0.1°.
 - **Frames:** measured against the code before this item on the same machine: the same (this test
   machine draws in software; the map is the slow part of the page there either way).
+
+## M173: Trace across the supply chain (13 Nov 2026)
+
+The owner (13 Nov): "whenever someone scan it the user should get the location, time and other related
+informations… when the driver scan it it will get the limited information not the info like price… do
+this for whole supply chain… modern and professional… ultra smooth animations".
+
+- **Who's scanning decides the view** (`src/lib/trace-chain.ts` `SEES`, `viewFor`, tested; the server
+  leaves out what a role may not see, it doesn't just hide it). `chainRole` (`src/server/trace-chain.ts`):
+  a driver holding the shipment's link (`/carry/<key>` now keeps its key in `localStorage`
+  `uv-carry-key`, sent with the scan, compared timing-safe) → DRIVER; the brand's members → BRAND; its
+  team (`trace_handlers`) → WAREHOUSE, DRIVER or SHOP; everyone else → BUYER (the shopper's passport).
+  - BRAND: everything, the names of who recorded each stop, shopper checks. WAREHOUSE: batch, quantity,
+    handling, destination, no price. DRIVER: handling and destination only, no price, no batch. SHOP:
+    batch, price, handling. BUYER: the passport as before, plus the price and "Checked by you · city ·
+    time".
+- **Staff scans aren't shoppers' checks:** `scan()` hands any non-buyer to `staffView` before it writes
+  anything, so staff never set a unit's first place, trip the copy alarm, win a prize or earn points.
+- **Stops:** `POST /trace/scan/:code/stop` (public; the role is checked inside, listed in
+  `route-gates.test.ts`): each role only its own stops (`ROLE_STOPS`: the driver "Picked up", "Handed
+  to the distributor", "Delivered to the shop"; the warehouse arrived/left; the shop arrived; the brand
+  made/shipped), with the place (the phone's position when allowed, else the network's city), rounded
+  to 0.1°, the time and who; the same stop of the batch at the same place within 10 minutes counts once (a pallet scanned unit by unit is one stop); the batch's
+  status follows (in transit, delivered); the brand's team sees Tracking refresh live.
+- **The team:** Brand settings → "Supply chain team": an invite link per role (`/trace?join=<code>`,
+  20 at most), the list with remove. Opening a link signed in shows "Join <brand> as a driver" on the
+  Trace page (`JoinTeam`). Migration **0207**: `trace_handlers`, `trace_handler_invites`, a product's
+  `price` and `currency` (Products → settings), `trace_events.role` and `codeId`.
+- **The staff page** (`src/app/t/[code]/Staff.tsx`, inside the passport's dark page): role and what
+  it's for, the product, "This scan" (place and live time), the facts allowed, a button per stop (the
+  next one highlighted), and the trip as a timeline that draws itself, the newest stop pulsing, the
+  next expected stop dashed; a recorded stop glides in. Springs from `lib/motion`; Reduce Motion: fades.
+- **Fixed on the way:** the product settings panel sent its take-back fields, which weren't in the
+  "extras only" list, so saving it wiped the product's description, story, picture and points (M146).
+- **Checked:** every role by API (views, refusals, a wrong key, the 10-minute repeat), the driver on a
+  phone and a warehouse on a computer in the browser, axe clean.
+
+## M177: a deep check, and smoother everywhere (the owner, 13 Nov 2026: "do deep checking if any problems are there and also make everything ultra smooth")
+
+- **Checked:** the live `error_reports` (nothing new since 10 Nov, nothing fixed came back); real visitors'
+  speed (`web_vitals`, 10% of visits, read-only); `pnpm local:build` and `scripts/crawl.mjs` on it: 208
+  pages as student, teacher, admin and parent, no crash or blank screens, no server errors (the only
+  noise: the read-only demo admin refusing the welcome tour's one-time "already seen" save, and an
+  outside Google script this machine's network blocks); then frames per page (load, at rest, a wheel
+  scroll, a menu page change; the slow frames' scripts from `long-animation-frame`) and layout shifts
+  under slow 4G and a 4× slower processor. Axe clean on the changed pages at 390 and 1280, light and dark.
+- **Cards blurred the moving scene behind them.** Content cards with Tailwind's `backdrop-blur-*` kept
+  the blur on computers (only touch screens dropped it; §8 says no glass on cards), and since M129 an app
+  scene moves behind every page, so each blurred card was blurred again every frame: the homes drew ~35
+  frames a second at rest, Admin → Finances ~30 while scrolling, Trace → Tracking ~24 (its maps' blurred
+  buttons over a moving map). The rule now applies everywhere (`globals.css`, after the "no glass" line;
+  fixed, sticky and absolute bars, sheets and popovers keep theirs). Screenshots before and after match
+  (the cards were near-solid). Across 52 pages: stalls at rest 26 → 0, while scrolling 62 → 14.
+  **Rule:** no `backdrop-blur-*` on a card in the page's flow; it shows nothing and costs every frame.
+- **Public pages waited for Firebase.** `getAuthToken` downloaded Firebase's sign-in code (~130 KB in
+  three files) before every request, even for a visitor who isn't signed in, so a shopper's check on
+  `/t/<code>` waited for it (real visitors: 5.8 s to its main text; locally on slow 4G 4.2 s → 1.1 s).
+  With no saved token it now answers "nobody" at once (signing in and signing up save the token before
+  their first request; tested in `auth-token.test.ts`).
+- **Green's page jumped** (0.39; real visitors 0.21): the Green Pass card and the line under the
+  banner appeared only when the numbers came. Their space is now held while loading (a placeholder
+  399 px on phones, 252 px from `sm`). The Pass card's lean under the mouse writes its style directly
+  instead of a re-render per pointer move.
+- **M173's stops** (fixed in the commit before): a pallet scanned unit by unit is one stop (same batch,
+  stage and place within 10 minutes), staff see the newest 80 stops, the team list names everyone.
+- **Looked at, left alone:** Relief's emergency banner pushes the page when it arrives (0.08 to 0.23;
+  only during an emergency, and it should be seen); the Planner's loading placeholder (0.08, under the
+  0.1 people notice); Attendance's few scroll stalls (no script, no blur, same drawing load as Grades,
+  which is smooth). A globe-rests-the-scene idea was tried and dropped: the in-app globes draw on the
+  page (`interactive`), and the landing shows the hub's globe in its preview.
+- **Tools used** (not committed): a frame meter and a layout-shift finder written for this check; the
+  crawl and `browser-session.mjs` from `scripts/`.
+
+## M178: the Planner and Attendance, and a security review (the owner, 13 Nov 2026: "do this and check what else problems or errors or any security problems")
+
+- **Attendance stalled while scrolling** (4 to 5 slow frames a scroll, no script, no blur). Found by
+  switching things off one at a time in a browser trace: the M9 hover glow. Every `.panel` / `.card`
+  faded its edge and shadow (320 ms), and a fading shadow repaints the whole card each frame; the
+  1,600 px card holding the table did that whenever it passed under a still mouse. Plain cards now
+  change edge and shadow at once; pressable cards (`a` / `button` cards, `.card-hover`) keep the fade
+  (`globals.css`, M9 block). Attendance: drawing 794 → 206 ms a scroll, stalls 4 → 0.
+  **Tried and dropped:** holding the glow while `<html data-scrolling>` is set: the attribute turns on
+  and off with every scroll, and each switch repainted the card: 4× worse. **Rule:** never transition
+  `box-shadow` (or a border colour) on a container that can be tall; change it at once.
+- **The Planner's jump** (0.08): "This week" (`SmartWeek`) grew from a 240 px placeholder to its
+  real height. The placeholder and the loaded week share `md:min-h-80`, so a usual week (up to about
+  three sessions a day) arrives without moving anything; the demo student's very busy week still
+  grows (0.05, under the 0.1 people notice). A fixed height with scrolling days was rejected: it
+  would hide sessions in busy weeks.
+- **Security review** (the security-review checklist, the project's rules): no secrets in the code
+  (matches are labels and test values); every raw SQL query binds what comes from a request (the
+  values written into the text are table names, counts and fixed ranges); the 15 raw HTML insertions
+  are the app's own scripts, KaTeX (`trust: false`), escaped sheet cells and a CV whose colour is
+  checked (`safeColour`); sign-in redirects only to this site's paths; uploads check who, size and
+  type; headers (CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`, referrer and permissions policies)
+  and no CORS on the API; limits per person and address on every API call (300 a minute; costly 20,
+  sign-in steps 10); `pnpm audit --prod`: one low advisory in a build-time tool, no fix released.
+  M173: a team member of one brand is a buyer on another's units; brands see names, never emails.
+  **Hardened:** a shopper's check read every stop of a batch, and stops can be recorded from public
+  links (a driver's key), so it now reads the newest 200 (`scan` in `trace.ts`).
+- **Live errors:** nothing new since 10 Nov.
+- **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
+  Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).

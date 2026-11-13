@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { Journey } from '@/components/live/Journey';
 import { DppCard } from '@/components/trace/DppCard';
 import type { Dpp } from '@/lib/dpp';
+import { StaffView, type StaffAnswer } from './Staff';
 
 // The product passport (UniVerse Trace): what anyone sees after scanning the code on a product. A
 // big seal says whether it's genuine, then the product's story, where it has been, and (for shops
@@ -24,7 +25,9 @@ interface Passport {
   result: Verdict;
   code: string; serial: number;
   brand: { name: string; logoUrl: string | null; slug?: string | null };
-  product: { name: string; category: string | null; description: string | null; story: string | null; imageUrl: string | null; warrantyMonths: number; rewardPoints: number };
+  product: { name: string; category: string | null; description: string | null; story: string | null; imageUrl: string | null; warrantyMonths: number; rewardPoints: number; price?: number; currency?: string | null };
+  /** M173: where and when this check happened. */
+  here?: { place: string | null; at: string };
   batch: { label: string; origin: string | null; madeAt: string | null; quantity: number };
   journey: { stage: string; place: string | null; createdAt: string }[];
   scans: number; firstScanAt: string | null; firstPlace: string | null;
@@ -47,6 +50,8 @@ interface Passport {
 type TakeBack = { how: string | null; points: number; status: string | null; at: string | null; yours: boolean; dropCode: string | null };
 type Repair = { by: string; what: string; parts: string | null; createdAt: string };
 type Answer = Passport | { result: 'UNKNOWN' };
+/** M173: the key in a driver's shipment link (/carry/<key>), kept by that page, so their scans get the driver's view. */
+const carrierKey = () => { try { return localStorage.getItem('uv-carry-key'); } catch { return null; } };
 
 const SEAL: Record<Verdict | 'UNKNOWN', { title: string; tone: string; icon: typeof ShieldCheck }> = {
   FIRST: { title: 'Genuine', tone: 'is-good', icon: ShieldCheck },
@@ -67,7 +72,10 @@ async function here(): Promise<{ lat: number; lng: number } | null> {
 export default function View() {
   const code = usePathParams('/t/[code]')?.code;
   const signedIn = useAuthStore((s) => !!s.user);
-  const [data, setData] = useState<Answer | null>(null);
+  const [answer, setData] = useState<Answer | StaffAnswer | null>(null);
+  // M173: the brand's people and its supply-chain team get their own view (Staff.tsx).
+  const staff = answer?.result === 'STAFF' ? answer : null;
+  const data = answer?.result === 'STAFF' ? null : answer;
   const [failed, setFailed] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [earned, setEarned] = useState<{ points: number; balance: number; tier?: { label: string; multiplier: number; next: { label: string; need: number } | null } } | null>(null);
@@ -75,17 +83,18 @@ export default function View() {
   useEffect(() => {
     if (!code) return;
     let cancelled = false;
-    const key = `trace-seen:${code.toUpperCase().replace(/-/g, '')}`;
+    const seen = `trace-seen:${code.toUpperCase().replace(/-/g, '')}`;
     void (async () => {
       let again = false;
-      try { again = !!localStorage.getItem(key); } catch { /* private mode */ }
+      try { again = !!localStorage.getItem(seen); } catch { /* private mode */ }
       const pos = await here();
       try {
-        const res = await api.post<Answer>(`/trace/scan/${encodeURIComponent(code)}`, { ...pos, again });
+        const key = carrierKey();
+        const res = await api.post<Answer | StaffAnswer>(`/trace/scan/${encodeURIComponent(code)}`, { ...pos, again, ...(key && { key }) });
         if (cancelled) return;
         // A prize's claim code is shown once, on the winning check: this browser keeps it for later visits.
         const d = res.data;
-        if (d.result !== 'UNKNOWN' && d.win) {
+        if (d.result !== 'UNKNOWN' && d.result !== 'STAFF' && d.win) {
           try {
             const wkey = `trace-win:${code.toUpperCase().replace(/-/g, '')}`;
             if (d.win.claimCode) localStorage.setItem(wkey, d.win.claimCode);
@@ -93,7 +102,7 @@ export default function View() {
           } catch { /* private mode */ }
         }
         setData(d);
-        if (d.result !== 'UNKNOWN') { try { localStorage.setItem(key, '1'); } catch { /* private mode */ } }
+        if (d.result !== 'UNKNOWN' && d.result !== 'STAFF') { try { localStorage.setItem(seen, '1'); } catch { /* private mode */ } }
       } catch { if (!cancelled) setFailed(true); }
     })();
     return () => { cancelled = true; };
@@ -115,16 +124,17 @@ export default function View() {
       <div className="relative max-w-xl mx-auto px-4 sm:px-6 py-6 sm:py-10">
         <header className="flex items-center justify-between gap-3">
           <span className="inline-flex items-center gap-2 min-w-0">
-            {data && 'brand' in data && data.brand.logoUrl
+            {answer && 'brand' in answer && answer.brand.logoUrl
               // eslint-disable-next-line @next/next/no-img-element -- the brand's own logo address
-              ? <img src={data.brand.logoUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
+              ? <img src={answer.brand.logoUrl} alt="" className="w-7 h-7 rounded-lg object-cover" />
               : <LogoMark className="w-7 h-7" />}
-            <span className="font-semibold truncate">{data && 'brand' in data ? data.brand.name : 'UniVerse Trace'}</span>
+            <span className="font-semibold truncate">{answer && 'brand' in answer ? answer.brand.name : 'UniVerse Trace'}</span>
           </span>
-          <span className="passport-pill">Product passport</span>
+          <span className="passport-pill">{staff ? 'Supply chain' : 'Product passport'}</span>
         </header>
 
-        {!data && !failed && (
+        {staff && code && <StaffView data={staff} code={code} carrierKey={carrierKey()} />}
+        {!answer && !failed && (
           <div className="mt-24 flex flex-col items-center text-center gap-3" role="status">
             <Loader2 className="w-8 h-8 animate-spin text-pink-300" />
             <p className="text-zinc-300">Checking this product…</p>
@@ -164,6 +174,7 @@ export default function View() {
                 {data.batch.origin && <Fact k="Made in" v={data.batch.origin} />}
                 {data.batch.madeAt && <Fact k="Made on" v={day(data.batch.madeAt)} />}
                 {data.product.warrantyMonths > 0 && <Fact k="Warranty" v={`${data.product.warrantyMonths} months`} />}
+                {data.product.price !== undefined && <Fact k="Price" v={new Intl.NumberFormat(undefined, { style: 'currency', currency: data.product.currency ?? 'EUR' }).format(data.product.price)} />}
                 <Fact k="Code" v={data.code} />
               </dl>
             </section>
@@ -183,7 +194,7 @@ export default function View() {
                 ))}
                 <li className="relative ps-5">
                   <span aria-hidden className="absolute -start-[7px] top-0.5 w-3.5 h-3.5 rounded-full bg-[var(--ins-hot)] pp-node" />
-                  <p className="font-semibold">Checked by you<span className="font-normal text-zinc-300"> · just now</span></p>
+                  <p className="font-semibold">Checked by you<span className="font-normal text-zinc-300">{data.here?.place ? <span translate="no"> · {data.here.place}</span> : null} · {data.here ? new Date(data.here.at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' }) : 'just now'}</span></p>
                   <p className="font-mono text-[11px] text-zinc-400">{data.scans <= 1 ? 'the first check of this unit' : `checked ${data.scans} times, first ${data.firstPlace ? `in ${data.firstPlace}` : day(data.firstScanAt)}`}</p>
                 </li>
               </ol>
