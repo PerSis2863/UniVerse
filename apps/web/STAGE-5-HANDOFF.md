@@ -6439,3 +6439,26 @@ sides like i should able to see the border from the left side".
   menu's tooltips). Phones keep the slide-in sheet.
 - **For code that builds on it:** anything placed beside the menu uses `calc(var(--side-w) +
   var(--side-gap))`.
+
+## Asked 13 Nov, not started: M172 (maps) and M173 (Trace across the supply chain)
+
+- **M172**, the owner (a picture of the Relief live map: dots piled on each other, only country names):
+  "can you improve this map and make it detailing", then "and try make everymap in the project more
+  detailed with specific locations where ever it is required". Every world map uses
+  `src/components/trace/map/WorldCanvas.tsx` (countries at 1:110m, 1:50m when zoomed; ~200 names in
+  `cities.ts`; Relief, Trace's market and tracking maps, Green, aid boxes, the landing, World Pin).
+  Ideas: many more place names shown as you zoom (a public-domain or CC-BY list, attribution on the map),
+  sharper coastlines close in (world-atlas 1:10m, loaded only then), each point's place written beside
+  it and a card on hover or tap, clusters with counts at world zoom, Relief's organisations (shelters,
+  food banks) on the map. Keep: Relief positions rounded to ~500 m, Green and Trace to 0.1° (people and
+  shops must not be findable); World Pin (`skipCities`) stays without names (they'd give answers away).
+- **M173**, the owner: "for the trace app… whenever someone scan it the user should get the location,
+  time and other related informations and… when the driver scan it it will get the limited information
+  not the info like price of the product and do this for whole supply chain… where is it required and
+  make the design and ui modern and professional and it should have ultra smooth animations". Start
+  from what exists: shipments and their carrier keys (a password sensors use, never shown to buyers),
+  the tracking map, passports at `/t/<code>` and the scan record (`trace_scans`). Needs: a role per
+  scan (maker, warehouse, driver, shop, buyer), each role's view (a driver: where it's going, handling,
+  no price), the trip as a timeline of checkpoints (place, time, who), access checked on the server.
+- Both are new features during the launch focus (until 5 Dec); the owner asked for them after being
+  told of the pause in earlier items.
