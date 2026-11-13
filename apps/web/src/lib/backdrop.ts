@@ -3,7 +3,8 @@ import { appById, type AppId } from './apps';
 // Each app's own background (M129, the owner, 9 Nov 2026: "remove the river line… a good one for
 // each app… when i switch to any app on the main page the background needs to change"). One canvas
 // behind the page (src/components/AppBackdrop.tsx) shows a slow scene in the app's own colour:
-//   · UniVersity: a night of study: stars joined into constellations, sheets of paper rising;
+//   · UniVersity: a night of study: maths and marking signs drifting up, sheets of paper rising (M171:
+//     in place of the stars joined into constellations, the owner: "not important at all");
 //   · Trace: a dotted globe turning, shipments arcing between places, a ring where each one lands;
 //   · Relief: a map's contour lines drifting, requests for help pulsing, help travelling to them;
 //   · Green: an aurora waving across the top, leaves drifting down, fireflies rising;
@@ -144,12 +145,17 @@ const pageFrame = (c: Ctx, v: View) => c.setTransform(v.s * v.z, 0, 0, v.s * v.z
 
 // ── UniVersity: a night of study ──
 const campus: Make = (v, rnd, hue) => {
-  const n = v.phone ? 70 : 140, near = 0.62;
-  const stars = Array.from({ length: n }, () => ({ x: rnd(), y: rnd(), z: 0.3 + rnd() * 0.7, tw: 0.6 + rnd() * 1.6, ph: rnd() * TAU }));
+  // The signs of a study night: written as if in chalk, each drifting up and turning a little.
+  // Thin maths signs only (no solid stars or ticks): soft, like chalk half wiped away.
+  const SIGNS = ['π', '∑', '√x', '∫', 'x²', 'Δ', '∞', 'λ', 'f(x)', 'θ', 'E=mc²', '∂', 'α', '≈', 'Ω', 'a+b', 'dy/dx', 'sin θ'];
+  const n = v.phone ? 10 : 20;
+  const signs = Array.from({ length: n }, (_, i) => {
+    const z = 0.4 + rnd() * 0.6, size = Math.round((13 + 24 * z) * (v.phone ? 0.85 : 1));
+    return { x: (i + rnd()) / n, y: rnd() * 1.2, z, text: SIGNS[Math.floor(rnd() * SIGNS.length)], font: `italic ${size}px "Instrument Serif", Georgia, serif`, r: (rnd() - 0.5) * 0.5, ph: rnd() * TAU, tw: 0.25 + rnd() * 0.5 };
+  });
   const sheets = v.phone ? 4 : 7;
   const pages = Array.from({ length: sheets }, (_, i) => ({ x: (i + 0.3 + rnd() * 0.4) / sheets, y: rnd() * 1.3, z: 0.45 + rnd() * 0.55, size: 46 + rnd() * 60, r: (rnd() - 0.5) * 0.8, ph: rnd() * TAU }));
   const glows = Array.from({ length: 5 }, () => ({ x: rnd(), y: rnd(), r: 0.06 + rnd() * 0.08, ph: rnd() * TAU, alt: rnd() < 0.4 }));
-  const px = new Float32Array(n), py = new Float32Array(n), edge = new Float32Array(n);
   return {
     soft(c, t, a) {
       wash(c, v, t, a, hue, [0.15, 0.2, 0.85, 0.85]);
@@ -157,44 +163,18 @@ const campus: Make = (v, rnd, hue) => {
       for (const g of glows) pool(c, g.x * v.w, wrap(g.y - t * 0.006, 1.2) * v.h - 0.1 * v.h, g.r * big, g.alt ? hue.alt : hue.base, (v.dark ? 0.22 : 0.12) * a * (0.6 + 0.4 * Math.sin(t * 0.3 + g.ph)));
     },
     sharp(c, t, a) {
-      const line = ink(hue.base, v.dark), star = v.dark ? mix(hue.base, WHITE, 0.75) : mix(hue.base, INK, 0.35);
-      const D = v.phone ? 95 : 140, fadeAt = v.h * 0.08;
-      for (let i = 0; i < n; i++) {
-        const s = stars[i];
-        px[i] = wrap(s.x + Math.sin(t * 0.02 + s.ph) * 0.01, 1) * v.w;
-        py[i] = wrap(s.y - t * 0.005 * s.z, 1) * v.h;
-        edge[i] = Math.min(1, py[i] / fadeAt, (v.h - py[i]) / fadeAt);
-      }
-      // Constellations: the nearer stars joined to their neighbours.
-      c.strokeStyle = rgb(line);
-      c.lineWidth = 0.8;
-      for (let i = 0; i < n; i++) {
-        if (stars[i].z < near) continue;
-        for (let j = i + 1; j < n; j++) {
-          if (stars[j].z < near) continue;
-          const dx = px[i] - px[j], dy = py[i] - py[j], d2 = dx * dx + dy * dy;
-          if (d2 > D * D) continue;
-          c.globalAlpha = a * 0.34 * (1 - Math.sqrt(d2) / D) * Math.min(edge[i], edge[j]);
-          c.beginPath();
-          c.moveTo(px[i], py[i]);
-          c.lineTo(px[j], py[j]);
-          c.stroke();
-        }
-      }
-      c.fillStyle = rgb(star);
-      c.strokeStyle = rgb(star);
-      for (let i = 0; i < n; i++) {
-        const s = stars[i], r = 0.5 + s.z * 1.3;
-        c.globalAlpha = a * edge[i] * s.z * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph)));
-        c.fillRect(px[i] - r / 2, py[i] - r / 2, r, r);
-        if (s.z > 0.88) { // the brightest ones sparkle
-          const k = 3 + 4 * s.z;
-          c.lineWidth = 0.6;
-          c.beginPath();
-          c.moveTo(px[i] - k, py[i]); c.lineTo(px[i] + k, py[i]);
-          c.moveTo(px[i], py[i] - k); c.lineTo(px[i], py[i] + k);
-          c.stroke();
-        }
+      const line = ink(hue.base, v.dark), chalk = v.dark ? mix(hue.base, WHITE, 0.7) : mix(hue.base, INK, 0.35);
+      const fadeAt = v.h * 0.12;
+      c.textAlign = 'center';
+      c.textBaseline = 'middle';
+      c.fillStyle = rgb(chalk);
+      for (const g of signs) {
+        const x = (g.x + 0.012 * Math.sin(t * 0.05 + g.ph)) * v.w, y = (wrap(g.y - t * 0.006 * (0.4 + g.z), 1.2) - 0.1) * v.h;
+        const edge = Math.max(0, Math.min(1, y / fadeAt, (v.h - y) / fadeAt));
+        if (!edge) continue;
+        c.globalAlpha = a * edge * g.z * (v.dark ? 0.26 : 0.22) * (0.75 + 0.25 * Math.sin(t * g.tw + g.ph));
+        c.font = g.font;
+        turned(c, v, x, y, g.r + 0.12 * Math.sin(t * 0.07 + g.ph), () => c.fillText(g.text, 0, 0));
       }
       // Sheets of paper rising slowly, swaying a little.
       c.lineWidth = 1;

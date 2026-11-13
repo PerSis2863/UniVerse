@@ -19,7 +19,7 @@ import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, PASS_TIERS, co2For, greenPass, type Feeling, type GreenKind } from '@/lib/green';
 import { useAuthStore } from '@/store/auth';
 import { LiveCard } from '@/components/live/LiveCard';
-import { Constellation } from '@/components/live/Constellation';
+import { Tracks } from '@/components/live/Tracks';
 import { Heartbeat } from '@/components/live/Heartbeat';
 import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
@@ -224,11 +224,15 @@ export function GreenApp() {
 
       {t && t.actions > 0 && (
         // M48: what you did, by kind, around you; the community's total underneath.
-        <LiveCard title="Your climate constellation" sub="Each point is an action you logged"
+        <LiveCard title="Your climate actions" sub="What each kind of action saved, and how often you did it"
           stats={[{ label: 'Actions', value: fmt(t.actions) }, { label: 'CO₂ saved', value: `${fmt(t.kg)} kg` }, { label: 'Everyone', value: `${fmt(data!.community.kg)} kg` }]}
           ticker={data!.recent.slice(0, 6).map((a) => `${GREEN_FACTORS[a.kind]?.label ?? a.kind}: −${fmt(a.co2Kg)} kg CO₂${a.place ? ` · ${a.place}` : ''}`)}>
-          <Constellation className="h-[260px] md:h-[300px]" label="Your climate actions by kind"
-            groups={GREEN_KINDS.filter((k) => t.byKind[k]).map((k) => ({ label: GREEN_FACTORS[k].label, n: t.byKind[k] ?? 0, value: `${fmt(t.kgByKind[k] ?? 0)} kg` }))} />
+          <Tracks label="Your climate actions by kind"
+            tracks={GREEN_KINDS.filter((k) => t.byKind[k]).sort((a, b) => (t.kgByKind[b] ?? 0) - (t.kgByKind[a] ?? 0)).map((k) => ({
+              key: k, label: GREEN_FACTORS[k].label, value: `−${fmt(t.kgByKind[k] ?? 0)} kg`,
+              parts: [{ n: t.kgByKind[k] ?? 0, tone: 'pink' as const, label: 'CO₂ saved' }],
+              detail: `${fmt(t.byKind[k] ?? 0)} ${t.byKind[k] === 1 ? 'action' : 'actions'} · ${t.kg ? Math.round(((t.kgByKind[k] ?? 0) / t.kg) * 100) : 0}% of the CO₂ you saved`,
+            }))} />
           {/* M49: CO₂ saved per day, as a heartbeat. */}
           <div className="mt-3 h-[90px]"><Heartbeat values={data!.perDay.map((d) => d.kg)} label="CO₂ saved per day, last 30 days" /></div>
         </LiveCard>

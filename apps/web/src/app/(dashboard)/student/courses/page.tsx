@@ -117,9 +117,10 @@ function Progress({ stats }: { stats?: { averageGrade: number | null; attendance
             <span className="text-zinc-500">{r.label}</span>
             <span className="font-semibold text-zinc-900 dark:text-white tabular-nums">{r.value === null ? '—' : `${Math.round(r.value)}%`}</span>
           </div>
-          <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.06] overflow-hidden">
+          {/* M171: soft gradients that end in the full colour (the owner: "make the ui and design smooth"). */}
+          <div className="h-2 rounded-full bg-zinc-200/80 dark:bg-white/[0.06] overflow-hidden">
             <div
-              className={cn('h-full rounded-full', r.value === null ? '' : r.value >= 80 ? 'bg-emerald-500' : r.value >= 65 ? 'bg-amber-500' : 'bg-rose-500')}
+              className={cn('h-full rounded-full bg-gradient-to-r', r.value === null ? '' : r.value >= 80 ? 'from-emerald-500/45 to-emerald-400' : r.value >= 65 ? 'from-amber-500/45 to-amber-400' : 'from-rose-500/45 to-rose-400')}
               style={{ width: `${Math.max(0, Math.min(100, r.value ?? 0))}%` }}
             />
           </div>

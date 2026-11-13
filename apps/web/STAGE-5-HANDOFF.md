@@ -6380,3 +6380,30 @@ i can try and test all features and see it". The console's **Fill with sample da
 - **For code that builds on it:** a new sample table needs its ids starting `smp` and its table in
   `clearSample`'s list (before `users` if it points at a person with RESTRICT); a step stays a few big
   `INSERT`s (one request each, under D1's 50 queries).
+
+## M171: The constellation replaced by rows that show the numbers (13 Nov 2026)
+
+The owner (13 Nov): "remove the constellation animation from where is it not important at all and please
+add something else animations which are functional and unique and it shows the details".
+
+- **Tracks** (`src/components/live/Tracks.tsx`, CSS block M171 in `globals.css`) in place of the
+  constellation everywhere it was. A first version drew a row of small marks; the owner, seeing it: "i
+  dont like th design here make the ui and design smooth". Now each row is its name (a code in a small
+  mono chip beside it), its number on the right, an amber note for work due, a **smooth bar** that glides
+  out from the start (its parts side by side in soft gradients, a light on the end; rows 60 ms apart)
+  and a line of detail. The next thing due is a breathing dot at the end of its bar (rests while the
+  page scrolls; Reduce Motion: a fade). A row with a link opens it. `max` says what a full bar means.
+  - Student home "Your courses": the bar is the course average (of 100), "1 due", the next piece due
+    and when, attendance, recent marks. Teacher home: students per class, handed in and still working.
+    Admin "School by department": students and teachers, students a teacher. Green "Your climate
+    actions": CO₂ saved per kind, how often, its share. Console "Everyone": accounts by role. Trace
+    wallet: points per brand, towards a cash-out and past it, what they're worth.
+  - Trap: `TONES` are comma lists ("79,142,247"), so colours are `rgba(var(--c), a)`, never
+    `rgb(var(--c) / a)` (invalid: the bars came out invisible).
+  - `Constellation.tsx` is deleted; the homes' layout titles changed (the card id `orbit` stays, so
+    people's saved layouts keep working).
+- **Course cards** (`student/courses`): the grade and attendance bars are soft gradients ending in
+  their colour, a little taller.
+- **UniVersity's scene behind the page** (`backdrop.ts`, `campus`): the stars joined into constellations
+  are gone; thin maths signs (π, ∑, √x, x², dy/dx…) drift up faintly in a serif italic, like chalk half
+  wiped away, with the sheets of paper as before. Fewer things drawn than the stars and their lines.

@@ -2979,3 +2979,26 @@ table[data-arr-table] > colgroup { display: none; }
 [data-arr-div="top"] > [data-arr-edge] { border-top-width: 0 !important; }
 [data-arr-div="bottom"] > :last-child { border-bottom: 1px solid var(--hairline); }
 [data-arr-div="bottom"] > [data-arr-edge] { border-bottom-width: 0 !important; }
+
+/* M171 · Tracks (src/components/live/Tracks.tsx), in place of the constellation: a smooth bar per course,
+   class, department, kind or brand. The bar glides out from the start (rows 60 ms apart), its parts side
+   by side in soft gradients with a light on the end; the next thing due breathes at the end of its bar
+   (rests while the page scrolls). Transform and opacity only; Reduce Motion: a fade. */
+.tracks-track { position: relative; display: block; height: 8px; border-radius: 999px; background: rgb(255 255 255 / 0.07); }
+.tracks-fill { position: absolute; inset-block: 0; inset-inline-start: 0; display: flex; gap: 2px; transform-origin: left center; animation: tracks-grow 900ms var(--ease-glide) backwards; animation-delay: calc(120ms + var(--r, 0) * 60ms); }
+[dir="rtl"] .tracks-fill { transform-origin: right center; }
+.tracks-fill > span { min-inline-size: 3px; background: linear-gradient(90deg, rgba(var(--c), 0.5), rgb(var(--c))); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.tracks-fill > span:first-child { border-start-start-radius: 999px; border-end-start-radius: 999px; }
+.tracks-fill > span:last-child { border-start-end-radius: 999px; border-end-end-radius: 999px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 4px 0 14px rgba(var(--c), 0.5); }
+.tracks-next { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 999px; background: #fde68a; box-shadow: 0 0 0 3px rgb(253 230 138 / 0.18); animation: tracks-arrive 400ms var(--ease-glide) backwards; animation-delay: calc(700ms + var(--r, 0) * 60ms); }
+[dir="rtl"] .tracks-next { margin: -6px -6px 0 0; }
+.tracks-next::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 1.5px solid rgb(253 230 138 / 0.8); animation: tracks-breathe 2.4s var(--ease-out-soft) 1.2s infinite backwards; }
+@keyframes tracks-grow { from { transform: scaleX(0); } }
+@keyframes tracks-arrive { from { opacity: 0; transform: scale(0.85); } }
+@keyframes tracks-breathe { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.8); } }
+html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .tracks-fill, .tracks-next { animation-name: tracks-fade; }
+  .tracks-next::after { animation: none; opacity: 0.5; }
+}
+@keyframes tracks-fade { from { opacity: 0; } }

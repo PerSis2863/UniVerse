@@ -3,14 +3,14 @@
 import { formatDistanceToNowStrict } from 'date-fns';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Radar, type Blip } from '@/components/live/Radar';
-import { Constellation } from '@/components/live/Constellation';
+import { Tracks } from '@/components/live/Tracks';
 import { Heartbeat } from '@/components/live/Heartbeat';
 import { PulseGrid } from '@/components/live/PulseGrid';
 import { fmt } from '@/lib/instruments';
 import type { Pulse } from '@/server/pulse';
 
 // The owner console's live cards (M49): who is here now on a radar, everyone by role as a
-// constellation (Overview), and the app's heartbeat with a pulse grid of activity (the live board).
+// role rows (Overview; M171, the constellation before), and the app's heartbeat with a pulse grid of activity (the live board).
 // From what the console already loads.
 
 const ROLE_NAME: Record<string, string> = { STUDENT: 'Students', TEACHER: 'Teachers', ADMIN: 'Admins', IT_SUPPORT: 'IT support', OWNER: 'Owner', PARENT: 'Parents', GUARDIAN: 'Guardians' };
@@ -34,11 +34,14 @@ export function PeopleNow({ online, signIns, newUsers, recent }: {
 }
 
 export function Everyone({ roles }: { roles: Record<string, number> }) {
-  const groups = Object.entries(roles).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]).map(([r, n]) => ({ label: ROLE_NAME[r] ?? r, n, value: fmt(n) }));
-  const total = groups.reduce((a, g) => a + g.n, 0);
+  const groups = Object.entries(roles).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1]);
+  const total = groups.reduce((a, [, n]) => a + n, 0);
   return (
     <LiveCard title="Everyone" sub="Every account, by role" stats={[{ label: 'Accounts', value: fmt(total) }]}>
-      <Constellation groups={groups} center="U" label="Every account by role" className="h-[260px]" />
+      <Tracks label="Every account by role" tracks={groups.map(([r, n]) => ({
+        key: r, label: ROLE_NAME[r] ?? r, value: fmt(n), parts: [{ n, tone: 'pink' as const, label: 'Accounts' }],
+        detail: `${total ? Math.round((n / total) * 100) : 0}% of all accounts`,
+      }))} />
     </LiveCard>
   );
 }
