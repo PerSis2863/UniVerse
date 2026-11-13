@@ -23,6 +23,9 @@ export async function getAuthToken(forceRefresh = false): Promise<string | null>
   }
   if (stored && stored.startsWith('mock-token-')) return stored;
   if (stored && stored.startsWith('ut1.')) return stored; // signed in from an LMS (LTI)
+  // Nobody signed in on this browser (signing in saves the token before any request): don't download
+  // Firebase (~130 KB) just to learn that, which held up every request on public pages (M177).
+  if (!stored) return null;
 
   try {
     const { auth } = await import('./firebase');

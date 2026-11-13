@@ -148,10 +148,11 @@ export function GreenApp() {
             })}
           </dl>
         </div>
-        {data && <p className="relative mt-6 text-xs text-emerald-100/60">Everyone on UniVerse Green: {fmt(data.community.kg)} kg CO₂ saved by {fmt(data.community.people)} people in {fmt(data.community.actions)} actions.</p>}
+        {/* Kept in place while loading so the page doesn't jump when the numbers arrive. */}
+        <p className="relative mt-6 text-xs text-emerald-100/60">{data ? `Everyone on UniVerse Green: ${fmt(data.community.kg)} kg CO₂ saved by ${fmt(data.community.people)} people in ${fmt(data.community.actions)} actions.` : '\u00a0'}</p>
       </section>
 
-      {data && <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} />}
+      {data ? <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} /> : <div aria-hidden className="panel skeleton h-[399px] sm:h-[252px]" />}
 
       {/* Wide screens: the right column ends with the form; teammates' photos scroll inside it. */}
       <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
@@ -344,18 +345,18 @@ function PassSection({ totals, easiest, onTry }: { totals: GreenMe['totals']; ea
   const missing = GREEN_KINDS.filter((k) => !p.stamps.includes(k));
   // A stable member number from the account id (not the id itself).
   const no = useMemo(() => { let h = 2166136261; for (const c of id) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return String(h >>> 0).padStart(10, '0').replace(/(\d{4})(\d{4})(\d{2})/, '$1 $2 $3'); }, [id]);
-  const [tilt, setTilt] = useState({ x: 0, y: 0 });
+  // The card leans towards the mouse: written straight to its style (a re-render per move stuttered).
   const lean = (e: React.PointerEvent<HTMLDivElement>) => {
     if (reduce || e.pointerType !== 'mouse') return;
-    const r = e.currentTarget.getBoundingClientRect();
-    setTilt({ x: ((e.clientY - r.top) / r.height - 0.5) * -8, y: ((e.clientX - r.left) / r.width - 0.5) * 10 });
+    const el = e.currentTarget, r = el.getBoundingClientRect();
+    el.style.transform = `rotateX(${((e.clientY - r.top) / r.height - 0.5) * -8}deg) rotateY(${((e.clientX - r.left) / r.width - 0.5) * 10}deg)`;
   };
   return (
     <section className="panel p-5 grid gap-6 sm:grid-cols-[minmax(0,340px)_1fr] items-center" aria-labelledby="pass-h">
       <div style={{ perspective: 900 }}>
         <div
-          onPointerMove={lean} onPointerLeave={() => setTilt({ x: 0, y: 0 })}
-          style={{ transform: `rotateX(${tilt.x}deg) rotateY(${tilt.y}deg)`, background: 'radial-gradient(90% 120% at 100% 0%, rgba(240,204,138,0.28), transparent 55%), linear-gradient(135deg, #111113 0%, #0d3a33 70%, #0f5a45 100%)' }}
+          onPointerMove={lean} onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}
+          style={{ background: 'radial-gradient(90% 120% at 100% 0%, rgba(240,204,138,0.28), transparent 55%), linear-gradient(135deg, #111113 0%, #0d3a33 70%, #0f5a45 100%)' }}
           className="relative h-[212px] rounded-[22px] p-5 text-white shadow-[0_24px_50px_-24px_rgba(16,185,129,0.6)] ring-1 ring-white/10 overflow-hidden transition-transform duration-200 ease-out"
         >
           <span aria-hidden className="absolute -end-10 -bottom-16 w-48 h-48 rounded-full border border-white/10" />

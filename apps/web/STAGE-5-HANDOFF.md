@@ -6550,3 +6550,39 @@ this for whole supply chain… modern and professional… ultra smooth animation
   "extras only" list, so saving it wiped the product's description, story, picture and points (M146).
 - **Checked:** every role by API (views, refusals, a wrong key, the 10-minute repeat), the driver on a
   phone and a warehouse on a computer in the browser, axe clean.
+
+## M177: a deep check, and smoother everywhere (the owner, 13 Nov 2026: "do deep checking if any problems are there and also make everything ultra smooth")
+
+- **Checked:** the live `error_reports` (nothing new since 10 Nov, nothing fixed came back); real visitors'
+  speed (`web_vitals`, 10% of visits, read-only); `pnpm local:build` and `scripts/crawl.mjs` on it: 208
+  pages as student, teacher, admin and parent, no crash or blank screens, no server errors (the only
+  noise: the read-only demo admin refusing the welcome tour's one-time "already seen" save, and an
+  outside Google script this machine's network blocks); then frames per page (load, at rest, a wheel
+  scroll, a menu page change; the slow frames' scripts from `long-animation-frame`) and layout shifts
+  under slow 4G and a 4× slower processor. Axe clean on the changed pages at 390 and 1280, light and dark.
+- **Cards blurred the moving scene behind them.** Content cards with Tailwind's `backdrop-blur-*` kept
+  the blur on computers (only touch screens dropped it; §8 says no glass on cards), and since M129 an app
+  scene moves behind every page, so each blurred card was blurred again every frame: the homes drew ~35
+  frames a second at rest, Admin → Finances ~30 while scrolling, Trace → Tracking ~24 (its maps' blurred
+  buttons over a moving map). The rule now applies everywhere (`globals.css`, after the "no glass" line;
+  fixed, sticky and absolute bars, sheets and popovers keep theirs). Screenshots before and after match
+  (the cards were near-solid). Across 52 pages: stalls at rest 26 → 0, while scrolling 62 → 14.
+  **Rule:** no `backdrop-blur-*` on a card in the page's flow; it shows nothing and costs every frame.
+- **Public pages waited for Firebase.** `getAuthToken` downloaded Firebase's sign-in code (~130 KB in
+  three files) before every request, even for a visitor who isn't signed in, so a shopper's check on
+  `/t/<code>` waited for it (real visitors: 5.8 s to its main text; locally on slow 4G 4.2 s → 1.1 s).
+  With no saved token it now answers "nobody" at once (signing in and signing up save the token before
+  their first request; tested in `auth-token.test.ts`).
+- **Green's page jumped** (0.39; real visitors 0.21): the Green Pass card and the line under the
+  banner appeared only when the numbers came. Their space is now held while loading (a placeholder
+  399 px on phones, 252 px from `sm`). The Pass card's lean under the mouse writes its style directly
+  instead of a re-render per pointer move.
+- **M173's stops** (fixed in the commit before): a pallet scanned unit by unit is one stop (same batch,
+  stage and place within 10 minutes), staff see the newest 80 stops, the team list names everyone.
+- **Looked at, left alone:** Relief's emergency banner pushes the page when it arrives (0.08 to 0.23;
+  only during an emergency, and it should be seen); the Planner's loading placeholder (0.08, under the
+  0.1 people notice); Attendance's few scroll stalls (no script, no blur, same drawing load as Grades,
+  which is smooth). A globe-rests-the-scene idea was tried and dropped: the in-app globes draw on the
+  page (`interactive`), and the landing shows the hub's globe in its preview.
+- **Tools used** (not committed): a frame meter and a layout-shift finder written for this check; the
+  crawl and `browser-session.mjs` from `scripts/`.
