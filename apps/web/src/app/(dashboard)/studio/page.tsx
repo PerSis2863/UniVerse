@@ -335,6 +335,14 @@ function Tools() {
   const prev = at >= 0 && siblings.length > 1 ? siblings[(at - 1 + siblings.length) % siblings.length] : null;
   const next = at >= 0 && siblings.length > 1 ? siblings[(at + 1) % siblings.length] : null;
   const more = at >= 0 ? [1, 2, 3].map((k) => siblings[(at + k) % siblings.length]).filter((t, k, a) => t && t.id !== panel && a.indexOf(t) === k) : [];
+  // M174: focus mode is the whole window, like an app of its own: the side menu, top bar and
+  // assistant hide (html[data-focus], globals.css) and the page can't scroll behind it.
+  useEffect(() => {
+    if (!focus) return;
+    const root = document.documentElement;
+    root.dataset.focus = 'studio';
+    return () => { delete root.dataset.focus; };
+  }, [focus]);
   // Esc leaves focus mode, then goes back to the list; [ and ] go to the previous and next tool
   // (not while typing, and not when a full-screen view is open).
   useEffect(() => {
@@ -391,7 +399,7 @@ function Tools() {
           <AnimatePresence mode="wait" initial={false}>
             {panel ? (
               <motion.div key={panel} initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave}
-                className={cn('mx-auto space-y-4', focus ? 'fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0b0b0c] p-4 md:p-8' : WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl')}>
+                className={cn('mx-auto space-y-4', focus ? 'studio-focus fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0b0b0c] p-4 md:p-8' : WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl')}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {focus ? <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Focus mode · Esc to leave</span>
                     : <button type="button" onClick={() => open(null)} className="group inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" aria-hidden />Everything in Create</button>}

@@ -193,7 +193,7 @@ export function AIStudyAssistant() {
   if (!isChatbotEnabled || isDismissed) return null;
 
   return (
-    <div className={cn("fixed above-tabbar end-[max(1rem,env(safe-area-inset-right))] lg:end-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
+    <div className={cn("ai-fab fixed above-tabbar end-[max(1rem,env(safe-area-inset-right))] lg:end-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
       <AnimatePresence>
         {!isOpen && (
           <motion.div

@@ -3002,3 +3002,16 @@ html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
   .tracks-next::after { animation: none; opacity: 0.5; }
 }
 @keyframes tracks-fade { from { opacity: 0; } }
+
+/* M174 · Studio's focus mode is the whole window (the owner, 13 Nov: "it should cover the whole window
+   size like a individual app works"). An arranged page (M165) could leave a max-width or size on the
+   tool's box, so it sat centred in the page with the menu beside it: the focus box drops them. While
+   focused (html[data-focus]) the side menu, top bar and assistant hide, nothing around it can trap a
+   fixed box (transform, filter, containment) and the page behind doesn't scroll. It arrives with a fade
+   and a slight settle. */
+.studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; animation: studio-focus-in 260ms var(--ease-glide); }
+@keyframes studio-focus-in { from { opacity: 0; transform: scale(0.985); } }
+html[data-focus] .side-shell, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
+html[data-focus] :is(.side-main, main, .page-stage) { transform: none !important; filter: none !important; contain: none !important; }
+html[data-focus], html[data-focus] body { overflow: hidden; }
+@media (prefers-reduced-motion: reduce) { .studio-focus { animation-name: tracks-fade; } }
