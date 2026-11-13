@@ -37,7 +37,8 @@ const placeOf = (req: Request) => { const { cf } = cfPosition(req); return [cf?.
 export async function staffView(unit: Unit, role: ChainRole, req: Request) {
   const { batch, id, serial } = unit, p = batch.product;
   const [events, brand, code] = await Promise.all([
-    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, take: 80, select: { stage: true, place: true, createdAt: true, role: true, actorId: true } }),
+    // The newest 80 stops (put back in order below): the oldest 80 would hide where it is now.
+    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'desc' }, take: 80, select: { stage: true, place: true, createdAt: true, role: true, actorId: true } }).then((e) => e.reverse()),
     batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true } }) : null,
     prisma.traceCode.findUnique({ where: { id }, select: { scanCount: true } }),
   ]);
@@ -63,8 +64,8 @@ export async function staffView(unit: Unit, role: ChainRole, req: Request) {
 
 /**
  * POST /trace/scan/:code/stop { stage, lat?, lng?, place?, note?, key? }: the scanner records a stop of
- * the unit's batch, if their role may (ROLE_STOPS). The same stop from the same unit within ten minutes
- * is the same stop (a double tap, a second scan). Positions are rounded to 0.1° (no shop or person can
+ * the unit's batch, if their role may (ROLE_STOPS). The same stop of the batch at the same place within ten
+ * minutes is the same stop (a double tap, every unit of a pallet). Positions are rounded to 0.1° (no shop or person can
  * be found); the brand's team sees it live on Tracking.
  */
 export async function recordStop(raw: string, body: Body, user: SessionUser | null, req: Request) {
@@ -74,10 +75,11 @@ export async function recordStop(raw: string, body: Body, user: SessionUser | nu
   const role = await chainRole(batch, user, body.key);
   if (!oneOf(STAGES, body.stage) || !canRecord(role, body.stage)) throw new ForbiddenException(role === 'BUYER' ? 'Only the brand and its supply-chain team record stops.' : 'Your role can’t record that stop.');
   const stage = body.stage;
-  const recent = await prisma.traceEvent.findFirst({ where: { batchId: batch.id, stage, codeId: id, createdAt: { gt: new Date(Date.now() - 10 * 60_000) } }, select: { id: true } });
+  const pos = position(body) ?? cfPosition(req).geo;
+  const at = pos && { lat: Math.round(pos.lat * 10) / 10, lng: Math.round(pos.lng * 10) / 10 };
+  // A stop is the batch's, so scanning each unit of a pallet in one place records it once (not once a unit).
+  const recent = await prisma.traceEvent.findFirst({ where: { batchId: batch.id, stage, lat: at?.lat ?? null, lng: at?.lng ?? null, createdAt: { gt: new Date(Date.now() - 10 * 60_000) } }, select: { id: true } });
   if (!recent) {
-    const pos = position(body) ?? cfPosition(req).geo;
-    const at = pos && { lat: Math.round(pos.lat * 10) / 10, lng: Math.round(pos.lng * 10) / 10 };
     await prisma.traceEvent.create({ data: { batchId: batch.id, brandId: batch.brandId, stage, place: short(body.place, 160) ?? placeOf(req), lat: at?.lat, lng: at?.lng, note: short(body.note, 300), actorId: user?.id ?? null, role, codeId: id } });
     const status = stage === 'SHOP' ? 'DELIVERED' : stage === 'SHIPPED' || stage === 'DISTRIBUTOR' ? 'IN_TRANSIT' : null;
     if (status && batch.status !== status) await prisma.traceBatch.update({ where: { id: batch.id }, data: { status } });
@@ -98,7 +100,7 @@ export async function team(u: SessionUser) {
     prisma.traceHandler.findMany({ where: { brandId: brand.id }, orderBy: { createdAt: 'desc' }, take: 200, select: { id: true, role: true, createdAt: true, userId: true } }),
     prisma.traceHandlerInvite.findMany({ where: { brandId: brand.id }, orderBy: { createdAt: 'desc' }, take: 20, select: { code: true, role: true, uses: true, createdAt: true } }),
   ]);
-  const ids = handlers.map((h) => h.userId).slice(0, 90);
+  const ids = handlers.map((h) => h.userId); // long lists are split for D1 (src/lib/d1-split.ts)
   const people = new Map((ids.length ? await prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }) : []).map((x) => [x.id, x.name]));
   return { handlers: handlers.map((h) => ({ id: h.id, role: h.role, since: h.createdAt, name: people.get(h.userId) ?? 'Someone' })), invites };
 }

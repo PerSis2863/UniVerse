@@ -6536,7 +6536,7 @@ this for whole supply chain… modern and professional… ultra smooth animation
   `route-gates.test.ts`): each role only its own stops (`ROLE_STOPS`: the driver "Picked up", "Handed
   to the distributor", "Delivered to the shop"; the warehouse arrived/left; the shop arrived; the brand
   made/shipped), with the place (the phone's position when allowed, else the network's city), rounded
-  to 0.1°, the time and who; the same stop from the same unit within 10 minutes counts once; the batch's
+  to 0.1°, the time and who; the same stop of the batch at the same place within 10 minutes counts once (a pallet scanned unit by unit is one stop); the batch's
   status follows (in transit, delivered); the brand's team sees Tracking refresh live.
 - **The team:** Brand settings → "Supply chain team": an invite link per role (`/trace?join=<code>`,
   20 at most), the list with remove. Opening a link signed in shows "Join <brand> as a driver" on the
