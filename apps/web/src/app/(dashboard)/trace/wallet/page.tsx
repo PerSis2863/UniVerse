@@ -14,7 +14,7 @@ import { fetcher } from '@/lib/fetcher';
 import { cleanCode } from '@/lib/trace';
 import { cn } from '@/lib/utils';
 import { LiveCard } from '@/components/live/LiveCard';
-import { Constellation } from '@/components/live/Constellation';
+import { Tracks } from '@/components/live/Tracks';
 import { Heartbeat } from '@/components/live/Heartbeat';
 
 // One wallet for everyone (UniVerse Trace): the points a shop, installer or buyer earns from every
@@ -223,7 +223,7 @@ function CashoutForm({ brand, max, onDone }: { brand: WalletBrand; max: number; 
   );
 }
 
-/** M50: the brands you hold points with, around you, and your points over time as a heartbeat. */
+/** M50: the brands you hold points with (a row of marks each since M171), and your points over time as a heartbeat. */
 function WalletLive({ data }: { data: WalletData }) {
   const ordered = [...data.history].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
   const running = ordered.reduce<number[]>((acc, h) => [...acc, (acc.at(-1) ?? 0) + h.points], []);
@@ -231,8 +231,13 @@ function WalletLive({ data }: { data: WalletData }) {
     <LiveCard title="Your points, live" sub="Each brand you hold points with, and how your total grew"
       stats={[{ label: 'Points', value: data.total.toLocaleString() }, { label: 'Brands', value: String(data.balances.length) }]}
       ticker={data.history.slice(0, 6).map((h) => `${h.brand}: ${h.points > 0 ? '+' : ''}${h.points.toLocaleString()} · ${KIND[h.kind]?.label ?? h.kind}`)}>
-      <Constellation className="h-[240px]" label="The brands you hold points with" center="★"
-        groups={data.balances.map((b) => ({ label: b.brand.name, n: Math.max(6, Math.round(Math.sqrt(b.points))), value: `${b.points.toLocaleString()} pts` }))} />
+      <Tracks label="The brands you hold points with" tracks={[...data.balances].sort((a, b) => b.points - a.points).map((b) => {
+        const worth = new Intl.NumberFormat(undefined, { style: 'currency', currency: b.brand.currency || 'EUR' }).format(b.points * b.brand.pointValue);
+        const ready = Math.min(b.points, b.brand.minCashout);
+        return { key: b.brand.id, label: b.brand.name, value: `${b.points.toLocaleString()} pts`,
+          parts: [{ n: ready, tone: 'pink' as const, label: 'Towards a cash-out' }, { n: b.points - ready, tone: 'aqua' as const, label: 'Past it' }],
+          detail: `Worth ${worth} · ${b.points >= b.brand.minCashout ? 'ready to cash out' : `${(b.brand.minCashout - b.points).toLocaleString()} more to cash out`}` };
+      })} />
       {running.length > 1 && <div className="mt-3 h-[80px]"><Heartbeat values={running} label="Your total points over time" /></div>}
     </LiveCard>
   );

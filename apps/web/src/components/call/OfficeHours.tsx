@@ -13,6 +13,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { chime } from '@/lib/call-sounds';
 import { fadeUp, spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Office hours with a queue (Stage 4 · 4.7; src/server/office-hours.ts, the line itself is the call
 // room o_<teacher> in cloudflare/worker.ts). On the Calls page: teachers open and close them and see
@@ -32,9 +33,10 @@ const ordinal = (n: number) => `${n}${n % 100 >= 11 && n % 100 <= 13 ? 'th' : ({
 /** The Calls page card: a teacher's office hours, or a student's teachers' open ones (nothing when none are). */
 export function OfficeHoursCard({ role }: { role?: string }) {
   const teacher = role === 'TEACHER' || role === 'ADMIN';
+  const active = useActivePoll(1) > 0; // (nothing while the tab isn't being used, M169)
   const { data, mutate } = useSWR<TeacherState | StudentState>('/api/office-hours', authedJson, {
     // While open, a teacher sees the line grow; students check now and then (and on coming back).
-    refreshInterval: (d) => (d?.role === 'teacher' && d.open ? 15_000 : 120_000),
+    refreshInterval: (d) => (active ? (d?.role === 'teacher' && d.open ? 15_000 : 120_000) : 0),
   });
   if (!data) return null;
   if (data.role === 'student' || !teacher) return data.role === 'student' ? <StudentOffice open={data.open} /> : null;

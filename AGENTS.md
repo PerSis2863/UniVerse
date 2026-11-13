@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M167 is the latest).
+  builds on it). The newest notes are at the end (M172 is the latest; M176 before it).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,7 +100,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M159** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M167** (M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -149,7 +149,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     ring that rests while scrolling); M157, a sweep for problems (the live error log, a 199-page crawl of the
     built site for three roles, 15 checks): emergencies shown only to the people they concern, a phone
     number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet (10 Nov, the owner's fixes; numbered
+  - **Merged 13 Nov (PR #122; the owner's fixes of 10–13 Nov, numbered
     after PR #121's M158–M159):** M163, the
     sign-in page lined up (the picture shrinks with `zoom`, not pinned to a corner; cards one width; the
     footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
@@ -165,6 +165,16 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     arrangement on my other devices" (off by default) keeps it in the account (`user_arrangements`, 0206).
     M167 (13 Nov): a menu entry dragged onto a page becomes a shortcut there and a link dragged onto the
     menu an entry; a thing held over a card goes inside it; table columns and the header row move.
+  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M168 (13 Nov), smooth resizing (to
+    the pixel, neighbours glide, sizes ease in), put back / undo / redo gliding, carried cards lean, the
+    card light under the mouse restyling one card instead of everything in it. M169: timed refreshes pause
+    while a tab is idle (Relief map, meetings, staff register, office hours, admissions, analytics). M170: the console's
+    sample data covers all five apps (a school, Relief organisations, Trace's repairs and reports, Play
+    scores) and lets the owner in to try them. M171: the constellation replaced by smooth bars that show the
+    real numbers (homes, Green, console, Trace wallet); UniVersity's background drifts study signs. M174: Studio's focus mode is the whole window (an arranged
+    page no longer narrows it). M175: the side menu floats, rounded on every side (`--side-gap`). M176: focus mode
+    grows out of the tool's box and shrinks back into it. M172: every map names ~24,000 more places as you zoom
+    (GeoNames, credited) with 1:10m coastlines close in; Relief's map groups piled-up requests, cards, shelters.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -192,15 +202,21 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
+- **Next up, first** (asked 13 Nov; the owner's words in the handoff's "Asked 13 Nov"): **M173**, Trace
+  across the supply chain: every scan records where, when and who, and each role sees only what it needs
+  (a driver: no price; also maker, warehouse, shop, buyer), modern and professional with smooth motion
+  (start from the shipments, carrier keys and `/t/<code>`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M168**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M177** (M173 is kept for the ask under "Next up"). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
-- **[owner]:** to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
+- **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
+  which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
+  to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
   → Project API key) in Cloudflare (universe-web → Settings → build variables) and redeploy (M137); decide whether the spending guard should still pause the whole site at 90% of the
   included CPU (27 M ms; past 30 M it costs $0.02 per extra million ms, M120); to take Relief text requests, open a Twilio account (paid per message), set
   `TWILIO_AUTH_TOKEN` in Cloudflare and turn on "Relief text requests" (console → Server); for emergency
@@ -400,7 +416,7 @@ cards glow under the mouse
 (`.sheen`); opt a part out with `data-no-motion`. Decorative loops pause while the page scrolls
 (`html[data-scrolling]`, M97): add new ones to that list, never ending the selector in `*` or `> *` (that
 restyles the whole page, M98); never animate a custom property, `filter` or `background` (they repaint
-every frame). Rules: motion has a job (arriving, changing,
+every frame); a custom property written often is registered with `inherits: false` (`@property`, M168). Rules: motion has a job (arriving, changing,
 answering a tap) and never makes anyone wait; nothing animated on things used many times a day;
 ease-out for arrivals with the project's curves (`--ease-glide`, `--ease-ios`, `--ease-out-soft`,
 `spring`); UI motion under 300 ms, exits faster than entrances; nothing grows from scale 0 (start

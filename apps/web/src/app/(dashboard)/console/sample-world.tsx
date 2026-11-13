@@ -11,10 +11,11 @@ import { cn } from '@/lib/utils';
 import { card, errorMessage, fetcher } from './shared';
 
 // "Sample data" on the console's Overview (src/server/sample-world.ts): fills the app with a made-up
-// world (300 people and their activity, 20 brands with thousands of scans, Relief and Green) one step
+// world (300 people and their activity, a school with 12 courses, 20 brands with thousands of scans,
+// Relief posts and organisations, Green, Play scores; M170) one step
 // per request, with a progress bar, and removes exactly that data again.
 
-type Status = { people: number; brands: number; scans: number; relief: number; green: number; steps: string[] };
+type Status = { people: number; brands: number; scans: number; relief: number; green: number; courses?: number; orgs?: number; scores?: number; steps: string[] };
 
 export function SampleWorldCard() {
   const { data: s, mutate } = useSWR<Status>('/owner/sample-world', fetcher);
@@ -64,8 +65,9 @@ export function SampleWorldCard() {
           <h2 id="sample-world" className="text-sm font-semibold text-zinc-900 dark:text-white">Sample data</h2>
           <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
             {filled
-              ? `In now: ${fmt(s.people)} sample people, ${s.brands} brands, ${fmt(s.scans)} scans, ${fmt(s.relief)} Relief posts, ${fmt(s.green)} Green actions.`
-              : 'Fill every app and every console section with a made-up world, to see how it looks busy. You can remove it again in one click.'}
+              ? `In now: ${fmt(s.people)} sample people, ${s.courses ?? 0} courses, ${s.brands} brands, ${fmt(s.scans)} scans, ${fmt(s.relief)} Relief posts, ${s.orgs ?? 0} Relief organisations, ${fmt(s.green)} Green actions, ${fmt(s.scores ?? 0)} game scores.`
+              : 'Fill all five apps and every console section with a made-up world, to see how it looks busy. You can remove it again in one click.'}
+            {' '}You are let in to try things: a sample brand (when you have none), a Relief organisation, a Green team and Play scores; as a student you join five sample courses, as a teacher you teach two.
           </p>
         </div>
         <div className="flex gap-2">

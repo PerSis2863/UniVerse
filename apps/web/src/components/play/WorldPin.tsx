@@ -126,7 +126,7 @@ export function WorldPin({ seed, startsAt, clock, onProgress, onDone }: GameProp
     <div className="mx-auto w-full">
       <div className="relative">
         <WorldCanvas ref={map} label="World map: tap where the city is" homeBox={WORLD} dark look="satellite" live={answered && !calm} draw={draw}
-          onPoint={(p, kind) => { if (p && kind === 'click') pinAt(p.x, p.y); }} skipCities={HIDE}
+          onPoint={(p, kind) => { if (p && kind === 'click') pinAt(p.x, p.y); }} skipCities={HIDE} places={false}
           className="h-[calc(var(--play-h)-4.5rem)] min-h-80 w-full overflow-hidden rounded-3xl ring-1 ring-black/10 dark:ring-white/10" />
         <div className="pointer-events-none absolute inset-x-0 top-3 flex justify-center px-3">
           <AnimatePresence mode="wait">

@@ -30,7 +30,9 @@ describe('secret box: school payment keys encrypted at rest', () => {
   it('a changed SESSION_SECRET or a tampered value reads as missing, not as garbage', async () => {
     vi.stubEnv('SESSION_SECRET', SECRET);
     const s = await seal('sk_live_x', 'c');
-    expect(await open(s.slice(0, -2) + (s.endsWith('A') ? 'BB' : 'AA'), 'c')).toBeNull();
+    // Change a character in the middle: the last ones can be base64 padding bits that decode the same.
+    const i = Math.floor(s.length / 2);
+    expect(await open(s.slice(0, i) + (s[i] === 'A' ? 'B' : 'A') + s.slice(i + 1), 'c')).toBeNull();
     vi.stubEnv('SESSION_SECRET', SECRET + '-rotated');
     expect(await open(s, 'c')).toBeNull();
   });

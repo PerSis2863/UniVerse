@@ -1517,6 +1517,10 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 /* Cards under the pointer (computers): a soft light follows it and the edge lights up; cards that
    open something lift a little. Set by one pointer listener (scroll-motion.ts), only on cards
    without a background picture of their own. */
+/* M168: the light's position is the card's alone (not passed down to everything inside it), so moving
+   the mouse restyles one card a frame instead of every element in it. */
+@property --mx { syntax: '<length>'; inherits: false; initial-value: -999px; }
+@property --my { syntax: '<length>'; inherits: false; initial-value: -999px; }
 .sheen {
   background-image: radial-gradient(420px circle at var(--mx, -999px) var(--my, -999px), rgb(82 82 91 / 0.13), transparent 62%);
   box-shadow: inset 0 0 0 1px rgb(82 82 91 / 0.22), var(--card-shadow, 0 0 #0000);
@@ -2951,7 +2955,12 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
 html[data-arr-busy] #main :is(iframe, canvas, video) { pointer-events: none; }
 html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !important; user-select: none !important; }
 #main .arr-drag { position: relative; z-index: 60; cursor: grabbing !important; box-shadow: 0 22px 44px -14px rgb(0 0 0 / 0.4); will-change: transform; transition: none !important; pointer-events: none; }
-#main .arr-size { transition: none !important; }
+/* M168 · a card being resized sits above its neighbours (it may overlap one until the grid makes room)
+   and the resize cursor stays on wherever the hand goes. */
+#main .arr-size { transition: none !important; z-index: 30; will-change: width, height; transform: none !important; }
+html[data-arr-resize="x"], html[data-arr-resize="x"] * { cursor: ew-resize !important; }
+html[data-arr-resize="y"], html[data-arr-resize="y"] * { cursor: ns-resize !important; }
+html[data-arr-resize="xy"], html[data-arr-resize="xy"] * { cursor: nwse-resize !important; }
 /* M167 · a column carried by its heading (its cells move as one, above the others); the thing left behind
    while a likeness of it is carried over the side menu (or the page); a thing drawn inside a card. */
 .arr-cell { position: relative; z-index: 60; background: var(--surface); will-change: transform; transition: none !important; pointer-events: none; }
@@ -2970,3 +2979,71 @@ table[data-arr-table] > colgroup { display: none; }
 [data-arr-div="top"] > [data-arr-edge] { border-top-width: 0 !important; }
 [data-arr-div="bottom"] > :last-child { border-bottom: 1px solid var(--hairline); }
 [data-arr-div="bottom"] > [data-arr-edge] { border-bottom-width: 0 !important; }
+
+/* M171 · Tracks (src/components/live/Tracks.tsx), in place of the constellation: a smooth bar per course,
+   class, department, kind or brand. The bar glides out from the start (rows 60 ms apart), its parts side
+   by side in soft gradients with a light on the end; the next thing due breathes at the end of its bar
+   (rests while the page scrolls). Transform and opacity only; Reduce Motion: a fade. */
+.tracks-track { position: relative; display: block; height: 8px; border-radius: 999px; background: rgb(255 255 255 / 0.07); }
+.tracks-fill { position: absolute; inset-block: 0; inset-inline-start: 0; display: flex; gap: 2px; transform-origin: left center; animation: tracks-grow 900ms var(--ease-glide) backwards; animation-delay: calc(120ms + var(--r, 0) * 60ms); }
+[dir="rtl"] .tracks-fill { transform-origin: right center; }
+.tracks-fill > span { min-inline-size: 3px; background: linear-gradient(90deg, rgba(var(--c), 0.5), rgb(var(--c))); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25); }
+.tracks-fill > span:first-child { border-start-start-radius: 999px; border-end-start-radius: 999px; }
+.tracks-fill > span:last-child { border-start-end-radius: 999px; border-end-end-radius: 999px; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.25), 4px 0 14px rgba(var(--c), 0.5); }
+.tracks-next { position: absolute; top: 50%; width: 12px; height: 12px; margin: -6px 0 0 -6px; border-radius: 999px; background: #fde68a; box-shadow: 0 0 0 3px rgb(253 230 138 / 0.18); animation: tracks-arrive 400ms var(--ease-glide) backwards; animation-delay: calc(700ms + var(--r, 0) * 60ms); }
+[dir="rtl"] .tracks-next { margin: -6px -6px 0 0; }
+.tracks-next::after { content: ''; position: absolute; inset: -4px; border-radius: inherit; border: 1.5px solid rgb(253 230 138 / 0.8); animation: tracks-breathe 2.4s var(--ease-out-soft) 1.2s infinite backwards; }
+@keyframes tracks-grow { from { transform: scaleX(0); } }
+@keyframes tracks-arrive { from { opacity: 0; transform: scale(0.85); } }
+@keyframes tracks-breathe { from { opacity: 0.8; transform: scale(0.9); } to { opacity: 0; transform: scale(1.8); } }
+html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) {
+  .tracks-fill, .tracks-next { animation-name: tracks-fade; }
+  .tracks-next::after { animation: none; opacity: 0.5; }
+}
+@keyframes tracks-fade { from { opacity: 0; } }
+
+/* M175 · The side menu floats on computers (the owner, 13 Nov: "make the side bar like the oval corner from
+   all the sides… i should able to see the border from the left side"): 10 px from the window's edges,
+   rounded on every corner, its hairline on every side and a soft shadow; the page keeps the same gap
+   (`--side-gap`, used by DashboardShell, AppSkeleton and the menu's tooltips). Phones keep the slide-in
+   sheet. `:root:root` outranks the older side-menu rules (dark, light, right-to-left). */
+:root { --side-gap: 0px; }
+@media (min-width: 1024px) {
+  :root { --side-gap: 10px; }
+  :root:root .side-shell.glass-sidebar {
+    top: var(--side-gap); bottom: var(--side-gap); inset-inline-start: var(--side-gap);
+    border: 1px solid var(--sidebar-border); border-radius: 22px;
+    box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 14px 34px -20px rgb(0 0 0 / 0.28);
+  }
+  @supports (corner-shape: squircle) { :root:root .side-shell.glass-sidebar { corner-shape: squircle; border-radius: 30px; } }
+}
+
+/* M174 · Studio's focus mode is the whole window (the owner, 13 Nov: "it should cover the whole window
+   size like a individual app works"). An arranged page (M165) could leave a max-width or size on the
+   tool's box, so it sat centred in the page with the menu beside it: the focus box drops them. While
+   focused (html[data-focus]) the side menu, top bar and assistant hide, nothing around it can trap a
+   fixed box (transform, filter, containment) and the page behind doesn't scroll. It arrives with a fade
+   and a slight settle. */
+.studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; }
+html[data-focus] .side-shell, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
+html[data-focus] :is(.side-main, main, .page-stage) { transform: none !important; filter: none !important; contain: none !important; }
+html[data-focus], html[data-focus] body { overflow: hidden; }
+
+/* M176 · Focus mode in and out (the owner, 13 Nov: "when i go in and out of Focus mode it should be ultra
+   smooth animations"). In: the window grows out of the tool's own box (`--fx`/`--fy`: its centre from
+   the window's, `--fs`: its width over the window's, set by the Studio page) and settles on the glide
+   spring; the menu and top bar hide only once it covers them. Out (faster): it shrinks back towards the
+   box and fades, then the box in the page settles in. Transform and opacity only; Reduce Motion: fades. */
+.studio-focus { transform-origin: 50% 50%; animation: studio-focus-in 460ms var(--spring-glide) both; }
+.studio-focus.studio-focus-out { pointer-events: none; animation: studio-focus-out 240ms var(--ease-ios) both; }
+.studio-focus-back { animation: studio-focus-back 280ms var(--ease-glide) both; }
+@keyframes studio-focus-in { from { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } 30% { opacity: 1; } }
+@keyframes studio-focus-out { to { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } }
+@keyframes studio-focus-back { from { opacity: 0; transform: scale(0.985); } }
+html[data-focus] :is(.side-shell, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
+@media (prefers-reduced-motion: reduce) {
+  .studio-focus, .studio-focus-back { animation: tracks-fade 200ms ease both; }
+  .studio-focus.studio-focus-out { animation: studio-fade-out 160ms ease both; }
+}
+@keyframes studio-fade-out { to { opacity: 0; } }

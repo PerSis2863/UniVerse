@@ -21,6 +21,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Parent–teacher meetings for teachers (Stage 5 · B16.3; src/server/parent-meetings.ts): open
 // meeting times (a day, from–to, how long each, video or in a room), see who booked what, join a
@@ -60,7 +61,7 @@ function useMeetingParam() {
 }
 
 export function TeacherMeetings() {
-  const { data, error, isLoading, mutate } = useSWR<Data>(KEY, authedJson, { refreshInterval: 60_000 });
+  const { data, error, isLoading, mutate } = useSWR<Data>(KEY, authedJson, { refreshInterval: useActivePoll(60_000) });
   const [opening, setOpening] = useState(false);
   const [openId, setOpenId] = useMeetingParam();
   const [view, setView] = useState<'upcoming' | 'past'>('upcoming');

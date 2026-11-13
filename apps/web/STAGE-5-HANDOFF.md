@@ -6273,3 +6273,244 @@ table columns and header rows): "Please work on this". No database change (short
   the rows, kept, put back with no traces; axe on each; a phone with shortcuts); `arrange-ui.mjs` and
   `arrange-more-ui.mjs` still pass.
 
+## M168: smooth resizing, and the arranging upgraded (13 Nov 2026)
+
+The owner (13 Nov, after M160–M167 went live): "the resizing is not smooth and animated properly… see
+what else you can improve in the arrangement features and upgrade everything in it", then "make sure
+everything is ultra smooth".
+
+- **Why it wasn't smooth:** a pulled edge moved in steps (widths by 5% of the row or whole grid columns,
+  heights by 8 px), neighbours jumped, nothing eased on letting go; and while pressed, a card's own press
+  effect (it sinks a little) shrank it under the hand.
+- **Resizing now (`resize`, `ease` in `arrange-dom.ts`):** the card follows the hand to the pixel (inline
+  px width and height; in a grid it takes the columns it is nearer to as it goes, drawn above its
+  neighbour meanwhile, `justify-self: start`); a neighbour pushed elsewhere (a row wrapping, a column
+  freed) glides there, from where it was drawn (read before each frame's write; layout positions by
+  `offsetLeft/Top`, so a running glide isn't mistaken for a move); let go, it eases (`ease`: width and
+  height animated, only what changed, `SPRING_GLIDE`, 240 ms) to the size kept: a share of its row in 1%
+  steps (was 5%), its columns, its height to the px. The resize cursor stays on everywhere while
+  pulling (`html[data-arr-resize]`), the card sits above its neighbours and its press effect is off
+  (`.arr-size`). Edges are 18 px wide for a finger (8 px for a mouse).
+- **Eased too:** a double-click on an edge (no page re-read now, `flip`), keyboard resizing, "Put this
+  page back", undo and the new **redo** (Ctrl/⌘+Shift+Z or Ctrl+Y; `redoStack`, cleared by a new
+  change): things glide to their places (`redraw` → `flip`: FLIP of the arranged things on or near the
+  screen, 120 at most).
+- **Carrying:** a card leans up to 2.5° the way it moves and settles level when the hand stops (frames
+  keep coming until it does: `if (tilt) again()`).
+- **Quick notes' dividers (`Splitter`):** the pane is sized directly while dragged (once a frame) and the
+  size is kept once, on letting go; before, every frame re-drew the whole tool and wrote to the device.
+- **Names that hold while a page loads (`steady`):** things are known by their words without numbers,
+  percentages and placeholder dashes ("100%", "—"); and while part of what is kept hasn't found its place
+  (`unmatched`), words changing also make the engine look again, twice a second at most (a page may draw
+  its cards before their numbers arrive; only added or removed elements counted before). Saved names with
+  "%", "—", "–", "·" or "…" written before this are not found again (live since this morning only).
+- **Every page:** the light under the mouse on cards (`.sheen`) had its position passed down to every
+  element inside the card, re-styling all of them on each frame; `@property --mx/--my { inherits: false }`
+  keeps it to the card. Moving the mouse over the student home's cards: style work 321 / 208 ms → 76 /
+  111 ms, slow frames 34 / 10 → 8 / 2 (two runs each, the test browser).
+- **Reduce Motion** (the app's setting or the device's, `calm`): glides and eases are instant, no lean.
+- **Trap for checks:** the test browser has no graphics chip; the student home drops frames by itself when
+  the mouse just moves over it, so compare against that (resizing a tile there cost the same as moving
+  the mouse: 12–23 slow frames in about 44 either way); the Quick notes card resizes with 1 slow frame in
+  about 105.
+- **Tested:** `pnpm check`; `arrange-resize-ui.mjs` (a tile and a card follow the hand to the pixel
+  mid-pull, the neighbour glides, the size eases in, the height to the px, a double-click eases back,
+  undo and redo glide, the divider's pane follows); `arrange-ui`, `arrange-more-ui`, `arrange-cross-ui`.
+
+## M169: CPU and requests for 500 people (13 Nov 2026)
+
+The owner (13 Nov, with the Cloudflare usage card: 11.77k requests, 1.4M CPU ms, 28 Oct–13 Nov): "can
+you reduce cpu time and request… more than 500 people are going to use this for a month… even 500 people
+use it simultaneously".
+
+- **What the numbers say:** about 120 ms of CPU per request (a lean request takes 5–20 ms): the cost is
+  starting code on a fresh copy of the Worker (a few visitors land on fresh copies most of the time;
+  each merge also makes every page's cached copy new). Most of the big savings were already in: pages
+  from Cloudflare's cache (M120), API routes without Next.js (`api-direct.ts`), the busiest calls in
+  plain SQL (`fast-api.ts`), usage tracking batched (one request per 5 minutes at most), speed reports
+  from 1 load in 10, the 15-minute timer checking cheaply before starting anything (`due-check.ts`).
+  The live per-route numbers (`api_timings`) couldn't be read: the Cloudflare tools answered "Service
+  Unavailable" all session. Read them first next time (route, requests, average ms over 7 days).
+- **Requests a person's browser makes:** recorded over 5 page views and a minute idle (`scripts`-free:
+  a Playwright run): one-off requests per page, nothing repeating while the live connection is up (the
+  incoming-call check every 15 s seen locally is the fallback for when it is down: the dev server has
+  no live connection).
+- **Changed:** the screens that still refreshed on a timer whatever the person was doing now pause
+  while the tab isn't being used (`useActivePoll`): Relief's map (every 20 s), parents' and teachers'
+  meetings and the staff register (every minute), office hours, the admissions status page, the admin
+  analytics stream (every 5 s).
+- **Already right for 500 at once:** 300 API calls a minute per person, 6,000 a minute per address (a
+  school's shared Wi-Fi), live updates per person in their own Durable Object (asleep between events).
+- **[owner] The spending guard:** it pauses the whole site at 90% of the included CPU (27M ms). At 500
+  people that can come in the first week of a month, while going past costs about $0.02 a million ms
+  (likely $1–3 a month). Turning pausing off is the secret `CF_GUARD_OFF` (any value; the 70% and 90%
+  emails still come), or a later item can move the pause to a runaway-only ceiling. The owner decides.
+
+
+## M170: Sample data for all five apps (13 Nov 2026)
+
+The owner (13 Nov): "can you also add a lot of sample data in owner console for all the five apps so that
+i can try and test all features and see it". The console's **Fill with sample data** (Overview) now has
+22 steps instead of 14 (`src/server/sample-world.ts`), about 26,000 more rows:
+
+- **UniVersity:** Sample Academy (an `organizations` row owned by the first sample admin; every sample
+  person joins it), 12 published courses (codes `SA-CS101`…: course codes are unique across the site, so
+  the sample's never meet a real school's), two timetable slots each, every sample student in 5 courses,
+  5 assignments a course (3 past, 2 coming, a rubric), 3 quizzes with 5 questions each, ~85% of past work
+  handed in with scores, feedback and grades (each student keeps a level, so report cards differ), quiz
+  answers, two weeks of attendance on each course's days (midnight UTC), course and school-wide news.
+- **Relief:** 10 organisations (shelters with beds, water, food, power, food banks, a clinic…), owners,
+  coordinators and volunteers, 6 supplies each (some low), 4 shifts each with sign-ups, two emergencies
+  going on now with "I'm safe" check-ins, 40 aid boxes with their trip so far, 90 helpers with skills
+  and alerts.
+- **Trace:** owners with resale counts, 260 repairs (by the brand or the owner), take-back on every
+  sample product with 140 requests (most received), 150 fake-label reports.
+- **Play:** 3,200 scores across the 13 games (a quarter from rooms).
+- **The owner is let in** (`sampleSteps(me)`, the route passes the signed-in owner): a sample brand's
+  owner only when they have no brand (one brand per account), coordinator of Riverside Relief Network and
+  a volunteer at Harbour Night Shelter, a member of the first Green team with 24 days of actions (a
+  streak, badges), 3 scores per game; as a student, enrolled in 5 sample courses; as a teacher, teaching
+  the last two. All of it goes with **Remove**: ids `smp…`; courses and announcements are deleted
+  before the people who teach and wrote them (those keys refuse otherwise); enrolments, work, grades,
+  attendance, quizzes and the owner's memberships go with their course, organisation, brand or team.
+- **Tested** against the local database with a throwaway harness (node's built-in SQLite, foreign keys
+  on, plain `INSERT` so nothing was skipped silently): every step in under 0.1 s, no duplicates, and after
+  Remove no `smp…` row left in any table. Pages checked as the demo student: courses, grades, Relief
+  organisations and shifts, Play leaderboards, Green.
+- **For code that builds on it:** a new sample table needs its ids starting `smp` and its table in
+  `clearSample`'s list (before `users` if it points at a person with RESTRICT); a step stays a few big
+  `INSERT`s (one request each, under D1's 50 queries).
+
+## M171: The constellation replaced by rows that show the numbers (13 Nov 2026)
+
+The owner (13 Nov): "remove the constellation animation from where is it not important at all and please
+add something else animations which are functional and unique and it shows the details".
+
+- **Tracks** (`src/components/live/Tracks.tsx`, CSS block M171 in `globals.css`) in place of the
+  constellation everywhere it was. A first version drew a row of small marks; the owner, seeing it: "i
+  dont like th design here make the ui and design smooth". Now each row is its name (a code in a small
+  mono chip beside it), its number on the right, an amber note for work due, a **smooth bar** that glides
+  out from the start (its parts side by side in soft gradients, a light on the end; rows 60 ms apart)
+  and a line of detail. The next thing due is a breathing dot at the end of its bar (rests while the
+  page scrolls; Reduce Motion: a fade). A row with a link opens it. `max` says what a full bar means.
+  - Student home "Your courses": the bar is the course average (of 100), "1 due", the next piece due
+    and when, attendance, recent marks. Teacher home: students per class, handed in and still working.
+    Admin "School by department": students and teachers, students a teacher. Green "Your climate
+    actions": CO₂ saved per kind, how often, its share. Console "Everyone": accounts by role. Trace
+    wallet: points per brand, towards a cash-out and past it, what they're worth.
+  - Trap: `TONES` are comma lists ("79,142,247"), so colours are `rgba(var(--c), a)`, never
+    `rgb(var(--c) / a)` (invalid: the bars came out invisible).
+  - `Constellation.tsx` is deleted; the homes' layout titles changed (the card id `orbit` stays, so
+    people's saved layouts keep working).
+- **Course cards** (`student/courses`): the grade and attendance bars are soft gradients ending in
+  their colour, a little taller.
+- **UniVersity's scene behind the page** (`backdrop.ts`, `campus`): the stars joined into constellations
+  are gone; thin maths signs (π, ∑, √x, x², dy/dx…) drift up faintly in a serif italic, like chalk half
+  wiped away, with the sheets of paper as before. Fewer things drawn than the stars and their lines.
+
+## M174: Studio's focus mode covers the whole window (13 Nov 2026)
+
+The owner (13 Nov, a picture of Quick notes in focus mode on the live site, the menu and the top bar's
+bell still showing, the tool narrower than the window): "the focus mode is not working properly…
+it should cover the whole window size like a individual app works".
+
+- **Cause:** arranging a page (M165) can leave a `max-width` on a group's parent (`arrange-dom.ts`,
+  `entry.maxW`); on Studio that parent is the tool's box, so in focus mode the `fixed inset-0` box kept
+  the width and sat centred (`mx-auto`) with the menu beside it. Locally (no arrangement) it looked fine.
+- **Fix:** the focus box carries `.studio-focus` (globals.css block M174), which drops any inline size,
+  max-width and margin, and arrives with a fade and a slight settle. While focused, `html[data-focus]`
+  (set by the Studio page, removed on leaving or unmounting) hides the side menu, the top bar
+  (`.app-topbar`) and the assistant (`.ai-fab`), stops the page behind from scrolling, and clears any
+  transform, filter or containment on the page's wrappers so nothing can trap the fixed box.
+- **Checked** with a made-up arrangement (a 1,100 px max-width on the box): the box is the full
+  1,440 × 900 window, menu, top bar and assistant hidden; Esc brings them back.
+- **For code that builds on it:** another full-window mode can reuse `html[data-focus]`.
+
+## M175: The side menu floats with rounded corners on every side (13 Nov 2026)
+
+The owner (13 Nov, a picture of the folded menu): "make the side bar like the oval corner from all the
+sides like i should able to see the border from the left side".
+
+- On computers the menu sits 10 px from the window's top, bottom and start edges, rounded on every
+  corner (a squircle where the browser has `corner-shape`), its hairline on every side and a soft
+  shadow, open or folded, light or dark (globals.css block M175, `:root:root .side-shell.glass-sidebar`
+  to outrank the older menu rules). The page keeps the same gap: `--side-gap` (10 px on computers, 0 on
+  phones) is added wherever `--side-w` offsets something (DashboardShell, AppSkeleton, the folded
+  menu's tooltips). Phones keep the slide-in sheet.
+- **For code that builds on it:** anything placed beside the menu uses `calc(var(--side-w) +
+  var(--side-gap))`.
+
+## Asked 13 Nov, not started: M172 (maps) and M173 (Trace across the supply chain)
+
+- **M172**, the owner (a picture of the Relief live map: dots piled on each other, only country names):
+  "can you improve this map and make it detailing", then "and try make everymap in the project more
+  detailed with specific locations where ever it is required". Every world map uses
+  `src/components/trace/map/WorldCanvas.tsx` (countries at 1:110m, 1:50m when zoomed; ~200 names in
+  `cities.ts`; Relief, Trace's market and tracking maps, Green, aid boxes, the landing, World Pin).
+  Ideas: many more place names shown as you zoom (a public-domain or CC-BY list, attribution on the map),
+  sharper coastlines close in (world-atlas 1:10m, loaded only then), each point's place written beside
+  it and a card on hover or tap, clusters with counts at world zoom, Relief's organisations (shelters,
+  food banks) on the map. Keep: Relief positions rounded to ~500 m, Green and Trace to 0.1° (people and
+  shops must not be findable); World Pin (`skipCities`) stays without names (they'd give answers away).
+- **M173**, the owner: "for the trace app… whenever someone scan it the user should get the location,
+  time and other related informations and… when the driver scan it it will get the limited information
+  not the info like price of the product and do this for whole supply chain… where is it required and
+  make the design and ui modern and professional and it should have ultra smooth animations". Start
+  from what exists: shipments and their carrier keys (a password sensors use, never shown to buyers),
+  the tracking map, passports at `/t/<code>` and the scan record (`trace_scans`). Needs: a role per
+  scan (maker, warehouse, driver, shop, buyer), each role's view (a driver: where it's going, handling,
+  no price), the trip as a timeline of checkpoints (place, time, who), access checked on the server.
+- Both are new features during the launch focus (until 5 Dec); the owner asked for them after being
+  told of the pause in earlier items.
+
+## M176: Focus mode in and out, smoothly (13 Nov 2026)
+
+The owner (13 Nov): "when i go in and out of Focus mode it should be ultra smooth animations".
+
+- **In:** the Studio page measures the tool's box before focusing (`--fx`/`--fy`: its centre from the
+  window's, `--fs`: its width over the window's, at least 0.4) and the full-window box grows out of it
+  on the glide spring (460 ms, a hair of overshoot), opaque by 30%. The menu, top bar and assistant
+  hide only once they're covered (`visibility` with a 300 ms delay under `html[data-focus]`).
+- **Out (faster, 240 ms):** Esc, the button or a second press plays `studio-focus-out` (back towards
+  the box, fading); `data-focus` comes off at its start so the page is whole beneath it; at its end the
+  box returns to the page and settles in (`studio-focus-back`, 280 ms). `onAnimationEnd` checks the
+  animation's name and that it's the box's own (children have animations too).
+- Measured: in, 840 → 1,446 → 1,440 px wide; out, 1,440 → 884 px fading, then back in the page. Reduce
+  Motion: fades only. Block M176 in `globals.css`.
+
+## M172: Every map more detailed, the Relief map first (13 Nov 2026)
+
+The owner (13 Nov, a picture of the Relief map: dots piled on each other, only country names): "can you
+improve this map and make it detailing", "try make every map in the project more detailed with specific
+locations where ever it is required", then "please do all these".
+
+- **Every world map** (`WorldCanvas`, so Relief, Trace's market and tracking maps, Green, aid boxes,
+  the landing):
+  - **Towns and cities by zoom:** besides the ~180 curated names (`cities.ts`), `public/geo/places-1.json`
+    (4,249 places of 100,000 people or more) loads the first time a map is zoomed past 4×, and
+    `places-2.json` (19,789 places of 15,000–100,000) past 18×; each place's name shows at a zoom set by
+    its size (`placeZoom` in `engine.ts`), the biggest first, never over another name, at most 260 a
+    picture, smaller places a little fainter. Source: GeoNames (CC BY 4.0) via the all-the-cities 3.1.0
+    package, decoded once by a script (not a dependency), places the curated list already names left
+    out; the licence asks for credit, so "Places © GeoNames" shows on a map whenever one of them is
+    named. Both files are kept out of the offline cache (`geo/**` in `next.config` publicExcludes).
+  - **Sharper coastlines and borders close in:** `public/geo/world-10m.json` (world-atlas 2.0.2, 1:10m,
+    3.6 MB) loads only when the world is drawn big enough (`px > 14`), and back to 1:50m below 10.
+  - World Pin passes `places={false}`: names would give the answers away. Map names are 11 px now.
+- **Relief's live map** (`ReliefApp.tsx`):
+  - Requests that would pile up join into one disc with the count, its ring split by kind (critical,
+    high, medium, low, offers), a pulse when one is critical (`groupNear` in
+    `components/trace/map/cluster.ts`, worked out on screen each frame, so groups split as you zoom;
+    the chosen request always stands alone; none past 60×). Clicking a group flies in until it splits.
+  - A card for what the pointer is on: a request (kind, urgency, people, the place "about 500 m",
+    when, who's helping), a group (how many of each, people waiting, its places) or a shelter. It goes
+    as soon as the map moves.
+  - Shelters, food banks and groups that said how they are (`/relief/places`, the same answer the
+    board below uses) are on the map as a small house, green when open, named close in; clicking one
+    opens its card (beds, water, food, charging, their note, directions).
+  - Close in, each request says its title and, closer, its place under it.
+- **Green's map:** a card per place (CO₂ saved, actions in 90 days, "within about 10 km"), the place
+  and kilograms written beside it close in, a click flies in.
+- **Privacy unchanged:** Relief positions stay rounded to ~500 m, Green and Trace to 0.1°.
+- **Frames:** measured against the code before this item on the same machine: the same (this test
+  machine draws in software; the map is the slow part of the page there either way).

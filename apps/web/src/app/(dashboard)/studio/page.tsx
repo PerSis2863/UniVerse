@@ -1,6 +1,6 @@
 'use client';
 
-import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, useSyncExternalStore, type CSSProperties } from 'react';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
@@ -327,6 +327,20 @@ function Tools() {
   // group, a link to copy, more tools like it, and a text file dropped on it fills its text box.
   const [focusOn, setFocusOn] = useState<string | null>(null);
   const focus = !!panel && focusOn === panel;
+  // M176: focus mode grows out of the tool's own box to fill the window and shrinks back into it
+  // (`--fx`/`--fy`/`--fs`: where the box was and how big, globals.css block M176). Leaving plays the
+  // way out first, then the box returns to the page and settles in.
+  const [leaving, setLeaving] = useState(false);
+  const [back, setBack] = useState(false);
+  const toolBox = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState<{ x: number; y: number; s: number } | null>(null);
+  const enterFocus = () => {
+    const r = toolBox.current?.getBoundingClientRect();
+    const w = window.innerWidth, h = window.innerHeight;
+    setZoom(r ? { x: r.left + r.width / 2 - w / 2, y: Math.max(0, r.top) + Math.min(r.height, h) / 2 - h / 2, s: Math.max(0.4, Math.min(1, r.width / w)) } : null);
+    setLeaving(false); setBack(false); setFocusOn(panel);
+  };
+  const leaveFocus = () => setLeaving(true);
   const [linked, setLinked] = useState(false);
   const [dropping, setDropping] = useState(false);
   const info = panel ? BY_ID.get(panel) : undefined;
@@ -335,6 +349,14 @@ function Tools() {
   const prev = at >= 0 && siblings.length > 1 ? siblings[(at - 1 + siblings.length) % siblings.length] : null;
   const next = at >= 0 && siblings.length > 1 ? siblings[(at + 1) % siblings.length] : null;
   const more = at >= 0 ? [1, 2, 3].map((k) => siblings[(at + k) % siblings.length]).filter((t, k, a) => t && t.id !== panel && a.indexOf(t) === k) : [];
+  // M174: focus mode is the whole window, like an app of its own: the side menu, top bar and
+  // assistant hide (html[data-focus], globals.css) and the page can't scroll behind it.
+  useEffect(() => {
+    if (!focus || leaving) return;
+    const root = document.documentElement;
+    root.dataset.focus = 'studio';
+    return () => { delete root.dataset.focus; };
+  }, [focus, leaving]);
   // Esc leaves focus mode, then goes back to the list; [ and ] go to the previous and next tool
   // (not while typing, and not when a full-screen view is open).
   useEffect(() => {
@@ -342,7 +364,7 @@ function Tools() {
     const key = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement | null;
       if (e.defaultPrevented || document.fullscreenElement || document.querySelector('[aria-modal="true"]') || el?.closest('input, textarea, select, [contenteditable="true"], [role="application"], [role="textbox"]')) return;
-      if (e.key === 'Escape') { if (focus) setFocusOn(null); else router.push('/studio', { scroll: false }); }
+      if (e.key === 'Escape') { if (focus) setLeaving(true); else router.push('/studio', { scroll: false }); }
       else if (e.key === '[' && prev) router.push(`/studio?tool=${prev.id}`, { scroll: false });
       else if (e.key === ']' && next) router.push(`/studio?tool=${next.id}`, { scroll: false });
     };
@@ -390,8 +412,14 @@ function Tools() {
         <div ref={scroller} className="flex-1 p-4 md:p-8 overflow-y-auto">
           <AnimatePresence mode="wait" initial={false}>
             {panel ? (
-              <motion.div key={panel} initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave}
-                className={cn('mx-auto space-y-4', focus ? 'fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0b0b0c] p-4 md:p-8' : WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl')}>
+              <motion.div key={panel} ref={toolBox} initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave}
+                style={focus && zoom ? { '--fx': `${zoom.x}px`, '--fy': `${zoom.y}px`, '--fs': zoom.s } as CSSProperties : undefined}
+                onAnimationEnd={(e) => {
+                  if (e.target !== e.currentTarget) return;
+                  if (e.animationName === 'studio-focus-out') { setLeaving(false); setFocusOn(null); setBack(true); }
+                  else if (e.animationName === 'studio-focus-back') setBack(false);
+                }}
+                className={cn('mx-auto space-y-4', focus ? cn('studio-focus fixed inset-0 z-[70] max-w-none overflow-y-auto bg-[#f0f0f0] dark:bg-[#0b0b0c] p-4 md:p-8', leaving && 'studio-focus-out') : cn(WIDE.has(panel) ? 'max-w-6xl' : 'max-w-4xl', back && 'studio-focus-back'))}>
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {focus ? <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">Focus mode · Esc to leave</span>
                     : <button type="button" onClick={() => open(null)} className="group inline-flex items-center gap-1 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white min-h-11"><ArrowLeft className="w-4 h-4 rtl:rotate-180 transition-transform duration-200 group-hover:-translate-x-0.5 rtl:group-hover:translate-x-0.5" aria-hidden />Everything in Create</button>}
@@ -403,7 +431,7 @@ function Tools() {
                         <button type="button" onClick={() => open(next.id as Panel)} onPointerEnter={() => preload(next.id)} title={`Next: ${next.name} (])`} className="btn-ghost btn-icon"><ChevronRight className="w-4 h-4 rtl:rotate-180" aria-hidden /><span className="sr-only">Next tool: {next.name}</span></button>
                       </nav>
                     )}
-                    {set && <button type="button" onClick={() => setFocusOn(focus ? null : panel)} aria-pressed={focus} className="btn-secondary btn-sm">{focus ? <Minimize2 className="w-3.5 h-3.5" aria-hidden /> : <Expand className="w-3.5 h-3.5" aria-hidden />}{focus ? 'Leave focus' : 'Focus'}</button>}
+                    {set && <button type="button" onClick={() => (focus ? leaveFocus() : enterFocus())} aria-pressed={focus} className="btn-secondary btn-sm">{focus ? <Minimize2 className="w-3.5 h-3.5" aria-hidden /> : <Expand className="w-3.5 h-3.5" aria-hidden />}{focus ? 'Leave focus' : 'Focus'}</button>}
                     {!focus && !special && <button type="button" onClick={() => void copyLink()} className="btn-secondary btn-sm">{linked ? <Check className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-300" aria-hidden /> : <Link2 className="w-3.5 h-3.5" aria-hidden />}<span aria-live="polite">{linked ? 'Link copied' : 'Copy link'}</span></button>}
                     {set && !special && info && <SaveButtons tool={panel} toolName={info.name} current={current} onSaved={setCurrent} />}
                     {info && !special && <StarButton on={stars.includes(panel)} name={info.name} onClick={() => star(panel)} solid />}

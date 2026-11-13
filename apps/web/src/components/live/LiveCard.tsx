@@ -8,7 +8,7 @@ import { useTick } from '@/lib/use-now';
 
 // The deep "live" card (M48, after the "Crew" video's dark panels on a light page): near-black with
 // pink and purple glowing up from below, in both themes, so the moving pictures inside
-// (Constellation, Funnel) read the same everywhere. A live dot, a title, a picture, then a strip of
+// (Tracks, Funnel) read the same everywhere. A live dot, a title, a picture, then a strip of
 // small numbers and a line that changes every few seconds.
 
 export function LiveCard({ title, sub, aside, stats, ticker, children, className }: {

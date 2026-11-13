@@ -2,14 +2,14 @@
 
 import { formatDistanceToNowStrict } from 'date-fns';
 import { useNow } from '@/lib/use-now';
-import { Constellation } from './Constellation';
 import { Countdown, LiveCard } from './LiveCard';
 import { Schedule } from './Schedule';
+import { Tracks } from './Tracks';
 
 // The homes' live cards (M48): the same two moving pictures, fed with what each home already loads
 // (no new requests, so sample mode needs nothing new).
 
-const initials = (name?: string | null) => (name ?? '').split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('') || 'U';
+const many = (n: number, one: string) => `${n.toLocaleString()} ${one}${n === 1 ? '' : 's'}`;
 const pct = (v: number | null | undefined) => (v === null || v === undefined ? '—' : `${Math.round(v)}%`);
 
 /** The next class today ("HH:MM" starts), if one is still to come. */
@@ -22,39 +22,48 @@ function nextStart(starts: string[], now: number): number | null {
 
 interface StudentData {
   stats: { attendance: number | null; averageGrade: number | null; upcoming: number };
-  courses: { code: string; name: string }[];
+  courses: { id?: string; code: string; name: string; attendance?: number | null; averageGrade?: number | null }[];
   schedule: { start: string }[];
   upcoming: { title: string; dueDate: string; course: { code: string } }[];
   recentGrades: { name: string; course: string; percent: number }[];
 }
 
-/** A student at the centre of their courses; each course's points are its work due and marked. */
-export function StudentLive({ data, name }: { data: StudentData; name?: string | null }) {
+/** A student's courses (M171): a mark per piece of work due and marked; the next one due pulses. */
+export function StudentLive({ data }: { data: StudentData; name?: string | null }) {
   const now = useNow();
   const next = nextStart(data.schedule.map((c) => c.start), now);
-  const groups = data.courses.slice(0, 8).map((c) => {
-    const due = data.upcoming.filter((u) => u.course.code === c.code).length;
-    const marked = data.recentGrades.filter((g) => g.course === c.name || g.course === c.code).length;
-    return { label: c.code, n: 6 + 3 * due + 2 * marked, value: due ? `${due} due` : '' };
+  const soonest = [...data.upcoming].sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
+  const tracks = data.courses.slice(0, 8).map((c) => {
+    const due = data.upcoming.filter((u) => u.course.code === c.code).sort((a, b) => a.dueDate.localeCompare(b.dueDate));
+    const marked = data.recentGrades.filter((g) => g.course === c.name || g.course === c.code);
+    const when = due[0] && now ? formatDistanceToNowStrict(new Date(due[0].dueDate), { addSuffix: true }) : '';
+    const detail = [due[0] ? `Next: ${due[0].title}, due ${when}` : 'Nothing due', c.attendance !== null && c.attendance !== undefined ? `attendance ${pct(c.attendance)}` : ''].filter(Boolean).join(' · ');
+    const avg = c.averageGrade ?? null;
+    return {
+      key: c.id ?? c.code, label: c.code, name: c.name, href: c.id ? `/student/courses/${c.id}` : undefined,
+      parts: [{ n: avg ?? 0, tone: 'pink' as const, label: 'Average grade' }],
+      value: avg === null ? '—' : pct(avg), badge: due.length ? `${due.length} due` : undefined,
+      next: !!due[0] && due[0] === soonest, detail: marked.length ? `${detail} · ${many(marked.length, 'mark')} lately` : detail,
+    };
   });
   const ticker = [
     ...data.upcoming.slice(0, 4).map((u) => `${u.title} · ${u.course.code} · due ${formatDistanceToNowStrict(new Date(u.dueDate), { addSuffix: true })}`),
     ...data.recentGrades.slice(0, 3).map((g) => `${g.name}: ${g.percent}%`),
   ];
   return (
-    <LiveCard title="Your constellation" sub="Your courses, with the work due and marked in each"
+    <LiveCard title="Your courses" sub="Your average in each, what’s due next and your attendance. Open a course from its row."
       aside={next ? <Countdown to={next} label="Next class" /> : undefined}
       stats={[{ label: 'Attendance', value: pct(data.stats.attendance) }, { label: 'Average', value: pct(data.stats.averageGrade) }, { label: 'Due soon', value: String(data.stats.upcoming) }]}
       ticker={ticker.length ? ticker : ['Nothing due right now']}>
-      {groups.length ? <Constellation groups={groups} center={initials(name)} label="Your courses around you" className="h-[280px] md:h-[320px]" />
+      {tracks.length ? <Tracks tracks={tracks} max={100} label="Your courses: average grade, work due, attendance" />
         : <p className="py-16 text-center text-sm text-white/70">Your courses appear here once you’re enrolled.</p>}
     </LiveCard>
   );
 }
 
-/** A teacher's classes around them; each class's points are its students. */
-export function TeacherLive({ courses, recent, pending, avg, name }: {
-  courses: { code: string; students: number }[];
+/** A teacher's classes (M171): a mark per student, lit for the share of work handed in. */
+export function TeacherLive({ courses, recent, pending, avg }: {
+  courses: { id?: string; code: string; name?: string; students: number; completion?: number }[];
   recent: { name: string; course: string; score: number }[];
   pending: number;
   avg: number;
@@ -62,21 +71,30 @@ export function TeacherLive({ courses, recent, pending, avg, name }: {
 }) {
   const total = courses.reduce((a, c) => a + c.students, 0);
   return (
-    <LiveCard title="Your classes, live" sub="Each point is a student"
+    <LiveCard title="Your classes, live" sub="Students in each class, and how many have handed their work in"
       stats={[{ label: 'Students', value: total.toLocaleString() }, { label: 'To grade', value: String(pending) }, { label: 'Average', value: `${avg}%` }]}
       ticker={recent.length ? recent.slice(0, 6).map((s) => `${s.name} · ${s.course} · ${s.score}%`) : ['No new work yet']}>
-      {courses.length ? <Constellation groups={courses.slice(0, 8).map((c) => ({ label: c.code, n: c.students }))} center={initials(name)} label="Your classes and their students" className="h-[280px] md:h-[320px]" />
+      {courses.length ? <Tracks label="Your classes and their students" tracks={courses.slice(0, 8).map((c) => {
+        const done = Math.round((c.students * Math.max(0, Math.min(100, c.completion ?? 0))) / 100);
+        return { key: c.id ?? c.code, label: c.code, name: c.name, value: many(c.students, 'student'),
+          parts: [{ n: done, tone: 'pink' as const, label: 'Handed in' }, { n: c.students - done, tone: 'blue' as const, label: 'Still working' }],
+          detail: c.completion !== undefined ? `${Math.round(c.completion)}% of the work handed in` : undefined };
+      })} />
         : <p className="py-16 text-center text-sm text-white/70">Your classes appear here once you have a course.</p>}
     </LiveCard>
   );
 }
 
-/** The school's departments; each point is a person. */
+/** The school's departments (M171): a mark per student and teacher. */
 export function AdminLive({ departments, students, teachers, courses }: { departments: { name: string; students: number; teachers: number }[]; students: number; teachers: number; courses: number }) {
   return (
-    <LiveCard title="School constellation" sub="Departments, each point a person"
+    <LiveCard title="School by department" sub="Students and teachers in each department"
       stats={[{ label: 'Students', value: students.toLocaleString() }, { label: 'Teachers', value: teachers.toLocaleString() }, { label: 'Courses', value: courses.toLocaleString() }]}>
-      {departments.length ? <Constellation groups={departments.slice(0, 8).map((d) => ({ label: d.name, n: d.students + d.teachers }))} center="U" label="The school's departments" className="h-[280px] md:h-[340px]" />
+      {departments.length ? <Tracks label="The school's departments" tracks={departments.slice(0, 8).map((d) => ({
+        key: d.name, label: d.name, value: (d.students + d.teachers).toLocaleString(),
+        parts: [{ n: d.students, tone: 'pink' as const, label: 'Students' }, { n: d.teachers, tone: 'aqua' as const, label: 'Teachers' }],
+        detail: `${many(d.students, 'student')} · ${many(d.teachers, 'teacher')}${d.teachers && d.students ? ` · ${many(Math.round(d.students / d.teachers), 'student')} a teacher` : ''}`,
+      }))} />
         : <p className="py-16 text-center text-sm text-white/70">Departments appear here once courses have one.</p>}
     </LiveCard>
   );

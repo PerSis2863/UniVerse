@@ -19,6 +19,7 @@ import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { useActivePoll } from '@/lib/realtime-client';
 
 // Parent–teacher meetings in the parent app (Stage 5 · B16.3; src/server/parent-meetings.ts): my
 // booked meetings (join a video one from 10 minutes before, or cancel), the child's teachers with
@@ -41,7 +42,7 @@ const joinOpen = (m: Meeting, now: number) => now > 0 && now >= new Date(m.start
 
 export function ParentMeetings({ studentId }: { studentId: string }) {
   const key = `/api/parent/meetings?studentId=${encodeURIComponent(studentId)}`;
-  const { data, error, isLoading, mutate } = useSWR<Data>(key, authedJson, { refreshInterval: 60_000 });
+  const { data, error, isLoading, mutate } = useSWR<Data>(key, authedJson, { refreshInterval: useActivePoll(60_000) });
   const [booking, setBooking] = useState<Teacher | null>(null);
   const [notes, setNotes] = useState<Meeting | null>(null);
 

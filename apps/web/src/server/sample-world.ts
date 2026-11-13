@@ -2,7 +2,8 @@ import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import { CITIES } from '@/components/trace/map/cities';
 import { co2For, GREEN_KINDS, type GreenKind } from '@/lib/green';
-import { URGENCIES, snap, type ReliefKind } from '@/lib/relief';
+import { AID_STEPS, RELIEF_KINDS, SKILLS, STOCK, URGENCIES, snap, type ReliefKind } from '@/lib/relief';
+import { GAMES, GAME_IDS } from '@/lib/play';
 import { KEY_LEN, toBase32 } from '@/lib/trace';
 import { codeFor } from './trace';
 import { pointHash } from './trace-wallet';
@@ -16,6 +17,15 @@ import { pointHash } from './trace-wallet';
 // needs and offers, and Green actions and teams. Everything is marked so "Remove sample data" takes
 // out exactly that: people's emails end in @sample.universe.test, brands' slugs start with
 // "sample-", error fingerprints with "sample:".
+// M170 (the owner, 13 Nov: "add a lot of sample data… for all the five apps so that i can try and test
+// all features"): also a sample school (Sample Academy: 12 courses with timetables, enrolments,
+// assignments with submissions and grades, quizzes with questions and answers, announcements, two
+// weeks of attendance), Relief organisations (shelters with beds and stock, members, supplies, shifts,
+// two emergencies with "I'm safe" check-ins, aid boxes on their way, helpers with skills), Trace's
+// owners, repairs, take-backs and fake-label reports, and Play scores. The owner who fills it is let in
+// to try things: a sample brand's owner (when they have no brand), a coordinator of a sample Relief
+// organisation, a member of a Green team with a few weeks of actions, Play scores, and, as a student,
+// enrolled in sample courses (as a teacher, teaching two). All of it goes with "Remove" (ids "smp…").
 
 const DOMAIN = '@sample.universe.test';
 const DAY = 86_400_000;
@@ -80,8 +90,31 @@ function people() {
   });
 }
 
-export function sampleSteps(): SampleStep[] {
+/** The owner filling the sample (let into some of it, to try things). */
+export interface SampleOwner { id: string; role: string }
+
+// Codes are unique across the site: the sample's carry "SA-" (Sample Academy) so they never meet a real school's.
+const COURSES: [string, string, string, string, string][] = [
+  ['CS101', 'Introduction to Computer Science', 'Computer Science', '#6366f1', '💻'], ['MATH201', 'Linear Algebra', 'Mathematics', '#f59e0b', '📐'],
+  ['PHY110', 'Physics I: Mechanics', 'Physics', '#0ea5e9', '🪐'], ['BIO120', 'Cell Biology', 'Biology', '#10b981', '🧬'],
+  ['ENG150', 'Academic Writing', 'English', '#e11d48', '✍️'], ['HIS210', 'World History', 'History', '#a16207', '🏛️'],
+  ['ECO101', 'Principles of Economics', 'Economics', '#22c55e', '📈'], ['CHE130', 'General Chemistry', 'Chemistry', '#8b5cf6', '⚗️'],
+  ['ART105', 'Design Basics', 'Arts', '#ec4899', '🎨'], ['ENV200', 'Climate and Society', 'Environmental Science', '#16a34a', '🌍'],
+  ['DS220', 'Data Science with Python', 'Computer Science', '#3b82f6', '🐍'], ['PSY101', 'Introduction to Psychology', 'Psychology', '#f97316', '🧠'],
+];
+const WORK = ['Problem set', 'Reading response', 'Lab report', 'Short essay', 'Project proposal'];
+const QUIZ = ['Week 2 check-in', 'Mid-term practice', 'Unit test'];
+/** Days of the course each piece of work was due, from now (negative: past). */
+const DUE = [-25, -15, -5, 4, 12];
+const midnight = (ms: number) => { const d = new Date(ms); d.setUTCHours(0, 0, 0, 0); return d.getTime(); };
+
+export function sampleSteps(me?: SampleOwner | null): SampleStep[] {
   const P = people(), now = Date.now();
+  // The school: teachers 6–39, students 40–299 (and the owner, when they are a student).
+  const teacherOf = (c: number) => (me?.role === 'TEACHER' && c >= 10 ? me.id : P[6 + c * 2].id);
+  const students = [...P.slice(40).map((p) => p.id), ...(me?.role === 'STUDENT' ? [me.id] : [])];
+  /** Each student's courses (5 of the 12), the same every time. */
+  const enrolled = (() => { const r = rng(40), out: [string, number][] = []; for (const sid of students) { const pickd = new Set<number>(); while (pickd.size < 5) pickd.add(Math.floor(r() * COURSES.length)); for (const c of pickd) out.push([sid, c]); } return out; })();
   const steps: SampleStep[] = [
     { label: 'People', run: async () => {
       const r = rng(12);
@@ -248,20 +281,182 @@ export function sampleSteps(): SampleStep[] {
       await insert('green_actions', ['id', 'userId', 'kind', 'amount', 'co2Kg', 'note', 'lat', 'lng', 'place', 'createdAt'], rows);
       return rows.length;
     } },
+
+    // ── M170: the school ──
+    { label: 'School, courses and timetable', run: async () => {
+      const r = rng(41);
+      await insert('organizations', ['id', 'name', 'ownerId', 'createdAt', 'updatedAt'], [[id('or', 0), 'Sample Academy', P[0].id, iso(now - 120 * DAY), iso(now - 120 * DAY)]]);
+      await prisma.$executeRawUnsafe(`UPDATE "users" SET "organizationId" = ? WHERE "email" LIKE '%${DOMAIN}'`, id('or', 0));
+      await insert('courses', ['id', 'code', 'name', 'description', 'credits', 'department', 'status', 'teacherId', 'color', 'emoji', 'createdAt', 'updatedAt'],
+        COURSES.map(([code, name, dept, color, emoji], c) => [id('cr', c), `SA-${code}`, name, `${name}: lectures, readings, weekly practice and a project.`, 3 + (c % 2), dept, 'PUBLISHED', teacherOf(c), color, emoji, iso(now - 100 * DAY), iso(now - 2 * DAY)]));
+      const slots: unknown[][] = [];
+      COURSES.forEach((_, c) => [c % 5, (c + 2) % 5].forEach((day, k) => { const h = 8 + ((c * 3 + k * 2) % 9); slots.push([id('ts', c * 2 + k), id('cr', c), day, `${String(h).padStart(2, '0')}:00`, `${String(h + 1).padStart(2, '0')}:30`, k ? 'LAB' : 'LECTURE', iso(now - 90 * DAY), iso(now - 90 * DAY)]); }));
+      await insert('timetable_slots', ['id', 'courseId', 'dayOfWeek', 'startTime', 'endTime', 'type', 'createdAt', 'updatedAt'], slots);
+      await insert('enrollments', ['id', 'studentId', 'courseId', 'enrolledAt'], enrolled.map(([sid, c], n) => [id('en', n), sid, id('cr', c), iso(now - (60 + r() * 30) * DAY)]));
+      const NEWS = ['Welcome to the course', 'Room change this week', 'Project groups are up', 'Office hours moved to Thursday', 'Mid-term next week: what to revise'];
+      const posts = COURSES.flatMap((_, c) => [0, 1].map((k) => [id('an', c * 2 + k), pick(r, NEWS), 'Details are in the course page. Ask in the class chat if anything is unclear.', 'COURSE', id('cr', c), teacherOf(c), iso(now - (k ? 3 : 40) * DAY), iso(now - (k ? 3 : 40) * DAY)]));
+      posts.push(...['Sports day on Friday', 'Library open late during exams', 'New lab equipment arrived', 'School trip sign-ups'].map((t, k) => [id('an', 100 + k), t, 'All students and staff: see the details on the notice board.', 'ALL', null, P[k].id, iso(now - (2 + k * 6) * DAY), iso(now - (2 + k * 6) * DAY)]));
+      await insert('announcements', ['id', 'title', 'body', 'target', 'courseId', 'authorId', 'createdAt', 'updatedAt'], posts);
+      return COURSES.length + slots.length + enrolled.length + posts.length;
+    } },
+    { label: 'Assignments and quizzes', run: async () => {
+      const rubric = JSON.stringify([{ id: 'c1', criterion: 'Understanding', points: 40 }, { id: 'c2', criterion: 'Reasoning and evidence', points: 40 }, { id: 'c3', criterion: 'Clarity', points: 20 }]);
+      const work = COURSES.flatMap(([, name], c) => WORK.map((w, k) => [id('as', c * 5 + k), id('cr', c), teacherOf(c), `${w} ${k + 1}: ${name}`, `Answer the questions in the ${w.toLowerCase()} using this week's readings. Show your working.`, rubric, 100, 1, iso(now + DUE[k] * DAY), 'OPEN', iso(now + (DUE[k] - 10) * DAY), iso(now + (DUE[k] - 10) * DAY)]));
+      await insert('assignments', ['id', 'courseId', 'createdById', 'title', 'instructions', 'rubric', 'maxScore', 'weight', 'dueDate', 'status', 'createdAt', 'updatedAt'], work);
+      const quizzes = COURSES.flatMap(([, name], c) => QUIZ.map((q, k) => [id('qz', c * 3 + k), id('cr', c), `${q}: ${name}`, 'Five questions, twenty minutes.', iso(now + [-20, -8, 6][k] * DAY), 20, 'PUBLISHED', iso(now - 30 * DAY), iso(now - 30 * DAY)]));
+      await insert('quizzes', ['id', 'courseId', 'title', 'description', 'dueDate', 'timeLimit', 'status', 'createdAt', 'updatedAt'], quizzes);
+      const qs: unknown[][] = [];
+      COURSES.forEach(([, name, dept], c) => QUIZ.forEach((_, k) => { for (let n = 0; n < 5; n++) {
+        const opts = [`Option A about ${dept}`, `Option B about ${dept}`, `Option C about ${dept}`, `Option D about ${dept}`];
+        qs.push([id('qq', (c * 3 + k) * 5 + n), id('qz', c * 3 + k), `Question ${n + 1} of ${name}: which of these is true?`, JSON.stringify(opts), opts[(c + k + n) % 4], 1, n, 'CHOICE']);
+      } }));
+      await insert('quiz_questions', ['id', 'quizId', 'question', 'options', 'correctAnswer', 'points', 'order', 'type'], qs);
+      return work.length + quizzes.length + qs.length;
+    } },
+    { label: 'Submissions and grades', run: async () => {
+      const r = rng(42);
+      const subs: unknown[][] = [], grades: unknown[][] = [];
+      const FB = ['Clear and well argued.', 'Good start: back your points with the readings.', 'Excellent work.', 'Check your calculations in part 2.', 'Well structured, a little short.'];
+      enrolled.forEach(([sid, c], n) => {
+        const skill = 0.55 + ((n * 7919) % 100) / 250; // each student's level, 55–95%
+        DUE.forEach((d, k) => {
+          if (d > 0 || r() > 0.88) return; // only past work, most of it handed in
+          const score = Math.max(30, Math.min(100, Math.round((skill + (r() - 0.5) * 0.25) * 100)));
+          const graded = d < -6 || r() < 0.5, at = now + (d - r() * 2) * DAY, title = `${WORK[k]} ${k + 1}: ${COURSES[c][1]}`;
+          subs.push([id('su', n * 5 + k), id('as', c * 5 + k), sid, `My answer to the ${WORK[k].toLowerCase()}: worked through each question with the readings.`, graded ? 'RETURNED' : 'SUBMITTED', graded ? score : null, graded ? pick(r, FB) : null, iso(at), graded ? iso(at + 3 * DAY) : null, iso(at)]);
+          if (graded) grades.push([id('gr', n * 5 + k), sid, id('cr', c), title, score, 100, 1, 'GRADED', pick(r, FB), iso(at + 3 * DAY), iso(at + 3 * DAY), iso(at + 3 * DAY)]);
+        });
+      });
+      await insert('assignment_submissions', ['id', 'assignmentId', 'studentId', 'text', 'status', 'score', 'feedback', 'submittedAt', 'returnedAt', 'updatedAt'], subs);
+      await insert('grades', ['id', 'studentId', 'courseId', 'assignmentName', 'score', 'maxScore', 'weight', 'status', 'feedback', 'gradedAt', 'createdAt', 'updatedAt'], grades);
+      return subs.length + grades.length;
+    } },
+    { label: 'Quiz answers', run: async () => {
+      const r = rng(43);
+      const rows: unknown[][] = [];
+      enrolled.forEach(([sid, c], n) => [0, 1].forEach((k) => {
+        if (r() > 0.85) return;
+        const quiz = c * 3 + k, answers: Record<string, string> = {};
+        let right = 0;
+        for (let q = 0; q < 5; q++) { const correct = r() < 0.72, opt = correct ? (c + k + q) % 4 : (c + k + q + 1 + Math.floor(r() * 3)) % 4; answers[id('qq', quiz * 5 + q)] = `Option ${'ABCD'[opt]} about ${COURSES[c][2]}`; if (correct) right++; }
+        rows.push([id('qs', n * 2 + k), id('qz', quiz), sid, JSON.stringify(answers), right, 5, iso(now + ([-20, -8][k] - r()) * DAY)]);
+      }));
+      await insert('quiz_submissions', ['id', 'quizId', 'studentId', 'answers', 'score', 'maxScore', 'submittedAt'], rows);
+      return rows.length;
+    } },
+    { label: 'Attendance (two weeks)', run: async () => {
+      const r = rng(44);
+      // The last ten school days, each course on its two days a week (stored at midnight UTC of the day).
+      const days: number[] = [];
+      for (let d = 1; days.length < 10; d++) { const t = midnight(now - d * DAY), w = new Date(t).getUTCDay(); if (w !== 0 && w !== 6) days.push(t); }
+      const rows: unknown[][] = [];
+      enrolled.forEach(([sid, c], n) => {
+        const keen = 0.8 + ((n * 104729) % 100) / 600;
+        days.forEach((t, k) => {
+          const dow = (new Date(t).getUTCDay() + 6) % 7; // 0 = Monday
+          if (dow !== c % 5 && dow !== (c + 2) % 5) return;
+          const x = r(), status = x < keen ? 'PRESENT' : x < keen + 0.06 ? 'LATE' : x < keen + 0.13 ? 'ABSENT' : 'EXCUSED';
+          rows.push([id('at', n * 10 + k), sid, id('cr', c), iso(t), status, status === 'EXCUSED' ? 'Doctor’s note' : null, iso(t + 10 * 3600_000)]);
+        });
+      });
+      await insert('attendance', ['id', 'studentId', 'courseId', 'date', 'status', 'note', 'createdAt'], rows);
+      return rows.length;
+    } },
+    // ── M170: Relief organisations, shelters, emergencies and aid ──
+    { label: 'Relief organisations and aid', run: async () => {
+      const r = rng(45);
+      const ORGS: [string, string][] = [['Riverside Relief Network', 'NGO'], ['City Food Bank', 'FOOD_BANK'], ['Harbour Night Shelter', 'SHELTER'], ['St. Mary’s Clinic', 'CLINIC'], ['Unity Mosque Kitchen', 'FAITH'], ['Ward 12 Neighbours', 'COMMUNITY'], ['Sunrise School Volunteers', 'SCHOOL'], ['Red Lantern Aid', 'NGO'], ['Hilltop Family Shelter', 'SHELTER'], ['Open Hands Pantry', 'FOOD_BANK']];
+      const city = ORGS.map(() => pick(r, BIG));
+      const code = () => toBase32(crypto.randomBytes(5), 6);
+      await insert('relief_orgs', ['id', 'name', 'kind', 'about', 'place', 'lat', 'lng', 'code', 'createdById', 'createdAt', 'openNow', 'bedsFree', 'bedsTotal', 'water', 'food', 'power', 'statusNote', 'statusAt'],
+        ORGS.map(([name, kind], o) => { const beds = kind === 'SHELTER' ? 40 + Math.floor(r() * 80) : kind === 'CLINIC' ? 12 : null; return [id('ro', o), name, kind, `${name}: volunteers helping families in ${city[o][0]}.`, city[o][0], snap(city[o][1]), snap(city[o][2]), code(), P[20 + o].id, iso(now - (30 + r() * 60) * DAY), 1, beds === null ? null : Math.floor(beds * r() * 0.6), beds, pick(r, STOCK), pick(r, STOCK), pick(r, STOCK), pick(r, ['Doors open until 22:00', 'Hot meals at 19:00', 'Bring ID if you can', null]), iso(now - r() * 6 * 3600_000)]; }));
+      const members: unknown[][] = [];
+      ORGS.forEach((_, o) => { members.push([id('ro', o), P[20 + o].id, 'OWNER', iso(now - 50 * DAY)]); for (let k = 0; k < 10; k++) members.push([id('ro', o), P[60 + o * 12 + k].id, k < 2 ? 'COORDINATOR' : 'VOLUNTEER', iso(now - (5 + r() * 40) * DAY)]); });
+      if (me) members.push([id('ro', 0), me.id, 'COORDINATOR', iso(now - 10 * DAY)], [id('ro', 2), me.id, 'VOLUNTEER', iso(now - 9 * DAY)]);
+      await insert('relief_org_members', ['orgId', 'userId', 'role', 'createdAt'], members);
+      const STUFF: [string, ReliefKind, string][] = [['Rice', 'FOOD', 'kg'], ['Drinking water', 'WATER', 'litres'], ['Blankets', 'SHELTER', 'items'], ['First-aid kits', 'MEDICAL', 'kits'], ['Baby formula', 'FOOD', 'tins'], ['Winter coats', 'CLOTHES', 'items']];
+      await insert('relief_supplies', ['id', 'orgId', 'name', 'kind', 'unit', 'quantity', 'lowAt', 'updatedAt', 'createdAt'],
+        ORGS.flatMap((_, o) => STUFF.map(([n, k, u], i) => [id('rs', o * 6 + i), id('ro', o), n, k, u, Math.floor(r() * 400), 50, iso(now - r() * 3 * DAY), iso(now - 30 * DAY)])));
+      const shifts: unknown[][] = [], signups: unknown[][] = [];
+      ORGS.forEach((_, o) => { for (let k = 0; k < 4; k++) { const start = midnight(now + (1 + k * 2) * DAY) + (8 + k * 2) * 3600_000, slots = 3 + Math.floor(r() * 6), filled = Math.floor(r() * slots); shifts.push([id('rh', o * 4 + k), id('ro', o), pick(r, ['Sorting donations', 'Kitchen shift', 'Night desk', 'Delivery run']), 'Meet at the front desk.', city[o][0], iso(start), iso(start + 4 * 3600_000), slots, filled, 0, P[20 + o].id, iso(now - 5 * DAY)]); for (let f = 0; f < filled; f++) signups.push([id('rh', o * 4 + k), P[60 + o * 12 + f].id, iso(now - r() * 4 * DAY)]); } });
+      await insert('relief_shifts', ['id', 'orgId', 'title', 'details', 'place', 'startsAt', 'endsAt', 'slots', 'filled', 'membersOnly', 'createdById', 'createdAt'], shifts);
+      await insert('relief_shift_signups', ['shiftId', 'userId', 'createdAt'], signups);
+      // Two emergencies going on now, with people saying they're safe.
+      await insert('relief_incidents', ['id', 'orgId', 'createdById', 'title', 'place', 'lat', 'lng', 'radiusKm', 'endsAt', 'createdAt'], [
+        [id('ri', 0), id('ro', 0), P[20].id, `Flooding in ${city[0][0]}`, city[0][0], snap(city[0][1]), snap(city[0][2]), 20, iso(now + 2 * DAY), iso(now - 6 * 3600_000)],
+        [id('ri', 1), id('ro', 3), P[23].id, `Heatwave in ${city[3][0]}`, city[3][0], snap(city[3][1]), snap(city[3][2]), 15, iso(now + DAY), iso(now - 3 * 3600_000)],
+      ]);
+      await insert('relief_safe', ['incidentId', 'userId', 'createdAt'], [...P.slice(60, 100).map((p) => [id('ri', 0), p.id, iso(now - r() * 5 * 3600_000)]), ...P.slice(100, 125).map((p) => [id('ri', 1), p.id, iso(now - r() * 2 * 3600_000)])]);
+      // Aid boxes, each with its trip so far.
+      const BOX = ['Hygiene kits and water for 20 families', 'Blankets and tarpaulins', 'School kits for 60 children', 'Medicines for the clinic', 'Dry food for a week', 'Baby supplies'];
+      const aid: unknown[][] = [], steps: unknown[][] = [];
+      for (let a = 0; a < 40; a++) {
+        const o = a % ORGS.length, to = pick(r, BIG), at = now - (1 + r() * 12) * DAY, reach = Math.floor(r() * 3), status = AID_STEPS[reach];
+        aid.push([id('ra', a), id('ro', o), toBase32(crypto.randomBytes(7), 10), pick(r, BOX), 1 + Math.floor(r() * 30), city[o][0], to[0], status, P[20 + o].id, iso(at), iso(at + reach * DAY)]);
+        for (let k = 0; k <= reach; k++) { const where = k === 0 ? city[o] : k === 1 ? pick(r, BIG) : to; steps.push([id('rt', a * 3 + k), id('ra', a), AID_STEPS[k], where[0], k === 2 ? 'Handed to the families' : null, iso(at + k * DAY), snap(where[1]), snap(where[2]), pick(r, FIRST)]); }
+      }
+      await insert('relief_aid', ['id', 'orgId', 'code', 'contents', 'boxes', 'fromPlace', 'toPlace', 'status', 'createdById', 'createdAt', 'updatedAt'], aid);
+      await insert('relief_aid_steps', ['id', 'aidId', 'status', 'place', 'note', 'createdAt', 'lat', 'lng', 'byName'], steps);
+      // Helpers with their skills and alerts.
+      const watches = P.slice(130, 220).map((p) => { const c = r() < 0.7 ? p.city : pick(r, BIG), n = 1 + Math.floor(r() * 3), sk = new Set<string>(); while (sk.size < n) sk.add(pick(r, SKILLS)); return [p.id, snap(c[1]), snap(c[2]), 5 + Math.floor(r() * 16), r() < 0.5 ? 1 : 0, r() < 0.3 ? pick(r, RELIEF_KINDS) : null, iso(now - r() * 30 * DAY), [...sk].join(','), 0]; });
+      await insert('relief_watches', ['userId', 'lat', 'lng', 'radiusKm', 'urgentOnly', 'kinds', 'createdAt', 'skills', 'email'], watches);
+      return ORGS.length + members.length + shifts.length + aid.length + steps.length + watches.length;
+    } },
+    // ── M170: Trace's owners, repairs, take-backs and fake-label reports ──
+    { label: 'Trace owners, repairs and reports', run: async () => {
+      const r = rng(46);
+      const codes = await prisma.$queryRawUnsafe<{ id: string; brandId: string; productId: string }[]>(`SELECT "id", "brandId", "productId" FROM "trace_codes" WHERE "brandId" LIKE 'smp%' ORDER BY "id" LIMIT 700`);
+      if (!codes.length) return 0;
+      const owners = codes.slice(0, 320).map((c, i) => [id('ow', i), c.id, c.brandId, c.productId, pick(r, P).id, 1 + Math.floor(Math.pow(r(), 2) * 3), iso(now - r() * 200 * DAY), iso(now - r() * 200 * DAY)]);
+      await insert('trace_owners', ['id', 'codeId', 'brandId', 'productId', 'userId', 'owners', 'since', 'createdAt'], owners);
+      const FIX: [string, string | null][] = [['Replaced the battery', 'Battery'], ['New sole stitched on', 'Sole'], ['Screen repaired', 'Screen'], ['Zip replaced', 'Zip'], ['Serviced and cleaned', null], ['Strap replaced', 'Strap']];
+      await insert('trace_repairs', ['id', 'codeId', 'brandId', 'productId', 'userId', 'by', 'what', 'parts', 'createdAt'],
+        Array.from({ length: 260 }, (_, i) => { const c = codes[Math.floor(r() * 320)], [what, part] = pick(r, FIX), brand = r() < 0.4; return [id('rp', i), c.id, c.brandId, c.productId, brand ? null : pick(r, P).id, brand ? 'BRAND' : 'OWNER', what, part, iso(now - r() * 150 * DAY)]; }));
+      await prisma.$executeRawUnsafe(`UPDATE "trace_products" SET "takeBackHow" = 'Hand it in at any partner store, or post it with the free label', "takeBackPoints" = 25 WHERE "brandId" LIKE 'smp%'`);
+      await insert('trace_takebacks', ['id', 'codeId', 'brandId', 'productId', 'userId', 'status', 'dropCode', 'points', 'receivedAt', 'createdAt'],
+        codes.slice(320, 460).map((c, i) => { const got = r() < 0.6, at = now - r() * 40 * DAY; return [id('tb', i), c.id, c.brandId, c.productId, pick(r, P).id, got ? 'RECEIVED' : 'ASKED', toBase32(crypto.randomBytes(5), 6), 25, got ? iso(at + (1 + r() * 6) * DAY) : null, iso(at)]; }));
+      const SHOPS = ['Corner Market', 'Bazaar stall 14', 'Online: DealzHub', 'Night market', 'Station kiosk', 'MegaSave Outlet'];
+      await insert('trace_fake_reports', ['id', 'codeId', 'brandId', 'productId', 'userId', 'shop', 'area', 'price', 'lat', 'lng', 'country', 'createdAt'],
+        Array.from({ length: 150 }, (_, i) => { const c = pick(r, codes), city = pick(r, BIG); return [id('fk', i), c.id, c.brandId, c.productId, pick(r, P).id, pick(r, SHOPS), city[0], `${(3 + r() * 40).toFixed(2)} €`, Math.round(city[1] * 10) / 10, Math.round(city[2] * 10) / 10, cc(city[0]), iso(now - Math.pow(r(), 1.4) * 45 * DAY)]; }));
+      // The owner runs a sample brand (when they have none: one brand per account).
+      if (me) {
+        const [{ n }] = await prisma.$queryRawUnsafe<{ n: number }[]>(`SELECT COUNT(*) AS n FROM "trace_brand_members" WHERE "userId" = ?`, me.id);
+        if (!Number(n)) await insert('trace_brand_members', ['brandId', 'userId', 'role', 'createdAt'], [[id('b', 0), me.id, 'OWNER', iso(now - 20 * DAY)]]);
+      }
+      return owners.length + 260 + 140 + 150;
+    } },
+    // ── M170: Play ──
+    { label: 'Play scores', run: async () => {
+      const r = rng(47);
+      const rows = Array.from({ length: 3200 }, (_, i) => { const g = pick(r, GAME_IDS), multi = r() < 0.25; return [id('ps', i), pick(r, P).id, g, multi ? 'multi' : 'solo', Math.round(GAMES[g].maxScore * Math.pow(r(), 1.6) * 0.95), multi ? `S${toBase32(crypto.randomBytes(3), 4)}` : null, iso(now - Math.pow(r(), 1.3) * 45 * DAY)]; });
+      if (me) GAME_IDS.forEach((g, k) => [0, 1, 2].forEach((t) => rows.push([id('pm', k * 3 + t), me.id, g, 'solo', Math.round(GAMES[g].maxScore * (0.3 + r() * 0.5)), null, iso(now - (k + t * 5) * DAY)])));
+      await insert('game_scores', ['id', 'userId', 'game', 'mode', 'score', 'roomCode', 'createdAt'], rows);
+      // The owner in a Green team, with a few weeks of actions (a streak, badges, the weekly challenge).
+      if (me) {
+        await insert('green_members', ['teamId', 'userId', 'createdAt'], [[id('gt', 0), me.id, iso(now - 21 * DAY)]]);
+        const AMT: [GreenKind, number][] = [['CYCLE', 8], ['TRANSIT', 15], ['WALK', 3], ['RECYCLE', 4], ['MEATFREE', 1], ['TREE', 1]];
+        const mine = Array.from({ length: 24 }, (_, d) => { const [k, a] = AMT[d % AMT.length]; return [id('gm', d), me.id, k, a, co2For(k, a), null, Math.round(P[0].city[1] * 10) / 10, Math.round(P[0].city[2] * 10) / 10, P[0].city[0], iso(now - d * DAY - 3 * 3600_000)]; });
+        await insert('green_actions', ['id', 'userId', 'kind', 'amount', 'co2Kg', 'note', 'lat', 'lng', 'place', 'createdAt'], mine);
+      }
+      return rows.length;
+    } },
   ];
   return steps;
 }
 
 /** How much sample data is in the database now. */
 export async function sampleStatus() {
-  const [people, brands, scans, relief, green] = await Promise.all([
+  const [people, brands, scans, relief, green, courses, orgs, scores] = await Promise.all([
     prisma.user.count({ where: { email: { endsWith: DOMAIN } } }),
     prisma.traceBrand.count({ where: { slug: { startsWith: 'sample-' } } }),
     prisma.traceScan.count({ where: { brandId: { startsWith: 'smp' } } }),
     prisma.reliefPost.count({ where: { id: { startsWith: 'smp' } } }),
     prisma.greenAction.count({ where: { id: { startsWith: 'smp' } } }),
+    prisma.course.count({ where: { id: { startsWith: 'smp' } } }),
+    prisma.reliefOrg.count({ where: { id: { startsWith: 'smp' } } }),
+    prisma.gameScore.count({ where: { id: { startsWith: 'smp' } } }),
   ]);
-  return { people, brands, scans, relief, green, steps: sampleSteps().map((s) => s.label) };
+  return { people, brands, scans, relief, green, courses, orgs, scores, steps: sampleSteps().map((s) => s.label) };
 }
 
 /** Removes exactly the sample data (in the order the database's links allow). */
@@ -269,7 +464,11 @@ export async function clearSample() {
   const [{ n }] = await prisma.$queryRawUnsafe<{ n: number }[]>(`SELECT COUNT(*) AS n FROM "users" WHERE "email" LIKE '%${DOMAIN}'`);
   await prisma.$executeRawUnsafe(`DELETE FROM "trace_brands" WHERE "slug" LIKE 'sample-%'`);
   await prisma.$executeRawUnsafe(`DELETE FROM "error_reports" WHERE "fingerprint" LIKE 'sample:%'`);
-  for (const t of ['payments', 'conversations', 'audit_logs', 'green_teams', 'relief_posts', 'green_actions']) await prisma.$executeRawUnsafe(`DELETE FROM "${t}" WHERE "id" LIKE 'smp%'`);
+  // (M170: announcements and courses before the people who wrote and teach them; their enrolments,
+  // work, grades, attendance and quizzes go with the courses; the owner's memberships go with the
+  // brand, organisation, team and courses they were let into.)
+  for (const t of ['payments', 'conversations', 'audit_logs', 'green_teams', 'relief_posts', 'green_actions', 'announcements', 'courses', 'organizations', 'relief_orgs', 'trace_repairs', 'trace_takebacks', 'trace_fake_reports', 'trace_owners', 'game_scores']) await prisma.$executeRawUnsafe(`DELETE FROM "${t}" WHERE "id" LIKE 'smp%'`);
+  await prisma.$executeRawUnsafe(`UPDATE "trace_products" SET "takeBackHow" = NULL, "takeBackPoints" = 0 WHERE "brandId" LIKE 'smp%'`);
   // Their sign-ins, page visits, messages, points and cash-outs go with them (ON DELETE CASCADE).
   await prisma.$executeRawUnsafe(`DELETE FROM "users" WHERE "email" LIKE '%${DOMAIN}'`);
   return { removed: Number(n) };

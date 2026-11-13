@@ -1,7 +1,7 @@
 'use client';
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, type ReactNode } from 'react';
-import { BASE, clampView, easeInOut, fitView, fromBase, graticule, loadWorld, toBase, zoomAbout, type Country, type View } from './engine';
+import { BASE, clampView, easeInOut, fitView, fromBase, graticule, loadPlaces, loadWorld, placeZoom, toBase, zoomAbout, type Country, type Detail, type Place, type View } from './engine';
 import { CITIES } from './cities';
 
 // One canvas world map for the Trace maps: draws the land (cached until the view moves), then hands
@@ -115,13 +115,16 @@ interface Props {
   /** 'satellite' (M104, World Pin): deep sea with lighter shallows, land coloured by climate with
    *  terrain grain, thin white borders. The Trace maps keep the default flat look. */
   look?: 'flat' | 'satellite';
+  /** M172: towns and cities named as you zoom in (default on; World Pin turns it off: names would give
+   *  the answers away). */
+  places?: boolean;
   /** false: a picture that moves by itself (no dragging or wheel zoom, e.g. on the landing page). */
   interactive?: boolean;
   className?: string;
   children?: ReactNode;
 }
 
-interface Live { draw: Props['draw']; onPoint: Props['onPoint']; live: boolean; dark: boolean; homeBox: Box; skipCities?: Set<string>; look?: Props['look'] }
+interface Live { draw: Props['draw']; onPoint: Props['onPoint']; live: boolean; dark: boolean; homeBox: Box; skipCities?: Set<string>; look?: Props['look']; places?: boolean }
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 /** The map's state and its frame loop, outside React (React only hands it the latest props). */
@@ -136,7 +139,9 @@ class MapEngine {
   /** The view the land picture was drawn for, and the margin drawn round it (M65: while the map moves
    *  the picture is moved and scaled instead of redrawn, then redrawn sharp once it rests). */
   landView: View | null = null; landM = 0; busyUntil = 0;
-  world: Country[] = []; detail: '110m' | '50m' = '110m';
+  world: Country[] = []; detail: Detail = '110m';
+  /** M172: the extra places, once loaded (tier 1, then tier 2), and whether any were named in the last picture. */
+  placesA: Place[] = []; placesB: Place[] = []; placesAsked = 0; named = false;
   private off: (() => void)[] = [];
 
   /** Interactive maps wrap round sideways; the landing page's picture stays one world. */
@@ -156,7 +161,7 @@ class MapEngine {
 
   destroy() { this.off.forEach((f) => f()); cancelAnimationFrame(this.raf); this.raf = 0; }
 
-  private useWorld(detail: '110m' | '50m') {
+  private useWorld(detail: Detail) {
     this.detail = detail;
     void loadWorld(detail).then((w) => { if (this.detail === detail) { this.world = w; this.landKey = ''; this.kick(); } });
   }
@@ -207,7 +212,15 @@ class MapEngine {
     // Sharper outlines once the world is drawn big enough on screen (in real pixels) to show them.
     const px = this.view.k * this.dpr;
     if (px > 2.3 && this.detail === '110m') this.useWorld('50m');
-    if (px < 1.8 && this.detail === '50m') this.useWorld('110m');
+    else if (px > 14 && this.detail === '50m') this.useWorld('10m');
+    else if (px < 10 && this.detail === '10m') this.useWorld('50m');
+    else if (px < 1.8 && this.detail === '50m') this.useWorld('110m');
+    // M172: more places as the map is zoomed in (each list fetched once, the first time).
+    const zoomed = this.view.k / this.kMin;
+    if (this.p.current.places !== false) {
+      if (zoomed >= 4 && this.placesAsked < 1) { this.placesAsked = 1; void loadPlaces(1).then((p) => { this.placesA = p; this.landKey = ''; this.kick(); }, () => { this.placesAsked = 0; }); }
+      if (zoomed >= 18 && this.placesAsked < 2) { this.placesAsked = 2; void loadPlaces(2).then((p) => { this.placesB = p; this.landKey = ''; this.kick(); }, () => { this.placesAsked = 1; }); }
+    }
     // Still being moved by hand (drag, pinch, trackpad): keep the cheap picture, then one sharp frame.
     const busy = moving || t < this.busyUntil;
     this.paint(t, busy);
@@ -221,7 +234,8 @@ class MapEngine {
     const { view } = this, dark = this.p.current.dark, pal = dark ? PAL.dark : PAL.light;
     const w = this.w + 2 * m, h = this.h + 2 * m;
     const skip = this.p.current.skipCities, sat = this.p.current.look === 'satellite';
-    const key = `${w}x${h}@${res}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}|${sat}`;
+    const places = this.p.current.places !== false;
+    const key = `${w}x${h}@${res}|${view.x.toFixed(2)},${view.y.toFixed(2)},${view.k.toFixed(5)}|${dark}|${this.world.length}|${skip?.size ?? 0}|${sat}|${places ? this.placesA.length + this.placesB.length : 0}`;
     if (key === this.landKey && this.land) return this.land;
     const land = this.land ?? document.createElement('canvas');
     land.width = Math.round(w * res); land.height = Math.round(h * res);
@@ -238,6 +252,7 @@ class MapEngine {
     const size = BASE * view2.k, offsets = this.copies(m);
     const taken: [number, number, number, number][] = [[w / 2 - 70, m, w / 2 + 70, m + 30]]; // the scale bar
     const zoom = view2.k / this.kMin;
+    let named = false;
     for (const n of offsets) {
       const vx = view2.x + n * size;
       g.setTransform(res * view2.k, 0, 0, res * view2.k, res * vx, res * view2.y);
@@ -279,7 +294,7 @@ class MapEngine {
       g.shadowBlur = 0;
       // Cities for orientation, the biggest first as you zoom in.
       g.textAlign = 'left';
-      g.font = '500 10px ui-sans-serif, system-ui, sans-serif';
+      g.font = '500 11px ui-sans-serif, system-ui, sans-serif';
       for (const c of cities()) {
         if (zoom < CITY_ZOOM[c.rank] || skip?.has(c.name)) continue;
         const x = vx + c.bx * view2.k, y = view2.y + c.by * view2.k;
@@ -292,7 +307,32 @@ class MapEngine {
         g.beginPath(); g.arc(x, y, 1.8, 0, Math.PI * 2); g.fill();
         g.fillText(c.name, x + 5, y + 0.5);
       }
+      // M172: towns and cities from GeoNames as you zoom in, the biggest first, never over another
+      // name; smaller places a little fainter. At most 260 names a picture.
+      if (places && zoom >= 4.5) {
+        let n = 0;
+        g.font = '500 11px ui-sans-serif, system-ui, sans-serif';
+        for (const list of [this.placesA, this.placesB]) {
+          for (const c of list) {
+            if (n >= 260) break;
+            if (zoom < placeZoom(c.pop) || skip?.has(c.name)) continue;
+            const x = vx + c.bx * view2.k, y = view2.y + c.by * view2.k;
+            if (x < -40 || x > w + 40 || y < -10 || y > h + 10) continue;
+            const tw = measure(g, c.name);
+            const r: [number, number, number, number] = [x - 3, y - 7, x + 6 + tw, y + 7];
+            if (taken.some((o) => r[0] < o[2] && r[2] > o[0] && r[1] < o[3] && r[3] > o[1])) continue;
+            taken.push(r); n++;
+            g.globalAlpha = c.pop >= 250 ? 1 : c.pop >= 50 ? 0.85 : 0.72;
+            g.fillStyle = pal.city;
+            g.beginPath(); g.arc(x, y, c.pop >= 250 ? 1.7 : 1.3, 0, Math.PI * 2); g.fill();
+            g.fillText(c.name, x + 5, y + 0.5);
+          }
+        }
+        g.globalAlpha = 1;
+        named ||= n > 0;
+      }
     }
+    this.named = named;
     this.land = land; this.landKey = key; this.landView = v0; this.landM = m;
     return land;
   }
@@ -330,6 +370,17 @@ class MapEngine {
     };
     this.p.current.draw({ ctx, w, h, view, t, dark: this.p.current.dark, zoom: view.k / this.kMin, at, sx, sy, near, lngLat });
     if (view.k / this.kMin >= 3) this.scaleBar(ctx);
+    // GeoNames' licence (CC BY 4.0) asks for credit wherever its places are named.
+    if (this.named) {
+      ctx.save();
+      ctx.font = '500 11px ui-sans-serif, system-ui, sans-serif'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
+      const text = 'Places © GeoNames', tw = ctx.measureText(text).width;
+      ctx.fillStyle = this.p.current.dark ? 'rgba(12,12,14,0.72)' : 'rgba(255,255,255,0.8)';
+      ctx.beginPath(); ctx.roundRect(6, h - 24, tw + 12, 18, 9); ctx.fill();
+      ctx.fillStyle = this.p.current.dark ? 'rgba(228,228,231,0.75)' : 'rgba(39,39,42,0.72)';
+      ctx.fillText(text, 12, h - 15);
+      ctx.restore();
+    }
   }
 
   /** A distance scale at the top, true at the middle of the view. */
@@ -497,12 +548,12 @@ class MapEngine {
   }
 }
 
-export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark, live, draw, onPoint, skipCities, look, interactive = true, className, children }, ref) {
+export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark, live, draw, onPoint, skipCities, look, places, interactive = true, className, children }, ref) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<MapEngine | null>(null);
-  const latest = useRef<Live>({ draw, onPoint, live, dark, homeBox, skipCities, look });
-  useEffect(() => { latest.current = { draw, onPoint, live, dark, homeBox, skipCities, look }; engine.current?.kick(); });
+  const latest = useRef<Live>({ draw, onPoint, live, dark, homeBox, skipCities, look, places });
+  useEffect(() => { latest.current = { draw, onPoint, live, dark, homeBox, skipCities, look, places }; engine.current?.kick(); });
   useEffect(() => {
     const e = new MapEngine(wrap.current!, canvas.current!, latest, interactive);
     engine.current = e;
