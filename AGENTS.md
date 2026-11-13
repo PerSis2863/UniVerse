@@ -100,7 +100,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M159** (M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M167** (M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -149,7 +149,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     ring that rests while scrolling); M157, a sweep for problems (the live error log, a 199-page crawl of the
     built site for three roles, 15 checks): emergencies shown only to the people they concern, a phone
     number no longer wiped, the map thread's handled failure no longer reported, a faint label fixed.
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet (10 Nov, the owner's fixes; numbered
+  - **Merged 13 Nov (PR #122; the owner's fixes of 10–13 Nov, numbered
     after PR #121's M158–M159):** M163, the
     sign-in page lined up (the picture shrinks with `zoom`, not pinned to a corner; cards one width; the
     footer's notes level on both sides); M160, no "where am I" row above page titles (the owner: not useful);
