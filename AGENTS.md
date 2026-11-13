@@ -100,7 +100,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M167** (M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -165,7 +165,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     arrangement on my other devices" (off by default) keeps it in the account (`user_arrangements`, 0206).
     M167 (13 Nov): a menu entry dragged onto a page becomes a shortcut there and a link dragged onto the
     menu an entry; a thing held over a card goes inside it; table columns and the header row move.
-  - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M168 (13 Nov), smooth resizing (to
+  - **Merged 13 Nov (PR #123):** M168 (13 Nov), smooth resizing (to
     the pixel, neighbours glide, sizes ease in), put back / undo / redo gliding, carried cards lean, the
     card light under the mouse restyling one card instead of everything in it. M169: timed refreshes pause
     while a tab is idle (Relief map, meetings, staff register, office hours, admissions, analytics). M170: the console's
@@ -203,7 +203,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
 - **Next up, first** (asked 13 Nov; the owner's words in the handoff's "Asked 13 Nov"): **M173**, Trace
-  across the supply chain: every scan records where, when and who, and each role sees only what it needs
+  across the supply chain (in progress on the branch, not merged: migration 0207, `src/lib/trace-chain.ts`,
+  `src/server/trace-chain.ts`, `src/app/t/[code]/Staff.tsx`, `components/trace/ChainTeam.tsx`; still to
+  do: a browser check of each role's view, notes): every scan records where, when and who, and each role sees only what it needs
   (a driver: no price; also maker, warehouse, shop, buyer), modern and professional with smooth motion
   (start from the shipments, carrier keys and `/t/<code>`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
@@ -224,7 +226,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0207`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0208` (0207 is M173's, on the branch)** (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

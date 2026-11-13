@@ -127,6 +127,7 @@ const PUBLIC_MODULE: Record<string, string> = {
   'trace POST scan/:code': 'anyone scans a product’s signed code',
   'trace POST scan/:code/warranty': 'from a scanned product’s page: one per unit, refused on a likely copy',
   'trace POST scan/:code/review': 'from a scanned product’s page: one per unit, refused on a likely copy',
+  'trace POST scan/:code/stop': 'staff record a stop: the role is checked inside (the brand, its team, or the shipment’s carrier key)',
   'trace GET carry/:key': 'a shipment’s carrier page: the carrier key is the password',
   'trace POST carry/:key/ping': 'a shipment’s carrier page: the carrier key is the password',
   'trace POST carry/:key/arrive': 'a shipment’s carrier page: the carrier key is the password',

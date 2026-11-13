@@ -48,7 +48,8 @@ export default function View() {
     if (!key) return;
     let cancelled = false;
     api.get<Info>(`/trace/carry/${key}`)
-      .then((r) => { if (!cancelled) setInfo(r.data); })
+      // M173: this phone keeps the link's key, so scanning a unit of the shipment shows the driver's view.
+      .then((r) => { if (!cancelled) setInfo(r.data); try { localStorage.setItem('uv-carry-key', key); } catch { /* private mode */ } })
       .catch((e) => { if (!cancelled) setMissing(errorMessage(e, 'This sharing link no longer works.')); });
     return () => { cancelled = true; };
   }, [key]);
