@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M173 is the latest).
+  builds on it). The newest notes are at the end (M178 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,7 +100,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M178** (M173, M177–M178 merged 13 Nov, PR #124: Trace across
+  the supply chain, smoother pages, a security review; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -175,6 +176,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     page no longer narrows it). M175: the side menu floats, rounded on every side (`--side-gap`). M176: focus mode
     grows out of the tool's box and shrinks back into it. M172: every map names ~24,000 more places as you zoom
     (GeoNames, credited) with 1:10m coastlines close in; Relief's map groups piled-up requests, cards, shelters.
+  - **Merged 13 Nov (PR #124):** M173, Trace across the supply chain: brand, warehouse, driver, shop and
+    buyer each see their own view of a scanned unit (no price for drivers and warehouses) and record their
+    stops with place and time; invite links for the team (migration 0207). M177, a deep check and smoother
+    pages: cards no longer blur the moving scene behind them (homes 35 → 60 frames a second), public pages
+    don't download Firebase for visitors who aren't signed in, Green's page doesn't jump. M178, Attendance
+    scrolls without stalls (plain cards no longer fade their shadow), the Planner's week keeps its height
+    while loading, a security review (no critical findings; a shopper's check reads at most 200 stops).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -202,13 +210,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M178 (13 Nov), Attendance scrolls without stalls (plain cards no
-  longer fade their shadow), the Planner's week keeps its height while loading, a security review (no
-  critical findings; a shopper's check reads at most 200 stops). M177 (13 Nov), a deep check and smoother pages: cards no longer
-  blur the moving scene behind them (homes 35 → 60 frames a second), public pages don't download
-  Firebase for visitors who aren't signed in, Green's page doesn't jump. M173 (13 Nov), Trace across the supply chain: brand, warehouse,
-  driver, shop and buyer each see their own view of a scanned unit (no price for drivers and
-  warehouses) and record their stops with place and time; invite links for the team (migration 0207).
+- **On the branch, not merged yet:** nothing.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
