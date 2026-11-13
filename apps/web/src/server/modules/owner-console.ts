@@ -207,7 +207,8 @@ export default function ownerConsoleModule(router: Router) {
   /** Sample data (src/server/sample-world.ts): how much is in, fill one step at a time, remove it all. */
   r.get('sample-world', () => sampleStatus());
   r.post<{ n: string }>('sample-world/step/:n', async ({ params, user, req }) => {
-    const steps = sampleSteps(), n = Number(params.n);
+    // (The owner is let into some of it, to try things: M170.)
+    const steps = sampleSteps({ id: user.id, role: user.role }), n = Number(params.n);
     const step = Number.isInteger(n) ? steps[n] : undefined;
     if (!step) throw new BadRequestException('Unknown step.');
     const rows = await step.run();

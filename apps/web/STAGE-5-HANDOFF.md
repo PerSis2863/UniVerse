@@ -6346,3 +6346,37 @@ use it simultaneously".
   (likely $1–3 a month). Turning pausing off is the secret `CF_GUARD_OFF` (any value; the 70% and 90%
   emails still come), or a later item can move the pause to a runaway-only ceiling. The owner decides.
 
+
+## M170: Sample data for all five apps (13 Nov 2026)
+
+The owner (13 Nov): "can you also add a lot of sample data in owner console for all the five apps so that
+i can try and test all features and see it". The console's **Fill with sample data** (Overview) now has
+22 steps instead of 14 (`src/server/sample-world.ts`), about 26,000 more rows:
+
+- **UniVersity:** Sample Academy (an `organizations` row owned by the first sample admin; every sample
+  person joins it), 12 published courses (codes `SA-CS101`…: course codes are unique across the site, so
+  the sample's never meet a real school's), two timetable slots each, every sample student in 5 courses,
+  5 assignments a course (3 past, 2 coming, a rubric), 3 quizzes with 5 questions each, ~85% of past work
+  handed in with scores, feedback and grades (each student keeps a level, so report cards differ), quiz
+  answers, two weeks of attendance on each course's days (midnight UTC), course and school-wide news.
+- **Relief:** 10 organisations (shelters with beds, water, food, power, food banks, a clinic…), owners,
+  coordinators and volunteers, 6 supplies each (some low), 4 shifts each with sign-ups, two emergencies
+  going on now with "I'm safe" check-ins, 40 aid boxes with their trip so far, 90 helpers with skills
+  and alerts.
+- **Trace:** owners with resale counts, 260 repairs (by the brand or the owner), take-back on every
+  sample product with 140 requests (most received), 150 fake-label reports.
+- **Play:** 3,200 scores across the 13 games (a quarter from rooms).
+- **The owner is let in** (`sampleSteps(me)`, the route passes the signed-in owner): a sample brand's
+  owner only when they have no brand (one brand per account), coordinator of Riverside Relief Network and
+  a volunteer at Harbour Night Shelter, a member of the first Green team with 24 days of actions (a
+  streak, badges), 3 scores per game; as a student, enrolled in 5 sample courses; as a teacher, teaching
+  the last two. All of it goes with **Remove**: ids `smp…`; courses and announcements are deleted
+  before the people who teach and wrote them (those keys refuse otherwise); enrolments, work, grades,
+  attendance, quizzes and the owner's memberships go with their course, organisation, brand or team.
+- **Tested** against the local database with a throwaway harness (node's built-in SQLite, foreign keys
+  on, plain `INSERT` so nothing was skipped silently): every step in under 0.1 s, no duplicates, and after
+  Remove no `smp…` row left in any table. Pages checked as the demo student: courses, grades, Relief
+  organisations and shifts, Play leaderboards, Green.
+- **For code that builds on it:** a new sample table needs its ids starting `smp` and its table in
+  `clearSample`'s list (before `users` if it points at a person with RESTRICT); a step stays a few big
+  `INSERT`s (one request each, under D1's 50 queries).
