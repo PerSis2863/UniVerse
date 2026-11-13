@@ -6586,3 +6586,34 @@ this for whole supply chain… modern and professional… ultra smooth animation
   page (`interactive`), and the landing shows the hub's globe in its preview.
 - **Tools used** (not committed): a frame meter and a layout-shift finder written for this check; the
   crawl and `browser-session.mjs` from `scripts/`.
+
+## M178: the Planner and Attendance, and a security review (the owner, 13 Nov 2026: "do this and check what else problems or errors or any security problems")
+
+- **Attendance stalled while scrolling** (4 to 5 slow frames a scroll, no script, no blur). Found by
+  switching things off one at a time in a browser trace: the M9 hover glow. Every `.panel` / `.card`
+  faded its edge and shadow (320 ms), and a fading shadow repaints the whole card each frame; the
+  1,600 px card holding the table did that whenever it passed under a still mouse. Plain cards now
+  change edge and shadow at once; pressable cards (`a` / `button` cards, `.card-hover`) keep the fade
+  (`globals.css`, M9 block). Attendance: drawing 794 → 206 ms a scroll, stalls 4 → 0.
+  **Tried and dropped:** holding the glow while `<html data-scrolling>` is set: the attribute turns on
+  and off with every scroll, and each switch repainted the card: 4× worse. **Rule:** never transition
+  `box-shadow` (or a border colour) on a container that can be tall; change it at once.
+- **The Planner's jump** (0.08): "This week" (`SmartWeek`) grew from a 240 px placeholder to its
+  real height. The placeholder and the loaded week share `md:min-h-80`, so a usual week (up to about
+  three sessions a day) arrives without moving anything; the demo student's very busy week still
+  grows (0.05, under the 0.1 people notice). A fixed height with scrolling days was rejected: it
+  would hide sessions in busy weeks.
+- **Security review** (the security-review checklist, the project's rules): no secrets in the code
+  (matches are labels and test values); every raw SQL query binds what comes from a request (the
+  values written into the text are table names, counts and fixed ranges); the 15 raw HTML insertions
+  are the app's own scripts, KaTeX (`trust: false`), escaped sheet cells and a CV whose colour is
+  checked (`safeColour`); sign-in redirects only to this site's paths; uploads check who, size and
+  type; headers (CSP, HSTS, `X-Frame-Options: DENY`, `nosniff`, referrer and permissions policies)
+  and no CORS on the API; limits per person and address on every API call (300 a minute; costly 20,
+  sign-in steps 10); `pnpm audit --prod`: one low advisory in a build-time tool, no fix released.
+  M173: a team member of one brand is a buyer on another's units; brands see names, never emails.
+  **Hardened:** a shopper's check read every stop of a batch, and stops can be recorded from public
+  links (a driver's key), so it now reads the newest 200 (`scan` in `trace.ts`).
+- **Live errors:** nothing new since 10 Nov.
+- **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
+  Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).

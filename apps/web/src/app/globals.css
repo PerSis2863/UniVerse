@@ -1804,7 +1804,10 @@ html.reduce-motion .flow-comet { display: none; }
 /* M9 · Cards answer the pointer the way the Relay video's glass cards do: a two-tone edge glow
    (dark mode) or a soft indigo lift (light). Border and shadow only: nothing to re-blur. */
 @media (hover: hover) and (pointer: fine) {
-  :is(.panel, .card, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
+  /* M178: plain cards (containers) change edge and shadow at once; a fade repainted the whole card each
+     frame, and a long table's card stalled scrolling as it passed under the mouse. Cards you press keep it. */
+  :is(.panel, .card, .card-hover) { transition: transform 320ms var(--ease-glide); }
+  :is(a.card, a.panel, button.card, button.panel, .card-hover) { transition: border-color 260ms ease, box-shadow 320ms ease, transform 320ms var(--ease-glide); }
   :is(.panel, .card, .card-hover):hover { border-color: rgba(39, 39, 42, 0.28); box-shadow: var(--card-shadow), 0 18px 44px -28px rgba(39, 39, 42, 0.45); }
   .dark :is(.panel, .card, .card-hover):hover { border-color: rgba(122, 174, 250, 0.28); box-shadow: var(--card-shadow), 0 0 0 1px rgba(122, 174, 250, 0.08), 0 24px 60px -30px rgba(79, 142, 247, 0.55); }
 }

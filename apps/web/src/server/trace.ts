@@ -343,7 +343,9 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
     ]);
   }
   const [events, brand, extras] = await Promise.all([
-    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, createdAt: true, lat: true, lng: true } }),
+    // At most the newest 200 stops (a batch has a handful): staff record stops from public links (M173),
+    // so a flood of them must not make every shopper's check heavier (M178).
+    prisma.traceEvent.findMany({ where: { batchId: batch.id }, orderBy: { createdAt: 'desc' }, take: 200, select: { stage: true, place: true, createdAt: true, lat: true, lng: true } }).then((e) => e.reverse()),
     batch.brandId ? prisma.traceBrand.findUnique({ where: { id: batch.brandId }, select: { name: true, logoUrl: true, slug: true } }) : null,
     passportExtras(batch, id, { first: !again && existing.scanCount === 0, genuine: verdict === 'FIRST', place: code.firstPlace, user }),
   ]);
