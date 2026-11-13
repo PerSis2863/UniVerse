@@ -46,8 +46,10 @@ function toCountries(s: WorldShapes): Country[] {
 }
 
 const cache = new Map<string, Promise<Country[]>>();
-/** The countries at 1:110m (fast, for the world) or 1:50m (sharper, loaded when zoomed in). */
-export function loadWorld(detail: '110m' | '50m'): Promise<Country[]> {
+/** The countries at 1:110m (fast, for the world), 1:50m (sharper, loaded when zoomed in) or 1:10m
+ *  (M172: coastlines and borders to about a kilometre, loaded only close in: 3.6 MB). */
+export type Detail = '110m' | '50m' | '10m';
+export function loadWorld(detail: Detail): Promise<Country[]> {
   if (!cache.has(detail)) {
     const got = shapes(new URL(`/geo/world-${detail}.json`, location.href).href).then(toCountries);
     got.catch(() => cache.delete(detail)); // a failed download can be tried again
@@ -55,6 +57,25 @@ export function loadWorld(detail: '110m' | '50m'): Promise<Country[]> {
   }
   return cache.get(detail)!;
 }
+
+/** M172: towns and cities beyond the curated list (cities.ts), from GeoNames (CC BY 4.0, credited on
+ *  the map): tier 1 is every place of 100,000 people or more (~4,200), tier 2 those of 15,000 to
+ *  100,000 (~19,800); each loaded once, the first time a map is zoomed in far enough. Biggest first. */
+export interface Place { name: string; bx: number; by: number; pop: number }
+const placeCache = new Map<1 | 2, Promise<Place[]>>();
+export function loadPlaces(tier: 1 | 2): Promise<Place[]> {
+  if (!placeCache.has(tier)) {
+    const got = fetch(`/geo/places-${tier}.json`)
+      .then((r) => { if (!r.ok) throw new Error(`places: ${r.status}`); return r.json() as Promise<{ places: [string, number, number, number][] }>; })
+      .then((d) => d.places.map(([name, lat, lng, pop]) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, pop }; }));
+    got.catch(() => placeCache.delete(tier));
+    placeCache.set(tier, got);
+  }
+  return placeCache.get(tier)!;
+}
+/** How far in (the map's zoom) a place of this many thousand people gets its name. */
+const PLACE_ZOOM: [number, number][] = [[1000, 4.5], [500, 6.5], [250, 9], [100, 13], [50, 20], [25, 30], [15, 44]];
+export const placeZoom = (pop: number) => (PLACE_ZOOM.find(([p]) => pop >= p) ?? [0, 60])[1];
 
 let grat: Path2D | null = null;
 /** Lines every 10° of latitude and longitude. */

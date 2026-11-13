@@ -6477,3 +6477,40 @@ The owner (13 Nov): "when i go in and out of Focus mode it should be ultra smoot
   animation's name and that it's the box's own (children have animations too).
 - Measured: in, 840 → 1,446 → 1,440 px wide; out, 1,440 → 884 px fading, then back in the page. Reduce
   Motion: fades only. Block M176 in `globals.css`.
+
+## M172: Every map more detailed, the Relief map first (13 Nov 2026)
+
+The owner (13 Nov, a picture of the Relief map: dots piled on each other, only country names): "can you
+improve this map and make it detailing", "try make every map in the project more detailed with specific
+locations where ever it is required", then "please do all these".
+
+- **Every world map** (`WorldCanvas`, so Relief, Trace's market and tracking maps, Green, aid boxes,
+  the landing):
+  - **Towns and cities by zoom:** besides the ~180 curated names (`cities.ts`), `public/geo/places-1.json`
+    (4,249 places of 100,000 people or more) loads the first time a map is zoomed past 4×, and
+    `places-2.json` (19,789 places of 15,000–100,000) past 18×; each place's name shows at a zoom set by
+    its size (`placeZoom` in `engine.ts`), the biggest first, never over another name, at most 260 a
+    picture, smaller places a little fainter. Source: GeoNames (CC BY 4.0) via the all-the-cities 3.1.0
+    package, decoded once by a script (not a dependency), places the curated list already names left
+    out; the licence asks for credit, so "Places © GeoNames" shows on a map whenever one of them is
+    named. Both files are kept out of the offline cache (`geo/**` in `next.config` publicExcludes).
+  - **Sharper coastlines and borders close in:** `public/geo/world-10m.json` (world-atlas 2.0.2, 1:10m,
+    3.6 MB) loads only when the world is drawn big enough (`px > 14`), and back to 1:50m below 10.
+  - World Pin passes `places={false}`: names would give the answers away. Map names are 11 px now.
+- **Relief's live map** (`ReliefApp.tsx`):
+  - Requests that would pile up join into one disc with the count, its ring split by kind (critical,
+    high, medium, low, offers), a pulse when one is critical (`groupNear` in
+    `components/trace/map/cluster.ts`, worked out on screen each frame, so groups split as you zoom;
+    the chosen request always stands alone; none past 60×). Clicking a group flies in until it splits.
+  - A card for what the pointer is on: a request (kind, urgency, people, the place "about 500 m",
+    when, who's helping), a group (how many of each, people waiting, its places) or a shelter. It goes
+    as soon as the map moves.
+  - Shelters, food banks and groups that said how they are (`/relief/places`, the same answer the
+    board below uses) are on the map as a small house, green when open, named close in; clicking one
+    opens its card (beds, water, food, charging, their note, directions).
+  - Close in, each request says its title and, closer, its place under it.
+- **Green's map:** a card per place (CO₂ saved, actions in 90 days, "within about 10 km"), the place
+  and kilograms written beside it close in, a click flies in.
+- **Privacy unchanged:** Relief positions stay rounded to ~500 m, Green and Trace to 0.1°.
+- **Frames:** measured against the code before this item on the same machine: the same (this test
+  machine draws in software; the map is the slow part of the page there either way).

@@ -15,13 +15,14 @@ import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { distanceM } from '@/lib/attendance-rules';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type ReliefKind, type Skill, type Urgency } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, STOCK_LABEL, SKILLS, SKILL_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type Place, type ReliefKind, type Skill, type Urgency } from '@/lib/relief';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from '@/components/trace/map/engine';
+import { groupNear, type Group } from '@/components/trace/map/cluster';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
@@ -49,6 +50,21 @@ interface ReliefMap {
 
 export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, WATER: Droplets, SHELTER: Home, MEDICAL: Stethoscope, TRANSPORT: Car, CLOTHES: Shirt, OTHER: Package };
 const OFFER = '#14b8a6', DONE = '#22c55e';
+
+/** M172: a name on the map with a soft halo, and a fainter second line (where it is) when given. */
+function label(ctx: CanvasRenderingContext2D, f: Frame, text: string, x: number, y: number, sub: string | null) {
+  ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
+  ctx.strokeStyle = f.dark ? 'rgba(10,10,12,0.9)' : 'rgba(255,255,255,0.95)';
+  const top = sub ? y - 6 : y;
+  ctx.font = '600 11px ui-sans-serif, system-ui'; ctx.strokeText(text, x, top);
+  ctx.fillStyle = f.dark ? '#eef2fb' : '#111113'; ctx.fillText(text, x, top);
+  if (!sub) return;
+  ctx.font = '500 11px ui-sans-serif, system-ui'; ctx.strokeText(sub, x, y + 7);
+  ctx.fillStyle = f.dark ? 'rgba(228,228,231,0.72)' : 'rgba(39,39,42,0.72)'; ctx.fillText(sub, x, y + 7);
+}
+/** A group's disc: bigger with more in it, never wider than the reach that joins them. */
+const bubble = (n: number) => 10 + Math.min(8, Math.log2(n) * 2.4);
+const many = (n: number, one: string, more = `${one}s`) => `${n} ${n === 1 ? one : more}`;
 
 /** The "Ask or offer help" form, kept here so tapping the map for the place doesn't lose what was typed. */
 interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string; skill: Skill | '' }
@@ -119,6 +135,13 @@ export function ReliefApp() {
   const [picked, setPicked] = useState<{ lat: number; lng: number } | null>(null);
   const map = useRef<MapHandle>(null);
   const frameRef = useRef<Frame | null>(null);
+  // M172: the shelters and food banks that said how they are (the board below uses the same answer),
+  // requests that would pile up drawn as one group with a count, a card for what the pointer is on.
+  const { data: placeData } = useSWR<{ places: Place[] }>('/relief/places', fetcher, { refreshInterval: useActivePoll(60_000), keepPreviousData: true });
+  const shelters = useMemo(() => (placeData?.places ?? []).map((o) => { const [bx, by] = toBase(o.lng, o.lat); return { o, bx, by }; }), [placeData]);
+  const groups = useRef<Group<ReliefPost>[]>([]);
+  const [hover, setHover] = useState<{ key: string; x: number; y: number; mw: number; post?: ReliefPost; group?: ReliefPost[]; org?: Place } | null>(null);
+  const [orgSel, setOrgSel] = useState<Place | null>(null);
 
   const posts = useMemo(() => (data?.posts ?? []).filter((p) => (type === 'ALL' || p.type === type) && (!kinds.size || kinds.has(p.kind))), [data, type, kinds]);
   const ordered = useMemo(() => [...posts].sort((a, b) => (a.type === b.type ? needScore(b, here, now || 0) - needScore(a, here, now || 0) : a.type === 'NEED' ? -1 : 1)), [posts, here, now]);
@@ -138,8 +161,12 @@ export function ReliefApp() {
   };
   const focus = (p: ReliefPost) => { setSelected(p.id); map.current?.flyTo([p.lng - 0.08, p.lat - 0.05, p.lng + 0.08, p.lat + 0.05], { maxZoom: 150 }); };
 
+  const hoverView = useRef('');
   const draw = (f: Frame) => {
     frameRef.current = f;
+    // The card for what the pointer is on goes once the map moves (it would point at the wrong place).
+    const viewKey = `${f.view.k.toFixed(4)},${f.view.x.toFixed(1)},${f.view.y.toFixed(1)}`;
+    if (hoverView.current && hoverView.current !== viewKey) { hoverView.current = ''; setHover(null); }
     const { ctx, t } = f;
     const { sx, sy } = f;
     const zf = Math.min(2.2, Math.max(1, Math.pow(f.zoom, 0.3)));
@@ -148,9 +175,48 @@ export function ReliefApp() {
     const g = glow(DONE);
     for (const d of model.done) { const x = sx(d.bx), y = sy(d.by); if (x < -20 || x > f.w + 20 || y < -20 || y > f.h + 20) continue; ctx.globalAlpha = 0.22; const r = 8 * zf; ctx.drawImage(g, x - r, y - r, r * 2, r * 2); }
     ctx.restore();
+    // Shelters, food banks and groups (M172): a small house, green when open, with its name close in.
+    for (const { o, bx, by } of shelters) {
+      const x = sx(bx), y = sy(by);
+      if (x < -20 || x > f.w + 20 || y < -20 || y > f.h + 20) continue;
+      const s2 = 7 * Math.sqrt(zf);
+      ctx.fillStyle = o.openNow === false ? '#71717a' : '#16a34a'; ctx.strokeStyle = f.dark ? '#0c0c0e' : '#fff'; ctx.lineWidth = 2;
+      ctx.beginPath(); ctx.roundRect(x - s2, y - s2, s2 * 2, s2 * 2, 4); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(x, y - s2 * 0.55); ctx.lineTo(x + s2 * 0.55, y - s2 * 0.05); ctx.lineTo(x + s2 * 0.38, y - s2 * 0.05); ctx.lineTo(x + s2 * 0.38, y + s2 * 0.5); ctx.lineTo(x - s2 * 0.38, y + s2 * 0.5); ctx.lineTo(x - s2 * 0.38, y - s2 * 0.05); ctx.lineTo(x - s2 * 0.55, y - s2 * 0.05); ctx.closePath(); ctx.fill();
+      if (f.zoom > 14) label(ctx, f, o.name, x + s2 + 6, y, o.place && f.zoom > 40 ? o.place : null);
+    }
+    // Requests that would pile up on each other join into a group with a count (they split as the
+    // map is zoomed in); the chosen one always stands alone.
+    const pts: { item: ReliefPost; x: number; y: number }[] = [];
     for (const { p, bx, by } of model.posts) {
       const x = sx(bx), y = sy(by);
       if (x < -30 || x > f.w + 30 || y < -30 || y > f.h + 30) continue;
+      pts.push({ item: p, x, y });
+    }
+    const rank = (p: ReliefPost) => (p.type === 'OFFER' ? 9 : URGENCIES.length - URGENCIES.indexOf(p.urgency));
+    pts.sort((a, b) => rank(a.item) - rank(b.item));
+    const loose = pts.filter((q) => q.item.id === selected);
+    const grouped = f.zoom < 60 ? groupNear(pts.filter((q) => q.item.id !== selected), 38) : pts.filter((q) => q.item.id !== selected).map((q) => ({ x: q.x, y: q.y, items: [q.item] }));
+    groups.current = grouped.filter((g) => g.items.length > 1);
+    for (const g of groups.current) {
+      // A disc with a ring split by kind (critical, high, medium, low needs, offers) and the count.
+      const n = g.items.length, r = bubble(n);
+      const shares = new Map<string, number>();
+      for (const p of g.items) { const c = p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency]; shares.set(c, (shares.get(c) ?? 0) + 1); }
+      if (!calm && g.items.some((p) => p.type === 'NEED' && p.status === 'OPEN' && p.urgency === 'CRITICAL')) {
+        const ph = (t / 1600) % 1; ctx.globalAlpha = (1 - ph) * 0.45; ctx.strokeStyle = URGENCY_COLOR.CRITICAL; ctx.lineWidth = 1.5;
+        ctx.beginPath(); ctx.arc(g.x, g.y, r + 3 + ph * 16, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
+      }
+      ctx.fillStyle = f.dark ? 'rgba(17,17,19,0.92)' : 'rgba(255,255,255,0.96)';
+      ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, Math.PI * 2); ctx.fill();
+      let a0 = -Math.PI / 2;
+      ctx.lineWidth = 3.5; ctx.lineCap = 'butt';
+      for (const [c, k] of shares) { const a1 = a0 + (k / n) * Math.PI * 2; ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(g.x, g.y, r - 1.75, a0, a1); ctx.stroke(); a0 = a1; }
+      ctx.fillStyle = f.dark ? '#f4f4f5' : '#18181b'; ctx.font = `700 ${n > 99 ? 10 : 11}px ui-sans-serif, system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillText(String(n), g.x, g.y + 0.5);
+    }
+    for (const q of [...grouped.filter((g) => g.items.length === 1).map((g) => ({ item: g.items[0], x: g.x, y: g.y })), ...loose]) {
+      const p = q.item, x = q.x, y = q.y, bx = x;
       const color = p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency];
       const r = (p.type === 'OFFER' ? 5 : 4 + Math.min(6, Math.sqrt(p.people) * 1.4)) * Math.sqrt(zf);
       if (p.type === 'NEED' && p.status === 'OPEN' && !calm && (p.urgency === 'CRITICAL' || p.urgency === 'HIGH')) {
@@ -163,30 +229,55 @@ export function ReliefApp() {
       else { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
       if (p.status === 'TAKEN') { ctx.strokeStyle = DONE; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r + 3.5, 0, Math.PI * 2); ctx.stroke(); }
       if (p.id === selected) { ctx.strokeStyle = f.dark ? '#fff' : '#111113'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 7 + (calm ? 0 : Math.sin(t / 260) * 1.5), 0, Math.PI * 2); ctx.stroke(); }
-      if (f.zoom > 30 || p.id === selected) {
-        ctx.font = '600 11px ui-sans-serif, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
-        ctx.lineWidth = 3; ctx.strokeStyle = f.dark ? 'rgba(10,23,33,0.9)' : 'rgba(255,255,255,0.95)'; ctx.strokeText(p.title, x + r + 6, y);
-        ctx.fillStyle = f.dark ? '#eef2fb' : '#111113'; ctx.fillText(p.title, x + r + 6, y);
-      }
+      // Close in, each one says what it is and where (M172: the place under the title).
+      if (f.zoom > 24 || p.id === selected) label(ctx, f, p.title, x + r + 6, y, f.zoom > 40 || p.id === selected ? p.place : null);
     }
     if (here) { const [hx, hy] = toBase(here.lng, here.lat); const x = sx(hx), y = sy(hy); ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     if (picked) { const [px, py] = toBase(picked.lng, picked.lat); const x = sx(px), y = sy(py); ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y - 16, 8, Math.PI * 0.75, Math.PI * 0.25); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y - 16, 3, 0, Math.PI * 2); ctx.fill(); }
   };
 
+  /** What's under the pointer: a group, a request or offer, or a shelter (M172). */
+  const hit = (pt: { x: number; y: number }, f: Frame) => {
+    for (const g of groups.current) if (Math.hypot(pt.x - g.x, pt.y - g.y) < bubble(g.items.length) + 2) return { key: `g:${g.items[0].id}`, x: g.x, y: g.y, group: g.items };
+    let best: { p: ReliefPost; d: number; x: number; y: number } | null = null;
+    for (const { p, bx, by } of model.posts) {
+      if (groups.current.some((g) => g.items.length > 1 && g.items.includes(p))) continue;
+      const x = f.sx(bx), y = f.sy(by), d = Math.hypot(pt.x - x, pt.y - y);
+      if (d < 16 && (!best || d < best.d)) best = { p, d, x, y };
+    }
+    if (best) return { key: `p:${best.p.id}`, x: best.x, y: best.y, post: best.p };
+    for (const { o, bx, by } of shelters) { const x = f.sx(bx), y = f.sy(by); if (Math.abs(pt.x - x) < 12 && Math.abs(pt.y - y) < 12) return { key: `o:${o.id}`, x, y, org: o }; }
+    return null;
+  };
   const onPoint = (pt: { x: number; y: number } | null, kind: 'hover' | 'click') => {
     const f = frameRef.current;
-    if (!f || !pt || kind !== 'click') return;
+    if (!f) return;
+    if (kind === 'hover') {
+      const h = pt && !picking ? hit(pt, f) : null;
+      if ((h?.key ?? null) !== (hover?.key ?? null)) {
+        hoverView.current = h ? `${f.view.k.toFixed(4)},${f.view.x.toFixed(1)},${f.view.y.toFixed(1)}` : '';
+        setHover(h ? { ...h, mw: f.w } : null);
+      }
+      return;
+    }
+    if (!pt) return;
     if (picking) {
       const [lng, lat] = f.lngLat(pt.x, pt.y);
       setPicked({ lat, lng }); setPicking(false); setPosting(true);
       return;
     }
-    let best: { id: string; d: number } | null = null;
-    for (const { p, bx, by } of model.posts) {
-      const d = Math.hypot(pt.x - f.sx(bx), pt.y - f.sy(by));
-      if (d < 16 && (!best || d < best.d)) best = { id: p.id, d };
+    const h = hit(pt, f);
+    setHover(null);
+    if (h?.group) {
+      // A group: fly in until it splits.
+      const lats = h.group.map((p) => p.lat), lngs = h.group.map((p) => p.lng);
+      const pad = 0.02;
+      map.current?.flyTo([Math.min(...lngs) - pad, Math.min(...lats) - pad, Math.max(...lngs) + pad, Math.max(...lats) + pad], { maxZoom: 160 });
+      return;
     }
-    setSelected(best ? (best as { id: string }).id : null);
+    if (h?.org) { setOrgSel(h.org); setSelected(null); return; }
+    setOrgSel(null);
+    setSelected(h?.post ? h.post.id : null);
   };
 
   const s = data?.stats;
@@ -256,6 +347,8 @@ export function ReliefApp() {
               {URGENCIES.slice().reverse().map((u) => <span key={u} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: URGENCY_COLOR[u] }} />{URGENCY_LABEL[u]} need</span>)}
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rotate-45" style={{ background: OFFER }} />Offer</span>
               <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: DONE }} />Someone’s helping</span>
+              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-[3px] bg-green-600" />Shelter, food bank or group</span>
+              <span className="flex items-center gap-2"><span className="grid w-3.5 h-3.5 place-items-center rounded-full border-2 border-orange-500 text-[8px] font-bold leading-none" aria-hidden>3</span>Several close together</span>
             </div>
             <AnimatePresence>
               {picking && (
@@ -268,6 +361,19 @@ export function ReliefApp() {
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
                   className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[440px] rounded-2xl bg-white/95 dark:bg-[#111113]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
                   <PostCard p={sel} now={now} here={here} onChange={() => void mutate()} />
+                </motion.div>
+              )}
+              {orgSel && !sel && !picking && (
+                <motion.div key={orgSel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
+                  className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[400px] rounded-2xl bg-white/95 dark:bg-[#111113]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
+                  <OrgCard o={orgSel} onClose={() => setOrgSel(null)} />
+                </motion.div>
+              )}
+              {hover && !picking && (
+                <motion.div key={hover.key} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                  className="pointer-events-none absolute z-10 w-64 rounded-xl border border-zinc-200/70 bg-white/95 p-3 text-xs text-zinc-600 shadow-xl dark:border-white/10 dark:bg-[#111113]/95 dark:text-zinc-300"
+                  style={{ left: Math.max(8, Math.min(hover.x + 14, hover.mw - 270)), top: hover.y > 170 ? hover.y - 14 : hover.y + 16, translate: hover.y > 170 ? '0 -100%' : undefined, transformOrigin: hover.y > 170 ? 'left bottom' : 'left top' }}>
+                  <MapCard hover={hover} now={now} />
                 </motion.div>
               )}
             </AnimatePresence>
@@ -401,5 +507,76 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
         <div className="mt-5 flex justify-end gap-2"><button type="button" onClick={onClose} className="btn-secondary">Cancel</button><button type="submit" disabled={saving || !f.title.trim()} className="btn-primary">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <HandHeart className="w-4 h-4" />}Post it</button></div>
       </motion.form>
     </motion.div>
+  );
+}
+
+/** M172: the card for what the pointer is on: a request or offer, a group of them, or a shelter. */
+function MapCard({ hover, now }: { hover: { post?: ReliefPost; group?: ReliefPost[]; org?: Place }; now: number }) {
+  const ago = (iso: string) => (now ? formatDistanceToNow(new Date(iso), { addSuffix: true }) : '');
+  if (hover.post) {
+    const p = hover.post, I = KIND_ICON[p.kind];
+    return (
+      <>
+        <p className="flex items-center gap-2 font-semibold text-sm text-zinc-900 dark:text-white"><span className="grid h-6 w-6 shrink-0 place-items-center rounded-lg text-white" style={{ background: p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency] }}><I className="h-3.5 w-3.5" aria-hidden /></span><span className="truncate" translate="no">{p.title}</span></p>
+        <p className="mt-1.5">{p.type === 'OFFER' ? `Offer · ${RELIEF_KIND_LABEL[p.kind]}` : `${URGENCY_LABEL[p.urgency]} need · ${many(p.people, 'person', 'people')}`}</p>
+        <p className="flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate" translate="no">{p.place ?? 'Place not named'}</span><span className="shrink-0">· about 500 m</span></p>
+        <p>{ago(p.createdAt)}{p.status === 'TAKEN' ? ` · ${p.helper?.name ?? 'someone'} is helping` : ''}{p.org ? ` · ${p.org.name}` : ''}</p>
+        <p className="mt-1.5 font-medium text-zinc-500">Click for details</p>
+      </>
+    );
+  }
+  if (hover.group) {
+    const g = hover.group, needs = g.filter((p) => p.type === 'NEED'), people = needs.reduce((a, p) => a + p.people, 0);
+    const places = [...new Set(g.map((p) => p.place).filter(Boolean))] as string[];
+    return (
+      <>
+        <p className="font-semibold text-sm text-zinc-900 dark:text-white">{many(g.length, 'request')} close together</p>
+        <p className="mt-1.5 flex flex-wrap gap-1.5">
+          {URGENCIES.slice().reverse().map((u) => { const n = needs.filter((p) => p.urgency === u).length; return n ? <span key={u} className="inline-flex items-center gap-1"><span className="h-2 w-2 rounded-full" style={{ background: URGENCY_COLOR[u] }} />{n} {URGENCY_LABEL[u].toLowerCase()}</span> : null; })}
+          {g.length - needs.length > 0 && <span className="inline-flex items-center gap-1"><span className="h-2 w-2 rotate-45" style={{ background: OFFER }} />{many(g.length - needs.length, 'offer')}</span>}
+        </p>
+        {people > 0 && <p className="mt-1">{many(people, 'person', 'people')} waiting</p>}
+        {places.length > 0 && <p className="flex items-center gap-1"><MapPin className="h-3 w-3 shrink-0" aria-hidden /><span className="truncate" translate="no">{places.slice(0, 3).join(', ')}{places.length > 3 ? ` and ${places.length - 3} more` : ''}</span></p>}
+        <p className="mt-1.5 font-medium text-zinc-500">Click to zoom in</p>
+      </>
+    );
+  }
+  const o = hover.org!;
+  return (
+    <>
+      <p className="font-semibold text-sm text-zinc-900 dark:text-white" translate="no">{o.name}</p>
+      <p className="mt-1">{RELIEF_ORG_KIND_LABEL[o.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? o.kind}{o.place ? ` · ${o.place}` : ''}</p>
+      <OrgFacts o={o} />
+      <p className="mt-1.5 font-medium text-zinc-500">Click for directions</p>
+    </>
+  );
+}
+
+/** Open or not, beds, water, food and charging, as said by the place itself. */
+function OrgFacts({ o }: { o: Place }) {
+  return (
+    <p className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5">
+      <span className={o.openNow === false ? 'text-zinc-500' : 'font-medium text-green-700 dark:text-green-400'}>{o.openNow === false ? 'Closed now' : 'Open now'}</span>
+      {o.bedsTotal ? <span>{o.bedsFree ?? 0} of {o.bedsTotal} beds free</span> : null}
+      {([['Water', o.water], ['Food', o.food], ['Charging', o.power]] as const).map(([k, v]) => v ? <span key={k}>{k}: {STOCK_LABEL[v].toLowerCase()}</span> : null)}
+    </p>
+  );
+}
+
+/** A shelter chosen on the map (M172). */
+function OrgCard({ o, onClose }: { o: Place; onClose: () => void }) {
+  return (
+    <div className="text-sm text-zinc-600 dark:text-zinc-300">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{o.name}</p>
+          <p className="text-xs">{RELIEF_ORG_KIND_LABEL[o.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? o.kind}{o.place ? ` · ${o.place}` : ''}</p>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Close" className="grid h-8 w-8 shrink-0 place-items-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><X className="h-4 w-4" /></button>
+      </div>
+      <div className="text-xs"><OrgFacts o={o} /></div>
+      {o.statusNote && <p className="mt-2 text-xs" translate="no">“{o.statusNote}”</p>}
+      <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent([o.name, o.place].filter(Boolean).join(', '))}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm mt-3 inline-flex"><MapPin className="h-3.5 w-3.5" aria-hidden />Directions</a>
+    </div>
   );
 }

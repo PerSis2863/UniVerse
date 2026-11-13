@@ -26,7 +26,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { glow, toBase } from '@/components/trace/map/engine';
-import { WorldCanvas, type Box, type Frame } from '@/components/trace/map/WorldCanvas';
+import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 
 // UniVerse Green (src/lib/apps.ts): my CO₂ saved and what it equals, logging an action (CO₂ worked
 // out with the factor shown), this week's challenge for me and my teams, badges, the last 30 days,
@@ -412,7 +412,22 @@ export function GreenMap() {
   const { data } = useSWR<{ cells: { lat: number; lng: number; kg: number; actions: number; place: string | null }[] }>('/green/map', fetcher);
   const cells = useMemo(() => (data?.cells ?? []).map((c) => { const [bx, by] = toBase(c.lng, c.lat); return { ...c, bx, by }; }), [data]);
   const max = Math.max(1, ...cells.map((c) => c.kg));
+  // M172: each place says what was saved there: a card under the pointer, the name and kilograms close in.
+  const frame = useRef<Frame | null>(null), hoverView = useRef('');
+  const [hover, setHover] = useState<{ i: number; x: number; y: number; mw: number } | null>(null);
+  const viewKey = (f: Frame) => `${f.view.k.toFixed(4)},${f.view.x.toFixed(1)},${f.view.y.toFixed(1)}`;
+  const onPoint = (pt: { x: number; y: number } | null, kind: 'hover' | 'click') => {
+    const f = frame.current;
+    if (!f) return;
+    let best = -1, bd = 18;
+    if (pt) cells.forEach((c, i) => { const d = Math.hypot(pt.x - f.sx(c.bx), pt.y - f.sy(c.by)); if (d < bd) { bd = d; best = i; } });
+    if (kind === 'click') { if (best >= 0) { const c = cells[best]; mapRef.current?.flyTo([c.lng - 0.4, c.lat - 0.25, c.lng + 0.4, c.lat + 0.25], { maxZoom: 120 }); } return; }
+    if (best !== (hover?.i ?? -1)) { hoverView.current = best >= 0 ? viewKey(f) : ''; setHover(best >= 0 ? { i: best, x: f.sx(cells[best].bx), y: f.sy(cells[best].by), mw: f.w } : null); }
+  };
+  const mapRef = useRef<MapHandle>(null);
   const draw = (f: Frame) => {
+    frame.current = f;
+    if (hoverView.current && hoverView.current !== viewKey(f)) { hoverView.current = ''; setHover(null); }
     const { ctx, t } = f, g = glow(EMERALD);
     const zf = Math.min(2.4, Math.max(1, Math.pow(f.zoom, 0.3)));
     ctx.save(); ctx.globalCompositeOperation = f.dark ? 'lighter' : 'source-over';
@@ -426,16 +441,36 @@ export function GreenMap() {
     for (const c of cells) {
       const x = f.sx(c.bx), y = f.sy(c.by);
       if (x < 0 || x > f.w || y < 0 || y > f.h) continue;
-      ctx.fillStyle = f.dark ? '#6ee7b7' : '#059669'; ctx.beginPath(); ctx.arc(x, y, 2 + Math.sqrt(c.kg / max) * 4, 0, Math.PI * 2); ctx.fill();
+      const r = 2 + Math.sqrt(c.kg / max) * 4;
+      ctx.fillStyle = f.dark ? '#6ee7b7' : '#059669'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+      if (f.zoom > 16 && c.place) {
+        const text = `${c.place} · −${fmt(c.kg)} kg`;
+        ctx.font = '600 11px ui-sans-serif, system-ui'; ctx.textAlign = 'left'; ctx.textBaseline = 'middle'; ctx.lineJoin = 'round'; ctx.lineWidth = 3;
+        ctx.strokeStyle = f.dark ? 'rgba(10,10,12,0.9)' : 'rgba(255,255,255,0.95)'; ctx.strokeText(text, x + r + 5, y);
+        ctx.fillStyle = f.dark ? '#d1fae5' : '#064e3b'; ctx.fillText(text, x + r + 5, y);
+      }
     }
   };
+  const hc = hover ? cells[hover.i] : null;
   return (
     <section className="panel overflow-hidden p-0" aria-labelledby="gmap-h">
       <div className="px-5 pt-5 pb-3 flex flex-wrap items-center gap-2">
         <h2 id="gmap-h" className="font-bold text-zinc-900 dark:text-white flex-1">Everyone’s actions</h2>
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
-      <WorldCanvas label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} className="w-full h-[46vh] min-h-[320px]">
+      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
+        <AnimatePresence>
+          {hover && hc && (
+            <motion.div key={hover.i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+              className="pointer-events-none absolute z-10 w-56 rounded-xl border border-zinc-200/70 bg-white/95 p-3 text-xs text-zinc-600 shadow-xl dark:border-white/10 dark:bg-[#111113]/95 dark:text-zinc-300"
+              style={{ left: Math.max(8, Math.min(hover.x + 14, hover.mw - 236)), top: hover.y > 130 ? hover.y - 14 : hover.y + 16, translate: hover.y > 130 ? '0 -100%' : undefined, transformOrigin: hover.y > 130 ? 'left bottom' : 'left top' }}>
+              <p className="font-semibold text-sm text-zinc-900 dark:text-white" translate="no">{hc.place ?? 'Around here'}</p>
+              <p className="mt-1 font-mono text-emerald-700 dark:text-emerald-300">−{fmt(hc.kg)} kg CO₂</p>
+              <p>{hc.actions.toLocaleString()} {hc.actions === 1 ? 'action' : 'actions'} in the last 90 days · within about 10 km</p>
+              <p className="mt-1.5 font-medium text-zinc-500">Click to zoom in</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
         {data && cells.length === 0 && (
           <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#111113] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>

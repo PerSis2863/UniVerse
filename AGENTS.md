@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M176 is the latest).
+  builds on it). The newest notes are at the end (M172 is the latest; M176 before it).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -173,7 +173,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     scores) and lets the owner in to try them. M171: the constellation replaced by smooth bars that show the
     real numbers (homes, Green, console, Trace wallet); UniVersity's background drifts study signs. M174: Studio's focus mode is the whole window (an arranged
     page no longer narrows it). M175: the side menu floats, rounded on every side (`--side-gap`). M176: focus mode
-    grows out of the tool's box and shrinks back into it.
+    grows out of the tool's box and shrinks back into it. M172: every map names ~24,000 more places as you zoom
+    (GeoNames, credited) with 1:10m coastlines close in; Relief's map groups piled-up requests, cards, shelters.
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -201,21 +202,17 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **Next up, first** (asked 13 Nov, not started; the owner's words in the handoff's "Asked 13 Nov"):
-  **M172**, every map more detailed with specific places where needed (the Relief live map first: the
-  owner's picture showed piled-up dots and only country names; shared engine `components/trace/map/`,
-  `WorldCanvas.tsx`: more place names by zoom, sharper coastlines close in, labels and a card per point,
-  clusters with counts; keep the privacy rounding: Relief ~500 m, Green and Trace 0.1°; World Pin must
-  stay without names). **M173**, Trace across the supply chain: every scan records where, when and who,
-  and each role sees only what it needs (a driver: no price; also maker, warehouse, shop, buyer),
-  modern and professional with smooth motion (start from the shipments, carrier keys and `/t/<code>`).
+- **Next up, first** (asked 13 Nov; the owner's words in the handoff's "Asked 13 Nov"): **M173**, Trace
+  across the supply chain: every scan records where, when and who, and each role sees only what it needs
+  (a driver: no price; also maker, warehouse, shop, buyer), modern and professional with smooth motion
+  (start from the shipments, carrier keys and `/t/<code>`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M177** (M172 and M173 are kept for the two asks under "Next up"). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M177** (M173 is kept for the ask under "Next up"). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
