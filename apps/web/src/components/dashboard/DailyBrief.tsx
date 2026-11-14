@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { format, formatDistanceToNowStrict, isToday, isTomorrow } from 'date-fns';
-import { CalendarClock, Check, ClipboardCheck, GraduationCap, ListChecks, Loader2, MessageCircle, Phone, Plus, Sparkles, Sun } from 'lucide-react';
+import { CalendarClock, Check, ClipboardCheck, GraduationCap, History, ListChecks, Loader2, MessageCircle, Phone, Plus, Sparkles, Sun } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Avatar } from '@/components/ui/Avatar';
 import { Switch } from '@/components/ui/Switch';
@@ -29,6 +29,8 @@ interface Brief {
   calls: { id: string; title: string; startAt: string; roomName: string; path: string | null; conversationId: string | null }[];
   waiting: { conversationId: string; name: string; avatar: string | null; isGroup: boolean; from: string; body: string; at: string; unread: boolean; question: boolean }[];
   toGrade: number;
+  /** What happened since the visit before this one (M185); null on a first visit or when nothing did. */
+  since?: { from: string; total: number; items: { kind: keyof typeof SINCE; id: string; title: string; course: string | null; at: string; link: string }[] } | null;
   ai: AiBrief | null;
   aiOn: boolean;
   push: boolean;
@@ -38,6 +40,7 @@ interface Brief {
 const card = 'rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl';
 const when = (iso: string) => { const d = new Date(iso); return `${isToday(d) ? 'today' : isTomorrow(d) ? 'tomorrow' : format(d, 'EEE')} ${format(d, 'HH:mm')}`; };
 const KIND = { work: 'Assignment', quiz: 'Quiz', task: 'Task' } as const;
+const SINCE = { grade: 'Grade posted', announcement: 'Announcement', work: 'New work', material: 'New material', handin: 'Handed in', joined: 'New student' } as const;
 
 function Section({ icon: Icon, title, children }: { icon: typeof Sun; title: string; children: React.ReactNode }) {
   return (
@@ -97,7 +100,8 @@ export function DailyBrief() {
 
   if (error) return null;
   if (!data) return <div className={`${card} h-40 skeleton`} aria-hidden />;
-  const empty = !data.classes.length && !data.due.length && !data.calls.length && !data.waiting.length && !data.toGrade;
+  const since = data.since?.items.length ? data.since : null;
+  const empty = !data.classes.length && !data.due.length && !data.calls.length && !data.waiting.length && !data.toGrade && !since;
   const pending = (data.ai?.tasks ?? []).filter((t) => !added[t.title]);
 
   return (
@@ -178,6 +182,20 @@ export function DailyBrief() {
         <p className="text-sm text-zinc-500">Nothing on today: no classes, nothing due and nobody waiting for you. Enjoy it.</p>
       ) : (
         <div className="grid sm:grid-cols-2 gap-4">
+          {since && (
+            <div className="sm:col-span-2">
+              <Section icon={History} title={`Since your last visit, ${formatDistanceToNowStrict(new Date(since.from))} ago · ${since.total}`}>
+                {since.items.map((n) => (
+                  <li key={`${n.kind}-${n.id}`}>
+                    <Link href={n.link} className="text-sm flex gap-2 rounded-lg -mx-1 px-1 py-0.5 hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
+                      <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100"><span translate="no">{n.title}</span><span className="text-xs text-zinc-500"> · {SINCE[n.kind]}{n.course ? ` · ${n.course}` : ''}</span></span>
+                      <span className="text-xs text-zinc-500 shrink-0 pt-0.5">{formatDistanceToNowStrict(new Date(n.at))} ago</span>
+                    </Link>
+                  </li>
+                ))}
+              </Section>
+            </div>
+          )}
           {data.classes.length > 0 && (
             <Section icon={GraduationCap} title={`Classes today · ${data.classes.length}`}>
               {data.classes.map((c, i) => (

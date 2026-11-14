@@ -2373,7 +2373,14 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const wd = (new Date().getDay() + 6) % 7;
     const classes = (d.slots as { courseId: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; room?: { name?: string } }[]).filter((x) => x.dayOfWeek === wd)
       .map((x) => { const c = d.courses.find((y) => y.id === x.courseId); return { courseId: x.courseId, code: c?.code ?? '', name: c?.name ?? '', start: x.startTime, end: x.endTime, type: x.type ?? 'LECTURE', room: x.room?.name ?? null }; });
-    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, ai: null, aiOn: false, push: false, hour: 7 });
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const first = d.courses[0];
+    // Since your last visit (M185): a taste of it in the sample, from its first course.
+    const since = first ? { from: ago(26), total: 3, items: (d.me.role === 'TEACHER'
+      ? [{ kind: 'handin', id: 'smp-s1', title: 'Maya Chen handed in Problem set 3', at: ago(3), link: '/teacher/assignments' }, { kind: 'handin', id: 'smp-s2', title: 'Omar Farouk handed in Problem set 3', at: ago(9), link: '/teacher/assignments' }, { kind: 'joined', id: 'smp-s3', title: 'Lina Petrova joined', at: ago(20), link: '/teacher/students' }]
+      : [{ kind: 'grade', id: 'smp-s1', title: 'Problem set 2', at: ago(4), link: '/student/grades' }, { kind: 'announcement', id: 'smp-s2', title: 'Room change on Thursday', at: ago(11), link: '/student/blackboard' }, { kind: 'work', id: 'smp-s3', title: 'Problem set 3', at: ago(22), link: '/student/assignments' }]
+    ).map((x) => ({ ...x, course: first.code })) } : null;
+    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, since, ai: null, aiOn: false, push: false, hour: 7 });
   }],
   // Watch together (Stage 4 · 4.8): the sample's courses have no videos (YouTube links still work).
   [/^\/api\/calls\/([^/]+)\/videos$/, () => ok({ videos: [] })],
