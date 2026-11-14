@@ -1,4 +1,5 @@
 'use client';
+import { currentAppNow } from '@/lib/current-app';
 import { useRouter } from 'next/navigation';
 import { AttachmentInline } from './AttachmentInline';
 import { photoSrcSet } from '@/lib/image-sizes';
@@ -339,7 +340,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
 
   const openContact = async (userId: string) => {
     try {
-      const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId }) });
+      const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId, app: currentAppNow() }) });
       onOpenChat?.(id);
     } catch (e) { toast.error((e as Error).message); }
   };

@@ -6663,3 +6663,28 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Live errors:** nothing new since 10 Nov.
 - **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
   Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).
+
+## M179: each app has its own Messages, and "All apps" shows them together (the owner, 13 Nov 2026)
+
+- **The ask:** "when people login in specific app or section like relief, green, play or any then they
+  should get there own new message section but also have option to sync the data of there other app or
+  website messages together".
+- **Now:** a chat belongs to the app it was started in (`conversations.app`, migration 0208: `trace`,
+  `relief`, `green`, `play`; UniVersity's and every chat from before M179 are `NULL`). Messages shows the
+  app you're in (its icon and name under "Chats"); **This app / All apps** switches to every chat
+  together, each tagged with its app (kept on the device, `uv-chat-all-apps`), and "All apps" counts the
+  new messages waiting in the other apps. The UniVerse welcome chat shows in every app. The same two
+  people get one 1:1 chat per app (found again only in the same app). Archived and unread counts follow
+  the switch.
+- **Which app you're in:** `src/lib/current-app.ts` (`currentAppNow`, `useCurrentApp`): the page's own
+  app, else the one last used (`uv-last-app`, written by the side menu), else the website's choice,
+  else UniVersity (tested). Every shared "Message this person" (profile, command palette, New chat and
+  New group, private chats, status, favourites, a chat's member) sends `app`; Relief's "Message" sends
+  `relief`; UniVersity's own pages send nothing (UniVersity).
+- **Both list paths** return `app`: the Next route and the light path (`cloudflare/fast-chat.ts`).
+  Sample mode has chats in Relief, Green and Play.
+- **Rules:** a new way to start a chat sends `app: currentAppNow()` (or its own app); server-made chats
+  (`directChat`, parent chats, broadcasts, the owner's) stay UniVersity's.
+- **Checked:** `messages-apps-ui.mjs` (one chat per app for the same two people; Relief shows Relief's
+  chat and not UniVersity's and the other way round; All apps shows both, tagged; axe at 1280 dark and
+  390 light; no sideways scroll; no errors), `current-app.test.ts`, `pnpm check`.

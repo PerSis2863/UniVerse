@@ -25,6 +25,9 @@ import { useMedia } from '@/lib/use-media';
 import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
+import { useCurrentApp } from '@/lib/current-app';
+import { APPS, appById } from '@/lib/apps';
+import { AppIcon } from '@/components/apps/AppIcon';
 
 /** A built-in filter, or one of my folders (folder:<id>). */
 type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
@@ -33,6 +36,8 @@ type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
 // code. Loading them separately lets the chat list show first; they're fetched in the background
 // right after, so opening a chat doesn't wait either.
 const loadChatWindow = () => import('./ChatWindow');
+/** Each app's short name, on chats in "All apps" (M179). */
+const SHORT = Object.fromEntries(APPS.map((a) => [a.id, a.id === 'campus' ? 'UniVersity' : a.name.replace(/^UniVerse /, '')])) as Record<(typeof APPS)[number]['id'], string>;
 const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
   loading: () => <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>,
 });
@@ -74,6 +79,12 @@ export function MessagingHub() {
   }, []);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  // Each app's own Messages (M179): the app you're in shows its chats; "All apps" shows every chat
+  // together, each tagged with its app (kept on this device). The UniVerse welcome chat is in every app.
+  const app = useCurrentApp();
+  const [allApps, setAllAppsState] = useState(() => { try { return localStorage.getItem('uv-chat-all-apps') === '1'; } catch { return false; } });
+  const setAllApps = (on: boolean) => { setAllAppsState(on); try { localStorage.setItem('uv-chat-all-apps', on ? '1' : '0'); } catch { /* private mode */ } };
+  const inScope = useCallback((c: ConversationSummary) => allApps || c.isOfficial || (c.app ?? 'campus') === app, [allApps, app]);
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   useOnceParam('new', (v) => setDialog(v === 'group' ? 'group' : 'chat')); // ?new=chat from the phone's "+" menu
   const [view, setView] = useState<'chats' | 'archived'>('chats');
@@ -187,6 +198,7 @@ export function MessagingHub() {
   const conversations = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (data?.conversations ?? []).filter((c) => {
+      if (!inScope(c)) return false;
       if ((view === 'archived') !== !!c.archived) return false;
       if (filter === 'unread' && c.unread === 0) return false;
       if (filter === 'groups' && !c.isGroup) return false;
@@ -194,10 +206,12 @@ export function MessagingHub() {
       if (filter.startsWith('folder:') && !activeFolder?.chatIds.includes(c.id)) return false;
       return !q || c.title.toLowerCase().includes(q) || (!lockedChats.includes(c.id) && (c.lastMessage?.body ?? '').toLowerCase().includes(q));
     });
-  }, [data, search, filter, view, activeFolder, lockedChats]);
-  const totalUnread = (data?.conversations ?? []).filter((c) => !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
-  const archivedCount = (data?.conversations ?? []).filter((c) => c.archived).length;
-  const archivedUnread = (data?.conversations ?? []).filter((c) => c.archived && c.unread > 0).length;
+  }, [data, search, filter, view, activeFolder, lockedChats, inScope]);
+  const totalUnread = (data?.conversations ?? []).filter((c) => inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  // New messages in the other apps' chats, shown on the "All apps" switch.
+  const elsewhere = allApps ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  const archivedCount = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived).length;
+  const archivedUnread = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived && c.unread > 0).length;
   // Chat streaks (M17, Snapchat): days in a row we've both written, on one-to-one chats.
   const { data: streakData } = useSWR<{ streaks: Record<string, number> }>('/api/chat/streaks', authedJson, { revalidateOnFocus: false });
   const streaks = streakData?.streaks ?? {};
@@ -349,6 +363,19 @@ export function MessagingHub() {
               </button>
             ))}
           </div>
+          {space === 'chats' && view === 'chats' && (
+            <div className="flex items-center gap-2" role="group" aria-label="Which chats">
+              <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                <AppIcon id={app} size={22} /><span className="truncate">{allApps ? 'All your apps' : appById(app).name}</span>
+              </span>
+              <span className="ms-auto inline-flex shrink-0 rounded-full bg-zinc-100 p-0.5 dark:bg-white/[0.06]">
+                <button type="button" aria-pressed={!allApps} onClick={() => setAllApps(false)} className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors', !allApps ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white')}>This app</button>
+                <button type="button" aria-pressed={allApps} onClick={() => setAllApps(true)} className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors', allApps ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white')}>
+                  All apps{elsewhere > 0 && <span className="rounded-full bg-[#b5307d] px-1.5 text-[11px] font-bold leading-4 text-white"><span className="sr-only">, </span>{elsewhere}<span className="sr-only"> new</span></span>}
+                </button>
+              </span>
+            </div>
+          )}
           {space === 'chats' && <>
           {(shared.text || shared.photos > 0) && (
             <div role="status" className="rise-in flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/[0.07] px-3.5 py-2.5">
@@ -471,6 +498,7 @@ export function MessagingHub() {
                       {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     <span className="flex items-center gap-1.5 shrink-0">
+                      {allApps && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(c.app ?? 'campus').name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(c.app ?? 'campus').color }} aria-hidden />{SHORT[c.app ?? 'campus']}</span>}
                       {!c.isGroup && streaks[c.id] && <span className="streak" title={`${streaks[c.id]}-day streak: you've both written every day`} aria-label={`${streaks[c.id]}-day streak`}><i aria-hidden>🔥</i>{streaks[c.id]}</span>}
                       {c.lastMessage && <span className={cn('text-[11px]', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                     </span>

@@ -84,7 +84,7 @@ export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: (
   const message = async () => {
     if (!p.by) return;
     try {
-      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.by.id }) });
+      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.by.id, app: 'relief' }) });
       router.push(`${inboxFor(role)}?c=${encodeURIComponent(id)}`);
     } catch (e) { toast.error((e as Error).message || 'Couldn’t start the chat.'); }
   };

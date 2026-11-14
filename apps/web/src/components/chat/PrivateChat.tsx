@@ -1,5 +1,6 @@
 'use client';
 
+import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import { Loader2, Lock, ShieldCheck } from 'lucide-react';
@@ -25,7 +26,7 @@ export function StartPrivateChat({ userId, onOpen }: { userId: string; onOpen: (
   return (
     <button type="button" disabled={busy} onClick={async () => {
       setBusy(true);
-      try { const r = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId, private: true }) }); onOpen(r.id); }
+      try { const r = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId, private: true, app: currentAppNow() }) }); onOpen(r.id); }
       catch (e) { toast.error((e as Error).message); } finally { setBusy(false); }
     }} className="w-full flex items-center gap-3 p-3 rounded-2xl bg-emerald-500/10 hover:bg-emerald-500/15 text-start">
       {busy ? <Loader2 className="w-4 h-4 animate-spin text-emerald-600" /> : <Lock className="w-4 h-4 text-emerald-700 dark:text-emerald-300" aria-hidden />}

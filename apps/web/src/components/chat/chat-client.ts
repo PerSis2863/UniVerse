@@ -64,6 +64,8 @@ export interface ConversationSummary {
   /** An end-to-end encrypted private chat (Stage 5 · B7.6). */
   private?: boolean;
   isOfficial: boolean;
+  /** The app it was started in (M179): each app's Messages shows its own; "All apps" shows every one. */
+  app: import('@/lib/apps').AppId;
   title: string;
   avatarUrl: string | null;
   otherUserId: string | null;

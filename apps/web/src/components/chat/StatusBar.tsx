@@ -1,5 +1,6 @@
 'use client';
 
+import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -122,7 +123,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
     if (!text) return;
     try {
       // A private message to them, quoting the status.
-      const chat = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: person.user.id }) });
+      const chat = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: person.user.id, app: currentAppNow() }) });
       const quote = item.kind === 'IMAGE' ? `📷 ${item.body || 'Photo'}` : item.body;
       await authedJson(`/api/chat/conversations/${chat.id}/messages`, { method: 'POST', body: JSON.stringify({ body: `↩️ Replying to your status: “${quote.slice(0, 80)}${quote.length > 80 ? '…' : ''}”\n\n${text}` }) });
       setReply('');

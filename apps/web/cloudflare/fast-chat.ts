@@ -261,7 +261,7 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
            AND EXISTS (SELECT 1 FROM conversation_participants b WHERE b.conversationId = c.id AND b.userId = ?2) LIMIT 1`,
       )
       .bind(me.id, system),
-    db.prepare(`SELECT id, isGroup, private, name, avatarUrl, updatedAt FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
+    db.prepare(`SELECT id, isGroup, private, name, avatarUrl, updatedAt, app FROM conversations WHERE id IN (${mineIds}) ORDER BY updatedAt DESC`).bind(me.id),
     db
       .prepare(
         `SELECT p.conversationId, p.userId, p.typingUntil, p.pinnedAt, p.mutedUntil, p.archivedAt, p.markedUnread, u.name, u.avatar, u.lastSeenAt, u.presence, u.statusText, u.statusEmoji, u.statusUntil,
@@ -319,6 +319,8 @@ export async function conversations(me: Caller, db: D1Database, ctx: ExecutionCo
         isGroup,
         private: bool(c.private),
         isOfficial: !isGroup && others.some((p) => p.userId === system),
+        // The app the chat belongs to (M179; before it, every chat was UniVersity's).
+        app: (c.app as string | null) ?? 'campus',
         title: isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: isGroup ? c.avatarUrl : other?.avatar ?? null,
         otherUserId: isGroup ? null : other?.userId ?? null,

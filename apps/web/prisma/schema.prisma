@@ -907,6 +907,8 @@ model Conversation {
   channelCategory String?
   channelPrivate  Boolean    @default(false)
   channelRoles    String?
+  /// The app the chat was started in (M179): campus, trace, relief, green, play; null = UniVersity (before M179).
+  app             String?
 
   participants ConversationParticipant[]
   messages     Message[]

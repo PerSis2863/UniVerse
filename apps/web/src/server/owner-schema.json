@@ -6905,6 +6905,17 @@
      "updatedAt": false
     },
     {
+     "name": "app",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "participants",
      "type": "ConversationParticipant",
      "kind": "object",
