@@ -37,7 +37,7 @@ export default function ReliefMinePage() {
     <>
       <Topbar title="My requests & tasks" subtitle={data ? `You’ve helped ${data.helped} ${data.helped === 1 ? 'person' : 'people'}` : 'What you asked for and who you’re helping'} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           <Alerts />
           <section aria-labelledby="helping-h">
             <h2 id="helping-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><HandHeart className="w-5 h-5 text-orange-500" aria-hidden />I’m helping</h2>

@@ -54,7 +54,7 @@ function Sheet() {
   if (error) return <p className="p-8 text-sm text-rose-600">These codes couldn’t load.</p>;
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-      <div className="max-w-5xl mx-auto">
+      <div className="w-full">
         <div className="print-hide flex flex-wrap items-center gap-2 mb-4">
           <Link href="/trace" className="btn-secondary btn-sm"><ArrowLeft className="w-4 h-4" />Trace</Link>
           <h1 className="me-auto text-lg font-bold text-zinc-900 dark:text-white">{data ? `${data.batch.product} · ${data.batch.label}` : 'Codes'}</h1>

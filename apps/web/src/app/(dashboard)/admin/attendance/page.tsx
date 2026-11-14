@@ -143,7 +143,7 @@ export default function AdminAttendance() {
       <Topbar title="Attendance Management" subtitle="Track and manage student presence across all courses" />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {/* The location check for class check-ins (Stage 5 · Q11). */}
           <CheckinPolicy />
 

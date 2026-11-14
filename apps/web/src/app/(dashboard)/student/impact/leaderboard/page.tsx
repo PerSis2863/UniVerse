@@ -171,7 +171,7 @@ export default function LeaderboardPage() {
       <Topbar title="🏆 Impact Leaderboard" subtitle="Compete, climb levels, and drive real-world change." />
       <SectionTabs tabs={CREDENTIAL_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
 
           {/* My Score Card */}
           <MyScoreCard entry={myEntry} levelInfo={myLevelInfo} />

@@ -9,7 +9,7 @@ export default function NeedsBoardPage() {
     <>
       <Topbar title="Needs & Support Board" subtitle="Where NGOs need help most urgently" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           <NgoProjectBoard
             sort="deadline"
             guide={{

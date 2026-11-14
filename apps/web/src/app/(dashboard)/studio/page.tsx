@@ -484,7 +484,7 @@ function Tools() {
                 ) : <div className="h-48 rounded-2xl skeleton" aria-label="Opening the shared work" />}
               </motion.div>
             ) : (
-              <motion.div key="grid" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="max-w-5xl mx-auto">
+              <motion.div key="grid" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="w-full">
                 <Hub recent={recent} stars={stars} onPick={pick} onStar={star} onOpenSave={(id) => void openSave(id)} onMount={() => { if (scroller.current) scroller.current.scrollTop = gridTop.current; }} calm={!!calm} />
               </motion.div>
             )}

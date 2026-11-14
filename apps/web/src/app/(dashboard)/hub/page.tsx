@@ -46,7 +46,7 @@ export default function HubPage() {
     <>
       <Topbar title="All apps" subtitle="UniVerse Impact: one account, apps that change something" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           <section className="trace-hero relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white">
             <span aria-hidden className="passport-glow passport-glow-a" />
             <div className="relative">

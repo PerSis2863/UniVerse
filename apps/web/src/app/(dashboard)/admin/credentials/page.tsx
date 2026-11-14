@@ -126,7 +126,7 @@ export default function AdminCredentialVerificationPage() {
       <Topbar title="Credential Verification" subtitle="Verify student impact before a credential is signed and made shareable." />
       <SectionTabs tabs={ADMIN_CREDENTIAL_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">

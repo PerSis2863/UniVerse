@@ -6688,3 +6688,24 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Checked:** `messages-apps-ui.mjs` (one chat per app for the same two people; Relief shows Relief's
   chat and not UniVersity's and the other way round; All apps shows both, tagged; axe at 1280 dark and
   390 light; no sideways scroll; no errors), `current-app.test.ts`, `pnpm check`.
+
+## M180: pages fill the screen, no empty bands at the sides (the owner, 14 Nov 2026)
+
+- **The ask** (a screenshot of Settings centred with wide empty sides): "the setting section doesnt fit
+  properly … check where else there are gaps … perfectly fit everything in the page like no extra spaces
+  in the side or middle or anywhere".
+- **Measured** every menu page for students, teachers and admins at 1440 and 1920 px (a width-capped,
+  centred block with 64+ px empty on each side): Settings and Credentials (`max-w-5xl`, 115 px a side at
+  1440); at 1920 the hub, Trace, Green, Play and Collaborate (`max-w-6xl`, 295 px a side), Relief and the
+  maps (`max-w-[1500px]`), the impact pages (`max-w-7xl`).
+- **Now:** every app page frame that was capped at 5xl, 6xl, 7xl or a fixed 1,0xx–1,5xx px (`className=
+  "max-w-… mx-auto"`, 92 of them in 91 files under `src/app/(dashboard)` plus Collaborate's home, the
+  knowledge hub, task views, Relief's organisations, the audio and video editors) takes the full width.
+  Settings' list column grows a little on big screens (`xl:w-80`). Play's grids: a lone last card spans
+  the row (`sm:[&>*:last-child:nth-child(odd)]:col-span-2`), so no half-empty row.
+- **Left narrow on purpose:** reading pages (terms, privacy, policies: about 75 characters a line, §8) and
+  single-column forms at `max-w-4xl` and below (a 1,600 px text box is hard to use); the public website's
+  sections (designed centred).
+- **Rule:** an app page's frame is `w-full`; cap a block only when it's text to read or a short form.
+- **Checked:** the sweep again (every menu page fills at 1920), screenshots of Settings, the hub and Play
+  at 1920, no sideways scrolling, `pnpm check`.

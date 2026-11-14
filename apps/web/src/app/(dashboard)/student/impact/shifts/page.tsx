@@ -79,7 +79,7 @@ export default function ShiftsPage() {
       <Topbar title="Volunteer shifts" subtitle="Sign up, check in on site, and your hours are verified automatically" />
       <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {verifiedMinutes > 0 && (
             <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="rounded-2xl bg-emerald-500/10 border border-emerald-500/20 p-4 flex items-center gap-3">
               <Award className="w-7 h-7 text-emerald-500" />

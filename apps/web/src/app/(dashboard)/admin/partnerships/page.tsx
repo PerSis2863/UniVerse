@@ -153,7 +153,7 @@ export default function AdminPartnershipsPage() {
       <SectionTabs tabs={PARTNER_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           <SearchBox
             value={q}
             onChange={setQ}

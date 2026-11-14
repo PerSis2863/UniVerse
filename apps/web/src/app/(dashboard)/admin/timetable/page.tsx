@@ -131,7 +131,7 @@ export default function TimetableManagementPage() {
       <Topbar title="Timetable Management" subtitle="Weekly class schedule for every course, and who teaches it"
         rightNode={tab === 'classes' ? <button onClick={open} disabled={!data?.courses.length} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add class</button> : undefined} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <Segmented<Tab> label="Show" value={tab} onChange={setTab} className="w-full sm:w-auto"
             segments={[{ value: 'classes', label: clashes.size ? `Classes (${clashes.size} clashing)` : 'Classes' }, { value: 'plan', label: 'Plan a week' }, { value: 'exams', label: 'Exams' }]} />
           {tab !== 'classes' ? (

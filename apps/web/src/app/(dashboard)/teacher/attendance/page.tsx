@@ -31,7 +31,7 @@ export default function TeacherAttendance() {
       <Topbar title="Attendance" subtitle="Take the register, keep a seating chart and answer excuse requests" />
       <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8">
-        <div className="max-w-5xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <div className="flex flex-wrap items-end gap-3">
             <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Class
               <select aria-label="Course" value={courseId} onChange={(e) => setPicked(e.target.value)} className="input mt-1 w-64 max-w-full">

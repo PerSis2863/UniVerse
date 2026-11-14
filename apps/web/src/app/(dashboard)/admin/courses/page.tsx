@@ -180,7 +180,7 @@ export default function AdminCoursesPage() {
       )}
 
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
 
           <div className="flex flex-col lg:flex-row gap-3 lg:items-center">
             <div role="tablist" className="inline-flex p-1 rounded-xl bg-zinc-100 dark:bg-white/[0.06] w-fit">

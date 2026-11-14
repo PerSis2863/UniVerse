@@ -39,7 +39,7 @@ export default function AdminLostFoundPage() {
       <Topbar title="Lost & found" subtitle="Everything students have posted, and hiding what shouldn’t be there" />
       <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <AdminSearch value={q} onChange={setQ} placeholder="Search items, places or who posted them…" />
           {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !rows.length ? (
             <p className={`panel p-6 text-sm text-zinc-500 text-center`}>{data?.length ? `Nothing matches “${q}”.` : 'No posts yet.'}</p>

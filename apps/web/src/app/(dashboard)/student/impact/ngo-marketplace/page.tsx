@@ -70,7 +70,7 @@ export default function NGOMarketplacePage() {
       />
       <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           {/* Hero */}
           <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-950/60 via-teal-950/50 to-zinc-950 border border-white/10 p-8 shadow-2xl">
             <div className="absolute -start-20 -top-20 w-96 h-96 rounded-full bg-emerald-500/10 blur-3xl pointer-events-none" />

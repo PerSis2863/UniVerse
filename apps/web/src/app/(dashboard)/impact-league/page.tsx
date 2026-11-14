@@ -37,7 +37,7 @@ export default function ImpactLeaguePage() {
       <Topbar title="Impact League" subtitle="Team up across universities on a UN goal: mentors, demo day, prizes and a verified credential" />
       <SectionTabs tabs={impactTabs(role)} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           {data?.canCreate && (
             <div className="flex flex-wrap items-center justify-between gap-3">
               <p className="text-sm text-zinc-600 dark:text-zinc-400 max-w-prose">Start a challenge, add mentors, judges and sponsors, and open it to students across the campus network.</p>

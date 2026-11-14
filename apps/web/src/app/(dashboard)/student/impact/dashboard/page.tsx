@@ -63,7 +63,7 @@ export default function MySocialImpactPage() {
       />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
 
           {/* Top Hero Card */}
           <div className="relative rounded-3xl bg-gradient-to-br from-[#0f0f11] via-[#151517] to-[#151517] border border-zinc-200 dark:border-white/10 p-8 overflow-hidden shadow-2xl">

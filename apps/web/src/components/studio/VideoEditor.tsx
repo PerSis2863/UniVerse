@@ -487,7 +487,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
         <div className="flex-1 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-zinc-400" aria-label="Opening the clips" /></div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto">
-          <div className="max-w-6xl mx-auto p-3 md:p-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="w-full p-3 md:p-5 grid gap-4 lg:grid-cols-[minmax(0,1fr)_20rem]">
             <div className="space-y-3 min-w-0">
               <div className="rounded-2xl bg-black overflow-hidden" style={{ height: 'min(56vh, 520px)' }}>
                 <canvas ref={canvasRef} width={out.w} height={out.h} role="img" aria-label={`Preview at ${clock(time)}`} className="w-full h-full object-contain" />

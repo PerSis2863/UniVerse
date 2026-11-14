@@ -9,7 +9,7 @@ export default function StormfallPage() {
     <>
       <Topbar title="Play" subtitle="STORMFALL · computer only" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto"><StormfallPlayer /></div>
+        <div className="w-full"><StormfallPlayer /></div>
       </div>
     </>
   );

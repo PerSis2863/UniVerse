@@ -34,7 +34,7 @@ export default function TeacherAssignmentsPage() {
       <Topbar title="Assignments" subtitle="Written work graded against your rubric, with AI-drafted feedback you review" />
       <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ClipboardList className="w-5 h-5 text-indigo-500" /> Your assignments</h2>
             {!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New assignment</button>}

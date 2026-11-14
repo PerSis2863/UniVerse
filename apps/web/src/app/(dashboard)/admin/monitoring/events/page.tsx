@@ -35,7 +35,7 @@ export default function AdminEventsPage() {
       <Topbar title="Campus events" subtitle="RSVPs, waiting lists and check-in at the door" />
       <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <p className="text-sm text-zinc-500">Add or edit events (their seats and ticket price) in <Link href="/admin/student-life" className="text-indigo-700 dark:text-indigo-300 underline underline-offset-2">Student Life management</Link>.</p>
           {error && !events ? <LoadError onRetry={() => mutate()} message="Couldn’t load events." /> : isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !events?.length ? (
             <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No upcoming events.</p>

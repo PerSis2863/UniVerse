@@ -42,7 +42,7 @@ export default function AdminQuizzesPage() {
     <>
       <Topbar title="Quizzes" subtitle="Every quiz across your courses, who set it and who has taken it" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           {isLoading ? <div className="h-48 rounded-3xl skeleton" /> : quizzes.length === 0 ? (
             <FeatureGuide
               icon={ClipboardCheck}

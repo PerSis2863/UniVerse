@@ -91,7 +91,7 @@ export default function CampusMapPage() {
       <Topbar title="Campus map" subtitle="What’s on now: free rooms, live classes, events, and where your next class is" />
       <SectionTabs tabs={campusMapTabs(role)} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           {(data && (data.campuses.length > 1 || data.canEdit)) && (
             <div className="flex flex-wrap items-center gap-2">
               {data.campuses.length > 1 && (

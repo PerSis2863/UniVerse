@@ -39,7 +39,7 @@ export function CalendarView({ cards, lists, canEdit, onOpen, onMove }: Props) {
   const shift = (n: number) => { setDir(n); setMonth(({ y, m }) => { const d = new Date(y, m + n, 1); return { y: d.getFullYear(), m: d.getMonth() }; }); };
   const label = new Date(month.y, month.m, 1).toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
   return (
-    <div className="max-w-5xl mx-auto space-y-3">
+    <div className="w-full space-y-3">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button>
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white w-36 text-center">{label}</h2>
@@ -94,7 +94,7 @@ export function TimelineView({ cards, lists, onOpen }: Omit<Props, 'canEdit' | '
   const shift = (weeks: number) => { setDir(weeks); setStart((s) => { const n = new Date(s); n.setDate(n.getDate() + weeks * 7); return n; }); };
   const pct = (i: number) => `${(i / days) * 100}%`;
   return (
-    <div className="max-w-5xl mx-auto space-y-3">
+    <div className="w-full space-y-3">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => shift(-4)} aria-label="Earlier" className="p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronLeft className="w-4 h-4" /></button>
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">{start.toLocaleDateString(undefined, { day: 'numeric', month: 'short' })} – {new Date(start.getTime() + (days - 1) * 86_400_000).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</h2>

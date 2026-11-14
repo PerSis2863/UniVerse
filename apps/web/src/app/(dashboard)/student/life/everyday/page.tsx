@@ -14,7 +14,7 @@ export default function EverydayLifePage() {
       <Topbar title="Everyday Life" subtitle="Campus events, dining, transport and services" />
       <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-10">
+        <div className="w-full space-y-10">
           {/* My school bus, hostel room and equipment lent to me (Stage 5 · B15.5); nothing when none. */}
           <MyRegisters url="/api/registers/me" title="Your bus, room and equipment" />
           <section>

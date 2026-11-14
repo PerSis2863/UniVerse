@@ -105,7 +105,7 @@ export function CollabHome() {
 
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* Search everything, and start something new. */}
         <section className="panel collab-hero relative overflow-hidden p-5 sm:p-7">
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white">Your work, <span className="accent-word pe-1">together</span></h2>

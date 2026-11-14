@@ -146,7 +146,7 @@ export default function BoardsPage() {
       <Topbar title="Whiteboards" subtitle="Draw, add photos and work on a canvas together, live" />
       <CollabTabs />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto" onClick={() => setMenu(null)}>
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="inline-flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.04] text-sm font-semibold">
               {(['all', 'mine', 'shared'] as const).map((t) => (

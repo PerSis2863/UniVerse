@@ -39,7 +39,7 @@ export default function CorporatePartnersPage() {
       <Topbar title="🏢 Corporate Partners" subtitle="Companies working with your campus and their open roles" />
       <SectionTabs tabs={OPPORTUNITY_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           {l1 || l2 ? (
             <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}</div>
           ) : (e1 && !partners) || (e2 && !internships) ? (

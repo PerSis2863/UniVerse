@@ -63,7 +63,7 @@ export default function RoomBookingsPage() {
         rightNode={<button onClick={() => setForm({ name: '', capacity: '', type: 'Classroom', amenities: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> Add room</button>} />
       <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {form && (
             <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-2 gap-3">

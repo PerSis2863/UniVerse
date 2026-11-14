@@ -11,7 +11,7 @@ export default function TraceMapPage() {
     <>
       <Topbar title="Market map" subtitle="Where your products are scanned, live, city by city" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-[1500px] mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <TraceTabs />
           <MarketMap />
         </div>

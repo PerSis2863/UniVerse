@@ -20,7 +20,7 @@ export default function InternshipHistoryPage() {
     <>
       <Topbar title="Internship History" subtitle="Where students from your campus have been placed" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {isLoading ? (
             <div className="space-y-3">{[0, 1, 2].map((i) => <div key={i} className="h-20 rounded-2xl skeleton" />)}</div>

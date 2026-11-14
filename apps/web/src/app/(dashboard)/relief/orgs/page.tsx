@@ -8,7 +8,7 @@ import { ReliefOrgs } from '@/components/relief/ReliefOrgs';
 // is built once (no [id] route).
 export default function ReliefOrgsPage() {
   return (
-    <Suspense fallback={<div className="flex-1 p-4 sm:p-8"><div className="max-w-5xl mx-auto panel h-40 skeleton" /></div>}>
+    <Suspense fallback={<div className="flex-1 p-4 sm:p-8"><div className="w-full panel h-40 skeleton" /></div>}>
       <ReliefOrgs />
     </Suspense>
   );
