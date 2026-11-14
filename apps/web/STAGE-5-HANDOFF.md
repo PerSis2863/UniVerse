@@ -6709,3 +6709,45 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Rule:** an app page's frame is `w-full`; cap a block only when it's text to read or a short form.
 - **Checked:** the sweep again (every menu page fills at 1920), screenshots of Settings, the hub and Play
   at 1920, no sideways scrolling, `pnpm check`.
+
+## For the next session: the owner's two open asks (14 Nov 2026)
+
+Do them in this order, one commit and one note each, numbers **M181** and **M182** (check the handoff and
+the other branches first: another session may have used them). Merge only when the owner says "merge".
+
+1. **M181, Arrange: a big upgrade** (the owner: "in the arrangement features dont let user put the
+   different info in another tab which is not meant there and also add resize feature in verticle option
+   also in there and resize can be done from bottom and top also and do same for the horizontal resize and
+   make everything ultra smooth and also try to make a big arrangement feature upgrade in the system which
+   is unique and no one else has done till now"). The feature is M166 (note above): `src/lib/arrange.ts`
+   (+ test), `src/lib/arrange-dom.ts`, `src/components/ArrangeMode.tsx`, `src/store/arrange.ts`,
+   `src/server/arrange.ts` (sync, table `user_arrangements`). Do:
+   - a card can only move within its own group/tab (no dropping a page's info into a tab it doesn't
+     belong to: refuse the drop with a short shake, and don't even show drop places there);
+   - resize from **all four edges and the corners**: top and bottom for height, left and right for width
+     (today it resizes from one edge); keep sizes snapped to the grid, and remember them per page;
+   - ultra smooth: move only `transform` while dragging (no layout per frame), one `requestAnimationFrame`
+     per frame, the other cards glide out of the way (FLIP), springs from `src/lib/motion.ts`, Reduce Motion
+     leaves fades; measure frames (no long tasks while dragging);
+   - something new, ideas to put to the owner (pick one or two): layouts that change with the time of day
+     or what you're doing (a "morning" and an "exam week" arrangement switched automatically or by a tap);
+     "magnetic" cards that pull related cards next to them; one-tap "tidy" that packs the page with no
+     gaps; shared arrangements a teacher hands to a class; undo history of arrangements with a timeline.
+   - Check with a Playwright check (drag across tabs refused, each edge resizes, frame timing), axe.
+2. **M182, Messages: connections** (the owner: "add connections options like connect to gmail, linkedin,
+   and all the famous and important one for the project"). M179 gave each app its own Messages. Build a
+   **Connections** tab in Messages (and in Settings → Privacy): a card per service, each **off until the
+   owner sets it up** (they need accounts: mark **[owner]**, AGENTS.md §1):
+   - Gmail (Google Cloud OAuth client, free; works for up to 100 test users before Google's verification;
+     reading mail is a "restricted" scope whose full review costs money: say so), Outlook / Microsoft 365
+     (Microsoft Graph, an Azure app registration, free), Slack (a Slack app, free), Telegram (a bot from
+     @BotFather, free: link your Telegram by sending the bot a code), WhatsApp (through Twilio, already used
+     by Relief's text requests: paid per message), Discord (a bot, free);
+   - **LinkedIn doesn't let other apps read or send its messages** (only approved partners): offer
+     "Sign in with LinkedIn" and a profile link, and tell the owner plainly;
+   - OAuth: start and callback routes with a signed `state` and PKCE, minimal scopes, tokens **encrypted at
+     rest** (AES-GCM, a new secret the owner sets in Cloudflare, never in a committed file), never sent to a
+     browser; disconnect revokes; mail fetched live when the person opens it (not copied into D1);
+     replies go back through the service; every route checks who is asking (`route-gates.test.ts`), new GET
+     routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
+     `universe-security` to review before finishing.

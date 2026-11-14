@@ -212,7 +212,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M179, each app's own Messages
   (chats belong to the app they're started in; This app / All apps); M180, pages fill the screen (92 capped
   page frames full width; reading pages and short forms stay narrow).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
+  M181 (the Arrange upgrade: stay in its own tab, resize from every edge, ultra smooth, something new) and M182
+  (Messages connections: Gmail, Outlook, Slack, Telegram, WhatsApp, Discord; LinkedIn sign-in only); then the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
