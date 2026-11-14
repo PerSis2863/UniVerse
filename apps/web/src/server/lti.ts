@@ -119,14 +119,14 @@ export async function completeLaunch(idToken: string, state: string, cookieState
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
       // Linking to an existing account by email is only safe when the LMS verifies emails, so it's
-      // opt-in per LMS — and never for admin accounts.
-      if (!platform.trustEmails || existing.role === 'ADMIN') throw new LtiError('A UniVerse account with your email already exists. Sign in to UniVerse directly, or ask your administrator to allow linking accounts by email for this LMS.');
+      // opt-in per LMS — never for admin accounts, and only for people of the LMS's own school (M184).
+      if (!platform.trustEmails || existing.role === 'ADMIN' || (existing.organizationId ?? null) !== (platform.organizationId ?? null)) throw new LtiError('A UniVerse account with your email already exists. Sign in to UniVerse directly, or ask your administrator to allow linking accounts by email for this LMS.');
       user = existing;
     }
   }
   if (!user) {
     if (!email) throw new LtiError('The LMS didn’t share an email address. Ask your administrator to enable sharing names and emails with UniVerse.');
-    user = await prisma.user.create({ data: { email, name, role: instructor ? 'TEACHER' : 'STUDENT', status: 'ACTIVE', onboardedAt: new Date() } }); // the LMS vouches for them
+    user = await prisma.user.create({ data: { email, name, role: instructor ? 'TEACHER' : 'STUDENT', status: 'ACTIVE', onboardedAt: new Date(), organizationId: platform.organizationId ?? null } }); // the LMS vouches for them; they join its school
     if (!instructor) await prisma.studentProfile.create({ data: { userId: user.id } }).catch(() => {});
   }
   if (user.status === 'SUSPENDED') throw new LtiError('Your UniVerse account is suspended. Please contact your administrator.');

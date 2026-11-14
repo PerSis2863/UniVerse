@@ -3120,10 +3120,13 @@ model LtiPlatform {
   jwksUrl       String
   trustEmails   Boolean  @default(false) // link to existing accounts by email
   isActive      Boolean  @default(true)
+  /// M184: the school whose LMS it is (null: the main school); its admins manage it, its launches join it
+  organizationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([issuer, clientId])
+  @@index([organizationId])
   @@map("lti_platforms")
 }
 

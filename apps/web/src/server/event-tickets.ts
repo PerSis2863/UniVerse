@@ -3,6 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { readTicketCode, ticketCode } from './campus-life';
 import { notify } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { campusOf } from './school-scope';
 
 // Event tickets (Stage 5 · Q17). Every place at an event (free or paid) has a signed ticket the holder
 // shows as a QR code; the door scans it once. Paid tickets: src/server/buy-ticket.ts starts the
@@ -43,6 +44,8 @@ export async function myTicket(user: SessionUser, itemId: string) {
 /** POST /api/campus/events/[id]/scan { code } (admins at the door): a ticket works once. */
 export async function scanTicket(user: SessionUser, itemId: string, code: unknown) {
   if (user.role !== 'ADMIN') throw new ForbiddenException('Only admins can scan tickets.');
+  // Their own school's event (M184: the scan names the ticket holder).
+  if (!(await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id: itemId, kind: 'EVENT' }, select: { id: true } }))) throw new NotFoundException('Event not found.');
   const rsvpId = typeof code === 'string' ? readTicketCode(code) : null;
   if (!rsvpId) throw new BadRequestException('Not a UniVerse ticket (or it was changed).');
   const r = await prisma.eventRsvp.findUnique({ where: { id: rsvpId }, select: { id: true, itemId: true, status: true, checkedInAt: true, user: { select: { name: true } }, item: { select: { title: true } } } });

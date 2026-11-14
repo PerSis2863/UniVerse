@@ -106,3 +106,10 @@ export async function madeInSchool(user: Who, makerId: string | null | undefined
 export async function campusOf(user: Who) {
   return orgIn(await schoolsOf(user));
 }
+
+/** Whether a club is the admin's school's: one founded by one of its people (M184; as associations.service.ts). */
+export async function clubInSchool(user: Who, clubId: string): Promise<boolean> {
+  const schools = await schoolsOf(user);
+  if (schools === 'all') return true;
+  return !!(await prisma.association.findFirst({ where: { id: clubId, memberships: { some: { role: 'FOUNDER', user: usersIn(schools) } } }, select: { id: true } }));
+}

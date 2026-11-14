@@ -3,6 +3,7 @@ import prisma from '@/lib/db';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
+import { peopleWhere } from './school-scope';
 
 // Shared code editors for a course: everyone in the course can open a room; everyone can edit
 // unless the teacher locks it (then the teacher and whoever created it). The code itself lives
@@ -51,7 +52,7 @@ async function access(roomId: string, user: SessionUser) {
 export async function listRooms(user: SessionUser) {
   const courses = user.role === 'STUDENT'
     ? (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } } })).map((e) => e.course)
-    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 200 });
+    : await prisma.course.findMany({ where: user.role === 'ADMIN' ? { teacher: await peopleWhere(user) } : taughtBy(user.id), select: { id: true, code: true, name: true }, take: 200 });
   const rooms = courses.length
     ? await prisma.codeRoom.findMany({
         where: { courseId: { in: courses.map((c) => c.id).slice(0, 90) } },

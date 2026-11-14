@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { audit } from '@/server/audit';
+import { orgIn, schoolsOf } from '@/server/school-scope';
+
+/** The connection, if it is the admin's own school's (another school's looks not found, M184). */
+const own = async (user: Parameters<typeof schoolsOf>[0], id: string) => prisma.ltiPlatform.findFirst({ where: { AND: [orgIn(await schoolsOf(user))], id } });
 
 // PATCH { isActive?, trustEmails?, deploymentIds? } · DELETE — admins.
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -15,7 +19,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   if (b.trustEmails === true && !user.owner) return NextResponse.json({ error: 'Only the UniVerse owner can allow linking accounts by email.' }, { status: 403 });
   if (typeof b.trustEmails === 'boolean') data.trustEmails = b.trustEmails;
   if (typeof b.deploymentIds === 'string') data.deploymentIds = b.deploymentIds.split(/[\s,]+/).map((d: string) => d.trim()).filter(Boolean).slice(0, 20);
-  const p = await prisma.ltiPlatform.update({ where: { id }, data }).catch(() => null);
+  const p = (await own(user, id)) && (await prisma.ltiPlatform.update({ where: { id }, data }).catch(() => null));
   if (!p) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   audit(user, { action: 'lti.platform_updated', summary: `Updated LMS “${p.name}”`, targetType: 'lti_platform', targetId: id, metadata: data }, req);
   return NextResponse.json({ ok: true });
@@ -25,7 +29,7 @@ export async function DELETE(req: Request, { params }: { params: Promise<{ id: s
   const user = await getSessionUser(req);
   if (!user || user.role !== 'ADMIN') return NextResponse.json({ error: 'Not allowed.' }, { status: user ? 403 : 401 });
   const { id } = await params;
-  const p = await prisma.ltiPlatform.findUnique({ where: { id } });
+  const p = await own(user, id);
   if (!p) return NextResponse.json({ error: 'Not found.' }, { status: 404 });
   await prisma.$transaction([prisma.ltiNonce.deleteMany({ where: { platformId: id } }), prisma.ltiUser.deleteMany({ where: { platformId: id } }), prisma.ltiContext.deleteMany({ where: { platformId: id } }), prisma.ltiPlatform.delete({ where: { id } })]);
   audit(user, { action: 'lti.platform_removed', summary: `Disconnected LMS “${p.name}”`, targetType: 'lti_platform', targetId: id }, req);
