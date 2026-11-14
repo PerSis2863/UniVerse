@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M173 is the latest).
+  builds on it). The newest notes are at the end (M186 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,6 +100,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
+- **On the branch `claude/funny-galileo-y4mz9r`, not merged** (14 Nov): M183, an index on every relation
+  column (database update 0210); M184, LMS connections, clubs, the ticket scan and scheduled calls kept to
+  the admin's own school (0211); M185, "Since your last visit" in the Daily brief; M186, pulsing dots in
+  their own colour again.
 - **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
@@ -215,7 +219,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M179**. Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M187** (M179–M182 are on the branch `claude/youthful-fermi-sbdtcp`). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
@@ -227,7 +231,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0208`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0212`** (0208–0209 belong to the branch `claude/youthful-fermi-sbdtcp`) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

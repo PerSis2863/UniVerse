@@ -6617,3 +6617,102 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Live errors:** nothing new since 10 Nov.
 - **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
   Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).
+
+
+## M183: an index on every relation column (the owner, 14 Nov 2026: "upgrade all the existing features, buttons, animations, transitions, database, security and everything else … i need big changes")
+
+The day before, M177 and M178 had done a deep check, a smoothness pass and a security review, and the
+live `error_reports` had nothing new, so this session looked for what those could not see, one item per
+area the owner named (M183 database, M184 security, M185 a feature, M186 motion and buttons).
+**Numbers:** the branch `claude/youthful-fermi-sbdtcp` (another session, same day) holds M179–M180, plans
+M181–M182 and uses database update 0208, so these are M183–M186 and 0210–0211.
+
+- **62 relation columns had no index** (found by reading `schema.prisma`: a `fields: [x]` whose `x`
+  leads no `@@index`, `@@unique` or id). Among them `users.organizationId` (every "my school's people"
+  filter), `quiz_attempts.studentId`, `tasks.listId`, `space_files.folderId`, `trace_codes.productId`.
+  SQLite checks a child table row by row when a parent row is deleted unless the child column is
+  indexed (D1 enforces foreign keys), and a list filtered by the column reads the whole table; D1 bills
+  rows read. Migration `0210_relation_indexes.sql` (62 `CREATE INDEX IF NOT EXISTS`, then
+  `PRAGMA optimize`), `@@index` on each model.
+- **Trap:** a column's real name can differ from the Prisma field (`oneroster_syncs.actorId` is
+  `actor_id`, `@map`). Locally D1 accepted `"actorId"` as a text value and built a useless index
+  without a word; `schema-columns.test.ts` (it runs every migration in node's SQLite) caught it.
+  Write the mapped name, and run the unit tests after writing a migration.
+- **Rule:** a new relation gets its `@@index` and `CREATE INDEX` (`schema-indexes.test.ts` fails otherwise).
+- **Tested:** the migration applied on the local D1 (the indexes are there); `pnpm check`.
+
+
+## M184: security, the rest of the school boundary (14 Nov 2026)
+
+M158 found that admin code outside the usual patterns ignored the school (payments, campus info). This
+finished the list of admin-only files that never mention a school (about 90; most go through
+`requireAdmin`'s `org`, `peopleWhere` or `courseAccess` and are fine).
+
+- **LMS connections** (`lti_platforms`) had no school: `/api/lti/platforms` listed every school's to any
+  admin, and PATCH / DELETE took any id (DELETE also removes that LMS's linked people and courses).
+  Migration `0211_lti_platform_school.sql`: `organizationId` (null: the main school), filled from the
+  activity log's "lti.platform_added" (who connected it). The routes use `orgIn(await schoolsOf(user))`;
+  a new connection takes its admin's school. In `lti.ts`: a person an LMS brings in joins that LMS's
+  school (they landed in the main school), and linking to an existing account by email (owner-only
+  switch) only works for people of the LMS's own school.
+- **Clubs** (`club-governance.ts`, `club-carbon.ts`): `user.role === 'ADMIN'` opened any school's club
+  (elections, budget, carbon log; set the budget). Now `clubInSchool(user, clubId)` (`school-scope.ts`:
+  a club founded by one of the school's people, as `associations.service.ts` already did).
+- **The door scan** (`scanTicket`): only for the admin's own school's event (`campusOf`); it names the
+  ticket holder. **Scheduled calls:** scheduling in a group as an admin needs the group to be the
+  school's (`madeInSchool`); the course lists an admin picks from (scheduled calls, code rooms) are
+  their school's (`teacher: peopleWhere(user)`), not every school's.
+- **Server Actions** are outside the route test (M114): `route-gates.test.ts` now finds every
+  `'use server'` file under `src/app` and fails an exported action without `getUserFromToken(`.
+- **Looked at, left alone:** `joinScheduled` lets any admin past its early check (the call page checks
+  again, its comment says so); sticker packs marked "school" and campus buildings are one list for
+  all schools (no people's data; a database change when a second school joins); `canCancel` on a
+  scheduled call for any admin.
+- **Tested:** unit tests (school-scope: `clubInSchool`; event-tickets: another school's door refused;
+  route-gates); the LMS list as the local admin (200); `pnpm check`.
+
+
+## M185: "Since your last visit" in the Daily brief (14 Nov 2026)
+
+The owner chose "something for the first class" (12 Nov) and the launch goal is people who come back on
+another day; the home looked the same whether or not anything had happened while they were away.
+
+- **Where:** inside the existing "Your day" card (`DailyBrief.tsx`, `GET /api/brief`), first section,
+  not a new card (so "Edit home" and the layouts are untouched). `briefData` returns `since:
+  { from, total, items[≤8] } | null`.
+- **The visit before this one** (`src/lib/since-visit.ts`, pure, tested): from the person's last 20
+  `login_events` (a SESSION row is written once per browser session). Rows within an hour of the newest
+  are the same visit (a second tab, signing in again); the look-back stops at 30 days; a first visit
+  gives null. No new column, works across devices.
+- **What is listed** (`sinceLastVisit` in `daily-brief.ts`, at most 4 queries, in the brief's own
+  `Promise.all`, a failure gives null): students: grades (`grades.gradedAt`), announcements (visible
+  now, not their own), open work, materials, in their courses; teachers and admins: hand-ins and
+  enrolments in the courses they teach. Titles are people's own words (`translate="no"`).
+- **Sample:** `/api/brief` in `sample/router.ts` returns three made-up items for the first course.
+- **Tested:** `since-visit.test.ts`; on the dev server as alice with a visit 26 hours ago, a grade and a
+  material 3 hours ago: both listed with their links; 1280 dark and 390 light, no sideways scroll, axe
+  clean, no page errors (test rows removed).
+- **Left:** quizzes published since, and messages (the card's "Waiting for you" covers chats).
+
+
+## M186: pulsing dots keep their colour; the last repainting pings (14 Nov 2026)
+
+- **`animate-pulse` was broken everywhere.** An unlayered rule from the early look
+  (`.animate-pulse { background: linear-gradient(…); animation: shimmer }`, for loading placeholders)
+  beat Tailwind's utilities, so everything that pulses lost its own background: the red "recording"
+  dots (message box, calls, voice feedback), amber "reconnecting" (docs, sheets, slides, boards), green
+  "live" dots, the landing's text caret, about 20 places. They showed a grey shimmer, which also moved
+  `background-position` every frame (a repaint, §8). The rule is gone: Tailwind's opacity pulse, in the
+  element's own colour (checked in the browser: `rgb(255, 59, 48)`, animation `pulse`). The five
+  loading placeholders that relied on it use `.skeleton`. **Rule:** never restyle a Tailwind utility
+  class globally; placeholders are `.skeleton`.
+- **The passport's step marker** (`.pp-node`, `/t/<code>`): its ping was an animated `box-shadow`; now a
+  `::after` ring on `dot-ring` (transform and opacity), as M92 did for `.live-dot` and `.deck-ping`.
+  The dead box-shadow rules those two still carried are removed.
+- **Buttons, checked and left:** 1,476 uses of the shared `.btn-*` classes (press spring, `aria-busy`
+  spinner, focus ring, sizes); the ~135 solid-colour controls that don't use them are chosen-state
+  chips and tabs, not buttons. Converting them would change how tabs look for no gain.
+- **Left** (loops that still repaint, each in one rare place): `flow-on` / `bento-step` (the landing's
+  flow card), `play-lightning` (Quiz Clash's lightning round), `holo`, `ink-drift`, `play-static`.
+- **Tested:** `/t/demo` at 390 (the marker's own animation none, ring `dot-ring`, no errors); `pnpm check`.
+
