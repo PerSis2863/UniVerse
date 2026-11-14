@@ -79,6 +79,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `lesson-ui.mjs` | Rich lesson pages on the built Worker: read (callout, quick check, flashcards), edit, add blocks, save, preview; a new page opens the editor; students read without editing. 390 and 1280 px, light and dark, axe. |
 | `make-cc.mjs` | A small Canvas-style cartridge for the browser test. |
 | `messages-pro-ui.mjs` | M121 Messages: the panes solid, Mark all as read surviving a reload, Alt+↓/↑ between chats and Esc closing, on phones the message box's width and the chat's full name. Axe at 1280 and 390, light and dark. `BASE=http://localhost:3000 WAIT=6000` for `local:dev`. |
+| `messages-apps-ui.mjs` | M179 each app's own Messages: one 1:1 chat per app, Relief's chat only in Relief and UniVersity's only there, All apps shows both tagged. Axe at 1280 dark and 390 light, no sideways scroll. `BASE=http://localhost:3000` for `local:dev`. |
 | `notes-api.mjs` | Notes on hand-ins on the local Worker. |
 | `notes-ui.mjs` | Notes on hand-ins in the browser: words in a typed answer, a box on a PDF page, the student's view. |
 | `notify-ui.mjs` | Q9: notification settings (per kind, a muted course, the summary), the course on notifications, snooze hiding from the bell and the centre, mark read / all read, remove, the daily summary sent by the cron; the centre… |

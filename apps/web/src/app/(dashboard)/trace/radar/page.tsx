@@ -40,7 +40,7 @@ export default function RadarPage() {
     <>
       <Topbar title="Radar" subtitle="Copies, grey market, warm shipments and recalls: what needs a look" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           <RadarBody />
         </div>

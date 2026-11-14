@@ -37,7 +37,7 @@ export default function AdminShiftsPage() {
       <Topbar title="Volunteer shifts" subtitle="Shifts on NGO projects, on-site check-in and verified hours" />
       <SectionTabs tabs={IMPACT_REPORT_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <div className="flex justify-end"><button type="button" className="btn-primary btn-sm rounded-full" onClick={() => setForm({ ...empty })}><Plus className="w-4 h-4" /> New shift</button></div>
           <AnimatePresence>{form && <ShiftForm form={form} setForm={setForm} onDone={() => { setForm(null); void mutate(); }} />}</AnimatePresence>
           {isLoading ? <div className="h-32 rounded-2xl skeleton" /> : !shifts?.length ? <p className={`panel p-6 text-sm text-zinc-500 text-center`}>No shifts yet. Add one for an NGO project.</p> : (

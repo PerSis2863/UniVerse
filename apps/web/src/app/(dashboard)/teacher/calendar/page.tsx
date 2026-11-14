@@ -74,7 +74,7 @@ export default function TeacherCalendarPage() {
       <SectionTabs tabs={TEACHER_TIME_TABS} />
 
       <div className="flex-1 p-4 sm:p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <CalendarBoard
             cal={cal}
             teacher

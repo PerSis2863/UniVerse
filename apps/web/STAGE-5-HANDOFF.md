@@ -4912,6 +4912,52 @@ one commit and one note each, then ask the owner before merging.
    critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
    first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
 
+4. **A zombie-survival shooter like the link the owner sent** (6 Nov: "https://vel.gg/bsz can you make same
+   game as this website has?", then "just add in the notes so other agent can work on it"). **What the link
+   is:** a browser copy of Call of Duty: Black Ops' Zombies mode (its menu shows that game's cover art and a
+   map file named after one of its maps; "Game setup": your name, single player or multiplayer, classic or
+   Counter-Strike guns, high or low graphics, choose a map). **Don't copy it** (its name, maps, art, music,
+   weapon names and characters belong to its maker): build our own game in the same genre and tell the owner
+   so once. Also tell them STORMFALL (`/play/stormfall`, computers only) already has "Outbreak", undead
+   survival on two maps. A design worked out before the owner asked for notes (nothing of it is committed):
+   - **Holdout**, 16+ (`age: 16`), app `play`, `world: true`, about 1,200 s a round (the round ends early when
+     you go down). First person in three.js on the World engine. Keep it off the landing (rated games, M112).
+   - **The map, Signal Yard** (original): an old railway station at night in fog. The waiting hall (start,
+     four boarded windows, a 600 wall gun), a door (750) to the platform (a train standing at it, two
+     windows, the undead climbing up from the tracks at both ends, a 1,000 wall gun, the crate), a gate
+     (1,000) to the warehouse (three windows, the power lever, perk machines, a 1,200 wall gun).
+   - **Rounds:** `count = round(6 + 3r + 0.18r²)`, health `150 + 100(r − 1)` up to round 9, then ×1.1 a
+     round; runners from round 4 (a fifth more each round); at most 24 on the map; one comes every
+     `max(0.6, 2.2 − 0.12r)` s. The undead tear a plank off a window every ~1.6 s (six planks), climb in,
+     then chase along a flow field (BFS over a 0.5 m grid of the map, closed doors solid, recomputed four
+     times a second from the player's cell) with a push apart from each other; a swipe does 45.
+   - **Points:** 500 to start, +10 a hit, +60 a kill, +100 a headshot kill, +130 a knife kill, +10 a plank
+     rebuilt (hold E at a window). Wall guns (E to buy, half price for ammo), the crate (950: a random gun,
+     the rare one is an arc gun whose bolt jumps to three more), perks once the power is on (more health,
+     faster reload, faster fire, faster run: original names), drops from kills (ammo, double points, a
+     blast that clears the map, one-hit kills for 30 s). Health 100 (250 with the health perk), it comes
+     back after 3 s without a hit. Grenades (G), the knife (V), reload (R), aim (right mouse).
+   - **Leaderboard score** (not the points you spend): `kills × 100 + headshots × 50 + rounds × 500`; its cap
+     for the server: kills ≤ seconds ÷ 0.6 + 24, rounds ≤ kills ÷ 9 (about 416,000 for 1,200 s).
+   - **Reuse from the history** (deleted with Ridgeline Ops in M82, read with
+     `git show 7adb5460^:apps/web/src/components/play/ops/<file>`): `operator.ts` (a figure skinned to 19
+     bones, one draw each, with walk, run, flinch and fall poses and hit spheres for head, body and limbs:
+     restyle it as the undead, arms forward, torn clothes, glowing eyes as a small separate mesh),
+     `guns.ts` (detailed first-person gun models; it needs parts of `src/lib/play/ops/arsenal.ts` from the
+     same commit, or a smaller builder), `fx.ts` (pooled sparks, flashes, holes, casings), `audio.ts`
+     (gunshots made in the browser, with echo).
+   - **The engine:** add `World.overlay(scene, camera)` in `world/core.ts` to draw the hands and gun over
+     the world with their own depth (a `RenderPass` with `clear = false`, `clearDepth = true` inserted after
+     the first pass; on phones and Smooth, a second `render` after `clearDepth()`); make that world with
+     `ao: 0`. Keep the light count fixed (a muzzle-flash light whose power goes to 0, `LightPool` for lamps):
+     adding a light rebuilds every shader (M118).
+   - **Plumbing** (as M123 did for Solar Voyager): `GAME_IDS` and `GAMES` in `src/lib/play.ts`, `GameStage`
+     (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon`, `Arcade` (`WORLD_ART`), the counts in
+     `big-games.test.ts` (14 games, 5 worlds), AGENTS.md section 3, `node scripts/gen-guide-data.mjs`;
+     rules pure with a test and a cap test; a browser check like `play-voyager-ui.mjs`. In a room, everyone
+     first fights their own undead (others are drawn as they move); sharing the undead needs the room
+     server to relay them (later).
+
 **Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
 site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
 mark the 31 Oct error report resolved in the console.
@@ -6617,6 +6663,95 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Live errors:** nothing new since 10 Nov.
 - **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
   Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).
+
+## M179: each app has its own Messages, and "All apps" shows them together (the owner, 13 Nov 2026)
+
+- **The ask:** "when people login in specific app or section like relief, green, play or any then they
+  should get there own new message section but also have option to sync the data of there other app or
+  website messages together".
+- **Now:** a chat belongs to the app it was started in (`conversations.app`, migration 0208: `trace`,
+  `relief`, `green`, `play`; UniVersity's and every chat from before M179 are `NULL`). Messages shows the
+  app you're in (its icon and name under "Chats"); **This app / All apps** switches to every chat
+  together, each tagged with its app (kept on the device, `uv-chat-all-apps`), and "All apps" counts the
+  new messages waiting in the other apps. The UniVerse welcome chat shows in every app. The same two
+  people get one 1:1 chat per app (found again only in the same app). Archived and unread counts follow
+  the switch.
+- **Which app you're in:** `src/lib/current-app.ts` (`currentAppNow`, `useCurrentApp`): the page's own
+  app, else the one last used (`uv-last-app`, written by the side menu), else the website's choice,
+  else UniVersity (tested). Every shared "Message this person" (profile, command palette, New chat and
+  New group, private chats, status, favourites, a chat's member) sends `app`; Relief's "Message" sends
+  `relief`; UniVersity's own pages send nothing (UniVersity).
+- **Both list paths** return `app`: the Next route and the light path (`cloudflare/fast-chat.ts`).
+  Sample mode has chats in Relief, Green and Play.
+- **Rules:** a new way to start a chat sends `app: currentAppNow()` (or its own app); server-made chats
+  (`directChat`, parent chats, broadcasts, the owner's) stay UniVersity's.
+- **Checked:** `messages-apps-ui.mjs` (one chat per app for the same two people; Relief shows Relief's
+  chat and not UniVersity's and the other way round; All apps shows both, tagged; axe at 1280 dark and
+  390 light; no sideways scroll; no errors), `current-app.test.ts`, `pnpm check`.
+
+## M180: pages fill the screen, no empty bands at the sides (the owner, 14 Nov 2026)
+
+- **The ask** (a screenshot of Settings centred with wide empty sides): "the setting section doesnt fit
+  properly … check where else there are gaps … perfectly fit everything in the page like no extra spaces
+  in the side or middle or anywhere".
+- **Measured** every menu page for students, teachers and admins at 1440 and 1920 px (a width-capped,
+  centred block with 64+ px empty on each side): Settings and Credentials (`max-w-5xl`, 115 px a side at
+  1440); at 1920 the hub, Trace, Green, Play and Collaborate (`max-w-6xl`, 295 px a side), Relief and the
+  maps (`max-w-[1500px]`), the impact pages (`max-w-7xl`).
+- **Now:** every app page frame that was capped at 5xl, 6xl, 7xl or a fixed 1,0xx–1,5xx px (`className=
+  "max-w-… mx-auto"`, 92 of them in 91 files under `src/app/(dashboard)` plus Collaborate's home, the
+  knowledge hub, task views, Relief's organisations, the audio and video editors) takes the full width.
+  Settings' list column grows a little on big screens (`xl:w-80`). Play's grids: a lone last card spans
+  the row (`sm:[&>*:last-child:nth-child(odd)]:col-span-2`), so no half-empty row.
+- **Left narrow on purpose:** reading pages (terms, privacy, policies: about 75 characters a line, §8) and
+  single-column forms at `max-w-4xl` and below (a 1,600 px text box is hard to use); the public website's
+  sections (designed centred).
+- **Rule:** an app page's frame is `w-full`; cap a block only when it's text to read or a short form.
+- **Checked:** the sweep again (every menu page fills at 1920), screenshots of Settings, the hub and Play
+  at 1920, no sideways scrolling, `pnpm check`.
+
+## For the next session: the owner's two open asks (14 Nov 2026)
+
+Do them in this order, one commit and one note each, numbers **M181** and **M182** (check the handoff and
+the other branches first: another session may have used them). Merge only when the owner says "merge".
+
+1. **M181, Arrange: a big upgrade** (the owner: "in the arrangement features dont let user put the
+   different info in another tab which is not meant there and also add resize feature in verticle option
+   also in there and resize can be done from bottom and top also and do same for the horizontal resize and
+   make everything ultra smooth and also try to make a big arrangement feature upgrade in the system which
+   is unique and no one else has done till now"). The feature is M166 (note above): `src/lib/arrange.ts`
+   (+ test), `src/lib/arrange-dom.ts`, `src/components/ArrangeMode.tsx`, `src/store/arrange.ts`,
+   `src/server/arrange.ts` (sync, table `user_arrangements`). Do:
+   - a card can only move within its own group/tab (no dropping a page's info into a tab it doesn't
+     belong to: refuse the drop with a short shake, and don't even show drop places there);
+   - resize from **all four edges and the corners**: top and bottom for height, left and right for width
+     (today it resizes from one edge); keep sizes snapped to the grid, and remember them per page;
+   - ultra smooth: move only `transform` while dragging (no layout per frame), one `requestAnimationFrame`
+     per frame, the other cards glide out of the way (FLIP), springs from `src/lib/motion.ts`, Reduce Motion
+     leaves fades; measure frames (no long tasks while dragging);
+   - something new, ideas to put to the owner (pick one or two): layouts that change with the time of day
+     or what you're doing (a "morning" and an "exam week" arrangement switched automatically or by a tap);
+     "magnetic" cards that pull related cards next to them; one-tap "tidy" that packs the page with no
+     gaps; shared arrangements a teacher hands to a class; undo history of arrangements with a timeline.
+   - Check with a Playwright check (drag across tabs refused, each edge resizes, frame timing), axe.
+2. **M182, Messages: connections** (the owner: "add connections options like connect to gmail, linkedin,
+   and all the famous and important one for the project"). M179 gave each app its own Messages. Build a
+   **Connections** tab in Messages (and in Settings → Privacy): a card per service, each **off until the
+   owner sets it up** (they need accounts: mark **[owner]**, AGENTS.md §1):
+   - Gmail (Google Cloud OAuth client, free; works for up to 100 test users before Google's verification;
+     reading mail is a "restricted" scope whose full review costs money: say so), Outlook / Microsoft 365
+     (Microsoft Graph, an Azure app registration, free), Slack (a Slack app, free), Telegram (a bot from
+     @BotFather, free: link your Telegram by sending the bot a code), WhatsApp (through Twilio, already used
+     by Relief's text requests: paid per message), Discord (a bot, free);
+   - **LinkedIn doesn't let other apps read or send its messages** (only approved partners): offer
+     "Sign in with LinkedIn" and a profile link, and tell the owner plainly;
+   - OAuth: start and callback routes with a signed `state` and PKCE, minimal scopes, tokens **encrypted at
+     rest** (AES-GCM, a new secret the owner sets in Cloudflare, never in a committed file), never sent to a
+     browser; disconnect revokes; mail fetched live when the person opens it (not copied into D1);
+     replies go back through the service; every route checks who is asking (`route-gates.test.ts`), new GET
+     routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
+     `universe-security` to review before finishing.
+
 
 
 ## M183: an index on every relation column (the owner, 14 Nov 2026: "upgrade all the existing features, buttons, animations, transitions, database, security and everything else … i need big changes")

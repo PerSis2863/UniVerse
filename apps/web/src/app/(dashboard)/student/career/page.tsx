@@ -61,7 +61,7 @@ export default function CareerPage() {
         ) : (opps.error && !opps.data) || (evts.error && !evts.data) ? (
           <LoadError onRetry={() => Promise.all([opps.mutate(), evts.mutate()])} message="Couldn’t load the career hub." />
         ) : (
-          <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="w-full grid grid-cols-1 lg:grid-cols-3 gap-8">
             <div className="lg:col-span-2 space-y-6">
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
                 <Briefcase className="w-5 h-5 text-indigo-400" /> Recommended Opportunities

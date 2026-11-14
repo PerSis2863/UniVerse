@@ -34,7 +34,7 @@ export default function CampaignsPage() {
     <>
       <Topbar title="Campaigns" subtitle="Bonus points for shops, paid only for verified sales" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           <Suspense><Campaigns /></Suspense>
         </div>

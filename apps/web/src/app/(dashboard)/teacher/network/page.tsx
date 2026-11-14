@@ -11,7 +11,7 @@ export default function TeacherNetworkPage() {
       <Topbar title="Campus network" subtitle="Partner universities: open your courses and class calls to their students" />
       <SectionTabs tabs={RESEARCH_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto">
+        <div className="w-full">
           <NetworkTeacher />
         </div>
       </div>

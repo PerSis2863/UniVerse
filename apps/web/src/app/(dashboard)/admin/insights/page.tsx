@@ -68,7 +68,7 @@ export default function AdminInsightsPage() {
       <Topbar title="School insights" subtitle="Ask about your school, see trends, and find students who need help and teacher workload" />
       <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           {error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : isLoading || !data ? (

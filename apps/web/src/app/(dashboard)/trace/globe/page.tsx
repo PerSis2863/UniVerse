@@ -11,7 +11,7 @@ export default function TraceGlobePage() {
     <>
       <Topbar title="Live globe" subtitle="Your shipments and where they’re headed, on a turning globe" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-[1500px] mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <TraceTabs />
           <GlobeView />
         </div>

@@ -1,5 +1,6 @@
 'use client';
 
+import { currentAppNow } from '@/lib/current-app';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -32,7 +33,7 @@ export function ProfileView({ id }: { id: string }) {
   const { data: p, error } = useSWR<Profile>(`/api/profile/${encodeURIComponent(id)}`, authedJson);
   const message = async () => {
     try {
-      const { id: c } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p!.id }) });
+      const { id: c } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p!.id, app: currentAppNow() }) });
       router.push(`${me?.role === 'TEACHER' ? '/teacher' : me?.role === 'ADMIN' ? '/admin' : '/student'}/inbox?c=${encodeURIComponent(c)}`);
     } catch (e) { toast.error((e as Error).message || 'Couldn’t start the chat.'); }
   };

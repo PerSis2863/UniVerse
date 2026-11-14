@@ -642,7 +642,7 @@ function summary(d: SampleDb, c: any) {
   const last = msgs[msgs.length - 1];
   const other = c.members.find((x: any) => x.id !== d.me.id);
   return {
-    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null,
+    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, app: c.app ?? 'campus', title: c.title, avatarUrl: null,
     otherUserId: c.isGroup ? null : other?.id ?? null, online: !c.isGroup && !c.isOfficial && other?.id !== d.people.meera.id,
     lastSeenAt: at(0, 8), memberCount: c.members.length, typing: [],
     lastMessage: last ? { id: last.id, body: last.body.slice(0, 140), type: last.type, senderId: last.senderId, createdAt: last.createdAt, deletedAt: last.deletedAt, attachmentName: last.attachmentName, mine: last.senderId === d.me.id } : null,

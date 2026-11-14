@@ -164,10 +164,12 @@ export function SettingsApp({ role }: { role: Role }) {
     <>
       <Topbar title={t('settings.title')} subtitle={t('settings.subtitle')} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+        {/* M180 (the owner: "the setting section doesnt fit properly"): the page's whole width, no
+            centred column with empty bands at its sides. */}
+        <div className="w-full">
           {/* Bigger screens: list and section side by side. */}
           <div className="hidden md:flex gap-6 items-start">
-            <div className="w-72 shrink-0 sticky top-4">{list}</div>
+            <div className="w-72 xl:w-80 shrink-0 sticky top-4">{list}</div>
             <div className="flex-1 min-w-0">
               <AnimatePresence mode="wait">
                 {current && (

@@ -1,5 +1,6 @@
 'use client';
 
+import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
@@ -39,7 +40,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
   const startChat = async (p: Person) => {
     setBusy(true);
     try {
-      const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) });
+      const { id } = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id, app: currentAppNow() }) });
       onOpen(id);
     } catch (e) {
       toast.error((e as Error).message);
@@ -53,7 +54,7 @@ export function NewChatDialog({ initialMode = 'chat', onClose, onOpen }: { initi
     try {
       const { id } = await chatJson<{ id: string }>('/api/chat/conversations', {
         method: 'POST',
-        body: JSON.stringify({ name: groupName.trim(), memberIds: selected.map((s) => s.id) }),
+        body: JSON.stringify({ name: groupName.trim(), memberIds: selected.map((s) => s.id), app: currentAppNow() }),
       });
       toast.success(`"${groupName.trim()}" created`);
       onOpen(id);

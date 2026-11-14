@@ -65,7 +65,7 @@ export default function AdminSafetyPage() {
       <Topbar title="Safety reports" subtitle="BeeSafe reports sent by students and staff. Every new report alerts all admins." />
       <SectionTabs tabs={SAFETY_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="space-y-4">
             <h2 className="text-xl font-bold text-zinc-900 dark:text-white flex items-center gap-2">
               <ShieldAlert className="w-5 h-5 text-rose-500" /> Open reports ({open.length})

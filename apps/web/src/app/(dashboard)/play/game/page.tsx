@@ -10,7 +10,7 @@ export default function PlayGamePage() {
     <>
       <Topbar title="Play" subtitle="Solo or with friends" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto"><Suspense><GameShell /></Suspense></div>
+        <div className="w-full"><Suspense><GameShell /></Suspense></div>
       </div>
     </>
   );
