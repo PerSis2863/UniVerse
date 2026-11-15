@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M196 is the latest).
+  builds on it). The newest notes are at the end (M197 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -103,8 +103,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **The owner's list of 15 Nov** ("do all of them except 5th one"; the owner's exception to the launch
   pause for the big items), in this order, one item number each from M196: **(2)** a teacher's first class
   in 10 minutes (**done, M196**: the steps card on the teacher home); **(3)** "come back"
-  nudges in the app and by push (students' weekly progress, teachers told who hasn't opened work; no new
-  emails); **(4)** a full walk-through as a brand-new person for a week of use, phone and Safari, fixing what
+  nudges (**done, M197**: due-soon reminders with push, the teacher told who; "Your week" on Mondays; 0216); **(4)** a full walk-through as a brand-new person for a week of use, phone and Safari, fixing what
   confuses or breaks; **(6)** before a second school: an admin's "who can see what" page and a last check
   for leaks between schools; **(7)** M181 (Arrange) and M182 (Messages connections; accounts with each
   service are the owner's); **(8)** self-serve Stripe payments for Trace PRO, campaigns and schools, behind
@@ -233,7 +232,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M197** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M198** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
@@ -245,7 +244,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0216`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0217`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

@@ -7018,3 +7018,20 @@ filters, selecting several, folders, communities, private chats). What didn't ho
 - `scripts/local/test-accounts.mjs` now marks Tara and Tom signed up (they were sent to the sign-up steps).
 - **Tested:** Tom from no course to all done, at 1280 dark and 390 light, axe clean on the card, no sideways
   scroll; `?new=1` opens the form; unit tests (`first-class.test.ts`). Test course removed.
+
+
+## M197: "come back" reminders (the owner's list of 15 Nov, item 3)
+
+- Two daily-job steps (`src/server/come-back.ts`, in `STEPS` before `wellbeing`):
+  - `due-soon`: open assignments due within two days and not yet reminded (`assignments.nudgedAt`,
+    migration 0216, claimed with a conditional `updateMany`, so once even if two runs overlap). Students of
+    the course who haven't handed it in get an in-app notification and a push (quiet hours respected by
+    `pushService`); the course's teacher gets "N of M haven't handed in …" with up to five first names.
+  - `weekly-progress`: Mondays (UTC) only, students active in the last 30 days with a course; "Your week":
+    handed in last week, due this week (not yet handed in). In the app only (a weekly push would be noise).
+    Cursor: the last student done, so a busy day carries on in the next run.
+- No emails (`email: false` everywhere). Nothing for quizzes (they have their own reminders).
+- **Tested:** unit tests (`come-back.test.ts`); the steps can't be fired locally (only Cloudflare's cron
+  token reaches them), so the first live Monday and the first assignment due within two days are the real
+  check: look at a student's notifications.
+- **Left:** "who hasn't opened the work": opening isn't recorded, so the teacher hears who hasn't handed in.

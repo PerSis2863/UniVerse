@@ -3342,9 +3342,12 @@ model Assignment {
   submissions  AssignmentSubmission[]
   extensions   AssignmentExtension[]
   autopilotPlans GroupAutopilotPlan[]
+  /// M197: when the "due soon" reminder went out (once per assignment)
+  nudgedAt     DateTime?
 
   @@index([courseId])
   @@index([createdById])
+  @@index([status, dueDate])
   @@map("assignments")
 }
 
