@@ -1,4 +1,6 @@
 import { ownerLaunch } from '../owner-launch';
+import { APPS, type AppId } from '@/lib/apps';
+import { parseShownApps } from '@/lib/shown-apps-list';
 import type { Router } from '../router';
 import { REAL_ERRORS, diagnoseErrors, ignoreUnsupported } from '../errors';
 import prisma from '@/lib/db';
@@ -20,7 +22,7 @@ import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
 import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
-import { oneOf } from '../body';
+import { oneOf, strings } from '../body';
 import { latestCspReports } from '../csp-reports';
 import { healthNumbers } from '../health-numbers';
 import { PULSE_RANGES, pulse, type PulseRange } from '../pulse';
@@ -338,7 +340,7 @@ export default function ownerModule(router: Router) {
 
   r.post('server', async ({ body, user }) => {
     const ctl = await serverControl();
-    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null; aiLimits?: string } = {};
+    const data: { mode?: string; message?: string | null; until?: Date | null; banner?: string | null; switches?: string | null; aiLimits?: string; apps?: string | null } = {};
     if (body?.mode !== undefined) {
       if (!oneOf(['LIVE', 'READ_ONLY', 'MAINTENANCE'] as const, body.mode)) throw new BadRequestException('Mode must be LIVE, READ_ONLY or MAINTENANCE');
       data.mode = body.mode;
@@ -419,6 +421,15 @@ export default function ownerModule(router: Router) {
       data.aiLimits = JSON.stringify(limits);
       aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site`;
     }
+    // M186: the apps the website shows (at least one; every app is stored as none, so a new app shows).
+    let appsChange = '';
+    if (body?.apps !== undefined) {
+      const ids = strings(body.apps).filter((id): id is AppId => APPS.some((a) => a.id === id));
+      if (!ids.length) throw new BadRequestException('Show at least one app');
+      const all = ids.length === APPS.length;
+      data.apps = all ? null : JSON.stringify(parseShownApps(ids));
+      appsChange = all ? 'The website shows every app' : `The website shows only ${parseShownApps(ids).map((id) => APPS.find((a) => a.id === id)!.name).join(', ')}`;
+    }
     // Back to normal clears the end time.
     if (data.mode === 'LIVE') data.until = null;
     const keys = Object.keys(data) as (keyof typeof data)[];
@@ -427,7 +438,7 @@ export default function ownerModule(router: Router) {
     const words: Record<string, string> = { LIVE: 'Server back to normal', READ_ONLY: 'Server set to read-only', MAINTENANCE: 'Server paused for maintenance' };
     forgetRules();
     forgetAiLimits();
-    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : aiChange ? aiChange : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
+    const summary = data.mode && data.mode !== ctl.mode ? words[data.mode] : switched ? switched : aiChange ? aiChange : appsChange ? appsChange : data.banner !== undefined && data.banner !== ctl.banner ? (data.banner ? `Notice set: “${data.banner.slice(0, 60)}”` : 'Notice removed') : 'Server settings changed';
     const change = await prisma.ownerChange.create({
       data: { ownerId: user.id, action: 'UPDATE', model: 'ServerControl', recordId: 'main', summary, before: json(pickKeys(publicControl(ctl), keys)), after: json(pickKeys(publicControl(after), keys)) },
     });
@@ -909,7 +920,7 @@ export async function serverControl() {
   return prisma.serverControl.upsert({ where: { id: 'main' }, update: {}, create: { id: 'main', bypass } });
 }
 type Control = Awaited<ReturnType<typeof serverControl>>;
-const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, aiLimits: c.aiLimits, updatedAt: c.updatedAt });
+const publicControl = (c: Control) => ({ mode: c.mode, message: c.message, until: c.until, banner: c.banner, switches: c.switches, aiLimits: c.aiLimits, apps: c.apps, updatedAt: c.updatedAt });
 
 /** Answers with the owner's pass as a cookie, so the Worker lets them through while paused. */
 function withOwnerPass(bypass: string, body: unknown) {

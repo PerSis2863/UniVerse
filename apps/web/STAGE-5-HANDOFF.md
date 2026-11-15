@@ -6797,3 +6797,35 @@ the other branches first: another session may have used them). Merge only when t
 - **Checked:** `travel-ui.mjs` (search finds Kyoto, 24 places, Kyoto/Central's facts, weather, booking,
   14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
   errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.
+
+## M186: Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
+
+- **Where:** owner console → Server → **Apps on the website** (`AppsCard` in `console/server.tsx`): a switch
+  per app, "Show only this app" on each, "Show every app". Saved with the other server settings
+  (`POST /owner/server { apps }`, at least one; every app is stored as null so a new app shows), logged
+  in Changes & undo (the raw stored value, so undo puts it back exactly). Migration **0210**
+  (`server_control.apps`, a JSON list).
+- **How every page follows it, without a flash:** the Worker reads the list with the server switch (once a
+  minute, `cloudflare/usage-guard.ts`) and writes `<script>window.__uvApps=[…]</script>` first in every
+  page's head (`withNotice(res, notice, pageApps())`); the root head script (`appHeadScript`, tested)
+  then picks a shown app for `html[data-app]` and adds a style that hides every `[data-uv-app="<hidden>"]`
+  and, with one app, every `[data-uv-many]` (things that only make sense with several apps). In the app,
+  `src/lib/shown-apps.ts` (`useShownApps`, `shownIds`, `onlyApp`, `shownOr`, `setShownApps`) keeps the
+  list (device copy `uv-apps`, checked once a visit at the public `GET /api/core/site/apps`); the pure
+  part the server uses is `src/lib/shown-apps-list.ts` (**trap:** the server can't import a file with
+  React hooks: keep server imports on the `-list` file).
+- **What follows it:** app tabs (website, sign-in, sign-up: none with one app), the landing's planet and
+  app grid (only the shown apps, hidden with one), the side menu (no "All apps" with one app, the
+  switcher lists only shown apps and doesn't open with one), the hub (only shown apps; with one it sends
+  people into that app), the Impact Wallet, Messages (All apps only across shown apps; no switch with
+  one), the chosen and current app (`chosen-app.ts`, `current-app.ts`), where people land after signing
+  in (`homeFor`), and `ShownAppsGuard` in the dashboard layout: a hidden app's page sends people to the
+  first shown app's start. **Left on purpose:** public links printed or shared out in the world keep
+  working (a product's `/t/<code>`, `/b/<slug>`, an aid box's `/aid/<code>`), and the owner console's
+  own numbers still cover every app. It's what the website shows, not who may use what (APIs still answer).
+- **Rule for new code:** anything that lists apps uses `useShownApps()`; put `data-uv-app={id}` on each
+  app's item and `data-uv-many` on parts that only make sense with several apps, so they're hidden before
+  the page is drawn.
+- **Checked:** `shown-apps-ui.mjs` (one app and two apps, phone and computer, light and dark; axe clean),
+  `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
+  `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.

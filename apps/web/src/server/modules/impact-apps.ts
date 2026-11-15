@@ -1,4 +1,6 @@
 import type { Router } from '../router';
+import prisma from '@/lib/db';
+import { parseShownApps } from '@/lib/shown-apps-list';
 import { hubStats } from '../hub';
 import { impactWallet } from '../impact-wallet';
 import { askUniverse } from '../ask';
@@ -17,7 +19,19 @@ import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, 
 // UniVerse Green (/green/*), UniVerse Play (/play/*) and UniVerse Travel (/travel/*). Everything here needs a signed-in account;
 // nobody's exact position is ever returned (src/server/relief.ts, green.ts).
 
+// M186: the apps the website shows (the owner console → Server → Apps on the website), for every visitor,
+// signed in or not; read at most once a minute per Worker copy. Nothing about anyone.
+let shown: { apps: string[]; at: number } | null = null;
+async function shownApps() {
+  if (!shown || Date.now() - shown.at > 60_000) {
+    const row = await prisma.serverControl.findUnique({ where: { id: 'main' }, select: { apps: true } }).catch(() => null);
+    shown = { apps: parseShownApps(row?.apps), at: Date.now() };
+  }
+  return { apps: shown.apps };
+}
+
 export default function impactAppsModule(router: Router) {
+  router.controller('site').get('apps', { public: true }, () => shownApps());
   const hub = router.controller('hub');
   hub.get('', ({ user }) => hubStats(user));
   hub.get('wallet', ({ user }) => impactWallet(user));

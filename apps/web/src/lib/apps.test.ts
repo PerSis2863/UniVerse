@@ -26,12 +26,15 @@ describe('apps', () => {
 
 // M133: the head script puts the page's app on <html data-app> before the first paint, by the same rules
 // as appFor and useChosenApp (the address's app, otherwise ?app=, the app chosen in this tab, UniVersity).
-const run = (url: string, chosen: string | null = null) => {
+const page = (url: string, chosen: string | null = null, shown?: string[]) => {
   const u = new URL(url, 'https://x.test');
   const html = { dataset: {} as Record<string, string> };
-  new Function('location', 'sessionStorage', 'document', appHeadScript)({ pathname: u.pathname, search: u.search }, { getItem: () => chosen }, { documentElement: html });
-  return html.dataset.app;
+  const styles: { id: string; textContent: string }[] = [];
+  const doc = { documentElement: html, createElement: () => ({ id: '', textContent: '' }), head: { appendChild: (el: { id: string; textContent: string }) => styles.push(el) } };
+  new Function('location', 'sessionStorage', 'document', 'window', 'localStorage', appHeadScript)({ pathname: u.pathname, search: u.search }, { getItem: () => chosen }, doc, { __uvApps: shown }, { getItem: () => null });
+  return { app: html.dataset.app, css: styles[0]?.textContent ?? null };
 };
+const run = (url: string, chosen: string | null = null) => page(url, chosen).app;
 
 describe('the page’s app before the first paint', () => {
   it('follows the address, then ?app=, then the chosen app', () => {
@@ -48,5 +51,17 @@ describe('the page’s app before the first paint', () => {
     for (const path of ['/trace', '/carry/x', '/green/teams', '/play/stormfall', '/teacher', '/parent', '/collab', '/console']) {
       expect(run(path, 'play')).toBe(appFor(path)?.id ?? 'play');
     }
+  });
+});
+
+// M186: the owner shows only some apps: a hidden chosen app gives way, and hidden apps' parts are hidden.
+describe('the apps the website shows, before the first paint', () => {
+  it('hides the other apps and picks a shown one', () => {
+    expect(page('/', 'trace', ['relief'])).toEqual({ app: 'relief', css: '[data-uv-app]:not([data-uv-app="relief"]),[data-uv-many]{display:none!important}' });
+    expect(page('/', 'campus', ['campus', 'play']).css).toBe('[data-uv-app]:not([data-uv-app="campus"]):not([data-uv-app="play"]){display:none!important}');
+    expect(page('/login', null, ['green', 'play']).app).toBe('green');
+    expect(page('/trace/brand', null, ['relief']).app).toBe('trace'); // its own page: the app sends people on
+    expect(page('/', 'trace', ['campus', 'trace', 'relief', 'green', 'travel', 'play'])).toEqual({ app: 'trace', css: null });
+    expect(page('/', 'trace', ['nonsense'])).toEqual({ app: 'trace', css: null });
   });
 });

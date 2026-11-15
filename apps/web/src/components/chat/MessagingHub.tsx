@@ -27,6 +27,7 @@ import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
 import { useCurrentApp } from '@/lib/current-app';
 import { APPS, appById } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 
 /** A built-in filter, or one of my folders (folder:<id>). */
@@ -84,7 +85,10 @@ export function MessagingHub() {
   const app = useCurrentApp();
   const [allApps, setAllAppsState] = useState(() => { try { return localStorage.getItem('uv-chat-all-apps') === '1'; } catch { return false; } });
   const setAllApps = (on: boolean) => { setAllAppsState(on); try { localStorage.setItem('uv-chat-all-apps', on ? '1' : '0'); } catch { /* private mode */ } };
-  const inScope = useCallback((c: ConversationSummary) => allApps || c.isOfficial || (c.app ?? 'campus') === app, [allApps, app]);
+  // M186: only the apps the owner shows; with one, there are no other apps' chats to bring in.
+  const shownApps = useShownApps();
+  const many = shownApps.length > 1;
+  const inScope = useCallback((c: ConversationSummary) => c.isOfficial || (allApps && many ? shownApps.some((a) => a.id === (c.app ?? 'campus')) : (c.app ?? 'campus') === app), [allApps, many, shownApps, app]);
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   useOnceParam('new', (v) => setDialog(v === 'group' ? 'group' : 'chat')); // ?new=chat from the phone's "+" menu
   const [view, setView] = useState<'chats' | 'archived'>('chats');
@@ -209,7 +213,7 @@ export function MessagingHub() {
   }, [data, search, filter, view, activeFolder, lockedChats, inScope]);
   const totalUnread = (data?.conversations ?? []).filter((c) => inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   // New messages in the other apps' chats, shown on the "All apps" switch.
-  const elsewhere = allApps ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  const elsewhere = allApps || !many ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && shownApps.some((x) => x.id === (c.app ?? 'campus')) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   const archivedCount = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived).length;
   const archivedUnread = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived && c.unread > 0).length;
   // Chat streaks (M17, Snapchat): days in a row we've both written, on one-to-one chats.
@@ -363,7 +367,7 @@ export function MessagingHub() {
               </button>
             ))}
           </div>
-          {space === 'chats' && view === 'chats' && (
+          {space === 'chats' && view === 'chats' && many && (
             <div className="flex items-center gap-2" role="group" aria-label="Which chats">
               <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
                 <AppIcon id={app} size={22} /><span className="truncate">{allApps ? 'All your apps' : appById(app).name}</span>
@@ -498,7 +502,7 @@ export function MessagingHub() {
                       {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      {allApps && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(c.app ?? 'campus').name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(c.app ?? 'campus').color }} aria-hidden />{SHORT[c.app ?? 'campus']}</span>}
+                      {allApps && many && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(c.app ?? 'campus').name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(c.app ?? 'campus').color }} aria-hidden />{SHORT[c.app ?? 'campus']}</span>}
                       {!c.isGroup && streaks[c.id] && <span className="streak" title={`${streaks[c.id]}-day streak: you've both written every day`} aria-label={`${streaks[c.id]}-day streak`}><i aria-hidden>🔥</i>{streaks[c.id]}</span>}
                       {c.lastMessage && <span className={cn('text-[11px]', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                     </span>

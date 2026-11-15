@@ -72,8 +72,10 @@ export function isShared(path: string) {
 /** M133: the page's app on <html data-app> before the first paint (the root layout's head script), so a
  *  page never shows the wrong app's colour first (globals.css M132); AppBackdrop keeps it right after.
  *  The same rules as appFor and useChosenApp: the address's app, otherwise ?app=, the app chosen in
- *  this tab, UniVersity. */
-export const appHeadScript = `try{var p=location.pathname,A=${JSON.stringify(APPS.map((a) => [a.id, a.paths]))},u=function(b){return p===b||p.indexOf(b+'/')===0},a=null;if(!(${SHARED_ROLE}.test(p)||${JSON.stringify(SHARED)}.some(u)))A.some(function(x){return x[1].some(u)&&(a=x[0])});if(!a){var c=new URLSearchParams(location.search).get('app')||sessionStorage.getItem('uv-app');a=A.some(function(x){return x[0]===c})?c:'campus'}document.documentElement.dataset.app=a}catch(e){}`;
+ *  this tab, UniVersity. M186: when the owner shows only some apps (window.__uvApps, written by the
+ *  Worker, or the list this device kept), a chosen app that's hidden gives way to the first shown one,
+ *  and a style hides every `[data-uv-app]` of a hidden app (and with one app, every `[data-uv-many]`: tabs, lists of apps) before the page is drawn (src/lib/shown-apps.ts). */
+export const appHeadScript = `try{var p=location.pathname,A=${JSON.stringify(APPS.map((a) => [a.id, a.paths]))},u=function(b){return p===b||p.indexOf(b+'/')===0},a=null,S=null,K=[];if(!(${SHARED_ROLE}.test(p)||${JSON.stringify(SHARED)}.some(u)))A.some(function(x){return x[1].some(u)&&(a=x[0])});try{S=window.__uvApps||JSON.parse(localStorage.getItem('uv-apps')||'null')}catch(e){}if(Array.isArray(S))A.forEach(function(x){S.indexOf(x[0])>=0&&K.push(x[0])});if(K.length===A.length)K=[];if(!a){var c=new URLSearchParams(location.search).get('app')||sessionStorage.getItem('uv-app');a=A.some(function(x){return x[0]===c})?c:'campus';if(K.length&&K.indexOf(a)<0)a=K[0]}document.documentElement.dataset.app=a;if(K.length){var s=document.createElement('style');s.id='uv-apps-css';s.textContent='[data-uv-app]'+K.map(function(i){return':not([data-uv-app="'+i+'"])'}).join('')+(K.length===1?',[data-uv-many]':'')+'{display:none!important}';document.head.appendChild(s)}}catch(e){}`;
 
 /** The app an address belongs to (null: the hub or a shared tool). */
 export function appFor(path: string): ImpactApp | null {

@@ -120,6 +120,7 @@ const PUBLIC_MODULE: Record<string, string> = {
   'auth POST login': 'signing in',
   'blog controller blog': 'the public blog',
   'health controller health': 'the health check',
+  'impact-apps GET apps': 'which apps the website shows (M186, the owner console): a list of app names, nothing about anyone',
   'impact-apps POST texts/inbound': 'Twilio’s texts: their signature is checked (M107)',
   'impact GET certificates/:id/pdf': 'a certificate’s PDF by its id, for verifying it',
   'impact controller verify': 'checking a certificate is real',

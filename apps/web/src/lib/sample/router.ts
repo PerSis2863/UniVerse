@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { shownIds } from '@/lib/shown-apps';
 import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
@@ -1013,6 +1014,7 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // The impact apps (src/lib/sample/impact.ts)
+  [/^\/site\/apps$/, () => ok({ apps: shownIds() })],
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
   [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],

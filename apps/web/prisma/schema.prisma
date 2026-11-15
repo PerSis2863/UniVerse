@@ -3220,6 +3220,7 @@ model ServerControl {
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
   aiModels   String? // JSON { text: string[], live: string }: which Gemini models answer (src/server/ai-models.ts)
+  apps       String? // JSON list of the app ids the website shows (M186, src/lib/shown-apps.ts); null = every app
 
   @@map("server_control")
 }
