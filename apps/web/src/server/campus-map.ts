@@ -45,9 +45,10 @@ export async function campusMap(user: SessionUser, q: URLSearchParams) {
   const { date, min, dow } = clock(q);
   const campusId = await whichCampus(user, q.get('campus'));
   const now = Date.now();
+  const mine = await campusOf(user); // the school's own map is each school's (M187)
   const mineOnly = user.role === 'TEACHER' ? taughtBy(user.id) : user.role === 'STUDENT' ? { enrollments: { some: { studentId: user.id } } } : null;
   const [buildings, campusRows, rooms, bookings, slots, live, online, events, myCourses] = await Promise.all([
-    prisma.campusBuilding.findMany({ where: { campusId }, orderBy: { name: 'asc' }, take: MAX_BUILDINGS, select: { id: true, name: true, code: true, x: true, y: true, w: true, h: true, floors: true, color: true } }),
+    prisma.campusBuilding.findMany({ where: { campusId, AND: [campusId ? {} : mine] }, orderBy: { name: 'asc' }, take: MAX_BUILDINGS, select: { id: true, name: true, code: true, x: true, y: true, w: true, h: true, floors: true, color: true } }),
     prisma.campusBuilding.findMany({ distinct: ['campusId'], select: { campusId: true, campus: { select: { name: true } } }, take: 50 }),
     prisma.room.findMany({ where: campusId ? { building: { campusId } } : { OR: [{ buildingId: null }, { building: { campusId: null } }] }, orderBy: { name: 'asc' }, take: 500, select: { id: true, name: true, type: true, capacity: true, buildingId: true, floor: true } }),
     prisma.roomReservation.findMany({ where: { date }, select: { roomId: true, time: true, duration: true, userId: true }, take: 3000 }),
@@ -151,11 +152,11 @@ export async function addBuilding(user: SessionUser, b: Body) {
   if (!name) throw new BadRequestException('Give the building a name.');
   const campusId = typeof b.campusId === 'string' && b.campusId ? b.campusId : null;
   if (campusId && !(await prisma.campus.findUnique({ where: { id: campusId }, select: { id: true } }))) throw new NotFoundException('That university isn’t in the campus network.');
-  const others = await prisma.campusBuilding.findMany({ where: { campusId }, select: { x: true, y: true, w: true, h: true }, take: MAX_BUILDINGS + 1 });
+  const others = await prisma.campusBuilding.findMany({ where: { campusId, AND: [campusId ? {} : await campusOf(user)] }, select: { x: true, y: true, w: true, h: true }, take: MAX_BUILDINGS + 1 });
   if (others.length >= MAX_BUILDINGS) throw new BadRequestException(`A campus map holds up to ${MAX_BUILDINGS} buildings.`);
   const placed = typeof b.x === 'number' && typeof b.y === 'number' ? clampBox({ x: b.x, y: b.y, w: b.w as number, h: b.h as number }) : freeSpot(others, 180, 120);
   const made = await prisma.campusBuilding.create({
-    data: { name, code: clip(b.code, 6) || null, campusId, floors: floors(b.floors) ?? 1, color: color(b.color) ?? BUILDING_COLORS[others.length % BUILDING_COLORS.length], ...placed },
+    data: { name, code: clip(b.code, 6) || null, campusId, organizationId: user.organizationId ?? null, floors: floors(b.floors) ?? 1, color: color(b.color) ?? BUILDING_COLORS[others.length % BUILDING_COLORS.length], ...placed },
     select: { id: true, name: true, code: true, x: true, y: true, w: true, h: true, floors: true, color: true },
   });
   audit(user, { action: 'campus.building_added', summary: `Added “${name}” to the campus map`, targetType: 'building', targetId: made.id });
@@ -165,7 +166,7 @@ export async function addBuilding(user: SessionUser, b: Body) {
 /** PATCH /api/campus/map/buildings/:id { name?, code?, floors?, color?, x?, y?, w?, h? } */
 export async function updateBuilding(user: SessionUser, id: string, b: Body) {
   admin(user);
-  const was = await prisma.campusBuilding.findUnique({ where: { id }, select: { x: true, y: true, w: true, h: true } });
+  const was = await prisma.campusBuilding.findFirst({ where: { AND: [await campusOf(user)], id }, select: { x: true, y: true, w: true, h: true } });
   if (!was) throw new NotFoundException('That building isn’t on the map any more.');
   const data: { name?: string; code?: string | null; floors?: number; color?: string; x?: number; y?: number; w?: number; h?: number } = {};
   if (b.name !== undefined) { const name = clip(b.name, 60); if (!name) throw new BadRequestException('Give the building a name.'); data.name = name; }
@@ -179,7 +180,7 @@ export async function updateBuilding(user: SessionUser, id: string, b: Body) {
 /** DELETE /api/campus/map/buildings/:id: its rooms and events stay, no longer on the map. */
 export async function deleteBuilding(user: SessionUser, id: string) {
   admin(user);
-  const b = await prisma.campusBuilding.findUnique({ where: { id }, select: { name: true } });
+  const b = await prisma.campusBuilding.findFirst({ where: { AND: [await campusOf(user)], id }, select: { name: true } });
   if (!b) return { ok: true };
   await prisma.campusBuilding.delete({ where: { id } });
   audit(user, { action: 'campus.building_removed', summary: `Removed “${b.name}” from the campus map`, targetType: 'building', targetId: id });
@@ -190,7 +191,7 @@ export async function deleteBuilding(user: SessionUser, id: string) {
 export async function placeRoom(user: SessionUser, id: string, b: Body) {
   admin(user);
   const buildingId = typeof b.buildingId === 'string' && b.buildingId ? b.buildingId : null;
-  const building = buildingId ? await prisma.campusBuilding.findUnique({ where: { id: buildingId }, select: { floors: true } }) : null;
+  const building = buildingId ? await prisma.campusBuilding.findFirst({ where: { AND: [await campusOf(user)], id: buildingId }, select: { floors: true } }) : null;
   if (buildingId && !building) throw new NotFoundException('That building isn’t on the map any more.');
   const floor = building && typeof b.floor === 'number' && Number.isFinite(b.floor) ? Math.min(building.floors - 1, Math.max(-3, Math.round(b.floor))) : building ? 0 : null;
   const room = await prisma.room.update({ where: { id }, data: { buildingId, floor }, select: { id: true, buildingId: true, floor: true } }).catch(() => null);
@@ -202,7 +203,7 @@ export async function placeRoom(user: SessionUser, id: string, b: Body) {
 export async function placeEvent(user: SessionUser, id: string, b: Body) {
   admin(user);
   const buildingId = typeof b.buildingId === 'string' && b.buildingId ? b.buildingId : null;
-  if (buildingId && !(await prisma.campusBuilding.findUnique({ where: { id: buildingId }, select: { id: true } }))) throw new NotFoundException('That building isn’t on the map any more.');
+  if (buildingId && !(await prisma.campusBuilding.findFirst({ where: { AND: [await campusOf(user)], id: buildingId }, select: { id: true } }))) throw new NotFoundException('That building isn’t on the map any more.');
   const item = await prisma.campusItem.findFirst({ where: { AND: [await campusOf(user)], id, kind: 'EVENT' }, select: { id: true } });
   if (!item) throw new NotFoundException('That event was removed.');
   return prisma.campusItem.update({ where: { id }, data: { buildingId }, select: { id: true, buildingId: true } });

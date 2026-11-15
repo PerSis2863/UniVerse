@@ -1556,12 +1556,15 @@ model CampusBuilding {
   h         Int            @default(120)
   floors    Int            @default(1)
   color     String?
+  /// M187: the school whose map it is on (null: the main school); its admins change it
+  organizationId String?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   rooms     Room[]
   items     CampusItem[]
 
   @@index([campusId])
+  @@index([organizationId])
   @@map("campus_buildings")
 }
 

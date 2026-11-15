@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { isOwnBlobUrl } from '@/lib/chat';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { madeInSchool, peopleWhere } from './school-scope';
 
 // Sticker packs (Stage 5 · B7.2). Anyone can make their own packs; an admin can make packs for the
 // whole school. Stickers are images uploaded like chat photos (src/components/chat/chat-client.ts
@@ -21,7 +22,8 @@ const shape = (user: SessionUser) => (p: { id: string; name: string; school: boo
 /** GET /api/chat/stickers: the school's packs, then mine. */
 export async function stickerPacks(user: SessionUser) {
   const [school, mine] = await Promise.all([
-    prisma.stickerPack.findMany({ where: { school: true }, orderBy: { createdAt: 'asc' }, take: SCHOOL_PACKS, select: SELECT }),
+    // The school's packs: those its own people made (M187; before, every school saw and could edit every school's).
+    prisma.stickerPack.findMany({ where: { school: true, owner: await peopleWhere(user) }, orderBy: { createdAt: 'asc' }, take: SCHOOL_PACKS, select: SELECT }),
     prisma.stickerPack.findMany({ where: { ownerId: user.id, school: false }, orderBy: { createdAt: 'asc' }, take: MY_PACKS, select: SELECT }),
   ]);
   return { packs: [...school, ...mine].map(shape(user)), canMakeSchool: user.role === 'ADMIN' };
@@ -35,7 +37,7 @@ export async function createPack(user: SessionUser, b: Record<string, unknown>) 
   if (!n) throw new BadRequestException('Name the pack.');
   const school = b.school === true;
   if (school && user.role !== 'ADMIN') throw new ForbiddenException('Only an admin can make a pack for the whole school.');
-  const count = await prisma.stickerPack.count({ where: school ? { school: true } : { ownerId: user.id, school: false } });
+  const count = await prisma.stickerPack.count({ where: school ? { school: true, owner: await peopleWhere(user) } : { ownerId: user.id, school: false } });
   if (count >= (school ? SCHOOL_PACKS : MY_PACKS)) throw new BadRequestException(school ? `Up to ${SCHOOL_PACKS} school packs.` : `Up to ${MY_PACKS} packs of your own.`);
   const p = await prisma.stickerPack.create({ data: { name: n, ownerId: user.id, school }, select: SELECT });
   return shape(user)(p);
@@ -48,7 +50,7 @@ export async function createPack(user: SessionUser, b: Record<string, unknown>) 
 export async function packAction(user: SessionUser, id: string, b: Record<string, unknown>) {
   const p = await prisma.stickerPack.findUnique({ where: { id }, select: { id: true, ownerId: true, school: true, _count: { select: { stickers: true } } } });
   if (!p || (!p.school && p.ownerId !== user.id)) throw new NotFoundException('That sticker pack isn’t yours.');
-  if (p.ownerId !== user.id && !(p.school && user.role === 'ADMIN')) throw new ForbiddenException('Only an admin can change the school’s packs.');
+  if (p.ownerId !== user.id && !(p.school && user.role === 'ADMIN' && (await madeInSchool(user, p.ownerId)))) throw new ForbiddenException('Only an admin can change the school’s packs.');
   switch (b.action) {
     case 'add': {
       const list = (Array.isArray(b.stickers) ? b.stickers : []).slice(0, PER_PACK).map((x) => (x ?? {}) as Record<string, unknown>);
