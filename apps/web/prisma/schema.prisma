@@ -1536,8 +1536,11 @@ model Room {
   buildingId     String?
   building       CampusBuilding?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   floor          Int?
+  /// M191: the school the room is at (null: the main school); only its people see and book it
+  organizationId String?
 
   @@index([buildingId])
+  @@index([organizationId])
   @@map("rooms")
 }
 

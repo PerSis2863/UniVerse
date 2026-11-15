@@ -50,8 +50,8 @@ export async function campusMap(user: SessionUser, q: URLSearchParams) {
   const [buildings, campusRows, rooms, bookings, slots, live, online, events, myCourses] = await Promise.all([
     prisma.campusBuilding.findMany({ where: { campusId, AND: [campusId ? {} : mine] }, orderBy: { name: 'asc' }, take: MAX_BUILDINGS, select: { id: true, name: true, code: true, x: true, y: true, w: true, h: true, floors: true, color: true } }),
     prisma.campusBuilding.findMany({ distinct: ['campusId'], select: { campusId: true, campus: { select: { name: true } } }, take: 50 }),
-    prisma.room.findMany({ where: campusId ? { building: { campusId } } : { OR: [{ buildingId: null }, { building: { campusId: null } }] }, orderBy: { name: 'asc' }, take: 500, select: { id: true, name: true, type: true, capacity: true, buildingId: true, floor: true } }),
-    prisma.roomReservation.findMany({ where: { date }, select: { roomId: true, time: true, duration: true, userId: true }, take: 3000 }),
+    prisma.room.findMany({ where: campusId ? { building: { campusId } } : { OR: [{ buildingId: null }, { building: { campusId: null } }], AND: [mine] }, orderBy: { name: 'asc' }, take: 500, select: { id: true, name: true, type: true, capacity: true, buildingId: true, floor: true } }),
+    prisma.roomReservation.findMany({ where: { date, room: campusId ? { building: { campusId } } : mine }, select: { roomId: true, time: true, duration: true, userId: true }, take: 3000 }),
     prisma.timetableSlot.findMany({ where: { dayOfWeek: dow, roomId: { not: null } }, select: { roomId: true, courseId: true, startTime: true, endTime: true, course: { select: { code: true, name: true } } }, take: 3000 }),
     // In-person classes running now (the phone clicker, D7), with how many have checked in.
     prisma.classroomSession.findMany({ where: { endedAt: null, startedAt: { gte: new Date(now - 5 * HOUR) } }, select: { courseId: true, startedAt: true, course: { select: { code: true, name: true } }, _count: { select: { checkins: true } } }, take: 200 }),
@@ -194,6 +194,8 @@ export async function placeRoom(user: SessionUser, id: string, b: Body) {
   const building = buildingId ? await prisma.campusBuilding.findFirst({ where: { AND: [await campusOf(user)], id: buildingId }, select: { floors: true } }) : null;
   if (buildingId && !building) throw new NotFoundException('That building isn’t on the map any more.');
   const floor = building && typeof b.floor === 'number' && Number.isFinite(b.floor) ? Math.min(building.floors - 1, Math.max(-3, Math.round(b.floor))) : building ? 0 : null;
+  // Another school's room looks like one that was removed (M191).
+  if (!(await prisma.room.findFirst({ where: { id, AND: [await campusOf(user)] }, select: { id: true } }))) throw new NotFoundException('That room was removed.');
   const room = await prisma.room.update({ where: { id }, data: { buildingId, floor }, select: { id: true, buildingId: true, floor: true } }).catch(() => null);
   if (!room) throw new NotFoundException('That room was removed.');
   return room;
@@ -225,7 +227,7 @@ export async function campusUsage(user: SessionUser, q: URLSearchParams) {
   const weeks = WEEKS.includes(Number(q.get('weeks'))) ? Number(q.get('weeks')) : 4;
   const building = q.get('building') || null;
   const campusId = q.get('campus') ? q.get('campus') : null;
-  const scope = building ? { buildingId: building } : campusId ? { building: { campusId } } : { OR: [{ buildingId: null }, { building: { campusId: null } }] };
+  const scope = { ...(building ? { buildingId: building } : campusId ? { building: { campusId } } : { OR: [{ buildingId: null }, { building: { campusId: null } }] }), AND: [await campusOf(user)] };
   const end = new Date(`${date}T00:00:00Z`);
   const start = new Date(end.getTime() - weeks * 7 * 86_400_000).toISOString().slice(0, 10);
   const [rooms, slots, bookings] = await Promise.all([
