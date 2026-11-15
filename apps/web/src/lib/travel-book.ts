@@ -34,3 +34,6 @@ export function mapLink(name: string, { lat, lon, address, near }: { lat?: numbe
   if (lat !== undefined && lon !== undefined) return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
   return `https://www.openstreetmap.org/search?query=${encodeURIComponent([name, address, near].filter(Boolean).join(', '))}`;
 }
+
+/** M187: a table at a restaurant (OpenTable's search for it near the place). */
+export const tableLink = (name: string, near: string) => `https://www.opentable.com/s?term=${encodeURIComponent(`${name} ${near}`)}`;

@@ -217,8 +217,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   page frames full width; reading pages and short forms stay narrow); M183, **UniVerse Travel**, the sixth app
   (Explore, guides to anywhere from Wikivoyage with facts, weather and places, saved places, partner booking);
   M186, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
-  writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`).
+  writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`);
+  M187, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water, scams,
+  manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
+  the rest of the owner's Airbnb list for Travel (15 Nov): M188 (find a destination by days, budget, month,
+  interests and passport), M184 (the trip planner with the whole trip's budget and multi-city routes), M189
+  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board); then
   M181 (the Arrange upgrade: stay in its own tab, resize from every edge, ultra smooth, something new) and M182
   (Messages connections: Gmail, Outlook, Slack, Telegram, WhatsApp, Discord; LinkedIn sign-in only); then the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
@@ -227,7 +232,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M187** (M181–M182 are reserved for the Arrange upgrade and Messages connections, M184–M185 for Travel's planner and extras). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M190** (M181–M182 are reserved for the Arrange upgrade and Messages connections; M184, M185, M188 and M189 for Travel: the planner, extras, destination finder, transport and stays; their brief is the handoff's last hand-over). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);

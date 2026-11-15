@@ -30,7 +30,7 @@ const PART_OF: Record<string, GuidePart> = Object.fromEntries(GUIDE_PARTS.map((p
 Object.assign(PART_OF, { 'get out': 'go next', 'stay healthy': 'stay safe', 'cope': 'respect', 'learn': 'do', 'work': 'do' });
 
 /** The end of the {{…}} or [[…]] that opens at `i` (the index just past its closing brackets). */
-function close(s: string, i: number, open: string, end: string) {
+export function close(s: string, i: number, open: string, end: string) {
   let depth = 0;
   for (let j = i; j < s.length - 1; j++) {
     if (s[j] === open[0] && s[j + 1] === open[1]) { depth++; j++; } else if (s[j] === end[0] && s[j + 1] === end[1]) { depth--; j++; if (depth === 0) return j + 1; }

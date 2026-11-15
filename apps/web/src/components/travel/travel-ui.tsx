@@ -4,10 +4,10 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
-import { Bookmark, BookmarkCheck, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, ExternalLink, MapPin, Moon, Phone, Sun, type LucideIcon } from 'lucide-react';
+import { Bookmark, BookmarkCheck, CalendarCheck, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, ExternalLink, MapPin, Moon, Phone, Sun, type LucideIcon } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { commonsImage, type Listing } from '@/lib/travel-guide';
-import { mapLink } from '@/lib/travel-book';
+import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
 
 // Shared parts of UniVerse Travel's screens (M183): a place's photo, a listing's card, the save button,
@@ -79,6 +79,7 @@ export function ListingCard({ guide, l, saved, near }: { guide: string; l: Listi
         <a href={mapLink(l.name, { lat: l.lat, lon: l.lon, address: l.address, near })} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</a>
         {l.url && <a href={l.url} target="_blank" rel="noopener noreferrer nofollow" className="btn-ghost btn-sm inline-flex items-center gap-1.5"><ExternalLink className="h-4 w-4" aria-hidden />Website</a>}
         {l.phone && <a href={`tel:${l.phone.replace(/[^\d+]/g, '')}`} className="btn-ghost btn-sm inline-flex items-center gap-1.5"><Phone className="h-4 w-4" aria-hidden />Call</a>}
+        {l.kind === 'eat' && <a href={tableLink(l.name, near)} target="_blank" rel="noopener noreferrer sponsored" className="btn-ghost btn-sm inline-flex items-center gap-1.5" title="Opens OpenTable"><CalendarCheck className="h-4 w-4" aria-hidden />Book a table</a>}
       </div>
     </li>
   );

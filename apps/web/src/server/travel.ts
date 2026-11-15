@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { LISTING_KINDS, readGuide, type Guide } from '@/lib/travel-guide';
+import { mergeTips, readTips, type Climate, type Tips } from '@/lib/travel-tips';
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from './http';
 import COUNTRIES from '@/lib/travel-countries.json';
 import { oneOf, str, type Body, type Query, first } from './body';
@@ -63,6 +64,8 @@ export interface CountryFacts {
   languages: string[]; callingCode?: string; drives?: 'left' | 'right';
   /** Numbers for the police, an ambulance, the fire service (the first is the one to remember). */
   emergency: string[];
+  /** M187: socket types (A, C, G…) and mains voltage(s). */
+  plugs: string[]; volts: number[];
 }
 
 const flagOf = (code: string) => String.fromCodePoint(...[...code].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
@@ -70,7 +73,7 @@ const flagOf = (code: string) => String.fromCodePoint(...[...code].map((ch) => 0
 /** A country's facts from the table kept in the app (src/lib/travel-countries.json, from Wikidata, CC0):
  *  its capital, money, languages, which side cars drive on, its calling code and emergency numbers. */
 export function countryFacts(code: string): CountryFacts | null {
-  const row = (COUNTRIES as unknown as Record<string, [string, string[], string[], string, string, string[]]>)[code];
+  const row = (COUNTRIES as unknown as Record<string, [string, string[], string[], string, string, string[], string?, number[]?]>)[code];
   if (!row) return null;
   const names = new Intl.DisplayNames(['en'], { type: 'region' }), money = new Intl.DisplayNames(['en'], { type: 'currency' });
   return {
@@ -79,6 +82,7 @@ export function countryFacts(code: string): CountryFacts | null {
     callingCode: row[4] || undefined, drives: row[3] === 'L' ? 'left' : row[3] === 'R' ? 'right' : undefined,
     // 112 works across Europe and on most mobile phones: first when it's one of them.
     emergency: [...row[5]].sort((a, b) => (a === '112' ? -1 : b === '112' ? 1 : 0)),
+    plugs: [...(row[6] ?? '')], volts: row[7] ?? [],
   };
 }
 
@@ -94,10 +98,12 @@ async function countryAt(lat: number, lon: number): Promise<CountryFacts | null>
 /** The listings a guide keeps per part (a big city's sleep list runs to hundreds). */
 const MAX_LISTINGS = 60;
 
-/** GET /travel/guide?d=: a place's guide, its country's facts, and the credit to show. */
-export async function travelGuide(_u: SessionUser, q: Query) {
-  let title = titleOf(first(q.d));
-  const guide = await cached<Guide>(`guide:${title.toLowerCase()}`, 14 * DAY, async () => {
+type GuideRecord = Guide & { tips: Tips; climate?: Climate };
+
+/** A Wikivoyage article read and kept 14 days (following up to two redirects); null when there's none. */
+async function readArticle(asked: string): Promise<GuideRecord | null> {
+  let title = asked;
+  return cached<GuideRecord>(`guide2:${asked.toLowerCase()}`, 14 * DAY, async () => {
     for (let hop = 0; hop < 2; hop++) {
       const r = await fetch(`https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}?action=raw`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (r.status === 404) return null;
@@ -107,13 +113,30 @@ export async function travelGuide(_u: SessionUser, q: Query) {
       if (moved) { title = moved[1].trim(); continue; }
       const g = readGuide(title, wiki);
       for (const s of g.sections) s.listings = s.listings.slice(0, MAX_LISTINGS);
-      return g;
+      return { ...g, ...readTips(wiki) };
     }
     return null;
   });
-  if (!guide) throw new NotFoundException('There’s no guide for that place yet. Try the city or country it’s in.');
+}
+
+const credit = (title: string) => ({ source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: `https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}` });
+/** M187: the topics a country's article usually covers better than a city's. */
+const COUNTRY_TOPICS = ['tipping', 'water', 'scams', 'manners', 'dress', 'visa'] as const;
+
+/** GET /travel/guide?d=: a place's guide, its country's facts, "know before you go" and the credit. */
+export async function travelGuide(_u: SessionUser, q: Query) {
+  const record = await readArticle(titleOf(first(q.d)));
+  if (!record) throw new NotFoundException('There’s no guide for that place yet. Try the city or country it’s in.');
+  const { tips: own, climate, ...guide } = record;
   const country = guide.lat !== undefined && guide.lon !== undefined ? await countryAt(guide.lat, guide.lon) : null;
-  return { guide, country, credit: { source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: `https://en.wikivoyage.org/wiki/${encodeURIComponent(guide.title.replace(/ /g, '_'))}` } };
+  // What the city's article leaves out (tipping, water, scams, manners, dress, visas) from its country's.
+  const lacking = COUNTRY_TOPICS.some((t) => !own[t]?.length);
+  const home = country && lacking && guide.title !== country.name ? await readArticle(country.name).catch(() => null) : null;
+  const { tips, fromCountry } = mergeTips(own, home?.tips);
+  return {
+    guide, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
+    credit: credit(guide.title),
+  };
 }
 
 export interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }

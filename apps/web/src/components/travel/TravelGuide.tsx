@@ -4,11 +4,13 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useSearchParams } from 'next/navigation';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, BedDouble, Bus, Camera, Car, ChevronRight, Compass, ExternalLink, Info, Languages, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { bookingLinks, type BookKind } from '@/lib/travel-book';
 import type { Guide, GuidePart, GuideSection, Listing } from '@/lib/travel-guide';
+import { DIETS, priceBand, type Climate, type DietId, type TipTopic, type Tips } from '@/lib/travel-tips';
+import { KnowTab } from './TravelKnow';
 import { cn } from '@/lib/utils';
 import { Cover, ListingCard, sky, type Saved } from './travel-ui';
 
@@ -17,13 +19,18 @@ import { Cover, ListingCard, sky, type Saved } from './travel-ui';
 // with partners, then a tab for each part (see, do, eat, drink, sleep, buy, getting around, staying safe
 // and polite), every listed place with its details, a pin map, save and map buttons.
 
-interface Facts { name: string; code: string; flag: string; capital?: string; currencies: { code: string; name: string }[]; languages: string[]; callingCode?: string; drives?: 'left' | 'right'; emergency: string[] }
-interface Answer { guide: Guide; country: Facts | null; credit: { source: string; licence: string; url: string } }
+interface Facts { name: string; code: string; flag: string; capital?: string; currencies: { code: string; name: string }[]; languages: string[]; callingCode?: string; drives?: 'left' | 'right'; emergency: string[]; plugs: string[]; volts: number[] }
+interface Answer {
+  guide: Guide; country: Facts | null; credit: { source: string; licence: string; url: string };
+  // M187: know before you go.
+  tips?: Tips; climate?: Climate | null; fromCountry?: TipTopic[]; tipsCountry?: { name: string; credit: { url: string } } | null;
+}
 interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }
 
-type Tab = 'overview' | 'see' | 'do' | 'eat' | 'drink' | 'sleep' | 'buy' | 'around' | 'safe';
+type Tab = 'overview' | 'know' | 'see' | 'do' | 'eat' | 'drink' | 'sleep' | 'buy' | 'around' | 'safe';
 const TABS: { id: Tab; label: string; icon: LucideIcon; parts: GuidePart[] }[] = [
   { id: 'overview', label: 'Overview', icon: Compass, parts: ['understand', 'go next'] },
+  { id: 'know', label: 'Know before you go', icon: Lightbulb, parts: [] },
   { id: 'see', label: 'See', icon: Camera, parts: ['see'] },
   { id: 'do', label: 'Do', icon: Ticket, parts: ['do'] },
   { id: 'eat', label: 'Eat', icon: Utensils, parts: ['eat'] },
@@ -46,9 +53,13 @@ export function TravelGuide() {
   const { data: savedData } = useSWR<{ saved: Saved[] }>('/travel/saved', fetcher);
   const [tab, setTab] = useState<Tab>('overview');
   const [filter, setFilter] = useState('');
+  // M187: the Eat, Drink and Sleep tabs narrow by price band and by what people can eat.
+  const [band, setBand] = useState<'budget' | 'mid' | 'splurge' | null>(null);
+  const [diet, setDiet] = useState<DietId | null>(null);
 
   const parts = useMemo(() => new Map((g?.sections ?? []).map((s) => [s.part, s])), [g]);
-  const tabs = TABS.filter((t) => t.id === 'overview' || t.parts.some((p) => { const s = parts.get(p); return s && (s.text.length || s.listings.length); }));
+  const knows = !!(data?.country || data?.climate || Object.keys(data?.tips ?? {}).length);
+  const tabs = TABS.filter((t) => t.id === 'overview' || (t.id === 'know' ? knows : t.parts.some((p) => { const s = parts.get(p); return s && (s.text.length || s.listings.length); })));
   const saved = useMemo(() => new Map((savedData?.saved ?? []).filter((s) => s.guide === g?.title).map((s) => [s.name, s])), [savedData, g]);
 
   if (error) return (
@@ -65,7 +76,11 @@ export function TravelGuide() {
   const sections = current.parts.map((p) => parts.get(p)).filter((s): s is GuideSection => !!s);
   const listings = sections.flatMap((s) => s.listings);
   const q = filter.trim().toLowerCase();
-  const shown = q ? listings.filter((l) => `${l.name} ${l.alt ?? ''} ${l.text ?? ''} ${l.address ?? ''}`.toLowerCase().includes(q)) : listings;
+  const words = (l: Listing) => `${l.name} ${l.alt ?? ''} ${l.text ?? ''} ${l.group ?? ''}`;
+  const bands = (['budget', 'mid', 'splurge'] as const).filter((b) => listings.some((l) => priceBand(l.group) === b));
+  const diets = current.id === 'eat' || current.id === 'drink' ? DIETS.map((x) => ({ ...x, n: listings.filter((l) => x.says.test(words(l))).length })).filter((x) => x.n > 0) : [];
+  const dietRe = DIETS.find((x) => x.id === diet)?.says;
+  const shown = listings.filter((l) => (!q || `${words(l)} ${l.address ?? ''}`.toLowerCase().includes(q)) && (!band || priceBand(l.group) === band) && (!dietRe || dietRe.test(words(l))));
 
   return (
     <div className="space-y-6">
@@ -130,7 +145,7 @@ export function TravelGuide() {
           {tabs.map((t) => {
             const n = t.parts.reduce((k, p) => k + (parts.get(p)?.listings.length ?? 0), 0);
             return (
-              <button key={t.id} type="button" role="tab" aria-selected={current.id === t.id} onClick={() => { setTab(t.id); setFilter(''); }}
+              <button key={t.id} type="button" role="tab" aria-selected={current.id === t.id} onClick={() => { setTab(t.id); setFilter(''); setBand(null); setDiet(null); }}
                 className={cn('inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors', current.id === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/[0.07]')}>
                 <t.icon className="h-4 w-4" aria-hidden />{t.label}{t.id !== 'overview' && n > 0 && <span className={cn('rounded-full px-1.5 text-xs tabular-nums', current.id === t.id ? 'bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-900' : 'bg-zinc-200/80 text-zinc-700 dark:bg-white/15 dark:text-zinc-200')}>{n}</span>}
               </button>
@@ -167,7 +182,16 @@ export function TravelGuide() {
               ) : null}
             </>
           )}
-          {current.id !== 'overview' && (
+          {current.id === 'know' && (
+            <KnowTab title={nice(g.title)} tips={data.tips ?? {}} fromCountry={data.fromCountry ?? []} tipsCountry={data.tipsCountry ?? null} country={c} climate={data.climate ?? null} places={g.places} />
+          )}
+          {current.id === 'eat' && data.tips?.dishes?.length ? (
+            <section aria-labelledby="guide-dishes" className="panel p-6">
+              <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-sky-500" aria-hidden />What to try</h3>
+              <ul className="mt-3 grid gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
+            </section>
+          ) : null}
+          {current.id !== 'overview' && current.id !== 'know' && (
             <>
               {sections.some((s) => s.text.length) && (
                 <section className="panel space-y-3 p-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
@@ -176,8 +200,15 @@ export function TravelGuide() {
               )}
               {listings.length > 0 && (
                 <>
+                  {(bands.length > 1 || diets.length > 0) && (
+                    <div className="flex flex-wrap gap-1.5" role="group" aria-label="Narrow these places">
+                      {bands.length > 1 && bands.map((b) => <Chip key={b} on={band === b} onClick={() => setBand(band === b ? null : b)}>{b === 'budget' ? 'Budget' : b === 'mid' ? 'Mid-range' : 'Splurge'}</Chip>)}
+                      {bands.length > 1 && diets.length > 0 && <span className="mx-1 w-px self-stretch bg-zinc-200 dark:bg-white/10" aria-hidden />}
+                      {diets.map((x) => <Chip key={x.id} on={diet === x.id} onClick={() => setDiet(diet === x.id ? null : x.id)}>{x.label} <span className="tabular-nums opacity-70">{x.n}</span></Chip>)}
+                    </div>
+                  )}
                   <div className="flex flex-wrap items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{shown.length} {shown.length === 1 ? 'place' : 'places'}</p>
+                    <p className="text-sm font-semibold text-zinc-700 dark:text-zinc-200" aria-live="polite">{shown.length} {shown.length === 1 ? 'place' : 'places'}</p>
                     {listings.length > 8 && (
                       <label className="relative w-full sm:w-72"><span className="sr-only">Filter these places</span>
                         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
@@ -203,6 +234,12 @@ export function TravelGuide() {
         <span>Map data © OpenStreetMap contributors.</span>
       </p>
     </div>
+  );
+}
+
+function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; children: React.ReactNode }) {
+  return (
+    <button type="button" aria-pressed={on} onClick={onClick} className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold transition-colors', on ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-white/[0.06] dark:text-zinc-200 dark:hover:bg-white/10')}>{children}</button>
   );
 }
 

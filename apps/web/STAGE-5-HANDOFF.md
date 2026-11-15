@@ -6829,3 +6829,56 @@ the other branches first: another session may have used them). Merge only when t
 - **Checked:** `shown-apps-ui.mjs` (one app and two apps, phone and computer, light and dark; axe clean),
   `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
   `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.
+
+## M187: Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
+
+- **Know before you go** (a new guide tab, `src/components/travel/TravelKnow.tsx`): plugs and voltage
+  against the visitor's own country (chosen once, `uv-travel-home`, guessed from the browser's region:
+  "Your plugs fit" / "Bring an adapter", a voltage warning, which side cars drive on), **When to go** (each
+  month's high and rain from the guide's climate chart, the pleasant months named: 17–29 °C, under 100 mm),
+  **Why it's famous** (short history sentences), cards for tipping, tap water, scams and pickpockets,
+  manners, what to wear, visas and entry, from the airport, tickets and travel cards, after dark, and
+  **Neighbourhoods at a glance** (each district with a few feel words and what the guide says about it
+  after dark).
+- **Where the words come from** (`src/lib/travel-tips.ts`, pure, tested): short sentences picked by topic
+  from the Wikivoyage article's own prose (listings left out), the climate chart (`{{climate chart}}` or
+  `{{climate}}`, °F and inches converted). A city's article rarely covers tipping, water, scams, manners,
+  dress or visas, so the route also reads **its country's article** and fills only those topics (marked
+  with the country's name and linked). Plugs (A–N) and voltage come from Wikidata (P2853, P2884), added to
+  `travel-countries.json` as fields 6 and 7. The guide cache key is now `guide2:` (the record carries
+  tips and climate).
+- **Eat**: "What to try" (the guide's sentences on dishes and specialities), chips for price band (the
+  guide's Budget / Mid-range / Splurge headings; Drink and Sleep too) and for diets (vegetarian, vegan,
+  halal, kosher, gluten-free, street food; only those some place mentions, with counts), and **Book a
+  table** on each restaurant (OpenTable's search for it; an affiliate id later is **[owner]**).
+- **Left on purpose:** nothing is made up: a topic the guides don't cover simply doesn't show. Visa rules
+  per passport (a table of every passport against every country) belong with M188's matching.
+- **Checked:** `travel-know-ui.mjs` (Kyoto: A and B at 100 V, an adapter and voltage line for a British
+  visitor, months named, 5 stories, 8 topics with Japan's marked, 5 neighbourhoods; Kyoto/Central's Eat:
+  what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
+  sideways scroll, no errors), `travel-tips.test.ts`, `pnpm check`.
+
+## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
+
+The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M187 did items 2 and 3.
+Left, in this order (numbers reserved):
+
+1. **M188: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
+   should I go?"). A form (days, budget and currency, month, interests, passport) ranks places with why each
+   fits: that month's weather (the guide's climate chart via `readTips`, or a table generated ahead for
+   ~150 places), an **estimated** daily cost (say so: a base budget × the country's World Bank price level,
+   indicator PA.NUS.PPPC.RF, CC BY 4.0), the interests (tags written for each place), and visa ease for the
+   passport (Wikipedia's "Visa requirements for X citizens" tables, CC BY-SA, read and kept like guides).
+   Start from `src/lib/travel-ideas.ts` (24 places) and grow it; a tab in Explore, not a new page.
+2. **M184: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
+   Saved or any guide, grouped by how close they are (the listings' lat/lon), opening hours and prices shown,
+   time to spend by kind (a museum 2 h, a viewpoint 30 min), drag and drop between days; a multi-city route
+   in a sensible order with "how to get between" (Rome2Rio, trains, buses, ferries); the **whole trip's
+   budget** (stay + food + transport + tickets from listing prices and the M188 daily estimate); friends
+   planning together (members, live updates with `publish()`); add to calendar (an .ics file).
+3. **M189: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
+   ferries links (Omio, 12Go in Asia, Direct Ferries); the airport and travel-card sentences are already in
+   M187's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
+   an **opt-in** board of travellers in the same city on the same dates (18+ only, first name and dates,
+   city level, contact through Messages in the Travel app, report and block).
+Each: sample answers for new GET routes, a check in `scripts/checks/`, motion per §8.

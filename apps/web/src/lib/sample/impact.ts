@@ -638,7 +638,20 @@ const SAMPLE_GUIDE = {
 export function sampleTravelGuide(d: string | null) {
   const title = d || 'Lisbon';
   const guide = { ...SAMPLE_GUIDE, title: title.startsWith('Lisbon') ? title : 'Lisbon' };
-  return { guide, country: { name: 'Portugal', code: 'PT', flag: '🇵🇹', capital: 'Lisbon', currencies: [{ code: 'EUR', name: 'Euro' }], languages: ['Portuguese'], callingCode: '+351', drives: 'right', emergency: ['112'] }, credit: { source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: 'https://en.wikivoyage.org/wiki/Lisbon' } };
+  return { guide, country: { name: 'Portugal', code: 'PT', flag: '🇵🇹', capital: 'Lisbon', currencies: [{ code: 'EUR', name: 'Euro' }], languages: ['Portuguese'], callingCode: '+351', drives: 'right', emergency: ['112'], plugs: ['C', 'F'], volts: [230] }, credit: { source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: 'https://en.wikivoyage.org/wiki/Lisbon' },
+    // M187: sample "know before you go" (written for the demo, not taken from the guide).
+    tips: {
+      tipping: ['Service is usually included; leaving the small change or about 5% for good service is common.'],
+      water: ['Tap water is safe to drink across the city.'],
+      scams: ['Watch your bag on the busiest tram lines, where pickpockets work the crowds.'],
+      dishes: ['Try a custard tart warm from the oven, ideally with cinnamon on top.', 'Grilled sardines are the taste of the June festivals.'],
+      stories: ['The city spreads over seven hills above a wide river mouth.', 'Much of the centre was rebuilt on a grid after the great earthquake of 1755.'],
+      transit: ['A rechargeable travel card covers the metro, trams, buses and river ferries.'],
+      night: ['Keep to busy streets late at night in Bairro Alto.'],
+    },
+    climate: { high: [15, 16, 19, 20, 23, 26, 28, 28, 27, 23, 18, 15], low: [8, 9, 11, 12, 14, 17, 18, 19, 18, 15, 12, 9], rain: [100, 78, 69, 72, 58, 16, 4, 6, 33, 100, 114, 127] },
+    fromCountry: [], tipsCountry: null,
+  };
 }
 /** GET /travel/search */
 export function sampleTravelSearch(q: string | null) {
