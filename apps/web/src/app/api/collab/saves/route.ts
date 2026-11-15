@@ -5,7 +5,8 @@ import { cleanSave, MAX_SAVES } from '@/lib/tool-saves';
 import { openedByMe } from '@/server/tool-save-opens';
 
 // Collaborate → Create, saved work (M75). GET: my saves (newest first, no data). POST { tool, title,
-// data }: save a tool's work to my account (at most 300 saves, 200 KB each). GET also lists `opened`.
+// data }: save a tool's work to my account (at most 300 saves, 200 KB each). GET also lists `opened`;
+// DELETE ?opened=<save id> takes one of those off my Home (M195; only my own row).
 
 const noStore = { 'Cache-Control': 'no-store' };
 
@@ -28,4 +29,13 @@ export async function POST(req: Request) {
   if ((await prisma.toolSave.count({ where: { userId: user.id } })) >= MAX_SAVES) return NextResponse.json({ error: `You have ${MAX_SAVES} saves: delete some first.` }, { status: 409 });
   const row = await prisma.toolSave.create({ data: { userId: user.id, tool: s.tool!, title: s.title!, data: JSON.stringify(s.data) }, select: { id: true, tool: true, title: true, updatedAt: true } });
   return NextResponse.json({ save: { ...row, shared: false } }, { status: 201 });
+}
+
+export async function DELETE(req: Request) {
+  const user = await getSessionUser(req);
+  if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
+  const id = new URL(req.url).searchParams.get('opened') ?? '';
+  if (!/^[\w-]{1,40}$/.test(id)) return NextResponse.json({ error: 'Missing item.' }, { status: 400 });
+  await prisma.toolSaveOpen.deleteMany({ where: { saveId: id, userId: user.id } });
+  return NextResponse.json({ ok: true }, { headers: noStore });
 }

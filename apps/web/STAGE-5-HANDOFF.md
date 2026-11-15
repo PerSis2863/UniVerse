@@ -6993,3 +6993,14 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   stopped and remade, the owner's own list); Alice opening Tara's link then finding it on Home at 1280 dark
   and 390 light, axe clean, no sideways scroll; unit tests (`tool-save-opens.test.ts`). Test work removed.
 - **Left:** no way to take one off Home by hand (it goes when the owner stops the link).
+
+
+## M195: take someone's shared work off my Home
+
+- `DELETE /api/collab/saves?opened=<save id>` deletes only the caller's own `tool_save_opens` row (anyone
+  else's request changes nothing). Home's × (`removeOpened` in `CollabHome.tsx`) shows only on items opened
+  from a link, unpins it too, and says that opening the link again brings it back (it does: `noteOpen`
+  writes a fresh row). Sample mode answers with `notice()`.
+- **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
+  dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
+  Alice's row alone. Test work removed.

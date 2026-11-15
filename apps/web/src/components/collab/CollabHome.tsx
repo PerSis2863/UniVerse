@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { formatDistanceStrict } from 'date-fns';
-import { CalendarClock, Code2, File, FileSpreadsheet, FileText, Flame, Keyboard, KanbanSquare, LayoutTemplate, Loader2, NotebookPen, PenTool, Pin, PinOff, Presentation, QrCode as QrIcon, Search, Sparkles, type LucideIcon } from 'lucide-react';
+import { CalendarClock, Code2, File, FileSpreadsheet, FileText, Flame, Keyboard, KanbanSquare, LayoutTemplate, Loader2, NotebookPen, PenTool, Pin, PinOff, Presentation, QrCode as QrIcon, Search, Sparkles, X, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Sheet } from '@/components/ui/Sheet';
 import { QrCode } from '@/components/ui/QrCode';
@@ -24,7 +24,7 @@ import { FocusTimer } from './FocusTimer';
 // pinned items, recent work, one search across all of it, templates, a focus timer, quick notes, what's
 // due this week and how active the work has been. Shortcuts: / search, d s p b t new, f timer, ? help.
 
-type Item = PinT & { at: string; sub: string; /** Made by me (false: someone shared it with me; undefined: the tool doesn't say). */ mine?: boolean };
+type Item = PinT & { at: string; sub: string; /** Made by me (false: someone shared it with me; undefined: the tool doesn't say). */ mine?: boolean; /** Opened from someone's link (M194): can be taken off Home (M195). */ opened?: boolean };
 
 const KIND: Record<PinKind, { label: string; icon: LucideIcon; tone: string }> = {
   board: { label: 'Whiteboard', icon: PenTool, tone: 'from-violet-500 to-fuchsia-500' },
@@ -78,7 +78,7 @@ export function CollabHome() {
     ...(files.data?.files ?? []).map((f) => ({ kind: 'file' as const, id: f.id, title: f.name, href: f.space.href, at: f.updatedAt, sub: f.space.label })),
     ...(saves.data?.saves ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: `/studio?open=${v.id}`, at: v.updatedAt, sub: `${v.tool.replace(/[-_]/g, ' ')}${v.editing ? ' · edited together' : v.shared ? ' · shared by link' : ''}`, mine: true })),
     // M194: others' Create work I opened from their link (while it works).
-    ...(saves.data?.opened ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: v.href, at: v.updatedAt, sub: `${v.by ? `From ${v.by} · ` : ''}${v.tool.replace(/[-_]/g, ' ')}${v.edit ? ' · edit together' : ' · view only'}`, mine: false })),
+    ...(saves.data?.opened ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: v.href, at: v.updatedAt, sub: `${v.by ? `From ${v.by} · ` : ''}${v.tool.replace(/[-_]/g, ' ')}${v.edit ? ' · edit together' : ' · view only'}`, mine: false, opened: true })),
   ].sort((a, b) => b.at.localeCompare(a.at)), [boards.data, docs.data, tasks.data, code.data, files.data, saves.data]);
 
   const [q, setQ] = useState('');
@@ -96,6 +96,13 @@ export function CollabHome() {
     void pins.mutate({ pins: next }, { revalidate: false });
     try { await pins.mutate(authedJson<{ pins: PinT[] }>('/api/collab/pins', { method: 'PUT', body: JSON.stringify({ pins: next }) }), { revalidate: false }); }
     catch (e) { toast.error((e as Error).message); void pins.mutate(); }
+  };
+  /** M195: takes someone's shared work off my Home (opening their link again brings it back). */
+  const removeOpened = async (i: Item) => {
+    if (isPinned(i)) await togglePin(i);
+    void saves.mutate((d) => (d ? { ...d, opened: (d.opened ?? []).filter((o) => o.id !== i.id) } : d), { revalidate: false });
+    try { await authedJson(`/api/collab/saves?opened=${encodeURIComponent(i.id)}`, { method: 'DELETE' }); toast.success('Removed from your Home. Opening the link again brings it back.'); }
+    catch (e) { toast.error((e as Error).message); void saves.mutate(); }
   };
 
   // Shortcuts, when not typing somewhere.
@@ -196,6 +203,7 @@ export function CollabHome() {
                         </Link>
                         <span className="relative z-10 flex gap-0.5 transition-opacity duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                           <button type="button" onClick={() => setShare(i)} aria-label={`Share ${i.title} with a QR code`} className="p-1.5 rounded-full text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><QrIcon className="w-4 h-4" /></button>
+                          {i.opened && <button type="button" onClick={() => void removeOpened(i)} aria-label={`Remove ${i.title} from my Home`} title="Remove from my Home" className="p-1.5 rounded-full text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>}
                           <button type="button" onClick={() => void togglePin(i)} aria-pressed={on} aria-label={on ? `Unpin ${i.title}` : `Pin ${i.title}`} className={cn('p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', on ? 'text-fuchsia-500' : 'text-zinc-400 hover:text-fuchsia-500')}><Pin className="w-4 h-4 rotate-45" /></button>
                         </span>
                       </li>

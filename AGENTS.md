@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M194 is the latest).
+  builds on it). The newest notes are at the end (M195 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -108,7 +108,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   bubbles; M189, Collaborate's home lists saved Create work, with Mine / Shared with me. M190 (15 Nov), each
   school its own safety policy (0213); M191, rooms and bookings kept to each school (0214); M192, a message
   however far back opens in Messages; M193, Collaborate says who shared a thing, task boards and code rooms
-  under Mine / Shared with me; M194, Create work opened from someone's link on Collaborate's Home (0215).
+  under Mine / Shared with me; M194, Create work opened from someone's link on Collaborate's Home (0215); M195, a × to take one off Home.
   The branch also
   holds `claude/youthful-fermi-sbdtcp` (M179–M180).
 - **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
@@ -232,7 +232,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M195** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M196** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
