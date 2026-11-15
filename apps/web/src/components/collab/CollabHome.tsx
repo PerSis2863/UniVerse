@@ -47,7 +47,7 @@ const NOTES_KEY = 'uv-collab-notes';
 
 interface Boards { id: string; title: string; updatedAt: string; owner: { name: string }; mine: boolean }
 interface Docs { docs: { id: string; title: string; kind?: string; course: string | null; updatedAt: string; mine?: boolean; by?: string | null }[] }
-interface Saves { saves: { id: string; tool: string; title: string; updatedAt: string; shared: boolean; editing?: boolean }[] }
+interface Saves { saves: { id: string; tool: string; title: string; updatedAt: string; shared: boolean; editing?: boolean }[]; opened?: { id: string; tool: string; title: string; updatedAt: string; edit: boolean; href: string; by: string | null }[] }
 interface Tasks { boards: { id: string; title: string; course: string | null; tasks: number; updatedAt: string; mine?: boolean; by?: string | null }[]; mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[] }
 interface Code { rooms: { id: string; title: string; language: string; updatedAt: string; mine?: boolean; createdBy?: { name: string } | null }[] }
 interface Files { files: { id: string; name: string; updatedAt: string; space: { label: string; href: string } }[] }
@@ -77,6 +77,8 @@ export function CollabHome() {
     ...(code.data?.rooms ?? []).map((r) => ({ kind: 'code' as const, id: r.id, title: r.title, href: `/code/${r.id}`, at: r.updatedAt, sub: `${r.mine === false && r.createdBy ? `From ${r.createdBy.name} · ` : ''}${r.language}`, mine: r.mine })),
     ...(files.data?.files ?? []).map((f) => ({ kind: 'file' as const, id: f.id, title: f.name, href: f.space.href, at: f.updatedAt, sub: f.space.label })),
     ...(saves.data?.saves ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: `/studio?open=${v.id}`, at: v.updatedAt, sub: `${v.tool.replace(/[-_]/g, ' ')}${v.editing ? ' · edited together' : v.shared ? ' · shared by link' : ''}`, mine: true })),
+    // M194: others' Create work I opened from their link (while it works).
+    ...(saves.data?.opened ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: v.href, at: v.updatedAt, sub: `${v.by ? `From ${v.by} · ` : ''}${v.tool.replace(/[-_]/g, ' ')}${v.edit ? ' · edit together' : ' · view only'}`, mine: false })),
   ].sort((a, b) => b.at.localeCompare(a.at)), [boards.data, docs.data, tasks.data, code.data, files.data, saves.data]);
 
   const [q, setQ] = useState('');

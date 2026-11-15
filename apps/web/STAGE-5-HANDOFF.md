@@ -6974,3 +6974,22 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   Shared with me, at 1280 dark and 390 light, axe clean, no sideways scroll (test items removed).
 - **Left:** nothing from the M187–M189 list. A Create save shared by link isn't "shared with me" (whoever
   opens the link doesn't get it on their Home).
+
+
+## M194: Create work opened from someone's link, on Collaborate's Home (the owner, 15 Nov 2026: "please do this")
+
+- **Table** `tool_save_opens` (migration 0215): one row a person and piece of work, with the `mode`
+  (view or edit) and the exact `token` they opened. Written by `noteOpen` (`src/server/tool-save-opens.ts`)
+  from `GET /api/collab/shared/:token` (only when the request is signed in: the `/s/` page now sends the
+  account when there is one) and `GET /api/collab/live/:token`. The view page asks every 20 seconds, so the
+  write is skipped unless an hour passed or the link changed; an edit link that still works outranks a view.
+- **Listed** in `GET /api/collab/saves` as `opened` (`openedByMe`) only while the work's link is still the
+  token they opened: a stopped link takes it away, and a new link made after it is never handed to them
+  (it falls back to nothing, not to the other kind of link). Never the owner's own opens. Deleting the work
+  deletes the rows.
+- **Home** (`CollabHome.tsx`): "From <name> · <tool> · view only / edit together", under Shared with me,
+  opening `/s/<token>` or `/studio?edit=<token>`. Sample answer has one.
+- **Tested:** the API through every case (view, edit, view again keeps edit, edit stopped and remade, view
+  stopped and remade, the owner's own list); Alice opening Tara's link then finding it on Home at 1280 dark
+  and 390 light, axe clean, no sideways scroll; unit tests (`tool-save-opens.test.ts`). Test work removed.
+- **Left:** no way to take one off Home by hand (it goes when the owner stops the link).

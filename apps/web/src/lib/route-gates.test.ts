@@ -23,7 +23,6 @@ const API_KEY = /\bverifyApiKey\(/;
 const OPEN: Record<string, [string, RegExp?]> = {
   'auth/sso/lookup': ['which sign-in a school uses, found by its address or email domain (no people)'],
   'calendar/[token]': ['a calendar app’s subscription: the private token in the link is the key', TOKEN],
-  'collab/shared/[token]': ['a view link to shared work: the token is the key', TOKEN],
   'core/[...path]': ['the platform API: each of its routes signs the person in itself (src/server/router.ts)', /\bhandle\b/],
   'cron/daily': ['a scheduled job: only the Worker’s own timer, with its secret header', CRON],
   'cron/daily-more': ['a scheduled job: only the Worker’s own timer, with its secret header', CRON],

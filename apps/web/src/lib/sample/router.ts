@@ -2037,7 +2037,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   // M75: saved work in Create (sample mode keeps nothing on the server).
-  [/^\/api\/collab\/saves$/, () => ok({ saves: [{ id: 'smp-save1', tool: 'mindmap', title: 'Project ideas', updatedAt: at(-1), shared: true, editing: false }, { id: 'smp-save2', tool: 'palette', title: 'Poster colours', updatedAt: at(-3), shared: false, editing: false }] })],
+  [/^\/api\/collab\/saves$/, () => ok({ saves: [{ id: 'smp-save1', tool: 'mindmap', title: 'Project ideas', updatedAt: at(-1), shared: true, editing: false }, { id: 'smp-save2', tool: 'palette', title: 'Poster colours', updatedAt: at(-3), shared: false, editing: false }], opened: [{ id: 'smp-save3', tool: 'mindmap', title: 'Group project plan', updatedAt: at(-2), edit: true, href: '/studio?tool=mindmap', by: 'Maya Patel' }] })],
   [/^\/api\/collab\/(saves|shared|live)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],

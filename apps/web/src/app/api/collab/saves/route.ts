@@ -2,17 +2,22 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { cleanSave, MAX_SAVES } from '@/lib/tool-saves';
+import { openedByMe } from '@/server/tool-save-opens';
 
 // Collaborate → Create, saved work (M75). GET: my saves (newest first, no data). POST { tool, title,
-// data }: save a tool's work to my account (at most 300 saves, 200 KB each).
+// data }: save a tool's work to my account (at most 300 saves, 200 KB each). GET also lists `opened`.
 
 const noStore = { 'Cache-Control': 'no-store' };
 
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
-  const saves = await prisma.toolSave.findMany({ where: { userId: user.id }, orderBy: { updatedAt: 'desc' }, take: MAX_SAVES, select: { id: true, tool: true, title: true, shareToken: true, editToken: true, updatedAt: true } });
-  return NextResponse.json({ saves: saves.map(({ shareToken, editToken, ...s }) => ({ ...s, shared: !!shareToken, editing: !!editToken })) }, { headers: noStore });
+  const [saves, opened] = await Promise.all([
+    prisma.toolSave.findMany({ where: { userId: user.id }, orderBy: { updatedAt: 'desc' }, take: MAX_SAVES, select: { id: true, tool: true, title: true, shareToken: true, editToken: true, updatedAt: true } }),
+    openedByMe(user.id),
+  ]);
+  // `opened`: others' work I opened from their link (M194), while the link works.
+  return NextResponse.json({ saves: saves.map(({ shareToken, editToken, ...s }) => ({ ...s, shared: !!shareToken, editing: !!editToken })), opened }, { headers: noStore });
 }
 
 export async function POST(req: Request) {

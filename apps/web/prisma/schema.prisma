@@ -353,6 +353,7 @@ model User {
   officeHours          OfficeHours?       @relation("OfficeHours")
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
+  toolSaveOpens        ToolSaveOpen[]
   parentContactHours   ParentContactHours? @relation("ParentContactHours")
   consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
   consentFor           ConsentResponse[]   @relation("ConsentFor")
@@ -7489,9 +7490,27 @@ model ToolSave {
   version    Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  opens      ToolSaveOpen[]
 
   @@index([userId, updatedAt])
   @@map("tool_saves")
+}
+
+/// M194: Create work a person opened from someone else's link (mode 'view' or 'edit'), for their
+/// Collaborate home ("Shared with me") while that link still works.
+model ToolSaveOpen {
+  saveId   String
+  save     ToolSave @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode     String   @default("view")
+  /// the link they opened: listed only while the work's link is still this one
+  token    String
+  openedAt DateTime @default(now())
+
+  @@id([saveId, userId])
+  @@index([userId, openedAt])
+  @@map("tool_save_opens")
 }
 
 /// M166: a person's page arrangements, in the account only while they sync them (Settings). One row a
