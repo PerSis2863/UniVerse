@@ -44,6 +44,7 @@ const AccountSecurity = dynamic(() => import('@/components/settings/AccountSecur
 const DeleteAccount = dynamic(() => import('@/components/settings/DeleteAccount').then((m) => m.DeleteAccount), { ssr: false, loading: sectionLoading });
 const OrganizationSettings = dynamic(() => import('@/components/settings/OrganizationSettings').then((m) => m.OrganizationSettings), { ssr: false, loading: sectionLoading });
 const ConsentsPanel = dynamic(() => import('@/components/settings/ConsentsPanel').then((m) => m.ConsentsPanel), { ssr: false, loading: sectionLoading });
+const ConnectionsPanel = dynamic(() => import('@/components/connections/ConnectionsPanel').then((m) => m.ConnectionsPanel), { ssr: false, loading: sectionLoading });
 const DownloadMyData = dynamic(() => import('@/components/settings/DownloadMyData').then((m) => m.DownloadMyData), { ssr: false, loading: sectionLoading });
 const NetworkVisibility = dynamic(() => import('@/components/settings/NetworkVisibility').then((m) => m.NetworkVisibility), { ssr: false, loading: sectionLoading });
 const GuardianShareCard = dynamic(() => import('@/components/settings/GuardianShareCard').then((m) => m.GuardianShareCard), { ssr: false, loading: sectionLoading });
@@ -73,6 +74,7 @@ const SECTIONS: Section[] = [
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify mute course daily summary digest' },
   { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
   { id: 'family', label: 'Parent or guardian', icon: Users, tile: '#34c759', keywords: 'parent guardian family share progress', roles: ['STUDENT'] },
+  { id: 'connections', label: 'Connected accounts', icon: Link2, tile: '#5ac8fa', keywords: 'connect gmail outlook slack google calendar microsoft classroom import linkedin telegram whatsapp discord accounts sync' },
   { id: 'consents', label: 'My consents', icon: ShieldCheck, tile: '#30b0c7', keywords: 'consent permissions agree' },
   { id: 'ai', label: 'AI features', icon: Sparkles, tile: '#af52de', keywords: 'ai assistant chatbot tutor' },
   { id: 'organization', label: 'Organization', icon: Building2, tile: '#ff9500', keywords: 'school name security status demo login', roles: ['ADMIN'] },
@@ -266,6 +268,7 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
         </Card>
       );
     case 'family': return <Setting id="family" className="space-y-6"><GuardianAccountsCard /><GuardianContactsCard /><GuardianShareCard /></Setting>;
+    case 'connections': return <Setting id="connections"><ConnectionsPanel kinds={role === 'TEACHER' || role === 'ADMIN' ? ['calendar', 'classroom', 'mail', 'chat'] : ['calendar', 'mail', 'chat']} back={`${location.pathname}?section=connections`} /></Setting>;
     case 'consents': return <Setting id="consents"><ConsentsPanel embedded /></Setting>;
     case 'ai': return <AiFeatures />;
     case 'organization': return <Card title={title} subtitle="Your school on UniVerse"><Setting id="organization"><OrganizationSettings /></Setting></Card>;

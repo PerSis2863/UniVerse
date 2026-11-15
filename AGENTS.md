@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M195 is the latest).
+  builds on it). The newest notes are at the end (M201 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -103,18 +103,15 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **Merged 15 Nov (PR #125, from `claude/funny-galileo-y4mz9r`):** M183, an index on every relation
-  column (database update 0210); M184, LMS connections, clubs, the ticket scan and scheduled calls kept to
-  the admin's own school (0211); M185, "Since your last visit" in the Daily brief; M186, pulsing dots in
-  their own colour again. M187, campus buildings (0212), school sticker packs and broadcasts kept to the
-  school; M188, Messages: old messages open, go to a date, a chat's every photo, file and link, readable
-  bubbles; M189, Collaborate's home lists saved Create work, with Mine / Shared with me. M190 (15 Nov), each
-  school its own safety policy (0213); M191, rooms and bookings kept to each school (0214); M192, a message
-  however far back opens in Messages; M193, Collaborate says who shared a thing, task boards and code rooms
-  under Mine / Shared with me; M194, Create work opened from someone's link on Collaborate's Home (0215); M195, a × to take one off Home.
-  It also brought
-  M179–M180 from `claude/youthful-fermi-sbdtcp`.
-- **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **The owner's list of 15 Nov** ("do all of them except 5th one"; then 16 Nov: "do all this and merge
+  it"): done: M196 (a teacher's first class), M197 (come-back reminders, 0216), M198 (the new-student
+  walk-through), M199 (Admin → Safety → Who can see what, and the leak check `school-leaks.mjs` with five
+  leaks fixed), M181 (arranging keeps things in their group, every edge resizes, Tidy), M182 (Messages
+  connections: Gmail, Outlook, Slack, 0217), M200 (Google Classroom import, Google / Outlook calendars in
+  the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
+  them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
+  (11); 5 (cheap phones) was left out by the owner.
+- **On `main`** (live): everything through **M195** (M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -223,9 +220,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   Firebase for visitors who aren't signed in, Green's page doesn't jump. M173 (13 Nov), Trace across the supply chain: brand, warehouse,
   driver, shop and buyer each see their own view of a scanned unit (no price for drivers and
   warehouses) and record their stops with place and time; invite links for the team (migration 0207).
-- **Merged 15 Nov (from `claude/youthful-fermi-sbdtcp`; their commits say M183, M186 and M187, numbers another
-  session had already used):** M179, each app's own Messages (chats belong to the app they're started in; This
-  app / All apps); M180, pages fill the screen; M202, **UniVerse Travel**, the sixth app (Explore, guides to
+- **Merged 16 Nov (PR #126, from `claude/youthful-fermi-sbdtcp`; its commits say M183, M186 and M187, numbers
+  other sessions had already used):** M202, **UniVerse Travel**, the sixth app (Explore, guides to
   anywhere from Wikivoyage with facts, weather and places, saved places, partner booking; database update 0219);
   M203, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
@@ -234,17 +230,21 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
   the rest of the owner's Airbnb list for Travel (15 Nov): M205 (find a destination by days, budget, month,
   interests and passport), M206 (the trip planner with the whole trip's budget and multi-city routes), M207
-  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras); then
-  M181 (the Arrange upgrade: stay in its own tab, resize from every edge, ultra smooth, something new) and M182
-  (Messages connections: Gmail, Outlook, Slack, Telegram, WhatsApp, Discord; LinkedIn sign-in only); then the
+  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras)
+  (M181, the Arrange upgrade, and M182, Messages connections, were done on 16 Nov); then the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M209** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note; M205–M208 for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's last hand-over). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M209** (M181 and M182 were done on 16 Nov; M205–M208 are kept for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's "Hand-over: the rest of the owner's Airbnb list"). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
+- **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
+  (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
+  in Cloudflare, each with the return address `https://<the site>/api/connections/callback` (Gmail's read
+  access needs Google's paid review beyond 100 test users); Trace payments (M201): set `TRACE_PRO_PRICE_CENTS`,
+  send `customer.subscription.*` and `checkout.session.completed` to the Stripe webhook, turn on "Trace payments".
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
   to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
@@ -255,7 +255,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0221`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0221`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

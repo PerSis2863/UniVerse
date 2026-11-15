@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { reducedMotion } from '@/lib/page-transition';
 import { appFor, type AppId } from '@/lib/apps';
 import { useChosenApp } from '@/lib/chosen-app';
+import { rememberApp } from '@/lib/role-home';
 import { backdropLoop, makeBackdrop, type BackdropOpts } from '@/lib/backdrop';
 import { cn } from '@/lib/utils';
 
@@ -31,6 +32,8 @@ const OWN = new Set(['/', '/login', '/register']);
 export function AppBackdrop({ app, own = false, tone = 'auto', strength, className }: { app?: AppId; own?: boolean; tone?: 'auto' | 'dark'; strength?: number; className?: string }) {
   const pathname = usePathname();
   const chosen = useChosenApp();
+  const here = app ? null : appFor(pathname)?.id;
+  useEffect(() => { if (here) rememberApp(here); }, [here]);
   if (!own && OWN.has(pathname)) return null;
   return <Backdrop app={app ?? appFor(pathname)?.id ?? chosen} dark={tone === 'dark'} soon={own} strength={strength ?? (own ? 1 : 0.7)} className={className} />;
 }

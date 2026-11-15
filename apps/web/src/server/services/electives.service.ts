@@ -5,7 +5,7 @@ import { assertCanJoinCourse, courseWhereFor, studentCampuses } from '../campus-
 import { schoolsOf, usersIn } from '../school-scope';
 
 export class ElectivesService {
-  async getAvailableElectives(studentId: string) {
+  async getAvailableElectives(studentId: string, organizationId: string | null = null) {
     // Return courses that the student hasn't requested or enrolled in
     // In a campus network: their campus's courses and those shared with it (src/server/campus-network.ts).
     const campuses = await studentCampuses(studentId);
@@ -15,7 +15,8 @@ export class ElectivesService {
         enrollments: { none: { studentId } },
         // A withdrawn request doesn't count: the course can be asked for again.
         electiveRequests: { none: { studentId, status: { not: 'WITHDRAWN' } } },
-        AND: [courseWhereFor(campuses)],
+        // M199: only the student's own school's courses.
+        AND: [courseWhereFor(campuses), { teacher: usersIn([organizationId]) }],
       },
       include: {
         teacher: { select: { id: true, name: true } },

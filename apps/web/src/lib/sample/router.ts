@@ -2043,6 +2043,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   // M75: saved work in Create (sample mode keeps nothing on the server).
+  // M182: connections, as they look once the owner sets them up (sample: none connected).
+  [/^\/api\/connections$/, () => ok({ services: [{ id: 'gmail', name: 'Gmail', kind: 'mail', available: true, connected: null }, { id: 'outlook', name: 'Outlook', kind: 'mail', available: true, connected: null }, { id: 'slack', name: 'Slack', kind: 'chat', available: true, connected: null }, { id: 'google-calendar', name: 'Google Calendar', kind: 'calendar', available: true, connected: null }, { id: 'outlook-calendar', name: 'Outlook Calendar', kind: 'calendar', available: true, connected: null }], elsewhere: [{ id: 'linkedin', name: 'LinkedIn', why: 'LinkedIn doesn’t let other apps read or send its messages.' }] })],
+  [/^\/api\/connections\/([^/]+)\/items$/, () => ok({ mail: [] })],
   [/^\/api\/collab\/saves$/, () => ok({ saves: [{ id: 'smp-save1', tool: 'mindmap', title: 'Project ideas', updatedAt: at(-1), shared: true, editing: false }, { id: 'smp-save2', tool: 'palette', title: 'Poster colours', updatedAt: at(-3), shared: false, editing: false }], opened: [{ id: 'smp-save3', tool: 'mindmap', title: 'Group project plan', updatedAt: at(-2), edit: true, href: '/studio?tool=mindmap', by: 'Maya Patel' }] })],
   [/^\/api\/collab\/(saves|shared|live)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
@@ -2273,9 +2276,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
   [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
+  [/^\/api\/admin\/visibility$/, () => ok({ everyone: false, schools: ['Your main school'], kept: { students: 120, teachers: 9, parents: 64, admins: 2, courses: 14, rooms: 11, buildings: 3 }, ownPolicy: true })],
   [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
+  [/^\/api\/teacher\/first-class$/, () => ok({ show: false })],
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
   // Registers (Stage 5 · B15.5): a school bus and a lent laptop.
@@ -2403,6 +2408,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
   ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
+  ['POST', /^\/api\/connections\/[^/]+\/(start|import)$/, () => { notice(); return fail('Sample mode: connect your accounts after you leave the sample.', 400); }],
   ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
