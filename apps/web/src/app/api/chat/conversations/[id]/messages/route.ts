@@ -61,6 +61,30 @@ async function getThread(req: Request, { params }: Ctx) {
     return NextResponse.json({ results }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
+  // Go to a date (M188): the first message on or after that moment (the browser sends its own midnight).
+  const date = sp.get('date');
+  if (date) {
+    const from = new Date(date);
+    if (Number.isNaN(from.getTime())) return NextResponse.json({ error: 'Pick a date.' }, { status: 400 });
+    const first = await prisma.message.findFirst({ where: { conversationId: id, threadId: null, createdAt: { gte: from }, AND: [visibleTo(user.id)] }, orderBy: { createdAt: 'asc' }, select: { id: true, createdAt: true } });
+    return NextResponse.json({ first }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Everything shared in this chat (M188): the chat's info panel used to list only what was on screen.
+  // Newest first; view-once messages and deleted ones stay out.
+  if (sp.get('shared')) {
+    const base = { conversationId: id, deletedAt: null, AND: [visibleTo(user.id)] };
+    const select = { id: true, type: true, body: true, attachmentUrl: true, attachmentName: true, attachmentSize: true, attachmentMime: true, metadata: true, createdAt: true };
+    const [media, files, texts] = await Promise.all([
+      prisma.message.findMany({ where: { ...base, type: 'IMAGE', attachmentUrl: { not: null } }, orderBy: { createdAt: 'desc' }, take: 60, select }),
+      prisma.message.findMany({ where: { ...base, type: { in: ['FILE', 'VIDEO', 'AUDIO'] }, attachmentUrl: { not: null } }, orderBy: { createdAt: 'desc' }, take: 40, select }),
+      prisma.message.findMany({ where: { ...base, type: 'TEXT', body: { contains: 'http' } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, body: true, createdAt: true } }),
+    ]);
+    const open = (m: { metadata: unknown }) => !(m.metadata as { viewOnce?: boolean } | null)?.viewOnce;
+    const links = texts.flatMap((m) => [...new Set(m.body.match(/https?:\/\/[^\s<>"')]+/g) ?? [])].map((url) => ({ id: `${m.id}-${url}`, messageId: m.id, url, createdAt: m.createdAt }))).slice(0, 40);
+    return NextResponse.json({ media: media.filter(open), files: files.filter(open), links }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
   // A thread (Discord-style): the message it started from and its replies, oldest first.
   const threadOf = sp.get('thread');
   if (threadOf) {

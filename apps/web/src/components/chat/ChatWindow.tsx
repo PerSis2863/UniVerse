@@ -378,9 +378,11 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     } catch (e) { toast.error((e as Error).message); }
   };
   const jump = async (messageId: string) => {
+    // Up to 60 pages back (2,400 messages; it stopped at 400, so older search results never opened: M188).
     let guard = 0;
     let list = messages;
-    while (!list.some((m) => m.id === messageId) && guard++ < 10) {
+    while (!list.some((m) => m.id === messageId) && guard++ < 60) {
+      if (guard === 4) toast.message('Looking further back…');
       const first = list[0];
       if (!first) break;
       const res = await authedJson<ThreadResponse>(`${key}?before=${encodeURIComponent(first.createdAt)}`).catch(() => null);
@@ -390,11 +392,21 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       setHasMoreOlder(res.hasMore);
       if (!res.hasMore) break;
     }
+    if (!list.some((m) => m.id === messageId)) return void toast.message('That message is too far back to open from here.');
     setHighlight(messageId);
     setTimeout(() => document.getElementById(`msg-${messageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80);
     setTimeout(() => setHighlight((h) => (h === messageId ? null : h)), 2200);
   };
   useEffect(() => { if (jumpTo && data) jump(jumpTo); }, [jumpTo, !!data]); // eslint-disable-line react-hooks/exhaustive-deps
+  /** Go to a date (M188): the first message of that day, or the next one after it. `day` is YYYY-MM-DD, in this device's time. */
+  const goToDate = async (day: string) => {
+    if (!day) return;
+    try {
+      const r = await authedJson<{ first: { id: string } | null }>(`${key}?date=${encodeURIComponent(new Date(`${day}T00:00:00`).toISOString())}`);
+      if (r.first) await jump(r.first.id);
+      else toast.message('No messages on or after that day.');
+    } catch (e) { toast.error((e as Error).message); }
+  };
 
   const appendSent = (msg: ChatMessage, tempId: string) => {
     setPending((p) => p.filter((x) => x.id !== tempId));
@@ -815,6 +827,10 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               className="flex-1 min-w-0 bg-transparent text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500 outline-none"
             />
             {results && <span className="text-xs text-zinc-500 tabular-nums shrink-0">{results.length ? `${resultIdx + 1} of ${results.length}` : 'No results'}</span>}
+            <label className="shrink-0 inline-flex items-center gap-1.5 text-xs text-zinc-500">
+              <span className="hidden sm:inline">Go to</span><span className="sr-only sm:hidden">Go to a date</span>
+              <input type="date" max={new Date().toLocaleDateString('en-CA')} onChange={(e) => void goToDate(e.target.value)} className="rounded-lg border border-zinc-200 dark:border-white/10 bg-transparent px-1.5 py-1 text-xs text-zinc-700 dark:text-zinc-200" />
+            </label>
             <button disabled={!results?.length} onClick={() => { const i = Math.min(resultIdx + 1, (results?.length ?? 1) - 1); setResultIdx(i); jump(results![i].id); }} aria-label="Older result" className="p-1.5 rounded-lg text-zinc-500 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronUp className="w-4 h-4" /></button>
             <button disabled={!results?.length} onClick={() => { const i = Math.max(resultIdx - 1, 0); setResultIdx(i); jump(results![i].id); }} aria-label="Newer result" className="p-1.5 rounded-lg text-zinc-500 disabled:opacity-30 hover:bg-zinc-100 dark:hover:bg-white/10"><ChevronDown className="w-4 h-4" /></button>
             <button onClick={() => { setSearchOpen(false); setResults(null); }} aria-label="Close search" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
@@ -1029,6 +1045,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   );
 }
 
+/** What the info panel needs of a shared photo or file. */
+type SharedItem = Pick<ChatMessage, 'id' | 'type' | 'attachmentUrl' | 'attachmentName' | 'attachmentSize' | 'attachmentMime' | 'metadata'>;
+
 function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onChanged, onLeft, onAutoTranslate, onSearch, onHuddle }: {
   data: ThreadResponse; me: string; onOpenChat: (id: string) => void; messages: ChatMessage[]; onClose: () => void; onOpenImage: (u: string) => void; onChanged: () => void; onLeft: () => void;
   onAutoTranslate: (lang: string | null) => void;
@@ -1038,7 +1057,12 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
   const convo = data.conversation;
   const [adding, setAdding] = useState(false);
   const isAdmin = convo.isGroup && convo.myRole === 'ADMIN';
-  const media = messages.filter((m) => m.type === 'IMAGE' && m.attachmentUrl).slice(-12).reverse();
+  // Everything shared in the chat, from the server (M188); what's on screen until it answers, and in
+  // private chats, which the server can't read.
+  const { data: shared } = useSWR<{ media: SharedItem[]; files: SharedItem[]; links: { id: string; url: string }[] }>(convo.private ? null : `/api/chat/conversations/${convo.id}/messages?shared=1`, authedJson, { revalidateOnFocus: false });
+  const [allMedia, setAllMedia] = useState(false);
+  const everyPhoto: SharedItem[] = shared?.media ?? messages.filter((m) => m.type === 'IMAGE' && m.attachmentUrl).reverse();
+  const media = allMedia ? everyPhoto : everyPhoto.slice(0, 12);
   const starredHere = messages.filter((m) => m.starred);
   const [wp, setWp] = useState(getWallpaper());
   const canSetTimer = !convo.isOfficial && (!convo.isGroup || isAdmin);
@@ -1051,8 +1075,8 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
     try { await chatJson(`/api/chat/conversations/${convo.id}/settings`, { method: 'PATCH', body: JSON.stringify({ disappearingSec: sec }) }); onChanged(); }
     catch (e) { toast.error((e as Error).message); }
   };
-  const files = messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
-  const links = messages
+  const files: SharedItem[] = shared?.files ?? messages.filter((m) => (m.type === 'FILE' || m.type === 'VIDEO' || m.type === 'AUDIO') && m.attachmentUrl).slice(-10).reverse();
+  const links = shared?.links ?? messages
     .flatMap((m) => (m.type === 'TEXT' && m.body ? [...new Set(m.body.match(/https?:\/\/[^\s<>"')]+/g) ?? [])].map((url) => ({ id: `${m.id}-${url}`, url })) : []))
     .slice(-10).reverse();
 
@@ -1159,11 +1183,14 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
           {media.length > 0 && (
             <div className="grid grid-cols-3 gap-1.5 mb-3">
               {media.map((m) => (
-                <button key={m.id} onClick={() => onOpenImage(m.attachmentUrl!)} className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-white/5">
+                <button key={m.id} onClick={() => onOpenImage(m.attachmentUrl!)} aria-label={`Open photo${m.attachmentName ? `: ${m.attachmentName}` : ''}`} className="aspect-square rounded-lg overflow-hidden bg-zinc-100 dark:bg-white/5">
                   <img src={m.attachmentUrl!} {...photoSrcSet(m.attachmentUrl, 128)} alt="" loading="lazy" className="w-full h-full object-cover" />
                 </button>
               ))}
             </div>
+          )}
+          {everyPhoto.length > 12 && (
+            <button type="button" onClick={() => setAllMedia((v) => !v)} className="btn-ghost btn-sm mb-3">{allMedia ? 'Show fewer photos' : `Show all ${everyPhoto.length} photos`}</button>
           )}
           <div className="space-y-1.5">
             {files.filter((f) => f.type === 'AUDIO' || f.type === 'VIDEO').map((f) => (
