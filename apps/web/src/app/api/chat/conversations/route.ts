@@ -5,6 +5,14 @@ import { chatMuted } from '@/server/moderation';
 import { getSessionUser } from '@/lib/server-auth';
 import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard, visibleTo } from '@/lib/chat';
 import { publishChat } from '@/server/realtime';
+import { oneOf } from '@/server/body';
+import { APPS, type AppId } from '@/lib/apps';
+
+const APP_IDS = APPS.map((a) => a.id);
+/** The app a new chat belongs to (M179): the one it was started in; UniVersity's are stored as null, like
+ *  every chat from before M179, so one rule finds them all. */
+const appOf = (v: unknown): AppId => (oneOf(APP_IDS, v) ? v : 'campus');
+const stored = (a: AppId) => (a === 'campus' ? null : a);
 
 // GET: the caller's conversations (newest activity first) with unread counts and presence.
 export async function GET(req: Request) {
@@ -25,6 +33,7 @@ export async function GET(req: Request) {
       name: true,
       avatarUrl: true,
       updatedAt: true,
+      app: true,
       participants: { select: { userId: true, role: true, typingUntil: true, pinnedAt: true, mutedUntil: true, archivedAt: true, markedUnread: true, draft: true, draftAt: true, user: userCard } },
       messages: {
         where: visibleTo(user.id),
@@ -59,6 +68,7 @@ export async function GET(req: Request) {
         isGroup: c.isGroup,
         private: c.private,
         isOfficial: !c.isGroup && others.some((p) => p.userId === system.id),
+        app: (c.app ?? 'campus') as AppId,
         title: c.isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
         avatarUrl: c.isGroup ? c.avatarUrl : other?.avatar ?? null,
         otherUserId: c.isGroup ? null : other?.id ?? null,
@@ -91,12 +101,14 @@ export async function GET(req: Request) {
   return NextResponse.json({ conversations: list, me: user.id }, { headers: { 'Cache-Control': 'no-store' } });
 }
 
-// POST: start a 1:1 chat ({ userId }) or create a group ({ name, memberIds }).
+// POST: start a 1:1 chat ({ userId }) or create a group ({ name, memberIds }), in the app it's started
+// from ({ app }, M179: each app keeps its own chats; a 1:1 chat is found again only in the same app).
 export async function POST(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   const body = await req.json().catch(() => ({}));
   const system = await getSystemUser();
+  const app = appOf(body.app);
 
   if (typeof body.userId === 'string') {
     if (body.userId === user.id || body.userId === system.id) return NextResponse.json({ error: 'You can’t start a chat with this account.' }, { status: 400 });
@@ -105,12 +117,12 @@ export async function POST(req: Request) {
 
     const existing = await prisma.conversation.findFirst({
       // Parent–teacher chats are kept apart (B16.2), and so are private (encrypted) chats (Stage 5 · B7.6).
-      where: { isGroup: false, aboutStudentId: null, private: body.private === true, AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] },
+      where: { isGroup: false, aboutStudentId: null, private: body.private === true, app: stored(app), AND: [{ participants: { some: { userId: user.id } } }, { participants: { some: { userId: target.id } } }] },
       select: { id: true },
     });
     if (existing) return NextResponse.json({ id: existing.id });
     const created = await prisma.conversation.create({
-      data: { createdById: user.id, private: body.private === true, participants: { create: [{ userId: user.id }, { userId: target.id }] } },
+      data: { createdById: user.id, private: body.private === true, app: stored(app), participants: { create: [{ userId: user.id }, { userId: target.id }] } },
       select: { id: true },
     });
     return NextResponse.json({ id: created.id }, { status: 201 });
@@ -130,6 +142,7 @@ export async function POST(req: Request) {
     data: {
       isGroup: true,
       name,
+      app: stored(app),
       createdById: user.id,
       participants: { create: [{ userId: user.id, role: 'ADMIN' }, ...found.map((u) => ({ userId: u.id }))] },
       messages: { create: { senderId: user.id, type: 'SYSTEM', body: `${user.name} created the group "${name}"` } },

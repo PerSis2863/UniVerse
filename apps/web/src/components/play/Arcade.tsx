@@ -166,7 +166,8 @@ export function Arcade() {
             <h2 id={`games-${kind}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{kind === 'worlds' ? '3D worlds' : kind === 'big' ? 'Big games' : 'Quick games'}</h2>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, horror, space, a coral reef and, on computers, a battle royale.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          {/* A lone last card takes the whole row (M180: no empty half beside it). */}
+          <div className="grid gap-4 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
             {GAME_IDS.filter((g) => (kind === 'worlds' ? !!GAMES[g].world : !GAMES[g].world && !!GAMES[g].big === (kind === 'big'))).map((g, i) => {
           const info = GAMES[g], mine = me?.games[g];
           return (

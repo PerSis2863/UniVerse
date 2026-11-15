@@ -51,7 +51,7 @@ function Home({ join, shift }: { join: string | null; shift: string | null }) {
     <>
       <Topbar title="Organisations" subtitle="NGOs, food banks and shelters: stock, volunteers and needs in one place" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           <section aria-labelledby="orgs-h">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 id="orgs-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Building2 className="w-5 h-5 text-orange-500" aria-hidden />Your organisations</h2>

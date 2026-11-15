@@ -92,7 +92,7 @@ export default function AdminAssociationsMonitoringPage() {
       <SectionTabs tabs={MONITORING_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex flex-col gap-3">
             <div className="flex flex-wrap justify-between items-center gap-3">
               <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Registered Associations</h2>

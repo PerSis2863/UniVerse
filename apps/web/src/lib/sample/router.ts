@@ -642,7 +642,7 @@ function summary(d: SampleDb, c: any) {
   const last = msgs[msgs.length - 1];
   const other = c.members.find((x: any) => x.id !== d.me.id);
   return {
-    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null,
+    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, app: c.app ?? 'campus', title: c.title, avatarUrl: null,
     otherUserId: c.isGroup ? null : other?.id ?? null, online: !c.isGroup && !c.isOfficial && other?.id !== d.people.meera.id,
     lastSeenAt: at(0, 8), memberCount: c.members.length, typing: [],
     lastMessage: last ? { id: last.id, body: last.body.slice(0, 140), type: last.type, senderId: last.senderId, createdAt: last.createdAt, deletedAt: last.deletedAt, attachmentName: last.attachmentName, mine: last.senderId === d.me.id } : null,
@@ -2037,7 +2037,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   // M75: saved work in Create (sample mode keeps nothing on the server).
-  [/^\/api\/collab\/saves$/, () => ok({ saves: [] })],
+  [/^\/api\/collab\/saves$/, () => ok({ saves: [{ id: 'smp-save1', tool: 'mindmap', title: 'Project ideas', updatedAt: at(-1), shared: true, editing: false }, { id: 'smp-save2', tool: 'palette', title: 'Poster colours', updatedAt: at(-3), shared: false, editing: false }], opened: [{ id: 'smp-save3', tool: 'mindmap', title: 'Group project plan', updatedAt: at(-2), edit: true, href: '/studio?tool=mindmap', by: 'Maya Patel' }] })],
   [/^\/api\/collab\/(saves|shared|live)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
@@ -2373,7 +2373,14 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const wd = (new Date().getDay() + 6) % 7;
     const classes = (d.slots as { courseId: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; room?: { name?: string } }[]).filter((x) => x.dayOfWeek === wd)
       .map((x) => { const c = d.courses.find((y) => y.id === x.courseId); return { courseId: x.courseId, code: c?.code ?? '', name: c?.name ?? '', start: x.startTime, end: x.endTime, type: x.type ?? 'LECTURE', room: x.room?.name ?? null }; });
-    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, ai: null, aiOn: false, push: false, hour: 7 });
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const first = d.courses[0];
+    // Since your last visit (M185): a taste of it in the sample, from its first course.
+    const since = first ? { from: ago(26), total: 3, items: (d.me.role === 'TEACHER'
+      ? [{ kind: 'handin', id: 'smp-s1', title: 'Maya Chen handed in Problem set 3', at: ago(3), link: '/teacher/assignments' }, { kind: 'handin', id: 'smp-s2', title: 'Omar Farouk handed in Problem set 3', at: ago(9), link: '/teacher/assignments' }, { kind: 'joined', id: 'smp-s3', title: 'Lina Petrova joined', at: ago(20), link: '/teacher/students' }]
+      : [{ kind: 'grade', id: 'smp-s1', title: 'Problem set 2', at: ago(4), link: '/student/grades' }, { kind: 'announcement', id: 'smp-s2', title: 'Room change on Thursday', at: ago(11), link: '/student/blackboard' }, { kind: 'work', id: 'smp-s3', title: 'Problem set 3', at: ago(22), link: '/student/assignments' }]
+    ).map((x) => ({ ...x, course: first.code })) } : null;
+    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, since, ai: null, aiOn: false, push: false, hour: 7 });
   }],
   // Watch together (Stage 4 · 4.8): the sample's courses have no videos (YouTube links still work).
   [/^\/api\/calls\/([^/]+)\/videos$/, () => ok({ videos: [] })],
@@ -2390,6 +2397,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
   ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
+  ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],

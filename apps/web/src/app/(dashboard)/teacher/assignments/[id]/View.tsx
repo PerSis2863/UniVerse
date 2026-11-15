@@ -213,7 +213,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
     <>
       <Topbar title={data?.title ?? 'Assignment'} subtitle={data ? `${data.course.code} · ${subs.length} of ${data.enrolled} handed in · out of ${data.maxScore}` : undefined} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-5">
+        <div className="w-full space-y-5">
           <div className="flex flex-wrap items-center gap-2">
             <Link href="/teacher/assignments" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-white me-auto"><ArrowLeft className="w-4 h-4" /> All assignments</Link>
             {waiting.length > 0 && (

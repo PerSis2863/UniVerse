@@ -323,7 +323,7 @@ export function AudioEditor({ file, onClose }: { file: File | null; onClose: () 
         </div>
       ) : (
         <div className="flex-1 min-h-0 overflow-y-auto p-3 md:p-6">
-          <div className="max-w-5xl mx-auto space-y-3">
+          <div className="w-full space-y-3">
             <div role="toolbar" aria-label="Edits" className="flex flex-wrap items-center gap-1 rounded-2xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 p-1 shadow-sm">
               <button type="button" onClick={() => void play()} aria-label={playing ? 'Pause' : hasSel ? 'Play the selection' : 'Play'} className="w-10 h-10 rounded-xl grid place-items-center bg-indigo-600 text-white">{playing ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}</button>
               <span className="w-px h-6 bg-zinc-200 dark:bg-white/10 mx-1" aria-hidden />

@@ -17,7 +17,7 @@ export default function CalendarPage() {
       <Topbar title="My Timetable" subtitle="Your classes, exams and your own events" />
       <SectionTabs tabs={HOME_TABS} />
       <div className="flex-1 p-4 sm:p-8">
-        <div className="max-w-7xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <CalendarBoard cal={cal} label="Your timetable" onOpenOther={(e, day) => setSelectedClass({ ...e.data, dateObj: day })} />
           <CalendarFeedCard who="student" />
           {/* Below the grid: shown once loading ends, so it never pushes the calendar down. */}

@@ -16,7 +16,7 @@ type RealPeople = {
 
 export function RealPeopleCard() {
   const { data } = useSWR<RealPeople>('/owner/real-people', fetcher, heavy);
-  if (!data) return <div className={cn(card, 'h-56 animate-pulse')} aria-hidden />;
+  if (!data) return <div className={cn(card, 'h-56 skeleton')} aria-hidden />;
   const big: [string, number][] = [['Real accounts', data.people], ['Used it today', data.activeDay], ['This week', data.activeWeek], ['Came back this week', data.back7]];
   const most = Math.max(1, ...data.apps.map((a) => a.month));
   return (

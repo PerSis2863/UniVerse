@@ -316,6 +316,11 @@ function Tools() {
     setCurrent(c); setGen((g) => g + 1); open(c.tool as Panel);
     toast.success(`“${c.title}” opened`);
   };
+  // M189: Collaborate → Home opens saved work by its address (/studio?open=<save id>).
+  const openSaveNow = useRef(openSave);
+  useEffect(() => { openSaveNow.current = openSave; });
+  const openId = params.get('open');
+  useEffect(() => { if (openId && /^[\w-]{1,64}$/.test(openId)) void openSaveNow.current(openId); }, [openId]);
   const keepCopy = () => {
     if (!sharedToken || !panel) return;
     keepShared(sharedToken); setCurrent(null); setGen((g) => g + 1);
@@ -484,7 +489,7 @@ function Tools() {
                 ) : <div className="h-48 rounded-2xl skeleton" aria-label="Opening the shared work" />}
               </motion.div>
             ) : (
-              <motion.div key="grid" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="max-w-5xl mx-auto">
+              <motion.div key="grid" initial={enter} animate={{ opacity: 1, y: 0, scale: 1, transition: spring.smooth }} exit={leave} className="w-full">
                 <Hub recent={recent} stars={stars} onPick={pick} onStar={star} onOpenSave={(id) => void openSave(id)} onMount={() => { if (scroller.current) scroller.current.scrollTop = gridTop.current; }} calm={!!calm} />
               </motion.div>
             )}

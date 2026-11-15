@@ -207,6 +207,15 @@ export function buildSampleDb(me: Me) {
     { id: 'sample-conv-aarav', isGroup: false, isOfficial: false, title: (teacherView ? people.zoya : people.aarav).name, members: [meCard, teacherView ? people.zoya : people.aarav], messages: [] as any[] },
     { id: 'sample-conv-group', isGroup: true, isOfficial: false, title: 'OS Study Group', members: [meCard, people.aarav, people.zoya, people.liam], messages: [] as any[] },
   ];
+  // M179: each app keeps its own chats (the welcome chat shows in every app).
+  conversations.push(
+    { id: 'sample-conv-relief', app: 'relief', isGroup: true, isOfficial: false, title: 'Riverside flood volunteers', members: [meCard, people.zoya, people.liam], messages: [] as any[] },
+    { id: 'sample-conv-green', app: 'green', isGroup: false, isOfficial: false, title: people.liam.name, members: [meCard, people.liam], messages: [] as any[] },
+    { id: 'sample-conv-play', app: 'play', isGroup: true, isOfficial: false, title: 'Friday quiz night', members: [meCard, people.aarav, people.zoya], messages: [] as any[] },
+  );
+  conversations[4].messages.push(msg('sample-conv-relief', people.zoya, 'The shelter on Mill Road needs 20 more blankets by 6 pm. Who can drive?', 25));
+  conversations[5].messages.push(msg('sample-conv-green', people.liam, 'Our team saved 41 kg of CO₂ this week 🌱 cycling challenge next?', 90));
+  conversations[6].messages.push(msg('sample-conv-play', people.aarav, 'Room code QZ7K, starting at 8 🎮', 45));
   conversations[0].messages.push(msg('sample-conv-welcome', people.official, `Welcome to UniVerse, ${me.name.split(' ')[0]}! 👋 This is sample mode — explore freely, nothing here is saved.`, 60 * 30));
   if (teacherView) {
     conversations[1].messages.push(

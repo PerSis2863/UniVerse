@@ -60,7 +60,7 @@ export default function GlobalSummitsPage() {
       />
 
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-7xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
 
           {/* Intro Banner */}
           <div className="p-8 rounded-3xl bg-gradient-to-r from-indigo-950/60 via-purple-950/40 to-zinc-900 border border-zinc-200 dark:border-white/10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 shadow-2xl">

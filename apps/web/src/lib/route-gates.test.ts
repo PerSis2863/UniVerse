@@ -23,7 +23,6 @@ const API_KEY = /\bverifyApiKey\(/;
 const OPEN: Record<string, [string, RegExp?]> = {
   'auth/sso/lookup': ['which sign-in a school uses, found by its address or email domain (no people)'],
   'calendar/[token]': ['a calendar app’s subscription: the private token in the link is the key', TOKEN],
-  'collab/shared/[token]': ['a view link to shared work: the token is the key', TOKEN],
   'core/[...path]': ['the platform API: each of its routes signs the person in itself (src/server/router.ts)', /\bhandle\b/],
   'cron/daily': ['a scheduled job: only the Worker’s own timer, with its secret header', CRON],
   'cron/daily-more': ['a scheduled job: only the Worker’s own timer, with its secret header', CRON],
@@ -153,4 +152,19 @@ describe('the platform API’s public routes', () => {
   it('finds them', () => expect(declared.length).toBeGreaterThan(10));
   it('each one is listed, with why', () => expect(declared.filter((k) => !(k in PUBLIC_MODULE))).toEqual([]));
   it('the list has no stale entries', () => expect(Object.keys(PUBLIC_MODULE).filter((k) => !declared.includes(k))).toEqual([]));
+});
+
+// Server Actions are public addresses too, but they aren't API routes, so nothing above sees them
+// (M158: the payment actions answered any school's admin). Each exported action signs the person in.
+describe('Server Actions', () => {
+  const APP = fileURLToPath(new URL('../app', import.meta.url));
+  const actionFiles = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+    const p = join(dir, e.name);
+    if (e.isDirectory()) return e.name === 'api' ? [] : actionFiles(p);
+    return /\.tsx?$/.test(e.name) && /^\s*['"]use server['"]/.test(readFileSync(p, 'utf8')) ? [p] : [];
+  });
+  const actions = actionFiles(APP).flatMap((file) => readFileSync(file, 'utf8').split(/\bexport async function /).slice(1).map((body) => ({ name: `${relative(APP, file)} ${body.slice(0, body.indexOf('('))}`, body })));
+
+  it('finds them', () => expect(actions.length).toBeGreaterThan(0));
+  it('each one signs the person in', () => expect(actions.filter((a) => !/\bgetUserFromToken\(/.test(a.body)).map((a) => a.name)).toEqual([]));
 });

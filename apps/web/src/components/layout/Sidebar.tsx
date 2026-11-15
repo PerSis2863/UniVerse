@@ -5,6 +5,7 @@ import { useAuthStore } from '@/store/auth';
 import { BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
+import { LAST_APP } from '@/lib/current-app';
 import { LabTag } from '@/components/apps/LabTag';
 import { userCan } from '@/lib/permissions';
 import {
@@ -297,7 +298,6 @@ function navFor(app: AppId | null, user: { role: string; owner?: boolean; permis
   return [...owner, ...APP_NAV[app], ...sharedNav(user.role)];
 }
 
-const LAST_APP = 'uv-last-app';
 /** The app last used: shared pages (Messages, Collaborate…) keep its menu. */
 function useCurrentApp(pathname: string): AppId | null {
   const here = appFor(pathname)?.id ?? null;

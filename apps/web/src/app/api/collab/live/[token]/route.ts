@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { publish } from '@/server/realtime';
+import { noteOpen } from '@/server/tool-save-opens';
 import { activeEditors, isToken, mergePart, touchEditors, type Editor } from '@/lib/tool-saves';
 
 // Live editing of a saved piece of work (M76), for signed-in people with its edit link.
@@ -25,6 +26,7 @@ export async function GET(req: Request, { params }: Ctx) {
   if (!row) return gone();
   const now = Date.now(), t = touchEditors(row.editors, { id: user.id, name: user.name ?? 'Someone' }, now);
   if (t.changed) await prisma.toolSave.updateMany({ where: { id: row.id }, data: { editors: JSON.stringify(t.list) } });
+  await noteOpen(row.id, row.userId, user.id, token, 'edit'); // on their Collaborate home (M194)
   const owner = row.userId === user.id ? null : await prisma.user.findUnique({ where: { id: row.userId }, select: { name: true } });
   return NextResponse.json({
     live: { tool: row.tool, title: row.title, data: JSON.parse(row.data) as Record<string, string>, version: row.version, by: owner ? owner.name?.split(' ')[0] ?? 'Someone' : 'you', mine: row.userId === user.id, with: activeEditors(t.list, now, user.id) },

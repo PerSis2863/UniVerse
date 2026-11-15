@@ -74,7 +74,7 @@ export default function AdminAnnouncements() {
       <Topbar title="Announcements" subtitle="Tell the whole school something, and see who has read it" />
       <CommsDeck />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           {/* The studio: write, and watch it on a phone. */}
           <section className="panel relative overflow-hidden p-5 sm:p-7 grid lg:grid-cols-[minmax(0,1fr)_300px] gap-8 items-center" aria-labelledby="studio-h">
             <div className="space-y-4 min-w-0">

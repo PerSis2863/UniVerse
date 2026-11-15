@@ -61,7 +61,7 @@ export function OrgDashboard({ id, tab: start }: { id: string; tab: string | nul
     <>
       <Topbar title={data?.org.name ?? 'Organisation'} subtitle={data ? `${RELIEF_ORG_KIND_LABEL[data.org.kind] ?? data.org.kind}${data.org.place ? ` · ${data.org.place}` : ''} · you’re ${data.role === 'VOLUNTEER' ? 'a volunteer' : `the ${RELIEF_ORG_ROLE_LABEL[data.role].toLowerCase()}`}` : 'UniVerse Relief'} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <Link href="/relief/orgs" className="inline-flex items-center gap-1.5 text-sm font-medium text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"><ArrowLeft className="w-4 h-4 rtl:rotate-180" aria-hidden />All organisations</Link>
           {error && !data ? (
             <div className="panel p-6 text-sm text-zinc-600 dark:text-zinc-300">{errorMessage(error, 'This organisation is gone, or you aren’t in it.')}</div>

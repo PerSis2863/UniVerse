@@ -6,6 +6,7 @@ import { ballotListText, budgetSummary, cleanCandidates, electionState, tally, t
 import type { Body } from './body';
 import { notifyMany } from './email';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
+import { clubInSchool } from './school-scope';
 
 // Clubs (Stage 5 · Q17): elections and the budget.
 // Elections are anonymous: who voted (club_voters) and what was voted (club_ballots) are stored
@@ -17,8 +18,10 @@ async function access(user: SessionUser, clubId: string) {
   const club = await prisma.association.findUnique({ where: { id: clubId }, select: { id: true, name: true, budget: true } });
   if (!club) throw new NotFoundException('Club not found.');
   const m = await prisma.associationMembership.findFirst({ where: { associationId: clubId, userId: user.id }, select: { role: true } });
-  if (!m && user.role !== 'ADMIN') throw new ForbiddenException('Only the club’s members can see this.');
-  return { club, member: !!m, runs: m?.role === 'FOUNDER' || user.role === 'ADMIN' };
+  // An admin: of the club's own school only (M184; another school's club is members-only to them).
+  const admin = user.role === 'ADMIN' && (await clubInSchool(user, clubId));
+  if (!m && !admin) throw new ForbiddenException('Only the club’s members can see this.');
+  return { club, member: !!m, runs: m?.role === 'FOUNDER' || admin, admin };
 }
 
 const candidatesOf = (raw: string): Candidate[] => { try { const v = JSON.parse(raw); return Array.isArray(v) ? v : []; } catch { return []; } };
@@ -115,7 +118,7 @@ export async function clubBudget(user: SessionUser, clubId: string) {
   const entries = await prisma.clubBudgetEntry.findMany({ where: { associationId: clubId }, orderBy: { occurredAt: 'desc' }, take: 300 });
   const by = entries.length ? await prisma.user.findMany({ where: { id: { in: [...new Set(entries.map((e) => e.createdById).filter((x): x is string => !!x))] } }, select: { id: true, name: true } }) : [];
   return {
-    club: { id: club.id, name: club.name }, runs, canSetBudget: user.role === 'ADMIN',
+    club: { id: club.id, name: club.name }, runs, canSetBudget: user.role === 'ADMIN' && (await clubInSchool(user, clubId)),
     summary: budgetSummary(Math.round((club.budget ?? 0) * 100), entries),
     entries: entries.map((e) => ({ id: e.id, kind: e.kind, amount: e.amount, description: e.description, occurredAt: e.occurredAt, receiptUrl: e.receiptUrl, by: by.find((u) => u.id === e.createdById)?.name ?? null })),
   };
@@ -141,7 +144,7 @@ export async function addBudgetEntry(user: SessionUser, clubId: string, b: Body)
 
 /** PATCH /api/campus/clubs/[id]/budget { budget } (admins): the club's budget for the year, whole units. */
 export async function setClubBudget(user: SessionUser, clubId: string, b: Body) {
-  if (user.role !== 'ADMIN') throw new ForbiddenException('Only admins set a club’s budget.');
+  if (user.role !== 'ADMIN' || !(await clubInSchool(user, clubId))) throw new ForbiddenException('Only admins set a club’s budget.');
   const v = Number(String(b.budget ?? '').replace(/[,\s]/g, ''));
   if (!(v >= 0 && v <= 10_000_000)) throw new BadRequestException('Enter a budget of 0 or more.');
   await prisma.association.update({ where: { id: clubId }, data: { budget: Math.round(v * 100) / 100 } });

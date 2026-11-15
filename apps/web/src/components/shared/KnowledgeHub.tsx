@@ -178,7 +178,7 @@ export function SharedKnowledgeHub({ role }: { role: 'student' | 'teacher' | 'ad
       {role === 'student' && <SectionTabs tabs={STUDENT_LEARN_TABS} />}
       {role === 'teacher' && <SectionTabs tabs={TEACHER_LEARN_TABS} />}
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           {/* Controls */}
           <div className="flex flex-col md:flex-row gap-4 justify-between items-start md:items-center">

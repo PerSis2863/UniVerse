@@ -4912,6 +4912,52 @@ one commit and one note each, then ask the owner before merging.
    critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
    first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
 
+4. **A zombie-survival shooter like the link the owner sent** (6 Nov: "https://vel.gg/bsz can you make same
+   game as this website has?", then "just add in the notes so other agent can work on it"). **What the link
+   is:** a browser copy of Call of Duty: Black Ops' Zombies mode (its menu shows that game's cover art and a
+   map file named after one of its maps; "Game setup": your name, single player or multiplayer, classic or
+   Counter-Strike guns, high or low graphics, choose a map). **Don't copy it** (its name, maps, art, music,
+   weapon names and characters belong to its maker): build our own game in the same genre and tell the owner
+   so once. Also tell them STORMFALL (`/play/stormfall`, computers only) already has "Outbreak", undead
+   survival on two maps. A design worked out before the owner asked for notes (nothing of it is committed):
+   - **Holdout**, 16+ (`age: 16`), app `play`, `world: true`, about 1,200 s a round (the round ends early when
+     you go down). First person in three.js on the World engine. Keep it off the landing (rated games, M112).
+   - **The map, Signal Yard** (original): an old railway station at night in fog. The waiting hall (start,
+     four boarded windows, a 600 wall gun), a door (750) to the platform (a train standing at it, two
+     windows, the undead climbing up from the tracks at both ends, a 1,000 wall gun, the crate), a gate
+     (1,000) to the warehouse (three windows, the power lever, perk machines, a 1,200 wall gun).
+   - **Rounds:** `count = round(6 + 3r + 0.18r²)`, health `150 + 100(r − 1)` up to round 9, then ×1.1 a
+     round; runners from round 4 (a fifth more each round); at most 24 on the map; one comes every
+     `max(0.6, 2.2 − 0.12r)` s. The undead tear a plank off a window every ~1.6 s (six planks), climb in,
+     then chase along a flow field (BFS over a 0.5 m grid of the map, closed doors solid, recomputed four
+     times a second from the player's cell) with a push apart from each other; a swipe does 45.
+   - **Points:** 500 to start, +10 a hit, +60 a kill, +100 a headshot kill, +130 a knife kill, +10 a plank
+     rebuilt (hold E at a window). Wall guns (E to buy, half price for ammo), the crate (950: a random gun,
+     the rare one is an arc gun whose bolt jumps to three more), perks once the power is on (more health,
+     faster reload, faster fire, faster run: original names), drops from kills (ammo, double points, a
+     blast that clears the map, one-hit kills for 30 s). Health 100 (250 with the health perk), it comes
+     back after 3 s without a hit. Grenades (G), the knife (V), reload (R), aim (right mouse).
+   - **Leaderboard score** (not the points you spend): `kills × 100 + headshots × 50 + rounds × 500`; its cap
+     for the server: kills ≤ seconds ÷ 0.6 + 24, rounds ≤ kills ÷ 9 (about 416,000 for 1,200 s).
+   - **Reuse from the history** (deleted with Ridgeline Ops in M82, read with
+     `git show 7adb5460^:apps/web/src/components/play/ops/<file>`): `operator.ts` (a figure skinned to 19
+     bones, one draw each, with walk, run, flinch and fall poses and hit spheres for head, body and limbs:
+     restyle it as the undead, arms forward, torn clothes, glowing eyes as a small separate mesh),
+     `guns.ts` (detailed first-person gun models; it needs parts of `src/lib/play/ops/arsenal.ts` from the
+     same commit, or a smaller builder), `fx.ts` (pooled sparks, flashes, holes, casings), `audio.ts`
+     (gunshots made in the browser, with echo).
+   - **The engine:** add `World.overlay(scene, camera)` in `world/core.ts` to draw the hands and gun over
+     the world with their own depth (a `RenderPass` with `clear = false`, `clearDepth = true` inserted after
+     the first pass; on phones and Smooth, a second `render` after `clearDepth()`); make that world with
+     `ao: 0`. Keep the light count fixed (a muzzle-flash light whose power goes to 0, `LightPool` for lamps):
+     adding a light rebuilds every shader (M118).
+   - **Plumbing** (as M123 did for Solar Voyager): `GAME_IDS` and `GAMES` in `src/lib/play.ts`, `GameStage`
+     (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon`, `Arcade` (`WORLD_ART`), the counts in
+     `big-games.test.ts` (14 games, 5 worlds), AGENTS.md section 3, `node scripts/gen-guide-data.mjs`;
+     rules pure with a test and a cap test; a browser check like `play-voyager-ui.mjs`. In a room, everyone
+     first fights their own undead (others are drawn as they move); sharing the undead needs the room
+     server to relay them (later).
+
 **Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
 site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
 mark the 31 Oct error report resolved in the console.
@@ -6617,3 +6663,344 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Live errors:** nothing new since 10 Nov.
 - **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
   Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).
+
+## M179: each app has its own Messages, and "All apps" shows them together (the owner, 13 Nov 2026)
+
+- **The ask:** "when people login in specific app or section like relief, green, play or any then they
+  should get there own new message section but also have option to sync the data of there other app or
+  website messages together".
+- **Now:** a chat belongs to the app it was started in (`conversations.app`, migration 0208: `trace`,
+  `relief`, `green`, `play`; UniVersity's and every chat from before M179 are `NULL`). Messages shows the
+  app you're in (its icon and name under "Chats"); **This app / All apps** switches to every chat
+  together, each tagged with its app (kept on the device, `uv-chat-all-apps`), and "All apps" counts the
+  new messages waiting in the other apps. The UniVerse welcome chat shows in every app. The same two
+  people get one 1:1 chat per app (found again only in the same app). Archived and unread counts follow
+  the switch.
+- **Which app you're in:** `src/lib/current-app.ts` (`currentAppNow`, `useCurrentApp`): the page's own
+  app, else the one last used (`uv-last-app`, written by the side menu), else the website's choice,
+  else UniVersity (tested). Every shared "Message this person" (profile, command palette, New chat and
+  New group, private chats, status, favourites, a chat's member) sends `app`; Relief's "Message" sends
+  `relief`; UniVersity's own pages send nothing (UniVersity).
+- **Both list paths** return `app`: the Next route and the light path (`cloudflare/fast-chat.ts`).
+  Sample mode has chats in Relief, Green and Play.
+- **Rules:** a new way to start a chat sends `app: currentAppNow()` (or its own app); server-made chats
+  (`directChat`, parent chats, broadcasts, the owner's) stay UniVersity's.
+- **Checked:** `messages-apps-ui.mjs` (one chat per app for the same two people; Relief shows Relief's
+  chat and not UniVersity's and the other way round; All apps shows both, tagged; axe at 1280 dark and
+  390 light; no sideways scroll; no errors), `current-app.test.ts`, `pnpm check`.
+
+## M180: pages fill the screen, no empty bands at the sides (the owner, 14 Nov 2026)
+
+- **The ask** (a screenshot of Settings centred with wide empty sides): "the setting section doesnt fit
+  properly … check where else there are gaps … perfectly fit everything in the page like no extra spaces
+  in the side or middle or anywhere".
+- **Measured** every menu page for students, teachers and admins at 1440 and 1920 px (a width-capped,
+  centred block with 64+ px empty on each side): Settings and Credentials (`max-w-5xl`, 115 px a side at
+  1440); at 1920 the hub, Trace, Green, Play and Collaborate (`max-w-6xl`, 295 px a side), Relief and the
+  maps (`max-w-[1500px]`), the impact pages (`max-w-7xl`).
+- **Now:** every app page frame that was capped at 5xl, 6xl, 7xl or a fixed 1,0xx–1,5xx px (`className=
+  "max-w-… mx-auto"`, 92 of them in 91 files under `src/app/(dashboard)` plus Collaborate's home, the
+  knowledge hub, task views, Relief's organisations, the audio and video editors) takes the full width.
+  Settings' list column grows a little on big screens (`xl:w-80`). Play's grids: a lone last card spans
+  the row (`sm:[&>*:last-child:nth-child(odd)]:col-span-2`), so no half-empty row.
+- **Left narrow on purpose:** reading pages (terms, privacy, policies: about 75 characters a line, §8) and
+  single-column forms at `max-w-4xl` and below (a 1,600 px text box is hard to use); the public website's
+  sections (designed centred).
+- **Rule:** an app page's frame is `w-full`; cap a block only when it's text to read or a short form.
+- **Checked:** the sweep again (every menu page fills at 1920), screenshots of Settings, the hub and Play
+  at 1920, no sideways scrolling, `pnpm check`.
+
+## For the next session: the owner's two open asks (14 Nov 2026)
+
+Do them in this order, one commit and one note each, numbers **M181** and **M182** (check the handoff and
+the other branches first: another session may have used them). Merge only when the owner says "merge".
+
+1. **M181, Arrange: a big upgrade** (the owner: "in the arrangement features dont let user put the
+   different info in another tab which is not meant there and also add resize feature in verticle option
+   also in there and resize can be done from bottom and top also and do same for the horizontal resize and
+   make everything ultra smooth and also try to make a big arrangement feature upgrade in the system which
+   is unique and no one else has done till now"). The feature is M166 (note above): `src/lib/arrange.ts`
+   (+ test), `src/lib/arrange-dom.ts`, `src/components/ArrangeMode.tsx`, `src/store/arrange.ts`,
+   `src/server/arrange.ts` (sync, table `user_arrangements`). Do:
+   - a card can only move within its own group/tab (no dropping a page's info into a tab it doesn't
+     belong to: refuse the drop with a short shake, and don't even show drop places there);
+   - resize from **all four edges and the corners**: top and bottom for height, left and right for width
+     (today it resizes from one edge); keep sizes snapped to the grid, and remember them per page;
+   - ultra smooth: move only `transform` while dragging (no layout per frame), one `requestAnimationFrame`
+     per frame, the other cards glide out of the way (FLIP), springs from `src/lib/motion.ts`, Reduce Motion
+     leaves fades; measure frames (no long tasks while dragging);
+   - something new, ideas to put to the owner (pick one or two): layouts that change with the time of day
+     or what you're doing (a "morning" and an "exam week" arrangement switched automatically or by a tap);
+     "magnetic" cards that pull related cards next to them; one-tap "tidy" that packs the page with no
+     gaps; shared arrangements a teacher hands to a class; undo history of arrangements with a timeline.
+   - Check with a Playwright check (drag across tabs refused, each edge resizes, frame timing), axe.
+2. **M182, Messages: connections** (the owner: "add connections options like connect to gmail, linkedin,
+   and all the famous and important one for the project"). M179 gave each app its own Messages. Build a
+   **Connections** tab in Messages (and in Settings → Privacy): a card per service, each **off until the
+   owner sets it up** (they need accounts: mark **[owner]**, AGENTS.md §1):
+   - Gmail (Google Cloud OAuth client, free; works for up to 100 test users before Google's verification;
+     reading mail is a "restricted" scope whose full review costs money: say so), Outlook / Microsoft 365
+     (Microsoft Graph, an Azure app registration, free), Slack (a Slack app, free), Telegram (a bot from
+     @BotFather, free: link your Telegram by sending the bot a code), WhatsApp (through Twilio, already used
+     by Relief's text requests: paid per message), Discord (a bot, free);
+   - **LinkedIn doesn't let other apps read or send its messages** (only approved partners): offer
+     "Sign in with LinkedIn" and a profile link, and tell the owner plainly;
+   - OAuth: start and callback routes with a signed `state` and PKCE, minimal scopes, tokens **encrypted at
+     rest** (AES-GCM, a new secret the owner sets in Cloudflare, never in a committed file), never sent to a
+     browser; disconnect revokes; mail fetched live when the person opens it (not copied into D1);
+     replies go back through the service; every route checks who is asking (`route-gates.test.ts`), new GET
+     routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
+     `universe-security` to review before finishing.
+
+
+
+## M183: an index on every relation column (the owner, 14 Nov 2026: "upgrade all the existing features, buttons, animations, transitions, database, security and everything else … i need big changes")
+
+The day before, M177 and M178 had done a deep check, a smoothness pass and a security review, and the
+live `error_reports` had nothing new, so this session looked for what those could not see, one item per
+area the owner named (M183 database, M184 security, M185 a feature, M186 motion and buttons).
+**Numbers:** the branch `claude/youthful-fermi-sbdtcp` (another session, same day) holds M179–M180, plans
+M181–M182 and uses database update 0208, so these are M183–M186 and 0210–0211.
+
+- **62 relation columns had no index** (found by reading `schema.prisma`: a `fields: [x]` whose `x`
+  leads no `@@index`, `@@unique` or id). Among them `users.organizationId` (every "my school's people"
+  filter), `quiz_attempts.studentId`, `tasks.listId`, `space_files.folderId`, `trace_codes.productId`.
+  SQLite checks a child table row by row when a parent row is deleted unless the child column is
+  indexed (D1 enforces foreign keys), and a list filtered by the column reads the whole table; D1 bills
+  rows read. Migration `0210_relation_indexes.sql` (62 `CREATE INDEX IF NOT EXISTS`, then
+  `PRAGMA optimize`), `@@index` on each model.
+- **Trap:** a column's real name can differ from the Prisma field (`oneroster_syncs.actorId` is
+  `actor_id`, `@map`). Locally D1 accepted `"actorId"` as a text value and built a useless index
+  without a word; `schema-columns.test.ts` (it runs every migration in node's SQLite) caught it.
+  Write the mapped name, and run the unit tests after writing a migration.
+- **Rule:** a new relation gets its `@@index` and `CREATE INDEX` (`schema-indexes.test.ts` fails otherwise).
+- **Tested:** the migration applied on the local D1 (the indexes are there); `pnpm check`.
+
+
+## M184: security, the rest of the school boundary (14 Nov 2026)
+
+M158 found that admin code outside the usual patterns ignored the school (payments, campus info). This
+finished the list of admin-only files that never mention a school (about 90; most go through
+`requireAdmin`'s `org`, `peopleWhere` or `courseAccess` and are fine).
+
+- **LMS connections** (`lti_platforms`) had no school: `/api/lti/platforms` listed every school's to any
+  admin, and PATCH / DELETE took any id (DELETE also removes that LMS's linked people and courses).
+  Migration `0211_lti_platform_school.sql`: `organizationId` (null: the main school), filled from the
+  activity log's "lti.platform_added" (who connected it). The routes use `orgIn(await schoolsOf(user))`;
+  a new connection takes its admin's school. In `lti.ts`: a person an LMS brings in joins that LMS's
+  school (they landed in the main school), and linking to an existing account by email (owner-only
+  switch) only works for people of the LMS's own school.
+- **Clubs** (`club-governance.ts`, `club-carbon.ts`): `user.role === 'ADMIN'` opened any school's club
+  (elections, budget, carbon log; set the budget). Now `clubInSchool(user, clubId)` (`school-scope.ts`:
+  a club founded by one of the school's people, as `associations.service.ts` already did).
+- **The door scan** (`scanTicket`): only for the admin's own school's event (`campusOf`); it names the
+  ticket holder. **Scheduled calls:** scheduling in a group as an admin needs the group to be the
+  school's (`madeInSchool`); the course lists an admin picks from (scheduled calls, code rooms) are
+  their school's (`teacher: peopleWhere(user)`), not every school's.
+- **Server Actions** are outside the route test (M114): `route-gates.test.ts` now finds every
+  `'use server'` file under `src/app` and fails an exported action without `getUserFromToken(`.
+- **Looked at, left alone:** `joinScheduled` lets any admin past its early check (the call page checks
+  again, its comment says so); sticker packs marked "school" and campus buildings are one list for
+  all schools (no people's data; a database change when a second school joins); `canCancel` on a
+  scheduled call for any admin.
+- **Tested:** unit tests (school-scope: `clubInSchool`; event-tickets: another school's door refused;
+  route-gates); the LMS list as the local admin (200); `pnpm check`.
+
+
+## M185: "Since your last visit" in the Daily brief (14 Nov 2026)
+
+The owner chose "something for the first class" (12 Nov) and the launch goal is people who come back on
+another day; the home looked the same whether or not anything had happened while they were away.
+
+- **Where:** inside the existing "Your day" card (`DailyBrief.tsx`, `GET /api/brief`), first section,
+  not a new card (so "Edit home" and the layouts are untouched). `briefData` returns `since:
+  { from, total, items[≤8] } | null`.
+- **The visit before this one** (`src/lib/since-visit.ts`, pure, tested): from the person's last 20
+  `login_events` (a SESSION row is written once per browser session). Rows within an hour of the newest
+  are the same visit (a second tab, signing in again); the look-back stops at 30 days; a first visit
+  gives null. No new column, works across devices.
+- **What is listed** (`sinceLastVisit` in `daily-brief.ts`, at most 4 queries, in the brief's own
+  `Promise.all`, a failure gives null): students: grades (`grades.gradedAt`), announcements (visible
+  now, not their own), open work, materials, in their courses; teachers and admins: hand-ins and
+  enrolments in the courses they teach. Titles are people's own words (`translate="no"`).
+- **Sample:** `/api/brief` in `sample/router.ts` returns three made-up items for the first course.
+- **Tested:** `since-visit.test.ts`; on the dev server as alice with a visit 26 hours ago, a grade and a
+  material 3 hours ago: both listed with their links; 1280 dark and 390 light, no sideways scroll, axe
+  clean, no page errors (test rows removed).
+- **Left:** quizzes published since, and messages (the card's "Waiting for you" covers chats).
+
+
+## M186: pulsing dots keep their colour; the last repainting pings (14 Nov 2026)
+
+- **`animate-pulse` was broken everywhere.** An unlayered rule from the early look
+  (`.animate-pulse { background: linear-gradient(…); animation: shimmer }`, for loading placeholders)
+  beat Tailwind's utilities, so everything that pulses lost its own background: the red "recording"
+  dots (message box, calls, voice feedback), amber "reconnecting" (docs, sheets, slides, boards), green
+  "live" dots, the landing's text caret, about 20 places. They showed a grey shimmer, which also moved
+  `background-position` every frame (a repaint, §8). The rule is gone: Tailwind's opacity pulse, in the
+  element's own colour (checked in the browser: `rgb(255, 59, 48)`, animation `pulse`). The five
+  loading placeholders that relied on it use `.skeleton`. **Rule:** never restyle a Tailwind utility
+  class globally; placeholders are `.skeleton`.
+- **The passport's step marker** (`.pp-node`, `/t/<code>`): its ping was an animated `box-shadow`; now a
+  `::after` ring on `dot-ring` (transform and opacity), as M92 did for `.live-dot` and `.deck-ping`.
+  The dead box-shadow rules those two still carried are removed.
+- **Buttons, checked and left:** 1,476 uses of the shared `.btn-*` classes (press spring, `aria-busy`
+  spinner, focus ring, sizes); the ~135 solid-colour controls that don't use them are chosen-state
+  chips and tabs, not buttons. Converting them would change how tabs look for no gain.
+- **Left** (loops that still repaint, each in one rare place): `flow-on` / `bento-step` (the landing's
+  flow card), `play-lightning` (Quiz Clash's lightning round), `holo`, `ink-drift`, `play-static`.
+- **Tested:** `/t/demo` at 390 (the marker's own animation none, ring `dot-ring`, no errors); `pnpm check`.
+
+
+## M187: more of the school boundary (the owner, 14 Nov 2026: "check for more of these")
+
+This branch now also holds `claude/youthful-fermi-sbdtcp` (M179–M180), merged in so the Messages work
+below builds on it. M181 and M182 stay with the session that planned them; database update 0209 too.
+
+- **Campus buildings** (`campus_buildings.organizationId`, migration 0212, filled from the campus's school
+  for buildings on a network campus; the rest stay with the main school): the school's own map
+  (`campusId` null) lists only that school's buildings, and adding, moving, deleting, placing a room or an
+  event needs the building to be the admin's school's (`campusOf`). A university campus's map (`campusId`
+  set) is still seen by everyone at that campus.
+- **School sticker packs** (`stickers.ts`): listed, counted and edited by the school whose person made
+  them (`owner: peopleWhere(user)`, `madeInSchool`). No database change.
+- **Broadcasts** (`/api/chat/broadcast`): recipients are filtered to the sender's own school; any user
+  ids were accepted. **The tutor's course list** for an admin: their school's courses.
+- **Left, and why:** `school_policies` is one row (`id: 'main'`) for every school (child-safety
+  settings, quiet hours, the check-in location): any school's admin changes it for all. Making it per
+  school touches every reader of that row: its own item, before a second school joins. Rooms and room
+  bookings are one list too. The Impact League is between schools on purpose. Starting a 1:1 chat by a
+  person's id isn't limited to the school (Trace, Relief, Green and Play people have no school).
+- **Tara and Tom** (the local test teachers) couldn't sign in because this machine's local database
+  never had them: `node scripts/local/test-accounts.mjs` (part of `pnpm local:setup`) creates them. With
+  them, the teacher's "Since your last visit" (M185) was checked: "Bob Smith joined · CS101".
+- **Tested:** `pnpm check`; the migration on the local D1.
+
+
+## M188: Messages, long chats and readable bubbles (14 Nov 2026)
+
+Messages already had nearly everything (threads, scheduled and view-once messages, polls, search with
+filters, selecting several, folders, communities, private chats). What didn't hold up was a long chat.
+
+- **Opening an old message** (`jump` in `ChatWindow.tsx`): it loaded 40 older messages at a time and
+  gave up after 10 rounds, so a search result more than 400 messages back never opened. Now 60 rounds
+  (2,400), a "Looking further back…" note after the fourth, and a plain message when it is further still.
+- **Go to a date:** a date field in the chat's search bar. `GET …/messages?date=<ISO>` returns the first
+  message on or after that moment (the browser sends its own midnight); the chat then jumps to it.
+- **Everything shared in a chat:** the info panel's "Media, files & links" was built from the messages on
+  screen. `GET …/messages?shared=1` returns the chat's newest 60 photos, 40 files and 40 links (not
+  deleted, not hidden by the person, not view-once); "Show all N photos". Private chats (the server
+  can't read them) keep the on-screen list. Both answers go through the route's own membership check.
+- **My bubbles** (`globals.css`, the M121 block): the old look's deep pink (`#b5307d`) stayed as the
+  bubble colour after M124 made text on accent fills ink in dark mode: near-black on pink, 3.4:1, in
+  the default theme. The bubble takes `bg-tint` (lime with ink in dark, blue with white in light, the
+  app's colour in the other apps). The small print inside (`text-white/NN`: time, "Voicemail", poll
+  notes) takes the bubble's text colour (it was white on lime, 1.3:1); three `text-[10px]` are 11 px.
+  The info panel's photo buttons have names.
+- **Tested** on a chat of 600 messages over two months (removed after): the oldest message found by
+  search and opened; a date 20 days back opens that day's first message; the panel lists a photo, a file
+  and a link from two months ago; an outsider gets 404; axe clean at 1280 dark and light and 390 dark;
+  no sideways scroll, no page errors.
+- **Left:** a chat longer than 2,400 messages back from the newest still can't open its oldest part in
+  one go (it would need the list to hold a window that isn't joined to the newest messages).
+
+
+## M189: Collaborate, saved Create work on Home and whose work it is (14 Nov 2026)
+
+- **Saved Create work** (M75: mind maps, palettes, notes… saved to the account) lived only inside
+  Create. Home now lists it with everything else: recent work, the one search, a "Create" filter, pins
+  (`PIN_KINDS` has `save`). It opens from there: `/studio?open=<save id>` (the Studio page calls its own
+  `openSave`, so a live-edited one still opens live).
+- **Whose work:** All / Mine / Shared with me, from what the lists already say (`mine` on documents and
+  whiteboards; task boards, code rooms, files and saves count as mine).
+- **Sample:** `/api/collab/saves` returns two saved items.
+- **Tested:** a save made through the API shows on Home, alone under "Create", not under "Shared with
+  me", and opens its tool; 1280 dark and 390 light, axe clean, no sideways scroll (test save removed).
+- **Left:** who shared a document (the list says only that it isn't mine); shared-with-me for task
+  boards and code rooms (their lists don't say).
+
+
+
+## M190: each school its own safety policy (the owner, 15 Nov 2026: "please do all of this")
+
+- **The row:** `school_policy.id` is the school's id (`organizations.id`), or `'main'` for the main
+  school (people in no school). No new column: migration 0213 copies the old shared row to every
+  school that exists, so nothing changes for anyone on the day it goes live. A school created later
+  without a row of its own has the safe defaults (`DEFAULT_POLICY`).
+- **Reading it** (`src/server/safety.ts`): `schoolPolicy(orgId)` (cached a minute per school),
+  `policyFor(userId)` (that person's school), `policySchools(user)` (the schools an admin's change covers:
+  theirs plus the one they own, as `schoolsOf`; the platform owner: their own). **Rule for new code:**
+  never call `schoolPolicy()` without the school; the person it is about decides which row.
+- **Who decides what:** quiet hours and "under 18" the student's school; recording a call is blocked
+  when any student under 18 in it is from a school that doesn't allow it; the chat safety check runs
+  when any student's or guardian's school in the chat has it on; parent messages the child's school; a
+  class check-in the student's school. Changing quiet hours moves only that school's students' rows.
+- **Tested:** unit tests (`school-policy.test.ts`); `pnpm check`; the migration on the local D1.
+
+
+## M191: rooms and room bookings kept to each school
+
+- `rooms.organizationId` (migration 0214, filled from the room's building's school, M187; the rest the
+  main school). Bookings have no school of their own: they follow their room.
+- Kept to the school: `/api/rooms` (list, one room, booking: another school's room is "not found";
+  the list no longer includes who booked), `/api/admin/rooms` (and new rooms go to the admin's school),
+  `/api/campus/rooms` ("free now"), the campus map's rooms, bookings, room placing and usage (the school's
+  own map; a university campus's map is still the campus's), the timetable planner and its save, the
+  timetable import's room names, `/api/admin/timetable`.
+- **Tested:** unit test (`rooms.service.test.ts`), `pnpm check`.
+
+
+## M192: Messages, a message however far back opens
+
+- **Server** (`…/messages` GET): `around=<message id>` returns that message and the 49 before it (404 when
+  it isn't in the chat or is hidden from me); `after=<time>` pages forward (`hasNewer`). Neither marks the
+  chat read. Both go through the route's membership check.
+- **The chat** (`ChatWindow.tsx`): `jump` adds up to three pages to the history; further back it opens a
+  stretch (`win`) not joined to the newest messages. "Load earlier" adds above it, "Load newer messages"
+  below; reaching the newest joins it back on. The arrow button (always shown in a stretch) and sending a
+  message go back to the newest. Messages in a stretch are never counted as "new" on the arrow.
+- **Tested:** `scripts/checks/messages-far-back-ui.mjs` on a 3,000-message chat (made and removed by the
+  check): the first message opens, the newest isn't on screen, Load newer, back to the newest; axe clean
+  at 1280 dark and light, no sideways scroll, no page errors. An outsider gets 404 for `around`.
+
+
+## M193: Collaborate, who shared it and whose task boards and code rooms are
+
+- `GET /api/docs` and `GET /api/tasks` give `by` (the owner's name, when it isn't me; `owner-names.ts`,
+  names only); `GET /api/code` gives `mine` (`createdById` is no longer sent). Home shows "From <name>" on
+  shared documents, task boards and code rooms; task boards and code rooms sort under Mine / Shared with me
+  (files and Create saves still count as mine).
+- **Tested:** as Alice, Tara's board, document and code room in CS101 show "From Tara Teacher" under
+  Shared with me, at 1280 dark and 390 light, axe clean, no sideways scroll (test items removed).
+- **Left:** nothing from the M187–M189 list. A Create save shared by link isn't "shared with me" (whoever
+  opens the link doesn't get it on their Home).
+
+
+## M194: Create work opened from someone's link, on Collaborate's Home (the owner, 15 Nov 2026: "please do this")
+
+- **Table** `tool_save_opens` (migration 0215): one row a person and piece of work, with the `mode`
+  (view or edit) and the exact `token` they opened. Written by `noteOpen` (`src/server/tool-save-opens.ts`)
+  from `GET /api/collab/shared/:token` (only when the request is signed in: the `/s/` page now sends the
+  account when there is one) and `GET /api/collab/live/:token`. The view page asks every 20 seconds, so the
+  write is skipped unless an hour passed or the link changed; an edit link that still works outranks a view.
+- **Listed** in `GET /api/collab/saves` as `opened` (`openedByMe`) only while the work's link is still the
+  token they opened: a stopped link takes it away, and a new link made after it is never handed to them
+  (it falls back to nothing, not to the other kind of link). Never the owner's own opens. Deleting the work
+  deletes the rows.
+- **Home** (`CollabHome.tsx`): "From <name> · <tool> · view only / edit together", under Shared with me,
+  opening `/s/<token>` or `/studio?edit=<token>`. Sample answer has one.
+- **Tested:** the API through every case (view, edit, view again keeps edit, edit stopped and remade, view
+  stopped and remade, the owner's own list); Alice opening Tara's link then finding it on Home at 1280 dark
+  and 390 light, axe clean, no sideways scroll; unit tests (`tool-save-opens.test.ts`). Test work removed.
+- **Left:** no way to take one off Home by hand (it goes when the owner stops the link).
+
+
+## M195: take someone's shared work off my Home
+
+- `DELETE /api/collab/saves?opened=<save id>` deletes only the caller's own `tool_save_opens` row (anyone
+  else's request changes nothing). Home's × (`removeOpened` in `CollabHome.tsx`) shows only on items opened
+  from a link, unpins it too, and says that opening the link again brings it back (it does: `noteOpen`
+  writes a fresh row). Sample mode answers with `notice()`.
+- **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
+  dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
+  Alice's row alone. Test work removed.

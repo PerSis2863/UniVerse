@@ -64,6 +64,8 @@ export interface ConversationSummary {
   /** An end-to-end encrypted private chat (Stage 5 · B7.6). */
   private?: boolean;
   isOfficial: boolean;
+  /** The app it was started in (M179): each app's Messages shows its own; "All apps" shows every one. */
+  app: import('@/lib/apps').AppId;
   title: string;
   avatarUrl: string | null;
   otherUserId: string | null;
@@ -133,6 +135,8 @@ export interface ThreadResponse {
   pinned?: { id: string; body: string; type: string; attachmentName: string | null; createdAt: string; pinnedAt: string; sender: { id: string; name: string } | null }[];
   messages: ChatMessage[];
   hasMore: boolean;
+  /** Paging forward from an old message (M192, `after`): there are newer ones still. */
+  hasNewer?: boolean;
   me: string;
 }
 

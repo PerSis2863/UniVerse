@@ -6,7 +6,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { createCommunity, addMembers, joinCommunity } from './communities';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
-import { campusOf, peopleWhere } from './school-scope';
+import { campusOf, orgIn, peopleWhere } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Campus super-app (upgrade 7): events with RSVP and QR check-in, lost & found, room "free now"
@@ -44,11 +44,12 @@ export function roomStatus(busy: [number, number][], now: number): RoomStatus {
 }
 
 /** GET /api/campus/rooms?date=YYYY-MM-DD&min=…&dow=0-6 (Mon=0): every room's status right now. */
-export async function roomStatuses(date: string, now: number, dow: number) {
+export async function roomStatuses(user: { organizationId?: string | null }, date: string, now: number, dow: number) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !(now >= 0 && now < 24 * 60) || !(dow >= 0 && dow <= 6)) throw new BadRequestException('Send date, min and dow.');
   const [reservations, slots] = await Promise.all([
-    prisma.roomReservation.findMany({ where: { date }, select: { roomId: true, time: true, duration: true }, take: 2000 }),
-    prisma.timetableSlot.findMany({ where: { dayOfWeek: dow, roomId: { not: null } }, select: { roomId: true, startTime: true, endTime: true }, take: 2000 }),
+    // Only my school's rooms (M191).
+    prisma.roomReservation.findMany({ where: { date, room: orgIn([user.organizationId ?? null]) }, select: { roomId: true, time: true, duration: true }, take: 2000 }),
+    prisma.timetableSlot.findMany({ where: { dayOfWeek: dow, room: orgIn([user.organizationId ?? null]) }, select: { roomId: true, startTime: true, endTime: true }, take: 2000 }),
   ]);
   const busy = new Map<string, [number, number][]>();
   const add = (roomId: string, a: number | null, b: number | null) => { if (a == null || b == null) return; busy.set(roomId, [...(busy.get(roomId) ?? []), [a, b]]); };

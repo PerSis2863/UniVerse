@@ -57,7 +57,7 @@ export default function StudentCommunity() {
       <Topbar title="Community Forum" subtitle="Connect, share, and collaborate with your peers" />
       
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto flex flex-col lg:flex-row gap-8">
+        <div className="w-full flex flex-col lg:flex-row gap-8">
           
           {/* Main Feed */}
           <div className="flex-1 space-y-6">

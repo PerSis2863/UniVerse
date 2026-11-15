@@ -1,5 +1,6 @@
 'use client';
 
+import { currentAppNow } from '@/lib/current-app';
 import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
@@ -29,7 +30,7 @@ export function Favorites() {
     setBusy(f.id + kind);
     haptic('tap');
     try {
-      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: f.id }) });
+      const { id } = await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: f.id, app: currentAppNow() }) });
       const msg = await authedJson<{ id: string }>(`/api/chat/conversations/${id}/messages`, { method: 'POST', body: JSON.stringify({ type: 'CALL', kind }) });
       router.push(`/call/${msg.id}`);
     } catch (e) {

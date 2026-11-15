@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { formatDistanceStrict } from 'date-fns';
-import { CalendarClock, Code2, File, FileSpreadsheet, FileText, Flame, Keyboard, KanbanSquare, LayoutTemplate, Loader2, NotebookPen, PenTool, Pin, PinOff, Presentation, QrCode as QrIcon, Search, Sparkles, type LucideIcon } from 'lucide-react';
+import { CalendarClock, Code2, File, FileSpreadsheet, FileText, Flame, Keyboard, KanbanSquare, LayoutTemplate, Loader2, NotebookPen, PenTool, Pin, PinOff, Presentation, QrCode as QrIcon, Search, Sparkles, X, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Sheet } from '@/components/ui/Sheet';
 import { QrCode } from '@/components/ui/QrCode';
@@ -24,7 +24,7 @@ import { FocusTimer } from './FocusTimer';
 // pinned items, recent work, one search across all of it, templates, a focus timer, quick notes, what's
 // due this week and how active the work has been. Shortcuts: / search, d s p b t new, f timer, ? help.
 
-type Item = PinT & { at: string; sub: string };
+type Item = PinT & { at: string; sub: string; /** Made by me (false: someone shared it with me; undefined: the tool doesn't say). */ mine?: boolean; /** Opened from someone's link (M194): can be taken off Home (M195). */ opened?: boolean };
 
 const KIND: Record<PinKind, { label: string; icon: LucideIcon; tone: string }> = {
   board: { label: 'Whiteboard', icon: PenTool, tone: 'from-violet-500 to-fuchsia-500' },
@@ -34,8 +34,11 @@ const KIND: Record<PinKind, { label: string; icon: LucideIcon; tone: string }> =
   tasks: { label: 'Task board', icon: KanbanSquare, tone: 'from-fuchsia-400 to-fuchsia-600' },
   code: { label: 'Code room', icon: Code2, tone: 'from-indigo-600 to-fuchsia-600' },
   file: { label: 'File', icon: File, tone: 'from-zinc-500 to-zinc-700' },
+  save: { label: 'Create work', icon: Sparkles, tone: 'from-fuchsia-500 to-indigo-500' },
 };
-const FILTERS: [PinKind | 'all', string][] = [['all', 'Everything'], ['doc', 'Docs'], ['sheet', 'Sheets'], ['slides', 'Slides'], ['board', 'Boards'], ['tasks', 'Tasks'], ['code', 'Code'], ['file', 'Files']];
+const FILTERS: [PinKind | 'all', string][] = [['all', 'Everything'], ['doc', 'Docs'], ['sheet', 'Sheets'], ['slides', 'Slides'], ['board', 'Boards'], ['tasks', 'Tasks'], ['code', 'Code'], ['file', 'Files'], ['save', 'Create']];
+// M189: whose work it is; M193: task boards and code rooms say too, and shared work names who it's from.
+const OWNERS: ['all' | 'mine' | 'shared', string][] = [['all', 'All'], ['mine', 'Mine'], ['shared', 'Shared with me']];
 const CREATE: [string, string, LucideIcon, string][] = [
   ['d', 'Document', FileText, '/docs?new=doc'], ['s', 'Spreadsheet', FileSpreadsheet, '/docs?new=sheet'], ['p', 'Presentation', Presentation, '/docs?new=slides'],
   ['b', 'Whiteboard', PenTool, '/boards?new=1'], ['t', 'Task board', KanbanSquare, '/tasks?new=1'],
@@ -43,9 +46,10 @@ const CREATE: [string, string, LucideIcon, string][] = [
 const NOTES_KEY = 'uv-collab-notes';
 
 interface Boards { id: string; title: string; updatedAt: string; owner: { name: string }; mine: boolean }
-interface Docs { docs: { id: string; title: string; kind?: string; course: string | null; updatedAt: string }[] }
-interface Tasks { boards: { id: string; title: string; course: string | null; tasks: number; updatedAt: string }[]; mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[] }
-interface Code { rooms: { id: string; title: string; language: string; updatedAt: string }[] }
+interface Docs { docs: { id: string; title: string; kind?: string; course: string | null; updatedAt: string; mine?: boolean; by?: string | null }[] }
+interface Saves { saves: { id: string; tool: string; title: string; updatedAt: string; shared: boolean; editing?: boolean }[]; opened?: { id: string; tool: string; title: string; updatedAt: string; edit: boolean; href: string; by: string | null }[] }
+interface Tasks { boards: { id: string; title: string; course: string | null; tasks: number; updatedAt: string; mine?: boolean; by?: string | null }[]; mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[] }
+interface Code { rooms: { id: string; title: string; language: string; updatedAt: string; mine?: boolean; createdBy?: { name: string } | null }[] }
 interface Files { files: { id: string; name: string; updatedAt: string; space: { label: string; href: string } }[] }
 
 const docKind = (k?: string): PinKind => (k === 'sheet' ? 'sheet' : k === 'slides' ? 'slides' : 'doc');
@@ -61,23 +65,29 @@ export function CollabHome() {
   const code = useSWR<Code>('/api/code', authedJson, opt);
   const files = useSWR<Files>('/api/files-hub?view=recent', authedJson, opt);
   const pins = useSWR<{ pins: PinT[] }>('/api/collab/pins', authedJson, opt);
+  // M189: work saved from the Create tools (mind maps, designs, notes…) belongs in the same list.
+  const saves = useSWR<Saves>('/api/collab/saves', authedJson, opt);
   const loading = boards.isLoading || docs.isLoading || tasks.isLoading;
 
   // Every item from every tool, newest first.
   const items = useMemo<Item[]>(() => [
-    ...(Array.isArray(boards.data) ? boards.data : []).map((b) => ({ kind: 'board' as const, id: b.id, title: b.title, href: `/boards/${b.id}`, at: b.updatedAt, sub: b.mine ? 'Yours' : `From ${b.owner.name}` })),
-    ...(docs.data?.docs ?? []).map((d) => { const k = docKind(d.kind); return { kind: k, id: d.id, title: d.title, href: `${docPath[k]}/${d.id}`, at: d.updatedAt, sub: d.course ?? 'Yours and shared' }; }),
-    ...(tasks.data?.boards ?? []).map((t) => ({ kind: 'tasks' as const, id: t.id, title: t.title, href: `/tasks/${t.id}`, at: t.updatedAt, sub: `${t.tasks} card${t.tasks === 1 ? '' : 's'}${t.course ? ` · ${t.course}` : ''}` })),
-    ...(code.data?.rooms ?? []).map((r) => ({ kind: 'code' as const, id: r.id, title: r.title, href: `/code/${r.id}`, at: r.updatedAt, sub: r.language })),
+    ...(Array.isArray(boards.data) ? boards.data : []).map((b) => ({ kind: 'board' as const, id: b.id, title: b.title, href: `/boards/${b.id}`, at: b.updatedAt, sub: b.mine ? 'Yours' : `From ${b.owner.name}`, mine: b.mine })),
+    ...(docs.data?.docs ?? []).map((d) => { const k = docKind(d.kind); return { kind: k, id: d.id, title: d.title, href: `${docPath[k]}/${d.id}`, at: d.updatedAt, sub: [d.mine === false ? (d.by ? `From ${d.by}` : 'Shared with you') : d.course ? null : 'Yours', d.course].filter(Boolean).join(' · '), mine: d.mine }; }),
+    ...(tasks.data?.boards ?? []).map((t) => ({ kind: 'tasks' as const, id: t.id, title: t.title, href: `/tasks/${t.id}`, at: t.updatedAt, sub: `${t.mine === false && t.by ? `From ${t.by} · ` : ''}${t.tasks} card${t.tasks === 1 ? '' : 's'}${t.course ? ` · ${t.course}` : ''}`, mine: t.mine })),
+    ...(code.data?.rooms ?? []).map((r) => ({ kind: 'code' as const, id: r.id, title: r.title, href: `/code/${r.id}`, at: r.updatedAt, sub: `${r.mine === false && r.createdBy ? `From ${r.createdBy.name} · ` : ''}${r.language}`, mine: r.mine })),
     ...(files.data?.files ?? []).map((f) => ({ kind: 'file' as const, id: f.id, title: f.name, href: f.space.href, at: f.updatedAt, sub: f.space.label })),
-  ].sort((a, b) => b.at.localeCompare(a.at)), [boards.data, docs.data, tasks.data, code.data, files.data]);
+    ...(saves.data?.saves ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: `/studio?open=${v.id}`, at: v.updatedAt, sub: `${v.tool.replace(/[-_]/g, ' ')}${v.editing ? ' · edited together' : v.shared ? ' · shared by link' : ''}`, mine: true })),
+    // M194: others' Create work I opened from their link (while it works).
+    ...(saves.data?.opened ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: v.href, at: v.updatedAt, sub: `${v.by ? `From ${v.by} · ` : ''}${v.tool.replace(/[-_]/g, ' ')}${v.edit ? ' · edit together' : ' · view only'}`, mine: false, opened: true })),
+  ].sort((a, b) => b.at.localeCompare(a.at)), [boards.data, docs.data, tasks.data, code.data, files.data, saves.data]);
 
   const [q, setQ] = useState('');
   const [filter, setFilter] = useState<PinKind | 'all'>('all');
+  const [owner, setOwner] = useState<'all' | 'mine' | 'shared'>('all');
   const [share, setShare] = useState<Item | PinT | null>(null);
   const [help, setHelp] = useState(false);
   const search = useRef<HTMLInputElement>(null);
-  const shown = items.filter((i) => (filter === 'all' || i.kind === filter) && (!q.trim() || `${i.title} ${i.sub} ${KIND[i.kind].label}`.toLowerCase().includes(q.trim().toLowerCase())));
+  const shown = items.filter((i) => (filter === 'all' || i.kind === filter) && (owner === 'all' || (owner === 'shared' ? i.mine === false : i.mine !== false)) && (!q.trim() || `${i.title} ${i.sub} ${KIND[i.kind].label}`.toLowerCase().includes(q.trim().toLowerCase())));
 
   const pinned = pins.data?.pins ?? [];
   const isPinned = (i: PinT) => pinned.some((p) => p.kind === i.kind && p.id === i.id);
@@ -86,6 +96,13 @@ export function CollabHome() {
     void pins.mutate({ pins: next }, { revalidate: false });
     try { await pins.mutate(authedJson<{ pins: PinT[] }>('/api/collab/pins', { method: 'PUT', body: JSON.stringify({ pins: next }) }), { revalidate: false }); }
     catch (e) { toast.error((e as Error).message); void pins.mutate(); }
+  };
+  /** M195: takes someone's shared work off my Home (opening their link again brings it back). */
+  const removeOpened = async (i: Item) => {
+    if (isPinned(i)) await togglePin(i);
+    void saves.mutate((d) => (d ? { ...d, opened: (d.opened ?? []).filter((o) => o.id !== i.id) } : d), { revalidate: false });
+    try { await authedJson(`/api/collab/saves?opened=${encodeURIComponent(i.id)}`, { method: 'DELETE' }); toast.success('Removed from your Home. Opening the link again brings it back.'); }
+    catch (e) { toast.error((e as Error).message); void saves.mutate(); }
   };
 
   // Shortcuts, when not typing somewhere.
@@ -105,7 +122,7 @@ export function CollabHome() {
 
   return (
     <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-      <div className="max-w-6xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* Search everything, and start something new. */}
         <section className="panel collab-hero relative overflow-hidden p-5 sm:p-7">
           <h2 className="text-2xl sm:text-3xl font-black text-zinc-900 dark:text-white">Your work, <span className="accent-word pe-1">together</span></h2>
@@ -163,12 +180,17 @@ export function CollabHome() {
                   ))}
                 </div>
               </div>
+              <div className="flex gap-1.5 mb-3" role="group" aria-label="Whose work">
+                {OWNERS.map(([k, label]) => (
+                  <button key={k} type="button" aria-pressed={owner === k} onClick={() => setOwner(k)} className={cn('px-2.5 py-1 rounded-full text-xs font-semibold transition-colors', owner === k ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-white/10')}>{label}</button>
+                ))}
+              </div>
               {loading ? (
                 <div className="space-y-2" role="status" aria-label="Loading">{[0, 1, 2, 3].map((i) => <div key={i} className="h-14 rounded-2xl skeleton" />)}</div>
               ) : shown.length === 0 ? (
-                <p className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">{q ? 'Nothing matches that.' : 'Nothing here yet. Start a document or a board above.'}</p>
+                <p className="py-10 text-center text-sm text-zinc-500 dark:text-zinc-400">{q ? 'Nothing matches that.' : owner === 'shared' ? 'Nothing has been shared with you yet.' : 'Nothing here yet. Start a document or a board above.'}</p>
               ) : (
-                <ul key={`${filter}:${q ? 1 : 0}`} className="stagger divide-y divide-zinc-100 dark:divide-white/[0.05]">
+                <ul key={`${filter}:${owner}:${q ? 1 : 0}`} className="stagger divide-y divide-zinc-100 dark:divide-white/[0.05]">
                   {shown.slice(0, 40).map((i) => {
                     const K = KIND[i.kind];
                     const on = isPinned(i);
@@ -181,6 +203,7 @@ export function CollabHome() {
                         </Link>
                         <span className="relative z-10 flex gap-0.5 transition-opacity duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
                           <button type="button" onClick={() => setShare(i)} aria-label={`Share ${i.title} with a QR code`} className="p-1.5 rounded-full text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><QrIcon className="w-4 h-4" /></button>
+                          {i.opened && <button type="button" onClick={() => void removeOpened(i)} aria-label={`Remove ${i.title} from my Home`} title="Remove from my Home" className="p-1.5 rounded-full text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>}
                           <button type="button" onClick={() => void togglePin(i)} aria-pressed={on} aria-label={on ? `Unpin ${i.title}` : `Pin ${i.title}`} className={cn('p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', on ? 'text-fuchsia-500' : 'text-zinc-400 hover:text-fuchsia-500')}><Pin className="w-4 h-4 rotate-45" /></button>
                         </span>
                       </li>

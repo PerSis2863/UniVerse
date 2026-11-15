@@ -3,18 +3,20 @@ import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { audit } from '@/server/audit';
 import { toolUrls } from '@/server/lti';
+import { orgIn, schoolsOf } from '@/server/school-scope';
 import { sessionTokensEnabled } from '@/server/session-token';
 
-// LMS registrations (admins). GET: registrations + the values to paste into the LMS. POST: register one.
+// LMS registrations (admins, their own school's: M184). GET: registrations + the values to paste into the LMS. POST: register one.
 export async function GET(req: Request) {
   const user = await getSessionUser(req);
   if (!user) return NextResponse.json({ error: 'Please sign in.' }, { status: 401 });
   if (user.role !== 'ADMIN') return NextResponse.json({ error: 'Only admins can manage LMS connections.' }, { status: 403 });
-  const [platforms, links] = await Promise.all([
-    prisma.ltiPlatform.findMany({ orderBy: { createdAt: 'desc' } }),
-    prisma.ltiContext.groupBy({ by: ['platformId'], _count: { _all: true } }),
-  ]);
-  const users = await prisma.ltiUser.groupBy({ by: ['platformId'], _count: { _all: true } });
+  const platforms = await prisma.ltiPlatform.findMany({ where: orgIn(await schoolsOf(user)), orderBy: { createdAt: 'desc' }, take: 90 });
+  const mine = { platformId: { in: platforms.map((p) => p.id) } };
+  const [links, users] = platforms.length ? await Promise.all([
+    prisma.ltiContext.groupBy({ by: ['platformId'], where: mine, _count: { _all: true } }),
+    prisma.ltiUser.groupBy({ by: ['platformId'], where: mine, _count: { _all: true } }),
+  ]) : [[], []];
   const tool = toolUrls();
   return NextResponse.json({
     platforms: platforms.map((p) => ({ ...p, courses: links.find((l) => l.platformId === p.id)?._count._all ?? 0, users: users.find((u) => u.platformId === p.id)?._count._all ?? 0 })),
@@ -45,7 +47,7 @@ export async function POST(req: Request) {
   const deploymentIds = String(b.deploymentIds ?? '').split(/[\s,]+/).map((d) => d.trim()).filter(Boolean).slice(0, 20);
   if (!name || !issuer || !clientId || !authLoginUrl || !jwksUrl) return NextResponse.json({ error: 'Fill in the name, issuer, client ID, authorisation URL and keyset URL (https).' }, { status: 400 });
   try {
-    const p = await prisma.ltiPlatform.create({ data: { name, issuer, clientId, authLoginUrl, authTokenUrl, jwksUrl, deploymentIds, trustEmails: b.trustEmails === true } });
+    const p = await prisma.ltiPlatform.create({ data: { name, issuer, clientId, authLoginUrl, authTokenUrl, jwksUrl, deploymentIds, trustEmails: b.trustEmails === true, organizationId: user.organizationId ?? null } });
     audit(user, { action: 'lti.platform_added', summary: `Connected LMS “${name}”`, targetType: 'lti_platform', targetId: p.id }, req);
     return NextResponse.json({ id: p.id });
   } catch {

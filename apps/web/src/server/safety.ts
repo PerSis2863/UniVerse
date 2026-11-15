@@ -8,7 +8,7 @@ import { notify, notifyMany } from './email';
 import { geminiJson } from './gemini';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
-import { assertInSchool, schoolsOf, usersIn } from './school-scope';
+import { assertInSchool, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 import { pushService } from './services/push.service';
 
 // Safe by default for young students (Stage 4 · 4.10).
@@ -27,32 +27,54 @@ import { pushService } from './services/push.service';
 const DAY = 86_400_000;
 export interface Policy { guard: boolean; recordMinors: boolean; quietMinors: boolean; quietStart: string; quietEnd: string; studentsMinors: boolean; parentMessaging: boolean }
 const DEFAULT_POLICY: Policy = { guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true };
-let cache: { p: Policy; at: number } | null = null;
+// One row per school (M190): its id is the school's (`organizations.id`), or 'main' for the main school
+// (people in no school). A school without a row of its own has the safe defaults.
+const cache = new Map<string, { p: Policy; at: number }>();
+export const policyKey = (org: string | null | undefined) => org || 'main';
 
-/** The school's policy (read at most once a minute per instance). */
-export async function schoolPolicy(): Promise<Policy> {
-  if (cache && Date.now() - cache.at < 60_000) return cache.p;
-  const row = await prisma.schoolPolicy.findUnique({ where: { id: 'main' } }).catch(() => null);
+/** A school's policy (null: the main school), read at most once a minute per instance. */
+export async function schoolPolicy(org: string | null | undefined = null): Promise<Policy> {
+  const key = policyKey(org);
+  const hit = cache.get(key);
+  if (hit && Date.now() - hit.at < 60_000) return hit.p;
+  const row = await prisma.schoolPolicy.findUnique({ where: { id: key } }).catch(() => null);
   const p: Policy = row ? { guard: row.guard, recordMinors: row.recordMinors, quietMinors: row.quietMinors, quietStart: row.quietStart, quietEnd: row.quietEnd, studentsMinors: row.studentsMinors, parentMessaging: row.parentMessaging } : DEFAULT_POLICY;
-  cache = { p, at: Date.now() };
+  cache.set(key, { p, at: Date.now() });
   return p;
+}
+
+/** The policy of this person's school. */
+export async function policyFor(userId: string): Promise<Policy> {
+  const u = await prisma.user.findUnique({ where: { id: userId }, select: { organizationId: true } });
+  return schoolPolicy(u?.organizationId);
+}
+
+/** The schools an admin's policy changes cover: theirs and the one they own (the owner: their own). */
+export async function policySchools(user: SessionUser): Promise<SchoolIds> {
+  const s = await schoolsOf(user);
+  return s === 'all' ? [user.organizationId ?? null] : s;
 }
 
 const isAdmin = (u: SessionUser) => u.role === 'ADMIN' || u.owner === true;
 
-/** POST /api/safety/policy: a school admin changes the policy. */
+/** POST /api/safety/policy: a school admin changes their school's policy. */
 export async function setSchoolPolicy(user: SessionUser, b: Record<string, unknown>) {
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins can change the safety policy.');
-  const before = await schoolPolicy();
+  const schools = await policySchools(user);
+  const before = await schoolPolicy(schools[0]);
   const bool = (k: keyof Policy) => (typeof b[k] === 'boolean' ? (b[k] as boolean) : (before[k] as boolean));
   const time = (k: 'quietStart' | 'quietEnd') => (typeof b[k] === 'string' && HHMM.test(b[k] as string) ? (b[k] as string) : before[k]);
   const p: Policy = { guard: bool('guard'), recordMinors: bool('recordMinors'), quietMinors: bool('quietMinors'), quietStart: time('quietStart'), quietEnd: time('quietEnd'), studentsMinors: bool('studentsMinors'), parentMessaging: bool('parentMessaging') };
   if (p.quietStart === p.quietEnd) throw new BadRequestException('Quiet hours need to start and end at different times.');
-  await prisma.schoolPolicy.upsert({ where: { id: 'main' }, update: { ...p, updatedAt: new Date(), updatedById: user.id }, create: { id: 'main', ...p, updatedById: user.id } });
-  // Students under 18 follow the school's hours: changed hours apply at once; switched off, they're free.
-  if (!p.quietMinors) await prisma.quietHours.deleteMany({ where: { bySchool: true } });
-  else if (p.quietStart !== before.quietStart || p.quietEnd !== before.quietEnd) await prisma.quietHours.updateMany({ where: { bySchool: true }, data: { start: p.quietStart, end: p.quietEnd, updatedAt: new Date() } });
-  cache = { p, at: Date.now() };
+  for (const org of schools) {
+    const id = policyKey(org);
+    await prisma.schoolPolicy.upsert({ where: { id }, update: { ...p, updatedAt: new Date(), updatedById: user.id }, create: { id, ...p, updatedById: user.id } });
+    cache.set(id, { p, at: Date.now() });
+  }
+  // This school's students under 18 follow its hours: changed hours apply at once; switched off, they're free.
+  const mine = { bySchool: true, user: usersIn(schools) };
+  if (!p.quietMinors) await prisma.quietHours.deleteMany({ where: mine });
+  else if (p.quietStart !== before.quietStart || p.quietEnd !== before.quietEnd) await prisma.quietHours.updateMany({ where: mine, data: { start: p.quietStart, end: p.quietEnd, updatedAt: new Date() } });
   return p;
 }
 
@@ -67,16 +89,20 @@ export function isMinor(u: { role: string; dateOfBirth: Date | null }, p: Policy
 
 /** Of these people, the ones under 18 (one query). */
 export async function minorsAmong(ids: string[]): Promise<Set<string>> {
-  if (!ids.length) return new Set();
-  const p = await schoolPolicy();
-  const people = await prisma.user.findMany({ where: { id: { in: [...new Set(ids)].slice(0, 90) }, role: 'STUDENT' }, select: { id: true, role: true, dateOfBirth: true } });
-  return new Set(people.filter((u) => isMinor(u, p)).map((u) => u.id));
+  return new Set((await minorStudents(ids)).map((u) => u.id));
 }
 
-/** Recording a call with these people in it: refused when one is under 18 and the school doesn't allow it. */
+/** The students under 18 among these people, each with their school's policy (one query). */
+async function minorStudents(ids: string[]) {
+  if (!ids.length) return [];
+  const people = await prisma.user.findMany({ where: { id: { in: [...new Set(ids)].slice(0, 90) }, role: 'STUDENT' }, select: { id: true, role: true, dateOfBirth: true, organizationId: true } });
+  const withPolicy = await Promise.all(people.map(async (u) => ({ ...u, policy: await schoolPolicy(u.organizationId) })));
+  return withPolicy.filter((u) => isMinor(u, u.policy));
+}
+
+/** Recording a call with these people in it: refused when one is under 18 and their school doesn't allow it. */
 export async function recordingBlocked(ids: string[]) {
-  const p = await schoolPolicy();
-  return !p.recordMinors && (await minorsAmong(ids)).size > 0;
+  return (await minorStudents(ids)).some((u) => !u.policy.recordMinors);
 }
 
 // ── Quiet hours ─────────────────────────────────────────────────────────────────────────────
@@ -84,12 +110,12 @@ export async function recordingBlocked(ids: string[]) {
 /** For a student under 18 while the school's quiet hours are on: their row is the school's. */
 export async function ensureQuietDefault(userId: string, tzRaw: unknown) {
   const tz = validZone(tzRaw);
-  const [p, u, row] = await Promise.all([
-    schoolPolicy(),
-    prisma.user.findUnique({ where: { id: userId }, select: { role: true, dateOfBirth: true } }),
+  const [u, row] = await Promise.all([
+    prisma.user.findUnique({ where: { id: userId }, select: { role: true, dateOfBirth: true, organizationId: true } }),
     prisma.quietHours.findUnique({ where: { userId } }),
   ]);
   if (!u) return null;
+  const p = await schoolPolicy(u.organizationId);
   const school = p.quietMinors && isMinor(u, p);
   if (school) {
     if (row?.bySchool && row.timeZone === tz && row.start === p.quietStart && row.end === p.quietEnd && row.on) return row;
@@ -162,14 +188,15 @@ async function moderators(senderId: string) {
 export async function guardMessage(m: { id: string; conversationId: string; body: string }, from: { id: string; name: string }) {
   const hit = quickCheck(m.body);
   if (!hit) return null;
-  const policy = await schoolPolicy();
-  if (!policy.guard) return null;
   const [members, recent] = await Promise.all([
-    prisma.conversationParticipant.findMany({ where: { conversationId: m.conversationId }, select: { userId: true, user: { select: { role: true } } }, take: 500 }),
+    prisma.conversationParticipant.findMany({ where: { conversationId: m.conversationId }, select: { userId: true, user: { select: { role: true, organizationId: true } } }, take: 500 }),
     prisma.safetyFlag.findFirst({ where: { conversationId: m.conversationId, senderId: from.id, status: 'OPEN', createdAt: { gt: new Date(Date.now() - 10 * 60_000) } }, select: { id: true } }),
   ]);
-  // Chats with a student, and parent–teacher chats (Stage 5 · B16.2).
-  if (!members.some((x) => x.user.role === 'STUDENT' || x.user.role === 'GUARDIAN')) return null;
+  // Chats with a student, and parent–teacher chats (Stage 5 · B16.2), when one of their schools has the check on.
+  const kept = members.filter((x) => x.user.role === 'STUDENT' || x.user.role === 'GUARDIAN');
+  if (!kept.length) return null;
+  const schools = [...new Set(kept.map((x) => x.user.organizationId ?? null))].slice(0, 20);
+  if (!(await Promise.all(schools.map((o) => schoolPolicy(o)))).some((p) => p.guard)) return null;
   if (recent) { await prisma.safetyFlag.update({ where: { id: recent.id }, data: { repeats: { increment: 1 } } }); return recent.id; }
 
   let verdict: Verdict | null = null;
@@ -276,7 +303,7 @@ export async function reviewFlag(user: SessionUser, id: string, b: Record<string
 /** GET /api/safety/policy: the policy (school admins), with how many flags are open. */
 export async function policyView(user: SessionUser) {
   if (!isAdmin(user)) throw new ForbiddenException('Only school admins see the safety policy.');
-  const [p, open] = await Promise.all([schoolPolicy(), prisma.safetyFlag.count({ where: { status: 'OPEN', sender: usersIn(await schoolsOf(user)) } })]);
+  const [p, open] = await Promise.all([policySchools(user).then((s) => schoolPolicy(s[0])), prisma.safetyFlag.count({ where: { status: 'OPEN', sender: usersIn(await schoolsOf(user)) } })]);
   return { ...p, open, ai: !!process.env.GEMINI_API_KEY && !(await featureOff('ai')) };
 }
 

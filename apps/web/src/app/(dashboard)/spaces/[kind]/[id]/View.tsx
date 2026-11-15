@@ -60,7 +60,7 @@ function SpacePage({ kind, id }: { kind: string; id: string }) {
     <>
       <Topbar title={data.title} subtitle={data.subtitle} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <div className="flex flex-wrap items-center gap-3">
             <Link href="/spaces" className="inline-flex items-center gap-1 text-sm text-zinc-500 hover:text-indigo-500"><ArrowLeft className="w-4 h-4" />Spaces</Link>
             <span className="flex-1" />

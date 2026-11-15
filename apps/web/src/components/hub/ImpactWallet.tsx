@@ -34,7 +34,7 @@ export function ImpactWallet({ role }: { role: string }) {
   const { data } = useSWR<WalletData>('/hub/wallet', fetcher);
   const holder = useAuthStore((s) => s.user?.name) ?? '';
   const [more, setMore] = useState(false);
-  if (!data) return <section className="panel h-64 animate-pulse" aria-label="Impact Wallet, loading" />;
+  if (!data) return <section className="panel h-64 skeleton" aria-label="Impact Wallet, loading" />;
   const labels = weekLabels();
   const active = data.campus.weeks.map((_, i) => [data.campus, data.trace, data.relief, data.green].some((a) => a.weeks[i] > 0)).filter(Boolean).length;
   const cells: InstrumentCell[] = [
