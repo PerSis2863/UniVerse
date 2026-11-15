@@ -6851,3 +6851,71 @@ another day; the home looked the same whether or not anything had happened while
   flow card), `play-lightning` (Quiz Clash's lightning round), `holo`, `ink-drift`, `play-static`.
 - **Tested:** `/t/demo` at 390 (the marker's own animation none, ring `dot-ring`, no errors); `pnpm check`.
 
+
+## M187: more of the school boundary (the owner, 14 Nov 2026: "check for more of these")
+
+This branch now also holds `claude/youthful-fermi-sbdtcp` (M179–M180), merged in so the Messages work
+below builds on it. M181 and M182 stay with the session that planned them; database update 0209 too.
+
+- **Campus buildings** (`campus_buildings.organizationId`, migration 0212, filled from the campus's school
+  for buildings on a network campus; the rest stay with the main school): the school's own map
+  (`campusId` null) lists only that school's buildings, and adding, moving, deleting, placing a room or an
+  event needs the building to be the admin's school's (`campusOf`). A university campus's map (`campusId`
+  set) is still seen by everyone at that campus.
+- **School sticker packs** (`stickers.ts`): listed, counted and edited by the school whose person made
+  them (`owner: peopleWhere(user)`, `madeInSchool`). No database change.
+- **Broadcasts** (`/api/chat/broadcast`): recipients are filtered to the sender's own school; any user
+  ids were accepted. **The tutor's course list** for an admin: their school's courses.
+- **Left, and why:** `school_policies` is one row (`id: 'main'`) for every school (child-safety
+  settings, quiet hours, the check-in location): any school's admin changes it for all. Making it per
+  school touches every reader of that row: its own item, before a second school joins. Rooms and room
+  bookings are one list too. The Impact League is between schools on purpose. Starting a 1:1 chat by a
+  person's id isn't limited to the school (Trace, Relief, Green and Play people have no school).
+- **Tara and Tom** (the local test teachers) couldn't sign in because this machine's local database
+  never had them: `node scripts/local/test-accounts.mjs` (part of `pnpm local:setup`) creates them. With
+  them, the teacher's "Since your last visit" (M185) was checked: "Bob Smith joined · CS101".
+- **Tested:** `pnpm check`; the migration on the local D1.
+
+
+## M188: Messages, long chats and readable bubbles (14 Nov 2026)
+
+Messages already had nearly everything (threads, scheduled and view-once messages, polls, search with
+filters, selecting several, folders, communities, private chats). What didn't hold up was a long chat.
+
+- **Opening an old message** (`jump` in `ChatWindow.tsx`): it loaded 40 older messages at a time and
+  gave up after 10 rounds, so a search result more than 400 messages back never opened. Now 60 rounds
+  (2,400), a "Looking further back…" note after the fourth, and a plain message when it is further still.
+- **Go to a date:** a date field in the chat's search bar. `GET …/messages?date=<ISO>` returns the first
+  message on or after that moment (the browser sends its own midnight); the chat then jumps to it.
+- **Everything shared in a chat:** the info panel's "Media, files & links" was built from the messages on
+  screen. `GET …/messages?shared=1` returns the chat's newest 60 photos, 40 files and 40 links (not
+  deleted, not hidden by the person, not view-once); "Show all N photos". Private chats (the server
+  can't read them) keep the on-screen list. Both answers go through the route's own membership check.
+- **My bubbles** (`globals.css`, the M121 block): the old look's deep pink (`#b5307d`) stayed as the
+  bubble colour after M124 made text on accent fills ink in dark mode: near-black on pink, 3.4:1, in
+  the default theme. The bubble takes `bg-tint` (lime with ink in dark, blue with white in light, the
+  app's colour in the other apps). The small print inside (`text-white/NN`: time, "Voicemail", poll
+  notes) takes the bubble's text colour (it was white on lime, 1.3:1); three `text-[10px]` are 11 px.
+  The info panel's photo buttons have names.
+- **Tested** on a chat of 600 messages over two months (removed after): the oldest message found by
+  search and opened; a date 20 days back opens that day's first message; the panel lists a photo, a file
+  and a link from two months ago; an outsider gets 404; axe clean at 1280 dark and light and 390 dark;
+  no sideways scroll, no page errors.
+- **Left:** a chat longer than 2,400 messages back from the newest still can't open its oldest part in
+  one go (it would need the list to hold a window that isn't joined to the newest messages).
+
+
+## M189: Collaborate, saved Create work on Home and whose work it is (14 Nov 2026)
+
+- **Saved Create work** (M75: mind maps, palettes, notes… saved to the account) lived only inside
+  Create. Home now lists it with everything else: recent work, the one search, a "Create" filter, pins
+  (`PIN_KINDS` has `save`). It opens from there: `/studio?open=<save id>` (the Studio page calls its own
+  `openSave`, so a live-edited one still opens live).
+- **Whose work:** All / Mine / Shared with me, from what the lists already say (`mine` on documents and
+  whiteboards; task boards, code rooms, files and saves count as mine).
+- **Sample:** `/api/collab/saves` returns two saved items.
+- **Tested:** a save made through the API shows on Home, alone under "Create", not under "Shared with
+  me", and opens its tool; 1280 dark and 390 light, axe clean, no sideways scroll (test save removed).
+- **Left:** who shared a document (the list says only that it isn't mine); shared-with-me for task
+  boards and code rooms (their lists don't say).
+

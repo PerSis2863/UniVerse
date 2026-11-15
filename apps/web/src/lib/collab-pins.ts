@@ -1,7 +1,7 @@
 // Pinned items on Collaborate → Home (M17): each person keeps up to 24 boards, documents, task
 // boards, code rooms or files at the top, on their account (users.collabPins, JSON).
 
-export const PIN_KINDS = ['board', 'doc', 'sheet', 'slides', 'tasks', 'code', 'file'] as const;
+export const PIN_KINDS = ['board', 'doc', 'sheet', 'slides', 'tasks', 'code', 'file', 'save'] as const; // 'save': work saved from a Create tool (M189)
 export type PinKind = (typeof PIN_KINDS)[number];
 export interface Pin { kind: PinKind; id: string; title: string; href: string }
 export const MAX_PINS = 24;
