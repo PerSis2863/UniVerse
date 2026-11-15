@@ -132,7 +132,7 @@ describe('checkUsage on each plan', () => {
   });
 });
 
-// M197: the apps the owner shows are read with the server switch and written first into every page's
+// M203: the apps the owner shows are read with the server switch and written first into every page's
 // head (window.__uvApps), with or without a notice; every app shown leaves pages untouched.
 describe('the apps the website shows', () => {
   afterEach(() => vi.unstubAllGlobals());

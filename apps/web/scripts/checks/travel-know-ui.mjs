@@ -1,4 +1,4 @@
-// M198 a guide's "Know before you go" (Kyoto) and its Eat tab (Kyoto/Central); from Wikivoyage, needs the internet:
+// M204 a guide's "Know before you go" (Kyoto) and its Eat tab (Kyoto/Central); from Wikivoyage, needs the internet:
 // plugs and voltage against a chosen home country (Britain: an adapter and a voltage warning), when to
 // go from the climate table, why it's famous, the tips (Japan's where Kyoto's guide is silent, marked),
 // neighbourhoods with their feel; Eat: what to try, price-band and diet chips that narrow the list, Book a

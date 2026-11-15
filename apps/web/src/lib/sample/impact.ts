@@ -613,7 +613,7 @@ export function sampleAircraft(): AirTraffic {
   return { at: new Date().toISOString(), planes, source: 'sample flights' };
 }
 
-// ——— UniVerse Travel (M196): a sample guide (Lisbon), search, the week's weather and saved places. ———
+// ——— UniVerse Travel (M202): a sample guide (Lisbon), search, the week's weather and saved places. ———
 const SAMPLE_GUIDE = {
   title: 'Lisbon', banner: 'Lisbon Wikivoyage Banner.png', lat: 38.7139, lon: -9.1394, parent: 'Portugal',
   summary: ['Lisbon is Portugal’s hilly, coastal capital: pastel streets, old trams climbing to viewpoints, river light and the smell of grilled sardines.', 'Most sights sit within a few hills of the Tagus, close enough to walk between trams.'],
@@ -639,7 +639,7 @@ export function sampleTravelGuide(d: string | null) {
   const title = d || 'Lisbon';
   const guide = { ...SAMPLE_GUIDE, title: title.startsWith('Lisbon') ? title : 'Lisbon' };
   return { guide, country: { name: 'Portugal', code: 'PT', flag: '🇵🇹', capital: 'Lisbon', currencies: [{ code: 'EUR', name: 'Euro' }], languages: ['Portuguese'], callingCode: '+351', drives: 'right', emergency: ['112'], plugs: ['C', 'F'], volts: [230] }, credit: { source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: 'https://en.wikivoyage.org/wiki/Lisbon' },
-    // M198: sample "know before you go" (written for the demo, not taken from the guide).
+    // M204: sample "know before you go" (written for the demo, not taken from the guide).
     tips: {
       tipping: ['Service is usually included; leaving the small change or about 5% for good service is common.'],
       water: ['Tap water is safe to drink across the city.'],

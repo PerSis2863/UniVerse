@@ -54,7 +54,7 @@ describe('the page’s app before the first paint', () => {
   });
 });
 
-// M197: the owner shows only some apps: a hidden chosen app gives way, and hidden apps' parts are hidden.
+// M203: the owner shows only some apps: a hidden chosen app gives way, and hidden apps' parts are hidden.
 describe('the apps the website shows, before the first paint', () => {
   it('hides the other apps and picks a shown one', () => {
     expect(page('/', 'trace', ['relief'])).toEqual({ app: 'relief', css: '[data-uv-app]:not([data-uv-app="relief"]),[data-uv-many]{display:none!important}' });

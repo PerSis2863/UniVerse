@@ -56,7 +56,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
   const [hover, setHover] = useState<number | null>(null);
   const totals = useTotals();
   const facing = hover ?? chosen;
-  // M197: only the apps the owner shows (their places and the arcs between them); none of this with one.
+  // M203: only the apps the owner shows (their places and the arcs between them); none of this with one.
   const shown = useShownApps();
   const ids = useMemo(() => IDS.filter((id) => shown.some((a) => a.id === id)), [shown]);
   const places = useMemo(() => ids.map((id) => PLACES[IDS.indexOf(id)]), [ids]);

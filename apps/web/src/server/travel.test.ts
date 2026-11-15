@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { countryFacts, weatherDays } from './travel';
 
-// M196: country facts from the table kept in the app; a forecast's hours into days, in the place's time.
+// M202: country facts from the table kept in the app; a forecast's hours into days, in the place's time.
 describe('Travel facts', () => {
   it('knows a country’s money, languages, driving side and emergency number', () => {
     const jp = countryFacts('JP')!;

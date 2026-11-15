@@ -6,7 +6,7 @@ import { appFor, appHome } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { useAuthStore } from '@/store/auth';
 
-/** M197: a page of an app the owner hides (owner console → Server) sends people to the first shown app. */
+/** M203: a page of an app the owner hides (owner console → Server) sends people to the first shown app. */
 export function ShownAppsGuard() {
   const path = usePathname();
   const shown = useShownApps();

@@ -39,7 +39,7 @@ export function ImpactWallet({ role }: { role: string }) {
   if (!data) return <section className="panel h-64 skeleton" aria-label="Impact Wallet, loading" />;
   const labels = weekLabels();
   const active = data.campus.weeks.map((_, i) => [data.campus, data.trace, data.relief, data.green].some((a) => a.weeks[i] > 0)).filter(Boolean).length;
-  // M197: only the apps the owner shows.
+  // M203: only the apps the owner shows.
   const on = (id: string) => !APPS.some((a) => a.id === id) || shown.some((a) => a.id === id);
   const cells: InstrumentCell[] = ([
     { id: 'campus', label: 'Impact points · UniVersity', value: data.campus.points, unit: 'points', note: `${data.campus.courses} course${data.campus.courses === 1 ? '' : 's'}`,

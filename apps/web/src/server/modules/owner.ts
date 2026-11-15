@@ -421,7 +421,7 @@ export default function ownerModule(router: Router) {
       data.aiLimits = JSON.stringify(limits);
       aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site`;
     }
-    // M197: the apps the website shows (at least one; every app is stored as none, so a new app shows).
+    // M203: the apps the website shows (at least one; every app is stored as none, so a new app shows).
     let appsChange = '';
     if (body?.apps !== undefined) {
       const ids = strings(body.apps).filter((id): id is AppId => APPS.some((a) => a.id === id));

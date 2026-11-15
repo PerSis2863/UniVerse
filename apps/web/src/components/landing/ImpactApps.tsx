@@ -86,7 +86,7 @@ export function PlaySection() {
 
 /** Every app, with what it's for: one account opens them all. */
 export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
-  // M197: only the apps the owner shows; with one, the page is all about it already.
+  // M203: only the apps the owner shows; with one, the page is all about it already.
   const apps = useShownApps();
   if (apps.length < 2) return null;
   return (

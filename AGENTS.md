@@ -225,16 +225,16 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   warehouses) and record their stops with place and time; invite links for the team (migration 0207).
 - **Merged 15 Nov (from `claude/youthful-fermi-sbdtcp`; their commits say M183, M186 and M187, numbers another
   session had already used):** M179, each app's own Messages (chats belong to the app they're started in; This
-  app / All apps); M180, pages fill the screen; M196, **UniVerse Travel**, the sixth app (Explore, guides to
-  anywhere from Wikivoyage with facts, weather and places, saved places, partner booking; database update 0216);
-  M197, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
+  app / All apps); M180, pages fill the screen; M202, **UniVerse Travel**, the sixth app (Explore, guides to
+  anywhere from Wikivoyage with facts, weather and places, saved places, partner booking; database update 0219);
+  M203, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
-  0217); M198, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
+  0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
-  the rest of the owner's Airbnb list for Travel (15 Nov): M199 (find a destination by days, budget, month,
-  interests and passport), M200 (the trip planner with the whole trip's budget and multi-city routes), M201
-  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M202 (the extras); then
+  the rest of the owner's Airbnb list for Travel (15 Nov): M205 (find a destination by days, budget, month,
+  interests and passport), M206 (the trip planner with the whole trip's budget and multi-city routes), M207
+  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras); then
   M181 (the Arrange upgrade: stay in its own tab, resize from every edge, ultra smooth, something new) and M182
   (Messages connections: Gmail, Outlook, Slack, Telegram, WhatsApp, Discord; LinkedIn sign-in only); then the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
@@ -243,7 +243,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M203** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note; M199–M202 for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's last hand-over). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M209** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note; M205–M208 for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's last hand-over). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
@@ -255,7 +255,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0218`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0221`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

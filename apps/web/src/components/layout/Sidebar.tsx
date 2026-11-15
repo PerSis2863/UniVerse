@@ -297,7 +297,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
 /** The menu for the app someone is in. */
 function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }, shown: ImpactApp[]): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
-  // M197: only the apps the owner shows; with one, no "All apps".
+  // M203: only the apps the owner shows; with one, no "All apps".
   const hub: NavItem[] = shown.length > 1 ? [{ href: '/hub', label: 'All apps', icon: LayoutGrid }] : [];
   if (!app) return [...owner, ...hub, ...shown.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: APP_ICON[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
@@ -313,7 +313,7 @@ function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
   const last = useSyncExternalStore((cb) => { window.addEventListener('storage', cb); return () => window.removeEventListener('storage', cb); }, () => { try { return localStorage.getItem(LAST_APP) as AppId | null; } catch { return null; } }, () => null);
   useEffect(() => { if (here) try { localStorage.setItem(LAST_APP, here); } catch { /* private mode */ } }, [here]);
   if (pathname === '/hub' && shown.length > 1) return null;
-  // M197: a shared page keeps the last app if it's shown; with one app shown, that app.
+  // M203: a shared page keeps the last app if it's shown; with one app shown, that app.
   return here ?? (last && shown.some((a) => a.id === last) ? last : shown.length === 1 ? shown[0].id : null);
 }
 
@@ -321,7 +321,7 @@ function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
 function AppSwitcher({ app, role, onPick, shown }: { app: AppId | null; role: string; onPick?: () => void; shown: ImpactApp[] }) {
   const [open, setOpen] = useState(false);
   const current = APPS.find((a) => a.id === app);
-  // M197: one app shown: it's the website's name, nothing to switch to.
+  // M203: one app shown: it's the website's name, nothing to switch to.
   const single = shown.length === 1;
   useEffect(() => {
     if (!open) return;

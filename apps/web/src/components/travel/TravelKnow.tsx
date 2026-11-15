@@ -6,7 +6,7 @@ import Link from '@/components/ui/Link';
 import { goodMonths, vibes, type Climate, type TipTopic, type Tips } from '@/lib/travel-tips';
 import { cn } from '@/lib/utils';
 
-// "Know before you go" in a place's guide (M198, the owner: what Airbnb lacks: tipping culture, scams,
+// "Know before you go" in a place's guide (M204, the owner: what Airbnb lacks: tipping culture, scams,
 // tap water, plugs, etiquette and dress codes, bite-sized stories, a neighbourhood's feel): a few short
 // sentences per topic from the place's guide (its country's where the city's says nothing, and labelled
 // so), plugs and voltage against the visitor's own country, the months that are pleasant there, and its

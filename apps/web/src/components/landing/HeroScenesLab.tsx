@@ -252,7 +252,7 @@ function Play() {
   );
 }
 
-// M196: Travel's card: a trip drawn as a route between three cities with a plane flying it, and the
+// M202: Travel's card: a trip drawn as a route between three cities with a plane flying it, and the
 // plan day by day underneath (a place to see, to eat, to sleep).
 const ROUTE = 'M40 150 C 110 40, 190 40, 220 110 S 330 170, 360 60';
 const STOPS = [{ x: 40, y: 150, n: 'Lisbon' }, { x: 220, y: 110, n: 'Sintra' }, { x: 360, y: 60, n: 'Porto' }];

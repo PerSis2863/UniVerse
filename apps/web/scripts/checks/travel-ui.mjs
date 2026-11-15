@@ -1,4 +1,4 @@
-// M196 UniVerse Travel: Explore (search finds a place as you type, the featured places), a real guide
+// M202 UniVerse Travel: Explore (search finds a place as you type, the featured places), a real guide
 // (Kyoto/Central: facts, the week's weather, booking links, the parts as tabs with their places), Save on
 // a place and the Saved page listing it, then removing it. Axe at 1280 (dark) and 390 (light, a touch
 // phone), no sideways scroll, no page errors. Needs the internet (Wikivoyage, Nominatim, MET Norway).

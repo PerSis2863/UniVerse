@@ -1,4 +1,4 @@
-// UniVerse Travel's booking (M196): stays, flights, tours and trains open on partner sites with the
+// UniVerse Travel's booking (M202): stays, flights, tours and trains open on partner sites with the
 // place (and dates, when the trip has them) filled in. The partners pay a commission only when the
 // owner has joined their affiliate programmes and set the ids (Cloudflare build variables; [owner]):
 // NEXT_PUBLIC_TRAVEL_BOOKING_AID (Booking.com) and NEXT_PUBLIC_TRAVEL_GYG_PARTNER (GetYourGuide).
@@ -35,5 +35,5 @@ export function mapLink(name: string, { lat, lon, address, near }: { lat?: numbe
   return `https://www.openstreetmap.org/search?query=${encodeURIComponent([name, address, near].filter(Boolean).join(', '))}`;
 }
 
-/** M198: a table at a restaurant (OpenTable's search for it near the place). */
+/** M204: a table at a restaurant (OpenTable's search for it near the place). */
 export const tableLink = (name: string, near: string) => `https://www.opentable.com/s?term=${encodeURIComponent(`${name} ${near}`)}`;

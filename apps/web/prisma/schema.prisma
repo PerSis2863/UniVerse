@@ -3235,7 +3235,7 @@ model ServerControl {
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
   aiModels   String? // JSON { text: string[], live: string }: which Gemini models answer (src/server/ai-models.ts)
-  apps       String? // JSON list of the app ids the website shows (M197, src/lib/shown-apps.ts); null = every app
+  apps       String? // JSON list of the app ids the website shows (M203, src/lib/shown-apps.ts); null = every app
 
   @@map("server_control")
 }
@@ -7524,7 +7524,7 @@ model UserArrangement {
   @@map("user_arrangements")
 }
 
-/// M196 UniVerse Travel: answers read from public sources (guides, facts, weather, search), kept a while.
+/// M202 UniVerse Travel: answers read from public sources (guides, facts, weather, search), kept a while.
 model TravelCache {
   key       String   @id
   data      String
@@ -7533,7 +7533,7 @@ model TravelCache {
   @@map("travel_cache")
 }
 
-/// M196: a person's saved places (from a guide, or their own).
+/// M202: a person's saved places (from a guide, or their own).
 model TravelSaved {
   id        String   @id @default(cuid())
   userId    String

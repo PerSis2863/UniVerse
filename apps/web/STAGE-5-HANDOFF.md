@@ -7004,12 +7004,12 @@ filters, selecting several, folders, communities, private chats). What didn't ho
 - **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
   dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
   Alice's row alone. Test work removed.
-## M196 (committed as "M183"): UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
+## M202 (committed as "M183"): UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
 
 - **The ask:** "one more app … about the travelling where user want to travel whole around the world or
   some places and no idea where to eat, to sleep, to visit, few facts, ideas and much more and also can
   book through our website … Wanderlog, Stippl, Tripadvisor, Culture Trip … combine features … add more
-  unique ways … ultra smooth". Built in steps: this is the first (the planner is M200, the extras M202).
+  unique ways … ultra smooth". Built in steps: this is the first (the planner is M206, the extras M208).
 - **The app** (`travel`, sky blue #0ea5e9, `/travel`, Lab): every place an app needs (§3): `APPS`, its menu
   (Explore, Saved places) and phone tabs, the hub's planet spot and number (places saved), the landing's
   hero words, questions, card (`TravelScene`: a route Lisbon → Sintra → Porto with a plane flying it and
@@ -7034,7 +7034,7 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   districts from `Regionlist`, banner, position, parent); which country a place is in from Nominatim;
   the country's facts from `src/lib/travel-countries.json` (205 countries from Wikidata, CC0: REST
   Countries now wants an account key); the weather from MET Norway. Everything kept in `travel_cache`
-  (database update 0216: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
+  (database update 0219: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
   fails). **Trap:** Wikimedia answers 429 to requests without a named User-Agent: keep `UA`.
 - **Saved places** (`travel_saved`, one per person, guide and name, at most 300): Save on any listing, the
   Saved page by guide (map, website, remove).
@@ -7050,12 +7050,12 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
   errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.
 
-## M197 (committed as "M186"): Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
+## M203 (committed as "M186"): Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
 
 - **Where:** owner console → Server → **Apps on the website** (`AppsCard` in `console/server.tsx`): a switch
   per app, "Show only this app" on each, "Show every app". Saved with the other server settings
   (`POST /owner/server { apps }`, at least one; every app is stored as null so a new app shows), logged
-  in Changes & undo (the raw stored value, so undo puts it back exactly). Database update **0217**
+  in Changes & undo (the raw stored value, so undo puts it back exactly). Database update **0220**
   (`server_control.apps`, a JSON list).
 - **How every page follows it, without a flash:** the Worker reads the list with the server switch (once a
   minute, `cloudflare/usage-guard.ts`) and writes `<script>window.__uvApps=[…]</script>` first in every
@@ -7082,7 +7082,7 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
   `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.
 
-## M198 (committed as "M187"): Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
+## M204 (committed as "M187"): Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
 
 - **Know before you go** (a new guide tab, `src/components/travel/TravelKnow.tsx`): plugs and voltage
   against the visitor's own country (chosen once, `uv-travel-home`, guessed from the browser's region:
@@ -7104,7 +7104,7 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   halal, kosher, gluten-free, street food; only those some place mentions, with counts), and **Book a
   table** on each restaurant (OpenTable's search for it; an affiliate id later is **[owner]**).
 - **Left on purpose:** nothing is made up: a topic the guides don't cover simply doesn't show. Visa rules
-  per passport (a table of every passport against every country) belong with M199's matching.
+  per passport (a table of every passport against every country) belong with M205's matching.
 - **Checked:** `travel-know-ui.mjs` (Kyoto: A and B at 100 V, an adapter and voltage line for a British
   visitor, months named, 5 stories, 8 topics with Japan's marked, 5 neighbourhoods; Kyoto/Central's Eat:
   what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
@@ -7112,25 +7112,25 @@ filters, selecting several, folders, communities, private chats). What didn't ho
 
 ## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
 
-The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M198 did items 2 and 3.
+The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M204 did items 2 and 3.
 Left, in this order (numbers reserved):
 
-1. **M199: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
+1. **M205: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
    should I go?"). A form (days, budget and currency, month, interests, passport) ranks places with why each
    fits: that month's weather (the guide's climate chart via `readTips`, or a table generated ahead for
    ~150 places), an **estimated** daily cost (say so: a base budget × the country's World Bank price level,
    indicator PA.NUS.PPPC.RF, CC BY 4.0), the interests (tags written for each place), and visa ease for the
    passport (Wikipedia's "Visa requirements for X citizens" tables, CC BY-SA, read and kept like guides).
    Start from `src/lib/travel-ideas.ts` (24 places) and grow it; a tab in Explore, not a new page.
-2. **M200: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
+2. **M206: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
    Saved or any guide, grouped by how close they are (the listings' lat/lon), opening hours and prices shown,
    time to spend by kind (a museum 2 h, a viewpoint 30 min), drag and drop between days; a multi-city route
    in a sensible order with "how to get between" (Rome2Rio, trains, buses, ferries); the **whole trip's
-   budget** (stay + food + transport + tickets from listing prices and the M199 daily estimate); friends
+   budget** (stay + food + transport + tickets from listing prices and the M205 daily estimate); friends
    planning together (members, live updates with `publish()`); add to calendar (an .ics file).
-3. **M201: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
+3. **M207: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
    ferries links (Omio, 12Go in Asia, Direct Ferries); the airport and travel-card sentences are already in
-   M198's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
+   M204's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
    an **opt-in** board of travellers in the same city on the same dates (18+ only, first name and dates,
    city level, contact through Messages in the Travel app, report and block).
 Each: sample answers for new GET routes, a check in `scripts/checks/`, motion per §8.

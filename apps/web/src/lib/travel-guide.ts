@@ -1,4 +1,4 @@
-// UniVerse Travel's guides (M196): a Wikivoyage article (its raw wiki text) read into what the app shows:
+// UniVerse Travel's guides (M202): a Wikivoyage article (its raw wiki text) read into what the app shows:
 // the opening, each part a traveller wants (understand, get in, get around, see, do, buy, eat, drink,
 // sleep, stay safe, respect, talk, go next) as plain paragraphs, every listed place with its details
 // (address, hours, price, phone, website, position), a big city's districts and a country's cities, the

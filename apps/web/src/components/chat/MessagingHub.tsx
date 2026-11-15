@@ -85,7 +85,7 @@ export function MessagingHub() {
   const app = useCurrentApp();
   const [allApps, setAllAppsState] = useState(() => { try { return localStorage.getItem('uv-chat-all-apps') === '1'; } catch { return false; } });
   const setAllApps = (on: boolean) => { setAllAppsState(on); try { localStorage.setItem('uv-chat-all-apps', on ? '1' : '0'); } catch { /* private mode */ } };
-  // M197: only the apps the owner shows; with one, there are no other apps' chats to bring in.
+  // M203: only the apps the owner shows; with one, there are no other apps' chats to bring in.
   const shownApps = useShownApps();
   const many = shownApps.length > 1;
   const inScope = useCallback((c: ConversationSummary) => c.isOfficial || (allApps && many ? shownApps.some((a) => a.id === (c.app ?? 'campus')) : (c.app ?? 'campus') === app), [allApps, many, shownApps, app]);

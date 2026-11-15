@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 // under a pill in its own colour.
 
 export function AppTabs({ value, onChange, label = 'Choose an app', small, layoutId = 'app-tab' }: { value: AppId; onChange: (id: AppId) => void; label?: string; small?: boolean; layoutId?: string }) {
-  // M197: only the apps the owner shows; with one, there's nothing to choose.
+  // M203: only the apps the owner shows; with one, there's nothing to choose.
   const apps = useShownApps();
   if (apps.length < 2) return null;
   return (

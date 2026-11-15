@@ -522,7 +522,7 @@ const play: Make = (v, rnd, hue) => {
   };
 };
 
-// ── Travel: dashed routes arcing between places, paper planes flying them, clouds drifting (M196) ──
+// ── Travel: dashed routes arcing between places, paper planes flying them, clouds drifting (M202) ──
 interface Route { a: { x: number; y: number }; b: { x: number; y: number }; lift: number; sp: number; ph: number; alt: boolean }
 const travel: Make = (v, rnd, hue) => {
   const clouds = Array.from({ length: v.phone ? 4 : 7 }, () => ({ x: rnd(), y: 0.06 + rnd() * 0.5, z: 0.4 + rnd() * 0.6, w: 0.1 + rnd() * 0.12, vx: 0.004 + rnd() * 0.006 }));

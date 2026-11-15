@@ -13,7 +13,7 @@ export function homeFor(user: { role?: string | null; owner?: boolean | null } |
   if (invited) return inviteHref(invited);
   if (app && APPS.some((a) => a.id === app)) return appHome(shownOr(app as AppId), user.role);
   if (user.owner) return '/console';
-  // M197: when the owner shows one app, the website is that app (no hub).
+  // M203: when the owner shows one app, the website is that app (no hub).
   const only = onlyApp();
   return only ? appHome(only, user.role) : '/hub';
 }

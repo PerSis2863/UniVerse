@@ -6,7 +6,7 @@ import { BadRequestException, NotFoundException, ServiceUnavailableException } f
 import COUNTRIES from '@/lib/travel-countries.json';
 import { oneOf, str, type Body, type Query, first } from './body';
 
-// UniVerse Travel (M196): guides, facts, the weather and search, read from public sources and kept in
+// UniVerse Travel (M202): guides, facts, the weather and search, read from public sources and kept in
 // travel_cache so each is fetched rarely (Wikimedia, OpenStreetMap's Nominatim and MET Norway all ask
 // apps to name themselves, cache and go gently); and a person's saved places. Nothing here sends who is
 // asking to those sources: only a place's name or rounded position.
@@ -64,7 +64,7 @@ export interface CountryFacts {
   languages: string[]; callingCode?: string; drives?: 'left' | 'right';
   /** Numbers for the police, an ambulance, the fire service (the first is the one to remember). */
   emergency: string[];
-  /** M198: socket types (A, C, G…) and mains voltage(s). */
+  /** M204: socket types (A, C, G…) and mains voltage(s). */
   plugs: string[]; volts: number[];
 }
 
@@ -120,7 +120,7 @@ async function readArticle(asked: string): Promise<GuideRecord | null> {
 }
 
 const credit = (title: string) => ({ source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: `https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}` });
-/** M198: the topics a country's article usually covers better than a city's. */
+/** M204: the topics a country's article usually covers better than a city's. */
 const COUNTRY_TOPICS = ['tipping', 'water', 'scams', 'manners', 'dress', 'visa'] as const;
 
 /** GET /travel/guide?d=: a place's guide, its country's facts, "know before you go" and the credit. */
