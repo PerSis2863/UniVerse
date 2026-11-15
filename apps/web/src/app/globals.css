@@ -2937,9 +2937,10 @@ html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !importan
 /* M168 · a card being resized sits above its neighbours (it may overlap one until the grid makes room)
    and the resize cursor stays on wherever the hand goes. */
 #main .arr-size { transition: none !important; z-index: 30; will-change: width, height; transform: none !important; }
-html[data-arr-resize="x"], html[data-arr-resize="x"] * { cursor: ew-resize !important; }
-html[data-arr-resize="y"], html[data-arr-resize="y"] * { cursor: ns-resize !important; }
-html[data-arr-resize="xy"], html[data-arr-resize="xy"] * { cursor: nwse-resize !important; }
+html[data-arr-resize="ew"], html[data-arr-resize="ew"] * { cursor: ew-resize !important; }
+html[data-arr-resize="ns"], html[data-arr-resize="ns"] * { cursor: ns-resize !important; }
+html[data-arr-resize="nwse"], html[data-arr-resize="nwse"] * { cursor: nwse-resize !important; }
+html[data-arr-resize="nesw"], html[data-arr-resize="nesw"] * { cursor: nesw-resize !important; }
 /* M167 · a column carried by its heading (its cells move as one, above the others); the thing left behind
    while a likeness of it is carried over the side menu (or the page); a thing drawn inside a card. */
 .arr-cell { position: relative; z-index: 60; background: var(--surface); will-change: transform; transition: none !important; pointer-events: none; }

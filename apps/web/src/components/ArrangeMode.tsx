@@ -3,7 +3,8 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import useSWR from 'swr';
-import { Link2, RotateCcw, X } from 'lucide-react';
+import { LayoutGrid, Link2, RotateCcw, X } from 'lucide-react';
+import { toast } from 'sonner';
 import Link from '@/components/ui/Link';
 import { Arranger, type Bridge } from '@/lib/arrange-dom';
 import { MENU_PINS, Vault, cleanKey, cleanPin, pagePins, sameDoc, type Doc, type Pin } from '@/lib/arrange';
@@ -42,13 +43,21 @@ function pinFrom(el: HTMLElement, fromPage: boolean): Pin | null {
 
 /** The top bar's "Put this page back" (and the phone title row's): there only on a page (or menu) the person rearranged. */
 export function ArrangeButton({ className }: { className?: string }) {
-  const arranged = useArrange((s) => s.arranged), reset = useArrange((s) => s.reset);
+  const arranged = useArrange((s) => s.arranged), reset = useArrange((s) => s.reset), tidy = useArrange((s) => s.tidy);
   if (!arranged) return null;
+  // M181: "Tidy" packs the page's cards with no gaps; Ctrl+Z takes it back.
+  const pack = () => { if (!tidy()) toast.message('Nothing to tidy on this page.'); };
   return (
-    <button type="button" data-arrange-ui onClick={reset} title="Put this page back as it was (Ctrl+Z takes back one change)"
-      className={cn('drop-in btn-ghost btn-icon rounded-full', className)}>
-      <RotateCcw className="w-[18px] h-[18px]" strokeWidth={2.1} aria-hidden /><span className="sr-only">Put this page back</span>
-    </button>
+    <>
+      <button type="button" data-arrange-ui onClick={pack} title="Tidy: close the gaps between cards (Ctrl+Z takes it back)"
+        className={cn('drop-in btn-ghost btn-icon rounded-full', className)}>
+        <LayoutGrid className="w-[18px] h-[18px]" strokeWidth={2.1} aria-hidden /><span className="sr-only">Tidy this page</span>
+      </button>
+      <button type="button" data-arrange-ui onClick={reset} title="Put this page back as it was (Ctrl+Z takes back one change)"
+        className={cn('drop-in btn-ghost btn-icon rounded-full', className)}>
+        <RotateCcw className="w-[18px] h-[18px]" strokeWidth={2.1} aria-hidden /><span className="sr-only">Put this page back</span>
+      </button>
+    </>
   );
 }
 
@@ -67,6 +76,7 @@ export function ArrangeMode() {
       arranged: said.page || said.menu, any: vault.any(), pins: vault.allPins(),
       // The page first; the menu when only it was changed.
       reset: () => { const p = parts.current; if (said.page) p?.page?.reset(); else p?.menu?.reset(); },
+      tidy: () => parts.current?.page?.tidy() ?? 0,
     });
     const main = document.getElementById('main'), nav = document.getElementById('side-nav');
     /** A shortcut put under `to` (taken from `from` when it was one there), once in each list. */
