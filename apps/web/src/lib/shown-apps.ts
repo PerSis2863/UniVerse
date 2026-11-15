@@ -2,7 +2,7 @@ import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { APPS, type AppId, type ImpactApp } from './apps';
 import { ALL_APP_IDS, hideCss, parseShownApps, SHOWN_KEY } from './shown-apps-list';
 
-// Which apps the website shows (M186, the owner: "when i want to show only one app then it should
+// Which apps the website shows (M197, the owner: "when i want to show only one app then it should
 // switch to that one app and website then no other apps should be there just that one"), set in the
 // owner console → Server → Apps on the website (server_control.apps). The Worker writes the list into
 // every page (window.__uvApps, cloudflare/usage-guard.ts) before anything else runs, so a page never

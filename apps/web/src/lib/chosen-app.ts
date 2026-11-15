@@ -14,7 +14,7 @@ const read = (): AppId => {
   try {
     const q = new URLSearchParams(location.search).get('app');
     const v = (q && APPS.some((a) => a.id === q) ? q : sessionStorage.getItem(KEY)) as AppId | null;
-    // M186: an app the owner hides gives way to a shown one.
+    // M197: an app the owner hides gives way to a shown one.
     return shownOr(v && APPS.some((a) => a.id === v) ? v : 'campus');
   } catch { return shownOr('campus'); }
 };

@@ -703,7 +703,7 @@ function NoticeCard({ banner, onSaved }: { banner: string | null; onSaved: () =>
 }
 
 /**
- * M186: which apps the website shows. One app: the whole website is that app (no tabs, no switcher, no
+ * M197: which apps the website shows. One app: the whole website is that app (no tabs, no switcher, no
  * hub, nothing about the others); several: only those, everywhere. Pages of a hidden app send people on.
  */
 function AppsCard({ apps, onSaved }: { apps: string | null; onSaved: () => void }) {

@@ -6,6 +6,7 @@ import { Eye, FolderInput, LogIn } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { usePathParams } from '@/hooks/usePathParams';
 import { useActivePoll } from '@/lib/realtime-client';
+import { authedFetch } from '@/lib/authed-fetch';
 import { isToken } from '@/lib/tool-saves';
 import { useAuthStore } from '@/store/auth';
 import { KeptScope } from '@/components/studio/kept';
@@ -24,7 +25,8 @@ export default function View() {
   const scope = `view:${token}:`;
   const poll = useActivePoll(20_000);
   const { data, error } = useSWR<{ shared: Shared }>(isToken(token) ? `/api/collab/shared/${token}` : null, async (u: string) => {
-    const r = await fetch(u, { cache: 'no-store' });
+    // Signed in: sent with the account, so it shows on their Collaborate home (M194).
+    const r = await (signedIn ? authedFetch : fetch)(u, { cache: 'no-store' });
     const j = (await r.json()) as { shared?: Shared; error?: string };
     if (!r.ok || !j.shared) throw new Error(j.error ?? 'This link doesn’t open.');
     return { shared: j.shared };

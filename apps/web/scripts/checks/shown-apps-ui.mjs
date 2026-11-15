@@ -1,4 +1,4 @@
-// M186 the apps the website shows (owner console → Server → Apps on the website). The list's answer
+// M197 the apps the website shows (owner console → Server → Apps on the website). The list's answer
 // (GET /api/core/site/apps) is played by the browser here, so each case runs without changing the
 // database: one app (Relief): no app tabs on the website or sign-in, no planet or app grid, the hub and
 // another app's pages send people into Relief, no "All apps" in the menu, no switcher list, no

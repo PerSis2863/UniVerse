@@ -11,7 +11,7 @@ import { IDEAS, THEMES, type Theme } from '@/lib/travel-ideas';
 import { cn } from '@/lib/utils';
 import { Cover, type Saved } from './travel-ui';
 
-// UniVerse Travel's Explore (M183): find any place with a guide as you type (Wikivoyage's titles), or
+// UniVerse Travel's Explore (M196): find any place with a guide as you type (Wikivoyage's titles), or
 // start from places picked by what you're after; your saved places a tap away.
 
 interface Found { title: string; about: string | null; thumb: string | null }

@@ -7,6 +7,7 @@ import { alertAbsence } from './guardians';
 import { later, notify, notifyMany } from './email';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
+import { policyKey, policySchools } from './safety';
 
 // Attendance (Stage 5 · Q11): the teacher's register (marks, each student's record, many at once),
 // what today's class call says, excuse requests, the seating chart, frequent-absence alerts to
@@ -224,8 +225,9 @@ export async function saveSeating(courseId: string, user: SessionUser, b: Record
 
 // ─── The location check for class check-ins ──────────────────────────────────
 
-export async function checkinPolicy() {
-  const p = await prisma.schoolPolicy.findUnique({ where: { id: 'main' }, select: { checkinGeo: true, checkinLat: true, checkinLng: true, checkinRadius: true } }).catch(() => null);
+/** A school's check-in location check (null: the main school; M190: each school its own). */
+export async function checkinPolicy(org: string | null | undefined) {
+  const p = await prisma.schoolPolicy.findUnique({ where: { id: policyKey(org) }, select: { checkinGeo: true, checkinLat: true, checkinLng: true, checkinRadius: true } }).catch(() => null);
   return { on: !!p?.checkinGeo && p.checkinLat != null && p.checkinLng != null, lat: p?.checkinLat ?? null, lng: p?.checkinLng ?? null, radius: p?.checkinRadius ?? 300 };
 }
 
@@ -237,14 +239,15 @@ export async function setCheckinPolicy(user: SessionUser, b: Record<string, unkn
   if (on && !pos) throw new BadRequestException('Set the campus’s position first.');
   const radius = Math.min(5000, Math.max(50, Math.round(Number(b.radius) || 300)));
   const data = { checkinGeo: on, checkinLat: pos?.lat ?? null, checkinLng: pos?.lng ?? null, checkinRadius: radius, updatedAt: new Date(), updatedById: user.id };
-  await prisma.schoolPolicy.upsert({ where: { id: 'main' }, update: data, create: { id: 'main', ...data } });
-  return checkinPolicy();
+  const schools = await policySchools(user);
+  for (const org of schools) await prisma.schoolPolicy.upsert({ where: { id: policyKey(org) }, update: data, create: { id: policyKey(org), ...data } });
+  return checkinPolicy(schools[0]);
 }
 
 /** For a check-in: throws unless the school's check is off or the phone is near the campus. The
  *  position is only compared here, never kept. */
-export async function assertOnCampus(raw: unknown) {
-  const p = await checkinPolicy();
+export async function assertOnCampus(raw: unknown, org: string | null | undefined) {
+  const p = await checkinPolicy(org);
   if (!p.on) return;
   const pos = cleanPosition(raw);
   if (!pos) throw new BadRequestException('Your school checks you’re on campus: allow UniVerse to use your location, then check in again.');

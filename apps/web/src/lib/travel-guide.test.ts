@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { plain, readGuide, templateParams } from './travel-guide';
 import { bookingLinks, mapLink } from './travel-book';
 
-// M183: Travel reads a Wikivoyage article into parts, places and districts; booking opens partners with
+// M196: Travel reads a Wikivoyage article into parts, places and districts; booking opens partners with
 // the place and dates filled in.
 const WIKI = `{{pagebanner|Sample banner.jpg|caption=x}}
 {{geo|35.01|135.76|zoom=12}}

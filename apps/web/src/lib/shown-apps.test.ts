@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { parseShownApps } from './shown-apps-list';
 
-// M186: the owner's list of apps to show, read safely: unknown ids dropped, the apps' own order kept,
+// M197: the owner's list of apps to show, read safely: unknown ids dropped, the apps' own order kept,
 // every app when nothing valid is stored (the website is never left with no app).
 describe('the apps the website shows', () => {
   it('keeps only real apps, in their order', () => {

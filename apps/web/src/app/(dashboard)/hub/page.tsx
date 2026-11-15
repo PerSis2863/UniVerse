@@ -39,7 +39,7 @@ export default function HubPage() {
   const hour = now ? new Date(now).getHours() : 12;
   const hello = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const role = user?.role ?? 'STUDENT';
-  // M186: only the apps the owner shows; with one, the website is that app and there's no hub.
+  // M197: only the apps the owner shows; with one, the website is that app and there's no hub.
   const apps = useShownApps();
   const router = useRouter();
   const only = apps.length === 1 ? apps[0].id : null;

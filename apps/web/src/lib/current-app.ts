@@ -15,7 +15,7 @@ const valid = (v: string | null): v is AppId => !!v && APPS.some((a) => a.id ===
 export function currentAppNow(path = typeof location === 'undefined' ? '/' : location.pathname): AppId {
   const here = appFor(path)?.id;
   if (here) return here;
-  // M186: never an app the owner hides.
+  // M197: never an app the owner hides.
   try { const last = localStorage.getItem(LAST_APP); if (valid(last)) return shownOr(last); } catch { /* private mode */ }
   try { const chosen = sessionStorage.getItem('uv-app'); if (valid(chosen)) return shownOr(chosen); } catch { /* private mode */ }
   return shownOr('campus');

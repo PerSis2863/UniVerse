@@ -1,6 +1,6 @@
 import { close, plain, templateParams } from './travel-guide';
 
-// "Know before you go" and "What to try" (M187, the owner: what Airbnb lacks: tipping culture, scams, tap
+// "Know before you go" and "What to try" (M198, the owner: what Airbnb lacks: tipping culture, scams, tap
 // water, plugs, etiquette and dress codes, fun and historical facts, a neighbourhood's feel, the dishes to
 // try): a few short sentences picked from a Wikivoyage article's own words, by topic, plus its climate
 // table. Pure; src/server/travel.ts reads the city's article and its country's for what the city's lacks.

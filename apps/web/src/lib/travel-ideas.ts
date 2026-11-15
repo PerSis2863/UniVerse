@@ -1,4 +1,4 @@
-// UniVerse Travel's Explore page (M183): places to start from, by what you're after. Each opens its
+// UniVerse Travel's Explore page (M196): places to start from, by what you're after. Each opens its
 // Wikivoyage guide (the title); `banner` is that guide's own banner photo on Wikimedia Commons.
 
 export const THEMES = ['Cities', 'Beaches', 'Mountains', 'Food', 'Culture', 'Nature'] as const;

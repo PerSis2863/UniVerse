@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db';
 import { requireAdmin } from '@/lib/billing';
-import { peopleWhere } from '@/server/school-scope';
+import { campusOf, peopleWhere } from '@/server/school-scope';
 
 const TIME = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -29,7 +29,7 @@ export async function GET(req: Request) {
       take: 1000,
     }),
     prisma.course.findMany({ where: course, orderBy: { code: 'asc' }, select: { id: true, code: true, name: true } }),
-    prisma.room.findMany({ orderBy: { name: 'asc' }, select: { id: true, name: true } }),
+    prisma.room.findMany({ where: await campusOf(auth.user), orderBy: { name: 'asc' }, select: { id: true, name: true } }),
   ]);
   return NextResponse.json({ slots, courses, rooms }, { headers: { 'Cache-Control': 'no-store' } });
 }

@@ -241,7 +241,8 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
   }
   // Safe by default (4.10): whether I'm under 18, and whether the school allows recording calls with
   // students under 18 (the call room stops recordings otherwise; never shown to anyone).
-  const [me, policy] = await Promise.all([prisma.user.findUnique({ where: { id: user.id }, select: { role: true, dateOfBirth: true, noRecording: true } }), schoolPolicy()]);
+  const me = await prisma.user.findUnique({ where: { id: user.id }, select: { role: true, dateOfBirth: true, noRecording: true, organizationId: true } });
+  const policy = await schoolPolicy(me?.organizationId);
   const minor = !!me && isMinor(me, policy);
   // Stage 5 · B8.9: people who asked not to appear in recordings (recorders draw their initials).
   const noRec = me?.noRecording === true;

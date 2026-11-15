@@ -5,6 +5,7 @@ import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { publish } from './realtime';
+import { madeInSchool, peopleWhere } from './school-scope';
 import { pushService } from './services/push.service';
 import { isMeetingTemplate } from '@/lib/call-agenda';
 
@@ -48,8 +49,9 @@ async function checkRoom(room: Room, user: SessionUser) {
     return { courseId: room.id, name: `${a.course.code} · ${a.course.name}` };
   }
   if (room.kind === 'group') {
-    const g = await prisma.group.findUnique({ where: { id: room.id }, select: { name: true, members: { where: { userId: user.id }, select: { id: true } } } });
-    if (!g || (!g.members.length && user.role !== 'ADMIN')) throw new NotFoundException('That group isn’t one of yours.');
+    const g = await prisma.group.findUnique({ where: { id: room.id }, select: { name: true, createdById: true, members: { where: { userId: user.id }, select: { id: true } } } });
+    // A member, or an admin of the group's own school (M184).
+    if (!g || (!g.members.length && !(user.role === 'ADMIN' && (await madeInSchool(user, g.createdById))))) throw new NotFoundException('That group isn’t one of yours.');
     return { groupId: room.id, name: g.name };
   }
   const [me, system] = await Promise.all([
@@ -100,7 +102,7 @@ export async function upcomingCalls(user: SessionUser) {
 export async function schedulableRooms(user: SessionUser) {
   const system = await getSystemUser();
   const [classes, groups, chats] = await Promise.all([
-    prisma.course.findMany({ where: user.role === 'ADMIN' ? {} : taughtBy(user.id), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 50 }),
+    prisma.course.findMany({ where: user.role === 'ADMIN' ? { teacher: await peopleWhere(user) } : taughtBy(user.id), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 50 }),
     prisma.group.findMany({ where: { members: { some: { userId: user.id } } }, select: { id: true, name: true }, orderBy: { name: 'asc' }, take: 50 }),
     prisma.conversation.findMany({
       where: { participants: { some: { userId: user.id } }, NOT: { participants: { some: { userId: system.id } } } },

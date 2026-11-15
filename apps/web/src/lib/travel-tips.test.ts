@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DIETS, goodMonths, mergeTips, priceBand, readClimate, readTips, sentences, vibes } from './travel-tips';
 
-// M187: "know before you go" picked from a guide's own words by topic, and its climate table.
+// M198: "know before you go" picked from a guide's own words by topic, and its climate table.
 const WIKI = `Sample Town is a made-up town for this test.
 ==Understand==
 Sample Town was founded in the 12th century by fishermen. It is a quiet place.

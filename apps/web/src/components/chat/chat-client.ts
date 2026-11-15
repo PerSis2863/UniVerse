@@ -135,6 +135,8 @@ export interface ThreadResponse {
   pinned?: { id: string; body: string; type: string; attachmentName: string | null; createdAt: string; pinnedAt: string; sender: { id: string; name: string } | null }[];
   messages: ChatMessage[];
   hasMore: boolean;
+  /** Paging forward from an old message (M192, `after`): there are newer ones still. */
+  hasNewer?: boolean;
   me: string;
 }
 

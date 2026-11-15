@@ -19,7 +19,7 @@ import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, 
 // UniVerse Green (/green/*), UniVerse Play (/play/*) and UniVerse Travel (/travel/*). Everything here needs a signed-in account;
 // nobody's exact position is ever returned (src/server/relief.ts, green.ts).
 
-// M186: the apps the website shows (the owner console → Server → Apps on the website), for every visitor,
+// M197: the apps the website shows (the owner console → Server → Apps on the website), for every visitor,
 // signed in or not; read at most once a minute per Worker copy. Nothing about anyone.
 let shown: { apps: string[]; at: number } | null = null;
 async function shownApps() {
@@ -98,7 +98,7 @@ export default function impactAppsModule(router: Router) {
   play.get<{ code: string }>('rooms/:code', ({ params }) => roomInfo(params.code));
   play.post<{ code: string }>('rooms/:code/ticket', { status: 200 }, ({ user, params }) => roomTicket(user, params.code));
 
-  // UniVerse Travel (M183, src/server/travel.ts): guides, facts and weather from public sources, saved places.
+  // UniVerse Travel (M196, src/server/travel.ts): guides, facts and weather from public sources, saved places.
   const travel = router.controller('travel');
   travel.get('search', ({ user, query }) => travelSearch(user, query));
   travel.get('guide', ({ user, query }) => travelGuide(user, query));

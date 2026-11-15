@@ -530,7 +530,7 @@ export function pageNotice(): string | null {
   return text || null;
 }
 
-// M186: the apps the owner shows on the website (null: every app), given to every page before anything
+// M197: the apps the owner shows on the website (null: every app), given to every page before anything
 // else in its head, so the menus, tabs and landing are drawn with only those (src/lib/shown-apps.ts).
 function shownList(raw: string | null | undefined): string[] | null {
   if (!raw) return null;

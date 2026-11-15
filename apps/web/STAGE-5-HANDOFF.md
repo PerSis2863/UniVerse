@@ -6752,12 +6752,264 @@ the other branches first: another session may have used them). Merge only when t
      routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
      `universe-security` to review before finishing.
 
-## M183: UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
+
+
+## M183: an index on every relation column (the owner, 14 Nov 2026: "upgrade all the existing features, buttons, animations, transitions, database, security and everything else … i need big changes")
+
+The day before, M177 and M178 had done a deep check, a smoothness pass and a security review, and the
+live `error_reports` had nothing new, so this session looked for what those could not see, one item per
+area the owner named (M183 database, M184 security, M185 a feature, M186 motion and buttons).
+**Numbers:** the branch `claude/youthful-fermi-sbdtcp` (another session, same day) holds M179–M180, plans
+M181–M182 and uses database update 0208, so these are M183–M186 and 0210–0211.
+
+- **62 relation columns had no index** (found by reading `schema.prisma`: a `fields: [x]` whose `x`
+  leads no `@@index`, `@@unique` or id). Among them `users.organizationId` (every "my school's people"
+  filter), `quiz_attempts.studentId`, `tasks.listId`, `space_files.folderId`, `trace_codes.productId`.
+  SQLite checks a child table row by row when a parent row is deleted unless the child column is
+  indexed (D1 enforces foreign keys), and a list filtered by the column reads the whole table; D1 bills
+  rows read. Migration `0210_relation_indexes.sql` (62 `CREATE INDEX IF NOT EXISTS`, then
+  `PRAGMA optimize`), `@@index` on each model.
+- **Trap:** a column's real name can differ from the Prisma field (`oneroster_syncs.actorId` is
+  `actor_id`, `@map`). Locally D1 accepted `"actorId"` as a text value and built a useless index
+  without a word; `schema-columns.test.ts` (it runs every migration in node's SQLite) caught it.
+  Write the mapped name, and run the unit tests after writing a migration.
+- **Rule:** a new relation gets its `@@index` and `CREATE INDEX` (`schema-indexes.test.ts` fails otherwise).
+- **Tested:** the migration applied on the local D1 (the indexes are there); `pnpm check`.
+
+
+## M184: security, the rest of the school boundary (14 Nov 2026)
+
+M158 found that admin code outside the usual patterns ignored the school (payments, campus info). This
+finished the list of admin-only files that never mention a school (about 90; most go through
+`requireAdmin`'s `org`, `peopleWhere` or `courseAccess` and are fine).
+
+- **LMS connections** (`lti_platforms`) had no school: `/api/lti/platforms` listed every school's to any
+  admin, and PATCH / DELETE took any id (DELETE also removes that LMS's linked people and courses).
+  Migration `0211_lti_platform_school.sql`: `organizationId` (null: the main school), filled from the
+  activity log's "lti.platform_added" (who connected it). The routes use `orgIn(await schoolsOf(user))`;
+  a new connection takes its admin's school. In `lti.ts`: a person an LMS brings in joins that LMS's
+  school (they landed in the main school), and linking to an existing account by email (owner-only
+  switch) only works for people of the LMS's own school.
+- **Clubs** (`club-governance.ts`, `club-carbon.ts`): `user.role === 'ADMIN'` opened any school's club
+  (elections, budget, carbon log; set the budget). Now `clubInSchool(user, clubId)` (`school-scope.ts`:
+  a club founded by one of the school's people, as `associations.service.ts` already did).
+- **The door scan** (`scanTicket`): only for the admin's own school's event (`campusOf`); it names the
+  ticket holder. **Scheduled calls:** scheduling in a group as an admin needs the group to be the
+  school's (`madeInSchool`); the course lists an admin picks from (scheduled calls, code rooms) are
+  their school's (`teacher: peopleWhere(user)`), not every school's.
+- **Server Actions** are outside the route test (M114): `route-gates.test.ts` now finds every
+  `'use server'` file under `src/app` and fails an exported action without `getUserFromToken(`.
+- **Looked at, left alone:** `joinScheduled` lets any admin past its early check (the call page checks
+  again, its comment says so); sticker packs marked "school" and campus buildings are one list for
+  all schools (no people's data; a database change when a second school joins); `canCancel` on a
+  scheduled call for any admin.
+- **Tested:** unit tests (school-scope: `clubInSchool`; event-tickets: another school's door refused;
+  route-gates); the LMS list as the local admin (200); `pnpm check`.
+
+
+## M185: "Since your last visit" in the Daily brief (14 Nov 2026)
+
+The owner chose "something for the first class" (12 Nov) and the launch goal is people who come back on
+another day; the home looked the same whether or not anything had happened while they were away.
+
+- **Where:** inside the existing "Your day" card (`DailyBrief.tsx`, `GET /api/brief`), first section,
+  not a new card (so "Edit home" and the layouts are untouched). `briefData` returns `since:
+  { from, total, items[≤8] } | null`.
+- **The visit before this one** (`src/lib/since-visit.ts`, pure, tested): from the person's last 20
+  `login_events` (a SESSION row is written once per browser session). Rows within an hour of the newest
+  are the same visit (a second tab, signing in again); the look-back stops at 30 days; a first visit
+  gives null. No new column, works across devices.
+- **What is listed** (`sinceLastVisit` in `daily-brief.ts`, at most 4 queries, in the brief's own
+  `Promise.all`, a failure gives null): students: grades (`grades.gradedAt`), announcements (visible
+  now, not their own), open work, materials, in their courses; teachers and admins: hand-ins and
+  enrolments in the courses they teach. Titles are people's own words (`translate="no"`).
+- **Sample:** `/api/brief` in `sample/router.ts` returns three made-up items for the first course.
+- **Tested:** `since-visit.test.ts`; on the dev server as alice with a visit 26 hours ago, a grade and a
+  material 3 hours ago: both listed with their links; 1280 dark and 390 light, no sideways scroll, axe
+  clean, no page errors (test rows removed).
+- **Left:** quizzes published since, and messages (the card's "Waiting for you" covers chats).
+
+
+## M186: pulsing dots keep their colour; the last repainting pings (14 Nov 2026)
+
+- **`animate-pulse` was broken everywhere.** An unlayered rule from the early look
+  (`.animate-pulse { background: linear-gradient(…); animation: shimmer }`, for loading placeholders)
+  beat Tailwind's utilities, so everything that pulses lost its own background: the red "recording"
+  dots (message box, calls, voice feedback), amber "reconnecting" (docs, sheets, slides, boards), green
+  "live" dots, the landing's text caret, about 20 places. They showed a grey shimmer, which also moved
+  `background-position` every frame (a repaint, §8). The rule is gone: Tailwind's opacity pulse, in the
+  element's own colour (checked in the browser: `rgb(255, 59, 48)`, animation `pulse`). The five
+  loading placeholders that relied on it use `.skeleton`. **Rule:** never restyle a Tailwind utility
+  class globally; placeholders are `.skeleton`.
+- **The passport's step marker** (`.pp-node`, `/t/<code>`): its ping was an animated `box-shadow`; now a
+  `::after` ring on `dot-ring` (transform and opacity), as M92 did for `.live-dot` and `.deck-ping`.
+  The dead box-shadow rules those two still carried are removed.
+- **Buttons, checked and left:** 1,476 uses of the shared `.btn-*` classes (press spring, `aria-busy`
+  spinner, focus ring, sizes); the ~135 solid-colour controls that don't use them are chosen-state
+  chips and tabs, not buttons. Converting them would change how tabs look for no gain.
+- **Left** (loops that still repaint, each in one rare place): `flow-on` / `bento-step` (the landing's
+  flow card), `play-lightning` (Quiz Clash's lightning round), `holo`, `ink-drift`, `play-static`.
+- **Tested:** `/t/demo` at 390 (the marker's own animation none, ring `dot-ring`, no errors); `pnpm check`.
+
+
+## M187: more of the school boundary (the owner, 14 Nov 2026: "check for more of these")
+
+This branch now also holds `claude/youthful-fermi-sbdtcp` (M179–M180), merged in so the Messages work
+below builds on it. M181 and M182 stay with the session that planned them; database update 0209 too.
+
+- **Campus buildings** (`campus_buildings.organizationId`, migration 0212, filled from the campus's school
+  for buildings on a network campus; the rest stay with the main school): the school's own map
+  (`campusId` null) lists only that school's buildings, and adding, moving, deleting, placing a room or an
+  event needs the building to be the admin's school's (`campusOf`). A university campus's map (`campusId`
+  set) is still seen by everyone at that campus.
+- **School sticker packs** (`stickers.ts`): listed, counted and edited by the school whose person made
+  them (`owner: peopleWhere(user)`, `madeInSchool`). No database change.
+- **Broadcasts** (`/api/chat/broadcast`): recipients are filtered to the sender's own school; any user
+  ids were accepted. **The tutor's course list** for an admin: their school's courses.
+- **Left, and why:** `school_policies` is one row (`id: 'main'`) for every school (child-safety
+  settings, quiet hours, the check-in location): any school's admin changes it for all. Making it per
+  school touches every reader of that row: its own item, before a second school joins. Rooms and room
+  bookings are one list too. The Impact League is between schools on purpose. Starting a 1:1 chat by a
+  person's id isn't limited to the school (Trace, Relief, Green and Play people have no school).
+- **Tara and Tom** (the local test teachers) couldn't sign in because this machine's local database
+  never had them: `node scripts/local/test-accounts.mjs` (part of `pnpm local:setup`) creates them. With
+  them, the teacher's "Since your last visit" (M185) was checked: "Bob Smith joined · CS101".
+- **Tested:** `pnpm check`; the migration on the local D1.
+
+
+## M188: Messages, long chats and readable bubbles (14 Nov 2026)
+
+Messages already had nearly everything (threads, scheduled and view-once messages, polls, search with
+filters, selecting several, folders, communities, private chats). What didn't hold up was a long chat.
+
+- **Opening an old message** (`jump` in `ChatWindow.tsx`): it loaded 40 older messages at a time and
+  gave up after 10 rounds, so a search result more than 400 messages back never opened. Now 60 rounds
+  (2,400), a "Looking further back…" note after the fourth, and a plain message when it is further still.
+- **Go to a date:** a date field in the chat's search bar. `GET …/messages?date=<ISO>` returns the first
+  message on or after that moment (the browser sends its own midnight); the chat then jumps to it.
+- **Everything shared in a chat:** the info panel's "Media, files & links" was built from the messages on
+  screen. `GET …/messages?shared=1` returns the chat's newest 60 photos, 40 files and 40 links (not
+  deleted, not hidden by the person, not view-once); "Show all N photos". Private chats (the server
+  can't read them) keep the on-screen list. Both answers go through the route's own membership check.
+- **My bubbles** (`globals.css`, the M121 block): the old look's deep pink (`#b5307d`) stayed as the
+  bubble colour after M124 made text on accent fills ink in dark mode: near-black on pink, 3.4:1, in
+  the default theme. The bubble takes `bg-tint` (lime with ink in dark, blue with white in light, the
+  app's colour in the other apps). The small print inside (`text-white/NN`: time, "Voicemail", poll
+  notes) takes the bubble's text colour (it was white on lime, 1.3:1); three `text-[10px]` are 11 px.
+  The info panel's photo buttons have names.
+- **Tested** on a chat of 600 messages over two months (removed after): the oldest message found by
+  search and opened; a date 20 days back opens that day's first message; the panel lists a photo, a file
+  and a link from two months ago; an outsider gets 404; axe clean at 1280 dark and light and 390 dark;
+  no sideways scroll, no page errors.
+- **Left:** a chat longer than 2,400 messages back from the newest still can't open its oldest part in
+  one go (it would need the list to hold a window that isn't joined to the newest messages).
+
+
+## M189: Collaborate, saved Create work on Home and whose work it is (14 Nov 2026)
+
+- **Saved Create work** (M75: mind maps, palettes, notes… saved to the account) lived only inside
+  Create. Home now lists it with everything else: recent work, the one search, a "Create" filter, pins
+  (`PIN_KINDS` has `save`). It opens from there: `/studio?open=<save id>` (the Studio page calls its own
+  `openSave`, so a live-edited one still opens live).
+- **Whose work:** All / Mine / Shared with me, from what the lists already say (`mine` on documents and
+  whiteboards; task boards, code rooms, files and saves count as mine).
+- **Sample:** `/api/collab/saves` returns two saved items.
+- **Tested:** a save made through the API shows on Home, alone under "Create", not under "Shared with
+  me", and opens its tool; 1280 dark and 390 light, axe clean, no sideways scroll (test save removed).
+- **Left:** who shared a document (the list says only that it isn't mine); shared-with-me for task
+  boards and code rooms (their lists don't say).
+
+
+
+## M190: each school its own safety policy (the owner, 15 Nov 2026: "please do all of this")
+
+- **The row:** `school_policy.id` is the school's id (`organizations.id`), or `'main'` for the main
+  school (people in no school). No new column: migration 0213 copies the old shared row to every
+  school that exists, so nothing changes for anyone on the day it goes live. A school created later
+  without a row of its own has the safe defaults (`DEFAULT_POLICY`).
+- **Reading it** (`src/server/safety.ts`): `schoolPolicy(orgId)` (cached a minute per school),
+  `policyFor(userId)` (that person's school), `policySchools(user)` (the schools an admin's change covers:
+  theirs plus the one they own, as `schoolsOf`; the platform owner: their own). **Rule for new code:**
+  never call `schoolPolicy()` without the school; the person it is about decides which row.
+- **Who decides what:** quiet hours and "under 18" the student's school; recording a call is blocked
+  when any student under 18 in it is from a school that doesn't allow it; the chat safety check runs
+  when any student's or guardian's school in the chat has it on; parent messages the child's school; a
+  class check-in the student's school. Changing quiet hours moves only that school's students' rows.
+- **Tested:** unit tests (`school-policy.test.ts`); `pnpm check`; the migration on the local D1.
+
+
+## M191: rooms and room bookings kept to each school
+
+- `rooms.organizationId` (migration 0214, filled from the room's building's school, M187; the rest the
+  main school). Bookings have no school of their own: they follow their room.
+- Kept to the school: `/api/rooms` (list, one room, booking: another school's room is "not found";
+  the list no longer includes who booked), `/api/admin/rooms` (and new rooms go to the admin's school),
+  `/api/campus/rooms` ("free now"), the campus map's rooms, bookings, room placing and usage (the school's
+  own map; a university campus's map is still the campus's), the timetable planner and its save, the
+  timetable import's room names, `/api/admin/timetable`.
+- **Tested:** unit test (`rooms.service.test.ts`), `pnpm check`.
+
+
+## M192: Messages, a message however far back opens
+
+- **Server** (`…/messages` GET): `around=<message id>` returns that message and the 49 before it (404 when
+  it isn't in the chat or is hidden from me); `after=<time>` pages forward (`hasNewer`). Neither marks the
+  chat read. Both go through the route's membership check.
+- **The chat** (`ChatWindow.tsx`): `jump` adds up to three pages to the history; further back it opens a
+  stretch (`win`) not joined to the newest messages. "Load earlier" adds above it, "Load newer messages"
+  below; reaching the newest joins it back on. The arrow button (always shown in a stretch) and sending a
+  message go back to the newest. Messages in a stretch are never counted as "new" on the arrow.
+- **Tested:** `scripts/checks/messages-far-back-ui.mjs` on a 3,000-message chat (made and removed by the
+  check): the first message opens, the newest isn't on screen, Load newer, back to the newest; axe clean
+  at 1280 dark and light, no sideways scroll, no page errors. An outsider gets 404 for `around`.
+
+
+## M193: Collaborate, who shared it and whose task boards and code rooms are
+
+- `GET /api/docs` and `GET /api/tasks` give `by` (the owner's name, when it isn't me; `owner-names.ts`,
+  names only); `GET /api/code` gives `mine` (`createdById` is no longer sent). Home shows "From <name>" on
+  shared documents, task boards and code rooms; task boards and code rooms sort under Mine / Shared with me
+  (files and Create saves still count as mine).
+- **Tested:** as Alice, Tara's board, document and code room in CS101 show "From Tara Teacher" under
+  Shared with me, at 1280 dark and 390 light, axe clean, no sideways scroll (test items removed).
+- **Left:** nothing from the M187–M189 list. A Create save shared by link isn't "shared with me" (whoever
+  opens the link doesn't get it on their Home).
+
+
+## M194: Create work opened from someone's link, on Collaborate's Home (the owner, 15 Nov 2026: "please do this")
+
+- **Table** `tool_save_opens` (migration 0215): one row a person and piece of work, with the `mode`
+  (view or edit) and the exact `token` they opened. Written by `noteOpen` (`src/server/tool-save-opens.ts`)
+  from `GET /api/collab/shared/:token` (only when the request is signed in: the `/s/` page now sends the
+  account when there is one) and `GET /api/collab/live/:token`. The view page asks every 20 seconds, so the
+  write is skipped unless an hour passed or the link changed; an edit link that still works outranks a view.
+- **Listed** in `GET /api/collab/saves` as `opened` (`openedByMe`) only while the work's link is still the
+  token they opened: a stopped link takes it away, and a new link made after it is never handed to them
+  (it falls back to nothing, not to the other kind of link). Never the owner's own opens. Deleting the work
+  deletes the rows.
+- **Home** (`CollabHome.tsx`): "From <name> · <tool> · view only / edit together", under Shared with me,
+  opening `/s/<token>` or `/studio?edit=<token>`. Sample answer has one.
+- **Tested:** the API through every case (view, edit, view again keeps edit, edit stopped and remade, view
+  stopped and remade, the owner's own list); Alice opening Tara's link then finding it on Home at 1280 dark
+  and 390 light, axe clean, no sideways scroll; unit tests (`tool-save-opens.test.ts`). Test work removed.
+- **Left:** no way to take one off Home by hand (it goes when the owner stops the link).
+
+
+## M195: take someone's shared work off my Home
+
+- `DELETE /api/collab/saves?opened=<save id>` deletes only the caller's own `tool_save_opens` row (anyone
+  else's request changes nothing). Home's × (`removeOpened` in `CollabHome.tsx`) shows only on items opened
+  from a link, unpins it too, and says that opening the link again brings it back (it does: `noteOpen`
+  writes a fresh row). Sample mode answers with `notice()`.
+- **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
+  dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
+  Alice's row alone. Test work removed.
+## M196 (committed as "M183"): UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
 
 - **The ask:** "one more app … about the travelling where user want to travel whole around the world or
   some places and no idea where to eat, to sleep, to visit, few facts, ideas and much more and also can
   book through our website … Wanderlog, Stippl, Tripadvisor, Culture Trip … combine features … add more
-  unique ways … ultra smooth". Built in steps: this is the first (the planner is M184, the extras M185).
+  unique ways … ultra smooth". Built in steps: this is the first (the planner is M200, the extras M202).
 - **The app** (`travel`, sky blue #0ea5e9, `/travel`, Lab): every place an app needs (§3): `APPS`, its menu
   (Explore, Saved places) and phone tabs, the hub's planet spot and number (places saved), the landing's
   hero words, questions, card (`TravelScene`: a route Lisbon → Sintra → Porto with a plane flying it and
@@ -6782,7 +7034,7 @@ the other branches first: another session may have used them). Merge only when t
   districts from `Regionlist`, banner, position, parent); which country a place is in from Nominatim;
   the country's facts from `src/lib/travel-countries.json` (205 countries from Wikidata, CC0: REST
   Countries now wants an account key); the weather from MET Norway. Everything kept in `travel_cache`
-  (migration 0209: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
+  (database update 0216: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
   fails). **Trap:** Wikimedia answers 429 to requests without a named User-Agent: keep `UA`.
 - **Saved places** (`travel_saved`, one per person, guide and name, at most 300): Save on any listing, the
   Saved page by guide (map, website, remove).
@@ -6798,12 +7050,12 @@ the other branches first: another session may have used them). Merge only when t
   14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
   errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.
 
-## M186: Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
+## M197 (committed as "M186"): Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
 
 - **Where:** owner console → Server → **Apps on the website** (`AppsCard` in `console/server.tsx`): a switch
   per app, "Show only this app" on each, "Show every app". Saved with the other server settings
   (`POST /owner/server { apps }`, at least one; every app is stored as null so a new app shows), logged
-  in Changes & undo (the raw stored value, so undo puts it back exactly). Migration **0210**
+  in Changes & undo (the raw stored value, so undo puts it back exactly). Database update **0217**
   (`server_control.apps`, a JSON list).
 - **How every page follows it, without a flash:** the Worker reads the list with the server switch (once a
   minute, `cloudflare/usage-guard.ts`) and writes `<script>window.__uvApps=[…]</script>` first in every
@@ -6830,7 +7082,7 @@ the other branches first: another session may have used them). Merge only when t
   `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
   `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.
 
-## M187: Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
+## M198 (committed as "M187"): Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
 
 - **Know before you go** (a new guide tab, `src/components/travel/TravelKnow.tsx`): plugs and voltage
   against the visitor's own country (chosen once, `uv-travel-home`, guessed from the browser's region:
@@ -6852,7 +7104,7 @@ the other branches first: another session may have used them). Merge only when t
   halal, kosher, gluten-free, street food; only those some place mentions, with counts), and **Book a
   table** on each restaurant (OpenTable's search for it; an affiliate id later is **[owner]**).
 - **Left on purpose:** nothing is made up: a topic the guides don't cover simply doesn't show. Visa rules
-  per passport (a table of every passport against every country) belong with M188's matching.
+  per passport (a table of every passport against every country) belong with M199's matching.
 - **Checked:** `travel-know-ui.mjs` (Kyoto: A and B at 100 V, an adapter and voltage line for a British
   visitor, months named, 5 stories, 8 topics with Japan's marked, 5 neighbourhoods; Kyoto/Central's Eat:
   what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
@@ -6860,25 +7112,25 @@ the other branches first: another session may have used them). Merge only when t
 
 ## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
 
-The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M187 did items 2 and 3.
+The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M198 did items 2 and 3.
 Left, in this order (numbers reserved):
 
-1. **M188: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
+1. **M199: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
    should I go?"). A form (days, budget and currency, month, interests, passport) ranks places with why each
    fits: that month's weather (the guide's climate chart via `readTips`, or a table generated ahead for
    ~150 places), an **estimated** daily cost (say so: a base budget × the country's World Bank price level,
    indicator PA.NUS.PPPC.RF, CC BY 4.0), the interests (tags written for each place), and visa ease for the
    passport (Wikipedia's "Visa requirements for X citizens" tables, CC BY-SA, read and kept like guides).
    Start from `src/lib/travel-ideas.ts` (24 places) and grow it; a tab in Explore, not a new page.
-2. **M184: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
+2. **M200: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
    Saved or any guide, grouped by how close they are (the listings' lat/lon), opening hours and prices shown,
    time to spend by kind (a museum 2 h, a viewpoint 30 min), drag and drop between days; a multi-city route
    in a sensible order with "how to get between" (Rome2Rio, trains, buses, ferries); the **whole trip's
-   budget** (stay + food + transport + tickets from listing prices and the M188 daily estimate); friends
+   budget** (stay + food + transport + tickets from listing prices and the M199 daily estimate); friends
    planning together (members, live updates with `publish()`); add to calendar (an .ics file).
-3. **M189: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
+3. **M201: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
    ferries links (Omio, 12Go in Asia, Direct Ferries); the airport and travel-card sentences are already in
-   M187's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
+   M198's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
    an **opt-in** board of travellers in the same city on the same dates (18+ only, first name and dates,
    city level, contact through Messages in the Travel app, report and block).
 Each: sample answers for new GET routes, a check in `scripts/checks/`, motion per §8.

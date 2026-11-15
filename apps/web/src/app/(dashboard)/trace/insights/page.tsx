@@ -47,7 +47,7 @@ export default function InsightsPage() {
 function Body() {
   const { data, error } = useSWR<Insights>('/trace/insights', fetcher, { revalidateOnFocus: false });
   if (error) return <p className="panel p-6 text-sm text-zinc-500">{errorMessage(error, 'Start your brand to see its insights.')}</p>;
-  if (!data) return <div className="grid lg:grid-cols-3 gap-4">{Array.from({ length: 6 }, (_, i) => <div key={i} className="panel h-48 animate-pulse" />)}</div>;
+  if (!data) return <div className="grid lg:grid-cols-3 gap-4">{Array.from({ length: 6 }, (_, i) => <div key={i} className="panel h-48 skeleton" />)}</div>;
   const next7 = Math.round(data.forecast.next.values.slice(0, 7).reduce((a, b) => a + b, 0));
   const last7 = data.forecast.series.slice(-7).reduce((a, b) => a + b, 0);
   const change = last7 ? Math.round(((next7 - last7) / last7) * 100) : 0;

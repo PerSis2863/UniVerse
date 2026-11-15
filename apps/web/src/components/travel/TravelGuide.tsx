@@ -14,7 +14,7 @@ import { KnowTab } from './TravelKnow';
 import { cn } from '@/lib/utils';
 import { Cover, ListingCard, sky, type Saved } from './travel-ui';
 
-// A place's guide in UniVerse Travel (M183, /travel/guide?d=<Wikivoyage title>): its photo and opening,
+// A place's guide in UniVerse Travel (M196, /travel/guide?d=<Wikivoyage title>): its photo and opening,
 // the country's facts (money, languages, driving side, emergency numbers), the week's weather, booking
 // with partners, then a tab for each part (see, do, eat, drink, sleep, buy, getting around, staying safe
 // and polite), every listed place with its details, a pin map, save and map buttons.
@@ -22,7 +22,7 @@ import { Cover, ListingCard, sky, type Saved } from './travel-ui';
 interface Facts { name: string; code: string; flag: string; capital?: string; currencies: { code: string; name: string }[]; languages: string[]; callingCode?: string; drives?: 'left' | 'right'; emergency: string[]; plugs: string[]; volts: number[] }
 interface Answer {
   guide: Guide; country: Facts | null; credit: { source: string; licence: string; url: string };
-  // M187: know before you go.
+  // M198: know before you go.
   tips?: Tips; climate?: Climate | null; fromCountry?: TipTopic[]; tipsCountry?: { name: string; credit: { url: string } } | null;
 }
 interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }
@@ -53,7 +53,7 @@ export function TravelGuide() {
   const { data: savedData } = useSWR<{ saved: Saved[] }>('/travel/saved', fetcher);
   const [tab, setTab] = useState<Tab>('overview');
   const [filter, setFilter] = useState('');
-  // M187: the Eat, Drink and Sleep tabs narrow by price band and by what people can eat.
+  // M198: the Eat, Drink and Sleep tabs narrow by price band and by what people can eat.
   const [band, setBand] = useState<'budget' | 'mid' | 'splurge' | null>(null);
   const [diet, setDiet] = useState<DietId | null>(null);
 

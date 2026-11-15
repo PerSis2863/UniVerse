@@ -1,6 +1,6 @@
 import { APPS, type AppId } from './apps';
 
-// The list of apps the website shows (M186), read safely, without React: the server (the owner's save,
+// The list of apps the website shows (M197), read safely, without React: the server (the owner's save,
 // GET /site/apps) and the browser (src/lib/shown-apps.ts) share it.
 
 export const ALL_APP_IDS: AppId[] = APPS.map((a) => a.id);

@@ -10,7 +10,7 @@ import { commonsImage, type Listing } from '@/lib/travel-guide';
 import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
 
-// Shared parts of UniVerse Travel's screens (M183): a place's photo, a listing's card, the save button,
+// Shared parts of UniVerse Travel's screens (M196): a place's photo, a listing's card, the save button,
 // the weather's sky.
 
 export interface Saved { id: string; guide: string; name: string; kind: string; lat: number | null; lon: number | null; note: string | null; address: string | null; url: string | null; createdAt: string }

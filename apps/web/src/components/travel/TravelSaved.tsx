@@ -10,8 +10,8 @@ import { fetcher } from '@/lib/fetcher';
 import { mapLink } from '@/lib/travel-book';
 import type { Saved } from './travel-ui';
 
-// My saved places in UniVerse Travel (M183), by the guide each came from: its map, its website, a way
-// back to the guide, and remove. (Planning them into days is the trip planner, M184.)
+// My saved places in UniVerse Travel (M196), by the guide each came from: its map, its website, a way
+// back to the guide, and remove. (Planning them into days is the trip planner, M200.)
 
 const KIND: Record<string, string> = { see: 'See', do: 'Do', eat: 'Eat', drink: 'Drink', sleep: 'Sleep', buy: 'Buy', go: 'Go', other: 'Place' };
 const nice = (title: string) => title.split('/').map((p) => p.replace(/\s*\([^)]*\)/, '')).join(' · ');

@@ -316,6 +316,11 @@ function Tools() {
     setCurrent(c); setGen((g) => g + 1); open(c.tool as Panel);
     toast.success(`“${c.title}” opened`);
   };
+  // M189: Collaborate → Home opens saved work by its address (/studio?open=<save id>).
+  const openSaveNow = useRef(openSave);
+  useEffect(() => { openSaveNow.current = openSave; });
+  const openId = params.get('open');
+  useEffect(() => { if (openId && /^[\w-]{1,64}$/.test(openId)) void openSaveNow.current(openId); }, [openId]);
   const keepCopy = () => {
     if (!sharedToken || !panel) return;
     keepShared(sharedToken); setCurrent(null); setGen((g) => g + 1);

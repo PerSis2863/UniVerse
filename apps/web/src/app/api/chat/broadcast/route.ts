@@ -6,6 +6,7 @@ import { inParts } from '@/server/d1-parts';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { publish } from '@/server/realtime';
+import { peopleWhere } from '@/server/school-scope';
 
 // POST { userIds, body }: a broadcast, like WhatsApp's. One message goes to each person as a
 // private chat with you (created if needed), so replies come back to you privately. Teachers and
@@ -25,7 +26,8 @@ export const POST = (req: Request) =>
     const ids = [...new Set<string>((Array.isArray(b.userIds) ? b.userIds : []).filter((x: unknown) => typeof x === 'string'))].filter((id) => id !== user.id && id !== system.id);
     if (!ids.length) throw new BadRequestException('Choose who to send it to.');
     if (ids.length > cap) throw new BadRequestException(`A broadcast can go to up to ${cap} people at a time.`);
-    const people = await prisma.user.findMany({ where: { id: { in: ids }, status: 'ACTIVE' }, select: { id: true } });
+    // Only people of the sender's own school (M187: any ids were accepted, so a broadcast could reach other schools).
+    const people = await prisma.user.findMany({ where: { id: { in: ids }, status: 'ACTIVE', AND: [await peopleWhere(user)] }, select: { id: true } });
 
     // Existing private chats with these people, then new ones for the rest.
     // In parts: a list inside a relation filter isn't split for D1's 100 values (src/lib/d1-split.ts).
