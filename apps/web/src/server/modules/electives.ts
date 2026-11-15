@@ -6,7 +6,7 @@ const electives = new ElectivesService();
 export default function electivesModule(router: Router) {
   const r = router.controller('electives');
 
-  r.get('available', ({ user }) => electives.getAvailableElectives(user.id));
+  r.get('available', ({ user }) => electives.getAvailableElectives(user.id, user.organizationId ?? null));
   r.get('my', ({ user }) => electives.getMyElectives(user.id));
   r.post('select', ({ user, body }) => electives.selectElective(user.id, body));
   r.patch<{ id: string }>(':id/withdraw', ({ params, user }) => electives.withdrawElective(params.id, user.id));

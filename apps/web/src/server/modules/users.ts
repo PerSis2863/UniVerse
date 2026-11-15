@@ -112,8 +112,9 @@ export default function users(router: Router) {
     };
   });
 
-  r.get('directory', ({ query }) => {
-    const where: Prisma.UserWhereInput = { role: 'STUDENT', status: 'ACTIVE' };
+  r.get('directory', async ({ query, user }) => {
+    // M199: only the person's own school (an admin: the schools they run), never another school's students.
+    const where: Prisma.UserWhereInput = { role: 'STUDENT', status: 'ACTIVE', ...usersIn(user.role === 'ADMIN' ? await schoolsOf(user) : [user.organizationId ?? null]) };
     if (typeof query.search === 'string' && query.search.trim()) where.name = { contains: query.search.trim().slice(0, 100) };
     // Any signed-in user can open this: names and departments only, never email addresses.
     return prisma.user.findMany({

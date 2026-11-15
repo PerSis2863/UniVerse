@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { schoolsOf, usersIn } from './school-scope';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { ForbiddenException, NotFoundException } from './http';
@@ -455,7 +456,8 @@ export async function listCourseMicroLessons(
  */
 export async function listMyMicroLessons(user: SessionUser): Promise<LectureMicroLessonData[]> {
   const lessons = await prisma.lectureMicroLesson.findMany({
-    where: user.role === 'ADMIN' ? {} : { course: { OR: [...taughtBy(user.id).OR, { enrollments: { some: { studentId: user.id } } }] } },
+    // An admin: every class of their own school (M199), never another school's.
+    where: user.role === 'ADMIN' ? await schoolsOf(user).then((s) => (s === 'all' ? {} : { course: { teacher: usersIn(s) } })) : { course: { OR: [...taughtBy(user.id).OR, { enrollments: { some: { studentId: user.id } } }] } },
     orderBy: { createdAt: 'desc' },
     take: 20,
     include: { course: { select: { code: true, name: true } } },

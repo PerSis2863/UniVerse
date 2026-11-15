@@ -175,6 +175,7 @@ export const SAFETY_TABS: SectionTab[] = [
   { href: '/admin/safety', label: 'BeeSafe reports' },
   { href: '/admin/safety/chats', label: 'Chat safety' },
   { href: '/admin/safety/policy', label: 'Policy' },
+  { href: '/admin/safety/access', label: 'Who can see what' },
   { href: '/admin/wellbeing', label: 'Wellbeing requests', need: 'wellbeing.counsel' },
 ];
 
