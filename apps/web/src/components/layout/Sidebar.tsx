@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { Bookmark, Compass, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { LAST_APP } from '@/lib/current-app';
@@ -259,6 +259,9 @@ const sharedNav = (role: string): NavItem[] => [
   { href: settingsFor(role), label: 'nav.settings', icon: Settings },
 ];
 
+/** Each app's icon in the hub's menu. */
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
+
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   trace: [
@@ -270,6 +273,10 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
     { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
     { href: '/trace/vault', label: 'My vault', icon: KeyRound },
+  ],
+  travel: [
+    { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
+    { href: '/travel/saved', label: 'Saved places', icon: Bookmark },
   ],
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },
@@ -290,7 +297,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
 function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
   const hub: NavItem = { href: '/hub', label: 'All apps', icon: LayoutGrid };
-  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2 }[a.id] })), ...sharedNav(user.role)];
+  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: APP_ICON[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;

@@ -1030,6 +1030,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // M166: arrangements stay on the device while exploring.
   [/^\/arrange$/, () => ok({ sync: false, doc: null })],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
+  [/^\/travel\/guide$/, ({ q }) => ok(impact.sampleTravelGuide(q.get('d')))],
+  [/^\/travel\/search$/, ({ q }) => ok(impact.sampleTravelSearch(q.get('q')))],
+  [/^\/travel\/weather$/, () => ok(impact.sampleTravelWeather())],
+  [/^\/travel\/saved$/, ({ db: d }) => ok(impact.sampleTravelSaved(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],

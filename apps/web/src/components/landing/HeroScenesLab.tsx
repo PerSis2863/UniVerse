@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Bike, Check, Crown, Droplets, Home, Leaf, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, TreePine, Utensils } from 'lucide-react';
+import { BedDouble, Bike, Camera, Check, Crown, Droplets, Home, Leaf, Plane, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, Sun, TreePine, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EASE, useCalm } from './bits';
 import { pop, still, useStep } from './HeroScenes';
@@ -252,7 +252,56 @@ function Play() {
   );
 }
 
+// M183: Travel's card: a trip drawn as a route between three cities with a plane flying it, and the
+// plan day by day underneath (a place to see, to eat, to sleep).
+const ROUTE = 'M40 150 C 110 40, 190 40, 220 110 S 330 170, 360 60';
+const STOPS = [{ x: 40, y: 150, n: 'Lisbon' }, { x: 220, y: 110, n: 'Sintra' }, { x: 360, y: 60, n: 'Porto' }];
+const PLAN = [
+  { d: 'Day 1', icon: Camera, t: 'Belém Tower at sunrise', w: '09:00' },
+  { d: 'Day 1', icon: Utensils, t: 'Custard tarts in Alfama', w: '13:30' },
+  { d: 'Day 2', icon: Sun, t: 'Pena Palace, 18 °C and sunny', w: '10:00' },
+  { d: 'Day 3', icon: BedDouble, t: 'A riverside stay in Porto', w: '19:00' },
+];
+function Travel() {
+  const calm = useCalm();
+  return (
+    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A trip from Lisbon to Sintra and Porto drawn as a route with a plane flying it, and the plan for each day">
+      <div className="flex items-center justify-between px-5 pt-5 font-mono text-xs text-zinc-300">
+        <span>Portugal · 3 days · 2 friends</span>
+        <span className="inline-flex items-center gap-1.5"><Plane className="h-3.5 w-3.5 text-sky-300" aria-hidden />planned together</span>
+      </div>
+      <svg viewBox="0 0 400 200" className="mx-auto mt-2 block w-[92%]" aria-hidden>
+        <path d={ROUTE} fill="none" stroke="#38bdf8" strokeWidth="14" opacity="0.1" />
+        <path d={ROUTE} fill="none" stroke="rgba(125,211,252,0.7)" strokeWidth="1.6" strokeDasharray="5 6" />
+        {STOPS.map((p) => (
+          <g key={p.n}>
+            <circle cx={p.x} cy={p.y} r="6" fill="#0ea5e9" opacity="0.25" />
+            <circle cx={p.x} cy={p.y} r="3" fill="#e0f2fe" />
+            <text x={p.x} y={p.y + 20} textAnchor="middle" className="fill-sky-100 font-mono text-[11px]">{p.n}</text>
+          </g>
+        ))}
+        <g>
+          <path d="M8 0 L-7 -6 L-3 0 L-7 6 Z" fill="#fff" />
+          {!calm && <animateMotion dur="7s" repeatCount="indefinite" path={ROUTE} rotate="auto" />}
+        </g>
+      </svg>
+      <ol className="absolute inset-x-2 bottom-2 space-y-1">
+        {PLAN.map((p, i) => (
+          <motion.li key={p.t} initial={calm ? false : { opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.08, duration: 0.4, ease: EASE }}
+            className="flex items-center gap-2.5 rounded-full bg-black/30 px-3.5 py-1.5 ring-1 ring-white/[0.07]">
+            <span className="w-11 font-mono text-xs text-sky-200">{p.d}</span>
+            <p.icon className="h-4 w-4 text-sky-300" aria-hidden />
+            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{p.t}</span>
+            <span className="font-mono text-xs text-zinc-300">{p.w}</span>
+          </motion.li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export const TraceScene = still(Trace);
 export const ReliefScene = still(Relief);
 export const GreenScene = still(Green);
 export const PlayScene = still(Play);
+export const TravelScene = still(Travel);

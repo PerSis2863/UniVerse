@@ -5,7 +5,7 @@
 // in, and the switcher at its top (and the hub, /hub) moves between them. Shared tools (Messages,
 // Collaborate, Calls, Settings) belong to every app.
 
-export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'play';
+export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'play' | 'travel';
 
 export interface ImpactApp {
   id: AppId;
@@ -44,6 +44,13 @@ export const APPS: ImpactApp[] = [
     id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',
     impact: 'Log an action, see the CO₂ saved.',
     paths: ['/green'], lab: true,
+  },
+  {
+    // M183 (the owner, 15 Nov 2026): where to go, eat, sleep and what to see, trips planned day by day
+    // with friends, and booking through partners.
+    id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
+    impact: 'Guides, day-by-day plans and greener trips.',
+    paths: ['/travel'], lab: true,
   },
   {
     id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',

@@ -6751,3 +6751,49 @@ the other branches first: another session may have used them). Merge only when t
      replies go back through the service; every route checks who is asking (`route-gates.test.ts`), new GET
      routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
      `universe-security` to review before finishing.
+
+## M183: UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
+
+- **The ask:** "one more app … about the travelling where user want to travel whole around the world or
+  some places and no idea where to eat, to sleep, to visit, few facts, ideas and much more and also can
+  book through our website … Wanderlog, Stippl, Tripadvisor, Culture Trip … combine features … add more
+  unique ways … ultra smooth". Built in steps: this is the first (the planner is M184, the extras M185).
+- **The app** (`travel`, sky blue #0ea5e9, `/travel`, Lab): every place an app needs (§3): `APPS`, its menu
+  (Explore, Saved places) and phone tabs, the hub's planet spot and number (places saved), the landing's
+  hero words, questions, card (`TravelScene`: a route Lisbon → Sintra → Porto with a plane flying it and
+  the days' plan), the sign-in card, the call to action, the world section, the owner's launch board
+  (from `travel_saved`), its share picture (`public/og/travel.jpg`), its scene behind the pages
+  (`backdrop.ts`: dashed routes arcing between places, paper planes flying them, clouds), Messages of its
+  own (M179). Two loose app maps that TypeScript didn't catch (the app tile `AppIcon` and the hub menu's
+  icons) are now `Record<AppId, …>`, so a seventh app can't be forgotten there.
+- **Explore** (`TravelExplore.tsx`): a search that finds any place with a guide as you type (Wikivoyage's
+  titles, arrows and Enter), 24 places to start from by theme with their real banner photos
+  (`src/lib/travel-ideas.ts`, the blurbs ours), your saved places.
+- **A guide** (`/travel/guide?d=<title>`, `TravelGuide.tsx`): the banner photo and opening; the country's
+  facts (money, languages, which side cars drive on, calling code, **emergency numbers**); the week's
+  weather in the place's own time; booking links; tabs for Overview (good to know, the districts or
+  cities as their own guides, go next), See, Do, Eat, Drink, Sleep, Buy, Getting around, Safe and polite,
+  each with its places (price, hours, address, directions, website, call, Map, Save), a filter for long
+  lists and a dot map of where they are. Credits: Wikivoyage (CC BY-SA 3.0) with a link, Commons, MET
+  Norway (CC BY 4.0), OpenStreetMap.
+- **Where it comes from** (`src/server/travel.ts`, routes `travel/search|guide|weather|saved`): a guide is
+  the Wikivoyage article's raw text (`?action=raw`) read by `src/lib/travel-guide.ts` (pure, tested:
+  templates split at their top-level bars, wiki text to plain words, listings with their sub-heading,
+  districts from `Regionlist`, banner, position, parent); which country a place is in from Nominatim;
+  the country's facts from `src/lib/travel-countries.json` (205 countries from Wikidata, CC0: REST
+  Countries now wants an account key); the weather from MET Norway. Everything kept in `travel_cache`
+  (migration 0209: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
+  fails). **Trap:** Wikimedia answers 429 to requests without a named User-Agent: keep `UA`.
+- **Saved places** (`travel_saved`, one per person, guide and name, at most 300): Save on any listing, the
+  Saved page by guide (map, website, remove).
+- **Booking** (`src/lib/travel-book.ts`, tested): Stays (Booking.com), Flights (Google Flights), Tours and
+  tickets (GetYourGuide), Trains and buses (Rome2Rio), with the place (and dates, in the planner) filled
+  in. **[owner]:** to earn commission, join Booking.com's and GetYourGuide's affiliate programmes and set
+  `NEXT_PUBLIC_TRAVEL_BOOKING_AID` and `NEXT_PUBLIC_TRAVEL_GYG_PARTNER` (Cloudflare build variables). Paying
+  inside UniVerse needs partner contracts (their booking APIs): not built.
+- **The site's photo rule** (`security-headers.ts` img-src) now allows `commons.wikimedia.org`,
+  `upload.wikimedia.org` and `thumb.wikimedia.org`. Sample mode has a Lisbon guide, search, weather and
+  saved places.
+- **Checked:** `travel-ui.mjs` (search finds Kyoto, 24 places, Kyoto/Central's facts, weather, booking,
+  14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
+  errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.

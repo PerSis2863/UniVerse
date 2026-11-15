@@ -34,6 +34,7 @@ export function sampleHub(me: { id: string }) {
       relief: { value: 3_904, label: 'people helped', mine: { value: 23, label: 'people helped' } },
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
       play: { value: 26_380, label: 'games played', mine: { value: 41, label: 'games played' } },
+      travel: { value: 3_912, label: 'places saved', mine: { value: 12, label: 'places saved' } },
     },
     total: { people: 12_480 },
   };
@@ -610,4 +611,52 @@ export function sampleAircraft(): AirTraffic {
     planes.push([Math.round(lat * 100) / 100, Math.round(lon * 100) / 100, Math.round(brg([lat, lon], b)), Math.round(210 + r() * 50), Math.round(9000 + r() * 3000)]);
   }
   return { at: new Date().toISOString(), planes, source: 'sample flights' };
+}
+
+// ——— UniVerse Travel (M183): a sample guide (Lisbon), search, the week's weather and saved places. ———
+const SAMPLE_GUIDE = {
+  title: 'Lisbon', banner: 'Lisbon Wikivoyage Banner.png', lat: 38.7139, lon: -9.1394, parent: 'Portugal',
+  summary: ['Lisbon is Portugal’s hilly, coastal capital: pastel streets, old trams climbing to viewpoints, river light and the smell of grilled sardines.', 'Most sights sit within a few hills of the Tagus, close enough to walk between trams.'],
+  places: [{ title: 'Lisbon/Baixa', name: 'Baixa', text: 'The grid of shopping streets rebuilt after the 1755 earthquake.' }, { title: 'Lisbon/Alfama', name: 'Alfama', text: 'The oldest quarter: lanes, laundry lines and fado at night.' }, { title: 'Lisbon/Belém', name: 'Belém', text: 'Monuments of the age of discovery, and the famous custard tarts.' }],
+  sections: [
+    { part: 'understand', title: 'Understand', text: ['Lisbon is one of Europe’s oldest cities and one of its sunniest, with mild winters and warm, dry summers.'], listings: [] },
+    { part: 'see', title: 'See', text: ['Start at a viewpoint (miradouro) for the shape of the city.'], listings: [
+      { kind: 'see', name: 'Belém Tower', price: '€8', hours: '10:00–17:30, closed Mondays', address: 'Av. Brasília', lat: 38.6916, lon: -9.216, text: 'A riverside fortress from the 1500s, Lisbon’s best-known landmark.' },
+      { kind: 'see', name: 'Jerónimos Monastery', price: '€10', hours: '09:30–17:30', lat: 38.6979, lon: -9.2068, text: 'A cloister of carved stone, built on the wealth of the spice trade.' },
+      { kind: 'see', name: 'Miradouro da Senhora do Monte', price: 'Free', lat: 38.7192, lon: -9.1326, text: 'The highest viewpoint, with the castle and the river below.' },
+      { kind: 'see', name: 'São Jorge Castle', price: '€15', hours: '09:00–21:00', lat: 38.7139, lon: -9.1335, text: 'Moorish walls and peacocks above Alfama.' },
+    ] },
+    { part: 'eat', title: 'Eat', text: ['Lunch menus (prato do dia) are the best value.'], listings: [
+      { kind: 'eat', name: 'Pastéis de Belém', price: '€1.40 a tart', hours: '08:00–23:00', lat: 38.6975, lon: -9.2032, text: 'The custard tarts everyone queues for, warm from the oven.' },
+      { kind: 'eat', name: 'Time Out Market', price: '€8–20', lat: 38.7069, lon: -9.1459, text: 'A market hall of the city’s favourite cooks under one roof.' },
+    ] },
+    { part: 'sleep', title: 'Sleep', text: [], listings: [{ kind: 'sleep', name: 'A guest house in Alfama', price: '€70–110', text: 'Quiet rooms on a lane near the castle.', group: 'Mid-range' }] },
+    { part: 'stay safe', title: 'Stay safe', text: ['Lisbon is safe; watch for pickpockets on tram 28 and in crowds.'], listings: [] },
+  ],
+};
+/** GET /travel/guide */
+export function sampleTravelGuide(d: string | null) {
+  const title = d || 'Lisbon';
+  const guide = { ...SAMPLE_GUIDE, title: title.startsWith('Lisbon') ? title : 'Lisbon' };
+  return { guide, country: { name: 'Portugal', code: 'PT', flag: '🇵🇹', capital: 'Lisbon', currencies: [{ code: 'EUR', name: 'Euro' }], languages: ['Portuguese'], callingCode: '+351', drives: 'right', emergency: ['112'] }, credit: { source: 'Wikivoyage', licence: 'CC BY-SA 3.0', url: 'https://en.wikivoyage.org/wiki/Lisbon' } };
+}
+/** GET /travel/search */
+export function sampleTravelSearch(q: string | null) {
+  const all = [{ title: 'Lisbon', about: 'capital of Portugal' }, { title: 'Lisbon/Alfama', about: 'district of Lisbon' }, { title: 'Kyoto', about: 'city in Japan' }, { title: 'Bali', about: 'island in Indonesia' }];
+  const t = (q ?? '').toLowerCase();
+  return { results: all.filter((r) => r.title.toLowerCase().includes(t)).map((r) => ({ ...r, thumb: null })) };
+}
+/** GET /travel/weather */
+export function sampleTravelWeather() {
+  const skies = ['clearsky_day', 'partlycloudy_day', 'fair_day', 'rain', 'partlycloudy_day', 'clearsky_day', 'cloudy'];
+  return { days: skies.map((symbol, i) => ({ date: new Date(Date.now() + i * DAY).toISOString().slice(0, 10), min: 12 + (i % 3), max: 19 + (i % 4), symbol, rain: symbol === 'rain' ? 4.2 : 0 })), credit: 'Weather: MET Norway (CC BY 4.0)' };
+}
+/** GET /travel/saved */
+export function sampleTravelSaved(me: { id: string }) {
+  const at = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+  return { saved: [
+    { id: 'sample-saved-1', userId: me.id, guide: 'Lisbon', name: 'Pastéis de Belém', kind: 'eat', lat: 38.6975, lon: -9.2032, note: 'The custard tarts everyone queues for.', address: null, url: null, createdAt: at(5) },
+    { id: 'sample-saved-2', userId: me.id, guide: 'Lisbon', name: 'Belém Tower', kind: 'see', lat: 38.6916, lon: -9.216, note: 'A riverside fortress from the 1500s.', address: 'Av. Brasília', url: null, createdAt: at(30) },
+    { id: 'sample-saved-3', userId: me.id, guide: 'Kyoto', name: 'Fushimi Inari-taisha', kind: 'see', lat: 34.9671, lon: 135.7727, note: 'Thousands of red gates up the mountain.', address: null, url: null, createdAt: at(80) },
+  ] };
 }

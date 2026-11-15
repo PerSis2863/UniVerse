@@ -27,7 +27,7 @@ interface HubStats { apps: Record<AppId, { value: number; label: string; mine?: 
 const EASE = [0.22, 1, 0.36, 1] as const;
 // Where each app sits on the hub's planet (M52): spread around the globe so two or three face you as it
 // turns. Only a picture: the apps work everywhere.
-const SPOT: Record<AppId, [number, number]> = { campus: [50, 4], trace: [30, 118], relief: [-3, 36], green: [-12, -56], play: [38, -98] };
+const SPOT: Record<AppId, [number, number]> = { campus: [50, 4], trace: [30, 118], relief: [-3, 36], green: [-12, -56], play: [38, -98], travel: [8, 172] };
 
 export default function HubPage() {
   const user = useAuthStore((s) => s.user);

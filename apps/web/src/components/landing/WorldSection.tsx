@@ -31,7 +31,7 @@ const PLACES: Place[] = [
 ];
 const ARCS: [number, number][] = [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3], [3, 4], [4, 1]];
 /** The app at each place, in PLACES' order. */
-const IDS: AppId[] = ['campus', 'trace', 'relief', 'green', 'play'];
+const IDS: AppId[] = ['campus', 'trace', 'relief', 'green', 'play', 'travel'];
 /** Three more things each app does (beyond its tagline and line in apps.ts): only what it really does. */
 const DETAILS: Record<AppId, string[]> = {
   campus: ['Assignments and quizzes, graded with rubrics', 'Attendance, the timetable and the calendar', 'Messages between students, teachers and parents'],
@@ -39,6 +39,7 @@ const DETAILS: Record<AppId, string[]> = {
   relief: ['Alerts for helpers nearby, never showing where they are', 'A notification when someone answers', 'Organisations with members, supplies and volunteer shifts'],
   green: ['Streaks, badges and a weekly challenge', 'Teams that act together', 'A map of what was done'],
   play: ['Up to eight friends in a room with a code', 'Leaderboards to climb', '3D worlds to explore'],
+  travel: ['Guides to see, eat and sleep anywhere', 'Day-by-day plans with friends', 'Stays, flights and tours to book'],
 };
 const short = (id: AppId) => appById(id).name.replace('UniVerse ', '');
 

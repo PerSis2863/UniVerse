@@ -10,10 +10,11 @@ import { closeReliefText, inboundText } from '../relief-texts';
 import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents } from '../relief-safety';
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
+import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelWeather } from '../travel';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
-// UniVerse Green (/green/*) and UniVerse Play (/play/*). Everything here needs a signed-in account;
+// UniVerse Green (/green/*), UniVerse Play (/play/*) and UniVerse Travel (/travel/*). Everything here needs a signed-in account;
 // nobody's exact position is ever returned (src/server/relief.ts, green.ts).
 
 export default function impactAppsModule(router: Router) {
@@ -82,6 +83,15 @@ export default function impactAppsModule(router: Router) {
   play.post('rooms', ({ user, body }) => createRoom(user, body ?? {}));
   play.get<{ code: string }>('rooms/:code', ({ params }) => roomInfo(params.code));
   play.post<{ code: string }>('rooms/:code/ticket', { status: 200 }, ({ user, params }) => roomTicket(user, params.code));
+
+  // UniVerse Travel (M183, src/server/travel.ts): guides, facts and weather from public sources, saved places.
+  const travel = router.controller('travel');
+  travel.get('search', ({ user, query }) => travelSearch(user, query));
+  travel.get('guide', ({ user, query }) => travelGuide(user, query));
+  travel.get('weather', ({ user, query }) => travelWeather(user, query));
+  travel.get('saved', ({ user }) => travelSaved(user));
+  travel.post('saved', ({ user, body }) => saveTravelPlace(user, body ?? {}));
+  travel.delete<{ id: string }>('saved/:id', ({ user, params }) => removeTravelPlace(user, params.id));
 
   const green = router.controller('green');
   green.get('me', ({ user }) => greenMe(user));

@@ -42,12 +42,12 @@ const ink = (c: Rgb, dark: boolean) => (dark ? mix(c, WHITE, 0.3) : mix(c, INK, 
 const wrap = (x: number, m: number) => ((x % m) + m) % m;
 
 /** Each app's colour (src/lib/apps.ts) and a second one that sits well beside it. */
-const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], play: [34, 211, 238] };
+const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], play: [34, 211, 238], travel: [253, 186, 116] };
 /** Green's fireflies. */
 const FIREFLY: Rgb = [217, 249, 157];
 /** M132: UniVersity wears the site's own accent (lime in dark mode, blue in light), as its buttons do. */
 const CAMPUS = { dark: { base: [198, 242, 74] as Rgb, alt: [45, 212, 191] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
-const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, play: 53 };
+const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, play: 53, travel: 67 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */
 function rng(seed: number) {
@@ -522,7 +522,54 @@ const play: Make = (v, rnd, hue) => {
   };
 };
 
-const SCENES: Record<AppId, Make> = { campus, trace, relief, green, play };
+// ── Travel: dashed routes arcing between places, paper planes flying them, clouds drifting (M183) ──
+interface Route { a: { x: number; y: number }; b: { x: number; y: number }; lift: number; sp: number; ph: number; alt: boolean }
+const travel: Make = (v, rnd, hue) => {
+  const clouds = Array.from({ length: v.phone ? 4 : 7 }, () => ({ x: rnd(), y: 0.06 + rnd() * 0.5, z: 0.4 + rnd() * 0.6, w: 0.1 + rnd() * 0.12, vx: 0.004 + rnd() * 0.006 }));
+  const routes: Route[] = Array.from({ length: v.phone ? 3 : 5 }, () => ({
+    a: { x: 0.06 + rnd() * 0.4, y: 0.3 + rnd() * 0.6 }, b: { x: 0.54 + rnd() * 0.4, y: 0.25 + rnd() * 0.65 },
+    lift: 0.12 + rnd() * 0.18, sp: 0.025 + rnd() * 0.025, ph: rnd(), alt: rnd() < 0.4,
+  }));
+  // A point a share `u` along a route's arc (a curve lifted above the straight line), and its heading.
+  const at = (r: Route, u: number) => {
+    const cx = (r.a.x + r.b.x) / 2, cy = Math.min(r.a.y, r.b.y) - r.lift, w = 1 - u;
+    const x = w * w * r.a.x + 2 * w * u * cx + u * u * r.b.x, y = w * w * r.a.y + 2 * w * u * cy + u * u * r.b.y;
+    const dx = 2 * w * (cx - r.a.x) + 2 * u * (r.b.x - cx), dy = 2 * w * (cy - r.a.y) + 2 * u * (r.b.y - cy);
+    return { x: x * v.w, y: y * v.h, ang: Math.atan2(dy * v.h, dx * v.w) };
+  };
+  return {
+    soft(c, t, a) {
+      wash(c, v, t, a, hue, [0.3, 0.15, 0.75, 0.85]);
+      c.fillStyle = rgb(v.dark ? mix(hue.base, WHITE, 0.55) : WHITE);
+      for (const cl of clouds) {
+        const x = (wrap(cl.x + t * cl.vx * cl.z, 1.3) - 0.15) * v.w, y = cl.y * v.h, w = cl.w * v.w;
+        c.globalAlpha = a * (v.dark ? 0.06 : 0.3) * cl.z;
+        for (let i = 0; i < 4; i++) { c.beginPath(); c.ellipse(x + (i - 1.5) * w * 0.28, y - Math.sin(i * 1.3) * w * 0.08, w * 0.3, w * 0.15, 0, 0, TAU); c.fill(); }
+      }
+    },
+    sharp(c, t, a) {
+      for (const r of routes) {
+        const col = rgb(ink(r.alt ? hue.alt : hue.base, v.dark));
+        c.strokeStyle = col; c.fillStyle = col;
+        c.setLineDash([4, 7]); c.lineWidth = 1.2; c.globalAlpha = a * 0.32;
+        c.beginPath();
+        for (let i = 0; i <= 36; i++) { const p = at(r, i / 36); if (i) c.lineTo(p.x, p.y); else c.moveTo(p.x, p.y); }
+        c.stroke();
+        c.setLineDash([]);
+        c.globalAlpha = a * 0.5;
+        for (const e of [r.a, r.b]) { c.beginPath(); c.arc(e.x * v.w, e.y * v.h, 3, 0, TAU); c.fill(); }
+        // The plane fades in as it leaves and out as it lands.
+        const u = wrap(t * r.sp + r.ph, 1), p = at(r, u);
+        turned(c, v, p.x, p.y, p.ang, () => {
+          c.globalAlpha = a * 0.75 * Math.sin(Math.PI * u);
+          c.beginPath(); c.moveTo(9, 0); c.lineTo(-7, -6); c.lineTo(-3, 0); c.lineTo(-7, 6); c.closePath(); c.fill();
+        });
+      }
+    },
+  };
+};
+
+const SCENES: Record<AppId, Make> = { campus, trace, relief, green, play, travel };
 
 export type Backdrop = ReturnType<typeof makeBackdrop>;
 

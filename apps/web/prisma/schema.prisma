@@ -7431,3 +7431,30 @@ model UserArrangement {
 
   @@map("user_arrangements")
 }
+
+/// M183 UniVerse Travel: answers read from public sources (guides, facts, weather, search), kept a while.
+model TravelCache {
+  key       String   @id
+  data      String
+  fetchedAt DateTime @default(now())
+
+  @@map("travel_cache")
+}
+
+/// M183: a person's saved places (from a guide, or their own).
+model TravelSaved {
+  id        String   @id @default(cuid())
+  userId    String
+  guide     String
+  name      String
+  kind      String   @default("see")
+  lat       Float?
+  lon       Float?
+  note      String?
+  address   String?
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, guide, name], map: "travel_saved_user_guide_name")
+  @@map("travel_saved")
+}
