@@ -11,11 +11,12 @@ export const HOME_CARDS: Record<HomeRole, CardDef[]> = {
   student: [
     { id: 'upnext', title: 'Up next', zone: 'top' },
     { id: 'brief', title: 'Daily brief', zone: 'top' },
-    { id: 'impact', title: 'Impact network', zone: 'top' },
     { id: 'stats', title: 'Key numbers', zone: 'top' },
     { id: 'orbit', title: 'Your courses', zone: 'main' },
     { id: 'schedule', title: 'Today’s classes', zone: 'main' },
     { id: 'courses', title: 'My courses', zone: 'main' },
+    // M198: below the student's own classes (a new student's first look is their class, not the network).
+    { id: 'impact', title: 'Impact network', zone: 'main' },
     { id: 'quick', title: 'Quick actions', zone: 'main' },
     { id: 'goal', title: 'Daily goal', zone: 'side' },
     { id: 'level', title: 'Impact level', zone: 'side' },

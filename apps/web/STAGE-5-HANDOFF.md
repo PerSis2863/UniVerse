@@ -7035,3 +7035,30 @@ filters, selecting several, folders, communities, private chats). What didn't ho
   token reaches them), so the first live Monday and the first assignment due within two days are the real
   check: look at a student's notifications.
 - **Left:** "who hasn't opened the work": opening isn't recorded, so the teacher hears who hasn't handed in.
+
+
+## M198: a walk-through as a brand-new student (the owner's list of 15 Nov, item 4)
+
+A new student (an account just made, sign-up not finished) on a phone: the class link, joining, the home,
+the assignment, handing it in, and the teacher's view. Real sign-up needs Firebase, which the cloud machine
+can't reach, so the account was made in the local database. Fixes:
+
+- **Joining before finishing sign-up** (Google / Apple / phone sign-in, then the class link): the invite was
+  forgotten and sign-up asked for a role among four. `CourseJoin` now keeps the invite while `onboardedAt`
+  is empty and sends them to `/register?continue=1&app=campus`; register, with an invite waiting, skips the
+  role step (student, independent; "Change" still goes back).
+- **Where the app opens** (`homeFor`, `/app`'s head script): the app used last on this device
+  (`uv-last-app`, written by `AppBackdrop` on an app's own pages), then teachers and admins at their school
+  home, then the hub. A student of a class no longer lands on the hub of five apps each time.
+- **Student home's default order**: "Impact network" moved below the courses (main zone), so a new
+  student sees their class first. Saved layouts are untouched.
+- **The welcome tour** starts by itself only on the person's home page (its first stop is "Your home");
+  it had opened over the Assignments page. "Take the tour" still starts it anywhere.
+- **Handing in**: the saved copy loads before the box lets go of the typed text (it went blank for a moment).
+- **Assignments list**: titles wrap to two lines on phones (they were cut to "Introduce your…").
+- **Tested:** each step at 390 (light) in Chrome; axe clean with no sideways scroll on /join, /student,
+  /student/assignments, an assignment and /hub at 390 light and 1280 dark; unit tests for `homeFor` and the
+  home layout. Not tested: Safari (no WebKit on the cloud machine) and real Firebase sign-up: try both on
+  an iPhone once this is live.
+- **Left:** the class link page stays dark in light mode (its own look); the realtime ticket and
+  `/api/server-state` fail only on the local dev server (the Worker answers them live).

@@ -120,12 +120,13 @@ function StudentAssignmentPage({ id }: { id: string }) {
       const r = await authedJson<{ late: boolean; latePenalty?: number }>(`/api/assignments/${id}/submission`, { method: 'PUT', body: JSON.stringify({ text: answer, aiReceipt: choice, ...handIn, ...replay }) });
       if (first && !r.late) celebrate(at);
       toast.success(r.late ? `Handed in after the due date${r.latePenalty ? `: ${r.latePenalty}% comes off the grade` : ''}.` : 'Handed in. You can change it until it’s graded.');
+      // The saved copy first, then the box lets go of the typed one (M198: it emptied for a moment).
+      await mutate();
       setText(null);
       setReceipt(null);
       setPicked(null);
       resetReplay();
       void saveDraft(draftKey, '').catch(() => {});
-      mutate();
     } catch (err) {
       if (!isOfflineError(err)) { toast.error((err as Error).message); return; }
       // No connection: hand it in from this device's outbox when it's back.

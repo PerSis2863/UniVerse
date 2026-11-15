@@ -12,7 +12,8 @@ describe('home layout', () => {
   });
   it('keeps the default order until the person changes it, and new cards still appear', () => {
     const a = arrange('student', EMPTY_LAYOUT);
-    expect(ids(a.top)).toEqual(['upnext', 'brief', 'impact', 'stats']);
+    expect(ids(a.top)).toEqual(['upnext', 'brief', 'stats']);
+    expect(ids(a.main).indexOf('impact')).toBeGreaterThan(ids(a.main).indexOf('courses'));
     expect(ids(a.side)[0]).toBe('goal');
     // A saved layout from before a card existed: the missing card goes to the end of its zone.
     const old = arrange('student', { ...EMPTY_LAYOUT, order: ['grades', 'deadlines'] });
@@ -28,7 +29,7 @@ describe('home layout', () => {
     expect(ids(a.hidden)).toEqual(['impact', 'streak']);
     expect(ids(a.top)).toEqual(['upnext', 'brief', 'stats']);
     l = showCard('student', l, 'impact');
-    expect(ids(arrange('student', l).top)).toEqual(['upnext', 'brief', 'stats', 'impact']);
+    expect(ids(arrange('student', l).main)).toContain('impact');
     expect(l.hidden).toEqual(['streak']);
   });
 });
