@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { ownerNames } from './owner-names';
 import { MAX_BLOCKERS, PRIORITIES, REPEATS, cleanLabels, makesCycle, nextDue, parseList, type Priority, type Repeat } from '@/lib/task-extras';
 import { ACTIONS, MAX_RULES, TRIGGERS, actionsFor, matching, type Action, type Rule, type Trigger } from '@/lib/task-automation';
 import { courseAccess, taughtBy } from '@/lib/course-access';
@@ -97,9 +98,10 @@ export async function overview(user: SessionUser) {
   ]);
   const boards = [...new Map([...own, ...ofCourses, ...ofGroups].map((b) => [b.id, b])).values()].sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime()).slice(0, 100);
   const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
+  const by = await ownerNames(boards.map((b) => b.ownerId), user.id);
   return {
     courses, groups,
-    boards: boards.map((b) => ({ id: b.id, title: b.title, course: b.courseId ? code.get(b.courseId) ?? null : b.groupId ? code.get(b.groupId) ?? null : null, mine: b.ownerId === user.id, tasks: b._count.tasks, updatedAt: b.updatedAt })),
+    boards: boards.map((b) => ({ id: b.id, title: b.title, course: b.courseId ? code.get(b.courseId) ?? null : b.groupId ? code.get(b.groupId) ?? null : null, mine: b.ownerId === user.id, by: by.get(b.ownerId) ?? null, tasks: b._count.tasks, updatedAt: b.updatedAt })),
     mine: mine.map((t) => ({ id: t.id, title: t.title, dueAt: t.dueAt, boardId: t.boardId, board: t.board.title, list: t.list.title })),
   };
 }

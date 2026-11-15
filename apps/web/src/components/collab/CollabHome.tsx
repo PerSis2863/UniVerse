@@ -37,7 +37,7 @@ const KIND: Record<PinKind, { label: string; icon: LucideIcon; tone: string }> =
   save: { label: 'Create work', icon: Sparkles, tone: 'from-fuchsia-500 to-indigo-500' },
 };
 const FILTERS: [PinKind | 'all', string][] = [['all', 'Everything'], ['doc', 'Docs'], ['sheet', 'Sheets'], ['slides', 'Slides'], ['board', 'Boards'], ['tasks', 'Tasks'], ['code', 'Code'], ['file', 'Files'], ['save', 'Create']];
-// M189: whose work it is (documents and whiteboards say; the rest count as mine).
+// M189: whose work it is; M193: task boards and code rooms say too, and shared work names who it's from.
 const OWNERS: ['all' | 'mine' | 'shared', string][] = [['all', 'All'], ['mine', 'Mine'], ['shared', 'Shared with me']];
 const CREATE: [string, string, LucideIcon, string][] = [
   ['d', 'Document', FileText, '/docs?new=doc'], ['s', 'Spreadsheet', FileSpreadsheet, '/docs?new=sheet'], ['p', 'Presentation', Presentation, '/docs?new=slides'],
@@ -46,10 +46,10 @@ const CREATE: [string, string, LucideIcon, string][] = [
 const NOTES_KEY = 'uv-collab-notes';
 
 interface Boards { id: string; title: string; updatedAt: string; owner: { name: string }; mine: boolean }
-interface Docs { docs: { id: string; title: string; kind?: string; course: string | null; updatedAt: string; mine?: boolean }[] }
+interface Docs { docs: { id: string; title: string; kind?: string; course: string | null; updatedAt: string; mine?: boolean; by?: string | null }[] }
 interface Saves { saves: { id: string; tool: string; title: string; updatedAt: string; shared: boolean; editing?: boolean }[] }
-interface Tasks { boards: { id: string; title: string; course: string | null; tasks: number; updatedAt: string }[]; mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[] }
-interface Code { rooms: { id: string; title: string; language: string; updatedAt: string }[] }
+interface Tasks { boards: { id: string; title: string; course: string | null; tasks: number; updatedAt: string; mine?: boolean; by?: string | null }[]; mine: { id: string; title: string; dueAt: string | null; boardId: string; board: string; list: string }[] }
+interface Code { rooms: { id: string; title: string; language: string; updatedAt: string; mine?: boolean; createdBy?: { name: string } | null }[] }
 interface Files { files: { id: string; name: string; updatedAt: string; space: { label: string; href: string } }[] }
 
 const docKind = (k?: string): PinKind => (k === 'sheet' ? 'sheet' : k === 'slides' ? 'slides' : 'doc');
@@ -72,9 +72,9 @@ export function CollabHome() {
   // Every item from every tool, newest first.
   const items = useMemo<Item[]>(() => [
     ...(Array.isArray(boards.data) ? boards.data : []).map((b) => ({ kind: 'board' as const, id: b.id, title: b.title, href: `/boards/${b.id}`, at: b.updatedAt, sub: b.mine ? 'Yours' : `From ${b.owner.name}`, mine: b.mine })),
-    ...(docs.data?.docs ?? []).map((d) => { const k = docKind(d.kind); return { kind: k, id: d.id, title: d.title, href: `${docPath[k]}/${d.id}`, at: d.updatedAt, sub: d.course ?? (d.mine === false ? 'Shared with you' : 'Yours'), mine: d.mine }; }),
-    ...(tasks.data?.boards ?? []).map((t) => ({ kind: 'tasks' as const, id: t.id, title: t.title, href: `/tasks/${t.id}`, at: t.updatedAt, sub: `${t.tasks} card${t.tasks === 1 ? '' : 's'}${t.course ? ` · ${t.course}` : ''}` })),
-    ...(code.data?.rooms ?? []).map((r) => ({ kind: 'code' as const, id: r.id, title: r.title, href: `/code/${r.id}`, at: r.updatedAt, sub: r.language })),
+    ...(docs.data?.docs ?? []).map((d) => { const k = docKind(d.kind); return { kind: k, id: d.id, title: d.title, href: `${docPath[k]}/${d.id}`, at: d.updatedAt, sub: [d.mine === false ? (d.by ? `From ${d.by}` : 'Shared with you') : d.course ? null : 'Yours', d.course].filter(Boolean).join(' · '), mine: d.mine }; }),
+    ...(tasks.data?.boards ?? []).map((t) => ({ kind: 'tasks' as const, id: t.id, title: t.title, href: `/tasks/${t.id}`, at: t.updatedAt, sub: `${t.mine === false && t.by ? `From ${t.by} · ` : ''}${t.tasks} card${t.tasks === 1 ? '' : 's'}${t.course ? ` · ${t.course}` : ''}`, mine: t.mine })),
+    ...(code.data?.rooms ?? []).map((r) => ({ kind: 'code' as const, id: r.id, title: r.title, href: `/code/${r.id}`, at: r.updatedAt, sub: `${r.mine === false && r.createdBy ? `From ${r.createdBy.name} · ` : ''}${r.language}`, mine: r.mine })),
     ...(files.data?.files ?? []).map((f) => ({ kind: 'file' as const, id: f.id, title: f.name, href: f.space.href, at: f.updatedAt, sub: f.space.label })),
     ...(saves.data?.saves ?? []).map((v) => ({ kind: 'save' as const, id: v.id, title: v.title, href: `/studio?open=${v.id}`, at: v.updatedAt, sub: `${v.tool.replace(/[-_]/g, ' ')}${v.editing ? ' · edited together' : v.shared ? ' · shared by link' : ''}`, mine: true })),
   ].sort((a, b) => b.at.localeCompare(a.at)), [boards.data, docs.data, tasks.data, code.data, files.data, saves.data]);

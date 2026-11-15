@@ -6919,3 +6919,58 @@ filters, selecting several, folders, communities, private chats). What didn't ho
 - **Left:** who shared a document (the list says only that it isn't mine); shared-with-me for task
   boards and code rooms (their lists don't say).
 
+
+
+## M190: each school its own safety policy (the owner, 15 Nov 2026: "please do all of this")
+
+- **The row:** `school_policy.id` is the school's id (`organizations.id`), or `'main'` for the main
+  school (people in no school). No new column: migration 0213 copies the old shared row to every
+  school that exists, so nothing changes for anyone on the day it goes live. A school created later
+  without a row of its own has the safe defaults (`DEFAULT_POLICY`).
+- **Reading it** (`src/server/safety.ts`): `schoolPolicy(orgId)` (cached a minute per school),
+  `policyFor(userId)` (that person's school), `policySchools(user)` (the schools an admin's change covers:
+  theirs plus the one they own, as `schoolsOf`; the platform owner: their own). **Rule for new code:**
+  never call `schoolPolicy()` without the school; the person it is about decides which row.
+- **Who decides what:** quiet hours and "under 18" the student's school; recording a call is blocked
+  when any student under 18 in it is from a school that doesn't allow it; the chat safety check runs
+  when any student's or guardian's school in the chat has it on; parent messages the child's school; a
+  class check-in the student's school. Changing quiet hours moves only that school's students' rows.
+- **Tested:** unit tests (`school-policy.test.ts`); `pnpm check`; the migration on the local D1.
+
+
+## M191: rooms and room bookings kept to each school
+
+- `rooms.organizationId` (migration 0214, filled from the room's building's school, M187; the rest the
+  main school). Bookings have no school of their own: they follow their room.
+- Kept to the school: `/api/rooms` (list, one room, booking: another school's room is "not found";
+  the list no longer includes who booked), `/api/admin/rooms` (and new rooms go to the admin's school),
+  `/api/campus/rooms` ("free now"), the campus map's rooms, bookings, room placing and usage (the school's
+  own map; a university campus's map is still the campus's), the timetable planner and its save, the
+  timetable import's room names, `/api/admin/timetable`.
+- **Tested:** unit test (`rooms.service.test.ts`), `pnpm check`.
+
+
+## M192: Messages, a message however far back opens
+
+- **Server** (`…/messages` GET): `around=<message id>` returns that message and the 49 before it (404 when
+  it isn't in the chat or is hidden from me); `after=<time>` pages forward (`hasNewer`). Neither marks the
+  chat read. Both go through the route's membership check.
+- **The chat** (`ChatWindow.tsx`): `jump` adds up to three pages to the history; further back it opens a
+  stretch (`win`) not joined to the newest messages. "Load earlier" adds above it, "Load newer messages"
+  below; reaching the newest joins it back on. The arrow button (always shown in a stretch) and sending a
+  message go back to the newest. Messages in a stretch are never counted as "new" on the arrow.
+- **Tested:** `scripts/checks/messages-far-back-ui.mjs` on a 3,000-message chat (made and removed by the
+  check): the first message opens, the newest isn't on screen, Load newer, back to the newest; axe clean
+  at 1280 dark and light, no sideways scroll, no page errors. An outsider gets 404 for `around`.
+
+
+## M193: Collaborate, who shared it and whose task boards and code rooms are
+
+- `GET /api/docs` and `GET /api/tasks` give `by` (the owner's name, when it isn't me; `owner-names.ts`,
+  names only); `GET /api/code` gives `mine` (`createdById` is no longer sent). Home shows "From <name>" on
+  shared documents, task boards and code rooms; task boards and code rooms sort under Mine / Shared with me
+  (files and Create saves still count as mine).
+- **Tested:** as Alice, Tara's board, document and code room in CS101 show "From Tara Teacher" under
+  Shared with me, at 1280 dark and 390 light, axe clean, no sideways scroll (test items removed).
+- **Left:** nothing from the M187–M189 list. A Create save shared by link isn't "shared with me" (whoever
+  opens the link doesn't get it on their Home).

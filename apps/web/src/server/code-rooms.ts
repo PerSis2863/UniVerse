@@ -58,10 +58,11 @@ export async function listRooms(user: SessionUser) {
         where: { courseId: { in: courses.map((c) => c.id).slice(0, 90) } },
         orderBy: { updatedAt: 'desc' },
         take: 300,
-        select: { id: true, courseId: true, title: true, language: true, locked: true, updatedAt: true, createdBy: { select: { name: true } } },
+        select: { id: true, courseId: true, title: true, language: true, locked: true, updatedAt: true, createdById: true, createdBy: { select: { name: true } } },
       })
     : [];
-  return { courses, rooms };
+  // Whose room it is (M193: Collaborate's "Shared with me"); a room with no maker left counts as shared.
+  return { courses, rooms: rooms.map(({ createdById, ...r }) => ({ ...r, mine: createdById === user.id })) };
 }
 
 export async function createRoom(user: SessionUser, body: Record<string, unknown>) {
