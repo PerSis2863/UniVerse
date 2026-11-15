@@ -100,18 +100,19 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On the branch `claude/funny-galileo-y4mz9r`, not merged** (14 Nov): M183, an index on every relation
-  column (database update 0210); M184, LMS connections, clubs, the ticket scan and scheduled calls kept to
-  the admin's own school (0211); M185, "Since your last visit" in the Daily brief; M186, pulsing dots in
-  their own colour again. M187, campus buildings (0212), school sticker packs and broadcasts kept to the
-  school; M188, Messages: old messages open, go to a date, a chat's every photo, file and link, readable
-  bubbles; M189, Collaborate's home lists saved Create work, with Mine / Shared with me. M190 (15 Nov), each
-  school its own safety policy (0213); M191, rooms and bookings kept to each school (0214); M192, a message
-  however far back opens in Messages; M193, Collaborate says who shared a thing, task boards and code rooms
-  under Mine / Shared with me; M194, Create work opened from someone's link on Collaborate's Home (0215); M195, a × to take one off Home.
-  The branch also
-  holds `claude/youthful-fermi-sbdtcp` (M179–M180).
-- **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **The owner's list of 15 Nov** ("do all of them except 5th one"; the owner's exception to the launch
+  pause for the big items), in this order, one item number each from M196: **(2)** a teacher's first class
+  in 10 minutes (create a course, invite with one link, a first assignment, who joined); **(3)** "come back"
+  nudges in the app and by push (students' weekly progress, teachers told who hasn't opened work; no new
+  emails); **(4)** a full walk-through as a brand-new person for a week of use, phone and Safari, fixing what
+  confuses or breaks; **(6)** before a second school: an admin's "who can see what" page and a last check
+  for leaks between schools; **(7)** M181 (Arrange) and M182 (Messages connections; accounts with each
+  service are the owner's); **(8)** self-serve Stripe payments for Trace PRO, campaigns and schools, behind
+  a switch, off **[owner: Stripe keys]**; **(9)** store apps for Android and iPhone **[owner: store
+  accounts]**; **(10)** Google Classroom import and Google / Microsoft calendar sync, behind switches
+  **[owner: Google and Microsoft apps]**; **(11)** realistic 3D app backgrounds, the new ocean game, Skyline
+  Obby's surroundings, the zombie-survival game. (5, speed on cheap phones, was left out by the owner.)
+- **On `main`** (live): everything through **M195** (M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
