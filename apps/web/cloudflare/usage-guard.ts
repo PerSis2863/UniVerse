@@ -390,8 +390,8 @@ export const forgetBuildsRead = () => { buildsRead = null; };
 // uv_owner cookie that matches the switch's pass.
 
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; orgs: Record<string, string[]>; rollouts: Record<string, number>; at: number };
-let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], orgs: {}, rollouts: {}, at: 0 };
+type State = { paused: boolean; resumeAt: string | null; mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string | null; off: string[]; orgs: Record<string, string[]>; rollouts: Record<string, number>; apps: string[] | null; at: number };
+let state: State = { paused: false, resumeAt: null, mode: 'LIVE', message: null, until: null, banner: null, bypass: null, off: [], orgs: {}, rollouts: {}, apps: null, at: 0 };
 let loading = false;
 
 const toMs = (v: string | null) => (v ? Date.parse(/[zZ]|[+-]\d\d:\d\d$/.test(v) ? v : `${v.replace(' ', 'T')}Z`) : NaN);
@@ -404,14 +404,16 @@ function refresh(env: GuardEnv, ctx: ExecutionContext) {
   const guard = db.prepare('SELECT paused, resumeAt FROM usage_guard WHERE id = ?').bind('main').first<{ paused: unknown; resumeAt: string | null }>().catch(() => undefined);
   const control = db.prepare('SELECT mode, message, until, banner, bypass FROM server_control WHERE id = ?').bind('main').first<{ mode: Mode; message: string | null; until: string | null; banner: string | null; bypass: string }>().catch(() => undefined);
   const switches = db.prepare('SELECT switches FROM server_control WHERE id = ?').bind('main').first<{ switches: string | null }>().catch(() => undefined);
+  const apps = db.prepare('SELECT apps FROM server_control WHERE id = ?').bind('main').first<{ apps: string | null }>().catch(() => undefined);
   ctx.waitUntil(
-    Promise.all([guard, control, switches])
-      .then(([g, c, f]) => {
+    Promise.all([guard, control, switches, apps])
+      .then(([g, c, f, a]) => {
         state = {
           ...state,
           ...(g !== undefined && { paused: bool(g?.paused), resumeAt: g?.resumeAt ?? null }),
           ...(c !== undefined && { mode: c?.mode ?? 'LIVE', message: c?.message ?? null, until: c?.until ?? null, banner: c?.banner ?? null, bypass: c?.bypass ?? null }),
           ...(f !== undefined && { off: parseSwitches(f?.switches), orgs: parseOrgSwitches(f?.switches), rollouts: parseRollouts(f?.switches) }),
+          ...(a !== undefined && { apps: shownList(a?.apps) }),
           at: Date.now(),
         };
       })
@@ -528,17 +530,33 @@ export function pageNotice(): string | null {
   return text || null;
 }
 
+// M203: the apps the owner shows on the website (null: every app), given to every page before anything
+// else in its head, so the menus, tabs and landing are drawn with only those (src/lib/shown-apps.ts).
+function shownList(raw: string | null | undefined): string[] | null {
+  if (!raw) return null;
+  try {
+    const list = JSON.parse(raw) as unknown;
+    const ids = Array.isArray(list) ? list.filter((x): x is string => typeof x === 'string' && /^[a-z]{2,12}$/.test(x)) : [];
+    return ids.length ? ids : null;
+  } catch {
+    return null;
+  }
+}
+export const pageApps = (): string[] | null => state.apps;
+
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
 /**
  * Adds the notice to a page. It's created by a small script after the page has loaded, so it never
  * gets in the way of the app starting; people can close it until the text changes.
  */
-export function withNotice(res: Response, notice: string | null): Response {
-  if (!notice || res.status !== 200 || !/^text\/html/.test(res.headers.get('content-type') ?? '')) return res;
+export function withNotice(res: Response, notice: string | null, apps: string[] | null = null): Response {
+  if ((!notice && !apps) || res.status !== 200 || !/^text\/html/.test(res.headers.get('content-type') ?? '')) return res;
+  const shown = apps ? `<script>window.__uvApps=${JSON.stringify(apps).replace(/</g, '\\u003c')}</script>` : '';
+  if (!notice) return new HTMLRewriter().on('head', { element: (e) => void e.prepend(shown, { html: true }) }).transform(res);
   const text = JSON.stringify(notice).replace(/</g, '\\u003c');
   const script = `<script>(function(){var t=${text};try{if(sessionStorage.getItem('uv-notice')===t)return}catch(e){}function show(){if(document.getElementById('uv-notice'))return;var d=document.createElement('div');d.id='uv-notice';d.setAttribute('role','status');d.style.cssText='position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top) + 8px);z-index:2147483000;max-width:calc(100vw - 24px);display:flex;gap:10px;align-items:flex-start;padding:10px 14px;border-radius:14px;background:linear-gradient(135deg,#2a2927,#be185d);color:#fff;font:600 13px/1.4 -apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif;box-shadow:0 10px 30px rgba(0,0,0,.3)';var s=document.createElement('span');s.textContent=t;var b=document.createElement('button');b.textContent='\u2715';b.setAttribute('aria-label','Close');b.style.cssText='background:none;border:0;color:#fff;font-size:14px;cursor:pointer;padding:0 0 0 4px';b.onclick=function(){d.remove();try{sessionStorage.setItem('uv-notice',t)}catch(e){}};d.appendChild(s);d.appendChild(b);document.body.appendChild(d)}if(document.readyState==='complete')setTimeout(show,300);else addEventListener('load',function(){setTimeout(show,300)})})()</script>`;
-  return new HTMLRewriter().on('head', { element: (e) => void e.append(script, { html: true }) }).transform(res);
+  return new HTMLRewriter().on('head', { element: (e) => { if (shown) e.prepend(shown, { html: true }); e.append(script, { html: true }); } }).transform(res);
 }
 
 /** The answer while paused: tiny, no database, no rendering. Signed-in owners are let back in. */

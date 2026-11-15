@@ -7161,3 +7161,133 @@ can't reach, so the account was made in the local database. Fixes:
 - **Tested:** unit tests (`trace-billing.test.ts`: a resent event adds nothing, a wrong amount or currency
   adds nothing, PRO follows the subscription); with the switch off the brand sees no payment button and
   the API refuses.
+## M202 (committed as "M183"): UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
+
+- **The ask:** "one more app … about the travelling where user want to travel whole around the world or
+  some places and no idea where to eat, to sleep, to visit, few facts, ideas and much more and also can
+  book through our website … Wanderlog, Stippl, Tripadvisor, Culture Trip … combine features … add more
+  unique ways … ultra smooth". Built in steps: this is the first (the planner is M206, the extras M208).
+- **The app** (`travel`, sky blue #0ea5e9, `/travel`, Lab): every place an app needs (§3): `APPS`, its menu
+  (Explore, Saved places) and phone tabs, the hub's planet spot and number (places saved), the landing's
+  hero words, questions, card (`TravelScene`: a route Lisbon → Sintra → Porto with a plane flying it and
+  the days' plan), the sign-in card, the call to action, the world section, the owner's launch board
+  (from `travel_saved`), its share picture (`public/og/travel.jpg`), its scene behind the pages
+  (`backdrop.ts`: dashed routes arcing between places, paper planes flying them, clouds), Messages of its
+  own (M179). Two loose app maps that TypeScript didn't catch (the app tile `AppIcon` and the hub menu's
+  icons) are now `Record<AppId, …>`, so a seventh app can't be forgotten there.
+- **Explore** (`TravelExplore.tsx`): a search that finds any place with a guide as you type (Wikivoyage's
+  titles, arrows and Enter), 24 places to start from by theme with their real banner photos
+  (`src/lib/travel-ideas.ts`, the blurbs ours), your saved places.
+- **A guide** (`/travel/guide?d=<title>`, `TravelGuide.tsx`): the banner photo and opening; the country's
+  facts (money, languages, which side cars drive on, calling code, **emergency numbers**); the week's
+  weather in the place's own time; booking links; tabs for Overview (good to know, the districts or
+  cities as their own guides, go next), See, Do, Eat, Drink, Sleep, Buy, Getting around, Safe and polite,
+  each with its places (price, hours, address, directions, website, call, Map, Save), a filter for long
+  lists and a dot map of where they are. Credits: Wikivoyage (CC BY-SA 3.0) with a link, Commons, MET
+  Norway (CC BY 4.0), OpenStreetMap.
+- **Where it comes from** (`src/server/travel.ts`, routes `travel/search|guide|weather|saved`): a guide is
+  the Wikivoyage article's raw text (`?action=raw`) read by `src/lib/travel-guide.ts` (pure, tested:
+  templates split at their top-level bars, wiki text to plain words, listings with their sub-heading,
+  districts from `Regionlist`, banner, position, parent); which country a place is in from Nominatim;
+  the country's facts from `src/lib/travel-countries.json` (205 countries from Wikidata, CC0: REST
+  Countries now wants an account key); the weather from MET Norway. Everything kept in `travel_cache`
+  (database update 0219: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
+  fails). **Trap:** Wikimedia answers 429 to requests without a named User-Agent: keep `UA`.
+- **Saved places** (`travel_saved`, one per person, guide and name, at most 300): Save on any listing, the
+  Saved page by guide (map, website, remove).
+- **Booking** (`src/lib/travel-book.ts`, tested): Stays (Booking.com), Flights (Google Flights), Tours and
+  tickets (GetYourGuide), Trains and buses (Rome2Rio), with the place (and dates, in the planner) filled
+  in. **[owner]:** to earn commission, join Booking.com's and GetYourGuide's affiliate programmes and set
+  `NEXT_PUBLIC_TRAVEL_BOOKING_AID` and `NEXT_PUBLIC_TRAVEL_GYG_PARTNER` (Cloudflare build variables). Paying
+  inside UniVerse needs partner contracts (their booking APIs): not built.
+- **The site's photo rule** (`security-headers.ts` img-src) now allows `commons.wikimedia.org`,
+  `upload.wikimedia.org` and `thumb.wikimedia.org`. Sample mode has a Lisbon guide, search, weather and
+  saved places.
+- **Checked:** `travel-ui.mjs` (search finds Kyoto, 24 places, Kyoto/Central's facts, weather, booking,
+  14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
+  errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.
+
+## M203 (committed as "M186"): Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
+
+- **Where:** owner console → Server → **Apps on the website** (`AppsCard` in `console/server.tsx`): a switch
+  per app, "Show only this app" on each, "Show every app". Saved with the other server settings
+  (`POST /owner/server { apps }`, at least one; every app is stored as null so a new app shows), logged
+  in Changes & undo (the raw stored value, so undo puts it back exactly). Database update **0220**
+  (`server_control.apps`, a JSON list).
+- **How every page follows it, without a flash:** the Worker reads the list with the server switch (once a
+  minute, `cloudflare/usage-guard.ts`) and writes `<script>window.__uvApps=[…]</script>` first in every
+  page's head (`withNotice(res, notice, pageApps())`); the root head script (`appHeadScript`, tested)
+  then picks a shown app for `html[data-app]` and adds a style that hides every `[data-uv-app="<hidden>"]`
+  and, with one app, every `[data-uv-many]` (things that only make sense with several apps). In the app,
+  `src/lib/shown-apps.ts` (`useShownApps`, `shownIds`, `onlyApp`, `shownOr`, `setShownApps`) keeps the
+  list (device copy `uv-apps`, checked once a visit at the public `GET /api/core/site/apps`); the pure
+  part the server uses is `src/lib/shown-apps-list.ts` (**trap:** the server can't import a file with
+  React hooks: keep server imports on the `-list` file).
+- **What follows it:** app tabs (website, sign-in, sign-up: none with one app), the landing's planet and
+  app grid (only the shown apps, hidden with one), the side menu (no "All apps" with one app, the
+  switcher lists only shown apps and doesn't open with one), the hub (only shown apps; with one it sends
+  people into that app), the Impact Wallet, Messages (All apps only across shown apps; no switch with
+  one), the chosen and current app (`chosen-app.ts`, `current-app.ts`), where people land after signing
+  in (`homeFor`), and `ShownAppsGuard` in the dashboard layout: a hidden app's page sends people to the
+  first shown app's start. **Left on purpose:** public links printed or shared out in the world keep
+  working (a product's `/t/<code>`, `/b/<slug>`, an aid box's `/aid/<code>`), and the owner console's
+  own numbers still cover every app. It's what the website shows, not who may use what (APIs still answer).
+- **Rule for new code:** anything that lists apps uses `useShownApps()`; put `data-uv-app={id}` on each
+  app's item and `data-uv-many` on parts that only make sense with several apps, so they're hidden before
+  the page is drawn.
+- **Checked:** `shown-apps-ui.mjs` (one app and two apps, phone and computer, light and dark; axe clean),
+  `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
+  `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.
+
+## M204 (committed as "M187"): Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
+
+- **Know before you go** (a new guide tab, `src/components/travel/TravelKnow.tsx`): plugs and voltage
+  against the visitor's own country (chosen once, `uv-travel-home`, guessed from the browser's region:
+  "Your plugs fit" / "Bring an adapter", a voltage warning, which side cars drive on), **When to go** (each
+  month's high and rain from the guide's climate chart, the pleasant months named: 17–29 °C, under 100 mm),
+  **Why it's famous** (short history sentences), cards for tipping, tap water, scams and pickpockets,
+  manners, what to wear, visas and entry, from the airport, tickets and travel cards, after dark, and
+  **Neighbourhoods at a glance** (each district with a few feel words and what the guide says about it
+  after dark).
+- **Where the words come from** (`src/lib/travel-tips.ts`, pure, tested): short sentences picked by topic
+  from the Wikivoyage article's own prose (listings left out), the climate chart (`{{climate chart}}` or
+  `{{climate}}`, °F and inches converted). A city's article rarely covers tipping, water, scams, manners,
+  dress or visas, so the route also reads **its country's article** and fills only those topics (marked
+  with the country's name and linked). Plugs (A–N) and voltage come from Wikidata (P2853, P2884), added to
+  `travel-countries.json` as fields 6 and 7. The guide cache key is now `guide2:` (the record carries
+  tips and climate).
+- **Eat**: "What to try" (the guide's sentences on dishes and specialities), chips for price band (the
+  guide's Budget / Mid-range / Splurge headings; Drink and Sleep too) and for diets (vegetarian, vegan,
+  halal, kosher, gluten-free, street food; only those some place mentions, with counts), and **Book a
+  table** on each restaurant (OpenTable's search for it; an affiliate id later is **[owner]**).
+- **Left on purpose:** nothing is made up: a topic the guides don't cover simply doesn't show. Visa rules
+  per passport (a table of every passport against every country) belong with M205's matching.
+- **Checked:** `travel-know-ui.mjs` (Kyoto: A and B at 100 V, an adapter and voltage line for a British
+  visitor, months named, 5 stories, 8 topics with Japan's marked, 5 neighbourhoods; Kyoto/Central's Eat:
+  what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
+  sideways scroll, no errors), `travel-tips.test.ts`, `pnpm check`.
+
+## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
+
+The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M204 did items 2 and 3.
+Left, in this order (numbers reserved):
+
+1. **M205: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
+   should I go?"). A form (days, budget and currency, month, interests, passport) ranks places with why each
+   fits: that month's weather (the guide's climate chart via `readTips`, or a table generated ahead for
+   ~150 places), an **estimated** daily cost (say so: a base budget × the country's World Bank price level,
+   indicator PA.NUS.PPPC.RF, CC BY 4.0), the interests (tags written for each place), and visa ease for the
+   passport (Wikipedia's "Visa requirements for X citizens" tables, CC BY-SA, read and kept like guides).
+   Start from `src/lib/travel-ideas.ts` (24 places) and grow it; a tab in Explore, not a new page.
+2. **M206: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
+   Saved or any guide, grouped by how close they are (the listings' lat/lon), opening hours and prices shown,
+   time to spend by kind (a museum 2 h, a viewpoint 30 min), drag and drop between days; a multi-city route
+   in a sensible order with "how to get between" (Rome2Rio, trains, buses, ferries); the **whole trip's
+   budget** (stay + food + transport + tickets from listing prices and the M205 daily estimate); friends
+   planning together (members, live updates with `publish()`); add to calendar (an .ics file).
+3. **M207: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
+   ferries links (Omio, 12Go in Asia, Direct Ferries); the airport and travel-card sentences are already in
+   M204's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
+   an **opt-in** board of travellers in the same city on the same dates (18+ only, first name and dates,
+   city level, contact through Messages in the Travel app, report and block).
+Each: sample answers for new GET routes, a check in `scripts/checks/`, motion per §8.

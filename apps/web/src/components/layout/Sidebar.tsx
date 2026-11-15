@@ -2,8 +2,9 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
-import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
+import { Bookmark, Compass, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { LAST_APP } from '@/lib/current-app';
 import { LabTag } from '@/components/apps/LabTag';
@@ -259,6 +260,9 @@ const sharedNav = (role: string): NavItem[] => [
   { href: settingsFor(role), label: 'nav.settings', icon: Settings },
 ];
 
+/** Each app's icon in the hub's menu. */
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
+
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   trace: [
@@ -270,6 +274,10 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
     { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
     { href: '/trace/vault', label: 'My vault', icon: KeyRound },
+  ],
+  travel: [
+    { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
+    { href: '/travel/saved', label: 'Saved places', icon: Bookmark },
   ],
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },
@@ -287,10 +295,11 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
 };
 
 /** The menu for the app someone is in. */
-function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }): NavItem[] {
+function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }, shown: ImpactApp[]): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
-  const hub: NavItem = { href: '/hub', label: 'All apps', icon: LayoutGrid };
-  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2 }[a.id] })), ...sharedNav(user.role)];
+  // M203: only the apps the owner shows; with one, no "All apps".
+  const hub: NavItem[] = shown.length > 1 ? [{ href: '/hub', label: 'All apps', icon: LayoutGrid }] : [];
+  if (!app) return [...owner, ...hub, ...shown.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: APP_ICON[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;
@@ -299,18 +308,21 @@ function navFor(app: AppId | null, user: { role: string; owner?: boolean; permis
 }
 
 /** The app last used: shared pages (Messages, Collaborate…) keep its menu. */
-function useCurrentApp(pathname: string): AppId | null {
+function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
   const here = appFor(pathname)?.id ?? null;
   const last = useSyncExternalStore((cb) => { window.addEventListener('storage', cb); return () => window.removeEventListener('storage', cb); }, () => { try { return localStorage.getItem(LAST_APP) as AppId | null; } catch { return null; } }, () => null);
   useEffect(() => { if (here) try { localStorage.setItem(LAST_APP, here); } catch { /* private mode */ } }, [here]);
-  if (pathname === '/hub') return null;
-  return here ?? (last && APPS.some((a) => a.id === last) ? last : null);
+  if (pathname === '/hub' && shown.length > 1) return null;
+  // M203: a shared page keeps the last app if it's shown; with one app shown, that app.
+  return here ?? (last && shown.some((a) => a.id === last) ? last : shown.length === 1 ? shown[0].id : null);
 }
 
 /** The app switcher at the top of the menu: the app you're in, and every other one a tap away. */
-function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; onPick?: () => void }) {
+function AppSwitcher({ app, role, onPick, shown }: { app: AppId | null; role: string; onPick?: () => void; shown: ImpactApp[] }) {
   const [open, setOpen] = useState(false);
   const current = APPS.find((a) => a.id === app);
+  // M203: one app shown: it's the website's name, nothing to switch to.
+  const single = shown.length === 1;
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
@@ -319,21 +331,21 @@ function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; o
   }, [open]);
   return (
     <div className="relative px-3 pb-2">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
+      <button type="button" onClick={() => !single && setOpen((v) => !v)} aria-expanded={single ? undefined : open} aria-haspopup={single ? undefined : 'menu'}
         className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2 bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start">
         <AppIcon id={app ?? 'hub'} size={32} />
         <span className="side-label min-w-0 flex-1">
           <span className="block text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
           <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
         </span>
-        <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />
+        {!single && <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />}
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
             className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl">
-            {APPS.map((a) => (
-              <Link key={a.id} role="menuitem" href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
+            {shown.map((a) => (
+              <Link key={a.id} role="menuitem" data-uv-app={a.id} href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
                 <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-[13px] font-semibold text-white"><span className="truncate">{a.name}</span>{a.lab && <LabTag className="border-white/20 text-zinc-400" />}</span><span className="block text-[11px] text-zinc-400 truncate">{a.tagline}</span></span>
                 {a.id === app && <Check className="w-4 h-4 text-pink-300" aria-label="Open now" />}
@@ -482,7 +494,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   // On a phone the closed menu is off screen: sliding its highlight there on every page change made
   // framer-motion measure the page on each frame of the tab switch.
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
-  const app = useCurrentApp(pathname);
+  const shown = useShownApps();
+  const app = useCurrentApp(pathname, shown);
   // M33: folded to a strip of icons on a computer (never on a phone, where the menu is a sheet).
   const folded = useSidebarFolded() && wide;
   const [tip, setTip] = useState<{ label: string; y: number } | null>(null);
@@ -511,7 +524,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   if (!user) return null;
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
-  const nav = navFor(app, user);
+  const nav = navFor(app, user, shown);
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = async () => {
@@ -559,7 +572,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
           <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Member'}</div>
         </div>
       </div>
-      <AppSwitcher app={app} role={user.role} onPick={onClose} />
+      <AppSwitcher app={app} role={user.role} onPick={onClose} shown={shown} />
 
       {/* Nav */}
       <nav id="side-nav" data-arrange-scope={`${app ?? 'all'}-${user.role}`.toLowerCase()} onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">

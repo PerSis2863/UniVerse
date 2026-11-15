@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Bell, BookOpen, Brain, Gamepad2, CalendarDays, Gift, Globe2, GraduationCap, HandHeart, Leaf, MapPin, Megaphone, MessagesSquare, Recycle, ScanLine, TreePine, Trophy, Truck, Users, Wallet } from 'lucide-react';
+import { ArrowRight, BedDouble, Bell, BookOpen, Brain, Camera, Compass, Gamepad2, Plane, CalendarDays, Gift, Globe2, GraduationCap, HandHeart, Leaf, MapPin, Megaphone, MessagesSquare, Recycle, ScanLine, TreePine, Trophy, Truck, Users, Wallet } from 'lucide-react';
 import type { AppId } from '@/lib/apps';
 import { Reveal } from './bits';
 
@@ -14,6 +14,7 @@ const COPY: Record<AppId, { parts: typeof ScanLine[]; left: string; right: strin
   trace: { parts: [ScanLine, Globe2, Truck, Megaphone, Wallet, Gift], left: 'One code on every product.', right: 'Give your products passports.', sub: 'Free for 10,000. No card.', placeholder: 'you@yourbrand.com' },
   relief: { parts: [HandHeart, MapPin, Truck, Users, MessagesSquare, Bell], left: 'Every need and every offer on one live map.', right: 'Be the help that arrives.', sub: 'Volunteer, NGO or neighbour. Free.', placeholder: 'you@example.org' },
   play: { parts: [Gamepad2, Brain, ScanLine, Truck, Recycle, Trophy], left: 'Thirteen games, any device.', right: 'Open a room, share the code.', sub: 'Free. Solo or up to 8 friends.', placeholder: 'you@example.com' },
+  travel: { parts: [Plane, Compass, MapPin, BedDouble, Camera, Users], left: 'Every place’s guide, every day planned.', right: 'Start your next trip.', sub: 'Free. Plan it with friends.', placeholder: 'you@example.com' },
   green: { parts: [Leaf, TreePine, Recycle, Trophy, Users, Globe2], left: 'Small actions, counted honestly, add up.', right: 'Start your team’s challenge.', sub: 'Free for every team.', placeholder: 'you@example.com' },
 };
 

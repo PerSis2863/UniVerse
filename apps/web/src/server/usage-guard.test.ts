@@ -131,3 +131,42 @@ describe('checkUsage on each plan', () => {
     expect(await (await buildBudget(env({}, d1({ meters }).db))).json()).toMatchObject({ stop: false });
   });
 });
+
+// M203: the apps the owner shows are read with the server switch and written first into every page's
+// head (window.__uvApps), with or without a notice; every app shown leaves pages untouched.
+describe('the apps the website shows', () => {
+  afterEach(() => vi.unstubAllGlobals());
+  type Gate = {
+    serverGate(req: Request, url: URL, env: Record<string, unknown>, ctx: { waitUntil(p: Promise<unknown>): void }): Response | null;
+    pageApps(): string[] | null;
+    withNotice(res: Response, notice: string | null, apps?: string[] | null): Response;
+  };
+  it('reads the list once a minute and puts it at the top of each page', async () => {
+    const { serverGate, pageApps, withNotice } = (await import('../../cloudflare/usage-guard' as string)) as Gate;
+    const waits: Promise<unknown>[] = [];
+    const db = { prepare: (sql: string) => ({ bind: () => ({ first: async () => (sql.startsWith('SELECT apps') ? { apps: '["relief","<x>"]' } : null) }) }) };
+    const url = new URL('https://x.test/');
+    vi.spyOn(Date, 'now').mockReturnValue(Date.UTC(2026, 10, 15) + 10 * 60_000);
+    serverGate(new Request(url), url, { DB: db }, { waitUntil: (p) => void waits.push(p) });
+    await Promise.all(waits);
+    vi.restoreAllMocks();
+    expect(pageApps()).toEqual(['relief']); // only plain app ids
+    const calls: string[] = [];
+    class Rewriter {
+      h: { element(e: unknown): void } | null = null;
+      on(_: string, h: { element(e: unknown): void }) { this.h = h; return this; }
+      transform(r: Response) { this.h!.element({ prepend: (t: string) => calls.push(`prepend ${t}`), append: (t: string) => calls.push(`append ${t.slice(0, 20)}`) }); return r; }
+    }
+    vi.stubGlobal('HTMLRewriter', Rewriter);
+    const page = () => new Response('<html><head></head></html>', { headers: { 'content-type': 'text/html; charset=utf-8' } });
+    withNotice(page(), null, ['relief']);
+    expect(calls).toEqual(['prepend <script>window.__uvApps=["relief"]</script>']);
+    calls.length = 0;
+    withNotice(page(), 'Hello', ['relief']);
+    expect(calls).toEqual(['prepend <script>window.__uvApps=["relief"]</script>', 'append <script>(function(){']);
+    calls.length = 0;
+    withNotice(page(), null, null);
+    withNotice(new Response('{}', { headers: { 'content-type': 'application/json' } }), null, ['relief']);
+    expect(calls).toEqual([]);
+  });
+});

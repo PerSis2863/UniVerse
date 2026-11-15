@@ -36,6 +36,7 @@ const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').th
 const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
 const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
 const PlayScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
+const TravelScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
 const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
 const MapsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.MapsSection));
 const HowSection = dynamic(() => import('@/components/landing/Business').then((m) => m.HowSection));
@@ -75,6 +76,10 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   relief: [
     { q: 'Who can use Relief?', a: 'Anyone. Requests show an area, never an address.' },
   ],
+  travel: [
+    { q: 'Where do the guides come from?', a: 'From Wikivoyage, written by travellers: every place with its address, hours and prices.' },
+    { q: 'Can I book through UniVerse?', a: 'Stays, flights and tours open on our partners’ sites with your place and dates filled in.' },
+  ],
   play: [
     { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
     { q: 'Is it free?', a: 'Yes, every game is free.' },
@@ -97,6 +102,7 @@ const HERO: Record<AppId, Hero> = {
   trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'Scan the code. See if it’s real.', note: 'free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={SMALL}>Scan a sample</Link> },
   relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
   play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quick games that teach. Solo or with friends.', note: 'free · up to 8 in a room', card: <PlayScene /> },
+  travel: { words: ['Plan', 'trips'], accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', note: 'free · plan with friends', card: <TravelScene /> },
   green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
 

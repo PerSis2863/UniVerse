@@ -8,7 +8,8 @@ import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/B
 import { HeatStrip, Spark } from '@/components/instruments/parts';
 import { AppIcon } from '@/components/apps/AppIcon';
 import Link from '@/components/ui/Link';
-import { appById, appHome } from '@/lib/apps';
+import { APPS, appById, appHome } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { fetcher } from '@/lib/fetcher';
 import { WALLET_WEEKS, type WalletEvent } from '@/lib/impact-wallet';
 import { useAuthStore } from '@/store/auth';
@@ -34,10 +35,13 @@ export function ImpactWallet({ role }: { role: string }) {
   const { data } = useSWR<WalletData>('/hub/wallet', fetcher);
   const holder = useAuthStore((s) => s.user?.name) ?? '';
   const [more, setMore] = useState(false);
+  const shown = useShownApps();
   if (!data) return <section className="panel h-64 skeleton" aria-label="Impact Wallet, loading" />;
   const labels = weekLabels();
   const active = data.campus.weeks.map((_, i) => [data.campus, data.trace, data.relief, data.green].some((a) => a.weeks[i] > 0)).filter(Boolean).length;
-  const cells: InstrumentCell[] = [
+  // M203: only the apps the owner shows.
+  const on = (id: string) => !APPS.some((a) => a.id === id) || shown.some((a) => a.id === id);
+  const cells: InstrumentCell[] = ([
     { id: 'campus', label: 'Impact points · UniVersity', value: data.campus.points, unit: 'points', note: `${data.campus.courses} course${data.campus.courses === 1 ? '' : 's'}`,
       body: <Spark values={data.campus.weeks} />, detail: { title: 'Impact points, last 12 weeks', description: 'Points earned each week from volunteering and projects.', series: data.campus.weeks, labels } },
     { id: 'trace', label: 'Trace points', value: data.trace.points, unit: 'points',
@@ -49,8 +53,8 @@ export function ImpactWallet({ role }: { role: string }) {
       body: <Spark values={data.green.weeks} />, detail: { title: 'CO₂ saved, last 12 weeks', description: 'Kilograms of CO₂ saved each week by the actions you logged.', series: data.green.weeks, labels } },
     { id: 'weeks', label: 'Active weeks, every app', value: active, unit: `of ${WALLET_WEEKS}`,
       body: <HeatStrip rows={[{ label: 'Uni', values: data.campus.weeks }, { label: 'Trace', values: data.trace.weeks }, { label: 'Relief', values: data.relief.weeks }, { label: 'Green', values: data.green.weeks }]} foot={[`${WALLET_WEEKS} weeks ago`, 'now']} /> },
-  ];
-  const cards: WalletCard[] = [
+  ] as InstrumentCell[]).filter((c) => on(c.id));
+  const cards: WalletCard[] = ([
     { id: 'impact', name: 'Impact', finish: 'abyss', line: [data.campus.points, data.trace.points, data.relief.people, data.green.kg].map(four).join(' '), under: ['Uni', 'Trace', 'Relief', 'Green'],
       value: String(active), unit: `of ${WALLET_WEEKS} weeks`, note: 'Every app on one card: points, people helped and CO₂ saved.', bar: { pct: active / WALLET_WEEKS, label: 'Weeks you did something, in any app' } },
     { id: 'trace', name: 'Trace points', finish: 'pink', line: `${data.trace.points.toLocaleString()} PTS`, value: data.trace.points.toLocaleString(), unit: 'points',
@@ -59,8 +63,9 @@ export function ImpactWallet({ role }: { role: string }) {
       note: `${data.green.streak}-day streak`, bar: data.green.badgesOf ? { pct: data.green.badges / data.green.badgesOf, label: `${data.green.badges} of ${data.green.badgesOf} badges` } : undefined },
     { id: 'relief', name: 'People helped', finish: 'blue', line: `${data.relief.people.toLocaleString()} HELPED`, value: data.relief.people.toLocaleString(), unit: 'people',
       note: `${data.relief.deliveries} deliver${data.relief.deliveries === 1 ? 'y' : 'ies'} · ${data.relief.received} of my needs met` },
-  ];
-  const events = more ? data.events : data.events.slice(0, 8);
+  ] as WalletCard[]).filter((c) => on(c.id));
+  const all = data.events.filter((e) => on(e.app));
+  const events = more ? all : all.slice(0, 8);
   return (
     <section aria-labelledby="wallet-h" className="space-y-3">
       <h2 id="wallet-h" className="sr-only">Impact Wallet</h2>
@@ -68,7 +73,7 @@ export function ImpactWallet({ role }: { role: string }) {
       <InstrumentBoard icon={Wallet} title="Impact Wallet" subtitle="Everything you hold, in every app. Each keeps its own unit." cells={cells} live={false} storageKey="impact-wallet" />
       <div className="panel p-5">
         <h3 className="font-semibold text-zinc-900 dark:text-white">History across apps</h3>
-        {data.events.length === 0 ? (
+        {all.length === 0 ? (
           <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Nothing yet. Scan a product, log a climate action or help someone nearby, and it shows here.</p>
         ) : (
           <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
@@ -86,7 +91,7 @@ export function ImpactWallet({ role }: { role: string }) {
             ))}
           </ul>
         )}
-        {data.events.length > 8 && <button type="button" onClick={() => setMore((v) => !v)} className="btn-secondary btn-sm mt-3">{more ? 'Show less' : `Show all ${data.events.length}`}</button>}
+        {all.length > 8 && <button type="button" onClick={() => setMore((v) => !v)} className="btn-secondary btn-sm mt-3">{more ? 'Show less' : `Show all ${all.length}`}</button>}
       </div>
     </section>
   );

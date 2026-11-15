@@ -4,11 +4,15 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { format, formatDistanceToNow } from 'date-fns';
-import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList, Code2, CreditCard, Eye, Flame, Gauge, Hammer, History, Loader2, Mail, Megaphone, Mic, PenTool, Phone, Power, Radio, RefreshCw, Server, Settings2, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wifi, Wrench, XCircle } from 'lucide-react';
+import { Activity, AlertCircle, Ban, BarChart3, Bug, CheckCircle2, ClipboardList, Code2, CreditCard, Eye, Flame, Gauge, Hammer, History, LayoutGrid, Loader2, Mail, Megaphone, Mic, PenTool, Phone, Power, Radio, RefreshCw, Server, Settings2, ShieldCheck, Sparkles, ToggleRight, Trash2, Users, Wifi, Wrench, XCircle } from 'lucide-react';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { FEATURE_SWITCHES, parseOrgSwitches, parseRollouts, parseSwitches } from '@/lib/feature-switches';
+import { APPS, appById, type AppId } from '@/lib/apps';
+import { setShownApps } from '@/lib/shown-apps';
+import { parseShownApps } from '@/lib/shown-apps-list';
+import { AppIcon } from '@/components/apps/AppIcon';
 import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } from './shared';
 import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
@@ -32,7 +36,7 @@ export interface PlanUsage {
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
 interface AiLimits { student: number; staff: number; site: number }
 interface AiToday { limits: AiLimits; used: number; top: { id: string; name: string; role: string | null; calls: number }[] }
-interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; switches: string | null; updatedAt: string }
+interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; switches: string | null; apps?: string | null; updatedAt: string }
 interface ServerData {
   control: Control;
   usage: PlanUsage | null;
@@ -134,6 +138,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       <TabPanel k={section}>
       {section === 'status' && (
         <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+          <AppsCard key={`a-${data.control.updatedAt}`} apps={data.control.apps ?? null} onSaved={() => void mutate()} />
           {/* Two columns of about equal height: the site and your emails | what everyone sees. */}
           <div className="space-y-6">
             <SwitchCard key={data.control.updatedAt} control={data.control} onSaved={() => void mutate()} />
@@ -694,6 +699,75 @@ function NoticeCard({ banner, onSaved }: { banner: string | null; onSaved: () =>
         </div>
       </div>
     </div>
+  );
+}
+
+/**
+ * M203: which apps the website shows. One app: the whole website is that app (no tabs, no switcher, no
+ * hub, nothing about the others); several: only those, everywhere. Pages of a hidden app send people on.
+ */
+function AppsCard({ apps, onSaved }: { apps: string | null; onSaved: () => void }) {
+  const [shown, setShown] = useState<AppId[]>(() => parseShownApps(apps));
+  const [busy, setBusy] = useState<string | null>(null);
+  const save = async (next: AppId[], said: string, key: string) => {
+    if (!next.length) return void toast.error('Keep at least one app on the website.');
+    setBusy(key);
+    try {
+      const { data: res } = await api.post('/owner/server', { apps: next });
+      setShown(next);
+      setShownApps(next);
+      toastWithUndo(said, res.changeId);
+      onSaved();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  };
+  const single = shown.length === 1 ? appById(shown[0]) : null;
+  return (
+    <section aria-labelledby="apps-on-site" className={cn(card, 'p-6 xl:col-span-2')}>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 id="apps-on-site" className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><LayoutGrid className="w-4 h-4 text-indigo-500" aria-hidden /> Apps on the website</h2>
+          <p className="text-sm text-zinc-500 mt-1 max-w-3xl">
+            {single ? <>The website is <strong className="text-zinc-800 dark:text-zinc-100">{single.name}</strong> only: no app tabs, no switcher and no other app anywhere. </> : `${shown.length} of ${APPS.length} apps are on the website. `}
+            Pages of a hidden app send people to a shown one. Open pages change within a minute; nothing is deleted.
+          </p>
+        </div>
+        {shown.length < APPS.length && (
+          <button type="button" onClick={() => void save(APPS.map((a) => a.id), 'The website shows every app', 'all')} disabled={busy !== null} className="btn-secondary btn-sm inline-flex items-center gap-1.5">
+            {busy === 'all' && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />}Show every app
+          </button>
+        )}
+      </div>
+      <ul className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-2">
+        {APPS.map((a) => {
+          const on = shown.includes(a.id), only = shown.length === 1 && on;
+          return (
+            <li key={a.id} className={cn('rounded-xl border p-3 flex flex-col gap-3 transition-colors', on ? 'border-zinc-200 dark:border-white/10' : 'border-dashed border-zinc-300 opacity-70 dark:border-white/15')}>
+              <div className="flex items-center gap-3">
+                <AppIcon id={a.id} size={32} />
+                <span className="min-w-0 flex-1">
+                  <span className="block font-semibold text-sm text-zinc-900 dark:text-white truncate">{a.name}</span>
+                  <span className="block text-xs text-zinc-500 truncate">{on ? (only ? 'The only app' : 'Shown') : 'Hidden'}</span>
+                </span>
+                <button type="button" role="switch" aria-checked={on} aria-label={`Show ${a.name}`} disabled={busy !== null || only}
+                  onClick={() => void save(on ? shown.filter((x) => x !== a.id) : APPS.map((x) => x.id).filter((x) => x === a.id || shown.includes(x)), `${a.name}: ${on ? 'hidden' : 'shown'}`, a.id)}
+                  className={cn('w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors disabled:opacity-60', on ? 'bg-emerald-500' : 'bg-zinc-300 dark:bg-zinc-600')}>
+                  <span className={cn('block w-4 h-4 rounded-full bg-white shadow transition-transform', on && 'translate-x-4 rtl:-translate-x-4')} />
+                </button>
+              </div>
+              {!only && (
+                <button type="button" onClick={() => void save([a.id], `The website is ${a.name} only`, `only-${a.id}`)} disabled={busy !== null} className="btn-ghost btn-sm inline-flex items-center justify-center gap-1.5">
+                  {busy === `only-${a.id}` && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />}Show only this app
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

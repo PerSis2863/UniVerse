@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { shownIds } from '@/lib/shown-apps';
 import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
@@ -1013,6 +1014,7 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // The impact apps (src/lib/sample/impact.ts)
+  [/^\/site\/apps$/, () => ok({ apps: shownIds() })],
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
   [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
@@ -1030,6 +1032,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // M166: arrangements stay on the device while exploring.
   [/^\/arrange$/, () => ok({ sync: false, doc: null })],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
+  [/^\/travel\/guide$/, ({ q }) => ok(impact.sampleTravelGuide(q.get('d')))],
+  [/^\/travel\/search$/, ({ q }) => ok(impact.sampleTravelSearch(q.get('q')))],
+  [/^\/travel\/weather$/, () => ok(impact.sampleTravelWeather())],
+  [/^\/travel\/saved$/, ({ db: d }) => ok(impact.sampleTravelSaved(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],

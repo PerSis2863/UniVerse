@@ -70,6 +70,9 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers, and organisations (`/relief/orgs`: NGOs with members, supplies and volunteer shifts).
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
+- **Travel** (`/travel`, M183): find any place; its guide (what to see, do, eat, drink, where to sleep,
+  getting around, staying safe and polite) from Wikivoyage, the country's facts and emergency numbers, the
+  week's weather; saved places; stays, flights, tours and trains booked with partners.
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
   Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
@@ -217,19 +220,25 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   Firebase for visitors who aren't signed in, Green's page doesn't jump. M173 (13 Nov), Trace across the supply chain: brand, warehouse,
   driver, shop and buyer each see their own view of a scanned unit (no price for drivers and
   warehouses) and record their stops with place and time; invite links for the team (migration 0207).
-- **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M179, each app's own Messages
-  (chats belong to the app they're started in; This app / All apps); M180, pages fill the screen (92 capped
-  page frames full width; reading pages and short forms stay narrow).
+- **Merged 16 Nov (PR #126, from `claude/youthful-fermi-sbdtcp`; its commits say M183, M186 and M187, numbers
+  other sessions had already used):** M202, **UniVerse Travel**, the sixth app (Explore, guides to
+  anywhere from Wikivoyage with facts, weather and places, saved places, partner booking; database update 0219);
+  M203, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
+  writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
+  0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
+  scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
-  M181 (the Arrange upgrade: stay in its own tab, resize from every edge, ultra smooth, something new) and M182
-  (Messages connections: Gmail, Outlook, Slack, Telegram, WhatsApp, Discord; LinkedIn sign-in only); then the
+  the rest of the owner's Airbnb list for Travel (15 Nov): M205 (find a destination by days, budget, month,
+  interests and passport), M206 (the trip planner with the whole trip's budget and multi-city routes), M207
+  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras)
+  (M181, the Arrange upgrade, and M182, Messages connections, were done on 16 Nov); then the
   owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M202** (M181 and M182 were done on 16 Nov). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M209** (M181 and M182 were done on 16 Nov; M205–M208 are kept for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's "Hand-over: the rest of the owner's Airbnb list"). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -246,7 +255,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0219`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0221`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

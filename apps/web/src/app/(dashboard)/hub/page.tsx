@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { ArrowUpRight, MessageSquare, PenTool, Phone, Settings, Sparkles } from 'lucide-react';
@@ -10,7 +12,8 @@ import { LabTag } from '@/components/apps/LabTag';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
 import { AskUniverse } from '@/components/hub/AskUniverse';
 import { InviteButton } from '@/components/apps/InviteButton';
-import { APPS, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
+import { appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { useNow } from '@/lib/use-now';
@@ -27,7 +30,7 @@ interface HubStats { apps: Record<AppId, { value: number; label: string; mine?: 
 const EASE = [0.22, 1, 0.36, 1] as const;
 // Where each app sits on the hub's planet (M52): spread around the globe so two or three face you as it
 // turns. Only a picture: the apps work everywhere.
-const SPOT: Record<AppId, [number, number]> = { campus: [50, 4], trace: [30, 118], relief: [-3, 36], green: [-12, -56], play: [38, -98] };
+const SPOT: Record<AppId, [number, number]> = { campus: [50, 4], trace: [30, 118], relief: [-3, 36], green: [-12, -56], play: [38, -98], travel: [8, 172] };
 
 export default function HubPage() {
   const user = useAuthStore((s) => s.user);
@@ -36,6 +39,11 @@ export default function HubPage() {
   const hour = now ? new Date(now).getHours() : 12;
   const hello = hour < 5 ? 'Good night' : hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening';
   const role = user?.role ?? 'STUDENT';
+  // M203: only the apps the owner shows; with one, the website is that app and there's no hub.
+  const apps = useShownApps();
+  const router = useRouter();
+  const only = apps.length === 1 ? apps[0].id : null;
+  useEffect(() => { if (only && user) router.replace(appHome(only, user.role)); }, [only, user, router]);
   const tools = [
     { href: inboxFor(role), label: 'Messages', icon: MessageSquare },
     { href: '/collab', label: 'Collaborate', icon: PenTool },
@@ -56,7 +64,7 @@ export default function HubPage() {
               </motion.h2>
               <p className="mt-3 text-lg text-zinc-300 max-w-2xl">Pick where you want to make a difference today. Every app uses the same account, messages and files.</p>
               <dl className="mt-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
-                {APPS.map((a, i) => (
+                {apps.map((a, i) => (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 + i * 0.06, duration: 0.6, ease: EASE }} className="rounded-2xl bg-white/[0.06] ring-1 ring-white/10 px-4 py-3">
                     <dt className="text-[11px] uppercase tracking-wider text-zinc-400">{data?.apps[a.id]?.label ?? a.tagline}</dt>
                     <dd className="mt-1 text-[28px] leading-none font-semibold tabular-nums text-white">{data ? fmt(data.apps[a.id]?.value ?? 0) : '…'}</dd>
@@ -65,7 +73,7 @@ export default function HubPage() {
               </dl>
               {/* Every app on one planet, joined by arcs of light (M52, after the owner's "Orbit" video). */}
               <Planet className="mt-4 h-[300px] sm:h-[380px]" label="Every app on one planet"
-                places={APPS.map((a): Place => ({ label: a.name.replace('UniVerse ', ''), lat: SPOT[a.id][0], lon: SPOT[a.id][1], value: data ? fmt(data.apps[a.id]?.value ?? 0) : undefined, tone: a.id === 'green' || a.id === 'relief' ? 'aqua' : 'pink' }))} />
+                places={apps.map((a): Place => ({ label: a.name.replace('UniVerse ', ''), lat: SPOT[a.id][0], lon: SPOT[a.id][1], value: data ? fmt(data.apps[a.id]?.value ?? 0) : undefined, tone: a.id === 'green' || a.id === 'relief' ? 'aqua' : 'pink' }))} />
             </div>
           </section>
 
@@ -74,7 +82,7 @@ export default function HubPage() {
           <section aria-labelledby="apps-h">
             <h2 id="apps-h" className="text-lg font-bold text-zinc-900 dark:text-white">Your apps</h2>
             <div className="mt-3 grid md:grid-cols-2 gap-4">
-              {APPS.map((a, i) => {
+              {apps.map((a, i) => {
                 const mine = data?.apps[a.id]?.mine;
                 return (
                   <motion.div key={a.id} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.07, duration: 0.6, ease: EASE }} whileHover={{ y: -3 }}>

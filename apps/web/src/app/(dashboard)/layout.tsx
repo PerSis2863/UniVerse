@@ -19,6 +19,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { isSampleMode } from '@/lib/sample-mode';
 import { viewAsToken } from '@/lib/view-as';
 import ViewAsBanner from '@/components/layout/ViewAsBanner';
+import { ShownAppsGuard } from '@/components/ShownAppsGuard';
 
 type MeResponse = { id: string; name?: string; email: string; role: string; status?: string; createdAt?: string; avatar?: string | null; application?: ApplicationSummary | null; owner?: boolean; onboardedAt?: string | null; permissions?: string[] };
 
@@ -173,6 +174,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <ActivityTracker />
         <SelectionHelp />
         <ViewAsBanner />
+        <ShownAppsGuard />
         {children}
       </DashboardShell>
     </DataConfig>

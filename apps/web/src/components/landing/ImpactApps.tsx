@@ -3,7 +3,8 @@
 import { Brain, Gamepad2, Globe2, HandHeart, Keyboard, Leaf, LifeBuoy, MapPin, Recycle, ScanLine, Ship, TreePine, Trophy, Truck, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
-import { APPS, type AppId } from '@/lib/apps';
+import type { AppId } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { LabTag } from '@/components/apps/LabTag';
 import { Accent, CountUp, Reveal, ghost, primary } from './bits';
 
@@ -85,13 +86,16 @@ export function PlaySection() {
 
 /** Every app, with what it's for: one account opens them all. */
 export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
+  // M203: only the apps the owner shows; with one, the page is all about it already.
+  const apps = useShownApps();
+  if (apps.length < 2) return null;
   return (
-    <section id="apps" className="px-6 py-24 scroll-mt-24">
+    <section id="apps" data-uv-many className="px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Apps that change <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={APPS.length} /> apps, one sign-in. The ones marked Lab are new.</p></Reveal>
+        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={apps.length} /> apps, one sign-in. The ones marked Lab are new.</p></Reveal>
         <div className="mt-12 grid md:grid-cols-2 gap-4">
-          {APPS.map((a, i) => (
+          {apps.map((a, i) => (
             <Reveal key={a.id} delay={0.08 + i * 0.06}>
               <button type="button" onClick={() => { onPick?.(a.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="group relative w-full h-full text-start overflow-hidden rounded-3xl p-7 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-white/20 transition-shadow">
                 <span aria-hidden className="absolute -right-16 -top-16 w-56 h-56 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{ background: a.color }} />
