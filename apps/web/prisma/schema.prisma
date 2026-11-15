@@ -3720,6 +3720,7 @@ model DailyBrief {
 /// The school's safety policy (Stage 4 · 4.10; one row, "main"; src/server/safety.ts): the chat
 /// safety check, recording calls with students under 18, quiet hours for them, and whether students
 /// without a birth date count as under 18.
+/// One row per school (M190): id = organizations.id, or "main" for the main school (people in no school).
 model SchoolPolicy {
   id             String   @id
   guard          Boolean  @default(true)

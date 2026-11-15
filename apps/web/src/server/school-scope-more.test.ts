@@ -42,7 +42,7 @@ vi.mock('./search-index', () => ({ docLink: vi.fn(), indexItem: vi.fn(), indexTi
 vi.mock('./realtime', () => ({ publish: vi.fn(), publishChat: vi.fn() }));
 vi.mock('./email', () => ({ notify: vi.fn(), notifyMany: vi.fn(), later: vi.fn() }));
 vi.mock('./services/push.service', () => ({ pushService: { sendToMany: vi.fn() } }));
-vi.mock('./safety', () => ({ schoolPolicy: vi.fn(async () => ({ parentMessaging: true })) }));
+vi.mock('./safety', () => ({ policyFor: vi.fn(async () => ({ parentMessaging: true })) }));
 vi.mock('./chat-notify', () => ({ afterSend: vi.fn() }));
 vi.mock('./translate', () => ({ storedTranslations: vi.fn(), translateMessages: vi.fn(), translateTexts: vi.fn() }));
 vi.mock('./calls', () => ({ officeRoom: vi.fn() }));
