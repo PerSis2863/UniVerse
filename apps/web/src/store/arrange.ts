@@ -8,6 +8,8 @@ import type { Pin } from '@/lib/arrange';
 interface ArrangeState {
   arranged: boolean;
   reset: () => void;
+  /** M181: packs the page's grids with no gaps; how many it packed. */
+  tidy: () => number;
   /** Anything arranged anywhere, on this device. */
   any: boolean;
   resetAll: () => void;
@@ -17,6 +19,6 @@ interface ArrangeState {
   removePin: (key: string, href: string) => void;
 }
 export const useArrange = create<ArrangeState>(() => ({
-  arranged: false, reset: () => undefined, any: false, resetAll: () => undefined, sync: null, setSync: async () => undefined,
+  arranged: false, reset: () => undefined, tidy: () => 0, any: false, resetAll: () => undefined, sync: null, setSync: async () => undefined,
   pins: {}, removePin: () => undefined,
 }));

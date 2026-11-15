@@ -22,6 +22,7 @@ const API_KEY = /\bverifyApiKey\(/;
 /** Route → [why it answers without a sign-in, the check its file must contain]. */
 const OPEN: Record<string, [string, RegExp?]> = {
   'auth/sso/lookup': ['which sign-in a school uses, found by its address or email domain (no people)'],
+  'connections/callback': ['where Google, Microsoft and Slack send a person back: the sealed state and this browser’s cookie are the key (M182)', /finishConnection\(/],
   'calendar/[token]': ['a calendar app’s subscription: the private token in the link is the key', TOKEN],
   'core/[...path]': ['the platform API: each of its routes signs the person in itself (src/server/router.ts)', /\bhandle\b/],
   'cron/daily': ['a scheduled job: only the Worker’s own timer, with its secret header', CRON],

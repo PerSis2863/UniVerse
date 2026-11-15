@@ -4,6 +4,7 @@ import { CardHead } from '@/components/ui/CardMenu';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { useRouter } from 'next/navigation';
 import { AccountSetupCard } from '@/components/dashboard/AccountSetupCard';
+import { FirstClassCard } from '@/components/dashboard/FirstClassCard';
 import { DailyBrief } from '@/components/dashboard/DailyBrief';
 import { Topbar } from '@/components/layout/Topbar';
 import { KpiCard } from '@/components/dashboard/KpiCard';
@@ -24,7 +25,7 @@ const PerformanceTrendChart = dynamic(() => import('./TeacherCharts').then((m) =
 import { useState } from 'react';
 import { useLanguageStore } from '@/store/language';
 
-import useSWR from 'swr';
+import useSWR, { mutate as globalMutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 import { TeacherLive } from '@/components/live/HomeLive';
@@ -82,7 +83,7 @@ export default function TeacherDashboard() {
         action={{ label: t('teacher.new_course'), onClick: () => setShowCourseModal(true) }}
       />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
-        <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />} cards={{
+        <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} first={<FirstClassCard onNewCourse={() => setShowCourseModal(true)} />} afterTop={<AccountSetupCard />} cards={{
           upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="No classes or calls coming up, and nothing waiting to be graded." />,
           kpis: (
             <div className="kpi-row grid grid-cols-2 xl:grid-cols-4 gap-4">
@@ -186,7 +187,7 @@ export default function TeacherDashboard() {
         }} />
       </div>
 
-      {showCourseModal && <NewCourseSheet onClose={() => setShowCourseModal(false)} />}
+      {showCourseModal && <NewCourseSheet onClose={() => { setShowCourseModal(false); void globalMutate('/api/teacher/first-class'); }} />}
     </>
   );
 }

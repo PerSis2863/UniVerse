@@ -102,7 +102,7 @@ async function put<T extends { id: string }>(rows: T[], columns: number, existin
  * Scalar columns per table (each written on every row by createMany). Checked against the schema
  * in course-copy.test.ts, so a new column can't push a statement over D1's limit unnoticed.
  */
-export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 17, QuizQuestion: 10, Assignment: 23, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 12, ModuleItem: 9, ConceptTag: 5, OralCheck: 14 } as const;
+export const COLUMNS = { CourseConcept: 7, CourseModule: 11, Material: 8, Quiz: 17, QuizQuestion: 10, Assignment: 24, GradeCategory: 7, GradeAssessment: 4, BankQuestion: 12, ModuleItem: 9, ConceptTag: 5, OralCheck: 14 } as const;
 
 /**
  * POST /api/courses/:id/copy/step { target, stage, after?, shiftDays? }: copies up to BATCH rows of

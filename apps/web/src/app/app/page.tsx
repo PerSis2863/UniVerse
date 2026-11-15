@@ -13,7 +13,7 @@ import { stashShare } from '@/lib/share-in';
 
 // Something shared to UniVerse from another app (manifest share_target, ?title=&text=&url=&photos=)
 // is left to the effect, which keeps it and opens Messages (src/lib/share-in.ts).
-const DECIDE = `(function(){if(/[?&](title|text|url|photos)=/.test(location.search))return;try{var d='/login',r=localStorage.getItem('universe-auth'),u=r&&JSON.parse(r).state&&JSON.parse(r).state.user;if(u&&u.role){d=u.role==='GUARDIAN'?'/parent':u.owner?'/console':'/hub';}location.replace(d);}catch(e){location.replace('/login');}})();`;
+const DECIDE = `(function(){if(/[?&](title|text|url|photos)=/.test(location.search))return;try{var d='/login',r=localStorage.getItem('universe-auth'),u=r&&JSON.parse(r).state&&JSON.parse(r).state.user;if(u&&u.role){var l=localStorage.getItem('uv-last-app'),h=function(r){return r==='ADMIN'?'/admin':r==='TEACHER'?'/teacher':'/student';};d=u.role==='GUARDIAN'?'/parent':u.owner?'/console':l==='campus'?h(u.role):l&&/^(trace|relief|green|play)$/.test(l)?'/'+l:u.role==='TEACHER'||u.role==='ADMIN'?h(u.role):'/hub';}location.replace(d);}catch(e){location.replace('/login');}})();`;
 
 function destination() {
   const shared = stashShare(window.location.search);

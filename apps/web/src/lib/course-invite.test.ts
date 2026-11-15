@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { clearInvite, inviteHref, pendingInvite, rememberInvite } from './course-invite';
-import { homeFor } from './role-home';
+import { homeFor, rememberApp } from './role-home';
 
 // M113: a teacher's class link is remembered on the device for a day, through signing up or in.
 const DAY = 86_400_000;
@@ -41,5 +41,18 @@ describe('class invites', () => {
     expect(homeFor({ role: 'GUARDIAN' })).toBe('/parent');
     clearInvite();
     expect(homeFor({ role: 'STUDENT' }, 'campus')).not.toContain('/join');
+  });
+
+  it('opens where the person left off (M198): their last app, else staff at school, else the hub', () => {
+    localStorage.removeItem('uv-last-app');
+    expect(homeFor({ role: 'STUDENT' })).toBe('/hub');
+    expect(homeFor({ role: 'TEACHER' })).toBe('/teacher');
+    rememberApp('campus');
+    expect(homeFor({ role: 'STUDENT' })).toBe('/student');
+    rememberApp('green');
+    expect(homeFor({ role: 'STUDENT' })).toBe('/green');
+    expect(homeFor({ role: 'STUDENT' }, 'trace')).toBe('/trace');
+    expect(homeFor({ role: 'STUDENT', owner: true })).toBe('/console');
+    localStorage.removeItem('uv-last-app');
   });
 });

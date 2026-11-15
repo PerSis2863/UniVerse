@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M195 is the latest).
+  builds on it). The newest notes are at the end (M201 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -100,18 +100,15 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On the branch `claude/funny-galileo-y4mz9r`, not merged** (14 Nov): M183, an index on every relation
-  column (database update 0210); M184, LMS connections, clubs, the ticket scan and scheduled calls kept to
-  the admin's own school (0211); M185, "Since your last visit" in the Daily brief; M186, pulsing dots in
-  their own colour again. M187, campus buildings (0212), school sticker packs and broadcasts kept to the
-  school; M188, Messages: old messages open, go to a date, a chat's every photo, file and link, readable
-  bubbles; M189, Collaborate's home lists saved Create work, with Mine / Shared with me. M190 (15 Nov), each
-  school its own safety policy (0213); M191, rooms and bookings kept to each school (0214); M192, a message
-  however far back opens in Messages; M193, Collaborate says who shared a thing, task boards and code rooms
-  under Mine / Shared with me; M194, Create work opened from someone's link on Collaborate's Home (0215); M195, a × to take one off Home.
-  The branch also
-  holds `claude/youthful-fermi-sbdtcp` (M179–M180).
-- **On `main`** (live): everything through **M176** (M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **The owner's list of 15 Nov** ("do all of them except 5th one"; then 16 Nov: "do all this and merge
+  it"): done: M196 (a teacher's first class), M197 (come-back reminders, 0216), M198 (the new-student
+  walk-through), M199 (Admin → Safety → Who can see what, and the leak check `school-leaks.mjs` with five
+  leaks fixed), M181 (arranging keeps things in their group, every edge resizes, Tidy), M182 (Messages
+  connections: Gmail, Outlook, Slack, 0217), M200 (Google Classroom import, Google / Outlook calendars in
+  the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
+  them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
+  (11); 5 (cheap phones) was left out by the owner.
+- **On `main`** (live): everything through **M195** (M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -232,8 +229,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M196** (M181, Arrange, and M182, Messages connections, are kept for the session that planned them: the handoff's "For the next session" note). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M202** (M181 and M182 were done on 16 Nov). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
+- **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
+  (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
+  in Cloudflare, each with the return address `https://<the site>/api/connections/callback` (Gmail's read
+  access needs Google's paid review beyond 100 test users); Trace payments (M201): set `TRACE_PRO_PRICE_CENTS`,
+  send `customer.subscription.*` and `checkout.session.completed` to the Stripe webhook, turn on "Trace payments".
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
   to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
@@ -244,7 +246,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0216`** (0209 is kept for M182) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0219`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

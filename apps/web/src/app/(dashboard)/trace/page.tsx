@@ -16,6 +16,7 @@ import { TraceTabs } from '@/components/trace/TraceTabs';
 import { ChainTeam, JoinTeam } from '@/components/trace/ChainTeam';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
+import { authedJson } from '@/lib/authed-fetch';
 import { fmt } from '@/lib/instruments';
 import { useActivePoll } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
@@ -35,7 +36,8 @@ const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) 
 // where each shipment is. Server: src/server/trace*.ts. The other Trace pages hang off TraceTabs.
 
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
-interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number }
+interface Billing { open: boolean; proPriceCents: number | null; managed: boolean; subscribed: boolean }
+interface BrandInfo { brand: Brand | null; pro?: boolean; units?: number; unitLimit?: number; billing?: Billing }
 interface Batch { id: string; label: string; quantity: number; origin: string | null; madeAt: string | null; createdAt: string; status: string; destPlace: string | null; carrierKey: string | null; allowedCountries?: string | null; blockedAt?: string | null; recall?: { id: string; reason: string; severity: string } | null }
 interface Product { id: string; name: string; sku: string | null; category: string | null; description: string | null; story: string | null; rewardPoints: number; warrantyMonths: number; sample: boolean; batches: Batch[]; _count: { codes: number }; winOdds?: number | null; winPrize?: string | null; maxTempC?: number | null; weightKg?: number; gtin?: string | null; dpp?: string | null; takeBackHow?: string | null; takeBackPoints?: number; price?: number | null; currency?: string | null }
 interface Overview {
@@ -141,7 +143,26 @@ function StartBrand({ onDone }: { onDone: () => void }) {
   );
 }
 
-function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; units: number; unitLimit: number }; onChange: () => void }) {
+/** M201: "Go PRO" (Stripe Checkout) or "Manage billing" (Stripe's page), once the owner opened Trace payments. */
+function BillingButton({ billing, pro }: { billing?: Billing; pro: boolean }) {
+  const [busy, setBusy] = useState(false);
+  if (!billing?.open || (!billing.subscribed && (pro || !billing.proPriceCents))) return null;
+  const go = async () => {
+    setBusy(true);
+    try {
+      const { url } = await authedJson<{ url: string }>(billing.subscribed ? '/api/trace/billing/portal' : '/api/trace/billing', { method: 'POST', body: JSON.stringify(billing.subscribed ? {} : { kind: 'pro' }) });
+      window.location.assign(url);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t open the payment page. Try again.')); setBusy(false); }
+  };
+  return (
+    <button type="button" onClick={() => void go()} disabled={busy} className={billing.subscribed ? 'btn-secondary btn-sm' : 'btn-primary btn-sm'}>
+      {busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <Crown className="w-4 h-4" aria-hidden />}
+      {billing.subscribed ? 'Manage billing' : `Go PRO · $${((billing.proPriceCents ?? 0) / 100).toFixed(2)} a month`}
+    </button>
+  );
+}
+
+function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; units: number; unitLimit: number; billing?: Billing }; onChange: () => void }) {
   const poll = useActivePoll(30_000);
   const now = useNow();
   const { data: products, mutate: reloadProducts } = useSWR<Product[]>('/trace/products', fetcher);
@@ -201,7 +222,10 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
             <motion.div className={cn('h-full rounded-full', usage > 85 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} initial={{ width: 0 }} animate={{ width: `${Math.min(100, usage)}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
           </div>
         </div>
-        <button type="button" onClick={() => setSettings((v) => !v)} aria-expanded={settings} className="btn-secondary btn-sm"><Settings2 className="w-4 h-4" />Brand settings</button>
+        <span className="flex flex-wrap gap-2">
+          <BillingButton billing={info.billing} pro={info.pro} />
+          <button type="button" onClick={() => setSettings((v) => !v)} aria-expanded={settings} className="btn-secondary btn-sm"><Settings2 className="w-4 h-4" />Brand settings</button>
+        </span>
       </section>
       <AnimatePresence initial={false}>
         {settings && (

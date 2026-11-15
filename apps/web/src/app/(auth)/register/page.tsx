@@ -104,7 +104,7 @@ export default function RegisterPage() {
   // learner's: no student card for an admin to check first), so the class can start the same day.
   const [classInvite, setClassInvite] = useState(false);
   useEffect(() => {
-    if (campus && pendingInvite()) queueMicrotask(() => { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setClassInvite(true); });
+    if (campus && pendingInvite()) queueMicrotask(() => { setSelectedRole('STUDENT'); setIndividual('INDEPENDENT'); setClassInvite(true); setStep('credentials'); }); // M198: no role question for a class invite
   }, [campus]);
 
   const selectedRoleData = ROLES.find(r => r.id === selectedRole);

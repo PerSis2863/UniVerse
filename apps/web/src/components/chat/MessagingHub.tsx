@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
+import { Link2, Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -45,6 +45,7 @@ const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewC
 const FolderSheet = dynamic(() => import('./ChatFolders').then((m) => m.FolderSheet));
 const MuteUntilSheet = dynamic(() => import('./ChatFolders').then((m) => m.MuteUntilSheet));
 const SavedPanel = dynamic(() => import('./ChatDialogs').then((m) => m.SavedPanel));
+const ConnectionsPanel = dynamic(() => import('@/components/connections/ConnectionsPanel').then((m) => m.ConnectionsPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
 const CommunitiesPanel = dynamic(() => import('./CommunitiesPanel').then((m) => m.CommunitiesPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
 const PresencePicker = dynamic(() => import('./PresencePicker').then((m) => m.PresencePicker));
 const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), { loading: () => <div className="h-[88px]" /> });
@@ -90,9 +91,9 @@ export function MessagingHub() {
   const [view, setView] = useState<'chats' | 'archived'>('chats');
   // Chats, or Communities (Discord-style servers with channels).
   // A club's space (upgrade 7) and community invite links (?join=) open on Communities.
-  const [space, setSpace] = useState<'chats' | 'communities'>(() => {
+  const [space, setSpace] = useState<'chats' | 'communities' | 'connections'>(() => {
     const sp = new URLSearchParams(window.location.search);
-    return sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
+    return sp.get('space') === 'connections' ? 'connections' : sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
   });
   const [savedOpen, setSavedOpen] = useState(false);
   // Reminders that came up and aren't done (Stage 5 · B7.1): a badge on Saved.
@@ -288,13 +289,15 @@ export function MessagingHub() {
     select(id);
   };
   // The folder rail (Telegram desktop): the built-in views, then my folders.
-  const go = (to: { space?: 'chats' | 'communities'; view?: 'chats' | 'archived'; filter?: Filter }) => { setSpace(to.space ?? 'chats'); setView(to.view ?? 'chats'); setFilter(to.filter ?? 'all'); };
+  const go = (to: { space?: 'chats' | 'communities' | 'connections'; view?: 'chats' | 'archived'; filter?: Filter }) => { setSpace(to.space ?? 'chats'); setView(to.view ?? 'chats'); setFilter(to.filter ?? 'all'); };
   const rail: { id: string; label: string; icon: LucideIcon | string; on: boolean; count?: number; run: () => void }[] = [
     { id: 'all', label: 'All chats', icon: MessagesSquare, on: space === 'chats' && view === 'chats' && filter === 'all', count: totalUnread, run: () => go({}) },
     { id: 'unread', label: 'Unread', icon: MailOpen, on: space === 'chats' && view === 'chats' && filter === 'unread', run: () => go({ filter: 'unread' }) },
     { id: 'direct', label: 'Direct', icon: UserRound, on: space === 'chats' && view === 'chats' && filter === 'direct', run: () => go({ filter: 'direct' }) },
     { id: 'groups', label: 'Groups', icon: Users, on: space === 'chats' && view === 'chats' && filter === 'groups', run: () => go({ filter: 'groups' }) },
     { id: 'communities', label: 'Communities', icon: Hash, on: space === 'communities', run: () => go({ space: 'communities' }) },
+    // M182: Gmail, Outlook and Slack, read here.
+    { id: 'connections', label: 'Connections', icon: Link2, on: space === 'connections', run: () => go({ space: 'connections' }) },
     { id: 'archived', label: 'Archived', icon: Archive, on: space === 'chats' && view === 'archived', count: archivedUnread, run: () => go({ view: 'archived' }) },
     ...folders.map((f) => ({ id: `folder:${f.id}`, label: f.name, icon: f.emoji || '📁', on: space === 'chats' && view === 'chats' && filter === `folder:${f.id}`, run: () => go({ filter: `folder:${f.id}` as Filter }) })),
   ];
@@ -339,7 +342,7 @@ export function MessagingHub() {
               {view === 'archived' ? (
                 <><button onClick={() => setView('chats')} aria-label="Back to chats" className="p-1 -ms-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button> Archived</>
               ) : (
-                <>{space === 'communities' ? 'Communities' : filter === 'all' ? 'Chats' : rail.find((r) => r.on)?.label ?? 'Chats'} {totalUnread > 0 && <span key={totalUnread} className="badge-bump text-xs font-bold px-2 py-0.5 rounded-full bg-[#b5307d] text-white shadow-[0_0_14px_-2px_rgb(217_70_239/0.7)]">{totalUnread}</span>}</>
+                <>{space === 'communities' ? 'Communities' : space === 'connections' ? 'Connections' : filter === 'all' ? 'Chats' : rail.find((r) => r.on)?.label ?? 'Chats'} {totalUnread > 0 && <span key={totalUnread} className="badge-bump text-xs font-bold px-2 py-0.5 rounded-full bg-[#b5307d] text-white shadow-[0_0_14px_-2px_rgb(217_70_239/0.7)]">{totalUnread}</span>}</>
               )}
             </h2>
             <div className="flex gap-1 items-center">
@@ -356,10 +359,10 @@ export function MessagingHub() {
             </div>
           </div>
           <div className="md:hidden flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist" aria-label="Chats or communities">
-            {(['chats', 'communities'] as const).map((sp) => (
+            {(['chats', 'communities', 'connections'] as const).map((sp) => (
               <button key={sp} role="tab" aria-selected={space === sp} onClick={() => setSpace(sp)} className={cn('relative flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors', space === sp ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>
                 {space === sp && <motion.span layoutId="hub-space" className="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
-                <span className="relative">{sp === 'chats' ? 'Chats' : 'Communities'}</span>
+                <span className="relative">{sp === 'chats' ? 'Chats' : sp === 'communities' ? 'Communities' : 'Connected'}</span>
               </button>
             ))}
           </div>
@@ -425,6 +428,8 @@ export function MessagingHub() {
 
         {space === 'communities' ? (
           <div className="flex-1 overflow-y-auto"><CommunitiesPanel activeId={activeId} onOpen={select} /></div>
+        ) : space === 'connections' ? (
+          <div className="flex-1 overflow-y-auto p-4" tabIndex={0} role="region" aria-label="Connections"><ConnectionsPanel kinds={['mail', 'chat']} back={`${location.pathname}?space=connections`} /></div>
         ) : (
         <div className="flex-1 overflow-y-auto p-2">
           {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}

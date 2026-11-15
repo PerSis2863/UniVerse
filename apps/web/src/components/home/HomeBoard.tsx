@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 // narrow column (one column on phones). "Edit home" moves cards up and down, hides them and brings
 // them back; it's saved for this person on every device.
 
-export function HomeBoard({ role, layout, onSave, cards, afterTop }: {
+export function HomeBoard({ role, layout, onSave, cards, afterTop, first }: {
   role: HomeRole;
   layout: HomeLayout;
   onSave: (l: HomeLayout) => void;
@@ -19,6 +19,8 @@ export function HomeBoard({ role, layout, onSave, cards, afterTop }: {
   cards: Record<string, ReactNode | null>;
   /** Shown under the top cards, never moved (the account setup reminder). */
   afterTop?: ReactNode;
+  /** Shown above every card, never moved (a teacher's first-class steps, M196). */
+  first?: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   // The cards further down draw a moment after the first ones: drawing every card in the tap that
@@ -80,6 +82,7 @@ export function HomeBoard({ role, layout, onSave, cards, afterTop }: {
           </motion.div>
         )}
       </AnimatePresence>
+      {first}
       {top}
       {afterTop}
       {(main.length > 0 || side.length > 0) && (

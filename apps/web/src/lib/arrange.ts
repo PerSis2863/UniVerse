@@ -23,6 +23,8 @@ export interface Entry {
   open?: string[];
   /** M167: things of this group (by name) dropped inside a card with a look of its own (by its key: `hostKeys`). */
   inside?: Record<string, string>;
+  /** M181: "Tidy": a grid packs its cards with no gaps (smaller cards move up into the holes). */
+  dense?: boolean;
 }
 /** M167: a shortcut a person dragged in: onto a page from the side menu, or onto the menu from a page. */
 export interface Pin { href: string; label: string }
@@ -108,6 +110,7 @@ export function cleanStore(raw: unknown): Store {
       }
       const w = num(maxW, 320, 4000);
       if (w !== undefined) entry.maxW = w;
+      if ((e as { dense?: unknown }).dense === true) entry.dense = true;
       const open = (e as { open?: unknown }).open;
       if (Array.isArray(open)) { const o = open.filter((k): k is string => typeof k === 'string' && k.length > 0 && k.length <= 64).slice(0, 12); if (o.length) entry.open = o; }
       const inside = (e as { inside?: unknown }).inside;

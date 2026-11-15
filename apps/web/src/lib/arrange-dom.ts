@@ -21,10 +21,13 @@ const TITLE = 'h1, h2, h3, h4, h5, h6, legend, label, th, [data-card-title]';
 const HOST = 'section, article, form, .panel, .card, [data-card], [class*="rounded-lg"], [class*="rounded-xl"], [class*="rounded-2xl"], [class*="rounded-3xl"]';
 const TABLE_PART = /^(TABLE|THEAD|TBODY|TFOOT|TR|TH|TD)$/;
 /** How long a carried thing rests over a card before the card makes room for it (ms). */
-const DWELL = 420;
 /** The browser keeps a thing on its card itself (CSS anchor positioning), through animations, scrolling and resizing. */
 const anchors = () => typeof CSS !== 'undefined' && CSS.supports('anchor-name: --a') && CSS.supports('left: anchor(left)');
 let hostIds = 0;
+/** The edges a press is on (M181: all four, and the corners). */
+interface Sides { r: boolean; l: boolean; b: boolean; t: boolean }
+/** The resize pointer for those edges: ew, ns, nwse (a corner down the slope) or nesw. */
+const pointerFor = (s: Sides) => ((s.r || s.l) && (s.b || s.t) ? ((s.r && s.b) || (s.l && s.t) ? 'nwse' : 'nesw') : s.r || s.l ? 'ew' : 'ns');
 const EDGE = 8, EDGE_TOUCH = 18, MAX_GROUP = 24, MAX_ROWS = 60, TRAVEL = 6, HOLD = 350;
 /** "Reduce motion" (the app's own setting or the device's): things change place and size without moving. */
 const calm = () => document.documentElement.classList.contains('reduce-motion') || matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -219,6 +222,20 @@ export class Arranger {
     clearTimeout(this.resized);
     this.resized = window.setTimeout(() => { if (this.layout.length && !this.busy) { this.clear(); this.apply(); } }, 200);
   };
+
+  /**
+   * M181, "Tidy": every grid on the page packs its cards with no gaps (a smaller card moves up into a
+   * hole a bigger one left), the cards gliding there. Returns how many grids it packed.
+   */
+  tidy(): number {
+    const grids = this.groups().filter((g) => getComputedStyle(g.parent).display.includes('grid') && g.parent.tagName !== 'TR');
+    if (!grids.length) return 0;
+    this.remember();
+    const cards = grids.flatMap((g) => g.kids);
+    this.flip(cards, () => { for (const g of grids) { const e = this.entryFor(g); e.dense = true; this.ready(g); g.parent.style.gridAutoFlow = 'row dense'; } });
+    this.save();
+    return grids.length;
+  }
 
   reset() {
     if (!this.layout.length) return;
@@ -491,6 +508,7 @@ export class Arranger {
     if (g.parent.tagName === 'TR') this.mirror(g.parent);
     this.lines(g.parent, this.sequence(g));
     if (entry.maxW) g.parent.style.maxWidth = `${entry.maxW}px`;
+    if (entry.dense && grid) g.parent.style.gridAutoFlow = 'row dense';
     for (const [key, size] of Object.entries(entry.sizes ?? {})) {
       const el = g.kids[g.keys.indexOf(key)];
       if (el) this.size(el, size, grid, gap, g.parent);
@@ -519,7 +537,7 @@ export class Arranger {
   private clear() {
     for (const p of this.all('[data-arranged]')) {
       if (p.dataset.arranged === 'col') { p.style.display = ''; p.style.flexFlow = ''; p.style.gap = ''; }
-      p.style.removeProperty('reading-flow'); p.style.maxWidth = '';
+      p.style.removeProperty('reading-flow'); p.style.maxWidth = ''; p.style.gridAutoFlow = '';
       delete p.dataset.arranged; delete p.dataset.arrDiv;
       for (const k of held(p)) { k.style.order = ''; delete k.dataset.arrEdge; }
     }
@@ -668,10 +686,10 @@ export class Arranger {
   }
 
   /** What the pointer is on: the nearest card whose edge it is at (to resize), else the nearest thing that can move. */
-  private item(target: EventTarget | null, x: number, y: number, edgesOnly = false, edge = EDGE): { el: HTMLElement; g: Group; r: boolean; b: boolean } | null {
+  private item(target: EventTarget | null, x: number, y: number, edgesOnly = false, edge = EDGE): { el: HTMLElement; g: Group } & Sides | null {
     const t = target instanceof HTMLElement || target instanceof SVGElement ? target : null;
     if (!t || !this.root.contains(t) || t.closest(NOGRAB)) return null;
-    let first: { el: HTMLElement; g: Group } | null = null;
+    let first: { el: HTMLElement; g: Group } | null = null, near: ({ el: HTMLElement; g: Group } & Sides) | null = null;
     for (let el: Element | null = t; el && el !== this.root; el = el.parentElement) {
       if (!(el instanceof HTMLElement)) continue;
       // On a button or a link, that is what is pressed: the card around it isn't pulled from under it.
@@ -682,14 +700,20 @@ export class Arranger {
       const q = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
       // (An opened wrapper has no box; one column has no widths to pull.)
       const boxed = q.width > 0 && !opened(el);
-      const r = boxed && !narrow() && (rtl ? x < q.left + edge : x > q.right - edge), b = boxed && y > q.bottom - edge;
-      if (!r && !b && (first || edgesOnly)) continue;
+      // M181: every edge and corner: the end and start sides for width, the bottom and top for height.
+      const wide = boxed && !narrow();
+      const r = wide && (rtl ? x < q.left + edge : x > q.right - edge), l = wide && !r && (rtl ? x > q.right - edge : x < q.left + edge);
+      const b = boxed && y > q.bottom - edge, up = boxed && !b && y < q.top + edge;
+      if (!r && !l && !b && !up && (first || edgesOnly)) continue;
       const g = this.member(el);
       if (!g) continue;
-      if ((r || b) && this.kind(el) === 'block') return { el, g, r, b };
+      if ((r || b) && this.kind(el) === 'block') return { el, g, r, l: false, b, t: false };
+      // A start or top edge: kept unless something around it has its end or bottom edge here (that one wins).
+      if ((l || up) && this.kind(el) === 'block') { near ??= { el, g, r: false, l, b: false, t: up }; continue; }
       first ??= { el, g };
     }
-    return first && !edgesOnly ? { ...first, r: false, b: false } : null;
+    if (near) return near;
+    return first && !edgesOnly ? { ...first, r: false, l: false, b: false, t: false } : null;
   }
 
   /** A finger that is dragging a card doesn't also scroll the page or open the long-press menu. */
@@ -710,7 +734,7 @@ export class Arranger {
       const hit = this.item(target, x, y, true);
       if (this.hot && this.hot !== hit?.el) { this.hot.style.cursor = ''; this.hot = null; }
       if (!hit) return;
-      hit.el.style.cursor = hit.r && hit.b ? 'nwse-resize' : hit.r ? 'ew-resize' : 'ns-resize';
+      hit.el.style.cursor = `${pointerFor(hit)}-resize`;
       this.hot = hit.el;
     });
   };
@@ -727,7 +751,7 @@ export class Arranger {
     // (A finger gets wider edges to take hold of.)
     const hit = this.item(t, x0, y0, false, touch ? EDGE_TOUCH : EDGE);
     if (!hit) return;
-    const { el, g, r, b } = hit, edge = r || b;
+    const { el, g, r, l, b, t: top } = hit, edge = r || l || b || top;
     // Words that can be selected stay selectable: on them the mouse (like a finger anywhere) holds still a moment to grab.
     const words = !edge && !t.closest(CONTROL) && !t.closest(TITLE) && getComputedStyle(t).userSelect !== 'none' && onWords(x0, y0);
     let begun = false;
@@ -740,7 +764,7 @@ export class Arranger {
       const lift = () => { setTimeout(() => document.removeEventListener('click', quiet, true), 0); document.removeEventListener('pointerup', lift, true); document.removeEventListener('pointercancel', lift, true); };
       document.addEventListener('pointerup', lift, true);
       document.addEventListener('pointercancel', lift, true);
-      if (edge) { this.resize(el, g, e, r, b); return; }
+      if (edge) { this.resize(el, g, e, { r, l, b, t: top }); return; }
       // M167, a table: carried sideways from any cell, its column moves; its header carried up or down, the whole header.
       let item = el, grp = g;
       const table = TABLE_PART.test(el.tagName) ? el.closest('table') : null;
@@ -796,7 +820,7 @@ export class Arranger {
   private move(el: HTMLElement, g0: Group, e: PointerEvent, x0: number, y0: number) {
     this.remember();
     const had = this.layout.length;
-    let g = g0, entry = this.entryFor(g);
+    const g = g0, entry = this.entryFor(g);
     const fresh = this.layout.length > had; // this group had no arrangement before this move
     // Taken out of a card (M167): back in its own place, shown where the hand has it.
     const wasIn = this.slotOf.get(el) ?? null, lifted = wasIn ? el.getBoundingClientRect() : null;
@@ -807,7 +831,8 @@ export class Arranger {
     seq.forEach((k, i) => { k.style.order = String(i + 1); });
     let still = seq.filter((k) => k !== el);
     let rects = new Map(seq.map((k) => [k, k.getBoundingClientRect()]));
-    let base = rects.get(el)!, over: HTMLElement | null = null, dirty = false, mixed = !!entry.open?.length;
+    let base = rects.get(el)!, over: HTMLElement | null = null, dirty = false;
+    const mixed = !!entry.open?.length;
     const start = lifted ?? base;
     // A table's rows, header and footer go up and down; its columns side to side, every cell with its heading.
     const column = el.tagName === 'TH' && g.parent.tagName === 'TR', upDown = /^(TR|THEAD|TBODY|TFOOT)$/.test(el.tagName), table = column || upDown;
@@ -823,14 +848,13 @@ export class Arranger {
     const onScroll = () => { dirty = true; };
     document.addEventListener('scroll', onScroll, { capture: true, passive: true });
 
-    let into: HTMLElement | null = null; // the card it will go inside
     // M168: a card carried leans a little the way it is moving, and settles level when the hand stops.
     const leans = !table && !calm() && this.kind(el) === 'block';
     let vx = 0, lastX = x0, tilt = 0;
     const place = (x: number, y: number) => {
       const tx = upDown ? 0 : x - x0 + (start.left - base.left), ty = column ? 0 : y - y0 + (start.top - base.top);
       if (leans) { vx = vx * 0.72 + (x - lastX) * 0.28; lastX = x; tilt = Math.abs(vx) < 0.15 ? 0 : Math.max(-2.5, Math.min(2.5, vx * 0.3)); }
-      const t = table ? `translate3d(${tx}px, ${ty}px, 0)` : `translate3d(${tx}px, ${ty}px, 0) rotate(${tilt.toFixed(2)}deg) scale(${into ? 0.97 : 1.02})`;
+      const t = table ? `translate3d(${tx}px, ${ty}px, 0)` : `translate3d(${tx}px, ${ty}px, 0) rotate(${tilt.toFixed(2)}deg) scale(1.02)`;
       el.style.transform = t;
       for (const c of cells) c.style.transform = t;
     };
@@ -864,37 +888,9 @@ export class Arranger {
       }
       for (const c of body) { const a = was.get(c)!, b = c.getBoundingClientRect(); if (Math.abs(a.left - b.left) >= 1) this.glide(c, `translate(${a.left - b.left}px, 0)`, 320); }
     };
-    /**
-     * A plain wrapper `w` of the group `into` is opened, so the carried thing and the wrapper's own can
-     * mix (M166): out of its own row into the page, or into another row.
-     */
-    const open = (w: HTMLElement, into: Group) => {
-      const before = rects;
-      const box = core(w);
-      // (With the things of rows already opened into it, the carried one among them.)
-      const things = held(box).map((k, i) => ({ k, i, o: Number(k.style.order) || 0 })).sort((a, b) => a.o - b.o || a.i - b.i).map((x) => x.k);
-      const outer = into === g ? seq : this.sequence(into);
-      const target = into === g ? entry : this.entryFor(into);
-      // The wrapper's own arrangement (if it had one) travels with its things.
-      const had = this.owner.get(box);
-      if (had) this.layout = this.layout.filter((x) => x !== had);
-      const key = into.keys[into.kids.indexOf(w)];
-      this.unwrap(w, into.parent, key, this.ready(into).gap);
-      (target.open ??= []).push(key);
-      for (const [k, size] of Object.entries(had?.sizes ?? {})) (target.sizes ??= {})[k] = size;
-      const next = outer.flatMap((k) => (k === w ? things : [k]));
-      g = this.groupOf(into.parent) ?? into; entry = target; mixed = true;
-      this.owner.set(g.parent, entry);
-      settle(next.filter((k) => g.kids.includes(k)), before);
-      over = null;
-    };
-    let shut: HTMLElement | null = null; // the row last asked whether it opens
     const within = (q: DOMRect, x: number, y: number, pad = 0) => x >= q.left - pad && x <= q.right + pad && y >= q.top - pad && y <= q.bottom + pad;
     const hit = (q: DOMRect, x: number, y: number) => (column ? x >= q.left && x <= q.right : upDown ? y >= q.top && y <= q.bottom : within(q, x, y));
-    // M167: resting over a card (a moment, still), and the card makes room inside it for the thing.
-    const known = new Map<HTMLElement, boolean>();
-    let rest: { host: HTMLElement; x: number; y: number; t: number } | null = null, restTimer = 0;
-    const leaveRoom = () => { if (into) { const h = into; into = null; this.seat(h); dirty = true; } };
+    let lx = x0, ly = y0; // where the hand is
     // M167: over the other one (the side menu from the page, the page from the menu): a likeness goes with the hand.
     let ghost: HTMLElement | null = null, away: null | (() => void) = null, gx = 0, gy = 0;
 
@@ -904,7 +900,6 @@ export class Arranger {
       if (there) {
         away = there;
         if (!ghost) {
-          leaveRoom(); rest = null; clearTimeout(restTimer);
           const seen = el.getBoundingClientRect();
           el.style.transform = '';
           // The thing itself stays (a shortcut to it is made there): its group as it was.
@@ -921,44 +916,18 @@ export class Arranger {
         const s = scroller.getBoundingClientRect(), by = y < s.top + 56 ? -14 : y > s.bottom - 56 ? 14 : 0;
         if (by) { scroller.scrollTop += by; again(); }
       }
-      // Carried out of its own row: the row opens into what holds it, and the thing is free among those.
-      const home = g.parent;
-      // (Whether a row can open is asked once per row, not every frame: it reads the row's style.)
-      if (!this.menu && !table && home !== this.root && home !== shut && !opened(home) && !within(home.getBoundingClientRect(), x, y, 12)) {
-        shut = home;
-        if (plain(home)) {
-          // (Through wrappers that only wrap that one row.)
-          let top = home;
-          while (top.parentElement && top.parentElement !== this.root && plain(top.parentElement) && Array.from(top.parentElement.children).filter(shown).length === 1) top = top.parentElement;
-          const up = this.member(top);
-          if (up && this.root.contains(up.parent)) open(top, up);
-        }
-      }
-      if (!this.menu && !table) {
-        const host = this.hostAt(el, x, y, known);
-        if (into && host !== into) leaveRoom();
-        if (host && !into) {
-          if (!rest || rest.host !== host || Math.hypot(x - rest.x, y - rest.y) > 14) {
-            rest = { host, x, y, t: performance.now() };
-            clearTimeout(restTimer); restTimer = window.setTimeout(again, DWELL + 30);
-          } else if (performance.now() - rest.t >= DWELL) { into = host; this.seat(host, { w: el.offsetWidth, h: el.offsetHeight }); measure(); }
-        } else if (!host) { rest = null; clearTimeout(restTimer); }
-      }
-      if (!into) {
-        if (over) { const q = rects.get(over)!; if (!hit(q, x, y)) over = null; }
-        const target = still.find((k) => hit(rects.get(k)!, x, y));
-        if (target && target !== over) {
-          // Over another row of things: it opens, so the carried thing can sit among them.
-          if (!this.menu && !table && plain(target) && this.groupOf(core(target))) { open(target, g); place(x, y); again(); return; }
-          settle(moved(seq, seq.indexOf(el), seq.indexOf(target)), rects);
-          over = target;
-        }
+      // M181: a thing stays in its own group: carried outside it, nothing makes room, and a drop there is refused.
+      lx = x; ly = y;
+      if (over) { const q = rects.get(over)!; if (!hit(q, x, y)) over = null; }
+      const target = still.find((k) => hit(rects.get(k)!, x, y));
+      if (target && target !== over) {
+        settle(moved(seq, seq.indexOf(el), seq.indexOf(target)), rects);
+        over = target;
       }
       place(x, y);
       // (Still leaning: another frame, so it comes level though the hand has stopped.)
       if (tilt) again();
     }, () => {
-      clearTimeout(restTimer);
       document.removeEventListener('scroll', onScroll, true);
       const key = g.keys[g.kids.indexOf(el)];
       const settled = () => { el.classList.remove(lift); for (const c of cells) c.classList.remove('arr-cell'); };
@@ -979,35 +948,21 @@ export class Arranger {
         gh.animate([{ opacity: 0.96 }, { opacity: 0 }], { duration: 160, easing: 'ease-out' }).finished.catch(() => undefined).finally(() => gh.remove());
         return;
       }
-      const seen = el.getBoundingClientRect(), from = el.style.transform;
+      const from = el.style.transform;
       el.style.transform = '';
       for (const c of cells) c.style.transform = '';
       entry.order = seq.map((k) => g.keys[g.kids.indexOf(k)]);
-      if (into) {
-        // Inside the card it rests over: drawn there, its old place closing up around it.
-        const host = into, hk = [...this.hosts()].find(([, h]) => h === host)?.[0];
-        into = null;
-        if (hk) {
-          const before = new Map(still.map((k) => [k, k.getBoundingClientRect()]));
-          // It leaves the flow: back among its own row's things, so rows it opened on the way close again.
-          if (mixed) {
-            const rest = seq.filter((k) => k !== el), mates = rest.map((k, i) => (k.parentElement === el.parentElement ? i : -1)).filter((i) => i >= 0);
-            const pos = mates.length ? mates[mates.length - 1] + 1 : rest.length;
-            seq = [...rest.slice(0, pos), el, ...rest.slice(pos)];
-            entry.order = seq.map((k) => g.keys[g.kids.indexOf(k)]);
-            this.close(g, entry, seq);
-          }
-          // Kept with the group it belongs to now (its own row, when that closed again).
-          const mine = this.member(el), kept = mine ? this.entryFor(mine) : entry;
-          (kept.inside ??= {})[mine ? mine.keys[mine.kids.indexOf(el)] : key] = hk;
-          this.slot(el, host);
-          const now = el.getBoundingClientRect();
-          this.glide(el, `translate3d(${seen.left - now.left}px, ${seen.top - now.top}px, 0) scale(0.97)`, 300).finished.catch(() => undefined).finally(settled);
-          for (const k of still) { const a = before.get(k)!, b = k.getBoundingClientRect(); if (Math.abs(a.left - b.left) + Math.abs(a.top - b.top) >= 1) this.glide(k, `translate(${a.left - b.left}px, ${a.top - b.top}px)`, 320); }
-          this.save();
-          return;
-        }
-        this.seat(host);
+      // M181: let go outside its own group: refused. It goes back to its place, with a short shake.
+      if (!table && !within(g.parent.getBoundingClientRect(), lx, ly, 24)) {
+        if (seq.some((k, i) => k !== seq0[i])) settle(seq0, rects);
+        entry.order = seq.map((k) => g.keys[g.kids.indexOf(k)]);
+        if (wasIn) this.slot(el, wasIn);
+        keep();
+        this.glide(el, from, 260).finished.catch(() => undefined).finally(() => {
+          settled();
+          if (!calm()) el.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-6px)' }, { transform: 'translateX(5px)' }, { transform: 'translateX(-3px)' }, { transform: 'translateX(0)' }], { duration: 260, easing: 'ease-out' });
+        });
+        return;
       }
       // Out of a card it was in: it is the group's again.
       if (wasIn && entry.inside) { delete entry.inside[key]; if (!Object.keys(entry.inside).length) delete entry.inside; }
@@ -1124,7 +1079,8 @@ export class Arranger {
    * another place (a row wrapping, a grid's columns freed) glide there; let go, it eases to the size
    * kept (a share of its row, 1% steps; columns in a grid; a height in px).
    */
-  private resize(el: HTMLElement, g: Group, e: PointerEvent, right: boolean, bottom: boolean) {
+  private resize(el: HTMLElement, g: Group, e: PointerEvent, sides: Sides) {
+    const right = sides.r || sides.l, bottom = sides.b || sides.t;
     this.remember();
     const entry = this.entryFor(g), key = g.keys[g.kids.indexOf(el)];
     const { grid, gap } = this.ready(g);
@@ -1132,7 +1088,7 @@ export class Arranger {
     const p = g.parent, start = el.getBoundingClientRect(), rtl = getComputedStyle(el).direction === 'rtl';
     const size: Size = { ...(entry.sizes?.[key] ?? {}) };
     const html = document.documentElement;
-    html.dataset.arrResize = right && bottom ? 'xy' : right ? 'x' : 'y';
+    html.dataset.arrResize = pointerFor(sides);
     el.classList.add('arr-size');
     const pcs = getComputedStyle(p), pad = (parseFloat(pcs.paddingLeft) || 0) + (parseFloat(pcs.paddingRight) || 0);
     const capped = pcs.maxWidth !== 'none', room = (p.parentElement?.clientWidth ?? p.clientWidth);
@@ -1140,11 +1096,12 @@ export class Arranger {
     // The others, by where the page puts them (not where a glide is drawing them): one that jumps glides.
     const others = g.kids.filter((k) => k !== el);
     const spot = (k: HTMLElement) => [k.offsetLeft, k.offsetTop];
-    let was = others.map(spot);
+    let was = others.map(spot), shift = [0, 0];
     this.follow(e, (x, y) => {
       const seen = others.map((k) => k.getBoundingClientRect());
       if (right) {
-        let w = Math.max(80, start.width + (rtl ? e.clientX - x : x - e.clientX));
+        const dx = rtl ? e.clientX - x : x - e.clientX;
+        let w = Math.max(80, start.width + (sides.l ? -dx : dx));
         if (grid) {
           size.span = Math.max(1, Math.min(tracks.length, Math.round((w + gap) / (track + gap))));
           const span = `span ${size.span}`;
@@ -1161,10 +1118,16 @@ export class Arranger {
         el.style.width = `${Math.round(w)}px`;
       }
       if (bottom) {
-        size.h = Math.max(60, Math.round(start.height + y - e.clientY));
+        size.h = Math.max(60, Math.round(start.height + (sides.t ? e.clientY - y : y - e.clientY)));
         el.style.height = `${size.h}px`; el.style.overflow = 'auto';
       }
       el.dataset.arrSized = '';
+      // Pulled by the start or top edge: that edge follows the hand, the other stays put (`translate`,
+      // composited, no layout: `.arr-size` holds `transform` at none while resizing).
+      el.style.translate = '';
+      const nb = el.getBoundingClientRect();
+      shift = [sides.l ? (rtl ? start.left - nb.left : start.right - nb.right) : 0, sides.t ? start.bottom - nb.bottom : 0];
+      if (shift[0] || shift[1]) el.style.translate = `${shift[0]}px ${shift[1]}px`;
       const now = others.map(spot);
       others.forEach((k, i) => {
         if (Math.abs(now[i][0] - was[i][0]) + Math.abs(now[i][1] - was[i][1]) <= 12) return;
@@ -1176,11 +1139,14 @@ export class Arranger {
     }, () => {
       delete html.dataset.arrResize;
       (entry.sizes ??= {})[key] = size;
+      el.style.translate = '';
       // Its size as kept, eased in: a grid card settles to its columns, a row card to its share.
       const others0 = others.map((k) => k.getBoundingClientRect());
       this.ease(el, () => this.size(el, size, grid, gap, p));
       others.forEach((k, i) => { const q = k.getBoundingClientRect(); if (Math.abs(others0[i].left - q.left) + Math.abs(others0[i].top - q.top) > 1) this.glide(k, `translate(${others0[i].left - q.left}px, ${others0[i].top - q.top}px)`, 260); });
       el.classList.remove('arr-size');
+      // The start or top edge let go: the card settles into its place in the page, gliding there.
+      if (shift[0] || shift[1]) this.glide(el, `translate3d(${shift[0]}px, ${shift[1]}px, 0)`, 260);
       this.save();
     });
   }
