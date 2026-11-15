@@ -2270,6 +2270,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
+  [/^\/api\/teacher\/first-class$/, () => ok({ show: false })],
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
   // Registers (Stage 5 · B15.5): a school bus and a lent laptop.

@@ -9,6 +9,8 @@ const now = new Date().toISOString().replace('Z', '+00:00');
 const C = 'cmulde0g900147d341qn9mxlw'; // CS101 in the sample data
 const sql = [
   `INSERT OR IGNORE INTO users (id, name, email, role, status, createdAt, updatedAt) VALUES ('local-tara', 'Tara Teacher', 'tara@teacher.com', 'TEACHER', 'ACTIVE', '${now}', '${now}'), ('local-tom', 'Tom Assistant', 'tom@teacher.com', 'TEACHER', 'ACTIVE', '${now}', '${now}')`,
+  // Signed-up already, so the local test teachers open their home (not the sign-up steps).
+  `UPDATE users SET onboardedAt = '${now}' WHERE id IN ('local-tara', 'local-tom') AND onboardedAt IS NULL`,
   `INSERT OR IGNORE INTO course_staff (id, courseId, userId, role, createdAt) SELECT 'local-tara-cs101', '${C}', id, 'CO_TEACHER', '${now}' FROM users WHERE email = 'tara@teacher.com'`,
   `INSERT OR IGNORE INTO course_staff (id, courseId, userId, role, createdAt) SELECT 'local-tom-cs101', '${C}', id, 'TA', '${now}' FROM users WHERE email = 'tom@teacher.com'`,
   `INSERT OR IGNORE INTO users (id, name, email, role, status, accountType, createdAt, updatedAt) VALUES ('local-parent', 'Pat Parent', 'test-parent@local.test', 'GUARDIAN', 'ACTIVE', 'GUARDIAN', '${now}', '${now}')`,

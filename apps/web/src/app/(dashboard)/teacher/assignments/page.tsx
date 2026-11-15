@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
 import { toast } from 'sonner';
@@ -28,6 +28,8 @@ interface Row {
 export default function TeacherAssignmentsPage() {
   const { data, isLoading, mutate } = useSWR<Row[]>('/api/assignments', authedJson);
   const [creating, setCreating] = useState(false);
+  // ?new=1 (the first-class steps, M196) opens the new assignment straight away.
+  useEffect(() => { if (new URLSearchParams(location.search).get('new') === '1') void Promise.resolve().then(() => setCreating(true)); }, []);
 
   return (
     <>

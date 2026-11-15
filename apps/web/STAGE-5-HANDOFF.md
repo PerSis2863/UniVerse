@@ -7004,3 +7004,17 @@ filters, selecting several, folders, communities, private chats). What didn't ho
 - **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
   dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
   Alice's row alone. Test work removed.
+
+
+## M196: a teacher's first class in 10 minutes (the owner's list of 15 Nov, item 2)
+
+- `GET /api/teacher/first-class` (`src/server/first-class.ts`): teachers only; their own newest course that
+  isn't archived (`teacherId`, not co-teaching), its students and assignments counted, the last five who
+  joined by first name. Sample answer: `{ show: false }`.
+- `FirstClassCard` (`components/dashboard`) on the teacher home through HomeBoard's new `first` slot
+  (above every card, never moved): New course (the same sheet as the top bar's), Invite students (the
+  M113 invite sheet; a draft course asks to publish first), New assignment (`/teacher/assignments?new=1`
+  opens the form), who joined. "Your class is set up" when all four are done; × hides it on the device.
+- `scripts/local/test-accounts.mjs` now marks Tara and Tom signed up (they were sent to the sign-up steps).
+- **Tested:** Tom from no course to all done, at 1280 dark and 390 light, axe clean on the card, no sideways
+  scroll; `?new=1` opens the form; unit tests (`first-class.test.ts`). Test course removed.
