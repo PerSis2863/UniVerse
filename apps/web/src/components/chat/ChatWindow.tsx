@@ -96,6 +96,10 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [older, setOlder] = useState<ChatMessage[]>([]);
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean | null>(null);
   const [loadingOlder, setLoadingOlder] = useState(false);
+  // Reading far back (M192): a stretch of old messages not joined to the newest ones, opened around
+  // a message more than a few pages back; `newer` while there are messages after it to load.
+  const [win, setWin] = useState<{ msgs: ChatMessage[]; newer: boolean } | null>(null);
+  const [loadingNewer, setLoadingNewer] = useState(false);
   const [pending, setPending] = useState<ChatMessage[]>([]);
   // New messages glide in; those already here when the chat opened (openedAt, below) don't. Mine
   // glide as I send them (the server's copy that replaces the "sending" one then stays still).
@@ -147,7 +151,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [shownConvo, setShownConvo] = useState(conversationId);
   if (shownConvo !== conversationId) {
     setShownConvo(conversationId);
-    setOlder([]); setHasMoreOlder(null); setPending([]); setReplyTo(null); setEditing(null); setInfoOpen(false);
+    setOlder([]); setHasMoreOlder(null); setWin(null); setPending([]); setReplyTo(null); setEditing(null); setInfoOpen(false);
   }
   useEffect(() => { lastCount.current = 0; }, [conversationId]);
 
@@ -181,8 +185,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const convo = data?.conversation;
   const messages = useMemo(() => {
     const seen = new Set<string>();
-    return [...older, ...(data?.messages ?? []), ...pending].filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
-  }, [older, data?.messages, pending]);
+    return (win ? win.msgs : [...older, ...(data?.messages ?? []), ...pending]).filter((m) => (seen.has(m.id) ? false : (seen.add(m.id), true)));
+  }, [win, older, data?.messages, pending]);
   const others = convo?.members.filter((m) => m.id !== me) ?? [];
   const other = !convo?.isGroup ? others[0] : undefined;
   // A huddle that may be going (1.11): its latest "started a huddle" message is under 4 hours old.
@@ -214,7 +218,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const last = messages[messages.length - 1];
     if (lastCount.current === 0 || (grew && (nearBottom || last?.senderId === me))) {
       requestAnimationFrame(() => el.scrollTo({ top: el.scrollHeight, behavior: lastCount.current === 0 ? 'auto' : 'smooth' }));
-    } else if (grew && last && lastId.current && last.id !== lastId.current) {
+    } else if (!win && grew && last && lastId.current && last.id !== lastId.current) {
       // New at the end (not older ones loaded at the top) while reading history: count them.
       const from = messages.findIndex((m) => m.id === lastId.current);
       const fresh = from >= 0 ? messages.slice(from + 1).filter((m) => m.senderId !== me).length : 0;
@@ -222,7 +226,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
     lastCount.current = messages.length;
     lastId.current = last?.id ?? null;
-  }, [messages, me]);
+  }, [messages, me, win]);
 
   const loadOlder = async () => {
     const first = messages[0];
@@ -232,7 +236,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const prevHeight = el?.scrollHeight ?? 0;
     try {
       const res = await authedJson<ThreadResponse>(`${key}?before=${encodeURIComponent(first.createdAt)}`);
-      setOlder((cur) => [...res.messages, ...cur]);
+      if (win) setWin((w) => (w ? { ...w, msgs: [...res.messages, ...w.msgs] } : w));
+      else setOlder((cur) => [...res.messages, ...cur]);
       setHasMoreOlder(res.hasMore);
       requestAnimationFrame(() => { if (el) el.scrollTop = el.scrollHeight - prevHeight; });
     } catch (e) {
@@ -242,9 +247,32 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     }
   };
 
+  /** Reading far back: the next messages after the stretch; reaching the newest joins it to the chat again. */
+  const loadNewer = async () => {
+    const last = win?.msgs[win.msgs.length - 1];
+    if (!win || !last || loadingNewer) return;
+    setLoadingNewer(true);
+    try {
+      const res = await authedJson<ThreadResponse>(`${key}?after=${encodeURIComponent(last.createdAt)}`);
+      const msgs = [...win.msgs, ...res.messages];
+      if (res.hasNewer) setWin({ msgs, newer: true });
+      else { setOlder(msgs); setWin(null); }
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setLoadingNewer(false);
+    }
+  };
+  /** Back to the newest messages from far back. */
+  const backToLatest = () => {
+    setWin(null); setOlder([]); setHasMoreOlder(null);
+    requestAnimationFrame(() => { const el = scrollRef.current; if (el) el.scrollTo({ top: el.scrollHeight }); });
+  };
+
   const patchMsg = (id: string, fn: (x: ChatMessage) => ChatMessage) => {
     mutate((prev) => (prev ? { ...prev, messages: prev.messages.map((x) => (x.id === id ? fn(x) : x)) } : prev), { revalidate: false });
     setOlder((cur) => cur.map((x) => (x.id === id ? fn(x) : x)));
+    setWin((w) => (w ? { ...w, msgs: w.msgs.map((x) => (x.id === id ? fn(x) : x)) } : w));
   };
 
   const star = async (m: ChatMessage) => {
@@ -378,21 +406,29 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     } catch (e) { toast.error((e as Error).message); }
   };
   const jump = async (messageId: string) => {
-    // Up to 60 pages back (2,400 messages; it stopped at 400, so older search results never opened: M188).
+    // A few pages back joins the history on; further than that opens a stretch around the message
+    // (M192; M188 stopped at 2,400 messages back), however long the chat is.
     let guard = 0;
     let list = messages;
-    while (!list.some((m) => m.id === messageId) && guard++ < 60) {
-      if (guard === 4) toast.message('Looking further back…');
+    while (!list.some((m) => m.id === messageId) && guard++ < 3) {
       const first = list[0];
       if (!first) break;
       const res = await authedJson<ThreadResponse>(`${key}?before=${encodeURIComponent(first.createdAt)}`).catch(() => null);
       if (!res || !res.messages.length) break;
       list = [...res.messages, ...list];
-      setOlder((cur) => [...res.messages, ...cur]);
+      if (win) setWin((w) => (w ? { ...w, msgs: [...res.messages, ...w.msgs] } : w));
+      else setOlder((cur) => [...res.messages, ...cur]);
       setHasMoreOlder(res.hasMore);
       if (!res.hasMore) break;
     }
-    if (!list.some((m) => m.id === messageId)) return void toast.message('That message is too far back to open from here.');
+    if (!list.some((m) => m.id === messageId)) {
+      const upTo = await authedJson<ThreadResponse>(`${key}?around=${encodeURIComponent(messageId)}`).catch(() => null);
+      const target = upTo?.messages.find((m) => m.id === messageId);
+      if (!upTo || !target) return void toast.message('That message isn’t in this chat any more.');
+      const after = await authedJson<ThreadResponse>(`${key}?after=${encodeURIComponent(target.createdAt)}`).catch(() => null);
+      setWin({ msgs: [...upTo.messages, ...(after?.messages ?? [])], newer: after ? !!after.hasNewer : true });
+      setHasMoreOlder(upTo.hasMore);
+    }
     setHighlight(messageId);
     setTimeout(() => document.getElementById(`msg-${messageId}`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 80);
     setTimeout(() => setHighlight((h) => (h === messageId ? null : h)), 2200);
@@ -415,6 +451,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   };
 
   const send = async ({ text, file: picked, voice, viewOnce, album, videoNote, sticker, effect, silent }: SendPayload) => {
+    if (win) backToLatest(); // a message sent from far back shows where it lands (M192)
     const file = picked ?? videoNote?.file;
     haptic('tap');
     const tempId = `temp-${crypto.randomUUID()}`;
@@ -938,12 +975,22 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               })}
             </section>
           ))}
+          {win && (
+            <div className="flex flex-col items-center gap-2 pt-3 pb-1">
+              {win.newer && (
+                <button onClick={loadNewer} aria-busy={loadingNewer || undefined} disabled={loadingNewer} className="px-4 py-1.5 rounded-full text-xs font-semibold bg-white dark:bg-white/[0.06] border border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1.5">
+                  {loadingNewer && <Loader2 className="w-3 h-3 animate-spin" />} Load newer messages
+                </button>
+              )}
+              <p className="text-xs text-zinc-500">You’re reading older messages.</p>
+            </div>
+          )}
         </div>
 
         <AnimatePresence>
-          {(showJump || unseen > 0) && (
+          {(showJump || unseen > 0 || !!win) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
-              onClick={() => { setUnseen(0); scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
+              onClick={() => { setUnseen(0); if (win) backToLatest(); else scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
               className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
               <ArrowDown className="w-4 h-4" aria-hidden />
               {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}

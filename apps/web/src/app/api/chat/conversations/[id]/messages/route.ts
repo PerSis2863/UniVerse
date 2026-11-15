@@ -47,7 +47,17 @@ async function getThread(req: Request, { params }: Ctx) {
 
   const sp = new URL(req.url).searchParams;
   const before = sp.get('before');
-  const beforeDate = before ? new Date(before) : null;
+  let beforeDate = before ? new Date(before) : null;
+  // A page that ends at a message (M192), for opening one far back in a long chat: that message and
+  // the ones before it. `after` then pages forward from it (newest last, `hasNewer`).
+  const around = sp.get('around');
+  if (around) {
+    const at = await prisma.message.findFirst({ where: { id: around, conversationId: id, threadId: null, AND: [visibleTo(user.id)] }, select: { createdAt: true } });
+    if (!at) return NextResponse.json({ error: 'That message isn’t in this chat any more.' }, { status: 404 });
+    beforeDate = new Date(at.createdAt.getTime() + 1);
+  }
+  const after = sp.get('after');
+  const afterDate = after && !isNaN(+new Date(after)) ? new Date(after) : null;
 
   // Search inside this chat.
   const q = sp.get('q')?.trim();
@@ -103,8 +113,8 @@ async function getThread(req: Request, { params }: Ctx) {
 
   const [rows, convo, system, prefs, scheduled] = await Promise.all([
     prisma.message.findMany({
-      where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
-      orderBy: { createdAt: 'desc' },
+      where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(afterDate ? { createdAt: { gt: afterDate } } : beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
+      orderBy: { createdAt: afterDate ? 'asc' : 'desc' },
       take: PAGE + 1,
       select: { ...messageSelect, sender },
     }),
@@ -129,15 +139,17 @@ async function getThread(req: Request, { params }: Ctx) {
   // last time) and record presence.
   const newest = rows[0]?.createdAt;
   const unread = me.markedUnread || !me.lastReadAt || (!!newest && newest > me.lastReadAt);
-  if (!beforeDate) {
+  if (!beforeDate && !afterDate) {
     await Promise.all([
       unread ? quietly(prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } })) : null,
       quietly(touchPresence(user.id)),
     ]);
   }
 
-  const hasMore = rows.length > PAGE;
-  const page = rows.slice(0, PAGE);
+  // Paging forward (`after`) reads oldest first: the page is turned to newest first like the others.
+  const hasMore = afterDate ? true : rows.length > PAGE;
+  const hasNewer = afterDate ? rows.length > PAGE : false;
+  const page = afterDate ? rows.slice(0, PAGE).reverse() : rows.slice(0, PAGE);
   const [messages, pinnedRows, translations] = await Promise.all([
     decorate([...page].reverse().map(serializeMessage), user.id),
     // Pinned messages (up to 3) for the bar at the top of the chat.
@@ -208,6 +220,7 @@ async function getThread(req: Request, { params }: Ctx) {
       translations,
       messages: withThreads,
       hasMore,
+      hasNewer,
       me: user.id,
     },
     { headers: { 'Cache-Control': 'no-store' } },
