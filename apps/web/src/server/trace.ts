@@ -1,5 +1,7 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
+import { getStripe } from '@/lib/billing';
+import { featureOff } from './moderation';
 import type { SessionUser } from '@/lib/server-auth';
 import { KEY_LEN, MAX_BATCH, PLAN_UNITS, SIG_LEN, STAGES, encodeSerial, footprint, formatCode, journeyCarbon, splitCode, toBase32, verdictFor, type Verdict } from '@/lib/trace';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -75,7 +77,14 @@ export async function brandInfo(u: SessionUser) {
   const b = await myBrand(u);
   if (!b) return { brand: null };
   const units = await prisma.traceBatch.aggregate({ where: { brandId: b.id }, _sum: { quantity: true } });
-  return { brand: b, pro: isPro(b, u), units: units._sum.quantity ?? 0, unitLimit: PLAN_UNITS[b.plan] ?? PLAN_UNITS.FREE };
+  // M201: whether the brand can pay here (the owner's switch, Stripe and a PRO price set); Stripe's ids stay on the server.
+  const { stripeCustomerId, stripeSubscriptionId, ...brand } = b;
+  const price = Number(process.env.TRACE_PRO_PRICE_CENTS);
+  const open = !(await featureOff('trace-payments')) && !!getStripe();
+  return {
+    brand, pro: isPro(b, u), units: units._sum.quantity ?? 0, unitLimit: PLAN_UNITS[b.plan] ?? PLAN_UNITS.FREE,
+    billing: { open, proPriceCents: open && Number.isInteger(price) && price >= 100 ? price : null, managed: !!stripeCustomerId, subscribed: !!stripeSubscriptionId },
+  };
 }
 
 /** POST /trace/brand: start a brand, free. One per account; asking again returns the same one. */

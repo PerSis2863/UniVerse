@@ -354,6 +354,7 @@ model User {
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
   toolSaveOpens        ToolSaveOpen[]
+  oauthConnections     OAuthConnection[]
   parentContactHours   ParentContactHours? @relation("ParentContactHours")
   consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
   consentFor           ConsentResponse[]   @relation("ConsentFor")
@@ -6891,6 +6892,9 @@ model TraceBrand {
   createdById String?
   createdAt   DateTime           @default(now())
   members     TraceBrandMember[]
+  /// M201: PRO bought through Stripe (the owner's account): the brand's customer and subscription there
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
 
   @@map("trace_brands")
 }
@@ -6971,6 +6975,20 @@ model TraceCampaign {
 
   @@index([brandId, status])
   @@map("trace_campaigns")
+}
+
+/// M201: money a brand added to a campaign's budget through Stripe, one row per paid Checkout session.
+model TraceFunding {
+  sessionId  String   @id
+  campaignId String
+  points     Int
+  /// in the smallest unit of `currency` (cents)
+  amount     Int
+  currency   String
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+  @@map("trace_fundings")
 }
 
 /// A live position from a phone carrying a batch (the real-time tracking map).
@@ -7524,4 +7542,23 @@ model UserArrangement {
   updatedAt DateTime @default(now())
 
   @@map("user_arrangements")
+}
+
+/// M182: a person's connection to an outside service (src/server/connections.ts). Tokens encrypted.
+model OAuthConnection {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// gmail, outlook, slack, google-calendar, outlook-calendar, classroom
+  service   String
+  /// the account's address or name, to show which one is connected
+  account   String?
+  access    String
+  refresh   String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+
+  @@unique([userId, service])
+  @@map("oauth_connections")
 }

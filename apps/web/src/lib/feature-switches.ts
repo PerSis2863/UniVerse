@@ -30,6 +30,8 @@ export const FEATURE_SWITCHES: FeatureSwitch[] = [
   // Off until turned on (M107): each text in and each thank-you reply is a paid Twilio message.
   { id: 'relief-sms-alerts', label: 'Relief emergency texts', hint: 'When an organisation declares an emergency, helpers nearby who added their phone number get one text (SMS) each: at most 100 an emergency and 300 a day. Off until you turn it on: Twilio charges per message; set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN and TWILIO_FROM (your Twilio number).', optIn: true },
   { id: 'relief-sms', label: 'Relief text requests', hint: 'People without the app text an organisation’s number (SMS or WhatsApp, through your Twilio account) and the message lands in its inbox. Off until you turn it on: Twilio charges per message, and TWILIO_AUTH_TOKEN must be set.', paths: /^\/api\/core\/relief\/texts\/inbound$/, optIn: true },
+  // Off until turned on (M201): brands pay through your Stripe account.
+  { id: 'trace-payments', label: 'Trace payments', hint: 'Brands buy Trace PRO (a monthly subscription at TRACE_PRO_PRICE_CENTS, US cents) and add money to their campaigns themselves, through your Stripe account. Off until you turn it on: set TRACE_PRO_PRICE_CENTS, and in Stripe send customer.subscription.* and checkout.session.completed to the webhook.', optIn: true },
   { id: 'payments', label: 'Payments', hint: 'Nobody can start a new payment or subscription.', paths: /^\/api\/(billing\/checkout|create-checkout-session)$/ },
 ];
 

@@ -7062,3 +7062,102 @@ can't reach, so the account was made in the local database. Fixes:
   an iPhone once this is live.
 - **Left:** the class link page stays dark in light mode (its own look); the realtime ticket and
   `/api/server-state` fail only on the local dev server (the Worker answers them live).
+
+
+## M199: who can see what, and a final check between schools (the owner's list of 15 Nov)
+
+- **Admin → Safety → Who can see what** (`/admin/safety/access`, `WhoSeesWhat.tsx`, `GET /api/admin/visibility`):
+  what each role sees and never sees, what's kept to the school with live counts (people by role,
+  courses, rooms, buildings, whether the school has its own safety settings), and what's shared between
+  schools on purpose (direct messages, the Impact League's totals, Trace / Relief / Green / Play, links
+  people share). The words describe the code: change them when access changes. Phones get a stacked list.
+- **The leak check** (`scripts/checks/school-leaks.mjs`): makes a second school (admin, teacher, student;
+  removed after), calls every GET API route without an id in its address and the core API's lists as each
+  of them, and looks for the main school's names, emails and a course name. It needs those three emails in
+  `DEMO_ACCOUNT_EMAILS` (the command is in the file). About 25 minutes on the dev server. Found and fixed:
+  - the student directory listed every school's students (now the person's own school);
+  - consent forms: an admin saw every school's forms and course list, and a form for "every student"
+    reached every school's parents and students, who could also sign it (now the sender's school, on the
+    sender's side, the parents' side and when signing);
+  - Revision Reels (micro-lessons): an admin saw every school's (now their school's);
+  - the course catalogue and electives: every school's published courses (now the person's own school's;
+    an admin: the schools they run). Class invite links don't use these lists, so they still work.
+  - The last run after the fixes: 347 addresses, 283 answers for the three roles, no leaks.
+- **Left:** the check covers lists, not addresses with an id; draft Impact League challenges are seen by
+  every school's admins (the league is between schools on purpose).
+
+
+## M181: arranging keeps things where they belong; every edge resizes; Tidy (the owner, 14 Nov)
+
+- **Its own group only** (`arrange-dom.ts` `move`): carried outside its group, nothing makes room, and let
+  go there the drop is refused: it glides back with a short shake (Reduce Motion: no shake). Opening a row
+  into the page (M166) and dropping inside another card (M167) are removed; arrangements saved with them
+  still show as they were (`apply` reads `open` and `inside`). `arrange-cross-ui.mjs` (inside a card) and
+  `arrange-more-ui.mjs` (out of its row) test what this removed: their parts for that now fail by design.
+- **Every edge**: `item` finds the start and top edges too (`Sides`); an end or bottom edge of something
+  around wins over a start or top edge inside it (otherwise a press at a card's bottom took a smaller
+  thing's top). While pulling the start or top edge, that edge follows the hand with `translate` (the
+  `.arr-size` rule holds `transform` at none); let go, the card glides into its place. Pointers: ew, ns,
+  nwse, nesw (`html[data-arr-resize]`).
+- **Tidy** (the new idea): a button beside "Put this page back" packs the page's grids with no gaps
+  (`grid-auto-flow: row dense`, kept as `Entry.dense`), the cards gliding there; Ctrl+Z takes it back.
+- **Tested:** `scripts/checks/arrange-keep-ui.mjs` (start edge 271 → 558 px, top edge following the hand,
+  a refused drop with its shake, Tidy and its undo, axe) and `arrange-resize-ui.mjs` again (no slow frames
+  over 70 ms); unit tests.
+
+
+## M182: Messages, connections (the owner, 14 Nov)
+
+- **Where:** Messages → Connections (mail and chat; `?space=connections`) and Settings → Connected accounts
+  (everything; Google Classroom for teachers and admins). `ConnectionsPanel.tsx`.
+- **Services** (`src/server/connections.ts` `SERVICES`): Gmail, Outlook, Slack (read only: the newest 20
+  mails, the last message of 10 Slack direct chats, read live with the person's token, never stored),
+  plus the calendars and Classroom (M200). Telegram, WhatsApp, Discord and LinkedIn can't be connected by a
+  person (`ELSEWHERE` says why on the tab).
+- **Off until the owner sets them up [owner]:** SESSION_SECRET (32+ characters, already needed) and, per
+  maker, an app registered there with its keys in Cloudflare: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+  (Google Cloud; Gmail's read scope is "restricted": up to 100 test users before Google's verification, and
+  the full review costs money), `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` (Azure app registration,
+  free), `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` (a Slack app, user scopes im:read, im:history,
+  users:read). Each app's sign-in return address: `https://<the site>/api/connections/callback`.
+- **Security:** `POST …/start` (signed in) seals a state (who, which service, a nonce, the PKCE verifier,
+  the time, a return page from a short allowed list) and sets an HttpOnly cookie with the nonce; the open
+  callback accepts only a sealed state, within ten minutes, from the browser holding that cookie (so no one
+  can attach their account to someone else's, or the reverse), and Google and Microsoft check PKCE. Tokens
+  are sealed (`secret-box.ts`, their own context), never sent to a browser, refreshed when they run out,
+  revoked on Disconnect where the service allows it. Table `oauth_connections` (0217). Unit tests
+  (`connections.test.ts`: a forged state, another browser, an outside return page).
+- **Tested:** the tabs at 1280 and 390, light and dark: every service shows "Not set up on UniVerse yet",
+  axe clean. A real sign-in can only be tried once the owner adds the keys.
+
+
+## M200: Google Classroom import and calendar sync (the owner's list of 15 Nov)
+
+- **Calendars:** Google Calendar and Outlook Calendar connect in Settings (M182's base). Their events from
+  a week ago to two months ahead show in UniVersity's calendar (`CalendarBoard.tsx` `useOutsideEvents`),
+  grey, not movable, read live. The other way (UniVersity into Google or Outlook) was already there: the
+  calendar's subscription link.
+- **Google Classroom** (teachers and admins): the connection lists the classes they teach; "Import as a
+  course" (`POST /api/connections/classroom/import`, `importClassroom`) makes a draft course of theirs (a
+  code from the section or name, made unique), its coursework becomes assignments (title, instructions,
+  points, due date), and students already with an account at the teacher's school are enrolled. The rest
+  join with the course's invite link (M113). Nothing is sent to anyone.
+- **[owner]:** the same Google and Microsoft keys as M182 (Classroom's scopes are in `SERVICES.classroom`).
+
+
+## M201: Trace payments (the owner's list of 15 Nov)
+
+- Schools could already pay for their plan (`/api/billing/*`). New: Trace brands, through the owner's Stripe
+  account, behind the opt-in switch **Trace payments** (console → Server, off): "Go PRO" on the brand's
+  console (Stripe Checkout, monthly at `TRACE_PRO_PRICE_CENTS`, US cents), "Manage billing" (Stripe's
+  portal) once subscribed, and "Add points" on each campaign (points at the brand's own point value, in its
+  currency, 100 to 1,000,000).
+- `src/server/trace-billing.ts`; the Stripe webhook routes Trace's events before the schools' ones:
+  `traceSubscription` sets PRO while the subscription is active, trialing or past due, FREE otherwise;
+  `traceFunding` adds a paid top-up once (`trace_fundings`, one row per Checkout session, 0218) and only
+  for the exact amount and currency. Stripe's ids never go to the browser (`brandInfo` drops them).
+- **[owner]:** turn on "Trace payments", set `TRACE_PRO_PRICE_CENTS` (e.g. 1900 for $19 a month), and in
+  Stripe send `customer.subscription.*` and `checkout.session.completed` to the existing webhook.
+- **Tested:** unit tests (`trace-billing.test.ts`: a resent event adds nothing, a wrong amount or currency
+  adds nothing, PRO follows the subscription); with the switch off the brand sees no payment button and
+  the API refuses.

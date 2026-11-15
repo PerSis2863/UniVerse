@@ -3,6 +3,7 @@ import Stripe from 'stripe';
 import prisma from '@/lib/db';
 import { getStripe, syncSubscription } from '@/lib/billing';
 import { confirmFromGateway } from '@/server/payments/provider';
+import { traceFunding, traceSubscription } from '@/server/trace-billing';
 
 // Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
 const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
@@ -33,7 +34,8 @@ export async function POST(req: Request) {
     event.type === 'customer.subscription.deleted'
   ) {
     try {
-      await syncSubscription(event.data.object as Stripe.Subscription);
+      // A Trace brand's PRO (M201), or else a school's plan.
+      if (!(await traceSubscription(event.data.object as Stripe.Subscription))) await syncSubscription(event.data.object as Stripe.Subscription);
     } catch (err) {
       console.error('Error syncing subscription:', err);
       return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
@@ -45,12 +47,20 @@ export async function POST(req: Request) {
     const session = event.data.object as Stripe.Checkout.Session;
     if (typeof session.subscription === 'string') {
       try {
-        await syncSubscription(await stripeClient().subscriptions.retrieve(session.subscription));
+        const sub = await stripeClient().subscriptions.retrieve(session.subscription);
+        if (!(await traceSubscription(sub))) await syncSubscription(sub);
       } catch (err) {
         console.error('Error syncing subscription from checkout:', err);
         return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
       }
     }
+    return NextResponse.json({ received: true });
+  }
+
+  // Money added to a Trace campaign's budget (M201), once per session.
+  if ((event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') && (event.data.object as Stripe.Checkout.Session).metadata?.traceCampaignId) {
+    try { await traceFunding(event.data.object as Stripe.Checkout.Session); }
+    catch (err) { console.error('Error adding to a Trace campaign:', err); return NextResponse.json({ error: 'Not recorded yet' }, { status: 500 }); }
     return NextResponse.json({ received: true });
   }
 
