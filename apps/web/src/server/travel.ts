@@ -20,7 +20,10 @@ export const UA = 'UniVerseTravel/1.0 (https://github.com/PerSis2863/UniVerse; t
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 
 export async function fetchJson<T>(url: string): Promise<T | null> {
-  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+  // A source that is slow or unreachable is "busy" (503), like one that answers with an error: not a fault of
+  // the site's own (M231: a Nominatim timeout was logged as a server error).
+  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
+    .catch(() => { throw new ServiceUnavailableException('The travel guide service is busy. Try again in a minute.'); });
   if (r.status === 404) return null;
   if (!r.ok) throw new ServiceUnavailableException('The travel guide service is busy. Try again in a minute.');
   return (await r.json()) as T;
