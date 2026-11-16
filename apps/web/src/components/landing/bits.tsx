@@ -4,6 +4,9 @@ import { createContext, useContext, useEffect, useRef, useState, useSyncExternal
 import { animate, m as motion, useInView } from 'framer-motion';
 import { cn } from '@/lib/utils';
 
+/** One formatter for every counting number (toLocaleString made one per frame, M211). */
+const WHOLE = new Intl.NumberFormat('en-US');
+
 // Small parts shared by the landing page's sections (src/app/page.tsx).
 
 export const EASE = [0.22, 1, 0.36, 1] as const;
@@ -101,7 +104,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
   useEffect(() => {
     const el = ref.current;
     if (!el || !seen) return;
-    const c = animate(0, to, { duration: 1.6, ease: EASE, onUpdate: (v) => { el.textContent = `${prefix}${Math.round(v).toLocaleString('en-US')}${suffix}`; } });
+    const c = animate(0, to, { duration: 1.6, ease: EASE, onUpdate: (v) => { el.textContent = `${prefix}${WHOLE.format(Math.round(v))}${suffix}`; } });
     return () => c.stop();
   }, [seen, to, prefix, suffix]);
   return <span ref={ref} className={cn('tabular-nums', className)}>{prefix}0{suffix}</span>;

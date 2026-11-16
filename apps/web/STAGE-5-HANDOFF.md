@@ -7267,27 +7267,306 @@ can't reach, so the account was made in the local database. Fixes:
   what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
   sideways scroll, no errors), `travel-tips.test.ts`, `pnpm check`.
 
-## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
+## M205: Travel, find a destination (the owner's Airbnb list of 15 Nov, item 1)
 
-The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M204 did items 2 and 3.
-Left, in this order (numbers reserved):
+- **The ask:** "5 days in November, €400, street food, history, walkable: where should I go?"
+- **Where:** Explore → **Find where to go** (`?view=find`, a `Segmented` beside "Search a place";
+  `TravelFinder.tsx`, loaded only when chosen). Days (stepper), budget per person and its currency, the
+  month (next month by default), what you love (18 interests) and your passport (your home country from
+  `uv-travel-home`, now `useHome()` in `travel-ui.tsx`). Every change re-ranks at once in the browser
+  and the cards slide to their places (`morph()`); 12 shown, "Show more places".
+- **The ranking** (`src/lib/travel-find.ts`, pure, tested): that month's weather (mild and dry 17–29 °C
+  and under 100 mm; beach weather 24–33 °C when beaches are wanted; snow when skiing is), the budget per
+  day against **an estimated day there** for three styles (US-price days of $95 / $195 / $390 times the
+  country's price level to the power 0.8, since what visitors pay varies less than what locals pay), the
+  interests matched, the visa (no visa / ETA / eVisa / on arrival / needed / permit; refused entry left
+  out; a stay longer than allowed warned). At most two places from one country in the first twelve. Each
+  card says why, good and bad, with the cost for the whole stay.
+- **The data, read ahead** by `npx tsx scripts/gen-travel-data.mts --places | --money | --visa`:
+  `travel-places.json` (145 places' position, banner and month-by-month climate: the guide's climate
+  chart, else **NASA POWER**'s 2001–2025 averages at its position, public domain; regions use a
+  representative city, `CLIMATE_AT`), `travel-money.json` (World Bank household PPP ÷ the exchange rate,
+  2025, CC BY 4.0; PR, PF, CU and AR are marked guesses), `travel-visa-titles.json` (197 passports'
+  Wikipedia article names). The places themselves (country, themes, interests, blurb) are hand-written
+  rows in `travel-ideas.ts` (Explore shows the first 24, "Show all 145 places").
+- **Visas** (`GET /travel/visa?p=GB`, `src/lib/travel-visa.ts`, tested): Wikipedia's "Visa requirements
+  for … citizens" table read row by row (the Timatic code, else the country's name), kept 30 days in
+  `travel_cache`. The guide's **Know before you go** now says "Your passport: No visa needed (up to 90
+  days)" with the source and "check the official rules before you book".
+- **Traps:** NASA POWER's `T2M_MAX` climatology is the month's hottest hour, not a typical day (Bruges
+  showed 19 °C in November): use `T2M ± T2M_RANGE / 2`. Wikivoyage's position for a region can sit in a
+  rain shadow (Kerala showed 56 mm in July): add the place to `CLIMATE_AT`. `Intl.DisplayNames.of` throws
+  on a code it doesn't know: `named()` in the finder. Czechia's money in `travel-countries.json` was
+  `["203","CZK"]` (Prague's guide showed "203"): fixed.
+- **Checked:** `travel-find-ui.mjs` (Hanoi first for the owner's example; reasons; the British passport's
+  visas; beaches in July re-rank; 24 after Show more; the Kyoto guide names the visa; axe clean at 1280
+  dark and 390 light; no sideways scroll; no errors), `travel-find.test.ts`, `travel-visa.test.ts`,
+  `pnpm check`.
 
-1. **M205: find a destination** (item 1: "5 days in November, €400, street food, history, walkable: where
-   should I go?"). A form (days, budget and currency, month, interests, passport) ranks places with why each
-   fits: that month's weather (the guide's climate chart via `readTips`, or a table generated ahead for
-   ~150 places), an **estimated** daily cost (say so: a base budget × the country's World Bank price level,
-   indicator PA.NUS.PPPC.RF, CC BY 4.0), the interests (tags written for each place), and visa ease for the
-   passport (Wikipedia's "Visa requirements for X citizens" tables, CC BY-SA, read and kept like guides).
-   Start from `src/lib/travel-ideas.ts` (24 places) and grow it; a tab in Explore, not a new page.
-2. **M206: the trip planner** (items 4, 5 and 7): a trip of one or more cities with dates; days; places from
-   Saved or any guide, grouped by how close they are (the listings' lat/lon), opening hours and prices shown,
-   time to spend by kind (a museum 2 h, a viewpoint 30 min), drag and drop between days; a multi-city route
-   in a sensible order with "how to get between" (Rome2Rio, trains, buses, ferries); the **whole trip's
-   budget** (stay + food + transport + tickets from listing prices and the M205 daily estimate); friends
-   planning together (members, live updates with `publish()`); add to calendar (an .ics file).
-3. **M207: getting there and around, budget stays, travellers** (items 5 and 6): flights, trains, buses and
-   ferries links (Omio, 12Go in Asia, Direct Ferries); the airport and travel-card sentences are already in
-   M204's tips; hostels and hotels compared by the guide's price bands with Hostelworld beside Booking.com;
-   an **opt-in** board of travellers in the same city on the same dates (18+ only, first name and dates,
-   city level, contact through Messages in the Travel app, report and block).
-Each: sample answers for new GET routes, a check in `scripts/checks/`, motion per §8.
+## M206: Travel, the trip planner (the owner's Airbnb list of 15 Nov, items 4, 5 and 7)
+
+- **Where:** the Travel menu's **Trips and saved** (`/travel/saved`, phone tab "Trips": a `Segmented` with
+  Trips and Saved places, `?tab=saved`), and a trip's page `/travel/trip?id=` (`TravelTrip.tsx`, with
+  `trip-days.tsx` for the board and `trip-add.tsx` for adding places). A trip starts from **New trip**,
+  **Plan this trip** on a Find where to go card (that place and the days asked) or **Plan a trip here** on
+  a guide (`startTrip()` in `travel-ui.tsx`).
+- **A trip:** its name (edit in place), start date, travellers, style (budget / mid-range / comfort) and
+  currency; **Route**: the cities in order (any guide: `PlaceSearch`, now shared with Explore), each with
+  its dates and a days stepper, up/down, remove, **Shortest order** (the first city stays; nearest next,
+  then reversing stretches while that shortens it); between two cities the distance, the likely way and
+  time, and links (`betweenLinks()` in `travel-book.ts`: Rome2Rio every way, Google Flights over 250 km,
+  Omio's search in Europe, 12Go's route page in Asia, Direct Ferries where islands are involved).
+- **Day by day** (per city): "Not planned yet" and a column per day with its date and the day's total
+  (amber past 9 h). Each place: kind, price, opening hours, the time to spend (by kind and name: museum
+  2 h, viewpoint 30 min…; changeable), the walk or ride from the place before it, a **Move to** menu,
+  earlier/later arrows and its map. **Drag** a place between days or within one (HTML5 drag and drop,
+  `data-no-arrange` on the board; cards slide with `morph(…, { deep: true })`). **Plan my days** spreads the
+  places by closeness (a sweep round the middle, cut into days of at least five hours, each in walking
+  order). **Add places**: the ones saved in that city, or any the guide lists by kind.
+- **Budget:** stays + food + getting around (each country's price level and the style, from M205),
+  between cities (by distance, flights past 700 km), tickets (the guides' listed prices, read in their
+  own currency: `readPrice()`; places without one counted), for all travellers, with per person. A
+  sleep place's own price replaces the estimate. Says what it leaves out (getting there from home).
+- **Together:** the invite link (`/travel/saved?join=CODE`, asks before joining; the owner can make a new
+  link and remove people; others can leave); every change `publish()`es a refresh to the members' open
+  pages; joining and deleting notify in the app. **Add to calendar:** an .ics file made in the browser
+  (`tripIcs()`, all-day days with the day's plan; `src/lib/ics-text.ts` now shared with the calendar feed).
+- **Server** (`src/server/travel-trips.ts`, routes `travel/trips…`): only members see or change a trip (a
+  stranger gets "not one of yours"); limits 50 trips a person, 12 cities, 60 days, 300 places, 12 people;
+  a city sent by name gets its position and country from its guide (`placeOf()` in `travel.ts`); moves go
+  in `CASE` updates of 12 places a query (7 values each, under D1's 100). Database update **0221**
+  (`travel_trips`, `travel_trip_members`, `travel_trip_stops`, `travel_trip_items`; owners and members
+  cascade with the account in SQL, like `travel_saved`). Sample mode has a Lisbon and Porto trip.
+- **Traps:** a `<p>` right after a card's heading is styled 12 px grey by the shared rules (M135): the
+  budget figure is a `<div>`. The motion layer counts figures up: read a number after ~1.5 s in checks.
+  A drop target far down a stretched column is off screen: tests drop near its top.
+- **Checked:** `travel-trip-ui.mjs` (Plan this trip from the finder, a start date, Porto added by search,
+  the leg and its links, four places from the guide, Plan my days 3 + 1 with walk times, a drag kept after
+  reload, the budget, the calendar file, a friend joining on a phone, axe clean at 1280 dark and 390
+  light, no sideways scroll, no errors, the trip deleted), `travel-plan.test.ts`, `pnpm check`.
+
+## M207: Travel, getting there, budget stays and travellers (the owner's Airbnb list of 15 Nov, items 5 and 6)
+
+- **On a trip's page**, under Day by day (`trip-extras.tsx`): **Getting there and back** (the city you set
+  off from, kept on the device as `uv-travel-from`: flights, Rome2Rio and Omio or 12Go out to the first
+  city on the start date and back from the last the day after); **Where to stay** in the chosen city (the
+  guide's Sleep places by price band, budget / mid-range / splurge, with how many and the lowest price in
+  the trip's currency, against our estimate a night for the trip's style; **Hostelworld** for hostels
+  beside **Booking.com** with the city's dates and travellers); **Travellers in** the city (below). A
+  guide's Sleep tab has the same two stay links ("Compare prices"), shown even when the city keeps its
+  hotels in its district guides.
+- **The travellers board** (`src/server/travel-board.ts`, routes `travel/board…`, `travel/blocks`; database
+  update **0222**: `travel_board`, `travel_board_reports`, `travel_blocks`): opt-in per city and dates
+  (the trip's dates for that city), a note of up to 200 characters, the "I'm 18 or over, and I'll meet
+  people in public places" tick. **Adults only:** refused when the birth date says under 18, or for a
+  student their school counts as under 18 (`isMinor`, the school's policy). Shown only to others on the
+  board for the same city with overlapping dates: their first name, dates and note, never an account id
+  (messaging, reporting and blocking go by the post). Someone not on the board sees only how many are.
+  **Message** opens a chat in Travel's own Messages (`directChat(a, b, 'travel')`: `directChat` now takes
+  the app, and finds only that app's chat, as M179 meant); **Report** (a reason; three reports hide a
+  post); **Block** (hides both people from each other there and refuses new chats from the board);
+  "Unblock everyone I blocked"; "Take me off". Limits: 20 cities a person, dates within 18 months, up to
+  90 days.
+- **Search when Wikivoyage is busy:** it answers 429 to busy shared addresses (Cloudflare's included), so
+  `travelSearch` now falls back to the app's own 145 places by name or country instead of failing.
+- **Links** (`travel-book.ts`, tested): `betweenLinks` (above), `hostelLink` (a district's city),
+  `ferryLikely` (island countries, or within a country of islands). Only link patterns that were
+  confirmed are used: Omio and Direct Ferries open their own search pages (their route pages couldn't be
+  checked).
+- **Left out:** a chat started on the board stays in Messages after a block (people can mute or archive
+  it there; Messages has no block of its own); the owner console doesn't list board reports (three hide a
+  post by themselves).
+- **Checked:** `travel-board-ui.mjs` (Alice and Bob plan Lisbon on the same dates; the way there and back;
+  stays; both join; Bob sees "Alice" and her dates, messages her (a chat opens), blocks her, neither sees
+  the other; a guide's Sleep tab with both links; axe clean at 1280 dark and 390 light; no sideways
+  scroll; no errors; everything tidied up), `travel-board.test.ts` (adults only, first names only, only
+  people on the board, blocks both ways, chats only with the same city's board), `travel-plan.test.ts`,
+  `pnpm check`.
+
+## M209: Travel, the map, real places and UniVerse's own reviews (the owner, 16 Nov)
+
+- **The ask:** "real data of places and reviews of people from that places and make the map detailed with
+  all the information like the apple maps … something different that nobody has … ultra smooth". The owner
+  chose (asked first): build it despite the launch pause, and reviews from UniVerse's own people (not a paid
+  service).
+- **Where:** Explore's third view **Map** (`/travel?view=map`, `&at=lat,lon,zoom` or `&d=<guide title>`), and
+  "See on the map" on every guide. `src/components/travel/map/`: `TravelMap.tsx` (loaded only when opened,
+  with MapLibre), `map-layers.ts`, `PlaceCard.tsx`, `Reviews.tsx`, `TripPicker.tsx`.
+- **The map:** MapLibre GL 6.16 (BSD; `pnpm add maplibre-gl@6.16.0`) drawing **OpenFreeMap**'s vector tiles
+  of OpenStreetMap (free, no account or key; its "liberty" style in light mode, "dark" in dark mode, where
+  UniVerse adds the 3D buildings and the place names the dark style lacks). Tiles go straight from
+  OpenFreeMap to the browser: **no Worker CPU**. MapLibre's worker is copied to `public/maplibre` by
+  `scripts/copy-maplibre-assets.mjs` (dev and build, like pdf.js; gitignored) and set with `setWorkerUrl`;
+  the security headers allow `tiles.openfreemap.org` (connect and img). Credits always shown in the panel.
+- **What it does:** kinds of place (Sights, Food, Cafés, Drinks, Museums, Parks, Shops, Hotels, Transport;
+  the tiles' `poi` classes, `src/lib/travel-map.ts`) shown in the accent with a list of those in view (one of
+  each name, the notable and near first); **tap any place**: its real facts from OpenStreetMap through
+  Nominatim (the tile's feature id is the OSM id ×10 + type: `osmKey`), open or closed **at the hour chosen,
+  in the place's own time zone** (`src/lib/opening-hours.ts` reads the common opening_hours forms and says
+  only the written hours for the rest; `src/lib/travel-local.ts`: the zone from `travel-zones.json`, made by
+  `gen-travel-data.mts --zones` from the tz list), address, call, website, menu, access, payments, its photo
+  and a line from Wikidata and Wikipedia; Directions (OpenStreetMap, on foot), Save, **Add to a trip** (into
+  the trip's nearest city, or a new trip). **The hour slider** (the next 24 hours) lights the 3D buildings
+  from where the sun really is there (`sunPosition`, `setLight`: warm low sun, a soft blue night) and shows
+  sunrise, golden hour and sunset. **Layers:** 3D, photos people took nearby (Wikimedia Commons, each with its
+  author and licence), stories (Wikipedia's articles about places nearby, amber pins), UniVerse reviews
+  (green pins with the average). **Walk from here** (1–4 hours): the notable sights within reach strung
+  nearest-next, with a look's time (an artwork 10 min, a church 20, a museum 75), drawn as a dashed line with
+  numbers, arrival times in their time, and all of it into a trip in one go.
+- **Reviews** (`src/server/travel-reviews.ts`, database update **0223**: `travel_reviews`,
+  `travel_review_reports`): stars, words, "I live here"; one a person a place (changing it clears old
+  reports); 30 a day; three reports hide one; shown by first name only; the place card shows **Locals say**
+  apart from **Visitors say** and tabs for each. A place is its OSM id or `wp:<Wikipedia title>`.
+- **Server** (`src/server/travel-places.ts`, routes `travel/place|where|photos|stories`): every answer kept
+  in `travel_cache` (places and positions 30–90 days, photos and stories 7) and only an OSM id or a rounded
+  position is sent; a busy source leaves its layer empty instead of failing.
+- **Traps:** MapLibre's stylesheet makes its container `position: relative` (the map came out 300 px tall):
+  the container's position is inline. A filter that matches nothing must be an expression
+  (`['==', ['get','class'], '__none__']`), not `['==', 1, 0]`. OpenMapTiles files artworks as `art_gallery`
+  (a museum's 75 minutes): `walkStay` checks the subclass. The map's listeners use `useEffectEvent` (React
+  19.2) so the map is made once without stale state or lint-disable comments. Wikimedia rate-limits busy
+  shared addresses (this machine after the data runs): photos and stories were tested on saved samples.
+- **Checked:** `travel-map-ui.mjs` (the map draws in 3D; 40 sights in view; a place's facts with "Open
+  until …"; a review as a local counted under Locals and deleted; Food lists restaurants; a 5-stop walk; the
+  hour slider; phone panel; axe clean at 1280 dark and 390 light, the map canvas aside; no errors),
+  `travel-local.test.ts`, `travel-place.test.ts`, `travel-map.test.ts`, `travel-reviews.test.ts`, `pnpm check`.
+
+## M210: no page titles, no "Lab" tags (the owner, 16 Nov)
+
+- **The asks** (two screenshots): "please remove this part from every section of project because it is not
+  needed in any apps" (a page's title, "Travel", and the line under it); "please remove lab from here for
+  every app" (the app tabs' "Lab" tags).
+- **Titles:** `Topbar` no longer shows the title or subtitle on computers or phones; it keeps an `sr-only`
+  `<h1>` (screen readers, and checks that look for a page's heading) and the browser tab's title. The
+  phone's row under the bar shows only when the page has actions (`leftNode`, `action`, `rightNode`).
+  Gone with them: the phone bar's small title that took over on scroll (`setPageTitle` / `usePageTitle`
+  in `src/lib/chrome.ts`, `.nav-inline-title`, `data-collapsed`, `.large-title`) and the title's glide from
+  a card (`sharedId` is still accepted, unused). The UniVerse name now stays in the phone's bar.
+- **Lab:** the `lab` field of `APPS` and `LabTag` are removed; no app is marked Lab anywhere (website tabs,
+  app cards, the world section, the side menu's app switcher, the hub). The 5 December review of each
+  app's numbers still stands; it just isn't shown.
+- **Checked:** `/travel/saved`, `/green` (phone) and `/student`: no visible title, one heading for screen
+  readers, no errors; `pnpm check`.
+
+## M211: the main pages' lag, and the error log (the owner, 16 Nov)
+
+- **The ask:** "the website and app lagg alot in the main page so please fix it and check if any errors are
+  there in the system".
+- **Measured** with `scripts/checks/main-pages-smooth.mjs` (new; on `local:serve`): the landing signed out
+  and the hub, UniVersity's home, Travel and Trace signed in, at 390 × 844 with the CPU slowed 4× and at
+  1440 × 900: long tasks while loading, frames over 3 s still and while scrolling, and a CPU profile.
+  **Trap:** starting the CPU profiler stalls a slowed page for ~0.6 s; the script measures stillness before
+  it starts.
+- **The big one, `src/lib/scroll-motion.ts` `arrive`** (M130, content replacing a placeholder gliding in):
+  it ran inside every MutationObserver callback, building its list by copying (quadratic: thousands of nodes
+  when a page renders) and reading layout in the middle of React's commit: 0.3–0.5 s of each main page's
+  start on a slow phone. Now: records under `[data-no-motion]` are dropped first (cached per node, `quiet`),
+  a batch over 300 changes (a whole page building: its entrance moves it) is skipped, the rest is looked at
+  in the next animation frame, the list is pushed not copied, `moving()` looks six levels up, and nested
+  queued roots are scanned once. `PendingPage` had its own watcher doing the same job (both ran): removed;
+  `arrive`'s placeholder list now includes `[role="status"][aria-label="Loading"]`.
+- **The landing:** the hero scenes, the typewriter line and the rotating "hello" carry `data-no-motion`
+  (they animate themselves many times a second); pointing at the app tabs builds only that app's sections
+  ahead (it built all five, hidden: a half-second freeze) and loads only its code; the top bar's "scrolled"
+  look comes from an IntersectionObserver on a 1 px mark (it ran on every scroll event); the product
+  window's tilt is a CSS scroll timeline (`.window-tilt`; it was framer-motion's `useScroll` on the page's
+  thread); counting numbers reuse one `Intl.NumberFormat` (`bits.tsx`), as `fmt()` now does
+  (`src/lib/instruments.ts`: 76 ms of the hub's start).
+- **Result** (phone, CPU ×4): the motion layer's share fell from 0.26–0.49 s to under 0.1 s per page; every
+  main page now holds 60 frames a second while still; scrolling the landing has no long task from the page's
+  code (what's left in the headless check is drawing on software graphics). The page entrance's one
+  layout read (`page-transition.ts`) stays: the browser lays the page out once anyway.
+- **Errors:** the live `error_reports` (production D1, read only) have nothing new since 10 Nov (a stray
+  multipart POST to `/`, already refused since M159) and 7 Nov (a styling and chunk mismatch during a
+  deploy); the open ones last happened 29–31 Oct and haven't come back since the fixes after them.
+- **Found out of date (not changed by this):** `landing-story-ui.mjs` (looks for `#story`'s "Apps" list,
+  gone since M164), `landing-pause-ui.mjs` (expects the phone hero to move at the top) and
+  `landing-try-ui.mjs` (a demo it scrolls to is hidden): they fail the same way without these changes.
+- **Checked:** `main-pages-smooth.mjs` before and after, `pnpm check`.
+
+## Hand-over: the owner's Airbnb list (15 Nov)
+
+Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip
+planner) and M207 (getting there, stays, travellers). M208 was kept for "the extras" in M202's first plan;
+nothing more was asked for it: ask the owner before starting anything under that number.
+
+## M212: dark mode's accent is the website's blue; calmer greens (16 Nov)
+
+The owner: "remove the neon greenish colour from the app as i dont like it jsut put something which matches
+the website". The neon green was dark mode's lime (#c6f24a, M124's Relay look) plus Green's bright mint.
+
+- **Dark mode's accent is blue** (`globals.css`, M124 block): the re-pointed accent scale (indigo / violet /
+  purple / pink / fuchsia / aqua) runs 50 #eef4ff … 950 #172554 with 400 #6ea2f8 and 600 #2563eb; `--tint`
+  #6ea2f8, `--tint-text` #93b9fa, `--ins-hot` #6ea2f8, `--cta` #2563eb with white text; main buttons are the
+  website's #2563eb with white text (light mode keeps its black ones). The rules that turned white text ink on
+  a solid accent fill (needed on lime) now apply only to Trace, Relief and Play, whose accents are light; on
+  blue, white stays.
+- **Green is calmer**: its dark block (M132) uses deeper emerald (500 #0d7f5e, 600 #047857) with a soft
+  #4fbf98 tint; the plain `emerald-*` / `green-*` classes in dark mode are softened at the start of the
+  M124 `.dark, .on-dark` block (states keep their meaning, just less glowing); Green's bars lost their lime
+  end (`to-emerald-300`).
+- **Scenes:** UniVersity's dark scene is drawn in the blue (`CAMPUS.dark` in `backdrop.ts`); Green's
+  fireflies are warm (no lime).
+- **For code that builds on it:** don't add `lime-*` classes; a solid accent fill in dark mode takes white
+  text (except in Trace, Relief and Play). §8 of AGENTS.md says the same.
+- **Checked:** screenshots of the landing, `/green`, `/relief` and `/student` in dark mode, `pnpm check`.
+
+## M213: Travel's left-outs, and a look like the other apps (16 Nov)
+
+The owner, quoting M207's "Left out on purpose" list: "Do all this also. The travel app needs to look
+professional and modern like the other apps".
+
+- **Getting between cities:** a "This route by train, bus or ferry" link to Google Maps' documented directions
+  address (`/maps/dir/?api=1&origin=…&destination=…&travelmode=transit`) opens the exact route with times. Omio's
+  route links need Omio's own city numbers (only in its partner file) and Direct Ferries publishes no route
+  address, so those two still open their search, now labelled "Search trains and buses" / "Search ferries".
+- **Blocking on the board** (`blockTraveller`): the Travel chat between the two goes to the blocker's archive,
+  muted; `travelChatBlocked()` refuses new messages in a one-to-one Travel chat between people one of whom
+  blocked the other (the chat send route, 403; the blocker is told to unblock on the board). Other chats
+  between the same people (school, Messages) are untouched: the block is the board's.
+- **Owner console → People → Moderation** lists Travel's reported board notes and reviews
+  (`src/server/travel-moderation.ts`) as their own "Travel" group: Hide, or Restore (shown again, reports
+  cleared). Three reports still hide one by themselves.
+- **Live updates between friends:** `scripts/checks/travel-live-ui.mjs` (two people on one trip; one adds a
+  city and renames it, the other's open page shows both). Measured on `local:serve`: the city and the new name arrive on the friend's screen in 0.1 s (live, through the
+  RealtimeHub; the plain dev server has no Durable Object, so there it waits for the 30 s fallback).
+- **The look:** Travel has its own colour like Trace, Relief, Green and Play (the M132 block, sky: light mode
+  #0369a1 with white text; dark: 400 #38bdf8 for text, marks and my bubbles (ink text on it), fills from 500
+  #0278b8 down carry white text at 4.8:1 or more, so Travel is not in the M212 ink-on-accent rule);
+  its `sky-*` classes are now the accent classes (`indigo-*`), so a person's own accent reaches Travel too. A
+  tab row across every Travel page (`TravelTabs`: Explore, Find where to go, Map, Trips, Saved) like Trace's;
+  Trace's row is now the shared `TabRow` (`components/ui`). Explore's first card is laid out like Trace's
+  console: the headline with the serif accent word (`.accent-word`), the search, four lines on what's here,
+  and "Your trips" beside it (the next three, New trip, Find where to go). The Segmented switchers are gone
+  (the tab row does their job).
+- **Checks fixed:** `travel-ui.mjs` opened `/travel/saved` (Trips since M206) and its "Save" click also matched
+  "Saved"; `travel-board-ui.mjs` now also sends after the block (403 both ways).
+- **Not tried in a browser:** the console's Moderation list with a Travel report (it needs `local:serve
+  --owner-test`); its server part has a unit test.
+- **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
+  (`travel-moderation.test.ts`, the board's), `pnpm check`.
+
+## Hand-over: the owner's asks of 16 Nov still to do
+
+Asked and not started (each its own item, from M214; next database update 0224):
+
+1. **Travel's map, bigger** ("more good looking and accurate … a lot of details and features … my cloudflare
+   cpu limit should not rise"): terrain in 3D with hill shading (AWS's free terrarium elevation tiles), a
+   satellite view (EOX's Sentinel-2 cloudless, CC BY 4.0, credited), the globe when zoomed out, the sky lit by
+   the real sun, public transport lines, Panoramax street pictures ("look around"), walking-time rings, my
+   position with its accuracy, a layers panel, and "filter places here". Everything straight from the browser
+   to those services (no Worker CPU): add their hosts to the CSP (`security-headers.ts`: img-src /
+   connect-src). Checked reachable with CORS: `elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png`,
+   `tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`, `api.panoramax.xyz/api/map/{z}/{x}/{y}.mvt`.
+2. **Travel's big features** ("unique … or combine different apps' features into one"): a trip's shared
+   expenses (who paid, who owes whom, budget against spent), a packing list from the trip's weather, plans and
+   plugs, a money converter with what things cost there. Needs a database update.
+3. **Green, about 10 big features** (and "professional, animated, realistic"; the calmer colours were M212):
+   e.g. a footprint calculator, a trip CO₂ comparer, a green places map, community events, goals and pledges,
+   impact equivalents, a habit calendar, a team league, tips, a year card.
+4. **Relief, about 10 big features**: e.g. live disaster alerts (GDACS and USGS, read in the browser), a
+   preparedness plan and kit, a volunteer-hours certificate, a triage board, supply matching, nearest shelters
+   with walking time, first-aid basics with official links, pledges.
+
+The launch focus (section 4 of AGENTS.md) pauses new features; the owner asked for these anyway, so build
+them, one item each, and keep the CPU on the Worker flat (read outside data in the browser where possible).

@@ -44,9 +44,9 @@ const wrap = (x: number, m: number) => ((x % m) + m) % m;
 /** Each app's colour (src/lib/apps.ts) and a second one that sits well beside it. */
 const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], play: [34, 211, 238], travel: [253, 186, 116] };
 /** Green's fireflies. */
-const FIREFLY: Rgb = [217, 249, 157];
-/** M132: UniVersity wears the site's own accent (lime in dark mode, blue in light), as its buttons do. */
-const CAMPUS = { dark: { base: [198, 242, 74] as Rgb, alt: [45, 212, 191] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
+const FIREFLY: Rgb = [253, 230, 168];
+/** M132: UniVersity wears the site's own accent (blue, lighter on the dark page since M212), as its buttons do. */
+const CAMPUS = { dark: { base: [110, 162, 248] as Rgb, alt: [56, 189, 248] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
 const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, play: 53, travel: 67 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */

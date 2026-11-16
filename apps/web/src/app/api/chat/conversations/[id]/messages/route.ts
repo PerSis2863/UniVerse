@@ -16,6 +16,7 @@ import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { validPayload } from '@/lib/e2e';
 import { effectOf } from '@/lib/message-effects';
+import { travelChatBlocked } from '@/server/travel-board';
 
 /** What a private message shows wherever it can't be decrypted (lists, notifications). */
 const PRIVATE_BODY = '🔒 Private message';
@@ -242,7 +243,12 @@ export async function POST(req: Request, { params }: Ctx) {
   if (muted) return NextResponse.json({ error: muted }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
-  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true, private: true } });
+  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true, private: true, app: true, isGroup: true } });
+  // M213: a Travel chat between two people one of whom blocked the other on the travellers board.
+  if (convo?.app === 'travel' && !convo.isGroup) {
+    const why = await travelChatBlocked(id, user.id);
+    if (why) return NextResponse.json({ error: why }, { status: 403 });
+  }
   // Community channels: announcements are for moderators, voice rooms have no messages, slow mode.
   if (convo?.communityId) {
     const why = await channelSendCheck(id, user.id);

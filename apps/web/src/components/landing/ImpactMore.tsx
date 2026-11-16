@@ -125,7 +125,7 @@ export function GreenMore() {
             <p className="text-sm text-zinc-400">This week</p>
             <p className="mt-2 text-2xl font-bold text-white min-h-8">{challenge?.title ?? ' '}</p>
             <div className="mt-5 h-2 rounded-full bg-white/[0.08] overflow-hidden">
-              <motion.div className="h-full w-full origin-left rtl:origin-right rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ scaleX: 0 }} whileInView={{ scaleX: 0.64 }} viewport={{ once: true }} transition={{ duration: 1.1, delay: 0.2, ease: EASE }} />
+              <motion.div className="h-full w-full origin-left rtl:origin-right rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ scaleX: 0 }} whileInView={{ scaleX: 0.64 }} viewport={{ once: true }} transition={{ duration: 1.1, delay: 0.2, ease: EASE }} />
             </div>
             <p className="mt-2 text-xs text-zinc-400">Everyone gets the same one. New every Monday.</p>
           </Reveal>

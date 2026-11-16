@@ -128,33 +128,8 @@ export function PendingPage({ children }: { children: React.ReactNode }) {
     if (m !== 'tab') sweepTitle(page());
   }, [pathname]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Data arriving where a loading placeholder was: what replaces it fades in where it stood (one
-  // after another for a list), instead of popping in. Watches for placeholders leaving the page.
-  useEffect(() => {
-    const root = stage.current;
-    if (!root || typeof MutationObserver === 'undefined') return;
-    const isPlaceholder = (n: Element) => n.classList.contains('skeleton') || n.matches('[aria-busy="true"], [role="status"][aria-label="Loading"]')
-      || (n.childElementCount === 1 && !!n.firstElementChild?.matches('svg.animate-spin')) // a box with just a spinner
-      || (n.childElementCount > 0 && n.childElementCount < 40 && !!n.querySelector(':scope > .skeleton, :scope > * > .skeleton'));
-    const observer = new MutationObserver((records) => {
-      if (reducedMotion()) return;
-      let placeholderLeft = false;
-      const added: HTMLElement[] = [];
-      for (const r of records) {
-        r.removedNodes.forEach((n) => { if (!placeholderLeft && n instanceof Element && isPlaceholder(n)) placeholderLeft = true; });
-        r.addedNodes.forEach((n) => { if (n instanceof HTMLElement) added.push(n); });
-      }
-      if (!placeholderLeft) return;
-      added.filter((n) => n.isConnected && !isPlaceholder(n) && !n.matches('[data-page-path]') && !n.querySelector('[data-page-path]') && n.getBoundingClientRect().height > 0).slice(0, 12)
-        .forEach((n, i) => {
-          // Something as big as the screen comes in from half visible (never a blank screen).
-          const big = n.getBoundingClientRect().height > window.innerHeight * 0.5;
-          n.animate(big ? [{ opacity: 0.4 }, { opacity: 1 }] : [{ opacity: 0, transform: 'translate3d(0, 16px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 480, delay: Math.min(i, 8) * 60, easing: EASE_GLIDE, fill: 'backwards' });
-        });
-    });
-    observer.observe(root, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, []);
+  // (What replaces a loading placeholder glides in through the site-wide motion layer,
+  // src/lib/scroll-motion.ts `arrive`; this page's own watcher did the same work twice, M211.)
 
   return (
     <div ref={stage} className="page-stage flex flex-col flex-1 min-w-0">

@@ -664,6 +664,70 @@ export function sampleTravelWeather() {
   const skies = ['clearsky_day', 'partlycloudy_day', 'fair_day', 'rain', 'partlycloudy_day', 'clearsky_day', 'cloudy'];
   return { days: skies.map((symbol, i) => ({ date: new Date(Date.now() + i * DAY).toISOString().slice(0, 10), min: 12 + (i % 3), max: 19 + (i % 4), symbol, rain: symbol === 'rain' ? 4.2 : 0 })), credit: 'Weather: MET Norway (CC BY 4.0)' };
 }
+/** GET /travel/visa (M205): a sample passport's rules (written for the demo). */
+export function sampleTravelVisa(p: string | null) {
+  const none = { s: 'none', d: '90 days' }, evisa = { s: 'evisa', d: '30 days' };
+  const rules: Record<string, { s: string; d?: string }> = { PT: none, ES: none, FR: none, IT: none, GR: none, HR: none, JP: none, KR: none, TH: { s: 'none', d: '30 days' }, VN: { s: 'evisa', d: '90 days' }, ID: { s: 'arrival', d: '30 days' }, IN: evisa, MA: none, TR: none, US: { s: 'eta', d: '90 days' }, CA: { s: 'eta', d: '6 months' }, MX: { s: 'none', d: '180 days' }, PE: { s: 'none', d: '183 days' }, AU: { s: 'eta', d: '3 months' }, EG: evisa, CN: { s: 'required' }, RU: { s: 'required' } };
+  return { passport: (p ?? 'GB').toUpperCase(), who: 'British citizens', rules, credit: { source: 'Wikipedia', licence: 'CC BY-SA 4.0', url: 'https://en.wikipedia.org/wiki/Visa_requirements_for_British_citizens' } };
+}
+/** GET /travel/trips (M206): a sample trip being planned with a friend. */
+export function sampleTravelTrips() {
+  return { trips: [{ id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', mine: true, updatedAt: new Date().toISOString(), cities: ['Lisbon', 'Porto'], cover: 'Lisbon', days: 5, people: 2, places: 6 }] };
+}
+/** GET /travel/trips/:id */
+export function sampleTravelTrip(me: { id: string; name?: string }) {
+  const stop = (id: string, guide: string, lat: number, lon: number, days: number, position: number) => ({ id, tripId: 'sample-trip-1', guide, name: guide, cc: 'PT', lat, lon, days, position });
+  const item = (id: string, stopId: string, day: number | null, position: number, name: string, kind: string, lat: number, lon: number, minutes: number, extra: { hours?: string; price?: string; note?: string } = {}) => ({ id, tripId: 'sample-trip-1', stopId, day, position, name, kind, lat, lon, minutes, hours: extra.hours ?? null, price: extra.price ?? null, note: extra.note ?? null, address: null, url: null, addedById: me.id, createdAt: new Date().toISOString() });
+  return {
+    trip: { id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', travellers: 2, style: 'mid', currency: 'EUR', updatedAt: new Date().toISOString() },
+    code: 'SAMPLE2345', owner: true, ownerId: me.id, me: me.id,
+    stops: [stop('sample-stop-1', 'Lisbon', 38.7139, -9.1394, 3, 0), stop('sample-stop-2', 'Porto', 41.1496, -8.611, 2, 1)],
+    items: [
+      item('sample-item-1', 'sample-stop-1', 0, 0, 'Belém Tower', 'see', 38.6916, -9.216, 60, { hours: '10:00–18:30', price: '€8' }),
+      item('sample-item-2', 'sample-stop-1', 0, 1, 'Jerónimos Monastery', 'see', 38.6979, -9.2068, 120, { hours: '09:30–18:00', price: '€12' }),
+      item('sample-item-3', 'sample-stop-1', 0, 2, 'Pastéis de Belém', 'eat', 38.6975, -9.2032, 45, { price: '€1.40 a tart' }),
+      item('sample-item-4', 'sample-stop-1', 1, 0, 'São Jorge Castle', 'see', 38.7139, -9.1335, 90, { price: '€15' }),
+      item('sample-item-5', 'sample-stop-1', null, 0, 'Time Out Market', 'eat', 38.7069, -9.1459, 75, { price: '€8–20' }),
+      item('sample-item-6', 'sample-stop-2', 0, 0, 'Livraria Lello', 'see', 41.1469, -8.6149, 30, { price: '€10' }),
+    ],
+    members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false }],
+  };
+}
+/** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
+export function sampleTravelBoard() {
+  return {
+    mine: { id: 'sample-board-me', fromDate: '2027-04-08', toDate: '2027-04-10', note: 'Up for a food tour', hidden: false },
+    people: [
+      { id: 'sample-board-1', name: 'Maya', fromDate: '2027-04-07', toDate: '2027-04-12', note: 'Looking for people to try fado with' },
+      { id: 'sample-board-2', name: 'Tom', fromDate: '2027-04-09', toDate: '2027-04-10', note: 'Sintra day trip on the 10th?' },
+    ],
+    count: 2,
+  };
+}
+/** M209: the map's sample answers (written for the demo; the real ones come from OpenStreetMap, Wikidata,
+ *  Commons and Wikipedia). GET /travel/place */
+export function sampleTravelPlace() {
+  return { place: { key: 'N398922337', name: 'Pastéis de Belém', kind: 'Pastry shop', lat: 38.6975, lon: -9.2033, cc: 'PT', city: 'Lisbon', address: 'Rua de Belém 84-92, Belém, Lisbon', phone: null, website: 'https://pasteisdebelem.pt', menu: null, hours: 'Mo-Su 08:00-21:00', cuisine: ['Regional'], facts: ['Wheelchair accessible', 'Since 1837'], wikidata: null, about: 'The bakery that has made Belém’s custard tarts since 1837.', image: null, wiki: null }, credit: 'Facts: OpenStreetMap contributors (ODbL), Wikidata, Wikipedia (CC BY-SA)' };
+}
+/** GET /travel/where */
+export const sampleTravelWhere = () => ({ lat: 38.7139, lon: -9.1394, box: [-9.23, 38.69, -9.09, 38.8] });
+/** GET /travel/photos, /travel/stories */
+export const sampleTravelPhotos = () => ({ photos: [], credit: 'Photos: Wikimedia Commons (each by its author, under its licence)' });
+export const sampleTravelStories = () => ({ stories: [{ title: 'Belém Tower', lat: 38.6916, lon: -9.216, extract: 'A 16th-century fortress on the Tagus, where ships set out on the voyages of discovery.', thumb: null, url: 'https://en.wikipedia.org/wiki/Bel%C3%A9m_Tower' }], credit: 'Stories: Wikipedia (CC BY-SA 4.0)' });
+/** GET /travel/reviews, /travel/reviews/near */
+export function sampleTravelReviews() {
+  const at = new Date().toISOString();
+  return {
+    summary: { count: 3, average: 4.7, locals: { count: 2, average: 5 }, visitors: { count: 1, average: 4 } },
+    reviews: [
+      { id: 'sample-review-1', name: 'Inês', rating: 5, text: 'Go early on a weekday and eat them warm at the counter, with cinnamon.', local: true, visited: '2026-10', at, mine: false },
+      { id: 'sample-review-2', name: 'Rui', rating: 5, text: 'Still the best, and the queue moves fast.', local: true, visited: null, at, mine: false },
+      { id: 'sample-review-3', name: 'Maya', rating: 4, text: 'Worth the trip to Belém; the tower is a short walk away.', local: false, visited: '2026-09', at, mine: false },
+    ],
+    mine: null,
+  };
+}
+export const sampleTravelReviewsNear = () => ({ places: [{ place: 'N398922337', name: 'Pastéis de Belém', lat: 38.6975, lon: -9.2033, count: 3, average: 4.7, locals: { count: 2, average: 5 }, visitors: { count: 1, average: 4 } }] });
 /** GET /travel/saved */
 export function sampleTravelSaved(me: { id: string }) {
   const at = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();

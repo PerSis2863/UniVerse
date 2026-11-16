@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
-import { bookingLinks, type BookKind } from '@/lib/travel-book';
+import { bookingLinks, hostelLink, type BookKind } from '@/lib/travel-book';
 import type { Guide, GuidePart, GuideSection, Listing } from '@/lib/travel-guide';
 import { DIETS, priceBand, type Climate, type DietId, type TipTopic, type Tips } from '@/lib/travel-tips';
 import { KnowTab } from './TravelKnow';
 import { cn } from '@/lib/utils';
-import { Cover, ListingCard, sky, type Saved } from './travel-ui';
+import { Cover, ListingCard, sky, startTrip, type Saved } from './travel-ui';
 
 // A place's guide in UniVerse Travel (M202, /travel/guide?d=<Wikivoyage title>): its photo and opening,
 // the country's facts (money, languages, driving side, emergency numbers), the week's weather, booking
@@ -46,6 +46,7 @@ const guideHref = (title: string) => `/travel/guide?d=${encodeURIComponent(title
 
 export function TravelGuide() {
   const d = useSearchParams().get('d') ?? '';
+  const router = useRouter();
   const calm = useReducedMotion();
   const { data, error } = useSWR<Answer>(d ? `/travel/guide?d=${encodeURIComponent(d)}` : null, fetcher, { revalidateOnFocus: false });
   const g = data?.guide;
@@ -64,7 +65,7 @@ export function TravelGuide() {
 
   if (error) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
-      <MapPin className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+      <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">{(error as Error).message || 'That guide didn’t open.'}</p>
       <Link href="/travel" className="btn-primary mt-5 inline-flex items-center gap-2"><Search className="h-4 w-4" aria-hidden />Search another place</Link>
     </div>
@@ -89,7 +90,7 @@ export function TravelGuide() {
         <Cover file={g.banner} width={1600} priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/35 to-black/10" aria-hidden />
         <Link href="/travel" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4" aria-hidden />Explore</Link>
-        {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-sky-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
+        {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-indigo-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
         <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl" translate="no">{nice(g.title)}</h2>
         {g.summary[0] && <p className="mt-3 max-w-3xl text-base leading-relaxed text-zinc-100">{g.summary[0]}</p>}
       </section>
@@ -119,7 +120,7 @@ export function TravelGuide() {
                 return (
                   <li key={w.date} className="flex flex-col items-center gap-1 rounded-xl bg-zinc-50 px-1 py-2.5 text-center dark:bg-white/[0.04]" title={`${s.words}${w.rain ? `, ${w.rain} mm rain` : ''}`}>
                     <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{i === 0 ? 'Today' : new Date(`${w.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                    <s.icon className="h-6 w-6 text-sky-500" aria-label={s.words} />
+                    <s.icon className="h-6 w-6 text-indigo-500" aria-label={s.words} />
                     <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{w.max}°</span>
                     <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{w.min}°</span>
                   </li>
@@ -137,6 +138,10 @@ export function TravelGuide() {
         {books.map((b) => { const Icon = BOOK_ICON[b.kind]; return (
           <a key={b.kind} href={b.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1.5" title={`Opens ${b.partner}`}><Icon className="h-4 w-4" aria-hidden />{b.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {b.partner}</span></a>
         ); })}
+        {/* M209: this place on the map. */}
+        <Link href={g.lat !== undefined && g.lon !== undefined ? `/travel?view=map&at=${g.lat.toFixed(5)},${g.lon.toFixed(5)},14` : `/travel?view=map&d=${encodeURIComponent(g.title)}`} className="btn-secondary btn-sm ms-auto inline-flex items-center gap-1.5"><MapIcon className="h-4 w-4" aria-hidden />See on the map</Link>
+        {/* M206: a trip with this place first. */}
+        <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Route className="h-4 w-4" aria-hidden />Plan a trip here</button>
       </section>
 
       {/* The parts. */}
@@ -160,7 +165,7 @@ export function TravelGuide() {
             <>
               {(g.summary.length > 1 || parts.get('understand')?.text.length) && (
                 <section className="panel p-6">
-                  <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-sky-500" aria-hidden />Good to know</p>
+                  <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-indigo-500" aria-hidden />Good to know</p>
                   <div className="space-y-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{[...g.summary.slice(1), ...(parts.get('understand')?.text ?? [])].map((p, i) => <p key={i}>{p}</p>)}</div>
                 </section>
               )}
@@ -170,7 +175,7 @@ export function TravelGuide() {
                   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {g.places.map((p) => (
                       <li key={p.title}><Link href={guideHref(p.title)} className="card flex h-full items-start gap-3 p-4 transition-[transform] duration-200 hover:-translate-y-0.5">
-                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-sky-500" aria-hidden />
+                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden />
                         <span className="min-w-0"><span className="block font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span>{p.text && <span className="mt-0.5 block line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{p.text}</span>}</span>
                       </Link></li>
                     ))}
@@ -187,7 +192,7 @@ export function TravelGuide() {
           )}
           {current.id === 'eat' && data.tips?.dishes?.length ? (
             <section aria-labelledby="guide-dishes" className="panel p-6">
-              <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-sky-500" aria-hidden />What to try</h3>
+              <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-indigo-500" aria-hidden />What to try</h3>
               <ul className="mt-3 grid gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
             </section>
           ) : null}
@@ -197,6 +202,14 @@ export function TravelGuide() {
                 <section className="panel space-y-3 p-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
                   {sections.map((s) => s.text.length > 0 && <div key={s.part} className="space-y-3">{sections.length > 1 && <p className="font-semibold text-zinc-900 dark:text-white">{s.title}</p>}{s.text.map((p, i) => <p key={i}>{p}</p>)}</div>)}
                 </section>
+              )}
+              {/* M207: hostels beside hotels, for the same place. */}
+              {current.id === 'sleep' && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="me-1 text-sm text-zinc-600 dark:text-zinc-300">Compare prices:</span>
+                  <a href={hostelLink(g.title)} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title="Opens Hostelworld">Hostels<span className="text-xs text-zinc-500 dark:text-zinc-400">· Hostelworld</span></a>
+                  <a href={books.find((b) => b.kind === 'stay')!.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title="Opens Booking.com">Hotels and flats<span className="text-xs text-zinc-500 dark:text-zinc-400">· Booking.com</span></a>
+                </div>
               )}
               {listings.length > 0 && (
                 <>
@@ -212,7 +225,7 @@ export function TravelGuide() {
                     {listings.length > 8 && (
                       <label className="relative w-full sm:w-72"><span className="sr-only">Filter these places</span>
                         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
-                        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter: sushi, free, 24 hours…" className="w-full rounded-xl border border-zinc-200 bg-white py-2 ps-9 pe-3 text-sm outline-none focus:ring-2 focus:ring-sky-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
+                        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter: sushi, free, 24 hours…" className="w-full rounded-xl border border-zinc-200 bg-white py-2 ps-9 pe-3 text-sm outline-none focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
                       </label>
                     )}
                   </div>
@@ -245,7 +258,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 function Fact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-2.5"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" aria-hidden />
+    <div className="flex items-start gap-2.5"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" aria-hidden />
       <p className="min-w-0"><span className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">{value}</span></p>
     </div>
   );
@@ -267,7 +280,7 @@ function PinMap({ listings }: { listings: Listing[] }) {
     <figure className="panel overflow-hidden p-3">
       {/* The dots repeat the cards' Map buttons for the mouse: hidden from screen readers. */}
       <svg viewBox={`-4 -4 ${W + 8} ${H + 8}`} className="block h-auto w-full" aria-hidden>
-        <rect x={-4} y={-4} width={W + 8} height={H + 8} rx={3} className="fill-sky-500/[0.05]" />
+        <rect x={-4} y={-4} width={W + 8} height={H + 8} rx={3} className="fill-indigo-500/[0.05]" />
         {Array.from({ length: 5 }, (_, i) => <line key={i} x1={(i * W) / 4} x2={(i * W) / 4} y1={0} y2={H} className="stroke-zinc-400/15" strokeWidth={0.2} />)}
         {inside.map((p, i) => {
           const x = (((p.lon - lo0) * k) / w) * W, y = H - ((p.lat - la0) / h) * H;

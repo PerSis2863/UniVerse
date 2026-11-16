@@ -47,7 +47,12 @@ const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 /** M130: the other apps' parts start loading when the pointer or focus reaches the tabs, so the first
  *  switch to an app doesn't wait for (and stall on) its code. */
-const warmApps = () => { void import('@/components/landing/HeroScenesLab'); void import('@/components/landing/TraceSection'); void import('@/components/landing/Business'); void import('@/components/landing/ImpactMore'); };
+// M211: only the code of the app pointed at (all of it at once was a long task on a slow phone).
+const warmApp = (id: AppId) => {
+  if (id === 'campus') return;
+  void import('@/components/landing/HeroScenesLab');
+  if (id === 'trace') { void import('@/components/landing/TraceSection'); void import('@/components/landing/Business'); } else void import('@/components/landing/ImpactMore');
+};
 
 // The public landing page, in the style of the owner's Relay video (a dark page, a live flow card,
 // numbers that draw themselves as you scroll; behind it the chosen app's own scene, M129) and in
@@ -141,8 +146,13 @@ export default function ShowcasePage() {
   // all one 120 ms frame: the page's own content, rebuilt for the new app).
   const later = useDeferredValue(app);
   // M137: the visitor reached for the app tabs: build the other apps' sections ahead (below).
-  const [warm, setWarm] = useState(false);
-  const warmAll = () => { warmApps(); setWarm(true); };
+  // M211: just the app whose tab is pointed at or focused is built ahead (building all five hidden at
+  // once froze a slow phone for half a second).
+  const [warm, setWarm] = useState<AppId | null>(null);
+  const warmAt = (e: React.SyntheticEvent) => {
+    const id = (e.target as Element).closest('[data-uv-app]')?.getAttribute('data-uv-app') as AppId | null;
+    if (id && id !== warm) { warmApp(id); setWarm(id); }
+  };
   const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
@@ -204,7 +214,7 @@ export default function ShowcasePage() {
                     script: about 4 s on a budget phone over slow mobile data. Tab switches still glide
                     with framer (AnimatePresence `initial={false}` only skips the first render). */}
                 <div className="hero-in" style={rise(40)}>
-                  <div onPointerEnter={warmAll} onFocus={warmAll}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
+                  <div onPointerOver={warmAt} onFocus={warmAt}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
                 </div>
                 <AnimatePresence mode="wait" initial={false}>
                   {/* Transform and opacity only (§8: a blur filter repaints every frame), as one `transform`
@@ -236,7 +246,8 @@ export default function ShowcasePage() {
               <div className="hero-in" style={rise(200, 800)}><Live><div className="hero-drift">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={later} initial={{ opacity: 0, transform: 'translateY(40px) rotateX(12deg)' }} animate={{ opacity: 1, transform: 'translateY(0px) rotateX(0deg)' }} exit={{ opacity: 0, transform: 'translateY(-20px) rotateX(0deg)', transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                  <div data-tilt className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
+                  {/* The scene animates itself all the time: the page-wide motion layer leaves it alone (M211). */}
+                  <div data-tilt data-no-motion className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
                 </motion.div>
               </AnimatePresence>
               </div></Live></div>
@@ -251,16 +262,16 @@ export default function ShowcasePage() {
           <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
-          {/* M137: each app's sections. Once the visitor reaches for the tabs (`warm`), the other apps'
+          {/* M137: each app's sections. Once the visitor reaches for an app's tab (`warm`, M211: that one only), its
               sections are built ahead, hidden (React's Activity: no effects, no loops while hidden), so the
               first switch to an app shows them at once instead of building them in that frame. Each part's
               looping demos run only while it is on screen (Live); each section arrives its own way (M63,
               bits.tsx `Motion`); `.app-in` fades a newly shown app in. */}
-          {(warm || later === 'campus') && <Activity mode={later === 'campus' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></></div></Activity>}
-          {(warm || later === 'trace') && <Activity mode={later === 'trace' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></></div></Activity>}
-          {(warm || later === 'relief') && <Activity mode={later === 'relief' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></></div></Activity>}
-          {(warm || later === 'green') && <Activity mode={later === 'green' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></></div></Activity>}
-          {(warm || later === 'play') && <Activity mode={later === 'play' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></></div></Activity>}
+          {(warm === 'campus' || later === 'campus') && <Activity mode={later === 'campus' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></></div></Activity>}
+          {(warm === 'trace' || later === 'trace') && <Activity mode={later === 'trace' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></></div></Activity>}
+          {(warm === 'relief' || later === 'relief') && <Activity mode={later === 'relief' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></></div></Activity>}
+          {(warm === 'green' || later === 'green') && <Activity mode={later === 'green' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></></div></Activity>}
+          {(warm === 'play' || later === 'play') && <Activity mode={later === 'play' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></></div></Activity>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 

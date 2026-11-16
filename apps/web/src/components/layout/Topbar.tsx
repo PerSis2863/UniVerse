@@ -16,7 +16,6 @@ import { formatDistanceToNowStrict } from 'date-fns';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { Segmented } from '@/components/ui/Segmented';
-import { setPageTitle } from '@/lib/chrome';
 import { spring } from '@/lib/motion';
 import dynamic from 'next/dynamic';
 
@@ -32,16 +31,18 @@ interface TopbarProps {
   action?: { label: string; onClick: () => void };
   rightNode?: React.ReactNode;
   leftNode?: React.ReactNode;
-  /** Hide the large mobile title (for full-screen pages like Messages that have their own header). */
+  /** Hide the phone's row of actions under the bar (for full-screen pages like Messages that have their own header). */
   hideMobileTitle?: boolean;
-  /** Pairs this title with a list card's (data-shared) so it glides in from the card (src/lib/shared-element.ts). */
+  /** M210 (the owner, 16 Nov: "remove this part from every section … not needed in any apps"): the page's
+   *  title is no longer shown, only read out (an sr-only heading, and the browser tab); the subtitle and the
+   *  title's glide from a card (sharedId) are kept as props so pages needn't change. */
   sharedId?: string;
 }
 
 /** Where the notifications panel slides from: off the end edge (right, or left in right-to-left). */
 const offEdge = () => (typeof document !== 'undefined' && document.documentElement.dir === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)');
 
-export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobileTitle, sharedId }: TopbarProps) {
+export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: TopbarProps) {
   // The browser tab says which page this is ("Files | UniVerse Impact"), like the public pages' titles.
   useEffect(() => { if (title) document.title = `${title} | UniVerse Impact`; }, [title]);
   const router = useRouter();
@@ -55,8 +56,6 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // The phone's navigation bar shows this title once the large title scrolls away (iOS).
-  useEffect(() => { setPageTitle(title); }, [title]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -120,35 +119,30 @@ export function Topbar({ title, subtitle, action, rightNode, leftNode, hideMobil
 
   return (
     <>
-      {/* Phones: iOS large title. Actions and controls stay visible under it. */}
-      <div className={hideMobileTitle ? 'hidden' : 'lg:hidden px-4 pt-3 pb-2'}>
-        <div className="flex flex-wrap items-end justify-between gap-x-3 gap-y-3">
-          <div className="flex items-start gap-3 min-w-0 flex-1 basis-[60%]">
-            {leftNode}
-            <div className="min-w-0">
-              <h1 data-shared={sharedId} className="large-title text-zinc-900 dark:text-white break-words">{title}</h1>
-              {subtitle && <p className="text-[15px] text-zinc-500 dark:text-zinc-400 mt-1 leading-snug">{subtitle}</p>}
-            </div>
+      {/* Phones: the page's name for screen readers only (M210); its actions and controls stay, in a row
+          shown only when there are some. */}
+      <h1 className="sr-only lg:hidden">{title}</h1>
+      {!hideMobileTitle && (leftNode || action || rightNode) ? (
+        <div className="lg:hidden px-4 pt-3 pb-2">
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
+            <div className="flex items-center gap-3 min-w-0 flex-1">{leftNode}</div>
+            <ArrangeButton className="shrink-0" />
+            {action && (
+              <button onClick={action.onClick} className="btn-primary shrink-0">
+                <Plus className="w-4 h-4" strokeWidth={2.4} />
+                <span>{action.label}</span>
+              </button>
+            )}
           </div>
-          <ArrangeButton className="shrink-0 self-start" />
-          {action && (
-            <button onClick={action.onClick} className="btn-primary shrink-0">
-              <Plus className="w-4 h-4" strokeWidth={2.4} />
-              <span>{action.label}</span>
-            </button>
-          )}
+          {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
         </div>
-        {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
-      </div>
+      ) : <div className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
 
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
       <header className="app-topbar hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 min-h-16 py-2 items-center justify-between gap-4">
         <div className="flex items-center gap-4 min-w-0">
+          <h1 className="sr-only">{title}</h1>
           {leftNode}
-          <div className="min-w-0">
-            <h1 data-shared={sharedId} className="font-semibold text-[20px] leading-tight tracking-[-0.01em] text-zinc-900 dark:text-white truncate max-w-md">{title}</h1>
-            {subtitle && <p className="text-[12px] mt-0.5 text-zinc-500 dark:text-zinc-400 line-clamp-1 max-w-xl">{subtitle ?? `${t('common.greeting')}, ${user?.name?.split(' ')[0]}!`}</p>}
-          </div>
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {rightNode}

@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M201 is the latest).
+  builds on it). The newest notes are at the end (M211 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -72,7 +72,12 @@ software or website in the main website… where they create a impact"). Each ap
   teams and a map.
 - **Travel** (`/travel`, M183): find any place; its guide (what to see, do, eat, drink, where to sleep,
   getting around, staying safe and polite) from Wikivoyage, the country's facts and emergency numbers, the
-  week's weather; saved places; stays, flights, tours and trains booked with partners.
+  week's weather; saved places; stays, flights, tours and trains booked with partners; **Find where to go**
+  (days, budget, month, interests and passport rank 145 places, M205); **trips** planned alone or with
+  friends (cities, days, drag and drop, the whole budget, getting between and there, stays, M206–M207); an
+  opt-in **travellers board** for adults in the same city on the same dates (M207); a **map** (OpenFreeMap in
+  3D, real places from OpenStreetMap, open or closed in their own time, sunlight by the hour, photos and
+  stories nearby, Walk from here) with UniVerse's own reviews, locals apart from visitors (M209).
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
   Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
@@ -204,7 +209,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
     (M87).
   - **The launch focus (M110–M116):** a size alarm before every deploy and Relief's emergency line (M110),
-    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112), a course's
+    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112; the tags were removed in M210), a course's
     "Invite students" link (M113), a test that every API route checks who is asking (M114), body-parser
     2.4.0 (M115), the first impression: the student home pictured under the landing's headline, a bigger
     hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
@@ -213,7 +218,18 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M178 (13 Nov), Attendance scrolls without stalls (plain cards no
+- **On the branch, not merged yet:** M213 (16 Nov), Travel's left-outs (Google Maps' exact route, a block closes the
+  board's chat, Travel reports in the console's Moderation, live updates measured) and Travel's look (its own sky
+  colour, a tab row like Trace's, Explore's first card). M212 (16 Nov), dark mode's accent the website's blue in place of the neon lime,
+  calmer greens. M211 (16 Nov), the main pages' lag fixed (the motion layer's watcher, the
+  landing's prebuilding and scroll code; `main-pages-smooth.mjs`). M210 (16 Nov), no page titles (only for screen readers) and no "Lab" tags,
+  anywhere (the owner). M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
+  (database update 0223; MapLibre added, OpenFreeMap's tiles go straight to browsers, no Worker CPU). M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
+  to go** in Explore (days, budget, month, interests and passport rank 145 places with the reasons; visas
+  for your passport on the guide's Know tab), the **trip planner** (Trips and saved → Trips: cities, days,
+  drag and drop, Plan my days, the whole budget, how to get between, friends with an invite link, a
+  calendar file; database update 0221) and **getting there, stays and the travellers board** (database update
+  0222). M178 (13 Nov), Attendance scrolls without stalls (plain cards no
   longer fade their shadow), the Planner's week keeps its height while loading, a security review (no
   critical findings; a shopper's check reads at most 200 stops). M177 (13 Nov), a deep check and smoother pages: cards no longer
   blur the moving scene behind them (homes 35 → 60 frames a second), public pages don't download
@@ -227,18 +243,16 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
-  the rest of the owner's Airbnb list for Travel (15 Nov): M205 (find a destination by days, budget, month,
-  interests and passport), M206 (the trip planner with the whole trip's budget and multi-city routes), M207
-  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras)
-  (M181, the Arrange upgrade, and M182, Messages connections, were done on 16 Nov); then the
-  owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): first the owner's
+  asks of 16 Nov (the handoff's last hand-over: Travel's bigger map, Travel's big features, about 10 big features each
+  for Green and Relief); the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
+  then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M209** (M181 and M182 were done on 16 Nov; M205–M208 are kept for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's "Hand-over: the rest of the owner's Airbnb list"). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M214** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -255,7 +269,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0221`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0224`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -409,11 +423,11 @@ file used only from config goes in its `BY_CONFIG` list).
 dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
 **Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
 text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
-side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), lime
-(#c6f24a) as the accent: main buttons lime with ink text, chosen things, chart marks (`--ins-hot`),
-focus; white headings. Green, amber and red only for states. The tokens and the Tailwind re-pointing
+side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), the
+website's blue as the accent since M212 (the owner disliked the neon lime, 16 Nov): main buttons #2563eb with
+white text, chosen things, chart marks (`--ins-hot` #6ea2f8), focus; white headings; no `lime-*` classes. Green, amber and red only for states. The tokens and the Tailwind re-pointing
 (indigo / violet / purple / pink / fuchsia / aqua = the accent; zinc = neutral greys) are the **M124
-block** in `globals.css`; white text on a solid accent fill turns ink in dark mode there (lime). Type:
+block** in `globals.css`; white text on a solid accent fill stays white (it turns ink only in Trace, Relief and Play). Type:
 **Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **Each app's scene**
@@ -427,7 +441,7 @@ is a 1 s transition (the old scene fades as it drifts towards you, the new one s
 with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
 (phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
 (TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
-the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia, Travel sky since M213; UniVersity keeps the
 blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).

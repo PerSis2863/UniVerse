@@ -1,5 +1,6 @@
 'use client';
 
+import { Suspense } from 'react';
 import { Topbar } from '@/components/layout/Topbar';
 import { TravelExplore } from '@/components/travel/TravelExplore';
 
@@ -9,7 +10,7 @@ export default function TravelPage() {
     <>
       <Topbar title="Travel" subtitle="Plan trips, anywhere in the world" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="w-full"><TravelExplore /></div>
+        <div className="w-full"><Suspense><TravelExplore /></Suspense></div>
       </div>
     </>
   );

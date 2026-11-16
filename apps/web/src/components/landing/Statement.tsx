@@ -42,7 +42,7 @@ export function Statement() {
         <div className="relative">
           <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-black">
             <span className="sr-only">{LINES.join(' ')}</span>
-            <span aria-hidden>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
+            <span aria-hidden data-no-motion>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>
           <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#0f0f11] items-center justify-center shadow-[0_20px_50px_-15px_rgba(36,38,46,0.7)]">
             <UniverseLogo size="sm" animated />

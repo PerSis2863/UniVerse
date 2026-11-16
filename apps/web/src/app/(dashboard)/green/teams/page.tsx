@@ -87,7 +87,7 @@ export default function GreenTeamsPage() {
                         <span className="text-[11px] text-zinc-500">{t.members} people</span>
                         <span className="font-mono text-xs w-20 text-right text-emerald-600 dark:text-emerald-400">{fmt(t.kg)} kg</span>
                       </div>
-                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ width: 0 }} animate={{ width: `${(t.kg / max) * 100}%` }} transition={{ duration: 0.8, delay: i * 0.03 }} /></div>
+                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${(t.kg / max) * 100}%` }} transition={{ duration: 0.8, delay: i * 0.03 }} /></div>
                     </motion.li>
                   ))}
                 </ol>

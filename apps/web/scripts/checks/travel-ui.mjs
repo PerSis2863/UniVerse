@@ -48,9 +48,9 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   if (!phone) {
     const card = page.getByRole('tabpanel').locator('li.card').first();
     const name = (await card.locator('p').first().innerText()).trim();
-    await card.getByRole('button', { name: 'Save' }).click();
+    await card.getByRole('button', { name: 'Save', exact: true }).click();
     await card.getByRole('button', { name: 'Saved' }).waitFor({ timeout: 20_000 });
-    await page.goto(`${base}/travel/saved`, { waitUntil: 'load', timeout: 120_000 });
+    await page.goto(`${base}/travel/saved?tab=saved`, { waitUntil: 'load', timeout: 120_000 });
     await page.getByText(name, { exact: true }).first().waitFor({ timeout: 30_000 });
     r.saved = `"${name}" saved`;
     r.axe.push(...(await axe(page)).map((x) => `saved ${x}`));

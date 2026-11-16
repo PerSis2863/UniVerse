@@ -33,7 +33,7 @@ export function TravelSaved() {
   if (!data) return <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />;
   if (!groups.length) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
-      <Bookmark className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+      <Bookmark className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">No saved places yet</p>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Open a place’s guide and press Save on what you’d like to see, eat or stay at.</p>
       <Link href="/travel" className="btn-primary mt-5 inline-flex items-center gap-2"><Compass className="h-4 w-4" aria-hidden />Explore places</Link>
@@ -45,14 +45,14 @@ export function TravelSaved() {
         <section key={guide} aria-labelledby={`saved-${guide}`}>
           <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h2 id={`saved-${guide}`} className="text-lg font-semibold text-zinc-900 dark:text-white" translate="no">{nice(guide)} <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">· {list.length}</span></h2>
-            <Link href={`/travel/guide?d=${encodeURIComponent(guide)}`} className="text-sm font-semibold text-sky-600 dark:text-sky-300">Open the guide</Link>
+            <Link href={`/travel/guide?d=${encodeURIComponent(guide)}`} className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Open the guide</Link>
           </div>
           <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {list.map((s) => (
               <li key={s.id} className="card flex h-full flex-col gap-2 p-4">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{s.name}</p>
-                  <span className="shrink-0 rounded-full bg-sky-500/10 px-2.5 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300">{KIND[s.kind] ?? 'Place'}</span>
+                  <span className="shrink-0 rounded-full bg-indigo-500/10 px-2.5 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{KIND[s.kind] ?? 'Place'}</span>
                 </div>
                 {s.note && <p className="line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{s.note}</p>}
                 {s.address && <p className="text-xs text-zinc-500 dark:text-zinc-400">{s.address}</p>}

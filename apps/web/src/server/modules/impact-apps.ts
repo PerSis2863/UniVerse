@@ -12,7 +12,11 @@ import { closeReliefText, inboundText } from '../relief-texts';
 import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents } from '../relief-safety';
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
-import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelWeather } from '../travel';
+import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
+import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
+import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
+import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -103,9 +107,45 @@ export default function impactAppsModule(router: Router) {
   travel.get('search', ({ user, query }) => travelSearch(user, query));
   travel.get('guide', ({ user, query }) => travelGuide(user, query));
   travel.get('weather', ({ user, query }) => travelWeather(user, query));
+  travel.get('visa', ({ user, query }) => travelVisa(user, query));
   travel.get('saved', ({ user }) => travelSaved(user));
   travel.post('saved', ({ user, body }) => saveTravelPlace(user, body ?? {}));
   travel.delete<{ id: string }>('saved/:id', ({ user, params }) => removeTravelPlace(user, params.id));
+  // M206 (src/server/travel-trips.ts): trips planned alone or with friends; every route checks membership.
+  travel.get('trips', ({ user }) => travelTrips(user));
+  travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
+  travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
+  travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
+  travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));
+  travel.post<{ id: string }>('trips/:id/code', ({ user, params }) => newTravelTripCode(user, params.id));
+  travel.delete<{ id: string; userId: string }>('trips/:id/members/:userId', ({ user, params }) => removeTravelTripMember(user, params.id, params.userId));
+  travel.post<{ id: string }>('trips/:id/stops', ({ user, params, body }) => addTravelStop(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/stops/order', ({ user, params, body }) => orderTravelStops(user, params.id, body ?? {}));
+  travel.patch<{ id: string; stopId: string }>('trips/:id/stops/:stopId', ({ user, params, body }) => updateTravelStop(user, params.id, params.stopId, body ?? {}));
+  travel.delete<{ id: string; stopId: string }>('trips/:id/stops/:stopId', ({ user, params }) => removeTravelStop(user, params.id, params.stopId));
+  travel.post<{ id: string }>('trips/:id/items', ({ user, params, body }) => addTravelItem(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/items/move', ({ user, params, body }) => moveTravelItems(user, params.id, body ?? {}));
+  travel.patch<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params, body }) => updateTravelItem(user, params.id, params.itemId, body ?? {}));
+  travel.delete<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params }) => removeTravelItem(user, params.id, params.itemId));
+  // M207 (src/server/travel-board.ts): the travellers board, adults who opt in, by city and dates.
+  travel.get('board', ({ user, query }) => travelBoard(user, query));
+  travel.post('board', ({ user, body }) => joinTravelBoard(user, body ?? {}));
+  travel.delete<{ id: string }>('board/:id', ({ user, params }) => leaveTravelBoard(user, params.id));
+  travel.post<{ id: string }>('board/:id/message', ({ user, params }) => messageTraveller(user, params.id));
+  travel.post<{ id: string }>('board/:id/report', ({ user, params, body }) => reportTraveller(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('board/:id/block', ({ user, params }) => blockTraveller(user, params.id));
+  travel.delete('blocks', ({ user }) => unblockTravellers(user));
+  // M209 (src/server/travel-places.ts, travel-reviews.ts): the map's real places, photos, stories and reviews.
+  travel.get('place', ({ user, query }) => travelPlace(user, query));
+  travel.get('where', ({ user, query }) => travelWhere(user, query));
+  travel.get('photos', ({ user, query }) => travelPhotos(user, query));
+  travel.get('stories', ({ user, query }) => travelStories(user, query));
+  travel.get('reviews', ({ user, query }) => travelReviews(user, query));
+  travel.get('reviews/near', ({ user, query }) => travelReviewsNear(user, query));
+  travel.post('reviews', ({ user, body }) => saveTravelReview(user, body ?? {}));
+  travel.delete<{ id: string }>('reviews/:id', ({ user, params }) => deleteTravelReview(user, params.id));
+  travel.post<{ id: string }>('reviews/:id/report', ({ user, params, body }) => reportTravelReview(user, params.id, body ?? {}));
 
   const green = router.controller('green');
   green.get('me', ({ user }) => greenMe(user));

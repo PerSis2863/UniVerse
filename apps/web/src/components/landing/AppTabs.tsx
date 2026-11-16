@@ -2,7 +2,6 @@
 
 import { m as motion } from 'framer-motion';
 import { AppIcon } from '@/components/apps/AppIcon';
-import { LabTag } from '@/components/apps/LabTag';
 import type { AppId } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { cn } from '@/lib/utils';
@@ -25,7 +24,6 @@ export function AppTabs({ value, onChange, label = 'Choose an app', small, layou
             {on && <motion.span layoutId={layoutId} className="absolute inset-0 rounded-full" style={{ background: 'var(--tint)', boxShadow: '0 6px 24px -8px var(--tint)' }} transition={{ type: 'spring', stiffness: 420, damping: 34 }} />}
             <span className="relative"><AppIcon id={a.id} size={small ? 18 : 22} /></span>
             <span className="relative whitespace-nowrap">{a.name.replace('UniVerse ', '')}</span>
-            {a.lab && !small && <LabTag className={cn('relative', on ? 'border-current text-current' : 'border-white/20 text-zinc-400')} />}
           </button>
         );
       })}
