@@ -7,6 +7,7 @@ import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { reducedMotion } from '@/lib/page-transition';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // The Impact Wallet's cards (M52, after the owner's "Ledgerline" video): a stack of cards, one per
 // app, the front one swaying slowly on its own and leaning toward the pointer (or a finger), with a
@@ -155,7 +156,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
           {shown.bar && (
             <div className="mt-3">
               <div className="h-1.5 overflow-hidden rounded-full bg-zinc-900/[0.07] dark:bg-white/10">
-                <div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-violet-500 dark:to-aqua-400 transition-[width] duration-700" style={{ width: `${Math.round(Math.max(0, Math.min(1, shown.bar.pct)) * 100)}%` }} />
+                <Fill value={(Math.round(Math.max(0, Math.min(1, shown.bar.pct)) * 100)) / 100} className="h-full rounded-full bg-gradient-to-r from-pink-500 to-violet-500 dark:to-aqua-400" />
               </div>
               <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">{shown.bar.label}</p>
             </div>

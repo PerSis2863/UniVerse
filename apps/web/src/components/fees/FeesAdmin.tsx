@@ -13,7 +13,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { fadeUp, list } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { useNow } from '@/lib/use-now';
@@ -21,6 +21,7 @@ import { useCan } from '@/lib/use-can';
 import { BillSheet } from './BillSheet';
 import { PlanSheet } from './PlanSheet';
 import { METHOD_LABEL, StatusChip, downloadCsv, money, type BillStatus } from './shared';
+import { Fill } from '@/components/ui/Fill';
 
 // School fees for admins (Stage 5 · B15.2; src/server/fees.ts): an overview (billed, collected,
 // owed, overdue; collections by month and by method), fee plans (make, issue, archive), bills
@@ -122,7 +123,7 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
               ))}
             </div>
             <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="img" aria-label={`${collected}% collected`}>
-              <motion.div className="h-full bg-emerald-500 rounded-full" initial={{ width: 0 }} animate={{ width: `${Math.min(100, collected)}%` }} transition={spring.gentle} />
+              <Fill value={(Math.min(100, collected)) / 100} className="h-full bg-emerald-500 rounded-full" />
             </div>
             <div className="grid md:grid-cols-2 gap-4">
               <div>
@@ -132,8 +133,8 @@ function Overview({ onGo }: { onGo: (v: View) => void }) {
                     {months.map((m) => (
                       <li key={m.month} className="flex items-center gap-2 text-sm">
                         <span className="w-16 shrink-0 text-zinc-500 tabular-nums">{format(new Date(`${m.month}-01T12:00:00Z`), 'MMM yy')}</span>
-                        <span className="flex-1 h-3 rounded-e-full bg-transparent">
-                          <motion.span className="block h-full rounded-e-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${Math.max(2, (m.total / max) * 100)}%` }} transition={spring.gentle} />
+                        <span className="flex-1 h-3 rounded-e-full bg-transparent overflow-hidden">
+                          <Fill value={(Math.max(2, (m.total / max) * 100)) / 100} className="h-full rounded-e-full bg-indigo-500" />
                         </span>
                         <span className="w-24 shrink-0 text-end tabular-nums text-zinc-800 dark:text-zinc-100">{money(m.total, t.currency)}</span>
                       </li>
@@ -252,7 +253,7 @@ function PlansView({ onIssued }: { onIssued: () => void }) {
                 {p.bills > 0 && (
                   <div className="mt-3">
                     <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-                      <motion.div className="h-full bg-emerald-500" initial={{ width: 0 }} animate={{ width: `${Math.min(100, pct)}%` }} transition={spring.gentle} />
+                      <Fill value={(Math.min(100, pct)) / 100} className="h-full bg-emerald-500" />
                     </div>
                     <p className="mt-1 text-[11px] text-zinc-500 tabular-nums">{p.bills} bills · collected {money(p.paid, p.currency)} of {money(p.billed, p.currency)} ({pct}%){p.overdue ? ` · ${money(p.overdue, p.currency)} overdue` : ''}</p>
                   </div>

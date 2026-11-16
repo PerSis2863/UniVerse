@@ -44,3 +44,25 @@ export function moveDue(oldIso: string | null, day: string) {
   const old = oldIso ? new Date(oldIso) : null;
   return new Date(y, m - 1, d, old ? old.getHours() : 17, old ? old.getMinutes() : 0).toISOString();
 }
+
+/** M230: a card's dates moved by whole days (dragging its Gantt bar): the start (when it has one) and the due date. */
+export function shiftDates(startIso: string | null, dueIso: string, days: number) {
+  const add = (iso: string) => { const d = new Date(iso); d.setDate(d.getDate() + days); return d.toISOString(); };
+  return { startAt: startIso ? add(startIso) : null, dueAt: add(dueIso) };
+}
+
+/** M230: minutes as "1 h 20 min", "45 min", "3 h". */
+export function hoursText(min: number) {
+  const h = Math.floor(min / 60), m = Math.round(min % 60);
+  return h && m ? `${h} h ${m} min` : h ? `${h} h` : `${m} min`;
+}
+
+/** M230: what a time field holds ("1:30", "1h 30m", "90m", "1.5", "45 min") as minutes; null when it isn't a time. */
+export function parseMinutes(s: string): number | null {
+  const t = s.trim().toLowerCase();
+  let m: RegExpMatchArray | null;
+  if ((m = t.match(/^(\d+):([0-5]\d)$/))) return Number(m[1]) * 60 + Number(m[2]);
+  if ((m = t.match(/^(?:(\d+(?:\.\d+)?)\s*h(?:ours?|rs?)?)?\s*(?:(\d+)\s*m(?:in(?:utes?|s)?)?)?$/)) && (m[1] || m[2])) return Math.round(Number(m[1] ?? 0) * 60 + Number(m[2] ?? 0));
+  if ((m = t.match(/^\d+(?:\.\d+)?$/))) return Math.round(Number(t) * 60);
+  return null;
+}

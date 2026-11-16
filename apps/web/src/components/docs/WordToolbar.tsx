@@ -7,6 +7,8 @@ import { AlignCenter, AlignJustify, AlignLeft, AlignRight, Baseline, Bold, Chevr
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { ColorGrid, Menu, Popover, type MenuItem } from '@/components/ui/Menu';
 import { cn } from '@/lib/utils';
+import { DictateButton } from '@/components/ui/DictateButton';
+import { dictateInto } from './DocToolbar';
 import { blockFormat, insertBlock, setAlign, setIndent, setLineHeight, setTextStyle } from './word-ext';
 
 // The document's toolbar with Word's everyday formatting (Office suite · O3): styles, font and
@@ -89,6 +91,7 @@ export function WordToolbar({ editor, disabled, onFind }: { editor: Editor | nul
       <select id="doc-size" disabled={disabled} value={s?.size ? String(parseFloat(s.size)) : ''} onChange={(e) => setTextStyle(editor, 'fontSize', e.target.value ? `${e.target.value}pt` : null)} className="h-8 w-16 shrink-0 rounded-lg bg-transparent text-xs text-zinc-700 dark:text-zinc-200 border border-zinc-200 dark:border-white/10 px-1 disabled:opacity-40">
         <option value="">Size</option>{SIZES.map((n) => <option key={n} value={n}>{n}</option>)}
       </select>
+      {!disabled && <DictateButton className="w-8 h-8 rounded-lg" onText={(t) => dictateInto(editor, t)} />}
       {sep('b')}
       {btn(s?.bold, 'Bold', Bold, () => c().toggleBold().run())}
       {btn(s?.italic, 'Italic', Italic, () => c().toggleItalic().run())}

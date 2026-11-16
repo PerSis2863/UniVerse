@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { barSpan, dayKey, daysBetween, monthGrid, moveDue, weekStart } from './task-calendar';
+import { barSpan, dayKey, daysBetween, hoursText, monthGrid, moveDue, parseMinutes, shiftDates, weekStart } from './task-calendar';
 
 describe('task calendar', () => {
   it('lays out a month as six Monday-first weeks', () => {
@@ -35,5 +35,13 @@ describe('task calendar', () => {
     const moved = new Date(moveDue(was, '2026-10-08'));
     expect([moved.getDate(), moved.getHours(), moved.getMinutes()]).toEqual([8, 9, 30]);
     expect(new Date(moveDue(null, '2026-10-08')).getHours()).toBe(17);
+  });
+  it('moves a card\'s dates together and reads times people type (M230)', () => {
+    const was = new Date(2026, 9, 5, 9).toISOString(), due = new Date(2026, 9, 9, 17).toISOString();
+    const m = shiftDates(was, due, 3);
+    expect([new Date(m.startAt!).getDate(), new Date(m.dueAt).getDate(), new Date(m.dueAt).getHours()]).toEqual([8, 12, 17]);
+    expect(shiftDates(null, due, -2).startAt).toBeNull();
+    expect(['1:30', '1h 30m', '90m', '1.5', '45 min', '2 hours', 'soon', ''].map(parseMinutes)).toEqual([90, 90, 90, 90, 45, 120, null, null]);
+    expect([hoursText(80), hoursText(45), hoursText(180)]).toEqual(['1 h 20 min', '45 min', '3 h']);
   });
 });

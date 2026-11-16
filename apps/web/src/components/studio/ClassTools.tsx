@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { Btn, Field } from './QuickTools';
 import { printOnly, uid, useKept } from './kept';
 import { ask, BRANCH, FullBtn, nf, rnd, Stat, useFull } from './bits';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Study and teach, fourth set (M74): a maths drill, the periodic table, a quiz
 // maker, a seating plan, dice and coins, fractions, an equation solver, shapes, number facts, a
@@ -178,7 +179,7 @@ function Quiz() {
         </motion.div>
       ) : cur ? (
         <motion.div key={cur.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={spring.smooth} className="space-y-3">
-          <div className="flex items-center gap-3"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><span className="block h-full bg-pink-500 transition-[width] duration-300" style={{ width: `${(i / order.length) * 100}%` }} /></span><span className="text-sm font-mono tabular-nums text-zinc-600 dark:text-zinc-300">{i + 1}/{order.length}</span></div>
+          <div className="flex items-center gap-3"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={((i / order.length) * 100) / 100} className="h-full bg-pink-500" /></span><span className="text-sm font-mono tabular-nums text-zinc-600 dark:text-zinc-300">{i + 1}/{order.length}</span></div>
           <p className="text-xl font-bold text-zinc-900 dark:text-white" translate="no">{cur.q}</p>
           <div className="grid gap-2 sm:grid-cols-2">
             {cur.options.map((o, j) => o && (
@@ -293,7 +294,7 @@ function Fractions() {
           <dl className="grid grid-cols-3 gap-2 text-sm"><Stat big k="Simplest" v={`${res[0]}/${res[1]}`} /><Stat big k="Mixed number" v={mixed(res)} /><Stat big k="Decimal" v={nf(val, 6)} /></dl>
           {val >= 0 && val <= 4 && (
             <div className="flex gap-1" role="img" aria-label={`${mixed(res)} as bars`}>
-              {Array.from({ length: Math.max(1, Math.ceil(val)) }, (_, k) => <span key={k} className="flex-1 h-6 rounded-md bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full bg-pink-500" initial={false} animate={{ width: `${Math.max(0, Math.min(1, val - k)) * 100}%` }} transition={spring.smooth} /></span>)}
+              {Array.from({ length: Math.max(1, Math.ceil(val)) }, (_, k) => <span key={k} className="flex-1 h-6 rounded-md bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={Math.max(0, Math.min(1, val - k))} className="h-full bg-pink-500" /></span>)}
             </div>
           )}
         </>

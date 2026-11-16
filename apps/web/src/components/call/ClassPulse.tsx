@@ -16,8 +16,8 @@ export const PULSE_MS = 2 * 60_000;
 /** For students: the two buttons (tap again to take it back). */
 export function PulseButtons({ value, onPick }: { value: PulseValue; onPick: (v: 'lost' | 'got') => void }) {
   const pill = (v: 'lost' | 'got', emoji: string, label: string, on: string) => (
-    <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => onPick(v)} aria-pressed={value === v}
-      className={cn('pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold backdrop-blur-xl border transition-colors', value === v ? on : 'bg-black/40 border-white/10 text-zinc-100 hover:bg-white/10')}>
+    <motion.button type="button" onClick={() => onPick(v)} aria-pressed={value === v}
+      className={cn('pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold backdrop-blur-xl border transition-colors active:scale-[0.92]', value === v ? on : 'bg-black/40 border-white/10 text-zinc-100 hover:bg-white/10')}>
       <span aria-hidden>{emoji}</span>{label}
     </motion.button>
   );

@@ -20,6 +20,7 @@ import type { LevelChoice } from '@/components/shared/ReadingLevel';
 import { readingLevel } from '@/lib/display-prefs';
 import { AiPolicyNote, AiReceiptChoice, startChoice, type ReceiptChoice } from '@/components/assignments/AiReceipt';
 import { isAiPolicy } from '@/lib/ai-receipt';
+import { Fill } from '@/components/ui/Fill';
 
 interface QuizSummary { id: string; title: string; status: string; completed: boolean; score?: number | null; dueDate?: string | null; timeLimit?: number | null; courseId: string; course: { name: string }; _count?: { questions: number } }
 /** A quiz being taken: its questions (from the server, or the copy saved for offline use). */
@@ -353,7 +354,7 @@ export default function QuizzesPage() {
                     <span>{answeredCount} answered</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-zinc-700 mb-6 overflow-hidden">
-                    <div className="h-full rounded-full bg-indigo-500 transition-[width]" style={{ width: `${((currentQ + 1) / activeQuiz.questions.length) * 100}%` }} />
+                    <Fill value={(((currentQ + 1) / activeQuiz.questions.length) * 100) / 100} className="h-full rounded-full bg-indigo-500" />
                   </div>
                   {activeQuiz.plainWords !== false ? (
                     // Reading help (Stage 5 · D9), unless the teacher turned it off: the question in

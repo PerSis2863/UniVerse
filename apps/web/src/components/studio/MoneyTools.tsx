@@ -137,8 +137,8 @@ function Bmi() {
       {bmi > 0 && (
         <>
           <p className="text-3xl font-bold text-zinc-900 dark:text-white" role="status"><span className="font-mono">{nf(bmi, 1)}</span> <span className="text-lg font-semibold">· {band.l}</span></p>
-          <div className="relative h-4 rounded-full overflow-hidden flex" aria-hidden>{[[12, 18.5, '#38bdf8'], [18.5, 25, '#22c55e'], [25, 30, '#f59e0b'], [30, 40, '#ef4444']].map(([a, b, c]) => <span key={String(c)} style={{ width: `${(((b as number) - (a as number)) / 28) * 100}%`, background: c as string }} />)}
-            <motion.span className="absolute top-0 w-1.5 h-full bg-zinc-900 dark:bg-white rounded" initial={false} animate={{ left: `calc(${pos}% - 3px)` }} transition={spring.smooth} />
+          <div dir="ltr" className="relative h-4 rounded-full overflow-hidden flex" aria-hidden>{[[12, 18.5, '#38bdf8'], [18.5, 25, '#22c55e'], [25, 30, '#f59e0b'], [30, 40, '#ef4444']].map(([a, b, c]) => <span key={String(c)} style={{ width: `${(((b as number) - (a as number)) / 28) * 100}%`, background: c as string }} />)}
+            <span className="absolute inset-0 transition-transform duration-300 ease-[var(--ease-glide)]" style={{ transform: `translateX(${pos}%)` }}><span className="absolute top-0 -start-[3px] w-1.5 h-full bg-zinc-900 dark:bg-white rounded" /></span>
           </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-300">BMI is a rough guide for adults. It doesn’t see muscle, age or build, and it isn’t made for children: ask a doctor or nurse about your health.</p>
         </>

@@ -1,4 +1,4 @@
-import { EASE_GLIDE, reducedMotion } from './page-transition';
+import { EASE_GLIDE, pageJustEntered, reducedMotion } from './page-transition';
 
 // Scroll motion on every page (S4, like the "Relay" site the owner sent): blocks below the fold
 // rise into place as they scroll into view, big numbers count up, thin progress bars fill and line
@@ -296,17 +296,23 @@ function arrive(records: MutationRecord[]) {
     let list = added.get(rec.target);
     for (const n of rec.addedNodes) if (n instanceof HTMLElement) { if (!list) added.set(rec.target, (list = [])); list.push(n); }
   }
-  const fold = window.innerHeight, parts: HTMLElement[] = [];
+  // M231: nothing added (a figure counting up rewrites its text every frame): done before anything is measured.
+  // Reading the window's height forces a layout, which ran every frame of every page's count-up.
+  if (!added.size) return;
+  let fold = 0;
+  const parts: HTMLElement[] = [];
   for (const [target, els] of added) {
     if (els.some((el) => removed.has(el))) continue; // moved, not new
     const grew = target.matches(LIST) && els.length <= 3 && target.children.length > els.length;
     if (!lost.has(target) && !grew) continue;
     for (const el of els) {
       if (el.matches(LOADING) || el.closest('[data-no-motion]')) continue;
+      fold ||= window.innerHeight;
       const big = el.getBoundingClientRect().height > fold * 0.6 && el.children.length > 1;
       parts.push(...(big ? (Array.from(el.children) as HTMLElement[]) : [el]));
     }
   }
+  if (!parts.length) return;
   // Reads first (one layout), then the writes.
   const shown = parts.filter((el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el); }).slice(0, 8);
   shown.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translate3d(0, 10px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: i * 40, easing: EASE_GLIDE, fill: 'backwards' }));
@@ -334,7 +340,9 @@ export function startScrollMotion(): () => void {
     if (reducedMotion() || records.length > 300) return;
     if (pending.length + records.length > 300) { pending.length = 0; return; } // many small batches add up to a page
     pending.push(...records);
-    if (!frame) frame = requestAnimationFrame(() => { frame = 0; const r = pending.splice(0); rollChanged(r); arrive(r); });
+    // M231: a page that just came in is moved by its own entrance (PendingPage): looking through the old and new
+    // page for arrivals was 55 ms of script on every page change (even on a computer), for nothing.
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; const r = pending.splice(0); if (pageJustEntered()) return; rollChanged(r); arrive(r); });
   });
   mo.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan(document);

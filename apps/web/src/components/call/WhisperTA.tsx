@@ -112,8 +112,8 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={500} placeholder="Ask about the class…" aria-label="Your question"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void ask(); } }}
                 className="flex-1 min-w-0 resize-none max-h-28 rounded-2xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-indigo-400/60" />
-              <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={text.trim().length < 3 || !!busy} aria-label="Ask"
-                className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40"><SendHorizontal className="w-4 h-4" /></motion.button>
+              <motion.button type="submit" disabled={text.trim().length < 3 || !!busy} aria-label="Ask"
+                className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40 active:scale-[0.9]"><SendHorizontal className="w-4 h-4" /></motion.button>
             </form>}
           </motion.aside>
         </>
@@ -125,8 +125,8 @@ export function WhisperPanel({ open, onClose, callId, heard }: { open: boolean; 
 /** For students: the pill next to "I'm lost" / "Got it". */
 export function WhisperPill({ onOpen, open }: { onOpen: () => void; open: boolean }) {
   return (
-    <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={onOpen} aria-expanded={open}
-      className={cn('pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold backdrop-blur-xl border transition-colors', open ? 'bg-fuchsia-500 border-fuchsia-400 text-[#111113]' : 'bg-black/40 border-white/10 text-zinc-100 hover:bg-white/10')}>
+    <motion.button type="button" onClick={onOpen} aria-expanded={open}
+      className={cn('pointer-events-auto inline-flex items-center gap-1.5 rounded-full px-3.5 py-2 text-sm font-semibold backdrop-blur-xl border transition-colors active:scale-[0.92]', open ? 'bg-fuchsia-500 border-fuchsia-400 text-[#111113]' : 'bg-black/40 border-white/10 text-zinc-100 hover:bg-white/10')}>
       <Sparkles className="w-4 h-4" aria-hidden />Ask the TA
     </motion.button>
   );

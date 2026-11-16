@@ -9,6 +9,7 @@ import { api } from '@/lib/api';
 import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
 import { card, errorMessage, fetcher } from './shared';
+import { Fill } from '@/components/ui/Fill';
 
 // "Sample data" on the console's Overview (src/server/sample-world.ts): fills the app with a made-up
 // world (300 people and their activity, a school with 12 courses, 20 brands with thousands of scans,
@@ -86,7 +87,7 @@ export function SampleWorldCard() {
         {run && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} transition={{ duration: 0.2, ease: [0.23, 1, 0.32, 1] }} className="overflow-hidden">
             <div className="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/5" role="progressbar" aria-valuemin={0} aria-valuemax={run.of} aria-valuenow={run.step} aria-label="Filling sample data">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500" animate={{ width: `${pct}%` }} transition={{ duration: 0.4, ease: [0.23, 1, 0.32, 1] }} />
+              <Fill value={pct / 100} className="h-full rounded-full bg-gradient-to-r from-fuchsia-500 to-indigo-500" />
             </div>
             <p className="mt-2 font-mono text-[11px] text-zinc-500" aria-live="polite">Step {run.step + 1} of {run.of} · {run.label}…</p>
           </motion.div>

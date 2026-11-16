@@ -25,6 +25,7 @@ import { cn } from '@/lib/utils';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
 import { Heartbeat } from '@/components/live/Heartbeat';
+import { Fill } from '@/components/ui/Fill';
 
 // The passport editor (M108) loads when a brand opens it.
 const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) => m.DppEditor), { ssr: false, loading: () => <div className="mt-4 h-40 rounded-2xl skeleton" /> });
@@ -219,7 +220,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
         <div className="w-full sm:w-64">
           <div className="flex justify-between text-[11px] text-zinc-500"><span>Passports used</span><span className="font-mono">{fmt(info.units)} / {fmt(info.unitLimit)}</span></div>
           <div className="mt-1 h-2 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
-            <motion.div className={cn('h-full rounded-full', usage > 85 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} initial={{ width: 0 }} animate={{ width: `${Math.min(100, usage)}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
+            <Fill value={usage / 100} className={cn('h-full rounded-full', usage > 85 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} />
           </div>
         </div>
         <span className="flex flex-wrap gap-2">

@@ -162,7 +162,7 @@ export function TopNav() {
   };
   const shownNow = fit === null ? entries : entries.slice(0, fit);
   const rest = fit === null ? [] : entries.slice(fit);
-  const initials = user.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
+  const initials = (user.name ?? '').split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase();
   const chip = (item: NavItem) => (
     <>
       <item.icon className="w-4 h-4 shrink-0" strokeWidth={2} aria-hidden />

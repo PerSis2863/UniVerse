@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { LiveCard } from '@/components/live/LiveCard';
 import { Tracks } from '@/components/live/Tracks';
 import { Heartbeat } from '@/components/live/Heartbeat';
+import { Fill } from '@/components/ui/Fill';
 
 // One wallet for everyone (UniVerse Trace): the points a shop, installer or buyer earns from every
 // brand by scanning genuine products, what they're worth, the brands' live offers, cash-outs, and a
@@ -129,7 +130,7 @@ function Wallet() {
                       <p className="relative mt-4 font-mono text-3xl tabular-nums text-zinc-900 dark:text-white">{b.points.toLocaleString()}<span className="ml-2 text-sm text-zinc-500">≈ {money(b.points * b.brand.pointValue, b.brand.currency)}</span></p>
                       <div className="relative mt-3">
                         <div className="flex justify-between text-[11px] text-zinc-500"><span>Cash-out from {b.brand.minCashout.toLocaleString()}</span><span>{Math.min(100, Math.round((b.points / b.brand.minCashout) * 100))}%</span></div>
-                        <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" initial={{ width: 0 }} animate={{ width: `${Math.min(100, (b.points / b.brand.minCashout) * 100)}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} /></div>
+                        <div className="mt-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><Fill value={(Math.min(100, (b.points / b.brand.minCashout) * 100)) / 100} className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" /></div>
                       </div>
                       <button type="button" disabled={b.points < b.brand.minCashout} onClick={() => setCashing(cashing === b.brand.id ? null : b.brand.id)} className="relative mt-4 btn-secondary btn-sm"><Banknote className="w-3.5 h-3.5" />Cash out</button>
                       <AnimatePresence initial={false}>

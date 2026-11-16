@@ -8,6 +8,7 @@ import { CheckCircle2, Circle, Loader2, ShieldCheck, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 interface Me { name: string; email: string; phone: string | null; role: string; status: string; department: string | null; hasPhoto?: boolean; hasBio?: boolean }
 const HIDE_KEY = 'universe-setup-card-hidden';
@@ -114,7 +115,7 @@ export function AccountSetupCard() {
         <button onClick={hide} aria-label="Hide" className="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
       </div>
       <div className="relative h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden mb-4">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8 }} className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" />
+        <Fill value={pct / 100} className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" />
       </div>
       <ul className="relative grid gap-2 sm:grid-cols-2">
         {steps.map((s) => (

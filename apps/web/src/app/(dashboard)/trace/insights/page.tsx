@@ -9,6 +9,7 @@ import { TraceTabs } from '@/components/trace/TraceTabs';
 import { errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Insights (UniVerse Trace): what a brand's scans say about the weeks ahead. The next 14 days of
 // checks (a forecast with its likely range), the busiest hours of the week, each shipment's CO₂, what
@@ -85,7 +86,7 @@ function Body() {
                 <div className="flex-1 space-y-1">
                   {[5, 4, 3, 2, 1].map((s) => {
                     const n = data.reviews.stars[s - 1], pct = (n / data.reviews.count) * 100;
-                    return <div key={s} className="flex items-center gap-2 text-[11px] text-zinc-500"><span className="w-3">{s}</span><span className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full bg-amber-400" initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.6, ease: [0.23, 1, 0.32, 1] }} /></span><span className="w-8 text-end font-mono">{n}</span></div>;
+                    return <div key={s} className="flex items-center gap-2 text-[11px] text-zinc-500"><span className="w-3">{s}</span><span className="flex-1 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={pct / 100} className="h-full bg-amber-400" /></span><span className="w-8 text-end font-mono">{n}</span></div>;
                   })}
                 </div>
               </div>

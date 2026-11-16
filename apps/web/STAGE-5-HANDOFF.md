@@ -7897,3 +7897,103 @@ section also and add more features of discord and zoom and all the other big maj
 - **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
   refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
   `src/lib/meet.ts`, `pnpm check`.
+
+## M228: a threat model with Grim Prompter, and the PDF frame sandboxed (16 Nov)
+
+The owner: "https://github.com/jmanico/grim-prompter build this and see everything in this and do it just dont do the last one".
+Grim Prompter (MIT) is a library of prompts for an agent to threat-model a repository. Its quick web prompt was run on
+`apps/web` (schools as the second, tenant scope) and its review steps 1–4 done; step 5, "Keep the model current", was left
+out at the owner's word. The report and its evidence were given to the owner privately, **not committed** (a list of weak
+spots doesn't belong in the repository).
+
+- **Changed:** the frame `doc-to-pdf.ts` lays other people's files out in (Studio → Convert to PDF, CVs, offer letters) is
+  `sandbox="allow-same-origin"`: nothing in a file can run there. Tested before and after (`scripts/checks/convert-sandbox-ui.mjs`,
+  a booby-trapped HTML file): the earlier layers (the upload is cleaned, the CSP blocks inline handlers) already held, so this is
+  a third layer, not a closed hole.
+- **For the owner to decide (in the report):** files are private links (anyone with a link can read it; a deleted file's edge copy
+  lasts up to a day): keep, or ask for sign-in on sensitive kinds.
+- **Rule:** a frame that lays out content from a file or another person is sandboxed without scripts.
+
+## The owner's five repositories (16 Nov): what was built
+
+The owner asked to "add" open-seo, AppFlowy, OpenWhispr, OpenProject and Chatwoot. None can be dropped in: OpenProject
+and Chatwoot need servers of their own (Ruby, PostgreSQL), AppFlowy (AGPL-3.0) and OpenProject (GPL-3.0) would oblige
+UniVerse's own code to be released if copied, open-seo needs a paid DataForSEO key. The owner chose UniVerse's own
+versions of four ideas, inside existing sections, with no code copied, no servers and no costs: voice typing (M229),
+projects (M230), databases and a wiki (M231), a support inbox with a website chat bubble (M232). open-seo was left out.
+
+## M229: voice typing (16 Nov)
+
+After OpenWhispr. A microphone button (`src/components/ui/DictateButton.tsx`) in the chat composer, the document toolbars
+(`DocToolbar`, `WordToolbar`: `dictateInto` types at the cursor, a spoken "new line" starts a paragraph) and Quick notes
+(into the line last written in). The browser's own speech recognition (the `useCaptions` hook of live captions: free;
+Chrome and Edge use their speech service, Safari the device; hidden in Firefox). `src/lib/dictation.ts`: spoken
+punctuation in English ("comma", "full stop", "question mark", "new line", "new paragraph", "colon"), and each phrase
+joined like typing (a space, a capital after a sentence). Checked: `scripts/checks/dictation-ui.mjs` (a stand-in
+recogniser "says" a sentence: it lands in a chat and a note with its marks), the unit test, `pnpm check`.
+
+## M230: projects on task boards (16 Nov)
+
+After OpenProject. Inside Tasks (no new menu): a card can **start** on a day and be a **milestone** (one day, a diamond),
+and people **log time** on it. Database update **0227** (`tasks.startAt`, `tasks.milestone`, `task_time_entries`).
+
+- **Timeline is a Gantt chart** (`TimelineView` in `src/components/tasks/TaskViews.tsx`): bars at their true length from
+  the start (or when the card was made) to the due day, the name beside each bar (before it near the chart's end),
+  milestones as diamonds, a line from each card to the cards waiting on it ("Waiting on", B9.9), rose when the waiting
+  card starts before the other is due. Drag a bar to move both dates, its end edge to change the due day, or Shift+arrows
+  on a focused bar to move it a day. The parent passes `onDates` (a PATCH of `startAt`/`dueAt`, optimistic).
+- **Card sheet:** Starts / Due (Milestone day), the Milestone tick (it clears the start), and **Time spent**
+  (`src/components/tasks/TimeLog.tsx`): a start/stop timer kept in `localStorage` `uv-task-timer:<card>` (it runs on while
+  the card is closed; Stop logs it, at least a minute), time added by hand (`parseMinutes`: "1:30", "45m", "2h", "1.5"),
+  entries with who and a note, the total against the estimate (rose past it). Cards show spent/estimate hours.
+- **Server** (`src/server/tasks.ts`): `updateTask` takes `startAt` (refused after the due day) and `milestone`;
+  `getBoard` adds `minutes` per card (one `groupBy`); `listTime` / `addTime` (1 min to 24 h, up to 500 a card, editors
+  only) / `deleteTime` (your own; the board's managers anyone's); routes `/api/tasks/items/[tid]/time`,
+  `/api/tasks/time/[id]`; a sample answer in `router.ts`.
+- **Checked:** `scripts/checks/gantt-ui.mjs` (bars, the line, the diamond, a drag of two days saved to both dates, a start
+  after the due day and a zero-minute entry refused, 1:30 logged against 2 h, the timer; axe clean at 1280 and 390, light
+  and dark, no sideways scroll), the unit test in `task-calendar.test.ts`, `pnpm check`.
+- **Rule:** a Gantt bar's dates change only through `onDates`; a card with no due day isn't on the timeline.
+
+## M231: a sweep for errors, bugs and smoothness (16 Nov)
+
+The owner: "check if any errors or bugs… make sure everything is ultra smooth", then "every button, transition, glide
+or animation… like Apple", "don't let the CPU go up" and "let the other agents know". Everything below runs in the
+browser: no Worker CPU added. The rules are in AGENTS.md §8 ("No double animations…") and `src/lib/motion-rules.test.ts`.
+
+- **Live errors** (`error_reports`): a Nominatim timeout on `/api/core/travel/place` was a 500: `fetchJson`
+  (`src/server/travel.ts`) now answers a slow or unreachable source with 503 "busy", like one that answers an error.
+  The menu's initials (`Sidebar`, `TopNav`) no longer throw on a saved account without a name. The crawl's other
+  finds were by design (the demo admin is read-only: its "tour seen" save is refused).
+- **Progress bars** (about 75): `<Fill value={0..1} />` (`src/components/ui/Fill.tsx`, `.fill` in globals.css) is the
+  track's full width and slides (transform, `@starting-style` for its arrival, `quick` for uploads, timers, loading).
+  Many bars grew their width with framer-motion *and* were scaled by the motion layer: two animations, one re-laying
+  out the page every frame. The page-loading bar (`NavProgress`), the status viewer's bars, tuner and BMI needles
+  slide too. Left: stacked bars whose parts share a row (Trace market cells, consent tallies, class pulse, SVG charts)
+  and the welcome tour's spotlight.
+- **Loops**: framer-motion's `repeat: Infinity` ran on the page's thread every frame; now CSS (`scan-sweep`,
+  `scene-tilt`, `scene-pan`, `ring-wiggle`, `slow-turn`, `twinkle`, `ring-ride`, `holo-pan`), paused while scrolling
+  and with Reduce Motion. Keyframes that repainted every frame now move or fade only: the landing headline's words
+  (no blur), Bento's steps, Quiz Clash's lightning glow, Night Shift's static, Skyline's rewind lines, the label shine.
+- **Presses**: 39 buttons had framer's `whileTap` on top of the global press (two shrinks): now `active:scale-[…]`.
+- **Page changes**: the motion layer's `arrive` (`src/lib/scroll-motion.ts`) read `window.innerHeight` on every
+  frame of every count-up (a forced layout each time) and looked through the old and new page on every page change
+  (55 ms of script, on a computer too). It stops early when nothing was added, and skips a page that just came in
+  (`pageJustEntered()`, `page-transition.ts`: the page's entrance moves it).
+- **Glass**: the full-screen dimmers behind sheets and dialogs (75) dim only, as iOS does (the moving scene behind
+  was blurred again every frame); nine sticky bars with glass are solid (bars are solid, §8). The blog's "Read" link
+  moves its arrow instead of widening its gap on hover.
+- **Measured** (the built site, a phone with the CPU slowed 4×, `scripts/smoothness.mjs`, `main-pages-smooth.mjs`):
+  scrolling and sheets were already at 0–1 slow frames and stay so; the landing's slow frames while scrolling went
+  3 → 0; tab changes keep 2–3 slow frames at 4× (the new page being drawn). Checked as already right: sheets (0.46 s
+  in, faster out), the loading shimmer (transform), the theme's circle reveal, hover only with a mouse, images sized.
+- **Not done, on purpose:** framer `layout` on 57 list rows (rows glide when one is added; framer batches the reads);
+  height animation for opening sections; the side menu's fold (installed app) still animates its width.
+- **Next.js advisory** (published 16 Nov, moderate: `'use cache'` through `unstable_cache()`, which UniVerse doesn't
+  use): 16.4.5 fixes it; by the two-week rule, upgrade Next and the adapter together from 30 Nov. Next stops a build
+  run by an AI agent to show this notice (`next/dist/lib/upgrade/nudge.js`: only when it detects an agent, never on
+  Cloudflare's builder or in CI); running the same build again at once goes through. Don't run its `next upgrade
+  --agent=…` command: upgrades follow the two-week rule, Next and the Cloudflare adapter together (M77). Seven other advisories are in test and lint tools only (vitest,
+  tinypool, zod in eslint's plugin): nothing in the live site.
+- **Rule:** no animation on what the motion layer animates; bars `<Fill>`; loops CSS on transform / opacity; one press
+  per button; no glass over the moving scene.

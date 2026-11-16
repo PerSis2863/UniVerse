@@ -8,6 +8,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Live polls and quick quizzes in a call (Stage 4 · 2.7). The host asks (typed in, or a question
 // from the class's own quizzes); everyone answers on a card that stays out of the way. A poll shows
@@ -147,7 +148,7 @@ export function PollComposer({ open, onClose, onStart, questionsFor }: {
                 </span>
               </button>
 
-              <motion.button whileTap={{ scale: 0.98 }} type="button" disabled={!valid} onClick={start} className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40">
+              <motion.button type="button" disabled={!valid} onClick={start} className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40 active:scale-[0.98]">
                 {quiz ? 'Start the quiz' : 'Start the poll'}
               </motion.button>
             </motion.div>
@@ -197,7 +198,7 @@ export function PollCard({ poll, mod, onVote, onSend }: { poll: PollView; mod: b
                     <button type="button" role="radio" aria-checked={mine} disabled={!poll.open} onClick={() => { if (!mine) { haptic('tap'); onVote(i); } }}
                       className={cn('relative w-full overflow-hidden rounded-2xl border px-3 py-2.5 text-start text-sm transition-colors disabled:cursor-default',
                         right ? 'border-emerald-400/50' : wrong ? 'border-rose-400/50' : mine ? 'border-fuchsia-400/60' : 'border-white/10 hover:border-white/25')}>
-                      {poll.counts && <motion.span aria-hidden initial={{ width: 0 }} animate={{ width: `${pct(i)}%` }} transition={spring.smooth} className={cn('absolute inset-y-0 start-0', right ? 'bg-emerald-500/30' : wrong ? 'bg-rose-500/25' : 'bg-gradient-to-r from-indigo-500/35 to-fuchsia-500/30')} />}
+                      {poll.counts && <Fill value={(pct(i)) / 100} className={cn('absolute inset-y-0 start-0', right ? 'bg-emerald-500/30' : wrong ? 'bg-rose-500/25' : 'bg-gradient-to-r from-indigo-500/35 to-fuchsia-500/30')} />}
                       <span className="relative flex items-center gap-2">
                         <span className="flex-1">{o}</span>
                         {right && <Check className="w-4 h-4 text-emerald-300" strokeWidth={3} aria-label="The right answer" />}

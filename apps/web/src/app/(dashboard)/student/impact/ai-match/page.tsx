@@ -15,6 +15,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { SectionTabs, OPPORTUNITY_TABS } from '@/components/layout/SectionTabs';
+import { Fill } from '@/components/ui/Fill';
 
 interface MatchedProject {
   rank: number;
@@ -55,8 +56,7 @@ function MatchBar({ pct }: { pct: number }) {
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 bg-zinc-200 dark:bg-zinc-800 rounded-full overflow-hidden">
-        <motion.div initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={{ duration: 0.8, ease: 'easeOut', delay: 0.2 }}
-          className={`h-full bg-gradient-to-r ${color} rounded-full`} />
+        <Fill value={pct / 100} className={`h-full bg-gradient-to-r ${color} rounded-full`} delay={200} />
       </div>
       <span className="text-xs font-bold text-zinc-900 dark:text-white">{pct}%</span>
     </div>

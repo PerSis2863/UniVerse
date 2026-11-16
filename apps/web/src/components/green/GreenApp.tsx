@@ -28,6 +28,7 @@ import { cn } from '@/lib/utils';
 import { GreenYear } from './GreenYear';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
+import { Fill } from '@/components/ui/Fill';
 
 // UniVerse Green (src/lib/apps.ts): my CO₂ saved and what it equals, logging an action (CO₂ worked
 // out with the factor shown), this week's challenge for me and my teams, badges, the last 30 days,
@@ -215,7 +216,7 @@ export function GreenApp() {
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">
                   <div className="flex justify-between text-xs text-zinc-500"><span>{who as string}</span><span className="font-mono">{v as number} / {c.goal} {c.unit}</span></div>
-                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
+                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><Fill value={(Math.min(100, ((v as number) / c.goal) * 100)) / 100} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" /></div>
                 </div>
               ))}
               <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} more wait for a teammate to confirm.` : ''}</p>
