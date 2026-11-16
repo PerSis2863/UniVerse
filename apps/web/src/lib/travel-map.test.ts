@@ -25,3 +25,14 @@ describe('travel map', () => {
     expect(walkStay('art_gallery', 'Esfera Armilar', 'artwork')).toBe(10);
   });
 });
+
+describe('street photos (M214)', () => {
+  it('takes the first picture on an allowed instance, with who took it and when', async () => {
+    const { streetPhotoOf } = await import('./travel-map');
+    const pic = (host: string, id: string) => ({ id, geometry: { type: 'Point', coordinates: [2.35, 48.85] }, properties: { datetime: '2025-07-08T07:46:35+00:00', 'view:azimuth': 81 }, providers: [{ name: 'mapcomplete', roles: ['producer'] }, { name: 'Ana', roles: ['producer'] }], assets: { thumb: { href: `https://${host}/t.jpg` }, sd: { href: `https://${host}/sd.jpg` }, hd: { href: `https://${host}/hd.jpg` } } });
+    expect(streetPhotoOf({ features: [pic('evil.example', 'a'), pic('panoramax.openstreetmap.fr', 'b')] })).toMatchObject({ id: 'b', by: 'Ana', heading: 81, lat: 48.85, lon: 2.35, sd: 'https://panoramax.openstreetmap.fr/sd.jpg' });
+    expect(streetPhotoOf({ features: [pic('panoramax.ign.fr.evil.example', 'c')] })).toBeNull();
+    expect(streetPhotoOf(null)).toBeNull();
+    expect(streetPhotoOf({ features: 'x' })).toBeNull();
+  });
+});

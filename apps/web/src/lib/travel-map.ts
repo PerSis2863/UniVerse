@@ -66,3 +66,24 @@ export function walkFrom(start: { lat: number; lon: number }, places: MapPlace[]
   }
   return { stops, total: t, km: Math.round(dist * 10) / 10 };
 }
+
+/** M214: a street-level photo from Panoramax (CC BY-SA 4.0), on one of the instances the site's pictures
+ *  may come from (the rest are skipped: the page's security rules list where pictures load from). */
+export interface StreetPhoto { id: string; thumb: string; sd: string; hd: string; at: string | null; by: string | null; lat: number; lon: number; heading: number | null }
+export const STREET_HOSTS = ['panoramax.openstreetmap.fr', 'panoramax.ign.fr', 'panoramax.mapcomplete.org', 'panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net'] as const; // the last is where the first two keep their pictures (they redirect there)
+const hostOk = (u: unknown): u is string => { try { const x = new URL(String(u)); return x.protocol === 'https:' && (STREET_HOSTS as readonly string[]).includes(x.hostname); } catch { return false; } };
+
+/** The first usable picture in a Panoramax search answer (`/api/search`), or null. */
+export function streetPhotoOf(answer: unknown): StreetPhoto | null {
+  const features = (answer as { features?: unknown[] } | null)?.features;
+  for (const f of Array.isArray(features) ? features : []) {
+    const x = f as { id?: unknown; geometry?: { type?: string; coordinates?: unknown[] }; assets?: Record<string, { href?: unknown }>; properties?: Record<string, unknown>; providers?: { name?: unknown; roles?: unknown[] }[] };
+    const [lon, lat] = (x.geometry?.type === 'Point' ? x.geometry.coordinates ?? [] : []).map(Number);
+    const thumb = x.assets?.thumb?.href, sd = x.assets?.sd?.href, hd = x.assets?.hd?.href;
+    if (typeof x.id !== 'string' || !Number.isFinite(lat) || !Number.isFinite(lon) || !hostOk(thumb) || !hostOk(sd) || !hostOk(hd)) continue;
+    const by = (x.providers ?? []).filter((p) => Array.isArray(p.roles) && p.roles.includes('producer') && typeof p.name === 'string').map((p) => p.name as string).pop() ?? null;
+    const at = typeof x.properties?.datetime === 'string' ? x.properties.datetime : null, h = Number(x.properties?.['view:azimuth']);
+    return { id: x.id, thumb, sd, hd, at, by: by ? by.slice(0, 80) : null, lat, lon, heading: Number.isFinite(h) ? h : null };
+  }
+  return null;
+}

@@ -7572,3 +7572,35 @@ Asked and not started (each its own item, from M214; next database update 0224):
 
 The launch focus (section 4 of AGENTS.md) pauses new features; the owner asked for these anyway, so build
 them, one item each, and keep the CPU on the Worker flat (read outside data in the browser where possible).
+
+## M214: Travel's map, clearer and bigger (16 Nov)
+
+The owner: "the map needs to be more good looking and accurate … a lot of details and features … my cloudflare
+cpu limit should not rise"; on the live map: "this thing look messy … user cant understand what to look for …
+it should look sharp"; "add auto zoom when i click on the specific restaurant … smooth".
+
+- **Pins, not dots** (`map/pins.tsx`): each kind of place has a round pin in its own colour with its lucide icon
+  (food orange, cafés brown, drinks purple, sights rose, museums pink, parks green, shops amber, hotels indigo,
+  transport blue; stories amber books, reviews green stars), drawn on a canvas at twice the size from hidden SVGs
+  the component renders, added with `addImage(…, { pixelRatio: 2 })` before every style. The chosen kind is one
+  symbol layer (`uv-hit`): pin plus name, the notable first (`symbol-sort-key: rank`), never overlapping
+  (wider spacing when zoomed out); other places (dark style) only from zoom 16 as a small dot with a quiet
+  name, and never over a pin. The chips and the list show the same icons. Drawing a pin never waits more than
+  a second (the map doesn't wait on them).
+- **Tapping a place glides in** (`pick`): `flyTo` to zoom 17 (tilted when 3D is on), eased in and out,
+  leaving room for the card; a short ease when already close; a jump with Reduce Motion.
+- **Layers panel** (remembered on the device, `uv-travel-map-look`): Map or Satellite (EOX's Sentinel-2
+  cloudless, CC BY 4.0: soft close up, said so), 3D hills and buildings (AWS Terrain Tiles; relief shading is
+  always on except under the satellite pictures), trains, metro and ferries (lines coloured by kind, stations
+  as train pins), street photos (Panoramax coverage; tap a line to "look around": the nearest photo, its date,
+  direction and author, CC BY-SA 4.0), walking-distance rings (5, 10, 15 min from the middle), photos people
+  took, stories, UniVerse reviews. The globe when zoomed out; a sky that follows the sun there.
+- **Where I am:** a blue dot and a circle as wide as the phone is unsure (only on this screen, never sent).
+- **Filter** the places in view by name.
+- **No Worker CPU:** every tile and picture goes from its source to the browser. The page's security rules
+  (`security-headers.ts`) allow the terrain and satellite tiles, Panoramax's API and the hosts its pictures
+  come from (`STREET_HOSTS` in `src/lib/travel-map.ts`, with the storage server two of them redirect to;
+  pictures elsewhere are skipped).
+- **Checked:** `travel-map-ui.mjs` (now also the Layers panel, satellite and transport, the filter, and no CSP
+  refusals) on `local:dev` and `local:serve`, screenshots (Zermatt in 3D, the globe, Belém by satellite, Paris
+  transport and street photos, Nantes's food), unit tests (`streetPhotoOf`), `pnpm check`.

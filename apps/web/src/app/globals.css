@@ -2759,6 +2759,8 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: rgba(56, 189, 248, 0.14); --badge-blue-color: #7dd3fc;
   --card-hover-border: rgba(56, 189, 248, 0.28);
 }
+/* M214: Travel's map Layers panel grows from its button. */
+@keyframes layers-in { from { opacity: 0; transform: scale(0.94) translateY(-4px); } }
 /* Travel's dark fills from 500 down carry white text (4.8:1 and more); its light 400 (`--tint`, my chat bubbles) takes ink. */
 :root[data-app="travel"]:not([data-accent]) .dark :is(.bg-tint, .bg-primary), :root[data-app="travel"]:not([data-accent]).dark :is(.bg-tint, .bg-primary) { color: #0b0c0d; }
 
