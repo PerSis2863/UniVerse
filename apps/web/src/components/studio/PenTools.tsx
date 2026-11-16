@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 import { Btn, CopyBtn, Field, area, save } from './QuickTools';
 import { printOnly, uid, useKept } from './kept';
 import { rnd, Stat } from './bits';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Write, fifth set (M75): an essay planner, writing prompts, a poem helper,
 // acrostics, typing practice, a glossary, Cornell notes and interview practice. Kept on the device
@@ -209,7 +210,7 @@ function Interview() {
         <select className="input w-auto!" aria-label="Answer time" value={limit} onChange={(e) => setLimit(+e.target.value)}>{[60, 90, 120, 180].map((s) => <option key={s} value={s}>{s} seconds</option>)}</select>
         {run > 0 && <span className={cn('font-mono tabular-nums text-lg', spent > limit ? 'text-rose-600 dark:text-rose-300' : 'text-zinc-900 dark:text-white')} role="timer">{spent}s / {limit}s</span>}
       </div>
-      <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className={cn('h-full transition-[width] duration-300 ease-linear', spent > limit ? 'bg-rose-500' : 'bg-pink-500')} style={{ width: `${Math.min(100, (spent / limit) * 100)}%` }} /></div>
+      <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill quick value={(Math.min(100, (spent / limit) * 100)) / 100} className={cn('h-full', spent > limit ? 'bg-rose-500': 'bg-pink-500')} /></div>
       <Field label="Your notes for this question (key points, a story to tell)"><textarea className="input min-h-[100px]" value={notes[q] ?? ''} onChange={(e) => setNotes({ ...notes, [q]: e.target.value })} /></Field>
       <p className="text-xs text-zinc-600 dark:text-zinc-300">Tip: answer in about a minute and a half. For stories, use STAR: Situation, Task, Action, Result.</p>
     </div>

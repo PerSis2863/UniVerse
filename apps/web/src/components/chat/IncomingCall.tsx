@@ -110,11 +110,9 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
             </motion.button>
             <motion.button
               whileTap={{ scale: 0.88 }}
-              animate={{ rotate: [0, -12, 12, -8, 8, 0] }}
-              transition={{ duration: 0.9, repeat: Infinity, repeatDelay: 0.8 }}
               onClick={() => answer(call)}
               aria-label="Answer"
-              className="w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30"
+              className="ring-wiggle w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30"
             >
               {video ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
             </motion.button>

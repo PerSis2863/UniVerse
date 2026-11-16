@@ -543,7 +543,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
   const nav = navFor(app, user, shown);
-  const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const initials = (user.name ?? '').split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
   const handleLogout = () => signOut(logout, router);
 

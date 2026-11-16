@@ -23,6 +23,7 @@ import { CityView } from '@/components/live/CityView';
 import { Journey } from '@/components/live/Journey';
 import { Tank } from '@/components/live/Tank';
 import { Schedule } from '@/components/live/Schedule';
+import { Fill } from '@/components/ui/Fill';
 
 // The live tracking map (UniVerse Trace; the owner, 24 Oct 2026: "add 2d real time product tracking
 // map also in and it should be in detailed"). Every batch's journey: the stops behind it drawn solid,
@@ -485,7 +486,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
         <div className="mt-3 flex items-center gap-2 text-[11px] text-zinc-500">
           <span className="truncate max-w-[40%]">{city(from)}</span>
           <span className="relative flex-1 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
-            <motion.span className={cn('block h-full rounded-full', s.status === 'DELIVERED' ? 'bg-emerald-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} initial={{ width: 0 }} animate={{ width: `${pct * 100}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} />
+            <Fill value={pct} className={cn('h-full rounded-full', s.status === 'DELIVERED' ? 'bg-emerald-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} />
           </span>
           <span className="truncate max-w-[40%] text-right">{city(to)}</span>
         </div>

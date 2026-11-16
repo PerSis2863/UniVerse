@@ -11,6 +11,7 @@ import { Ring } from '@/components/instruments/parts';
 import { Btn, CopyBtn, Field } from './QuickTools';
 import { today, uid, useKept } from './kept';
 import { ask, BRANCH, MONEY, nf, Stat } from './bits';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Plan and organise, fifth set (M75): a Kanban board, an event planner, a
 // trip planner, routines, a day planner, a RACI chart, a sleep log, OKRs and birthdays. Kept on the
@@ -253,7 +254,7 @@ function Okr() {
               <span className="text-sm text-zinc-600 dark:text-zinc-300">of</span>
               <input className="input py-1.5 font-mono" inputMode="decimal" aria-label="Target" value={k.target} onChange={(e) => put(o.id, o.krs.map((x) => (x.id === k.id ? { ...x, target: +e.target.value || 0 } : x)))} />
               <button type="button" onClick={() => put(o.id, o.krs.filter((x) => x.id !== k.id))} aria-label={`Remove ${k.text}`} className="btn-ghost btn-icon"><Trash2 className="w-4 h-4" aria-hidden /></button>
-              <div className="col-span-5 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.div className="h-full bg-pink-500" initial={false} animate={{ width: `${Math.min(100, k.target ? (k.now / k.target) * 100 : 0)}%` }} transition={spring.smooth} /></div>
+              <div className="col-span-5 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={(Math.min(100, k.target ? (k.now / k.target) * 100 : 0)) / 100} className="h-full bg-pink-500" /></div>
             </div>
           ))}
           <Btn onClick={() => put(o.id, [...o.krs, { id: uid(), text: '', now: 0, target: 10 }])}><Plus className="w-3.5 h-3.5" aria-hidden />Key result</Btn>

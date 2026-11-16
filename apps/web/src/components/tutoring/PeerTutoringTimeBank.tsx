@@ -23,6 +23,7 @@ import {
 import { authedFetch } from '@/lib/authed-fetch';
 import { useInitialSearch } from '@/hooks/useInitialSearch';
 import { photoSrcSet } from '@/lib/image-sizes';
+import { Fill } from '@/components/ui/Fill';
 
 interface TimeBankAccount {
   id: string;
@@ -946,10 +947,7 @@ export function PeerTutoringTimeBank() {
                   <span>{Math.min(100, Math.round(((account?.sessionsCompletedAsTutor ?? 0) / 3) * 100))}%</span>
                 </div>
                 <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800 overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full transition-[width] duration-500"
-                    style={{ width: `${Math.min(100, ((account?.sessionsCompletedAsTutor ?? 0) / 3) * 100)}%` }}
-                  />
+                  <Fill value={(Math.min(100, ((account?.sessionsCompletedAsTutor ?? 0) / 3) * 100)) / 100} className="h-full bg-gradient-to-r from-purple-500 to-indigo-600 rounded-full" />
                 </div>
               </div>
 

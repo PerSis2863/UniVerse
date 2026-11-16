@@ -19,6 +19,7 @@ import { fetcher } from '@/lib/fetcher';
 import { toast } from 'sonner';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { SectionTabs, CREDENTIAL_TABS } from '@/components/layout/SectionTabs';
+import { Fill } from '@/components/ui/Fill';
 
 interface LevelInfo {
   current: { level: number; title: string; color: string; emoji: string; minXP: number };
@@ -103,10 +104,7 @@ function MyScoreCard({ entry, levelInfo }: { entry: LeaderboardEntry | null; lev
           <span className="text-xs font-bold text-white">{xpDone} / {xpToNext} XP</span>
         </div>
         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-          <motion.div initial={{ width: 0 }} animate={{ width: `${info.progress}%` }} transition={{ duration: 1, ease: 'easeOut' }}
-            className={`h-full bg-gradient-to-r ${LEVEL_GRADIENTS[info.current.level]} rounded-full relative`}>
-            <div className="absolute inset-0 bg-white/20 animate-pulse rounded-full" />
-          </motion.div>
+          <Fill value={info.progress / 100} className={`h-full bg-gradient-to-r ${LEVEL_GRADIENTS[info.current.level]} rounded-full`} />
         </div>
       </div>
 

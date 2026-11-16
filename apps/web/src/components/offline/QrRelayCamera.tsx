@@ -6,6 +6,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { FrameCollector } from '@/lib/qr-relay';
 import { cn } from '@/lib/utils';
 import { haptic } from '@/lib/haptics';
+import { Fill } from '@/components/ui/Fill';
 
 // Stage 5 · D17: reads the teacher's moving codes with the camera, with no connection. Uses the
 // phone's own QR reader where there is one (BarcodeDetector: Android Chrome), else jsQR (iPhone,
@@ -103,7 +104,7 @@ export default function QrRelayCamera({ onDone, onClose }: { onDone: (bytes: Uin
               {progress ? `${progress.have} of ${progress.total} codes read` : 'Point the camera at the codes'}
             </p>
             <div className="mt-2 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-              <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-300" style={{ width: `${Math.round(share * 100)}%` }} />
+              <Fill quick value={(Math.round(share * 100)) / 100} className="h-full rounded-full bg-emerald-500" />
             </div>
             {progress && progress.total > 1 && (
               <div className="mt-2 flex flex-wrap gap-1" aria-hidden>

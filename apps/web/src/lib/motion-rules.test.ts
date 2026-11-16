@@ -20,4 +20,14 @@ describe('motion rules', () => {
     const found = files(SRC).filter((file) => /\btransition-all\b|transition(-property)?:\s*all\b/.test(readFileSync(file, 'utf8'))).map((file) => file.slice(SRC.length));
     expect(found).toEqual([]);
   });
+  // M231: a bar that grows its width (or a part moved by `left` / `top`) re-lays out the page on every frame, so it
+  // stutters while the page is busy (loading). Progress bars use <Fill> (components/ui/Fill.tsx), which slides.
+  // Left: stacked bars whose parts share a row (Trace's market cells, consent tallies, a call's class pulse, an SVG chart), the
+  // welcome tour's spotlight (shown once).
+  it('progress bars slide instead of growing', () => {
+    const ok = ['components/trace/map/MarketMap.tsx', 'components/guardian/ConsentFormsManager.tsx', 'components/studio/PlanTools.tsx', 'components/layout/WelcomeTour.tsx', 'components/call/ClassPulse.tsx', 'app/(dashboard)/student/grades/page.tsx'];
+    const found = files(SRC).filter((f) => f.endsWith('.tsx') && !ok.includes(f.slice(SRC.length)))
+      .filter((f) => /transition-\[(width|left|top)|initial=\{\{ width: 0 \}\}|animate=\{\{ (width|top|left): /.test(readFileSync(f, 'utf8'))).map((f) => f.slice(SRC.length));
+    expect(found).toEqual([]);
+  });
 });

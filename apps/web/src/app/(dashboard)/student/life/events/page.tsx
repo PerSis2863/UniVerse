@@ -17,6 +17,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { QrCode } from '@/components/ui/QrCode';
 import { money } from '@/components/fees/shared';
 import { usePaymentReturn } from '@/lib/use-payment-return';
+import { Fill } from '@/components/ui/Fill';
 
 // Campus events (upgrade 7): RSVP (a seat, or the waiting list when it's full) and check in at the
 // door by scanning the organiser's QR code, which opens this page with ?checkin=<code>. Stage 5 · Q17:
@@ -148,7 +149,7 @@ export default function EventsPage() {
                     {ev.description && <p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-line">{ev.description}</p>}
                     {pct !== null && (
                       <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-                        <motion.div className={cn('h-full rounded-full', full ? 'bg-amber-500' : 'bg-indigo-500')} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={spring.gentle} />
+                        <Fill value={pct / 100} className={cn('h-full rounded-full', full ? 'bg-amber-500' : 'bg-indigo-500')} />
                       </div>
                     )}
                     <div className="flex flex-wrap items-center gap-2">

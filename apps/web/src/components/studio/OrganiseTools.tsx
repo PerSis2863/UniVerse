@@ -11,6 +11,7 @@ import { Ring } from '@/components/instruments/parts';
 import { Btn, CopyBtn, Field, save } from './QuickTools';
 import { printOnly, today, uid, useKept } from './kept';
 import { ask, BRANCH, FullBtn, Segments, Stat, useFull } from './bits';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Plan and organise, and Present (M74): a priority matrix, countdowns, meeting
 // notes, checklists, goals, a week planner, SWOT, pros and cons, a reading list, a stopwatch, a room
@@ -174,7 +175,7 @@ function Checklists() {
       {l && (
         <>
           <input className="input font-bold" aria-label="List name" value={l.name} onChange={(e) => setLists(lists.map((x) => (x.id === l.id ? { ...x, name: e.target.value } : x)))} />
-          <div className="flex items-center gap-3"><span className="flex-1 h-2.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full bg-pink-500 rounded-full" initial={false} animate={{ width: `${l.items.length ? (done / l.items.length) * 100 : 0}%` }} transition={spring.smooth} /></span><span className="text-sm font-mono tabular-nums text-zinc-900 dark:text-white">{done}/{l.items.length}</span></div>
+          <div className="flex items-center gap-3"><span className="flex-1 h-2.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={(l.items.length ? (done / l.items.length) * 100 : 0) / 100} className="h-full bg-pink-500 rounded-full" /></span><span className="text-sm font-mono tabular-nums text-zinc-900 dark:text-white">{done}/{l.items.length}</span></div>
           <List label={l.name} items={l.items} onChange={put} placeholder="Add an item…" />
         </>
       )}
@@ -282,7 +283,7 @@ function ProsCons() {
       <Field label="The question"><input className="input font-bold" value={d.q} onChange={(e) => setD({ ...d, q: e.target.value })} /></Field>
       <div className="grid gap-3 sm:grid-cols-2">{col('pros', 'For')}{col('cons', 'Against')}</div>
       <div className="space-y-1">
-        <div className="h-4 rounded-full bg-rose-400/70 overflow-hidden"><motion.div className="h-full bg-emerald-500" initial={false} animate={{ width: `${share}%` }} transition={spring.smooth} /></div>
+        <div className="h-4 rounded-full bg-rose-400/70 overflow-hidden"><Fill value={share / 100} className="h-full bg-emerald-500" /></div>
         <p className="text-sm font-semibold text-zinc-900 dark:text-white" role="status">{p === c ? 'Evenly balanced: trust your gut, or add more points.' : p > c ? `Leaning towards yes (${Math.round(share)}% for).` : `Leaning towards no (${Math.round(100 - share)}% against).`}</p>
       </div>
     </div>
@@ -313,7 +314,7 @@ function Reading() {
             <BookOpen className="w-5 h-5 mt-0.5 shrink-0 text-indigo-600 dark:text-aqua-300" aria-hidden />
             <div className="flex-1 min-w-0 space-y-1.5">
               <p className="font-bold text-zinc-900 dark:text-white" translate="no">{b.title} <span className="font-normal text-sm text-zinc-600 dark:text-zinc-300">{b.author}</span></p>
-              <div className="flex items-center gap-2"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full bg-pink-500" initial={false} animate={{ width: `${Math.min(100, (b.read / b.pages) * 100)}%` }} transition={spring.smooth} /></span>
+              <div className="flex items-center gap-2"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={(Math.min(100, (b.read / b.pages) * 100)) / 100} className="h-full bg-pink-500" /></span>
                 <label className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300">Page<input className="input py-0.5 px-1.5 w-16! text-xs" inputMode="numeric" aria-label={`Page reached in ${b.title}`} value={b.read} onChange={(e) => put(b.id, { read: Math.max(0, Math.min(b.pages, +e.target.value || 0)), status: b.status === 'want' ? 'reading' : b.status })} />/ {b.pages}</label></div>
               <div className="flex flex-wrap items-center gap-2">
                 <select className="input py-1 text-sm w-auto!" aria-label="Status" value={b.status} onChange={(e) => put(b.id, { status: e.target.value as Book['status'] })}><option value="want">Want to read</option><option value="reading">Reading</option><option value="done">Read</option></select>
@@ -385,7 +386,7 @@ function Poll() {
         {p.options.map((o, i) => (
           <li key={o.id} className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 items-center">
             <div className="relative rounded-xl overflow-hidden ring-1 ring-zinc-200 dark:ring-white/10">
-              <motion.div className="absolute inset-y-0 start-0" style={{ background: `${BRANCH[i % BRANCH.length]}33` }} initial={false} animate={{ width: `${(o.n / top) * 100}%` }} transition={spring.smooth} aria-hidden />
+              <Fill value={o.n / top} className="absolute inset-y-0 start-0" style={{ background: `${BRANCH[i % BRANCH.length]}33` }} />
               <div className="relative flex items-center gap-2 px-3 py-2">
                 <input className={cn('flex-1 min-w-0 bg-transparent font-semibold text-zinc-900 dark:text-white outline-none', isFull && 'text-2xl')} aria-label={`Option ${i + 1}`} value={o.text} onChange={(e) => setP({ ...p, options: p.options.map((x) => (x.id === o.id ? { ...x, text: e.target.value } : x)) })} />
                 <span className={cn('font-mono tabular-nums font-bold text-zinc-900 dark:text-white', isFull && 'text-3xl')}>{o.n}</span>
@@ -439,7 +440,7 @@ function Agenda() {
           <p className="text-sm text-zinc-600 dark:text-zinc-300 tabular-nums">Part {at + 1} of {items.length}</p>
           <p className={cn('font-bold text-zinc-900 dark:text-white', isFull ? 'text-5xl' : 'text-3xl')} translate="no">{cur?.title}</p>
           <p className={cn('font-mono tabular-nums font-bold', over ? 'text-rose-600 dark:text-rose-300' : 'text-zinc-900 dark:text-white')} style={{ fontSize: isFull ? 'min(20vw, 220px)' : 'clamp(56px, 14vw, 120px)' }} role="timer">{fmt(leftS)}</p>
-          <div className="mx-auto max-w-xl h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className={cn('h-full rounded-full transition-[width] duration-300 ease-linear', over ? 'bg-rose-500' : 'bg-pink-500')} style={{ width: `${Math.min(100, (spent / len) * 100)}%` }} /></div>
+          <div className="mx-auto max-w-xl h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill quick value={(Math.min(100, (spent / len) * 100)) / 100} className={cn('h-full rounded-full', over ? 'bg-rose-500': 'bg-pink-500')} /></div>
           {items[at + 1] && <p className="text-zinc-600 dark:text-zinc-300 inline-flex items-center gap-1">Next <ArrowRight className="w-4 h-4 rtl:rotate-180" aria-hidden /> <span translate="no">{items[at + 1].title}</span> ({items[at + 1].min} min)</p>}
           <div className="flex flex-wrap justify-center gap-2">
             <button type="button" onClick={() => { if (paused !== null) { setStartedAt(startedAt + Date.now() - paused); setPaused(null); } else setPaused(Date.now()); }} className="btn-secondary">{paused !== null ? <Play className="w-4 h-4" aria-hidden /> : <Pause className="w-4 h-4" aria-hidden />}{paused !== null ? 'Go on' : 'Pause'}</button>

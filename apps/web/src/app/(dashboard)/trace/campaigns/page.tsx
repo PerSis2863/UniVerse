@@ -17,6 +17,7 @@ import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
 import { Tank } from '@/components/live/Tank';
+import { Fill } from '@/components/ui/Fill';
 
 // Pay per verified scan (UniVerse Trace campaigns): a brand offers shops bonus points for every
 // genuine claim of its products in an area, up to a budget; UniVerse's fee is 5 cents per campaign
@@ -219,7 +220,7 @@ function CampaignCard({ c, index, product, currency, pointValue, canPay, onChang
       <div className="relative mt-4">
         <div className="flex justify-between text-[11px] text-zinc-500"><span>Budget used</span><span className="font-mono">{fmt(c.spentPoints)} / {fmt(c.budgetPoints)} points</span></div>
         <div className="mt-1 h-2 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden">
-          <motion.div className={cn('h-full rounded-full', used > 90 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} initial={{ width: 0 }} animate={{ width: `${Math.min(100, used)}%` }} transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }} />
+          <Fill value={used / 100} className={cn('h-full rounded-full', used > 90 ? 'bg-amber-500' : 'bg-gradient-to-r from-pink-500 to-fuchsia-500')} />
         </div>
       </div>
       <dl className="relative mt-4 grid grid-cols-3 gap-2 text-center">

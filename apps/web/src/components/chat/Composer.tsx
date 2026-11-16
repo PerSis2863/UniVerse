@@ -18,6 +18,7 @@ import { QuickReaction, RewriteMenu, SendWithMenu, type SendChoice } from './Sen
 import { EFFECTS, type MessageEffect } from '@/lib/message-effects';
 import { SnippetsSheet, fillSnippet, useSnippets } from './Snippets';
 import dynamic from 'next/dynamic';
+import { Fill } from '@/components/ui/Fill';
 const StickerPicker = dynamic(() => import('./Stickers').then((m) => m.StickerPicker));
 
 const VideoNoteRecorder = dynamic(() => import('./VideoNote').then((m) => m.VideoNoteRecorder));
@@ -438,7 +439,7 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
       {uploadProgress !== null && (
         <div className="mb-2 flex items-center gap-2 text-xs text-zinc-500">
           <Loader2 className="w-3.5 h-3.5 animate-spin" /> Uploading… {uploadProgress}%
-          <div className="flex-1 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><div className="h-full bg-indigo-500 transition-[width]" style={{ width: `${uploadProgress}%` }} /></div>
+          <div className="flex-1 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill quick value={(uploadProgress) / 100} className="h-full bg-indigo-500" /></div>
         </div>
       )}
 

@@ -10,6 +10,7 @@ import { LANGUAGES, type Language } from '@/lib/i18n';
 import { CHUNKS, chunkOf, type Chunk } from '@/lib/ui-dictionary';
 import { card, errorMessage, fetcher, field } from './shared';
 import { LoadError } from '@/components/ui/LoadError';
+import { Fill } from '@/components/ui/Fill';
 
 // Owner console → Languages (Stage 5 · Q21): the app's screens in other languages. "Translate what's
 // missing" drafts the strings of public/i18n/catalog.json with the AI translator, one part (of 32)
@@ -106,7 +107,7 @@ export function LanguagesPanel() {
           )}
           {!run && st && <span className="text-xs text-zinc-600 dark:text-zinc-400">Last change {st.updatedAt ? new Date(st.updatedAt).toLocaleString() : '—'}</span>}
         </div>
-        {run && run.total > 0 && <div className="mt-3 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden><div className="h-full bg-indigo-600 transition-[width]" style={{ width: `${Math.round((run.done / run.total) * 100)}%` }} /></div>}
+        {run && run.total > 0 && <div className="mt-3 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden><Fill quick value={(Math.round((run.done / run.total) * 100)) / 100} className="h-full bg-indigo-600" /></div>}
         <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-3">Uses the AI (about one request per 80 texts, roughly 130 for a whole language). New screens: run it again and only their texts are translated.</p>
       </section>
       {st && st.translated > 0 && <Review key={lang} lang={lang} />}

@@ -11,6 +11,7 @@ import { Histo, Ring } from '@/components/instruments/parts';
 import { Btn, Field, area, copy, save } from './QuickTools';
 import { BRANCH } from './PlanTools';
 import { printOnly, today, uid, useKept } from './kept';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Maths and data (M72): a graph plotter, statistics, a data explorer for CSV
 // files, a budget planner, an invoice maker and a world clock. All on this device.
@@ -173,7 +174,7 @@ function Explore() {
           <ul className="space-y-1.5">{groups.slice(0, 20).map(([k, g]) => (
             <li key={k} className="grid grid-cols-[120px_1fr_auto] items-center gap-2 text-sm">
               <span className="truncate font-semibold text-zinc-900 dark:text-white" translate="no">{k || '(empty)'}</span>
-              <span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full rounded-full bg-indigo-500 dark:bg-aqua-300/80" initial={{ width: 0 }} animate={{ width: `${(Math.abs(g.sum) / top) * 100}%` }} transition={spring.smooth} /></span>
+              <span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={Math.abs(g.sum) / top} className="h-full rounded-full bg-indigo-500 dark:bg-aqua-300/80" /></span>
               <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{nf(g.sum, 2)} <span className="text-xs text-zinc-600 dark:text-zinc-300">({g.n}, avg {nf(g.sum / g.n, 1)})</span></span>
             </li>
           ))}</ul>
@@ -220,7 +221,7 @@ function Budget() {
           {byCat.map((x, k) => (
             <div key={x.c} className="grid grid-cols-[90px_1fr_auto] items-center gap-2 text-sm">
               <span className="text-zinc-800 dark:text-zinc-100">{x.c}</span>
-              <span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full rounded-full" style={{ background: BRANCH[k % BRANCH.length] }} initial={{ width: 0 }} animate={{ width: `${(x.v / (byCat[0]?.v || 1)) * 100}%` }} transition={spring.smooth} /></span>
+              <span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={x.v / (byCat[0]?.v || 1)} className="h-full rounded-full" style={{ background: BRANCH[k % BRANCH.length] }} /></span>
               <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{spend ? Math.round((x.v / spend) * 100) : 0}%</span>
             </div>
           ))}

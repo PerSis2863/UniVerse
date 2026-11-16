@@ -6,6 +6,7 @@ import { ArrowDownToLine, Crown, DoorOpen, Hand, Mic, MicOff, MoreHorizontal, Pi
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // People in a call, and the host's controls (cloudflare/worker.ts CallRoom.control): mute, ask to
 // unmute, stop video, spotlight for everyone, co-hosts, remove, lower hands. A side panel on
@@ -146,7 +147,7 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                         {talked && (
                           <div className="mt-1 flex items-center gap-2" title="Speaking time in this call">
                             <span className="flex-1 h-1 rounded-full bg-white/[0.06] overflow-hidden">
-                              <motion.span className="block h-full rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400" initial={false} animate={{ width: `${((p.talkMs ?? 0) / loudest) * 100}%` }} transition={spring.smooth} />
+                              <Fill value={(p.talkMs ?? 0) / loudest} className="h-full rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400" />
                             </span>
                             <span className="text-[10px] text-zinc-500 tabular-nums w-12 text-end">{talkClock(p.talkMs ?? 0)}</span>
                           </div>

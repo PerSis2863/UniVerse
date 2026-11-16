@@ -799,7 +799,18 @@ html, body { overflow-x: clip; max-width: 100%; }
 @media (hover: hover) { .lift:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.25); } }
 .lift:active { transform: scale(0.985); }
 
+/* M231: a progress bar's fill (components/ui/Fill.tsx) moves instead of growing: the graphics chip runs it.
+   No overshoot (it would open a gap at the track's start). */
+.fill { display: block; width: 100%; height: 100%; transform: translateX(calc((var(--fill, 0) - 1) * 100%)); transition: transform 0.7s var(--ease-glide); }
+[dir='rtl'] .fill { transform: translateX(calc((1 - var(--fill, 0)) * 100%)); }
+.fill-quick { transition-duration: 0.25s; transition-timing-function: var(--ease-out-soft, ease-out); }
+@starting-style {
+  .fill { transform: translateX(-100%); }
+  [dir='rtl'] .fill { transform: translateX(100%); }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .fill { transition: none; }
   .stagger > *, .rise-in, .bar-grow { animation: none; }
   .lift, .lift:hover, .lift:active { transition: none; transform: none; }
 }
@@ -1163,15 +1174,35 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
 
 /* Navigation progress bar */
-@keyframes nav-progress-run { from { width: 0; } 20% { width: 45%; } 60% { width: 75%; } to { width: 92%; } }
-.nav-progress-run { animation: nav-progress-run 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards; box-shadow: 0 0 8px rgb(var(--tint-rgb) / 0.5); }
-.nav-progress-done { width: 100%; opacity: 0; transition: width 0.2s ease, opacity 0.3s ease 0.15s; }
+/* M231: it slides in (transform) rather than growing (width): page changes are when the page's thread is busiest,
+   and the graphics chip keeps a slide smooth then. The bar is always full width; its end (and the comet) leads. */
+@keyframes nav-progress-run { from { transform: translateX(-100%); } 20% { transform: translateX(-55%); } 60% { transform: translateX(-25%); } to { transform: translateX(-8%); } }
+@keyframes nav-progress-run-rtl { from { transform: translateX(100%); } 20% { transform: translateX(55%); } 60% { transform: translateX(25%); } to { transform: translateX(8%); } }
+.nav-progress-run { width: 100%; animation: nav-progress-run 6s cubic-bezier(0.1, 0.7, 0.2, 1) forwards; box-shadow: 0 0 8px rgb(var(--tint-rgb) / 0.5); }
+[dir='rtl'] .nav-progress-run { animation-name: nav-progress-run-rtl; }
+.nav-progress-done { width: 100%; transform: none; opacity: 0; transition: transform 0.2s ease, opacity 0.3s ease 0.15s; }
 
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 
+/* M231: a scanner's line sweeping down and up (the landing's Trace scene). The wrapper is the box's full height and
+   moves by its own height, so the line travels the box on the graphics chip (it moved by `top` before). */
+@keyframes scan-sweep { 0%, 100% { transform: translateY(8%); } 50% { transform: translateY(92%); } }
+.scan-sweep { animation: scan-sweep 1.6s ease-in-out infinite; }
+/* M231: loops that framer-motion drove from the page's thread every frame, now CSS on the graphics chip. */
+@keyframes scene-tilt { 0%, 100% { transform: perspective(900px) rotateY(-14deg) rotateX(8deg); } 50% { transform: perspective(900px) rotateY(14deg) rotateX(-4deg); } }
+.scene-tilt { animation: scene-tilt 8s ease-in-out infinite; }
+@keyframes scene-pan { to { transform: translateX(-50%); } }
+.scene-pan { animation: scene-pan 26s linear infinite; }
+@keyframes ring-wiggle { 0%, 53%, 100% { rotate: 0deg; } 11% { rotate: -12deg; } 21% { rotate: 12deg; } 32% { rotate: -8deg; } 42% { rotate: 8deg; } }
+.ring-wiggle { animation: ring-wiggle 1.7s ease-in-out infinite; }
+.slow-turn { animation: btn-spin 30s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .scan-sweep, .scene-tilt, .scene-pan, .ring-wiggle, .slow-turn { animation: none; } }
+
 /* Status viewer: the bar along the top fills once per update (src/components/chat/StatusBar.tsx). */
-@keyframes status-progress { from { width: 0%; } to { width: 100%; } }
-.status-progress { width: 0%; animation-name: status-progress; animation-timing-function: linear; animation-fill-mode: forwards; }
+@keyframes status-progress { from { transform: translateX(-100%); } to { transform: none; } }
+@keyframes status-progress-rtl { from { transform: translateX(100%); } to { transform: none; } }
+.status-progress { width: 100%; animation-name: status-progress; animation-timing-function: linear; animation-fill-mode: both; }
+[dir='rtl'] .status-progress { animation-name: status-progress-rtl; }
 
 /* ═══════════════════════════════════════════════════════════════════════════
    iOS controls and chrome
@@ -2593,7 +2624,7 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 /* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
-html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave),
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave, .scan-sweep, .scene-tilt, .scene-pan, .slow-turn),
 html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
 /* M117 · UniVersity's hero picture (HeroScenes `Campus`, the landing and sign-in): its endless motion in
    CSS, which the browser runs off the main thread. As script (framer-motion repeats) the orbit, the

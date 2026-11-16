@@ -8,6 +8,7 @@ import { Field } from '@/components/ui/Field';
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Copy a course to a new term (Stage 5 · B2, src/server/course-copy.ts): the teacher names the new
 // course, chooses what happens to dates, and the copy runs step by step (the free plan allows only so
@@ -122,7 +123,7 @@ export function CourseCopy({ course, onClose, onDone }: { course: { id: string; 
           {progress && (
             <div role="status" aria-live="polite">
               <div className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-                <div className={cn('h-full bg-indigo-500 transition-[width] duration-300')} style={{ width: `${Math.max(4, pct)}%` }} />
+                <Fill quick value={(Math.max(4, pct)) / 100} className={cn('h-full bg-indigo-500')} />
               </div>
               <p className="mt-1.5 text-xs text-zinc-600 dark:text-zinc-400">{progress.label} · {pct}%</p>
             </div>

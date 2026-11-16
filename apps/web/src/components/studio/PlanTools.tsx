@@ -9,6 +9,7 @@ import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import { Btn, Field, area, copy, save } from './QuickTools';
 import { printOnly, svgToPng, today, uid, useKept } from './kept';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Plan and organise (M72, the owner: "add more 30 features… like big features").
 // Each tool keeps its work on this device (localStorage) and saves pictures or prints; nothing is sent.
@@ -398,7 +399,7 @@ function Decide() {
         {ranked.map((r, k) => (
           <motion.li key={r.name + k} layout transition={spring.smooth} className="flex items-center gap-3">
             <span className="w-28 truncate font-semibold text-zinc-900 dark:text-white">{k === 0 ? '★ ' : ''}{r.name}</span>
-            <span className="flex-1 h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className={cn('block h-full rounded-full', k === 0 ? 'bg-pink-500' : 'bg-indigo-400 dark:bg-aqua-300/70')} initial={false} animate={{ width: `${(r.score / 5) * 100}%` }} transition={spring.smooth} /></span>
+            <span className="flex-1 h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={r.score / 5} className={cn('h-full rounded-full', k === 0 ? 'bg-pink-500' : 'bg-indigo-400 dark:bg-aqua-300/70')} /></span>
             <span className="w-10 text-end font-mono tabular-nums text-zinc-900 dark:text-white">{r.score.toFixed(1)}</span>
           </motion.li>
         ))}

@@ -320,9 +320,12 @@ function Tuner() {
   return (
     <div className="space-y-4 text-center">
       <p className={cn('text-7xl font-bold', good ? 'text-emerald-600 dark:text-emerald-300' : 'text-zinc-900 dark:text-white')} role="status">{n ? <>{n.note}<sub className="text-2xl">{n.octave}</sub></> : '—'}</p>
-      <div className="relative mx-auto max-w-md h-10" aria-hidden>
+      <div dir="ltr" className="relative mx-auto max-w-md h-10" aria-hidden>
         <div className="absolute inset-x-0 top-1/2 h-1 -translate-y-1/2 rounded-full bg-gradient-to-r from-rose-400 via-emerald-400 to-rose-400" />
-        <div className="absolute top-0 h-full w-1.5 rounded bg-zinc-900 dark:bg-white transition-[left] duration-150 ease-out" style={{ left: `calc(${50 + (n ? Math.max(-50, Math.min(50, n.cents)) : 0)}% - 3px)` }} />
+        {/* M231: the needle's track is the box's full width and slides by a share of it (transform, not `left`). */}
+        <div className="absolute inset-0 transition-transform duration-150 ease-out" style={{ transform: `translateX(${50 + (n ? Math.max(-50, Math.min(50, n.cents)) : 0)}%)` }}>
+          <div className="absolute top-0 -start-[3px] h-full w-1.5 rounded bg-zinc-900 dark:bg-white" />
+        </div>
       </div>
       <p className="text-sm text-zinc-600 dark:text-zinc-300 font-mono tabular-nums">{n ? `${nf(hz!, 1)} Hz · ${n.cents > 0 ? '+' : ''}${n.cents} cents ${good ? '· in tune' : n.cents > 0 ? '· a little high' : '· a little low'}` : on ? 'Listening… play or sing a note' : 'Off'}</p>
       <div className="flex justify-center gap-2">
