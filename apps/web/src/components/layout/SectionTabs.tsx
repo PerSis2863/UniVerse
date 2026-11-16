@@ -319,7 +319,7 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
   }, [role, here, group]); // eslint-disable-line react-hooks/exhaustive-deps
   if (shown.length < 2) return null;
   return (
-    <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', end && 'flex flex-wrap items-center gap-3')}>
+    <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', 'flex flex-wrap items-center gap-3')}>
       <div className={cn('ios-segmented', !small && 'large')} onPointerLeave={() => setHover(null)}>
         {shown.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
@@ -335,6 +335,8 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
         })}
       </div>
       {end}
+      {/* The page's own buttons, put here by Topbar when the menu is the bar across the top. */}
+      <div data-tabs-end className="ms-auto hidden topnav:flex items-center gap-2 empty:!hidden" />
     </nav>
   );
 }

@@ -7997,3 +7997,15 @@ browser: no Worker CPU added. The rules are in AGENTS.md §8 ("No double animati
   tinypool, zod in eslint's plugin): nothing in the live site.
 - **Rule:** no animation on what the motion layer animates; bars `<Fill>`; loops CSS on transform / opacity; one press
   per button; no glass over the moving scene.
+
+## M232
+
+**Section tabs no longer jump down** (the owner, 16 Nov: "when i switch to report cards then the section
+line goes down… same happening in other also"). With the menu across the top (M219), `Topbar` drew a row
+only when a page had buttons (`rightNode` / `action`), so a tab with a button (Report cards' "New round")
+pushed the tabs lower than its neighbours. Now `SectionTabs` ends its row with an empty `[data-tabs-end]`
+slot, and `Topbar` (top-nav mode, no `leftNode`) portals its buttons there instead of drawing its own row:
+every page in a tab group keeps the tabs at the same height (checked on Insights' tabs: 78 px on four
+pages). Rules: the slot is found when `Topbar` mounts, as the first `[data-tabs-end]` under `Topbar`'s
+parent; a page that renders its tabs only after loading keeps the old row. Phones and the installed app
+(side menu) are unchanged.

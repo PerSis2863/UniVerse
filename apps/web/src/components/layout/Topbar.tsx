@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Search, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
@@ -49,6 +50,13 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
   // M219: on a computer's browser the bar across the top has the search, theme, language and bell: this bar
   // only shows the page's own controls, and isn't there when the page has none (no empty row under the bar).
   const top = useTopNav();
+  // With the bar across the top, a page's buttons sit at the end of its section tabs' row (SectionTabs'
+  // `data-tabs-end`), so moving between a tab with buttons and one without never pushes the tabs down.
+  const tabsRow = top && !leftNode;
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const findSlot = useCallback((el: HTMLSpanElement | null) => {
+    setSlot(el && tabsRow ? el.parentElement?.querySelector<HTMLElement>('[data-tabs-end]') ?? null : null);
+  }, [tabsRow]);
 
 
   // Its code arrives while the page is idle, so the first tap on the bell opens it at once.
@@ -107,7 +115,12 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
       ) : <div className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
 
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
-      {(!top || leftNode || rightNode || action) && <header className={cn('app-topbar hidden lg:flex z-20 nav-edge items-center justify-between gap-4', top ? 'px-6 xl:px-8 pt-3 pb-1' : 'lg:sticky lg:top-0 px-8 min-h-16 py-2')}>
+      <span ref={findSlot} hidden />
+      {slot && (rightNode || action) && createPortal(<>
+        {rightNode}
+        {action && <button onClick={action.onClick} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" strokeWidth={2.4} />{action.label}</button>}
+      </>, slot)}
+      {(!top || leftNode || ((rightNode || action) && !slot)) && <header className={cn('app-topbar hidden lg:flex z-20 nav-edge items-center justify-between gap-4', top ? 'px-6 xl:px-8 pt-3 pb-1' : 'lg:sticky lg:top-0 px-8 min-h-16 py-2')}>
         <div className="flex items-center gap-4 min-w-0">
           {!top && <h1 className="sr-only">{title}</h1>}
           {leftNode}
