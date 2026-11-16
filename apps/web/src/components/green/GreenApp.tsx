@@ -212,7 +212,7 @@ export function GreenApp() {
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">
                   <div className="flex justify-between text-xs text-zinc-500"><span>{who as string}</span><span className="font-mono">{v as number} / {c.goal} {c.unit}</span></div>
-                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
+                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
                 </div>
               ))}
               <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} more wait for a teammate to confirm.` : ''}</p>
@@ -246,7 +246,7 @@ export function GreenApp() {
             <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
             <div className="mt-4 flex items-end gap-1 h-32" aria-hidden>
               {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
-                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-lime-400" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
+                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-emerald-300" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
               ))}
             </div>
             <ul className="mt-5 space-y-2">

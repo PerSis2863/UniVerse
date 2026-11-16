@@ -7489,3 +7489,24 @@ can't reach, so the account was made in the local database. Fixes:
 Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip
 planner) and M207 (getting there, stays, travellers). M208 was kept for "the extras" in M202's first plan;
 nothing more was asked for it: ask the owner before starting anything under that number.
+
+## M212: dark mode's accent is the website's blue; calmer greens (16 Nov)
+
+The owner: "remove the neon greenish colour from the app as i dont like it jsut put something which matches
+the website". The neon green was dark mode's lime (#c6f24a, M124's Relay look) plus Green's bright mint.
+
+- **Dark mode's accent is blue** (`globals.css`, M124 block): the re-pointed accent scale (indigo / violet /
+  purple / pink / fuchsia / aqua) runs 50 #eef4ff … 950 #172554 with 400 #6ea2f8 and 600 #2563eb; `--tint`
+  #6ea2f8, `--tint-text` #93b9fa, `--ins-hot` #6ea2f8, `--cta` #2563eb with white text; main buttons are the
+  website's #2563eb with white text (light mode keeps its black ones). The rules that turned white text ink on
+  a solid accent fill (needed on lime) now apply only to Trace, Relief and Play, whose accents are light; on
+  blue, white stays.
+- **Green is calmer**: its dark block (M132) uses deeper emerald (500 #0d7f5e, 600 #047857) with a soft
+  #4fbf98 tint; the plain `emerald-*` / `green-*` classes in dark mode are softened at the start of the
+  M124 `.dark, .on-dark` block (states keep their meaning, just less glowing); Green's bars lost their lime
+  end (`to-emerald-300`).
+- **Scenes:** UniVersity's dark scene is drawn in the blue (`CAMPUS.dark` in `backdrop.ts`); Green's
+  fireflies are warm (no lime).
+- **For code that builds on it:** don't add `lime-*` classes; a solid accent fill in dark mode takes white
+  text (except in Trace, Relief and Play). §8 of AGENTS.md says the same.
+- **Checked:** screenshots of the landing, `/green`, `/relief` and `/student` in dark mode, `pnpm check`.

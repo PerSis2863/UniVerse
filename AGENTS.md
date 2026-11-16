@@ -218,7 +218,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M211 (16 Nov), the main pages' lag fixed (the motion layer's watcher, the
+- **On the branch, not merged yet:** M212 (16 Nov), dark mode's accent the website's blue in place of the neon lime,
+  calmer greens. M211 (16 Nov), the main pages' lag fixed (the motion layer's watcher, the
   landing's prebuilding and scroll code; `main-pages-smooth.mjs`). M210 (16 Nov), no page titles (only for screen readers) and no "Lab" tags,
   anywhere (the owner). M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
   (database update 0223; MapLibre added, OpenFreeMap's tiles go straight to browsers, no Worker CPU). M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
@@ -247,7 +248,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M212** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M213** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -418,11 +419,11 @@ file used only from config goes in its `BY_CONFIG` list).
 dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
 **Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
 text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
-side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), lime
-(#c6f24a) as the accent: main buttons lime with ink text, chosen things, chart marks (`--ins-hot`),
-focus; white headings. Green, amber and red only for states. The tokens and the Tailwind re-pointing
+side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), the
+website's blue as the accent since M212 (the owner disliked the neon lime, 16 Nov): main buttons #2563eb with
+white text, chosen things, chart marks (`--ins-hot` #6ea2f8), focus; white headings; no `lime-*` classes. Green, amber and red only for states. The tokens and the Tailwind re-pointing
 (indigo / violet / purple / pink / fuchsia / aqua = the accent; zinc = neutral greys) are the **M124
-block** in `globals.css`; white text on a solid accent fill turns ink in dark mode there (lime). Type:
+block** in `globals.css`; white text on a solid accent fill stays white (it turns ink only in Trace, Relief and Play). Type:
 **Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **Each app's scene**
@@ -436,7 +437,7 @@ is a 1 s transition (the old scene fades as it drifts towards you, the new one s
 with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
 (phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
 (TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
-the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps the
 blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).

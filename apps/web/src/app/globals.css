@@ -2365,12 +2365,16 @@ html:not(.dark) {
   --color-gray-400: #5e6573; --color-gray-500: #59606d; --color-gray-600: #434955;
 }
 .dark, .on-dark {
-  --color-indigo-50: #f7fee7; --color-indigo-100: #ecfccb; --color-indigo-200: #dcfa9a; --color-indigo-300: #cff56b; --color-indigo-400: #c6f24a; --color-indigo-500: #b4e43a; --color-indigo-600: #9fd02c; --color-indigo-700: #6f9a1c; --color-indigo-800: #4a6a14; --color-indigo-900: #2f4410; --color-indigo-950: #1a260a;
-  --color-violet-50: #f7fee7; --color-violet-100: #ecfccb; --color-violet-200: #dcfa9a; --color-violet-300: #cff56b; --color-violet-400: #c6f24a; --color-violet-500: #b4e43a; --color-violet-600: #9fd02c; --color-violet-700: #6f9a1c; --color-violet-800: #4a6a14; --color-violet-900: #2f4410; --color-violet-950: #1a260a;
-  --color-purple-50: #f7fee7; --color-purple-100: #ecfccb; --color-purple-200: #dcfa9a; --color-purple-300: #cff56b; --color-purple-400: #c6f24a; --color-purple-500: #b4e43a; --color-purple-600: #9fd02c; --color-purple-700: #6f9a1c; --color-purple-800: #4a6a14; --color-purple-900: #2f4410; --color-purple-950: #1a260a;
-  --color-pink-50: #f7fee7; --color-pink-100: #ecfccb; --color-pink-200: #dcfa9a; --color-pink-300: #cff56b; --color-pink-400: #c6f24a; --color-pink-500: #b4e43a; --color-pink-600: #9fd02c; --color-pink-700: #6f9a1c; --color-pink-800: #4a6a14; --color-pink-900: #2f4410; --color-pink-950: #1a260a;
-  --color-fuchsia-50: #f7fee7; --color-fuchsia-100: #ecfccb; --color-fuchsia-200: #dcfa9a; --color-fuchsia-300: #cff56b; --color-fuchsia-400: #c6f24a; --color-fuchsia-500: #b4e43a; --color-fuchsia-600: #9fd02c; --color-fuchsia-700: #6f9a1c; --color-fuchsia-800: #4a6a14; --color-fuchsia-900: #2f4410; --color-fuchsia-950: #1a260a;
-  --color-aqua-50: #f7fee7; --color-aqua-100: #ecfccb; --color-aqua-200: #dcfa9a; --color-aqua-300: #cff56b; --color-aqua-400: #c6f24a; --color-aqua-500: #b4e43a; --color-aqua-600: #9fd02c; --color-aqua-700: #6f9a1c; --color-aqua-800: #4a6a14; --color-aqua-900: #2f4410; --color-aqua-950: #1a260a;
+  /* M212 (the owner, 16 Nov: "remove the neon greenish colour"): the bright mint greens calmed on the
+     dark page (still green for "done" and for Green, no longer neon). */
+  --color-emerald-200: #b5e3cf; --color-emerald-300: #8fd3b6; --color-emerald-400: #5cc29d; --color-emerald-500: #2ea47c;
+  --color-green-300: #96d4ae; --color-green-400: #63c287;
+  --color-indigo-50: #eef4ff; --color-indigo-100: #dce8fe; --color-indigo-200: #bfd5fd; --color-indigo-300: #93b9fa; --color-indigo-400: #6ea2f8; --color-indigo-500: #2f6fe6; --color-indigo-600: #2563eb; --color-indigo-700: #1d4fd7; --color-indigo-800: #1e40af; --color-indigo-900: #1e3a8a; --color-indigo-950: #172554;
+  --color-violet-50: #eef4ff; --color-violet-100: #dce8fe; --color-violet-200: #bfd5fd; --color-violet-300: #93b9fa; --color-violet-400: #6ea2f8; --color-violet-500: #2f6fe6; --color-violet-600: #2563eb; --color-violet-700: #1d4fd7; --color-violet-800: #1e40af; --color-violet-900: #1e3a8a; --color-violet-950: #172554;
+  --color-purple-50: #eef4ff; --color-purple-100: #dce8fe; --color-purple-200: #bfd5fd; --color-purple-300: #93b9fa; --color-purple-400: #6ea2f8; --color-purple-500: #2f6fe6; --color-purple-600: #2563eb; --color-purple-700: #1d4fd7; --color-purple-800: #1e40af; --color-purple-900: #1e3a8a; --color-purple-950: #172554;
+  --color-pink-50: #eef4ff; --color-pink-100: #dce8fe; --color-pink-200: #bfd5fd; --color-pink-300: #93b9fa; --color-pink-400: #6ea2f8; --color-pink-500: #2f6fe6; --color-pink-600: #2563eb; --color-pink-700: #1d4fd7; --color-pink-800: #1e40af; --color-pink-900: #1e3a8a; --color-pink-950: #172554;
+  --color-fuchsia-50: #eef4ff; --color-fuchsia-100: #dce8fe; --color-fuchsia-200: #bfd5fd; --color-fuchsia-300: #93b9fa; --color-fuchsia-400: #6ea2f8; --color-fuchsia-500: #2f6fe6; --color-fuchsia-600: #2563eb; --color-fuchsia-700: #1d4fd7; --color-fuchsia-800: #1e40af; --color-fuchsia-900: #1e3a8a; --color-fuchsia-950: #172554;
+  --color-aqua-50: #eef4ff; --color-aqua-100: #dce8fe; --color-aqua-200: #bfd5fd; --color-aqua-300: #93b9fa; --color-aqua-400: #6ea2f8; --color-aqua-500: #2f6fe6; --color-aqua-600: #2563eb; --color-aqua-700: #1d4fd7; --color-aqua-800: #1e40af; --color-aqua-900: #1e3a8a; --color-aqua-950: #172554;
   --color-zinc-50: #f7f7f8; --color-zinc-100: #efeff1; --color-zinc-200: #e4e4e7; --color-zinc-300: #cfcfd4; --color-zinc-400: #b4b4bb; --color-zinc-500: #a0a0a8; --color-zinc-600: #8c8c94; --color-zinc-700: #3a3a40; --color-zinc-800: #26262a; --color-zinc-900: #19191c; --color-zinc-950: #111113;
   --color-slate-400: #b4b4bb; --color-slate-500: #a0a0a8; --color-slate-600: #8c8c94;
   --color-gray-400: #b4b4bb; --color-gray-500: #a0a0a8; --color-gray-600: #8c8c94;
@@ -2379,7 +2383,7 @@ html:not(.dark) {
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-indigo-500, .text-violet-400, .text-violet-500, .text-purple-400, .text-purple-500, .text-pink-400, .text-pink-500, .text-fuchsia-400, .text-fuchsia-500, .text-aqua-400, .text-aqua-500, .text-blue-500, .text-sky-500) { color: #2563eb; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-600, .text-violet-600, .text-purple-600, .text-pink-600, .text-fuchsia-600) { color: #2563eb; }
 /* …and lifted on the dark page when no dark: colour of its own is given. */
-.dark :is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600, .text-pink-500, .text-pink-600, .text-fuchsia-500, .text-fuchsia-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #cff56b; }
+.dark :is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600, .text-pink-500, .text-pink-600, .text-fuchsia-500, .text-fuchsia-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #93b9fa; }
 
 :root {
   --ink: #111318; --ink-contrast: #ffffff; --ink-soft: #2a2e36;
@@ -2409,13 +2413,13 @@ html:not(.dark) {
 }
 .dark {
   --ink: #f3f4f6; --ink-contrast: #0b0c0d; --ink-soft: #26262a;
-  --tint: #c6f24a; --tint-rgb: 198 242 74; --tint-text: #cff56b;
+  --tint: #6ea2f8; --tint-rgb: 110 162 248; --tint-text: #93b9fa;
   --background: #070808;
   --surface: #111213; --surface-2: #17181a;
   --fill: rgba(255, 255, 255, 0.05); --fill-strong: rgba(255, 255, 255, 0.09);
   --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.15);
   --material: #111213; --material-thick: #141517; --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #111213; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151618; --card-hover-border: rgba(198, 242, 74, 0.28);
+  --card-bg: #111213; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151618; --card-hover-border: rgba(110, 162, 248, 0.3);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   --sidebar-bg: #0a0b0c; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #c4c4cb; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.05); --sidebar-item-hover-color: #ffffff;
@@ -2425,10 +2429,10 @@ html:not(.dark) {
   --input-bg: #0d0e0f; --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8c8c94;
   --text-primary: #f4f4f5; --text-secondary: #c4c4cb; --text-muted: #a0a0a8;
   --pill-on-bg: #f4f4f5; --pill-on-color: #0b0c0d;
-  --badge-blue-bg: rgba(198, 242, 74, 0.14); --badge-blue-color: #d9fb6c;
-  --ins-hot: #c6f24a;
-  --cta: #c6f24a; --cta-ink: #0b0c0d; --cta-hover: #d4f86a;
-  --karma-dusk: #18191b; --karma-gold: #1b2410; --karma-olive: #2c4a10;
+  --badge-blue-bg: rgba(110, 162, 248, 0.14); --badge-blue-color: #a9c8fb;
+  --ins-hot: #6ea2f8;
+  --cta: #2563eb; --cta-ink: #ffffff; --cta-hover: #2f6fe6;
+  --karma-dusk: #18191b; --karma-gold: #111a2e; --karma-olive: #1d3d7a;
 }
 :root:not([data-accent]) .dark, :root.dark:not([data-accent]) { --btn-secondary-color: #f3f4f6; --btn-ghost-color: #e2e5ea; }
 :root:not([data-accent]) { --btn-secondary-color: #111318; --btn-ghost-color: #23262d; --btn-ghost-hover-bg: rgba(16, 24, 40, 0.05); }
@@ -2439,8 +2443,8 @@ html:not(.dark) {
 
 /* Buttons: rounded rectangles, as in the reels. The main one ink (white in dark mode); no glow. */
 .btn-primary, .btn-secondary, .btn-ghost, .btn-danger { border-radius: 0.625rem; font-weight: 600; letter-spacing: -0.006em; }
-:root:not([data-accent]) .btn-primary { color: #0b0c0d; background: #c6f24a; box-shadow: 0 8px 24px -14px rgba(198, 242, 74, 0.55); }
-:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #d4f86a; box-shadow: 0 10px 28px -14px rgba(198, 242, 74, 0.65); }
+:root:not([data-accent]) .btn-primary { color: #ffffff; background: #2563eb; box-shadow: 0 8px 24px -14px rgba(37, 99, 235, 0.6); }
+:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #2f6fe6; box-shadow: 0 10px 28px -14px rgba(37, 99, 235, 0.7); }
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #ffffff; background: #111318; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #2a2e36; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
 .btn-secondary { background-color: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline); }
@@ -2482,13 +2486,19 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visib
 
 /* Charts: blue marks (dark: a lighter blue); the number that matters is the same blue (--ins-hot). */
 .ins-cell :is(svg, .ins-pop) { color: #3b7ef0; }
-html.dark .ins-cell :is(svg, .ins-pop) { color: #c6f24a; }
+html.dark .ins-cell :is(svg, .ins-pop) { color: #6ea2f8; }
 .ptr-ring { background: conic-gradient(from 0deg, var(--tint), var(--tint) 85%, transparent 85%); }
 
-/* Dark mode's accent is lime: white text on a solid accent fill (buttons, badges, initials) turns ink. */
-.dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
-.dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
-.dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+/* M212: dark mode's accent is blue (the website's), so white text stays white on its fills. Apps whose dark
+   fills are light (Trace pink, Relief orange, Play fuchsia) turn white text on them ink, as lime did; so do the
+   light -300/-400 fills everywhere. */
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]) .dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]).dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]) .dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]).dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]) .dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"], [data-app="play"]).dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+.dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400, .bg-aqua-300, .bg-aqua-400):not([class*="/"]), .dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400) .text-white { color: #0b0c0d; }
 /* The headline's key word in an italic serif (the recording's "themselves."), in both themes. */
 .accent-word { font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
 html.dark :is(h1, h2, h3):has(.accent-word) { color: var(--text-primary); }
@@ -2691,16 +2701,16 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: #ecfdf5; --badge-blue-color: #065f46;
 }
 :root[data-app="green"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="green"]:not([data-accent]).dark {
-  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #10b981; --color-indigo-600: #059669; --color-indigo-700: #047857; --color-indigo-800: #065f46; --color-indigo-900: #064e3b; --color-indigo-950: #022c22;
-  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #10b981; --color-violet-600: #059669; --color-violet-700: #047857; --color-violet-800: #065f46; --color-violet-900: #064e3b; --color-violet-950: #022c22;
-  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #10b981; --color-purple-600: #059669; --color-purple-700: #047857; --color-purple-800: #065f46; --color-purple-900: #064e3b; --color-purple-950: #022c22;
-  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #10b981; --color-pink-600: #059669; --color-pink-700: #047857; --color-pink-800: #065f46; --color-pink-900: #064e3b; --color-pink-950: #022c22;
-  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #10b981; --color-fuchsia-600: #059669; --color-fuchsia-700: #047857; --color-fuchsia-800: #065f46; --color-fuchsia-900: #064e3b; --color-fuchsia-950: #022c22;
-  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #10b981; --color-aqua-600: #059669; --color-aqua-700: #047857; --color-aqua-800: #065f46; --color-aqua-900: #064e3b; --color-aqua-950: #022c22;
-  --tint: #34d399; --tint-rgb: 52 211 153; --tint-text: #6ee7b7; --ins-hot: #34d399;
-  --cta: #34d399; --cta-ink: #0b0c0d; --cta-hover: #6ee7b7;
-  --badge-blue-bg: rgba(52, 211, 153, 0.14); --badge-blue-color: #6ee7b7;
-  --card-hover-border: rgba(52, 211, 153, 0.28);
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7e8cf; --color-indigo-300: #86d9b8; --color-indigo-400: #4fbf98; --color-indigo-500: #0d7f5e; --color-indigo-600: #047857; --color-indigo-700: #065f46; --color-indigo-800: #064e3b; --color-indigo-900: #053d2f; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7e8cf; --color-violet-300: #86d9b8; --color-violet-400: #4fbf98; --color-violet-500: #0d7f5e; --color-violet-600: #047857; --color-violet-700: #065f46; --color-violet-800: #064e3b; --color-violet-900: #053d2f; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7e8cf; --color-purple-300: #86d9b8; --color-purple-400: #4fbf98; --color-purple-500: #0d7f5e; --color-purple-600: #047857; --color-purple-700: #065f46; --color-purple-800: #064e3b; --color-purple-900: #053d2f; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7e8cf; --color-pink-300: #86d9b8; --color-pink-400: #4fbf98; --color-pink-500: #0d7f5e; --color-pink-600: #047857; --color-pink-700: #065f46; --color-pink-800: #064e3b; --color-pink-900: #053d2f; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7e8cf; --color-fuchsia-300: #86d9b8; --color-fuchsia-400: #4fbf98; --color-fuchsia-500: #0d7f5e; --color-fuchsia-600: #047857; --color-fuchsia-700: #065f46; --color-fuchsia-800: #064e3b; --color-fuchsia-900: #053d2f; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7e8cf; --color-aqua-300: #86d9b8; --color-aqua-400: #4fbf98; --color-aqua-500: #0d7f5e; --color-aqua-600: #047857; --color-aqua-700: #065f46; --color-aqua-800: #064e3b; --color-aqua-900: #053d2f; --color-aqua-950: #022c22;
+  --tint: #4fbf98; --tint-rgb: 79 191 152; --tint-text: #86d9b8; --ins-hot: #4fbf98;
+  --cta: #047857; --cta-ink: #ffffff; --cta-hover: #0d7f5e;
+  --badge-blue-bg: rgba(79, 191, 152, 0.14); --badge-blue-color: #9ee3c6;
+  --card-hover-border: rgba(79, 191, 152, 0.28);
 }
 :root[data-app="play"]:not([data-accent]):not(.dark) {
   --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
