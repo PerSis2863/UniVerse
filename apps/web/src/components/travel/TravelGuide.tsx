@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { bookingLinks, hostelLink, type BookKind } from '@/lib/travel-book';
@@ -138,8 +138,10 @@ export function TravelGuide() {
         {books.map((b) => { const Icon = BOOK_ICON[b.kind]; return (
           <a key={b.kind} href={b.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1.5" title={`Opens ${b.partner}`}><Icon className="h-4 w-4" aria-hidden />{b.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {b.partner}</span></a>
         ); })}
+        {/* M209: this place on the map. */}
+        <Link href={g.lat !== undefined && g.lon !== undefined ? `/travel?view=map&at=${g.lat.toFixed(5)},${g.lon.toFixed(5)},14` : `/travel?view=map&d=${encodeURIComponent(g.title)}`} className="btn-secondary btn-sm ms-auto inline-flex items-center gap-1.5"><MapIcon className="h-4 w-4" aria-hidden />See on the map</Link>
         {/* M206: a trip with this place first. */}
-        <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="btn-primary btn-sm ms-auto inline-flex items-center gap-1.5"><Route className="h-4 w-4" aria-hidden />Plan a trip here</button>
+        <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Route className="h-4 w-4" aria-hidden />Plan a trip here</button>
       </section>
 
       {/* The parts. */}

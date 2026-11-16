@@ -15,6 +15,8 @@ import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
+import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
+import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -134,6 +136,16 @@ export default function impactAppsModule(router: Router) {
   travel.post<{ id: string }>('board/:id/report', ({ user, params, body }) => reportTraveller(user, params.id, body ?? {}));
   travel.post<{ id: string }>('board/:id/block', ({ user, params }) => blockTraveller(user, params.id));
   travel.delete('blocks', ({ user }) => unblockTravellers(user));
+  // M209 (src/server/travel-places.ts, travel-reviews.ts): the map's real places, photos, stories and reviews.
+  travel.get('place', ({ user, query }) => travelPlace(user, query));
+  travel.get('where', ({ user, query }) => travelWhere(user, query));
+  travel.get('photos', ({ user, query }) => travelPhotos(user, query));
+  travel.get('stories', ({ user, query }) => travelStories(user, query));
+  travel.get('reviews', ({ user, query }) => travelReviews(user, query));
+  travel.get('reviews/near', ({ user, query }) => travelReviewsNear(user, query));
+  travel.post('reviews', ({ user, body }) => saveTravelReview(user, body ?? {}));
+  travel.delete<{ id: string }>('reviews/:id', ({ user, params }) => deleteTravelReview(user, params.id));
+  travel.post<{ id: string }>('reviews/:id/report', ({ user, params, body }) => reportTravelReview(user, params.id, body ?? {}));
 
   const green = router.controller('green');
   green.get('me', ({ user }) => greenMe(user));

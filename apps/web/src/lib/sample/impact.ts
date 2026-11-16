@@ -704,6 +704,30 @@ export function sampleTravelBoard() {
     count: 2,
   };
 }
+/** M209: the map's sample answers (written for the demo; the real ones come from OpenStreetMap, Wikidata,
+ *  Commons and Wikipedia). GET /travel/place */
+export function sampleTravelPlace() {
+  return { place: { key: 'N398922337', name: 'Pastéis de Belém', kind: 'Pastry shop', lat: 38.6975, lon: -9.2033, cc: 'PT', city: 'Lisbon', address: 'Rua de Belém 84-92, Belém, Lisbon', phone: null, website: 'https://pasteisdebelem.pt', menu: null, hours: 'Mo-Su 08:00-21:00', cuisine: ['Regional'], facts: ['Wheelchair accessible', 'Since 1837'], wikidata: null, about: 'The bakery that has made Belém’s custard tarts since 1837.', image: null, wiki: null }, credit: 'Facts: OpenStreetMap contributors (ODbL), Wikidata, Wikipedia (CC BY-SA)' };
+}
+/** GET /travel/where */
+export const sampleTravelWhere = () => ({ lat: 38.7139, lon: -9.1394, box: [-9.23, 38.69, -9.09, 38.8] });
+/** GET /travel/photos, /travel/stories */
+export const sampleTravelPhotos = () => ({ photos: [], credit: 'Photos: Wikimedia Commons (each by its author, under its licence)' });
+export const sampleTravelStories = () => ({ stories: [{ title: 'Belém Tower', lat: 38.6916, lon: -9.216, extract: 'A 16th-century fortress on the Tagus, where ships set out on the voyages of discovery.', thumb: null, url: 'https://en.wikipedia.org/wiki/Bel%C3%A9m_Tower' }], credit: 'Stories: Wikipedia (CC BY-SA 4.0)' });
+/** GET /travel/reviews, /travel/reviews/near */
+export function sampleTravelReviews() {
+  const at = new Date().toISOString();
+  return {
+    summary: { count: 3, average: 4.7, locals: { count: 2, average: 5 }, visitors: { count: 1, average: 4 } },
+    reviews: [
+      { id: 'sample-review-1', name: 'Inês', rating: 5, text: 'Go early on a weekday and eat them warm at the counter, with cinnamon.', local: true, visited: '2026-10', at, mine: false },
+      { id: 'sample-review-2', name: 'Rui', rating: 5, text: 'Still the best, and the queue moves fast.', local: true, visited: null, at, mine: false },
+      { id: 'sample-review-3', name: 'Maya', rating: 4, text: 'Worth the trip to Belém; the tower is a short walk away.', local: false, visited: '2026-09', at, mine: false },
+    ],
+    mine: null,
+  };
+}
+export const sampleTravelReviewsNear = () => ({ places: [{ place: 'N398922337', name: 'Pastéis de Belém', lat: 38.6975, lon: -9.2033, count: 3, average: 4.7, locals: { count: 2, average: 5 }, visitors: { count: 1, average: 4 } }] });
 /** GET /travel/saved */
 export function sampleTravelSaved(me: { id: string }) {
   const at = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();

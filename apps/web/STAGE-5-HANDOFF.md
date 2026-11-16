@@ -7383,6 +7383,54 @@ can't reach, so the account was made in the local database. Fixes:
   people on the board, blocks both ways, chats only with the same city's board), `travel-plan.test.ts`,
   `pnpm check`.
 
+## M209: Travel, the map, real places and UniVerse's own reviews (the owner, 16 Nov)
+
+- **The ask:** "real data of places and reviews of people from that places and make the map detailed with
+  all the information like the apple maps … something different that nobody has … ultra smooth". The owner
+  chose (asked first): build it despite the launch pause, and reviews from UniVerse's own people (not a paid
+  service).
+- **Where:** Explore's third view **Map** (`/travel?view=map`, `&at=lat,lon,zoom` or `&d=<guide title>`), and
+  "See on the map" on every guide. `src/components/travel/map/`: `TravelMap.tsx` (loaded only when opened,
+  with MapLibre), `map-layers.ts`, `PlaceCard.tsx`, `Reviews.tsx`, `TripPicker.tsx`.
+- **The map:** MapLibre GL 6.16 (BSD; `pnpm add maplibre-gl@6.16.0`) drawing **OpenFreeMap**'s vector tiles
+  of OpenStreetMap (free, no account or key; its "liberty" style in light mode, "dark" in dark mode, where
+  UniVerse adds the 3D buildings and the place names the dark style lacks). Tiles go straight from
+  OpenFreeMap to the browser: **no Worker CPU**. MapLibre's worker is copied to `public/maplibre` by
+  `scripts/copy-maplibre-assets.mjs` (dev and build, like pdf.js; gitignored) and set with `setWorkerUrl`;
+  the security headers allow `tiles.openfreemap.org` (connect and img). Credits always shown in the panel.
+- **What it does:** kinds of place (Sights, Food, Cafés, Drinks, Museums, Parks, Shops, Hotels, Transport;
+  the tiles' `poi` classes, `src/lib/travel-map.ts`) shown in the accent with a list of those in view (one of
+  each name, the notable and near first); **tap any place**: its real facts from OpenStreetMap through
+  Nominatim (the tile's feature id is the OSM id ×10 + type: `osmKey`), open or closed **at the hour chosen,
+  in the place's own time zone** (`src/lib/opening-hours.ts` reads the common opening_hours forms and says
+  only the written hours for the rest; `src/lib/travel-local.ts`: the zone from `travel-zones.json`, made by
+  `gen-travel-data.mts --zones` from the tz list), address, call, website, menu, access, payments, its photo
+  and a line from Wikidata and Wikipedia; Directions (OpenStreetMap, on foot), Save, **Add to a trip** (into
+  the trip's nearest city, or a new trip). **The hour slider** (the next 24 hours) lights the 3D buildings
+  from where the sun really is there (`sunPosition`, `setLight`: warm low sun, a soft blue night) and shows
+  sunrise, golden hour and sunset. **Layers:** 3D, photos people took nearby (Wikimedia Commons, each with its
+  author and licence), stories (Wikipedia's articles about places nearby, amber pins), UniVerse reviews
+  (green pins with the average). **Walk from here** (1–4 hours): the notable sights within reach strung
+  nearest-next, with a look's time (an artwork 10 min, a church 20, a museum 75), drawn as a dashed line with
+  numbers, arrival times in their time, and all of it into a trip in one go.
+- **Reviews** (`src/server/travel-reviews.ts`, database update **0223**: `travel_reviews`,
+  `travel_review_reports`): stars, words, "I live here"; one a person a place (changing it clears old
+  reports); 30 a day; three reports hide one; shown by first name only; the place card shows **Locals say**
+  apart from **Visitors say** and tabs for each. A place is its OSM id or `wp:<Wikipedia title>`.
+- **Server** (`src/server/travel-places.ts`, routes `travel/place|where|photos|stories`): every answer kept
+  in `travel_cache` (places and positions 30–90 days, photos and stories 7) and only an OSM id or a rounded
+  position is sent; a busy source leaves its layer empty instead of failing.
+- **Traps:** MapLibre's stylesheet makes its container `position: relative` (the map came out 300 px tall):
+  the container's position is inline. A filter that matches nothing must be an expression
+  (`['==', ['get','class'], '__none__']`), not `['==', 1, 0]`. OpenMapTiles files artworks as `art_gallery`
+  (a museum's 75 minutes): `walkStay` checks the subclass. The map's listeners use `useEffectEvent` (React
+  19.2) so the map is made once without stale state or lint-disable comments. Wikimedia rate-limits busy
+  shared addresses (this machine after the data runs): photos and stories were tested on saved samples.
+- **Checked:** `travel-map-ui.mjs` (the map draws in 3D; 40 sights in view; a place's facts with "Open
+  until …"; a review as a local counted under Locals and deleted; Food lists restaurants; a 5-stop walk; the
+  hour slider; phone panel; axe clean at 1280 dark and 390 light, the map canvas aside; no errors),
+  `travel-local.test.ts`, `travel-place.test.ts`, `travel-map.test.ts`, `travel-reviews.test.ts`, `pnpm check`.
+
 ## Hand-over: the owner's Airbnb list (15 Nov)
 
 Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip

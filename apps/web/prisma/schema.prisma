@@ -7696,6 +7696,45 @@ model TravelBlock {
   @@map("travel_blocks")
 }
 
+/// M209: a review of a real place by one of UniVerse's people (src/server/travel-reviews.ts). `place` is an
+/// OpenStreetMap id (N123 / W123 / R123) or wp:<Wikipedia title>; `local`: they live there.
+model TravelReview {
+  id        String               @id @default(cuid())
+  userId    String
+  place     String
+  name      String
+  lat       Float?
+  lon       Float?
+  /// 1 to 5
+  rating    Int
+  text      String?
+  local     Boolean              @default(false)
+  /// YYYY-MM, when they went
+  visited   String?
+  /// Hidden after three reports.
+  hidden    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @default(now()) @updatedAt
+  reports   TravelReviewReport[]
+
+  @@unique([userId, place])
+  @@index([place])
+  @@index([lat, lon])
+  @@map("travel_reviews")
+}
+
+model TravelReviewReport {
+  reviewId  String
+  review    TravelReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime     @default(now())
+
+  @@id([reviewId, userId])
+  @@index([userId])
+  @@map("travel_review_reports")
+}
+
 /// M182: a person's connection to an outside service (src/server/connections.ts). Tokens encrypted.
 model OAuthConnection {
   id        String    @id @default(cuid())

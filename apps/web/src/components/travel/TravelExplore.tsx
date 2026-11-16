@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { ArrowRight, Bookmark, Compass, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Bookmark, Compass, Map as MapIcon, Search, Sparkles } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
@@ -19,13 +19,19 @@ import { Cover, PlaceSearch, startTrip, type Saved } from './travel-ui';
 const TravelFinder = dynamic(() => import('./TravelFinder').then((m) => m.TravelFinder), {
   loading: () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
 });
+// M209: the map (MapLibre and its styles load only when it's opened).
+const TravelMap = dynamic(() => import('./map/TravelMap'), {
+  ssr: false,
+  loading: () => <div className="h-[calc(100dvh-12rem)] min-h-[32rem] animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
+});
 const FIRST = 24;
 
 const guideHref = (title: string) => `/travel/guide?d=${encodeURIComponent(title)}`;
 
 export function TravelExplore() {
   const router = useRouter();
-  const view = useSearchParams().get('view') === 'find' ? 'find' : 'search';
+  const sp = useSearchParams(), asked = sp.get('view');
+  const view = asked === 'find' || asked === 'map' ? asked : 'search';
   const [all, setAll] = useState(false);
   const [theme, setTheme] = useState<Theme | 'All'>('All');
   const { data: saved } = useSWR<{ saved: Saved[] }>('/travel/saved', fetcher);
@@ -35,9 +41,10 @@ export function TravelExplore() {
   const recent = (saved?.saved ?? []).slice(0, 6);
 
   const switcher = (
-    <Segmented label="How to start" large value={view} onChange={(v) => router.replace(v === 'find' ? '/travel?view=find' : '/travel', { scroll: false })}
-      segments={[{ value: 'search', label: 'Search a place', icon: <Search className="h-4 w-4" aria-hidden /> }, { value: 'find', label: 'Find where to go', icon: <Sparkles className="h-4 w-4" aria-hidden /> }]} />
+    <Segmented label="How to start" large value={view} onChange={(v) => router.replace(v === 'search' ? '/travel' : `/travel?view=${v}`, { scroll: false })}
+      segments={[{ value: 'search', label: 'Search', icon: <Search className="h-4 w-4" aria-hidden /> }, { value: 'find', label: 'Find where to go', icon: <Sparkles className="h-4 w-4" aria-hidden /> }, { value: 'map', label: 'Map', icon: <MapIcon className="h-4 w-4" aria-hidden /> }]} />
   );
+  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} /></div>;
   if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (

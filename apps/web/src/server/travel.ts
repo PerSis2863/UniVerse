@@ -16,10 +16,10 @@ import { oneOf, str, type Body, type Query, first } from './body';
 //   Wikivoyage (guides, CC BY-SA 3.0: credited and linked), Nominatim (which country a place is in,
 //   ODbL), MET Norway (weather, CC BY 4.0); country facts from a table kept in the app (Wikidata, CC0).
 
-const UA = 'UniVerseTravel/1.0 (https://github.com/PerSis2863/UniVerse; travel guides)';
+export const UA = 'UniVerseTravel/1.0 (https://github.com/PerSis2863/UniVerse; travel guides)';
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 
-async function fetchJson<T>(url: string): Promise<T | null> {
+export async function fetchJson<T>(url: string): Promise<T | null> {
   const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
   if (r.status === 404) return null;
   if (!r.ok) throw new ServiceUnavailableException('The travel guide service is busy. Try again in a minute.');
@@ -27,7 +27,7 @@ async function fetchJson<T>(url: string): Promise<T | null> {
 }
 
 /** The answer kept for `key`, fresh enough; otherwise made again and kept (an old one if the source fails). */
-async function cached<T>(key: string, maxAge: number, make: () => Promise<T | null>): Promise<T | null> {
+export async function cached<T>(key: string, maxAge: number, make: () => Promise<T | null>): Promise<T | null> {
   const row = await prisma.travelCache.findUnique({ where: { key } }).catch(() => null);
   if (row && Date.now() - row.fetchedAt.getTime() < maxAge) return JSON.parse(row.data) as T;
   try {

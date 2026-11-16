@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M207 is the latest).
+  builds on it). The newest notes are at the end (M209 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -75,7 +75,9 @@ software or website in the main website… where they create a impact"). Each ap
   week's weather; saved places; stays, flights, tours and trains booked with partners; **Find where to go**
   (days, budget, month, interests and passport rank 145 places, M205); **trips** planned alone or with
   friends (cities, days, drag and drop, the whole budget, getting between and there, stays, M206–M207); an
-  opt-in **travellers board** for adults in the same city on the same dates (M207).
+  opt-in **travellers board** for adults in the same city on the same dates (M207); a **map** (OpenFreeMap in
+  3D, real places from OpenStreetMap, open or closed in their own time, sunlight by the hour, photos and
+  stories nearby, Walk from here) with UniVerse's own reviews, locals apart from visitors (M209).
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
   Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
@@ -216,7 +218,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
+- **On the branch, not merged yet:** M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
+  (database update 0223; MapLibre added, OpenFreeMap's tiles go straight to browsers, no Worker CPU). M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
   to go** in Explore (days, budget, month, interests and passport rank 145 places with the reasons; visas
   for your passport on the guide's Know tab), the **trip planner** (Trips and saved → Trips: cities, days,
   drag and drop, Plan my days, the whole budget, how to get between, friends with an invite link, a
@@ -242,7 +245,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M209** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M210** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -259,7 +262,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0223`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0224`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

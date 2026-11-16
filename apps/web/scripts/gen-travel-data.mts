@@ -3,6 +3,8 @@
 //                                                 averages, public domain, where a guide has no climate chart)
 //   npx tsx scripts/gen-travel-data.mts --money    price levels and exchange rates (World Bank, CC BY 4.0)
 //   npx tsx scripts/gen-travel-data.mts --visa     which Wikipedia article lists each passport's visa rules
+//   npx tsx scripts/gen-travel-data.mts --zones    each time zone's country and main place (the IANA list, public
+//                                                 domain, from the machine's /usr/share/zoneinfo/zone.tab; M209)
 // Gently: one request at a time, named, with a pause (Wikimedia asks for both).
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readGuide } from '../src/lib/travel-guide';
@@ -115,7 +117,22 @@ async function visa() {
   console.log(`${Object.keys(out).length} passports`);
 }
 
+/** zone.tab: "PT\t+3843-00908\tEurope/Lisbon": a zone's country and its main place, for the map's local time. */
+function zones() {
+  const deg = (s: string, w: number) => { const sign = s[0] === '-' ? -1 : 1, d = s.slice(1); return sign * (Number(d.slice(0, w)) + Number(d.slice(w, w + 2)) / 60 + (Number(d.slice(w + 2, w + 4)) || 0) / 3600); };
+  const out: [string, string, number, number][] = [];
+  for (const line of readFileSync('/usr/share/zoneinfo/zone.tab', 'utf8').split('\n')) {
+    const [cc, at, zone] = line.split('\t');
+    const m = at && /^([+-]\d{4,6})([+-]\d{5,7})$/.exec(at);
+    if (!cc || cc.startsWith('#') || !m || !zone) continue;
+    out.push([cc, zone.trim(), Math.round(deg(m[1], 2) * 100) / 100, Math.round(deg(m[2], 3) * 100) / 100]);
+  }
+  save('travel-zones.json', out);
+  console.log(`${out.length} zones`);
+}
+
 const want = new Set(process.argv.slice(2));
+if (want.has('--zones')) zones();
 if (want.has('--money')) await money();
 if (want.has('--visa')) await visa();
 if (want.has('--places')) await places();
