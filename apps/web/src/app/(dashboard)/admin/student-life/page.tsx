@@ -17,7 +17,7 @@ export default function AdminStudentLifePage() {
       <Topbar title="Student Life Management" subtitle="Campus events, services and useful links, and who added each one" />
       <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <div className="flex flex-col sm:flex-row gap-3 sm:items-center">
             <AdminSearch className="flex-1" value={q} onChange={setQ} placeholder="Search titles, places, categories, or who added them (name, email, role)…" />
             <label className="inline-flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-300 shrink-0">

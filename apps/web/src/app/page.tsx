@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
-import { Activity, Fragment, useDeferredValue, useEffect, useState } from 'react';
+import { Activity, Fragment, Suspense, useDeferredValue, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
@@ -18,11 +18,10 @@ import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
 import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
+import { AppsGrid, GreenSection, ReliefSection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
-import { ProductWindow } from '@/components/landing/ProductWindow';
 import { Accent, EASE, Live, Motion, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -35,18 +34,22 @@ const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
 const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
 const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
 const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
-const PlayScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
+const TravelScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
 const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
 const MapsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.MapsSection));
 const HowSection = dynamic(() => import('@/components/landing/Business').then((m) => m.HowSection));
 const CampaignsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.CampaignsSection));
 const PricingSection = dynamic(() => import('@/components/landing/Business').then((m) => m.PricingSection));
 const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.GreenMore));
-const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.PlayMore));
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 /** M130: the other apps' parts start loading when the pointer or focus reaches the tabs, so the first
  *  switch to an app doesn't wait for (and stall on) its code. */
-const warmApps = () => { void import('@/components/landing/HeroScenesLab'); void import('@/components/landing/TraceSection'); void import('@/components/landing/Business'); void import('@/components/landing/ImpactMore'); };
+// M211: only the code of the app pointed at (all of it at once was a long task on a slow phone).
+const warmApp = (id: AppId) => {
+  if (id === 'campus') return;
+  void import('@/components/landing/HeroScenesLab');
+  if (id === 'trace') { void import('@/components/landing/TraceSection'); void import('@/components/landing/Business'); } else void import('@/components/landing/ImpactMore');
+};
 
 // The public landing page, in the style of the owner's Relay video (a dark page, a live flow card,
 // numbers that draw themselves as you scroll; behind it the chosen app's own scene, M129) and in
@@ -75,9 +78,9 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   relief: [
     { q: 'Who can use Relief?', a: 'Anyone. Requests show an area, never an address.' },
   ],
-  play: [
-    { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
-    { q: 'Is it free?', a: 'Yes, every game is free.' },
+  travel: [
+    { q: 'Where do the guides come from?', a: 'From Wikivoyage, written by travellers: every place with its address, hours and prices.' },
+    { q: 'Can I book through UniVerse?', a: 'Stays, flights and tours open on our partners’ sites with your place and dates filled in.' },
   ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },
@@ -96,7 +99,7 @@ const HERO: Record<AppId, Hero> = {
   campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Classes, grades and messages in one calm place.', note: 'free for students', card: <CampusScene /> },
   trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'Scan the code. See if it’s real.', note: 'free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={SMALL}>Scan a sample</Link> },
   relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
-  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quick games that teach. Solo or with friends.', note: 'free · up to 8 in a room', card: <PlayScene /> },
+  travel: { words: ['Plan', 'trips'], accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', note: 'free · plan with friends', card: <TravelScene /> },
   green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
 
@@ -126,6 +129,14 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
 /** Chrome's beforeinstallprompt event (not in the DOM types). */
 type InstallPromptEvent = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
+/** M221: an app's sections on the landing, built ahead while hidden (M137, React's Activity). Its own Suspense
+ *  boundary catches a part still downloading: without it the hidden Activity did, and when the visitor moved on to
+ *  another tab before the download ended, the dropped Activity made React crash on its arrival ("null is not an
+ *  object (evaluating 'e.stateNode._retryCache')", the live error log, 16 Nov). */
+function AppPart({ shown, children }: { shown: boolean; children: React.ReactNode }) {
+  return <Activity mode={shown ? 'visible' : 'hidden'}><Suspense fallback={null}><div className="app-in">{children}</div></Suspense></Activity>;
+}
+
 export default function ShowcasePage() {
   const { user } = useAuthStore();
   const app = useChosenApp();
@@ -135,14 +146,22 @@ export default function ShowcasePage() {
   // all one 120 ms frame: the page's own content, rebuilt for the new app).
   const later = useDeferredValue(app);
   // M137: the visitor reached for the app tabs: build the other apps' sections ahead (below).
-  const [warm, setWarm] = useState(false);
-  const warmAll = () => { warmApps(); setWarm(true); };
+  // M211: just the app whose tab is pointed at or focused is built ahead (building all five hidden at
+  // once froze a slow phone for half a second).
+  const [warm, setWarm] = useState<AppId | null>(null);
+  const warmAt = (e: React.SyntheticEvent) => {
+    const id = (e.target as Element).closest('[data-uv-app]')?.getAttribute('data-uv-app') as AppId | null;
+    if (id && id !== warm) { warmApp(id); setWarm(id); }
+  };
   const pick = (id: AppId) => { setChosenApp(id); window.history.replaceState(null, '', id === 'campus' ? '/' : `/?app=${id}`); };
   const router = useRouter();
   const [installPrompt, setInstallPrompt] = useState<InstallPromptEvent | null>(null);
   const [installed, setInstalled] = useState(false);
   const [guide, setGuide] = useState(false);
   // The hero picture drifts up a little slower than the page as you scroll (parallax): `.hero-drift`, M133.
+
+  // M225: smooth jumps to the page's sections (#faq…) while the landing is open (globals.css html.mkt-smooth-root).
+  useEffect(() => { const h = document.documentElement; h.classList.add('mkt-smooth-root'); return () => h.classList.remove('mkt-smooth-root'); }, []);
 
   useEffect(() => {
     if (user) router.replace(homeFor(user));
@@ -198,7 +217,7 @@ export default function ShowcasePage() {
                     script: about 4 s on a budget phone over slow mobile data. Tab switches still glide
                     with framer (AnimatePresence `initial={false}` only skips the first render). */}
                 <div className="hero-in" style={rise(40)}>
-                  <div onPointerEnter={warmAll} onFocus={warmAll}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
+                  <div onPointerOver={warmAt} onFocus={warmAt}><AppTabs value={app} onChange={pick} label="Choose an app" /></div>
                 </div>
                 <AnimatePresence mode="wait" initial={false}>
                   {/* Transform and opacity only (§8: a blur filter repaints every frame), as one `transform`
@@ -230,31 +249,28 @@ export default function ShowcasePage() {
               <div className="hero-in" style={rise(200, 800)}><Live><div className="hero-drift">
               <AnimatePresence mode="wait" initial={false}>
                 <motion.div key={later} initial={{ opacity: 0, transform: 'translateY(40px) rotateX(12deg)' }} animate={{ opacity: 1, transform: 'translateY(0px) rotateX(0deg)' }} exit={{ opacity: 0, transform: 'translateY(-20px) rotateX(0deg)', transition: { duration: 0.2 } }} transition={{ duration: 0.9, ease: EASE }} style={{ transformPerspective: 1200 }} className="flex justify-center lg:justify-end">
-                  <div data-tilt className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
+                  {/* The scene animates itself all the time: the page-wide motion layer leaves it alone (M211). */}
+                  <div data-tilt data-no-motion className="w-full flex justify-center lg:justify-end">{HERO[later].card}</div>
                 </motion.div>
               </AnimatePresence>
               </div></Live></div>
             </div>
           </section>
 
-          {/* M116: UniVersity's home as it really looks, big, right under the hero. Its top shows on a
-              tall first screen because the hero is 9rem shorter than the screen on wide screens (M117);
-              it was pulled up with a negative margin, which covered the hero's last row and its
-              picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
-          {later === 'campus' && <ProductWindow />}
+          {/* M223 (the owner, 16 Nov: "remove this from the main page"): no picture of UniVersity's home under the
+              hero any more (M116's ProductWindow). */}
           <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
-          {/* M137: each app's sections. Once the visitor reaches for the tabs (`warm`), the other apps'
+          {/* M137: each app's sections. Once the visitor reaches for an app's tab (`warm`, M211: that one only), its
               sections are built ahead, hidden (React's Activity: no effects, no loops while hidden), so the
               first switch to an app shows them at once instead of building them in that frame. Each part's
               looping demos run only while it is on screen (Live); each section arrives its own way (M63,
-              bits.tsx `Motion`); `.app-in` fades a newly shown app in. */}
-          {(warm || later === 'campus') && <Activity mode={later === 'campus' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></></div></Activity>}
-          {(warm || later === 'trace') && <Activity mode={later === 'trace' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></></div></Activity>}
-          {(warm || later === 'relief') && <Activity mode={later === 'relief' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></></div></Activity>}
-          {(warm || later === 'green') && <Activity mode={later === 'green' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></></div></Activity>}
-          {(warm || later === 'play') && <Activity mode={later === 'play' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></></div></Activity>}
+              bits.tsx `Motion`); `.app-in` fades a newly shown app in (AppPart). */}
+          {(warm === 'campus' || later === 'campus') && <AppPart shown={later === 'campus'}><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></AppPart>}
+          {(warm === 'trace' || later === 'trace') && <AppPart shown={later === 'trace'}><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></AppPart>}
+          {(warm === 'relief' || later === 'relief') && <AppPart shown={later === 'relief'}><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></AppPart>}
+          {(warm === 'green' || later === 'green') && <AppPart shown={later === 'green'}><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></AppPart>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 

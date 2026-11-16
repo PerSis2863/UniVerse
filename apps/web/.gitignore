@@ -50,6 +50,8 @@ next-env.d.ts
 /public/mediapipe/wasm
 # pdf.js worker for file previews, copied at build time (scripts/copy-pdfjs-assets.mjs)
 /public/pdfjs
+# MapLibre's worker for Travel's map, copied at build time (scripts/copy-maplibre-assets.mjs)
+/public/maplibre
 # Python (Pyodide) for code rooms, copied at build time (scripts/copy-pyodide-assets.mjs)
 /public/pyodide
 # SQLite (sql.js) for code rooms, copied at build time (scripts/copy-sqljs-assets.mjs)

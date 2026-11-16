@@ -40,7 +40,7 @@ export default function RadarPage() {
     <>
       <Topbar title="Radar" subtitle="Copies, grey market, warm shipments and recalls: what needs a look" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           <RadarBody />
         </div>
@@ -52,7 +52,7 @@ export default function RadarPage() {
 function RadarBody() {
   const { data, error, mutate } = useSWR<Radar>('/trace/radar', fetcher, { refreshInterval: useActivePoll(60_000), keepPreviousData: true });
   if (error) return <p className="panel p-6 text-sm text-zinc-500">{errorMessage(error, 'Start your brand to see its radar.')}</p>;
-  if (!data) return <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">{Array.from({ length: 5 }, (_, i) => <div key={i} className="panel h-24 animate-pulse" />)}</div>;
+  if (!data) return <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">{Array.from({ length: 5 }, (_, i) => <div key={i} className="panel h-24 skeleton" />)}</div>;
   const tiles = [
     { label: 'Likely copies', n: data.counts.suspect, icon: ShieldAlert, tone: 'text-amber-500', note: '30 days' },
     { label: 'Grey market', n: data.counts.diverted, icon: Globe2, tone: 'text-fuchsia-500', note: 'outside its markets' },

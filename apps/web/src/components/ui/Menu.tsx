@@ -110,17 +110,19 @@ export function Menu({ label, button, items, disabled, className, title }: { lab
   );
 }
 
+/** The arrow keys, Home and End move through a menu's items (MenuList, the bar across the top's lists). */
+export function menuKeys(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
+  e.preventDefault();
+  const list = [...e.currentTarget.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])')];
+  const i = list.indexOf(document.activeElement as HTMLElement);
+  const next = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length;
+  list[next]?.focus();
+}
+
 export function MenuList({ items, label, onDone }: { items: MenuItem[]; label: string; onDone: () => void }) {
-  const onKey = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp' && e.key !== 'Home' && e.key !== 'End') return;
-    e.preventDefault();
-    const list = [...e.currentTarget.querySelectorAll<HTMLElement>('[role^="menuitem"]:not([disabled])')];
-    const i = list.indexOf(document.activeElement as HTMLElement);
-    const next = e.key === 'Home' ? 0 : e.key === 'End' ? list.length - 1 : (i + (e.key === 'ArrowDown' ? 1 : -1) + list.length) % list.length;
-    list[next]?.focus();
-  };
   return (
-    <div role="menu" aria-label={label} onKeyDown={onKey} className="py-1">
+    <div role="menu" aria-label={label} onKeyDown={menuKeys} className="py-1">
       {items.map((it, i) => {
         if (it === 'sep') return <div key={i} role="separator" className="my-1 h-px bg-zinc-200 dark:bg-white/10" />;
         if ('heading' in it) return <p key={i} className="px-3 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{it.heading}</p>;

@@ -4,13 +4,22 @@ import { readTicketCode, ticketCode } from './campus-life';
 import { scanTicket } from './event-tickets';
 
 // Stage 5 · Q17: signed tickets and the door scan (each ticket works once).
-vi.mock('@/lib/db', () => ({ default: { eventRsvp: { findUnique: vi.fn(), updateMany: vi.fn() } } }));
+vi.mock('@/lib/db', () => ({ default: { eventRsvp: { findUnique: vi.fn(), updateMany: vi.fn() }, campusItem: { findFirst: vi.fn() } } }));
+vi.mock('./school-scope', () => ({ campusOf: async () => ({ organizationId: null }) }));
 process.env.SESSION_SECRET = 'test-secret-test-secret-test-secret-0123';
 const admin = { id: 'a1', name: 'Admin', email: 'a@x', role: 'ADMIN' } as never;
 const row = (extra: Record<string, unknown> = {}) => ({ id: 'rsvp1', itemId: 'ev1', status: 'GOING', checkedInAt: null, user: { name: 'Alice' }, item: { title: 'Gala' }, ...extra }) as never;
 
 describe('tickets', () => {
-  beforeEach(() => vi.clearAllMocks());
+  // The event is the admin's own school's unless a test says otherwise.
+  beforeEach(() => { vi.clearAllMocks(); vi.mocked(prisma.campusItem.findFirst).mockResolvedValue({ id: 'ev1' } as never); });
+
+  it('refuses the door of another school’s event (M184)', async () => {
+    vi.mocked(prisma.campusItem.findFirst).mockResolvedValue(null);
+    await expect(scanTicket(admin, 'ev1', ticketCode('rsvp1'))).rejects.toThrow('Event not found.');
+    expect(vi.mocked(prisma.campusItem.findFirst).mock.calls[0][0]?.where).toEqual({ AND: [{ organizationId: null }], id: 'ev1', kind: 'EVENT' });
+    expect(prisma.eventRsvp.findUnique).not.toHaveBeenCalled();
+  });
 
   it('signs a ticket and refuses a changed one', () => {
     const code = ticketCode('rsvp1');

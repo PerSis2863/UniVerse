@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react';
 import useSWR from 'swr';
+import { usePathname } from 'next/navigation';
+import { appHome } from '@/lib/apps';
 import { api } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
@@ -80,6 +82,9 @@ export function WelcomeTour({ role }: { role?: string }) {
   const [step, setStep] = useState(0);
   const [spot, setSpot] = useState<Spot | null>(null);
   const next = useRef<HTMLButtonElement>(null);
+  // M198: it starts by itself only on the person's home (its first stop is "Your home"), not on
+  // whatever page they opened first, such as a class or an assignment from a link.
+  const atHome = usePathname() === appHome('campus', role);
   // The account (already loaded with the app's startup data, so no extra request).
   const { data: account } = useSWR<{ id: string; tourDoneAt?: string | null; tourStep?: number }>(user?.id ? '/api/core/users/me' : null, authedJson, { revalidateOnFocus: false });
 
@@ -94,11 +99,11 @@ export function WelcomeTour({ role }: { role?: string }) {
       }
     } catch { /* storage blocked: the account decides */ }
     const resume = () => { setStep(Math.min(account.tourStep ?? 0, stops.length - 1)); setOpen(true); };
-    const t = seen ? undefined : setTimeout(resume, 800);
+    const t = seen || !atHome ? undefined : setTimeout(resume, 800);
     const again = () => { setStep(0); setOpen(true); };
     window.addEventListener('universe:tour', again);
     return () => { if (t) clearTimeout(t); window.removeEventListener('universe:tour', again); };
-  }, [user?.id, stops, account]);
+  }, [user?.id, stops, account, atHome]);
 
   // Find this stop's button (after the page settles), bring it into view, and follow it.
   const stop = stops?.[step];

@@ -4,7 +4,7 @@ import { Suspense, useEffect, useState } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
-import { Bell, Megaphone, MessageCircle, Phone, type LucideIcon } from 'lucide-react';
+import { Bell, Megaphone, MessageCircle, Video, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
 import { useOptimisticPath } from '@/lib/nav-pending';
@@ -49,7 +49,8 @@ function Deck({ chatOpen }: { chatOpen: boolean }) {
   const unreadNotes = (Array.isArray(notes) ? notes : []).filter((n) => n.read === false).length;
   const tabs: Tab[] = [
     { href: `${base}/inbox`, label: 'Chats', icon: MessageCircle, count: unread },
-    { href: '/calls', label: 'Calls', icon: Phone, count: missed },
+    // M227: Calls is Meet & call (meetings, voice rooms, calls).
+    { href: '/calls', label: 'Meet & call', icon: Video, count: missed },
     { href: '/notifications', label: 'Notifications', icon: Bell, count: unreadNotes },
     ...(role === 'ADMIN' ? [{ href: '/admin/announcements', label: 'Announcements', icon: Megaphone, count: 0 }] : []),
   ];

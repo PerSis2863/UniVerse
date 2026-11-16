@@ -69,7 +69,7 @@ export default function FilesPage() {
       <Topbar title="Files" subtitle="Your own files, and files from every class and group you’re in" />
       <CollabTabs />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-4">
+        <div className="w-full space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <label className="relative flex-1">
               <span className="sr-only">Search files</span>

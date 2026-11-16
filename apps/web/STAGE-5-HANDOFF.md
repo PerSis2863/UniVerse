@@ -4912,6 +4912,52 @@ one commit and one note each, then ask the owner before merging.
    critical), see-through cards (the M91 look forbids glass), page errors; read the live `error_reports`
    first (AGENTS.md section 1). Fix what's found; list what's left for the owner.
 
+4. **A zombie-survival shooter like the link the owner sent** (6 Nov: "https://vel.gg/bsz can you make same
+   game as this website has?", then "just add in the notes so other agent can work on it"). **What the link
+   is:** a browser copy of Call of Duty: Black Ops' Zombies mode (its menu shows that game's cover art and a
+   map file named after one of its maps; "Game setup": your name, single player or multiplayer, classic or
+   Counter-Strike guns, high or low graphics, choose a map). **Don't copy it** (its name, maps, art, music,
+   weapon names and characters belong to its maker): build our own game in the same genre and tell the owner
+   so once. Also tell them STORMFALL (`/play/stormfall`, computers only) already has "Outbreak", undead
+   survival on two maps. A design worked out before the owner asked for notes (nothing of it is committed):
+   - **Holdout**, 16+ (`age: 16`), app `play`, `world: true`, about 1,200 s a round (the round ends early when
+     you go down). First person in three.js on the World engine. Keep it off the landing (rated games, M112).
+   - **The map, Signal Yard** (original): an old railway station at night in fog. The waiting hall (start,
+     four boarded windows, a 600 wall gun), a door (750) to the platform (a train standing at it, two
+     windows, the undead climbing up from the tracks at both ends, a 1,000 wall gun, the crate), a gate
+     (1,000) to the warehouse (three windows, the power lever, perk machines, a 1,200 wall gun).
+   - **Rounds:** `count = round(6 + 3r + 0.18r²)`, health `150 + 100(r − 1)` up to round 9, then ×1.1 a
+     round; runners from round 4 (a fifth more each round); at most 24 on the map; one comes every
+     `max(0.6, 2.2 − 0.12r)` s. The undead tear a plank off a window every ~1.6 s (six planks), climb in,
+     then chase along a flow field (BFS over a 0.5 m grid of the map, closed doors solid, recomputed four
+     times a second from the player's cell) with a push apart from each other; a swipe does 45.
+   - **Points:** 500 to start, +10 a hit, +60 a kill, +100 a headshot kill, +130 a knife kill, +10 a plank
+     rebuilt (hold E at a window). Wall guns (E to buy, half price for ammo), the crate (950: a random gun,
+     the rare one is an arc gun whose bolt jumps to three more), perks once the power is on (more health,
+     faster reload, faster fire, faster run: original names), drops from kills (ammo, double points, a
+     blast that clears the map, one-hit kills for 30 s). Health 100 (250 with the health perk), it comes
+     back after 3 s without a hit. Grenades (G), the knife (V), reload (R), aim (right mouse).
+   - **Leaderboard score** (not the points you spend): `kills × 100 + headshots × 50 + rounds × 500`; its cap
+     for the server: kills ≤ seconds ÷ 0.6 + 24, rounds ≤ kills ÷ 9 (about 416,000 for 1,200 s).
+   - **Reuse from the history** (deleted with Ridgeline Ops in M82, read with
+     `git show 7adb5460^:apps/web/src/components/play/ops/<file>`): `operator.ts` (a figure skinned to 19
+     bones, one draw each, with walk, run, flinch and fall poses and hit spheres for head, body and limbs:
+     restyle it as the undead, arms forward, torn clothes, glowing eyes as a small separate mesh),
+     `guns.ts` (detailed first-person gun models; it needs parts of `src/lib/play/ops/arsenal.ts` from the
+     same commit, or a smaller builder), `fx.ts` (pooled sparks, flashes, holes, casings), `audio.ts`
+     (gunshots made in the browser, with echo).
+   - **The engine:** add `World.overlay(scene, camera)` in `world/core.ts` to draw the hands and gun over
+     the world with their own depth (a `RenderPass` with `clear = false`, `clearDepth = true` inserted after
+     the first pass; on phones and Smooth, a second `render` after `clearDepth()`); make that world with
+     `ao: 0`. Keep the light count fixed (a muzzle-flash light whose power goes to 0, `LightPool` for lamps):
+     adding a light rebuilds every shader (M118).
+   - **Plumbing** (as M123 did for Solar Voyager): `GAME_IDS` and `GAMES` in `src/lib/play.ts`, `GameStage`
+     (the dynamic import, `preloadGame`, `CONTROLS`), `GameIcon`, `Arcade` (`WORLD_ART`), the counts in
+     `big-games.test.ts` (14 games, 5 worlds), AGENTS.md section 3, `node scripts/gen-guide-data.mjs`;
+     rules pure with a test and a cap test; a browser check like `play-voyager-ui.mjs`. In a room, everyone
+     first fights their own undead (others are drawn as they move); sharing the undead needs the room
+     server to relay them (later).
+
 **Waiting on the owner** (ask, don't decide): whether the spending guard should still pause the whole
 site at 90% of the included CPU (M120); what, if anything, goes where Play's player card was (M119);
 mark the 31 Oct error report resolved in the console.
@@ -6617,3 +6663,1237 @@ this for whole supply chain… modern and professional… ultra smooth animation
 - **Live errors:** nothing new since 10 Nov.
 - **Measured** (built site, 52 pages): stalls while scrolling 62 (before M177) → 14 (M177) → 4.
   Relief showed 8 stalls at rest once and 0 in two re-runs (its map was loading place names).
+
+## M179: each app has its own Messages, and "All apps" shows them together (the owner, 13 Nov 2026)
+
+- **The ask:** "when people login in specific app or section like relief, green, play or any then they
+  should get there own new message section but also have option to sync the data of there other app or
+  website messages together".
+- **Now:** a chat belongs to the app it was started in (`conversations.app`, migration 0208: `trace`,
+  `relief`, `green`, `play`; UniVersity's and every chat from before M179 are `NULL`). Messages shows the
+  app you're in (its icon and name under "Chats"); **This app / All apps** switches to every chat
+  together, each tagged with its app (kept on the device, `uv-chat-all-apps`), and "All apps" counts the
+  new messages waiting in the other apps. The UniVerse welcome chat shows in every app. The same two
+  people get one 1:1 chat per app (found again only in the same app). Archived and unread counts follow
+  the switch.
+- **Which app you're in:** `src/lib/current-app.ts` (`currentAppNow`, `useCurrentApp`): the page's own
+  app, else the one last used (`uv-last-app`, written by the side menu), else the website's choice,
+  else UniVersity (tested). Every shared "Message this person" (profile, command palette, New chat and
+  New group, private chats, status, favourites, a chat's member) sends `app`; Relief's "Message" sends
+  `relief`; UniVersity's own pages send nothing (UniVersity).
+- **Both list paths** return `app`: the Next route and the light path (`cloudflare/fast-chat.ts`).
+  Sample mode has chats in Relief, Green and Play.
+- **Rules:** a new way to start a chat sends `app: currentAppNow()` (or its own app); server-made chats
+  (`directChat`, parent chats, broadcasts, the owner's) stay UniVersity's.
+- **Checked:** `messages-apps-ui.mjs` (one chat per app for the same two people; Relief shows Relief's
+  chat and not UniVersity's and the other way round; All apps shows both, tagged; axe at 1280 dark and
+  390 light; no sideways scroll; no errors), `current-app.test.ts`, `pnpm check`.
+
+## M180: pages fill the screen, no empty bands at the sides (the owner, 14 Nov 2026)
+
+- **The ask** (a screenshot of Settings centred with wide empty sides): "the setting section doesnt fit
+  properly … check where else there are gaps … perfectly fit everything in the page like no extra spaces
+  in the side or middle or anywhere".
+- **Measured** every menu page for students, teachers and admins at 1440 and 1920 px (a width-capped,
+  centred block with 64+ px empty on each side): Settings and Credentials (`max-w-5xl`, 115 px a side at
+  1440); at 1920 the hub, Trace, Green, Play and Collaborate (`max-w-6xl`, 295 px a side), Relief and the
+  maps (`max-w-[1500px]`), the impact pages (`max-w-7xl`).
+- **Now:** every app page frame that was capped at 5xl, 6xl, 7xl or a fixed 1,0xx–1,5xx px (`className=
+  "max-w-… mx-auto"`, 92 of them in 91 files under `src/app/(dashboard)` plus Collaborate's home, the
+  knowledge hub, task views, Relief's organisations, the audio and video editors) takes the full width.
+  Settings' list column grows a little on big screens (`xl:w-80`). Play's grids: a lone last card spans
+  the row (`sm:[&>*:last-child:nth-child(odd)]:col-span-2`), so no half-empty row.
+- **Left narrow on purpose:** reading pages (terms, privacy, policies: about 75 characters a line, §8) and
+  single-column forms at `max-w-4xl` and below (a 1,600 px text box is hard to use); the public website's
+  sections (designed centred).
+- **Rule:** an app page's frame is `w-full`; cap a block only when it's text to read or a short form.
+- **Checked:** the sweep again (every menu page fills at 1920), screenshots of Settings, the hub and Play
+  at 1920, no sideways scrolling, `pnpm check`.
+
+## For the next session: the owner's two open asks (14 Nov 2026)
+
+Do them in this order, one commit and one note each, numbers **M181** and **M182** (check the handoff and
+the other branches first: another session may have used them). Merge only when the owner says "merge".
+
+1. **M181, Arrange: a big upgrade** (the owner: "in the arrangement features dont let user put the
+   different info in another tab which is not meant there and also add resize feature in verticle option
+   also in there and resize can be done from bottom and top also and do same for the horizontal resize and
+   make everything ultra smooth and also try to make a big arrangement feature upgrade in the system which
+   is unique and no one else has done till now"). The feature is M166 (note above): `src/lib/arrange.ts`
+   (+ test), `src/lib/arrange-dom.ts`, `src/components/ArrangeMode.tsx`, `src/store/arrange.ts`,
+   `src/server/arrange.ts` (sync, table `user_arrangements`). Do:
+   - a card can only move within its own group/tab (no dropping a page's info into a tab it doesn't
+     belong to: refuse the drop with a short shake, and don't even show drop places there);
+   - resize from **all four edges and the corners**: top and bottom for height, left and right for width
+     (today it resizes from one edge); keep sizes snapped to the grid, and remember them per page;
+   - ultra smooth: move only `transform` while dragging (no layout per frame), one `requestAnimationFrame`
+     per frame, the other cards glide out of the way (FLIP), springs from `src/lib/motion.ts`, Reduce Motion
+     leaves fades; measure frames (no long tasks while dragging);
+   - something new, ideas to put to the owner (pick one or two): layouts that change with the time of day
+     or what you're doing (a "morning" and an "exam week" arrangement switched automatically or by a tap);
+     "magnetic" cards that pull related cards next to them; one-tap "tidy" that packs the page with no
+     gaps; shared arrangements a teacher hands to a class; undo history of arrangements with a timeline.
+   - Check with a Playwright check (drag across tabs refused, each edge resizes, frame timing), axe.
+2. **M182, Messages: connections** (the owner: "add connections options like connect to gmail, linkedin,
+   and all the famous and important one for the project"). M179 gave each app its own Messages. Build a
+   **Connections** tab in Messages (and in Settings → Privacy): a card per service, each **off until the
+   owner sets it up** (they need accounts: mark **[owner]**, AGENTS.md §1):
+   - Gmail (Google Cloud OAuth client, free; works for up to 100 test users before Google's verification;
+     reading mail is a "restricted" scope whose full review costs money: say so), Outlook / Microsoft 365
+     (Microsoft Graph, an Azure app registration, free), Slack (a Slack app, free), Telegram (a bot from
+     @BotFather, free: link your Telegram by sending the bot a code), WhatsApp (through Twilio, already used
+     by Relief's text requests: paid per message), Discord (a bot, free);
+   - **LinkedIn doesn't let other apps read or send its messages** (only approved partners): offer
+     "Sign in with LinkedIn" and a profile link, and tell the owner plainly;
+   - OAuth: start and callback routes with a signed `state` and PKCE, minimal scopes, tokens **encrypted at
+     rest** (AES-GCM, a new secret the owner sets in Cloudflare, never in a committed file), never sent to a
+     browser; disconnect revokes; mail fetched live when the person opens it (not copied into D1);
+     replies go back through the service; every route checks who is asking (`route-gates.test.ts`), new GET
+     routes get sample answers (`src/lib/sample/router.ts`). Read `security-review` first; ask
+     `universe-security` to review before finishing.
+
+
+
+## M183: an index on every relation column (the owner, 14 Nov 2026: "upgrade all the existing features, buttons, animations, transitions, database, security and everything else … i need big changes")
+
+The day before, M177 and M178 had done a deep check, a smoothness pass and a security review, and the
+live `error_reports` had nothing new, so this session looked for what those could not see, one item per
+area the owner named (M183 database, M184 security, M185 a feature, M186 motion and buttons).
+**Numbers:** the branch `claude/youthful-fermi-sbdtcp` (another session, same day) holds M179–M180, plans
+M181–M182 and uses database update 0208, so these are M183–M186 and 0210–0211.
+
+- **62 relation columns had no index** (found by reading `schema.prisma`: a `fields: [x]` whose `x`
+  leads no `@@index`, `@@unique` or id). Among them `users.organizationId` (every "my school's people"
+  filter), `quiz_attempts.studentId`, `tasks.listId`, `space_files.folderId`, `trace_codes.productId`.
+  SQLite checks a child table row by row when a parent row is deleted unless the child column is
+  indexed (D1 enforces foreign keys), and a list filtered by the column reads the whole table; D1 bills
+  rows read. Migration `0210_relation_indexes.sql` (62 `CREATE INDEX IF NOT EXISTS`, then
+  `PRAGMA optimize`), `@@index` on each model.
+- **Trap:** a column's real name can differ from the Prisma field (`oneroster_syncs.actorId` is
+  `actor_id`, `@map`). Locally D1 accepted `"actorId"` as a text value and built a useless index
+  without a word; `schema-columns.test.ts` (it runs every migration in node's SQLite) caught it.
+  Write the mapped name, and run the unit tests after writing a migration.
+- **Rule:** a new relation gets its `@@index` and `CREATE INDEX` (`schema-indexes.test.ts` fails otherwise).
+- **Tested:** the migration applied on the local D1 (the indexes are there); `pnpm check`.
+
+
+## M184: security, the rest of the school boundary (14 Nov 2026)
+
+M158 found that admin code outside the usual patterns ignored the school (payments, campus info). This
+finished the list of admin-only files that never mention a school (about 90; most go through
+`requireAdmin`'s `org`, `peopleWhere` or `courseAccess` and are fine).
+
+- **LMS connections** (`lti_platforms`) had no school: `/api/lti/platforms` listed every school's to any
+  admin, and PATCH / DELETE took any id (DELETE also removes that LMS's linked people and courses).
+  Migration `0211_lti_platform_school.sql`: `organizationId` (null: the main school), filled from the
+  activity log's "lti.platform_added" (who connected it). The routes use `orgIn(await schoolsOf(user))`;
+  a new connection takes its admin's school. In `lti.ts`: a person an LMS brings in joins that LMS's
+  school (they landed in the main school), and linking to an existing account by email (owner-only
+  switch) only works for people of the LMS's own school.
+- **Clubs** (`club-governance.ts`, `club-carbon.ts`): `user.role === 'ADMIN'` opened any school's club
+  (elections, budget, carbon log; set the budget). Now `clubInSchool(user, clubId)` (`school-scope.ts`:
+  a club founded by one of the school's people, as `associations.service.ts` already did).
+- **The door scan** (`scanTicket`): only for the admin's own school's event (`campusOf`); it names the
+  ticket holder. **Scheduled calls:** scheduling in a group as an admin needs the group to be the
+  school's (`madeInSchool`); the course lists an admin picks from (scheduled calls, code rooms) are
+  their school's (`teacher: peopleWhere(user)`), not every school's.
+- **Server Actions** are outside the route test (M114): `route-gates.test.ts` now finds every
+  `'use server'` file under `src/app` and fails an exported action without `getUserFromToken(`.
+- **Looked at, left alone:** `joinScheduled` lets any admin past its early check (the call page checks
+  again, its comment says so); sticker packs marked "school" and campus buildings are one list for
+  all schools (no people's data; a database change when a second school joins); `canCancel` on a
+  scheduled call for any admin.
+- **Tested:** unit tests (school-scope: `clubInSchool`; event-tickets: another school's door refused;
+  route-gates); the LMS list as the local admin (200); `pnpm check`.
+
+
+## M185: "Since your last visit" in the Daily brief (14 Nov 2026)
+
+The owner chose "something for the first class" (12 Nov) and the launch goal is people who come back on
+another day; the home looked the same whether or not anything had happened while they were away.
+
+- **Where:** inside the existing "Your day" card (`DailyBrief.tsx`, `GET /api/brief`), first section,
+  not a new card (so "Edit home" and the layouts are untouched). `briefData` returns `since:
+  { from, total, items[≤8] } | null`.
+- **The visit before this one** (`src/lib/since-visit.ts`, pure, tested): from the person's last 20
+  `login_events` (a SESSION row is written once per browser session). Rows within an hour of the newest
+  are the same visit (a second tab, signing in again); the look-back stops at 30 days; a first visit
+  gives null. No new column, works across devices.
+- **What is listed** (`sinceLastVisit` in `daily-brief.ts`, at most 4 queries, in the brief's own
+  `Promise.all`, a failure gives null): students: grades (`grades.gradedAt`), announcements (visible
+  now, not their own), open work, materials, in their courses; teachers and admins: hand-ins and
+  enrolments in the courses they teach. Titles are people's own words (`translate="no"`).
+- **Sample:** `/api/brief` in `sample/router.ts` returns three made-up items for the first course.
+- **Tested:** `since-visit.test.ts`; on the dev server as alice with a visit 26 hours ago, a grade and a
+  material 3 hours ago: both listed with their links; 1280 dark and 390 light, no sideways scroll, axe
+  clean, no page errors (test rows removed).
+- **Left:** quizzes published since, and messages (the card's "Waiting for you" covers chats).
+
+
+## M186: pulsing dots keep their colour; the last repainting pings (14 Nov 2026)
+
+- **`animate-pulse` was broken everywhere.** An unlayered rule from the early look
+  (`.animate-pulse { background: linear-gradient(…); animation: shimmer }`, for loading placeholders)
+  beat Tailwind's utilities, so everything that pulses lost its own background: the red "recording"
+  dots (message box, calls, voice feedback), amber "reconnecting" (docs, sheets, slides, boards), green
+  "live" dots, the landing's text caret, about 20 places. They showed a grey shimmer, which also moved
+  `background-position` every frame (a repaint, §8). The rule is gone: Tailwind's opacity pulse, in the
+  element's own colour (checked in the browser: `rgb(255, 59, 48)`, animation `pulse`). The five
+  loading placeholders that relied on it use `.skeleton`. **Rule:** never restyle a Tailwind utility
+  class globally; placeholders are `.skeleton`.
+- **The passport's step marker** (`.pp-node`, `/t/<code>`): its ping was an animated `box-shadow`; now a
+  `::after` ring on `dot-ring` (transform and opacity), as M92 did for `.live-dot` and `.deck-ping`.
+  The dead box-shadow rules those two still carried are removed.
+- **Buttons, checked and left:** 1,476 uses of the shared `.btn-*` classes (press spring, `aria-busy`
+  spinner, focus ring, sizes); the ~135 solid-colour controls that don't use them are chosen-state
+  chips and tabs, not buttons. Converting them would change how tabs look for no gain.
+- **Left** (loops that still repaint, each in one rare place): `flow-on` / `bento-step` (the landing's
+  flow card), `play-lightning` (Quiz Clash's lightning round), `holo`, `ink-drift`, `play-static`.
+- **Tested:** `/t/demo` at 390 (the marker's own animation none, ring `dot-ring`, no errors); `pnpm check`.
+
+
+## M187: more of the school boundary (the owner, 14 Nov 2026: "check for more of these")
+
+This branch now also holds `claude/youthful-fermi-sbdtcp` (M179–M180), merged in so the Messages work
+below builds on it. M181 and M182 stay with the session that planned them; database update 0209 too.
+
+- **Campus buildings** (`campus_buildings.organizationId`, migration 0212, filled from the campus's school
+  for buildings on a network campus; the rest stay with the main school): the school's own map
+  (`campusId` null) lists only that school's buildings, and adding, moving, deleting, placing a room or an
+  event needs the building to be the admin's school's (`campusOf`). A university campus's map (`campusId`
+  set) is still seen by everyone at that campus.
+- **School sticker packs** (`stickers.ts`): listed, counted and edited by the school whose person made
+  them (`owner: peopleWhere(user)`, `madeInSchool`). No database change.
+- **Broadcasts** (`/api/chat/broadcast`): recipients are filtered to the sender's own school; any user
+  ids were accepted. **The tutor's course list** for an admin: their school's courses.
+- **Left, and why:** `school_policies` is one row (`id: 'main'`) for every school (child-safety
+  settings, quiet hours, the check-in location): any school's admin changes it for all. Making it per
+  school touches every reader of that row: its own item, before a second school joins. Rooms and room
+  bookings are one list too. The Impact League is between schools on purpose. Starting a 1:1 chat by a
+  person's id isn't limited to the school (Trace, Relief, Green and Play people have no school).
+- **Tara and Tom** (the local test teachers) couldn't sign in because this machine's local database
+  never had them: `node scripts/local/test-accounts.mjs` (part of `pnpm local:setup`) creates them. With
+  them, the teacher's "Since your last visit" (M185) was checked: "Bob Smith joined · CS101".
+- **Tested:** `pnpm check`; the migration on the local D1.
+
+
+## M188: Messages, long chats and readable bubbles (14 Nov 2026)
+
+Messages already had nearly everything (threads, scheduled and view-once messages, polls, search with
+filters, selecting several, folders, communities, private chats). What didn't hold up was a long chat.
+
+- **Opening an old message** (`jump` in `ChatWindow.tsx`): it loaded 40 older messages at a time and
+  gave up after 10 rounds, so a search result more than 400 messages back never opened. Now 60 rounds
+  (2,400), a "Looking further back…" note after the fourth, and a plain message when it is further still.
+- **Go to a date:** a date field in the chat's search bar. `GET …/messages?date=<ISO>` returns the first
+  message on or after that moment (the browser sends its own midnight); the chat then jumps to it.
+- **Everything shared in a chat:** the info panel's "Media, files & links" was built from the messages on
+  screen. `GET …/messages?shared=1` returns the chat's newest 60 photos, 40 files and 40 links (not
+  deleted, not hidden by the person, not view-once); "Show all N photos". Private chats (the server
+  can't read them) keep the on-screen list. Both answers go through the route's own membership check.
+- **My bubbles** (`globals.css`, the M121 block): the old look's deep pink (`#b5307d`) stayed as the
+  bubble colour after M124 made text on accent fills ink in dark mode: near-black on pink, 3.4:1, in
+  the default theme. The bubble takes `bg-tint` (lime with ink in dark, blue with white in light, the
+  app's colour in the other apps). The small print inside (`text-white/NN`: time, "Voicemail", poll
+  notes) takes the bubble's text colour (it was white on lime, 1.3:1); three `text-[10px]` are 11 px.
+  The info panel's photo buttons have names.
+- **Tested** on a chat of 600 messages over two months (removed after): the oldest message found by
+  search and opened; a date 20 days back opens that day's first message; the panel lists a photo, a file
+  and a link from two months ago; an outsider gets 404; axe clean at 1280 dark and light and 390 dark;
+  no sideways scroll, no page errors.
+- **Left:** a chat longer than 2,400 messages back from the newest still can't open its oldest part in
+  one go (it would need the list to hold a window that isn't joined to the newest messages).
+
+
+## M189: Collaborate, saved Create work on Home and whose work it is (14 Nov 2026)
+
+- **Saved Create work** (M75: mind maps, palettes, notes… saved to the account) lived only inside
+  Create. Home now lists it with everything else: recent work, the one search, a "Create" filter, pins
+  (`PIN_KINDS` has `save`). It opens from there: `/studio?open=<save id>` (the Studio page calls its own
+  `openSave`, so a live-edited one still opens live).
+- **Whose work:** All / Mine / Shared with me, from what the lists already say (`mine` on documents and
+  whiteboards; task boards, code rooms, files and saves count as mine).
+- **Sample:** `/api/collab/saves` returns two saved items.
+- **Tested:** a save made through the API shows on Home, alone under "Create", not under "Shared with
+  me", and opens its tool; 1280 dark and 390 light, axe clean, no sideways scroll (test save removed).
+- **Left:** who shared a document (the list says only that it isn't mine); shared-with-me for task
+  boards and code rooms (their lists don't say).
+
+
+
+## M190: each school its own safety policy (the owner, 15 Nov 2026: "please do all of this")
+
+- **The row:** `school_policy.id` is the school's id (`organizations.id`), or `'main'` for the main
+  school (people in no school). No new column: migration 0213 copies the old shared row to every
+  school that exists, so nothing changes for anyone on the day it goes live. A school created later
+  without a row of its own has the safe defaults (`DEFAULT_POLICY`).
+- **Reading it** (`src/server/safety.ts`): `schoolPolicy(orgId)` (cached a minute per school),
+  `policyFor(userId)` (that person's school), `policySchools(user)` (the schools an admin's change covers:
+  theirs plus the one they own, as `schoolsOf`; the platform owner: their own). **Rule for new code:**
+  never call `schoolPolicy()` without the school; the person it is about decides which row.
+- **Who decides what:** quiet hours and "under 18" the student's school; recording a call is blocked
+  when any student under 18 in it is from a school that doesn't allow it; the chat safety check runs
+  when any student's or guardian's school in the chat has it on; parent messages the child's school; a
+  class check-in the student's school. Changing quiet hours moves only that school's students' rows.
+- **Tested:** unit tests (`school-policy.test.ts`); `pnpm check`; the migration on the local D1.
+
+
+## M191: rooms and room bookings kept to each school
+
+- `rooms.organizationId` (migration 0214, filled from the room's building's school, M187; the rest the
+  main school). Bookings have no school of their own: they follow their room.
+- Kept to the school: `/api/rooms` (list, one room, booking: another school's room is "not found";
+  the list no longer includes who booked), `/api/admin/rooms` (and new rooms go to the admin's school),
+  `/api/campus/rooms` ("free now"), the campus map's rooms, bookings, room placing and usage (the school's
+  own map; a university campus's map is still the campus's), the timetable planner and its save, the
+  timetable import's room names, `/api/admin/timetable`.
+- **Tested:** unit test (`rooms.service.test.ts`), `pnpm check`.
+
+
+## M192: Messages, a message however far back opens
+
+- **Server** (`…/messages` GET): `around=<message id>` returns that message and the 49 before it (404 when
+  it isn't in the chat or is hidden from me); `after=<time>` pages forward (`hasNewer`). Neither marks the
+  chat read. Both go through the route's membership check.
+- **The chat** (`ChatWindow.tsx`): `jump` adds up to three pages to the history; further back it opens a
+  stretch (`win`) not joined to the newest messages. "Load earlier" adds above it, "Load newer messages"
+  below; reaching the newest joins it back on. The arrow button (always shown in a stretch) and sending a
+  message go back to the newest. Messages in a stretch are never counted as "new" on the arrow.
+- **Tested:** `scripts/checks/messages-far-back-ui.mjs` on a 3,000-message chat (made and removed by the
+  check): the first message opens, the newest isn't on screen, Load newer, back to the newest; axe clean
+  at 1280 dark and light, no sideways scroll, no page errors. An outsider gets 404 for `around`.
+
+
+## M193: Collaborate, who shared it and whose task boards and code rooms are
+
+- `GET /api/docs` and `GET /api/tasks` give `by` (the owner's name, when it isn't me; `owner-names.ts`,
+  names only); `GET /api/code` gives `mine` (`createdById` is no longer sent). Home shows "From <name>" on
+  shared documents, task boards and code rooms; task boards and code rooms sort under Mine / Shared with me
+  (files and Create saves still count as mine).
+- **Tested:** as Alice, Tara's board, document and code room in CS101 show "From Tara Teacher" under
+  Shared with me, at 1280 dark and 390 light, axe clean, no sideways scroll (test items removed).
+- **Left:** nothing from the M187–M189 list. A Create save shared by link isn't "shared with me" (whoever
+  opens the link doesn't get it on their Home).
+
+
+## M194: Create work opened from someone's link, on Collaborate's Home (the owner, 15 Nov 2026: "please do this")
+
+- **Table** `tool_save_opens` (migration 0215): one row a person and piece of work, with the `mode`
+  (view or edit) and the exact `token` they opened. Written by `noteOpen` (`src/server/tool-save-opens.ts`)
+  from `GET /api/collab/shared/:token` (only when the request is signed in: the `/s/` page now sends the
+  account when there is one) and `GET /api/collab/live/:token`. The view page asks every 20 seconds, so the
+  write is skipped unless an hour passed or the link changed; an edit link that still works outranks a view.
+- **Listed** in `GET /api/collab/saves` as `opened` (`openedByMe`) only while the work's link is still the
+  token they opened: a stopped link takes it away, and a new link made after it is never handed to them
+  (it falls back to nothing, not to the other kind of link). Never the owner's own opens. Deleting the work
+  deletes the rows.
+- **Home** (`CollabHome.tsx`): "From <name> · <tool> · view only / edit together", under Shared with me,
+  opening `/s/<token>` or `/studio?edit=<token>`. Sample answer has one.
+- **Tested:** the API through every case (view, edit, view again keeps edit, edit stopped and remade, view
+  stopped and remade, the owner's own list); Alice opening Tara's link then finding it on Home at 1280 dark
+  and 390 light, axe clean, no sideways scroll; unit tests (`tool-save-opens.test.ts`). Test work removed.
+- **Left:** no way to take one off Home by hand (it goes when the owner stops the link).
+
+
+## M195: take someone's shared work off my Home
+
+- `DELETE /api/collab/saves?opened=<save id>` deletes only the caller's own `tool_save_opens` row (anyone
+  else's request changes nothing). Home's × (`removeOpened` in `CollabHome.tsx`) shows only on items opened
+  from a link, unpins it too, and says that opening the link again brings it back (it does: `noteOpen`
+  writes a fresh row). Sample mode answers with `notice()`.
+- **Tested:** Alice opens Tara's link, removes it from Home, it's gone at once and after a reload, at 1280
+  dark and 390 light (the button shows on touch screens), axe clean, no page errors; Bob's DELETE left
+  Alice's row alone. Test work removed.
+
+
+## M196: a teacher's first class in 10 minutes (the owner's list of 15 Nov, item 2)
+
+- `GET /api/teacher/first-class` (`src/server/first-class.ts`): teachers only; their own newest course that
+  isn't archived (`teacherId`, not co-teaching), its students and assignments counted, the last five who
+  joined by first name. Sample answer: `{ show: false }`.
+- `FirstClassCard` (`components/dashboard`) on the teacher home through HomeBoard's new `first` slot
+  (above every card, never moved): New course (the same sheet as the top bar's), Invite students (the
+  M113 invite sheet; a draft course asks to publish first), New assignment (`/teacher/assignments?new=1`
+  opens the form), who joined. "Your class is set up" when all four are done; × hides it on the device.
+- `scripts/local/test-accounts.mjs` now marks Tara and Tom signed up (they were sent to the sign-up steps).
+- **Tested:** Tom from no course to all done, at 1280 dark and 390 light, axe clean on the card, no sideways
+  scroll; `?new=1` opens the form; unit tests (`first-class.test.ts`). Test course removed.
+
+
+## M197: "come back" reminders (the owner's list of 15 Nov, item 3)
+
+- Two daily-job steps (`src/server/come-back.ts`, in `STEPS` before `wellbeing`):
+  - `due-soon`: open assignments due within two days and not yet reminded (`assignments.nudgedAt`,
+    migration 0216, claimed with a conditional `updateMany`, so once even if two runs overlap). Students of
+    the course who haven't handed it in get an in-app notification and a push (quiet hours respected by
+    `pushService`); the course's teacher gets "N of M haven't handed in …" with up to five first names.
+  - `weekly-progress`: Mondays (UTC) only, students active in the last 30 days with a course; "Your week":
+    handed in last week, due this week (not yet handed in). In the app only (a weekly push would be noise).
+    Cursor: the last student done, so a busy day carries on in the next run.
+- No emails (`email: false` everywhere). Nothing for quizzes (they have their own reminders).
+- **Tested:** unit tests (`come-back.test.ts`); the steps can't be fired locally (only Cloudflare's cron
+  token reaches them), so the first live Monday and the first assignment due within two days are the real
+  check: look at a student's notifications.
+- **Left:** "who hasn't opened the work": opening isn't recorded, so the teacher hears who hasn't handed in.
+
+
+## M198: a walk-through as a brand-new student (the owner's list of 15 Nov, item 4)
+
+A new student (an account just made, sign-up not finished) on a phone: the class link, joining, the home,
+the assignment, handing it in, and the teacher's view. Real sign-up needs Firebase, which the cloud machine
+can't reach, so the account was made in the local database. Fixes:
+
+- **Joining before finishing sign-up** (Google / Apple / phone sign-in, then the class link): the invite was
+  forgotten and sign-up asked for a role among four. `CourseJoin` now keeps the invite while `onboardedAt`
+  is empty and sends them to `/register?continue=1&app=campus`; register, with an invite waiting, skips the
+  role step (student, independent; "Change" still goes back).
+- **Where the app opens** (`homeFor`, `/app`'s head script): the app used last on this device
+  (`uv-last-app`, written by `AppBackdrop` on an app's own pages), then teachers and admins at their school
+  home, then the hub. A student of a class no longer lands on the hub of five apps each time.
+- **Student home's default order**: "Impact network" moved below the courses (main zone), so a new
+  student sees their class first. Saved layouts are untouched.
+- **The welcome tour** starts by itself only on the person's home page (its first stop is "Your home");
+  it had opened over the Assignments page. "Take the tour" still starts it anywhere.
+- **Handing in**: the saved copy loads before the box lets go of the typed text (it went blank for a moment).
+- **Assignments list**: titles wrap to two lines on phones (they were cut to "Introduce your…").
+- **Tested:** each step at 390 (light) in Chrome; axe clean with no sideways scroll on /join, /student,
+  /student/assignments, an assignment and /hub at 390 light and 1280 dark; unit tests for `homeFor` and the
+  home layout. Not tested: Safari (no WebKit on the cloud machine) and real Firebase sign-up: try both on
+  an iPhone once this is live.
+- **Left:** the class link page stays dark in light mode (its own look); the realtime ticket and
+  `/api/server-state` fail only on the local dev server (the Worker answers them live).
+
+
+## M199: who can see what, and a final check between schools (the owner's list of 15 Nov)
+
+- **Admin → Safety → Who can see what** (`/admin/safety/access`, `WhoSeesWhat.tsx`, `GET /api/admin/visibility`):
+  what each role sees and never sees, what's kept to the school with live counts (people by role,
+  courses, rooms, buildings, whether the school has its own safety settings), and what's shared between
+  schools on purpose (direct messages, the Impact League's totals, Trace / Relief / Green / Play, links
+  people share). The words describe the code: change them when access changes. Phones get a stacked list.
+- **The leak check** (`scripts/checks/school-leaks.mjs`): makes a second school (admin, teacher, student;
+  removed after), calls every GET API route without an id in its address and the core API's lists as each
+  of them, and looks for the main school's names, emails and a course name. It needs those three emails in
+  `DEMO_ACCOUNT_EMAILS` (the command is in the file). About 25 minutes on the dev server. Found and fixed:
+  - the student directory listed every school's students (now the person's own school);
+  - consent forms: an admin saw every school's forms and course list, and a form for "every student"
+    reached every school's parents and students, who could also sign it (now the sender's school, on the
+    sender's side, the parents' side and when signing);
+  - Revision Reels (micro-lessons): an admin saw every school's (now their school's);
+  - the course catalogue and electives: every school's published courses (now the person's own school's;
+    an admin: the schools they run). Class invite links don't use these lists, so they still work.
+  - The last run after the fixes: 347 addresses, 283 answers for the three roles, no leaks.
+- **Left:** the check covers lists, not addresses with an id; draft Impact League challenges are seen by
+  every school's admins (the league is between schools on purpose).
+
+
+## M181: arranging keeps things where they belong; every edge resizes; Tidy (the owner, 14 Nov)
+
+- **Its own group only** (`arrange-dom.ts` `move`): carried outside its group, nothing makes room, and let
+  go there the drop is refused: it glides back with a short shake (Reduce Motion: no shake). Opening a row
+  into the page (M166) and dropping inside another card (M167) are removed; arrangements saved with them
+  still show as they were (`apply` reads `open` and `inside`). `arrange-cross-ui.mjs` (inside a card) and
+  `arrange-more-ui.mjs` (out of its row) test what this removed: their parts for that now fail by design.
+- **Every edge**: `item` finds the start and top edges too (`Sides`); an end or bottom edge of something
+  around wins over a start or top edge inside it (otherwise a press at a card's bottom took a smaller
+  thing's top). While pulling the start or top edge, that edge follows the hand with `translate` (the
+  `.arr-size` rule holds `transform` at none); let go, the card glides into its place. Pointers: ew, ns,
+  nwse, nesw (`html[data-arr-resize]`).
+- **Tidy** (the new idea): a button beside "Put this page back" packs the page's grids with no gaps
+  (`grid-auto-flow: row dense`, kept as `Entry.dense`), the cards gliding there; Ctrl+Z takes it back.
+- **Tested:** `scripts/checks/arrange-keep-ui.mjs` (start edge 271 → 558 px, top edge following the hand,
+  a refused drop with its shake, Tidy and its undo, axe) and `arrange-resize-ui.mjs` again (no slow frames
+  over 70 ms); unit tests.
+
+
+## M182: Messages, connections (the owner, 14 Nov)
+
+- **Where:** Messages → Connections (mail and chat; `?space=connections`) and Settings → Connected accounts
+  (everything; Google Classroom for teachers and admins). `ConnectionsPanel.tsx`.
+- **Services** (`src/server/connections.ts` `SERVICES`): Gmail, Outlook, Slack (read only: the newest 20
+  mails, the last message of 10 Slack direct chats, read live with the person's token, never stored),
+  plus the calendars and Classroom (M200). Telegram, WhatsApp, Discord and LinkedIn can't be connected by a
+  person (`ELSEWHERE` says why on the tab).
+- **Off until the owner sets them up [owner]:** SESSION_SECRET (32+ characters, already needed) and, per
+  maker, an app registered there with its keys in Cloudflare: `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+  (Google Cloud; Gmail's read scope is "restricted": up to 100 test users before Google's verification, and
+  the full review costs money), `MICROSOFT_CLIENT_ID` / `MICROSOFT_CLIENT_SECRET` (Azure app registration,
+  free), `SLACK_CLIENT_ID` / `SLACK_CLIENT_SECRET` (a Slack app, user scopes im:read, im:history,
+  users:read). Each app's sign-in return address: `https://<the site>/api/connections/callback`.
+- **Security:** `POST …/start` (signed in) seals a state (who, which service, a nonce, the PKCE verifier,
+  the time, a return page from a short allowed list) and sets an HttpOnly cookie with the nonce; the open
+  callback accepts only a sealed state, within ten minutes, from the browser holding that cookie (so no one
+  can attach their account to someone else's, or the reverse), and Google and Microsoft check PKCE. Tokens
+  are sealed (`secret-box.ts`, their own context), never sent to a browser, refreshed when they run out,
+  revoked on Disconnect where the service allows it. Table `oauth_connections` (0217). Unit tests
+  (`connections.test.ts`: a forged state, another browser, an outside return page).
+- **Tested:** the tabs at 1280 and 390, light and dark: every service shows "Not set up on UniVerse yet",
+  axe clean. A real sign-in can only be tried once the owner adds the keys.
+
+
+## M200: Google Classroom import and calendar sync (the owner's list of 15 Nov)
+
+- **Calendars:** Google Calendar and Outlook Calendar connect in Settings (M182's base). Their events from
+  a week ago to two months ahead show in UniVersity's calendar (`CalendarBoard.tsx` `useOutsideEvents`),
+  grey, not movable, read live. The other way (UniVersity into Google or Outlook) was already there: the
+  calendar's subscription link.
+- **Google Classroom** (teachers and admins): the connection lists the classes they teach; "Import as a
+  course" (`POST /api/connections/classroom/import`, `importClassroom`) makes a draft course of theirs (a
+  code from the section or name, made unique), its coursework becomes assignments (title, instructions,
+  points, due date), and students already with an account at the teacher's school are enrolled. The rest
+  join with the course's invite link (M113). Nothing is sent to anyone.
+- **[owner]:** the same Google and Microsoft keys as M182 (Classroom's scopes are in `SERVICES.classroom`).
+
+
+## M201: Trace payments (the owner's list of 15 Nov)
+
+- Schools could already pay for their plan (`/api/billing/*`). New: Trace brands, through the owner's Stripe
+  account, behind the opt-in switch **Trace payments** (console → Server, off): "Go PRO" on the brand's
+  console (Stripe Checkout, monthly at `TRACE_PRO_PRICE_CENTS`, US cents), "Manage billing" (Stripe's
+  portal) once subscribed, and "Add points" on each campaign (points at the brand's own point value, in its
+  currency, 100 to 1,000,000).
+- `src/server/trace-billing.ts`; the Stripe webhook routes Trace's events before the schools' ones:
+  `traceSubscription` sets PRO while the subscription is active, trialing or past due, FREE otherwise;
+  `traceFunding` adds a paid top-up once (`trace_fundings`, one row per Checkout session, 0218) and only
+  for the exact amount and currency. Stripe's ids never go to the browser (`brandInfo` drops them).
+- **[owner]:** turn on "Trace payments", set `TRACE_PRO_PRICE_CENTS` (e.g. 1900 for $19 a month), and in
+  Stripe send `customer.subscription.*` and `checkout.session.completed` to the existing webhook.
+- **Tested:** unit tests (`trace-billing.test.ts`: a resent event adds nothing, a wrong amount or currency
+  adds nothing, PRO follows the subscription); with the switch off the brand sees no payment button and
+  the API refuses.
+## M202 (committed as "M183"): UniVerse Travel, the sixth app: Explore, guides to anywhere, saved places, booking (the owner, 15 Nov 2026)
+
+- **The ask:** "one more app … about the travelling where user want to travel whole around the world or
+  some places and no idea where to eat, to sleep, to visit, few facts, ideas and much more and also can
+  book through our website … Wanderlog, Stippl, Tripadvisor, Culture Trip … combine features … add more
+  unique ways … ultra smooth". Built in steps: this is the first (the planner is M206, the extras M208).
+- **The app** (`travel`, sky blue #0ea5e9, `/travel`, Lab): every place an app needs (§3): `APPS`, its menu
+  (Explore, Saved places) and phone tabs, the hub's planet spot and number (places saved), the landing's
+  hero words, questions, card (`TravelScene`: a route Lisbon → Sintra → Porto with a plane flying it and
+  the days' plan), the sign-in card, the call to action, the world section, the owner's launch board
+  (from `travel_saved`), its share picture (`public/og/travel.jpg`), its scene behind the pages
+  (`backdrop.ts`: dashed routes arcing between places, paper planes flying them, clouds), Messages of its
+  own (M179). Two loose app maps that TypeScript didn't catch (the app tile `AppIcon` and the hub menu's
+  icons) are now `Record<AppId, …>`, so a seventh app can't be forgotten there.
+- **Explore** (`TravelExplore.tsx`): a search that finds any place with a guide as you type (Wikivoyage's
+  titles, arrows and Enter), 24 places to start from by theme with their real banner photos
+  (`src/lib/travel-ideas.ts`, the blurbs ours), your saved places.
+- **A guide** (`/travel/guide?d=<title>`, `TravelGuide.tsx`): the banner photo and opening; the country's
+  facts (money, languages, which side cars drive on, calling code, **emergency numbers**); the week's
+  weather in the place's own time; booking links; tabs for Overview (good to know, the districts or
+  cities as their own guides, go next), See, Do, Eat, Drink, Sleep, Buy, Getting around, Safe and polite,
+  each with its places (price, hours, address, directions, website, call, Map, Save), a filter for long
+  lists and a dot map of where they are. Credits: Wikivoyage (CC BY-SA 3.0) with a link, Commons, MET
+  Norway (CC BY 4.0), OpenStreetMap.
+- **Where it comes from** (`src/server/travel.ts`, routes `travel/search|guide|weather|saved`): a guide is
+  the Wikivoyage article's raw text (`?action=raw`) read by `src/lib/travel-guide.ts` (pure, tested:
+  templates split at their top-level bars, wiki text to plain words, listings with their sub-heading,
+  districts from `Regionlist`, banner, position, parent); which country a place is in from Nominatim;
+  the country's facts from `src/lib/travel-countries.json` (205 countries from Wikidata, CC0: REST
+  Countries now wants an account key); the weather from MET Norway. Everything kept in `travel_cache`
+  (database update 0219: guides 14 days, search 7, country 90, weather an hour; the old answer if the source
+  fails). **Trap:** Wikimedia answers 429 to requests without a named User-Agent: keep `UA`.
+- **Saved places** (`travel_saved`, one per person, guide and name, at most 300): Save on any listing, the
+  Saved page by guide (map, website, remove).
+- **Booking** (`src/lib/travel-book.ts`, tested): Stays (Booking.com), Flights (Google Flights), Tours and
+  tickets (GetYourGuide), Trains and buses (Rome2Rio), with the place (and dates, in the planner) filled
+  in. **[owner]:** to earn commission, join Booking.com's and GetYourGuide's affiliate programmes and set
+  `NEXT_PUBLIC_TRAVEL_BOOKING_AID` and `NEXT_PUBLIC_TRAVEL_GYG_PARTNER` (Cloudflare build variables). Paying
+  inside UniVerse needs partner contracts (their booking APIs): not built.
+- **The site's photo rule** (`security-headers.ts` img-src) now allows `commons.wikimedia.org`,
+  `upload.wikimedia.org` and `thumb.wikimedia.org`. Sample mode has a Lisbon guide, search, weather and
+  saved places.
+- **Checked:** `travel-ui.mjs` (search finds Kyoto, 24 places, Kyoto/Central's facts, weather, booking,
+  14 places to eat, Save → Saved → Remove; axe clean at 1280 dark and 390 light; no sideways scroll; no
+  errors), `travel-guide.test.ts`, `travel.test.ts`, `pnpm check`.
+
+## M203 (committed as "M186"): Apps on the website (the owner, 15 Nov: "when i want to show only one app then it should switch to that one app … no other apps should be there just that one and it should be syched properly")
+
+- **Where:** owner console → Server → **Apps on the website** (`AppsCard` in `console/server.tsx`): a switch
+  per app, "Show only this app" on each, "Show every app". Saved with the other server settings
+  (`POST /owner/server { apps }`, at least one; every app is stored as null so a new app shows), logged
+  in Changes & undo (the raw stored value, so undo puts it back exactly). Database update **0220**
+  (`server_control.apps`, a JSON list).
+- **How every page follows it, without a flash:** the Worker reads the list with the server switch (once a
+  minute, `cloudflare/usage-guard.ts`) and writes `<script>window.__uvApps=[…]</script>` first in every
+  page's head (`withNotice(res, notice, pageApps())`); the root head script (`appHeadScript`, tested)
+  then picks a shown app for `html[data-app]` and adds a style that hides every `[data-uv-app="<hidden>"]`
+  and, with one app, every `[data-uv-many]` (things that only make sense with several apps). In the app,
+  `src/lib/shown-apps.ts` (`useShownApps`, `shownIds`, `onlyApp`, `shownOr`, `setShownApps`) keeps the
+  list (device copy `uv-apps`, checked once a visit at the public `GET /api/core/site/apps`); the pure
+  part the server uses is `src/lib/shown-apps-list.ts` (**trap:** the server can't import a file with
+  React hooks: keep server imports on the `-list` file).
+- **What follows it:** app tabs (website, sign-in, sign-up: none with one app), the landing's planet and
+  app grid (only the shown apps, hidden with one), the side menu (no "All apps" with one app, the
+  switcher lists only shown apps and doesn't open with one), the hub (only shown apps; with one it sends
+  people into that app), the Impact Wallet, Messages (All apps only across shown apps; no switch with
+  one), the chosen and current app (`chosen-app.ts`, `current-app.ts`), where people land after signing
+  in (`homeFor`), and `ShownAppsGuard` in the dashboard layout: a hidden app's page sends people to the
+  first shown app's start. **Left on purpose:** public links printed or shared out in the world keep
+  working (a product's `/t/<code>`, `/b/<slug>`, an aid box's `/aid/<code>`), and the owner console's
+  own numbers still cover every app. It's what the website shows, not who may use what (APIs still answer).
+- **Rule for new code:** anything that lists apps uses `useShownApps()`; put `data-uv-app={id}` on each
+  app's item and `data-uv-many` on parts that only make sense with several apps, so they're hidden before
+  the page is drawn.
+- **Checked:** `shown-apps-ui.mjs` (one app and two apps, phone and computer, light and dark; axe clean),
+  `apps.test.ts`, `shown-apps.test.ts`, `usage-guard.test.ts` (the Worker's list and the head script),
+  `route-gates.test.ts` (the open route listed with its reason), `pnpm check`.
+
+## M204 (committed as "M187"): Travel: where to eat and know before you go (the owner, 15 Nov: what Airbnb lacks, items 2 and 3)
+
+- **Know before you go** (a new guide tab, `src/components/travel/TravelKnow.tsx`): plugs and voltage
+  against the visitor's own country (chosen once, `uv-travel-home`, guessed from the browser's region:
+  "Your plugs fit" / "Bring an adapter", a voltage warning, which side cars drive on), **When to go** (each
+  month's high and rain from the guide's climate chart, the pleasant months named: 17–29 °C, under 100 mm),
+  **Why it's famous** (short history sentences), cards for tipping, tap water, scams and pickpockets,
+  manners, what to wear, visas and entry, from the airport, tickets and travel cards, after dark, and
+  **Neighbourhoods at a glance** (each district with a few feel words and what the guide says about it
+  after dark).
+- **Where the words come from** (`src/lib/travel-tips.ts`, pure, tested): short sentences picked by topic
+  from the Wikivoyage article's own prose (listings left out), the climate chart (`{{climate chart}}` or
+  `{{climate}}`, °F and inches converted). A city's article rarely covers tipping, water, scams, manners,
+  dress or visas, so the route also reads **its country's article** and fills only those topics (marked
+  with the country's name and linked). Plugs (A–N) and voltage come from Wikidata (P2853, P2884), added to
+  `travel-countries.json` as fields 6 and 7. The guide cache key is now `guide2:` (the record carries
+  tips and climate).
+- **Eat**: "What to try" (the guide's sentences on dishes and specialities), chips for price band (the
+  guide's Budget / Mid-range / Splurge headings; Drink and Sleep too) and for diets (vegetarian, vegan,
+  halal, kosher, gluten-free, street food; only those some place mentions, with counts), and **Book a
+  table** on each restaurant (OpenTable's search for it; an affiliate id later is **[owner]**).
+- **Left on purpose:** nothing is made up: a topic the guides don't cover simply doesn't show. Visa rules
+  per passport (a table of every passport against every country) belong with M205's matching.
+- **Checked:** `travel-know-ui.mjs` (Kyoto: A and B at 100 V, an adapter and voltage line for a British
+  visitor, months named, 5 stories, 8 topics with Japan's marked, 5 neighbourhoods; Kyoto/Central's Eat:
+  what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
+  sideways scroll, no errors), `travel-tips.test.ts`, `pnpm check`.
+
+## M205: Travel, find a destination (the owner's Airbnb list of 15 Nov, item 1)
+
+- **The ask:** "5 days in November, €400, street food, history, walkable: where should I go?"
+- **Where:** Explore → **Find where to go** (`?view=find`, a `Segmented` beside "Search a place";
+  `TravelFinder.tsx`, loaded only when chosen). Days (stepper), budget per person and its currency, the
+  month (next month by default), what you love (18 interests) and your passport (your home country from
+  `uv-travel-home`, now `useHome()` in `travel-ui.tsx`). Every change re-ranks at once in the browser
+  and the cards slide to their places (`morph()`); 12 shown, "Show more places".
+- **The ranking** (`src/lib/travel-find.ts`, pure, tested): that month's weather (mild and dry 17–29 °C
+  and under 100 mm; beach weather 24–33 °C when beaches are wanted; snow when skiing is), the budget per
+  day against **an estimated day there** for three styles (US-price days of $95 / $195 / $390 times the
+  country's price level to the power 0.8, since what visitors pay varies less than what locals pay), the
+  interests matched, the visa (no visa / ETA / eVisa / on arrival / needed / permit; refused entry left
+  out; a stay longer than allowed warned). At most two places from one country in the first twelve. Each
+  card says why, good and bad, with the cost for the whole stay.
+- **The data, read ahead** by `npx tsx scripts/gen-travel-data.mts --places | --money | --visa`:
+  `travel-places.json` (145 places' position, banner and month-by-month climate: the guide's climate
+  chart, else **NASA POWER**'s 2001–2025 averages at its position, public domain; regions use a
+  representative city, `CLIMATE_AT`), `travel-money.json` (World Bank household PPP ÷ the exchange rate,
+  2025, CC BY 4.0; PR, PF, CU and AR are marked guesses), `travel-visa-titles.json` (197 passports'
+  Wikipedia article names). The places themselves (country, themes, interests, blurb) are hand-written
+  rows in `travel-ideas.ts` (Explore shows the first 24, "Show all 145 places").
+- **Visas** (`GET /travel/visa?p=GB`, `src/lib/travel-visa.ts`, tested): Wikipedia's "Visa requirements
+  for … citizens" table read row by row (the Timatic code, else the country's name), kept 30 days in
+  `travel_cache`. The guide's **Know before you go** now says "Your passport: No visa needed (up to 90
+  days)" with the source and "check the official rules before you book".
+- **Traps:** NASA POWER's `T2M_MAX` climatology is the month's hottest hour, not a typical day (Bruges
+  showed 19 °C in November): use `T2M ± T2M_RANGE / 2`. Wikivoyage's position for a region can sit in a
+  rain shadow (Kerala showed 56 mm in July): add the place to `CLIMATE_AT`. `Intl.DisplayNames.of` throws
+  on a code it doesn't know: `named()` in the finder. Czechia's money in `travel-countries.json` was
+  `["203","CZK"]` (Prague's guide showed "203"): fixed.
+- **Checked:** `travel-find-ui.mjs` (Hanoi first for the owner's example; reasons; the British passport's
+  visas; beaches in July re-rank; 24 after Show more; the Kyoto guide names the visa; axe clean at 1280
+  dark and 390 light; no sideways scroll; no errors), `travel-find.test.ts`, `travel-visa.test.ts`,
+  `pnpm check`.
+
+## M206: Travel, the trip planner (the owner's Airbnb list of 15 Nov, items 4, 5 and 7)
+
+- **Where:** the Travel menu's **Trips and saved** (`/travel/saved`, phone tab "Trips": a `Segmented` with
+  Trips and Saved places, `?tab=saved`), and a trip's page `/travel/trip?id=` (`TravelTrip.tsx`, with
+  `trip-days.tsx` for the board and `trip-add.tsx` for adding places). A trip starts from **New trip**,
+  **Plan this trip** on a Find where to go card (that place and the days asked) or **Plan a trip here** on
+  a guide (`startTrip()` in `travel-ui.tsx`).
+- **A trip:** its name (edit in place), start date, travellers, style (budget / mid-range / comfort) and
+  currency; **Route**: the cities in order (any guide: `PlaceSearch`, now shared with Explore), each with
+  its dates and a days stepper, up/down, remove, **Shortest order** (the first city stays; nearest next,
+  then reversing stretches while that shortens it); between two cities the distance, the likely way and
+  time, and links (`betweenLinks()` in `travel-book.ts`: Rome2Rio every way, Google Flights over 250 km,
+  Omio's search in Europe, 12Go's route page in Asia, Direct Ferries where islands are involved).
+- **Day by day** (per city): "Not planned yet" and a column per day with its date and the day's total
+  (amber past 9 h). Each place: kind, price, opening hours, the time to spend (by kind and name: museum
+  2 h, viewpoint 30 min…; changeable), the walk or ride from the place before it, a **Move to** menu,
+  earlier/later arrows and its map. **Drag** a place between days or within one (HTML5 drag and drop,
+  `data-no-arrange` on the board; cards slide with `morph(…, { deep: true })`). **Plan my days** spreads the
+  places by closeness (a sweep round the middle, cut into days of at least five hours, each in walking
+  order). **Add places**: the ones saved in that city, or any the guide lists by kind.
+- **Budget:** stays + food + getting around (each country's price level and the style, from M205),
+  between cities (by distance, flights past 700 km), tickets (the guides' listed prices, read in their
+  own currency: `readPrice()`; places without one counted), for all travellers, with per person. A
+  sleep place's own price replaces the estimate. Says what it leaves out (getting there from home).
+- **Together:** the invite link (`/travel/saved?join=CODE`, asks before joining; the owner can make a new
+  link and remove people; others can leave); every change `publish()`es a refresh to the members' open
+  pages; joining and deleting notify in the app. **Add to calendar:** an .ics file made in the browser
+  (`tripIcs()`, all-day days with the day's plan; `src/lib/ics-text.ts` now shared with the calendar feed).
+- **Server** (`src/server/travel-trips.ts`, routes `travel/trips…`): only members see or change a trip (a
+  stranger gets "not one of yours"); limits 50 trips a person, 12 cities, 60 days, 300 places, 12 people;
+  a city sent by name gets its position and country from its guide (`placeOf()` in `travel.ts`); moves go
+  in `CASE` updates of 12 places a query (7 values each, under D1's 100). Database update **0221**
+  (`travel_trips`, `travel_trip_members`, `travel_trip_stops`, `travel_trip_items`; owners and members
+  cascade with the account in SQL, like `travel_saved`). Sample mode has a Lisbon and Porto trip.
+- **Traps:** a `<p>` right after a card's heading is styled 12 px grey by the shared rules (M135): the
+  budget figure is a `<div>`. The motion layer counts figures up: read a number after ~1.5 s in checks.
+  A drop target far down a stretched column is off screen: tests drop near its top.
+- **Checked:** `travel-trip-ui.mjs` (Plan this trip from the finder, a start date, Porto added by search,
+  the leg and its links, four places from the guide, Plan my days 3 + 1 with walk times, a drag kept after
+  reload, the budget, the calendar file, a friend joining on a phone, axe clean at 1280 dark and 390
+  light, no sideways scroll, no errors, the trip deleted), `travel-plan.test.ts`, `pnpm check`.
+
+## M207: Travel, getting there, budget stays and travellers (the owner's Airbnb list of 15 Nov, items 5 and 6)
+
+- **On a trip's page**, under Day by day (`trip-extras.tsx`): **Getting there and back** (the city you set
+  off from, kept on the device as `uv-travel-from`: flights, Rome2Rio and Omio or 12Go out to the first
+  city on the start date and back from the last the day after); **Where to stay** in the chosen city (the
+  guide's Sleep places by price band, budget / mid-range / splurge, with how many and the lowest price in
+  the trip's currency, against our estimate a night for the trip's style; **Hostelworld** for hostels
+  beside **Booking.com** with the city's dates and travellers); **Travellers in** the city (below). A
+  guide's Sleep tab has the same two stay links ("Compare prices"), shown even when the city keeps its
+  hotels in its district guides.
+- **The travellers board** (`src/server/travel-board.ts`, routes `travel/board…`, `travel/blocks`; database
+  update **0222**: `travel_board`, `travel_board_reports`, `travel_blocks`): opt-in per city and dates
+  (the trip's dates for that city), a note of up to 200 characters, the "I'm 18 or over, and I'll meet
+  people in public places" tick. **Adults only:** refused when the birth date says under 18, or for a
+  student their school counts as under 18 (`isMinor`, the school's policy). Shown only to others on the
+  board for the same city with overlapping dates: their first name, dates and note, never an account id
+  (messaging, reporting and blocking go by the post). Someone not on the board sees only how many are.
+  **Message** opens a chat in Travel's own Messages (`directChat(a, b, 'travel')`: `directChat` now takes
+  the app, and finds only that app's chat, as M179 meant); **Report** (a reason; three reports hide a
+  post); **Block** (hides both people from each other there and refuses new chats from the board);
+  "Unblock everyone I blocked"; "Take me off". Limits: 20 cities a person, dates within 18 months, up to
+  90 days.
+- **Search when Wikivoyage is busy:** it answers 429 to busy shared addresses (Cloudflare's included), so
+  `travelSearch` now falls back to the app's own 145 places by name or country instead of failing.
+- **Links** (`travel-book.ts`, tested): `betweenLinks` (above), `hostelLink` (a district's city),
+  `ferryLikely` (island countries, or within a country of islands). Only link patterns that were
+  confirmed are used: Omio and Direct Ferries open their own search pages (their route pages couldn't be
+  checked).
+- **Left out:** a chat started on the board stays in Messages after a block (people can mute or archive
+  it there; Messages has no block of its own); the owner console doesn't list board reports (three hide a
+  post by themselves).
+- **Checked:** `travel-board-ui.mjs` (Alice and Bob plan Lisbon on the same dates; the way there and back;
+  stays; both join; Bob sees "Alice" and her dates, messages her (a chat opens), blocks her, neither sees
+  the other; a guide's Sleep tab with both links; axe clean at 1280 dark and 390 light; no sideways
+  scroll; no errors; everything tidied up), `travel-board.test.ts` (adults only, first names only, only
+  people on the board, blocks both ways, chats only with the same city's board), `travel-plan.test.ts`,
+  `pnpm check`.
+
+## M209: Travel, the map, real places and UniVerse's own reviews (the owner, 16 Nov)
+
+- **The ask:** "real data of places and reviews of people from that places and make the map detailed with
+  all the information like the apple maps … something different that nobody has … ultra smooth". The owner
+  chose (asked first): build it despite the launch pause, and reviews from UniVerse's own people (not a paid
+  service).
+- **Where:** Explore's third view **Map** (`/travel?view=map`, `&at=lat,lon,zoom` or `&d=<guide title>`), and
+  "See on the map" on every guide. `src/components/travel/map/`: `TravelMap.tsx` (loaded only when opened,
+  with MapLibre), `map-layers.ts`, `PlaceCard.tsx`, `Reviews.tsx`, `TripPicker.tsx`.
+- **The map:** MapLibre GL 6.16 (BSD; `pnpm add maplibre-gl@6.16.0`) drawing **OpenFreeMap**'s vector tiles
+  of OpenStreetMap (free, no account or key; its "liberty" style in light mode, "dark" in dark mode, where
+  UniVerse adds the 3D buildings and the place names the dark style lacks). Tiles go straight from
+  OpenFreeMap to the browser: **no Worker CPU**. MapLibre's worker is copied to `public/maplibre` by
+  `scripts/copy-maplibre-assets.mjs` (dev and build, like pdf.js; gitignored) and set with `setWorkerUrl`;
+  the security headers allow `tiles.openfreemap.org` (connect and img). Credits always shown in the panel.
+- **What it does:** kinds of place (Sights, Food, Cafés, Drinks, Museums, Parks, Shops, Hotels, Transport;
+  the tiles' `poi` classes, `src/lib/travel-map.ts`) shown in the accent with a list of those in view (one of
+  each name, the notable and near first); **tap any place**: its real facts from OpenStreetMap through
+  Nominatim (the tile's feature id is the OSM id ×10 + type: `osmKey`), open or closed **at the hour chosen,
+  in the place's own time zone** (`src/lib/opening-hours.ts` reads the common opening_hours forms and says
+  only the written hours for the rest; `src/lib/travel-local.ts`: the zone from `travel-zones.json`, made by
+  `gen-travel-data.mts --zones` from the tz list), address, call, website, menu, access, payments, its photo
+  and a line from Wikidata and Wikipedia; Directions (OpenStreetMap, on foot), Save, **Add to a trip** (into
+  the trip's nearest city, or a new trip). **The hour slider** (the next 24 hours) lights the 3D buildings
+  from where the sun really is there (`sunPosition`, `setLight`: warm low sun, a soft blue night) and shows
+  sunrise, golden hour and sunset. **Layers:** 3D, photos people took nearby (Wikimedia Commons, each with its
+  author and licence), stories (Wikipedia's articles about places nearby, amber pins), UniVerse reviews
+  (green pins with the average). **Walk from here** (1–4 hours): the notable sights within reach strung
+  nearest-next, with a look's time (an artwork 10 min, a church 20, a museum 75), drawn as a dashed line with
+  numbers, arrival times in their time, and all of it into a trip in one go.
+- **Reviews** (`src/server/travel-reviews.ts`, database update **0223**: `travel_reviews`,
+  `travel_review_reports`): stars, words, "I live here"; one a person a place (changing it clears old
+  reports); 30 a day; three reports hide one; shown by first name only; the place card shows **Locals say**
+  apart from **Visitors say** and tabs for each. A place is its OSM id or `wp:<Wikipedia title>`.
+- **Server** (`src/server/travel-places.ts`, routes `travel/place|where|photos|stories`): every answer kept
+  in `travel_cache` (places and positions 30–90 days, photos and stories 7) and only an OSM id or a rounded
+  position is sent; a busy source leaves its layer empty instead of failing.
+- **Traps:** MapLibre's stylesheet makes its container `position: relative` (the map came out 300 px tall):
+  the container's position is inline. A filter that matches nothing must be an expression
+  (`['==', ['get','class'], '__none__']`), not `['==', 1, 0]`. OpenMapTiles files artworks as `art_gallery`
+  (a museum's 75 minutes): `walkStay` checks the subclass. The map's listeners use `useEffectEvent` (React
+  19.2) so the map is made once without stale state or lint-disable comments. Wikimedia rate-limits busy
+  shared addresses (this machine after the data runs): photos and stories were tested on saved samples.
+- **Checked:** `travel-map-ui.mjs` (the map draws in 3D; 40 sights in view; a place's facts with "Open
+  until …"; a review as a local counted under Locals and deleted; Food lists restaurants; a 5-stop walk; the
+  hour slider; phone panel; axe clean at 1280 dark and 390 light, the map canvas aside; no errors),
+  `travel-local.test.ts`, `travel-place.test.ts`, `travel-map.test.ts`, `travel-reviews.test.ts`, `pnpm check`.
+
+## M210: no page titles, no "Lab" tags (the owner, 16 Nov)
+
+- **The asks** (two screenshots): "please remove this part from every section of project because it is not
+  needed in any apps" (a page's title, "Travel", and the line under it); "please remove lab from here for
+  every app" (the app tabs' "Lab" tags).
+- **Titles:** `Topbar` no longer shows the title or subtitle on computers or phones; it keeps an `sr-only`
+  `<h1>` (screen readers, and checks that look for a page's heading) and the browser tab's title. The
+  phone's row under the bar shows only when the page has actions (`leftNode`, `action`, `rightNode`).
+  Gone with them: the phone bar's small title that took over on scroll (`setPageTitle` / `usePageTitle`
+  in `src/lib/chrome.ts`, `.nav-inline-title`, `data-collapsed`, `.large-title`) and the title's glide from
+  a card (`sharedId` is still accepted, unused). The UniVerse name now stays in the phone's bar.
+- **Lab:** the `lab` field of `APPS` and `LabTag` are removed; no app is marked Lab anywhere (website tabs,
+  app cards, the world section, the side menu's app switcher, the hub). The 5 December review of each
+  app's numbers still stands; it just isn't shown.
+- **Checked:** `/travel/saved`, `/green` (phone) and `/student`: no visible title, one heading for screen
+  readers, no errors; `pnpm check`.
+
+## M211: the main pages' lag, and the error log (the owner, 16 Nov)
+
+- **The ask:** "the website and app lagg alot in the main page so please fix it and check if any errors are
+  there in the system".
+- **Measured** with `scripts/checks/main-pages-smooth.mjs` (new; on `local:serve`): the landing signed out
+  and the hub, UniVersity's home, Travel and Trace signed in, at 390 × 844 with the CPU slowed 4× and at
+  1440 × 900: long tasks while loading, frames over 3 s still and while scrolling, and a CPU profile.
+  **Trap:** starting the CPU profiler stalls a slowed page for ~0.6 s; the script measures stillness before
+  it starts.
+- **The big one, `src/lib/scroll-motion.ts` `arrive`** (M130, content replacing a placeholder gliding in):
+  it ran inside every MutationObserver callback, building its list by copying (quadratic: thousands of nodes
+  when a page renders) and reading layout in the middle of React's commit: 0.3–0.5 s of each main page's
+  start on a slow phone. Now: records under `[data-no-motion]` are dropped first (cached per node, `quiet`),
+  a batch over 300 changes (a whole page building: its entrance moves it) is skipped, the rest is looked at
+  in the next animation frame, the list is pushed not copied, `moving()` looks six levels up, and nested
+  queued roots are scanned once. `PendingPage` had its own watcher doing the same job (both ran): removed;
+  `arrive`'s placeholder list now includes `[role="status"][aria-label="Loading"]`.
+- **The landing:** the hero scenes, the typewriter line and the rotating "hello" carry `data-no-motion`
+  (they animate themselves many times a second); pointing at the app tabs builds only that app's sections
+  ahead (it built all five, hidden: a half-second freeze) and loads only its code; the top bar's "scrolled"
+  look comes from an IntersectionObserver on a 1 px mark (it ran on every scroll event); the product
+  window's tilt is a CSS scroll timeline (`.window-tilt`; it was framer-motion's `useScroll` on the page's
+  thread); counting numbers reuse one `Intl.NumberFormat` (`bits.tsx`), as `fmt()` now does
+  (`src/lib/instruments.ts`: 76 ms of the hub's start).
+- **Result** (phone, CPU ×4): the motion layer's share fell from 0.26–0.49 s to under 0.1 s per page; every
+  main page now holds 60 frames a second while still; scrolling the landing has no long task from the page's
+  code (what's left in the headless check is drawing on software graphics). The page entrance's one
+  layout read (`page-transition.ts`) stays: the browser lays the page out once anyway.
+- **Errors:** the live `error_reports` (production D1, read only) have nothing new since 10 Nov (a stray
+  multipart POST to `/`, already refused since M159) and 7 Nov (a styling and chunk mismatch during a
+  deploy); the open ones last happened 29–31 Oct and haven't come back since the fixes after them.
+- **Found out of date (not changed by this):** `landing-story-ui.mjs` (looks for `#story`'s "Apps" list,
+  gone since M164), `landing-pause-ui.mjs` (expects the phone hero to move at the top) and
+  `landing-try-ui.mjs` (a demo it scrolls to is hidden): they fail the same way without these changes.
+- **Checked:** `main-pages-smooth.mjs` before and after, `pnpm check`.
+
+## Hand-over: the owner's Airbnb list (15 Nov)
+
+Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip
+planner) and M207 (getting there, stays, travellers). M208 was kept for "the extras" in M202's first plan;
+nothing more was asked for it: ask the owner before starting anything under that number.
+
+## M212: dark mode's accent is the website's blue; calmer greens (16 Nov)
+
+The owner: "remove the neon greenish colour from the app as i dont like it jsut put something which matches
+the website". The neon green was dark mode's lime (#c6f24a, M124's Relay look) plus Green's bright mint.
+
+- **Dark mode's accent is blue** (`globals.css`, M124 block): the re-pointed accent scale (indigo / violet /
+  purple / pink / fuchsia / aqua) runs 50 #eef4ff … 950 #172554 with 400 #6ea2f8 and 600 #2563eb; `--tint`
+  #6ea2f8, `--tint-text` #93b9fa, `--ins-hot` #6ea2f8, `--cta` #2563eb with white text; main buttons are the
+  website's #2563eb with white text (light mode keeps its black ones). The rules that turned white text ink on
+  a solid accent fill (needed on lime) now apply only to Trace, Relief and Play, whose accents are light; on
+  blue, white stays.
+- **Green is calmer**: its dark block (M132) uses deeper emerald (500 #0d7f5e, 600 #047857) with a soft
+  #4fbf98 tint; the plain `emerald-*` / `green-*` classes in dark mode are softened at the start of the
+  M124 `.dark, .on-dark` block (states keep their meaning, just less glowing); Green's bars lost their lime
+  end (`to-emerald-300`).
+- **Scenes:** UniVersity's dark scene is drawn in the blue (`CAMPUS.dark` in `backdrop.ts`); Green's
+  fireflies are warm (no lime).
+- **For code that builds on it:** don't add `lime-*` classes; a solid accent fill in dark mode takes white
+  text (except in Trace, Relief and Play). §8 of AGENTS.md says the same.
+- **Checked:** screenshots of the landing, `/green`, `/relief` and `/student` in dark mode, `pnpm check`.
+
+## M213: Travel's left-outs, and a look like the other apps (16 Nov)
+
+The owner, quoting M207's "Left out on purpose" list: "Do all this also. The travel app needs to look
+professional and modern like the other apps".
+
+- **Getting between cities:** a "This route by train, bus or ferry" link to Google Maps' documented directions
+  address (`/maps/dir/?api=1&origin=…&destination=…&travelmode=transit`) opens the exact route with times. Omio's
+  route links need Omio's own city numbers (only in its partner file) and Direct Ferries publishes no route
+  address, so those two still open their search, now labelled "Search trains and buses" / "Search ferries".
+- **Blocking on the board** (`blockTraveller`): the Travel chat between the two goes to the blocker's archive,
+  muted; `travelChatBlocked()` refuses new messages in a one-to-one Travel chat between people one of whom
+  blocked the other (the chat send route, 403; the blocker is told to unblock on the board). Other chats
+  between the same people (school, Messages) are untouched: the block is the board's.
+- **Owner console → People → Moderation** lists Travel's reported board notes and reviews
+  (`src/server/travel-moderation.ts`) as their own "Travel" group: Hide, or Restore (shown again, reports
+  cleared). Three reports still hide one by themselves.
+- **Live updates between friends:** `scripts/checks/travel-live-ui.mjs` (two people on one trip; one adds a
+  city and renames it, the other's open page shows both). Measured on `local:serve`: the city and the new name arrive on the friend's screen in 0.1 s (live, through the
+  RealtimeHub; the plain dev server has no Durable Object, so there it waits for the 30 s fallback).
+- **The look:** Travel has its own colour like Trace, Relief, Green and Play (the M132 block, sky: light mode
+  #0369a1 with white text; dark: 400 #38bdf8 for text, marks and my bubbles (ink text on it), fills from 500
+  #0278b8 down carry white text at 4.8:1 or more, so Travel is not in the M212 ink-on-accent rule);
+  its `sky-*` classes are now the accent classes (`indigo-*`), so a person's own accent reaches Travel too. A
+  tab row across every Travel page (`TravelTabs`: Explore, Find where to go, Map, Trips, Saved) like Trace's;
+  Trace's row is now the shared `TabRow` (`components/ui`). Explore's first card is laid out like Trace's
+  console: the headline with the serif accent word (`.accent-word`), the search, four lines on what's here,
+  and "Your trips" beside it (the next three, New trip, Find where to go). The Segmented switchers are gone
+  (the tab row does their job).
+- **Checks fixed:** `travel-ui.mjs` opened `/travel/saved` (Trips since M206) and its "Save" click also matched
+  "Saved"; `travel-board-ui.mjs` now also sends after the block (403 both ways).
+- **Tried in the browser afterwards** (`console-ui.mjs` on `local:serve --test-secret --owner-test`, which now
+  adds a reported board note): its Travel group, the reason, Hide, then Restore with the reports cleared. Fixed
+  on the way: hidden items were faded (their link text failed contrast) and the cohort table's darkest cells
+  were too dark for their dark text.
+- **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
+  (`travel-moderation.test.ts`, the board's), `pnpm check`.
+
+## Hand-over: the owner's asks of 16 Nov still to do
+
+Asked and not started (each its own item, from M214; next database update 0224):
+
+1. **Travel's map, bigger** ("more good looking and accurate … a lot of details and features … my cloudflare
+   cpu limit should not rise"): terrain in 3D with hill shading (AWS's free terrarium elevation tiles), a
+   satellite view (EOX's Sentinel-2 cloudless, CC BY 4.0, credited), the globe when zoomed out, the sky lit by
+   the real sun, public transport lines, Panoramax street pictures ("look around"), walking-time rings, my
+   position with its accuracy, a layers panel, and "filter places here". Everything straight from the browser
+   to those services (no Worker CPU): add their hosts to the CSP (`security-headers.ts`: img-src /
+   connect-src). Checked reachable with CORS: `elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png`,
+   `tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`, `api.panoramax.xyz/api/map/{z}/{x}/{y}.mvt`.
+2. **Travel's big features** ("unique … or combine different apps' features into one"): a trip's shared
+   expenses (who paid, who owes whom, budget against spent), a packing list from the trip's weather, plans and
+   plugs, a money converter with what things cost there. Needs a database update.
+3. **Green, about 10 big features** (and "professional, animated, realistic"; the calmer colours were M212):
+   e.g. a footprint calculator, a trip CO₂ comparer, a green places map, community events, goals and pledges,
+   impact equivalents, a habit calendar, a team league, tips, a year card.
+4. **Relief, about 10 big features**: e.g. live disaster alerts (GDACS and USGS, read in the browser), a
+   preparedness plan and kit, a volunteer-hours certificate, a triage board, supply matching, nearest shelters
+   with walking time, first-aid basics with official links, pledges.
+
+The launch focus (section 4 of AGENTS.md) pauses new features; the owner asked for these anyway, so build
+them, one item each, and keep the CPU on the Worker flat (read outside data in the browser where possible).
+
+## M214: Travel's map, clearer and bigger (16 Nov)
+
+The owner: "the map needs to be more good looking and accurate … a lot of details and features … my cloudflare
+cpu limit should not rise"; on the live map: "this thing look messy … user cant understand what to look for …
+it should look sharp"; "add auto zoom when i click on the specific restaurant … smooth".
+
+- **Pins, not dots** (`map/pins.tsx`): each kind of place has a round pin in its own colour with its lucide icon
+  (food orange, cafés brown, drinks purple, sights rose, museums pink, parks green, shops amber, hotels indigo,
+  transport blue; stories amber books, reviews green stars), drawn on a canvas at twice the size from hidden SVGs
+  the component renders, added with `addImage(…, { pixelRatio: 2 })` before every style. The chosen kind is one
+  symbol layer (`uv-hit`): pin plus name, the notable first (`symbol-sort-key: rank`), never overlapping
+  (wider spacing when zoomed out); other places (dark style) only from zoom 16 as a small dot with a quiet
+  name, and never over a pin. The chips and the list show the same icons. Drawing a pin never waits more than
+  a second (the map doesn't wait on them).
+- **Tapping a place glides in** (`pick`): `flyTo` to zoom 17 (tilted when 3D is on), eased in and out,
+  leaving room for the card; a short ease when already close; a jump with Reduce Motion.
+- **Layers panel** (remembered on the device, `uv-travel-map-look`): Map or Satellite (EOX's Sentinel-2
+  cloudless, CC BY 4.0: soft close up, said so), 3D hills and buildings (AWS Terrain Tiles; relief shading is
+  always on except under the satellite pictures), trains, metro and ferries (lines coloured by kind, stations
+  as train pins), street photos (Panoramax coverage; tap a line to "look around": the nearest photo, its date,
+  direction and author, CC BY-SA 4.0), walking-distance rings (5, 10, 15 min from the middle), photos people
+  took, stories, UniVerse reviews. The globe when zoomed out; a sky that follows the sun there.
+- **Where I am:** a blue dot and a circle as wide as the phone is unsure (only on this screen, never sent).
+- **Filter** the places in view by name.
+- **No Worker CPU:** every tile and picture goes from its source to the browser. The page's security rules
+  (`security-headers.ts`) allow the terrain and satellite tiles, Panoramax's API and the hosts its pictures
+  come from (`STREET_HOSTS` in `src/lib/travel-map.ts`, with the storage server two of them redirect to;
+  pictures elsewhere are skipped).
+- **Checked:** `travel-map-ui.mjs` (now also the Layers panel, satellite and transport, the filter, and no CSP
+  refusals) on `local:dev` and `local:serve`, screenshots (Zermatt in 3D, the globe, Belém by satellite, Paris
+  transport and street photos, Nantes's food), unit tests (`streetPhotoOf`), `pnpm check`.
+
+## M215: a trip's Money and Packing (16 Nov)
+
+The owner: "add more big features in the travel app which are unique and different from others or combine
+different apps features into one app". A trip (`/travel/trip?id=…`) now has three parts (`?part=`): Plan (as
+before), **Money** and **Packing**, for everyone planning it, live (database update 0224).
+
+- **Money** (`trip-money.tsx`): shared costs (what, how much, currency, kind, who paid, for whom, the day);
+  where it stands (spent so far, against the Plan tab's estimate, your balance); **Settle up**, the fewest
+  payments that make everyone square, each with "Mark as paid" (a payment back is a cost of kind `settle`);
+  a **converter** between any of the app's currencies (World Bank yearly average rates: no outside call); and
+  **what things cost there** (a coffee, lunch, dinner, a beer, a ride, a museum) per country of the trip, in
+  the trip's currency and the local one, from the country's price level (said so). Sums in
+  `src/lib/travel-split.ts` (cents; per currency: a bill in yen is settled in yen; an even split's leftover
+  cents go to the first people so balances always add up to nothing; `readAmount` takes "12,50", "1.234,56").
+- **Packing** (`trip-packing.tsx`): a shared list grouped (documents, money, clothes, weather, power, health,
+  wash bag, what you'll do), ticked by anyone ("Packed by Maya"), with your own things; **For this trip**
+  suggests what to take from the trip itself (`src/lib/travel-pack.ts`): its length (clothes counts), each
+  place's weather in the month you're there (the 145 places with a climate chart), what the places are for
+  (beaches, mountains, temples, nightlife), the plugs there against your home country's (an adapter only
+  when none fits) and the cash you'll need; "Add all" or one by one.
+- **Server** (`src/server/travel-trip-extras.ts`, routes under `/travel/trips/:id/expenses|packing`): only the
+  trip's members (`tripFor`); who paid and who shares must be members; a payment back goes from one person to
+  another; at most 500 costs and 200 packing things a trip; packing rows written 10 at a time (D1's 100 bound
+  values); changes `publish` a refresh to the members. Sample answers for the demo.
+- **For code that builds on it:** money figures carry `data-no-motion` (the page-wide count-up made a
+  changing amount read wrong while it ran); the trip hero has room above the title for the back link.
+- **Checked:** `travel-money-ui.mjs` (new: two people, a dinner, the balance, settling up, the converter and
+  prices, the packing suggestions for Bangkok and Kyoto in August, Add all, a tick seen by the friend; axe at
+  1280 dark and 390 light), `travel-trip-ui.mjs` (its wait no longer depends on old test trips), unit tests
+  (`travel-split`, `travel-pack`, `travel-trip-extras`), `pnpm check`.
+
+## M216: Green's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10 features
+in there each … professional and animated and realistic and ultra smooth" (the calmer colours were M212).
+Green has a tab row on every page (`GreenTabs`, the shared `TabRow`), each new part loaded only when opened
+(`?view=`; database update 0225):
+
+1. **Footprint** (`GreenFootprint.tsx`): a yearly carbon footprint from a few answers (car and transport, flights,
+   home size, heating, people, electricity and tariff, diet, new things bought), against the world's average
+   (4.7 t) and 1.5 °C (2.3 t), its parts, the biggest one linked to its tips; results saved to see the change
+   (the server works the total out again from the checked answers: `readFootprint` / `footprint`).
+2. **Journeys** (`GreenJourney.tsx`): a journey's CO₂ by each way of going for the people travelling (a car's is
+   shared), cleanest first; type the km or pick two of Travel's places; "I went this way" logs it as an action.
+3. **Goals**: a monthly goal of CO₂ (a ring, this month's actions counted) and **pledges** with a week of days to
+   tick and the run of days (`green_goals`, `green_pledges`: days kept as JSON, four months).
+4. **Tips**: 16 actions ranked by what they save a year (about, said so), by area, each "Pledge this".
+5. **Events** (`GreenEvents.tsx`): clean-ups, plantings, repair cafés, swaps, nature walks, near you or everywhere;
+   "I'm going" (only the count shows, never who), directions, a calendar file; adults organise (the shared
+   `adultOnly` in `safety.ts`, moved there from the Travel board), three reports hide one, the organiser deletes.
+6. **Green places** (`GreenPlaces.tsx`): recycling, water refill, bike hire, EV charging, second-hand shops and
+   markets near you, read from the map's own tiles as you move (OpenMapTiles' `poi` subclasses; Overpass
+   wasn't needed and couldn't be reached from the test machine), with counts, a list by distance, directions
+   and the place on OpenStreetMap.
+7. **Your year** on My impact (`GreenYear.tsx`): a heatmap of every day of the last year, days acted, the
+   longest run, the best month (`greenMe` now returns `year`, kg a day, from the actions it already reads).
+8. **What it means**: the CO₂ saved as trees for a year, km not driven, phone charges, days of a person's emissions.
+9. **A picture of your year**: drawn on a canvas in the browser and saved as a PNG to share.
+10. **Team league**: this week's ranking (since Monday) beside the 30 days, on Teams (`greenTeams` → `week`).
+
+- **Factors** (`src/lib/green-plus.ts`): rounded averages with their sources in comments and on the screens
+  (UK government 2024 conversion factors, Scarborough et al. 2014, US EPA); journeys and the footprint are pure,
+  so the page answers as you type.
+- **Checked:** `green-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; a
+  footprint saved, Lisbon–Porto ranked, a goal, a pledge ticked, an event with someone going, 40 green places in
+  Lisbon), unit tests (`green-plus`, `green-plus` server, the board's after the move), `pnpm check`.
+
+## M217: Relief's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10
+features in there each". Relief has a tab row on every page (`ReliefTabs`; the live map, My requests and
+Organisations included), each new part loaded only when opened (`?view=`; database update 0226):
+
+1. **Most urgent** (`ReliefUrgent.tsx`): open needs ranked by urgency × how long they've waited × how many people
+   (`triage`, both grow slowly), with the reasons ("Critical", "Waiting 3 days", "12 people"), near me within a
+   distance, "I can help" and Message right there. From the live map's own answer: no new server work.
+2. **Matches**: each open need with the open offers of the same kind within 15 km, nearest first, walking time.
+3. **Alerts** (`ReliefAlerts.tsx`): GDACS's orange and red alerts (earthquakes, cyclones, floods, volcanoes,
+   droughts, wildfires) and USGS's M4.5+ earthquakes of the week, on a globe and a list, worst first or nearest to
+   me. The server reads both once for everyone and keeps them 15 minutes (`relief:alerts` in `travel_cache`):
+   one fetch however many people look; the same quake from both is shown once (`readAlerts`).
+4. **My emergency plan** (Be ready): where to meet near home and away, who to call, medical needs, pets, notes;
+   only the person sees it (`relief_plans`, checked by `readPlan`: short fields, six contacts, phones as numbers).
+5. **A bag ready to go**: 16 things for three days, quantities for the household, ticks saved.
+6. **Emergency numbers** for any country (Travel's country facts), as tap-to-call buttons.
+7. **Heat, frost and heavy rain** in the coming week where I am, with what to do (MET Norway through Travel's
+   cached forecast `/travel/weather`: no new server work); and **a card for my phone** (a picture of the plan
+   and numbers, drawn in the browser).
+8. **First aid**: nine situations in short steps (CPR, recovery position, bleeding, choking, burns, broken bones,
+   heatstroke, hypothermia, shock) after the IFRC's guidelines, with the country's number to call.
+9. **My hours**: hours from the volunteer shifts signed up for that are over, by organisation, and **a
+   certificate** picture to keep (`/relief/hours`).
+10. **Places to go** now says the walking time to each place near you.
+
+- **The shared tab row** (`TabRow`) fills the chosen tab with the app's button pair (`--cta` / `--cta-ink`), so its
+  text reads in every app and theme (white on Relief's light orange failed contrast in dark mode).
+- **Not used, on purpose:** Open-Meteo (free for non-commercial use only) and Overpass (not needed; see M216).
+- **Seen once, not reproduced:** a React hydration warning (#418) on a phone right after the local server started;
+  every Green and Relief page loaded clean 16 times after it.
+- **Checked:** `relief-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; 119 live
+  alerts, a plan saved and read back, a go-bag tick, Portugal's 112, a first-aid card, the hours) and
+  `green-plus-ui.mjs` again on `local:serve`, unit tests (`relief-plus` lib and server), `pnpm check`.
+
+## M218: the apps' sections in the side menu, not a row across the top (16 Nov)
+
+**Undone by M219** (the owner meant the side menu itself, as a bar across the top): the rows are back.
+
+The owner: "can we make the horizontal section of the website in verticle style but dont change anything else",
+then a picture of the side menu: "this one". The rows of tabs across the top of Travel, Green, Relief (M213–M217)
+and Trace (since M50) are gone; their sections are entries in the side menu, drawn exactly like the others:
+
+- **Travel:** Explore, Find where to go, Map, Trips, Saved. **Green:** My impact, Footprint, Journeys, Goals, Tips,
+  Events, Green places, Teams & leaderboard. **Relief:** Live map, Most urgent, Matches, Alerts, Be ready, First aid,
+  My requests & tasks, My hours, Organisations. **Trace:** its entries were already there; Live globe added, and
+  All brands for the owner.
+- **The highlight follows the section:** on `/travel`, `/travel/saved`, `/green` and `/relief` (`SECTIONED`) the
+  side menu reads the open `?view=` / `?tab=` (`WithSection`, inside a `Suspense`: `useSearchParams` in the shared
+  layout must be, or every page stops being prerendered); an entry with a query is lit only for its section, one
+  without only when no section is open. Every other menu entry keeps the old rule (an href's query is ignored).
+- **Removed:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs`, `TraceTabs`. On phones the sections are in the menu
+  sheet ("More"), as the app's other entries are.
+- **Checked:** screenshots (Green → Goals, Relief → Alerts, Travel → Find where to go, each lit), `relief-plus-ui.mjs`,
+  `green-plus-ui.mjs` and `travel-find-ui.mjs` (they no longer look for the rows), `pnpm check`.
+
+## M219: the menu as a bar across the top on a computer's browser; M218's change undone (16 Nov)
+
+The owner, after M218: "i told you to make this part verticle in the website but not in the app so please do it
+properly this time", then "i need you to make that part horizontal at the top of the website", with the same picture
+of the side menu. So the first ask meant the side menu itself, and M218 (sections moved into the side menu) was the
+wrong reading:
+
+- **M218 undone in code:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs` and `TraceTabs` are back, the side
+  menu's entries are as before M218 (no `SECTIONED`, no `WithSection`), the checks look for the rows again. Its note
+  above stays as history.
+- **The bar (`src/components/layout/TopNav.tsx`):** on a computer in a browser (`TOP_NAV`, `(min-width: 1024px) and
+  (display-mode: browser)`; the same query is the `topnav:` Tailwind variant in `globals.css`) `DashboardShell`
+  renders `TopNav` above the page instead of `Sidebar` (`useTopNav`, `src/lib/top-nav.ts`). The installed app
+  (display-mode standalone or window-controls-overlay) and phones keep theirs. The bar has the logo alone (the owner:
+  "remove the universe impact name and keep the logo… it looks messy"; a link to the app's home), the app switcher
+  (`AppSwitcher compact`), the same entries as the side menu (`navFor`, plus the person's menu shortcuts), the tools
+  each page's bar had (Put this page back, search, theme, language, notifications: the bell opens the page bar's
+  panel with `universe:open-notifications`) and the account (name, email, Log out, Terms…). A group (People, Academics…) opens a list under its button (`Popover` in `ui/Menu.tsx`, arrow keys through
+  `menuKeys`); what doesn't fit goes under **More**, measured on a hidden copy of the row (a `ResizeObserver` on the
+  row and the copy: the window, the fonts arriving, another app or language). It stays at the top while the page
+  scrolls, in the 4 rem the page bar took (6 px, 52 px, 6 px), so things that stick at `lg:top-16` still line up.
+- **No empty row under it:** on a computer's browser `Topbar` shows only the page's own controls (`leftNode`,
+  `rightNode`, `action`), not sticky, and nothing when the page has none; its `sr-only` title stays.
+- **Rules for code that builds on it:** a new menu entry goes in `navFor` as before and shows in both. The bar is
+  `data-no-arrange` (arranging the menu by dragging, M166–M167, is a side-menu thing; the page's own arranging works).
+  Anything that hides the side menu (Studio's focus mode) hides `.top-nav` too. `AppSkeleton` draws the bar's
+  placeholder with the `topnav:` variant, so opening the app doesn't jump. The app switcher now also closes on a click
+  outside it (both menus).
+- **Checked:** `scripts/checks/top-nav-ui.mjs` (1440, 1280, 1024 in both themes, 390, and the installed app emulated):
+  the bar there and the side menu not, nothing cut off, a group's list, axe, no sideways scroll), `pnpm check`.
+
+## M220: light mode is the default (16 Nov)
+
+The owner: "make the light colour as default". With nothing saved (`localStorage.theme` unset) the page is light: the
+head script in `src/app/layout.tsx` adds `.dark` only for `dark`, or `system` on a dark device; `getSavedTheme()`
+(`src/lib/theme.ts`) answers `light`, and so do the theme menu's and Settings' first render. `public/manifest.json`'s
+start colours are the light page's (#f1f2f4). A person who chose dark or "system" keeps it (it's saved). Checked in a
+browser: a new visitor's landing and a signed-in home are light (the bar colour #f1f2f4), a saved dark stays dark.
+
+## M221: the landing's crash fixed; the top bar's entries dragged into order; no names twice (16 Nov)
+
+The owner sent the "1 problem(s) need a look" email and asked for M219's two left-outs.
+
+- **The crash** (`error_reports`, `/`, Safari: "null is not an object (evaluating 'e.stateNode._retryCache')"): the
+  landing builds an app's sections ahead, hidden in React's `Activity`, once the visitor points at its tab (M137,
+  one app at a time since M211). Those sections are `next/dynamic` with no `loading`, so they have no Suspense
+  boundary of their own (next's `loadable.js`): the hidden Activity caught their download. Pointing at another tab
+  before it ended dropped that Activity, and when the file arrived React's `resolveRetryWakeable` read
+  `stateNode._retryCache` of the dropped one (null; only its Activity case lacks the null check). Each app's part
+  is now `AppPart` in `src/app/page.tsx`: the Activity with a `Suspense fallback={null}` inside, which catches the
+  download and is dropped safely. **Rule:** anything shown or built inside an `Activity` that can suspend (a
+  `dynamic()` without `loading`, `use()`, `lazy`) needs a Suspense boundary inside the Activity.
+  `scripts/checks/landing-switch-ui.mjs` holds every download back 2.5 s and points at five tabs in a row: 16 such
+  errors before, none after.
+- **Dragging in the top bar:** press an entry and move sideways; the others slide aside and it drops where you let
+  go (a click that ends a drag doesn't open it; right-to-left mirrored). The order is the side menu's own (the vault's
+  `/~menu/<scope>`, the side menu's `data-arrange-scope`), so the installed app's side menu shows it too and More takes
+  the last ones in that order. ArrangeMode now puts `menu(scope)` / `setMenu(scope, layout)` and a `rev` that grows
+  with every change into `useArrange`; the side menu's entries carry `data-arrange-key` (their label), the name the bar
+  uses (shortcuts: "Shortcut …"). The account menu has "Put the menu back in order" once it has been changed. Entries
+  under More can't be dragged (drag one in the bar past where you want it instead, or widen the window).
+- **No names twice:** on the pages of Trace, Green, Relief and Travel (`ROWED`: each has its own row of sections), the
+  bar leaves out that app's entries (`APP_NAV`), which the row shows; on shared pages (Messages, Settings…) it keeps
+  them, the way back. A drag there only reorders what it shows (`reorderWithin` in `src/lib/arrange.ts`).
+- **Checked:** `landing-switch-ui.mjs` (above), `top-nav-ui.mjs` (no name in both the bar and the page's row; a drag
+  kept after a reload and put back), the unit test of `reorderWithin`, `pnpm check`.
+
+## M222: the notifications panel, Apple style (16 Nov)
+
+The owner, with a picture of the old panel (navy, emoji icons): "the notification panel doesn't look good so please
+work on it and make it look good and redesign it like apple style and make it ultra smooth".
+
+- **`src/components/notifications/NotificationsPanel.tsx`** (the page bar, `Topbar`, keeps the data, the unread count
+  and marking read; the panel loads on its own, fetched while the page is idle so the first tap opens it at once). iOS's
+  Notification Centre in the project's look, solid surfaces (no glass, §8): grouped grey (#f2f2f7) with white cards in
+  light mode, near-black (#0c0c0e) with #1c1c1e cards in dark; on a computer it floats 8 px from the window's edges,
+  rounded 26 px; on a phone it fills the screen.
+- **A notification:** an icon like an app's (its kind in iOS's own colours, `KIND`: messages blue, calls green, events
+  red, grades indigo, announcements orange, warnings amber; a kind that is an app's id, or a link into an app, shows
+  that app's icon; otherwise a grey bell), its title on two lines at most with the time ("now", "5m ago", "3h ago",
+  "2d ago", then the date), a dot while unread, two lines of text, "Important" on warnings and errors. Grouped Today,
+  Yesterday, Earlier; the same notification several times in a row (same title and kind) is one **stack** with layers
+  under it ("2 more"): a tap opens it, "Show less" closes it. `src/lib/notification-stacks.ts` (`when`, `byDay`,
+  `stacks`, tested).
+- **Controls:** "Read all" and a round close button in the header; iOS's segmented control (a grey track, a white thumb,
+  #636366 in dark: the `.notif-sheet` rules at the end of `globals.css`, the pills stay everywhere else) for All, Unread,
+  Important; a finger swipes a card to mark it read (`SwipeRow`; a stack: all of it); Escape and the dimmed page close
+  it, and focus goes back to the bell. Email notifications and "See all notifications" are one grouped card at the foot.
+- **Motion:** the sheet slides in on the smooth spring as one `transform` (the compositor runs it) and out in 240 ms;
+  the rows rise in one after another while it opens (`data-entering`, 35 ms apart, the glide spring); a filter or a
+  stack slides the rows that stay (`morph`, deep). Reduce Motion: fades.
+- **Checked:** `scripts/checks/notifications-panel-ui.mjs` (1280 dark and light, 390: no frame over 50 ms while it
+  opens, the day groups, 15 notifications as 7 rows with 5 stacks, a stack opened and closed, Unread, Escape, axe),
+  `pnpm check`.
+
+## M223: no picture of the student home on the landing (16 Nov)
+
+The owner, with a screenshot of it: "remove this from the main page". M116's `ProductWindow` (UniVersity's home drawn in a
+browser frame under the hero) is gone, file and all; the hero keeps its height, so the next section's top still shows on
+a tall screen.
+
+## M224: Play is UniVersity's Games section, no longer an app (16 Nov)
+
+The owner: "remove the game app from the website and it should be under the University app make a sub section there and
+add all these games there".
+
+- `'play'` is out of `AppId` and `APPS`; `/play` is one of UniVersity's paths, so the games pages (same addresses, the
+  arcade, the leaderboards, STORMFALL, rooms with codes) show UniVersity's menu, colour and scene. Every role's
+  UniVersity menu has **Games** (`/play`; students: after Learn).
+- Gone with it: the landing's Play tab, hero card, sections (`PlaySection`, `PlayMore`, the quiz "try it", `PlayScene`),
+  FAQ and sign-up lines; its place on the landing's globe; Play's backdrop scene and colour rules (`html[data-app=play]`);
+  the hub's games card (two fewer queries); Play's phone tabs and menu. The three 3D worlds that were Play's own
+  (`GAMES[].app`) are UniVersity's.
+- **Old rows:** a chat or anything saved with app `'play'` reads as UniVersity's (`knownApp` in `src/lib/apps.ts`;
+  `appById` and `AppIcon` fall back to it), so nothing meets an app that isn't there.
+- **Checked:** the type check found every place; a browser: the landing's tabs are the five apps, `/play` is UniVersity's
+  (`data-app=campus`, 13 games), the hub has no Play; `pnpm check`.
+
+## M225: the lag, measured and cut (16 Nov)
+
+The owner: "still the website laggs alot so please fix it properly this time remember that cpu limit should not get high".
+All of it in the browser (no Worker CPU). Measured on the built site with the CPU slowed 4x
+(`scripts/checks/lag-profile.mjs`: loading, scrolling with the mouse moving; and traces of the page left alone):
+
+- **What was busy:** the app's scene behind every page, on its background thread, redrew every frame the screen gives
+  (up to 120 a second) at up to 2.5x sharpness: 0.35–1 s of every 5 s of one core with nobody touching anything
+  (Green's the most). The landing's main thread stayed busy too (its demos, framer's `layout` on the planet's list of
+  apps measuring every frame), and two `html:has(…)` rules (`.mkt-smooth`, `main#main`) restyled the root on every
+  change anywhere (316 times in a scroll). Green's map breathed its dots, redrawing the whole map on the page's
+  thread every frame it showed.
+- **Now:** the scene draws 30 a second at 1.5x and 2 M pixels at most (`backdropLoop`, `resize` in `src/lib/backdrop.ts`):
+  half the cost (Green 998 → 509 ms in 5 s, homes 349 → 167). After 30 s with no pointer, key, wheel, touch or scroll
+  (`src/lib/use-idle.ts`: `useIdle`, `onIdleChange`) the scene rests and the landing's looping demos (`Live`) stop; any
+  input wakes them: the landing left alone goes to 0. The `:has` rules are classes set by the page (`html.mkt-smooth-root`
+  by the landing, `html.in-app` by `DashboardShell` before its first paint). The planet's list is plain `li`s; the
+  landing's bars and gauges grow with transforms (`Proof`, `Glue`), not heights and widths. Green's map dots are still
+  (`live={false}`: it draws when moved). Scrolling the landing: slow frames 5 → 2, long tasks 54 ms → none; the student
+  home's loading long tasks 1.46 s → 0.88 s.
+- **Rules:** decorative motion that loops rests when the person leaves the page alone (`useIdle`); no `:has()` on `html`
+  or `body` (a class set by the page instead); a canvas on the page's thread is not `live` for decoration.
+
+## M226: no dot plot in a Travel guide's places (16 Nov)
+
+The owner, with a screenshot of it: "what the hell is this ? i dont understand what this is providing to the user". The
+`PinMap` above a guide's list of places (dots on a blank grid, "north at the top", no streets or names) is gone: every
+place's card has its own Map button, and Travel's Map (M209) shows the real places on a real map.
+
+## M227: Meet & call (16 Nov)
+
+The owner, with a picture of Messages' tabs: "replace the call and rename it as meet and call you do redesign of call
+section also and add more features of discord and zoom and all the other big major app".
+
+- **The tab** (`CommsDeck`) and search say **Meet & call** (a camera icon); the page is still `/calls`.
+- **The front door** (`src/components/call/MeetHome.tsx`, at the top of the page), like Zoom's home: **New meeting** (a
+  call link made at once, `POST /api/calls/links`: the link, its code, Start with video or voice, Copy invitation, Share),
+  **Join** (a code or a pasted link: only our own `/call/…` or `/hall/…` comes out of it, `meetingPath` in
+  `src/lib/meet.ts`; camera on or voice only; the call's own check-yourself screen comes next), **Schedule** (the form
+  `ScheduledCalls` already has, `?schedule=1`), **Voice rooms** (Discord's channels: every group chat's always-open room,
+  `r_<chat>`, lit and first while someone's in it). Then **Happening now** (live calls, one tap to join) and **In every
+  meeting** (what CallView already has, so people find it: waiting room, breakout rooms, polls, whiteboard, captions,
+  recording and notes, hand, reactions, screen share, background blur, Q&A, views, keys, push to talk). The call log
+  under **Recent calls**; Favorites lost its "Call link" (New meeting does it).
+- **In a call** (`CallView`): Zoom's keys (M mute, V camera, H hand, C chat, P people, ? lists them; not while typing or
+  with Ctrl, Cmd or Alt; `callKey`) and Discord's push to talk (hold Space while muted; not on a focused button).
+- No new server work: the links, the calls list and the chats list are the ones the page already loads.
+- **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
+  refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
+  `src/lib/meet.ts`, `pnpm check`.

@@ -16,6 +16,7 @@ import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { validPayload } from '@/lib/e2e';
 import { effectOf } from '@/lib/message-effects';
+import { travelChatBlocked } from '@/server/travel-board';
 
 /** What a private message shows wherever it can't be decrypted (lists, notifications). */
 const PRIVATE_BODY = '🔒 Private message';
@@ -47,7 +48,17 @@ async function getThread(req: Request, { params }: Ctx) {
 
   const sp = new URL(req.url).searchParams;
   const before = sp.get('before');
-  const beforeDate = before ? new Date(before) : null;
+  let beforeDate = before ? new Date(before) : null;
+  // A page that ends at a message (M192), for opening one far back in a long chat: that message and
+  // the ones before it. `after` then pages forward from it (newest last, `hasNewer`).
+  const around = sp.get('around');
+  if (around) {
+    const at = await prisma.message.findFirst({ where: { id: around, conversationId: id, threadId: null, AND: [visibleTo(user.id)] }, select: { createdAt: true } });
+    if (!at) return NextResponse.json({ error: 'That message isn’t in this chat any more.' }, { status: 404 });
+    beforeDate = new Date(at.createdAt.getTime() + 1);
+  }
+  const after = sp.get('after');
+  const afterDate = after && !isNaN(+new Date(after)) ? new Date(after) : null;
 
   // Search inside this chat.
   const q = sp.get('q')?.trim();
@@ -59,6 +70,30 @@ async function getThread(req: Request, { params }: Ctx) {
       select: { id: true, body: true, type: true, attachmentName: true, createdAt: true, sender: { select: { id: true, name: true } } },
     });
     return NextResponse.json({ results }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Go to a date (M188): the first message on or after that moment (the browser sends its own midnight).
+  const date = sp.get('date');
+  if (date) {
+    const from = new Date(date);
+    if (Number.isNaN(from.getTime())) return NextResponse.json({ error: 'Pick a date.' }, { status: 400 });
+    const first = await prisma.message.findFirst({ where: { conversationId: id, threadId: null, createdAt: { gte: from }, AND: [visibleTo(user.id)] }, orderBy: { createdAt: 'asc' }, select: { id: true, createdAt: true } });
+    return NextResponse.json({ first }, { headers: { 'Cache-Control': 'no-store' } });
+  }
+
+  // Everything shared in this chat (M188): the chat's info panel used to list only what was on screen.
+  // Newest first; view-once messages and deleted ones stay out.
+  if (sp.get('shared')) {
+    const base = { conversationId: id, deletedAt: null, AND: [visibleTo(user.id)] };
+    const select = { id: true, type: true, body: true, attachmentUrl: true, attachmentName: true, attachmentSize: true, attachmentMime: true, metadata: true, createdAt: true };
+    const [media, files, texts] = await Promise.all([
+      prisma.message.findMany({ where: { ...base, type: 'IMAGE', attachmentUrl: { not: null } }, orderBy: { createdAt: 'desc' }, take: 60, select }),
+      prisma.message.findMany({ where: { ...base, type: { in: ['FILE', 'VIDEO', 'AUDIO'] }, attachmentUrl: { not: null } }, orderBy: { createdAt: 'desc' }, take: 40, select }),
+      prisma.message.findMany({ where: { ...base, type: 'TEXT', body: { contains: 'http' } }, orderBy: { createdAt: 'desc' }, take: 60, select: { id: true, body: true, createdAt: true } }),
+    ]);
+    const open = (m: { metadata: unknown }) => !(m.metadata as { viewOnce?: boolean } | null)?.viewOnce;
+    const links = texts.flatMap((m) => [...new Set(m.body.match(/https?:\/\/[^\s<>"')]+/g) ?? [])].map((url) => ({ id: `${m.id}-${url}`, messageId: m.id, url, createdAt: m.createdAt }))).slice(0, 40);
+    return NextResponse.json({ media: media.filter(open), files: files.filter(open), links }, { headers: { 'Cache-Control': 'no-store' } });
   }
 
   // A thread (Discord-style): the message it started from and its replies, oldest first.
@@ -79,8 +114,8 @@ async function getThread(req: Request, { params }: Ctx) {
 
   const [rows, convo, system, prefs, scheduled] = await Promise.all([
     prisma.message.findMany({
-      where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
-      orderBy: { createdAt: 'desc' },
+      where: { conversationId: id, threadId: null, ...visibleTo(user.id), ...(afterDate ? { createdAt: { gt: afterDate } } : beforeDate && !isNaN(+beforeDate) ? { createdAt: { lt: beforeDate } } : {}) },
+      orderBy: { createdAt: afterDate ? 'asc' : 'desc' },
       take: PAGE + 1,
       select: { ...messageSelect, sender },
     }),
@@ -105,15 +140,17 @@ async function getThread(req: Request, { params }: Ctx) {
   // last time) and record presence.
   const newest = rows[0]?.createdAt;
   const unread = me.markedUnread || !me.lastReadAt || (!!newest && newest > me.lastReadAt);
-  if (!beforeDate) {
+  if (!beforeDate && !afterDate) {
     await Promise.all([
       unread ? quietly(prisma.conversationParticipant.update({ where: { id: me.id }, data: { lastReadAt: now, markedUnread: false } })) : null,
       quietly(touchPresence(user.id)),
     ]);
   }
 
-  const hasMore = rows.length > PAGE;
-  const page = rows.slice(0, PAGE);
+  // Paging forward (`after`) reads oldest first: the page is turned to newest first like the others.
+  const hasMore = afterDate ? true : rows.length > PAGE;
+  const hasNewer = afterDate ? rows.length > PAGE : false;
+  const page = afterDate ? rows.slice(0, PAGE).reverse() : rows.slice(0, PAGE);
   const [messages, pinnedRows, translations] = await Promise.all([
     decorate([...page].reverse().map(serializeMessage), user.id),
     // Pinned messages (up to 3) for the bar at the top of the chat.
@@ -184,6 +221,7 @@ async function getThread(req: Request, { params }: Ctx) {
       translations,
       messages: withThreads,
       hasMore,
+      hasNewer,
       me: user.id,
     },
     { headers: { 'Cache-Control': 'no-store' } },
@@ -205,7 +243,12 @@ export async function POST(req: Request, { params }: Ctx) {
   if (muted) return NextResponse.json({ error: muted }, { status: 403 });
 
   const b = await req.json().catch(() => ({}));
-  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true, private: true } });
+  const convo = await prisma.conversation.findUnique({ where: { id }, select: { disappearingSec: true, communityId: true, private: true, app: true, isGroup: true } });
+  // M213: a Travel chat between two people one of whom blocked the other on the travellers board.
+  if (convo?.app === 'travel' && !convo.isGroup) {
+    const why = await travelChatBlocked(id, user.id);
+    if (why) return NextResponse.json({ error: why }, { status: 403 });
+  }
   // Community channels: announcements are for moderators, voice rooms have no messages, slow mode.
   if (convo?.communityId) {
     const why = await channelSendCheck(id, user.id);

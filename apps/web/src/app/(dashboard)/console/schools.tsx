@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { Building2, ChevronDown, Eye, Flag, Loader2, ShieldAlert, Store, Users } from 'lucide-react';
+import { Building2, ChevronDown, Eye, Flag, Loader2, Plane, ShieldAlert, Star, Store, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { card, errorMessage, fetcher, field, ConsoleSkeleton, SearchBox, useDebounced } from './shared';
@@ -26,7 +26,7 @@ type Growth = {
   cohorts: { month: string; size: number; kept: number[] }[];
 };
 type Person = { id: string; name: string; email: string; role: string; lastSeenAt: string | null };
-type Item = { kind: 'flag' | 'report' | 'listing'; id: string; title: string; severity: string | null; text: string; reason?: string | null; repeats?: number; hidden?: boolean; at: string; person: { id: string | null; name: string; school: string | null } };
+type Item = { kind: 'flag' | 'report' | 'listing' | 'travel-post' | 'travel-review'; group?: string; id: string; title: string; severity: string | null; text: string; reason?: string | null; repeats?: number; hidden?: boolean; at: string; person: { id: string | null; name: string; school: string | null } };
 
 const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
 const HEALTH: Record<Health, { label: string; cls: string }> = {
@@ -196,7 +196,7 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
                   {growth.cohorts.map((_, k) => (
                     <td key={k} className="p-0.5">
                       {k < c.kept.length && c.size > 0 ? (
-                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(39,39,42,${0.08 + (c.kept[k] / 100) * 0.6})` }}>{c.kept[k]} %</span>
+                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(39,39,42,${0.08 + (c.kept[k] / 100) * 0.42})` }}>{c.kept[k]} %</span>
                       ) : null}
                     </td>
                   ))}
@@ -214,7 +214,10 @@ const KIND: Record<Item['kind'], { label: string; icon: typeof Flag; actions: { 
   flag: { label: 'Chat safety flag', icon: ShieldAlert, actions: [{ id: 'reviewed', label: 'Reviewed' }, { id: 'dismiss', label: 'Dismiss' }] },
   report: { label: 'Community report', icon: Flag, actions: [{ id: 'dismiss', label: 'Dismiss' }] },
   listing: { label: 'Reported campus post', icon: Store, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
+  'travel-post': { label: 'Reported travellers-board note', icon: Plane, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
+  'travel-review': { label: 'Reported Travel review', icon: Star, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
 };
+const HIDEABLE = new Set<Item['kind']>(['listing', 'travel-post', 'travel-review']);
 
 export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }) {
   const { data, error, mutate } = useSWR<{ bySchool: { id: string | null; name: string; open: number }[]; items: Item[] }>('/owner/moderation', fetcher, heavy);
@@ -234,13 +237,13 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
       setBusy(null);
     }
   };
-  const items = data.items.filter((i) => school === 'all' || (i.person.school ?? 'No school') === school);
+  const items = data.items.filter((i) => school === 'all' || (i.group ?? i.person.school ?? 'No school') === school);
   const total = data.bySchool.reduce((s, x) => s + x.open, 0);
   return (
     <div className="space-y-6">
       <section className={cn(card, 'p-4 sm:p-6')} aria-labelledby="mod-h">
         <h2 id="mod-h" className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldAlert className="w-4 h-4 text-zinc-400" aria-hidden /> Open safety reports · every school</h2>
-        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Chat safety flags, community reports and reported campus posts that nobody has handled yet. Each school’s admins see their own; this is all of them.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">Chat safety flags, community reports and reported campus posts that nobody has handled yet (each school’s admins see their own; this is all of them), and Travel’s reported board notes and reviews (three reports hide one by themselves; Restore shows it again and clears its reports).</p>
         {total === 0 ? <p className="text-sm text-zinc-500 mt-4">Nothing open. All clear.</p> : (
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Filter by school">
             {[{ id: 'all', name: 'All schools', open: total }, ...data.bySchool].map((s) => (
@@ -258,11 +261,11 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
             const k = KIND[item.kind];
             const Icon = k.icon;
             return (
-              <li key={`${item.kind}-${item.id}`} className={cn(card, 'p-4', item.hidden && 'opacity-80')}>
+              <li key={`${item.kind}-${item.id}`} className={cn(card, 'p-4')}>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400">
                   <span className="inline-flex items-center gap-1 font-semibold text-zinc-800 dark:text-zinc-200"><Icon className="w-3.5 h-3.5" aria-hidden /> {k.label}</span>
                   <span>{item.title.replace('_', ' ')}{item.severity ? ` · ${item.severity}` : ''}{item.repeats ? ` · ${item.repeats + 1} times` : ''}</span>
-                  <span>{item.person.school ?? 'No school'}</span>
+                  <span>{item.group ?? item.person.school ?? 'No school'}</span>
                   <span>{formatDistanceToNow(new Date(item.at), { addSuffix: true })}</span>
                 </div>
                 <p className="mt-2 text-sm text-zinc-900 dark:text-white break-words">{item.text}</p>
@@ -274,7 +277,7 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
                     </button>
                   )}
                   <span className="ms-auto flex flex-wrap gap-2">
-                    {k.actions.filter((a) => !(item.kind === 'listing' && a.id === 'hide' && item.hidden)).map((a) => (
+                    {k.actions.filter((a) => !(HIDEABLE.has(item.kind) && a.id === 'hide' && item.hidden)).map((a) => (
                       <button key={a.id} type="button" onClick={() => void act(item, a.id)} disabled={busy !== null} className="btn-secondary min-h-11 inline-flex items-center gap-1.5">
                         {busy === `${item.id}:${a.id}` && <Loader2 className="w-4 h-4 animate-spin" />} {a.label}
                       </button>

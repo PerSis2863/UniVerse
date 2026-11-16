@@ -30,7 +30,7 @@ export default function ImpactRoomsPage() {
       <Topbar title="Impact rooms" subtitle="Where volunteers, sponsors and students meet around each NGO project" />
       <SectionTabs tabs={impactTabs(role)} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto">
+        <div className="w-full">
           {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
             : !data ? <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
             : data.rooms.length === 0 ? (

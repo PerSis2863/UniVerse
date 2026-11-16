@@ -2,6 +2,8 @@
 @variant dark (&:where(.dark, .dark *));
 /* `short:` a laptop-height screen or less: sign in tightens so it fits without scrolling. */
 @custom-variant short (@media (max-height: 860px));
+/* M219: a computer's browser, where the menu is the bar across the top (TopNav.tsx `TOP_NAV`); the installed app keeps the side menu. */
+@custom-variant topnav (@media (min-width: 1024px) and (display-mode: browser));
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */
@@ -597,11 +599,6 @@ html:not(.dark) {
     transform: translateY(-2px);
   }
 
-  @keyframes shimmer {
-    0% { background-position: -200% 0; }
-    100% { background-position: 200% 0; }
-  }
-
   @keyframes uCurveDash { 0% { stroke-dashoffset: 140; } 100% { stroke-dashoffset: 0; } }
   @keyframes nLineDash  { 0% { stroke-dashoffset: 120; } 100% { stroke-dashoffset: 0; } }
   /* The logo plays its animation a few times, then rests: repainting the SVG (with its shadow)
@@ -622,33 +619,10 @@ html:not(.dark) {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* ─── Skeleton shimmer animation ─────────────────── */
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.animate-pulse {
-  background: linear-gradient(
-    90deg,
-    var(--surface-2) 25%,
-    color-mix(in srgb, var(--surface-2) 70%, white) 50%,
-    var(--surface-2) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
-
-.dark .animate-pulse {
-  background: linear-gradient(
-    90deg,
-    rgba(255,255,255,0.04) 25%,
-    rgba(255,255,255,0.08) 50%,
-    rgba(255,255,255,0.04) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s infinite;
-}
+/* `animate-pulse` is Tailwind's own again (opacity, run by the compositor). Until M186 a rule here
+   swapped every pulsing element's background for a grey shimmer, so the red "recording" dot, the amber
+   "reconnecting" dot and the green "live" dots lost their colour, and it repainted them every frame.
+   Loading placeholders use `.skeleton`. */
 
 /* ─── Thin scrollbar ─────────────────────────────── */
 .scrollbar-thin {
@@ -1084,7 +1058,9 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .mkt-drift-a { animation: mkt-drift-a 18s ease-in-out infinite; will-change: transform; }
 .mkt-drift-b { animation: mkt-drift-b 22s ease-in-out infinite; will-change: transform; }
 /* Its in-page links (Product, FAQ…) glide down instead of jumping. */
-@media (prefers-reduced-motion: no-preference) { html:has(.mkt-smooth) { scroll-behavior: smooth; } }
+/* M225: set by the landing itself (html.mkt-smooth-root): `html:has(.mkt-smooth)` made every change anywhere in the page
+   restyle the root while its demos ran. */
+@media (prefers-reduced-motion: no-preference) { html.mkt-smooth-root { scroll-behavior: smooth; } }
 @media (prefers-reduced-motion: reduce) { .mkt-drift-a, .mkt-drift-b { animation: none; } }
 
 /* ─── Background: the M52 glows ─── */
@@ -1214,15 +1190,7 @@ html[data-scrolled] .nav-edge {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
 }
-/* The phone's bar shows the brand at the top and the page title once the large title has
-   scrolled away underneath it (<html data-collapsed>). */
-.nav-inline-title { opacity: 0; transform: translate3d(0, 6px, 0); transition: opacity 220ms var(--ease-ios), transform 260ms var(--ease-ios); pointer-events: none; }
-.nav-brand-text { transition: opacity 200ms var(--ease-ios); }
-html[data-collapsed] .nav-inline-title { opacity: 1; transform: none; }
-html[data-collapsed] .nav-brand-text { opacity: 0; }
 
-/* Large title (iOS 34pt bold). */
-.large-title { font-size: 2.125rem; line-height: 2.5rem; font-weight: 700; letter-spacing: -0.025em; }
 
 /* Segmented control (M34, the Karma pills): outlined capsules side by side; the chosen one is
    filled with ink (black, or white in dark mode) and the fill glides to the next one chosen. */
@@ -1837,8 +1805,6 @@ html.reduce-motion .bar-glint::after { animation: none; }
 .deck-grid { background-image: linear-gradient(rgb(255 255 255 / 0.045) 1px, transparent 1px), linear-gradient(90deg, rgb(255 255 255 / 0.045) 1px, transparent 1px); background-size: 34px 34px; mask-image: radial-gradient(110% 90% at 25% 0%, #000 25%, transparent 75%); }
 .deck-pulse { stroke-dasharray: 90 1000; stroke-dashoffset: 90; filter: drop-shadow(0 0 4px #4f8ef7); animation: deck-pulse 7s linear infinite; }
 @keyframes deck-pulse { to { stroke-dashoffset: -1000; } }
-.deck-ping { animation: deck-ping 2.2s cubic-bezier(0, 0, 0.2, 1) infinite; }
-@keyframes deck-ping { 0% { box-shadow: 0 0 0 0 rgb(122 174 250 / 0.55); } 80%, 100% { box-shadow: 0 0 0 7px rgb(122 174 250 / 0); } }
 .deck-glow { background: radial-gradient(closest-side, rgb(82 82 91 / 0.22), transparent); animation: mkt-drift-a 18s ease-in-out infinite; }
 .deck-draw { animation: deck-draw 1.4s var(--ease-glide, ease-out) backwards; }
 @keyframes deck-draw { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
@@ -2067,10 +2033,13 @@ html.reduce-motion .ins-draw { stroke-dasharray: none; }
 @keyframes pp-pop { from { transform: scale(0.7); opacity: 0; } }
 .pp-rise { animation: pp-rise 650ms var(--ease-glide) both; }
 @keyframes pp-rise { from { transform: translate3d(0, 16px, 0); opacity: 0; } }
-.pp-node { box-shadow: 0 0 0 0 rgb(79 142 247 / 0.6); animation: pp-node 2s ease-out infinite; }
-@keyframes pp-node { 70% { box-shadow: 0 0 0 10px rgb(79 142 247 / 0); } 100% { box-shadow: 0 0 0 0 rgb(79 142 247 / 0); } }
-@media (prefers-reduced-motion: reduce) { .passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node { animation: none !important; } }
-html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node) { animation: none !important; }
+/* M186: the passport's step marker pings with a ring that only scales and fades (as the live dots, M92);
+   it was an animated box-shadow, repainted every frame while a passport page is open. */
+.pp-node::after { content: ''; position: absolute; inset: -1px; border-radius: inherit; pointer-events: none; border: 1.5px solid rgb(79 142 247 / 0.6); animation: dot-ring 2s var(--ease-out-soft, ease-out) infinite; }
+@media (prefers-reduced-motion: reduce) { .passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node::after { animation: none !important; } }
+html.reduce-motion :is(.passport-glow, .passport-seal-ring, .pp-pop, .pp-rise, .pp-node::after) { animation: none !important; }
+@media (prefers-reduced-motion: reduce) { .pp-node::after { opacity: 0; } }
+html.reduce-motion .pp-node::after { opacity: 0; }
 
 /* UniVerse Trace: the brand console's hero and the print sheet (only the labels go to paper). */
 /* The driver's radar on /carry: rings that widen and fade while a position is being shared. */
@@ -2272,9 +2241,7 @@ html:not(.dark) .live-card {
     linear-gradient(180deg, #17142b, #19152f 60%, #221a45);
 }
 @media (min-width: 768px) { .live-card { padding: 1.5rem; } }
-.live-dot { width: 6px; height: 6px; border-radius: 9999px; background: #4f8ef7; box-shadow: 0 0 0 0 rgb(79 142 247 / 0.6); animation: live-dot 2s var(--ease-out-soft, ease-out) infinite; }
-@keyframes live-dot { 0% { box-shadow: 0 0 0 0 rgb(79 142 247 / 0.55); } 70%, 100% { box-shadow: 0 0 0 7px rgb(79 142 247 / 0); } }
-@media (prefers-reduced-motion: reduce) { .live-dot { animation: none; } }
+.live-dot { width: 6px; height: 6px; border-radius: 9999px; background: #4f8ef7; } /* its ring: the M92 block below */
 @supports (corner-shape: squircle) { .live-card { corner-shape: squircle; border-radius: calc(var(--radius-card) * 1.6); } }
 /* M50 · The level gauge's liquid (src/components/live/Tank.tsx) sways slowly. */
 .tank-wave { animation: tank-wave 6s linear infinite; }
@@ -2402,12 +2369,16 @@ html:not(.dark) {
   --color-gray-400: #5e6573; --color-gray-500: #59606d; --color-gray-600: #434955;
 }
 .dark, .on-dark {
-  --color-indigo-50: #f7fee7; --color-indigo-100: #ecfccb; --color-indigo-200: #dcfa9a; --color-indigo-300: #cff56b; --color-indigo-400: #c6f24a; --color-indigo-500: #b4e43a; --color-indigo-600: #9fd02c; --color-indigo-700: #6f9a1c; --color-indigo-800: #4a6a14; --color-indigo-900: #2f4410; --color-indigo-950: #1a260a;
-  --color-violet-50: #f7fee7; --color-violet-100: #ecfccb; --color-violet-200: #dcfa9a; --color-violet-300: #cff56b; --color-violet-400: #c6f24a; --color-violet-500: #b4e43a; --color-violet-600: #9fd02c; --color-violet-700: #6f9a1c; --color-violet-800: #4a6a14; --color-violet-900: #2f4410; --color-violet-950: #1a260a;
-  --color-purple-50: #f7fee7; --color-purple-100: #ecfccb; --color-purple-200: #dcfa9a; --color-purple-300: #cff56b; --color-purple-400: #c6f24a; --color-purple-500: #b4e43a; --color-purple-600: #9fd02c; --color-purple-700: #6f9a1c; --color-purple-800: #4a6a14; --color-purple-900: #2f4410; --color-purple-950: #1a260a;
-  --color-pink-50: #f7fee7; --color-pink-100: #ecfccb; --color-pink-200: #dcfa9a; --color-pink-300: #cff56b; --color-pink-400: #c6f24a; --color-pink-500: #b4e43a; --color-pink-600: #9fd02c; --color-pink-700: #6f9a1c; --color-pink-800: #4a6a14; --color-pink-900: #2f4410; --color-pink-950: #1a260a;
-  --color-fuchsia-50: #f7fee7; --color-fuchsia-100: #ecfccb; --color-fuchsia-200: #dcfa9a; --color-fuchsia-300: #cff56b; --color-fuchsia-400: #c6f24a; --color-fuchsia-500: #b4e43a; --color-fuchsia-600: #9fd02c; --color-fuchsia-700: #6f9a1c; --color-fuchsia-800: #4a6a14; --color-fuchsia-900: #2f4410; --color-fuchsia-950: #1a260a;
-  --color-aqua-50: #f7fee7; --color-aqua-100: #ecfccb; --color-aqua-200: #dcfa9a; --color-aqua-300: #cff56b; --color-aqua-400: #c6f24a; --color-aqua-500: #b4e43a; --color-aqua-600: #9fd02c; --color-aqua-700: #6f9a1c; --color-aqua-800: #4a6a14; --color-aqua-900: #2f4410; --color-aqua-950: #1a260a;
+  /* M212 (the owner, 16 Nov: "remove the neon greenish colour"): the bright mint greens calmed on the
+     dark page (still green for "done" and for Green, no longer neon). */
+  --color-emerald-200: #b5e3cf; --color-emerald-300: #8fd3b6; --color-emerald-400: #5cc29d; --color-emerald-500: #2ea47c;
+  --color-green-300: #96d4ae; --color-green-400: #63c287;
+  --color-indigo-50: #eef4ff; --color-indigo-100: #dce8fe; --color-indigo-200: #bfd5fd; --color-indigo-300: #93b9fa; --color-indigo-400: #6ea2f8; --color-indigo-500: #2f6fe6; --color-indigo-600: #2563eb; --color-indigo-700: #1d4fd7; --color-indigo-800: #1e40af; --color-indigo-900: #1e3a8a; --color-indigo-950: #172554;
+  --color-violet-50: #eef4ff; --color-violet-100: #dce8fe; --color-violet-200: #bfd5fd; --color-violet-300: #93b9fa; --color-violet-400: #6ea2f8; --color-violet-500: #2f6fe6; --color-violet-600: #2563eb; --color-violet-700: #1d4fd7; --color-violet-800: #1e40af; --color-violet-900: #1e3a8a; --color-violet-950: #172554;
+  --color-purple-50: #eef4ff; --color-purple-100: #dce8fe; --color-purple-200: #bfd5fd; --color-purple-300: #93b9fa; --color-purple-400: #6ea2f8; --color-purple-500: #2f6fe6; --color-purple-600: #2563eb; --color-purple-700: #1d4fd7; --color-purple-800: #1e40af; --color-purple-900: #1e3a8a; --color-purple-950: #172554;
+  --color-pink-50: #eef4ff; --color-pink-100: #dce8fe; --color-pink-200: #bfd5fd; --color-pink-300: #93b9fa; --color-pink-400: #6ea2f8; --color-pink-500: #2f6fe6; --color-pink-600: #2563eb; --color-pink-700: #1d4fd7; --color-pink-800: #1e40af; --color-pink-900: #1e3a8a; --color-pink-950: #172554;
+  --color-fuchsia-50: #eef4ff; --color-fuchsia-100: #dce8fe; --color-fuchsia-200: #bfd5fd; --color-fuchsia-300: #93b9fa; --color-fuchsia-400: #6ea2f8; --color-fuchsia-500: #2f6fe6; --color-fuchsia-600: #2563eb; --color-fuchsia-700: #1d4fd7; --color-fuchsia-800: #1e40af; --color-fuchsia-900: #1e3a8a; --color-fuchsia-950: #172554;
+  --color-aqua-50: #eef4ff; --color-aqua-100: #dce8fe; --color-aqua-200: #bfd5fd; --color-aqua-300: #93b9fa; --color-aqua-400: #6ea2f8; --color-aqua-500: #2f6fe6; --color-aqua-600: #2563eb; --color-aqua-700: #1d4fd7; --color-aqua-800: #1e40af; --color-aqua-900: #1e3a8a; --color-aqua-950: #172554;
   --color-zinc-50: #f7f7f8; --color-zinc-100: #efeff1; --color-zinc-200: #e4e4e7; --color-zinc-300: #cfcfd4; --color-zinc-400: #b4b4bb; --color-zinc-500: #a0a0a8; --color-zinc-600: #8c8c94; --color-zinc-700: #3a3a40; --color-zinc-800: #26262a; --color-zinc-900: #19191c; --color-zinc-950: #111113;
   --color-slate-400: #b4b4bb; --color-slate-500: #a0a0a8; --color-slate-600: #8c8c94;
   --color-gray-400: #b4b4bb; --color-gray-500: #a0a0a8; --color-gray-600: #8c8c94;
@@ -2416,7 +2387,7 @@ html:not(.dark) {
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-400, .text-indigo-500, .text-violet-400, .text-violet-500, .text-purple-400, .text-purple-500, .text-pink-400, .text-pink-500, .text-fuchsia-400, .text-fuchsia-500, .text-aqua-400, .text-aqua-500, .text-blue-500, .text-sky-500) { color: #2563eb; }
 :where(html:not(.dark)) :not(:where(.dark, .on-dark) *):is(.text-indigo-600, .text-violet-600, .text-purple-600, .text-pink-600, .text-fuchsia-600) { color: #2563eb; }
 /* …and lifted on the dark page when no dark: colour of its own is given. */
-.dark :is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600, .text-pink-500, .text-pink-600, .text-fuchsia-500, .text-fuchsia-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #cff56b; }
+.dark :is(.text-indigo-500, .text-indigo-600, .text-violet-500, .text-violet-600, .text-purple-500, .text-purple-600, .text-pink-500, .text-pink-600, .text-fuchsia-500, .text-fuchsia-600):not([class*="dark:text-"], [class*="bg-white"]) { color: #93b9fa; }
 
 :root {
   --ink: #111318; --ink-contrast: #ffffff; --ink-soft: #2a2e36;
@@ -2446,13 +2417,13 @@ html:not(.dark) {
 }
 .dark {
   --ink: #f3f4f6; --ink-contrast: #0b0c0d; --ink-soft: #26262a;
-  --tint: #c6f24a; --tint-rgb: 198 242 74; --tint-text: #cff56b;
+  --tint: #6ea2f8; --tint-rgb: 110 162 248; --tint-text: #93b9fa;
   --background: #070808;
   --surface: #111213; --surface-2: #17181a;
   --fill: rgba(255, 255, 255, 0.05); --fill-strong: rgba(255, 255, 255, 0.09);
   --separator: rgba(255, 255, 255, 0.08); --hairline: rgba(255, 255, 255, 0.15);
   --material: #111213; --material-thick: #141517; --material-highlight: rgba(255, 255, 255, 0.06);
-  --card-bg: #111213; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151618; --card-hover-border: rgba(198, 242, 74, 0.28);
+  --card-bg: #111213; --card-border: rgba(255, 255, 255, 0.07); --card-hover-bg: #151618; --card-hover-border: rgba(110, 162, 248, 0.3);
   --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   --sidebar-bg: #0a0b0c; --sidebar-border: rgba(255, 255, 255, 0.06);
   --sidebar-item-color: #c4c4cb; --sidebar-item-hover-bg: rgba(255, 255, 255, 0.05); --sidebar-item-hover-color: #ffffff;
@@ -2462,10 +2433,10 @@ html:not(.dark) {
   --input-bg: #0d0e0f; --input-border: rgba(255, 255, 255, 0.12); --input-placeholder: #8c8c94;
   --text-primary: #f4f4f5; --text-secondary: #c4c4cb; --text-muted: #a0a0a8;
   --pill-on-bg: #f4f4f5; --pill-on-color: #0b0c0d;
-  --badge-blue-bg: rgba(198, 242, 74, 0.14); --badge-blue-color: #d9fb6c;
-  --ins-hot: #c6f24a;
-  --cta: #c6f24a; --cta-ink: #0b0c0d; --cta-hover: #d4f86a;
-  --karma-dusk: #18191b; --karma-gold: #1b2410; --karma-olive: #2c4a10;
+  --badge-blue-bg: rgba(110, 162, 248, 0.14); --badge-blue-color: #a9c8fb;
+  --ins-hot: #6ea2f8;
+  --cta: #2563eb; --cta-ink: #ffffff; --cta-hover: #2f6fe6;
+  --karma-dusk: #18191b; --karma-gold: #111a2e; --karma-olive: #1d3d7a;
 }
 :root:not([data-accent]) .dark, :root.dark:not([data-accent]) { --btn-secondary-color: #f3f4f6; --btn-ghost-color: #e2e5ea; }
 :root:not([data-accent]) { --btn-secondary-color: #111318; --btn-ghost-color: #23262d; --btn-ghost-hover-bg: rgba(16, 24, 40, 0.05); }
@@ -2476,8 +2447,8 @@ html:not(.dark) {
 
 /* Buttons: rounded rectangles, as in the reels. The main one ink (white in dark mode); no glow. */
 .btn-primary, .btn-secondary, .btn-ghost, .btn-danger { border-radius: 0.625rem; font-weight: 600; letter-spacing: -0.006em; }
-:root:not([data-accent]) .btn-primary { color: #0b0c0d; background: #c6f24a; box-shadow: 0 8px 24px -14px rgba(198, 242, 74, 0.55); }
-:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #d4f86a; box-shadow: 0 10px 28px -14px rgba(198, 242, 74, 0.65); }
+:root:not([data-accent]) .btn-primary { color: #ffffff; background: #2563eb; box-shadow: 0 8px 24px -14px rgba(37, 99, 235, 0.6); }
+:root:not([data-accent]) .btn-primary:not(:disabled):hover { background: #2f6fe6; box-shadow: 0 10px 28px -14px rgba(37, 99, 235, 0.7); }
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *) { color: #ffffff; background: #111318; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
 :root:not(.dark):not([data-accent]) .btn-primary:not(:where(.dark, .on-dark) *):not(:disabled):hover { background: #2a2e36; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.12); }
 .btn-secondary { background-color: var(--surface); box-shadow: inset 0 0 0 1px var(--hairline); }
@@ -2519,13 +2490,19 @@ input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):focus-visib
 
 /* Charts: blue marks (dark: a lighter blue); the number that matters is the same blue (--ins-hot). */
 .ins-cell :is(svg, .ins-pop) { color: #3b7ef0; }
-html.dark .ins-cell :is(svg, .ins-pop) { color: #c6f24a; }
+html.dark .ins-cell :is(svg, .ins-pop) { color: #6ea2f8; }
 .ptr-ring { background: conic-gradient(from 0deg, var(--tint), var(--tint) 85%, transparent 85%); }
 
-/* Dark mode's accent is lime: white text on a solid accent fill (buttons, badges, initials) turns ink. */
-.dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
-.dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
-.dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+/* M212: dark mode's accent is blue (the website's), so white text stays white on its fills. Apps whose dark
+   fills are light (Trace pink, Relief orange, Play fuchsia) turn white text on them ink, as lime did; so do the
+   light -300/-400 fills everywhere. */
+:root:is([data-app="trace"], [data-app="relief"]) .dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
+:root:is([data-app="trace"], [data-app="relief"]).dark :is(.bg-indigo-400, .bg-indigo-500, .bg-indigo-600, .bg-indigo-700, .bg-violet-500, .bg-violet-600, .bg-violet-700, .bg-purple-500, .bg-purple-600, .bg-purple-700, .bg-pink-400, .bg-pink-500, .bg-pink-600, .bg-fuchsia-500, .bg-fuchsia-600, .bg-aqua-300, .bg-aqua-400, .bg-primary, .bg-tint, [class~="dark:bg-indigo-500"], [class~="dark:bg-indigo-600"]),
+:root:is([data-app="trace"], [data-app="relief"]) .dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"]).dark :is([class*="from-indigo-4"], [class*="from-indigo-5"], [class*="from-indigo-6"], [class*="from-violet-5"], [class*="from-violet-6"], [class*="from-purple-5"], [class*="from-purple-6"], [class*="from-pink-4"], [class*="from-pink-5"], [class*="from-fuchsia-5"]):not([class*="/"]) { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"]) .dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+:root:is([data-app="trace"], [data-app="relief"]).dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
+.dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400, .bg-aqua-300, .bg-aqua-400):not([class*="/"]), .dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400) .text-white { color: #0b0c0d; }
 /* The headline's key word in an italic serif (the recording's "themselves."), in both themes. */
 .accent-word { font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
 html.dark :is(h1, h2, h3):has(.accent-word) { color: var(--text-primary); }
@@ -2648,13 +2625,18 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
 /* M121 · Messages, professional (the owner, 6 Nov 2026: "make it look like more professional"). One
    solid workspace: the rail, the list and the open chat share one frame with hairline dividers
    (MessagingHub `.msg-ws`), nothing shows through them (the app's scene stays behind the page,
-   not behind the words); solid bubbles: mine in the brand's deep pink (white text 5.7:1) or the
+   not behind the words); solid bubbles: mine in the accent (M188) or the
    person's own accent, theirs plain on a quiet chat background. The glowing rings, halos, edges and
    floating avatars round people and rows are gone. */
 .msg-ws { --msg-chat: #f4f4f6; --msg-rail: #f6f6f7; --msg-theirs: #ffffff; --msg-theirs-line: rgba(0, 0, 0, 0.07); }
 .dark .msg-ws { --msg-chat: #0f0f11; --msg-rail: #111113; --msg-theirs: #1f1f23; --msg-theirs-line: rgba(255, 255, 255, 0.06); }
 .bubble-mine, :root:not([data-accent]) .bubble-mine { background-image: none; box-shadow: none; }
-:root:not([data-accent]) .bubble-mine { background-color: #b5307d; }
+/* M188: my bubbles take the accent (`bg-tint`: lime with ink text in dark, blue with white in light, the
+   app's colour in the other apps). The old look's deep pink stayed here after M124 turned the text on
+   accent fills ink in dark mode: ink on pink, 3.4:1. */
+/* The small print inside my bubbles (time, "Voicemail", poll notes) was see-through white: on lime
+   1.3:1. It takes the bubble's own text colour. */
+.bubble-mine [class*="text-white/"] { color: inherit; }
 .bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
 .msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }
 
@@ -2723,40 +2705,45 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: #ecfdf5; --badge-blue-color: #065f46;
 }
 :root[data-app="green"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="green"]:not([data-accent]).dark {
-  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7f3d0; --color-indigo-300: #6ee7b7; --color-indigo-400: #34d399; --color-indigo-500: #10b981; --color-indigo-600: #059669; --color-indigo-700: #047857; --color-indigo-800: #065f46; --color-indigo-900: #064e3b; --color-indigo-950: #022c22;
-  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7f3d0; --color-violet-300: #6ee7b7; --color-violet-400: #34d399; --color-violet-500: #10b981; --color-violet-600: #059669; --color-violet-700: #047857; --color-violet-800: #065f46; --color-violet-900: #064e3b; --color-violet-950: #022c22;
-  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7f3d0; --color-purple-300: #6ee7b7; --color-purple-400: #34d399; --color-purple-500: #10b981; --color-purple-600: #059669; --color-purple-700: #047857; --color-purple-800: #065f46; --color-purple-900: #064e3b; --color-purple-950: #022c22;
-  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7f3d0; --color-pink-300: #6ee7b7; --color-pink-400: #34d399; --color-pink-500: #10b981; --color-pink-600: #059669; --color-pink-700: #047857; --color-pink-800: #065f46; --color-pink-900: #064e3b; --color-pink-950: #022c22;
-  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7f3d0; --color-fuchsia-300: #6ee7b7; --color-fuchsia-400: #34d399; --color-fuchsia-500: #10b981; --color-fuchsia-600: #059669; --color-fuchsia-700: #047857; --color-fuchsia-800: #065f46; --color-fuchsia-900: #064e3b; --color-fuchsia-950: #022c22;
-  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7f3d0; --color-aqua-300: #6ee7b7; --color-aqua-400: #34d399; --color-aqua-500: #10b981; --color-aqua-600: #059669; --color-aqua-700: #047857; --color-aqua-800: #065f46; --color-aqua-900: #064e3b; --color-aqua-950: #022c22;
-  --tint: #34d399; --tint-rgb: 52 211 153; --tint-text: #6ee7b7; --ins-hot: #34d399;
-  --cta: #34d399; --cta-ink: #0b0c0d; --cta-hover: #6ee7b7;
-  --badge-blue-bg: rgba(52, 211, 153, 0.14); --badge-blue-color: #6ee7b7;
-  --card-hover-border: rgba(52, 211, 153, 0.28);
+  --color-indigo-50: #ecfdf5; --color-indigo-100: #d1fae5; --color-indigo-200: #a7e8cf; --color-indigo-300: #86d9b8; --color-indigo-400: #4fbf98; --color-indigo-500: #0d7f5e; --color-indigo-600: #047857; --color-indigo-700: #065f46; --color-indigo-800: #064e3b; --color-indigo-900: #053d2f; --color-indigo-950: #022c22;
+  --color-violet-50: #ecfdf5; --color-violet-100: #d1fae5; --color-violet-200: #a7e8cf; --color-violet-300: #86d9b8; --color-violet-400: #4fbf98; --color-violet-500: #0d7f5e; --color-violet-600: #047857; --color-violet-700: #065f46; --color-violet-800: #064e3b; --color-violet-900: #053d2f; --color-violet-950: #022c22;
+  --color-purple-50: #ecfdf5; --color-purple-100: #d1fae5; --color-purple-200: #a7e8cf; --color-purple-300: #86d9b8; --color-purple-400: #4fbf98; --color-purple-500: #0d7f5e; --color-purple-600: #047857; --color-purple-700: #065f46; --color-purple-800: #064e3b; --color-purple-900: #053d2f; --color-purple-950: #022c22;
+  --color-pink-50: #ecfdf5; --color-pink-100: #d1fae5; --color-pink-200: #a7e8cf; --color-pink-300: #86d9b8; --color-pink-400: #4fbf98; --color-pink-500: #0d7f5e; --color-pink-600: #047857; --color-pink-700: #065f46; --color-pink-800: #064e3b; --color-pink-900: #053d2f; --color-pink-950: #022c22;
+  --color-fuchsia-50: #ecfdf5; --color-fuchsia-100: #d1fae5; --color-fuchsia-200: #a7e8cf; --color-fuchsia-300: #86d9b8; --color-fuchsia-400: #4fbf98; --color-fuchsia-500: #0d7f5e; --color-fuchsia-600: #047857; --color-fuchsia-700: #065f46; --color-fuchsia-800: #064e3b; --color-fuchsia-900: #053d2f; --color-fuchsia-950: #022c22;
+  --color-aqua-50: #ecfdf5; --color-aqua-100: #d1fae5; --color-aqua-200: #a7e8cf; --color-aqua-300: #86d9b8; --color-aqua-400: #4fbf98; --color-aqua-500: #0d7f5e; --color-aqua-600: #047857; --color-aqua-700: #065f46; --color-aqua-800: #064e3b; --color-aqua-900: #053d2f; --color-aqua-950: #022c22;
+  --tint: #4fbf98; --tint-rgb: 79 191 152; --tint-text: #86d9b8; --ins-hot: #4fbf98;
+  --cta: #047857; --cta-ink: #ffffff; --cta-hover: #0d7f5e;
+  --badge-blue-bg: rgba(79, 191, 152, 0.14); --badge-blue-color: #9ee3c6;
+  --card-hover-border: rgba(79, 191, 152, 0.28);
 }
-:root[data-app="play"]:not([data-accent]):not(.dark) {
-  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
-  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
-  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
-  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
-  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
-  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
-  --tint: #c026d3; --tint-rgb: 192 38 211; --tint-text: #a21caf; --ins-hot: #c026d3;
-  --cta: #c026d3; --cta-ink: #ffffff; --cta-hover: #a21caf;
-  --badge-blue-bg: #fdf4ff; --badge-blue-color: #a21caf;
+/* M213: Travel its own colour (sky), as the others have theirs: light mode one step darker for white text. */
+:root[data-app="travel"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #f0f9ff; --color-indigo-100: #e0f2fe; --color-indigo-200: #bae6fd; --color-indigo-300: #7dd3fc; --color-indigo-400: #38bdf8; --color-indigo-500: #0284c7; --color-indigo-600: #0369a1; --color-indigo-700: #075985; --color-indigo-800: #0c4a6e; --color-indigo-900: #082f49; --color-indigo-950: #082f49;
+  --color-violet-50: #f0f9ff; --color-violet-100: #e0f2fe; --color-violet-200: #bae6fd; --color-violet-300: #7dd3fc; --color-violet-400: #38bdf8; --color-violet-500: #0284c7; --color-violet-600: #0369a1; --color-violet-700: #075985; --color-violet-800: #0c4a6e; --color-violet-900: #082f49; --color-violet-950: #082f49;
+  --color-purple-50: #f0f9ff; --color-purple-100: #e0f2fe; --color-purple-200: #bae6fd; --color-purple-300: #7dd3fc; --color-purple-400: #38bdf8; --color-purple-500: #0284c7; --color-purple-600: #0369a1; --color-purple-700: #075985; --color-purple-800: #0c4a6e; --color-purple-900: #082f49; --color-purple-950: #082f49;
+  --color-pink-50: #f0f9ff; --color-pink-100: #e0f2fe; --color-pink-200: #bae6fd; --color-pink-300: #7dd3fc; --color-pink-400: #38bdf8; --color-pink-500: #0284c7; --color-pink-600: #0369a1; --color-pink-700: #075985; --color-pink-800: #0c4a6e; --color-pink-900: #082f49; --color-pink-950: #082f49;
+  --color-fuchsia-50: #f0f9ff; --color-fuchsia-100: #e0f2fe; --color-fuchsia-200: #bae6fd; --color-fuchsia-300: #7dd3fc; --color-fuchsia-400: #38bdf8; --color-fuchsia-500: #0284c7; --color-fuchsia-600: #0369a1; --color-fuchsia-700: #075985; --color-fuchsia-800: #0c4a6e; --color-fuchsia-900: #082f49; --color-fuchsia-950: #082f49;
+  --color-aqua-50: #f0f9ff; --color-aqua-100: #e0f2fe; --color-aqua-200: #bae6fd; --color-aqua-300: #7dd3fc; --color-aqua-400: #38bdf8; --color-aqua-500: #0284c7; --color-aqua-600: #0369a1; --color-aqua-700: #075985; --color-aqua-800: #0c4a6e; --color-aqua-900: #082f49; --color-aqua-950: #082f49;
+  --tint: #0369a1; --tint-rgb: 3 105 161; --tint-text: #075985; --ins-hot: #0369a1;
+  --cta: #0369a1; --cta-ink: #ffffff; --cta-hover: #075985;
+  --badge-blue-bg: #f0f9ff; --badge-blue-color: #075985;
 }
-:root[data-app="play"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="play"]:not([data-accent]).dark {
-  --color-indigo-50: #fdf4ff; --color-indigo-100: #fae8ff; --color-indigo-200: #f5d0fe; --color-indigo-300: #f0abfc; --color-indigo-400: #e879f9; --color-indigo-500: #d946ef; --color-indigo-600: #c026d3; --color-indigo-700: #a21caf; --color-indigo-800: #86198f; --color-indigo-900: #701a75; --color-indigo-950: #4a044e;
-  --color-violet-50: #fdf4ff; --color-violet-100: #fae8ff; --color-violet-200: #f5d0fe; --color-violet-300: #f0abfc; --color-violet-400: #e879f9; --color-violet-500: #d946ef; --color-violet-600: #c026d3; --color-violet-700: #a21caf; --color-violet-800: #86198f; --color-violet-900: #701a75; --color-violet-950: #4a044e;
-  --color-purple-50: #fdf4ff; --color-purple-100: #fae8ff; --color-purple-200: #f5d0fe; --color-purple-300: #f0abfc; --color-purple-400: #e879f9; --color-purple-500: #d946ef; --color-purple-600: #c026d3; --color-purple-700: #a21caf; --color-purple-800: #86198f; --color-purple-900: #701a75; --color-purple-950: #4a044e;
-  --color-pink-50: #fdf4ff; --color-pink-100: #fae8ff; --color-pink-200: #f5d0fe; --color-pink-300: #f0abfc; --color-pink-400: #e879f9; --color-pink-500: #d946ef; --color-pink-600: #c026d3; --color-pink-700: #a21caf; --color-pink-800: #86198f; --color-pink-900: #701a75; --color-pink-950: #4a044e;
-  --color-fuchsia-50: #fdf4ff; --color-fuchsia-100: #fae8ff; --color-fuchsia-200: #f5d0fe; --color-fuchsia-300: #f0abfc; --color-fuchsia-400: #e879f9; --color-fuchsia-500: #d946ef; --color-fuchsia-600: #c026d3; --color-fuchsia-700: #a21caf; --color-fuchsia-800: #86198f; --color-fuchsia-900: #701a75; --color-fuchsia-950: #4a044e;
-  --color-aqua-50: #fdf4ff; --color-aqua-100: #fae8ff; --color-aqua-200: #f5d0fe; --color-aqua-300: #f0abfc; --color-aqua-400: #e879f9; --color-aqua-500: #d946ef; --color-aqua-600: #c026d3; --color-aqua-700: #a21caf; --color-aqua-800: #86198f; --color-aqua-900: #701a75; --color-aqua-950: #4a044e;
-  --tint: #e879f9; --tint-rgb: 232 121 249; --tint-text: #f0abfc; --ins-hot: #e879f9;
-  --cta: #e879f9; --cta-ink: #0b0c0d; --cta-hover: #f0abfc;
-  --badge-blue-bg: rgba(232, 121, 249, 0.14); --badge-blue-color: #f0abfc;
-  --card-hover-border: rgba(232, 121, 249, 0.28);
+:root[data-app="travel"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="travel"]:not([data-accent]).dark {
+  --color-indigo-50: #f0f9ff; --color-indigo-100: #e0f2fe; --color-indigo-200: #bae6fd; --color-indigo-300: #7dd3fc; --color-indigo-400: #38bdf8; --color-indigo-500: #0278b8; --color-indigo-600: #0369a1; --color-indigo-700: #075985; --color-indigo-800: #0c4a6e; --color-indigo-900: #082f49; --color-indigo-950: #082f49;
+  --color-violet-50: #f0f9ff; --color-violet-100: #e0f2fe; --color-violet-200: #bae6fd; --color-violet-300: #7dd3fc; --color-violet-400: #38bdf8; --color-violet-500: #0278b8; --color-violet-600: #0369a1; --color-violet-700: #075985; --color-violet-800: #0c4a6e; --color-violet-900: #082f49; --color-violet-950: #082f49;
+  --color-purple-50: #f0f9ff; --color-purple-100: #e0f2fe; --color-purple-200: #bae6fd; --color-purple-300: #7dd3fc; --color-purple-400: #38bdf8; --color-purple-500: #0278b8; --color-purple-600: #0369a1; --color-purple-700: #075985; --color-purple-800: #0c4a6e; --color-purple-900: #082f49; --color-purple-950: #082f49;
+  --color-pink-50: #f0f9ff; --color-pink-100: #e0f2fe; --color-pink-200: #bae6fd; --color-pink-300: #7dd3fc; --color-pink-400: #38bdf8; --color-pink-500: #0278b8; --color-pink-600: #0369a1; --color-pink-700: #075985; --color-pink-800: #0c4a6e; --color-pink-900: #082f49; --color-pink-950: #082f49;
+  --color-fuchsia-50: #f0f9ff; --color-fuchsia-100: #e0f2fe; --color-fuchsia-200: #bae6fd; --color-fuchsia-300: #7dd3fc; --color-fuchsia-400: #38bdf8; --color-fuchsia-500: #0278b8; --color-fuchsia-600: #0369a1; --color-fuchsia-700: #075985; --color-fuchsia-800: #0c4a6e; --color-fuchsia-900: #082f49; --color-fuchsia-950: #082f49;
+  --color-aqua-50: #f0f9ff; --color-aqua-100: #e0f2fe; --color-aqua-200: #bae6fd; --color-aqua-300: #7dd3fc; --color-aqua-400: #38bdf8; --color-aqua-500: #0278b8; --color-aqua-600: #0369a1; --color-aqua-700: #075985; --color-aqua-800: #0c4a6e; --color-aqua-900: #082f49; --color-aqua-950: #082f49;
+  --tint: #38bdf8; --tint-rgb: 56 189 248; --tint-text: #7dd3fc; --ins-hot: #38bdf8;
+  --cta: #38bdf8; --cta-ink: #0b0c0d; --cta-hover: #7dd3fc;
+  --badge-blue-bg: rgba(56, 189, 248, 0.14); --badge-blue-color: #7dd3fc;
+  --card-hover-border: rgba(56, 189, 248, 0.28);
 }
+/* M214: Travel's map Layers panel grows from its button. */
+@keyframes layers-in { from { opacity: 0; transform: scale(0.94) translateY(-4px); } }
+/* Travel's dark fills from 500 down carry white text (4.8:1 and more); its light 400 (`--tint`, my chat bubbles) takes ink. */
+:root[data-app="travel"]:not([data-accent]) .dark :is(.bg-tint, .bg-primary), :root[data-app="travel"]:not([data-accent]).dark :is(.bg-tint, .bg-primary) { color: #0b0c0d; }
 
 
 /* ═══ M133 · Realistic movement (the owner, 9 Nov 2026: "spring, momentum and depth across the site";
@@ -2786,8 +2773,12 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   @media (prefers-reduced-motion: no-preference) {
     html:not(.reduce-motion) .scrub { animation: scrub-rise linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
     html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
+    /* M211: the landing's product window tilts up into place as it scrolls in (it was framer-motion's
+       useScroll on the page's thread, most of a slow phone's dropped frames while scrolling the website). */
+    html:not(.reduce-motion) .window-tilt { animation: window-tilt linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
   }
 }
+@keyframes window-tilt { from { transform: translate3d(0, 48px, 0) rotateX(24deg) scale(0.88); } to { transform: none; } }
 
 /* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
    design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes
@@ -2812,7 +2803,8 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
      small rounded square with a gradient, no picture in it);
    · progress fills: one colour, the accent, not a gradient (an empty rounded bar with a gradient);
    · buttons and badges the reels' size (secondary buttons are already outlined, M124). */
-@media (min-width: 1024px) { html:has(main#main) { font-size: 15px; } }
+/* M225: a class the app's frame sets (DashboardShell), not `html:has(main#main)`, which restyled the root on every change. */
+@media (min-width: 1024px) { html.in-app { font-size: 15px; } }
 #main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) {
   background-image: none; background-color: color-mix(in srgb, var(--tint) 13%, var(--surface)); color: var(--tint-text); box-shadow: none;
 }
@@ -2961,9 +2953,10 @@ html[data-arr-busy], html[data-arr-busy] * { -webkit-user-select: none !importan
 /* M168 · a card being resized sits above its neighbours (it may overlap one until the grid makes room)
    and the resize cursor stays on wherever the hand goes. */
 #main .arr-size { transition: none !important; z-index: 30; will-change: width, height; transform: none !important; }
-html[data-arr-resize="x"], html[data-arr-resize="x"] * { cursor: ew-resize !important; }
-html[data-arr-resize="y"], html[data-arr-resize="y"] * { cursor: ns-resize !important; }
-html[data-arr-resize="xy"], html[data-arr-resize="xy"] * { cursor: nwse-resize !important; }
+html[data-arr-resize="ew"], html[data-arr-resize="ew"] * { cursor: ew-resize !important; }
+html[data-arr-resize="ns"], html[data-arr-resize="ns"] * { cursor: ns-resize !important; }
+html[data-arr-resize="nwse"], html[data-arr-resize="nwse"] * { cursor: nwse-resize !important; }
+html[data-arr-resize="nesw"], html[data-arr-resize="nesw"] * { cursor: nesw-resize !important; }
 /* M167 · a column carried by its heading (its cells move as one, above the others); the thing left behind
    while a likeness of it is carried over the side menu (or the page); a thing drawn inside a card. */
 .arr-cell { position: relative; z-index: 60; background: var(--surface); will-change: transform; transition: none !important; pointer-events: none; }
@@ -3029,7 +3022,7 @@ html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
    fixed box (transform, filter, containment) and the page behind doesn't scroll. It arrives with a fade
    and a slight settle. */
 .studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; }
-html[data-focus] .side-shell, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
+html[data-focus] .side-shell, html[data-focus] .top-nav, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
 html[data-focus] :is(.side-main, main, .page-stage) { transform: none !important; filter: none !important; contain: none !important; }
 html[data-focus], html[data-focus] body { overflow: hidden; }
 
@@ -3044,9 +3037,23 @@ html[data-focus], html[data-focus] body { overflow: hidden; }
 @keyframes studio-focus-in { from { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } 30% { opacity: 1; } }
 @keyframes studio-focus-out { to { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } }
 @keyframes studio-focus-back { from { opacity: 0; transform: scale(0.985); } }
-html[data-focus] :is(.side-shell, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
+html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
 @media (prefers-reduced-motion: reduce) {
   .studio-focus, .studio-focus-back { animation: tracks-fade 200ms ease both; }
   .studio-focus.studio-focus-out { animation: studio-fade-out 160ms ease both; }
 }
 @keyframes studio-fade-out { to { opacity: 0; } }
+
+/* M222 · The notifications panel, Apple style (the owner, 16 Nov: "redesign it like apple style and make it ultra
+   smooth"; NotificationsPanel.tsx). Inside it the segmented control is iOS's own: a grey track and a white thumb
+   (#636366 in dark), not the pills used elsewhere. The rows rise in one after another while the sheet opens
+   (`data-entering`), on the glide spring; Reduce Motion: a fade. */
+.notif-sheet .ios-segmented { display: flex; width: 100%; gap: 0; padding: 2px; border-radius: 9px; background: rgb(118 118 128 / 0.12); }
+.dark .notif-sheet .ios-segmented { background: rgb(118 118 128 / 0.24); }
+.notif-sheet .ios-segment { min-height: 28px; padding-block: 0; border-radius: 7px; box-shadow: none; font-size: 13px; --pill-on-color: #000; }
+.dark .notif-sheet .ios-segment { --pill-on-color: #fff; }
+.notif-sheet .ios-segment-thumb { background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04); }
+.dark .notif-sheet .ios-segment-thumb { background: #636366; box-shadow: none; }
+.notif-sheet[data-entering] .notif-row { animation: notif-in 520ms var(--spring-glide, var(--ease-glide)) both; animation-delay: calc(min(var(--i, 0), 10) * 35ms + 80ms); }
+@keyframes notif-in { from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .notif-sheet[data-entering] .notif-row { animation: tracks-fade 200ms ease both; } }

@@ -1,4 +1,5 @@
 'use client';
+import { currentAppNow } from '@/lib/current-app';
 import { lowDataOn, twoGOn, useLowData } from '@/store/low-data';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -185,7 +186,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   }, [myCourses, role, base, go]);
 
   const peopleItems: Item[] = useMemo(() => (people ?? []).slice(0, 5).flatMap((p) => {
-    const chatWith = async () => (await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id }) })).id;
+    const chatWith = async () => (await authedJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ userId: p.id, app: currentAppNow() }) })).id;
     return [
       {
         id: `person:${p.id}`, label: p.name, hint: `${p.role.charAt(0)}${p.role.slice(1).toLowerCase()}${p.online ? ' · online' : ''}`, icon: User, group: 'People',

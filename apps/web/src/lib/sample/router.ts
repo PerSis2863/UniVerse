@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { shownIds } from '@/lib/shown-apps';
 import { sampleAudit, sampleAuditActions, sampleAuditHeat } from './audit';
 import { toast } from 'sonner';
 import { useAuthStore } from '@/store/auth';
@@ -642,7 +643,7 @@ function summary(d: SampleDb, c: any) {
   const last = msgs[msgs.length - 1];
   const other = c.members.find((x: any) => x.id !== d.me.id);
   return {
-    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, title: c.title, avatarUrl: null,
+    id: c.id, isGroup: c.isGroup, isOfficial: c.isOfficial, app: c.app ?? 'campus', title: c.title, avatarUrl: null,
     otherUserId: c.isGroup ? null : other?.id ?? null, online: !c.isGroup && !c.isOfficial && other?.id !== d.people.meera.id,
     lastSeenAt: at(0, 8), memberCount: c.members.length, typing: [],
     lastMessage: last ? { id: last.id, body: last.body.slice(0, 140), type: last.type, senderId: last.senderId, createdAt: last.createdAt, deletedAt: last.deletedAt, attachmentName: last.attachmentName, mine: last.senderId === d.me.id } : null,
@@ -1013,10 +1014,14 @@ const SAMPLE_MARKETPLACE_PACKS: SampleMarketplacePack[] = [
 
 const GET: [RegExp, (c: Ctx) => Result][] = [
   // The impact apps (src/lib/sample/impact.ts)
+  [/^\/site\/apps$/, () => ok({ apps: shownIds() })],
   [/^\/hub$/, ({ db: d }) => ok(impact.sampleHub(d.me))],
   [/^\/hub\/wallet$/, ({ db: d }) => ok(impact.sampleWallet(d.me))],
   [/^\/relief\/map$/, ({ db: d }) => ok(impact.sampleReliefMap(d.me))],
   [/^\/relief\/places$/, () => ok(impact.sampleReliefPlaces())],
+  [/^\/relief\/alerts$/, () => ok(impact.sampleReliefAlerts())],
+  [/^\/relief\/plan$/, () => ok(impact.sampleReliefPlan())],
+  [/^\/relief\/hours$/, () => ok(impact.sampleReliefHours())],
   [/^\/relief\/incidents$/, () => ok(impact.sampleReliefIncidents())],
   [/^\/relief\/contacts$/, () => ok(impact.sampleReliefContacts())],
   [/^\/relief\/sms$/, () => ok({ on: true })],
@@ -1030,7 +1035,26 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // M166: arrangements stay on the device while exploring.
   [/^\/arrange$/, () => ok({ sync: false, doc: null })],
   [/^\/green\/me$/, ({ db: d }) => ok(impact.sampleGreenMe(d.me))],
+  [/^\/travel\/guide$/, ({ q }) => ok(impact.sampleTravelGuide(q.get('d')))],
+  [/^\/travel\/search$/, ({ q }) => ok(impact.sampleTravelSearch(q.get('q')))],
+  [/^\/travel\/weather$/, () => ok(impact.sampleTravelWeather())],
+  [/^\/travel\/visa$/, ({ q }) => ok(impact.sampleTravelVisa(q.get('p')))],
+  [/^\/travel\/saved$/, ({ db: d }) => ok(impact.sampleTravelSaved(d.me))],
+  [/^\/travel\/trips$/, () => ok(impact.sampleTravelTrips())],
+  [/^\/travel\/board$/, () => ok(impact.sampleTravelBoard())],
+  [/^\/travel\/place$/, () => ok(impact.sampleTravelPlace())],
+  [/^\/travel\/where$/, () => ok(impact.sampleTravelWhere())],
+  [/^\/travel\/photos$/, () => ok(impact.sampleTravelPhotos())],
+  [/^\/travel\/stories$/, () => ok(impact.sampleTravelStories())],
+  [/^\/travel\/reviews$/, () => ok(impact.sampleTravelReviews())],
+  [/^\/travel\/reviews\/near$/, () => ok(impact.sampleTravelReviewsNear())],
+  [/^\/travel\/trips\/([^/]+)\/expenses$/, ({ db: d }) => ok(impact.sampleTripExpenses(d.me))],
+  [/^\/travel\/trips\/([^/]+)\/packing$/, () => ok(impact.sampleTripPacking())],
+  [/^\/travel\/trips\/([^/]+)$/, ({ db: d }) => ok(impact.sampleTravelTrip(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
+  [/^\/green\/footprints$/, () => ok(impact.sampleGreenFootprints())],
+  [/^\/green\/goals$/, () => ok(impact.sampleGreenGoals())],
+  [/^\/green\/events$/, () => ok(impact.sampleGreenEvents())],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
@@ -2037,7 +2061,10 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/docs$/, () => ok({ courses: [], docs: [] })],
   [/^\/api\/collab\/pins$/, () => ok({ pins: [] })],
   // M75: saved work in Create (sample mode keeps nothing on the server).
-  [/^\/api\/collab\/saves$/, () => ok({ saves: [] })],
+  // M182: connections, as they look once the owner sets them up (sample: none connected).
+  [/^\/api\/connections$/, () => ok({ services: [{ id: 'gmail', name: 'Gmail', kind: 'mail', available: true, connected: null }, { id: 'outlook', name: 'Outlook', kind: 'mail', available: true, connected: null }, { id: 'slack', name: 'Slack', kind: 'chat', available: true, connected: null }, { id: 'google-calendar', name: 'Google Calendar', kind: 'calendar', available: true, connected: null }, { id: 'outlook-calendar', name: 'Outlook Calendar', kind: 'calendar', available: true, connected: null }], elsewhere: [{ id: 'linkedin', name: 'LinkedIn', why: 'LinkedIn doesn’t let other apps read or send its messages.' }] })],
+  [/^\/api\/connections\/([^/]+)\/items$/, () => ok({ mail: [] })],
+  [/^\/api\/collab\/saves$/, () => ok({ saves: [{ id: 'smp-save1', tool: 'mindmap', title: 'Project ideas', updatedAt: at(-1), shared: true, editing: false }, { id: 'smp-save2', tool: 'palette', title: 'Poster colours', updatedAt: at(-3), shared: false, editing: false }], opened: [{ id: 'smp-save3', tool: 'mindmap', title: 'Group project plan', updatedAt: at(-2), edit: true, href: '/studio?tool=mindmap', by: 'Maya Patel' }] })],
   [/^\/api\/collab\/(saves|shared|live)\/[^/]+$/, () => fail('Not found.', 404)],
   [/^\/api\/spaces$/, () => ok({ courses: [], groups: [] })],
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
@@ -2267,9 +2294,11 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Safe by default (Stage 4 · 4.10): no flags in the sample; the default policy; quiet hours off.
   [/^\/api\/safety\/flags$/, () => ok({ open: 0, flags: [] })],
   [/^\/api\/safety\/flags\/([^/]+)$/, () => ok({ messages: [] })],
+  [/^\/api\/admin\/visibility$/, () => ok({ everyone: false, schools: ['Your main school'], kept: { students: 120, teachers: 9, parents: 64, admins: 2, courses: 14, rooms: 11, buildings: 3 }, ownPolicy: true })],
   [/^\/api\/safety\/policy$/, () => ok({ guard: true, recordMinors: false, quietMinors: true, quietStart: '22:00', quietEnd: '07:00', studentsMinors: false, parentMessaging: true, open: 0, ai: false })],
   [/^\/api\/me\/quiet$/, () => ok({ on: false, start: '22:00', end: '07:00', locked: false })],
   // Parent–teacher messages (Stage 5 · B16.2): the sample has no parent accounts.
+  [/^\/api\/teacher\/first-class$/, () => ok({ show: false })],
   [/^\/api\/teacher\/parents$/, ({ q }) => ok({ allowed: true, student: { id: q.get('studentId') ?? '', name: 'Student' }, parents: [] })],
   [/^\/api\/teacher\/parent-hours$/, () => ok({ open: true, days: [1, 2, 3, 4, 5], start: '08:00', end: '16:00', timeZone: 'UTC', text: 'Mon–Fri, 08:00–16:00' })],
   // Registers (Stage 5 · B15.5): a school bus and a lent laptop.
@@ -2373,7 +2402,14 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
     const wd = (new Date().getDay() + 6) % 7;
     const classes = (d.slots as { courseId: string; dayOfWeek: number; startTime: string; endTime: string; type?: string; room?: { name?: string } }[]).filter((x) => x.dayOfWeek === wd)
       .map((x) => { const c = d.courses.find((y) => y.id === x.courseId); return { courseId: x.courseId, code: c?.code ?? '', name: c?.name ?? '', start: x.startTime, end: x.endTime, type: x.type ?? 'LECTURE', room: x.room?.name ?? null }; });
-    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, ai: null, aiOn: false, push: false, hour: 7 });
+    const ago = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();
+    const first = d.courses[0];
+    // Since your last visit (M185): a taste of it in the sample, from its first course.
+    const since = first ? { from: ago(26), total: 3, items: (d.me.role === 'TEACHER'
+      ? [{ kind: 'handin', id: 'smp-s1', title: 'Maya Chen handed in Problem set 3', at: ago(3), link: '/teacher/assignments' }, { kind: 'handin', id: 'smp-s2', title: 'Omar Farouk handed in Problem set 3', at: ago(9), link: '/teacher/assignments' }, { kind: 'joined', id: 'smp-s3', title: 'Lina Petrova joined', at: ago(20), link: '/teacher/students' }]
+      : [{ kind: 'grade', id: 'smp-s1', title: 'Problem set 2', at: ago(4), link: '/student/grades' }, { kind: 'announcement', id: 'smp-s2', title: 'Room change on Thursday', at: ago(11), link: '/student/blackboard' }, { kind: 'work', id: 'smp-s3', title: 'Problem set 3', at: ago(22), link: '/student/assignments' }]
+    ).map((x) => ({ ...x, course: first.code })) } : null;
+    return ok({ day: new Date().toISOString().slice(0, 10), classes, due: [], calls: [], waiting: [], toGrade: 0, since, ai: null, aiOn: false, push: false, hour: 7 });
   }],
   // Watch together (Stage 4 · 4.8): the sample's courses have no videos (YouTube links still work).
   [/^\/api\/calls\/([^/]+)\/videos$/, () => ok({ videos: [] })],
@@ -2390,6 +2426,8 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
   ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
+  ['POST', /^\/api\/connections\/[^/]+\/(start|import)$/, () => { notice(); return fail('Sample mode: connect your accounts after you leave the sample.', 400); }],
+  ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],

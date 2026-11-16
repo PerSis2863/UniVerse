@@ -4,7 +4,7 @@ import { IMPORT_COLUMNS, IMPORT_KINDS, MAX_IMPORT_ROWS, type ImportKind } from '
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { need } from './permissions';
-import { inSchools, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
+import { inSchools, orgIn, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // Bulk import from CSV with a preview and undo (Stage 5 · B15.7). The admin's browser reads the file
 // and matches its columns (src/lib/csv.ts); the server checks every row and says what it would do
@@ -225,7 +225,7 @@ async function planTimetable(rows: Row[], schools: Schools): Promise<Plan> {
   const plan = emptyPlan();
   const [courses, rooms] = await Promise.all([
     coursesByCode(rows.map((r) => (r.course ?? '').trim()).filter(Boolean), schools),
-    prisma.room.findMany({ select: { id: true, name: true }, take: 1000 }),
+    prisma.room.findMany({ where: orgIn(schools), select: { id: true, name: true }, take: 1000 }),
   ]);
   const roomByName = new Map(rooms.map((r) => [r.name.trim().toLowerCase(), r]));
   const taken = await readWith<{ courseId: string; dayOfWeek: number; startTime: string; endTime: string; roomId: string | null; code: string }>(

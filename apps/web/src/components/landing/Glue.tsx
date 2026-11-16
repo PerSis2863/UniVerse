@@ -36,8 +36,8 @@ function Waterfall() {
             <span className="truncate text-zinc-300">{name}</span>
             <span className="relative h-2 rounded-full bg-white/[0.04]">
               <motion.span className="absolute inset-y-0 rounded-full bg-gradient-to-r from-indigo-400 to-fuchsia-400"
-                style={{ left: `${(at / END) * 100}%` }}
-                initial={{ width: 0 }} animate={{ width: seen ? `${Math.max(1.5, (took / END) * 100)}%` : 0 }} transition={{ duration: 0.6, delay: 0.2 + i * 0.18, ease: EASE }} />
+                style={{ left: `${(at / END) * 100}%`, width: `${Math.max(1.5, (took / END) * 100)}%`, transformOrigin: 'left' }}
+                initial={{ transform: 'scaleX(0)' }} animate={{ transform: seen ? 'scaleX(1)' : 'scaleX(0)' }} transition={{ duration: 0.6, delay: 0.2 + i * 0.18, ease: EASE }} />
             </span>
             <span className="text-end text-zinc-400">{took} ms</span>
           </li>

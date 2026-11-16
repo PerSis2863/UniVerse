@@ -3,6 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { activityOf, carbonSummary, kgFor } from '@/lib/carbon';
 import type { Body } from './body';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { clubInSchool } from './school-scope';
 
 // A club's carbon tracker (Stage 5 · Q16): members log what the club did (trips, electricity, a
 // generator, paper…); each entry is worked out with a standard factor (src/lib/carbon.ts). Members
@@ -12,13 +13,15 @@ async function access(user: SessionUser, clubId: string) {
   const club = await prisma.association.findUnique({ where: { id: clubId }, select: { id: true, name: true } });
   if (!club) throw new NotFoundException('Club not found.');
   const m = await prisma.associationMembership.findFirst({ where: { associationId: clubId, userId: user.id }, select: { role: true } });
-  if (!m && user.role !== 'ADMIN') throw new ForbiddenException('Only the club’s members can see its carbon tracker.');
-  return { club, member: !!m, founder: m?.role === 'FOUNDER' };
+  // An admin: of the club's own school only (M184).
+  const admin = user.role === 'ADMIN' && (await clubInSchool(user, clubId));
+  if (!m && !admin) throw new ForbiddenException('Only the club’s members can see its carbon tracker.');
+  return { club, member: !!m, founder: m?.role === 'FOUNDER', admin };
 }
 
 /** GET /api/campus/clubs/[id]/carbon: the last year's entries and totals. */
 export async function clubCarbon(user: SessionUser, clubId: string) {
-  const { club, member, founder } = await access(user, clubId);
+  const { club, member, founder, admin } = await access(user, clubId);
   const since = new Date(Date.now() - 366 * 86_400_000);
   const rows = await prisma.clubCarbonEntry.findMany({
     where: { associationId: clubId, occurredAt: { gte: since } }, orderBy: { occurredAt: 'desc' }, take: 2000,
@@ -29,7 +32,7 @@ export async function clubCarbon(user: SessionUser, clubId: string) {
     entries: rows.slice(0, 60).map((r) => ({
       id: r.id, activity: r.activity, label: activityOf(r.activity)?.label ?? r.activity, unit: activityOf(r.activity)?.unit ?? '', saving: !!activityOf(r.activity)?.saving,
       quantity: r.quantity, kgCo2e: r.kgCo2e, note: r.note, occurredAt: r.occurredAt, by: r.user?.name ?? null,
-      canDelete: r.userId === user.id || founder || user.role === 'ADMIN',
+      canDelete: r.userId === user.id || founder || admin,
     })),
   };
 }
@@ -51,10 +54,10 @@ export async function logCarbon(user: SessionUser, clubId: string, b: Body) {
 
 /** DELETE /api/campus/clubs/[id]/carbon?entry= */
 export async function deleteCarbon(user: SessionUser, clubId: string, entryId: string) {
-  const { founder } = await access(user, clubId);
+  const { founder, admin } = await access(user, clubId);
   const e = await prisma.clubCarbonEntry.findFirst({ where: { id: entryId, associationId: clubId }, select: { userId: true } });
   if (!e) throw new NotFoundException('Entry not found.');
-  if (e.userId !== user.id && !founder && user.role !== 'ADMIN') throw new ForbiddenException('Only whoever added it, the founder or an admin can remove it.');
+  if (e.userId !== user.id && !founder && !admin) throw new ForbiddenException('Only whoever added it, the founder or an admin can remove it.');
   await prisma.clubCarbonEntry.delete({ where: { id: entryId } });
   return clubCarbon(user, clubId);
 }

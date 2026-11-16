@@ -1,5 +1,6 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import prisma from '@/lib/db';
+import { ownerNames } from './owner-names';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
@@ -162,7 +163,8 @@ export async function listDocs(user: SessionUser) {
     frontier = next;
   }
   const code = new Map([...courses.map((c) => [c.id, c.code] as const), ...groups.map((g) => [g.id, g.name] as const)]);
-  return { courses, groups, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : d.groupId ? code.get(d.groupId) ?? null : null, space: spaceKey(d), parentId: d.parentId, kind: d.kind, mine: d.ownerId === user.id, updatedAt: d.updatedAt })) };
+  const by = await ownerNames(docs.map((d) => d.ownerId), user.id);
+  return { courses, groups, docs: docs.map((d) => ({ id: d.id, title: d.title, preview: d.preview, course: d.courseId ? code.get(d.courseId) ?? null : d.groupId ? code.get(d.groupId) ?? null : null, space: spaceKey(d), parentId: d.parentId, kind: d.kind, mine: d.ownerId === user.id, by: by.get(d.ownerId) ?? null, updatedAt: d.updatedAt })) };
 }
 
 export async function createDoc(user: SessionUser, body: Record<string, unknown>) {

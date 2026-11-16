@@ -5,7 +5,7 @@
 // in, and the switcher at its top (and the hub, /hub) moves between them. Shared tools (Messages,
 // Collaborate, Calls, Settings) belong to every app.
 
-export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'play';
+export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'travel';
 
 export interface ImpactApp {
   id: AppId;
@@ -18,37 +18,37 @@ export interface ImpactApp {
   color: string;
   /** Addresses that belong to the app. */
   paths: string[];
-  /** Still finding its first people: a small "Lab" tag wherever the app is named (M112, the council's
-   *  launch focus; on 5 Dec 2026 the owner decides, from each app's real-people numbers, to keep it,
-   *  leave it in the lab or remove it). */
-  lab?: boolean;
 }
 
 export const APPS: ImpactApp[] = [
   {
     id: 'campus', name: 'UniVersity', tagline: 'Schools and universities', color: '#6366f1',
     impact: 'Courses, grades and parents, in one place.',
-    paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application'],
+    // M224 (the owner, 16 Nov: "remove the game app from the website and it should be under the University app"): the
+    // games (/play) are UniVersity's Games section; Play is no longer an app of its own.
+    paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application', '/play'],
   },
   {
     id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
     impact: 'Real or fake, in one scan.',
-    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'], lab: true,
+    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'],
   },
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
     impact: 'Needs and offers, matched on a live map.',
-    paths: ['/relief', '/aid'], lab: true,
+    paths: ['/relief', '/aid'],
   },
   {
     id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',
     impact: 'Log an action, see the CO₂ saved.',
-    paths: ['/green'], lab: true,
+    paths: ['/green'],
   },
   {
-    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
-    impact: 'Thirteen games that teach, solo or with friends.',
-    paths: ['/play'], lab: true,
+    // M202 (the owner, 15 Nov 2026): where to go, eat, sleep and what to see, trips planned day by day
+    // with friends, and booking through partners.
+    id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
+    impact: 'Guides, day-by-day plans and greener trips.',
+    paths: ['/travel'],
   },
 ];
 
@@ -65,8 +65,10 @@ export function isShared(path: string) {
 /** M133: the page's app on <html data-app> before the first paint (the root layout's head script), so a
  *  page never shows the wrong app's colour first (globals.css M132); AppBackdrop keeps it right after.
  *  The same rules as appFor and useChosenApp: the address's app, otherwise ?app=, the app chosen in
- *  this tab, UniVersity. */
-export const appHeadScript = `try{var p=location.pathname,A=${JSON.stringify(APPS.map((a) => [a.id, a.paths]))},u=function(b){return p===b||p.indexOf(b+'/')===0},a=null;if(!(${SHARED_ROLE}.test(p)||${JSON.stringify(SHARED)}.some(u)))A.some(function(x){return x[1].some(u)&&(a=x[0])});if(!a){var c=new URLSearchParams(location.search).get('app')||sessionStorage.getItem('uv-app');a=A.some(function(x){return x[0]===c})?c:'campus'}document.documentElement.dataset.app=a}catch(e){}`;
+ *  this tab, UniVersity. M203: when the owner shows only some apps (window.__uvApps, written by the
+ *  Worker, or the list this device kept), a chosen app that's hidden gives way to the first shown one,
+ *  and a style hides every `[data-uv-app]` of a hidden app (and with one app, every `[data-uv-many]`: tabs, lists of apps) before the page is drawn (src/lib/shown-apps.ts). */
+export const appHeadScript = `try{var p=location.pathname,A=${JSON.stringify(APPS.map((a) => [a.id, a.paths]))},u=function(b){return p===b||p.indexOf(b+'/')===0},a=null,S=null,K=[];if(!(${SHARED_ROLE}.test(p)||${JSON.stringify(SHARED)}.some(u)))A.some(function(x){return x[1].some(u)&&(a=x[0])});try{S=window.__uvApps||JSON.parse(localStorage.getItem('uv-apps')||'null')}catch(e){}if(Array.isArray(S))A.forEach(function(x){S.indexOf(x[0])>=0&&K.push(x[0])});if(K.length===A.length)K=[];if(!a){var c=new URLSearchParams(location.search).get('app')||sessionStorage.getItem('uv-app');a=A.some(function(x){return x[0]===c})?c:'campus';if(K.length&&K.indexOf(a)<0)a=K[0]}document.documentElement.dataset.app=a;if(K.length){var s=document.createElement('style');s.id='uv-apps-css';s.textContent='[data-uv-app]'+K.map(function(i){return':not([data-uv-app="'+i+'"])'}).join('')+(K.length===1?',[data-uv-many]':'')+'{display:none!important}';document.head.appendChild(s)}}catch(e){}`;
 
 /** The app an address belongs to (null: the hub or a shared tool). */
 export function appFor(path: string): ImpactApp | null {
@@ -74,7 +76,11 @@ export function appFor(path: string): ImpactApp | null {
   return APPS.find((a) => a.paths.some((p) => under(path, p))) ?? null;
 }
 
-export const appById = (id: AppId) => APPS.find((a) => a.id === id)!;
+/** M224: an id saved before an app was folded into another (a chat made in Play: 'play', now UniVersity's Games) is
+ *  UniVersity's, so nothing reading old rows meets an app that isn't there. */
+export const knownApp = (id: string | null | undefined): AppId => (APPS.some((a) => a.id === id) ? (id as AppId) : 'campus');
+
+export const appById = (id: AppId) => APPS.find((a) => a.id === knownApp(id))!;
 
 /** Where an app opens for someone: Campus by role, the others at their own page. */
 export function appHome(id: AppId, role?: string | null) {

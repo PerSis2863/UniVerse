@@ -3,7 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { str, strings, type Body } from './body';
 import { later, notifyMany } from './email';
 import { BadRequestException, ForbiddenException } from './http';
-import { schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
+import { orgIn, schoolSql, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 
 // The timetable and exam timetable generators' server side (Stage 5 · Q12). The planning itself
 // happens in the admin's browser (src/lib/schedule-solver.ts); this gives it what it needs (courses
@@ -44,7 +44,7 @@ export async function planInputs(user: SessionUser) {
       take: 400,
       select: { id: true, code: true, name: true, department: true, color: true, teacherId: true, teacher: { select: { name: true } }, _count: { select: { enrollments: true } } },
     }),
-    prisma.room.findMany({ orderBy: { name: 'asc' }, take: 300, select: { id: true, name: true, capacity: true, type: true } }),
+    prisma.room.findMany({ where: orgIn(schools), orderBy: { name: 'asc' }, take: 300, select: { id: true, name: true, capacity: true, type: true } }),
     prisma.timetableSlot.findMany({ where: { course: { teacher } }, take: 1500, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, roomId: true, type: true } }),
     // Courses that share students, and how many: a student in both can't be in both at once.
     prisma.$queryRawUnsafe<{ a: string; b: string; n: number | bigint }[]>(
@@ -100,10 +100,11 @@ export async function saveWeek(user: SessionUser, b: Body) {
   const { courseIds, slots } = cleanWeek(b);
   const roomIds = [...new Set(slots.flatMap((s) => (s.roomId ? [s.roomId] : [])))];
   // Another school's course counts as one that doesn't exist.
-  const teacher = usersIn(await schoolsOf(user));
+  const schools = await schoolsOf(user);
+  const teacher = usersIn(schools);
   const [courses, rooms, existing] = await Promise.all([
     Promise.all(chunks(courseIds, 90).map((ids) => prisma.course.findMany({ where: { id: { in: ids }, teacher }, select: { id: true } }))).then((r) => r.flat()),
-    Promise.all(chunks(roomIds, 90).map((ids) => prisma.room.findMany({ where: { id: { in: ids } }, select: { id: true } }))).then((r) => r.flat()),
+    Promise.all(chunks(roomIds, 90).map((ids) => prisma.room.findMany({ where: { id: { in: ids }, ...orgIn(schools) }, select: { id: true } }))).then((r) => r.flat()),
     Promise.all(chunks(courseIds, 90).map((ids) => prisma.timetableSlot.findMany({ where: { courseId: { in: ids } }, select: { id: true, courseId: true, dayOfWeek: true, startTime: true, endTime: true, roomId: true, type: true } }))).then((r) => r.flat()),
   ]);
   if (courses.length !== courseIds.length) throw new BadRequestException('One of those courses no longer exists.');

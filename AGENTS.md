@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M178 is the latest).
+  builds on it). The newest notes are at the end (M211 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -70,7 +70,15 @@ software or website in the main website… where they create a impact"). Each ap
   alerts for helpers, and organisations (`/relief/orgs`: NGOs with members, supplies and volunteer shifts).
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
   teams and a map.
-- **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
+- **Travel** (`/travel`, M183): find any place; its guide (what to see, do, eat, drink, where to sleep,
+  getting around, staying safe and polite) from Wikivoyage, the country's facts and emergency numbers, the
+  week's weather; saved places; stays, flights, tours and trains booked with partners; **Find where to go**
+  (days, budget, month, interests and passport rank 145 places, M205); **trips** planned alone or with
+  friends (cities, days, drag and drop, the whole budget, getting between and there, stays, M206–M207); an
+  opt-in **travellers board** for adults in the same city on the same dates (M207); a **map** (OpenFreeMap in
+  3D, real places from OpenStreetMap, open or closed in their own time, sunlight by the hour, photos and
+  stories nearby, Walk from here) with UniVerse's own reviews, locals apart from visitors (M209).
+- **Games** (`/play`, UniVersity's Games section since M224; it was the Play app): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
   Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
   game but Quiz Clash's questions and Spot the Fake's cards is a 3D scene), plus **STORMFALL** 16+ on computers (a Unity battle royale: source `games/stormfall/`, page `/play/stormfall`, its web build fetched at build time by `scripts/fetch-stormfall.mjs`); rated games check
@@ -79,7 +87,7 @@ software or website in the main website… where they create a impact"). Each ap
 
 Shared by all apps: the hub `/hub`, Messages, Collaborate (the owner likes it: keep it), Settings,
 and the owner console `/console`. Each app has its own menu (`Sidebar.tsx` `navFor`, the app
-switcher under the brand), phone tabs (`app-tabs.ts`), landing tab and sign-in / sign-up tab
+switcher under the brand; on a computer's browser it's the bar across the top, `TopNav.tsx`, M219), phone tabs (`app-tabs.ts`), landing tab and sign-in / sign-up tab
 (`?app=`, remembered in sessionStorage `uv-app`, `useChosenApp`). `homeFor(user, app)` sends a
 person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 
@@ -100,8 +108,15 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   **10 real people who come back on another day** (Console → Overview → Real people). If the owner
   asks for something new, say once that it's paused and why, then do what they decide. On 5 December,
   go through each app's numbers with the owner: keep it, mark it Lab, or remove it.
-- **On `main`** (live): everything through **M178** (M173, M177–M178 merged 13 Nov, PR #124: Trace across
-  the supply chain, smoother pages, a security review; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **The owner's list of 15 Nov** ("do all of them except 5th one"; then 16 Nov: "do all this and merge
+  it"): done: M196 (a teacher's first class), M197 (come-back reminders, 0216), M198 (the new-student
+  walk-through), M199 (Admin → Safety → Who can see what, and the leak check `school-leaks.mjs` with five
+  leaks fixed), M181 (arranging keeps things in their group, every edge resizes, Tidy), M182 (Messages
+  connections: Gmail, Outlook, Slack, 0217), M200 (Google Classroom import, Google / Outlook calendars in
+  the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
+  them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
+  (11); 5 (cheap phones) was left out by the owner.
+- **On `main`** (live): everything through **M221** (M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -176,13 +191,6 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     page no longer narrows it). M175: the side menu floats, rounded on every side (`--side-gap`). M176: focus mode
     grows out of the tool's box and shrinks back into it. M172: every map names ~24,000 more places as you zoom
     (GeoNames, credited) with 1:10m coastlines close in; Relief's map groups piled-up requests, cards, shelters.
-  - **Merged 13 Nov (PR #124):** M173, Trace across the supply chain: brand, warehouse, driver, shop and
-    buyer each see their own view of a scanned unit (no price for drivers and warehouses) and record their
-    stops with place and time; invite links for the team (migration 0207). M177, a deep check and smoother
-    pages: cards no longer blur the moving scene behind them (homes 35 → 60 frames a second), public pages
-    don't download Firebase for visitors who aren't signed in, Green's page doesn't jump. M178, Attendance
-    scrolls without stalls (plain cards no longer fade their shadow), the Planner's week keeps its height
-    while loading, a security review (no critical findings; a shopper's check reads at most 200 stops).
   - **Landing:** the "Here to…" first-visit row (M81), try-it demos (M43), live totals (M44), link
     previews (M42).
   - **UniVersity:** the Stage 5 queue (Q1–Q23 in the plan: courses, grading, quizzes, attendance,
@@ -201,7 +209,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
     (M87).
   - **The launch focus (M110–M116):** a size alarm before every deploy and Relief's emergency line (M110),
-    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112), a course's
+    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112; the tags were removed in M210), a course's
     "Invite students" link (M113), a test that every API route checks who is asking (M114), body-parser
     2.4.0 (M115), the first impression: the student home pictured under the landing's headline, a bigger
     hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
@@ -210,15 +218,60 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** nothing.
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the
-  owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
-  inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
+- **On the branch, not merged yet:** M227 (16 Nov), Calls is **Meet & call** (`MeetHome`: New meeting, Join, Schedule, voice rooms, happening now; in a call Zoom's keys and push to talk, `src/lib/meet.ts`). M226 (16 Nov), no dot plot above a Travel guide's places. M225 (16 Nov), the lag measured and cut in the browser (the scene 30 a second at 1.5x, resting after 30 s untouched with the landing's demos, `useIdle`; no `html:has`; Green's map still). M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
+  icons, grouped by day, stacks, iOS's segmented control, swipe to read, smooth spring motion).
+- **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
+  hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
+  an app's own row of tabs. M220 (16 Nov), light mode is the default (dark for those who chose it). M219 (16 Nov), on a computer in a browser the menu is a bar across the top
+  (`TopNav`: groups open as lists, More for what doesn't fit; the installed app and phones keep the side menu), and M218
+  (the apps' sections moved into the side menu) undone: the rows of tabs are back. M217 (16 Nov), Relief's ten new features (Most urgent, Matches, live disaster
+  Alerts, Be ready: plan, go-bag, emergency numbers, weather risks, a phone card; First aid; My hours with a certificate;
+  walking times to places; database update 0226). M216 (16 Nov), Green's ten new features (Footprint, Journeys, Goals and pledges,
+  Tips, Events, Green places, the year heatmap, what it means, a year picture, the weekly team league; database update
+  0225). M215 (16 Nov), a trip's **Money** (shared costs, settle up, spent against the
+  budget, a converter, what things cost) and **Packing** (a shared list with suggestions from the trip; database update
+  0224). M214 (16 Nov), Travel's map: sharp pins that never overlap, tapping one glides
+  in, a Layers panel (satellite, 3D hills, transport, street photos, walking rings…), the globe, my position, a filter
+  (all from free sources straight to browsers, no Worker CPU). The console's Travel reports tried in a browser.
+- **Merged 16 Nov (PR #128; M173 and M177–M178 earlier, PR #124):** M213 (16 Nov), Travel's left-outs (Google Maps' exact route, a block closes the
+  board's chat, Travel reports in the console's Moderation, live updates measured) and Travel's look (its own sky
+  colour, a tab row like Trace's, Explore's first card). M212 (16 Nov), dark mode's accent the website's blue in place of the neon lime,
+  calmer greens. M211 (16 Nov), the main pages' lag fixed (the motion layer's watcher, the
+  landing's prebuilding and scroll code; `main-pages-smooth.mjs`). M210 (16 Nov), no page titles (only for screen readers) and no "Lab" tags,
+  anywhere (the owner). M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
+  (database update 0223; MapLibre added, OpenFreeMap's tiles go straight to browsers, no Worker CPU). M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
+  to go** in Explore (days, budget, month, interests and passport rank 145 places with the reasons; visas
+  for your passport on the guide's Know tab), the **trip planner** (Trips and saved → Trips: cities, days,
+  drag and drop, Plan my days, the whole budget, how to get between, friends with an invite link, a
+  calendar file; database update 0221) and **getting there, stays and the travellers board** (database update
+  0222). M178 (13 Nov), Attendance scrolls without stalls (plain cards no
+  longer fade their shadow), the Planner's week keeps its height while loading, a security review (no
+  critical findings; a shopper's check reads at most 200 stops). M177 (13 Nov), a deep check and smoother pages: cards no longer
+  blur the moving scene behind them (homes 35 → 60 frames a second), public pages don't download
+  Firebase for visitors who aren't signed in, Green's page doesn't jump. M173 (13 Nov), Trace across the supply chain: brand, warehouse,
+  driver, shop and buyer each see their own view of a scanned unit (no price for drivers and
+  warehouses) and record their stops with place and time; invite links for the team (migration 0207).
+- **Merged 16 Nov (PR #126, from `claude/youthful-fermi-sbdtcp`; its commits say M183, M186 and M187, numbers
+  other sessions had already used):** M202, **UniVerse Travel**, the sixth app (Explore, guides to
+  anywhere from Wikivoyage with facts, weather and places, saved places, partner booking; database update 0219);
+  M203, **Apps on the website** (owner console → Server: show any set of the six apps or only one; the Worker
+  writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
+  0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
+  scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
+  then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
+  inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
-  (floating jungle rock towers, waterfalls into mist, arches, a lagoon). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M179**. Never reuse a number: take the next one after the
+  (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
+  style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
+- **Work numbers:** the next item is **M228** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
+- **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
+  (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
+  in Cloudflare, each with the return address `https://<the site>/api/connections/callback` (Gmail's read
+  access needs Google's paid review beyond 100 test users); Trace payments (M201): set `TRACE_PRO_PRICE_CENTS`,
+  send `customer.subscription.*` and `checkout.session.completed` to the Stripe webhook, turn on "Trace payments".
 - **[owner]:** decide the spending guard's pause before 500 people arrive (M169: it pauses the whole site at 27M CPU ms,
   which 500 people may reach in the first week; past it costs ~$0.02 a million ms; `CF_GUARD_OFF` turns pausing off);
   to count which pages people use, set `NEXT_PUBLIC_POSTHOG_KEY` (PostHog → Project settings
@@ -229,7 +282,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0208`** (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0227`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -380,14 +433,15 @@ file used only from config goes in its `BY_CONFIG` list).
 ## 8. Design and motion
 
 **The look (M124, the owner, 8 Nov 2026: the "Ballast" reels for light mode, the "Relay" recording for
-dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
+dark mode).** Light mode is the default since M220 (the owner, 16 Nov: "make the light colour as default"; dark
+until then, and kept for anyone who chose it); the website's top bar has a dark/light switch (`ThemeSwitch`).
 **Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
 text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
-side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), lime
-(#c6f24a) as the accent: main buttons lime with ink text, chosen things, chart marks (`--ins-hot`),
-focus; white headings. Green, amber and red only for states. The tokens and the Tailwind re-pointing
+side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), the
+website's blue as the accent since M212 (the owner disliked the neon lime, 16 Nov): main buttons #2563eb with
+white text, chosen things, chart marks (`--ins-hot` #6ea2f8), focus; white headings; no `lime-*` classes. Green, amber and red only for states. The tokens and the Tailwind re-pointing
 (indigo / violet / purple / pink / fuchsia / aqua = the accent; zinc = neutral greys) are the **M124
-block** in `globals.css`; white text on a solid accent fill turns ink in dark mode there (lime). Type:
+block** in `globals.css`; white text on a solid accent fill stays white (it turns ink only in Trace, Relief and Play). Type:
 **Inter** (`/fonts/inter`), the headline's key word (`<Accent>`) in **Instrument Serif italic**. The
 website and other parts drawn for a dark page carry `.flip-light` (light mode swaps their white and
 black and reverses their greys); opt out with `.flip-keep`, `.dark`, `.on-dark`. **Each app's scene**
@@ -398,10 +452,10 @@ contour map, requests pulsing, dashed routes of help; Green an aurora, leaves an
 floor to the horizon, game-pad symbols. `AppBackdrop` shows it behind every page: the website and
 sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the chosen app). Switching
 is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
-with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
-(phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
+with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), 30 frames a second at up to 1.5x, resting after 30 s
+untouched (M225), its motion easing in; a new app needs its scene there
 (TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
-the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia; UniVersity keeps lime /
+the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia, Travel sky since M213; UniVersity keeps the
 blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old
 navy or aqua, except documents printed on white (`src/server/`, certificates, CVs, report cards) and
 colours people choose (slide themes, course colours, accents).

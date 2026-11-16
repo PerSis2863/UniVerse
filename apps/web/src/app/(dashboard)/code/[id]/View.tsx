@@ -80,7 +80,7 @@ function CodeRoomPage({ id }: { id: string }) {
     <>
       <Topbar title={room?.title ?? 'Code room'} sharedId={room ? `code-room:${id}` : undefined} subtitle={room ? `${room.course.code} · ${room.course.name}` : undefined} />
       <div className="flex-1 p-3 md:p-6 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-3">
+        <div className="w-full space-y-3">
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <Link href="/code" className="inline-flex items-center gap-1 text-zinc-500 hover:text-zinc-900 dark:hover:text-white me-auto"><ArrowLeft className="w-4 h-4" /> Code rooms</Link>
             <span className={`text-xs font-semibold ${status.s === 'live' ? 'text-emerald-600 dark:text-emerald-400' : 'text-zinc-500'}`} role="status">● {STATUS_TEXT[status.s]}</span>

@@ -2,10 +2,11 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
-import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
+import { Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
-import { LabTag } from '@/components/apps/LabTag';
+import { LAST_APP } from '@/lib/current-app';
 import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
@@ -15,7 +16,7 @@ import {
   Coffee, Globe2, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
 import { MenuPins } from '@/components/ArrangeMode';
@@ -56,7 +57,7 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
 }
 
 /** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
-const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
+export const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
 
 /**
  * Pages that are tabs of another menu entry, or only reached from search (Ctrl+K / the search
@@ -76,7 +77,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/offline?scan=1', label: 'Scan from the teacher’s screen', keywords: 'offline no internet moving qr codes scan note quiz announcement class' },
@@ -104,7 +105,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
     { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
@@ -113,7 +114,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
   ],
   ADMIN: [
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/admin/impact-reports/donations', label: 'Donations', keywords: 'ngo donations give money 80g pan receipts stripe csv charity' },
     { href: '/admin/monitoring/board', label: 'Campus board reports', keywords: 'marketplace reported posts moderation rides housing' },
     { href: '/admin/monitoring/meals', label: 'Cafeteria pre-orders', keywords: 'kitchen canteen dining food orders pickup ready' },
@@ -161,6 +162,8 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
+    // M224: the games (once the Play app) are UniVersity's Games section.
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     {
       label: 'Careers & impact', icon: Briefcase,
@@ -203,6 +206,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/knowledge', label: 'Knowledge & library', also: ['/library'] },
       ]
     },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -247,6 +251,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/early-warning', '/admin/analytics', '/admin/reports', '/admin/reports/report-cards', '/admin/reports/grading-scale', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };
@@ -258,8 +263,11 @@ const sharedNav = (role: string): NavItem[] => [
   { href: settingsFor(role), label: 'nav.settings', icon: Settings },
 ];
 
+/** Each app's icon in the hub's menu. */
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane };
+
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
-const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
+export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   trace: [
     { href: '/trace', label: 'Console', icon: ScanLine, also: ['/trace/print'] },
     { href: '/trace/map', label: 'Market map', icon: Globe2 },
@@ -270,6 +278,10 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
     { href: '/trace/vault', label: 'My vault', icon: KeyRound },
   ],
+  travel: [
+    { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
+    { href: '/travel/saved', label: 'Trips and saved', icon: Luggage, also: ['/travel/trip'] },
+  ],
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },
     { href: '/relief/mine', label: 'My requests & tasks', icon: HandHeart },
@@ -279,17 +291,14 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
-  play: [
-    { href: '/play', label: 'Arcade', icon: Gamepad2, also: ['/play/game'] },
-    { href: '/play/leaderboard', label: 'Leaderboards', icon: Trophy },
-  ],
 };
 
 /** The menu for the app someone is in. */
-function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }): NavItem[] {
+export function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }, shown: ImpactApp[]): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
-  const hub: NavItem = { href: '/hub', label: 'All apps', icon: LayoutGrid };
-  if (!app) return [...owner, hub, ...APPS.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2 }[a.id] })), ...sharedNav(user.role)];
+  // M203: only the apps the owner shows; with one, no "All apps".
+  const hub: NavItem[] = shown.length > 1 ? [{ href: '/hub', label: 'All apps', icon: LayoutGrid }] : [];
+  if (!app) return [...owner, ...hub, ...shown.map((a): NavItem => ({ href: appHome(a.id, user.role), label: a.name, icon: APP_ICON[a.id] })), ...sharedNav(user.role)];
   if (app === 'campus') {
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;
@@ -297,45 +306,53 @@ function navFor(app: AppId | null, user: { role: string; owner?: boolean; permis
   return [...owner, ...APP_NAV[app], ...sharedNav(user.role)];
 }
 
-const LAST_APP = 'uv-last-app';
 /** The app last used: shared pages (Messages, Collaborate…) keep its menu. */
-function useCurrentApp(pathname: string): AppId | null {
+export function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
   const here = appFor(pathname)?.id ?? null;
   const last = useSyncExternalStore((cb) => { window.addEventListener('storage', cb); return () => window.removeEventListener('storage', cb); }, () => { try { return localStorage.getItem(LAST_APP) as AppId | null; } catch { return null; } }, () => null);
   useEffect(() => { if (here) try { localStorage.setItem(LAST_APP, here); } catch { /* private mode */ } }, [here]);
-  if (pathname === '/hub') return null;
-  return here ?? (last && APPS.some((a) => a.id === last) ? last : null);
+  if (pathname === '/hub' && shown.length > 1) return null;
+  // M203: a shared page keeps the last app if it's shown; with one app shown, that app.
+  return here ?? (last && shown.some((a) => a.id === last) ? last : shown.length === 1 ? shown[0].id : null);
 }
 
 /** The app switcher at the top of the menu: the app you're in, and every other one a tap away. */
-function AppSwitcher({ app, role, onPick }: { app: AppId | null; role: string; onPick?: () => void }) {
+export function AppSwitcher({ app, role, onPick, shown, compact }: { app: AppId | null; role: string; onPick?: () => void; shown: ImpactApp[]; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const current = APPS.find((a) => a.id === app);
+  // M203: one app shown: it's the website's name, nothing to switch to.
+  const single = shown.length === 1;
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // M219: a click anywhere else closes it too.
+    const down = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
+    document.addEventListener('pointerdown', down, true);
+    return () => { window.removeEventListener('keydown', k); document.removeEventListener('pointerdown', down, true); };
   }, [open]);
   return (
-    <div className="relative px-3 pb-2">
-      <button type="button" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-haspopup="menu"
-        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2 bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start">
-        <AppIcon id={app ?? 'hub'} size={32} />
-        <span className="side-label min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
-          <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
+    // M219: `compact` in the bar across the top (the app's name only, the list opening under it).
+    <div ref={box} className={cn('relative', compact ? 'shrink-0' : 'px-3 pb-2')}>
+      <button type="button" onClick={() => !single && setOpen((v) => !v)} aria-expanded={single ? undefined : open} aria-haspopup={single ? undefined : 'menu'}
+        className={cn('flex items-center overflow-hidden bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start', compact ? 'gap-2 rounded-lg h-9 ps-1 pe-2' : 'side-switch w-full gap-3 rounded-xl px-2.5 py-2')}>
+        <AppIcon id={app ?? 'hub'} size={compact ? 26 : 32} />
+        {/* The folded side menu hides `side-label`s (M33): not in the bar across the top. */}
+        <span className={cn('min-w-0', !compact && 'side-label flex-1')}>
+          <span className={cn('block font-semibold text-zinc-900 dark:text-white truncate', compact ? 'text-[13.5px] max-w-[11rem]' : 'text-[13px]')}>{current?.name ?? 'UniVerse Impact'}</span>
+          {!compact && <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>}
         </span>
-        <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />
+        {!single && <ChevronsUpDown className={cn('w-4 h-4 text-zinc-400', !compact && 'side-label')} aria-hidden />}
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl">
-            {APPS.map((a) => (
-              <Link key={a.id} role="menuitem" href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
+            className={cn('absolute top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl', compact ? 'start-0 w-72' : 'side-menu left-3 right-3')}>
+            {shown.map((a) => (
+              <Link key={a.id} role="menuitem" data-uv-app={a.id} href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
-                <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-[13px] font-semibold text-white"><span className="truncate">{a.name}</span>{a.lab && <LabTag className="border-white/20 text-zinc-400" />}</span><span className="block text-[11px] text-zinc-400 truncate">{a.tagline}</span></span>
+                <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-[13px] font-semibold text-white"><span className="truncate">{a.name}</span></span><span className="block text-[11px] text-zinc-400 truncate">{a.tagline}</span></span>
                 {a.id === app && <Check className="w-4 h-4 text-pink-300" aria-label="Open now" />}
               </Link>
             ))}
@@ -386,7 +403,8 @@ function NavItemComponent({
   if (item.subItems) {
     if (folded) isOpen = false;
     return (
-      <div className="space-y-1">
+      // M221: known by its name when arranged (the side menu and the bar across the top share the order).
+      <div className="space-y-1" data-arrange-key={t(item.label)}>
         <button
           onClick={onToggle}
           onPointerEnter={(e) => { onHover(item.label); tip(e.currentTarget); }}
@@ -448,7 +466,7 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-arrange-key={t(item.label)} data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
         {hoverPill(item.href, on)}
@@ -471,6 +489,18 @@ const subscribeWide = (onChange: () => void) => {
   return () => q.removeEventListener('change', onChange);
 };
 
+/** Signs out of Firebase and this device, then opens the sign-in page (the side menu and the bar across the top). */
+export async function signOut(logout: () => void, router: { push: (href: string) => void }) {
+  try {
+    const { auth } = await import('@/lib/firebase');
+    await auth.signOut();
+  } catch (error) {
+    console.warn('Firebase signOut failed:', error);
+  }
+  logout();
+  router.push('/login');
+}
+
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
   // The tapped entry lights up at once, not when its page has downloaded.
@@ -482,7 +512,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   // On a phone the closed menu is off screen: sliding its highlight there on every page change made
   // framer-motion measure the page on each frame of the tab switch.
   const wide = useSyncExternalStore(subscribeWide, () => window.matchMedia(WIDE).matches, () => true);
-  const app = useCurrentApp(pathname);
+  const shown = useShownApps();
+  const app = useCurrentApp(pathname, shown);
   // M33: folded to a strip of icons on a computer (never on a phone, where the menu is a sheet).
   const folded = useSidebarFolded() && wide;
   const [tip, setTip] = useState<{ label: string; y: number } | null>(null);
@@ -511,19 +542,10 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   if (!user) return null;
 
   // The owner console link exists only for the owner (the console itself answers "not found" to anyone else).
-  const nav = navFor(app, user);
+  const nav = navFor(app, user, shown);
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const handleLogout = async () => {
-    try {
-      const { auth } = await import('@/lib/firebase');
-      await auth.signOut();
-    } catch (error) {
-      console.warn('Firebase signOut failed:', error);
-    }
-    logout();
-    router.push('/login');
-  };
+  const handleLogout = () => signOut(logout, router);
 
   return (
     <>
@@ -559,7 +581,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
           <div className="text-[12px] text-zinc-500 dark:text-zinc-400 font-medium">{user.owner ? 'Owner' : user.role === 'ADMIN' ? 'Admin' : user.role === 'TEACHER' ? 'Teacher' : 'Member'}</div>
         </div>
       </div>
-      <AppSwitcher app={app} role={user.role} onPick={onClose} />
+      <AppSwitcher app={app} role={user.role} onPick={onClose} shown={shown} />
 
       {/* Nav */}
       <nav id="side-nav" data-arrange-scope={`${app ?? 'all'}-${user.role}`.toLowerCase()} onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">

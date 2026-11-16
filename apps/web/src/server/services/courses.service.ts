@@ -14,12 +14,14 @@ const COURSE_FIELDS = ['code', 'name', 'description', 'credits', 'department', '
 
 export class CoursesService {
   /** Published courses; a student in a campus network sees their campus's and partner courses only. */
-  async findAll(query: { search?: string; department?: string }, user?: { id: string; role: string }) {
+  async findAll(query: { search?: string; department?: string }, user?: Who) {
     const campuses = user?.role === 'STUDENT' ? await studentCampuses(user.id) : null;
+    // M199: a school's catalogue is its own (an admin: the schools they run); another school's courses don't show.
+    const school = !user ? {} : user.role === 'ADMIN' ? await schoolsOf(user).then((s) => (s === 'all' ? {} : { teacher: usersIn(s) })) : { teacher: usersIn([user.organizationId ?? null]) };
     return prisma.course.findMany({
       where: {
         status: 'PUBLISHED',
-        AND: [courseWhereFor(campuses)],
+        AND: [courseWhereFor(campuses), school],
         ...(query.department && { department: query.department }),
         ...(query.search && {
           OR: [

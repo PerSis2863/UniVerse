@@ -70,7 +70,7 @@ export function VoicePlayer({ src, mine, durationSec, title = 'Voice message', w
             <span key={i} className={cn('flex-1 rounded-full transition-colors', (i + 0.5) / bars.length <= done ? (mine ? 'bg-white' : 'bg-indigo-600') : (mine ? 'bg-white/40' : 'bg-zinc-300 dark:bg-white/20'))} style={{ height: `${Math.round(h)}px` }} />
           ))}
         </div>
-        <div className={cn('text-[10px] tabular-nums', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
+        <div className={cn('text-[11px] tabular-nums', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
       </div>
       <button onClick={() => voice.setRate(v.rate === 1 ? 1.5 : v.rate === 1.5 ? 2 : 1)} aria-label="Playback speed" className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0', mine ? 'bg-white/20' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300')}>
         {v.rate}×
@@ -106,7 +106,7 @@ export function LocalVoicePlayer({ src, mine, durationSec }: { src: string; mine
           onChange={(e) => { const t = Number(e.target.value); setPos(t); if (audio.current) audio.current.currentTime = t; }}
           className={cn('w-full h-1 cursor-pointer', mine ? 'accent-white' : 'accent-indigo-600')}
         />
-        <div className={cn('text-[10px] tabular-nums mt-0.5', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
+        <div className={cn('text-[11px] tabular-nums mt-0.5', mine ? 'text-white/70' : 'text-zinc-500')}>{fmt(playing || pos ? pos : dur)}</div>
       </div>
       <button onClick={() => setRate((r) => (r === 1 ? 1.5 : r === 1.5 ? 2 : 1))} aria-label="Playback speed" className={cn('px-1.5 py-0.5 rounded-md text-[10px] font-bold shrink-0', mine ? 'bg-white/20' : 'bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300')}>
         {rate}×
@@ -219,7 +219,7 @@ export function MessageBubble(p: Props) {
   );
 
   const meta = (
-    <span className={cn('inline-flex items-center gap-1 text-[10px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>
+    <span className={cn('inline-flex items-center gap-1 text-[11px] leading-none select-none whitespace-nowrap', mine && !sticker ? 'text-white/90' : 'text-zinc-600 dark:text-zinc-400')}>
       {m.starred && <Star className="w-3 h-3 fill-current" />}
       {m.expiresAt && <span title="Disappearing message">⏱</span>}
       {m.editedAt && !deleted && (m.metadata?.moderated === 'edited' ? 'edited by UniVerse ·' : (

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -11,6 +11,8 @@ import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
 import { InviteButton } from '@/components/apps/InviteButton';
+import { Segmented } from '@/components/ui/Segmented';
+import { GreenTabs } from '@/components/green/GreenTabs';
 
 // UniVerse Green → teams: start a team or join one with its code, see each member's CO₂ saved, the
 // team leaderboard and the top people of the last 30 days, confirmed actions only (src/server/green.ts).
@@ -18,6 +20,8 @@ import { InviteButton } from '@/components/apps/InviteButton';
 interface Teams {
   mine: { id: string; name: string; code: string; owner: boolean; kg: number; members: { id: string; name: string; kg: number; me: boolean }[] }[];
   leaderboard: { rank: number; id: string; name: string; members: number; kg: number; actions: number; mine: boolean }[];
+  /** M216: this week's league (since Monday). */
+  week?: Teams['leaderboard'];
   people: { rank: number; name: string; kg: number; actions: number; me: boolean }[];
 }
 
@@ -29,16 +33,19 @@ export default function GreenTeamsPage() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [span, setSpan] = useState<'week' | 'month'>('week');
+  const board = (span === 'week' ? data?.week : data?.leaderboard) ?? [];
   const run = async (what: string, fn: () => Promise<unknown>, ok: string) => {
     setBusy(what);
     try { await fn(); toast.success(ok); void mutate(); } catch (e) { toast.error(errorMessage(e, 'Could not do that.')); } finally { setBusy(null); }
   };
-  const max = Math.max(1, ...(data?.leaderboard.map((t) => t.kg) ?? [1]));
+  const max = Math.max(1, ...board.map((t) => t.kg));
   return (
     <>
       <Topbar title="Teams & leaderboard" subtitle="Take on the weekly challenge together" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
+          <Suspense><GreenTabs /></Suspense>
           <div className="grid md:grid-cols-2 gap-4">
             <form onSubmit={(e) => { e.preventDefault(); void run('create', () => api.post('/green/teams', { name }), 'Team started. Share its code to invite people.').then(() => setName('')); }} className="panel p-5">
               <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-500" aria-hidden />Start a team</h2>
@@ -75,19 +82,19 @@ export default function GreenTeamsPage() {
 
           <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             <section className="panel p-5" aria-labelledby="lb-h">
-              <h2 id="lb-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />Team leaderboard · 30 days</h2>
+              <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="lb-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />Team league</h2><Segmented<'week' | 'month'> label="League over" value={span} onChange={setSpan} segments={[{ value: 'week', label: 'This week' }, { value: 'month', label: '30 days' }]} /></div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Only actions a teammate confirmed from a photo count, so nobody can top it by typing big numbers.</p>
-              {!data ? <div className="mt-3 h-48 skeleton rounded-xl" /> : data.leaderboard.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No teams yet. Start the first.</p> : (
+              {!data ? <div className="mt-3 h-48 skeleton rounded-xl" /> : board.length === 0 ? <p className="mt-3 text-sm text-zinc-500">{span === 'week' ? 'No confirmed actions this week yet: the league starts again every Monday.' : 'No teams yet. Start the first.'}</p> : (
                 <ol className="mt-4 space-y-3">
-                  {data.leaderboard.map((t, i) => (
-                    <motion.li key={t.id} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
+                  {board.map((t, i) => (
+                    <motion.li key={`${span}-${t.id}`} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.03 }}>
                       <div className="flex items-center gap-3 text-sm">
                         {t.rank <= 3 ? <Medal className="w-5 h-5" style={{ color: MEDAL[t.rank - 1] }} aria-label={`Number ${t.rank}`} /> : <span className="w-5 text-center font-mono text-xs text-zinc-400">{t.rank}</span>}
                         <span className={cn('flex-1 truncate', t.mine ? 'font-bold text-emerald-700 dark:text-emerald-300' : 'text-zinc-800 dark:text-zinc-100')}>{t.name}</span>
                         <span className="text-[11px] text-zinc-500">{t.members} people</span>
                         <span className="font-mono text-xs w-20 text-right text-emerald-600 dark:text-emerald-400">{fmt(t.kg)} kg</span>
                       </div>
-                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ width: 0 }} animate={{ width: `${(t.kg / max) * 100}%` }} transition={{ duration: 0.8, delay: i * 0.03 }} /></div>
+                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${(t.kg / max) * 100}%` }} transition={{ duration: 0.8, delay: i * 0.03 }} /></div>
                     </motion.li>
                   ))}
                 </ol>

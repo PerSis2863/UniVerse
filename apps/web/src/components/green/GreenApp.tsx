@@ -25,6 +25,7 @@ import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { GreenYear } from './GreenYear';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 
@@ -44,6 +45,8 @@ interface GreenMe {
   teams: number;
   easiest: GreenKind | null;
   community: { kg: number; actions: number; people: number };
+  /** M216: kg saved each day over the last year. */
+  year?: Record<string, number>;
 }
 
 export const GREEN_ICON: Record<GreenKind, typeof Leaf> = { TREE: TreePine, CYCLE: Bike, TRANSIT: Bus, WALK: Footprints, RECYCLE: Recycle, SOLAR: Sun, MEATFREE: Utensils, CLEANUP: Trash2 };
@@ -212,7 +215,7 @@ export function GreenApp() {
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">
                   <div className="flex justify-between text-xs text-zinc-500"><span>{who as string}</span><span className="font-mono">{v as number} / {c.goal} {c.unit}</span></div>
-                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-lime-400" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
+                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${Math.min(100, ((v as number) / c.goal) * 100)}%` }} transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1] }} /></div>
                 </div>
               ))}
               <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} more wait for a teammate to confirm.` : ''}</p>
@@ -239,6 +242,9 @@ export function GreenApp() {
         </LiveCard>
       )}
 
+      {/* M216: the year at a glance, what it means, a picture of it. */}
+      {data && t && <GreenYear year={data.year ?? {}} totals={t} />}
+
       {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
       <div className="grid lg:grid-cols-2 gap-6">
         <div className="space-y-6">
@@ -246,7 +252,7 @@ export function GreenApp() {
             <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
             <div className="mt-4 flex items-end gap-1 h-32" aria-hidden>
               {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
-                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-lime-400" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
+                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-emerald-300" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
               ))}
             </div>
             <ul className="mt-5 space-y-2">
@@ -409,7 +415,6 @@ function Burst() {
 /** Everyone's actions on the map (0.1° areas): a green glow, brighter with more CO₂ saved. */
 export function GreenMap() {
   const dark = useDarkMode();
-  const calm = useReducedMotion();
   const { data } = useSWR<{ cells: { lat: number; lng: number; kg: number; actions: number; place: string | null }[] }>('/green/map', fetcher);
   const cells = useMemo(() => (data?.cells ?? []).map((c) => { const [bx, by] = toBase(c.lng, c.lat); return { ...c, bx, by }; }), [data]);
   const max = Math.max(1, ...cells.map((c) => c.kg));
@@ -429,13 +434,13 @@ export function GreenMap() {
   const draw = (f: Frame) => {
     frame.current = f;
     if (hoverView.current && hoverView.current !== viewKey(f)) { hoverView.current = ''; setHover(null); }
-    const { ctx, t } = f, g = glow(EMERALD);
+    const { ctx } = f, g = glow(EMERALD);
     const zf = Math.min(2.4, Math.max(1, Math.pow(f.zoom, 0.3)));
     ctx.save(); ctx.globalCompositeOperation = f.dark ? 'lighter' : 'source-over';
-    cells.forEach((c, i) => {
+    cells.forEach((c) => {
       const x = f.sx(c.bx), y = f.sy(c.by);
       if (x < -40 || x > f.w + 40 || y < -40 || y > f.h + 40) return;
-      const n = Math.sqrt(c.kg / max), r = (8 + n * 26) * zf * (calm ? 1 : 1 + 0.06 * Math.sin(t / 900 + i));
+      const n = Math.sqrt(c.kg / max), r = (8 + n * 26) * zf; // M225: still (they breathed: the whole map redrawn on the page's thread every frame)
       ctx.globalAlpha = f.dark ? 0.3 + n * 0.5 : 0.2 + n * 0.35; ctx.drawImage(g, x - r, y - r, r * 2, r * 2);
     });
     ctx.restore();
@@ -459,7 +464,7 @@ export function GreenMap() {
         <h2 id="gmap-h" className="font-bold text-zinc-900 dark:text-white flex-1">Everyone’s actions</h2>
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
-      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
+      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={false} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
         <AnimatePresence>
           {hover && hc && (
             <motion.div key={hover.i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}

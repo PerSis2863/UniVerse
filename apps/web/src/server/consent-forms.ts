@@ -7,6 +7,7 @@ import { publish } from './realtime';
 import { pushService } from './services/push.service';
 import { can } from './permissions';
 import { taughtBy, teaches } from '@/lib/course-access';
+import { inSchools, schoolsOf, usersIn } from './school-scope';
 
 // Consent forms with an e-signature (Stage 5 · B16.4). The school (admins: any class, or every
 // student) or a teacher (one of their classes) sends a form: a trip permission, photo consent, a
@@ -41,12 +42,13 @@ export function dueDate(v: unknown, now = Date.now()) {
 /** Where the sender follows a form: admins in Administrative, teachers next to their students. */
 export const senderLink = (role: string, id: string) => (role === 'ADMIN' ? `/admin/administrative?tab=forms&form=${id}` : `/teacher/forms?form=${id}`);
 
-/** Who a form is for: a class's students, or every active student. */
-const forWhom = (form: { courseId: string | null }) =>
-  form.courseId ? { enrollments: { some: { courseId: form.courseId } }, status: { not: 'SUSPENDED' as const } } : { role: 'STUDENT' as const, status: 'ACTIVE' as const };
+/** Who a form is for: a class's students, or every active student of the sender's school (M199: not every school's). */
+type For = { courseId: string | null; createdBy: { organizationId: string | null } };
+const forWhom = (form: For) =>
+  form.courseId ? { enrollments: { some: { courseId: form.courseId } }, status: { not: 'SUSPENDED' as const } } : { role: 'STUDENT' as const, status: 'ACTIVE' as const, organizationId: form.createdBy.organizationId };
 
 /** Parent accounts linked to the students a form is for (one query, even for the whole school). */
-const linksFor = (form: { courseId: string | null }) =>
+const linksFor = (form: For) =>
   prisma.guardianLink.findMany({ where: { student: forWhom(form) }, select: { guardianId: true, studentId: true }, take: 10_000 });
 
 async function tellParents(form: { id: string; title: string; dueAt: Date | null }, guardianIds: string[], from: string, again = false) {
@@ -70,13 +72,15 @@ export async function staffForms(user: SessionUser) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers and school admins send forms.');
   // Admins, and staff with the school-wide forms permission, see and send every form.
   const admin = await can(user, 'forms.school');
+  // M199: "every form" is every form of the admin's school, never another school's.
+  const people = usersIn(await schoolsOf(user));
   const [forms, courses, allStudents] = await Promise.all([
     prisma.consentForm.findMany({
-      where: admin ? {} : { createdById: user.id }, orderBy: { createdAt: 'desc' }, take: 100,
+      where: admin ? { createdBy: people } : { createdById: user.id }, orderBy: { createdAt: 'desc' }, take: 100,
       select: { id: true, title: true, courseId: true, dueAt: true, closedAt: true, createdAt: true, course: { select: { code: true, name: true } }, createdBy: { select: { name: true } } },
     }),
-    prisma.course.findMany({ where: admin ? {} : taughtBy(user.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
-    admin ? prisma.user.count({ where: { role: 'STUDENT', status: 'ACTIVE' } }) : Promise.resolve(0),
+    prisma.course.findMany({ where: admin ? { teacher: people } : taughtBy(user.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 200 }),
+    admin ? prisma.user.count({ where: { role: 'STUDENT', status: 'ACTIVE', organizationId: user.organizationId ?? null } }) : Promise.resolve(0),
   ]);
   const ids = forms.map((f) => f.id);
   const courseIds = [...new Set(forms.map((f) => f.courseId).filter((c): c is string => !!c))];
@@ -107,7 +111,8 @@ export async function createConsentForm(user: SessionUser, b: Record<string, unk
   const courseId = typeof b.courseId === 'string' && b.courseId ? b.courseId : null;
   const all = await can(user, 'forms.school');
   if (!courseId && !all) throw new BadRequestException('Pick one of your classes.');
-  const course = courseId ? await prisma.course.findUnique({ where: { id: courseId }, select: { id: true, code: true, teacherId: true } }) : null;
+  // (An admin's class must be their school's, M199.)
+  const course = courseId ? await prisma.course.findFirst({ where: { id: courseId, ...(all ? { teacher: usersIn(await schoolsOf(user)) } : {}) }, select: { id: true, code: true, teacherId: true } }) : null;
   if (courseId && (!course || (!all && course.teacherId !== user.id && !(await teaches(course.id, user.id, ['CO_TEACHER']))))) throw new NotFoundException('That class isn’t one of yours.');
   const dueAt = dueDate(b.dueAt);
   const attachmentUrl = typeof b.attachmentUrl === 'string' && b.attachmentUrl ? b.attachmentUrl : null;
@@ -119,15 +124,16 @@ export async function createConsentForm(user: SessionUser, b: Record<string, unk
     },
     select: { id: true, title: true, dueAt: true },
   });
-  const links = await linksFor({ courseId });
+  const links = await linksFor({ courseId, createdBy: { organizationId: user.organizationId ?? null } });
   const told = await tellParents(form, links.map((l) => l.guardianId), course ? `${user.name} · ${course.code}` : user.name);
   return { id: form.id, told };
 }
 
 async function staffForm(user: SessionUser, id: string) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers and school admins send forms.');
-  const form = await prisma.consentForm.findUnique({ where: { id }, include: { course: { select: { code: true, name: true } }, createdBy: { select: { name: true } } } });
-  if (!form || (form.createdById !== user.id && !(await can(user, 'forms.school')))) throw new NotFoundException('That form doesn’t exist.');
+  const form = await prisma.consentForm.findUnique({ where: { id }, include: { course: { select: { code: true, name: true } }, createdBy: { select: { name: true, organizationId: true } } } });
+  // Another school's form looks like one that doesn't exist (M199).
+  if (!form || (form.createdById !== user.id && !((await can(user, 'forms.school')) && inSchools(await schoolsOf(user), form.createdBy.organizationId)))) throw new NotFoundException('That form doesn’t exist.');
   return form;
 }
 
@@ -176,17 +182,19 @@ export async function consentFormAction(user: SessionUser, id: string, b: Record
 /** GET /api/parent/forms: forms for my children (open ones, and those closed in the last 30 days), each with every child's answer. */
 export async function parentForms(user: SessionUser) {
   if (user.role !== 'GUARDIAN') throw new ForbiddenException('This is for parent accounts.');
-  const links = await prisma.guardianLink.findMany({ where: { guardianId: user.id }, select: { studentId: true, student: { select: { name: true, enrollments: { select: { courseId: true }, take: 60 } } } } });
+  const links = await prisma.guardianLink.findMany({ where: { guardianId: user.id }, select: { studentId: true, student: { select: { name: true, organizationId: true, enrollments: { select: { courseId: true }, take: 60 } } } } });
+  // A school-wide form is for the children at the sender's school (M199).
+  const schools = [...new Set(links.map((l) => l.student.organizationId ?? null))];
   if (!links.length) return { waiting: 0, forms: [] };
   const courseIds = [...new Set(links.flatMap((l) => l.student.enrollments.map((e) => e.courseId)))];
   const forms = await prisma.consentForm.findMany({
     where: {
       createdAt: { gt: new Date(Date.now() - 180 * 86_400_000) },
       OR: [{ closedAt: null }, { closedAt: { gt: new Date(Date.now() - 30 * 86_400_000) } }],
-      AND: [{ OR: [{ courseId: null }, ...(courseIds.length ? [{ courseId: { in: courseIds.slice(0, 90) } }] : [])] }],
+      AND: [{ OR: [{ courseId: null, createdBy: { OR: schools.map((o) => ({ organizationId: o })) } }, ...(courseIds.length ? [{ courseId: { in: courseIds.slice(0, 90) } }] : [])] }],
     },
     orderBy: { createdAt: 'desc' }, take: 50,
-    select: { id: true, title: true, body: true, attachmentUrl: true, attachmentName: true, courseId: true, dueAt: true, allowDecline: true, closedAt: true, createdAt: true, course: { select: { code: true } }, createdBy: { select: { name: true } } },
+    select: { id: true, title: true, body: true, attachmentUrl: true, attachmentName: true, courseId: true, dueAt: true, allowDecline: true, closedAt: true, createdAt: true, course: { select: { code: true } }, createdBy: { select: { name: true, organizationId: true } } },
   });
   const responses = forms.length ? await prisma.consentResponse.findMany({
     where: { formId: { in: forms.map((f) => f.id) }, studentId: { in: links.map((l) => l.studentId) } },
@@ -194,7 +202,7 @@ export async function parentForms(user: SessionUser) {
   }) : [];
   let waiting = 0;
   const out = forms.map((f) => {
-    const kids = links.filter((l) => !f.courseId || l.student.enrollments.some((e) => e.courseId === f.courseId));
+    const kids = links.filter((l) => (f.courseId ? l.student.enrollments.some((e) => e.courseId === f.courseId) : (l.student.organizationId ?? null) === f.createdBy.organizationId));
     const children = kids.map((k) => {
       const r = responses.find((x) => x.formId === f.id && x.studentId === k.studentId);
       if (!r && isOpen(f)) waiting++;
@@ -211,13 +219,14 @@ export async function parentForms(user: SessionUser) {
 /** POST /api/parent/forms/:id { studentId, answer: 'YES' | 'NO', note?, signedName, signature?, agree: true } */
 export async function signConsentForm(user: SessionUser, formId: string, b: Record<string, unknown>) {
   if (user.role !== 'GUARDIAN') throw new ForbiddenException('This is for parent accounts.');
-  const form = await prisma.consentForm.findUnique({ where: { id: formId }, select: { id: true, title: true, courseId: true, allowDecline: true, closedAt: true, createdById: true, createdBy: { select: { role: true } } } });
+  const form = await prisma.consentForm.findUnique({ where: { id: formId }, select: { id: true, title: true, courseId: true, allowDecline: true, closedAt: true, createdById: true, createdBy: { select: { role: true, organizationId: true } } } });
   if (!form) throw new NotFoundException('That form doesn’t exist.');
   if (!isOpen(form)) throw new BadRequestException('This form is closed. Contact the school if something changed.');
   const studentId = typeof b.studentId === 'string' ? b.studentId : '';
   const link = await prisma.guardianLink.findUnique({ where: { guardianId_studentId: { guardianId: user.id, studentId } }, select: { studentId: true } });
   if (!link) throw new NotFoundException('That child isn’t linked to your account.');
   if (form.courseId && !(await prisma.enrollment.findFirst({ where: { courseId: form.courseId, studentId }, select: { id: true } }))) throw new NotFoundException('This form isn’t for that child.');
+  if (!form.courseId && !(await prisma.user.findFirst({ where: { id: studentId, organizationId: form.createdBy.organizationId }, select: { id: true } }))) throw new NotFoundException('This form isn’t for that child.');
   const answer = b.answer === 'YES' || (b.answer === 'NO' && form.allowDecline) ? b.answer : null;
   if (!answer) throw new BadRequestException(form.allowDecline ? 'Choose yes or no.' : 'This form can only be agreed to.');
   if (b.agree !== true) throw new BadRequestException('Tick the box to sign electronically.');

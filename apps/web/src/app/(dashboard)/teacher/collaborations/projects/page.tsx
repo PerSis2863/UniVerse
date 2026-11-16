@@ -111,7 +111,7 @@ export default function NGOMentorshipPage() {
       <SectionTabs tabs={TEACHER_IMPACT_TABS} />
 
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
 
           {/* Toolbar */}
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">

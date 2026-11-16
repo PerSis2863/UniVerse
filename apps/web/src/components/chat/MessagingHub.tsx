@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
+import { Link2, Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -25,6 +25,10 @@ import { useMedia } from '@/lib/use-media';
 import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
+import { useCurrentApp } from '@/lib/current-app';
+import { APPS, appById, knownApp } from '@/lib/apps';
+import { useShownApps } from '@/lib/shown-apps';
+import { AppIcon } from '@/components/apps/AppIcon';
 
 /** A built-in filter, or one of my folders (folder:<id>). */
 type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
@@ -33,6 +37,8 @@ type Filter = 'all' | 'unread' | 'direct' | 'groups' | `folder:${string}`;
 // code. Loading them separately lets the chat list show first; they're fetched in the background
 // right after, so opening a chat doesn't wait either.
 const loadChatWindow = () => import('./ChatWindow');
+/** Each app's short name, on chats in "All apps" (M179). */
+const SHORT = Object.fromEntries(APPS.map((a) => [a.id, a.id === 'campus' ? 'UniVersity' : a.name.replace(/^UniVerse /, '')])) as Record<(typeof APPS)[number]['id'], string>;
 const ChatWindow = dynamic(() => loadChatWindow().then((m) => m.ChatWindow), {
   loading: () => <div className="flex-1 min-w-0"><ContentSkeleton variant="chat" /></div>,
 });
@@ -40,6 +46,7 @@ const NewChatDialog = dynamic(() => import('./NewChatDialog').then((m) => m.NewC
 const FolderSheet = dynamic(() => import('./ChatFolders').then((m) => m.FolderSheet));
 const MuteUntilSheet = dynamic(() => import('./ChatFolders').then((m) => m.MuteUntilSheet));
 const SavedPanel = dynamic(() => import('./ChatDialogs').then((m) => m.SavedPanel));
+const ConnectionsPanel = dynamic(() => import('@/components/connections/ConnectionsPanel').then((m) => m.ConnectionsPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
 const CommunitiesPanel = dynamic(() => import('./CommunitiesPanel').then((m) => m.CommunitiesPanel), { loading: () => <div className="py-10 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-indigo-400" /></div> });
 const PresencePicker = dynamic(() => import('./PresencePicker').then((m) => m.PresencePicker));
 const StatusBar = dynamic(() => import('./StatusBar').then((m) => m.StatusBar), { loading: () => <div className="h-[88px]" /> });
@@ -74,14 +81,23 @@ export function MessagingHub() {
   }, []);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState<Filter>('all');
+  // Each app's own Messages (M179): the app you're in shows its chats; "All apps" shows every chat
+  // together, each tagged with its app (kept on this device). The UniVerse welcome chat is in every app.
+  const app = useCurrentApp();
+  const [allApps, setAllAppsState] = useState(() => { try { return localStorage.getItem('uv-chat-all-apps') === '1'; } catch { return false; } });
+  const setAllApps = (on: boolean) => { setAllAppsState(on); try { localStorage.setItem('uv-chat-all-apps', on ? '1' : '0'); } catch { /* private mode */ } };
+  // M203: only the apps the owner shows; with one, there are no other apps' chats to bring in.
+  const shownApps = useShownApps();
+  const many = shownApps.length > 1;
+  const inScope = useCallback((c: ConversationSummary) => c.isOfficial || (allApps && many ? shownApps.some((a) => a.id === knownApp(c.app)) : knownApp(c.app) === app), [allApps, many, shownApps, app]);
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   useOnceParam('new', (v) => setDialog(v === 'group' ? 'group' : 'chat')); // ?new=chat from the phone's "+" menu
   const [view, setView] = useState<'chats' | 'archived'>('chats');
   // Chats, or Communities (Discord-style servers with channels).
   // A club's space (upgrade 7) and community invite links (?join=) open on Communities.
-  const [space, setSpace] = useState<'chats' | 'communities'>(() => {
+  const [space, setSpace] = useState<'chats' | 'communities' | 'connections'>(() => {
     const sp = new URLSearchParams(window.location.search);
-    return sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
+    return sp.get('space') === 'connections' ? 'connections' : sp.get('space') === 'communities' || sp.get('join') ? 'communities' : 'chats';
   });
   const [savedOpen, setSavedOpen] = useState(false);
   // Reminders that came up and aren't done (Stage 5 · B7.1): a badge on Saved.
@@ -187,6 +203,7 @@ export function MessagingHub() {
   const conversations = useMemo(() => {
     const q = search.trim().toLowerCase();
     return (data?.conversations ?? []).filter((c) => {
+      if (!inScope(c)) return false;
       if ((view === 'archived') !== !!c.archived) return false;
       if (filter === 'unread' && c.unread === 0) return false;
       if (filter === 'groups' && !c.isGroup) return false;
@@ -194,10 +211,12 @@ export function MessagingHub() {
       if (filter.startsWith('folder:') && !activeFolder?.chatIds.includes(c.id)) return false;
       return !q || c.title.toLowerCase().includes(q) || (!lockedChats.includes(c.id) && (c.lastMessage?.body ?? '').toLowerCase().includes(q));
     });
-  }, [data, search, filter, view, activeFolder, lockedChats]);
-  const totalUnread = (data?.conversations ?? []).filter((c) => !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
-  const archivedCount = (data?.conversations ?? []).filter((c) => c.archived).length;
-  const archivedUnread = (data?.conversations ?? []).filter((c) => c.archived && c.unread > 0).length;
+  }, [data, search, filter, view, activeFolder, lockedChats, inScope]);
+  const totalUnread = (data?.conversations ?? []).filter((c) => inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  // New messages in the other apps' chats, shown on the "All apps" switch.
+  const elsewhere = allApps || !many ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && shownApps.some((x) => x.id === knownApp(c.app)) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  const archivedCount = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived).length;
+  const archivedUnread = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived && c.unread > 0).length;
   // Chat streaks (M17, Snapchat): days in a row we've both written, on one-to-one chats.
   const { data: streakData } = useSWR<{ streaks: Record<string, number> }>('/api/chat/streaks', authedJson, { revalidateOnFocus: false });
   const streaks = streakData?.streaks ?? {};
@@ -274,13 +293,15 @@ export function MessagingHub() {
     select(id);
   };
   // The folder rail (Telegram desktop): the built-in views, then my folders.
-  const go = (to: { space?: 'chats' | 'communities'; view?: 'chats' | 'archived'; filter?: Filter }) => { setSpace(to.space ?? 'chats'); setView(to.view ?? 'chats'); setFilter(to.filter ?? 'all'); };
+  const go = (to: { space?: 'chats' | 'communities' | 'connections'; view?: 'chats' | 'archived'; filter?: Filter }) => { setSpace(to.space ?? 'chats'); setView(to.view ?? 'chats'); setFilter(to.filter ?? 'all'); };
   const rail: { id: string; label: string; icon: LucideIcon | string; on: boolean; count?: number; run: () => void }[] = [
     { id: 'all', label: 'All chats', icon: MessagesSquare, on: space === 'chats' && view === 'chats' && filter === 'all', count: totalUnread, run: () => go({}) },
     { id: 'unread', label: 'Unread', icon: MailOpen, on: space === 'chats' && view === 'chats' && filter === 'unread', run: () => go({ filter: 'unread' }) },
     { id: 'direct', label: 'Direct', icon: UserRound, on: space === 'chats' && view === 'chats' && filter === 'direct', run: () => go({ filter: 'direct' }) },
     { id: 'groups', label: 'Groups', icon: Users, on: space === 'chats' && view === 'chats' && filter === 'groups', run: () => go({ filter: 'groups' }) },
     { id: 'communities', label: 'Communities', icon: Hash, on: space === 'communities', run: () => go({ space: 'communities' }) },
+    // M182: Gmail, Outlook and Slack, read here.
+    { id: 'connections', label: 'Connections', icon: Link2, on: space === 'connections', run: () => go({ space: 'connections' }) },
     { id: 'archived', label: 'Archived', icon: Archive, on: space === 'chats' && view === 'archived', count: archivedUnread, run: () => go({ view: 'archived' }) },
     ...folders.map((f) => ({ id: `folder:${f.id}`, label: f.name, icon: f.emoji || '📁', on: space === 'chats' && view === 'chats' && filter === `folder:${f.id}`, run: () => go({ filter: `folder:${f.id}` as Filter }) })),
   ];
@@ -325,7 +346,7 @@ export function MessagingHub() {
               {view === 'archived' ? (
                 <><button onClick={() => setView('chats')} aria-label="Back to chats" className="p-1 -ms-1 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10"><ArrowLeft className="w-5 h-5" /></button> Archived</>
               ) : (
-                <>{space === 'communities' ? 'Communities' : filter === 'all' ? 'Chats' : rail.find((r) => r.on)?.label ?? 'Chats'} {totalUnread > 0 && <span key={totalUnread} className="badge-bump text-xs font-bold px-2 py-0.5 rounded-full bg-[#b5307d] text-white shadow-[0_0_14px_-2px_rgb(217_70_239/0.7)]">{totalUnread}</span>}</>
+                <>{space === 'communities' ? 'Communities' : space === 'connections' ? 'Connections' : filter === 'all' ? 'Chats' : rail.find((r) => r.on)?.label ?? 'Chats'} {totalUnread > 0 && <span key={totalUnread} className="badge-bump text-xs font-bold px-2 py-0.5 rounded-full bg-[#b5307d] text-white shadow-[0_0_14px_-2px_rgb(217_70_239/0.7)]">{totalUnread}</span>}</>
               )}
             </h2>
             <div className="flex gap-1 items-center">
@@ -342,13 +363,26 @@ export function MessagingHub() {
             </div>
           </div>
           <div className="md:hidden flex p-1 rounded-2xl bg-zinc-100 dark:bg-white/[0.05]" role="tablist" aria-label="Chats or communities">
-            {(['chats', 'communities'] as const).map((sp) => (
+            {(['chats', 'communities', 'connections'] as const).map((sp) => (
               <button key={sp} role="tab" aria-selected={space === sp} onClick={() => setSpace(sp)} className={cn('relative flex-1 py-1.5 rounded-xl text-xs font-semibold transition-colors', space === sp ? 'text-zinc-900 dark:text-white' : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200')}>
                 {space === sp && <motion.span layoutId="hub-space" className="absolute inset-0 rounded-xl bg-white dark:bg-white/10 shadow-sm" transition={{ type: 'spring', stiffness: 520, damping: 40 }} />}
-                <span className="relative">{sp === 'chats' ? 'Chats' : 'Communities'}</span>
+                <span className="relative">{sp === 'chats' ? 'Chats' : sp === 'communities' ? 'Communities' : 'Connected'}</span>
               </button>
             ))}
           </div>
+          {space === 'chats' && view === 'chats' && many && (
+            <div className="flex items-center gap-2" role="group" aria-label="Which chats">
+              <span className="inline-flex min-w-0 items-center gap-2 text-sm font-semibold text-zinc-700 dark:text-zinc-200">
+                <AppIcon id={app} size={22} /><span className="truncate">{allApps ? 'All your apps' : appById(app).name}</span>
+              </span>
+              <span className="ms-auto inline-flex shrink-0 rounded-full bg-zinc-100 p-0.5 dark:bg-white/[0.06]">
+                <button type="button" aria-pressed={!allApps} onClick={() => setAllApps(false)} className={cn('rounded-full px-3 py-1 text-xs font-semibold transition-colors', !allApps ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white')}>This app</button>
+                <button type="button" aria-pressed={allApps} onClick={() => setAllApps(true)} className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold transition-colors', allApps ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-white')}>
+                  All apps{elsewhere > 0 && <span className="rounded-full bg-[#b5307d] px-1.5 text-[11px] font-bold leading-4 text-white"><span className="sr-only">, </span>{elsewhere}<span className="sr-only"> new</span></span>}
+                </button>
+              </span>
+            </div>
+          )}
           {space === 'chats' && <>
           {(shared.text || shared.photos > 0) && (
             <div role="status" className="rise-in flex items-center gap-3 rounded-2xl border border-fuchsia-400/30 bg-fuchsia-500/[0.07] px-3.5 py-2.5">
@@ -398,6 +432,8 @@ export function MessagingHub() {
 
         {space === 'communities' ? (
           <div className="flex-1 overflow-y-auto"><CommunitiesPanel activeId={activeId} onOpen={select} /></div>
+        ) : space === 'connections' ? (
+          <div className="flex-1 overflow-y-auto p-4" tabIndex={0} role="region" aria-label="Connections"><ConnectionsPanel kinds={['mail', 'chat']} back={`${location.pathname}?space=connections`} /></div>
         ) : (
         <div className="flex-1 overflow-y-auto p-2">
           {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}
@@ -471,6 +507,7 @@ export function MessagingHub() {
                       {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     <span className="flex items-center gap-1.5 shrink-0">
+                      {allApps && many && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(knownApp(c.app)).name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(knownApp(c.app)).color }} aria-hidden />{SHORT[knownApp(c.app)]}</span>}
                       {!c.isGroup && streaks[c.id] && <span className="streak" title={`${streaks[c.id]}-day streak: you've both written every day`} aria-label={`${streaks[c.id]}-day streak`}><i aria-hidden>🔥</i>{streaks[c.id]}</span>}
                       {c.lastMessage && <span className={cn('text-[11px]', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                     </span>

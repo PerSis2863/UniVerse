@@ -3,6 +3,7 @@
 import { Suspense, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import useSWR from 'swr';
+import { authedJson } from '@/lib/authed-fetch';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -24,7 +25,7 @@ import { Tank } from '@/components/live/Tank';
 
 interface Campaign { id: string; title: string; productId: string | null; bonusPoints: number; budgetPoints: number; spentPoints: number; scans: number; feeCents: number; status: string; country: string | null; lat: number | null; lng: number | null; radiusKm: number | null; place: string | null; endsAt: string | null; createdAt: string }
 interface Cashout { id: string; points: number; amount: number; currency: string; payTo: string; status: string; note: string | null; createdAt: string; user: { name: string | null; email: string } | null }
-interface BrandInfo { brand: { pointValue: number; currency: string } | null }
+interface BrandInfo { brand: { pointValue: number; currency: string } | null; billing?: { open: boolean } }
 
 const money = (n: number, c: string) => n.toLocaleString(undefined, { style: 'currency', currency: c, maximumFractionDigits: 2 });
 const STATUS: Record<string, string> = { ACTIVE: 'bg-pink-500/12 text-pink-700 dark:text-pink-200', PAUSED: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300', ENDED: 'bg-zinc-500/10 text-zinc-500' };
@@ -34,7 +35,7 @@ export default function CampaignsPage() {
     <>
       <Topbar title="Campaigns" subtitle="Bonus points for shops, paid only for verified sales" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           <Suspense><Campaigns /></Suspense>
         </div>
@@ -100,7 +101,7 @@ function Campaigns() {
             </div>
           ) : (
             <div className="grid md:grid-cols-2 gap-4">
-              {list.map((c, i) => <CampaignCard key={c.id} c={c} index={i} product={products?.find((p) => p.id === c.productId)?.name ?? null} currency={currency} pointValue={pointValue} onChange={() => void mutate()} />)}
+              {list.map((c, i) => <CampaignCard key={c.id} c={c} index={i} product={products?.find((p) => p.id === c.productId)?.name ?? null} currency={currency} pointValue={pointValue} canPay={!!info?.billing?.open} onChange={() => void mutate()} />)}
             </div>
           )}
       </section>
@@ -195,7 +196,7 @@ function CampaignForm({ products, fromMap, currency, pointValue, onDone }: { pro
   );
 }
 
-function CampaignCard({ c, index, product, currency, pointValue, onChange }: { c: Campaign; index: number; product: string | null; currency: string; pointValue: number; onChange: () => void }) {
+function CampaignCard({ c, index, product, currency, pointValue, canPay, onChange }: { c: Campaign; index: number; product: string | null; currency: string; pointValue: number; canPay: boolean; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
   const used = c.budgetPoints ? (c.spentPoints / c.budgetPoints) * 100 : 0;
   const set = async (status: string) => {
@@ -232,9 +233,33 @@ function CampaignCard({ c, index, product, currency, pointValue, onChange }: { c
             ? <button type="button" disabled={busy} onClick={() => void set('PAUSED')} className="btn-secondary btn-sm"><Pause className="w-3.5 h-3.5" />Pause</button>
             : <button type="button" disabled={busy} onClick={() => void set('ACTIVE')} className="btn-secondary btn-sm"><Play className="w-3.5 h-3.5" />Resume</button>}
           <button type="button" disabled={busy} onClick={() => { if (window.confirm('End this campaign? It stops paying for good.')) void set('ENDED'); }} className="btn-secondary btn-sm"><Square className="w-3.5 h-3.5" />End</button>
+          {canPay && <AddPoints campaignId={c.id} currency={currency} pointValue={pointValue} />}
         </div>
       )}
     </motion.article>
+  );
+}
+
+/** M201: more points for the campaign's budget, paid by card through Stripe (at the brand's point value). */
+function AddPoints({ campaignId, currency, pointValue }: { campaignId: string; currency: string; pointValue: number }) {
+  const [open, setOpen] = useState(false);
+  const [points, setPoints] = useState('5000');
+  const [busy, setBusy] = useState(false);
+  const n = Math.round(Number(points)) || 0;
+  const pay = async () => {
+    setBusy(true);
+    try {
+      const { url } = await authedJson<{ url: string }>('/api/trace/billing', { method: 'POST', body: JSON.stringify({ kind: 'campaign', campaignId, points: n }) });
+      window.location.assign(url);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t open the payment page. Try again.')); setBusy(false); }
+  };
+  if (!open) return <button type="button" onClick={() => setOpen(true)} className="btn-secondary btn-sm ms-auto"><Plus className="w-3.5 h-3.5" aria-hidden />Add points</button>;
+  return (
+    <span className="ms-auto flex flex-wrap items-center gap-2">
+      <label className="sr-only" htmlFor={`pts-${campaignId}`}>Points to add</label>
+      <input id={`pts-${campaignId}`} type="number" min={100} max={1000000} step={100} value={points} onChange={(e) => setPoints(e.target.value)} className="input w-28 py-1.5 text-sm" />
+      <button type="button" onClick={() => void pay()} disabled={busy || n < 100} className="btn-primary btn-sm">{busy && <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />}Pay {money(n * pointValue, currency)}</button>
+    </span>
   );
 }
 

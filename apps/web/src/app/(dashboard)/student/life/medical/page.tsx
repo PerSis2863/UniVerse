@@ -101,7 +101,7 @@ export default function MedicalPage() {
       <SectionTabs tabs={LIFE_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             

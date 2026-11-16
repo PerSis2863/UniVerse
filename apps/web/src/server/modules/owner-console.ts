@@ -11,6 +11,7 @@ import { oneOf, str } from '../body';
 import { reviewFlag } from '../safety';
 import { moderateListing } from '../campus-board';
 import { logMod } from '../community-moderation';
+import { moderateTravel, travelReports } from '../travel-moderation';
 import { serverControl } from './owner';
 import { schoolHealth } from '@/lib/owner-console';
 import type { SessionUser } from '@/lib/server-auth';
@@ -136,9 +137,10 @@ export default function ownerConsoleModule(router: Router) {
     };
   });
 
-  /** Safety reports from every school: open chat flags, community reports and reported campus posts, with counts per school. */
+  /** Safety reports from every school: open chat flags, community reports and reported campus posts, with counts per school;
+   *  and Travel's reported board notes and reviews (M213), counted as their own group. */
   r.get('moderation', async () => {
-    const [flags, reports, listings, open, names] = await Promise.all([
+    const [flags, reports, listings, open, names, travel] = await Promise.all([
       prisma.safetyFlag.findMany({
         where: { status: 'OPEN' }, orderBy: { createdAt: 'desc' }, take: 40,
         select: { id: true, kind: true, severity: true, excerpt: true, repeats: true, createdAt: true, sender: { select: { id: true, name: true, organizationId: true } } },
@@ -153,22 +155,27 @@ export default function ownerConsoleModule(router: Router) {
       }),
       q<{ org: string | null; n: bigint }>(OPEN_BY_SCHOOL),
       prisma.organization.findMany({ select: { id: true, name: true }, take: 1000 }),
+      travelReports(),
     ]);
-    const senders = await prisma.user.findMany({ where: { id: { in: [...new Set(reports.map((x) => x.senderId))] } }, select: { id: true, name: true, organizationId: true } });
+    const senders = await prisma.user.findMany({ where: { id: { in: [...new Set([...reports.map((x) => x.senderId), ...travel.map((x) => x.userId)])] } }, select: { id: true, name: true, organizationId: true } });
     const school = new Map(names.map((o) => [o.id, o.name]));
     const who = (u: { id: string; name: string; organizationId: string | null } | undefined) => ({ id: u?.id ?? null, name: u?.name ?? 'Someone', school: (u?.organizationId && school.get(u.organizationId)) || null });
     const sender = new Map(senders.map((u) => [u.id, u]));
     return {
-      bySchool: open.map((o) => ({ id: o.org, name: (o.org && school.get(o.org)) || 'No school', open: num(o.n) })).sort((a, b) => b.open - a.open),
+      bySchool: [
+        ...open.map((o) => ({ id: o.org, name: (o.org && school.get(o.org)) || 'No school', open: num(o.n) })),
+        ...(travel.some((t) => !t.hidden) ? [{ id: 'travel', name: 'Travel', open: travel.filter((t) => !t.hidden).length }] : []),
+      ].sort((a, b) => b.open - a.open),
       items: [
         ...flags.map((f) => ({ kind: 'flag' as const, id: f.id, title: f.kind, severity: f.severity, text: f.excerpt, repeats: f.repeats, at: f.createdAt, person: who(f.sender) })),
         ...reports.map((c) => ({ kind: 'report' as const, id: c.id, title: c.community?.name ?? 'Community', severity: null, text: c.excerpt, reason: c.reason, at: c.createdAt, person: who(sender.get(c.senderId)) })),
         ...listings.map((l) => ({ kind: 'listing' as const, id: l.id, title: l.title, severity: null, text: `${l.reports} report${l.reports === 1 ? '' : 's'} · ${l.status === 'HIDDEN' ? 'hidden' : 'still showing'}`, hidden: l.status === 'HIDDEN', at: l.createdAt, person: who(l.user) })),
+        ...travel.map(({ userId, ...t }) => ({ ...t, severity: null, group: 'Travel', person: who(sender.get(userId)) })),
       ].sort((a, b) => +new Date(b.at) - +new Date(a.at)),
     };
   });
 
-  /** Handle one item: a chat flag (reviewed / dismiss), a community report (dismiss), a campus post (hide / restore). */
+  /** Handle one item: a chat flag (reviewed / dismiss), a community report (dismiss), a campus post or a Travel note or review (hide / restore). */
   r.post<{ kind: string; id: string }>('moderation/:kind/:id', async ({ params, body, user, req }) => {
     const action = body.action;
     let summary: string;
@@ -184,6 +191,10 @@ export default function ownerConsoleModule(router: Router) {
     } else if (params.kind === 'listing' && oneOf(['hide', 'restore'] as const, action)) {
       await moderateListing(asSession(user), { id: params.id, action });
       summary = action === 'hide' ? 'Hid a reported campus post' : 'Restored a reported campus post';
+    } else if ((params.kind === 'travel-post' || params.kind === 'travel-review') && oneOf(['hide', 'restore'] as const, action)) {
+      await moderateTravel(params.kind, params.id, action);
+      const what = params.kind === 'travel-post' ? 'travellers-board note' : 'Travel review';
+      summary = action === 'hide' ? `Hid a reported ${what}` : `Restored a reported ${what}`;
     } else throw new BadRequestException('Unknown action.');
     audit(user, { action: 'owner.moderation', summary, targetType: params.kind, targetId: params.id }, req);
     return { ok: true };

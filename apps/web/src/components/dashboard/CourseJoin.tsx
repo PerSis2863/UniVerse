@@ -62,8 +62,13 @@ export function CourseJoin({ courseId }: { courseId: string }) {
     setError('');
     try {
       const { data } = await api.post<{ enrolled: boolean; position: number | null }>(`/courses/${courseId}/enroll`);
-      clearInvite();
-      if (data.enrolled) router.replace(`/student/blackboard?course=${encodeURIComponent(courseId)}`);
+      // Signed in (Google, Apple, phone) but sign-up not finished (M198): keep the invite, so finishing
+      // sign-up takes the student path and comes back to the class, instead of asking for a role.
+      const me = await api.get<{ onboardedAt?: string | null; owner?: boolean }>('/users/me').then((r) => r.data, () => null);
+      const unfinished = !!me && !me.onboardedAt && !me.owner;
+      if (!unfinished) clearInvite();
+      if (unfinished) router.replace('/register?continue=1&app=campus');
+      else if (data.enrolled) router.replace(`/student/blackboard?course=${encodeURIComponent(courseId)}`);
       else setWaitlisted(data.position ?? 0);
     } catch (e) {
       setError(errorMessage(e, 'Couldn’t join the class. Try again.'));

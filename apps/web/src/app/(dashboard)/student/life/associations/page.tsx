@@ -64,7 +64,7 @@ export default function AssociationsPage() {
       />
       <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           {/* Search Bar */}
           <div className="relative group">

@@ -31,8 +31,9 @@ function Bars({ lit, total }: { lit: number; total: number }) {
   return (
     <div ref={ref} className="flex items-end gap-1.5 h-16" aria-hidden>
       {Array.from({ length: total }, (_, i) => (
-        <motion.span key={i} className={`flex-1 rounded-md ${i < lit ? 'bg-gradient-to-t from-violet-500 to-fuchsia-300' : 'bg-white/[0.06]'}`}
-          initial={{ height: '8%' }} animate={{ height: seen ? `${i < lit ? 100 - i * 7 : 40}%` : '8%' }} transition={{ duration: 0.7, delay: i * 0.07, ease: EASE }} />
+        // M225: grown with a transform from the bottom (a height changed the page's layout every frame).
+        <motion.span key={i} className={`flex-1 rounded-md origin-bottom ${i < lit ? 'bg-gradient-to-t from-violet-500 to-fuchsia-300' : 'bg-white/[0.06]'}`} style={{ height: `${i < lit ? 100 - i * 7 : 40}%` }}
+          initial={{ transform: 'scaleY(0.1)' }} animate={{ transform: seen ? 'scaleY(1)' : 'scaleY(0.1)' }} transition={{ duration: 0.7, delay: i * 0.07, ease: EASE }} />
       ))}
     </div>
   );
@@ -43,7 +44,7 @@ function Gauge() {
   const seen = useInView(ref, { once: true, margin: '-60px' });
   return (
     <div ref={ref} className="h-3 rounded-full bg-white/[0.06] overflow-hidden mt-10" aria-hidden>
-      <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-300 shadow-[0_0_20px_#58617f]" initial={{ width: '0%' }} animate={{ width: seen ? '100%' : '0%' }} transition={{ duration: 1.8, ease: EASE }} />
+      <motion.div className="h-full w-full rounded-full bg-gradient-to-r from-indigo-400 via-violet-400 to-fuchsia-300 shadow-[0_0_20px_#58617f]" initial={{ transform: 'scaleX(0)' }} animate={{ transform: seen ? 'scaleX(1)' : 'scaleX(0)' }} style={{ transformOrigin: 'left' }} transition={{ duration: 1.8, ease: EASE }} />
     </div>
   );
 }

@@ -66,7 +66,7 @@ export default function SponsorPortalPage() {
         rightNode={<button onClick={() => setForm({ partnerId: partners?.[0]?.id ?? '', title: '', description: '', startDate: '', endDate: '' })} className="btn-primary btn-sm"><Plus className="w-4 h-4" /> New partnership</button>} />
       <SectionTabs tabs={PARTNER_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           {form && (
             <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 space-y-3">
               <div className="flex items-center justify-between"><p className="font-bold text-zinc-900 dark:text-white">New partnership</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>

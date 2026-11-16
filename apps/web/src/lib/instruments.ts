@@ -83,5 +83,13 @@ export function fmt(v: number, digits?: number): string {
   if (abs >= 100_000) return `${(v / 1000).toFixed(0)}k`;
   if (abs >= 10_000) return `${(v / 1000).toFixed(1)}k`;
   const d = digits ?? (abs >= 100 || Number.isInteger(v) ? 0 : abs >= 10 ? 1 : 2);
-  return v.toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
+  return numberIn(d).format(v);
+}
+// M211: one formatter per number of decimals (toLocaleString made a new one each call: 76 ms of the
+// hub's start on a slow phone).
+const FORMATS = new Map<number, Intl.NumberFormat>();
+function numberIn(d: number) {
+  let f = FORMATS.get(d);
+  if (!f) FORMATS.set(d, (f = new Intl.NumberFormat('en-US', { minimumFractionDigits: d, maximumFractionDigits: d })));
+  return f;
 }

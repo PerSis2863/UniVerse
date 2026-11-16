@@ -38,7 +38,7 @@ export default function StudentInformation() {
       <SectionTabs tabs={HOME_TABS} />
 
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
 
           <section className="space-y-3">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">

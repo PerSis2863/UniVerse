@@ -26,7 +26,7 @@ export default function TraceBrandsPage() {
     <>
       <Topbar title="All brands" subtitle="Every brand on Trace, its size and its plan" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           {owner ? <Brands /> : <p className="panel p-6 text-sm text-zinc-500">Only the UniVerse team sees this page.</p>}
         </div>

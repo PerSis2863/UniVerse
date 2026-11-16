@@ -11,7 +11,7 @@ import { geminiAudioText } from './gemini';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { chatMuted, featureOff } from './moderation';
 import { publishChat } from './realtime';
-import { schoolPolicy } from './safety';
+import { policyFor } from './safety';
 import { storedTranslations, translateMessages, translateTexts } from './translate';
 import { DEFAULT_HOURS, hoursOf, hoursText, inHours, parseDays } from './parent-hours';
 import { taughtBy } from '@/lib/course-access';
@@ -34,8 +34,9 @@ import { schoolsOf, usersIn } from './school-scope';
 const MAX_BODY = 2000;
 const PER_HOUR = 30;
 
-async function requireOn() {
-  if (!(await schoolPolicy()).parentMessaging) throw new ForbiddenException('Your school hasn’t turned on parent messages.');
+/** Parent messages are the student's school's choice (M190). */
+async function requireOn(studentId: string | null) {
+  if (!studentId || !(await policyFor(studentId)).parentMessaging) throw new ForbiddenException('Your school hasn’t turned on parent messages.');
 }
 
 /** The teachers of a student (of their courses), with the course codes. */
@@ -87,10 +88,9 @@ async function chatFor(guardian: { id: string; name: string }, teacher: { id: st
 /** GET /api/parent/chats?studentId=: the child's teachers, each with our chat (if any). */
 export async function parentChats(user: SessionUser, studentIdRaw: unknown) {
   if (user.role !== 'GUARDIAN') throw new ForbiddenException('This is for parent accounts.');
-  const policy = await schoolPolicy();
   const studentId = typeof studentIdRaw === 'string' ? studentIdRaw : '';
   const child = await linkedChild(user.id, studentId);
-  if (!policy.parentMessaging) return { allowed: false, child: firstName(child.name), teachers: [] };
+  if (!(await policyFor(child.id)).parentMessaging) return { allowed: false, child: firstName(child.name), teachers: [] };
   const [teachers, convos] = await Promise.all([
     teachersOf(child.id),
     prisma.conversation.findMany({
@@ -206,8 +206,8 @@ const PARENT_FILE = /^(image\/(png|jpeg|webp|gif)|application\/pdf)$/;
  * (a doctor's note, a signed form). Parents have no other way to upload (Stage 5 · Q22).
  */
 export async function sendParentFile(user: SessionUser, conversationId: string, form: FormData) {
-  await requireOn();
-  const { me } = await parentChat(user, conversationId);
+  const { c, me } = await parentChat(user, conversationId);
+  await requireOn(c.aboutStudentId);
   const file = form.get('file');
   if (!(file instanceof File) || !file.size) throw new BadRequestException('Choose a photo or a PDF.');
   if (file.size > SERVER_UPLOAD_MAX) throw new BadRequestException('That file is too big: up to 4 MB.');
@@ -246,8 +246,8 @@ async function send(user: SessionUser, conversationId: string, participantId: st
 /** POST /api/parent/chats { studentId, teacherId, body, lang? }: the first message to a teacher (or the next one). */
 export async function startParentChat(user: SessionUser, b: Record<string, unknown>) {
   if (user.role !== 'GUARDIAN') throw new ForbiddenException('This is for parent accounts.');
-  await requireOn();
   const child = await linkedChild(user.id, typeof b.studentId === 'string' ? b.studentId : '');
+  await requireOn(child.id);
   const teacher = (await teachersOf(child.id)).find((t) => t.id === b.teacherId);
   if (!teacher) throw new NotFoundException('That teacher doesn’t teach your child.');
   const conversationId = await chatFor({ id: user.id, name: user.name }, teacher, child, user.id, typeof b.lang === 'string' ? b.lang : null);
@@ -300,8 +300,8 @@ export async function postParentChat(user: SessionUser, conversationId: string, 
     const { me } = await parentChat(user, conversationId);
     return voiceNote(user, conversationId, me.translateTo, b.voice);
   }
-  await requireOn();
-  const { me } = await parentChat(user, conversationId);
+  const { c, me } = await parentChat(user, conversationId);
+  await requireOn(c.aboutStudentId);
   if ('lang' in b) {
     const lang = typeof b.lang === 'string' && isLanguage(b.lang) ? b.lang : null;
     await prisma.conversationParticipant.update({ where: { id: me.id }, data: { translateTo: lang } });
@@ -334,14 +334,14 @@ export async function studentParents(user: SessionUser, studentIdRaw: unknown) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers can message parents.');
   const student = await myStudent(user, typeof studentIdRaw === 'string' ? studentIdRaw : '');
   const links = await prisma.guardianLink.findMany({ where: { studentId: student.id }, orderBy: { createdAt: 'asc' }, select: { relation: true, guardian: { select: { id: true, name: true, avatar: true } } } });
-  return { allowed: (await schoolPolicy()).parentMessaging, student: { id: student.id, name: student.name }, parents: links.map((l) => ({ id: l.guardian.id, name: l.guardian.name, avatar: l.guardian.avatar, relation: l.relation })) };
+  return { allowed: (await policyFor(student.id)).parentMessaging, student: { id: student.id, name: student.name }, parents: links.map((l) => ({ id: l.guardian.id, name: l.guardian.name, avatar: l.guardian.avatar, relation: l.relation })) };
 }
 
 /** POST /api/teacher/parents { studentId, guardianId }: opens (or makes) my chat with that parent; the teacher writes in their inbox. */
 export async function teacherParentChat(user: SessionUser, b: Record<string, unknown>) {
   if (!isStaff(user)) throw new ForbiddenException('Only teachers can message parents.');
-  await requireOn();
   const student = await myStudent(user, typeof b.studentId === 'string' ? b.studentId : '');
+  await requireOn(student.id);
   const link = await prisma.guardianLink.findFirst({ where: { studentId: student.id, guardianId: typeof b.guardianId === 'string' ? b.guardianId : '' }, select: { guardian: { select: { id: true, name: true } } } });
   if (!link) throw new NotFoundException('That parent isn’t linked to this student.');
   return { conversationId: await chatFor(link.guardian, { id: user.id, name: user.name }, student, user.id) };

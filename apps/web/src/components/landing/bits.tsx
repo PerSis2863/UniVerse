@@ -2,7 +2,11 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, m as motion, useInView } from 'framer-motion';
+import { useIdle } from '@/lib/use-idle';
 import { cn } from '@/lib/utils';
+
+/** One formatter for every counting number (toLocaleString made one per frame, M211). */
+const WHOLE = new Intl.NumberFormat('en-US');
 
 // Small parts shared by the landing page's sections (src/app/page.tsx).
 
@@ -34,7 +38,9 @@ export function Live({ children, away = false, className }: { children: React.Re
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const off = outer || away || !seen;
+  // M225: and while the visitor has left the page alone for 30 s (src/lib/use-idle.ts).
+  const idle = useIdle();
+  const off = outer || away || !seen || idle;
   return <div ref={ref} className={className} data-away={off || undefined}><Away.Provider value={off}>{children}</Away.Provider></div>;
 }
 
@@ -101,7 +107,7 @@ export function CountUp({ to, prefix = '', suffix = '', className }: { to: numbe
   useEffect(() => {
     const el = ref.current;
     if (!el || !seen) return;
-    const c = animate(0, to, { duration: 1.6, ease: EASE, onUpdate: (v) => { el.textContent = `${prefix}${Math.round(v).toLocaleString('en-US')}${suffix}`; } });
+    const c = animate(0, to, { duration: 1.6, ease: EASE, onUpdate: (v) => { el.textContent = `${prefix}${WHOLE.format(Math.round(v))}${suffix}`; } });
     return () => c.stop();
   }, [seen, to, prefix, suffix]);
   return <span ref={ref} className={cn('tabular-nums', className)}>{prefix}0{suffix}</span>;

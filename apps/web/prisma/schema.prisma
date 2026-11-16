@@ -353,6 +353,8 @@ model User {
   officeHours          OfficeHours?       @relation("OfficeHours")
   dailyBrief           DailyBrief?        @relation("DailyBrief")
   quietHours           QuietHours?        @relation("QuietHours")
+  toolSaveOpens        ToolSaveOpen[]
+  oauthConnections     OAuthConnection[]
   parentContactHours   ParentContactHours? @relation("ParentContactHours")
   consentFormsSent     ConsentForm[]       @relation("ConsentFormsSent")
   consentFor           ConsentResponse[]   @relation("ConsentFor")
@@ -417,6 +419,7 @@ model User {
   twoStepTriedAt DateTime?
 
   @@index([cardsRemindAt])
+  @@index([organizationId])
   @@map("users")
 }
 
@@ -907,6 +910,8 @@ model Conversation {
   channelCategory String?
   channelPrivate  Boolean    @default(false)
   channelRoles    String?
+  /// The app the chat was started in (M179): campus, trace, relief, green, play; null = UniVersity (before M179).
+  app             String?
 
   participants ConversationParticipant[]
   messages     Message[]
@@ -935,6 +940,7 @@ model ScheduledMessage {
 
   @@index([sendAt])
   @@index([conversationId, senderId])
+  @@index([senderId])
   @@map("scheduled_messages")
 }
 
@@ -1223,6 +1229,7 @@ model RoleApplication {
 
   @@index([status, submittedAt])
   @@index([userId, createdAt])
+  @@index([reviewedById])
   @@map("role_applications")
 }
 
@@ -1531,8 +1538,11 @@ model Room {
   buildingId     String?
   building       CampusBuilding?   @relation(fields: [buildingId], references: [id], onDelete: SetNull)
   floor          Int?
+  /// M191: the school the room is at (null: the main school); only its people see and book it
+  organizationId String?
 
   @@index([buildingId])
+  @@index([organizationId])
   @@map("rooms")
 }
 
@@ -1551,12 +1561,15 @@ model CampusBuilding {
   h         Int            @default(120)
   floors    Int            @default(1)
   color     String?
+  /// M187: the school whose map it is on (null: the main school); its admins change it
+  organizationId String?
   createdAt DateTime       @default(now())
   updatedAt DateTime       @updatedAt
   rooms     Room[]
   items     CampusItem[]
 
   @@index([campusId])
+  @@index([organizationId])
   @@map("campus_buildings")
 }
 
@@ -2747,6 +2760,7 @@ model QuizAttempt {
   answers   String?
 
   @@unique([quizId, studentId])
+  @@index([studentId])
   @@map("quiz_attempts")
 }
 
@@ -2777,6 +2791,7 @@ model GradeAssessment {
   category   GradeCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
 
   @@unique([courseId, name])
+  @@index([categoryId])
   @@map("grade_assessments")
 }
 
@@ -3115,10 +3130,13 @@ model LtiPlatform {
   jwksUrl       String
   trustEmails   Boolean  @default(false) // link to existing accounts by email
   isActive      Boolean  @default(true)
+  /// M184: the school whose LMS it is (null: the main school); its admins manage it, its launches join it
+  organizationId String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   @@unique([issuer, clientId])
+  @@index([organizationId])
   @@map("lti_platforms")
 }
 
@@ -3218,6 +3236,7 @@ model ServerControl {
   watchWords String? // words that alert the owner when they appear in a chat, one per line
   aiLimits   String? // JSON { student, staff, site }: AI requests allowed per day (src/server/ai-budget.ts)
   aiModels   String? // JSON { text: string[], live: string }: which Gemini models answer (src/server/ai-models.ts)
+  apps       String? // JSON list of the app ids the website shows (M203, src/lib/shown-apps.ts); null = every app
 
   @@map("server_control")
 }
@@ -3325,9 +3344,12 @@ model Assignment {
   submissions  AssignmentSubmission[]
   extensions   AssignmentExtension[]
   autopilotPlans GroupAutopilotPlan[]
+  /// M197: when the "due soon" reminder went out (once per assignment)
+  nudgedAt     DateTime?
 
   @@index([courseId])
   @@index([createdById])
+  @@index([status, dueDate])
   @@map("assignments")
 }
 
@@ -3411,6 +3433,7 @@ model RegradeRequest {
 
   @@index([submissionId])
   @@index([status])
+  @@index([studentId])
   @@map("regrade_requests")
 }
 
@@ -3447,6 +3470,7 @@ model SubmissionNote {
   updatedAt    DateTime             @updatedAt
 
   @@index([submissionId])
+  @@index([authorId])
   @@map("submission_notes")
 }
 
@@ -3705,6 +3729,7 @@ model DailyBrief {
 /// The school's safety policy (Stage 4 · 4.10; one row, "main"; src/server/safety.ts): the chat
 /// safety check, recording calls with students under 18, quiet hours for them, and whether students
 /// without a birth date count as under 18.
+/// One row per school (M190): id = organizations.id, or "main" for the main school (people in no school).
 model SchoolPolicy {
   id             String   @id
   guard          Boolean  @default(true)
@@ -3768,6 +3793,7 @@ model ConsentResponse {
 
   @@unique([formId, studentId])
   @@index([guardianId])
+  @@index([studentId])
   @@map("consent_responses")
 }
 
@@ -3799,6 +3825,7 @@ model ParentMeeting {
   @@index([teacherId, startAt])
   @@index([guardianId])
   @@index([startAt, remindedAt])
+  @@index([studentId])
   @@map("parent_meetings")
 }
 
@@ -3822,6 +3849,8 @@ model FeePlan {
   invoices    FeeInvoice[]
 
   @@index([createdAt])
+  @@index([courseId])
+  @@index([createdById])
   @@map("fee_plans")
 }
 
@@ -3880,6 +3909,7 @@ model FeePayment {
 
   @@index([invoiceId])
   @@index([paidAt])
+  @@index([receivedById])
   @@map("fee_payments")
 }
 
@@ -3899,6 +3929,7 @@ model ImportBatch {
   undoneById  String?
 
   @@index([createdAt])
+  @@index([createdById])
   @@map("import_batches")
 }
 
@@ -3912,6 +3943,7 @@ model PendingEnrolment {
   createdAt DateTime @default(now())
 
   @@unique([email, courseId])
+  @@index([courseId])
   @@map("pending_enrolments")
 }
 
@@ -3933,6 +3965,7 @@ model AdmissionRound {
   createdAt     DateTime               @default(now())
   applications  AdmissionApplication[]
 
+  @@index([createdById])
   @@map("admission_rounds")
 }
 
@@ -3984,6 +4017,7 @@ model AdmissionReview {
   updatedAt     DateTime             @default(now())
 
   @@unique([applicationId, reviewerId])
+  @@index([reviewerId])
   @@map("admission_reviews")
 }
 
@@ -4000,6 +4034,7 @@ model StaffRole {
   updatedAt   DateTime          @default(now())
   members     StaffRoleMember[]
 
+  @@index([createdById])
   @@map("staff_roles")
 }
 
@@ -4062,6 +4097,9 @@ model StaffCover {
 
   @@unique([date, slotId])
   @@index([coverTeacherId, date])
+  @@index([slotId])
+  @@index([absentTeacherId])
+  @@index([leaveId])
   @@map("staff_covers")
 }
 
@@ -4346,6 +4384,7 @@ model CourseConcept {
   signals     ConceptSignal[]
 
   @@unique([courseId, name])
+  @@index([parentId])
   @@map("course_concepts")
 }
 
@@ -4367,6 +4406,8 @@ model ConceptSignal {
   createdAt DateTime      @default(now())
 
   @@index([courseId, studentId])
+  @@index([studentId])
+  @@index([conceptId])
   @@map("concept_signals")
 }
 
@@ -4382,6 +4423,7 @@ model ConceptTag {
 
   @@unique([kind, refId, conceptId])
   @@index([refId])
+  @@index([conceptId])
   @@map("concept_tags")
 }
 
@@ -4435,6 +4477,7 @@ model WhisperQuestion {
 
   @@index([callId, createdAt])
   @@index([courseId, createdAt])
+  @@index([studentId])
   @@map("whisper_questions")
 }
 
@@ -4571,6 +4614,7 @@ model SafetyFlag {
   @@index([status, createdAt])
   @@index([conversationId, createdAt])
   @@index([senderId])
+  @@index([messageId])
   @@map("safety_flags")
 }
 
@@ -4586,6 +4630,7 @@ model OfficeNote {
 
   @@index([teacherId, createdAt])
   @@index([teacherId, studentId])
+  @@index([studentId])
   @@map("office_notes")
 }
 
@@ -4653,6 +4698,8 @@ model PeerRating {
 
   @@unique([spaceKind, spaceId, raterId, rateeId])
   @@index([spaceKind, spaceId])
+  @@index([raterId])
+  @@index([rateeId])
   @@map("peer_ratings")
 }
 
@@ -4935,6 +4982,7 @@ model Campus {
   exchangeStudents StudentProfile[] @relation("ExchangeCampus")
   buildings        CampusBuilding[]
 
+  @@index([organizationId])
   @@map("campuses")
 }
 
@@ -5051,6 +5099,7 @@ model Task {
 
   @@index([boardId])
   @@index([assigneeId, doneAt])
+  @@index([listId])
   @@map("tasks")
 }
 
@@ -5166,6 +5215,7 @@ model SpaceFolder {
   files       SpaceFile[]
 
   @@index([spaceKind, spaceId])
+  @@index([parentId])
   @@map("space_folders")
 }
 
@@ -5192,6 +5242,7 @@ model SpaceFile {
 
   @@index([spaceKind, spaceId, folderId])
   @@index([spaceKind, spaceId, updatedAt])
+  @@index([folderId])
   @@map("space_files")
 }
 
@@ -5204,6 +5255,7 @@ model SpaceFileStar {
   createdAt DateTime  @default(now())
 
   @@unique([userId, fileId])
+  @@index([fileId])
   @@map("space_file_stars")
 }
 
@@ -5250,6 +5302,7 @@ model BoardComment {
   createdAt  DateTime  @default(now())
 
   @@index([boardId, createdAt])
+  @@index([userId])
   @@map("board_comments")
 }
 
@@ -5297,6 +5350,7 @@ model EducationalRecordLog {
 
   @@index([studentId])
   @@index([accessedAt])
+  @@index([actorId])
   @@map("educational_record_logs")
 }
 
@@ -5336,6 +5390,7 @@ model OneRosterSync {
 
   @@index([organizationId])
   @@index([createdAt])
+  @@index([actorId])
   @@map("oneroster_syncs")
 }
 
@@ -5480,6 +5535,7 @@ model MarketplacePack {
   @@index([authorId])
   @@index([ratingAvg])
   @@index([priceMinor])
+  @@index([sourceCourseId])
   @@map("marketplace_packs")
 }
 
@@ -5496,6 +5552,7 @@ model MarketplaceReview {
 
   @@unique([packId, userId])
   @@index([packId])
+  @@index([userId])
   @@map("marketplace_reviews")
 }
 
@@ -5569,6 +5626,7 @@ model AnalyticsExport {
 
   @@index([organizationId])
   @@index([createdAt])
+  @@index([generatedById])
   @@map("analytics_exports")
 }
 
@@ -5595,6 +5653,8 @@ model ResearchDataRequest {
 
   @@index([organizationId])
   @@index([status])
+  @@index([requestedById])
+  @@index([approvedById])
   @@map("research_data_requests")
 }
 
@@ -5667,6 +5727,7 @@ model ImpactSponsorPool {
 
   @@index([organizationId])
   @@index([status])
+  @@index([createdById])
   @@map("impact_sponsor_pools")
 }
 
@@ -5695,6 +5756,7 @@ model ImpactScholarshipClaim {
   @@index([studentId])
   @@index([status])
   @@index([qrVerificationToken])
+  @@index([approvedById])
   @@map("impact_scholarship_claims")
 }
 
@@ -5759,6 +5821,7 @@ model PeerTutorProfile {
 
   @@index([userId])
   @@index([isActive])
+  @@index([organizationId])
   @@map("peer_tutor_profiles")
 }
 
@@ -5814,6 +5877,9 @@ model PeerTutoringSession {
   @@index([scheduledAt])
   @@index([status])
   @@index([callRoomId])
+  @@index([organizationId])
+  @@index([courseId])
+  @@index([evidenceId])
   @@map("peer_tutoring_sessions")
 }
 
@@ -5850,6 +5916,8 @@ model GroupAutopilotPlan {
   @@index([assignmentId])
   @@index([status])
   @@index([createdById])
+  @@index([boardId])
+  @@index([scheduledCallId])
   @@map("group_autopilot_plans")
 }
 
@@ -5898,6 +5966,7 @@ model ClassroomSession {
   questions      ClassroomQuestion[]
 
   @@index([courseId, endedAt])
+  @@index([teacherId])
   @@map("classroom_sessions")
 }
 
@@ -5964,6 +6033,7 @@ model OralCheck {
   sessions  OralSession[]
 
   @@index([courseId])
+  @@index([teacherId])
   @@map("oral_checks")
 }
 
@@ -6098,6 +6168,7 @@ model LeagueChallenge {
   members        LeagueMember[]
 
   @@index([status])
+  @@index([createdById])
   @@map("league_challenges")
 }
 
@@ -6144,6 +6215,7 @@ model LeagueTeam {
 
   @@unique([challengeId, name])
   @@index([mentorId])
+  @@index([groupId])
   @@map("league_teams")
 }
 
@@ -6304,6 +6376,7 @@ model PracticeAnswer {
 
   @@index([studentId, courseId])
   @@index([questionId])
+  @@index([courseId])
   @@map("practice_answers")
 }
 
@@ -6328,6 +6401,7 @@ model LiveGame {
   answers     LiveGameAnswer[]
 
   @@index([courseId, status])
+  @@index([quizId])
   @@map("live_games")
 }
 
@@ -6343,6 +6417,7 @@ model LiveGamePlayer {
   joinedAt DateTime @default(now())
 
   @@unique([gameId, userId])
+  @@index([userId])
   @@map("live_game_players")
 }
 
@@ -6388,6 +6463,7 @@ model JobApplication {
   @@unique([userId, internshipId])
   @@index([userId])
   @@index([nextAt])
+  @@index([internshipId])
   @@map("job_applications")
 }
 
@@ -6456,6 +6532,7 @@ model Donation {
   @@index([projectId])
   @@index([donorId])
   @@index([status])
+  @@index([ngoId])
   @@map("donations")
 }
 
@@ -6474,6 +6551,7 @@ model ClubCarbonEntry {
   createdAt     DateTime    @default(now())
 
   @@index([associationId, occurredAt])
+  @@index([userId])
   @@map("club_carbon_entries")
 }
 
@@ -6571,6 +6649,7 @@ model ListingReport {
   createdAt DateTime      @default(now())
 
   @@unique([listingId, userId])
+  @@index([userId])
   @@map("listing_reports")
 }
 
@@ -6718,6 +6797,7 @@ model TraceCode {
   @@index([batchId, serial])
   @@index([organizationId])
   @@index([claimedById])
+  @@index([productId])
   @@map("trace_codes")
 }
 
@@ -6813,6 +6893,9 @@ model TraceBrand {
   createdById String?
   createdAt   DateTime           @default(now())
   members     TraceBrandMember[]
+  /// M201: PRO bought through Stripe (the owner's account): the brand's customer and subscription there
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
 
   @@map("trace_brands")
 }
@@ -6893,6 +6976,20 @@ model TraceCampaign {
 
   @@index([brandId, status])
   @@map("trace_campaigns")
+}
+
+/// M201: money a brand added to a campaign's budget through Stripe, one row per paid Checkout session.
+model TraceFunding {
+  sessionId  String   @id
+  campaignId String
+  points     Int
+  /// in the smallest unit of `currency` (cents)
+  amount     Int
+  currency   String
+  createdAt  DateTime @default(now())
+
+  @@index([campaignId])
+  @@map("trace_fundings")
 }
 
 /// A live position from a phone carrying a batch (the real-time tracking map).
@@ -7415,9 +7512,27 @@ model ToolSave {
   version    Int      @default(0)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  opens      ToolSaveOpen[]
 
   @@index([userId, updatedAt])
   @@map("tool_saves")
+}
+
+/// M194: Create work a person opened from someone else's link (mode 'view' or 'edit'), for their
+/// Collaborate home ("Shared with me") while that link still works.
+model ToolSaveOpen {
+  saveId   String
+  save     ToolSave @relation(fields: [saveId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  mode     String   @default("view")
+  /// the link they opened: listed only while the work's link is still this one
+  token    String
+  openedAt DateTime @default(now())
+
+  @@id([saveId, userId])
+  @@index([userId, openedAt])
+  @@map("tool_save_opens")
 }
 
 /// M166: a person's page arrangements, in the account only while they sync them (Settings). One row a
@@ -7428,4 +7543,344 @@ model UserArrangement {
   updatedAt DateTime @default(now())
 
   @@map("user_arrangements")
+}
+
+/// M202 UniVerse Travel: answers read from public sources (guides, facts, weather, search), kept a while.
+model TravelCache {
+  key       String   @id
+  data      String
+  fetchedAt DateTime @default(now())
+
+  @@map("travel_cache")
+}
+
+/// M202: a person's saved places (from a guide, or their own).
+model TravelSaved {
+  id        String   @id @default(cuid())
+  userId    String
+  guide     String
+  name      String
+  kind      String   @default("see")
+  lat       Float?
+  lon       Float?
+  note      String?
+  address   String?
+  url       String?
+  createdAt DateTime @default(now())
+
+  @@unique([userId, guide, name], map: "travel_saved_user_guide_name")
+  @@map("travel_saved")
+}
+
+/// M206: a trip in UniVerse Travel's planner (src/server/travel-trips.ts). Its owner and members are
+/// users (cascades in SQL, like travel_saved); its cities, places and members go with it.
+model TravelTrip {
+  id         String             @id @default(cuid())
+  ownerId    String
+  name       String
+  /// YYYY-MM-DD, or null while the dates aren't decided.
+  startDate  String?
+  travellers Int                @default(1)
+  /// budget | mid | comfort (src/lib/travel-find.ts STYLES)
+  style      String             @default("mid")
+  currency   String             @default("EUR")
+  /// The invite code friends join with.
+  code       String             @unique
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @default(now()) @updatedAt
+  members    TravelTripMember[]
+  stops      TravelTripStop[]
+  items      TravelTripItem[]
+  expenses   TravelTripExpense[]
+  packing    TravelTripPack[]
+
+  @@index([ownerId])
+  @@map("travel_trips")
+}
+
+/// M215: a shared cost on a trip: who paid, how much (cents in its currency) and for whom (`split`, a JSON list
+/// of member ids); category "settle" is a payment back from `paidBy` to the one person in `split`.
+model TravelTripExpense {
+  id        String     @id @default(cuid())
+  tripId    String
+  trip      TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  paidBy    String
+  amount    Int
+  currency  String
+  category  String     @default("other")
+  what      String
+  /// YYYY-MM-DD
+  day       String?
+  split     String
+  createdBy String
+  createdAt DateTime   @default(now())
+
+  @@index([tripId])
+  @@map("travel_trip_expenses")
+}
+
+/// M215: a thing on a trip's shared packing list, ticked when someone has packed it.
+model TravelTripPack {
+  id        String     @id @default(cuid())
+  tripId    String
+  trip      TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  item      String
+  grp       String     @default("Other")
+  done      Boolean    @default(false)
+  doneBy    String?
+  addedBy   String
+  createdAt DateTime   @default(now())
+
+  @@index([tripId])
+  @@map("travel_trip_packing")
+}
+
+model TravelTripMember {
+  tripId   String
+  trip     TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId   String
+  joinedAt DateTime   @default(now())
+
+  @@id([tripId, userId])
+  @@index([userId])
+  @@map("travel_trip_members")
+}
+
+/// A city (any guide) on a trip, in order, for a number of days.
+model TravelTripStop {
+  id       String           @id @default(cuid())
+  tripId   String
+  trip     TravelTrip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  guide    String
+  name     String
+  cc       String?
+  lat      Float?
+  lon      Float?
+  days     Int              @default(2)
+  position Int              @default(0)
+  items    TravelTripItem[]
+
+  @@index([tripId])
+  @@map("travel_trip_stops")
+}
+
+/// A place planned on a trip: in a stop, on one of its days (0-based) or not planned yet (null).
+model TravelTripItem {
+  id        String         @id @default(cuid())
+  tripId    String
+  trip      TravelTrip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stopId    String
+  stop      TravelTripStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  day       Int?
+  position  Int            @default(0)
+  name      String
+  kind      String         @default("see")
+  lat       Float?
+  lon       Float?
+  hours     String?
+  price     String?
+  minutes   Int            @default(60)
+  note      String?
+  address   String?
+  url       String?
+  addedById String?
+  createdAt DateTime       @default(now())
+
+  @@index([tripId])
+  @@index([stopId])
+  @@map("travel_trip_items")
+}
+
+/// M207: someone on UniVerse Travel's travellers board: in a city (a guide) between two dates, by their
+/// first name and a short note, adults only, by their choice (src/server/travel-board.ts).
+model TravelBoardPost {
+  id        String              @id @default(cuid())
+  userId    String
+  guide     String
+  name      String
+  /// YYYY-MM-DD
+  fromDate  String
+  toDate    String
+  note      String?
+  /// Hidden after three reports.
+  hidden    Boolean             @default(false)
+  createdAt DateTime            @default(now())
+  reports   TravelBoardReport[]
+
+  @@unique([userId, guide])
+  @@index([guide, toDate])
+  @@map("travel_board")
+}
+
+model TravelBoardReport {
+  postId    String
+  post      TravelBoardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime        @default(now())
+
+  @@id([postId, userId])
+  @@index([userId])
+  @@map("travel_board_reports")
+}
+
+/// M207: someone a person blocked on the travellers board (both are hidden from each other there).
+model TravelBlock {
+  userId    String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@id([userId, blockedId])
+  @@index([blockedId])
+  @@map("travel_blocks")
+}
+
+/// M209: a review of a real place by one of UniVerse's people (src/server/travel-reviews.ts). `place` is an
+/// OpenStreetMap id (N123 / W123 / R123) or wp:<Wikipedia title>; `local`: they live there.
+model TravelReview {
+  id        String               @id @default(cuid())
+  userId    String
+  place     String
+  name      String
+  lat       Float?
+  lon       Float?
+  /// 1 to 5
+  rating    Int
+  text      String?
+  local     Boolean              @default(false)
+  /// YYYY-MM, when they went
+  visited   String?
+  /// Hidden after three reports.
+  hidden    Boolean              @default(false)
+  createdAt DateTime             @default(now())
+  updatedAt DateTime             @default(now()) @updatedAt
+  reports   TravelReviewReport[]
+
+  @@unique([userId, place])
+  @@index([place])
+  @@index([lat, lon])
+  @@map("travel_reviews")
+}
+
+model TravelReviewReport {
+  reviewId  String
+  review    TravelReview @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime     @default(now())
+
+  @@id([reviewId, userId])
+  @@index([userId])
+  @@map("travel_review_reports")
+}
+
+/// M182: a person's connection to an outside service (src/server/connections.ts). Tokens encrypted.
+model OAuthConnection {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// gmail, outlook, slack, google-calendar, outlook-calendar, classroom
+  service   String
+  /// the account's address or name, to show which one is connected
+  account   String?
+  access    String
+  refresh   String?
+  expiresAt DateTime?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @default(now())
+
+  @@unique([userId, service])
+  @@map("oauth_connections")
+}
+
+/// M216: a person's footprint calculator result (answers as JSON, kg CO₂e a year), kept to see it change.
+model GreenFootprint {
+  id        String   @id @default(cuid())
+  userId    String
+  answers   String
+  kg        Float
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("green_footprints")
+}
+
+/// M216: a person's monthly goal of CO₂ to save (kg).
+model GreenGoal {
+  userId    String   @id
+  monthlyKg Float
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("green_goals")
+}
+
+/// M216: a habit a person pledged (a tip from src/lib/green-plus.ts TIPS), with the days they kept it (JSON).
+model GreenPledge {
+  id        String   @id @default(cuid())
+  userId    String
+  tip       String
+  days      String   @default("[]")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tip])
+  @@map("green_pledges")
+}
+
+/// M216: a community event (a clean-up, a tree planting, a repair café, a swap) an adult organises.
+model GreenEvent {
+  id        String             @id @default(cuid())
+  userId    String
+  /// The organiser's first name, shown.
+  name      String
+  title     String
+  kind      String             @default("cleanup")
+  /// YYYY-MM-DD
+  date      String
+  /// HH:MM
+  time      String?
+  place     String
+  lat       Float?
+  lng       Float?
+  details   String?
+  /// Hidden after three reports.
+  hidden    Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  going     GreenEventGoing[]
+  reports   GreenEventReport[]
+
+  @@index([date])
+  @@map("green_events")
+}
+
+model GreenEventGoing {
+  eventId   String
+  event     GreenEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime   @default(now())
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("green_event_going")
+}
+
+model GreenEventReport {
+  eventId   String
+  event     GreenEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime   @default(now())
+
+  @@id([eventId, userId])
+  @@map("green_event_reports")
+}
+
+/// M217: a person's emergency plan (JSON: src/lib/relief-plus.ts Plan) and go-bag ticks (JSON list of KIT ids).
+/// Theirs only: never shown to anyone else.
+model ReliefPlan {
+  userId    String   @id
+  plan      String   @default("{}")
+  kit       String   @default("[]")
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("relief_plans")
 }

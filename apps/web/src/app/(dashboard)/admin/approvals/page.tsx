@@ -115,7 +115,7 @@ export default function ApprovalsPage() {
             <InvitationsPanel onBack={() => setShowInvitations(false)} onInvite={() => setInviting(true)} />
           </div>
         ) : (
-        <div className="max-w-6xl mx-auto grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
+        <div className="w-full grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
           {/* List */}
           <section className={cn('space-y-4', selected && 'hidden lg:block')}>
             <button onClick={() => setInviting(true)} className="btn-primary w-full">

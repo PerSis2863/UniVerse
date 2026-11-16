@@ -102,7 +102,7 @@ export default function StudentChoices() {
       <SectionTabs tabs={STUDENT_RECORDS_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-8">
+        <div className="w-full space-y-8">
           
           <div className="flex space-x-1 border-b border-zinc-200 dark:border-zinc-800">
             <button

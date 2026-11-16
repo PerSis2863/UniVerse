@@ -4,6 +4,8 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
+import { TopNav } from './TopNav';
+import { useTopNav } from '@/lib/top-nav';
 import { Bell, ChevronLeft, Search, Menu, Plus } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { openCommandPalette } from '@/lib/palette';
@@ -15,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
 import { useOptimisticPath } from '@/lib/nav-pending';
-import { usePageTitle, useScrollEdges } from '@/lib/chrome';
+import { useScrollEdges } from '@/lib/chrome';
 import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import { refreshOfflineCopies } from '@/lib/offline-reads';
@@ -113,12 +115,13 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const sampleMode = useSampleMode();
+  // M219: on a computer in a browser the menu is a bar across the top; the installed app and phones keep the side menu.
+  const top = useTopNav();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const { user } = useAuthStore();
   const pathname = usePathname();
   const openingPath = useOptimisticPath(pathname);
-  const pageTitle = usePageTitle();
   useScrollEdges(pathname);
   const router = useRouter();
   // Inner pages get a back button (and, in the installed iPhone app, the edge swipe): an installed
@@ -143,6 +146,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [bootCover, setBootCover] = useState(entrancePending);
   useLayoutEffect(() => { playAppEntrance(shellRef.current); }, []);
+  // M225: the app's compact type on computers (globals.css html.in-app), before the first paint.
+  useLayoutEffect(() => { document.documentElement.classList.add('in-app'); return () => document.documentElement.classList.remove('in-app'); }, []);
 
   // The main tabs download quietly once the app is idle, so a first tap on one opens at once and
   // its entrance glides straight away instead of waiting on the network (pages open without
@@ -176,9 +181,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
     <div ref={shellRef} className="shell-in flex min-h-[100dvh]">
       {bootCover && <div aria-hidden className="boot-cover" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setBootCover(false); }}><AppSkeleton /></div>}
       <a href="#main" className="skip-link">Skip to content</a>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {!top && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
-      <div className="flex-1 side-main lg:ms-[calc(var(--side-w)+var(--side-gap))] flex flex-col min-w-0">
+      <div className="flex-1 side-main lg:ms-[calc(var(--side-w)+var(--side-gap))] topnav:ms-0 flex flex-col min-w-0">
+        {top && <TopNav />}
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">
@@ -192,9 +198,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
               <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
             </Link>
-          )}
-          {pageTitle && (
-            <span aria-hidden className="nav-inline-title absolute left-1/2 -translate-x-1/2 max-w-[52%] truncate text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ top: 'calc(var(--safe-top) + 0.875rem)' }}>{pageTitle}</span>
           )}
           <div className="flex items-center">
             <button type="button" data-tour="search" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">

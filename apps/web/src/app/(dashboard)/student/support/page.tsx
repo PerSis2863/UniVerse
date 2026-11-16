@@ -97,7 +97,7 @@ export default function StudentSupport() {
       <SectionTabs tabs={SUPPORT_TABS} />
       
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-12">
+        <div className="w-full space-y-12">
           
           {/* Search Hero */}
           <div className="bg-gradient-to-br from-indigo-500/20 to-purple-500/20 border border-indigo-500/20 rounded-2xl p-12 text-center">

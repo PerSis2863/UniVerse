@@ -1,5 +1,6 @@
 import { feedBlocks } from './smart-planner';
 import prisma from '@/lib/db';
+import { esc, fold } from '@/lib/ics-text';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 
@@ -16,23 +17,6 @@ const floating = (d: Date, hhmm: string) => {
   const [h, m] = hhmm.split(':').map(Number);
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(h)}${pad(m)}00`;
 };
-const esc = (v: string) => v.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, '\\n');
-
-/** Lines longer than 75 bytes continue on the next line after a space (RFC 5545 §3.1). */
-function fold(line: string): string {
-  const enc = new TextEncoder();
-  if (enc.encode(line).length <= 75) return line;
-  const out: string[] = [];
-  let cur = '', bytes = 0;
-  for (const ch of line) {
-    const n = enc.encode(ch).length;
-    if (bytes + n > (out.length ? 74 : 75)) { out.push(cur); cur = ''; bytes = 0; }
-    cur += ch;
-    bytes += n;
-  }
-  out.push(cur);
-  return out.join('\r\n ');
-}
 
 const TIME = /^([01]?\d|2[0-3]):[0-5]\d$/;
 const SLOT_TYPE: Record<string, string> = { LECTURE: 'Lecture', LAB: 'Lab', TUTORIAL: 'Tutorial' };

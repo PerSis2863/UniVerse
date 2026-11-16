@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
+import { longestStreak } from '@/lib/green-plus';
 import { BADGES, FEELINGS, GREEN_FACTORS, GREEN_KINDS, co2For, easiestKind, streak, weeklyChallenge, type GreenKind } from '@/lib/green';
 import { toBase32 } from '@/lib/trace';
 import { isAppFileUrl } from '@/lib/storage';
@@ -49,8 +50,12 @@ export async function greenMe(u: SessionUser) {
     const d = iso(now - (29 - i) * DAY).slice(0, 10);
     return { day: d, kg: Math.round(actions.filter((a) => a.createdAt.toISOString().slice(0, 10) === d).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 };
   });
+  // M216: a year of days (kg saved each day) for the heatmap and the year card, and the longest streak.
+  const yearFrom = iso(now - 371 * DAY).slice(0, 10), year: Record<string, number> = {};
+  for (const a of actions) { const d = a.createdAt.toISOString().slice(0, 10); if (d >= yearFrom) year[d] = Math.round(((year[d] ?? 0) + a.co2Kg) * 10) / 10; }
   return {
-    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind },
+    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind, longest: longestStreak(days) },
+    year,
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
     challenge: { ...challenge, mine: Math.round(mineWeek * 10) / 10, waiting: Math.round(waitingWeek * 10) / 10, team: teamIds.length ? Math.round(N(teamWeek[0]?.n) * 10) / 10 : null },
     verified: { actions: actions.filter((a) => a.verifiedAt).length, kg: Math.round(actions.filter((a) => a.verifiedAt).reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
@@ -94,6 +99,12 @@ export async function greenTeams(u: SessionUser) {
       `SELECT u.id, u.name, COALESCE(SUM(a.co2Kg), 0) AS kg, COUNT(*) AS actions FROM green_actions a JOIN users u ON u.id = a.userId WHERE a.createdAt > ? AND a.verifiedAt IS NOT NULL GROUP BY u.id ORDER BY kg DESC LIMIT 10`, since,
     ).catch(() => [] as Row[]),
   ]);
+  // M216: this week's league (since Monday), teams with confirmed CO₂ this week.
+  const week = await prisma.$queryRawUnsafe<Row[]>(
+    `SELECT t.id, t.name, COUNT(DISTINCT m.userId) AS members, COALESCE(SUM(a.co2Kg), 0) AS kg, COUNT(a.id) AS actions
+     FROM green_teams t JOIN green_members m ON m.teamId = t.id JOIN green_actions a ON a.userId = m.userId AND a.createdAt >= ? AND a.verifiedAt IS NOT NULL
+     GROUP BY t.id ORDER BY kg DESC LIMIT 20`, weeklyChallenge(Date.now()).starts,
+  ).catch(() => [] as Row[]);
   const detail = await Promise.all(teams.map(async (t) => {
     const members = await prisma.$queryRawUnsafe<Row[]>(
       `SELECT u.id, u.name, COALESCE(SUM(a.co2Kg), 0) AS kg FROM green_members m JOIN users u ON u.id = m.userId LEFT JOIN green_actions a ON a.userId = m.userId AND a.createdAt > ? AND a.verifiedAt IS NOT NULL WHERE m.teamId = ? GROUP BY u.id ORDER BY kg DESC`, since, t.id,
@@ -103,6 +114,7 @@ export async function greenTeams(u: SessionUser) {
   return {
     mine: detail,
     leaderboard: board.map((t, i) => ({ rank: i + 1, id: t.id as string, name: t.name as string, members: N(t.members), kg: Math.round(N(t.kg) * 10) / 10, actions: N(t.actions), mine: mine.some((m) => m.teamId === t.id) })),
+    week: week.map((t, i) => ({ rank: i + 1, id: t.id as string, name: t.name as string, members: N(t.members), kg: Math.round(N(t.kg) * 10) / 10, actions: N(t.actions), mine: mine.some((m) => m.teamId === t.id) })),
     people: people.map((p, i) => ({ rank: i + 1, name: String(p.name ?? 'Someone'), kg: Math.round(N(p.kg) * 10) / 10, actions: N(p.actions), me: p.id === u.id })),
   };
 }

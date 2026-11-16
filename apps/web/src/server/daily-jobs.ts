@@ -15,6 +15,7 @@ import { sealOldSecrets } from './secret-box';
 import { countSiteTotals } from './site-totals';
 import { greenStreakNudges } from './green';
 import { shiftReminders } from './relief-orgs';
+import { dueSoonNudges, weeklyProgress } from './come-back';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
 // Workers Free (a cron run is one run), and the daily jobs need far more once a school is real:
@@ -153,6 +154,9 @@ export const STEPS: Step[] = [
   // UniVerse Relief: a reminder for everyone signed up for a shift in the next 24 hours (M106).
   { job: 'relief-shifts', run: () => shiftReminders(left) },
   { job: 'green-streaks', run: async () => (left() < 14 ? { done: false } : { done: true, info: await greenStreakNudges() }) },
+  // M197: reasons to come back: work due soon (students and their teacher), and students' week on Mondays.
+  { job: 'due-soon', run: () => inSlices(14, async (n) => { const r = await dueSoonNudges(n); return { more: r.checked === n, count: r.sent }; }) },
+  { job: 'weekly-progress', run: (cursor) => weeklyProgress(cursor, left) },
   { job: 'wellbeing', run: () => inSlices(14, async (n) => { const r = await wellbeingNudges(n); return { more: r.checked === n, count: r.sent }; }) },
   // AI explains the day's new problems (a few a run), then the owner's problems email when it's due.
   // At most 8 a day, as before (the cursor counts today's).

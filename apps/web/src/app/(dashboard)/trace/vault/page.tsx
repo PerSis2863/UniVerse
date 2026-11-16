@@ -30,7 +30,7 @@ export default function VaultPage() {
     <>
       <Topbar title="My vault" subtitle="Proof that the things you own are genuine and yours" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
-        <div className="max-w-5xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           <TraceTabs />
           <Vault />
         </div>
@@ -58,7 +58,7 @@ function Vault() {
         <button type="submit" disabled={busy || code.trim().length < 6} className="btn-primary btn-sm">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Receive it'}</button>
       </form>
       {error ? <p className="panel p-6 text-sm text-zinc-500">{errorMessage(error, 'Could not open your vault.')}</p>
-        : !data ? <div className="grid sm:grid-cols-2 gap-4">{[0, 1].map((i) => <div key={i} className="panel h-40 animate-pulse" />)}</div>
+        : !data ? <div className="grid sm:grid-cols-2 gap-4">{[0, 1].map((i) => <div key={i} className="panel h-40 skeleton" />)}</div>
         : data.length === 0 ? (
           <div className="panel p-8 text-center">
             <ShieldCheck className="w-10 h-10 mx-auto text-pink-500" aria-hidden />

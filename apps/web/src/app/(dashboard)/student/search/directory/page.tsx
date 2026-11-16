@@ -45,7 +45,7 @@ export default function StudentDirectory() {
       <Topbar title="Student Directory" subtitle="Find and connect with peers across the university" />
       
       <div className="flex-1 p-8 overflow-y-auto">
-        <div className="max-w-6xl mx-auto space-y-6">
+        <div className="w-full space-y-6">
           
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="relative flex-1">

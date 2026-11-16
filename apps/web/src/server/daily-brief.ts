@@ -11,6 +11,8 @@ import { upcomingCalls } from './scheduled-calls';
 import { pushService } from './services/push.service';
 import { createBoard } from './tasks';
 import { taughtBy } from '@/lib/course-access';
+import { previousVisit } from '@/lib/since-visit';
+import { visibleNow } from './course-announcements';
 
 // Daily brief (Stage 4 · 4.9). What matters today for one person, across everything: their classes
 // today, what's due in the next day and a half (work, quizzes, tasks), scheduled calls, chats
@@ -100,6 +102,50 @@ async function toGrade(teacherId: string) {
 }
 
 /** Today, from the records (no AI). */
+export interface SinceItem { kind: 'grade' | 'announcement' | 'work' | 'material' | 'handin' | 'joined'; id: string; title: string; course: string | null; at: Date; link: string }
+
+/**
+ * What happened in a person's courses since the visit before this one (M185): for students, grades,
+ * announcements, new work and new materials; for teachers, hand-ins and people who joined. The newest
+ * eight, and how many there were. Null on a first visit, or when nothing happened.
+ */
+async function sinceLastVisit(user: SessionUser, ids: string[], code: (courseId: string | null) => string | null) {
+  const opened = await prisma.loginEvent.findMany({ where: { userId: user.id }, orderBy: { createdAt: 'desc' }, take: 20, select: { createdAt: true } });
+  const from = previousVisit(opened.map((e) => e.createdAt.getTime()));
+  if (from === null || !ids.length) return null;
+  const since = new Date(from);
+  const base = `/${portal(user.role)}`;
+  const inCourses = { courseId: { in: ids } };
+  const items: SinceItem[] = [];
+  if (isStaff(user.role)) {
+    const [handins, joined] = await Promise.all([
+      prisma.assignmentSubmission.findMany({ where: { submittedAt: { gte: since }, status: 'SUBMITTED', assignment: inCourses }, orderBy: { submittedAt: 'desc' }, take: 8, select: { id: true, submittedAt: true, student: { select: { name: true } }, assignment: { select: { id: true, title: true, courseId: true } } } }),
+      prisma.enrollment.findMany({ where: { enrolledAt: { gte: since }, ...inCourses }, orderBy: { enrolledAt: 'desc' }, take: 8, select: { id: true, enrolledAt: true, courseId: true, student: { select: { name: true } } } }),
+    ]);
+    items.push(
+      ...handins.map((h) => ({ kind: 'handin' as const, id: h.id, title: `${h.student.name} handed in ${h.assignment.title}`, course: code(h.assignment.courseId), at: h.submittedAt, link: `${base}/assignments/${h.assignment.id}` })),
+      ...joined.map((e) => ({ kind: 'joined' as const, id: e.id, title: `${e.student.name} joined`, course: code(e.courseId), at: e.enrolledAt, link: `${base}/students` })),
+    );
+  } else {
+    const [grades, news, work, materials] = await Promise.all([
+      prisma.grade.findMany({ where: { studentId: user.id, status: 'GRADED', gradedAt: { gte: since } }, orderBy: { gradedAt: 'desc' }, take: 8, select: { id: true, assignmentName: true, courseId: true, gradedAt: true } }),
+      prisma.announcement.findMany({ where: { ...inCourses, authorId: { not: user.id }, AND: [visibleNow(), { OR: [{ publishAt: { gte: since } }, { publishAt: null, createdAt: { gte: since } }] }] }, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, title: true, courseId: true, createdAt: true, publishAt: true } }),
+      prisma.assignment.findMany({ where: { ...inCourses, status: 'OPEN', createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, title: true, courseId: true, createdAt: true } }),
+      prisma.material.findMany({ where: { ...inCourses, createdAt: { gte: since } }, orderBy: { createdAt: 'desc' }, take: 8, select: { id: true, title: true, courseId: true, createdAt: true } }),
+    ]);
+    const board = (courseId: string | null) => (courseId ? `${base}/blackboard?course=${courseId}` : `${base}/blackboard`);
+    items.push(
+      ...grades.map((g) => ({ kind: 'grade' as const, id: g.id, title: g.assignmentName, course: code(g.courseId), at: g.gradedAt, link: `${base}/grades` })),
+      ...news.map((a) => ({ kind: 'announcement' as const, id: a.id, title: a.title, course: code(a.courseId), at: a.publishAt ?? a.createdAt, link: board(a.courseId) })),
+      ...work.map((a) => ({ kind: 'work' as const, id: a.id, title: a.title, course: code(a.courseId), at: a.createdAt, link: `${base}/assignments` })),
+      ...materials.map((m) => ({ kind: 'material' as const, id: m.id, title: m.title, course: code(m.courseId), at: m.createdAt, link: board(m.courseId) })),
+    );
+  }
+  if (!items.length) return null;
+  items.sort((a, b) => b.at.getTime() - a.at.getTime());
+  return { from: since, total: items.length, items: items.slice(0, 8) };
+}
+
 async function briefData(user: SessionUser, tz: string) {
   const now = new Date();
   const soon = new Date(now.getTime() + SOON_MS);
@@ -110,7 +156,7 @@ async function briefData(user: SessionUser, tz: string) {
     : (await prisma.enrollment.findMany({ where: { studentId: user.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 60 })).map((e) => e.course);
   const ids = courses.map((c) => c.id);
   const course = new Map(courses.map((c) => [c.id, c]));
-  const [slots, work, quizzes, tasks, calls, waiting, grading] = await Promise.all([
+  const [slots, work, quizzes, tasks, calls, waiting, grading, since] = await Promise.all([
     ids.length ? prisma.timetableSlot.findMany({ where: { courseId: { in: ids }, dayOfWeek: weekday(day) }, orderBy: { startTime: 'asc' }, select: { courseId: true, startTime: true, endTime: true, type: true, room: { select: { name: true } } } }) : [],
     !staff && ids.length ? prisma.assignment.findMany({ where: { courseId: { in: ids }, status: 'OPEN', dueDate: { gte: now, lte: soon }, submissions: { none: { studentId: user.id } } }, orderBy: { dueDate: 'asc' }, take: 8, select: { id: true, title: true, dueDate: true, courseId: true } }) : [],
     !staff && ids.length ? prisma.quiz.findMany({ where: { courseId: { in: ids }, status: 'PUBLISHED', dueDate: { gte: now, lte: soon }, submissions: { none: { studentId: user.id } } }, orderBy: { dueDate: 'asc' }, take: 8, select: { id: true, title: true, dueDate: true, courseId: true } }) : [],
@@ -118,6 +164,7 @@ async function briefData(user: SessionUser, tz: string) {
     upcomingCalls(user).catch(() => []),
     waitingChats(user),
     staff ? toGrade(user.id) : Promise.resolve(0),
+    sinceLastVisit(user, ids.slice(0, 90), (id) => (id ? course.get(id)?.code ?? null : null)).catch(() => null),
   ]);
   const base = `/${portal(user.role)}`;
   const due = [
@@ -133,6 +180,7 @@ async function briefData(user: SessionUser, tz: string) {
     calls: calls.filter((c) => new Date(c.startAt).getTime() < endOfDay).map((c) => ({ id: c.id, title: c.title, startAt: c.startAt, roomName: c.roomName, path: c.path, conversationId: c.conversationId })),
     waiting,
     toGrade: grading,
+    since,
   };
 }
 type BriefData = Awaited<ReturnType<typeof briefData>>;

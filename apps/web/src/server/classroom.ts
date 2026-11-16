@@ -222,7 +222,7 @@ export async function joinWithCode(codeRaw: unknown, user: SessionUser, position
   const code = normalizeClassCode(codeRaw);
   if (!code) throw new BadRequestException('Type the 6 letters and numbers shown in class.');
   // The school's location check (Stage 5 · Q11), when it's on: compared, never kept.
-  await assertOnCampus(position);
+  await assertOnCampus(position, user.organizationId);
   const now = Date.now();
   // The open sessions of my courses; the code must be this window's or the one before (a minute).
   const candidates = await prisma.classroomSession.findMany({

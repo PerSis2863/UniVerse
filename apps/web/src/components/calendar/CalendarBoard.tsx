@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 import { CalendarPlus, Loader2, Upload, type LucideIcon } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
+import { authedJson } from '@/lib/authed-fetch';
 import { parseIcs } from '@/lib/ics-parse';
 import { useOnceParam } from '@/lib/use-once-param';
 import { useAuthStore } from '@/store/auth';
@@ -32,7 +33,9 @@ export function useCalendar() {
   const eventList = Array.isArray(events.data) ? events.data : NO_EVENTS;
   // A student's own course colours (this device) on their classes.
   const mine = useMyCourseColors();
-  const entries = useMemo(() => toEntries(slotList.map((s) => (s.course?.code && mine[s.course.code] ? { ...s, course: { ...s.course, color: mine[s.course.code] } } : s)), eventList, me), [slotList, eventList, me, mine]);
+  // M200: events from a connected Google or Outlook calendar, read live, shown in grey (not movable here).
+  const outside = useOutsideEvents();
+  const entries = useMemo(() => toEntries(slotList.map((s) => (s.course?.code && mine[s.course.code] ? { ...s, course: { ...s.course, color: mine[s.course.code] } } : s)), [...eventList, ...outside], me), [slotList, eventList, outside, me, mine]);
   /** Moves one of your events: shown at once, put back if the server says no. */
   const move = (id: string, startAt: Date, endAt: Date) => {
     const times = { startAt: startAt.toISOString(), endAt: endAt.toISOString() };
@@ -42,6 +45,20 @@ export function useCalendar() {
   return { slots: slotList, events: eventList, entries, loading: slots.isLoading || events.isLoading, failed: !!(slots.error && events.error), refresh: () => events.mutate(), move };
 }
 export type CalendarData = ReturnType<typeof useCalendar>;
+
+const NO_OUTSIDE: CalEvent[] = [];
+/** Events of the calendars I connected (Settings → Connected accounts), from a week ago to two months ahead. */
+function useOutsideEvents(): CalEvent[] {
+  const { data: list } = useSWR<{ services: { id: string; kind: string; connected: unknown }[] }>('/api/connections', authedJson, { revalidateOnFocus: false });
+  const ids = (list?.services ?? []).filter((x) => x.kind === 'calendar' && x.connected).map((x) => x.id);
+  const [range] = useState(() => { const n = Date.now(); return `from=${encodeURIComponent(new Date(n - 7 * 86_400_000).toISOString())}&to=${encodeURIComponent(new Date(n + 60 * 86_400_000).toISOString())}`; });
+  const { data } = useSWR(ids.length ? ['outside-events', ...ids] : null, () => Promise.all(ids.map((id) => authedJson<{ events?: { id: string; title: string; start: string; end: string; where: string | null }[] }>(`/api/connections/${id}/items?${range}`).then((r) => (r.events ?? []).map((e) => toOutside(id, e)), () => []))).then((all) => all.flat()), { revalidateOnFocus: false });
+  return data ?? NO_OUTSIDE;
+}
+const toOutside = (service: string, e: { id: string; title: string; start: string; end: string; where: string | null }): CalEvent => ({
+  id: `ext-${service}-${e.id}`, title: e.title, startAt: e.start, endAt: e.end, type: 'MEETING', color: '#64748b',
+  description: `${service === 'google-calendar' ? 'Google Calendar' : 'Outlook'}${e.where ? ` · ${e.where}` : ''}`,
+});
 
 /** An event of yours as the form's draft. */
 function draftOf(e: CalEvent): EventDraft {

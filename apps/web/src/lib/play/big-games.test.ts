@@ -11,7 +11,9 @@ import { REEF_HALF, REEF_LITTER, REEF_NETS, REEF_SPOTS, jellyAt, reefBest, reefL
 describe('UniVerse Play, the bigger games', () => {
   it('lists thirteen games: two or three per app and four 3D worlds (M105)', () => {
     expect(GAME_IDS.length).toBe(13);
-    for (const app of ['campus', 'trace']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(2);
+    // M224: the three worlds that were Play's own are UniVersity's now (its Games section).
+    expect(GAME_IDS.filter((g) => GAMES[g].app === 'campus').length).toBe(5);
+    expect(GAME_IDS.filter((g) => GAMES[g].app === 'trace').length).toBe(2);
     for (const app of ['relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(3);
     expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(4);
   });
