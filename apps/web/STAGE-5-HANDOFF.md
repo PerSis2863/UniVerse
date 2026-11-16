@@ -7545,3 +7545,28 @@ professional and modern like the other apps".
   --owner-test`); its server part has a unit test.
 - **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
   (`travel-moderation.test.ts`, the board's), `pnpm check`.
+
+## Hand-over: the owner's asks of 16 Nov still to do
+
+Asked and not started (each its own item, from M214; next database update 0224):
+
+1. **Travel's map, bigger** ("more good looking and accurate … a lot of details and features … my cloudflare
+   cpu limit should not rise"): terrain in 3D with hill shading (AWS's free terrarium elevation tiles), a
+   satellite view (EOX's Sentinel-2 cloudless, CC BY 4.0, credited), the globe when zoomed out, the sky lit by
+   the real sun, public transport lines, Panoramax street pictures ("look around"), walking-time rings, my
+   position with its accuracy, a layers panel, and "filter places here". Everything straight from the browser
+   to those services (no Worker CPU): add their hosts to the CSP (`security-headers.ts`: img-src /
+   connect-src). Checked reachable with CORS: `elevation-tiles-prod.s3.amazonaws.com/terrarium/{z}/{x}/{y}.png`,
+   `tiles.maps.eox.at/wmts/1.0.0/s2cloudless_3857/default/g/{z}/{y}/{x}.jpg`, `api.panoramax.xyz/api/map/{z}/{x}/{y}.mvt`.
+2. **Travel's big features** ("unique … or combine different apps' features into one"): a trip's shared
+   expenses (who paid, who owes whom, budget against spent), a packing list from the trip's weather, plans and
+   plugs, a money converter with what things cost there. Needs a database update.
+3. **Green, about 10 big features** (and "professional, animated, realistic"; the calmer colours were M212):
+   e.g. a footprint calculator, a trip CO₂ comparer, a green places map, community events, goals and pledges,
+   impact equivalents, a habit calendar, a team league, tips, a year card.
+4. **Relief, about 10 big features**: e.g. live disaster alerts (GDACS and USGS, read in the browser), a
+   preparedness plan and kit, a volunteer-hours certificate, a triage board, supply matching, nearest shelters
+   with walking time, first-aid basics with official links, pledges.
+
+The launch focus (section 4 of AGENTS.md) pauses new features; the owner asked for these anyway, so build
+them, one item each, and keep the CPU on the Worker flat (read outside data in the browser where possible).

@@ -243,7 +243,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): first the owner's
+  asks of 16 Nov (the handoff's last hand-over: Travel's bigger map, Travel's big features, about 10 big features each
+  for Green and Relief); the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
