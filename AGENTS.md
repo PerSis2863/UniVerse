@@ -218,7 +218,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
+- **On the branch, not merged yet:** M225 (16 Nov), the lag measured and cut in the browser (the scene 30 a second at 1.5x, resting after 30 s untouched with the landing's demos, `useIdle`; no `html:has`; Green's map still). M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
   icons, grouped by day, stacks, iOS's segmented control, swipe to read, smooth spring motion).
 - **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
   hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
@@ -265,7 +265,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M225** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M226** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -452,8 +452,8 @@ contour map, requests pulsing, dashed routes of help; Green an aurora, leaves an
 floor to the horizon, game-pad symbols. `AppBackdrop` shows it behind every page: the website and
 sign-in follow their app tabs, the app follows `appFor(path)` (shared pages: the chosen app). Switching
 is a 1 s transition (the old scene fades as it drifts towards you, the new one settles in; only the fade
-with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), every frame the screen gives
-(phones too since M136, up to 2.5x sharp), its motion easing in; a new app needs its scene there
+with Reduce Motion). Drawn on a background thread (`backdrop.worker.ts`), 30 frames a second at up to 1.5x, resting after 30 s
+untouched (M225), its motion easing in; a new app needs its scene there
 (TypeScript asks). **Each app its own colour** (M132): `html[data-app]` (set by `AppBackdrop`) re-points
 the accent to the app's (Trace pink, Relief orange, Green emerald, Play fuchsia, Travel sky since M213; UniVersity keeps the
 blue; a person's own accent wins); the M132 block at the end of `globals.css`. No glass on cards, bars, the side menu or toasts. Since M94 no component keeps the old

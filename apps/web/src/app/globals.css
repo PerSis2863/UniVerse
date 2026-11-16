@@ -1058,7 +1058,9 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 .mkt-drift-a { animation: mkt-drift-a 18s ease-in-out infinite; will-change: transform; }
 .mkt-drift-b { animation: mkt-drift-b 22s ease-in-out infinite; will-change: transform; }
 /* Its in-page links (Product, FAQ…) glide down instead of jumping. */
-@media (prefers-reduced-motion: no-preference) { html:has(.mkt-smooth) { scroll-behavior: smooth; } }
+/* M225: set by the landing itself (html.mkt-smooth-root): `html:has(.mkt-smooth)` made every change anywhere in the page
+   restyle the root while its demos ran. */
+@media (prefers-reduced-motion: no-preference) { html.mkt-smooth-root { scroll-behavior: smooth; } }
 @media (prefers-reduced-motion: reduce) { .mkt-drift-a, .mkt-drift-b { animation: none; } }
 
 /* ─── Background: the M52 glows ─── */
@@ -2801,7 +2803,8 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
      small rounded square with a gradient, no picture in it);
    · progress fills: one colour, the accent, not a gradient (an empty rounded bar with a gradient);
    · buttons and badges the reels' size (secondary buttons are already outlined, M124). */
-@media (min-width: 1024px) { html:has(main#main) { font-size: 15px; } }
+/* M225: a class the app's frame sets (DashboardShell), not `html:has(main#main)`, which restyled the root on every change. */
+@media (min-width: 1024px) { html.in-app { font-size: 15px; } }
 #main [class*="bg-gradient-to-"]:is([class~="rounded-lg"], [class~="rounded-xl"], [class~="rounded-2xl"]):is([class~="w-7"], [class~="w-8"], [class~="w-9"], [class~="w-10"], [class~="w-11"], [class~="w-12"], [class~="w-14"]):not(:has(img)) {
   background-image: none; background-color: color-mix(in srgb, var(--tint) 13%, var(--surface)); color: var(--tint-text); box-shadow: none;
 }

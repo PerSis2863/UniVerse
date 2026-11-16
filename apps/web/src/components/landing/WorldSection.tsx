@@ -81,7 +81,8 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           {ids.map((a, i) => {
             const open = chosen === i, info = appById(a), total = TOTAL[a] && totals?.[TOTAL[a]![0]];
             return (
-              <motion.li key={a} layout transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+              // M225: a plain item (framer's `layout` measured the list on every frame the page drew).
+              <li key={a}
                 className={cn('world-glass overflow-hidden transition-[box-shadow] duration-200', open && 'ring-1 ring-white/30')}>
                 <button type="button" aria-expanded={open} onClick={() => setChosen(open ? null : i)} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-start">
@@ -108,7 +109,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.li>
+              </li>
             );
           })}
         </ul>

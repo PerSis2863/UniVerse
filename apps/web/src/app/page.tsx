@@ -160,6 +160,9 @@ export default function ShowcasePage() {
   const [guide, setGuide] = useState(false);
   // The hero picture drifts up a little slower than the page as you scroll (parallax): `.hero-drift`, M133.
 
+  // M225: smooth jumps to the page's sections (#faq…) while the landing is open (globals.css html.mkt-smooth-root).
+  useEffect(() => { const h = document.documentElement; h.classList.add('mkt-smooth-root'); return () => h.classList.remove('mkt-smooth-root'); }, []);
+
   useEffect(() => {
     if (user) router.replace(homeFor(user));
   }, [user, router]);

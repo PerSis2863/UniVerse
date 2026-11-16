@@ -14,7 +14,7 @@ import { appById, type AppId } from './apps';
 // 1.1 s, and the scenes' own motion eases in rather than starting with a jolt.
 // Two layers: soft light (pools of colour, the aurora) drawn at a quarter of the size and stretched (a
 // free blur that also works in Safari), then the sharp lines and dots at full size. Smooth and cheap: at
-// most 3.5 M pixels (up to 2.5x); every frame the screen gives, phones too (M136); positions kept
+// most 2 M pixels (up to 1.5x), 30 frames a second, resting when the person leaves the page alone (M225); positions kept
 // as fractions of the screen, so a phone's address bar coming and going never rebuilds a scene.
 
 type Ctx = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
@@ -529,8 +529,8 @@ export function makeBackdrop(cv: Surface, ctx: Ctx, soft: Surface, sctx: Ctx, op
   return {
     resize(w: number, h: number, dpr: number) {
       v.w = Math.max(1, w); v.h = Math.max(1, h);
-      // M136: as sharp as the screen up to 2.5x (a phone at full sharpness), at most 3.5 M pixels.
-      v.s = Math.min(dpr, 2.5, Math.sqrt(3.5e6 / (v.w * v.h)));
+      // M225: 1.5x and 2 M pixels at most: a soft scene behind the cards needs no more (it was 2.5x, 3.5 M).
+      v.s = Math.min(dpr, 1.5, Math.sqrt(2e6 / (v.w * v.h)));
       cv.width = Math.round(v.w * v.s); cv.height = Math.round(v.h * v.s);
       soft.width = Math.ceil(v.w / 4); soft.height = Math.ceil(v.h / 4);
     },
@@ -575,11 +575,12 @@ export function makeBackdrop(cv: Surface, ctx: Ctx, soft: Surface, sctx: Ctx, op
 }
 
 /** The frame loop, the same on the background thread and on the page. Moving starts with `move()`
- *  (in the app once the page has loaded); `rest(true)` while nobody needs it moving. Every frame the
- *  screen gives (60–144 a second), phones too since M136. */
+ *  (in the app once the page has loaded); `rest(true)` while nobody needs it moving. 30 a second (M225). */
 export function backdropLoop(b: Backdrop, opts: BackdropOpts, dark: boolean, raf: (cb: (ms: number) => void) => number, caf: (id: number) => void) {
   let frame = 0, last = 0, resting = false, moving = false;
-  const gap = 0; // M136: every frame the screen gives, phones too (60, 90 or 120 a second)
+  // M225: 30 a second (M136 drew every frame the screen gives, up to 120: the scenes drift slowly, so half or a
+  // quarter of the redraws look the same and leave the computer free for the page).
+  const gap = 1000 / 30 - 2;
   const tick = (ms: number) => {
     frame = 0;
     if (resting) return;

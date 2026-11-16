@@ -7846,3 +7846,26 @@ add all these games there".
   `appById` and `AppIcon` fall back to it), so nothing meets an app that isn't there.
 - **Checked:** the type check found every place; a browser: the landing's tabs are the five apps, `/play` is UniVersity's
   (`data-app=campus`, 13 games), the hub has no Play; `pnpm check`.
+
+## M225: the lag, measured and cut (16 Nov)
+
+The owner: "still the website laggs alot so please fix it properly this time remember that cpu limit should not get high".
+All of it in the browser (no Worker CPU). Measured on the built site with the CPU slowed 4x
+(`scripts/checks/lag-profile.mjs`: loading, scrolling with the mouse moving; and traces of the page left alone):
+
+- **What was busy:** the app's scene behind every page, on its background thread, redrew every frame the screen gives
+  (up to 120 a second) at up to 2.5x sharpness: 0.35–1 s of every 5 s of one core with nobody touching anything
+  (Green's the most). The landing's main thread stayed busy too (its demos, framer's `layout` on the planet's list of
+  apps measuring every frame), and two `html:has(…)` rules (`.mkt-smooth`, `main#main`) restyled the root on every
+  change anywhere (316 times in a scroll). Green's map breathed its dots, redrawing the whole map on the page's
+  thread every frame it showed.
+- **Now:** the scene draws 30 a second at 1.5x and 2 M pixels at most (`backdropLoop`, `resize` in `src/lib/backdrop.ts`):
+  half the cost (Green 998 → 509 ms in 5 s, homes 349 → 167). After 30 s with no pointer, key, wheel, touch or scroll
+  (`src/lib/use-idle.ts`: `useIdle`, `onIdleChange`) the scene rests and the landing's looping demos (`Live`) stop; any
+  input wakes them: the landing left alone goes to 0. The `:has` rules are classes set by the page (`html.mkt-smooth-root`
+  by the landing, `html.in-app` by `DashboardShell` before its first paint). The planet's list is plain `li`s; the
+  landing's bars and gauges grow with transforms (`Proof`, `Glue`), not heights and widths. Green's map dots are still
+  (`live={false}`: it draws when moved). Scrolling the landing: slow frames 5 → 2, long tasks 54 ms → none; the student
+  home's loading long tasks 1.46 s → 0.88 s.
+- **Rules:** decorative motion that loops rests when the person leaves the page alone (`useIdle`); no `:has()` on `html`
+  or `body` (a class set by the page instead); a canvas on the page's thread is not `live` for decoration.

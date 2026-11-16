@@ -146,6 +146,8 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const shellRef = useRef<HTMLDivElement>(null);
   const [bootCover, setBootCover] = useState(entrancePending);
   useLayoutEffect(() => { playAppEntrance(shellRef.current); }, []);
+  // M225: the app's compact type on computers (globals.css html.in-app), before the first paint.
+  useLayoutEffect(() => { document.documentElement.classList.add('in-app'); return () => document.documentElement.classList.remove('in-app'); }, []);
 
   // The main tabs download quietly once the app is idle, so a first tap on one opens at once and
   // its entrance glides straight away instead of waiting on the network (pages open without
