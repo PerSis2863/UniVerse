@@ -14,7 +14,14 @@ vi.mock('@/lib/db', () => ({
     conversationParticipant: { findFirst: vi.fn() },
   },
 }));
-vi.mock('./safety', () => ({ schoolPolicy: vi.fn().mockResolvedValue({ studentsMinors: true }), isMinor: (u: { role: string; dateOfBirth: Date | null }, p: { studentsMinors: boolean }) => u.role === 'STUDENT' && !u.dateOfBirth && p.studentsMinors }));
+vi.mock('./safety', async () => {
+  const { default: db } = await import('@/lib/db');
+  // As the real adultOnly: a birth date under 18, or a student with none (this school counts students as under 18).
+  return { adultOnly: async (u: { id: string }, refuse: string) => {
+    const me = (await db.user.findUnique({ where: { id: u.id } } as never)) as { role: string; dateOfBirth: Date | null } | null;
+    if (!me || (me.dateOfBirth ? Date.now() - me.dateOfBirth.getTime() < 18 * 365.25 * 86_400_000 : me.role === 'STUDENT')) throw new Error(refuse);
+  } };
+});
 vi.mock('./direct-chat', () => ({ directChat: vi.fn().mockResolvedValue('c1') }));
 
 const me = { id: 'me', name: 'Sam Lee' } as SessionUser;

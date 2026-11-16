@@ -25,6 +25,7 @@ import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { GreenYear } from './GreenYear';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 
@@ -44,6 +45,8 @@ interface GreenMe {
   teams: number;
   easiest: GreenKind | null;
   community: { kg: number; actions: number; people: number };
+  /** M216: kg saved each day over the last year. */
+  year?: Record<string, number>;
 }
 
 export const GREEN_ICON: Record<GreenKind, typeof Leaf> = { TREE: TreePine, CYCLE: Bike, TRANSIT: Bus, WALK: Footprints, RECYCLE: Recycle, SOLAR: Sun, MEATFREE: Utensils, CLEANUP: Trash2 };
@@ -238,6 +241,9 @@ export function GreenApp() {
           <div className="mt-3 h-[90px]"><Heartbeat values={data!.perDay.map((d) => d.kg)} label="CO₂ saved per day, last 30 days" /></div>
         </LiveCard>
       )}
+
+      {/* M216: the year at a glance, what it means, a picture of it. */}
+      {data && t && <GreenYear year={data.year ?? {}} totals={t} />}
 
       {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
       <div className="grid lg:grid-cols-2 gap-6">

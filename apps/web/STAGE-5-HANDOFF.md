@@ -7635,3 +7635,39 @@ before), **Money** and **Packing**, for everyone planning it, live (database upd
   prices, the packing suggestions for Bangkok and Kyoto in August, Add all, a tick seen by the friend; axe at
   1280 dark and 390 light), `travel-trip-ui.mjs` (its wait no longer depends on old test trips), unit tests
   (`travel-split`, `travel-pack`, `travel-trip-extras`), `pnpm check`.
+
+## M216: Green's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10 features
+in there each … professional and animated and realistic and ultra smooth" (the calmer colours were M212).
+Green has a tab row on every page (`GreenTabs`, the shared `TabRow`), each new part loaded only when opened
+(`?view=`; database update 0225):
+
+1. **Footprint** (`GreenFootprint.tsx`): a yearly carbon footprint from a few answers (car and transport, flights,
+   home size, heating, people, electricity and tariff, diet, new things bought), against the world's average
+   (4.7 t) and 1.5 °C (2.3 t), its parts, the biggest one linked to its tips; results saved to see the change
+   (the server works the total out again from the checked answers: `readFootprint` / `footprint`).
+2. **Journeys** (`GreenJourney.tsx`): a journey's CO₂ by each way of going for the people travelling (a car's is
+   shared), cleanest first; type the km or pick two of Travel's places; "I went this way" logs it as an action.
+3. **Goals**: a monthly goal of CO₂ (a ring, this month's actions counted) and **pledges** with a week of days to
+   tick and the run of days (`green_goals`, `green_pledges`: days kept as JSON, four months).
+4. **Tips**: 16 actions ranked by what they save a year (about, said so), by area, each "Pledge this".
+5. **Events** (`GreenEvents.tsx`): clean-ups, plantings, repair cafés, swaps, nature walks, near you or everywhere;
+   "I'm going" (only the count shows, never who), directions, a calendar file; adults organise (the shared
+   `adultOnly` in `safety.ts`, moved there from the Travel board), three reports hide one, the organiser deletes.
+6. **Green places** (`GreenPlaces.tsx`): recycling, water refill, bike hire, EV charging, second-hand shops and
+   markets near you, read from the map's own tiles as you move (OpenMapTiles' `poi` subclasses; Overpass
+   wasn't needed and couldn't be reached from the test machine), with counts, a list by distance, directions
+   and the place on OpenStreetMap.
+7. **Your year** on My impact (`GreenYear.tsx`): a heatmap of every day of the last year, days acted, the
+   longest run, the best month (`greenMe` now returns `year`, kg a day, from the actions it already reads).
+8. **What it means**: the CO₂ saved as trees for a year, km not driven, phone charges, days of a person's emissions.
+9. **A picture of your year**: drawn on a canvas in the browser and saved as a PNG to share.
+10. **Team league**: this week's ranking (since Monday) beside the 30 days, on Teams (`greenTeams` → `week`).
+
+- **Factors** (`src/lib/green-plus.ts`): rounded averages with their sources in comments and on the screens
+  (UK government 2024 conversion factors, Scarborough et al. 2014, US EPA); journeys and the footprint are pure,
+  so the page answers as you type.
+- **Checked:** `green-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; a
+  footprint saved, Lisbon–Porto ranked, a goal, a pledge ticked, an event with someone going, 40 green places in
+  Lisbon), unit tests (`green-plus`, `green-plus` server, the board's after the move), `pnpm check`.

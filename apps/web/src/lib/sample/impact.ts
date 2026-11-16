@@ -260,8 +260,13 @@ export function sampleGreenMe(me: { id: string }) {
   const thisWeek = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week);
   const mine = thisWeek.filter((a) => a.verifiedAt).reduce((s, a) => s + a.amount, 0), waiting = thisWeek.filter((a) => !a.verifiedAt).reduce((s, a) => s + a.amount, 0);
   const proven = actions.filter((a) => a.verifiedAt);
+  // M216: a year of made-up days (more in spring and summer), for the heatmap and the year card.
+  const year: Record<string, number> = {}, yr = rng(7);
+  for (let i = 0; i < 365; i++) { const t = now - i * DAY, m = new Date(t).getUTCMonth(); if (yr() < (m >= 3 && m <= 8 ? 0.55 : 0.3)) year[iso(t).slice(0, 10)] = Math.round((1 + yr() * 9) * 10) / 10; }
+  for (const a of actions) { const d = a.createdAt.slice(0, 10); year[d] = Math.round(((year[d] ?? 0) + a.co2Kg) * 10) / 10; }
   return {
-    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind },
+    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind, longest: 12 },
+    year,
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
     challenge: { ...challenge, mine: Math.round(mine * 10) / 10, waiting: Math.round(waiting * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
     verified: { actions: proven.length, kg: Math.round(proven.reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
@@ -272,6 +277,34 @@ export function sampleGreenMe(me: { id: string }) {
     recent: actions.slice(0, 30), teams: 2, easiest: easiestKind(actions),
     community: { kg: 182_450, actions: 41_236, people: 2_904 },
   };
+}
+
+/** GET /green/footprints (M216): two made-up results a few months apart. */
+export function sampleGreenFootprints() {
+  const a = { carKmWeek: 120, car: 'petrol', transitKmWeek: 20, shortFlights: 2, longFlights: 1, diet: 'medium', heat: 'gas', size: 'flat', people: 2, greenPower: false, kwhMonth: 250, stuff: 'some' };
+  return { history: [
+    { id: 'sample-fp-2', kg: 6815, createdAt: iso(Date.now() - 3 * DAY), answers: { ...a, carKmWeek: 60, longFlights: 0, diet: 'low' } },
+    { id: 'sample-fp-1', kg: 8984, createdAt: iso(Date.now() - 120 * DAY), answers: a },
+  ] };
+}
+/** GET /green/goals (M216) */
+export function sampleGreenGoals() {
+  const d = (back: number) => iso(Date.now() - back * DAY).slice(0, 10), m = new Date();
+  return { monthlyKg: 60, monthKg: 38.4, monthStart: new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), 1)).toISOString().slice(0, 10), pledges: [
+    { id: 'sample-pl-1', tip: 'meat-free-days', days: [d(1), d(4), d(8)], createdAt: iso(Date.now() - 20 * DAY) },
+    { id: 'sample-pl-2', tip: 'bike-commute', days: [d(0), d(1), d(2), d(3), d(6)], createdAt: iso(Date.now() - 40 * DAY) },
+  ] };
+}
+/** GET /green/events (M216): made-up community events nearby. */
+export function sampleGreenEvents() {
+  const d = (ahead: number) => iso(Date.now() + ahead * DAY).slice(0, 10);
+  const e = (id: string, title: string, kind: string, ahead: number, time: string, place: string, lat: number, lng: number, going: number, details: string) => ({ id, name: NAMES[going % NAMES.length].split(' ')[0], title, kind, date: d(ahead), time, place, lat, lng, details, going, imGoing: going % 3 === 0, mine: false });
+  return { events: [
+    e('sample-ev-1', 'Beach clean-up at Carcavelos', 'cleanup', 3, '10:00', 'Carcavelos beach, by the fort', 38.677, -9.335, 24, 'Gloves and bags provided. Bring water and a hat.'),
+    e('sample-ev-2', 'Plant 200 trees in Monsanto', 'planting', 9, '09:30', 'Monsanto park, Alvito picnic area', 38.721, -9.188, 41, 'With the city’s park rangers. Children welcome with an adult.'),
+    e('sample-ev-3', 'Repair café', 'repair', 12, '14:00', 'Biblioteca de Alcântara', 38.705, -9.177, 9, 'Bring a broken toaster, lamp or bike: volunteers help you fix it.'),
+    e('sample-ev-4', 'Clothes swap', 'swap', 18, '11:00', 'LX Factory, main hall', 38.703, -9.178, 33, 'Bring up to five clean things, take five home.'),
+  ] };
 }
 
 const TEAMS = ['Class 10B', 'Riverside Cycling Club', 'Marketing team', 'Green Ward 12', 'Engineering', 'Eco Warriors', 'Sunrise School', 'Climate Crew', 'Plant Parents', 'Zero Waste Hub', 'Office Bikers', 'Ocean Savers'];
@@ -289,6 +322,7 @@ export function sampleGreenTeams(me: { id: string; name: string }) {
   return {
     mine: [team('sample-team-1', false), team('sample-team-4', true)],
     leaderboard: board,
+    week: board.map((t) => ({ ...t, kg: Math.round(t.kg / 4.3 * 10) / 10, actions: Math.round(t.actions / 4.3) })).sort((a, b) => b.kg - a.kg).map((t, i) => ({ ...t, rank: i + 1 })),
     people: NAMES.slice(0, 10).map((name, i) => ({ rank: i + 1, name, kg: Math.round((640 - i * 48) * 10) / 10, actions: 90 - i * 6, me: false })),
   };
 }

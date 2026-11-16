@@ -1,10 +1,9 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { ageOn } from '@/lib/play';
 import { isDay } from '@/lib/travel-plan';
-import { BadRequestException, ForbiddenException, NotFoundException } from './http';
+import { BadRequestException, NotFoundException } from './http';
 import { first, str, type Body, type Query } from './body';
-import { isMinor, schoolPolicy } from './safety';
+import { adultOnly } from './safety';
 import { directChat } from './direct-chat';
 import { shortName } from './play';
 
@@ -20,13 +19,7 @@ const MAX_SHOWN = 60, DAY = 86_400_000, HIDE_AT = 3;
 const guideOf = (v: unknown) => { const t = (str(v) ?? '').replace(/\s+/g, ' ').trim().slice(0, 120); return t && !/[[\]{}|#<>]/.test(t) ? t : null; };
 const today = () => new Date().toISOString().slice(0, 10);
 
-/** Adults only: refused for an account whose birth date says under 18, or a student their school counts as under 18. */
-async function adultCheck(u: SessionUser) {
-  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { role: true, dateOfBirth: true, organizationId: true } });
-  if (!me) throw new NotFoundException('Sign in again.');
-  const age = ageOn(me.dateOfBirth);
-  if ((age !== null && age < 18) || isMinor(me, await schoolPolicy(me.organizationId))) throw new ForbiddenException('The travellers board is for adults (18 and over).');
-}
+const adultCheck = (u: SessionUser) => adultOnly(u, 'The travellers board is for adults (18 and over).');
 /** Everyone I blocked or who blocked me. */
 async function blockedWith(u: SessionUser) {
   const rows = await prisma.travelBlock.findMany({ where: { OR: [{ userId: u.id }, { blockedId: u.id }] }, select: { userId: true, blockedId: true }, take: 500 });

@@ -7792,3 +7792,84 @@ model OAuthConnection {
   @@unique([userId, service])
   @@map("oauth_connections")
 }
+
+/// M216: a person's footprint calculator result (answers as JSON, kg CO₂e a year), kept to see it change.
+model GreenFootprint {
+  id        String   @id @default(cuid())
+  userId    String
+  answers   String
+  kg        Float
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("green_footprints")
+}
+
+/// M216: a person's monthly goal of CO₂ to save (kg).
+model GreenGoal {
+  userId    String   @id
+  monthlyKg Float
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("green_goals")
+}
+
+/// M216: a habit a person pledged (a tip from src/lib/green-plus.ts TIPS), with the days they kept it (JSON).
+model GreenPledge {
+  id        String   @id @default(cuid())
+  userId    String
+  tip       String
+  days      String   @default("[]")
+  createdAt DateTime @default(now())
+
+  @@unique([userId, tip])
+  @@map("green_pledges")
+}
+
+/// M216: a community event (a clean-up, a tree planting, a repair café, a swap) an adult organises.
+model GreenEvent {
+  id        String             @id @default(cuid())
+  userId    String
+  /// The organiser's first name, shown.
+  name      String
+  title     String
+  kind      String             @default("cleanup")
+  /// YYYY-MM-DD
+  date      String
+  /// HH:MM
+  time      String?
+  place     String
+  lat       Float?
+  lng       Float?
+  details   String?
+  /// Hidden after three reports.
+  hidden    Boolean            @default(false)
+  createdAt DateTime           @default(now())
+  going     GreenEventGoing[]
+  reports   GreenEventReport[]
+
+  @@index([date])
+  @@map("green_events")
+}
+
+model GreenEventGoing {
+  eventId   String
+  event     GreenEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime   @default(now())
+
+  @@id([eventId, userId])
+  @@index([userId])
+  @@map("green_event_going")
+}
+
+model GreenEventReport {
+  eventId   String
+  event     GreenEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime   @default(now())
+
+  @@id([eventId, userId])
+  @@map("green_event_reports")
+}

@@ -18,6 +18,7 @@ import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinT
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
+import { addGreenPledge, checkGreenPledge, createGreenEvent, deleteGreenEvent, goingGreenEvent, greenEvents, greenFootprints, greenGoals, removeGreenPledge, reportGreenEvent, saveFootprint, setGreenGoal } from '../green-plus';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -165,6 +166,19 @@ export default function impactAppsModule(router: Router) {
   green.post<{ id: string }>('actions/:id/feeling', { status: 200 }, ({ user, params, body }) => setGreenFeeling(user, params.id, body ?? {}));
   green.post<{ id: string }>('actions/:id/confirm', { status: 200 }, ({ user, params }) => confirmGreenAction(user, params.id));
   green.get('proofs', ({ user }) => greenProofs(user));
+  // M216: footprint, goal and pledges, community events.
+  green.get('footprints', ({ user }) => greenFootprints(user));
+  green.post('footprints', ({ user, body }) => saveFootprint(user, body ?? {}));
+  green.get('goals', ({ user }) => greenGoals(user));
+  green.put('goals', ({ user, body }) => setGreenGoal(user, body ?? {}));
+  green.post('pledges', ({ user, body }) => addGreenPledge(user, body ?? {}));
+  green.post<{ id: string }>('pledges/:id/check', { status: 200 }, ({ user, params, body }) => checkGreenPledge(user, params.id, body ?? {}));
+  green.delete<{ id: string }>('pledges/:id', ({ user, params }) => removeGreenPledge(user, params.id));
+  green.get('events', ({ user, query }) => greenEvents(user, query));
+  green.post('events', ({ user, body }) => createGreenEvent(user, body ?? {}));
+  green.post<{ id: string }>('events/:id/going', { status: 200 }, ({ user, params }) => goingGreenEvent(user, params.id));
+  green.post<{ id: string }>('events/:id/report', { status: 200 }, ({ user, params, body }) => reportGreenEvent(user, params.id, body ?? {}));
+  green.delete<{ id: string }>('events/:id', ({ user, params }) => deleteGreenEvent(user, params.id));
   green.get('teams', ({ user }) => greenTeams(user));
   green.post('teams', ({ user, body }) => createGreenTeam(user, body ?? {}));
   green.post('teams/join', { status: 200 }, ({ user, body }) => joinGreenTeam(user, body ?? {}));

@@ -10,6 +10,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 import { featureOff } from './moderation';
 import { assertInSchool, schoolsOf, usersIn, type SchoolIds } from './school-scope';
 import { pushService } from './services/push.service';
+import { ageOn } from '@/lib/play';
 
 // Safe by default for young students (Stage 4 · 4.10).
 //  - The school's policy (Admin → Safety → Policy): the chat safety check on or off, recording calls
@@ -331,4 +332,13 @@ export async function weekActivity(userId: string) {
     handedIn: work + quizzes,
     quiet: quiet?.on ? { start: quiet.start, end: quiet.end, bySchool: quiet.bySchool } : null,
   };
+}
+
+/** Adults only (the Travel board, M207; Green's events, M216): refused for an account whose birth date says
+ *  under 18, or a student their school counts as under 18. */
+export async function adultOnly(u: SessionUser, refuse: string) {
+  const me = await prisma.user.findUnique({ where: { id: u.id }, select: { role: true, dateOfBirth: true, organizationId: true } });
+  if (!me) throw new NotFoundException('Sign in again.');
+  const age = ageOn(me.dateOfBirth);
+  if ((age !== null && age < 18) || isMinor(me, await schoolPolicy(me.organizationId))) throw new ForbiddenException(refuse);
 }
