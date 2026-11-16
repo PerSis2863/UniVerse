@@ -7931,13 +7931,13 @@ this for other area also if you could"; then "please add more destinations in th
   Bhutan, Wadi Rum, Namibia, Madagascar, Boston, Yellowstone, Iguazu Falls, Uyuni, Milford Sound). `--places` now reads
   only places not read yet or without a climate (`--all` for everything). The Faroe Islands' price level is a guess
   (1.3, DKK) in `travel-money.json` and the script.
-- **Left:** NASA POWER (the climate fallback) isn't reachable from the cloud session, so 30 of the new places whose
-  guides have no climate table have no month-by-month weather yet (Find where to go still lists them, without the
-  weather reason): run `npx tsx scripts/gen-travel-data.mts --places` on a machine that reaches power.larc.nasa.gov.
-  Puerto Vallarta, Tunis and Uyuni keep their banners (no good wide photo found; `''` in their rows). Wikimedia
-  refused this session previews of 9 chosen files (Algarve, Valparaíso, Amsterdam, Edinburgh, Hokkaido, Madeira,
-  Vienna, Jeju, Canary Islands): 7 are the lead photo of the matching Wikipedia article, picked by hand; look at those
-  cards once on the live site.
+- **Finished after the first pass (the owner: "please work on this and whatever is left"):** all 215 places have a
+  climate (NASA POWER for the 30 new ones whose guides have none; in a cloud session run the script with
+  `NODE_USE_ENV_PROXY=1`, or Node's fetch can't resolve the host); Lake Como borrows Milan's guide climate
+  (`CLIMATE_LIKE`: NASA's grid averaged the lake with the Alps, 2 °C January highs). Every chosen photo has now been
+  looked at (Commons' REST search, `/w/rest.php/v1/search/page`, finds files when the action API won't answer);
+  Tunis (Sidi Bou Said), Uyuni (the salt flat), Puerto Vallarta (its crowned church), Hokkaido (Shiretoko's lakes) and
+  Hanoi (the Huc Bridge) got hand-picked photos; no place shows a banner any more.
 - **Also:** a guide's header on a phone left its text running under the "← Explore" button (a long first paragraph):
   it has room at the top now (`pt-16`, as the trip's header).
 - **Checked:** `scripts/checks/travel-photos-ui.mjs` (Explore, Find, Trips, the Kyoto and Ghent guides at 1280 and 390

@@ -8,7 +8,8 @@
 //   npx tsx scripts/gen-travel-data.mts --visa     which Wikipedia article lists each passport's visa rules
 //   npx tsx scripts/gen-travel-data.mts --zones    each time zone's country and main place (the IANA list, public
 //                                                 domain, from the machine's /usr/share/zoneinfo/zone.tab; M209)
-// Gently: one request at a time, named, with a pause (Wikimedia asks for both).
+// Gently: one request at a time, named, with a pause (Wikimedia asks for both). Behind a proxy (a cloud session),
+// run with NODE_USE_ENV_PROXY=1 so Node's fetch goes through it.
 import { readFileSync, writeFileSync } from 'node:fs';
 import { photoOk, readGuide } from '../src/lib/travel-guide';
 import { readClimate } from '../src/lib/travel-tips';
@@ -58,6 +59,9 @@ const CLIMATE_AT: Record<string, [number, number]> = {
   Tasmania: [-42.88, 147.33], 'Lake District': [54.43, -2.96], Fiji: [-17.76, 177.44], 'Swiss Alps': [46.69, 7.86], Lofoten: [68.23, 14.56], Maldives: [4.18, 73.51],
 };
 
+/** M228: places NASA's coarse grid gets wrong (a lake shore averaged with the Alps): a nearby guide's climate. */
+const CLIMATE_LIKE: Record<string, string> = { 'Lake Como': 'Milan' };
+
 async function places() {
   const src = readFileSync(new URL('travel-ideas.ts', LIB), 'utf8');
   const titles = [...src.matchAll(/^\s*\['([^']+)', '[A-Z]{2}'/gm)].map((m) => m[1]);
@@ -72,7 +76,9 @@ async function places() {
     let climate = readClimate(a.wiki), from: string | undefined;
     // No climate chart in the guide: NASA POWER's monthly averages at its position (public domain).
     const at = CLIMATE_AT[title] ?? (g.lat !== undefined && g.lon !== undefined ? [g.lat, g.lon] : null);
-    if (!climate && at) { climate = await nasa(at[0], at[1]).catch(() => undefined); from = 'NASA POWER'; }
+    const like = CLIMATE_LIKE[title] && (out[CLIMATE_LIKE[title]] as { climate?: typeof climate } | undefined)?.climate;
+    if (!climate && like) { climate = like; from = `${CLIMATE_LIKE[title]} (nearby)`; }
+    if (!climate && at) { climate = await nasa(at[0], at[1]).catch((e) => { console.log(`NASA failed for ${title}: ${(e as Error).cause ?? (e as Error).message}`); return undefined; }); from = 'NASA POWER'; }
     if (!climate) console.log(`no climate: ${title}`);
     if (g.lat === undefined) console.log(`no position: ${title}`);
     out[title] = { ...(out[title] as object), lat: g.lat, lon: g.lon, banner: g.banner, climate, ...(climate && from ? { climateFrom: from } : {}) };
