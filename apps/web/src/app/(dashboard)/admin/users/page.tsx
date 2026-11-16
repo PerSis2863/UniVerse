@@ -337,7 +337,7 @@ export default function AdminUsers() {
 
         {/* What to do with the ticked people */}
         {picked.size > 0 && (
-          <div role="region" aria-label="Selected people" className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950/80 backdrop-blur px-3 py-2 shadow-lg">
+          <div role="region" aria-label="Selected people" className="sticky top-2 z-20 flex flex-wrap items-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-50 dark:bg-indigo-950 px-3 py-2 shadow-lg">
             <span className="text-sm font-semibold text-indigo-900 dark:text-indigo-100 me-1">{picked.size} selected</span>
             {bulkBusy && <Loader2 className="w-4 h-4 animate-spin text-indigo-600" aria-label="Working" />}
             <button type="button" disabled={bulkBusy} onClick={() => void bulkStatus('SUSPENDED')} className="btn-secondary btn-sm"><UserX className="w-3.5 h-3.5" />Deactivate</button>

@@ -40,4 +40,15 @@ describe('motion rules', () => {
   it('one press animation per button', () => {
     expect(files(SRC).filter((f) => f.endsWith('.tsx') && /whileTap=\{\{\s*scale/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(SRC.length))).toEqual([]);
   });
+  // M231: a CSS animation of a blur, a shadow, a background's position or a size repaints (or re-lays out) every
+  // frame; transform and opacity are run by the graphics chip. Left as they are: the owner console's flow card
+  // (flow-on, flow-row), a hidden message's specks (ink-drift), one-off reveals by clipping (deck-draw, chat-portal).
+  it('CSS animations move and fade only', () => {
+    const css = readFileSync(join(SRC, 'app/globals.css'), 'utf8');
+    const ok = new Set(['flow-on', 'flow-row', 'ink-drift', 'deck-draw', 'chat-portal', 'chat-portal-rtl']);
+    const heavy = [...css.matchAll(/@keyframes\s+([\w-]+)\s*\{((?:[^{}]|\{[^{}]*\})*)\}/g)]
+      .filter(([, name, body]) => !ok.has(name) && /(^|[\s{;])(filter|box-shadow|background(-position|-color)?|width|height|top|left|margin[\w-]*|padding[\w-]*)\s*:/.test(body))
+      .map(([, name]) => name);
+    expect(heavy).toEqual([]);
+  });
 });

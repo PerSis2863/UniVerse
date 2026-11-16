@@ -45,7 +45,7 @@ function Trace() {
       {/* The label, tilting slowly, a beam passing over its code */}
       <div className={cn('absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]', !calm && 'scene-tilt')}>
         <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(79,142,247,0.55)]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(79,142,247,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden><div className={cn('absolute inset-y-0 -start-[75%] w-[250%] bg-[linear-gradient(115deg,transparent_30%,rgba(79,142,247,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)]', !calm && 'holo-pan')} /></div>
           <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
           <p className="text-xs text-zinc-300">unit 1,204 of 5,000</p>

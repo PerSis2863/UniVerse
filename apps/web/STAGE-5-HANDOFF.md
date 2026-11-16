@@ -7954,3 +7954,44 @@ and people **log time** on it. Database update **0227** (`tasks.startAt`, `tasks
   after the due day and a zero-minute entry refused, 1:30 logged against 2 h, the timer; axe clean at 1280 and 390, light
   and dark, no sideways scroll), the unit test in `task-calendar.test.ts`, `pnpm check`.
 - **Rule:** a Gantt bar's dates change only through `onDates`; a card with no due day isn't on the timeline.
+
+## M231: a sweep for errors, bugs and smoothness (16 Nov)
+
+The owner: "check if any errors or bugs… make sure everything is ultra smooth", then "every button, transition, glide
+or animation… like Apple", "don't let the CPU go up" and "let the other agents know". Everything below runs in the
+browser: no Worker CPU added. The rules are in AGENTS.md §8 ("No double animations…") and `src/lib/motion-rules.test.ts`.
+
+- **Live errors** (`error_reports`): a Nominatim timeout on `/api/core/travel/place` was a 500: `fetchJson`
+  (`src/server/travel.ts`) now answers a slow or unreachable source with 503 "busy", like one that answers an error.
+  The menu's initials (`Sidebar`, `TopNav`) no longer throw on a saved account without a name. The crawl's other
+  finds were by design (the demo admin is read-only: its "tour seen" save is refused).
+- **Progress bars** (about 75): `<Fill value={0..1} />` (`src/components/ui/Fill.tsx`, `.fill` in globals.css) is the
+  track's full width and slides (transform, `@starting-style` for its arrival, `quick` for uploads, timers, loading).
+  Many bars grew their width with framer-motion *and* were scaled by the motion layer: two animations, one re-laying
+  out the page every frame. The page-loading bar (`NavProgress`), the status viewer's bars, tuner and BMI needles
+  slide too. Left: stacked bars whose parts share a row (Trace market cells, consent tallies, class pulse, SVG charts)
+  and the welcome tour's spotlight.
+- **Loops**: framer-motion's `repeat: Infinity` ran on the page's thread every frame; now CSS (`scan-sweep`,
+  `scene-tilt`, `scene-pan`, `ring-wiggle`, `slow-turn`, `twinkle`, `ring-ride`, `holo-pan`), paused while scrolling
+  and with Reduce Motion. Keyframes that repainted every frame now move or fade only: the landing headline's words
+  (no blur), Bento's steps, Quiz Clash's lightning glow, Night Shift's static, Skyline's rewind lines, the label shine.
+- **Presses**: 39 buttons had framer's `whileTap` on top of the global press (two shrinks): now `active:scale-[…]`.
+- **Page changes**: the motion layer's `arrive` (`src/lib/scroll-motion.ts`) read `window.innerHeight` on every
+  frame of every count-up (a forced layout each time) and looked through the old and new page on every page change
+  (55 ms of script, on a computer too). It stops early when nothing was added, and skips a page that just came in
+  (`pageJustEntered()`, `page-transition.ts`: the page's entrance moves it).
+- **Glass**: the full-screen dimmers behind sheets and dialogs (75) dim only, as iOS does (the moving scene behind
+  was blurred again every frame); nine sticky bars with glass are solid (bars are solid, §8). The blog's "Read" link
+  moves its arrow instead of widening its gap on hover.
+- **Measured** (the built site, a phone with the CPU slowed 4×, `scripts/smoothness.mjs`, `main-pages-smooth.mjs`):
+  scrolling and sheets were already at 0–1 slow frames and stay so; the landing's slow frames while scrolling went
+  3 → 0; tab changes keep 2–3 slow frames at 4× (the new page being drawn). Checked as already right: sheets (0.46 s
+  in, faster out), the loading shimmer (transform), the theme's circle reveal, hover only with a mouse, images sized.
+- **Not done, on purpose:** framer `layout` on 57 list rows (rows glide when one is added; framer batches the reads);
+  height animation for opening sections; the side menu's fold (installed app) still animates its width.
+- **Next.js advisory** (published 16 Nov, moderate: `'use cache'` through `unstable_cache()`, which UniVerse doesn't
+  use): 16.4.5 fixes it; by the two-week rule, upgrade Next and the adapter together from 30 Nov. The build stopped
+  once to show this notice and built on a second run. Seven other advisories are in test and lint tools only (vitest,
+  tinypool, zod in eslint's plugin): nothing in the live site.
+- **Rule:** no animation on what the motion layer animates; bars `<Fill>`; loops CSS on transform / opacity; one press
+  per button; no glass over the moving scene.
