@@ -8009,3 +8009,17 @@ every page in a tab group keeps the tabs at the same height (checked on Insights
 pages). Rules: the slot is found when `Topbar` mounts, as the first `[data-tabs-end]` under `Topbar`'s
 parent; a page that renders its tabs only after loading keeps the old row. Phones and the installed app
 (side menu) are unchanged.
+
+## M233
+
+**A sweep for tabs that move** (the owner, 16 Nov: "check if any problems like this are there in the
+project", after M232). Every page in every `SectionTabs` group was checked against its group (a script
+reading `SectionTabs.tsx` and each page), plus a browser check at 1440 and 390 px. Fixed: **Study planner**
+showed no Home tabs (its three neighbours do); **Peer time-bank** was also in the AI tutor's small row, and
+opening it from there made that row vanish (it keeps its main tab; `STUDENT_TUTOR_MODES` is four modes);
+**Analytics warehouse** wrapped its tabs in a centred `max-w-7xl` box, so they sat further in and lower than
+on the other Insights pages; **phones**: a page with buttons put a row above its tabs (as M232 fixed on
+computers), now the buttons sit under the tabs' row (`Topbar` portals into `[data-tabs-end]` on phones too;
+the installed app on a computer keeps its own bar). Rule: put `<SectionTabs>` straight after `<Topbar>`,
+never inside a wrapper, on every page of its group, and keep a page in one group (a second group's row
+vanishes on it). Checked: tabs at the same place on 11 pages in 4 groups, both widths, no sideways scroll.

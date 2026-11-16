@@ -57,7 +57,6 @@ export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
   { href: '/student/oral-practice', label: 'Oral practice' },
-  { href: '/student/tutoring', label: 'Peer time-bank' },
   { href: '/student/semester', label: 'My semester' },
 ];
 
@@ -335,8 +334,8 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
         })}
       </div>
       {end}
-      {/* The page's own buttons, put here by Topbar when the menu is the bar across the top. */}
-      <div data-tabs-end className="ms-auto hidden topnav:flex items-center gap-2 empty:!hidden" />
+      {/* The page's own buttons, put here by Topbar (the bar across the top, and phones). */}
+      <div data-tabs-end className="ms-auto flex flex-wrap items-center gap-2 empty:hidden [&>*]:max-w-full" />
     </nav>
   );
 }
