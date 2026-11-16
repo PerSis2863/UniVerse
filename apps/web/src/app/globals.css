@@ -3063,3 +3063,17 @@ html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: 
   .studio-focus.studio-focus-out { animation: studio-fade-out 160ms ease both; }
 }
 @keyframes studio-fade-out { to { opacity: 0; } }
+
+/* M222 · The notifications panel, Apple style (the owner, 16 Nov: "redesign it like apple style and make it ultra
+   smooth"; NotificationsPanel.tsx). Inside it the segmented control is iOS's own: a grey track and a white thumb
+   (#636366 in dark), not the pills used elsewhere. The rows rise in one after another while the sheet opens
+   (`data-entering`), on the glide spring; Reduce Motion: a fade. */
+.notif-sheet .ios-segmented { display: flex; width: 100%; gap: 0; padding: 2px; border-radius: 9px; background: rgb(118 118 128 / 0.12); }
+.dark .notif-sheet .ios-segmented { background: rgb(118 118 128 / 0.24); }
+.notif-sheet .ios-segment { min-height: 28px; padding-block: 0; border-radius: 7px; box-shadow: none; font-size: 13px; --pill-on-color: #000; }
+.dark .notif-sheet .ios-segment { --pill-on-color: #fff; }
+.notif-sheet .ios-segment-thumb { background: #fff; box-shadow: 0 3px 8px rgb(0 0 0 / 0.12), 0 3px 1px rgb(0 0 0 / 0.04); }
+.dark .notif-sheet .ios-segment-thumb { background: #636366; box-shadow: none; }
+.notif-sheet[data-entering] .notif-row { animation: notif-in 520ms var(--spring-glide, var(--ease-glide)) both; animation-delay: calc(min(var(--i, 0), 10) * 35ms + 80ms); }
+@keyframes notif-in { from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); } }
+@media (prefers-reduced-motion: reduce) { .notif-sheet[data-entering] .notif-row { animation: tracks-fade 200ms ease both; } }

@@ -7795,3 +7795,31 @@ The owner sent the "1 problem(s) need a look" email and asked for M219's two lef
   them, the way back. A drag there only reorders what it shows (`reorderWithin` in `src/lib/arrange.ts`).
 - **Checked:** `landing-switch-ui.mjs` (above), `top-nav-ui.mjs` (no name in both the bar and the page's row; a drag
   kept after a reload and put back), the unit test of `reorderWithin`, `pnpm check`.
+
+## M222: the notifications panel, Apple style (16 Nov)
+
+The owner, with a picture of the old panel (navy, emoji icons): "the notification panel doesn't look good so please
+work on it and make it look good and redesign it like apple style and make it ultra smooth".
+
+- **`src/components/notifications/NotificationsPanel.tsx`** (the page bar, `Topbar`, keeps the data, the unread count
+  and marking read; the panel loads on its own, fetched while the page is idle so the first tap opens it at once). iOS's
+  Notification Centre in the project's look, solid surfaces (no glass, §8): grouped grey (#f2f2f7) with white cards in
+  light mode, near-black (#0c0c0e) with #1c1c1e cards in dark; on a computer it floats 8 px from the window's edges,
+  rounded 26 px; on a phone it fills the screen.
+- **A notification:** an icon like an app's (its kind in iOS's own colours, `KIND`: messages blue, calls green, events
+  red, grades indigo, announcements orange, warnings amber; a kind that is an app's id, or a link into an app, shows
+  that app's icon; otherwise a grey bell), its title on two lines at most with the time ("now", "5m ago", "3h ago",
+  "2d ago", then the date), a dot while unread, two lines of text, "Important" on warnings and errors. Grouped Today,
+  Yesterday, Earlier; the same notification several times in a row (same title and kind) is one **stack** with layers
+  under it ("2 more"): a tap opens it, "Show less" closes it. `src/lib/notification-stacks.ts` (`when`, `byDay`,
+  `stacks`, tested).
+- **Controls:** "Read all" and a round close button in the header; iOS's segmented control (a grey track, a white thumb,
+  #636366 in dark: the `.notif-sheet` rules at the end of `globals.css`, the pills stay everywhere else) for All, Unread,
+  Important; a finger swipes a card to mark it read (`SwipeRow`; a stack: all of it); Escape and the dimmed page close
+  it, and focus goes back to the bell. Email notifications and "See all notifications" are one grouped card at the foot.
+- **Motion:** the sheet slides in on the smooth spring as one `transform` (the compositor runs it) and out in 240 ms;
+  the rows rise in one after another while it opens (`data-entering`, 35 ms apart, the glide spring); a filter or a
+  stack slides the rows that stay (`morph`, deep). Reduce Motion: fades.
+- **Checked:** `scripts/checks/notifications-panel-ui.mjs` (1280 dark and light, 390: no frame over 50 ms while it
+  opens, the day groups, 15 notifications as 7 rows with 5 stacks, a stack opened and closed, Unread, Escape, axe),
+  `pnpm check`.
