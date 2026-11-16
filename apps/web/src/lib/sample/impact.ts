@@ -279,6 +279,26 @@ export function sampleGreenMe(me: { id: string }) {
   };
 }
 
+/** GET /relief/alerts (M217): made-up alerts in the shape GDACS and USGS give. */
+export function sampleReliefAlerts() {
+  const at = (h: number) => iso(Date.now() - h * 3_600_000);
+  return { alerts: [
+    { id: 'sample-al-1', kind: 'TC', title: 'Tropical cyclone Lina', level: 'red', lat: 18.2, lng: 121.6, at: at(5), url: null, country: 'Philippines', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-2', kind: 'FL', title: 'Flood in the Po valley', level: 'orange', lat: 45.0, lng: 10.6, at: at(20), url: null, country: 'Italy', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-3', kind: 'EQ', title: 'M6.2 off the coast of Chile', level: 'orange', lat: -33.1, lng: -72.4, at: at(30), url: null, country: null, source: 'USGS', magnitude: 6.2 },
+    { id: 'sample-al-4', kind: 'WF', title: 'Forest fires in Andalusia', level: 'orange', lat: 37.3, lng: -5.9, at: at(44), url: null, country: 'Spain', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-5', kind: 'EQ', title: 'M4.9 Azores', level: 'green', lat: 38.5, lng: -28.3, at: at(60), url: null, country: null, source: 'USGS', magnitude: 4.9 },
+  ], credit: 'Alerts: GDACS (UN and European Commission) and the US Geological Survey' };
+}
+/** GET /relief/plan (M217) */
+export function sampleReliefPlan() {
+  return { plan: { people: 3, meetNear: 'The bakery on the corner', meetFar: 'Aunt Rosa’s house, Sintra', contacts: [{ name: 'Rosa', phone: '+351 21 000 0000' }], needs: 'Inhaler for Leo', pets: 'Mimi the cat', notes: '' }, kit: ['water', 'torch', 'firstaid', 'docs'], updatedAt: iso(Date.now() - 9 * DAY) };
+}
+/** GET /relief/hours (M217) */
+export function sampleReliefHours() {
+  const s = (id: string, title: string, org: string, daysAgo: number, hours: number) => ({ id, title, org, startsAt: iso(Date.now() - daysAgo * DAY), hours });
+  return { total: 14.5, shifts: [s('sample-sh-1', 'Sorting donations', 'Eastside Food Bank', 3, 3), s('sample-sh-2', 'Night shelter evening', 'Harbour Night Shelter', 10, 5), s('sample-sh-3', 'Hot meals round', 'Red Door Relief', 17, 4), s('sample-sh-4', 'Warehouse', 'Eastside Food Bank', 25, 2.5)] };
+}
 /** GET /green/footprints (M216): two made-up results a few months apart. */
 export function sampleGreenFootprints() {
   const a = { carKmWeek: 120, car: 'petrol', transitKmWeek: 20, shortFlights: 2, longFlights: 1, diet: 'medium', heat: 'gas', size: 'flat', people: 2, greenPower: false, kwhMonth: 250, stuff: 'some' };

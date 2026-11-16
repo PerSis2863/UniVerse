@@ -7671,3 +7671,39 @@ Green has a tab row on every page (`GreenTabs`, the shared `TabRow`), each new p
 - **Checked:** `green-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; a
   footprint saved, Lisbon–Porto ranked, a goal, a pledge ticked, an event with someone going, 40 green places in
   Lisbon), unit tests (`green-plus`, `green-plus` server, the board's after the move), `pnpm check`.
+
+## M217: Relief's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10
+features in there each". Relief has a tab row on every page (`ReliefTabs`; the live map, My requests and
+Organisations included), each new part loaded only when opened (`?view=`; database update 0226):
+
+1. **Most urgent** (`ReliefUrgent.tsx`): open needs ranked by urgency × how long they've waited × how many people
+   (`triage`, both grow slowly), with the reasons ("Critical", "Waiting 3 days", "12 people"), near me within a
+   distance, "I can help" and Message right there. From the live map's own answer: no new server work.
+2. **Matches**: each open need with the open offers of the same kind within 15 km, nearest first, walking time.
+3. **Alerts** (`ReliefAlerts.tsx`): GDACS's orange and red alerts (earthquakes, cyclones, floods, volcanoes,
+   droughts, wildfires) and USGS's M4.5+ earthquakes of the week, on a globe and a list, worst first or nearest to
+   me. The server reads both once for everyone and keeps them 15 minutes (`relief:alerts` in `travel_cache`):
+   one fetch however many people look; the same quake from both is shown once (`readAlerts`).
+4. **My emergency plan** (Be ready): where to meet near home and away, who to call, medical needs, pets, notes;
+   only the person sees it (`relief_plans`, checked by `readPlan`: short fields, six contacts, phones as numbers).
+5. **A bag ready to go**: 16 things for three days, quantities for the household, ticks saved.
+6. **Emergency numbers** for any country (Travel's country facts), as tap-to-call buttons.
+7. **Heat, frost and heavy rain** in the coming week where I am, with what to do (MET Norway through Travel's
+   cached forecast `/travel/weather`: no new server work); and **a card for my phone** (a picture of the plan
+   and numbers, drawn in the browser).
+8. **First aid**: nine situations in short steps (CPR, recovery position, bleeding, choking, burns, broken bones,
+   heatstroke, hypothermia, shock) after the IFRC's guidelines, with the country's number to call.
+9. **My hours**: hours from the volunteer shifts signed up for that are over, by organisation, and **a
+   certificate** picture to keep (`/relief/hours`).
+10. **Places to go** now says the walking time to each place near you.
+
+- **The shared tab row** (`TabRow`) fills the chosen tab with the app's button pair (`--cta` / `--cta-ink`), so its
+  text reads in every app and theme (white on Relief's light orange failed contrast in dark mode).
+- **Not used, on purpose:** Open-Meteo (free for non-commercial use only) and Overpass (not needed; see M216).
+- **Seen once, not reproduced:** a React hydration warning (#418) on a phone right after the local server started;
+  every Green and Relief page loaded clean 16 times after it.
+- **Checked:** `relief-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; 119 live
+  alerts, a plan saved and read back, a go-bag tick, Portugal's 112, a first-aid card, the hours) and
+  `green-plus-ui.mjs` again on `local:serve`, unit tests (`relief-plus` lib and server), `pnpm check`.

@@ -1,5 +1,6 @@
 'use client';
 
+import { walkMinutes } from '@/lib/relief-plus';
 import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
@@ -59,7 +60,7 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-[14px] text-zinc-900 dark:text-white truncate" translate="no">{p.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km` : null].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km${km(here, p) < 6 ? ` · ${walkMinutes(km(here, p))} min on foot` : ''}` : null].filter(Boolean).join(' · ')}</p>
                   </div>
                   {p.openNow !== null && <StatusBadge tone={p.openNow ? 'green' : 'red'}>{p.openNow ? 'Open' : 'Closed'}</StatusBadge>}
                 </div>

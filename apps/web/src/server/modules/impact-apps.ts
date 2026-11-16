@@ -18,6 +18,7 @@ import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinT
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
+import { reliefAlerts, reliefHours, reliefPlan, saveReliefPlan } from '../relief-plus';
 import { addGreenPledge, checkGreenPledge, createGreenEvent, deleteGreenEvent, goingGreenEvent, greenEvents, greenFootprints, greenGoals, removeGreenPledge, reportGreenEvent, saveFootprint, setGreenGoal } from '../green-plus';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
@@ -67,6 +68,11 @@ export default function impactAppsModule(router: Router) {
   relief.get<{ code: string }>('aid/:code/follow', ({ user, params }) => aidFollowing(user, params.code));
   relief.post<{ code: string }>('aid/:code/follow', { status: 200 }, ({ user, params, body }) => followAid(user, params.code, body ?? {}));
   // M148: the shelter and supply board (src/server/relief-orgs.ts).
+  // M217: disaster alerts, my emergency plan and go-bag, my volunteer hours.
+  relief.get('alerts', () => reliefAlerts());
+  relief.get('plan', ({ user }) => reliefPlan(user));
+  relief.put('plan', ({ user, body }) => saveReliefPlan(user, body ?? {}));
+  relief.get('hours', ({ user }) => reliefHours(user));
   relief.get('places', () => reliefPlaces());
   relief.put<{ id: string }>('orgs/:id/status', ({ user, params, body }) => setReliefOrgStatus(user, params.id, body ?? {}));
   relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));

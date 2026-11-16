@@ -7873,3 +7873,14 @@ model GreenEventReport {
   @@id([eventId, userId])
   @@map("green_event_reports")
 }
+
+/// M217: a person's emergency plan (JSON: src/lib/relief-plus.ts Plan) and go-bag ticks (JSON list of KIT ids).
+/// Theirs only: never shown to anyone else.
+model ReliefPlan {
+  userId    String   @id
+  plan      String   @default("{}")
+  kit       String   @default("[]")
+  updatedAt DateTime @default(now()) @updatedAt
+
+  @@map("relief_plans")
+}
