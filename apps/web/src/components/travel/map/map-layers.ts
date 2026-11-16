@@ -1,5 +1,6 @@
-import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
+import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
 import { sunPosition } from '@/lib/travel-local';
+import { mapStyle } from './map-style';
 
 // The layers UniVerse adds to Travel's map (M209) on top of OpenFreeMap's style: 3D buildings and places
 // where the style has none (its dark one), the chosen kind of place, the selected place, Wikipedia's
@@ -7,8 +8,11 @@ import { sunPosition } from '@/lib/travel-local';
 // street-level photo coverage, walking-distance rings and where I am. Added again whenever the style
 // changes (light and dark). Every tile comes straight from its free source to the browser: no Worker CPU.
 
-export const STYLE = { light: 'https://tiles.openfreemap.org/styles/liberty', dark: 'https://tiles.openfreemap.org/styles/dark' } as const;
+/** Travel's own map design (M229, map-style.ts), on OpenFreeMap's tiles. */
+export const STYLE = { light: mapStyle(false), dark: mapStyle(true) } as const;
 export const ACCENT = '#0ea5e9';
+/** The walk's blue, as directions are drawn in Apple Maps (M229). */
+const ROUTE = '#1f87ff', ROUTE_EDGE = '#0b5bd3';
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const NOTHING: ExpressionSpecification = ['==', ['get', 'class'], '__none__'];
 export const SOURCES = ['uv-sel', 'uv-stories', 'uv-reviews', 'uv-walk', 'uv-rings', 'uv-me'] as const;
@@ -32,7 +36,7 @@ function fontOf(map: MLMap): string[] {
 }
 
 export function addLayers(map: MLMap, dark: boolean) {
-  const font = fontOf(map), layers = map.getStyle().layers ?? [];
+  const font = fontOf(map), bold = font.map((f) => f.replace('Regular', 'Bold')), layers = map.getStyle().layers ?? [];
   const label = layers.find((l) => l.type === 'symbol')?.id; // ours go under the street names
   for (const id of SOURCES) if (!map.getSource(id)) map.addSource(id, { type: 'geojson', data: EMPTY });
   // M214: relief under the roads, satellite under the names, transit, street-level coverage.
@@ -75,7 +79,7 @@ export function addLayers(map: MLMap, dark: boolean) {
   if (!layers.some((l) => (l as { 'source-layer'?: string })['source-layer'] === 'poi')) {
     map.addLayer({ id: 'uv-poi', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 16, filter: ['<=', ['get', 'rank'], 20],
       layout: { 'icon-image': 'uv-dot', 'symbol-sort-key': ['get', 'rank'], 'icon-padding': 4, 'text-field': name, 'text-font': font, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-max-width': 8, 'text-optional': true, 'text-padding': 4 },
-      paint: { 'text-color': '#aeb6c0', 'text-halo-color': '#0b0c0e', 'text-halo-width': 1.2 } });
+      paint: { 'text-color': dark ? '#aeb6c0' : '#6b6f78', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
   }
   // The chosen place: a ring under its pin.
   map.addLayer({ id: 'uv-sel', type: 'circle', source: 'uv-sel', paint: { 'circle-radius': 22, 'circle-color': 'rgba(14,165,233,0.22)', 'circle-stroke-color': ACCENT, 'circle-stroke-width': 3, 'circle-pitch-alignment': 'map' } });
@@ -84,22 +88,40 @@ export function addLayers(map: MLMap, dark: boolean) {
   // The chosen kind of place: its pin and name, the notable first, none over another.
   map.addLayer({ id: 'uv-hit', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 12, filter: NOTHING,
     layout: { 'icon-image': 'uv-pin-see', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.62, 15, 0.85, 17, 1], 'icon-padding': ['interpolate', ['linear'], ['zoom'], 12, 14, 15, 7, 17, 3], 'symbol-sort-key': ['get', 'rank'],
-      'text-field': ['step', ['zoom'], '', 14, name], 'text-font': font, 'text-size': 12, 'text-offset': [0, 1.25], 'text-anchor': 'top', 'text-max-width': 9, 'text-optional': true, 'text-padding': 3 },
-    paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
-  // UniVerse's reviews: a star pin with the average beside it, always shown; the walk: a dashed line with numbers.
+      // Apple Maps' way (M229): the name beside the pin, bold, in the pin's colour (showClasses sets it).
+      'text-field': ['step', ['zoom'], '', 14, name], 'text-font': bold, 'text-size': 12.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.15, 0], 'text-max-width': 9, 'text-optional': true, 'text-padding': 3 },
+    paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.8 } });
+  // UniVerse's reviews: a star pin with the average beside it, always shown.
   map.addLayer({ id: 'uv-reviews', type: 'symbol', source: 'uv-reviews', layout: { 'icon-image': 'uv-pin-review', 'icon-size': 0.9, 'icon-allow-overlap': true, 'text-field': ['get', 'label'], 'text-font': font, 'text-size': 11, 'text-offset': [1.3, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
-  map.addLayer({ id: 'uv-walk-line', type: 'line', source: 'uv-walk', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ACCENT, 'line-width': 4, 'line-dasharray': [0.6, 1.6] } });
-  map.addLayer({ id: 'uv-walk-stop', type: 'circle', source: 'uv-walk', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 11, 'circle-color': ACCENT, 'circle-stroke-color': halo, 'circle-stroke-width': 2 } });
-  map.addLayer({ id: 'uv-walk-num', type: 'symbol', source: 'uv-walk', filter: ['==', ['geometry-type'], 'Point'], layout: { 'text-field': ['get', 'n'], 'text-font': font, 'text-size': 12, 'text-allow-overlap': true }, paint: { 'text-color': '#ffffff' } });
+  // M229: the walk, drawn the way Apple Maps draws directions: one clean blue line with a darker blue edge along
+  // the streets (dashed only when the walking router didn't answer and it is straight), a blue "you start here"
+  // dot, numbered blue stops with their names, and the walking time in one blue bubble just above its longest stretch. Added
+  // last, so above every pin.
+  if (!map.hasImage('uv-bubble')) map.addImage('uv-bubble', bubbleImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[26, 30]], content: [14, 10, 50, 46] });
+  const walkLine = (exact: boolean): FilterSpecification => ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'exact'], exact]];
+  const width = (a: number, b: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], 12, a, 16, b];
+  map.addLayer({ id: 'uv-walk-edge', type: 'line', source: 'uv-walk', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_EDGE, 'line-width': width(7, 12) } });
+  map.addLayer({ id: 'uv-walk-line', type: 'line', source: 'uv-walk', filter: walkLine(true), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8.5) } });
+  map.addLayer({ id: 'uv-walk-straight', type: 'line', source: 'uv-walk', filter: walkLine(false), layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8.5), 'line-dasharray': [1.6, 1] } });
+  map.addLayer({ id: 'uv-walk-start-glow', type: 'circle', source: 'uv-walk', filter: ['==', ['get', 'role'], 'start'], paint: { 'circle-radius': 20, 'circle-color': ROUTE, 'circle-opacity': 0.2, 'circle-pitch-alignment': 'map' } });
+  map.addLayer({ id: 'uv-walk-start', type: 'circle', source: 'uv-walk', filter: ['==', ['get', 'role'], 'start'], paint: { 'circle-radius': 8, 'circle-color': ROUTE, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3.5 } });
+  map.addLayer({ id: 'uv-walk-stop', type: 'circle', source: 'uv-walk', filter: ['==', ['get', 'role'], 'stop'], paint: { 'circle-radius': 13, 'circle-color': ROUTE, 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
+  map.addLayer({ id: 'uv-walk-num', type: 'symbol', source: 'uv-walk', filter: ['==', ['get', 'role'], 'stop'], layout: { 'text-field': ['get', 'n'], 'text-font': bold, 'text-size': 13, 'text-allow-overlap': true, 'text-padding': 8 }, paint: { 'text-color': '#ffffff' } });
+  map.addLayer({ id: 'uv-walk-name', type: 'symbol', source: 'uv-walk', filter: ['==', ['get', 'role'], 'stop'],
+    layout: { 'text-field': ['get', 'name'], 'text-font': bold, 'text-size': 13.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.4, 0], 'text-max-width': 10, 'text-optional': true, 'text-padding': 2, 'symbol-sort-key': ['get', 'order'] },
+    paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 2 } });
+  map.addLayer({ id: 'uv-walk-time', type: 'symbol', source: 'uv-walk', filter: ['==', ['get', 'role'], 'time'],
+    layout: { 'text-field': ['get', 'label'], 'text-font': bold, 'text-size': 16, 'icon-image': 'uv-bubble', 'icon-text-fit': 'both', 'icon-text-fit-padding': [4, 9, 4, 9], 'icon-allow-overlap': true, 'text-allow-overlap': true, 'text-anchor': 'bottom', 'text-offset': [0, -0.7] },
+    paint: { 'text-color': '#ffffff' } });
   map.addLayer({ id: 'uv-me-dot', type: 'circle', source: 'uv-me', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
   // The globe when zoomed out (flat close in, as MapLibre does by itself).
   map.setProjection({ type: 'globe' });
 }
 
 /** Show places of these classes with this kind's pin (none: nothing). */
-export function showClasses(map: MLMap, classes: readonly string[] | null, pin: string) {
+export function showClasses(map: MLMap, classes: readonly string[] | null, pin: string, color?: string) {
   const f: ExpressionSpecification = classes ? ['in', ['get', 'class'], ['literal', [...classes]]] : NOTHING;
-  if (map.getLayer('uv-hit')) { map.setFilter('uv-hit', f); map.setLayoutProperty('uv-hit', 'icon-image', pin); }
+  if (map.getLayer('uv-hit')) { map.setFilter('uv-hit', f); map.setLayoutProperty('uv-hit', 'icon-image', pin); if (color) map.setPaintProperty('uv-hit', 'text-color', color); }
   // The other places (dark style) leave the chosen ones to their pins, so no name shows twice.
   if (map.getLayer('uv-poi')) map.setFilter('uv-poi', ['all', ['<=', ['get', 'rank'], 20], ['!', f]]);
 }
@@ -159,4 +181,40 @@ export function meArea(lat: number, lon: number, metres: number): GeoJSON.Featur
     { type: 'Feature', geometry: { type: 'Polygon', coordinates: [coords] }, properties: {} },
     { type: 'Feature', geometry: { type: 'Point', coordinates: [lon, lat] }, properties: {} },
   ] };
+}
+
+/** M229: the time bubble: a blue rounded box with a white rim, stretched around its text (64 × 56 at 2x). */
+function bubbleImage(): ImageData {
+  const w = 64, h = 56, c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d')!;
+  g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
+  g.beginPath(); g.roundRect(4, 4, w - 8, h - 10, 18); g.fillStyle = '#ffffff'; g.fill();
+  g.shadowColor = 'transparent';
+  g.beginPath(); g.roundRect(7, 7, w - 14, h - 16, 15); g.fillStyle = ROUTE; g.fill();
+  return g.getImageData(0, 0, w, h);
+}
+
+const FADED = 0.28, BUILDINGS_FADED = 0.3; // the flat footprints at 0.7
+/** M229: while a walk is shown, everything else steps back (other pins and their names, the map's own places,
+ *  the 3D buildings) so the walk can be read; put back as the style had it when the walk ends. `fresh`: a new
+ *  style was just loaded, so what was kept from the old one no longer applies. */
+export function focusWalk(map: MLMap, on: boolean, fresh = false) {
+  const m = map as MLMap & { __uvFaded?: Map<string, unknown> };
+  if (fresh || !m.__uvFaded) m.__uvFaded = new Map<string, unknown>();
+  const kept = m.__uvFaded;
+  const set = (id: string, prop: string, value: unknown, layout = false) => {
+    const k = `${id}|${prop}`, get = () => (layout ? map.getLayoutProperty(id, prop as never) : map.getPaintProperty(id, prop as never));
+    const put = (v: unknown) => (layout ? map.setLayoutProperty(id, prop as never, v as never) : map.setPaintProperty(id, prop as never, v as never));
+    if (on) { if (!kept.has(k)) kept.set(k, get()); put(value); }
+    else if (kept.has(k)) { put(kept.get(k)); kept.delete(k); }
+  };
+  for (const l of map.getStyle().layers ?? []) {
+    if (l.id.startsWith('uv-walk') || l.id === 'uv-me-dot' || l.id === 'uv-sel') continue;
+    const placesLayer = l.id === 'uv-hit' || l.id === 'uv-stories' || l.id === 'uv-reviews' || l.id === 'uv-poi' || (l as { 'source-layer'?: string })['source-layer'] === 'poi';
+    if (l.type === 'symbol' && placesLayer) { set(l.id, 'icon-opacity', FADED); set(l.id, 'text-opacity', 0); }
+    // The 3D buildings step out (the flat footprints stay, under the walk): with the hills on, buildings are
+    // drawn after the flat map, so even lying flat they covered the walk.
+    else if (l.type === 'fill-extrusion') set(l.id, 'visibility', 'none', true);
+    else if (l.type === 'fill' && l.id === 'building') set(l.id, 'fill-opacity', BUILDINGS_FADED + 0.4);
+  }
 }

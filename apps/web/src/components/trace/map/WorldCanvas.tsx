@@ -34,9 +34,10 @@ export interface MapHandle {
 }
 
 const PAL = {
-  // Neutral since M94 (the owner's photos: black and white with warm light; the maps were slate blue).
-  light: { sea: '#e7e7e9', deep: '#dedee1', land: '#fbfbfb', edge: '#c9c9ce', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
-  dark: { sea: '#0c0c0e', deep: '#08080a', land: '#1d1d21', edge: '#34343b', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
+  // M229 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
+  // the same colours as Travel's street map (travel/map/map-style.ts). Neutral greys before (M94).
+  light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
+  dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;

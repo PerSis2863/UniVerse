@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classesOf, kindOf, walkFrom, walkStay, type MapPlace } from './travel-map';
+import { classesOf, kindOf, bubbleAt, ROUTER, routeOf, routeUrl, walkFrom, walkInGoogle, walkStay, withLegs, type MapPlace } from './travel-map';
 
 // M209: the map's kinds of place and "Walk from here".
 describe('travel map', () => {
@@ -34,5 +34,40 @@ describe('street photos (M214)', () => {
     expect(streetPhotoOf({ features: [pic('panoramax.ign.fr.evil.example', 'c')] })).toBeNull();
     expect(streetPhotoOf(null)).toBeNull();
     expect(streetPhotoOf({ features: 'x' })).toBeNull();
+  });
+});
+
+describe('the walk along real streets (M229)', () => {
+  const start = { lat: 47.21, lon: -1.564 }, a = { key: 'N1', name: 'A', rank: 1, lat: 47.216, lon: -1.556, walk: 9, stay: 15, at: 9 }, b = { key: 'N2', name: 'B', rank: 2, lat: 47.218, lon: -1.553, walk: 3, stay: 20, at: 27 };
+  // The router's real answer for these three points (trimmed path).
+  const answer = { code: 'Ok', routes: [{ geometry: { type: 'LineString', coordinates: [[-1.564026, 47.210038], [-1.561622, 47.212201], [-1.556096, 47.21606], [-1.552985, 47.21796]] }, legs: [{ duration: 843.8, distance: 1055.2 }, { duration: 309.2, distance: 383.7 }] }] };
+
+  it('asks for the start and the stops in order, longitude first', () => {
+    expect(routeUrl(start, [a, b])).toBe(`${ROUTER}-1.56400,47.21000;-1.55600,47.21600;-1.55300,47.21800?overview=full&geometries=geojson`);
+  });
+  it('reads the path and each leg, and refuses answers that do not fit', () => {
+    const r = routeOf(answer, 2)!;
+    expect(r.path).toHaveLength(4);
+    expect(r.legs.map((l) => [l.min, Math.round(l.km * 1000)])).toEqual([[14, 1055], [5, 384]]);
+    expect(routeOf(answer, 3)).toBeNull();
+    expect(routeOf({ code: 'NoRoute' }, 2)).toBeNull();
+    expect(routeOf(null, 2)).toBeNull();
+  });
+  it('puts the true walking minutes into the walk', () => {
+    const w = withLegs({ stops: [a, b], total: 47, km: 1.2 }, routeOf(answer, 2)!.legs);
+    expect(w.stops.map((s) => [s.walk, s.at])).toEqual([[14, 14], [5, 34]]);
+    expect([w.total, w.km]).toEqual([54, 1.4]);
+  });
+  it('opens the whole walk in Google Maps, on foot', () => {
+    const u = new URL(walkInGoogle(start, [a, b]));
+    expect([u.searchParams.get('travelmode'), u.searchParams.get('origin'), u.searchParams.get('destination'), u.searchParams.get('waypoints')]).toEqual(['walking', '47.21000,-1.56400', '47.21800,-1.55300', '47.21600,-1.55600']);
+  });
+});
+
+describe('the walk time bubble (M229)', () => {
+  it('sits on the path by the middle of the longest stretch, never on a stop', () => {
+    const path: [number, number][] = [[0, 0], [1, 0], [1, 4], [2, 4]];
+    expect(bubbleAt(path, [{ lat: 0, lon: 0 }, { lat: 0, lon: 1 }, { lat: 4, lon: 1 }, { lat: 4, lon: 2 }])).toEqual([1, 2]);
+    expect(bubbleAt([[0, 0], [2, 2]], [{ lat: 0, lon: 0 }, { lat: 2, lon: 2 }])).toEqual([1, 1]);
   });
 });
