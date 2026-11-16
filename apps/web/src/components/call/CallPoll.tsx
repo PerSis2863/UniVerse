@@ -148,7 +148,7 @@ export function PollComposer({ open, onClose, onStart, questionsFor }: {
                 </span>
               </button>
 
-              <motion.button whileTap={{ scale: 0.98 }} type="button" disabled={!valid} onClick={start} className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40">
+              <motion.button type="button" disabled={!valid} onClick={start} className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40 active:scale-[0.98]">
                 {quiz ? 'Start the quiz' : 'Start the poll'}
               </motion.button>
             </motion.div>

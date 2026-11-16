@@ -468,6 +468,18 @@ word: `<Accent>` (light mode: grey heading, ink word; dark: white, the word in t
 eyebrow labels above headings; mono only for numbers and data. Older notes (M34, M52–M57, M91–M94) describe looks this one replaced:
 ignore their colours; the river's notes (M9–M128) describe what M129 removed.
 
+**No double animations, nothing that moves the layout (M231, the owner, 16 Nov: "ultra smooth like Apple";
+`src/lib/motion-rules.test.ts` fails a break):** the motion layer below already animates titles, figures, bars,
+charts and arriving content, so never add your own animation to those too (a framer-motion `initial`/`animate` on a
+bar or a count-up on a figure plays twice). A progress bar is `<Fill value={0..1} />` (`src/components/ui/Fill.tsx`:
+it slides, the graphics chip runs it; `quick` for uploads, timers, loading; the track needs `overflow-hidden`), never
+a growing `width` (CSS `transition-[width]` or framer `animate={{ width }}`); a needle or marker slides with
+`transform`, never `left` / `top`. A loop that runs forever is a CSS `@keyframes` on `transform` / `opacity`, never
+framer-motion's `repeat: Infinity` (it runs on the page's thread every frame), added to the `html[data-scrolling]`
+pause list and the Reduce Motion list. Press feedback is global (buttons sink to 0.97 in 70 ms and spring back,
+`globals.css` "Motion system"): don't add per-button `whileTap` or `active:scale` on top. Height animation is only for
+opening and closing a section. All of this runs in the browser: it costs Cloudflare nothing.
+
 **The motion layer works on every page by itself**: pages assemble out of a blur
 (`src/lib/page-transition.ts`), titles sweep in, figures count up, bars fill, charts draw, content that
 replaces a loading placeholder and a row added to a list glide in (`src/lib/scroll-motion.ts`, M130),

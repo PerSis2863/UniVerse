@@ -105,14 +105,13 @@ export function IncomingCall({ inboxPath }: { inboxPath: string }) {
                 {call.conversation.isGroup ? `${call.sender.name.split(' ')[0]} started a ${video ? 'video' : 'voice'} call` : `Incoming ${video ? 'video' : 'voice'} call`}
               </p>
             </div>
-            <motion.button whileTap={{ scale: 0.88 }} onClick={() => decline(call)} aria-label="Decline" className="w-12 h-12 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/30">
+            <motion.button onClick={() => decline(call)} aria-label="Decline" className="w-12 h-12 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-lg shadow-rose-500/30 active:scale-[0.88]">
               <PhoneOff className="w-5 h-5" />
             </motion.button>
             <motion.button
-              whileTap={{ scale: 0.88 }}
               onClick={() => answer(call)}
               aria-label="Answer"
-              className="ring-wiggle w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30"
+              className="ring-wiggle w-12 h-12 rounded-full bg-emerald-500 hover:bg-emerald-600 text-white flex items-center justify-center shadow-lg shadow-emerald-500/30 active:scale-[0.88]"
             >
               {video ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
             </motion.button>

@@ -30,4 +30,14 @@ describe('motion rules', () => {
       .filter((f) => /transition-\[(width|left|top)|initial=\{\{ width: 0 \}\}|animate=\{\{ (width|top|left): /.test(readFileSync(f, 'utf8'))).map((f) => f.slice(SRC.length));
     expect(found).toEqual([]);
   });
+  // M231: framer-motion's endless loops run on the page's thread every frame; a CSS @keyframes loop runs on the
+  // graphics chip (and pauses while scrolling, html[data-scrolling]).
+  it('endless loops are CSS', () => {
+    expect(files(SRC).filter((f) => f.endsWith('.tsx') && /repeat:\s*(Infinity|Number\.POSITIVE_INFINITY)/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(SRC.length))).toEqual([]);
+  });
+  // M231: every button already sinks when pressed (globals.css, "Motion system"); framer-motion's whileTap scale
+  // shrank 39 of them a second time, from the page's thread. A deeper press is `active:scale-[0.9]` (it replaces it).
+  it('one press animation per button', () => {
+    expect(files(SRC).filter((f) => f.endsWith('.tsx') && /whileTap=\{\{\s*scale/.test(readFileSync(f, 'utf8'))).map((f) => f.slice(SRC.length))).toEqual([]);
+  });
 });

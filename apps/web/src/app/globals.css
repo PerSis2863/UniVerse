@@ -1196,7 +1196,11 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @keyframes ring-wiggle { 0%, 53%, 100% { rotate: 0deg; } 11% { rotate: -12deg; } 21% { rotate: 12deg; } 32% { rotate: -8deg; } 42% { rotate: 8deg; } }
 .ring-wiggle { animation: ring-wiggle 1.7s ease-in-out infinite; }
 .slow-turn { animation: btn-spin 30s linear infinite; }
-@media (prefers-reduced-motion: reduce) { .scan-sweep, .scene-tilt, .scene-pan, .ring-wiggle, .slow-turn { animation: none; } }
+@keyframes twinkle { 0%, 100% { opacity: 0.2; } 50% { opacity: 0.9; } }
+.twinkle { animation: twinkle 2.4s ease-in-out infinite; }
+@keyframes ring-ride { from { offset-distance: 0%; } to { offset-distance: 100%; } }
+.ring-ride { animation: ring-ride 18s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .scan-sweep, .scene-tilt, .scene-pan, .ring-wiggle, .slow-turn, .twinkle, .ring-ride { animation: none; } }
 
 /* Status viewer: the bar along the top fills once per update (src/components/chat/StatusBar.tsx). */
 @keyframes status-progress { from { transform: translateX(-100%); } to { transform: none; } }
@@ -2624,7 +2628,7 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
 /* M96 · Decorative loops rest while the page scrolls (scroll-motion.ts sets <html data-scrolling>) and
    pick up again 180 ms after; measured, they were most of what was left of the cost of scrolling. The
    live dots keep pulsing (they show that something is live). */
-html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave, .scan-sweep, .scene-tilt, .scene-pan, .slow-turn),
+html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave, .scan-sweep, .scene-tilt, .scene-pan, .slow-turn, .twinkle, .ring-ride),
 html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
 /* M117 · UniVersity's hero picture (HeroScenes `Campus`, the landing and sign-in): its endless motion in
    CSS, which the browser runs off the main thread. As script (framer-motion repeats) the orbit, the

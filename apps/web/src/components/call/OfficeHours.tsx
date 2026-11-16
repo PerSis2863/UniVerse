@@ -57,7 +57,7 @@ function StudentOffice({ open }: { open: StudentState['open'] }) {
               <span className="block font-semibold text-zinc-900 dark:text-white truncate">{o.name}</span>
               <span className="block text-xs text-zinc-500 truncate">{[o.courses.slice(0, 3).join(', '), o.topic, o.until ? `until ${format(new Date(o.until), 'HH:mm')}` : null].filter(Boolean).join(' · ')}</span>
             </span>
-            <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(`/call/${o.callId}`)} className="shrink-0 px-4 py-2 rounded-full bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25">Join the line</motion.button>
+            <motion.button type="button" onClick={() => router.push(`/call/${o.callId}`)} className="shrink-0 px-4 py-2 rounded-full bg-emerald-500 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 active:scale-[0.92]">Join the line</motion.button>
           </li>
         ))}
       </ul>
@@ -94,7 +94,7 @@ function TeacherOffice({ s, onChange }: { s: TeacherState; onChange: (s: Teacher
       <AnimatePresence initial={false} mode="wait">
         {s.open ? (
           <motion.div key="open" initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -6 }} transition={spring.smooth} className="flex flex-wrap gap-2">
-            <motion.button whileTap={{ scale: 0.95 }} type="button" onClick={() => router.push(`/call/${s.callId}`)} className="h-10 px-4 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-semibold inline-flex items-center gap-1.5">
+            <motion.button type="button" onClick={() => router.push(`/call/${s.callId}`)} className="h-10 px-4 rounded-full bg-gradient-to-r from-indigo-600 to-fuchsia-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 active:scale-[0.95]">
               <Users className="w-4 h-4" />Go to office hours
             </motion.button>
             <button type="button" disabled={!!busy} onClick={() => void post('extend', { extend: true })} className="h-10 px-3.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] text-sm font-semibold text-zinc-700 dark:text-zinc-200 inline-flex items-center gap-1 disabled:opacity-50">
@@ -193,7 +193,7 @@ export function OfficeBar({ line, students, onNext }: { line: { waiting: number;
             <NotebookPen className="w-3.5 h-3.5" />Notes
           </button>
         )}
-        <motion.button whileTap={{ scale: 0.94 }} type="button" onClick={onNext} disabled={!waiting && !students.length} className="h-8 px-3 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-xs font-bold inline-flex items-center gap-0.5 disabled:opacity-40">
+        <motion.button type="button" onClick={onNext} disabled={!waiting && !students.length} className="h-8 px-3 rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500 text-xs font-bold inline-flex items-center gap-0.5 disabled:opacity-40 active:scale-[0.94]">
           {students.length ? (waiting ? 'Next student' : 'End turn') : 'Let next in'}<ChevronRight className="w-3.5 h-3.5" />
         </motion.button>
       </div>

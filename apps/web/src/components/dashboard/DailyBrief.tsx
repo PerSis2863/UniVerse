@@ -155,8 +155,8 @@ export function DailyBrief() {
                       const done = !!added[t.title];
                       return (
                         <li key={t.title} className="flex items-center gap-2.5">
-                          <motion.button whileTap={{ scale: 0.88 }} type="button" onClick={() => void addTask(t)} disabled={done || adding === t.title} aria-label={done ? `${t.title}: added` : `Add “${t.title}” to your planner`}
-                            className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors', done ? 'bg-emerald-500 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
+                          <motion.button type="button" onClick={() => void addTask(t)} disabled={done || adding === t.title} aria-label={done ? `${t.title}: added` : `Add “${t.title}” to your planner`}
+                            className={cn('w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-colors active:scale-[0.88]', done ? 'bg-emerald-500 text-white' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
                             <AnimatePresence mode="wait" initial={false}>
                               <motion.span key={done ? 'y' : adding === t.title ? 'l' : 'n'} initial={{ scale: 0.5, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.5, opacity: 0 }} transition={spring.bouncy}>
                                 {done ? <Check className="w-4 h-4" /> : adding === t.title ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}

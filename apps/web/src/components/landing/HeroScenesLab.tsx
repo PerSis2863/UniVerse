@@ -141,7 +141,7 @@ function Green() {
     <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A planet turning while green patches bloom and the CO₂ saved climbs">
       {/* stars */}
       {[[8, 12], [22, 30], [86, 18], [74, 8], [92, 44], [12, 52], [60, 14]].map(([x, y], i) => (
-        <motion.span key={i} aria-hidden className="absolute h-1 w-1 rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} animate={calm ? undefined : { opacity: [0.2, 0.9, 0.2] }} transition={{ duration: 2.4 + (i % 3), delay: i * 0.3, repeat: Infinity, ease: 'easeInOut' }} />
+        <span key={i} aria-hidden className={cn('absolute h-1 w-1 rounded-full bg-white', calm ? 'opacity-50' : 'twinkle')} style={{ left: `${x}%`, top: `${y}%`, animationDuration: `${2.4 + (i % 3)}s`, animationDelay: `${i * 0.3}s` }} />
       ))}
       {/* the counter */}
       <div className="absolute inset-x-0 top-6 text-center">
@@ -169,10 +169,10 @@ function Green() {
         <span aria-hidden className="absolute left-1/2 top-[13px] h-[274px] w-[274px] -translate-x-1/2 rounded-full ring-1 ring-emerald-300/25" />
         {/* things on the ring (they ride the same ellipse) */}
         {!calm && [TreePine, Bike, Recycle].map((Icon, i) => (
-          <motion.span key={i} aria-hidden className="absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
-            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg' }} initial={{ offsetDistance: `${i * 33}%` }} animate={{ offsetDistance: [`${i * 33}%`, `${i * 33 + 100}%`] }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}>
+          <span key={i} aria-hidden className="ring-ride absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
+            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg', animationDelay: `${-i * 6}s` }}>
             <Icon className="h-4 w-4" />
-          </motion.span>
+          </span>
         ))}
       </div>
       {/* the ticker */}

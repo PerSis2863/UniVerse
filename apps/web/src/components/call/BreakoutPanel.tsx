@@ -197,9 +197,9 @@ function Setup({ people, onOpen }: { people: { id: string; name: string; host?: 
         </section>
       </div>
       <div className="p-3 border-t border-white/10">
-        <motion.button whileTap={{ scale: 0.98 }} type="button" disabled={mode !== 'choose' && placed === 0}
+        <motion.button type="button" disabled={mode !== 'choose' && placed === 0}
           onClick={() => onOpen({ action: 'bo-open', rooms: count, assign: plan, minutes, choose: mode === 'choose' })}
-          className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40">
+          className="w-full py-3 rounded-2xl font-bold bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/25 disabled:opacity-40 active:scale-[0.98]">
           Open {count} {count === 1 ? 'room' : 'rooms'}
         </motion.button>
         {mode !== 'choose' && placed === 0 && <p className="text-[11px] text-zinc-500 text-center mt-1.5">Nobody to put in rooms yet.</p>}
