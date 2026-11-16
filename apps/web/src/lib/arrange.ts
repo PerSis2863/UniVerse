@@ -79,6 +79,14 @@ export function moved<T>(keys: T[], from: number, to: number): T[] {
   return out;
 }
 
+/** M221: `full` with the names in `part` put in the order `part` has them, in the places they took; the rest
+ *  stay (the bar across the top reorders the entries it shows without moving the ones it leaves out). */
+export function reorderWithin(full: string[], part: string[]): string[] {
+  const set = new Set(part);
+  let i = 0;
+  return full.map((k) => (set.has(k) ? part[i++] : k));
+}
+
 const num = (v: unknown, min: number, max: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(min, Math.min(max, Math.round(v))) : undefined);
 
 /** A store read from the device: anything odd is dropped, so a damaged copy can't break a page. */

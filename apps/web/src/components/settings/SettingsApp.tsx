@@ -462,7 +462,7 @@ function ArrangeRows() {
 }
 
 function Appearance() {
-  const [theme, setTheme] = useState<Theme>(() => (typeof window === 'undefined' ? 'dark' : getSavedTheme()));
+  const [theme, setTheme] = useState<Theme>(() => (typeof window === 'undefined' ? 'light' : getSavedTheme()));
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
   const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && appReduceMotion());
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());

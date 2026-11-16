@@ -33,6 +33,8 @@ export function playAppEntrance(shell: HTMLElement | null) {
   // place. The sidebar (desktop) slides in from its edge. (nav/aside[aria-label]: not the
   // placeholder's look-alikes in .boot-cover, whose bars are hidden so nothing shows twice.)
   if (desktop) run(shell.querySelector('aside[aria-label="Navigation"]'), [{ opacity: 0, transform: `translate3d(${rtl() ? 32 : -32}px, 0, 0)` }, { opacity: 1, transform: 'none' }], 750);
+  // M219: the bar across the top (a computer's browser) comes down into place.
+  if (desktop) run(shell.querySelector('header.top-nav'), [{ opacity: 0, transform: 'translate3d(0, -20px, 0)' }, { opacity: 1, transform: 'none' }], 700);
 
   // The page: its blocks rise in, top to bottom; a block as tall as a third of the screen opens out
   // from its top edge instead (AgentGPT's window).

@@ -87,7 +87,7 @@ software or website in the main website… where they create a impact"). Each ap
 
 Shared by all apps: the hub `/hub`, Messages, Collaborate (the owner likes it: keep it), Settings,
 and the owner console `/console`. Each app has its own menu (`Sidebar.tsx` `navFor`, the app
-switcher under the brand), phone tabs (`app-tabs.ts`), landing tab and sign-in / sign-up tab
+switcher under the brand; on a computer's browser it's the bar across the top, `TopNav.tsx`, M219), phone tabs (`app-tabs.ts`), landing tab and sign-in / sign-up tab
 (`?app=`, remembered in sessionStorage `uv-app`, `useChosenApp`). `homeFor(user, app)` sends a
 person to their chosen app, otherwise to `/hub` (the owner: `/console`).
 
@@ -116,7 +116,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
   them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
   (11); 5 (cheap phones) was left out by the owner.
-- **On `main`** (live): everything through **M195** (M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M213** (M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -218,7 +218,20 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M213 (16 Nov), Travel's left-outs (Google Maps' exact route, a block closes the
+- **On the branch, not merged yet:** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
+  hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
+  an app's own row of tabs. M220 (16 Nov), light mode is the default (dark for those who chose it). M219 (16 Nov), on a computer in a browser the menu is a bar across the top
+  (`TopNav`: groups open as lists, More for what doesn't fit; the installed app and phones keep the side menu), and M218
+  (the apps' sections moved into the side menu) undone: the rows of tabs are back. M217 (16 Nov), Relief's ten new features (Most urgent, Matches, live disaster
+  Alerts, Be ready: plan, go-bag, emergency numbers, weather risks, a phone card; First aid; My hours with a certificate;
+  walking times to places; database update 0226). M216 (16 Nov), Green's ten new features (Footprint, Journeys, Goals and pledges,
+  Tips, Events, Green places, the year heatmap, what it means, a year picture, the weekly team league; database update
+  0225). M215 (16 Nov), a trip's **Money** (shared costs, settle up, spent against the
+  budget, a converter, what things cost) and **Packing** (a shared list with suggestions from the trip; database update
+  0224). M214 (16 Nov), Travel's map: sharp pins that never overlap, tapping one glides
+  in, a Layers panel (satellite, 3D hills, transport, street photos, walking rings…), the globe, my position, a filter
+  (all from free sources straight to browsers, no Worker CPU). The console's Travel reports tried in a browser.
+- **Merged 16 Nov (PR #128; M173 and M177–M178 earlier, PR #124):** M213 (16 Nov), Travel's left-outs (Google Maps' exact route, a block closes the
   board's chat, Travel reports in the console's Moderation, live updates measured) and Travel's look (its own sky
   colour, a tab row like Trace's, Explore's first card). M212 (16 Nov), dark mode's accent the website's blue in place of the neon lime,
   calmer greens. M211 (16 Nov), the main pages' lag fixed (the motion layer's watcher, the
@@ -243,16 +256,14 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): first the owner's
-  asks of 16 Nov (the handoff's last hand-over: Travel's bigger map, Travel's big features, about 10 big features each
-  for Green and Relief); the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
-  inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
+  inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M214** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M222** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -269,7 +280,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0224`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0227`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product
@@ -420,7 +431,8 @@ file used only from config goes in its `BY_CONFIG` list).
 ## 8. Design and motion
 
 **The look (M124, the owner, 8 Nov 2026: the "Ballast" reels for light mode, the "Relay" recording for
-dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
+dark mode).** Light mode is the default since M220 (the owner, 16 Nov: "make the light colour as default"; dark
+until then, and kept for anyone who chose it); the website's top bar has a dark/light switch (`ThemeSwitch`).
 **Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
 text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
 side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), the

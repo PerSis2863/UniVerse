@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ArrangeButton } from '@/components/ArrangeMode';
 import { LanguageMenu } from './LanguageMenu';
+import { useTopNav } from '@/lib/top-nav';
 import { m as motion, AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
@@ -55,6 +56,9 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
   const [activeNotifTab, setActiveNotifTab] = useState('All');
   const { t } = useLanguageStore();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  // M219: on a computer's browser the bar across the top has the search, theme, language and bell: this bar
+  // only shows the page's own controls, and isn't there when the page has none (no empty row under the bar).
+  const top = useTopNav();
 
 
   useEffect(() => {
@@ -121,7 +125,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
     <>
       {/* Phones: the page's name for screen readers only (M210); its actions and controls stay, in a row
           shown only when there are some. */}
-      <h1 className="sr-only lg:hidden">{title}</h1>
+      <h1 className={cn('sr-only', !top && 'lg:hidden')}>{title}</h1>
       {!hideMobileTitle && (leftNode || action || rightNode) ? (
         <div className="lg:hidden px-4 pt-3 pb-2">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
@@ -139,16 +143,16 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
       ) : <div className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
 
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
-      <header className="app-topbar hidden lg:flex lg:sticky lg:top-0 z-20 nav-edge px-8 min-h-16 py-2 items-center justify-between gap-4">
+      {(!top || leftNode || rightNode || action) && <header className={cn('app-topbar hidden lg:flex z-20 nav-edge items-center justify-between gap-4', top ? 'px-6 xl:px-8 pt-3 pb-1' : 'lg:sticky lg:top-0 px-8 min-h-16 py-2')}>
         <div className="flex items-center gap-4 min-w-0">
-          <h1 className="sr-only">{title}</h1>
+          {!top && <h1 className="sr-only">{title}</h1>}
           {leftNode}
         </div>
         <div className="flex items-center gap-2 shrink-0 flex-wrap justify-end">
           {rightNode}
 
           {/* iOS search field: opens the command palette */}
-          <button
+          {!top && <><button
             type="button"
             data-tour="search"
             onClick={openCommandPalette}
@@ -173,7 +177,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
           >
             <Bell className="w-[19px] h-[19px]" strokeWidth={2.1} />
             {unreadCount > 0 && <span aria-hidden className="absolute top-0.5 end-0.5 min-w-[17px] h-[17px] px-1 rounded-full badge-count text-[10px] text-white font-bold leading-[17px] text-center">{unreadCount > 99 ? '99+' : unreadCount}</span>}
-          </button>
+          </button></>}
 
           {action && (
             <button onClick={action.onClick} className="btn-primary btn-sm">
@@ -182,7 +186,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
             </button>
           )}
         </div>
-      </header>
+      </header>}
 
       {/* Notifications: an iOS sheet from the side (full screen on phones). */}
       <AnimatePresence>

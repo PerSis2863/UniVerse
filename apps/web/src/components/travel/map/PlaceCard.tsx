@@ -10,7 +10,7 @@ import { fetcher } from '@/lib/fetcher';
 import { commonsImage } from '@/lib/travel-guide';
 import { dayText, openState, readHours } from '@/lib/opening-hours';
 import { localClock, zoneAt } from '@/lib/travel-local';
-import { listingKind } from '@/lib/travel-map';
+import { listingKind, type StreetPhoto } from '@/lib/travel-map';
 import type { Photo, PlaceInfo, Story } from '@/lib/travel-place';
 import { cn } from '@/lib/utils';
 import { Reviews } from './Reviews';
@@ -23,7 +23,8 @@ import { TripPicker } from './TripPicker';
 export type Picked =
   | { type: 'place'; key: string | null; name: string; kind: string; cls?: string; lat: number; lon: number; review?: string }
   | { type: 'story'; story: Story }
-  | { type: 'photo'; photo: Photo };
+  | { type: 'photo'; photo: Photo }
+  | { type: 'street'; photo: StreetPhoto };
 
 const DAYS = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 const link = 'btn-secondary btn-sm inline-flex items-center gap-1.5';
@@ -44,7 +45,7 @@ export function PlaceCard({ picked, at, onClose }: { picked: Picked; at: Date; o
         <button type="button" onClick={onClose} className="btn-ghost btn-sm p-1.5" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="-mt-8 min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
-        {picked.type === 'place' ? <PlaceBody p={picked} at={at} /> : picked.type === 'story' ? <StoryBody s={picked.story} /> : <PhotoBody ph={picked.photo} />}
+        {picked.type === 'place' ? <PlaceBody p={picked} at={at} /> : picked.type === 'story' ? <StoryBody s={picked.story} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} /> : <PhotoBody ph={picked.photo} />}
       </div>
     </div>
   );
@@ -132,6 +133,25 @@ function PhotoBody({ ph }: { ph: Photo }) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         <a href={ph.page} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />On Wikimedia Commons</a>
+        <a href={directions(ph.lat, ph.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Go there</a>
+      </div>
+    </>
+  );
+}
+
+/** M214: what the street looks like here, from Panoramax (people's street-level photos, CC BY-SA 4.0). */
+function StreetBody({ ph }: { ph: StreetPhoto }) {
+  const when = ph.at ? new Date(ph.at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
+  return (
+    <>
+      <Image src={ph.sd} alt="The street at this spot" width={1024} height={768} unoptimized className="mt-8 h-auto w-full rounded-xl bg-zinc-200 object-cover dark:bg-white/[0.06]" />
+      <div>
+        <h3 className="font-semibold text-zinc-900 dark:text-white">The street here</h3>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">{[when && `Taken ${when}`, ph.heading !== null && `looking ${['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(ph.heading / 45) % 8]}`].filter(Boolean).join(', ')}</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400"><span translate="no">{ph.by ?? 'A Panoramax contributor'}</span> · Panoramax · CC BY-SA 4.0</p>
+      </div>
+      <div className="flex flex-wrap gap-1.5">
+        <a href={ph.hd} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />Full-size photo</a>
         <a href={directions(ph.lat, ph.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Go there</a>
       </div>
     </>

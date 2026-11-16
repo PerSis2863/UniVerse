@@ -13,10 +13,13 @@ import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
+import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
+import { reliefAlerts, reliefHours, reliefPlan, saveReliefPlan } from '../relief-plus';
+import { addGreenPledge, checkGreenPledge, createGreenEvent, deleteGreenEvent, goingGreenEvent, greenEvents, greenFootprints, greenGoals, removeGreenPledge, reportGreenEvent, saveFootprint, setGreenGoal } from '../green-plus';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -65,6 +68,11 @@ export default function impactAppsModule(router: Router) {
   relief.get<{ code: string }>('aid/:code/follow', ({ user, params }) => aidFollowing(user, params.code));
   relief.post<{ code: string }>('aid/:code/follow', { status: 200 }, ({ user, params, body }) => followAid(user, params.code, body ?? {}));
   // M148: the shelter and supply board (src/server/relief-orgs.ts).
+  // M217: disaster alerts, my emergency plan and go-bag, my volunteer hours.
+  relief.get('alerts', () => reliefAlerts());
+  relief.get('plan', ({ user }) => reliefPlan(user));
+  relief.put('plan', ({ user, body }) => saveReliefPlan(user, body ?? {}));
+  relief.get('hours', ({ user }) => reliefHours(user));
   relief.get('places', () => reliefPlaces());
   relief.put<{ id: string }>('orgs/:id/status', ({ user, params, body }) => setReliefOrgStatus(user, params.id, body ?? {}));
   relief.put('watch', ({ user, body }) => setReliefWatch(user, body ?? {}));
@@ -115,6 +123,14 @@ export default function impactAppsModule(router: Router) {
   travel.get('trips', ({ user }) => travelTrips(user));
   travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  // M215: a trip's shared costs and packing list.
+  travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
+  travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));
+  travel.delete<{ id: string; expenseId: string }>('trips/:id/expenses/:expenseId', ({ user, params }) => removeTripExpense(user, params.id, params.expenseId));
+  travel.get<{ id: string }>('trips/:id/packing', ({ user, params }) => tripPacking(user, params.id));
+  travel.post<{ id: string }>('trips/:id/packing', ({ user, params, body }) => addTripPacking(user, params.id, body ?? {}));
+  travel.patch<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params, body }) => updateTripPacking(user, params.id, params.itemId, body ?? {}));
+  travel.delete<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params }) => removeTripPacking(user, params.id, params.itemId));
   travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
   travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
   travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));
@@ -156,6 +172,19 @@ export default function impactAppsModule(router: Router) {
   green.post<{ id: string }>('actions/:id/feeling', { status: 200 }, ({ user, params, body }) => setGreenFeeling(user, params.id, body ?? {}));
   green.post<{ id: string }>('actions/:id/confirm', { status: 200 }, ({ user, params }) => confirmGreenAction(user, params.id));
   green.get('proofs', ({ user }) => greenProofs(user));
+  // M216: footprint, goal and pledges, community events.
+  green.get('footprints', ({ user }) => greenFootprints(user));
+  green.post('footprints', ({ user, body }) => saveFootprint(user, body ?? {}));
+  green.get('goals', ({ user }) => greenGoals(user));
+  green.put('goals', ({ user, body }) => setGreenGoal(user, body ?? {}));
+  green.post('pledges', ({ user, body }) => addGreenPledge(user, body ?? {}));
+  green.post<{ id: string }>('pledges/:id/check', { status: 200 }, ({ user, params, body }) => checkGreenPledge(user, params.id, body ?? {}));
+  green.delete<{ id: string }>('pledges/:id', ({ user, params }) => removeGreenPledge(user, params.id));
+  green.get('events', ({ user, query }) => greenEvents(user, query));
+  green.post('events', ({ user, body }) => createGreenEvent(user, body ?? {}));
+  green.post<{ id: string }>('events/:id/going', { status: 200 }, ({ user, params }) => goingGreenEvent(user, params.id));
+  green.post<{ id: string }>('events/:id/report', { status: 200 }, ({ user, params, body }) => reportGreenEvent(user, params.id, body ?? {}));
+  green.delete<{ id: string }>('events/:id', ({ user, params }) => deleteGreenEvent(user, params.id));
   green.get('teams', ({ user }) => greenTeams(user));
   green.post('teams', ({ user, body }) => createGreenTeam(user, body ?? {}));
   green.post('teams/join', { status: 200 }, ({ user, body }) => joinGreenTeam(user, body ?? {}));

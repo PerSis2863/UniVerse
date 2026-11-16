@@ -1,4 +1,4 @@
-// M209 UniVerse Travel's map: OpenFreeMap's 3D map draws (WebGL), the sights in view are listed, a tapped
+// M209 UniVerse Travel's map (M214: the Layers panel, satellite and transport, the places filter; no CSP refusals): OpenFreeMap's 3D map draws (WebGL), the sights in view are listed, a tapped
 // place shows its real facts (OpenStreetMap through Nominatim: hours, open or closed in its own time,
 // address, links), a review with "I live here" counts under locals, Food lists other places, "Walk from
 // here" strings sights into a walk, the hour slider moves the sun. Phone: the panel opens from the
@@ -24,6 +24,7 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(`${width}: ${e.message.slice(0, 160)}`));
   page.on('dialog', (d) => void d.accept());
+  page.on('console', (m) => { if (/Content Security Policy/.test(m.text())) errors.push(`${width} CSP: ${m.text().slice(0, 160)}`); });
   await page.goto(`${base}/travel?view=map&at=38.6975,-9.2066,16`, { waitUntil: 'load', timeout: 180_000 });
   await page.locator('canvas.maplibregl-canvas').waitFor({ timeout: 90_000 });
   const panel = page.getByRole('complementary', { name: 'Places' });
@@ -34,6 +35,23 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   if (shots) await page.screenshot({ path: `${shots}/travel-map-${width}.png` });
   r.axe.push(...(await axe(page)).map((x) => `map ${x}`));
   r.wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+  // M214: the Layers panel (satellite and transport on, then back), and the filter for the places in view.
+  await page.getByRole('button', { name: 'Layers' }).click();
+  const layersBox = page.getByRole('dialog', { name: 'Map layers' });
+  await layersBox.getByRole('button', { name: 'Satellite' }).click();
+  await layersBox.getByLabel('Trains, metro and ferries').check();
+  await page.waitForTimeout(2500);
+  r.axe.push(...(await axe(page)).map((x) => `layers ${x}`));
+  await layersBox.getByRole('button', { name: 'Map', exact: true }).click();
+  await layersBox.getByLabel('Trains, metro and ferries').uncheck();
+  await page.getByRole('button', { name: 'Close layers' }).click();
+  const filterBox = panel.getByLabel('Filter these places');
+  if (await filterBox.isVisible()) {
+    const first = (await panel.locator('ol li button').first().locator('span.font-semibold').innerText()).trim();
+    await filterBox.fill(first.slice(0, 5));
+    r.filtered = `${await panel.locator('ol li button').count()} for "${first.slice(0, 5)}"`;
+    await filterBox.fill('');
+  }
   if (!phone) {
     // A real place's card.
     const name = (await panel.locator('ol li button').first().locator('span.font-semibold').innerText()).trim();

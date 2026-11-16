@@ -4,6 +4,8 @@ import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
+import { TopNav } from './TopNav';
+import { useTopNav } from '@/lib/top-nav';
 import { Bell, ChevronLeft, Search, Menu, Plus } from 'lucide-react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { openCommandPalette } from '@/lib/palette';
@@ -113,6 +115,8 @@ function MobileTabBar({ role, onMore, moreOpen, onCreate, createOpen }: { role: 
 
 export function DashboardShell({ children }: DashboardShellProps) {
   const sampleMode = useSampleMode();
+  // M219: on a computer in a browser the menu is a bar across the top; the installed app and phones keep the side menu.
+  const top = useTopNav();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const { user } = useAuthStore();
@@ -175,9 +179,10 @@ export function DashboardShell({ children }: DashboardShellProps) {
     <div ref={shellRef} className="shell-in flex min-h-[100dvh]">
       {bootCover && <div aria-hidden className="boot-cover" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setBootCover(false); }}><AppSkeleton /></div>}
       <a href="#main" className="skip-link">Skip to content</a>
-      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {!top && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
-      <div className="flex-1 side-main lg:ms-[calc(var(--side-w)+var(--side-gap))] flex flex-col min-w-0">
+      <div className="flex-1 side-main lg:ms-[calc(var(--side-w)+var(--side-gap))] topnav:ms-0 flex flex-col min-w-0">
+        {top && <TopNav />}
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">

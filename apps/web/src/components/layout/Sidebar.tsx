@@ -16,7 +16,7 @@ import {
   Coffee, Globe2, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
 import { MenuPins } from '@/components/ArrangeMode';
@@ -57,7 +57,7 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
 }
 
 /** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
-const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
+export const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
 
 /**
  * Pages that are tabs of another menu entry, or only reached from search (Ctrl+K / the search
@@ -263,7 +263,7 @@ const sharedNav = (role: string): NavItem[] => [
 const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
-const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
+export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   trace: [
     { href: '/trace', label: 'Console', icon: ScanLine, also: ['/trace/print'] },
     { href: '/trace/map', label: 'Market map', icon: Globe2 },
@@ -294,7 +294,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
 };
 
 /** The menu for the app someone is in. */
-function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }, shown: ImpactApp[]): NavItem[] {
+export function navFor(app: AppId | null, user: { role: string; owner?: boolean; permissions?: string[] }, shown: ImpactApp[]): NavItem[] {
   const owner: NavItem[] = user.owner ? [{ href: '/console', label: 'Owner console', icon: ShieldCheck }] : [];
   // M203: only the apps the owner shows; with one, no "All apps".
   const hub: NavItem[] = shown.length > 1 ? [{ href: '/hub', label: 'All apps', icon: LayoutGrid }] : [];
@@ -307,7 +307,7 @@ function navFor(app: AppId | null, user: { role: string; owner?: boolean; permis
 }
 
 /** The app last used: shared pages (Messages, Collaborate…) keep its menu. */
-function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
+export function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
   const here = appFor(pathname)?.id ?? null;
   const last = useSyncExternalStore((cb) => { window.addEventListener('storage', cb); return () => window.removeEventListener('storage', cb); }, () => { try { return localStorage.getItem(LAST_APP) as AppId | null; } catch { return null; } }, () => null);
   useEffect(() => { if (here) try { localStorage.setItem(LAST_APP, here); } catch { /* private mode */ } }, [here]);
@@ -317,32 +317,38 @@ function useCurrentApp(pathname: string, shown: ImpactApp[]): AppId | null {
 }
 
 /** The app switcher at the top of the menu: the app you're in, and every other one a tap away. */
-function AppSwitcher({ app, role, onPick, shown }: { app: AppId | null; role: string; onPick?: () => void; shown: ImpactApp[] }) {
+export function AppSwitcher({ app, role, onPick, shown, compact }: { app: AppId | null; role: string; onPick?: () => void; shown: ImpactApp[]; compact?: boolean }) {
   const [open, setOpen] = useState(false);
   const current = APPS.find((a) => a.id === app);
   // M203: one app shown: it's the website's name, nothing to switch to.
   const single = shown.length === 1;
+  const box = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
     const k = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    // M219: a click anywhere else closes it too.
+    const down = (e: PointerEvent) => { if (!box.current?.contains(e.target as Node)) setOpen(false); };
     window.addEventListener('keydown', k);
-    return () => window.removeEventListener('keydown', k);
+    document.addEventListener('pointerdown', down, true);
+    return () => { window.removeEventListener('keydown', k); document.removeEventListener('pointerdown', down, true); };
   }, [open]);
   return (
-    <div className="relative px-3 pb-2">
+    // M219: `compact` in the bar across the top (the app's name only, the list opening under it).
+    <div ref={box} className={cn('relative', compact ? 'shrink-0' : 'px-3 pb-2')}>
       <button type="button" onClick={() => !single && setOpen((v) => !v)} aria-expanded={single ? undefined : open} aria-haspopup={single ? undefined : 'menu'}
-        className="side-switch w-full flex items-center gap-3 overflow-hidden rounded-xl px-2.5 py-2 bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start">
-        <AppIcon id={app ?? 'hub'} size={32} />
-        <span className="side-label min-w-0 flex-1">
-          <span className="block text-[13px] font-semibold text-zinc-900 dark:text-white truncate">{current?.name ?? 'UniVerse Impact'}</span>
-          <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>
+        className={cn('flex items-center overflow-hidden bg-black/[0.03] hover:bg-black/[0.05] border border-black/[0.07] dark:bg-white/[0.05] dark:hover:bg-white/[0.09] dark:border-white/[0.07] transition-colors text-start', compact ? 'gap-2 rounded-lg h-9 ps-1 pe-2' : 'side-switch w-full gap-3 rounded-xl px-2.5 py-2')}>
+        <AppIcon id={app ?? 'hub'} size={compact ? 26 : 32} />
+        {/* The folded side menu hides `side-label`s (M33): not in the bar across the top. */}
+        <span className={cn('min-w-0', !compact && 'side-label flex-1')}>
+          <span className={cn('block font-semibold text-zinc-900 dark:text-white truncate', compact ? 'text-[13.5px] max-w-[11rem]' : 'text-[13px]')}>{current?.name ?? 'UniVerse Impact'}</span>
+          {!compact && <span className="block text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{current?.tagline ?? 'All your apps'}</span>}
         </span>
-        {!single && <ChevronsUpDown className="side-label w-4 h-4 text-zinc-400" aria-hidden />}
+        {!single && <ChevronsUpDown className={cn('w-4 h-4 text-zinc-400', !compact && 'side-label')} aria-hidden />}
       </button>
       <AnimatePresence>
         {open && (
           <motion.div role="menu" initial={{ opacity: 0, y: -6, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
-            className="side-menu absolute left-3 right-3 top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl">
+            className={cn('absolute top-full z-20 mt-1 rounded-2xl border border-white/10 bg-[#0f0f11] p-1.5 shadow-2xl', compact ? 'start-0 w-72' : 'side-menu left-3 right-3')}>
             {shown.map((a) => (
               <Link key={a.id} role="menuitem" data-uv-app={a.id} href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
@@ -397,7 +403,8 @@ function NavItemComponent({
   if (item.subItems) {
     if (folded) isOpen = false;
     return (
-      <div className="space-y-1">
+      // M221: known by its name when arranged (the side menu and the bar across the top share the order).
+      <div className="space-y-1" data-arrange-key={t(item.label)}>
         <button
           onClick={onToggle}
           onPointerEnter={(e) => { onHover(item.label); tip(e.currentTarget); }}
@@ -459,7 +466,7 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-arrange-key={t(item.label)} data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
         {hoverPill(item.href, on)}
@@ -481,6 +488,18 @@ const subscribeWide = (onChange: () => void) => {
   q.addEventListener('change', onChange);
   return () => q.removeEventListener('change', onChange);
 };
+
+/** Signs out of Firebase and this device, then opens the sign-in page (the side menu and the bar across the top). */
+export async function signOut(logout: () => void, router: { push: (href: string) => void }) {
+  try {
+    const { auth } = await import('@/lib/firebase');
+    await auth.signOut();
+  } catch (error) {
+    console.warn('Firebase signOut failed:', error);
+  }
+  logout();
+  router.push('/login');
+}
 
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
@@ -526,16 +545,7 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
   const nav = navFor(app, user, shown);
   const initials = user.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
 
-  const handleLogout = async () => {
-    try {
-      const { auth } = await import('@/lib/firebase');
-      await auth.signOut();
-    } catch (error) {
-      console.warn('Firebase signOut failed:', error);
-    }
-    logout();
-    router.push('/login');
-  };
+  const handleLogout = () => signOut(logout, router);
 
   return (
     <>

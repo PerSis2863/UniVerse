@@ -196,7 +196,7 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
                   {growth.cohorts.map((_, k) => (
                     <td key={k} className="p-0.5">
                       {k < c.kept.length && c.size > 0 ? (
-                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(39,39,42,${0.08 + (c.kept[k] / 100) * 0.6})` }}>{c.kept[k]} %</span>
+                        <span className="block rounded px-1 py-1 text-center text-zinc-900 dark:text-white" style={{ background: `rgba(39,39,42,${0.08 + (c.kept[k] / 100) * 0.42})` }}>{c.kept[k]} %</span>
                       ) : null}
                     </td>
                   ))}
@@ -261,7 +261,7 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
             const k = KIND[item.kind];
             const Icon = k.icon;
             return (
-              <li key={`${item.kind}-${item.id}`} className={cn(card, 'p-4', item.hidden && 'opacity-80')}>
+              <li key={`${item.kind}-${item.id}`} className={cn(card, 'p-4')}>
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-400">
                   <span className="inline-flex items-center gap-1 font-semibold text-zinc-800 dark:text-zinc-200"><Icon className="w-3.5 h-3.5" aria-hidden /> {k.label}</span>
                   <span>{item.title.replace('_', ' ')}{item.severity ? ` · ${item.severity}` : ''}{item.repeats ? ` · ${item.repeats + 1} times` : ''}</span>

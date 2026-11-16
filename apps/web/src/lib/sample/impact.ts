@@ -260,8 +260,13 @@ export function sampleGreenMe(me: { id: string }) {
   const thisWeek = actions.filter((a) => a.kind === challenge.kind && Date.parse(a.createdAt) >= week);
   const mine = thisWeek.filter((a) => a.verifiedAt).reduce((s, a) => s + a.amount, 0), waiting = thisWeek.filter((a) => !a.verifiedAt).reduce((s, a) => s + a.amount, 0);
   const proven = actions.filter((a) => a.verifiedAt);
+  // M216: a year of made-up days (more in spring and summer), for the heatmap and the year card.
+  const year: Record<string, number> = {}, yr = rng(7);
+  for (let i = 0; i < 365; i++) { const t = now - i * DAY, m = new Date(t).getUTCMonth(); if (yr() < (m >= 3 && m <= 8 ? 0.55 : 0.3)) year[iso(t).slice(0, 10)] = Math.round((1 + yr() * 9) * 10) / 10; }
+  for (const a of actions) { const d = a.createdAt.slice(0, 10); year[d] = Math.round(((year[d] ?? 0) + a.co2Kg) * 10) / 10; }
   return {
-    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind },
+    totals: { ...totals, kg: Math.round(kg * 10) / 10, kgByKind, longest: 12 },
+    year,
     badges: BADGES.map((b) => ({ id: b.id, label: b.label, text: b.text, earned: b.earned(totals) })),
     challenge: { ...challenge, mine: Math.round(mine * 10) / 10, waiting: Math.round(waiting * 10) / 10, team: Math.round((mine * 7.4 + 12) * 10) / 10 },
     verified: { actions: proven.length, kg: Math.round(proven.reduce((s, a) => s + a.co2Kg, 0) * 10) / 10 },
@@ -272,6 +277,54 @@ export function sampleGreenMe(me: { id: string }) {
     recent: actions.slice(0, 30), teams: 2, easiest: easiestKind(actions),
     community: { kg: 182_450, actions: 41_236, people: 2_904 },
   };
+}
+
+/** GET /relief/alerts (M217): made-up alerts in the shape GDACS and USGS give. */
+export function sampleReliefAlerts() {
+  const at = (h: number) => iso(Date.now() - h * 3_600_000);
+  return { alerts: [
+    { id: 'sample-al-1', kind: 'TC', title: 'Tropical cyclone Lina', level: 'red', lat: 18.2, lng: 121.6, at: at(5), url: null, country: 'Philippines', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-2', kind: 'FL', title: 'Flood in the Po valley', level: 'orange', lat: 45.0, lng: 10.6, at: at(20), url: null, country: 'Italy', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-3', kind: 'EQ', title: 'M6.2 off the coast of Chile', level: 'orange', lat: -33.1, lng: -72.4, at: at(30), url: null, country: null, source: 'USGS', magnitude: 6.2 },
+    { id: 'sample-al-4', kind: 'WF', title: 'Forest fires in Andalusia', level: 'orange', lat: 37.3, lng: -5.9, at: at(44), url: null, country: 'Spain', source: 'GDACS', magnitude: null },
+    { id: 'sample-al-5', kind: 'EQ', title: 'M4.9 Azores', level: 'green', lat: 38.5, lng: -28.3, at: at(60), url: null, country: null, source: 'USGS', magnitude: 4.9 },
+  ], credit: 'Alerts: GDACS (UN and European Commission) and the US Geological Survey' };
+}
+/** GET /relief/plan (M217) */
+export function sampleReliefPlan() {
+  return { plan: { people: 3, meetNear: 'The bakery on the corner', meetFar: 'Aunt Rosa’s house, Sintra', contacts: [{ name: 'Rosa', phone: '+351 21 000 0000' }], needs: 'Inhaler for Leo', pets: 'Mimi the cat', notes: '' }, kit: ['water', 'torch', 'firstaid', 'docs'], updatedAt: iso(Date.now() - 9 * DAY) };
+}
+/** GET /relief/hours (M217) */
+export function sampleReliefHours() {
+  const s = (id: string, title: string, org: string, daysAgo: number, hours: number) => ({ id, title, org, startsAt: iso(Date.now() - daysAgo * DAY), hours });
+  return { total: 14.5, shifts: [s('sample-sh-1', 'Sorting donations', 'Eastside Food Bank', 3, 3), s('sample-sh-2', 'Night shelter evening', 'Harbour Night Shelter', 10, 5), s('sample-sh-3', 'Hot meals round', 'Red Door Relief', 17, 4), s('sample-sh-4', 'Warehouse', 'Eastside Food Bank', 25, 2.5)] };
+}
+/** GET /green/footprints (M216): two made-up results a few months apart. */
+export function sampleGreenFootprints() {
+  const a = { carKmWeek: 120, car: 'petrol', transitKmWeek: 20, shortFlights: 2, longFlights: 1, diet: 'medium', heat: 'gas', size: 'flat', people: 2, greenPower: false, kwhMonth: 250, stuff: 'some' };
+  return { history: [
+    { id: 'sample-fp-2', kg: 6815, createdAt: iso(Date.now() - 3 * DAY), answers: { ...a, carKmWeek: 60, longFlights: 0, diet: 'low' } },
+    { id: 'sample-fp-1', kg: 8984, createdAt: iso(Date.now() - 120 * DAY), answers: a },
+  ] };
+}
+/** GET /green/goals (M216) */
+export function sampleGreenGoals() {
+  const d = (back: number) => iso(Date.now() - back * DAY).slice(0, 10), m = new Date();
+  return { monthlyKg: 60, monthKg: 38.4, monthStart: new Date(Date.UTC(m.getUTCFullYear(), m.getUTCMonth(), 1)).toISOString().slice(0, 10), pledges: [
+    { id: 'sample-pl-1', tip: 'meat-free-days', days: [d(1), d(4), d(8)], createdAt: iso(Date.now() - 20 * DAY) },
+    { id: 'sample-pl-2', tip: 'bike-commute', days: [d(0), d(1), d(2), d(3), d(6)], createdAt: iso(Date.now() - 40 * DAY) },
+  ] };
+}
+/** GET /green/events (M216): made-up community events nearby. */
+export function sampleGreenEvents() {
+  const d = (ahead: number) => iso(Date.now() + ahead * DAY).slice(0, 10);
+  const e = (id: string, title: string, kind: string, ahead: number, time: string, place: string, lat: number, lng: number, going: number, details: string) => ({ id, name: NAMES[going % NAMES.length].split(' ')[0], title, kind, date: d(ahead), time, place, lat, lng, details, going, imGoing: going % 3 === 0, mine: false });
+  return { events: [
+    e('sample-ev-1', 'Beach clean-up at Carcavelos', 'cleanup', 3, '10:00', 'Carcavelos beach, by the fort', 38.677, -9.335, 24, 'Gloves and bags provided. Bring water and a hat.'),
+    e('sample-ev-2', 'Plant 200 trees in Monsanto', 'planting', 9, '09:30', 'Monsanto park, Alvito picnic area', 38.721, -9.188, 41, 'With the city’s park rangers. Children welcome with an adult.'),
+    e('sample-ev-3', 'Repair café', 'repair', 12, '14:00', 'Biblioteca de Alcântara', 38.705, -9.177, 9, 'Bring a broken toaster, lamp or bike: volunteers help you fix it.'),
+    e('sample-ev-4', 'Clothes swap', 'swap', 18, '11:00', 'LX Factory, main hall', 38.703, -9.178, 33, 'Bring up to five clean things, take five home.'),
+  ] };
 }
 
 const TEAMS = ['Class 10B', 'Riverside Cycling Club', 'Marketing team', 'Green Ward 12', 'Engineering', 'Eco Warriors', 'Sunrise School', 'Climate Crew', 'Plant Parents', 'Zero Waste Hub', 'Office Bikers', 'Ocean Savers'];
@@ -289,6 +342,7 @@ export function sampleGreenTeams(me: { id: string; name: string }) {
   return {
     mine: [team('sample-team-1', false), team('sample-team-4', true)],
     leaderboard: board,
+    week: board.map((t) => ({ ...t, kg: Math.round(t.kg / 4.3 * 10) / 10, actions: Math.round(t.actions / 4.3) })).sort((a, b) => b.kg - a.kg).map((t, i) => ({ ...t, rank: i + 1 })),
     people: NAMES.slice(0, 10).map((name, i) => ({ rank: i + 1, name, kg: Math.round((640 - i * 48) * 10) / 10, actions: 90 - i * 6, me: false })),
   };
 }
@@ -692,6 +746,21 @@ export function sampleTravelTrip(me: { id: string; name?: string }) {
     ],
     members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false }],
   };
+}
+/** GET /travel/trips/:id/expenses (M215): costs shared with the sample friend (made up). */
+export function sampleTripExpenses(me: { id: string }) {
+  const e = (id: string, what: string, amount: number, paidBy: string, category: string, day: string, split = [me.id, 'sample-friend']) => ({ id, what, amount, currency: 'EUR', paidBy, category, day, split, createdBy: paidBy, createdAt: new Date().toISOString() });
+  return { expenses: [
+    e('sample-x-1', 'Dinner at Time Out Market', 4600, 'sample-friend', 'food', '2027-04-08'),
+    e('sample-x-2', 'Tram 28 tickets', 1200, me.id, 'travel', '2027-04-09'),
+    e('sample-x-3', 'Jerónimos Monastery', 2400, me.id, 'fun', '2027-04-08'),
+    e('sample-x-4', 'Two nights in Lisbon', 24000, 'sample-friend', 'stay', '2027-04-08'),
+  ] };
+}
+/** GET /travel/trips/:id/packing (M215) */
+export function sampleTripPacking() {
+  const p = (id: string, item: string, grp: string, done = false) => ({ id, item, grp, done, doneBy: done ? 'sample-friend' : null });
+  return { items: [p('sample-p-1', 'Passport (valid six months past the trip)', 'Documents', true), p('sample-p-2', 'Comfortable walking shoes', 'Clothes'), p('sample-p-3', 'A light jacket for the evenings', 'Weather'), p('sample-p-4', 'Sunscreen', 'Health', true)] };
 }
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {

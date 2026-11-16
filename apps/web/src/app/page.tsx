@@ -2,7 +2,7 @@
 
 import Link from '@/components/ui/Link';
 import { InstallGuide } from '@/components/pwa/InstallGuide';
-import { Activity, Fragment, useDeferredValue, useEffect, useState } from 'react';
+import { Activity, Fragment, Suspense, useDeferredValue, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, MotionConfig, m as motion } from 'framer-motion';
 import { ArrowRight, ChevronDown, Smartphone } from 'lucide-react';
@@ -137,6 +137,14 @@ function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
 /** Chrome's beforeinstallprompt event (not in the DOM types). */
 type InstallPromptEvent = Event & { prompt(): Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> };
 
+/** M221: an app's sections on the landing, built ahead while hidden (M137, React's Activity). Its own Suspense
+ *  boundary catches a part still downloading: without it the hidden Activity did, and when the visitor moved on to
+ *  another tab before the download ended, the dropped Activity made React crash on its arrival ("null is not an
+ *  object (evaluating 'e.stateNode._retryCache')", the live error log, 16 Nov). */
+function AppPart({ shown, children }: { shown: boolean; children: React.ReactNode }) {
+  return <Activity mode={shown ? 'visible' : 'hidden'}><Suspense fallback={null}><div className="app-in">{children}</div></Suspense></Activity>;
+}
+
 export default function ShowcasePage() {
   const { user } = useAuthStore();
   const app = useChosenApp();
@@ -266,12 +274,12 @@ export default function ShowcasePage() {
               sections are built ahead, hidden (React's Activity: no effects, no loops while hidden), so the
               first switch to an app shows them at once instead of building them in that frame. Each part's
               looping demos run only while it is on screen (Live); each section arrives its own way (M63,
-              bits.tsx `Motion`); `.app-in` fades a newly shown app in. */}
-          {(warm === 'campus' || later === 'campus') && <Activity mode={later === 'campus' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></></div></Activity>}
-          {(warm === 'trace' || later === 'trace') && <Activity mode={later === 'trace' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></></div></Activity>}
-          {(warm === 'relief' || later === 'relief') && <Activity mode={later === 'relief' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></></div></Activity>}
-          {(warm === 'green' || later === 'green') && <Activity mode={later === 'green' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></></div></Activity>}
-          {(warm === 'play' || later === 'play') && <Activity mode={later === 'play' ? 'visible' : 'hidden'}><div className="app-in"><><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></></div></Activity>}
+              bits.tsx `Motion`); `.app-in` fades a newly shown app in (AppPart). */}
+          {(warm === 'campus' || later === 'campus') && <AppPart shown={later === 'campus'}><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></AppPart>}
+          {(warm === 'trace' || later === 'trace') && <AppPart shown={later === 'trace'}><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></AppPart>}
+          {(warm === 'relief' || later === 'relief') && <AppPart shown={later === 'relief'}><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></AppPart>}
+          {(warm === 'green' || later === 'green') && <AppPart shown={later === 'green'}><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></AppPart>}
+          {(warm === 'play' || later === 'play') && <AppPart shown={later === 'play'}><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></AppPart>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 

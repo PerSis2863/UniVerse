@@ -13,7 +13,7 @@ const onThemeChange = (cb: () => void) => {
 const noSubscribe = () => () => {};
 
 export function ThemeToggle() {
-  const theme = useSyncExternalStore<Theme>(onThemeChange, getSavedTheme, () => 'dark');
+  const theme = useSyncExternalStore<Theme>(onThemeChange, getSavedTheme, () => 'light');
   const [isOpen, setIsOpen] = useState(false);
   // false during server rendering and hydration, true afterwards
   const mounted = useSyncExternalStore(noSubscribe, () => true, () => false);

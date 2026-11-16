@@ -2,6 +2,8 @@
 @variant dark (&:where(.dark, .dark *));
 /* `short:` a laptop-height screen or less: sign in tightens so it fits without scrolling. */
 @custom-variant short (@media (max-height: 860px));
+/* M219: a computer's browser, where the menu is the bar across the top (TopNav.tsx `TOP_NAV`); the installed app keeps the side menu. */
+@custom-variant topnav (@media (min-width: 1024px) and (display-mode: browser));
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */
@@ -2759,6 +2761,8 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: rgba(56, 189, 248, 0.14); --badge-blue-color: #7dd3fc;
   --card-hover-border: rgba(56, 189, 248, 0.28);
 }
+/* M214: Travel's map Layers panel grows from its button. */
+@keyframes layers-in { from { opacity: 0; transform: scale(0.94) translateY(-4px); } }
 /* Travel's dark fills from 500 down carry white text (4.8:1 and more); its light 400 (`--tint`, my chat bubbles) takes ink. */
 :root[data-app="travel"]:not([data-accent]) .dark :is(.bg-tint, .bg-primary), :root[data-app="travel"]:not([data-accent]).dark :is(.bg-tint, .bg-primary) { color: #0b0c0d; }
 
@@ -3038,7 +3042,7 @@ html[data-scrolling] .tracks-next::after { animation-play-state: paused; }
    fixed box (transform, filter, containment) and the page behind doesn't scroll. It arrives with a fade
    and a slight settle. */
 .studio-focus { inset: 0 !important; width: auto !important; height: auto !important; max-width: none !important; margin: 0 !important; }
-html[data-focus] .side-shell, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
+html[data-focus] .side-shell, html[data-focus] .top-nav, html[data-focus] .app-topbar, html[data-focus] .ai-fab { visibility: hidden; }
 html[data-focus] :is(.side-main, main, .page-stage) { transform: none !important; filter: none !important; contain: none !important; }
 html[data-focus], html[data-focus] body { overflow: hidden; }
 
@@ -3053,7 +3057,7 @@ html[data-focus], html[data-focus] body { overflow: hidden; }
 @keyframes studio-focus-in { from { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } 30% { opacity: 1; } }
 @keyframes studio-focus-out { to { opacity: 0; transform: translate(var(--fx, 0px), var(--fy, 10px)) scale(var(--fs, 0.96)); } }
 @keyframes studio-focus-back { from { opacity: 0; transform: scale(0.985); } }
-html[data-focus] :is(.side-shell, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
+html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: visibility 0s linear 300ms; }
 @media (prefers-reduced-motion: reduce) {
   .studio-focus, .studio-focus-back { animation: tracks-fade 200ms ease both; }
   .studio-focus.studio-focus-out { animation: studio-fade-out 160ms ease both; }

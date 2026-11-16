@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarPlus, Check, Copy, LogOut, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -19,10 +19,13 @@ import { Cover, PlaceSearch } from './travel-ui';
 import { TripDays, type Move, type TripItem } from './trip-days';
 import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
+import { TripMoney } from './trip-money';
+import { TripPacking } from './trip-packing';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
 // and how to get between them, each city's days with places dragged into them, the whole trip's budget,
-// friends planning it together (an invite link; their changes arrive live) and a calendar file.
+// friends planning it together (an invite link; their changes arrive live) and a calendar file. M215: two
+// more parts beside the plan (?part=money|packing): shared costs and settling up, and a packing list.
 
 interface Member { id: string; name: string; avatar: string | null; owner: boolean }
 export interface TripAnswer {
@@ -37,7 +40,7 @@ const range = (from: string | null, to: string | null) => {
 };
 
 export function TravelTrip() {
-  const id = useSearchParams().get('id') ?? '';
+  const sp = useSearchParams(), id = sp.get('id') ?? '', part = sp.get('part') === 'money' ? 'money' : sp.get('part') === 'packing' ? 'packing' : 'plan';
   const router = useRouter();
   const key = id ? `/travel/trips/${id}` : null;
   const refreshInterval = useLiveInterval(30_000, 0);
@@ -108,7 +111,7 @@ export function TravelTrip() {
   return (
     <div className="space-y-6">
       {/* The trip: its name, when, the cities and who's planning it. */}
-      <section className="relative isolate flex min-h-[14rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 sm:p-8">
+      <section className="relative isolate flex min-h-[14rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 pt-16 sm:p-8 sm:pt-16">
         <Cover file={banner} width={1600} priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/40 to-black/10" aria-hidden />
         <Link href="/travel/saved" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />Trips</Link>
@@ -150,6 +153,13 @@ export function TravelTrip() {
         </label>
       </section>
 
+      <Segmented<'plan' | 'money' | 'packing'> label="Part of the trip" large value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
+        segments={[{ value: 'plan', label: 'Plan', icon: <Route className="h-4 w-4" aria-hidden /> }, { value: 'money', label: 'Money', icon: <Wallet className="h-4 w-4" aria-hidden /> }, { value: 'packing', label: 'Packing', icon: <Luggage className="h-4 w-4" aria-hidden /> }]} />
+
+      {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
+      {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}
+
+      {part === 'plan' && <>
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* The route. */}
         <section className="panel p-5" aria-labelledby="trip-route">
@@ -252,6 +262,7 @@ export function TravelTrip() {
         </ul>
         <button type="button" onClick={() => void remove()} className="btn-ghost btn-sm mt-3 inline-flex items-center gap-1.5 text-red-600 dark:text-red-400">{data.owner ? <><Trash2 className="h-4 w-4" aria-hidden />Delete this trip</> : <><LogOut className="h-4 w-4" aria-hidden />Leave this trip</>}</button>
       </section>
+      </>}
     </div>
   );
 }

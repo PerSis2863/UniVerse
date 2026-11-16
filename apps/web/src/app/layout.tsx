@@ -66,7 +66,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        {/* The phone's bars follow the app's theme (M46; dark by default): the browser bar's colour, and
+        {/* The phone's bars follow the app's theme (M46; light by default since M220): the browser bar's colour, and
             on iPhone home-screen apps the status bar's text (white over dark, black over light). The
             script below adds both tags before paint (written by React, they'd be added a second time
             once the script changed them), src/lib/theme.ts updates them when the theme changes. */}
@@ -74,7 +74,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-title" content="UniVerse" />
         {/* Blocking script: applies .dark class before paint to prevent theme flash */}
-        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=!t||t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');${BARS_SCRIPT}if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
+        <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');${BARS_SCRIPT}if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
         {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}

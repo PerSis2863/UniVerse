@@ -89,7 +89,7 @@ const invite = await page.locator('code').first().innerText();
 const friend = await open('bob@student.com', 'light', 390);
 await friend.page.goto(invite.replace(/^https?:\/\/[^/]+/, base), { waitUntil: 'load', timeout: 180_000 });
 // Wait until the page is live (its list of trips has loaded), then join.
-await friend.page.getByText(/No trips yet|planning/).first().waitFor({ timeout: 90_000 });
+await friend.page.getByRole('button', { name: 'New trip' }).first().waitFor({ timeout: 90_000 });
 await friend.page.getByRole('button', { name: 'Join the trip' }).click();
 await friend.page.waitForURL(/\/travel\/trip\?id=/, { timeout: 60_000 });
 await friend.page.getByRole('heading', { name: 'Route' }).waitFor({ timeout: 90_000 });

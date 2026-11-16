@@ -7541,8 +7541,10 @@ professional and modern like the other apps".
   (the tab row does their job).
 - **Checks fixed:** `travel-ui.mjs` opened `/travel/saved` (Trips since M206) and its "Save" click also matched
   "Saved"; `travel-board-ui.mjs` now also sends after the block (403 both ways).
-- **Not tried in a browser:** the console's Moderation list with a Travel report (it needs `local:serve
-  --owner-test`); its server part has a unit test.
+- **Tried in the browser afterwards** (`console-ui.mjs` on `local:serve --test-secret --owner-test`, which now
+  adds a reported board note): its Travel group, the reason, Hide, then Restore with the reports cleared. Fixed
+  on the way: hidden items were faded (their link text failed contrast) and the cohort table's darkest cells
+  were too dark for their dark text.
 - **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
   (`travel-moderation.test.ts`, the board's), `pnpm check`.
 
@@ -7570,3 +7572,226 @@ Asked and not started (each its own item, from M214; next database update 0224):
 
 The launch focus (section 4 of AGENTS.md) pauses new features; the owner asked for these anyway, so build
 them, one item each, and keep the CPU on the Worker flat (read outside data in the browser where possible).
+
+## M214: Travel's map, clearer and bigger (16 Nov)
+
+The owner: "the map needs to be more good looking and accurate … a lot of details and features … my cloudflare
+cpu limit should not rise"; on the live map: "this thing look messy … user cant understand what to look for …
+it should look sharp"; "add auto zoom when i click on the specific restaurant … smooth".
+
+- **Pins, not dots** (`map/pins.tsx`): each kind of place has a round pin in its own colour with its lucide icon
+  (food orange, cafés brown, drinks purple, sights rose, museums pink, parks green, shops amber, hotels indigo,
+  transport blue; stories amber books, reviews green stars), drawn on a canvas at twice the size from hidden SVGs
+  the component renders, added with `addImage(…, { pixelRatio: 2 })` before every style. The chosen kind is one
+  symbol layer (`uv-hit`): pin plus name, the notable first (`symbol-sort-key: rank`), never overlapping
+  (wider spacing when zoomed out); other places (dark style) only from zoom 16 as a small dot with a quiet
+  name, and never over a pin. The chips and the list show the same icons. Drawing a pin never waits more than
+  a second (the map doesn't wait on them).
+- **Tapping a place glides in** (`pick`): `flyTo` to zoom 17 (tilted when 3D is on), eased in and out,
+  leaving room for the card; a short ease when already close; a jump with Reduce Motion.
+- **Layers panel** (remembered on the device, `uv-travel-map-look`): Map or Satellite (EOX's Sentinel-2
+  cloudless, CC BY 4.0: soft close up, said so), 3D hills and buildings (AWS Terrain Tiles; relief shading is
+  always on except under the satellite pictures), trains, metro and ferries (lines coloured by kind, stations
+  as train pins), street photos (Panoramax coverage; tap a line to "look around": the nearest photo, its date,
+  direction and author, CC BY-SA 4.0), walking-distance rings (5, 10, 15 min from the middle), photos people
+  took, stories, UniVerse reviews. The globe when zoomed out; a sky that follows the sun there.
+- **Where I am:** a blue dot and a circle as wide as the phone is unsure (only on this screen, never sent).
+- **Filter** the places in view by name.
+- **No Worker CPU:** every tile and picture goes from its source to the browser. The page's security rules
+  (`security-headers.ts`) allow the terrain and satellite tiles, Panoramax's API and the hosts its pictures
+  come from (`STREET_HOSTS` in `src/lib/travel-map.ts`, with the storage server two of them redirect to;
+  pictures elsewhere are skipped).
+- **Checked:** `travel-map-ui.mjs` (now also the Layers panel, satellite and transport, the filter, and no CSP
+  refusals) on `local:dev` and `local:serve`, screenshots (Zermatt in 3D, the globe, Belém by satellite, Paris
+  transport and street photos, Nantes's food), unit tests (`streetPhotoOf`), `pnpm check`.
+
+## M215: a trip's Money and Packing (16 Nov)
+
+The owner: "add more big features in the travel app which are unique and different from others or combine
+different apps features into one app". A trip (`/travel/trip?id=…`) now has three parts (`?part=`): Plan (as
+before), **Money** and **Packing**, for everyone planning it, live (database update 0224).
+
+- **Money** (`trip-money.tsx`): shared costs (what, how much, currency, kind, who paid, for whom, the day);
+  where it stands (spent so far, against the Plan tab's estimate, your balance); **Settle up**, the fewest
+  payments that make everyone square, each with "Mark as paid" (a payment back is a cost of kind `settle`);
+  a **converter** between any of the app's currencies (World Bank yearly average rates: no outside call); and
+  **what things cost there** (a coffee, lunch, dinner, a beer, a ride, a museum) per country of the trip, in
+  the trip's currency and the local one, from the country's price level (said so). Sums in
+  `src/lib/travel-split.ts` (cents; per currency: a bill in yen is settled in yen; an even split's leftover
+  cents go to the first people so balances always add up to nothing; `readAmount` takes "12,50", "1.234,56").
+- **Packing** (`trip-packing.tsx`): a shared list grouped (documents, money, clothes, weather, power, health,
+  wash bag, what you'll do), ticked by anyone ("Packed by Maya"), with your own things; **For this trip**
+  suggests what to take from the trip itself (`src/lib/travel-pack.ts`): its length (clothes counts), each
+  place's weather in the month you're there (the 145 places with a climate chart), what the places are for
+  (beaches, mountains, temples, nightlife), the plugs there against your home country's (an adapter only
+  when none fits) and the cash you'll need; "Add all" or one by one.
+- **Server** (`src/server/travel-trip-extras.ts`, routes under `/travel/trips/:id/expenses|packing`): only the
+  trip's members (`tripFor`); who paid and who shares must be members; a payment back goes from one person to
+  another; at most 500 costs and 200 packing things a trip; packing rows written 10 at a time (D1's 100 bound
+  values); changes `publish` a refresh to the members. Sample answers for the demo.
+- **For code that builds on it:** money figures carry `data-no-motion` (the page-wide count-up made a
+  changing amount read wrong while it ran); the trip hero has room above the title for the back link.
+- **Checked:** `travel-money-ui.mjs` (new: two people, a dinner, the balance, settling up, the converter and
+  prices, the packing suggestions for Bangkok and Kyoto in August, Add all, a tick seen by the friend; axe at
+  1280 dark and 390 light), `travel-trip-ui.mjs` (its wait no longer depends on old test trips), unit tests
+  (`travel-split`, `travel-pack`, `travel-trip-extras`), `pnpm check`.
+
+## M216: Green's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10 features
+in there each … professional and animated and realistic and ultra smooth" (the calmer colours were M212).
+Green has a tab row on every page (`GreenTabs`, the shared `TabRow`), each new part loaded only when opened
+(`?view=`; database update 0225):
+
+1. **Footprint** (`GreenFootprint.tsx`): a yearly carbon footprint from a few answers (car and transport, flights,
+   home size, heating, people, electricity and tariff, diet, new things bought), against the world's average
+   (4.7 t) and 1.5 °C (2.3 t), its parts, the biggest one linked to its tips; results saved to see the change
+   (the server works the total out again from the checked answers: `readFootprint` / `footprint`).
+2. **Journeys** (`GreenJourney.tsx`): a journey's CO₂ by each way of going for the people travelling (a car's is
+   shared), cleanest first; type the km or pick two of Travel's places; "I went this way" logs it as an action.
+3. **Goals**: a monthly goal of CO₂ (a ring, this month's actions counted) and **pledges** with a week of days to
+   tick and the run of days (`green_goals`, `green_pledges`: days kept as JSON, four months).
+4. **Tips**: 16 actions ranked by what they save a year (about, said so), by area, each "Pledge this".
+5. **Events** (`GreenEvents.tsx`): clean-ups, plantings, repair cafés, swaps, nature walks, near you or everywhere;
+   "I'm going" (only the count shows, never who), directions, a calendar file; adults organise (the shared
+   `adultOnly` in `safety.ts`, moved there from the Travel board), three reports hide one, the organiser deletes.
+6. **Green places** (`GreenPlaces.tsx`): recycling, water refill, bike hire, EV charging, second-hand shops and
+   markets near you, read from the map's own tiles as you move (OpenMapTiles' `poi` subclasses; Overpass
+   wasn't needed and couldn't be reached from the test machine), with counts, a list by distance, directions
+   and the place on OpenStreetMap.
+7. **Your year** on My impact (`GreenYear.tsx`): a heatmap of every day of the last year, days acted, the
+   longest run, the best month (`greenMe` now returns `year`, kg a day, from the actions it already reads).
+8. **What it means**: the CO₂ saved as trees for a year, km not driven, phone charges, days of a person's emissions.
+9. **A picture of your year**: drawn on a canvas in the browser and saved as a PNG to share.
+10. **Team league**: this week's ranking (since Monday) beside the 30 days, on Teams (`greenTeams` → `week`).
+
+- **Factors** (`src/lib/green-plus.ts`): rounded averages with their sources in comments and on the screens
+  (UK government 2024 conversion factors, Scarborough et al. 2014, US EPA); journeys and the footprint are pure,
+  so the page answers as you type.
+- **Checked:** `green-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; a
+  footprint saved, Lisbon–Porto ranked, a goal, a pledge ticked, an event with someone going, 40 green places in
+  Lisbon), unit tests (`green-plus`, `green-plus` server, the board's after the move), `pnpm check`.
+
+## M217: Relief's second wave, ten big features (16 Nov)
+
+The owner: "add alot of features in the green and relief app, i need big and major upgrades … like 10
+features in there each". Relief has a tab row on every page (`ReliefTabs`; the live map, My requests and
+Organisations included), each new part loaded only when opened (`?view=`; database update 0226):
+
+1. **Most urgent** (`ReliefUrgent.tsx`): open needs ranked by urgency × how long they've waited × how many people
+   (`triage`, both grow slowly), with the reasons ("Critical", "Waiting 3 days", "12 people"), near me within a
+   distance, "I can help" and Message right there. From the live map's own answer: no new server work.
+2. **Matches**: each open need with the open offers of the same kind within 15 km, nearest first, walking time.
+3. **Alerts** (`ReliefAlerts.tsx`): GDACS's orange and red alerts (earthquakes, cyclones, floods, volcanoes,
+   droughts, wildfires) and USGS's M4.5+ earthquakes of the week, on a globe and a list, worst first or nearest to
+   me. The server reads both once for everyone and keeps them 15 minutes (`relief:alerts` in `travel_cache`):
+   one fetch however many people look; the same quake from both is shown once (`readAlerts`).
+4. **My emergency plan** (Be ready): where to meet near home and away, who to call, medical needs, pets, notes;
+   only the person sees it (`relief_plans`, checked by `readPlan`: short fields, six contacts, phones as numbers).
+5. **A bag ready to go**: 16 things for three days, quantities for the household, ticks saved.
+6. **Emergency numbers** for any country (Travel's country facts), as tap-to-call buttons.
+7. **Heat, frost and heavy rain** in the coming week where I am, with what to do (MET Norway through Travel's
+   cached forecast `/travel/weather`: no new server work); and **a card for my phone** (a picture of the plan
+   and numbers, drawn in the browser).
+8. **First aid**: nine situations in short steps (CPR, recovery position, bleeding, choking, burns, broken bones,
+   heatstroke, hypothermia, shock) after the IFRC's guidelines, with the country's number to call.
+9. **My hours**: hours from the volunteer shifts signed up for that are over, by organisation, and **a
+   certificate** picture to keep (`/relief/hours`).
+10. **Places to go** now says the walking time to each place near you.
+
+- **The shared tab row** (`TabRow`) fills the chosen tab with the app's button pair (`--cta` / `--cta-ink`), so its
+  text reads in every app and theme (white on Relief's light orange failed contrast in dark mode).
+- **Not used, on purpose:** Open-Meteo (free for non-commercial use only) and Overpass (not needed; see M216).
+- **Seen once, not reproduced:** a React hydration warning (#418) on a phone right after the local server started;
+  every Green and Relief page loaded clean 16 times after it.
+- **Checked:** `relief-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; 119 live
+  alerts, a plan saved and read back, a go-bag tick, Portugal's 112, a first-aid card, the hours) and
+  `green-plus-ui.mjs` again on `local:serve`, unit tests (`relief-plus` lib and server), `pnpm check`.
+
+## M218: the apps' sections in the side menu, not a row across the top (16 Nov)
+
+**Undone by M219** (the owner meant the side menu itself, as a bar across the top): the rows are back.
+
+The owner: "can we make the horizontal section of the website in verticle style but dont change anything else",
+then a picture of the side menu: "this one". The rows of tabs across the top of Travel, Green, Relief (M213–M217)
+and Trace (since M50) are gone; their sections are entries in the side menu, drawn exactly like the others:
+
+- **Travel:** Explore, Find where to go, Map, Trips, Saved. **Green:** My impact, Footprint, Journeys, Goals, Tips,
+  Events, Green places, Teams & leaderboard. **Relief:** Live map, Most urgent, Matches, Alerts, Be ready, First aid,
+  My requests & tasks, My hours, Organisations. **Trace:** its entries were already there; Live globe added, and
+  All brands for the owner.
+- **The highlight follows the section:** on `/travel`, `/travel/saved`, `/green` and `/relief` (`SECTIONED`) the
+  side menu reads the open `?view=` / `?tab=` (`WithSection`, inside a `Suspense`: `useSearchParams` in the shared
+  layout must be, or every page stops being prerendered); an entry with a query is lit only for its section, one
+  without only when no section is open. Every other menu entry keeps the old rule (an href's query is ignored).
+- **Removed:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs`, `TraceTabs`. On phones the sections are in the menu
+  sheet ("More"), as the app's other entries are.
+- **Checked:** screenshots (Green → Goals, Relief → Alerts, Travel → Find where to go, each lit), `relief-plus-ui.mjs`,
+  `green-plus-ui.mjs` and `travel-find-ui.mjs` (they no longer look for the rows), `pnpm check`.
+
+## M219: the menu as a bar across the top on a computer's browser; M218's change undone (16 Nov)
+
+The owner, after M218: "i told you to make this part verticle in the website but not in the app so please do it
+properly this time", then "i need you to make that part horizontal at the top of the website", with the same picture
+of the side menu. So the first ask meant the side menu itself, and M218 (sections moved into the side menu) was the
+wrong reading:
+
+- **M218 undone in code:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs` and `TraceTabs` are back, the side
+  menu's entries are as before M218 (no `SECTIONED`, no `WithSection`), the checks look for the rows again. Its note
+  above stays as history.
+- **The bar (`src/components/layout/TopNav.tsx`):** on a computer in a browser (`TOP_NAV`, `(min-width: 1024px) and
+  (display-mode: browser)`; the same query is the `topnav:` Tailwind variant in `globals.css`) `DashboardShell`
+  renders `TopNav` above the page instead of `Sidebar` (`useTopNav`, `src/lib/top-nav.ts`). The installed app
+  (display-mode standalone or window-controls-overlay) and phones keep theirs. The bar has the logo alone (the owner:
+  "remove the universe impact name and keep the logo… it looks messy"; a link to the app's home), the app switcher
+  (`AppSwitcher compact`), the same entries as the side menu (`navFor`, plus the person's menu shortcuts), the tools
+  each page's bar had (Put this page back, search, theme, language, notifications: the bell opens the page bar's
+  panel with `universe:open-notifications`) and the account (name, email, Log out, Terms…). A group (People, Academics…) opens a list under its button (`Popover` in `ui/Menu.tsx`, arrow keys through
+  `menuKeys`); what doesn't fit goes under **More**, measured on a hidden copy of the row (a `ResizeObserver` on the
+  row and the copy: the window, the fonts arriving, another app or language). It stays at the top while the page
+  scrolls, in the 4 rem the page bar took (6 px, 52 px, 6 px), so things that stick at `lg:top-16` still line up.
+- **No empty row under it:** on a computer's browser `Topbar` shows only the page's own controls (`leftNode`,
+  `rightNode`, `action`), not sticky, and nothing when the page has none; its `sr-only` title stays.
+- **Rules for code that builds on it:** a new menu entry goes in `navFor` as before and shows in both. The bar is
+  `data-no-arrange` (arranging the menu by dragging, M166–M167, is a side-menu thing; the page's own arranging works).
+  Anything that hides the side menu (Studio's focus mode) hides `.top-nav` too. `AppSkeleton` draws the bar's
+  placeholder with the `topnav:` variant, so opening the app doesn't jump. The app switcher now also closes on a click
+  outside it (both menus).
+- **Checked:** `scripts/checks/top-nav-ui.mjs` (1440, 1280, 1024 in both themes, 390, and the installed app emulated):
+  the bar there and the side menu not, nothing cut off, a group's list, axe, no sideways scroll), `pnpm check`.
+
+## M220: light mode is the default (16 Nov)
+
+The owner: "make the light colour as default". With nothing saved (`localStorage.theme` unset) the page is light: the
+head script in `src/app/layout.tsx` adds `.dark` only for `dark`, or `system` on a dark device; `getSavedTheme()`
+(`src/lib/theme.ts`) answers `light`, and so do the theme menu's and Settings' first render. `public/manifest.json`'s
+start colours are the light page's (#f1f2f4). A person who chose dark or "system" keeps it (it's saved). Checked in a
+browser: a new visitor's landing and a signed-in home are light (the bar colour #f1f2f4), a saved dark stays dark.
+
+## M221: the landing's crash fixed; the top bar's entries dragged into order; no names twice (16 Nov)
+
+The owner sent the "1 problem(s) need a look" email and asked for M219's two left-outs.
+
+- **The crash** (`error_reports`, `/`, Safari: "null is not an object (evaluating 'e.stateNode._retryCache')"): the
+  landing builds an app's sections ahead, hidden in React's `Activity`, once the visitor points at its tab (M137,
+  one app at a time since M211). Those sections are `next/dynamic` with no `loading`, so they have no Suspense
+  boundary of their own (next's `loadable.js`): the hidden Activity caught their download. Pointing at another tab
+  before it ended dropped that Activity, and when the file arrived React's `resolveRetryWakeable` read
+  `stateNode._retryCache` of the dropped one (null; only its Activity case lacks the null check). Each app's part
+  is now `AppPart` in `src/app/page.tsx`: the Activity with a `Suspense fallback={null}` inside, which catches the
+  download and is dropped safely. **Rule:** anything shown or built inside an `Activity` that can suspend (a
+  `dynamic()` without `loading`, `use()`, `lazy`) needs a Suspense boundary inside the Activity.
+  `scripts/checks/landing-switch-ui.mjs` holds every download back 2.5 s and points at five tabs in a row: 16 such
+  errors before, none after.
+- **Dragging in the top bar:** press an entry and move sideways; the others slide aside and it drops where you let
+  go (a click that ends a drag doesn't open it; right-to-left mirrored). The order is the side menu's own (the vault's
+  `/~menu/<scope>`, the side menu's `data-arrange-scope`), so the installed app's side menu shows it too and More takes
+  the last ones in that order. ArrangeMode now puts `menu(scope)` / `setMenu(scope, layout)` and a `rev` that grows
+  with every change into `useArrange`; the side menu's entries carry `data-arrange-key` (their label), the name the bar
+  uses (shortcuts: "Shortcut …"). The account menu has "Put the menu back in order" once it has been changed. Entries
+  under More can't be dragged (drag one in the bar past where you want it instead, or widen the window).
+- **No names twice:** on the pages of Trace, Green, Relief and Travel (`ROWED`: each has its own row of sections), the
+  bar leaves out that app's entries (`APP_NAV`), which the row shows; on shared pages (Messages, Settings…) it keeps
+  them, the way back. A drag there only reorders what it shows (`reorderWithin` in `src/lib/arrange.ts`).
+- **Checked:** `landing-switch-ui.mjs` (above), `top-nav-ui.mjs` (no name in both the bar and the page's row; a drag
+  kept after a reload and put back), the unit test of `reorderWithin`, `pnpm check`.

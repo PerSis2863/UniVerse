@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { MENU_PINS, arranged, cleanDoc, cleanKey, cleanPin, cleanStore, mergeDocs, moved, overlap, pagePins, uniqueKeys } from './arrange';
+import { MENU_PINS, arranged, cleanDoc, cleanKey, cleanPin, cleanStore, mergeDocs, moved, overlap, pagePins, reorderWithin, uniqueKeys } from './arrange';
 
 describe('arrange this page', () => {
   it('names things once each', () => {
@@ -51,5 +51,14 @@ describe('arrange this page', () => {
   });
   it('keeps what was dropped inside a card', () => {
     expect(cleanStore({ '/a': [{ order: ['x', 'y'], inside: { x: 'Quick notes', y: 7, '': 'z' } }] })).toEqual({ '/a': [{ order: ['x', 'y'], inside: { x: 'Quick notes' } }] });
+  });
+});
+
+describe('reorderWithin (M221)', () => {
+  it('reorders the names shown in their own places and leaves the others where they were', () => {
+    // The bar on a Trace page shows Messages, Collaborate, Settings; Console and Map (in the row) keep their places.
+    expect(reorderWithin(['Console', 'Messages', 'Map', 'Collaborate', 'Settings'], ['Settings', 'Messages', 'Collaborate'])).toEqual(['Console', 'Settings', 'Map', 'Messages', 'Collaborate']);
+    expect(reorderWithin(['A', 'B'], ['B', 'A'])).toEqual(['B', 'A']);
+    expect(reorderWithin(['A', 'B', 'C'], [])).toEqual(['A', 'B', 'C']);
   });
 });
