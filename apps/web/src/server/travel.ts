@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { LISTING_KINDS, readGuide, type Guide } from '@/lib/travel-guide';
+import { LISTING_KINDS, photoOk, readGuide, type Guide } from '@/lib/travel-guide';
 import { mergeTips, readTips, type Climate, type Tips } from '@/lib/travel-tips';
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from './http';
 import COUNTRIES from '@/lib/travel-countries.json';
@@ -131,6 +131,29 @@ const credit = (title: string) => ({ source: 'Wikivoyage', licence: 'CC BY-SA 3.
 /** M204: the topics a country's article usually covers better than a city's. */
 const COUNTRY_TOPICS = ['tipping', 'water', 'scams', 'manners', 'dress', 'visa'] as const;
 
+/** M228: a place's cover photo (a Commons file), looked up once a month: one of Explore's places has its own
+ *  (checked by hand); any other its Wikidata main image (P18), else Wikivoyage's own page image, when photoOk
+ *  (a wide, sharp photo, not a map or a flag). Null: the guide's banner stays. */
+async function photoFor(title: string): Promise<string | null> {
+  const own = IDEAS.find((i) => i.title === title);
+  if (own) return own.photo ?? null;
+  const found = await cached<{ file: string | null }>(`photo1:${title.toLowerCase()}`, 30 * DAY, async () => {
+    const page = (t: string) => encodeURIComponent(t.replace(/ /g, '_'));
+    const wv = await fetchJson<{ wikibase_item?: string; originalimage?: { source: string } }>(`https://en.wikivoyage.org/api/rest_v1/page/summary/${page(title)}`);
+    const q = wv?.wikibase_item && /^Q\d+$/.test(wv.wikibase_item) ? wv.wikibase_item : null;
+    const item = q ? (await fetchJson<{ entities: Record<string, { claims?: { P18?: { mainsnak: { datavalue?: { value: string } } }[] } }> }>(`https://www.wikidata.org/wiki/Special:EntityData/${q}.json`))?.entities : null;
+    const fromWv = wv?.originalimage?.source && /\/commons\/[0-9a-f]\/[0-9a-f]{2}\/([^/?]+)/.exec(wv.originalimage.source)?.[1];
+    const names = [...(item ? Object.values(item)[0]?.claims?.P18 ?? [] : []).map((c) => c.mainsnak.datavalue?.value), fromWv && decodeURIComponent(fromWv)]
+      .filter((n): n is string => typeof n === 'string').map((n) => n.replace(/_/g, ' ')).slice(0, 3);
+    for (const name of names) {
+      const f = await fetchJson<{ original?: { mediatype: string; width: number; height: number } }>(`https://commons.wikimedia.org/w/rest.php/v1/file/File:${page(name)}`);
+      if (f?.original && photoOk(name, f.original.width, f.original.height, f.original.mediatype)) return { file: name };
+    }
+    return { file: null };
+  }).catch(() => null);
+  return found?.file ?? null;
+}
+
 /** GET /travel/guide?d=: a place's guide, its country's facts, "know before you go" and the credit. */
 export async function travelGuide(_u: SessionUser, q: Query) {
   const record = await readArticle(titleOf(first(q.d)));
@@ -141,8 +164,9 @@ export async function travelGuide(_u: SessionUser, q: Query) {
   const lacking = COUNTRY_TOPICS.some((t) => !own[t]?.length);
   const home = country && lacking && guide.title !== country.name ? await readArticle(country.name).catch(() => null) : null;
   const { tips, fromCountry } = mergeTips(own, home?.tips);
+  const photo = await photoFor(guide.title);
   return {
-    guide, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
+    guide: { ...guide, photo: photo ?? undefined }, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
     credit: credit(guide.title),
   };
 }

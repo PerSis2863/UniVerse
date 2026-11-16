@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { plain, readGuide, templateParams } from './travel-guide';
+import { commonsFileOf, commonsSrcSet, photoOk, plain, readGuide, templateParams } from './travel-guide';
 import { bookingLinks, mapLink } from './travel-book';
 
 // M202: Travel reads a Wikivoyage article into parts, places and districts; booking opens partners with
@@ -68,5 +68,23 @@ describe('Travel guides', () => {
     // Dates the wrong way round aren't sent.
     expect(new URL(bookingLinks('Rome', { checkin: '2027-05-09', checkout: '2027-05-01' })[0].url).searchParams.get('checkin')).toBeNull();
     expect(mapLink('Golden Hall', { lat: 35, lon: 135 })).toContain('mlat=35&mlon=135');
+  });
+});
+
+describe('cover photos (M228)', () => {
+  it('takes wide, sharp photos and refuses banners, maps, flags, collages and small or tall files', () => {
+    expect(photoOk('Rome Skyline (8012016319).jpg', 4000, 2667)).toBe(true);
+    expect(photoOk('Paris banner.jpg', 2100, 300)).toBe(false);
+    expect(photoOk('Bali in Indonesia (special marker).svg', 3000, 1500, 'DRAWING')).toBe(false);
+    expect(photoOk('Istanbul Montage 2016.jpg', 3000, 2000)).toBe(false);
+    expect(photoOk('Lisbon_locator_map.png', 3000, 2000)).toBe(false);
+    expect(photoOk('Kyoto tower.jpg', 1071, 723)).toBe(false);
+    expect(photoOk('Tall tower.jpg', 2000, 3000)).toBe(false);
+    expect(photoOk('Satellite image of Crete.jpg', 4000, 2500)).toBe(false);
+  });
+  it('finds the Commons file behind a thumbnail and lists its widths', () => {
+    expect(commonsFileOf('https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Bel%C3%A9m_Tower.jpg/320px-Bel%C3%A9m_Tower.jpg')).toBe('Belém Tower.jpg');
+    expect(commonsFileOf('https://upload.wikimedia.org/wikipedia/en/thumb/a/ab/Local.jpg/320px-Local.jpg')).toBeNull();
+    expect(commonsSrcSet('A b.jpg')).toContain('Special:FilePath/A_b.jpg?width=1920 1920w');
   });
 });

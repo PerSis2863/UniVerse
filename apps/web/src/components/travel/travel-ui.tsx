@@ -9,7 +9,8 @@ import { fetcher } from '@/lib/fetcher';
 import { Bookmark, BookmarkCheck, CalendarCheck, Loader2, Search, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, ExternalLink, MapPin, Moon, Phone, Sun, type LucideIcon } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import type { useRouter } from 'next/navigation';
-import { commonsImage, type Listing } from '@/lib/travel-guide';
+import { commonsImage, commonsSrcSet, type Listing } from '@/lib/travel-guide';
+import { Photo } from '@/components/ui/Photo';
 import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
 
@@ -31,12 +32,17 @@ export function useHome(): [string | null, (c: string) => void] {
   return [chosen ?? guess, set];
 }
 
-/** A guide's banner (or a soft gradient when it has none), filling its box. */
-export function Cover({ file, width = 960, className, priority }: { file?: string | null; width?: number; className?: string; priority?: boolean }) {
-  const [broken, setBroken] = useState(false);
+/** How wide a card's picture is shown, for the browser to pick a width (M228). */
+export const CARD_SIZES = '(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw';
+
+/** A place's photo (M228: its own photo, else the guide's banner, else a soft gradient), filling its box,
+ *  in Wikimedia's widths so phones and sharp screens each get enough pixels. `sizes` is how wide it's shown. */
+export function Cover({ photo, banner, sizes, className, priority }: { photo?: string | null; banner?: string | null; sizes: string; className?: string; priority?: boolean }) {
+  const [broken, setBroken] = useState<string[]>([]);
+  const file = [photo, banner].find((f): f is string => !!f && !broken.includes(f));
   return (
     <span className={cn('absolute inset-0 overflow-hidden bg-gradient-to-br from-indigo-500/40 via-cyan-400/20 to-amber-300/30', className)} aria-hidden>
-      {file && !broken && <Image src={commonsImage(file, width)} alt="" fill unoptimized priority={priority} sizes={`${width}px`} onError={() => setBroken(true)} className="object-cover" />}
+      {file && <Photo key={file} src={commonsImage(file, 960)} srcSet={commonsSrcSet(file)} shown={sizes} loading={priority ? 'eager' : 'lazy'} fetchPriority={priority ? 'high' : 'auto'} onError={() => setBroken((b) => [...b, file])} className="absolute inset-0 h-full w-full object-cover" />}
     </span>
   );
 }

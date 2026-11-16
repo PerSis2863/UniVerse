@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import Image from 'next/image';
 import { toast } from 'sonner';
 import { Bookmark, BookOpen, Clock, ExternalLink, Footprints, Globe, Loader2, MapPin, Phone, UtensilsCrossed, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
-import { commonsImage } from '@/lib/travel-guide';
+import { commonsFileOf, commonsImage, commonsSrcSet } from '@/lib/travel-guide';
+import { Photo as Pic } from '@/components/ui/Photo';
 import { dayText, openState, readHours } from '@/lib/opening-hours';
 import { localClock, zoneAt } from '@/lib/travel-local';
 import { listingKind, type StreetPhoto } from '@/lib/travel-map';
@@ -66,7 +66,7 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white" translate="no">{name}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{kind}{info?.cuisine.length ? ` · ${info.cuisine.join(', ')}` : ''}</p>
       </div>
-      {info?.image && <Image src={commonsImage(info.image, 640)} alt="" width={640} height={352} unoptimized className="h-44 w-full rounded-xl object-cover" />}
+      {info?.image && <CardPhoto file={info.image} />}
       {isLoading && <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Looking it up…</p>}
       {error && <p className="text-sm text-zinc-600 dark:text-zinc-300">OpenStreetMap has nothing more on this place yet.</p>}
       {info && (
@@ -102,6 +102,16 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
   );
 }
 
+/** How wide the card's pictures are shown (the side panel, or a phone's sheet). */
+const CARD_PHOTO = '(min-width: 640px) 24rem, 100vw';
+
+/** M228: a Commons picture across the card, in the widths it needs (a 320 px thumbnail was blown up). */
+function CardPhoto({ file, fallback }: { file: string | null; fallback?: string }) {
+  const src = file ? commonsImage(file, 960) : fallback;
+  if (!src) return null;
+  return <Pic src={src} srcSet={file ? commonsSrcSet(file) : undefined} shown={CARD_PHOTO} alt="" loading="lazy" className="h-44 w-full rounded-xl object-cover" />;
+}
+
 function StoryBody({ s }: { s: Story }) {
   return (
     <>
@@ -109,7 +119,7 @@ function StoryBody({ s }: { s: Story }) {
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white" translate="no">{s.title}</h3>
         <p className="flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300"><BookOpen className="h-4 w-4" aria-hidden />A story from Wikipedia</p>
       </div>
-      {s.thumb && <Image src={s.thumb} alt="" width={640} height={352} unoptimized className="h-44 w-full rounded-xl object-cover" />}
+      {s.thumb && <CardPhoto file={commonsFileOf(s.thumb)} fallback={s.thumb} />}
       <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{s.extract}</p>
       <div className="flex flex-wrap gap-1.5">
         <a href={s.url} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />Read on Wikipedia</a>
@@ -126,7 +136,7 @@ function StoryBody({ s }: { s: Story }) {
 function PhotoBody({ ph }: { ph: Photo }) {
   return (
     <>
-      <Image src={ph.thumb} alt={ph.title} width={ph.w} height={ph.h} unoptimized className="mt-8 h-auto w-full rounded-xl object-cover" />
+      <Pic src={ph.thumb} srcSet={`${ph.thumb} ${ph.w}w, ${commonsSrcSet(ph.file)}`} shown={CARD_PHOTO} alt={ph.title} width={ph.w} height={ph.h} loading="lazy" className="mt-8 h-auto w-full rounded-xl object-cover" />
       <div>
         <h3 className="font-semibold text-zinc-900 dark:text-white" translate="no">{ph.title}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{ph.author ? `By ${ph.author}` : 'Author on Commons'}{ph.licence ? ` · ${ph.licence}` : ''}</p>
@@ -144,7 +154,7 @@ function StreetBody({ ph }: { ph: StreetPhoto }) {
   const when = ph.at ? new Date(ph.at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
   return (
     <>
-      <Image src={ph.sd} alt="The street at this spot" width={1024} height={768} unoptimized className="mt-8 h-auto w-full rounded-xl bg-zinc-200 object-cover dark:bg-white/[0.06]" />
+      <Pic src={ph.sd} shown={CARD_PHOTO} alt="The street at this spot" width={1024} height={768} loading="lazy" className="mt-8 h-auto w-full rounded-xl bg-zinc-200 object-cover dark:bg-white/[0.06]" />
       <div>
         <h3 className="font-semibold text-zinc-900 dark:text-white">The street here</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{[when && `Taken ${when}`, ph.heading !== null && `looking ${['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(ph.heading / 45) % 8]}`].filter(Boolean).join(', ')}</p>

@@ -7897,3 +7897,51 @@ section also and add more features of discord and zoom and all the other big maj
 - **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
   refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
   `src/lib/meet.ts`, `pnpm check`.
+
+## M228: sharp photos in Travel, and 70 more places (16 Nov)
+
+The owner, with a screenshot of Explore: "can you add high quality pictures here because this is look bad and also do
+this for other area also if you could"; then "please add more destinations in there".
+
+- **Why it looked bad:** the cards showed each guide's Wikivoyage *banner*, a 2100×300 strip (7:1), asked at 720 px
+  wide and blown up into a 2:1 card: a blurry slice.
+- **A real photo per place:** `npx tsx scripts/gen-travel-data.mts --photos` stores `photo` (a Commons file) in
+  `travel-places.json`: the place's Wikidata main image (P18), else its Wikipedia article's, else Wikivoyage's own page
+  image, when `photoOk` (`src/lib/travel-guide.ts`) agrees: a bitmap photo, ≥1600 px wide, ratio 1.2–2.6, and no map,
+  flag, locator, collage, satellite or banner in its name. `null` means looked for and none found. Every chosen photo
+  was looked at on contact sheets; bad ones (maps, satellite views, dull or wrong shots) are replaced by hand with the
+  **7th column** of a `travel-ideas.ts` row (`undefined` in the 6th keeps the guide's banner; `''` means no photo).
+- **Trap:** from cloud machines Wikimedia's action API (`/w/api.php`) answers 429. The script uses only the REST
+  endpoints (`/api/rest_v1/page/summary`, `/w/rest.php/v1/file`), `Special:EntityData`, one request at a time with a
+  pause; no SPARQL, no proxies. Thumbnails only come at Wikimedia's standard widths (`PHOTO_STEPS`: 500, 960, 1280, 1920).
+- **Shown sharp:** `Cover` (`travel-ui.tsx`) takes `photo`, `banner` and `sizes` and draws a plain `<img>` through
+  `Photo` (`components/ui`, which now takes a `srcSet` for pictures kept elsewhere) with `commonsSrcSet`: the browser
+  picks the width for the card and the screen; lazy below the fold, `fetchPriority="high"` for the first cards. If the
+  photo fails it falls back to the banner, then the gradient. Explore, Find where to go, Trips, the guide and the trip
+  header all use it (`CARD_SIZES`, or `100vw` for headers).
+- **Any other place's guide:** `photoFor` in `src/server/travel.ts` looks up the Wikidata / Wikivoyage photo once a
+  month (`photo1:` in the travel cache, 3–4 small requests on the first visit) and returns `guide.photo`; Explore's own
+  places use their row's photo.
+- **Other areas:** the map's place card (`PlaceCard.tsx`) showed Wikipedia story pictures fetched at 320 px and
+  Commons photos at 400 px across a 24 rem card; they now come in the same widths (`commonsFileOf` finds the file
+  behind a thumbnail address). Checked and left: the landing (drawn scenes, no photos), the hub, Green's proof photos
+  and other uploads (shown small, or already in several widths through `Photo`), the map's round photo markers and the
+  search's 40 px thumbnails.
+- **70 more places** (145 → 215: e.g. Lyon, Cinque Terre, Dolomites, San Sebastián, Bergen, Faroe Islands, Nara,
+  Bhutan, Wadi Rum, Namibia, Madagascar, Boston, Yellowstone, Iguazu Falls, Uyuni, Milford Sound). `--places` now reads
+  only places not read yet or without a climate (`--all` for everything). The Faroe Islands' price level is a guess
+  (1.3, DKK) in `travel-money.json` and the script.
+- **Left:** NASA POWER (the climate fallback) isn't reachable from the cloud session, so 30 of the new places whose
+  guides have no climate table have no month-by-month weather yet (Find where to go still lists them, without the
+  weather reason): run `npx tsx scripts/gen-travel-data.mts --places` on a machine that reaches power.larc.nasa.gov.
+  Puerto Vallarta, Tunis and Uyuni keep their banners (no good wide photo found; `''` in their rows). Wikimedia
+  refused this session previews of 9 chosen files (Algarve, Valparaíso, Amsterdam, Edinburgh, Hokkaido, Madeira,
+  Vienna, Jeju, Canary Islands): 7 are the lead photo of the matching Wikipedia article, picked by hand; look at those
+  cards once on the live site.
+- **Also:** a guide's header on a phone left its text running under the "← Explore" button (a long first paragraph):
+  it has room at the top now (`pt-16`, as the trip's header).
+- **Checked:** `scripts/checks/travel-photos-ui.mjs` (Explore, Find, Trips, the Kyoto and Ghent guides at 1280 and 390
+  at 2x, light and dark: photos not banners, the width picked covers the pixels shown, cards below the fold lazy, axe,
+  no sideways scroll). Cloud sessions can't load Wikimedia's pictures (429), so there run it with `STAND_IN=1`: the
+  photo requests are answered with labelled stand-ins of the asked width. Unit tests for `photoOk`, `commonsFileOf`,
+  `commonsSrcSet`; `pnpm check`.
