@@ -35,7 +35,7 @@ export function useHome(): [string | null, (c: string) => void] {
 export function Cover({ file, width = 960, className, priority }: { file?: string | null; width?: number; className?: string; priority?: boolean }) {
   const [broken, setBroken] = useState(false);
   return (
-    <span className={cn('absolute inset-0 overflow-hidden bg-gradient-to-br from-sky-500/40 via-cyan-400/20 to-amber-300/30', className)} aria-hidden>
+    <span className={cn('absolute inset-0 overflow-hidden bg-gradient-to-br from-indigo-500/40 via-cyan-400/20 to-amber-300/30', className)} aria-hidden>
       {file && !broken && <Image src={commonsImage(file, width)} alt="" fill unoptimized priority={priority} sizes={`${width}px`} onError={() => setBroken(true)} className="object-cover" />}
     </span>
   );
@@ -125,15 +125,15 @@ export function PlaceSearch({ onPick, label, placeholder, big, className }: { on
           else if (e.key === 'Enter' && (active >= 0 || results[0])) { e.preventDefault(); pick((results[active] ?? results[0]).title); }
           else if (e.key === 'Escape') setQ('');
         }}
-        className={cn('w-full border border-zinc-200 bg-white text-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-sky-400/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white', big ? 'rounded-2xl py-3.5 ps-12 pe-12 text-base' : 'rounded-xl py-2.5 ps-9 pe-9 text-sm')} />
+        className={cn('w-full border border-zinc-200 bg-white text-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white', big ? 'rounded-2xl py-3.5 ps-12 pe-12 text-base' : 'rounded-xl py-2.5 ps-9 pe-9 text-sm')} />
       {isLoading && <Loader2 className={cn('absolute top-1/2 -translate-y-1/2 animate-spin text-zinc-400', big ? 'end-4 h-5 w-5' : 'end-3 h-4 w-4')} aria-hidden />}
       {results.length > 0 && (
         <ul id={listId} role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111214]">
           {results.map((r, i) => (
             <li key={r.title} id={`${listId}-${i}`} role="option" aria-selected={i === active} onClick={() => pick(r.title)} onMouseEnter={() => setActive(i)}
               className={cn('flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-start', i === active && 'bg-zinc-100 dark:bg-white/[0.07]')}>
-              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-sky-500/15">
-                {r.thumb ? <Image src={r.thumb} alt="" fill unoptimized sizes="40px" className="object-cover" /> : <MapPin className="absolute inset-0 m-auto h-5 w-5 text-sky-500" aria-hidden />}
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-indigo-500/15">
+                {r.thumb ? <Image src={r.thumb} alt="" fill unoptimized sizes="40px" className="object-cover" /> : <MapPin className="absolute inset-0 m-auto h-5 w-5 text-indigo-500" aria-hidden />}
               </span>
               <span className="min-w-0">
                 <span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{r.title.replace(/\//g, ' · ')}</span>

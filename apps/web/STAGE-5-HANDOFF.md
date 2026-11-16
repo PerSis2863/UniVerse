@@ -7510,3 +7510,38 @@ the website". The neon green was dark mode's lime (#c6f24a, M124's Relay look) p
 - **For code that builds on it:** don't add `lime-*` classes; a solid accent fill in dark mode takes white
   text (except in Trace, Relief and Play). §8 of AGENTS.md says the same.
 - **Checked:** screenshots of the landing, `/green`, `/relief` and `/student` in dark mode, `pnpm check`.
+
+## M213: Travel's left-outs, and a look like the other apps (16 Nov)
+
+The owner, quoting M207's "Left out on purpose" list: "Do all this also. The travel app needs to look
+professional and modern like the other apps".
+
+- **Getting between cities:** a "This route by train, bus or ferry" link to Google Maps' documented directions
+  address (`/maps/dir/?api=1&origin=…&destination=…&travelmode=transit`) opens the exact route with times. Omio's
+  route links need Omio's own city numbers (only in its partner file) and Direct Ferries publishes no route
+  address, so those two still open their search, now labelled "Search trains and buses" / "Search ferries".
+- **Blocking on the board** (`blockTraveller`): the Travel chat between the two goes to the blocker's archive,
+  muted; `travelChatBlocked()` refuses new messages in a one-to-one Travel chat between people one of whom
+  blocked the other (the chat send route, 403; the blocker is told to unblock on the board). Other chats
+  between the same people (school, Messages) are untouched: the block is the board's.
+- **Owner console → People → Moderation** lists Travel's reported board notes and reviews
+  (`src/server/travel-moderation.ts`) as their own "Travel" group: Hide, or Restore (shown again, reports
+  cleared). Three reports still hide one by themselves.
+- **Live updates between friends:** `scripts/checks/travel-live-ui.mjs` (two people on one trip; one adds a
+  city and renames it, the other's open page shows both). Measured on `local:serve`: the city and the new name arrive on the friend's screen in 0.1 s (live, through the
+  RealtimeHub; the plain dev server has no Durable Object, so there it waits for the 30 s fallback).
+- **The look:** Travel has its own colour like Trace, Relief, Green and Play (the M132 block, sky: light mode
+  #0369a1 with white text; dark: 400 #38bdf8 for text, marks and my bubbles (ink text on it), fills from 500
+  #0278b8 down carry white text at 4.8:1 or more, so Travel is not in the M212 ink-on-accent rule);
+  its `sky-*` classes are now the accent classes (`indigo-*`), so a person's own accent reaches Travel too. A
+  tab row across every Travel page (`TravelTabs`: Explore, Find where to go, Map, Trips, Saved) like Trace's;
+  Trace's row is now the shared `TabRow` (`components/ui`). Explore's first card is laid out like Trace's
+  console: the headline with the serif accent word (`.accent-word`), the search, four lines on what's here,
+  and "Your trips" beside it (the next three, New trip, Find where to go). The Segmented switchers are gone
+  (the tab row does their job).
+- **Checks fixed:** `travel-ui.mjs` opened `/travel/saved` (Trips since M206) and its "Save" click also matched
+  "Saved"; `travel-board-ui.mjs` now also sends after the block (403 both ways).
+- **Not tried in a browser:** the console's Moderation list with a Travel report (it needs `local:serve
+  --owner-test`); its server part has a unit test.
+- **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
+  (`travel-moderation.test.ts`, the board's), `pnpm check`.

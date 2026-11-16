@@ -13,8 +13,8 @@ import { shortName } from './play';
 // for the same city and overlapping dates, and can message them in the Travel app. Never shown: who
 // someone is beyond a first name, where they stay, anything about people who didn't join the board.
 // Only people on the board see it; under-18s can't join (their birth date, or their school's rule for
-// students); three reports hide a post; blocking hides two people from each other here and stops new
-// chats between them from the board.
+// students); three reports hide a post; blocking hides two people from each other here, files away the
+// Travel chat between them for the one who blocked and refuses new messages in it either way (M213).
 
 const MAX_SHOWN = 60, DAY = 86_400_000, HIDE_AT = 3;
 const guideOf = (v: unknown) => { const t = (str(v) ?? '').replace(/\s+/g, ' ').trim().slice(0, 120); return t && !/[[\]{}|#<>]/.test(t) ? t : null; };
@@ -101,7 +101,18 @@ export async function reportTraveller(u: SessionUser, id: string, b: Body) {
 export async function blockTraveller(u: SessionUser, id: string) {
   const post = await visiblePost(u, id);
   await prisma.travelBlock.upsert({ where: { userId_blockedId: { userId: u.id, blockedId: post.userId } }, create: { userId: u.id, blockedId: post.userId }, update: {} });
+  // M213: the Travel chat between them goes to my archive, muted (it stays readable; nothing more can be sent).
+  const chat = await prisma.conversation.findFirst({ where: { isGroup: false, app: 'travel', AND: [{ participants: { some: { userId: u.id } } }, { participants: { some: { userId: post.userId } } }] }, select: { id: true } });
+  if (chat) await prisma.conversationParticipant.updateMany({ where: { conversationId: chat.id, userId: u.id }, data: { archivedAt: new Date(), mutedUntil: new Date('9999-12-31T00:00:00Z') } });
   return { ok: true };
+}
+
+/** M213: why I can't send in this chat: a one-to-one Travel chat with someone I blocked, or who blocked me, on the board. */
+export async function travelChatBlocked(conversationId: string, userId: string): Promise<string | null> {
+  const other = await prisma.conversationParticipant.findFirst({ where: { conversationId, userId: { not: userId } }, select: { userId: true } });
+  if (!other) return null;
+  const block = await prisma.travelBlock.findFirst({ where: { OR: [{ userId, blockedId: other.userId }, { userId: other.userId, blockedId: userId }] }, select: { userId: true } });
+  return !block ? null : block.userId === userId ? 'You blocked this traveller on the travellers board. Unblock them there to write again.' : 'This traveller isn’t taking messages from you.';
 }
 
 /** DELETE /travel/blocks: unblock everyone I blocked on the board. */

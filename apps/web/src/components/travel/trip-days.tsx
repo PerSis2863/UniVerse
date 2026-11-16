@@ -82,7 +82,7 @@ export function TripDays({ stop, items, from, onMove, onTime, onRemove }: {
               onDrop={(e) => { e.preventDefault(); const id = e.dataTransfer.getData('text/plain') || drag; if (id) place(id, day, indexAt(e.currentTarget, e.clientY)); setDrag(null); setOver(null); }}
               className={cn('flex w-[82%] shrink-0 snap-start flex-col rounded-2xl p-2.5 ring-1 transition-[box-shadow,background-color] duration-150 sm:w-72 lg:w-auto',
                 day === null ? 'bg-zinc-100/70 ring-zinc-200 dark:bg-white/[0.03] dark:ring-white/10' : 'bg-[var(--card-bg)] ring-zinc-200 dark:ring-white/10',
-                here && 'ring-2 ring-sky-400')}>
+                here && 'ring-2 ring-indigo-400')}>
               <header className="mb-2 flex items-baseline justify-between gap-2 px-1">
                 <h4 className="font-semibold text-zinc-900 dark:text-white">{day === null ? 'Not planned yet' : `Day ${day + 1}`}{date && <span className="ms-1.5 text-sm font-normal text-zinc-500 dark:text-zinc-400">{new Date(`${date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>}</h4>
                 {day !== null && list.length > 0 && <span className={cn('text-xs font-semibold tabular-nums', total > FULL ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500 dark:text-zinc-400')} title={total > FULL ? 'A very full day' : undefined}>{hm(total)}{total > FULL ? ' · full' : ''}</span>}
@@ -93,7 +93,7 @@ export function TripDays({ stop, items, from, onMove, onTime, onRemove }: {
                   const at = list.slice(0, i).filter((x) => x.id !== drag).length; // its place without the one being dragged
                   return (
                     <li key={it.id} data-key={it.id} className="relative">
-                      {here && it.id !== drag && over.index === at && <span className="mb-1.5 block h-0.5 rounded-full bg-sky-500" aria-hidden />}
+                      {here && it.id !== drag && over.index === at && <span className="mb-1.5 block h-0.5 rounded-full bg-indigo-500" aria-hidden />}
                       {h && <p className="flex items-center gap-1.5 px-2 pb-1 text-xs text-zinc-500 dark:text-zinc-400">{h.walk ? <Footprints className="h-3.5 w-3.5" aria-hidden /> : <TramFront className="h-3.5 w-3.5" aria-hidden />}{h.minutes} min {h.walk ? 'walk' : 'by metro, bus or taxi'}</p>}
                       <Card it={it} days={stop.days} near={stop.name} dragging={drag === it.id} first={i === 0} last={i === list.length - 1}
                         onDragStart={(e) => { e.dataTransfer.setData('text/plain', it.id); e.dataTransfer.effectAllowed = 'move'; setDrag(it.id); }}
@@ -103,7 +103,7 @@ export function TripDays({ stop, items, from, onMove, onTime, onRemove }: {
                     </li>
                   );
                 })}
-                {here && over.index >= list.filter((x) => x.id !== drag).length && <li className="mb-1.5 h-0.5 rounded-full bg-sky-500" aria-hidden />}
+                {here && over.index >= list.filter((x) => x.id !== drag).length && <li className="mb-1.5 h-0.5 rounded-full bg-indigo-500" aria-hidden />}
                 {!list.length && <li className="flex flex-1 items-center justify-center rounded-xl border border-dashed border-zinc-300 px-3 py-5 text-center text-sm text-zinc-500 dark:border-white/15 dark:text-zinc-400">{day === null ? 'Add places from Saved or the guide' : 'Drop places here'}</li>}
               </ol>
             </section>
@@ -127,7 +127,7 @@ function Card({ it, days, near, dragging, first, last, onDragStart, onDragEnd, o
         <div className="min-w-0 flex-1">
           <p className="font-semibold leading-snug text-zinc-900 dark:text-white" translate="no">{it.name}</p>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-            <span className="rounded-full bg-sky-500/10 px-2 py-px font-semibold text-sky-700 dark:text-sky-300">{KIND[it.kind] ?? 'Place'}</span>
+            <span className="rounded-full bg-indigo-500/10 px-2 py-px font-semibold text-indigo-700 dark:text-indigo-300">{KIND[it.kind] ?? 'Place'}</span>
             {it.price && <span className="max-w-[10rem] truncate" title={it.price}>{it.price}</span>}
           </p>
           {it.hours && <p className="mt-1 flex items-start gap-1 text-xs text-zinc-600 dark:text-zinc-300"><Clock className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden /><span><span className="sr-only">Open </span>{it.hours}</span></p>}

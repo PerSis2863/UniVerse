@@ -78,11 +78,11 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
                   <span className="font-normal text-zinc-500 dark:text-zinc-400">(their time)</span>
                 </p>
               ) : <p className="flex items-center gap-1.5 text-zinc-700 dark:text-zinc-200"><Clock className="h-4 w-4" aria-hidden />{info.hours}</p>}
-              {hours && <button type="button" onClick={() => setWeek((w) => !w)} aria-expanded={week} className="mt-1 text-xs font-semibold text-sky-700 dark:text-sky-300">{week ? 'Hide the week' : 'The week’s hours'}</button>}
+              {hours && <button type="button" onClick={() => setWeek((w) => !w)} aria-expanded={week} className="mt-1 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{week ? 'Hide the week' : 'The week’s hours'}</button>}
               {week && hours && <dl className="mt-1 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-zinc-600 dark:text-zinc-300">{DAYS.map((d, i) => <div key={d} className={cn('contents', i === clock.day && 'font-semibold text-zinc-900 dark:text-white')}><dt>{d}</dt><dd className="tabular-nums">{dayText(hours.week, i)}</dd></div>)}</dl>}
             </div>
           )}
-          {info.about && <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{info.about}{info.wiki && <> <a href={info.wiki} target="_blank" rel="noopener noreferrer" className="font-semibold text-sky-700 underline-offset-2 hover:underline dark:text-sky-300">Wikipedia</a></>}</p>}
+          {info.about && <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{info.about}{info.wiki && <> <a href={info.wiki} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300">Wikipedia</a></>}</p>}
           {info.facts.length > 0 && <ul className="flex flex-wrap gap-1.5">{info.facts.map((f) => <li key={f} className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200">{f}</li>)}</ul>}
           {info.address && <p className="flex items-start gap-1.5 text-sm text-zinc-600 dark:text-zinc-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{info.address}</p>}
         </>

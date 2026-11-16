@@ -220,7 +220,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
     const m = mapRef.current, ml = await import('maplibre-gl');
     if (!m) return;
     const el = document.createElement('span');
-    el.className = 'block h-4 w-4 rounded-full bg-sky-500 ring-4 ring-sky-500/30 shadow';
+    el.className = 'block h-4 w-4 rounded-full bg-indigo-500 ring-4 ring-indigo-500/30 shadow';
     meMark.current?.remove();
     meMark.current = new ml.Marker({ element: el }).setLngLat([p.coords.longitude, p.coords.latitude]).addTo(m);
     m.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 16, duration: calm() ? 0 : 1500, essential: true });
@@ -261,7 +261,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
         <div className="pointer-events-auto -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
           {CATEGORIES.map((c) => (
             <button key={c.id} type="button" aria-pressed={cat === c.id} onClick={() => { setCat(c.id); endWalk(); pick(null); }}
-              className={cn('shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold shadow-md ring-1 transition-colors', cat === c.id ? 'bg-sky-700 text-white ring-sky-700' : 'bg-[var(--card-bg)] text-zinc-800 ring-black/5 hover:bg-zinc-100 dark:text-zinc-100 dark:ring-white/10 dark:hover:bg-white/10')}>{c.label}</button>
+              className={cn('shrink-0 rounded-full px-3.5 py-1.5 text-sm font-semibold shadow-md ring-1 transition-colors', cat === c.id ? 'bg-indigo-700 text-white ring-indigo-700' : 'bg-[var(--card-bg)] text-zinc-800 ring-black/5 hover:bg-zinc-100 dark:text-zinc-100 dark:ring-white/10 dark:hover:bg-white/10')}>{c.label}</button>
           ))}
         </div>
       </div>
@@ -275,7 +275,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
         <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
         <span className="hidden h-1 sm:block" aria-hidden />
         {([['d3', '3D buildings', Box], ['photos', 'Photos people took', Camera], ['stories', 'Stories of places', BookOpen], ['reviews', 'UniVerse reviews', Star]] as const).map(([k, label, Icon]) => (
-          <button key={k} type="button" aria-pressed={show[k]} aria-label={label} title={label} onClick={() => toggle(k)} className={cn(ctl, show[k] && 'bg-sky-700 text-white ring-sky-700 dark:text-white')}><Icon className="h-5 w-5" aria-hidden /></button>
+          <button key={k} type="button" aria-pressed={show[k]} aria-label={label} title={label} onClick={() => toggle(k)} className={cn(ctl, show[k] && 'bg-indigo-700 text-white ring-indigo-700 dark:text-white')}><Icon className="h-5 w-5" aria-hidden /></button>
         ))}
       </div>
 
@@ -285,8 +285,8 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
           <div className="flex items-center gap-2">
             <Sun className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
             <label className="min-w-0 flex-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-              <span className="flex justify-between gap-2"><span>{shift ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][clock.day]} ${startClock}` : `Now ${startClock}`} <span className="font-normal text-zinc-500 dark:text-zinc-400">their time</span></span>{shift > 0 && <button type="button" onClick={() => setShift(0)} className="text-sky-700 dark:text-sky-300">Now</button>}</span>
-              <input type="range" min={0} max={47} step={1} value={shift} onChange={(e) => setShift(Number(e.target.value))} aria-label="The hour at this place" className="mt-1 w-full accent-sky-600" />
+              <span className="flex justify-between gap-2"><span>{shift ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][clock.day]} ${startClock}` : `Now ${startClock}`} <span className="font-normal text-zinc-500 dark:text-zinc-400">their time</span></span>{shift > 0 && <button type="button" onClick={() => setShift(0)} className="text-indigo-700 dark:text-indigo-300">Now</button>}</span>
+              <input type="range" min={0} max={47} step={1} value={shift} onChange={(e) => setShift(Number(e.target.value))} aria-label="The hour at this place" className="mt-1 w-full accent-indigo-600" />
             </label>
             <button type="button" onClick={() => setOpen((o) => !o)} className="btn-ghost btn-sm p-1.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}><ChevronUp className={cn('h-5 w-5 transition-transform duration-200', !open && 'rotate-180')} aria-hidden /></button>
           </div>
@@ -312,14 +312,14 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
                   <li key={s.key}>
                     <p className="ps-9 text-xs text-zinc-500 dark:text-zinc-400"><Footprints className="me-1 inline h-3.5 w-3.5" aria-hidden />{s.walk} min walk</p>
                     <button type="button" onClick={() => pick({ type: 'place', key: s.key, name: s.name, kind: kindOf(s.cls, s.sub), cls: s.cls, lat: s.lat, lon: s.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
-                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-sky-600 text-xs font-semibold text-white" aria-hidden>{i + 1}</span>
+                      <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-xs font-semibold text-white" aria-hidden>{i + 1}</span>
                       <span className="min-w-0"><span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{s.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{kindOf(s.cls, s.sub)} · at {clockText(zone, new Date(when.getTime() + s.at * 60_000))}, about {s.stay} min</span></span>
                     </button>
                   </li>
                 )) : list.map((p) => (
                   <li key={p.key}>
                     <button type="button" onClick={() => pick({ type: 'place', key: /^[NWR]\d+$/.test(p.key) ? p.key : null, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.cls, lat: p.lat, lon: p.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
-                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-sky-500" aria-hidden />
+                      <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" aria-hidden />
                       <span className="min-w-0 flex-1"><span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{kindOf(p.cls, p.sub)}</span></span>
                       {view && <span className="shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{metres(km(view, p) ?? 0)}</span>}
                     </button>

@@ -2735,6 +2735,32 @@ html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::befor
   --badge-blue-bg: rgba(232, 121, 249, 0.14); --badge-blue-color: #f0abfc;
   --card-hover-border: rgba(232, 121, 249, 0.28);
 }
+/* M213: Travel its own colour (sky), as the others have theirs: light mode one step darker for white text. */
+:root[data-app="travel"]:not([data-accent]):not(.dark) {
+  --color-indigo-50: #f0f9ff; --color-indigo-100: #e0f2fe; --color-indigo-200: #bae6fd; --color-indigo-300: #7dd3fc; --color-indigo-400: #38bdf8; --color-indigo-500: #0284c7; --color-indigo-600: #0369a1; --color-indigo-700: #075985; --color-indigo-800: #0c4a6e; --color-indigo-900: #082f49; --color-indigo-950: #082f49;
+  --color-violet-50: #f0f9ff; --color-violet-100: #e0f2fe; --color-violet-200: #bae6fd; --color-violet-300: #7dd3fc; --color-violet-400: #38bdf8; --color-violet-500: #0284c7; --color-violet-600: #0369a1; --color-violet-700: #075985; --color-violet-800: #0c4a6e; --color-violet-900: #082f49; --color-violet-950: #082f49;
+  --color-purple-50: #f0f9ff; --color-purple-100: #e0f2fe; --color-purple-200: #bae6fd; --color-purple-300: #7dd3fc; --color-purple-400: #38bdf8; --color-purple-500: #0284c7; --color-purple-600: #0369a1; --color-purple-700: #075985; --color-purple-800: #0c4a6e; --color-purple-900: #082f49; --color-purple-950: #082f49;
+  --color-pink-50: #f0f9ff; --color-pink-100: #e0f2fe; --color-pink-200: #bae6fd; --color-pink-300: #7dd3fc; --color-pink-400: #38bdf8; --color-pink-500: #0284c7; --color-pink-600: #0369a1; --color-pink-700: #075985; --color-pink-800: #0c4a6e; --color-pink-900: #082f49; --color-pink-950: #082f49;
+  --color-fuchsia-50: #f0f9ff; --color-fuchsia-100: #e0f2fe; --color-fuchsia-200: #bae6fd; --color-fuchsia-300: #7dd3fc; --color-fuchsia-400: #38bdf8; --color-fuchsia-500: #0284c7; --color-fuchsia-600: #0369a1; --color-fuchsia-700: #075985; --color-fuchsia-800: #0c4a6e; --color-fuchsia-900: #082f49; --color-fuchsia-950: #082f49;
+  --color-aqua-50: #f0f9ff; --color-aqua-100: #e0f2fe; --color-aqua-200: #bae6fd; --color-aqua-300: #7dd3fc; --color-aqua-400: #38bdf8; --color-aqua-500: #0284c7; --color-aqua-600: #0369a1; --color-aqua-700: #075985; --color-aqua-800: #0c4a6e; --color-aqua-900: #082f49; --color-aqua-950: #082f49;
+  --tint: #0369a1; --tint-rgb: 3 105 161; --tint-text: #075985; --ins-hot: #0369a1;
+  --cta: #0369a1; --cta-ink: #ffffff; --cta-hover: #075985;
+  --badge-blue-bg: #f0f9ff; --badge-blue-color: #075985;
+}
+:root[data-app="travel"]:not([data-accent]) :is(.dark, .on-dark), :root[data-app="travel"]:not([data-accent]).dark {
+  --color-indigo-50: #f0f9ff; --color-indigo-100: #e0f2fe; --color-indigo-200: #bae6fd; --color-indigo-300: #7dd3fc; --color-indigo-400: #38bdf8; --color-indigo-500: #0278b8; --color-indigo-600: #0369a1; --color-indigo-700: #075985; --color-indigo-800: #0c4a6e; --color-indigo-900: #082f49; --color-indigo-950: #082f49;
+  --color-violet-50: #f0f9ff; --color-violet-100: #e0f2fe; --color-violet-200: #bae6fd; --color-violet-300: #7dd3fc; --color-violet-400: #38bdf8; --color-violet-500: #0278b8; --color-violet-600: #0369a1; --color-violet-700: #075985; --color-violet-800: #0c4a6e; --color-violet-900: #082f49; --color-violet-950: #082f49;
+  --color-purple-50: #f0f9ff; --color-purple-100: #e0f2fe; --color-purple-200: #bae6fd; --color-purple-300: #7dd3fc; --color-purple-400: #38bdf8; --color-purple-500: #0278b8; --color-purple-600: #0369a1; --color-purple-700: #075985; --color-purple-800: #0c4a6e; --color-purple-900: #082f49; --color-purple-950: #082f49;
+  --color-pink-50: #f0f9ff; --color-pink-100: #e0f2fe; --color-pink-200: #bae6fd; --color-pink-300: #7dd3fc; --color-pink-400: #38bdf8; --color-pink-500: #0278b8; --color-pink-600: #0369a1; --color-pink-700: #075985; --color-pink-800: #0c4a6e; --color-pink-900: #082f49; --color-pink-950: #082f49;
+  --color-fuchsia-50: #f0f9ff; --color-fuchsia-100: #e0f2fe; --color-fuchsia-200: #bae6fd; --color-fuchsia-300: #7dd3fc; --color-fuchsia-400: #38bdf8; --color-fuchsia-500: #0278b8; --color-fuchsia-600: #0369a1; --color-fuchsia-700: #075985; --color-fuchsia-800: #0c4a6e; --color-fuchsia-900: #082f49; --color-fuchsia-950: #082f49;
+  --color-aqua-50: #f0f9ff; --color-aqua-100: #e0f2fe; --color-aqua-200: #bae6fd; --color-aqua-300: #7dd3fc; --color-aqua-400: #38bdf8; --color-aqua-500: #0278b8; --color-aqua-600: #0369a1; --color-aqua-700: #075985; --color-aqua-800: #0c4a6e; --color-aqua-900: #082f49; --color-aqua-950: #082f49;
+  --tint: #38bdf8; --tint-rgb: 56 189 248; --tint-text: #7dd3fc; --ins-hot: #38bdf8;
+  --cta: #38bdf8; --cta-ink: #0b0c0d; --cta-hover: #7dd3fc;
+  --badge-blue-bg: rgba(56, 189, 248, 0.14); --badge-blue-color: #7dd3fc;
+  --card-hover-border: rgba(56, 189, 248, 0.28);
+}
+/* Travel's dark fills from 500 down carry white text (4.8:1 and more); its light 400 (`--tint`, my chat bubbles) takes ink. */
+:root[data-app="travel"]:not([data-accent]) .dark :is(.bg-tint, .bg-primary), :root[data-app="travel"]:not([data-accent]).dark :is(.bg-tint, .bg-primary) { color: #0b0c0d; }
 
 
 /* ═══ M133 · Realistic movement (the owner, 9 Nov 2026: "spring, momentum and depth across the site";

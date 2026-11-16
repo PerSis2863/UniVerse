@@ -44,11 +44,11 @@ export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climat
       </div>
       {tips.stories?.length ? (
         <section aria-labelledby="know-stories" className="panel p-6">
-          <h3 id="know-stories" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Landmark className="h-5 w-5 text-sky-500" aria-hidden />Why {title} is famous</h3>
+          <h3 id="know-stories" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Landmark className="h-5 w-5 text-indigo-500" aria-hidden />Why {title} is famous</h3>
           <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {tips.stories.map((s, i) => (
               <li key={i} className="flex gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-white/[0.04]">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-700 tabular-nums dark:text-sky-300" aria-hidden>{i + 1}</span>
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-indigo-500/15 text-sm font-semibold text-indigo-700 tabular-nums dark:text-indigo-300" aria-hidden>{i + 1}</span>
                 <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</p>
               </li>
             ))}
@@ -57,12 +57,12 @@ export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climat
       ) : null}
       {topics.length > 0 ? (
         <section aria-labelledby="know-tips">
-          <h3 id="know-tips" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Sparkles className="h-5 w-5 text-sky-500" aria-hidden />Good to know before you go</h3>
+          <h3 id="know-tips" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Sparkles className="h-5 w-5 text-indigo-500" aria-hidden />Good to know before you go</h3>
           <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
             {topics.map((t) => (
               <li key={t.id} className="card flex flex-col gap-2 p-4">
                 <p className="flex items-center justify-between gap-2">
-                  <span className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><t.icon className="h-4 w-4 text-sky-500" aria-hidden />{t.title}</span>
+                  <span className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><t.icon className="h-4 w-4 text-indigo-500" aria-hidden />{t.title}</span>
                   {fromCountry.includes(t.id) && tipsCountry && <span className="shrink-0 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-600 dark:bg-white/[0.08] dark:text-zinc-300" translate="no">{tipsCountry.name}</span>}
                 </p>
                 {tips[t.id]!.map((s, i) => <p key={i} className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</p>)}
@@ -96,7 +96,7 @@ function PowerCard({ country }: { country: KnowFacts }) {
   const drivesHome = mine?.[3] === 'L' ? 'left' : mine?.[3] === 'R' ? 'right' : undefined;
   return (
     <section aria-labelledby="know-power" className="panel p-5">
-      <h3 id="know-power" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Plug className="h-5 w-5 text-sky-500" aria-hidden />Plugs and power</h3>
+      <h3 id="know-power" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Plug className="h-5 w-5 text-indigo-500" aria-hidden />Plugs and power</h3>
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {country.plugs.length ? country.plugs.map((p) => <span key={p} className="inline-flex h-9 min-w-9 items-center justify-center rounded-lg bg-zinc-100 px-2 text-sm font-semibold text-zinc-800 dark:bg-white/[0.08] dark:text-zinc-100">Type {p}</span>) : <span className="text-sm text-zinc-500">Not known</span>}
         {country.volts.length > 0 && <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-200 tabular-nums">· {country.volts.join(' / ')} V</span>}
@@ -146,14 +146,14 @@ function ClimateCard({ climate, place }: { climate: Climate; place: string }) {
   const runs = good.length ? good.map((m) => MONTHS[m]).join(', ') : null;
   return (
     <section aria-labelledby="know-climate" className="panel p-5">
-      <h3 id="know-climate" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Sun className="h-5 w-5 text-sky-500" aria-hidden />When to go</h3>
+      <h3 id="know-climate" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Sun className="h-5 w-5 text-indigo-500" aria-hidden />When to go</h3>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{runs ? <>Pleasant for walking: <strong className="text-zinc-900 dark:text-white">{runs}</strong> (17–29 °C by day, little rain).</> : 'No month is mild and dry here: pick by the bars below.'}</p>
       <div className="mt-4 grid grid-cols-12 items-end gap-1" style={{ height: 132 }} aria-hidden>
         {climate.high.map((h, i) => (
           <div key={i} className="flex h-full flex-col items-center justify-end gap-1">
             <span className="text-[11px] font-semibold tabular-nums text-zinc-700 dark:text-zinc-200">{h}°</span>
-            <span className={cn('w-full origin-bottom rounded-t-md transition-transform', good.includes(i) ? 'bg-sky-500' : 'bg-zinc-300 dark:bg-white/20')} style={{ height: `${Math.max(6, ((h - lo) / span) * 78)}px` }} />
-            <span className="w-full rounded-b-sm bg-sky-300/60 dark:bg-sky-300/30" style={{ height: `${Math.max(1, (climate.rain[i] / rainMax) * 14)}px` }} />
+            <span className={cn('w-full origin-bottom rounded-t-md transition-transform', good.includes(i) ? 'bg-indigo-500' : 'bg-zinc-300 dark:bg-white/20')} style={{ height: `${Math.max(6, ((h - lo) / span) * 78)}px` }} />
+            <span className="w-full rounded-b-sm bg-indigo-300/60 dark:bg-indigo-300/30" style={{ height: `${Math.max(1, (climate.rain[i] / rainMax) * 14)}px` }} />
             <span className="text-[11px] text-zinc-500 dark:text-zinc-400">{MONTHS[i].slice(0, 1)}</span>
           </div>
         ))}
@@ -169,7 +169,7 @@ function ClimateCard({ climate, place }: { climate: Climate; place: string }) {
 function Neighbourhoods({ places, night }: { places: { title: string; name: string; text?: string }[]; night: string[] }) {
   return (
     <section aria-labelledby="know-areas">
-      <h3 id="know-areas" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><BookOpen className="h-5 w-5 text-sky-500" aria-hidden />Neighbourhoods at a glance</h3>
+      <h3 id="know-areas" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><BookOpen className="h-5 w-5 text-indigo-500" aria-hidden />Neighbourhoods at a glance</h3>
       <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {places.map((p) => {
           const words = vibes(p.text), dark = night.find((s) => s.toLowerCase().includes(p.name.toLowerCase()));
@@ -177,7 +177,7 @@ function Neighbourhoods({ places, night }: { places: { title: string; name: stri
             <li key={p.title}>
               <Link href={`/travel/guide?d=${encodeURIComponent(p.title)}`} className="card flex h-full flex-col gap-2 p-4 transition-transform duration-200 hover:-translate-y-0.5">
                 <span className="font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span>
-                {words.length > 0 && <span className="flex flex-wrap gap-1">{words.map((w) => <span key={w} className="rounded-full bg-sky-500/10 px-2 py-0.5 text-xs font-semibold text-sky-700 dark:text-sky-300">{w}</span>)}</span>}
+                {words.length > 0 && <span className="flex flex-wrap gap-1">{words.map((w) => <span key={w} className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-semibold text-indigo-700 dark:text-indigo-300">{w}</span>)}</span>}
                 {p.text && <span className="line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{p.text}</span>}
                 {dark && <span className="flex gap-1.5 rounded-lg bg-amber-500/10 px-2.5 py-1.5 text-xs text-amber-800 dark:text-amber-300"><Moon className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />{dark}</span>}
               </Link>

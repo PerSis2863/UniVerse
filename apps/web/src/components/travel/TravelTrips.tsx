@@ -32,7 +32,7 @@ export function TravelTrips({ join }: { join: string | null }) {
     <div className="space-y-6">
       {join && (
         <section className="panel flex flex-wrap items-center gap-4 p-5" aria-label="Invitation">
-          <Users className="h-8 w-8 shrink-0 text-sky-500" aria-hidden />
+          <Users className="h-8 w-8 shrink-0 text-indigo-500" aria-hidden />
           <div className="min-w-0 flex-1">
             <p className="font-semibold text-zinc-900 dark:text-white">You’re invited to plan a trip</p>
             <p className="text-sm text-zinc-600 dark:text-zinc-300">Join to see its cities and days and plan them together. You can leave at any time.</p>
@@ -49,7 +49,7 @@ export function TravelTrips({ join }: { join: string | null }) {
       </div>
       {!data ? <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> : !data.trips.length ? (
         <div className="panel mx-auto max-w-xl p-8 text-center">
-          <MapPin className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+          <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
           <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">No trips yet</p>
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Start one here, or press “Plan this trip” on a place in Find where to go.</p>
         </div>

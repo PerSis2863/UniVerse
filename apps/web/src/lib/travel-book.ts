@@ -47,15 +47,21 @@ const place = (p: string) => p.replace(/\//g, ' ').replace(/\s*\([^)]*\)\s*/g, '
 const slug = (p: string) => place(p).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 
 export interface WayLink { label: string; partner: string; url: string }
-/** How to get from one city to the next: every way compared (Rome2Rio), flights (Google Flights), trains
- *  and buses (Omio in Europe, 12Go in Asia) and ferries (Direct Ferries) where they may help. */
+/** How to get from one city to the next: every way compared (Rome2Rio), the exact route by public transport
+ *  (Google Maps' documented directions link, M213: trains, buses and ferries with times), flights (Google
+ *  Flights), trains and buses (Omio in Europe, 12Go in Asia) and ferries (Direct Ferries) where they may help.
+ *  Omio's route links need its own city numbers and Direct Ferries publishes none, so those two open their
+ *  search, labelled so. */
 export function betweenLinks(from: { name: string; cc: string | null }, to: { name: string; cc: string | null }, { date, flight, sea }: { date?: string | null; flight?: boolean; sea?: boolean } = {}): WayLink[] {
   const a = place(from.name), b = place(to.name), d = day(date ?? undefined);
-  const links: WayLink[] = [{ label: 'Every way, with times and prices', partner: 'Rome2Rio', url: `https://www.rome2rio.com/s/${encodeURIComponent(a)}/${encodeURIComponent(b)}` }];
-  if (from.cc && to.cc && EUROPE.has(from.cc) && EUROPE.has(to.cc)) links.push({ label: 'Trains and buses', partner: 'Omio', url: 'https://www.omio.com/' });
+  const links: WayLink[] = [
+    { label: 'Every way, with times and prices', partner: 'Rome2Rio', url: `https://www.rome2rio.com/s/${encodeURIComponent(a)}/${encodeURIComponent(b)}` },
+    { label: 'This route by train, bus or ferry', partner: 'Google Maps', url: `https://www.google.com/maps/dir/?api=1&origin=${encodeURIComponent(a)}&destination=${encodeURIComponent(b)}&travelmode=transit` },
+  ];
+  if (from.cc && to.cc && EUROPE.has(from.cc) && EUROPE.has(to.cc)) links.push({ label: 'Search trains and buses', partner: 'Omio', url: 'https://www.omio.com/' });
   if (from.cc && to.cc && ASIA.has(from.cc) && ASIA.has(to.cc)) links.push({ label: 'Trains, buses and ferries', partner: '12Go', url: `https://12go.asia/en/travel/${slug(a)}/${slug(b)}` });
   if (flight !== false) links.push({ label: 'Flights', partner: 'Google Flights', url: `https://www.google.com/travel/flights?q=${encodeURIComponent(`Flights from ${a} to ${b}${d ? ` on ${d}` : ''}`)}` });
-  if (sea) links.push({ label: 'Ferries', partner: 'Direct Ferries', url: 'https://www.directferries.com/' });
+  if (sea) links.push({ label: 'Search ferries', partner: 'Direct Ferries', url: 'https://www.directferries.com/' });
   return links;
 }
 

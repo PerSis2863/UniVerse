@@ -41,7 +41,7 @@ export function TripGettingThere({ stops, start, end }: { stops: PlanStop[]; sta
   const out = me.name ? betweenLinks(me, first, { date: start }) : [], back = me.name ? betweenLinks(last, me, { date: end ? addDays(end, 1) : null }) : [];
   return (
     <section className="panel p-5" aria-labelledby="trip-there">
-      <h3 id="trip-there" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><PlaneTakeoff className="h-5 w-5 text-sky-500" aria-hidden />Getting there and back</h3>
+      <h3 id="trip-there" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><PlaneTakeoff className="h-5 w-5 text-indigo-500" aria-hidden />Getting there and back</h3>
       <label className="mt-3 block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Setting off from
         <input value={from} onChange={(e) => setFrom(e.target.value.slice(0, 80))} placeholder="Your city: London, Mumbai, Toronto…" className={field} />
       </label>
@@ -79,7 +79,7 @@ export function TripStays({ stop, from, nights, travellers, style, currency }: {
   const LABEL = { budget: 'Budget (hostels, guesthouses)', mid: 'Mid-range', splurge: 'Splurge' } as const;
   return (
     <section className="panel p-5" aria-labelledby="trip-stays">
-      <h3 id="trip-stays" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><BedDouble className="h-5 w-5 text-sky-500" aria-hidden /><span>Where to stay in <span translate="no">{nice(stop.name)}</span></span></h3>
+      <h3 id="trip-stays" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><BedDouble className="h-5 w-5 text-indigo-500" aria-hidden /><span>Where to stay in <span translate="no">{nice(stop.name)}</span></span></h3>
       <div className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Our estimate for your style: about <strong className="text-zinc-900 dark:text-white">{money(per, currency)}</strong> a night each{nights ? `, ${nights} ${nights === 1 ? 'night' : 'nights'}` : ''}.</div>
       <ul className="mt-3 space-y-2">
         {bands.filter((b) => b.n).map((b) => (
@@ -121,7 +121,7 @@ export function TripTravellers({ stop, from, to }: { stop: PlanStop; from: strin
 
   return (
     <section className="panel p-5" aria-labelledby="trip-board">
-      <h3 id="trip-board" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Users className="h-5 w-5 text-sky-500" aria-hidden /><span>Travellers in <span translate="no">{nice(stop.name)}</span></span></h3>
+      <h3 id="trip-board" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Users className="h-5 w-5 text-indigo-500" aria-hidden /><span>Travellers in <span translate="no">{nice(stop.name)}</span></span></h3>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Adults who choose to show they’re in the same city on the same dates. Only your first name, your dates and your note are shown, only to others on the board.</p>
       {!key ? <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Set the trip’s start date to see who else will be there.</p>
         : error ? <p className="mt-3 text-sm text-amber-700 dark:text-amber-300">{(error as Error).message}</p>
@@ -137,7 +137,7 @@ export function TripTravellers({ stop, from, to }: { stop: PlanStop; from: strin
           </form>
         ) : (
           <div className="mt-4 space-y-3">
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-sky-500/10 px-3 py-2 text-sm text-sky-900 dark:text-sky-200">
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-indigo-500/10 px-3 py-2 text-sm text-indigo-900 dark:text-indigo-200">
               <span>You’re on the board: {short(data.mine.fromDate)}–{short(data.mine.toDate)}{data.mine.hidden ? ' (hidden after reports)' : ''}</span>
               <button type="button" disabled={busy === 'leave'} onClick={() => void act('leave', () => api.delete(`/travel/board/${data.mine!.id}`), 'You’re off the board.')} className="btn-ghost btn-sm">Take me off</button>
             </div>
@@ -145,7 +145,7 @@ export function TripTravellers({ stop, from, to }: { stop: PlanStop; from: strin
               <ul className="divide-y divide-zinc-200/70 dark:divide-white/10">
                 {data.people.map((p) => (
                   <li key={p.id} className="flex flex-wrap items-start gap-3 py-3">
-                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15 font-semibold text-sky-700 dark:text-sky-300" aria-hidden>{p.name.slice(0, 1).toUpperCase()}</span>
+                    <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-500/15 font-semibold text-indigo-700 dark:text-indigo-300" aria-hidden>{p.name.slice(0, 1).toUpperCase()}</span>
                     <div className="min-w-0 flex-1">
                       <p className="font-semibold text-zinc-900 dark:text-white"><span translate="no">{p.name}</span> <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">{short(p.fromDate)}–{short(p.toDate)}</span></p>
                       {p.note && <p className="text-sm text-zinc-600 dark:text-zinc-300" translate="no">{p.note}</p>}
@@ -153,7 +153,7 @@ export function TripTravellers({ stop, from, to }: { stop: PlanStop; from: strin
                     <div className="flex flex-wrap gap-1">
                       <button type="button" disabled={!!busy} onClick={() => void message(p.id)} className="btn-secondary btn-sm inline-flex items-center gap-1"><MessageSquare className="h-4 w-4" aria-hidden />Message</button>
                       <button type="button" disabled={!!busy} onClick={() => { const reason = prompt(`What’s wrong with ${p.name}’s post?`); if (reason !== null) void act(p.id, () => api.post(`/travel/board/${p.id}/report`, { reason }), 'Thanks: it’s reported. Three reports hide a post.'); }} className="btn-ghost btn-sm inline-flex items-center gap-1"><Flag className="h-4 w-4" aria-hidden />Report</button>
-                      <button type="button" disabled={!!busy} onClick={() => { if (confirm(`Block ${p.name}? You won’t see each other on the board.`)) void act(p.id, () => api.post(`/travel/board/${p.id}/block`), `${p.name} is blocked.`); }} className="btn-ghost btn-sm inline-flex items-center gap-1 text-red-600 dark:text-red-400"><ShieldOff className="h-4 w-4" aria-hidden />Block</button>
+                      <button type="button" disabled={!!busy} onClick={() => { if (confirm(`Block ${p.name}? You won’t see each other on the board, and neither of you can write in a chat you started here.`)) void act(p.id, () => api.post(`/travel/board/${p.id}/block`), `${p.name} is blocked.`); }} className="btn-ghost btn-sm inline-flex items-center gap-1 text-red-600 dark:text-red-400"><ShieldOff className="h-4 w-4" aria-hidden />Block</button>
                     </div>
                   </li>
                 ))}

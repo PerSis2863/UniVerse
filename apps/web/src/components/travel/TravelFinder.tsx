@@ -22,7 +22,7 @@ import { Cover, useHome } from './travel-ui';
 /** A name from Intl, or the code itself if the browser doesn't know it. */
 const named = (dn: Intl.DisplayNames, code: string) => { try { return dn.of(code) ?? code; } catch { return code; } };
 const flag = (cc: string) => String.fromCodePoint(...[...cc].map((ch) => 0x1f1e6 + ch.charCodeAt(0) - 65));
-const field = 'mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-sky-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white';
+const field = 'mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white';
 const labelCls = 'block text-xs font-semibold text-zinc-600 dark:text-zinc-300';
 
 export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, month: number) => void }) {
@@ -55,8 +55,8 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
   return (
     <div className="space-y-6">
       <section className="panel relative p-6 sm:p-8" aria-labelledby="find-title">
-        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden><span className="absolute -start-24 -top-24 h-72 w-72 rounded-full bg-sky-400/15 blur-3xl" /></span>
-        <h2 id="find-title" className="relative font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ fontSize: 'clamp(1.7rem, 3vw, 2.4rem)', lineHeight: 1.1 }}>Where should I <em className="font-serif italic text-sky-600 dark:text-sky-300">go?</em></h2>
+        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden><span className="absolute -start-24 -top-24 h-72 w-72 rounded-full bg-indigo-400/15 blur-3xl" /></span>
+        <h2 id="find-title" className="relative font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ fontSize: 'clamp(1.7rem, 3vw, 2.4rem)', lineHeight: 1.1 }}>Where should I <em className="accent-word pe-1">go?</em></h2>
         <p className="relative mt-2 max-w-2xl text-zinc-600 dark:text-zinc-300">Your days, budget and what you love: {IDEAS.length} places ranked for that month, with the reasons.</p>
         <div className="relative mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           <div>
@@ -131,7 +131,7 @@ function MatchCard({ m, rank, share, days, currency, onPlan }: { m: Match; rank:
         <span className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
           <span className="min-w-0">
             <span className="block truncate text-lg font-semibold text-white" translate="no">{idea.title.replace(/\s*\([^)]*\)/, '')}</span>
-            <span className="block text-xs font-semibold text-sky-100"><span aria-hidden>{flag(idea.cc)} </span>{idea.country}</span>
+            <span className="block text-xs font-semibold text-indigo-100"><span aria-hidden>{flag(idea.cc)} </span>{idea.country}</span>
           </span>
           {weather && (
             <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-black/50 px-2 py-0.5 text-xs font-semibold tabular-nums text-white" title={`${weather.high} °C by day, ${weather.low} °C at night, ${weather.rain} mm of rain`}>
@@ -147,7 +147,7 @@ function MatchCard({ m, rank, share, days, currency, onPlan }: { m: Match; rank:
             {m.perDay !== null && <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{money(m.perDay * days, currency)} for {days} {days === 1 ? 'day' : 'days'}</span>}
           </div>
           <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10" aria-hidden>
-            <span className="block h-full origin-left rounded-full bg-sky-500 transition-transform duration-300 ease-[var(--ease-glide)] rtl:origin-right" style={{ transform: `scaleX(${share})` }} />
+            <span className="block h-full origin-left rounded-full bg-indigo-500 transition-transform duration-300 ease-[var(--ease-glide)] rtl:origin-right" style={{ transform: `scaleX(${share})` }} />
           </span>
         </div>
         <ul className="space-y-1 text-sm">

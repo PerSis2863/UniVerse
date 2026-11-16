@@ -52,7 +52,7 @@ export function TravelTrip() {
 
   if (error) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
-      <Route className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+      <Route className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">{(error as Error).message || 'That trip didn’t open.'}</p>
       <Link href="/travel/saved" className="btn-primary mt-5 inline-flex">Your trips</Link>
     </div>
@@ -119,7 +119,7 @@ export function TravelTrip() {
         <div className="mt-4 flex flex-wrap items-center gap-2">
           <span className="sr-only">Planning: {data.members.map((m) => m.name).join(', ')}</span>
           <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
-            {data.members.slice(0, 6).map((m) => <span key={m.id} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500 text-xs font-semibold text-white ring-2 ring-black/40" title={m.name} aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>)}
+            {data.members.slice(0, 6).map((m) => <span key={m.id} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white ring-2 ring-black/40" title={m.name} aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>)}
           </span>
           <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-zinc-900"><Share2 className="h-4 w-4" aria-hidden />Invite friends</button>
           <button type="button" onClick={calendar} disabled={!t.startDate || !stops.length} title={t.startDate ? undefined : 'Pick a start date first'} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25 disabled:opacity-50"><CalendarPlus className="h-4 w-4" aria-hidden />Add to calendar</button>
@@ -154,7 +154,7 @@ export function TravelTrip() {
         {/* The route. */}
         <section className="panel p-5" aria-labelledby="trip-route">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <h3 id="trip-route" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Route className="h-5 w-5 text-sky-500" aria-hidden />Route</h3>
+            <h3 id="trip-route" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Route className="h-5 w-5 text-indigo-500" aria-hidden />Route</h3>
             {stops.length >= 3 && <button type="button" onClick={reorder} className="btn-secondary btn-sm">Shortest order</button>}
           </div>
           <ol className="mt-4">
@@ -163,7 +163,7 @@ export function TravelTrip() {
               return (
                 <li key={s.id} data-key={s.id}>
                   <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.04]">
-                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-sky-500 text-sm font-semibold text-white" aria-hidden>{i + 1}</span>
+                    <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white" aria-hidden>{i + 1}</span>
                     <div className="min-w-0 flex-1">
                       <Link href={`/travel/guide?d=${encodeURIComponent(s.guide)}`} className="font-semibold text-zinc-900 hover:underline dark:text-white" translate="no">{nice(s.name)}</Link>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">{range(dates[i].from, dates[i].to) ?? `Days ${dates[i].offset + 1}–${dates[i].offset + s.days}`}</p>
@@ -180,8 +180,8 @@ export function TravelTrip() {
                     </div>
                   </div>
                   {next && (
-                    <div className="ms-4 border-s-2 border-dashed border-sky-300/70 py-2 ps-6 dark:border-sky-400/30">
-                      <p className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">{l?.flight ? <Plane className="h-4 w-4 text-sky-500" aria-hidden /> : <Route className="h-4 w-4 text-sky-500" aria-hidden />}
+                    <div className="ms-4 border-s-2 border-dashed border-indigo-300/70 py-2 ps-6 dark:border-indigo-400/30">
+                      <p className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">{l?.flight ? <Plane className="h-4 w-4 text-indigo-500" aria-hidden /> : <Route className="h-4 w-4 text-indigo-500" aria-hidden />}
                         {l ? `${l.km.toLocaleString()} km · about ${l.hours} h ${l.flight ? 'flying, plus the airports' : 'by train, bus or car'}` : 'How to get there'}</p>
                       <div className="mt-1.5 flex flex-wrap gap-1.5">
                         {betweenLinks(s, next, { date: dates[i + 1].from, flight: !l || l.km > 250, sea: ferryLikely(s.cc, next.cc) }).map((w) => (
@@ -227,14 +227,14 @@ export function TravelTrip() {
       )}
       {!stops.length && (
         <div className="panel p-8 text-center">
-          <MapPin className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+          <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
           <p className="mt-3 font-semibold text-zinc-900 dark:text-white">Add the first place above: a city, an island, a national park.</p>
         </div>
       )}
 
       {/* Who's planning it. */}
       <section className="panel p-5" aria-labelledby="trip-people-h">
-        <h3 id="trip-people-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Users className="h-5 w-5 text-sky-500" aria-hidden />Planning together</h3>
+        <h3 id="trip-people-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Users className="h-5 w-5 text-indigo-500" aria-hidden />Planning together</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Anyone with the link can join and plan with you; everyone sees changes as they happen.</p>
         <div className="mt-3 flex flex-wrap items-center gap-2">
           <code className="min-w-0 max-w-full truncate rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200">{invite}</code>
@@ -244,7 +244,7 @@ export function TravelTrip() {
         <ul className="mt-4 divide-y divide-zinc-200/70 dark:divide-white/10">
           {data.members.map((m) => (
             <li key={m.id} className="flex items-center gap-3 py-2">
-              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/15 text-sm font-semibold text-sky-700 dark:text-sky-300" aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>
+              <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500/15 text-sm font-semibold text-indigo-700 dark:text-indigo-300" aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>
               <span className="flex-1 text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{m.name}{m.id === data.me && <span className="font-normal text-zinc-500 dark:text-zinc-400"> (you)</span>}{m.owner && <span className="font-normal text-zinc-500 dark:text-zinc-400"> · started it</span>}</span>
               {data.owner && !m.owner && <button type="button" onClick={() => { if (confirm(`Take ${m.name} off this trip?`)) void change({ members: data.members.filter((x) => x.id !== m.id) }, () => api.delete(`/travel/trips/${t.id}/members/${m.id}`)); }} className="btn-ghost btn-sm text-red-600 dark:text-red-400">Remove</button>}
             </li>
@@ -264,16 +264,16 @@ function BudgetCard({ b, travellers, style }: { b: NonNullable<ReturnType<typeof
   const sum = Math.max(1, b.total);
   return (
     <section className="panel p-5" aria-labelledby="trip-budget">
-      <h3 id="trip-budget" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Wallet className="h-5 w-5 text-sky-500" aria-hidden />Budget</h3>
+      <h3 id="trip-budget" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Wallet className="h-5 w-5 text-indigo-500" aria-hidden />Budget</h3>
       <div className="mt-3 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-white">{money(b.total, b.currency)}</div>
       <p className="text-sm text-zinc-600 dark:text-zinc-300">{travellers > 1 ? `${money(b.perPerson, b.currency)} each for ${travellers} travellers` : 'for one traveller'} · {STYLES[style].label.toLowerCase()}</p>
       <div className="mt-4 flex h-3 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10" aria-hidden>
-        {parts.map((p, i) => <span key={p.label} className="h-full bg-sky-500 transition-[flex-grow] duration-300 ease-[var(--ease-glide)]" style={{ flexGrow: p.v / sum, opacity: 1 - i * 0.17 }} />)}
+        {parts.map((p, i) => <span key={p.label} className="h-full bg-indigo-500 transition-[flex-grow] duration-300 ease-[var(--ease-glide)]" style={{ flexGrow: p.v / sum, opacity: 1 - i * 0.17 }} />)}
       </div>
       <dl className="mt-3 space-y-1.5 text-sm">
         {parts.map((p, i) => (
           <div key={p.label} className="flex items-center gap-2">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-sky-500" style={{ opacity: 1 - i * 0.17 }} aria-hidden />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-indigo-500" style={{ opacity: 1 - i * 0.17 }} aria-hidden />
             <dt className="flex-1 text-zinc-600 dark:text-zinc-300">{p.label}</dt>
             <dd className="font-semibold tabular-nums text-zinc-900 dark:text-white">{money(p.v, b.currency)}</dd>
           </div>

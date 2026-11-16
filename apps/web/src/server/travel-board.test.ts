@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
 import { directChat } from './direct-chat';
-import { joinTravelBoard, messageTraveller, travelBoard } from './travel-board';
+import { joinTravelBoard, messageTraveller, travelBoard, travelChatBlocked } from './travel-board';
 import type { SessionUser } from '@/lib/server-auth';
 
 // M207: the travellers board is for adults who opted in, shows only first names and dates, and keeps
@@ -10,7 +10,8 @@ vi.mock('@/lib/db', () => ({
   default: {
     user: { findUnique: vi.fn() },
     travelBoardPost: { findUnique: vi.fn(), findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), upsert: vi.fn().mockResolvedValue({ id: 'p-me' }) },
-    travelBlock: { findMany: vi.fn().mockResolvedValue([]) },
+    travelBlock: { findMany: vi.fn().mockResolvedValue([]), findFirst: vi.fn() },
+    conversationParticipant: { findFirst: vi.fn() },
   },
 }));
 vi.mock('./safety', () => ({ schoolPolicy: vi.fn().mockResolvedValue({ studentsMinors: true }), isMinor: (u: { role: string; dateOfBirth: Date | null }, p: { studentsMinors: boolean }) => u.role === 'STUDENT' && !u.dateOfBirth && p.studentsMinors }));
@@ -67,5 +68,17 @@ describe('messaging', () => {
     vi.mocked(prisma.travelBoardPost.count).mockResolvedValueOnce(1);
     expect(await messageTraveller(me, 'p1')).toEqual({ conversationId: 'c1' });
     expect(directChat).toHaveBeenCalledWith('me', 'ana', 'travel');
+  });
+});
+
+describe('a chat after a block (M213)', () => {
+  it('refuses sending either way, and says who blocked only to the one who did', async () => {
+    vi.mocked(prisma.conversationParticipant.findFirst).mockResolvedValue({ userId: 'ana' } as never);
+    vi.mocked(prisma.travelBlock.findFirst).mockResolvedValueOnce(null);
+    expect(await travelChatBlocked('c1', 'me')).toBeNull();
+    vi.mocked(prisma.travelBlock.findFirst).mockResolvedValueOnce({ userId: 'me' } as never);
+    expect(await travelChatBlocked('c1', 'me')).toMatch(/You blocked/);
+    vi.mocked(prisma.travelBlock.findFirst).mockResolvedValueOnce({ userId: 'ana' } as never);
+    expect(await travelChatBlocked('c1', 'me')).toMatch(/isn’t taking messages/);
   });
 });

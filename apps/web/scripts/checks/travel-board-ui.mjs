@@ -1,7 +1,7 @@
 // M207 UniVerse Travel on a trip: getting there and back from home (flights, every way), where to stay
 // (the guide's price bands, Hostelworld beside Booking.com with the dates), and the travellers board:
 // Alice and Bob each plan Lisbon on the same dates, tick 18+ and join; Bob sees Alice by first name,
-// messages her (a Travel chat opens), then blocks her and neither sees the other. A guide's Sleep tab has
+// messages her (a Travel chat opens), then blocks her: neither sees the other, nor can write in that chat (M213). A guide's Sleep tab has
 // both stay links. Axe at 1280 (dark) and 390 (light, a touch phone), no sideways scroll, no page errors.
 // Tidies up (both off the board, unblocked, trips deleted). Needs the internet (Wikivoyage).
 // Runs against `local:serve` (or BASE=… for local:dev).
@@ -74,8 +74,11 @@ r.axe.push(...(await axe(bob.page)).map((x) => `board 390 ${x}`));
 r.wide390 = await bob.page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
 const bobTrip = bob.page.url();
 await board.getByRole('button', { name: 'Message' }).first().click();
-await bob.page.waitForURL(/inbox\?c=/, { timeout: 60_000 });
+await bob.page.waitForURL(/inbox\?c=/, { timeout: 180_000 });
 r.message = 'chat opened';
+const chatId = new URL(bob.page.url()).searchParams.get('c');
+const send = async (who) => (await bob.page.request.post(`${base}/api/chat/conversations/${chatId}/messages`, { headers: { Authorization: `Bearer mock-token-${who}` }, data: { body: 'Hello from the board check' }, timeout: 120_000 })).status();
+r.sendBeforeBlock = await send('bob@student.com');
 await bob.page.goto(bobTrip, { waitUntil: 'load', timeout: 120_000 });
 const board2 = bob.page.getByRole('region', { name: /Travellers in Lisbon/ });
 await board2.getByRole('button', { name: 'Block' }).first().waitFor({ timeout: 60_000 });
@@ -85,6 +88,8 @@ r.afterBlock = 'Bob no longer sees Alice';
 await alice.page.reload({ waitUntil: 'load' });
 await alice.page.getByRole('region', { name: /Travellers in Lisbon/ }).getByText(/No one else yet/).waitFor({ timeout: 60_000 });
 r.aliceAfterBlock = 'Alice no longer sees Bob';
+// M213: after the block, neither can write in their Travel chat (403).
+r.sendAfterBlock = { bob: await send('bob@student.com'), alice: await send('alice@student.com') };
 
 // A guide's Sleep tab: hostels beside hotels.
 await alice.page.goto(`${base}/travel/guide?d=Lisbon`, { waitUntil: 'load', timeout: 180_000 });

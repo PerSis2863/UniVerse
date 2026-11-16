@@ -65,7 +65,7 @@ export function TravelGuide() {
 
   if (error) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
-      <MapPin className="mx-auto h-8 w-8 text-sky-500" aria-hidden />
+      <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">{(error as Error).message || 'That guide didn’t open.'}</p>
       <Link href="/travel" className="btn-primary mt-5 inline-flex items-center gap-2"><Search className="h-4 w-4" aria-hidden />Search another place</Link>
     </div>
@@ -90,7 +90,7 @@ export function TravelGuide() {
         <Cover file={g.banner} width={1600} priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/35 to-black/10" aria-hidden />
         <Link href="/travel" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4" aria-hidden />Explore</Link>
-        {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-sky-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
+        {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-indigo-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
         <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl" translate="no">{nice(g.title)}</h2>
         {g.summary[0] && <p className="mt-3 max-w-3xl text-base leading-relaxed text-zinc-100">{g.summary[0]}</p>}
       </section>
@@ -120,7 +120,7 @@ export function TravelGuide() {
                 return (
                   <li key={w.date} className="flex flex-col items-center gap-1 rounded-xl bg-zinc-50 px-1 py-2.5 text-center dark:bg-white/[0.04]" title={`${s.words}${w.rain ? `, ${w.rain} mm rain` : ''}`}>
                     <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{i === 0 ? 'Today' : new Date(`${w.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</span>
-                    <s.icon className="h-6 w-6 text-sky-500" aria-label={s.words} />
+                    <s.icon className="h-6 w-6 text-indigo-500" aria-label={s.words} />
                     <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{w.max}°</span>
                     <span className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{w.min}°</span>
                   </li>
@@ -165,7 +165,7 @@ export function TravelGuide() {
             <>
               {(g.summary.length > 1 || parts.get('understand')?.text.length) && (
                 <section className="panel p-6">
-                  <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-sky-500" aria-hidden />Good to know</p>
+                  <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-indigo-500" aria-hidden />Good to know</p>
                   <div className="space-y-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{[...g.summary.slice(1), ...(parts.get('understand')?.text ?? [])].map((p, i) => <p key={i}>{p}</p>)}</div>
                 </section>
               )}
@@ -175,7 +175,7 @@ export function TravelGuide() {
                   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {g.places.map((p) => (
                       <li key={p.title}><Link href={guideHref(p.title)} className="card flex h-full items-start gap-3 p-4 transition-[transform] duration-200 hover:-translate-y-0.5">
-                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-sky-500" aria-hidden />
+                        <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden />
                         <span className="min-w-0"><span className="block font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span>{p.text && <span className="mt-0.5 block line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{p.text}</span>}</span>
                       </Link></li>
                     ))}
@@ -192,7 +192,7 @@ export function TravelGuide() {
           )}
           {current.id === 'eat' && data.tips?.dishes?.length ? (
             <section aria-labelledby="guide-dishes" className="panel p-6">
-              <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-sky-500" aria-hidden />What to try</h3>
+              <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-indigo-500" aria-hidden />What to try</h3>
               <ul className="mt-3 grid gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
             </section>
           ) : null}
@@ -225,7 +225,7 @@ export function TravelGuide() {
                     {listings.length > 8 && (
                       <label className="relative w-full sm:w-72"><span className="sr-only">Filter these places</span>
                         <Search className="pointer-events-none absolute start-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
-                        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter: sushi, free, 24 hours…" className="w-full rounded-xl border border-zinc-200 bg-white py-2 ps-9 pe-3 text-sm outline-none focus:ring-2 focus:ring-sky-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
+                        <input value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Filter: sushi, free, 24 hours…" className="w-full rounded-xl border border-zinc-200 bg-white py-2 ps-9 pe-3 text-sm outline-none focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
                       </label>
                     )}
                   </div>
@@ -258,7 +258,7 @@ function Chip({ on, onClick, children }: { on: boolean; onClick: () => void; chi
 
 function Fact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
   return (
-    <div className="flex items-start gap-2.5"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" aria-hidden />
+    <div className="flex items-start gap-2.5"><Icon className="mt-0.5 h-4 w-4 shrink-0 text-indigo-500" aria-hidden />
       <p className="min-w-0"><span className="block text-xs font-semibold text-zinc-500 dark:text-zinc-400">{label}</span><span className="block text-sm font-semibold text-zinc-900 dark:text-white">{value}</span></p>
     </div>
   );
@@ -280,7 +280,7 @@ function PinMap({ listings }: { listings: Listing[] }) {
     <figure className="panel overflow-hidden p-3">
       {/* The dots repeat the cards' Map buttons for the mouse: hidden from screen readers. */}
       <svg viewBox={`-4 -4 ${W + 8} ${H + 8}`} className="block h-auto w-full" aria-hidden>
-        <rect x={-4} y={-4} width={W + 8} height={H + 8} rx={3} className="fill-sky-500/[0.05]" />
+        <rect x={-4} y={-4} width={W + 8} height={H + 8} rx={3} className="fill-indigo-500/[0.05]" />
         {Array.from({ length: 5 }, (_, i) => <line key={i} x1={(i * W) / 4} x2={(i * W) / 4} y1={0} y2={H} className="stroke-zinc-400/15" strokeWidth={0.2} />)}
         {inside.map((p, i) => {
           const x = (((p.lon - lo0) * k) / w) * W, y = H - ((p.lat - la0) / h) * H;

@@ -91,8 +91,9 @@ describe('getting between places (M206, M207)', () => {
   it('links every way, the region’s own trains and buses, flights and ferries where they help', async () => {
     const { betweenLinks, ferryLikely, hostelLink } = await import('./travel-book');
     const eu = betweenLinks({ name: 'Lisbon', cc: 'PT' }, { name: 'Porto', cc: 'PT' }, { date: '2027-04-11', flight: false });
-    expect(eu.map((l) => l.partner)).toEqual(['Rome2Rio', 'Omio']);
+    expect(eu.map((l) => l.partner)).toEqual(['Rome2Rio', 'Google Maps', 'Omio']);
     expect(eu[0].url).toBe('https://www.rome2rio.com/s/Lisbon/Porto');
+    expect(eu[1].url).toBe('https://www.google.com/maps/dir/?api=1&origin=Lisbon&destination=Porto&travelmode=transit');
     const asia = betweenLinks({ name: 'Bangkok', cc: 'TH' }, { name: 'Chiang Mai', cc: 'TH' }, { date: '2027-01-05', sea: ferryLikely('TH', 'TH') });
     expect(asia.find((l) => l.partner === '12Go')!.url).toBe('https://12go.asia/en/travel/bangkok/chiang-mai');
     expect(asia.find((l) => l.partner === 'Google Flights')!.url).toContain(encodeURIComponent('Flights from Bangkok to Chiang Mai on 2027-01-05'));
