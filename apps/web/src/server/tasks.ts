@@ -122,20 +122,23 @@ export async function createBoard(user: SessionUser, body: Record<string, unknow
 /** A board with its lists, cards, the people cards can be given to, and what I may do. */
 export async function getBoard(boardId: string, user: SessionUser) {
   const { board, canEdit, canManage } = await access(boardId, user);
-  const [lists, tasks, people] = await Promise.all([
+  const [lists, tasks, people, spent] = await Promise.all([
     prisma.taskList.findMany({ where: { boardId }, orderBy: { position: 'asc' }, select: { id: true, title: true, position: true, wipLimit: true } }),
     prisma.task.findMany({
       where: { boardId }, orderBy: { position: 'asc' }, take: MAX_TASKS,
-      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, createdAt: true, priority: true, labels: true, estimate: true, repeat: true, blockedBy: true, _count: { select: { comments: true } } },
+      select: { id: true, listId: true, title: true, notes: true, assigneeId: true, dueAt: true, position: true, checklist: true, doneAt: true, createdAt: true, priority: true, labels: true, estimate: true, repeat: true, blockedBy: true, startAt: true, milestone: true, _count: { select: { comments: true } } },
     }),
     audience(board).then((ids) => prisma.user.findMany({ where: { id: { in: ids.slice(0, 90) } }, select: { id: true, name: true, avatar: true } })),
+    // M230: minutes logged on each card, for the estimate against time spent.
+    prisma.taskTimeEntry.groupBy({ by: ['taskId'], where: { boardId }, _sum: { minutes: true } }),
   ]);
+  const minutes = new Map(spent.map((x) => [x.taskId, x._sum.minutes ?? 0]));
   const course = board.courseId ? await prisma.course.findUnique({ where: { id: board.courseId }, select: { code: true, name: true } }) : null;
   return {
     id: board.id, title: board.title, course, canEdit, canManage, me: user.id, people,
     members: board.members,
     lists,
-    tasks: tasks.map((t) => ({ ...t, checklist: parseChecklist(t.checklist), labels: parseList(t.labels), blockedBy: parseList(t.blockedBy), comments: t._count.comments, _count: undefined })),
+    tasks: tasks.map((t) => ({ ...t, checklist: parseChecklist(t.checklist), labels: parseList(t.labels), blockedBy: parseList(t.blockedBy), comments: t._count.comments, minutes: minutes.get(t.id) ?? 0, _count: undefined })),
   };
 }
 
@@ -247,11 +250,11 @@ async function firstList(boardId: string) {
 }
 
 export async function updateTask(taskId: string, user: SessionUser, body: Record<string, unknown>) {
-  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true, assigneeId: true, title: true, doneAt: true, repeat: true, dueAt: true, listId: true, notes: true, priority: true, labels: true, estimate: true } });
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true, assigneeId: true, title: true, doneAt: true, repeat: true, dueAt: true, listId: true, notes: true, priority: true, labels: true, estimate: true, startAt: true } });
   if (!task) throw new NotFoundException('Card not found.');
   const { board, canEdit } = await access(task.boardId, user);
   if (!canEdit) throw new ForbiddenException('You can only look at this board.');
-  const data: { title?: string; notes?: string | null; assigneeId?: string | null; dueAt?: Date | null; listId?: string; position?: number; checklist?: string | null; doneAt?: Date | null; priority?: string | null; labels?: string | null; estimate?: number | null; repeat?: string | null; blockedBy?: string | null } = {};
+  const data: { startAt?: Date | null; milestone?: boolean; title?: string; notes?: string | null; assigneeId?: string | null; dueAt?: Date | null; listId?: string; position?: number; checklist?: string | null; doneAt?: Date | null; priority?: string | null; labels?: string | null; estimate?: number | null; repeat?: string | null; blockedBy?: string | null } = {};
   if (typeof body.title === 'string' && body.title.trim()) data.title = clean(body.title, 200);
   if (body.notes === null || typeof body.notes === 'string') data.notes = clean(body.notes, 5000) || null;
   if (body.assigneeId === null) data.assigneeId = null;
@@ -261,6 +264,12 @@ export async function updateTask(taskId: string, user: SessionUser, body: Record
   }
   if (body.dueAt === null) data.dueAt = null;
   else if (typeof body.dueAt === 'string') { const d = new Date(body.dueAt); if (Number.isNaN(d.getTime())) throw new BadRequestException('That due date isn’t a date.'); data.dueAt = d; }
+  // M230: a start day (the Gantt bar runs from it to the due day) and the milestone flag.
+  if (body.startAt === null) data.startAt = null;
+  else if (typeof body.startAt === 'string') { const d = new Date(body.startAt); if (Number.isNaN(d.getTime())) throw new BadRequestException('That start date isn’t a date.'); data.startAt = d; }
+  const start = data.startAt !== undefined ? data.startAt : task.startAt, due = data.dueAt !== undefined ? data.dueAt : task.dueAt;
+  if (start && due && start > due) throw new BadRequestException('A card can’t start after it’s due.');
+  if (typeof body.milestone === 'boolean') data.milestone = body.milestone;
   if (typeof body.listId === 'string') {
     if (!(await prisma.taskList.findFirst({ where: { id: body.listId, boardId: task.boardId }, select: { id: true } }))) throw new NotFoundException('List not found.');
     data.listId = body.listId;
@@ -336,6 +345,49 @@ export async function addComment(taskId: string, user: SessionUser, body: Record
   }
   publish(people, { type: 'refresh', keys: [`/api/tasks/items/${taskId}/comments`, `/api/tasks/${task.boardId}`] });
   return c;
+}
+
+// ── Time spent (M230) ──────────────────────────────────────────────────────────────────────
+
+const MAX_ENTRIES = 500;
+
+/** GET /api/tasks/items/:tid/time: the time logged on a card, newest first, and its total. */
+export async function listTime(taskId: string, user: SessionUser) {
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true } });
+  if (!task) throw new NotFoundException('Card not found.');
+  const { canEdit } = await access(task.boardId, user);
+  const rows = await prisma.taskTimeEntry.findMany({ where: { taskId }, orderBy: { at: 'desc' }, take: 200, select: { id: true, userId: true, minutes: true, note: true, at: true } });
+  const users = await prisma.user.findMany({ where: { id: { in: [...new Set(rows.map((r) => r.userId))].slice(0, 90) } }, select: { id: true, name: true } });
+  const by = new Map(users.map((u) => [u.id, u.name]));
+  const total = (await prisma.taskTimeEntry.aggregate({ where: { taskId }, _sum: { minutes: true } }))._sum.minutes ?? 0;
+  return { canEdit, me: user.id, total, entries: rows.map((r) => ({ ...r, name: by.get(r.userId) ?? 'Someone', mine: r.userId === user.id })) };
+}
+
+/** POST /api/tasks/items/:tid/time { minutes, note?, at? }: log time on a card (1 minute to 24 hours). */
+export async function addTime(taskId: string, user: SessionUser, body: Record<string, unknown>) {
+  const task = await prisma.task.findUnique({ where: { id: taskId }, select: { boardId: true } });
+  if (!task) throw new NotFoundException('Card not found.');
+  const { board, canEdit } = await access(task.boardId, user);
+  if (!canEdit) throw new ForbiddenException('You can only look at this board.');
+  const minutes = Math.round(Number(body.minutes));
+  if (!Number.isFinite(minutes) || minutes < 1 || minutes > 24 * 60) throw new BadRequestException('Log between 1 minute and 24 hours.');
+  let at = new Date();
+  if (typeof body.at === 'string' && body.at) { const d = new Date(body.at); if (Number.isNaN(d.getTime()) || d.getTime() > Date.now() + 864e5) throw new BadRequestException('Choose a day that’s already come.'); at = d; }
+  if ((await prisma.taskTimeEntry.count({ where: { taskId } })) >= MAX_ENTRIES) throw new BadRequestException(`A card keeps up to ${MAX_ENTRIES} time entries.`);
+  const e = await prisma.taskTimeEntry.create({ data: { taskId, boardId: task.boardId, userId: user.id, minutes, note: clean(body.note, 200) || null, at }, select: { id: true } });
+  publish(await audience(board), { type: 'refresh', keys: [`/api/tasks/items/${taskId}/time`, `/api/tasks/${task.boardId}`] });
+  return e;
+}
+
+/** DELETE /api/tasks/time/:id: take back time you logged (the board's managers can take back anyone's). */
+export async function deleteTime(id: string, user: SessionUser) {
+  const e = await prisma.taskTimeEntry.findUnique({ where: { id }, select: { taskId: true, boardId: true, userId: true } });
+  if (!e) throw new NotFoundException('That entry is gone.');
+  const { board, canEdit, canManage } = await access(e.boardId, user);
+  if (!canEdit || (e.userId !== user.id && !canManage)) throw new ForbiddenException('Only whoever logged it can take it back.');
+  await prisma.taskTimeEntry.delete({ where: { id } });
+  publish(await audience(board), { type: 'refresh', keys: [`/api/tasks/items/${e.taskId}/time`, `/api/tasks/${e.boardId}`] });
+  return { ok: true };
 }
 
 /** My open cards due in this window, for the smart study planner. */

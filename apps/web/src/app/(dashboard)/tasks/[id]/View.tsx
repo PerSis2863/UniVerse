@@ -9,6 +9,8 @@ import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { ArrowLeft, CalendarClock, CalendarDays, Clock, Flag, Lock, Repeat as RepeatIcon, Zap, Check, CheckSquare, GanttChart, KanbanSquare, List, Loader2, MessageSquare, Plus, Send, Share2, Trash2, UserMinus, X } from 'lucide-react';
 import { CalendarView, TimelineView } from '@/components/tasks/TaskViews';
+import { TimeLog } from '@/components/tasks/TimeLog';
+import { dayKey } from '@/lib/task-calendar';
 import { AutomationsSheet } from '@/components/tasks/Automations';
 import { PRIORITIES, PRIORITY_LABEL, REPEATS, REPEAT_LABEL, openBlockers, type Priority, type Repeat } from '@/lib/task-extras';
 import { promptDialog } from '@/components/ui/Dialogs';
@@ -31,7 +33,7 @@ import { Translatable } from '@/components/shared/Translatable';
 // to" in the card), or as one list. Changes from others arrive live (src/server/tasks.ts).
 
 interface CheckItem { text: string; done: boolean }
-interface Card { id: string; listId: string; title: string; notes: string | null; assigneeId: string | null; dueAt: string | null; position: number; checklist: CheckItem[]; doneAt: string | null; comments: number; createdAt: string; priority: Priority | null; labels: string[]; estimate: number | null; repeat: Repeat | null; blockedBy: string[] }
+interface Card { id: string; listId: string; title: string; notes: string | null; assigneeId: string | null; dueAt: string | null; position: number; checklist: CheckItem[]; doneAt: string | null; comments: number; createdAt: string; priority: Priority | null; labels: string[]; estimate: number | null; repeat: Repeat | null; blockedBy: string[]; startAt: string | null; milestone: boolean; minutes: number }
 interface Board {
   id: string; title: string; course: { code: string; name: string } | null; canEdit: boolean; canManage: boolean; me: string;
   people: { id: string; name: string; avatar: string | null }[];
@@ -123,14 +125,16 @@ function TaskBoardPage({ id }: { id: string }) {
           </div>
         )}
         <p className={cn('text-sm font-medium text-zinc-900 dark:text-white', t.doneAt && 'line-through text-zinc-400')}>{t.title}</p>
-        {(t.dueAt || checks || t.comments > 0 || who || blocked.length > 0 || t.repeat || t.estimate) && (
+        {(t.dueAt || checks || t.comments > 0 || who || blocked.length > 0 || t.repeat || t.estimate || t.minutes > 0 || t.milestone) && (
           <div className="mt-2 flex items-center gap-2 text-[11px] text-zinc-500">
             {t.dueAt && <span className={cn('inline-flex items-center gap-1', late && 'text-rose-500 font-semibold')}><CalendarClock className="w-3 h-3" />{new Date(t.dueAt).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>}
             {checks && <span className="inline-flex items-center gap-1"><CheckSquare className="w-3 h-3" />{checks}</span>}
             {t.comments > 0 && <span className="inline-flex items-center gap-1"><MessageSquare className="w-3 h-3" />{t.comments}</span>}
             {blocked.length > 0 && !t.doneAt && <span className="inline-flex items-center gap-1 text-amber-700 dark:text-amber-300" title={`Waiting on ${blocked.map((b) => b.title).join(', ')}`}><Lock className="w-3 h-3" aria-hidden />Blocked</span>}
             {t.repeat && <span className="inline-flex items-center" title={REPEAT_LABEL[t.repeat]}><RepeatIcon className="w-3 h-3" aria-label={REPEAT_LABEL[t.repeat]} /></span>}
-            {t.estimate ? <span className="inline-flex items-center gap-0.5"><Clock className="w-3 h-3" aria-hidden />{t.estimate}h</span> : null}
+            {t.milestone && <span className="inline-flex items-center gap-1 font-semibold text-zinc-700 dark:text-zinc-200"><span aria-hidden className="w-2 h-2 rotate-45 rounded-[1px] bg-current" />Milestone</span>}
+            {/* M230: time spent against the estimate. */}
+            {t.estimate || t.minutes > 0 ? <span className={cn('inline-flex items-center gap-0.5 tabular-nums', t.estimate && t.minutes > t.estimate * 60 && 'text-rose-600 dark:text-rose-400')}><Clock className="w-3 h-3" aria-hidden />{t.minutes > 0 ? `${Math.round(t.minutes / 6) / 10}${t.estimate ? `/${t.estimate}` : ''}h` : `${t.estimate}h`}</span> : null}
             <span className="flex-1" />
             {who && <Avatar name={who.name} src={who.avatar} size={22} />}
           </div>
@@ -193,7 +197,7 @@ function TaskBoardPage({ id }: { id: string }) {
         <div className="flex-1 overflow-y-auto p-4 md:px-8">
           {view === 'calendar'
             ? <CalendarView cards={data.tasks} lists={lists} canEdit={data.canEdit} onOpen={setOpen} onMove={(cid, dueAt) => { const t = data.tasks.find((x) => x.id === cid); if (t) void patchTask(t, { dueAt }); }} />
-            : <TimelineView cards={data.tasks} lists={lists} onOpen={setOpen} />}
+            : <TimelineView cards={data.tasks} lists={lists} canEdit={data.canEdit} onOpen={setOpen} onDates={(cid, d) => { const t = data.tasks.find((x) => x.id === cid); if (t) void patchTask(t, d); }} />}
         </div>
       ) : (
         <div className="flex-1 overflow-y-auto p-4 md:px-8">
@@ -275,8 +279,8 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
   const { data: comments, mutate } = useSWR<{ id: string; body: string; createdAt: string; user: { id: string; name: string; avatar: string | null } }[]>(ckey, authedJson);
   const ro = !board.canEdit;
   const setChecklist = (list: CheckItem[]) => void onPatch({ checklist: list });
-  const day = card.dueAt ? new Date(card.dueAt) : null;
-  const dateValue = day ? `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, '0')}-${String(day.getDate()).padStart(2, '0')}` : '';
+  const dateValue = card.dueAt ? dayKey(new Date(card.dueAt)) : '';
+  const startValue = card.startAt ? dayKey(new Date(card.startAt)) : '';
   return (
     <Sheet title="Card" onClose={onClose} footer={!ro ? (
       // No "are you sure?": the message after it has Undo.
@@ -299,8 +303,18 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
               {board.people.map((p) => <option key={p.id} value={p.id}>{p.id === board.me ? `${p.name} (me)` : p.name}</option>)}
             </select>
           </label>
-          <label className="text-xs space-y-1 col-span-2"><span className="text-zinc-500">Due</span>
-            <input type="date" disabled={ro} value={dateValue} onChange={(e) => void onPatch({ dueAt: e.target.value ? new Date(`${e.target.value}T17:00:00`).toISOString() : null })} className="input" />
+          {/* M230: a start day sets where the card's Gantt bar begins; a milestone is one day, a diamond on the timeline. */}
+          {!card.milestone && (
+            <label className="text-xs space-y-1"><span className="text-zinc-500">Starts</span>
+              <input type="date" disabled={ro} value={startValue} max={dateValue || undefined} onChange={(e) => void onPatch({ startAt: e.target.value ? new Date(`${e.target.value}T09:00:00`).toISOString() : null })} className="input" />
+            </label>
+          )}
+          <label className={cn('text-xs space-y-1', card.milestone && 'col-span-2')}><span className="text-zinc-500">{card.milestone ? 'Milestone day' : 'Due'}</span>
+            <input type="date" disabled={ro} value={dateValue} min={startValue || undefined} onChange={(e) => void onPatch({ dueAt: e.target.value ? new Date(`${e.target.value}T17:00:00`).toISOString() : null })} className="input" />
+          </label>
+          <label className="col-span-2 flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">
+            <input type="checkbox" disabled={ro} checked={card.milestone} onChange={(e) => void onPatch(e.target.checked ? { milestone: true, startAt: null } : { milestone: false })} className="w-4 h-4 accent-indigo-600" />
+            Milestone <span className="text-xs text-zinc-500">(a goal on one day, a diamond on the timeline)</span>
           </label>
           {/* Extras (Stage 5 · B9.9). */}
           <label className="text-xs space-y-1"><span className="text-zinc-500">Priority</span>
@@ -322,6 +336,7 @@ function CardSheet({ card, board, onClose, onPatch, onDelete }: { card: Card; bo
         </div>
         <Labels labels={card.labels} ro={ro} onChange={(labels) => void onPatch({ labels })} />
         <BlockedBy card={card} board={board} ro={ro} onChange={(blockedBy) => void onPatch({ blockedBy })} />
+        <TimeLog taskId={card.id} estimate={card.estimate} />
         <textarea value={notes} readOnly={ro} rows={3} maxLength={5000} placeholder="Notes" onChange={(e) => setNotes(e.target.value)} onBlur={() => notes !== (card.notes ?? '') && void onPatch({ notes })} className={cn('input', 'resize-y')} />
         <section className="space-y-1.5">
           <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Checklist {card.checklist.length > 0 && `· ${card.checklist.filter((c) => c.done).length}/${card.checklist.length}`}</p>

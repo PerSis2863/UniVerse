@@ -7931,3 +7931,26 @@ Chrome and Edge use their speech service, Safari the device; hidden in Firefox).
 punctuation in English ("comma", "full stop", "question mark", "new line", "new paragraph", "colon"), and each phrase
 joined like typing (a space, a capital after a sentence). Checked: `scripts/checks/dictation-ui.mjs` (a stand-in
 recogniser "says" a sentence: it lands in a chat and a note with its marks), the unit test, `pnpm check`.
+
+## M230: projects on task boards (16 Nov)
+
+After OpenProject. Inside Tasks (no new menu): a card can **start** on a day and be a **milestone** (one day, a diamond),
+and people **log time** on it. Database update **0227** (`tasks.startAt`, `tasks.milestone`, `task_time_entries`).
+
+- **Timeline is a Gantt chart** (`TimelineView` in `src/components/tasks/TaskViews.tsx`): bars at their true length from
+  the start (or when the card was made) to the due day, the name beside each bar (before it near the chart's end),
+  milestones as diamonds, a line from each card to the cards waiting on it ("Waiting on", B9.9), rose when the waiting
+  card starts before the other is due. Drag a bar to move both dates, its end edge to change the due day, or Shift+arrows
+  on a focused bar to move it a day. The parent passes `onDates` (a PATCH of `startAt`/`dueAt`, optimistic).
+- **Card sheet:** Starts / Due (Milestone day), the Milestone tick (it clears the start), and **Time spent**
+  (`src/components/tasks/TimeLog.tsx`): a start/stop timer kept in `localStorage` `uv-task-timer:<card>` (it runs on while
+  the card is closed; Stop logs it, at least a minute), time added by hand (`parseMinutes`: "1:30", "45m", "2h", "1.5"),
+  entries with who and a note, the total against the estimate (rose past it). Cards show spent/estimate hours.
+- **Server** (`src/server/tasks.ts`): `updateTask` takes `startAt` (refused after the due day) and `milestone`;
+  `getBoard` adds `minutes` per card (one `groupBy`); `listTime` / `addTime` (1 min to 24 h, up to 500 a card, editors
+  only) / `deleteTime` (your own; the board's managers anyone's); routes `/api/tasks/items/[tid]/time`,
+  `/api/tasks/time/[id]`; a sample answer in `router.ts`.
+- **Checked:** `scripts/checks/gantt-ui.mjs` (bars, the line, the diamond, a drag of two days saved to both dates, a start
+  after the due day and a zero-minute entry refused, 1:30 logged against 2 h, the timer; axe clean at 1280 and 390, light
+  and dark, no sideways scroll), the unit test in `task-calendar.test.ts`, `pnpm check`.
+- **Rule:** a Gantt bar's dates change only through `onDates`; a card with no due day isn't on the timeline.
