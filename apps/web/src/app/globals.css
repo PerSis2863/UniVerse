@@ -1186,15 +1186,7 @@ html[data-scrolled] .nav-edge {
   -webkit-backdrop-filter: blur(24px) saturate(180%);
   backdrop-filter: blur(24px) saturate(180%);
 }
-/* The phone's bar shows the brand at the top and the page title once the large title has
-   scrolled away underneath it (<html data-collapsed>). */
-.nav-inline-title { opacity: 0; transform: translate3d(0, 6px, 0); transition: opacity 220ms var(--ease-ios), transform 260ms var(--ease-ios); pointer-events: none; }
-.nav-brand-text { transition: opacity 200ms var(--ease-ios); }
-html[data-collapsed] .nav-inline-title { opacity: 1; transform: none; }
-html[data-collapsed] .nav-brand-text { opacity: 0; }
 
-/* Large title (iOS 34pt bold). */
-.large-title { font-size: 2.125rem; line-height: 2.5rem; font-weight: 700; letter-spacing: -0.025em; }
 
 /* Segmented control (M34, the Karma pills): outlined capsules side by side; the chosen one is
    filled with ink (black, or white in dark mode) and the fill glides to the next one chosen. */

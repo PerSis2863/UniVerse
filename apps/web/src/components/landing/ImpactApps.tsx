@@ -5,7 +5,6 @@ import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import type { AppId } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
-import { LabTag } from '@/components/apps/LabTag';
 import { Accent, CountUp, Reveal, ghost, primary } from './bits';
 
 // The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a section each for Relief,
@@ -99,7 +98,7 @@ export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
             <Reveal key={a.id} delay={0.08 + i * 0.06}>
               <button type="button" onClick={() => { onPick?.(a.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="group relative w-full h-full text-start overflow-hidden rounded-3xl p-7 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-white/20 transition-shadow">
                 <span aria-hidden className="absolute -right-16 -top-16 w-56 h-56 rounded-full blur-3xl opacity-20 group-hover:opacity-40 transition-opacity duration-500" style={{ background: a.color }} />
-                <div className="relative flex items-center gap-4"><AppIcon id={a.id} size={52} /><div><h3 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">{a.name}{a.lab && <LabTag className="border-white/20 text-zinc-300" />}</h3><p className="text-sm font-medium" style={{ color: a.color }}>{a.tagline}</p></div></div>
+                <div className="relative flex items-center gap-4"><AppIcon id={a.id} size={52} /><div><h3 className="flex flex-wrap items-center gap-2 text-2xl font-bold text-white">{a.name}</h3><p className="text-sm font-medium" style={{ color: a.color }}>{a.tagline}</p></div></div>
                 <p className="relative mt-4 text-zinc-300 leading-relaxed">{a.impact}</p>
               </button>
             </Reveal>

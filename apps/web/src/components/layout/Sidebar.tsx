@@ -7,7 +7,6 @@ import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactAp
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { LAST_APP } from '@/lib/current-app';
-import { LabTag } from '@/components/apps/LabTag';
 import { userCan } from '@/lib/permissions';
 import {
   LayoutDashboard, Users,
@@ -347,7 +346,7 @@ function AppSwitcher({ app, role, onPick, shown }: { app: AppId | null; role: st
             {shown.map((a) => (
               <Link key={a.id} role="menuitem" data-uv-app={a.id} href={appHome(a.id, role)} onClick={() => { setOpen(false); onPick?.(); }} className="flex items-center gap-3 rounded-xl px-2 py-2 hover:bg-white/[0.06]">
                 <AppIcon id={a.id} size={28} />
-                <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-[13px] font-semibold text-white"><span className="truncate">{a.name}</span>{a.lab && <LabTag className="border-white/20 text-zinc-400" />}</span><span className="block text-[11px] text-zinc-400 truncate">{a.tagline}</span></span>
+                <span className="min-w-0 flex-1"><span className="flex items-center gap-1.5 text-[13px] font-semibold text-white"><span className="truncate">{a.name}</span></span><span className="block text-[11px] text-zinc-400 truncate">{a.tagline}</span></span>
                 {a.id === app && <Check className="w-4 h-4 text-pink-300" aria-label="Open now" />}
               </Link>
             ))}

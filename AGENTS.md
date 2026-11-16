@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M209 is the latest).
+  builds on it). The newest notes are at the end (M210 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -209,7 +209,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
     (M87).
   - **The launch focus (M110–M116):** a size alarm before every deploy and Relief's emergency line (M110),
-    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112), a course's
+    this guide's focus rule (M111), UniVersity first with the other apps marked Lab (M112; the tags were removed in M210), a course's
     "Invite students" link (M113), a test that every API route checks who is asking (M114), body-parser
     2.4.0 (M115), the first impression: the student home pictured under the landing's headline, a bigger
     hero, sign-in fixed on phones, no glass (M116, the owner's one exception to the pause).
@@ -218,7 +218,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
+- **On the branch, not merged yet:** M210 (16 Nov), no page titles (only for screen readers) and no "Lab" tags,
+  anywhere (the owner). M209 (16 Nov), Travel's **map** with real places and UniVerse's own reviews
   (database update 0223; MapLibre added, OpenFreeMap's tiles go straight to browsers, no Worker CPU). M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
   to go** in Explore (days, budget, month, interests and passport rank 145 places with the reasons; visas
   for your passport on the guide's Know tab), the **trip planner** (Trips and saved → Trips: cities, days,
@@ -245,7 +246,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M210** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M211** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`

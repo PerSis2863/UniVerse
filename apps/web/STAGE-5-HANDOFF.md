@@ -7431,6 +7431,23 @@ can't reach, so the account was made in the local database. Fixes:
   hour slider; phone panel; axe clean at 1280 dark and 390 light, the map canvas aside; no errors),
   `travel-local.test.ts`, `travel-place.test.ts`, `travel-map.test.ts`, `travel-reviews.test.ts`, `pnpm check`.
 
+## M210: no page titles, no "Lab" tags (the owner, 16 Nov)
+
+- **The asks** (two screenshots): "please remove this part from every section of project because it is not
+  needed in any apps" (a page's title, "Travel", and the line under it); "please remove lab from here for
+  every app" (the app tabs' "Lab" tags).
+- **Titles:** `Topbar` no longer shows the title or subtitle on computers or phones; it keeps an `sr-only`
+  `<h1>` (screen readers, and checks that look for a page's heading) and the browser tab's title. The
+  phone's row under the bar shows only when the page has actions (`leftNode`, `action`, `rightNode`).
+  Gone with them: the phone bar's small title that took over on scroll (`setPageTitle` / `usePageTitle`
+  in `src/lib/chrome.ts`, `.nav-inline-title`, `data-collapsed`, `.large-title`) and the title's glide from
+  a card (`sharedId` is still accepted, unused). The UniVerse name now stays in the phone's bar.
+- **Lab:** the `lab` field of `APPS` and `LabTag` are removed; no app is marked Lab anywhere (website tabs,
+  app cards, the world section, the side menu's app switcher, the hub). The 5 December review of each
+  app's numbers still stands; it just isn't shown.
+- **Checked:** `/travel/saved`, `/green` (phone) and `/student`: no visible title, one heading for screen
+  readers, no errors; `pnpm check`.
+
 ## Hand-over: the owner's Airbnb list (15 Nov)
 
 Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip

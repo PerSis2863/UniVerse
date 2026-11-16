@@ -15,7 +15,7 @@ import { cn } from '@/lib/utils';
 import { InstallBanner } from '@/components/pwa/InstallBanner';
 import { OfflineBar } from '@/components/pwa/OfflineBar';
 import { useOptimisticPath } from '@/lib/nav-pending';
-import { usePageTitle, useScrollEdges } from '@/lib/chrome';
+import { useScrollEdges } from '@/lib/chrome';
 import { haptic } from '@/lib/haptics';
 import { authedJson } from '@/lib/authed-fetch';
 import { refreshOfflineCopies } from '@/lib/offline-reads';
@@ -118,7 +118,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
   const { user } = useAuthStore();
   const pathname = usePathname();
   const openingPath = useOptimisticPath(pathname);
-  const pageTitle = usePageTitle();
   useScrollEdges(pathname);
   const router = useRouter();
   // Inner pages get a back button (and, in the installed iPhone app, the edge swipe): an installed
@@ -192,9 +191,6 @@ export function DashboardShell({ children }: DashboardShellProps) {
               <UniverseLogo size="sm" showText={false} animated={false} withGlow={false} />
               <span className="nav-brand-text font-bold text-[17px] tracking-tight text-zinc-900 dark:text-white">UniVerse</span>
             </Link>
-          )}
-          {pageTitle && (
-            <span aria-hidden className="nav-inline-title absolute left-1/2 -translate-x-1/2 max-w-[52%] truncate text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ top: 'calc(var(--safe-top) + 0.875rem)' }}>{pageTitle}</span>
           )}
           <div className="flex items-center">
             <button type="button" data-tour="search" onClick={openSearch} aria-label="Search" className="pressable w-11 h-11 flex items-center justify-center rounded-full text-tint-text">

@@ -89,7 +89,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
                   className="w-full flex items-center gap-3 px-4 py-3 text-start">
                   <span aria-hidden className="w-2.5 h-2.5 shrink-0 rounded-full" style={{ background: info.color, boxShadow: `0 0 12px ${info.color}` }} />
                   <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2 font-semibold text-white">{short(a)}{info.lab && <span className="rounded-full px-1.5 text-xs font-medium text-zinc-300 ring-1 ring-white/20">Lab</span>}</span>
+                    <span className="flex items-center gap-2 font-semibold text-white">{short(a)}</span>
                     <span className="block text-sm text-zinc-300 truncate">{info.tagline}</span>
                   </span>
                   {total ? <span className="shrink-0 text-end"><span className="block font-mono text-sm text-white tabular-nums">{totalLabel(total)}</span><span className="block text-[11px] text-zinc-400">{TOTAL[a]![1]}</span></span> : null}
