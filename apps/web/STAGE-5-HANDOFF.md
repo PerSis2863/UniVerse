@@ -7990,8 +7990,10 @@ browser: no Worker CPU added. The rules are in AGENTS.md §8 ("No double animati
 - **Not done, on purpose:** framer `layout` on 57 list rows (rows glide when one is added; framer batches the reads);
   height animation for opening sections; the side menu's fold (installed app) still animates its width.
 - **Next.js advisory** (published 16 Nov, moderate: `'use cache'` through `unstable_cache()`, which UniVerse doesn't
-  use): 16.4.5 fixes it; by the two-week rule, upgrade Next and the adapter together from 30 Nov. The build stopped
-  once to show this notice and built on a second run. Seven other advisories are in test and lint tools only (vitest,
+  use): 16.4.5 fixes it; by the two-week rule, upgrade Next and the adapter together from 30 Nov. Next stops a build
+  run by an AI agent to show this notice (`next/dist/lib/upgrade/nudge.js`: only when it detects an agent, never on
+  Cloudflare's builder or in CI); running the same build again at once goes through. Don't run its `next upgrade
+  --agent=…` command: upgrades follow the two-week rule, Next and the Cloudflare adapter together (M77). Seven other advisories are in test and lint tools only (vitest,
   tinypool, zod in eslint's plugin): nothing in the live site.
 - **Rule:** no animation on what the motion layer animates; bars `<Fill>`; loops CSS on transform / opacity; one press
   per button; no glass over the moving scene.
