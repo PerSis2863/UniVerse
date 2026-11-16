@@ -7897,3 +7897,19 @@ section also and add more features of discord and zoom and all the other big maj
 - **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
   refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
   `src/lib/meet.ts`, `pnpm check`.
+
+## M228: a threat model with Grim Prompter, and the PDF frame sandboxed (16 Nov)
+
+The owner: "https://github.com/jmanico/grim-prompter build this and see everything in this and do it just dont do the last one".
+Grim Prompter (MIT) is a library of prompts for an agent to threat-model a repository. Its quick web prompt was run on
+`apps/web` (schools as the second, tenant scope) and its review steps 1–4 done; step 5, "Keep the model current", was left
+out at the owner's word. The report and its evidence were given to the owner privately, **not committed** (a list of weak
+spots doesn't belong in the repository).
+
+- **Changed:** the frame `doc-to-pdf.ts` lays other people's files out in (Studio → Convert to PDF, CVs, offer letters) is
+  `sandbox="allow-same-origin"`: nothing in a file can run there. Tested before and after (`scripts/checks/convert-sandbox-ui.mjs`,
+  a booby-trapped HTML file): the earlier layers (the upload is cleaned, the CSP blocks inline handlers) already held, so this is
+  a third layer, not a closed hole.
+- **For the owner to decide (in the report):** files are private links (anyone with a link can read it; a deleted file's edge copy
+  lasts up to a day): keep, or ask for sign-in on sensitive kinds.
+- **Rule:** a frame that lays out content from a file or another person is sandboxed without scripts.
