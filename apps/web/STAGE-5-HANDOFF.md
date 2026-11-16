@@ -7875,3 +7875,25 @@ All of it in the browser (no Worker CPU). Measured on the built site with the CP
 The owner, with a screenshot of it: "what the hell is this ? i dont understand what this is providing to the user". The
 `PinMap` above a guide's list of places (dots on a blank grid, "north at the top", no streets or names) is gone: every
 place's card has its own Map button, and Travel's Map (M209) shows the real places on a real map.
+
+## M227: Meet & call (16 Nov)
+
+The owner, with a picture of Messages' tabs: "replace the call and rename it as meet and call you do redesign of call
+section also and add more features of discord and zoom and all the other big major app".
+
+- **The tab** (`CommsDeck`) and search say **Meet & call** (a camera icon); the page is still `/calls`.
+- **The front door** (`src/components/call/MeetHome.tsx`, at the top of the page), like Zoom's home: **New meeting** (a
+  call link made at once, `POST /api/calls/links`: the link, its code, Start with video or voice, Copy invitation, Share),
+  **Join** (a code or a pasted link: only our own `/call/…` or `/hall/…` comes out of it, `meetingPath` in
+  `src/lib/meet.ts`; camera on or voice only; the call's own check-yourself screen comes next), **Schedule** (the form
+  `ScheduledCalls` already has, `?schedule=1`), **Voice rooms** (Discord's channels: every group chat's always-open room,
+  `r_<chat>`, lit and first while someone's in it). Then **Happening now** (live calls, one tap to join) and **In every
+  meeting** (what CallView already has, so people find it: waiting room, breakout rooms, polls, whiteboard, captions,
+  recording and notes, hand, reactions, screen share, background blur, Q&A, views, keys, push to talk). The call log
+  under **Recent calls**; Favorites lost its "Call link" (New meeting does it).
+- **In a call** (`CallView`): Zoom's keys (M mute, V camera, H hand, C chat, P people, ? lists them; not while typing or
+  with Ctrl, Cmd or Alt; `callKey`) and Discord's push to talk (hold Space while muted; not on a focused button).
+- No new server work: the links, the calls list and the chats list are the ones the page already loads.
+- **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
+  refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
+  `src/lib/meet.ts`, `pnpm check`.

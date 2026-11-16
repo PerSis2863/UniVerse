@@ -1,5 +1,6 @@
 'use client';
 
+import { CALL_KEYS, callKey } from '@/lib/meet';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -2173,6 +2174,28 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     if (which === 'chat' || chatOpen) setChatSeenAt(Math.max(chatSeenAt, ...chat.lines.map((l) => l.at)));
     setChatOpen(which === 'chat');
   };
+  // M227: Zoom's keys (M mute, V camera, H hand, C chat, P people, ? the list) and Discord's push to talk (hold Space
+  // while muted). The newest handlers through a ref, so the listeners are added once per call.
+  const keyActs = useRef({ mute: toggleMute, camera: () => void toggleCamera(), hand: toggleHand, chat: () => openPanel(chatOpen ? null : 'chat'), people: () => openPanel(peopleOpen ? null : 'people'), talk: (on: boolean) => setMicOff(!on), muted: () => stateRef.current.muted });
+  useEffect(() => { keyActs.current = { mute: toggleMute, camera: () => void toggleCamera(), hand: toggleHand, chat: () => openPanel(chatOpen ? null : 'chat'), people: () => openPanel(peopleOpen ? null : 'people'), talk: (on: boolean) => setMicOff(!on), muted: () => stateRef.current.muted }; });
+  useEffect(() => {
+    if (phase !== 'live') return;
+    let ptt = false;
+    const typing = (t: EventTarget | null) => { const el = t as HTMLElement | null; return !!el && (el.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(el.tagName)); };
+    const down = (e: KeyboardEvent) => {
+      const a = keyActs.current;
+      if (e.code === 'Space' && !e.repeat && !typing(e.target) && !(document.activeElement instanceof HTMLButtonElement) && a.muted()) { e.preventDefault(); ptt = true; a.talk(true); return; }
+      const k = callKey(e, typing(e.target));
+      if (!k || e.repeat) return;
+      e.preventDefault();
+      if (k === 'help') toast(CALL_KEYS.map(([key, what]) => `${key}: ${what}`).join('\n'), { duration: 6000 });
+      else a[k]();
+    };
+    const up = (e: KeyboardEvent) => { if (e.code === 'Space' && ptt) { ptt = false; keyActs.current.talk(false); } };
+    window.addEventListener('keydown', down);
+    window.addEventListener('keyup', up);
+    return () => { window.removeEventListener('keydown', down); window.removeEventListener('keyup', up); };
+  }, [phase]);
   // The host's spotlight: that person large, everyone else in the strip (a shared screen comes first).
   // A video watched together takes the stage (a shared screen comes first).
   const watching = !!watch && !presenter;

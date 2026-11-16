@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { Link2, Loader2, Phone, Plus, Search, Star, Video, X } from 'lucide-react';
+import { Loader2, Phone, Plus, Search, Star, Video, X } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
@@ -15,7 +15,7 @@ import { Avatar } from '@/components/ui/Avatar';
 import { auraOf } from '@/components/chat/chat-client';
 
 // Favourites at the top of Calls (like the iPhone's): one-tap voice or video calls, shown as contact
-// posters (M17); favourites also still ring you in Focus. Plus a call link (like a FaceTime link) to share with anyone.
+// posters (M17); favourites also still ring you in Focus. (A call link to share: Meet & call's New meeting, M227.)
 
 interface Fav { id: string; name: string; avatar: string | null; online: boolean }
 
@@ -42,15 +42,6 @@ export function Favorites() {
     await mutate((d) => d?.filter((x) => x.id !== f.id), { revalidate: false });
     await authedJson(`/api/calls/favorites?userId=${f.id}`, { method: 'DELETE' }).catch(() => mutate());
   };
-  const newLink = async () => {
-    try {
-      const { path } = await authedJson<{ path: string }>('/api/calls/links', { method: 'POST' });
-      const url = `${window.location.origin}${path}`;
-      await navigator.clipboard.writeText(url).catch(() => {});
-      toast.success('Call link copied: anyone on UniVerse with it can join');
-      router.push(`${path}?kind=video`);
-    } catch (e) { toast.error((e as Error).message); }
-  };
 
   return (
     <section className="space-y-3">
@@ -58,7 +49,6 @@ export function Favorites() {
         <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5"><Star className="w-4 h-4" />Favourites</h2>
         <div className="flex gap-1">
           {!!data?.length && <button type="button" onClick={() => setEditing(!editing)} className="px-3 py-1.5 rounded-full text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.06]">{editing ? 'Done' : 'Edit'}</button>}
-          <button type="button" onClick={() => void newLink()} className="px-3 py-1.5 rounded-full text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 inline-flex items-center gap-1"><Link2 className="w-3.5 h-3.5" /> New call link</button>
         </div>
       </div>
       {/* Contact posters (M17, after the iPhone's): a tall card each, in their colour; tap a button to call. */}
