@@ -7945,3 +7945,41 @@ this for other area also if you could"; then "please add more destinations in th
   no sideways scroll). Cloud sessions can't load Wikimedia's pictures (429), so there run it with `STAND_IN=1`: the
   photo requests are answered with labelled stand-ins of the asked width. Unit tests for `photoOk`, `commonsFileOf`,
   `commonsSrcSet`; `pnpm check`.
+## M229: Travel's map in Apple Maps' look, and walks you can follow (16 Nov)
+
+The owner, on a walk in Travel → Map: "i cant understand the path and see the things clearly in the map please
+fix it properly"; then, showing Apple Maps' directions: "make it like the 2nd photo… make the whole map design
+like this for the other things also… this is not how apple map looks like so please do it properly".
+
+- **The walk along real streets.** `routeUrl` / `routeOf` / `withLegs` (`src/lib/travel-map.ts`, tested): the
+  browser asks FOSSGIS's free OSRM walking router (`routing.openstreetmap.de/routed-foot/…/driving/…`, no
+  account; credited in the map's footer while a walk shows; added to `connect-src` in `security-headers.ts`)
+  once per walk; its legs replace the estimated minutes and km. Without an answer the walk stays straight and
+  dashed, and the card says so. A walk keeps its `start` (it used to follow the map's middle when dragged).
+- **The walk's look** (`map-layers.ts`): one blue line with a darker edge (`ROUTE`), a blue start dot, numbered
+  blue stops with their names, the walking minutes in one bubble just above its longest stretch (`bubbleAt`;
+  a stretchable `uv-bubble` image). While a walk shows, `focusWalk` fades the other pins and their names and
+  hides the 3D buildings: with the hills on, buildings draw after the flat map and covered the line even
+  laid flat (tried first). The view goes flat (pitch 0, north up). **Tried and dropped:** arrows along the
+  line (they read as breaks) and a bubble per stretch (crowded on phones).
+- **The walk's card:** Apple's header (round Share, the walk with a blue summary pill, round close "End walk");
+  Share uses the phone's share sheet or copies the walk's Google Maps link; "Directions in Google Maps"
+  (`walkInGoogle`, up to nine stops between start and end).
+- **The map design** (`src/components/travel/map/map-style.ts`): Travel's own style in place of OpenFreeMap's
+  liberty and dark, on the same tiles (`tiles.openfreemap.org/planet`, OpenMapTiles schema) and fonts (Noto
+  Sans Regular, Bold, Italic): cream land, green parks, blue water, white streets in light; blue-slate land,
+  deep green parks, blue water, slate streets in dark (Apple Maps' tones); street names in small spaced
+  capitals, district names in spaced bold capitals. No sprite: every icon is ours. `STYLE` is now the two
+  style objects (so `applied` refs hold objects). The first symbol layer (street names) is Regular, which
+  `fontOf` hands to our labels; `bold` swaps Regular for Bold. Green's places map and Relief's alerts map use
+  the same `STYLE`, so they changed too.
+- **Pins:** names beside the pin, bold, in the pin's colour (`labelColor`, lighter on the dark map). The map's
+  buttons in two rounded capsules (zoom; north, where I am, layers). The 3D switch is off by default and the
+  map opens flat, as Apple's does (a choice already kept on the device stays).
+- **The world maps** (`WorldCanvas.tsx` `PAL`: Trace, Relief, Green, the landing, World Pin): blue sea and
+  cream land in light, navy sea and slate land in dark, the same tones.
+- **Checked** on a made-up neighbourhood (this machine can't reach OpenFreeMap or the router): vector tiles
+  built with geojson-vt and vt-pbf in the scratchpad, served by Playwright in place of OpenFreeMap's, the
+  router's real answer format imitated along the streets (and refused, for the straight fallback): computer
+  and phone, light and dark, no page errors, axe clean on the walk card. **Not seen yet on the real map:**
+  look at Travel → Map in a city once it is live (colours on real parks, rivers and buildings).
