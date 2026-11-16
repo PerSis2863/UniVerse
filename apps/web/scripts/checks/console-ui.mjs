@@ -2,7 +2,8 @@
 // The owner (a made-up owner@check.test whose Google sign-in is checked against a key server this
 // script runs on port 8790) opens Schools (health, growth charts, a school's people), "View as" a
 // student in a new tab (read-only: the banner, changes and private messages refused, the owner's own
-// sign-in untouched, End), Moderation (a test chat flag dismissed) and the gradual rollout card.
+// sign-in untouched, End), Moderation (a test chat flag dismissed; M213: a reported travellers-board note,
+// hidden then restored) and the gradual rollout card.
 // Axe at 390/1280, light/dark, no sideways scrolling. Everything made here is removed at the end.
 import { createRequire } from 'node:module';
 import { createServer } from 'node:http';
@@ -40,8 +41,13 @@ const student = rows(`SELECT id, organizationId FROM users WHERE email='${S}'`)[
 const chat = rows(`SELECT conversationId AS id FROM conversation_participants WHERE userId='${student.id}' LIMIT 1`)[0];
 const flagId = `check-flag-${Date.now()}`;
 sql(`INSERT INTO safety_flags (id, conversationId, senderId, kind, severity, excerpt, source, repeats, status, createdAt) VALUES ('${flagId}', '${chat.id}', '${student.id}', 'bullying', 'medium', 'Console check: a made-up flag', 'words', 0, 'OPEN', '${started}')`);
+// M213: a travellers-board note with a report.
+const postId = `check-post-${Date.now()}`;
+sql(`INSERT INTO travel_board (id, userId, guide, name, fromDate, toDate, note, hidden, createdAt) VALUES ('${postId}', '${student.id}', 'Lisbon', 'Demo', '2030-05-01', '2030-05-04', 'Console check: a made-up board note', 0, '${started}')`);
+sql(`INSERT INTO travel_board_reports (postId, userId, reason, createdAt) VALUES ('${postId}', '${student.id}', 'made-up report', '${started}')`);
 function restore() {
   sql(`DELETE FROM safety_flags WHERE id='${flagId}'`);
+  sql(`DELETE FROM travel_board WHERE id='${postId}'`);
   // The settings row is made on first use; if this run made it, remove it again.
   if (control) sql(`UPDATE server_control SET switches=${q(control.switches)} WHERE id='main'`);
   else sql(`DELETE FROM server_control WHERE id='main'`);
@@ -163,6 +169,20 @@ try {
         await flag.waitFor({ state: 'detached', timeout: 15_000 });
         r.flagDismissed = rows(`SELECT status FROM safety_flags WHERE id='${flagId}'`)[0]?.status;
         sql(`UPDATE safety_flags SET status='OPEN', reviewedById=NULL, reviewedAt=NULL WHERE id='${flagId}'`);
+        // M213: Travel's group, then Hide and Restore on the reported note.
+        await page.getByRole('group', { name: 'Filter by school' }).getByRole('button', { name: /^Travel/ }).click();
+        const note = page.locator('li', { hasText: 'Console check: a made-up board note' });
+        await note.waitFor({ timeout: 15_000 });
+        r.travelReason = await note.getByText('Reason: made-up report').isVisible();
+        await note.getByRole('button', { name: 'Hide' }).click();
+        await note.getByText(/· hidden/).waitFor({ timeout: 15_000 });
+        r.travelHidden = rows(`SELECT hidden FROM travel_board WHERE id='${postId}'`)[0]?.hidden;
+        r.travelAxe = await axe(page);
+        await note.getByRole('button', { name: 'Restore' }).click();
+        await note.waitFor({ state: 'detached', timeout: 15_000 });
+        r.travelRestored = rows(`SELECT hidden, (SELECT COUNT(*) FROM travel_board_reports WHERE postId='${postId}') AS reports FROM travel_board WHERE id='${postId}'`)[0];
+        sql(`INSERT INTO travel_board_reports (postId, userId, reason, createdAt) VALUES ('${postId}', '${student.id}', 'made-up report', '${started}')`);
+        await page.getByRole('group', { name: 'Filter by school' }).getByRole('button', { name: /^All schools/ }).click();
       }
 
       await open(page, '/console?tab=server', page.getByRole('heading', { name: 'Gradual rollout' }));

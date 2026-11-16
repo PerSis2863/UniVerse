@@ -7541,8 +7541,10 @@ professional and modern like the other apps".
   (the tab row does their job).
 - **Checks fixed:** `travel-ui.mjs` opened `/travel/saved` (Trips since M206) and its "Save" click also matched
   "Saved"; `travel-board-ui.mjs` now also sends after the block (403 both ways).
-- **Not tried in a browser:** the console's Moderation list with a Travel report (it needs `local:serve
-  --owner-test`); its server part has a unit test.
+- **Tried in the browser afterwards** (`console-ui.mjs` on `local:serve --test-secret --owner-test`, which now
+  adds a reported board note): its Travel group, the reason, Hide, then Restore with the reports cleared. Fixed
+  on the way: hidden items were faded (their link text failed contrast) and the cohort table's darkest cells
+  were too dark for their dark text.
 - **Checked:** `travel-ui.mjs`, `travel-find-ui.mjs` (its switch is now a tab link), `travel-map-ui.mjs`, `travel-trip-ui.mjs`, `travel-board-ui.mjs`, `travel-live-ui.mjs`, unit tests
   (`travel-moderation.test.ts`, the board's), `pnpm check`.
 
