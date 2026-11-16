@@ -1,5 +1,5 @@
 // M217 UniVerse Relief's second wave: every new tab (Most urgent, Matches, Alerts, Be ready, First aid, My hours)
-// and their side-menu entries (M218) on My requests and Organisations, at 1280 (dark) and 390 (light, a touch phone): axe, no
+// and the tab row on My requests and Organisations, at 1280 (dark) and 390 (light, a touch phone): axe, no
 // sideways scroll, no page errors. On the computer: the alerts list (GDACS and USGS through the server), a plan
 // saved and read back, a go-bag item ticked, a country's emergency numbers, a first-aid card opened. Tidies up.
 // Runs against `local:serve` (or BASE=… for local:dev). Needs the internet (GDACS, USGS).
@@ -48,9 +48,8 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   await visit('/relief?view=firstaid', () => page.getByRole('heading', { name: 'First aid basics' }), 'firstaid');
   if (!phone) { await page.getByText('Heavy bleeding').click(); r.firstAid = await page.locator('details[open]').count(); }
   await visit('/relief?view=hours', () => page.getByRole('heading', { name: 'My volunteer hours' }), 'hours');
-  await visit('/relief/mine', () => page.locator('#main section').first(), 'mine');
-  await visit('/relief/orgs', () => page.locator('#main section').first(), 'orgs');
-  if (!phone) r.menu = await page.locator('#side-nav a').allInnerTexts();
+  await visit('/relief/mine', () => page.getByRole('navigation', { name: 'Relief' }), 'mine');
+  await visit('/relief/orgs', () => page.getByRole('navigation', { name: 'Relief' }), 'orgs');
   if (!phone) await call(page, 'PUT', '/relief/plan', { plan: {}, kit: [] });
   await ctx.close();
 }

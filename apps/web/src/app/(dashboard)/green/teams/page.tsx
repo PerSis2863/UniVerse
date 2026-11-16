@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import useSWR from 'swr';
 import { m as motion } from 'framer-motion';
 import { toast } from 'sonner';
@@ -12,6 +12,7 @@ import { fmt } from '@/lib/instruments';
 import { cn } from '@/lib/utils';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { Segmented } from '@/components/ui/Segmented';
+import { GreenTabs } from '@/components/green/GreenTabs';
 
 // UniVerse Green → teams: start a team or join one with its code, see each member's CO₂ saved, the
 // team leaderboard and the top people of the last 30 days, confirmed actions only (src/server/green.ts).
@@ -44,6 +45,7 @@ export default function GreenTeamsPage() {
       <Topbar title="Teams & leaderboard" subtitle="Take on the weekly challenge together" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
+          <Suspense><GreenTabs /></Suspense>
           <div className="grid md:grid-cols-2 gap-4">
             <form onSubmit={(e) => { e.preventDefault(); void run('create', () => api.post('/green/teams', { name }), 'Team started. Share its code to invite people.').then(() => setName('')); }} className="panel p-5">
               <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-500" aria-hidden />Start a team</h2>

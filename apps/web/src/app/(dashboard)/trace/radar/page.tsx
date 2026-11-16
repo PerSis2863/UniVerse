@@ -7,6 +7,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { m as motion } from 'framer-motion';
 import { AlertTriangle, Ban, Globe2, Loader2, ShieldAlert, Thermometer, TicketCheck, Flag } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -40,6 +41,7 @@ export default function RadarPage() {
       <Topbar title="Radar" subtitle="Copies, grey market, warm shipments and recalls: what needs a look" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
+          <TraceTabs />
           <RadarBody />
         </div>
       </div>

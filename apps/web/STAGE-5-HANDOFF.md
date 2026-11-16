@@ -7710,6 +7710,8 @@ Organisations included), each new part loaded only when opened (`?view=`; databa
 
 ## M218: the apps' sections in the side menu, not a row across the top (16 Nov)
 
+**Undone by M219** (the owner meant the side menu itself, as a bar across the top): the rows are back.
+
 The owner: "can we make the horizontal section of the website in verticle style but dont change anything else",
 then a picture of the side menu: "this one". The rows of tabs across the top of Travel, Green, Relief (M213–M217)
 and Trace (since M50) are gone; their sections are entries in the side menu, drawn exactly like the others:
@@ -7726,3 +7728,34 @@ and Trace (since M50) are gone; their sections are entries in the side menu, dra
   sheet ("More"), as the app's other entries are.
 - **Checked:** screenshots (Green → Goals, Relief → Alerts, Travel → Find where to go, each lit), `relief-plus-ui.mjs`,
   `green-plus-ui.mjs` and `travel-find-ui.mjs` (they no longer look for the rows), `pnpm check`.
+
+## M219: the menu as a bar across the top on a computer's browser; M218's change undone (16 Nov)
+
+The owner, after M218: "i told you to make this part verticle in the website but not in the app so please do it
+properly this time", then "i need you to make that part horizontal at the top of the website", with the same picture
+of the side menu. So the first ask meant the side menu itself, and M218 (sections moved into the side menu) was the
+wrong reading:
+
+- **M218 undone in code:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs` and `TraceTabs` are back, the side
+  menu's entries are as before M218 (no `SECTIONED`, no `WithSection`), the checks look for the rows again. Its note
+  above stays as history.
+- **The bar (`src/components/layout/TopNav.tsx`):** on a computer in a browser (`TOP_NAV`, `(min-width: 1024px) and
+  (display-mode: browser)`; the same query is the `topnav:` Tailwind variant in `globals.css`) `DashboardShell`
+  renders `TopNav` above the page instead of `Sidebar` (`useTopNav`, `src/lib/top-nav.ts`). The installed app
+  (display-mode standalone or window-controls-overlay) and phones keep theirs. The bar has the logo alone (the owner:
+  "remove the universe impact name and keep the logo… it looks messy"; a link to the app's home), the app switcher
+  (`AppSwitcher compact`), the same entries as the side menu (`navFor`, plus the person's menu shortcuts), the tools
+  each page's bar had (Put this page back, search, theme, language, notifications: the bell opens the page bar's
+  panel with `universe:open-notifications`) and the account (name, email, Log out, Terms…). A group (People, Academics…) opens a list under its button (`Popover` in `ui/Menu.tsx`, arrow keys through
+  `menuKeys`); what doesn't fit goes under **More**, measured on a hidden copy of the row (a `ResizeObserver` on the
+  row and the copy: the window, the fonts arriving, another app or language). It stays at the top while the page
+  scrolls, in the 4 rem the page bar took (6 px, 52 px, 6 px), so things that stick at `lg:top-16` still line up.
+- **No empty row under it:** on a computer's browser `Topbar` shows only the page's own controls (`leftNode`,
+  `rightNode`, `action`), not sticky, and nothing when the page has none; its `sr-only` title stays.
+- **Rules for code that builds on it:** a new menu entry goes in `navFor` as before and shows in both. The bar is
+  `data-no-arrange` (arranging the menu by dragging, M166–M167, is a side-menu thing; the page's own arranging works).
+  Anything that hides the side menu (Studio's focus mode) hides `.top-nav` too. `AppSkeleton` draws the bar's
+  placeholder with the `topnav:` variant, so opening the app doesn't jump. The app switcher now also closes on a click
+  outside it (both menus).
+- **Checked:** `scripts/checks/top-nav-ui.mjs` (1440, 1280, 1024 in both themes, 390, and the installed app emulated):
+  the bar there and the side menu not, nothing cut off, a group's list, axe, no sideways scroll), `pnpm check`.

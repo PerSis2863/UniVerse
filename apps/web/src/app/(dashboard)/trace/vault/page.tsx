@@ -8,6 +8,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { Copy, KeyRound, Loader2, Package, Send, ShieldCheck } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
+import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { formatCode } from '@/lib/trace';
@@ -30,6 +31,7 @@ export default function VaultPage() {
       <Topbar title="My vault" subtitle="Proof that the things you own are genuine and yours" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
+          <TraceTabs />
           <Vault />
         </div>
       </div>

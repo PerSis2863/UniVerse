@@ -8,6 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-motion';
 import { ArrowDownLeft, ArrowUpRight, Banknote, Gift, Loader2, Megaphone, Recycle, RotateCcw, ScanLine, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cleanCode } from '@/lib/trace';
@@ -44,6 +45,7 @@ export default function WalletPage() {
       <Topbar title="Wallet" subtitle="Points from every brand, for every genuine product you scan" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
+          <TraceTabs />
           <Wallet />
         </div>
       </div>

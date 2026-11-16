@@ -10,6 +10,7 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { Banknote, Check, Globe2, Loader2, MapPin, Megaphone, Pause, Play, Plus, Square, Target, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
+import { TraceTabs } from '@/components/trace/TraceTabs';
 import { CITIES } from '@/components/trace/map/cities';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
@@ -35,6 +36,7 @@ export default function CampaignsPage() {
       <Topbar title="Campaigns" subtitle="Bonus points for shops, paid only for verified sales" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
+          <TraceTabs />
           <Suspense><Campaigns /></Suspense>
         </div>
       </div>
