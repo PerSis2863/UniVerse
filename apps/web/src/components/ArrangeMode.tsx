@@ -72,12 +72,12 @@ export function ArrangeMode() {
   useEffect(() => {
     const vault = new Vault(userId);
     const said = { page: false, menu: false };
-    const tell = () => useArrange.setState({
-      arranged: said.page || said.menu, any: vault.any(), pins: vault.allPins(),
+    const tell = () => useArrange.setState((s) => ({
+      arranged: said.page || said.menu, any: vault.any(), pins: vault.allPins(), rev: s.rev + 1,
       // The page first; the menu when only it was changed.
       reset: () => { const p = parts.current; if (said.page) p?.page?.reset(); else p?.menu?.reset(); },
       tidy: () => parts.current?.page?.tidy() ?? 0,
-    });
+    }));
     const main = document.getElementById('main'), nav = document.getElementById('side-nav');
     /** A shortcut put under `to` (taken from `from` when it was one there), once in each list. */
     const movePin = (pin: Pin, from: string | null, to: string) => {
@@ -130,6 +130,8 @@ export function ArrangeMode() {
     useArrange.setState({
       resetAll: () => { vault.clearAll(); },
       removePin: (key, href) => vault.setPins({ [key]: vault.pins(key).filter((p) => p.href !== href) }),
+      menu: (scope) => vault.get(`/~menu/${scope}`),
+      setMenu: (scope, layout) => vault.set(`/~menu/${scope}`, layout),
       setSync: async (on) => {
         if (on) await send();
         else { clearTimeout(timer); const r = await api.delete<Answer>('/arrange'); void live.current.mutate(r.data, { revalidate: false }); }
@@ -140,7 +142,7 @@ export function ArrangeMode() {
       // A change still waiting goes now.
       if (timer) { clearTimeout(timer); void send().catch(() => undefined); }
       off(); page?.destroy(); menu?.destroy(); parts.current = null;
-      useArrange.setState({ arranged: false, any: false, reset: () => undefined, resetAll: () => undefined, sync: null, setSync: async () => undefined, pins: {}, removePin: () => undefined });
+      useArrange.setState({ arranged: false, any: false, reset: () => undefined, resetAll: () => undefined, sync: null, setSync: async () => undefined, pins: {}, removePin: () => undefined, menu: () => [], setMenu: () => undefined });
     };
   }, [userId]);
 

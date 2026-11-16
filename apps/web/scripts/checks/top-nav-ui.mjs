@@ -2,7 +2,8 @@
 // phones): at 1440, 1280 and 1024 (dark and light) the bar is there and the side menu isn't, every entry fits or
 // is under More, a group's list opens with its pages, the chosen page is lit; at 390 the phone's tab bar is kept;
 // the installed app (display-mode standalone, emulated) keeps the side menu. axe, no sideways scroll, no page
-// errors; the page starts under the bar with no empty row. Runs against `local:serve` (or BASE=… for local:dev); SHOTS=<dir> saves screenshots.
+// errors; the page starts under the bar with no empty row; no name both in the bar and in the page's own row of
+// sections; an entry dragged to another place stays there and is put back from the account menu (M221). Runs against `local:serve` (or BASE=… for local:dev); SHOTS=<dir> saves screenshots.
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
@@ -30,7 +31,9 @@ for (const [email, path, theme, width] of runs) {
     const bar = page.locator('header.top-nav');
     const box = await bar.boundingBox();
     r.bar = box && { y: Math.round(box.y), h: Math.round(box.height), w: Math.round(box.width) };
-    r.entries = await bar.locator('nav > div > a, nav > div > span > button').allInnerTexts();
+    r.entries = await bar.locator('nav > div > [data-chip], nav > div > [data-tour="more"]').allInnerTexts();
+    // M221: nothing in the bar that the page's own row of sections (Trace, Green, Relief, Travel) shows too.
+    r.dupes = await page.evaluate(() => { const bar = new Set([...document.querySelectorAll('header.top-nav [data-chip]')].map((c) => c.textContent.trim())); return [...document.querySelectorAll('#main nav a')].map((a) => a.textContent.trim()).filter((t) => bar.has(t)); });
     // The page starts right under the bar: no empty row of the page's own bar (M219).
     r.pageBar = await page.locator('header.app-topbar:visible').count();
     r.gapUnder = await page.evaluate(() => { const b = document.querySelector('header.top-nav').getBoundingClientRect().bottom; const first = [...document.querySelectorAll('#main *')].find((el) => { const r = el.getBoundingClientRect(); return r.height > 8 && r.width > 40 && getComputedStyle(el).visibility !== 'hidden' && el.children.length === 0; }); return first ? Math.round(first.getBoundingClientRect().top - b) : null; });
@@ -52,6 +55,37 @@ for (const [email, path, theme, width] of runs) {
   r.wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   await ctx.close();
 }
+// M221: the bar's entries are dragged into another order; the order stays after a reload and More follows it;
+// the account menu puts it back.
+{
+  const ctx = await signedIn(browser, base, 'demo@admin.com', { width: 1440, height: 900 });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => out.errors.push(`drag: ${e.message.slice(0, 160)}`));
+  await page.goto(`${base}/admin`, { waitUntil: 'load', timeout: 180_000 });
+  const chips = page.locator('header.top-nav nav [data-chip]');
+  await chips.first().waitFor({ timeout: 120_000 });
+  await page.waitForTimeout(1200);
+  const names = () => chips.allInnerTexts().then((a) => a.map((t) => t.trim()));
+  const before = await names();
+  const from = await chips.filter({ hasText: 'Settings' }).boundingBox(), to = await chips.first().boundingBox();
+  await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
+  await page.mouse.down();
+  for (let i = 1; i <= 12; i++) await page.mouse.move(from.x + from.width / 2 + ((to.x + 4) - (from.x + from.width / 2)) * (i / 12), from.y + from.height / 2);
+  if (shots) await page.screenshot({ path: `${shots}/top-nav-dragging.png` });
+  await page.mouse.up();
+  await page.waitForTimeout(400);
+  const after = await names();
+  await page.reload({ waitUntil: 'load' });
+  await chips.first().waitFor({ timeout: 120_000 });
+  await page.waitForTimeout(800);
+  const reloaded = await names();
+  await page.getByRole('button', { name: /Your account/ }).click();
+  await page.getByRole('button', { name: 'Put the menu back in order' }).click();
+  await page.waitForTimeout(400);
+  out.drag = { before, after, stillThere: reloaded.join() === after.join(), path: new URL(page.url()).pathname, putBack: (await names()).join() === before.join() };
+  await ctx.close();
+}
+
 // The installed app on a computer keeps the side menu. Chromium can't emulate display-mode, so the page's script is
 // told it's installed (CSS still sees a browser: only the menu chosen is checked, not the page's margin).
 const ctx = await signedIn(browser, base, 'demo@admin.com', { width: 1280, height: 900 });

@@ -263,7 +263,7 @@ const sharedNav = (role: string): NavItem[] => [
 const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
-const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
+export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   trace: [
     { href: '/trace', label: 'Console', icon: ScanLine, also: ['/trace/print'] },
     { href: '/trace/map', label: 'Market map', icon: Globe2 },
@@ -403,7 +403,8 @@ function NavItemComponent({
   if (item.subItems) {
     if (folded) isOpen = false;
     return (
-      <div className="space-y-1">
+      // M221: known by its name when arranged (the side menu and the bar across the top share the order).
+      <div className="space-y-1" data-arrange-key={t(item.label)}>
         <button
           onClick={onToggle}
           onPointerEnter={(e) => { onHover(item.label); tip(e.currentTarget); }}
@@ -465,7 +466,7 @@ function NavItemComponent({
   if (item.href) {
     const on = isOn(pathname, item.href, item.also);
     return (
-      <Link href={item.href} data-vt="fade" data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
+      <Link href={item.href} data-vt="fade" data-arrange-key={t(item.label)} data-tour-href={item.href.split('?')[0]} onClick={onClose} onPointerEnter={(e) => { onHover(item.href!); tip(e.currentTarget); }} onFocus={(e) => tip(e.currentTarget)} aria-current={on ? 'page' : undefined}
         className={cn('sidebar-item pill-host glide-host relative block', on && 'active')}>
         {on && <motion.span layoutId={glide ? 'sidebar-pill' : undefined} transition={spring.snappy} className="sidebar-pill" />}
         {hoverPill(item.href, on)}

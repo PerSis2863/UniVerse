@@ -7767,3 +7767,31 @@ head script in `src/app/layout.tsx` adds `.dark` only for `dark`, or `system` on
 (`src/lib/theme.ts`) answers `light`, and so do the theme menu's and Settings' first render. `public/manifest.json`'s
 start colours are the light page's (#f1f2f4). A person who chose dark or "system" keeps it (it's saved). Checked in a
 browser: a new visitor's landing and a signed-in home are light (the bar colour #f1f2f4), a saved dark stays dark.
+
+## M221: the landing's crash fixed; the top bar's entries dragged into order; no names twice (16 Nov)
+
+The owner sent the "1 problem(s) need a look" email and asked for M219's two left-outs.
+
+- **The crash** (`error_reports`, `/`, Safari: "null is not an object (evaluating 'e.stateNode._retryCache')"): the
+  landing builds an app's sections ahead, hidden in React's `Activity`, once the visitor points at its tab (M137,
+  one app at a time since M211). Those sections are `next/dynamic` with no `loading`, so they have no Suspense
+  boundary of their own (next's `loadable.js`): the hidden Activity caught their download. Pointing at another tab
+  before it ended dropped that Activity, and when the file arrived React's `resolveRetryWakeable` read
+  `stateNode._retryCache` of the dropped one (null; only its Activity case lacks the null check). Each app's part
+  is now `AppPart` in `src/app/page.tsx`: the Activity with a `Suspense fallback={null}` inside, which catches the
+  download and is dropped safely. **Rule:** anything shown or built inside an `Activity` that can suspend (a
+  `dynamic()` without `loading`, `use()`, `lazy`) needs a Suspense boundary inside the Activity.
+  `scripts/checks/landing-switch-ui.mjs` holds every download back 2.5 s and points at five tabs in a row: 16 such
+  errors before, none after.
+- **Dragging in the top bar:** press an entry and move sideways; the others slide aside and it drops where you let
+  go (a click that ends a drag doesn't open it; right-to-left mirrored). The order is the side menu's own (the vault's
+  `/~menu/<scope>`, the side menu's `data-arrange-scope`), so the installed app's side menu shows it too and More takes
+  the last ones in that order. ArrangeMode now puts `menu(scope)` / `setMenu(scope, layout)` and a `rev` that grows
+  with every change into `useArrange`; the side menu's entries carry `data-arrange-key` (their label), the name the bar
+  uses (shortcuts: "Shortcut …"). The account menu has "Put the menu back in order" once it has been changed. Entries
+  under More can't be dragged (drag one in the bar past where you want it instead, or widen the window).
+- **No names twice:** on the pages of Trace, Green, Relief and Travel (`ROWED`: each has its own row of sections), the
+  bar leaves out that app's entries (`APP_NAV`), which the row shows; on shared pages (Messages, Settings…) it keeps
+  them, the way back. A drag there only reorders what it shows (`reorderWithin` in `src/lib/arrange.ts`).
+- **Checked:** `landing-switch-ui.mjs` (above), `top-nav-ui.mjs` (no name in both the bar and the page's row; a drag
+  kept after a reload and put back), the unit test of `reorderWithin`, `pnpm check`.
