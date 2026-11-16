@@ -417,6 +417,10 @@ page with a `[param]` is built once as `/x/open` and answered for every value). 
   keep one client per request, and carry the patch over when upgrading Prisma.
 - KaTeX: import `katex/dist/katex.mjs`. Attendance rows are stored at midnight UTC of the class day.
 - `pkill -f <pattern>` can match its own shell: kill by port (`lsof -ti tcp:3000`) instead.
+- A build run by an agent can stop with `SecurityFatalError` ("Your version of Next.js is affected…"): it's Next's
+  upgrade notice for agents (`next/dist/lib/upgrade/nudge.js`), not a build error, and Cloudflare's builds never get it.
+  Run the same build again at once (it lets one retry through within 5 minutes); don't run its `next upgrade --agent`
+  command (upgrades follow the two-week rule, Next and the adapter together; 16.4.5 is due from 30 Nov, M231).
 
 ## 7. Keep it lean (after Ponytail)
 
