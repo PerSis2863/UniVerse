@@ -7823,3 +7823,9 @@ work on it and make it look good and redesign it like apple style and make it ul
 - **Checked:** `scripts/checks/notifications-panel-ui.mjs` (1280 dark and light, 390: no frame over 50 ms while it
   opens, the day groups, 15 notifications as 7 rows with 5 stacks, a stack opened and closed, Unread, Escape, axe),
   `pnpm check`.
+
+## M223: no picture of the student home on the landing (16 Nov)
+
+The owner, with a screenshot of it: "remove this from the main page". M116's `ProductWindow` (UniVersity's home drawn in a
+browser frame under the hero) is gone, file and all; the hero keeps its height, so the next section's top still shows on
+a tall screen.

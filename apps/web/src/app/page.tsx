@@ -22,7 +22,6 @@ import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components
 import { SplitCta } from '@/components/landing/SplitCta';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
-import { ProductWindow } from '@/components/landing/ProductWindow';
 import { Accent, EASE, Live, Motion, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -262,11 +261,8 @@ export default function ShowcasePage() {
             </div>
           </section>
 
-          {/* M116: UniVersity's home as it really looks, big, right under the hero. Its top shows on a
-              tall first screen because the hero is 9rem shorter than the screen on wide screens (M117);
-              it was pulled up with a negative margin, which covered the hero's last row and its
-              picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
-          {later === 'campus' && <ProductWindow />}
+          {/* M223 (the owner, 16 Nov: "remove this from the main page"): no picture of UniVersity's home under the
+              hero any more (M116's ProductWindow). */}
           <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
