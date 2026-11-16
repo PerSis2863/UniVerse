@@ -693,6 +693,21 @@ export function sampleTravelTrip(me: { id: string; name?: string }) {
     members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false }],
   };
 }
+/** GET /travel/trips/:id/expenses (M215): costs shared with the sample friend (made up). */
+export function sampleTripExpenses(me: { id: string }) {
+  const e = (id: string, what: string, amount: number, paidBy: string, category: string, day: string, split = [me.id, 'sample-friend']) => ({ id, what, amount, currency: 'EUR', paidBy, category, day, split, createdBy: paidBy, createdAt: new Date().toISOString() });
+  return { expenses: [
+    e('sample-x-1', 'Dinner at Time Out Market', 4600, 'sample-friend', 'food', '2027-04-08'),
+    e('sample-x-2', 'Tram 28 tickets', 1200, me.id, 'travel', '2027-04-09'),
+    e('sample-x-3', 'Jerónimos Monastery', 2400, me.id, 'fun', '2027-04-08'),
+    e('sample-x-4', 'Two nights in Lisbon', 24000, 'sample-friend', 'stay', '2027-04-08'),
+  ] };
+}
+/** GET /travel/trips/:id/packing (M215) */
+export function sampleTripPacking() {
+  const p = (id: string, item: string, grp: string, done = false) => ({ id, item, grp, done, doneBy: done ? 'sample-friend' : null });
+  return { items: [p('sample-p-1', 'Passport (valid six months past the trip)', 'Documents', true), p('sample-p-2', 'Comfortable walking shoes', 'Clothes'), p('sample-p-3', 'A light jacket for the evenings', 'Weather'), p('sample-p-4', 'Sunscreen', 'Health', true)] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {

@@ -218,7 +218,9 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M214 (16 Nov), Travel's map: sharp pins that never overlap, tapping one glides
+- **On the branch, not merged yet:** M215 (16 Nov), a trip's **Money** (shared costs, settle up, spent against the
+  budget, a converter, what things cost) and **Packing** (a shared list with suggestions from the trip; database update
+  0224). M214 (16 Nov), Travel's map: sharp pins that never overlap, tapping one glides
   in, a Layers panel (satellite, 3D hills, transport, street photos, walking rings…), the globe, my position, a filter
   (all from free sources straight to browsers, no Worker CPU). The console's Travel reports tried in a browser.
 - **Merged 16 Nov (PR #128; M173 and M177–M178 earlier, PR #124):** M213 (16 Nov), Travel's left-outs (Google Maps' exact route, a block closes the
@@ -247,7 +249,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): first the owner's
-  asks of 16 Nov (the handoff's hand-over before M214: Travel's big features, about 10 big features each
+  asks of 16 Nov (the handoff's hand-over before M214: about 10 big features each
   for Green and Relief); the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
@@ -255,7 +257,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M215** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M216** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -272,7 +274,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0224`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0225`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

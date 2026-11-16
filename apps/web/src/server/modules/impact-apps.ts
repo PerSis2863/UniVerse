@@ -13,6 +13,7 @@ import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
+import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
@@ -115,6 +116,14 @@ export default function impactAppsModule(router: Router) {
   travel.get('trips', ({ user }) => travelTrips(user));
   travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  // M215: a trip's shared costs and packing list.
+  travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
+  travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));
+  travel.delete<{ id: string; expenseId: string }>('trips/:id/expenses/:expenseId', ({ user, params }) => removeTripExpense(user, params.id, params.expenseId));
+  travel.get<{ id: string }>('trips/:id/packing', ({ user, params }) => tripPacking(user, params.id));
+  travel.post<{ id: string }>('trips/:id/packing', ({ user, params, body }) => addTripPacking(user, params.id, body ?? {}));
+  travel.patch<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params, body }) => updateTripPacking(user, params.id, params.itemId, body ?? {}));
+  travel.delete<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params }) => removeTripPacking(user, params.id, params.itemId));
   travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
   travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
   travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));

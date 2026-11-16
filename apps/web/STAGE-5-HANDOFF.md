@@ -7604,3 +7604,34 @@ it should look sharp"; "add auto zoom when i click on the specific restaurant �
 - **Checked:** `travel-map-ui.mjs` (now also the Layers panel, satellite and transport, the filter, and no CSP
   refusals) on `local:dev` and `local:serve`, screenshots (Zermatt in 3D, the globe, Belém by satellite, Paris
   transport and street photos, Nantes's food), unit tests (`streetPhotoOf`), `pnpm check`.
+
+## M215: a trip's Money and Packing (16 Nov)
+
+The owner: "add more big features in the travel app which are unique and different from others or combine
+different apps features into one app". A trip (`/travel/trip?id=…`) now has three parts (`?part=`): Plan (as
+before), **Money** and **Packing**, for everyone planning it, live (database update 0224).
+
+- **Money** (`trip-money.tsx`): shared costs (what, how much, currency, kind, who paid, for whom, the day);
+  where it stands (spent so far, against the Plan tab's estimate, your balance); **Settle up**, the fewest
+  payments that make everyone square, each with "Mark as paid" (a payment back is a cost of kind `settle`);
+  a **converter** between any of the app's currencies (World Bank yearly average rates: no outside call); and
+  **what things cost there** (a coffee, lunch, dinner, a beer, a ride, a museum) per country of the trip, in
+  the trip's currency and the local one, from the country's price level (said so). Sums in
+  `src/lib/travel-split.ts` (cents; per currency: a bill in yen is settled in yen; an even split's leftover
+  cents go to the first people so balances always add up to nothing; `readAmount` takes "12,50", "1.234,56").
+- **Packing** (`trip-packing.tsx`): a shared list grouped (documents, money, clothes, weather, power, health,
+  wash bag, what you'll do), ticked by anyone ("Packed by Maya"), with your own things; **For this trip**
+  suggests what to take from the trip itself (`src/lib/travel-pack.ts`): its length (clothes counts), each
+  place's weather in the month you're there (the 145 places with a climate chart), what the places are for
+  (beaches, mountains, temples, nightlife), the plugs there against your home country's (an adapter only
+  when none fits) and the cash you'll need; "Add all" or one by one.
+- **Server** (`src/server/travel-trip-extras.ts`, routes under `/travel/trips/:id/expenses|packing`): only the
+  trip's members (`tripFor`); who paid and who shares must be members; a payment back goes from one person to
+  another; at most 500 costs and 200 packing things a trip; packing rows written 10 at a time (D1's 100 bound
+  values); changes `publish` a refresh to the members. Sample answers for the demo.
+- **For code that builds on it:** money figures carry `data-no-motion` (the page-wide count-up made a
+  changing amount read wrong while it ran); the trip hero has room above the title for the back link.
+- **Checked:** `travel-money-ui.mjs` (new: two people, a dinner, the balance, settling up, the converter and
+  prices, the packing suggestions for Bangkok and Kyoto in August, Add all, a tick seen by the friend; axe at
+  1280 dark and 390 light), `travel-trip-ui.mjs` (its wait no longer depends on old test trips), unit tests
+  (`travel-split`, `travel-pack`, `travel-trip-extras`), `pnpm check`.

@@ -7591,9 +7591,48 @@ model TravelTrip {
   members    TravelTripMember[]
   stops      TravelTripStop[]
   items      TravelTripItem[]
+  expenses   TravelTripExpense[]
+  packing    TravelTripPack[]
 
   @@index([ownerId])
   @@map("travel_trips")
+}
+
+/// M215: a shared cost on a trip: who paid, how much (cents in its currency) and for whom (`split`, a JSON list
+/// of member ids); category "settle" is a payment back from `paidBy` to the one person in `split`.
+model TravelTripExpense {
+  id        String     @id @default(cuid())
+  tripId    String
+  trip      TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  paidBy    String
+  amount    Int
+  currency  String
+  category  String     @default("other")
+  what      String
+  /// YYYY-MM-DD
+  day       String?
+  split     String
+  createdBy String
+  createdAt DateTime   @default(now())
+
+  @@index([tripId])
+  @@map("travel_trip_expenses")
+}
+
+/// M215: a thing on a trip's shared packing list, ticked when someone has packed it.
+model TravelTripPack {
+  id        String     @id @default(cuid())
+  tripId    String
+  trip      TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  item      String
+  grp       String     @default("Other")
+  done      Boolean    @default(false)
+  doneBy    String?
+  addedBy   String
+  createdAt DateTime   @default(now())
+
+  @@index([tripId])
+  @@map("travel_trip_packing")
 }
 
 model TravelTripMember {

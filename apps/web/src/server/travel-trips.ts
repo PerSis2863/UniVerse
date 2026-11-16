@@ -39,12 +39,12 @@ async function stopData(b: Body) {
 }
 
 /** The trip if I'm planning it (null otherwise: someone else's trip looks like none at all). */
-async function tripFor(u: SessionUser, id: string) {
+export async function tripFor(u: SessionUser, id: string) {
   const m = await prisma.travelTripMember.findUnique({ where: { tripId_userId: { tripId: id, userId: u.id } }, select: { trip: true } });
   if (!m) throw new NotFoundException('That trip isn’t one of yours.');
   return m.trip;
 }
-async function memberIds(tripId: string) {
+export async function memberIds(tripId: string) {
   return (await prisma.travelTripMember.findMany({ where: { tripId }, select: { userId: true }, take: MAX_MEMBERS + 1 })).map((m) => m.userId);
 }
 /** Tell everyone planning it (their open pages refetch) and note the change time. */
