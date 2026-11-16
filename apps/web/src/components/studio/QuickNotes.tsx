@@ -1,5 +1,7 @@
 'use client';
 
+import { DictateButton } from '@/components/ui/DictateButton';
+import { joinDictation } from '@/lib/dictation';
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
@@ -390,6 +392,8 @@ function NoteEditor({ note, readOnly, titleCue, folders, making, now, onText, on
         ) : (
           <>
             <span className="ms-auto inline-flex flex-wrap items-center gap-0.5">
+              {/* M229: voice typing into the line last written in (the last line otherwise). */}
+              <DictateButton className={ICON} onText={(t) => { const i = lastLine.current >= 0 && lastLine.current < lines.length ? lastLine.current : lines.length - 1; setLine(i, { text: joinDictation(lines[i].text, t).replace(/\n+/g, ' ') }); }} />
               <button type="button" onMouseDown={keep} onClick={checklist} className={ICON} aria-label="Checklist" title="Checklist (Ctrl+Shift+L)"><ListChecks className="w-[18px] h-[18px]" aria-hidden /></button>
               <button type="button" onClick={onPin} aria-pressed={note.pinned} className={cn(ICON, note.pinned && 'text-zinc-900 dark:text-white')} aria-label={note.pinned ? 'Unpin' : 'Pin'} title={note.pinned ? 'Unpin' : 'Pin to the top'}>{note.pinned ? <PinOff className="w-[18px] h-[18px]" aria-hidden /> : <Pin className="w-[18px] h-[18px]" aria-hidden />}</button>
               <Menu label="More for this note" title="More" className={ICON} button={<Ellipsis className="w-[18px] h-[18px]" aria-hidden />} items={more} />

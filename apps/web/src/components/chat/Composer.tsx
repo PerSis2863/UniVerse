@@ -1,5 +1,7 @@
 'use client';
 
+import { DictateButton } from '@/components/ui/DictateButton';
+import { joinDictation } from '@/lib/dictation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X, Wand2, PartyPopper, BellOff } from 'lucide-react';
@@ -652,6 +654,9 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
             className="msg-search flex-1 min-w-0 resize-none max-h-40 px-4 py-2.5 rounded-3xl bg-zinc-100 dark:bg-white/[0.06] border border-transparent focus:border-indigo-500/40 focus:outline-none transition-shadow duration-200 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-500"
           />
           </div>
+
+          {/* M229: voice typing (speak and it types into the message). */}
+          {!editing && <DictateButton onText={(t) => setText((x) => joinDictation(x, t).slice(0, 4000))} label="Voice typing" />}
 
           {text.trim() || editing ? (
             <div className="relative flex items-center gap-1 shrink-0">

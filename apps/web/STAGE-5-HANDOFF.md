@@ -7913,3 +7913,21 @@ spots doesn't belong in the repository).
 - **For the owner to decide (in the report):** files are private links (anyone with a link can read it; a deleted file's edge copy
   lasts up to a day): keep, or ask for sign-in on sensitive kinds.
 - **Rule:** a frame that lays out content from a file or another person is sandboxed without scripts.
+
+## The owner's five repositories (16 Nov): what was built
+
+The owner asked to "add" open-seo, AppFlowy, OpenWhispr, OpenProject and Chatwoot. None can be dropped in: OpenProject
+and Chatwoot need servers of their own (Ruby, PostgreSQL), AppFlowy (AGPL-3.0) and OpenProject (GPL-3.0) would oblige
+UniVerse's own code to be released if copied, open-seo needs a paid DataForSEO key. The owner chose UniVerse's own
+versions of four ideas, inside existing sections, with no code copied, no servers and no costs: voice typing (M229),
+projects (M230), databases and a wiki (M231), a support inbox with a website chat bubble (M232). open-seo was left out.
+
+## M229: voice typing (16 Nov)
+
+After OpenWhispr. A microphone button (`src/components/ui/DictateButton.tsx`) in the chat composer, the document toolbars
+(`DocToolbar`, `WordToolbar`: `dictateInto` types at the cursor, a spoken "new line" starts a paragraph) and Quick notes
+(into the line last written in). The browser's own speech recognition (the `useCaptions` hook of live captions: free;
+Chrome and Edge use their speech service, Safari the device; hidden in Firefox). `src/lib/dictation.ts`: spoken
+punctuation in English ("comma", "full stop", "question mark", "new line", "new paragraph", "colon"), and each phrase
+joined like typing (a space, a capital after a sentence). Checked: `scripts/checks/dictation-ui.mjs` (a stand-in
+recogniser "says" a sentence: it lands in a chat and a note with its marks), the unit test, `pnpm check`.
