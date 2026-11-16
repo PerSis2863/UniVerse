@@ -7707,3 +7707,22 @@ Organisations included), each new part loaded only when opened (`?view=`; databa
 - **Checked:** `relief-plus-ui.mjs` (new: every tab at 1280 dark and 390 light, axe, no sideways scroll; 119 live
   alerts, a plan saved and read back, a go-bag tick, Portugal's 112, a first-aid card, the hours) and
   `green-plus-ui.mjs` again on `local:serve`, unit tests (`relief-plus` lib and server), `pnpm check`.
+
+## M218: the apps' sections in the side menu, not a row across the top (16 Nov)
+
+The owner: "can we make the horizontal section of the website in verticle style but dont change anything else",
+then a picture of the side menu: "this one". The rows of tabs across the top of Travel, Green, Relief (M213–M217)
+and Trace (since M50) are gone; their sections are entries in the side menu, drawn exactly like the others:
+
+- **Travel:** Explore, Find where to go, Map, Trips, Saved. **Green:** My impact, Footprint, Journeys, Goals, Tips,
+  Events, Green places, Teams & leaderboard. **Relief:** Live map, Most urgent, Matches, Alerts, Be ready, First aid,
+  My requests & tasks, My hours, Organisations. **Trace:** its entries were already there; Live globe added, and
+  All brands for the owner.
+- **The highlight follows the section:** on `/travel`, `/travel/saved`, `/green` and `/relief` (`SECTIONED`) the
+  side menu reads the open `?view=` / `?tab=` (`WithSection`, inside a `Suspense`: `useSearchParams` in the shared
+  layout must be, or every page stops being prerendered); an entry with a query is lit only for its section, one
+  without only when no section is open. Every other menu entry keeps the old rule (an href's query is ignored).
+- **Removed:** `TabRow`, `TravelTabs`, `GreenTabs`, `ReliefTabs`, `TraceTabs`. On phones the sections are in the menu
+  sheet ("More"), as the app's other entries are.
+- **Checked:** screenshots (Green → Goals, Relief → Alerts, Travel → Find where to go, each lit), `relief-plus-ui.mjs`,
+  `green-plus-ui.mjs` and `travel-find-ui.mjs` (they no longer look for the rows), `pnpm check`.

@@ -5,10 +5,10 @@ import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { Topbar } from '@/components/layout/Topbar';
 import { GreenApp } from '@/components/green/GreenApp';
-import { GreenTabs, type GreenView } from '@/components/green/GreenTabs';
 
 // UniVerse Green: my climate actions and their CO₂ (src/components/green/GreenApp.tsx); M216: the footprint,
-// journeys, goals, tips, events and green places as tabs (?view=…), each loaded only when opened.
+// journeys, goals, tips, events and green places (?view=…, entries in the side menu since M218), each loaded only when opened.
+type GreenView = 'footprint' | 'trips' | 'goals' | 'tips' | 'events' | 'places';
 const wait = () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />;
 const VIEWS: Record<GreenView, React.ComponentType> = {
   footprint: dynamic(() => import('@/components/green/GreenFootprint').then((m) => m.GreenFootprint), { loading: wait }),
@@ -21,7 +21,7 @@ const VIEWS: Record<GreenView, React.ComponentType> = {
 
 function Green() {
   const v = useSearchParams().get('view') as GreenView | null, View = v && v in VIEWS ? VIEWS[v] : null;
-  return <div className="space-y-6"><GreenTabs />{View ? <View /> : <GreenApp />}</div>;
+  return View ? <View /> : <GreenApp />;
 }
 
 export default function GreenPage() {

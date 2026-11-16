@@ -7,7 +7,6 @@ import { toast } from 'sonner';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { Building2, CalendarClock, ChevronRight, KeyRound, Loader2, LocateFixed, MapPin, Plus, TriangleAlert, Users, X } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { ReliefTabs } from './ReliefTabs';
 import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
@@ -53,7 +52,6 @@ function Home({ join, shift }: { join: string | null; shift: string | null }) {
       <Topbar title="Organisations" subtitle="NGOs, food banks and shelters: stock, volunteers and needs in one place" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-8">
-          <ReliefTabs />
           <section aria-labelledby="orgs-h">
             <div className="flex flex-wrap items-center justify-between gap-3">
               <h2 id="orgs-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Building2 className="w-5 h-5 text-orange-500" aria-hidden />Your organisations</h2>

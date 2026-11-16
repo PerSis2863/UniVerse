@@ -10,7 +10,6 @@ import { fetcher } from '@/lib/fetcher';
 import { IDEAS, THEMES, type Theme } from '@/lib/travel-ideas';
 import { cn } from '@/lib/utils';
 import { Cover, PlaceSearch, startTrip, type Saved } from './travel-ui';
-import { TravelTabs } from './TravelTabs';
 
 // UniVerse Travel's Explore (M202): find any place with a guide as you type (Wikivoyage's titles), or
 // start from places picked by what you're after; your saved places a tap away. M205: "Find where to go"
@@ -74,13 +73,11 @@ export function TravelExplore() {
   const open = (title: string) => router.push(guideHref(title));
   const recent = (saved?.saved ?? []).slice(0, 6);
 
-  const switcher = <TravelTabs />;
-  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} /></div>;
-  if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
+  if (view === 'map') return <div className="space-y-4"><TravelMap at={sp.get('at')} place={sp.get('d')} /></div>;
+  if (view === 'find') return <div className="space-y-5"><TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (
     <div className="space-y-8">
-      {switcher}
       {/* Not clipped (the search's results hang below it); its glow is, in its own box. M213: laid out like the
           other apps' first card (Trace's console): the headline, the search and what's here; my trips beside it. */}
       <section className="panel relative z-10 p-6 sm:p-10">

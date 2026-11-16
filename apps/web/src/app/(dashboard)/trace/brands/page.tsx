@@ -7,7 +7,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { m as motion } from 'framer-motion';
 import { Building2, Crown, Search } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { TraceTabs } from '@/components/trace/TraceTabs';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
@@ -27,7 +26,6 @@ export default function TraceBrandsPage() {
       <Topbar title="All brands" subtitle="Every brand on Trace, its size and its plan" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
-          <TraceTabs />
           {owner ? <Brands /> : <p className="panel p-6 text-sm text-zinc-500">Only the UniVerse team sees this page.</p>}
         </div>
       </div>

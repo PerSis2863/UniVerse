@@ -5,7 +5,6 @@ import { formatDistanceToNow } from 'date-fns';
 import { m as motion } from 'framer-motion';
 import { BadgeCheck, Clock, Crown, Gift, Leaf, ShieldCheck, Star, TrendingUp } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { TraceTabs } from '@/components/trace/TraceTabs';
 import { errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
@@ -36,7 +35,6 @@ export default function InsightsPage() {
       <Topbar title="Insights" subtitle="The weeks ahead, the best hours, your footprint and what owners say" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
-          <TraceTabs />
           <Body />
         </div>
       </div>

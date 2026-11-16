@@ -26,7 +26,7 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   const wide = () => page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
   const first = () => page.locator('ol[aria-live] > li').first().locator('a span.text-lg').innerText();
   await page.goto(`${base}/travel`, { waitUntil: 'load', timeout: 180_000 });
-  await page.getByRole('navigation', { name: 'Travel' }).getByRole('link', { name: 'Find where to go' }).click();
+  await page.goto(`${base}/travel?view=find`, { waitUntil: 'load', timeout: 180_000 }); // M218: a side-menu entry
   await page.getByRole('group', { name: 'What you love' }).waitFor({ timeout: 90_000 });
   r.url = new URL(page.url()).search;
   await page.getByLabel('Month').selectOption({ label: 'November' });

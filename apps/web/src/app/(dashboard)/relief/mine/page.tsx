@@ -1,12 +1,11 @@
 'use client';
 
-import { Suspense, useState } from 'react';
+import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
 import { BellRing, HandHeart, Inbox, Loader2, LocateFixed } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
-import { ReliefTabs } from '@/components/relief/ReliefTabs';
 import Link from '@/components/ui/Link';
 import { PostCard, type ReliefPost } from '@/components/relief/ReliefApp';
 import { api, errorMessage } from '@/lib/api';
@@ -39,7 +38,6 @@ export default function ReliefMinePage() {
       <Topbar title="My requests & tasks" subtitle={data ? `You’ve helped ${data.helped} ${data.helped === 1 ? 'person' : 'people'}` : 'What you asked for and who you’re helping'} />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-8">
-          <Suspense><ReliefTabs /></Suspense>
           <Alerts />
           <section aria-labelledby="helping-h">
             <h2 id="helping-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><HandHeart className="w-5 h-5 text-orange-500" aria-hidden />I’m helping</h2>

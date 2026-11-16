@@ -12,7 +12,6 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/Board';
 import { Facts, HeatStrip, Meter, Ring, Spark, Stack } from '@/components/instruments/parts';
-import { TraceTabs } from '@/components/trace/TraceTabs';
 import { ChainTeam, JoinTeam } from '@/components/trace/ChainTeam';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
@@ -33,7 +32,7 @@ const DppEditor = dynamic(() => import('@/components/trace/DppEditor').then((m) 
 // bold"; then "do all 4 of them"). Anyone signed in can start a brand for free: every product gets a
 // passport, batches get printable signed codes, every scan shows up live with likely copies caught,
 // shops earn the brand's points, campaigns pay per verified scan, and the maps show where it sells and
-// where each shipment is. Server: src/server/trace*.ts. The other Trace pages hang off TraceTabs.
+// where each shipment is. Server: src/server/trace*.ts. The other Trace pages are entries in the side menu.
 
 interface Brand { id: string; name: string; slug: string; category: string | null; color: string | null; logoUrl: string | null; plan: string; pointValue: number; currency: string; minCashout: number }
 interface Billing { open: boolean; proPriceCents: number | null; managed: boolean; subscribed: boolean }
@@ -66,7 +65,6 @@ export default function TracePage() {
       <Topbar title="Trace" subtitle="Every product gets a passport: genuine checks, live maps, rewards and campaigns" />
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
-          <TraceTabs />
           <JoinTeam />
           {!data ? <div className="ins-board"><div className="ins-board-inner h-[420px] skeleton" /></div>
             : data.brand ? <BrandConsole info={data as Required<BrandInfo> & { brand: Brand }} onChange={() => void mutate()} />

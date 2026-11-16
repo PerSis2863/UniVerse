@@ -1,8 +1,8 @@
 'use client';
 import Link from '@/components/ui/Link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { AlarmClock, Bookmark, CalendarDays, Clock, Footprints, Gauge, Globe, HeartPulse, Lightbulb, MapPin, Siren, Target, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -16,7 +16,7 @@ import {
   Coffee, Globe2, Map
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useEffect, useState, useSyncExternalStore } from 'react';
+import { Suspense, useEffect, useState, useSyncExternalStore } from 'react';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { LanguageMenu } from './LanguageMenu';
 import { MenuPins } from '@/components/ArrangeMode';
@@ -56,8 +56,17 @@ function withOffice(nav: NavItem[], user: { role?: string; permissions?: string[
   return [...nav.slice(0, at), { label: 'Office', icon: Briefcase, subItems }, ...nav.slice(at)];
 }
 
-/** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). */
-const isOn = (pathname: string, href: string | undefined, also?: string[]) => !!href && (pathname === href.split('?')[0] || !!also?.includes(pathname));
+/** The pages whose `?view=` or `?tab=` is a menu entry of its own (M218: Travel's, Green's and Relief's sections). */
+const SECTIONED = new Set(['/travel', '/travel/saved', '/green', '/relief']);
+/** Whether `pathname` is the page of this entry (its href without a query, or one of `also`). M218: on those
+ *  pages `pathname` carries the open section (`/green?view=goals`): an entry with a query is on only for its
+ *  section, one without only when no section is open. */
+const isOn = (pathname: string, href: string | undefined, also?: string[]) => {
+  if (!href) return false;
+  const [path, query] = pathname.split('?'), base = href.split('?')[0];
+  if (SECTIONED.has(base)) return href.includes('?') ? pathname === href : (path === href && !query) || !!also?.includes(path);
+  return path === base || !!also?.includes(path);
+};
 
 /**
  * Pages that are tabs of another menu entry, or only reached from search (Ctrl+K / the search
@@ -268,6 +277,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/trace', label: 'Console', icon: ScanLine, also: ['/trace/print'] },
     { href: '/trace/map', label: 'Market map', icon: Globe2 },
     { href: '/trace/tracking', label: 'Tracking', icon: Truck },
+    { href: '/trace/globe', label: 'Live globe', icon: Globe },
     { href: '/trace/radar', label: 'Radar', icon: Radar },
     { href: '/trace/insights', label: 'Insights', icon: Sparkles },
     { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
@@ -276,15 +286,30 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   ],
   travel: [
     { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
-    { href: '/travel/saved', label: 'Trips and saved', icon: Luggage, also: ['/travel/trip'] },
+    { href: '/travel?view=find', label: 'Find where to go', icon: Sparkles },
+    { href: '/travel?view=map', label: 'Map', icon: Map },
+    { href: '/travel/saved', label: 'Trips', icon: Luggage, also: ['/travel/trip'] },
+    { href: '/travel/saved?tab=saved', label: 'Saved', icon: Bookmark },
   ],
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },
+    { href: '/relief?view=urgent', label: 'Most urgent', icon: AlarmClock },
+    { href: '/relief?view=matches', label: 'Matches', icon: Sparkles },
+    { href: '/relief?view=alerts', label: 'Alerts', icon: Siren },
+    { href: '/relief?view=ready', label: 'Be ready', icon: ShieldCheck },
+    { href: '/relief?view=firstaid', label: 'First aid', icon: HeartPulse },
     { href: '/relief/mine', label: 'My requests & tasks', icon: HandHeart },
+    { href: '/relief?view=hours', label: 'My hours', icon: Clock },
     { href: '/relief/orgs', label: 'Organisations', icon: Building2 },
   ],
   green: [
     { href: '/green', label: 'My impact', icon: Leaf },
+    { href: '/green?view=footprint', label: 'Footprint', icon: Gauge },
+    { href: '/green?view=trips', label: 'Journeys', icon: Footprints },
+    { href: '/green?view=goals', label: 'Goals', icon: Target },
+    { href: '/green?view=tips', label: 'Tips', icon: Lightbulb },
+    { href: '/green?view=events', label: 'Events', icon: CalendarDays },
+    { href: '/green?view=places', label: 'Green places', icon: MapPin },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
   play: [
@@ -303,7 +328,9 @@ function navFor(app: AppId | null, user: { role: string; owner?: boolean; permis
     const base = [...owner, ...(navByRole[user.role] ?? navByRole.STUDENT)];
     return user.role === 'TEACHER' ? withOffice(base, user) : base;
   }
-  return [...owner, ...APP_NAV[app], ...sharedNav(user.role)];
+  // M218: the owner's list of every brand (it was in Trace's tab row).
+  const extra: NavItem[] = app === 'trace' && user.owner ? [{ href: '/trace/brands', label: 'All brands', icon: Building2 }] : [];
+  return [...owner, ...APP_NAV[app], ...extra, ...sharedNav(user.role)];
 }
 
 /** The app last used: shared pages (Messages, Collaborate…) keep its menu. */
@@ -482,10 +509,18 @@ const subscribeWide = (onChange: () => void) => {
   return () => q.removeEventListener('change', onChange);
 };
 
+/** M218: the path with the open section (`?view=` / `?tab=`) of Travel, Green and Relief, for the highlight; only on
+ *  the page that's showing (a tap to another page lights that page's entry at once). */
+function WithSection({ pathname, real, render }: { pathname: string; real: string; render: (here: string) => React.ReactNode }) {
+  const sp = useSearchParams(), view = sp.get('view'), tab = sp.get('tab');
+  const section = pathname === real && SECTIONED.has(pathname) ? (view ? `?view=${view}` : tab ? `?tab=${tab}` : '') : '';
+  return <>{render(pathname + section)}</>;
+}
+
 export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose?: () => void }) {
   const { user, logout } = useAuthStore();
   // The tapped entry lights up at once, not when its page has downloaded.
-  const pathname = useOptimisticPath(usePathname());
+  const realPath = usePathname(), pathname = useOptimisticPath(realPath);
   const router = useRouter();
   const [openIndex, setOpenIndex] = useState<number | null>(null);
   const [hovered, setHovered] = useState<string | null>(null);
@@ -537,6 +572,21 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
     router.push('/login');
   };
 
+  const items = (here: string) => nav.map((item, i) => (
+          <NavItemComponent 
+            key={i} 
+            item={item} 
+            pathname={here} 
+            onClose={onClose}
+            isOpen={openIndex === i || (item.subItems?.some(sub => isOn(here, sub.href, sub.also) || here.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
+            onToggle={() => { if (folded) { setSidebarFolded(false); setTip(null); setOpenIndex(i); } else setOpenIndex(openIndex === i ? null : i); }}
+            glide={isOpen || wide}
+            hovered={hovered}
+            onHover={setHovered}
+            folded={folded}
+            onTip={showTip}
+          />
+        ));
   return (
     <>
       {/* Mobile backdrop (fades in/out; sits above the mobile header and tab bar) */}
@@ -575,21 +625,8 @@ export function Sidebar({ isOpen = false, onClose }: { isOpen?: boolean, onClose
 
       {/* Nav */}
       <nav id="side-nav" data-arrange-scope={`${app ?? 'all'}-${user.role}`.toLowerCase()} onPointerLeave={() => { setHovered(null); setTip(null); }} onBlur={() => setTip(null)} className="flex-1 overflow-y-auto overscroll-contain min-h-0 px-3 pb-4 space-y-0.5 custom-scrollbar">
-        {nav.map((item, i) => (
-          <NavItemComponent 
-            key={i} 
-            item={item} 
-            pathname={pathname} 
-            onClose={onClose}
-            isOpen={openIndex === i || (item.subItems?.some(sub => isOn(pathname, sub.href, sub.also) || pathname.startsWith(sub.href + '/')) && openIndex === null) ? true : false}
-            onToggle={() => { if (folded) { setSidebarFolded(false); setTip(null); setOpenIndex(i); } else setOpenIndex(openIndex === i ? null : i); }}
-            glide={isOpen || wide}
-            hovered={hovered}
-            onHover={setHovered}
-            folded={folded}
-            onTip={showTip}
-          />
-        ))}
+        {/* M218: Travel's, Green's and Relief's sections are entries here, lit by the page's open section. */}
+        <Suspense fallback={items(pathname)}><WithSection pathname={pathname} real={realPath} render={items} /></Suspense>
         <MenuPins onClose={onClose} />
       </nav>
 

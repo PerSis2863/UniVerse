@@ -3,7 +3,6 @@
 import { Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Topbar } from '@/components/layout/Topbar';
-import { TravelTabs } from '@/components/travel/TravelTabs';
 import { TravelSaved } from '@/components/travel/TravelSaved';
 import { TravelTrips } from '@/components/travel/TravelTrips';
 
@@ -14,7 +13,6 @@ function Tabs() {
   const tab = sp.get('tab') === 'saved' ? 'saved' : 'trips';
   return (
     <div className="space-y-6">
-      <TravelTabs />
       {tab === 'saved' ? <TravelSaved /> : <TravelTrips join={sp.get('join')} />}
     </div>
   );
