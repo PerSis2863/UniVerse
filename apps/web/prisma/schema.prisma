@@ -7572,6 +7572,130 @@ model TravelSaved {
   @@map("travel_saved")
 }
 
+/// M206: a trip in UniVerse Travel's planner (src/server/travel-trips.ts). Its owner and members are
+/// users (cascades in SQL, like travel_saved); its cities, places and members go with it.
+model TravelTrip {
+  id         String             @id @default(cuid())
+  ownerId    String
+  name       String
+  /// YYYY-MM-DD, or null while the dates aren't decided.
+  startDate  String?
+  travellers Int                @default(1)
+  /// budget | mid | comfort (src/lib/travel-find.ts STYLES)
+  style      String             @default("mid")
+  currency   String             @default("EUR")
+  /// The invite code friends join with.
+  code       String             @unique
+  createdAt  DateTime           @default(now())
+  updatedAt  DateTime           @default(now()) @updatedAt
+  members    TravelTripMember[]
+  stops      TravelTripStop[]
+  items      TravelTripItem[]
+
+  @@index([ownerId])
+  @@map("travel_trips")
+}
+
+model TravelTripMember {
+  tripId   String
+  trip     TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId   String
+  joinedAt DateTime   @default(now())
+
+  @@id([tripId, userId])
+  @@index([userId])
+  @@map("travel_trip_members")
+}
+
+/// A city (any guide) on a trip, in order, for a number of days.
+model TravelTripStop {
+  id       String           @id @default(cuid())
+  tripId   String
+  trip     TravelTrip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  guide    String
+  name     String
+  cc       String?
+  lat      Float?
+  lon      Float?
+  days     Int              @default(2)
+  position Int              @default(0)
+  items    TravelTripItem[]
+
+  @@index([tripId])
+  @@map("travel_trip_stops")
+}
+
+/// A place planned on a trip: in a stop, on one of its days (0-based) or not planned yet (null).
+model TravelTripItem {
+  id        String         @id @default(cuid())
+  tripId    String
+  trip      TravelTrip     @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  stopId    String
+  stop      TravelTripStop @relation(fields: [stopId], references: [id], onDelete: Cascade)
+  day       Int?
+  position  Int            @default(0)
+  name      String
+  kind      String         @default("see")
+  lat       Float?
+  lon       Float?
+  hours     String?
+  price     String?
+  minutes   Int            @default(60)
+  note      String?
+  address   String?
+  url       String?
+  addedById String?
+  createdAt DateTime       @default(now())
+
+  @@index([tripId])
+  @@index([stopId])
+  @@map("travel_trip_items")
+}
+
+/// M207: someone on UniVerse Travel's travellers board: in a city (a guide) between two dates, by their
+/// first name and a short note, adults only, by their choice (src/server/travel-board.ts).
+model TravelBoardPost {
+  id        String              @id @default(cuid())
+  userId    String
+  guide     String
+  name      String
+  /// YYYY-MM-DD
+  fromDate  String
+  toDate    String
+  note      String?
+  /// Hidden after three reports.
+  hidden    Boolean             @default(false)
+  createdAt DateTime            @default(now())
+  reports   TravelBoardReport[]
+
+  @@unique([userId, guide])
+  @@index([guide, toDate])
+  @@map("travel_board")
+}
+
+model TravelBoardReport {
+  postId    String
+  post      TravelBoardPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  userId    String
+  reason    String?
+  createdAt DateTime        @default(now())
+
+  @@id([postId, userId])
+  @@index([userId])
+  @@map("travel_board_reports")
+}
+
+/// M207: someone a person blocked on the travellers board (both are hidden from each other there).
+model TravelBlock {
+  userId    String
+  blockedId String
+  createdAt DateTime @default(now())
+
+  @@id([userId, blockedId])
+  @@index([blockedId])
+  @@map("travel_blocks")
+}
+
 /// M182: a person's connection to an outside service (src/server/connections.ts). Tokens encrypted.
 model OAuthConnection {
   id        String    @id @default(cuid())

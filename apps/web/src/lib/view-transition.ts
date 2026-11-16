@@ -23,9 +23,10 @@ export const vtName = (kind: string, id: string) => `${kind}-${id.replace(/[^a-z
  * items grow in from 0.94). Only the list's own items move: unlike a View Transition, nothing else on a
  * heavy page (live maps) is snapshotted. Items carry `data-key`. Instant with Reduce Motion.
  */
-export function morph(list: HTMLElement | null, update: () => void) {
+export function morph(list: HTMLElement | null, update: () => void, { deep = false }: { deep?: boolean } = {}) {
   if (!list || matchMedia('(prefers-reduced-motion: reduce)').matches) { update(); return; }
-  const items = () => Array.from(list.children).filter((el): el is HTMLElement => el instanceof HTMLElement && !!el.dataset.key);
+  // deep (M206): items anywhere inside, so one moving between lists (a trip's days) slides across.
+  const items = () => Array.from(deep ? list.querySelectorAll('[data-key]') : list.children).filter((el): el is HTMLElement => el instanceof HTMLElement && !!el.dataset.key);
   const before = new Map(items().map((el) => [el.dataset.key!, el.getBoundingClientRect()]));
   flushSync(update);
   for (const el of items()) {

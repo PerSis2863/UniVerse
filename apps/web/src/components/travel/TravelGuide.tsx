@@ -2,17 +2,17 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
-import { bookingLinks, type BookKind } from '@/lib/travel-book';
+import { bookingLinks, hostelLink, type BookKind } from '@/lib/travel-book';
 import type { Guide, GuidePart, GuideSection, Listing } from '@/lib/travel-guide';
 import { DIETS, priceBand, type Climate, type DietId, type TipTopic, type Tips } from '@/lib/travel-tips';
 import { KnowTab } from './TravelKnow';
 import { cn } from '@/lib/utils';
-import { Cover, ListingCard, sky, type Saved } from './travel-ui';
+import { Cover, ListingCard, sky, startTrip, type Saved } from './travel-ui';
 
 // A place's guide in UniVerse Travel (M202, /travel/guide?d=<Wikivoyage title>): its photo and opening,
 // the country's facts (money, languages, driving side, emergency numbers), the week's weather, booking
@@ -46,6 +46,7 @@ const guideHref = (title: string) => `/travel/guide?d=${encodeURIComponent(title
 
 export function TravelGuide() {
   const d = useSearchParams().get('d') ?? '';
+  const router = useRouter();
   const calm = useReducedMotion();
   const { data, error } = useSWR<Answer>(d ? `/travel/guide?d=${encodeURIComponent(d)}` : null, fetcher, { revalidateOnFocus: false });
   const g = data?.guide;
@@ -137,6 +138,8 @@ export function TravelGuide() {
         {books.map((b) => { const Icon = BOOK_ICON[b.kind]; return (
           <a key={b.kind} href={b.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1.5" title={`Opens ${b.partner}`}><Icon className="h-4 w-4" aria-hidden />{b.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {b.partner}</span></a>
         ); })}
+        {/* M206: a trip with this place first. */}
+        <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="btn-primary btn-sm ms-auto inline-flex items-center gap-1.5"><Route className="h-4 w-4" aria-hidden />Plan a trip here</button>
       </section>
 
       {/* The parts. */}
@@ -197,6 +200,14 @@ export function TravelGuide() {
                 <section className="panel space-y-3 p-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
                   {sections.map((s) => s.text.length > 0 && <div key={s.part} className="space-y-3">{sections.length > 1 && <p className="font-semibold text-zinc-900 dark:text-white">{s.title}</p>}{s.text.map((p, i) => <p key={i}>{p}</p>)}</div>)}
                 </section>
+              )}
+              {/* M207: hostels beside hotels, for the same place. */}
+              {current.id === 'sleep' && (
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <span className="me-1 text-sm text-zinc-600 dark:text-zinc-300">Compare prices:</span>
+                  <a href={hostelLink(g.title)} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title="Opens Hostelworld">Hostels<span className="text-xs text-zinc-500 dark:text-zinc-400">· Hostelworld</span></a>
+                  <a href={books.find((b) => b.kind === 'stay')!.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title="Opens Booking.com">Hotels and flats<span className="text-xs text-zinc-500 dark:text-zinc-400">· Booking.com</span></a>
+                </div>
               )}
               {listings.length > 0 && (
                 <>

@@ -6,6 +6,7 @@ import { BadRequestException, NotFoundException, ServiceUnavailableException } f
 import COUNTRIES from '@/lib/travel-countries.json';
 import VISA_TITLES from '@/lib/travel-visa-titles.json';
 import { readVisas, type VisaRule } from '@/lib/travel-visa';
+import { IDEAS, type Idea } from '@/lib/travel-ideas';
 import { oneOf, str, type Body, type Query, first } from './body';
 
 // UniVerse Travel (M202): guides, facts, the weather and search, read from public sources and kept in
@@ -57,8 +58,13 @@ export async function travelSearch(_u: SessionUser, q: Query) {
     const r = await fetchJson<{ pages: { title: string; description: string | null; thumbnail: { url: string } | null }[] }>(
       `https://en.wikivoyage.org/w/rest.php/v1/search/title?q=${encodeURIComponent(term)}&limit=8`);
     return (r?.pages ?? []).map((p) => ({ title: p.title, about: p.description ?? null, thumb: p.thumbnail?.url ? `https:${p.thumbnail.url.replace(/^https?:/, '')}` : null }));
-  });
-  return { results: results ?? [] };
+  }).catch(() => null);
+  // M207: when Wikivoyage is busy (it answers 429 to busy shared addresses), the app's own places.
+  if (!results) {
+    const t = term.toLowerCase(), hit = (i: Idea) => i.title.toLowerCase().includes(t) || i.country.toLowerCase().includes(t);
+    return { results: IDEAS.filter(hit).sort((a, b) => Number(!a.title.toLowerCase().startsWith(t)) - Number(!b.title.toLowerCase().startsWith(t))).slice(0, 8).map((i) => ({ title: i.title, about: i.country, thumb: null })) };
+  }
+  return { results };
 }
 
 export interface CountryFacts {
@@ -139,6 +145,14 @@ export async function travelGuide(_u: SessionUser, q: Query) {
     guide, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
     credit: credit(guide.title),
   };
+}
+
+/** M206: a guide's place for the trip planner (its own title, position and country), from the kept guide. */
+export async function placeOf(asked: string): Promise<{ guide: string; name: string; lat: number | null; lon: number | null; cc: string | null } | null> {
+  const r = await readArticle(titleOf(asked));
+  if (!r) return null;
+  const country = r.lat !== undefined && r.lon !== undefined ? await countryAt(r.lat, r.lon).catch(() => null) : null;
+  return { guide: r.title, name: r.title.split('/').pop()!.replace(/\s*\([^)]*\)/, ''), lat: r.lat ?? null, lon: r.lon ?? null, cc: country?.code ?? null };
 }
 
 export interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }

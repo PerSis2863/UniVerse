@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Bookmark, Compass, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -277,7 +277,7 @@ const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   ],
   travel: [
     { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
-    { href: '/travel/saved', label: 'Saved places', icon: Bookmark },
+    { href: '/travel/saved', label: 'Trips and saved', icon: Luggage, also: ['/travel/trip'] },
   ],
   relief: [
     { href: '/relief', label: 'Live map', icon: Map },

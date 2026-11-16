@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M201 is the latest).
+  builds on it). The newest notes are at the end (M207 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -72,7 +72,10 @@ software or website in the main website… where they create a impact"). Each ap
   teams and a map.
 - **Travel** (`/travel`, M183): find any place; its guide (what to see, do, eat, drink, where to sleep,
   getting around, staying safe and polite) from Wikivoyage, the country's facts and emergency numbers, the
-  week's weather; saved places; stays, flights, tours and trains booked with partners.
+  week's weather; saved places; stays, flights, tours and trains booked with partners; **Find where to go**
+  (days, budget, month, interests and passport rank 145 places, M205); **trips** planned alone or with
+  friends (cities, days, drag and drop, the whole budget, getting between and there, stays, M206–M207); an
+  opt-in **travellers board** for adults in the same city on the same dates (M207).
 - **Play** (`/play`): thirteen games (quick: Quiz Clash, Spot the Fake, Supply Run, Recycle Rush; big:
   Type Race, World Pin, Flood Rescue, Ocean Cleanup, Fire Line) and four 3D worlds (three.js: Skyline
   Obby, Night Shift 18+, Solar Voyager, Reef Rescue), all drawn realistically since M102–M105 (every
@@ -213,8 +216,12 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M205 (15 Nov), Travel's **Find where to go** in Explore (days, budget, month,
-  interests and passport rank 145 places with the reasons; visas for your passport on the guide's Know tab). M178 (13 Nov), Attendance scrolls without stalls (plain cards no
+- **On the branch, not merged yet:** M205–M207 (16 Nov), the rest of the owner's Airbnb list for Travel: **Find where
+  to go** in Explore (days, budget, month, interests and passport rank 145 places with the reasons; visas
+  for your passport on the guide's Know tab), the **trip planner** (Trips and saved → Trips: cities, days,
+  drag and drop, Plan my days, the whole budget, how to get between, friends with an invite link, a
+  calendar file; database update 0221) and **getting there, stays and the travellers board** (database update
+  0222). M178 (13 Nov), Attendance scrolls without stalls (plain cards no
   longer fade their shadow), the Planner's week keeps its height while loading, a security review (no
   critical findings; a shopper's check reads at most 200 stops). M177 (13 Nov), a deep check and smoother pages: cards no longer
   blur the moving scene behind them (homes 35 → 60 frames a second), public pages don't download
@@ -228,18 +235,14 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
-- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): **first**
-  the rest of the owner's Airbnb list for Travel (15 Nov): M205 (find a destination by days, budget, month,
-  interests and passport), M206 (the trip planner with the whole trip's budget and multi-city routes), M207
-  (flights, trains, buses and ferries; hostels and hotels; an opt-in travellers board), M208 (the extras)
-  (M181, the Arrange upgrade, and M182, Messages connections, were done on 16 Nov); then the
-  owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
+- **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
+  then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M209** (M181 and M182 were done on 16 Nov; M205–M208 are kept for the rest of Travel's Airbnb list: the destination finder, the planner, transport and stays, the extras; their brief is the handoff's "Hand-over: the rest of the owner's Airbnb list"). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M209** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -256,7 +259,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0221`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0223`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

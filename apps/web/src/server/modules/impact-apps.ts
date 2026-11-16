@@ -13,6 +13,8 @@ import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
+import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -107,6 +109,31 @@ export default function impactAppsModule(router: Router) {
   travel.get('saved', ({ user }) => travelSaved(user));
   travel.post('saved', ({ user, body }) => saveTravelPlace(user, body ?? {}));
   travel.delete<{ id: string }>('saved/:id', ({ user, params }) => removeTravelPlace(user, params.id));
+  // M206 (src/server/travel-trips.ts): trips planned alone or with friends; every route checks membership.
+  travel.get('trips', ({ user }) => travelTrips(user));
+  travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
+  travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
+  travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
+  travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));
+  travel.post<{ id: string }>('trips/:id/code', ({ user, params }) => newTravelTripCode(user, params.id));
+  travel.delete<{ id: string; userId: string }>('trips/:id/members/:userId', ({ user, params }) => removeTravelTripMember(user, params.id, params.userId));
+  travel.post<{ id: string }>('trips/:id/stops', ({ user, params, body }) => addTravelStop(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/stops/order', ({ user, params, body }) => orderTravelStops(user, params.id, body ?? {}));
+  travel.patch<{ id: string; stopId: string }>('trips/:id/stops/:stopId', ({ user, params, body }) => updateTravelStop(user, params.id, params.stopId, body ?? {}));
+  travel.delete<{ id: string; stopId: string }>('trips/:id/stops/:stopId', ({ user, params }) => removeTravelStop(user, params.id, params.stopId));
+  travel.post<{ id: string }>('trips/:id/items', ({ user, params, body }) => addTravelItem(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/items/move', ({ user, params, body }) => moveTravelItems(user, params.id, body ?? {}));
+  travel.patch<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params, body }) => updateTravelItem(user, params.id, params.itemId, body ?? {}));
+  travel.delete<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params }) => removeTravelItem(user, params.id, params.itemId));
+  // M207 (src/server/travel-board.ts): the travellers board, adults who opt in, by city and dates.
+  travel.get('board', ({ user, query }) => travelBoard(user, query));
+  travel.post('board', ({ user, body }) => joinTravelBoard(user, body ?? {}));
+  travel.delete<{ id: string }>('board/:id', ({ user, params }) => leaveTravelBoard(user, params.id));
+  travel.post<{ id: string }>('board/:id/message', ({ user, params }) => messageTraveller(user, params.id));
+  travel.post<{ id: string }>('board/:id/report', ({ user, params, body }) => reportTraveller(user, params.id, body ?? {}));
+  travel.post<{ id: string }>('board/:id/block', ({ user, params }) => blockTraveller(user, params.id));
+  travel.delete('blocks', ({ user }) => unblockTravellers(user));
 
   const green = router.controller('green');
   green.get('me', ({ user }) => greenMe(user));

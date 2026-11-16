@@ -1,11 +1,14 @@
 'use client';
 
-import { useState, useSyncExternalStore } from 'react';
+import { useEffect, useId, useState, useSyncExternalStore } from 'react';
+import useSWR from 'swr';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
-import { Bookmark, BookmarkCheck, CalendarCheck, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, ExternalLink, MapPin, Moon, Phone, Sun, type LucideIcon } from 'lucide-react';
+import { fetcher } from '@/lib/fetcher';
+import { Bookmark, BookmarkCheck, CalendarCheck, Loader2, Search, Cloud, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, ExternalLink, MapPin, Moon, Phone, Sun, type LucideIcon } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
+import type { useRouter } from 'next/navigation';
 import { commonsImage, type Listing } from '@/lib/travel-guide';
 import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
@@ -97,3 +100,58 @@ export function ListingCard({ guide, l, saved, near }: { guide: string; l: Listi
     </li>
   );
 }
+
+interface Found { title: string; about: string | null; thumb: string | null }
+
+/** Find any place with a guide as you type (Wikivoyage's titles): arrows, Enter, Escape (Explore, and
+ *  "Add a place" on a trip, M206). */
+export function PlaceSearch({ onPick, label, placeholder, big, className }: { onPick: (title: string) => void; label: string; placeholder: string; big?: boolean; className?: string }) {
+  const [q, setQ] = useState('');
+  const [term, setTerm] = useState('');
+  const [active, setActive] = useState(-1);
+  const listId = useId();
+  useEffect(() => { const t = setTimeout(() => setTerm(q.trim()), 220); return () => clearTimeout(t); }, [q]);
+  const { data: found, isLoading } = useSWR<{ results: Found[] }>(term.length >= 2 ? `/travel/search?q=${encodeURIComponent(term)}` : null, fetcher, { keepPreviousData: true });
+  const results = term.length >= 2 && q.trim() ? found?.results ?? [] : [];
+  const pick = (title: string) => { setQ(''); setTerm(''); setActive(-1); onPick(title); };
+  return (
+    <div className={cn('relative', className)}>
+      <Search className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 text-zinc-400', big ? 'start-4 h-5 w-5' : 'start-3 h-4 w-4')} aria-hidden />
+      <input value={q} onChange={(e) => { setQ(e.target.value); setActive(-1); }} placeholder={placeholder} aria-label={label} role="combobox" aria-expanded={results.length > 0} aria-autocomplete="list" aria-controls={listId}
+        aria-activedescendant={active >= 0 ? `${listId}-${active}` : undefined}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(results.length - 1, a + 1)); }
+          else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(-1, a - 1)); }
+          else if (e.key === 'Enter' && (active >= 0 || results[0])) { e.preventDefault(); pick((results[active] ?? results[0]).title); }
+          else if (e.key === 'Escape') setQ('');
+        }}
+        className={cn('w-full border border-zinc-200 bg-white text-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-sky-400/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white', big ? 'rounded-2xl py-3.5 ps-12 pe-12 text-base' : 'rounded-xl py-2.5 ps-9 pe-9 text-sm')} />
+      {isLoading && <Loader2 className={cn('absolute top-1/2 -translate-y-1/2 animate-spin text-zinc-400', big ? 'end-4 h-5 w-5' : 'end-3 h-4 w-4')} aria-hidden />}
+      {results.length > 0 && (
+        <ul id={listId} role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111214]">
+          {results.map((r, i) => (
+            <li key={r.title} id={`${listId}-${i}`} role="option" aria-selected={i === active} onClick={() => pick(r.title)} onMouseEnter={() => setActive(i)}
+              className={cn('flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-start', i === active && 'bg-zinc-100 dark:bg-white/[0.07]')}>
+              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-sky-500/15">
+                {r.thumb ? <Image src={r.thumb} alt="" fill unoptimized sizes="40px" className="object-cover" /> : <MapPin className="absolute inset-0 m-auto h-5 w-5 text-sky-500" aria-hidden />}
+              </span>
+              <span className="min-w-0">
+                <span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{r.title.replace(/\//g, ' · ')}</span>
+                {r.about && <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{r.about}</span>}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+/** M206: start a trip (optionally with its first place) and open it. */
+export async function startTrip(router: ReturnType<typeof useRouter>, stop?: { guide: string; name?: string; cc?: string; lat?: number; lon?: number; days?: number }) {
+  try {
+    const { data: { trip } } = await api.post<{ trip: { id: string } }>('/travel/trips', stop ? { stop } : {});
+    router.push(`/travel/trip?id=${trip.id}`);
+  } catch (e) { toast.error(errorMessage(e, 'Couldn’t start a trip.')); }
+}
+
