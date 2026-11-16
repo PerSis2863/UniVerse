@@ -2754,8 +2754,12 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   @media (prefers-reduced-motion: no-preference) {
     html:not(.reduce-motion) .scrub { animation: scrub-rise linear both; animation-timeline: view(); animation-range: entry 0% cover 45%; }
     html:not(.reduce-motion) .hero-drift { animation: hero-drift linear both; animation-timeline: scroll(root); animation-range: 0 800px; }
+    /* M211: the landing's product window tilts up into place as it scrolls in (it was framer-motion's
+       useScroll on the page's thread, most of a slow phone's dropped frames while scrolling the website). */
+    html:not(.reduce-motion) .window-tilt { animation: window-tilt linear both; animation-timeline: view(); animation-range: entry 0% entry 100%; }
   }
 }
+@keyframes window-tilt { from { transform: translate3d(0, 48px, 0) rotateX(24deg) scale(0.88); } to { transform: none; } }
 
 /* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
    design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes

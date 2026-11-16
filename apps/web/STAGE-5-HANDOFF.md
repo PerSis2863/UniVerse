@@ -7448,6 +7448,42 @@ can't reach, so the account was made in the local database. Fixes:
 - **Checked:** `/travel/saved`, `/green` (phone) and `/student`: no visible title, one heading for screen
   readers, no errors; `pnpm check`.
 
+## M211: the main pages' lag, and the error log (the owner, 16 Nov)
+
+- **The ask:** "the website and app lagg alot in the main page so please fix it and check if any errors are
+  there in the system".
+- **Measured** with `scripts/checks/main-pages-smooth.mjs` (new; on `local:serve`): the landing signed out
+  and the hub, UniVersity's home, Travel and Trace signed in, at 390 × 844 with the CPU slowed 4× and at
+  1440 × 900: long tasks while loading, frames over 3 s still and while scrolling, and a CPU profile.
+  **Trap:** starting the CPU profiler stalls a slowed page for ~0.6 s; the script measures stillness before
+  it starts.
+- **The big one, `src/lib/scroll-motion.ts` `arrive`** (M130, content replacing a placeholder gliding in):
+  it ran inside every MutationObserver callback, building its list by copying (quadratic: thousands of nodes
+  when a page renders) and reading layout in the middle of React's commit: 0.3–0.5 s of each main page's
+  start on a slow phone. Now: records under `[data-no-motion]` are dropped first (cached per node, `quiet`),
+  a batch over 300 changes (a whole page building: its entrance moves it) is skipped, the rest is looked at
+  in the next animation frame, the list is pushed not copied, `moving()` looks six levels up, and nested
+  queued roots are scanned once. `PendingPage` had its own watcher doing the same job (both ran): removed;
+  `arrive`'s placeholder list now includes `[role="status"][aria-label="Loading"]`.
+- **The landing:** the hero scenes, the typewriter line and the rotating "hello" carry `data-no-motion`
+  (they animate themselves many times a second); pointing at the app tabs builds only that app's sections
+  ahead (it built all five, hidden: a half-second freeze) and loads only its code; the top bar's "scrolled"
+  look comes from an IntersectionObserver on a 1 px mark (it ran on every scroll event); the product
+  window's tilt is a CSS scroll timeline (`.window-tilt`; it was framer-motion's `useScroll` on the page's
+  thread); counting numbers reuse one `Intl.NumberFormat` (`bits.tsx`), as `fmt()` now does
+  (`src/lib/instruments.ts`: 76 ms of the hub's start).
+- **Result** (phone, CPU ×4): the motion layer's share fell from 0.26–0.49 s to under 0.1 s per page; every
+  main page now holds 60 frames a second while still; scrolling the landing has no long task from the page's
+  code (what's left in the headless check is drawing on software graphics). The page entrance's one
+  layout read (`page-transition.ts`) stays: the browser lays the page out once anyway.
+- **Errors:** the live `error_reports` (production D1, read only) have nothing new since 10 Nov (a stray
+  multipart POST to `/`, already refused since M159) and 7 Nov (a styling and chunk mismatch during a
+  deploy); the open ones last happened 29–31 Oct and haven't come back since the fixes after them.
+- **Found out of date (not changed by this):** `landing-story-ui.mjs` (looks for `#story`'s "Apps" list,
+  gone since M164), `landing-pause-ui.mjs` (expects the phone hero to move at the top) and
+  `landing-try-ui.mjs` (a demo it scrolls to is hidden): they fail the same way without these changes.
+- **Checked:** `main-pages-smooth.mjs` before and after, `pnpm check`.
+
 ## Hand-over: the owner's Airbnb list (15 Nov)
 
 Done: items 1 to 7 as M204 (where to eat, know before you go), M205 (find a destination), M206 (the trip

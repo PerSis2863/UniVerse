@@ -168,6 +168,8 @@ export function scan(root: ParentNode = document) {
 }
 
 let mo: MutationObserver | null = null;
+let frame = 0;
+const pending: MutationRecord[] = [];
 const queued: Element[] = [];
 let timer: ReturnType<typeof setTimeout> | null = null;
 
@@ -251,15 +253,26 @@ function rollChanged(records: MutationRecord[]) {
 }
 
 /** Starts scroll motion for the whole app (once). Returns a stop function. */
-const LOADING = '.skeleton, [aria-busy="true"]';
+const LOADING = '.skeleton, [aria-busy="true"], [role="status"][aria-label="Loading"]';
 const LIST = 'ul, ol, tbody, [role="list"], [role="feed"], [role="log"]';
 
 /** Already moving: a part of the page's entrance (WAAPI, PendingPage runs it first), its own CSS
  *  animation (a message's arrival) or framer-motion (inline opacity / transform while it plays). */
 function moving(el: HTMLElement) {
   if (el.style.opacity || el.style.transform || el.getAnimations().length) return true;
-  for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) if (p.getAnimations().some((a) => !(a instanceof CSSAnimation) && !(a instanceof CSSTransition))) return true;
+  // A few levels up is where an entrance runs (the page, a card); the whole way up cost a slow phone dearly.
+  let up = 0;
+  for (let p = el.parentElement; p && p !== document.body && up < 6; p = p.parentElement, up++) if (p.getAnimations().some((a) => !(a instanceof CSSAnimation) && !(a instanceof CSSTransition))) return true;
   return false;
+}
+
+/** M211: inside a part that opted out ([data-no-motion]) or is skipped: changes there aren't arrivals.
+ *  Kept per node, since the same busy containers (a scene, a ticking counter) change again and again. */
+const quietOf = new WeakMap<Node, boolean>();
+function quiet(n: Node) {
+  let q = quietOf.get(n);
+  if (q === undefined) { const el = n instanceof Element ? n : n.parentElement; q = !el || !!el.closest('[data-no-motion]'); quietOf.set(n, q); }
+  return q;
 }
 
 /**
@@ -272,11 +285,16 @@ function moving(el: HTMLElement) {
 function arrive(records: MutationRecord[]) {
   const lost = new Set<Node>(), removed = new Set<Node>(), added = new Map<Element, HTMLElement[]>();
   for (const rec of records) {
+    if (rec.type !== 'childList' || quiet(rec.target)) continue;
     for (const n of rec.removedNodes) {
       removed.add(n);
       if (n instanceof Element && (n.matches(LOADING) || n.querySelector(LOADING))) lost.add(rec.target);
     }
-    for (const n of rec.addedNodes) if (n instanceof HTMLElement && rec.target instanceof Element) added.set(rec.target, [...(added.get(rec.target) ?? []), n]);
+    if (!(rec.target instanceof Element)) continue;
+    // Pushed, not copied: a page's first render adds thousands of nodes at once (the copy was quadratic,
+    // half a second of a slow phone's start, M211).
+    let list = added.get(rec.target);
+    for (const n of rec.addedNodes) if (n instanceof HTMLElement) { if (!list) added.set(rec.target, (list = [])); list.push(n); }
   }
   const fold = window.innerHeight, parts: HTMLElement[] = [];
   for (const [target, els] of added) {
@@ -299,13 +317,24 @@ export function startScrollMotion(): () => void {
   stopSheen = startSheen();
   const flush = () => {
     timer = null;
-    const roots = queued.splice(0, 40);
-    for (const r of roots) if (r.isConnected) scan(r);
+    // A part inside another queued part is scanned with it (M211: big arrivals queued both).
+    const roots = queued.splice(0, 40).filter((r, _, all) => r.isConnected && !all.some((o) => o !== r && o.contains(r)));
+    for (const r of roots) scan(r);
   };
-  mo = new MutationObserver((records) => {
+  mo = new MutationObserver((all) => {
+    // Busy parts that opted out (scenes, typewriters, live counters) change many times a second: drop
+    // their changes first, before anything is measured (M211).
+    const records = all.filter((rec) => !quiet(rec.target));
+    if (!records.length) return;
     for (const rec of records) for (const n of rec.addedNodes) if (n.nodeType === Node.ELEMENT_NODE && queued.length < 200) queued.push(n as Element);
     if (queued.length && !timer) timer = setTimeout(flush, 120);
-    if (!reducedMotion()) { rollChanged(records); arrive(records); }
+    // A whole page building at once (hundreds of changes) is no row arriving: the page's own entrance
+    // moves it. Small arrivals are looked at just before the next frame is drawn, when the browser lays
+    // the page out anyway, not in the middle of React's work (0.4 s of a slow phone's start, M211).
+    if (reducedMotion() || records.length > 300) return;
+    if (pending.length + records.length > 300) { pending.length = 0; return; } // many small batches add up to a page
+    pending.push(...records);
+    if (!frame) frame = requestAnimationFrame(() => { frame = 0; const r = pending.splice(0); rollChanged(r); arrive(r); });
   });
   mo.observe(document.body, { childList: true, subtree: true, characterData: true });
   scan(document);
@@ -317,5 +346,5 @@ export function startScrollMotion(): () => void {
   const onScroll = () => { if (idle) clearTimeout(idle); else root.dataset.scrolling = ''; idle = setTimeout(settle, 180); };
   document.addEventListener('scroll', onScroll, { capture: true, passive: true });
   stopScrolling = () => { document.removeEventListener('scroll', onScroll, { capture: true }); if (idle) clearTimeout(idle); settle(); };
-  return () => { mo?.disconnect(); mo = null; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; stopScrolling?.(); stopScrolling = null; };
+  return () => { mo?.disconnect(); mo = null; cancelAnimationFrame(frame); frame = 0; pending.length = 0; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; stopScrolling?.(); stopScrolling = null; };
 }

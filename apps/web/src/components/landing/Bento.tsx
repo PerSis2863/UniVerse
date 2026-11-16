@@ -40,7 +40,7 @@ function Languages() {
   }, [calm]);
   const [word, name, dir] = HELLO[i];
   return (
-    <div className="mt-6">
+    <div className="mt-6" data-no-motion>
       <div className="h-20 flex items-center" aria-live="off">
         <AnimatePresence mode="wait">
           <motion.p key={word} dir={dir} initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -14 }} transition={{ duration: 0.45, ease: EASE }}

@@ -1,12 +1,11 @@
 'use client';
 
-import { useRef } from 'react';
-import { m as motion, useScroll, useSpring, useTransform } from 'framer-motion';
+import { m as motion } from 'framer-motion';
 import { Bell, BookOpen, Briefcase, CalendarClock, Check, ClipboardCheck, Coffee, Folder, GraduationCap, LayoutGrid, ListChecks, MessageSquare, PenLine, Search, Settings, type LucideIcon } from 'lucide-react';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { cn } from '@/lib/utils';
-import { CountUp, EASE, Live, useCalm } from './bits';
+import { CountUp, EASE, Live } from './bits';
 
 // M116 (the owner: "really big and attractive", the first impression): under UniVersity's hero, a big
 // picture of the student home as it really looks in the app (the M91 look: the near-black menu with a
@@ -42,26 +41,20 @@ const card = 'rounded-[22px] border border-white/[0.07] bg-[var(--surface)]';
 const pill = (on: boolean) => cn('rounded-full font-semibold', on ? 'bg-white text-black' : 'border border-white/[0.1] text-zinc-300');
 
 export function ProductWindow() {
-  const ref = useRef<HTMLDivElement>(null);
-  const calm = useCalm();
-  const { scrollYProgress } = useScroll({ target: ref, offset: ['start end', 'start 0.2'] });
-  const p = useSpring(scrollYProgress, { stiffness: 140, damping: 30, mass: 0.6 });
-  const rotateX = useTransform(p, [0, 1], [calm ? 0 : 24, 0]);
-  const scale = useTransform(p, [0, 1], [calm ? 1 : 0.88, 1]);
-  const y = useTransform(p, [0, 1], [calm ? 0 : 48, 0]);
+  // M211: tilted in by a scroll timeline the compositor runs (.window-tilt, globals.css).
   return (
     <section className="relative px-4 sm:px-6 pb-10 sm:pb-16">
-      <div ref={ref} className="relative mx-auto max-w-6xl [perspective:1800px]">
+      <div className="relative mx-auto max-w-6xl [perspective:1800px]">
         {/* The warm light the window stands in (the page's corner light, still). */}
         <div aria-hidden className="absolute -inset-x-16 top-[8%] -bottom-[12%] bg-[radial-gradient(closest-side,rgba(214,170,92,0.16),transparent)]" />
-        <motion.div style={{ rotateX, scale, y, transformOrigin: '50% 0%' }} className="relative">
+        <div className="window-tilt relative" style={{ transformOrigin: '50% 0%' }}>
           <Live>
             <div role="img" aria-label="UniVersity's student home: today's classes, what is due, attendance, grades and a message from a teacher">
               <div className="hidden md:block"><Desktop /></div>
               <div className="md:hidden"><Phone /></div>
             </div>
           </Live>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
