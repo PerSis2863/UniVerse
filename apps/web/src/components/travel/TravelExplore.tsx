@@ -3,8 +3,10 @@
 import { useEffect, useId, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
-import { ArrowRight, Bookmark, Compass, Loader2, MapPin, Search } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { ArrowRight, Bookmark, Compass, Loader2, MapPin, Search, Sparkles } from 'lucide-react';
+import { Segmented } from '@/components/ui/Segmented';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { IDEAS, THEMES, type Theme } from '@/lib/travel-ideas';
@@ -12,13 +14,21 @@ import { cn } from '@/lib/utils';
 import { Cover, type Saved } from './travel-ui';
 
 // UniVerse Travel's Explore (M202): find any place with a guide as you type (Wikivoyage's titles), or
-// start from places picked by what you're after; your saved places a tap away.
+// start from places picked by what you're after; your saved places a tap away. M205: "Find where to go"
+// (?view=find) ranks every place for your days, budget, month, interests and passport.
+
+const TravelFinder = dynamic(() => import('./TravelFinder').then((m) => m.TravelFinder), {
+  loading: () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
+});
+const FIRST = 24;
 
 interface Found { title: string; about: string | null; thumb: string | null }
 const guideHref = (title: string) => `/travel/guide?d=${encodeURIComponent(title)}`;
 
 export function TravelExplore() {
   const router = useRouter();
+  const view = useSearchParams().get('view') === 'find' ? 'find' : 'search';
+  const [all, setAll] = useState(false);
   const [q, setQ] = useState('');
   const [term, setTerm] = useState('');
   const [active, setActive] = useState(-1);
@@ -29,11 +39,19 @@ export function TravelExplore() {
   const { data: saved } = useSWR<{ saved: Saved[] }>('/travel/saved', fetcher);
   const results = term.length >= 2 ? found?.results ?? [] : [];
   const ideas = useMemo(() => (theme === 'All' ? IDEAS : IDEAS.filter((i) => i.themes.includes(theme))), [theme]);
+  const cards = all ? ideas : ideas.slice(0, FIRST);
   const open = (title: string) => router.push(guideHref(title));
   const recent = (saved?.saved ?? []).slice(0, 6);
 
+  const switcher = (
+    <Segmented label="How to start" large value={view} onChange={(v) => router.replace(v === 'find' ? '/travel?view=find' : '/travel', { scroll: false })}
+      segments={[{ value: 'search', label: 'Search a place', icon: <Search className="h-4 w-4" aria-hidden /> }, { value: 'find', label: 'Find where to go', icon: <Sparkles className="h-4 w-4" aria-hidden /> }]} />
+  );
+  if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder /></div>;
+
   return (
     <div className="space-y-8">
+      {switcher}
       {/* Not clipped (the search's results hang below it); its glow is, in its own box. */}
       <section className="panel relative z-10 p-6 sm:p-10">
         <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden><span className="absolute -end-24 -top-24 h-72 w-72 rounded-full bg-sky-400/15 blur-3xl" /></span>
@@ -99,7 +117,7 @@ export function TravelExplore() {
           </div>
         </div>
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-          {ideas.map((i, n) => (
+          {cards.map((i, n) => (
             <li key={i.title}>
               <Link href={guideHref(i.title)} className="group relative block h-64 overflow-hidden rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10">
                 <Cover file={i.banner} width={720} priority={n < 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
@@ -113,6 +131,7 @@ export function TravelExplore() {
             </li>
           ))}
         </ul>
+        {cards.length < ideas.length && <button type="button" onClick={() => setAll(true)} className="btn-secondary mt-4 inline-flex items-center gap-2">Show all {ideas.length} places<ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>}
         <p className="mt-4 text-xs text-zinc-500 dark:text-zinc-400">Photos: Wikimedia Commons. Guides: Wikivoyage (CC BY-SA 3.0).</p>
       </section>
     </div>

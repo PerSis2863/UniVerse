@@ -7267,6 +7267,42 @@ can't reach, so the account was made in the local database. Fixes:
   what to try, chips that narrow 14 → 3, 14 Book a table links; axe clean at 1280 dark and 390 light, no
   sideways scroll, no errors), `travel-tips.test.ts`, `pnpm check`.
 
+## M205: Travel, find a destination (the owner's Airbnb list of 15 Nov, item 1)
+
+- **The ask:** "5 days in November, €400, street food, history, walkable: where should I go?"
+- **Where:** Explore → **Find where to go** (`?view=find`, a `Segmented` beside "Search a place";
+  `TravelFinder.tsx`, loaded only when chosen). Days (stepper), budget per person and its currency, the
+  month (next month by default), what you love (18 interests) and your passport (your home country from
+  `uv-travel-home`, now `useHome()` in `travel-ui.tsx`). Every change re-ranks at once in the browser
+  and the cards slide to their places (`morph()`); 12 shown, "Show more places".
+- **The ranking** (`src/lib/travel-find.ts`, pure, tested): that month's weather (mild and dry 17–29 °C
+  and under 100 mm; beach weather 24–33 °C when beaches are wanted; snow when skiing is), the budget per
+  day against **an estimated day there** for three styles (US-price days of $95 / $195 / $390 times the
+  country's price level to the power 0.8, since what visitors pay varies less than what locals pay), the
+  interests matched, the visa (no visa / ETA / eVisa / on arrival / needed / permit; refused entry left
+  out; a stay longer than allowed warned). At most two places from one country in the first twelve. Each
+  card says why, good and bad, with the cost for the whole stay.
+- **The data, read ahead** by `npx tsx scripts/gen-travel-data.mts --places | --money | --visa`:
+  `travel-places.json` (145 places' position, banner and month-by-month climate: the guide's climate
+  chart, else **NASA POWER**'s 2001–2025 averages at its position, public domain; regions use a
+  representative city, `CLIMATE_AT`), `travel-money.json` (World Bank household PPP ÷ the exchange rate,
+  2025, CC BY 4.0; PR, PF, CU and AR are marked guesses), `travel-visa-titles.json` (197 passports'
+  Wikipedia article names). The places themselves (country, themes, interests, blurb) are hand-written
+  rows in `travel-ideas.ts` (Explore shows the first 24, "Show all 145 places").
+- **Visas** (`GET /travel/visa?p=GB`, `src/lib/travel-visa.ts`, tested): Wikipedia's "Visa requirements
+  for … citizens" table read row by row (the Timatic code, else the country's name), kept 30 days in
+  `travel_cache`. The guide's **Know before you go** now says "Your passport: No visa needed (up to 90
+  days)" with the source and "check the official rules before you book".
+- **Traps:** NASA POWER's `T2M_MAX` climatology is the month's hottest hour, not a typical day (Bruges
+  showed 19 °C in November): use `T2M ± T2M_RANGE / 2`. Wikivoyage's position for a region can sit in a
+  rain shadow (Kerala showed 56 mm in July): add the place to `CLIMATE_AT`. `Intl.DisplayNames.of` throws
+  on a code it doesn't know: `named()` in the finder. Czechia's money in `travel-countries.json` was
+  `["203","CZK"]` (Prague's guide showed "203"): fixed.
+- **Checked:** `travel-find-ui.mjs` (Hanoi first for the owner's example; reasons; the British passport's
+  visas; beaches in July re-rank; 24 after Show more; the Kyoto guide names the visa; axe clean at 1280
+  dark and 390 light; no sideways scroll; no errors), `travel-find.test.ts`, `travel-visa.test.ts`,
+  `pnpm check`.
+
 ## Hand-over: the rest of the owner's Airbnb list (15 Nov), not started
 
 The owner sent seven things Airbnb lacks and asked for all of them, ultra smooth. M204 did items 2 and 3.

@@ -12,7 +12,7 @@ import { closeReliefText, inboundText } from '../relief-texts';
 import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents } from '../relief-safety';
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
-import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelWeather } from '../travel';
+import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -103,6 +103,7 @@ export default function impactAppsModule(router: Router) {
   travel.get('search', ({ user, query }) => travelSearch(user, query));
   travel.get('guide', ({ user, query }) => travelGuide(user, query));
   travel.get('weather', ({ user, query }) => travelWeather(user, query));
+  travel.get('visa', ({ user, query }) => travelVisa(user, query));
   travel.get('saved', ({ user }) => travelSaved(user));
   travel.post('saved', ({ user, body }) => saveTravelPlace(user, body ?? {}));
   travel.delete<{ id: string }>('saved/:id', ({ user, params }) => removeTravelPlace(user, params.id));

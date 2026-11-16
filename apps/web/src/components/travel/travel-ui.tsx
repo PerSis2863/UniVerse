@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useSyncExternalStore } from 'react';
 import Image from 'next/image';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
@@ -14,6 +14,19 @@ import { cn } from '@/lib/utils';
 // the weather's sky.
 
 export interface Saved { id: string; guide: string; name: string; kind: string; lat: number | null; lon: number | null; note: string | null; address: string | null; url: string | null; createdAt: string }
+
+const HOME_KEY = 'uv-travel-home';
+
+/** The visitor's own country (M204; their passport for visas, M205): what they chose before, otherwise
+ *  their browser's region. */
+export function useHome(): [string | null, (c: string) => void] {
+  const [chosen, setChosen] = useState<string | null>(null);
+  const guess = useSyncExternalStore(() => () => {}, () => {
+    try { return localStorage.getItem(HOME_KEY) ?? new Intl.Locale(navigator.language).maximize().region ?? null; } catch { return null; }
+  }, () => null);
+  const set = (c: string) => { setChosen(c); try { localStorage.setItem(HOME_KEY, c); } catch { /* private mode */ } };
+  return [chosen ?? guess, set];
+}
 
 /** A guide's banner (or a soft gradient when it has none), filling its box. */
 export function Cover({ file, width = 960, className, priority }: { file?: string | null; width?: number; className?: string; priority?: boolean }) {

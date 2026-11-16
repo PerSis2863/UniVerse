@@ -213,7 +213,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M178 (13 Nov), Attendance scrolls without stalls (plain cards no
+- **On the branch, not merged yet:** M205 (15 Nov), Travel's **Find where to go** in Explore (days, budget, month,
+  interests and passport rank 145 places with the reasons; visas for your passport on the guide's Know tab). M178 (13 Nov), Attendance scrolls without stalls (plain cards no
   longer fade their shadow), the Planner's week keeps its height while loading, a security review (no
   critical findings; a shopper's check reads at most 200 stops). M177 (13 Nov), a deep check and smoother pages: cards no longer
   blur the moving scene behind them (homes 35 → 60 frames a second), public pages don't download

@@ -4,6 +4,8 @@ import { LISTING_KINDS, readGuide, type Guide } from '@/lib/travel-guide';
 import { mergeTips, readTips, type Climate, type Tips } from '@/lib/travel-tips';
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from './http';
 import COUNTRIES from '@/lib/travel-countries.json';
+import VISA_TITLES from '@/lib/travel-visa-titles.json';
+import { readVisas, type VisaRule } from '@/lib/travel-visa';
 import { oneOf, str, type Body, type Query, first } from './body';
 
 // UniVerse Travel (M202): guides, facts, the weather and search, read from public sources and kept in
@@ -169,6 +171,23 @@ export function weatherDays(points: { time: string; data: { instant: { details: 
     by.set(date, d);
   }
   return [...by.values()].slice(0, 7).map((d) => ({ date: d.date, symbol: d.symbol, min: Math.round(d.min), max: Math.round(d.max), rain: Math.round(d.rain * 10) / 10 }));
+}
+
+/** GET /travel/visa?p=GB: what a passport needs for every country (Wikipedia's "Visa requirements for
+ *  … citizens" table, CC BY-SA 4.0), kept 30 days. Only the passport's code reaches Wikipedia. */
+export async function travelVisa(_u: SessionUser, q: Query) {
+  const p = (first(q.p) ?? '').toUpperCase();
+  const who = /^[A-Z]{2}$/.test(p) ? (VISA_TITLES as Record<string, string>)[p] : undefined;
+  if (!who) throw new BadRequestException('Pick your passport.');
+  const url = `https://en.wikipedia.org/wiki/${encodeURIComponent(`Visa requirements for ${who}`.replace(/ /g, '_'))}`;
+  const rules = await cached<Record<string, VisaRule>>(`visa:${p}`, 30 * DAY, async () => {
+    const r = await fetch(`${url}?action=raw`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
+    if (r.status === 404) return null;
+    if (!r.ok) throw new ServiceUnavailableException('The visa tables are busy. Try again in a minute.');
+    const read = readVisas(await r.text());
+    return Object.keys(read).length >= 20 ? read : null; // a page that didn't read isn't kept
+  });
+  return { passport: p, who, rules: rules ?? {}, credit: { source: 'Wikipedia', licence: 'CC BY-SA 4.0', url } };
 }
 
 // ——— Saved places ———

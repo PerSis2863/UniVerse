@@ -664,6 +664,12 @@ export function sampleTravelWeather() {
   const skies = ['clearsky_day', 'partlycloudy_day', 'fair_day', 'rain', 'partlycloudy_day', 'clearsky_day', 'cloudy'];
   return { days: skies.map((symbol, i) => ({ date: new Date(Date.now() + i * DAY).toISOString().slice(0, 10), min: 12 + (i % 3), max: 19 + (i % 4), symbol, rain: symbol === 'rain' ? 4.2 : 0 })), credit: 'Weather: MET Norway (CC BY 4.0)' };
 }
+/** GET /travel/visa (M205): a sample passport's rules (written for the demo). */
+export function sampleTravelVisa(p: string | null) {
+  const none = { s: 'none', d: '90 days' }, evisa = { s: 'evisa', d: '30 days' };
+  const rules: Record<string, { s: string; d?: string }> = { PT: none, ES: none, FR: none, IT: none, GR: none, HR: none, JP: none, KR: none, TH: { s: 'none', d: '30 days' }, VN: { s: 'evisa', d: '90 days' }, ID: { s: 'arrival', d: '30 days' }, IN: evisa, MA: none, TR: none, US: { s: 'eta', d: '90 days' }, CA: { s: 'eta', d: '6 months' }, MX: { s: 'none', d: '180 days' }, PE: { s: 'none', d: '183 days' }, AU: { s: 'eta', d: '3 months' }, EG: evisa, CN: { s: 'required' }, RU: { s: 'required' } };
+  return { passport: (p ?? 'GB').toUpperCase(), who: 'British citizens', rules, credit: { source: 'Wikipedia', licence: 'CC BY-SA 4.0', url: 'https://en.wikipedia.org/wiki/Visa_requirements_for_British_citizens' } };
+}
 /** GET /travel/saved */
 export function sampleTravelSaved(me: { id: string }) {
   const at = (h: number) => new Date(Date.now() - h * 3_600_000).toISOString();

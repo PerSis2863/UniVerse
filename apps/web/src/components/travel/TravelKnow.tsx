@@ -1,10 +1,14 @@
 'use client';
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Car, Droplets, HandCoins, Landmark, Moon, Plane, Plug, Shirt, ShieldAlert, Sparkles, Stamp, Sun, TramFront, Users, type LucideIcon } from 'lucide-react';
+import useSWR from 'swr';
 import Link from '@/components/ui/Link';
+import { fetcher } from '@/lib/fetcher';
+import { VISA, type VisaRule } from '@/lib/travel-visa';
 import { goodMonths, vibes, type Climate, type TipTopic, type Tips } from '@/lib/travel-tips';
 import { cn } from '@/lib/utils';
+import { useHome } from './travel-ui';
 
 // "Know before you go" in a place's guide (M204, the owner: what Airbnb lacks: tipping culture, scams,
 // tap water, plugs, etiquette and dress codes, bite-sized stories, a neighbourhood's feel): a few short
@@ -27,18 +31,6 @@ const TOPICS: { id: TipTopic; title: string; icon: LucideIcon }[] = [
   { id: 'night', title: 'After dark', icon: Moon },
 ];
 const MONTHS = Array.from({ length: 12 }, (_, i) => new Date(2026, i, 15).toLocaleDateString(undefined, { month: 'short' }));
-const HOME_KEY = 'uv-travel-home';
-
-/** The visitor's own country: what they chose before, otherwise their browser's region. */
-function useHome(): [string | null, (c: string) => void] {
-  const [chosen, setChosen] = useState<string | null>(null);
-  const guess = useSyncExternalStore(() => () => {}, () => {
-    try { return localStorage.getItem(HOME_KEY) ?? new Intl.Locale(navigator.language).maximize().region ?? null; } catch { return null; }
-  }, () => null);
-  const set = (c: string) => { setChosen(c); try { localStorage.setItem(HOME_KEY, c); } catch { /* private mode */ } };
-  return [chosen ?? guess, set];
-}
-
 export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climate, places }: {
   title: string; tips: Tips; fromCountry: TipTopic[]; tipsCountry: { name: string; credit: { url: string } } | null;
   country: KnowFacts | null; climate: Climate | null; places: { title: string; name: string; text?: string }[];
@@ -125,10 +117,25 @@ function PowerCard({ country }: { country: KnowFacts }) {
               {sameVolts ? 'Same voltage as at home.' : `Home is ${myVolts.join(' / ')} V, here ${country.volts.join(' / ')} V: check your charger says 100–240 V before plugging in.`}
             </li>
           )}
+          <VisaLine passport={home} dest={country.code} />
           {country.drives && drivesHome && <li className="flex items-center gap-2 rounded-lg bg-zinc-50 px-3 py-2 text-zinc-700 dark:bg-white/[0.04] dark:text-zinc-300"><Car className="h-4 w-4 shrink-0" aria-hidden />{country.drives === drivesHome ? `Cars drive on the ${country.drives}, as at home.` : `Cars drive on the ${country.drives}: look ${country.drives === 'left' ? 'right' : 'left'} first when crossing.`}</li>}
         </ul>
       )}
     </section>
+  );
+}
+
+/** M205: what the visitor's passport needs here (Wikipedia's table for it). */
+function VisaLine({ passport, dest }: { passport: string; dest: string }) {
+  const { data } = useSWR<{ rules: Record<string, VisaRule>; credit: { url: string } }>(`/travel/visa?p=${passport}`, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
+  const rule = data?.rules[dest];
+  if (!rule) return null;
+  const v = VISA[rule.s];
+  return (
+    <li className={cn('flex items-center gap-2 rounded-lg px-3 py-2', v.score > 0 ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-300' : 'bg-amber-500/10 text-amber-800 dark:text-amber-300')}>
+      <Stamp className="h-4 w-4 shrink-0" aria-hidden />
+      <span>Your passport: <strong>{v.words}</strong>{rule.d ? ` (up to ${rule.d})` : ''}. <a href={data.credit.url} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">Wikipedia</a>; check the official rules before you book.</span>
+    </li>
   );
 }
 
