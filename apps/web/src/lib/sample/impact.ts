@@ -33,7 +33,6 @@ export function sampleHub(me: { id: string }) {
       trace: { value: 48_210, label: 'products checked', mine: { value: 1860, label: 'points earned' } },
       relief: { value: 3_904, label: 'people helped', mine: { value: 23, label: 'people helped' } },
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
-      play: { value: 26_380, label: 'games played', mine: { value: 41, label: 'games played' } },
       travel: { value: 3_912, label: 'places saved', mine: { value: 12, label: 'places saved' } },
     },
     total: { people: 12_480 },

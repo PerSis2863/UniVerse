@@ -2,18 +2,15 @@
 
 import dynamic from 'next/dynamic';
 import { m as motion } from 'framer-motion';
-import { BadgeCheck, Camera, Flame, HandHeart, Handshake, Lock, Truck } from 'lucide-react';
-import { GameIcon } from '@/components/play/GameIcon';
+import { BadgeCheck, Camera, Flame, HandHeart, Handshake, Truck } from 'lucide-react';
 import { BADGES, weeklyChallenge } from '@/lib/green';
-import { GAMES, type GameId } from '@/lib/play';
 import { useNow } from '@/lib/use-now';
 import { Accent, EASE, Reveal, tile } from './bits';
 
-// More of the Relief, Green and Play tabs on the landing (M43): a "try it here" demo each
+// More of the Relief and Green tabs on the landing (M43): a "try it here" demo each
 // (./TryIt, loaded only when its tab is open) and two short picture sections. Illustrations only.
 
 const box = (h: string) => function Box() { return <div className={`${tile} ${h}`} />; };
-const QuizTry = dynamic(() => import('./TryIt').then((x) => x.QuizTry), { loading: box('h-[420px]') });
 const GreenTry = dynamic(() => import('./TryIt').then((x) => x.GreenTry), { loading: box('h-[520px] lg:h-[420px]') });
 const ReliefTry = dynamic(() => import('./TryIt').then((x) => x.ReliefTry), { loading: box('h-[640px] lg:h-[440px]') });
 
@@ -146,64 +143,6 @@ export function GreenMore() {
           [BadgeCheck, 'A teammate confirms', 'Never yourself.'],
           [Flame, 'It counts', 'For the challenge and the leaderboards.'],
         ] as const} />
-      </Section>
-    </>
-  );
-}
-
-// ── Play ──
-
-const CODE = 'K7Q2MX';
-const SEATS = ['#6366f1', '#4f8ef7', '#f97316', '#10b981', '#eab308', '#22d3ee', '#8c9bff', '#f43f5e'];
-// M112 (the council): the public page shows the worlds for everyone; Night Shift (18+) and STORMFALL
-// (16+) are on /play behind the age check, not on the page a head teacher sees first.
-const WORLDS: GameId[] = ['obby', 'voyager', 'reef'];
-
-export function PlayMore() {
-  return (
-    <>
-      <TrySection id="play-try" title="Five questions." accent="Go.">
-        <QuizTry />
-      </TrySection>
-      <Section id="play-rooms">
-        <Head title="Up to 8 friends." accent="One code." />
-        <Reveal delay={0.1} className={`${tile} mt-12 p-6 sm:p-10 text-center`}>
-          <div role="img" className="flex justify-center gap-1.5 sm:gap-2.5" aria-label={`Room code ${CODE.split('').join(' ')}`}>
-            {CODE.split('').map((c, i) => (
-              <motion.span key={i} aria-hidden className="w-10 h-14 sm:w-14 sm:h-20 grid place-items-center rounded-2xl bg-white/[0.06] ring-1 ring-white/10 font-mono text-2xl sm:text-4xl font-bold text-white"
-                initial={{ opacity: 0, y: 14, rotateX: -50 }} whileInView={{ opacity: 1, y: 0, rotateX: 0 }} viewport={{ once: true }} transition={{ delay: 0.1 + i * 0.06, duration: 0.4, ease: EASE }}>{c}</motion.span>
-            ))}
-          </div>
-          <div role="img" className="mt-8 flex justify-center -space-x-2 rtl:space-x-reverse" aria-label="8 players joined">
-            {SEATS.map((c, i) => (
-              <motion.span key={c} aria-hidden className="w-10 h-10 sm:w-12 sm:h-12 rounded-full ring-4 ring-[#0f0f11]" style={{ background: c }}
-                initial={{ opacity: 0, scale: 0.85, y: 8 }} whileInView={{ opacity: 1, scale: 1, y: 0 }} viewport={{ once: true }} transition={{ delay: 0.5 + i * 0.08, type: 'spring', stiffness: 380, damping: 22 }} />
-            ))}
-          </div>
-          <p className="mt-6 text-zinc-300">Same questions, same map, one scoreboard.</p>
-        </Reveal>
-      </Section>
-      <Section id="play-worlds">
-        <Head title="Worlds" accent="to explore." />
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {WORLDS.map((id, i) => {
-            const g = GAMES[id];
-            return (
-              <Reveal key={id} delay={0.1 + i * 0.06} className="h-full">
-                <div className="relative h-full overflow-hidden rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
-                  <span aria-hidden className="absolute -end-12 -top-12 w-40 h-40 rounded-full blur-3xl opacity-25" style={{ background: g.color }} />
-                  <div className="relative flex items-start justify-between gap-3">
-                    <GameIcon game={id} />
-                    <span className="rounded-full bg-white/[0.08] px-2.5 py-1 text-xs text-white">{g.age ? `${g.age}+` : 'all ages'}</span>
-                  </div>
-                  <h3 className="relative mt-5 text-lg font-bold text-white">{g.name}</h3>
-                  <p className="relative mt-1.5 text-zinc-300">{g.tagline}</p>
-                </div>
-              </Reveal>
-            );
-          })}
-        </div>
-        <Reveal delay={0.3}><p className="mt-6 flex items-center gap-2 text-sm text-zinc-400"><Lock className="w-4 h-4" aria-hidden />Rated worlds check your age.</p></Reveal>
       </Section>
     </>
   );

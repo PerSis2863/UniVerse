@@ -1,5 +1,6 @@
 'use client';
 
+import { isIdle, onIdleChange } from '@/lib/use-idle';
 import { useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { reducedMotion } from '@/lib/page-transition';
@@ -78,7 +79,8 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
     const dpr = () => window.devicePixelRatio || 1;
     const canWork = !onPage && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' && typeof cv.transferControlToOffscreen === 'function';
     /** Nobody needs it moving now (drawn on the page, a scroll counts too: the scroll comes first). */
-    const resting = () => document.hidden || html().hasAttribute('data-arena') || (!canWork && html().hasAttribute('data-scrolling'));
+    // M225: and while the person has left the page alone for 30 s (src/lib/use-idle.ts); any input wakes it.
+    const resting = () => document.hidden || isIdle() || html().hasAttribute('data-arena') || (!canWork && html().hasAttribute('data-scrolling'));
 
     let d: Driver;
     if (canWork) {
@@ -135,6 +137,7 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
     const onVisible = () => d.rest();
     window.addEventListener('resize', onResize, { passive: true });
     document.addEventListener('visibilitychange', onVisible);
+    const stopIdle = onIdleChange(() => d.rest());
     // The theme can change (Settings → Appearance, the top bar's switch); a game or a scroll rests it.
     const watch = new MutationObserver(() => { d.theme(); d.rest(); });
     watch.observe(html(), { attributes: true, attributeFilter: ['class', 'data-arena', 'data-scrolling'] });
@@ -144,6 +147,7 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
       if (!soon) { if (w.cancelIdleCallback) w.cancelIdleCallback(idle); else window.clearTimeout(idle); }
       window.removeEventListener('resize', onResize);
       document.removeEventListener('visibilitychange', onVisible);
+      stopIdle();
       watch.disconnect();
       cv.remove();
     };

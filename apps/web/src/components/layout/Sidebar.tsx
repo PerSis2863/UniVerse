@@ -77,7 +77,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
     { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/student/passport', label: 'Skills passport', keywords: 'cv profile share employers' },
     { href: '/student/offline?scan=1', label: 'Scan from the teacher’s screen', keywords: 'offline no internet moving qr codes scan note quiz announcement class' },
@@ -105,7 +105,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
     { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
     { href: '/impact-rooms', label: 'Impact rooms', keywords: 'ngo volunteer sponsor impact call report project updates' },
     { href: '/impact-league', label: 'Impact League', keywords: 'sdg challenge competition teams universities mentor judge demo day prize' },
@@ -114,7 +114,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/campus-map', label: 'Campus map', keywords: 'map buildings where is my class room free study room now live events campus twin' },
   ],
   ADMIN: [
-    { href: '/calls', label: 'Calls', keywords: 'call log phone video voice history missed' },
+    { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/admin/impact-reports/donations', label: 'Donations', keywords: 'ngo donations give money 80g pan receipts stripe csv charity' },
     { href: '/admin/monitoring/board', label: 'Campus board reports', keywords: 'marketplace reported posts moderation rides housing' },
     { href: '/admin/monitoring/meals', label: 'Cafeteria pre-orders', keywords: 'kitchen canteen dining food orders pickup ready' },
@@ -162,6 +162,8 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
+    // M224: the games (once the Play app) are UniVersity's Games section.
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     {
       label: 'Careers & impact', icon: Briefcase,
@@ -204,6 +206,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/knowledge', label: 'Knowledge & library', also: ['/library'] },
       ]
     },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -248,6 +251,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/early-warning', '/admin/analytics', '/admin/reports', '/admin/reports/report-cards', '/admin/reports/grading-scale', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };
@@ -260,7 +264,7 @@ const sharedNav = (role: string): NavItem[] => [
 ];
 
 /** Each app's icon in the hub's menu. */
-const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
@@ -286,10 +290,6 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   green: [
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
-  ],
-  play: [
-    { href: '/play', label: 'Arcade', icon: Gamepad2, also: ['/play/game'] },
-    { href: '/play/leaderboard', label: 'Leaderboards', icon: Trophy },
   ],
 };
 

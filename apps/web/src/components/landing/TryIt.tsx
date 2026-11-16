@@ -1,102 +1,21 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { Bike, Bus, Car, Check, Droplets, Footprints, HandHeart, Home, Minus, Plus, Recycle, RotateCcw, Stethoscope, Sun, Trash2, TreePine, Utensils, type LucideIcon } from 'lucide-react';
+import { Bike, Bus, Car, Check, Droplets, Footprints, HandHeart, Home, Minus, Plus, Recycle, Stethoscope, Sun, Trash2, TreePine, Utensils, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame } from '@/components/trace/map/WorldCanvas';
 import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
-import { quizPoints, quizQuestion, QUIZ_SECONDS_PER_QUESTION } from '@/lib/play/quiz';
 import { URGENCY_COLOR, URGENCY_LABEL, type Urgency } from '@/lib/relief';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
 import { tile, ghost, primary, useCalm } from './bits';
 
-// "Try it here" on the landing's Relief, Green and Play tabs (M43): a quiz round, logging a green
+// "Try it here" on the landing's Relief and Green tabs (M43): logging a green
 // action and the help map, played in the browser on made-up data. Nothing is sent or saved.
 
 const chip = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-sm font-semibold transition-[background-color,color,box-shadow] duration-150 active:scale-[0.97]';
-
-// ── Play: a five-question round of Quiz Clash ──
-
-const ROUND = 5;
-
-export function QuizTry() {
-  const [seed, setSeed] = useState(1);
-  const [i, setI] = useState(0);
-  const [picked, setPicked] = useState<number | null>(null);
-  const [score, setScore] = useState(0);
-  const [right, setRight] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const shownAt = useRef(0);
-  const q = useMemo(() => quizQuestion(seed, i), [seed, i]);
-  const done = i >= ROUND;
-
-  useEffect(() => { shownAt.current = performance.now(); }, [seed, i]);
-  // A moment to see the right answer, then the next question.
-  useEffect(() => {
-    if (picked === null) return;
-    const t = setTimeout(() => { setPicked(null); setI((x) => x + 1); }, 900);
-    return () => clearTimeout(t);
-  }, [picked]);
-
-  const answer = (k: number) => {
-    if (picked !== null) return;
-    const ok = k === q.answer;
-    setPicked(k);
-    haptic(ok ? 'success' : 'warning');
-    if (!ok) { setStreak(0); return; }
-    setRight((r) => r + 1);
-    setStreak((s) => s + 1);
-    setScore((s) => s + quizPoints(true, QUIZ_SECONDS_PER_QUESTION * 1000 - (performance.now() - shownAt.current), streak + 1));
-  };
-  const again = () => { setSeed((s) => s + 1); setI(0); setScore(0); setRight(0); setStreak(0); };
-
-  return (
-    <div className={`${tile} p-5 sm:p-7`}>
-      <div className="flex items-center justify-between gap-3">
-        <ol className="flex gap-1.5" aria-label={`Question ${Math.min(i + 1, ROUND)} of ${ROUND}`}>
-          {Array.from({ length: ROUND }, (_, k) => <li key={k} className={cn('h-1.5 w-8 rounded-full transition-colors duration-300', k < i ? 'bg-fuchsia-400' : k === i ? 'bg-white/60' : 'bg-white/10')} />)}
-        </ol>
-        <p className="font-mono text-sm tabular-nums text-white" aria-live="polite">{score.toLocaleString('en-US')} pts</p>
-      </div>
-      <AnimatePresence mode="wait" initial={false}>
-        {done ? (
-          <motion.div key="done" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.25 }} className="py-8 text-center">
-            <p className="text-6xl font-bold text-white tabular-nums">{right}<span className="text-zinc-400 text-3xl">/{ROUND}</span></p>
-            <p className="mt-2 text-zinc-300">{right === ROUND ? 'Perfect round.' : right >= 3 ? 'Nice one.' : 'Again?'}</p>
-            <div className="mt-6 flex flex-wrap justify-center gap-3">
-              <button type="button" onClick={again} className={ghost}><RotateCcw className="w-4 h-4" aria-hidden />Play again</button>
-              <Link href="/register?app=play" className={primary}>Play the full game</Link>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div key={`${seed}-${i}`} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -16, transition: { duration: 0.15 } }} transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}>
-            <p className="mt-6 text-xs text-fuchsia-300">{q.topic}</p>
-            <p className="mt-2 text-xl sm:text-2xl font-bold text-white min-h-[3.5rem]">{q.q}</p>
-            <div className="mt-5 grid sm:grid-cols-2 gap-2.5">
-              {q.options.map((o, k) => {
-                const shown = picked !== null, isRight = k === q.answer, mine = k === picked;
-                return (
-                  <button key={o} type="button" onClick={() => answer(k)} disabled={shown}
-                    className={cn('min-h-12 rounded-2xl px-4 py-3 text-start text-base font-semibold ring-1 transition-[background-color,box-shadow,opacity] duration-200',
-                      !shown && 'bg-white/[0.05] ring-white/10 text-white hover:bg-white/[0.09]',
-                      shown && isRight && 'bg-emerald-500/20 ring-emerald-400 text-white',
-                      shown && mine && !isRight && 'bg-red-500/20 ring-red-400 text-white',
-                      shown && !isRight && !mine && 'bg-white/[0.03] ring-white/5 text-zinc-400')}>
-                    <span className="flex items-center gap-2">{o}{shown && isRight && <Check className="w-4 h-4 ms-auto text-emerald-300" aria-hidden />}</span>
-                  </button>
-                );
-              })}
-            </div>
-            <p className="sr-only" aria-live="polite">{picked === null ? '' : picked === q.answer ? 'Right!' : `Not quite: ${q.options[q.answer]}.`}</p>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
 
 // ── Green: log an action, see the CO₂ it saves ──
 

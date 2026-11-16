@@ -1,30 +1,27 @@
 'use client';
 import { useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
-import { useState, useEffect, useRef } from 'react';
-import { Bell, Search, Plus,  X, Archive, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Bell, Search, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
-import Link from '@/components/ui/Link';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ArrangeButton } from '@/components/ArrangeMode';
 import { LanguageMenu } from './LanguageMenu';
 import { useTopNav } from '@/lib/top-nav';
-import { m as motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
-import { formatDistanceToNowStrict } from 'date-fns';
 import { authedFetch, authedJson } from '@/lib/authed-fetch';
 import { useLiveInterval } from '@/lib/realtime-client';
-import { Segmented } from '@/components/ui/Segmented';
-import { spring } from '@/lib/motion';
 import dynamic from 'next/dynamic';
 
-// Loads when the notifications panel opens (M96: it was in every app page's first load).
-const EmailNotificationsSwitch = dynamic(() => import('@/components/notifications/EmailNotificationsSwitch').then((m) => m.EmailNotificationsSwitch), { ssr: false });
+// M222: the notifications panel (Apple style) loads on its own, ahead of time once the page is idle, so the first
+// open slides at once (M96: it was in every app page's first load).
+const loadPanel = () => import('@/components/notifications/NotificationsPanel').then((m) => m.NotificationsPanel);
+const NotificationsPanel = dynamic(loadPanel, { ssr: false });
 
 type ApiNotification = { id: string; title: string; body: string; type: string; read: boolean; link: string | null; createdAt: string };
-const NOTIF_ICON: Record<string, string> = { info: '🔔', success: '✅', warning: '⚠️', error: '⛔', message: '💬', grade: '🎓', event: '📅', announcement: '📣', chat: '💬', call: '📞' };
 
 interface TopbarProps {
   title: string;
@@ -40,49 +37,31 @@ interface TopbarProps {
   sharedId?: string;
 }
 
-/** Where the notifications panel slides from: off the end edge (right, or left in right-to-left). */
-const offEdge = () => (typeof document !== 'undefined' && document.documentElement.dir === 'rtl' ? 'translateX(-100%)' : 'translateX(100%)');
-
 export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: TopbarProps) {
   // The browser tab says which page this is ("Files | UniVerse Impact"), like the public pages' titles.
   useEffect(() => { if (title) document.title = `${title} | UniVerse Impact`; }, [title]);
   const router = useRouter();
   const { user } = useAuthStore();
   const [showNotifications, setShowNotifications] = useState(false);
-  // The first rows draw with the panel and the rest once it has slid in: all 30 at once made the
-  // opening tap take about a quarter of a second on a slow phone.
-  const [allRows, setAllRows] = useState(false);
-  const openPanel = () => { setAllRows(false); setShowNotifications(true); };
-  const [activeNotifTab, setActiveNotifTab] = useState('All');
+  const openPanel = () => setShowNotifications(true);
+  const closePanel = useCallback(() => setShowNotifications(false), []);
   const { t } = useLanguageStore();
-  const dropdownRef = useRef<HTMLDivElement>(null);
   // M219: on a computer's browser the bar across the top has the search, theme, language and bell: this bar
   // only shows the page's own controls, and isn't there when the page has none (no empty row under the bar).
   const top = useTopNav();
 
 
+  // Its code arrives while the page is idle, so the first tap on the bell opens it at once.
   useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setShowNotifications(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
+    const w = window as Window & { requestIdleCallback?: (cb: () => void) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) { const id = w.requestIdleCallback(() => void loadPanel()); return () => w.cancelIdleCallback?.(id); }
+    const t = window.setTimeout(() => void loadPanel(), 3000);
+    return () => window.clearTimeout(t);
   }, []);
-
-  // Escape closes the panel, like every other dialog.
-  useEffect(() => {
-    if (!showNotifications) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowNotifications(false); };
-    window.addEventListener('keydown', onKey);
-    const rest = setTimeout(() => setAllRows(true), 450);
-    return () => { window.removeEventListener('keydown', onKey); clearTimeout(rest); };
-  }, [showNotifications]);
 
   // The mobile header's bell (DashboardShell) opens this drawer via a window event.
   useEffect(() => {
-    const open = () => { setAllRows(false); setShowNotifications(true); };
+    const open = () => setShowNotifications(true);
     window.addEventListener('universe:open-notifications', open);
     return () => window.removeEventListener('universe:open-notifications', open);
   }, []);
@@ -94,16 +73,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
     // While live updates are connected they refresh this list, so remounting (e.g. another layout) doesn't refetch it.
     { refreshInterval: notificationPoll, revalidateOnFocus: true, dedupingInterval: 15_000, revalidateIfStale: notificationPoll !== 0 },
   );
-  const notifications = (apiNotifications ?? []).map((n) => ({
-    id: n.id,
-    icon: NOTIF_ICON[n.type] ?? '🔔',
-    title: n.title,
-    body: n.body,
-    link: n.link,
-    time: formatDistanceToNowStrict(new Date(n.createdAt), { addSuffix: true }),
-    unread: !n.read,
-    important: n.type === 'warning' || n.type === 'error',
-  }));
+  const notifications = (apiNotifications ?? []).map((n) => ({ id: n.id, type: n.type, title: n.title, body: n.body, link: n.link, createdAt: n.createdAt, unread: !n.read }));
   const markRead = async (ids?: string[]) => {
     refreshNotifications((prev) => prev?.map((n) => (!ids || ids.includes(n.id) ? { ...n, read: true } : n)), { revalidate: false });
     await authedFetch('/api/notifications', { method: 'PATCH', body: JSON.stringify({ ids: ids ?? [] }) }).catch(() => null);
@@ -114,12 +84,6 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
     if (!('setAppBadge' in navigator)) return;
     (unreadCount > 0 ? navigator.setAppBadge(unreadCount) : navigator.clearAppBadge()).catch(() => {});
   }, [unreadCount]);
-
-  const filteredNotifications = notifications.filter(n => {
-    if (activeNotifTab === 'Unread') return n.unread;
-    if (activeNotifTab === 'Important') return n.important;
-    return true; // All
-  });
 
   return (
     <>
@@ -188,84 +152,11 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
         </div>
       </header>}
 
-      {/* Notifications: an iOS sheet from the side (full screen on phones). */}
+      {/* Notifications: a sheet from the side, Apple style (full screen on phones; M222). */}
       <AnimatePresence>
         {showNotifications && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              onClick={() => setShowNotifications(false)}
-              className="fixed inset-0 bg-black/30 z-[120]"
-            />
-            <motion.div
-              ref={dropdownRef}
-              role="dialog" aria-label="Notifications"
-              // A whole transform (not x) so it slides on the GPU, smooth even while the list renders;
-              // from the left in right-to-left languages, where the panel sits.
-              initial={{ transform: offEdge() }} animate={{ transform: 'translateX(0%)' }} exit={{ transform: offEdge() }}
-              transition={spring.gentle}
-              className="fixed end-0 top-0 h-[100dvh] w-full sm:w-[400px] tone-panel shadow-2xl z-[130] flex flex-col sheet-safe-top sm:rounded-s-[28px] overflow-hidden"
-            >
-              <div className="px-5 pt-5 pb-3 flex items-start justify-between gap-3">
-                <div>
-                  <h2 className="text-[28px] font-bold tracking-tight text-zinc-900 dark:text-white leading-tight">Notifications</h2>
-                  <p className="text-[13px] text-zinc-500 mt-0.5">{unreadCount === 0 ? 'You’re all caught up' : `${unreadCount} unread`}</p>
-                </div>
-                <button onClick={() => setShowNotifications(false)} aria-label="Close notifications" className="w-8 h-8 mt-1 rounded-full bg-[var(--fill)] flex items-center justify-center text-zinc-500 dark:text-zinc-300">
-                  <X className="w-4 h-4" strokeWidth={2.4} />
-                </button>
-              </div>
-
-              <div className="px-5 pb-3">
-                <Segmented
-                  label="Show"
-                  value={activeNotifTab as 'All' | 'Unread' | 'Important'}
-                  onChange={setActiveNotifTab}
-                  segments={[{ value: 'All', label: 'All' }, { value: 'Unread', label: 'Unread' }, { value: 'Important', label: 'Important' }]}
-                  className="w-full"
-                />
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-3 pb-3 space-y-2 stagger">
-                {filteredNotifications.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-zinc-400">
-                    <Archive className="w-12 h-12 mb-3 opacity-30" />
-                    <p className="text-[15px]">No notifications here</p>
-                  </div>
-                ) : (
-                  (allRows ? filteredNotifications : filteredNotifications.slice(0, 12)).map(n => (
-                    // Plain rows with the CSS cascade: an animation each in JS (and layout tracking)
-                    // restyled every row on every frame while the panel slid in.
-                    <div
-                      key={n.id} onClick={() => { if (n.unread) markRead([n.id]); if (n.link?.startsWith("/")) { setShowNotifications(false); router.push(n.link); } }}
-                      className="p-3.5 rounded-[20px] bg-[var(--surface-2)] dark:bg-white/[0.06] cursor-pointer flex items-start gap-3 active:scale-[0.98] transition-transform"
-                    >
-                      <div className="w-9 h-9 rounded-[10px] bg-white dark:bg-white/10 shadow-sm flex items-center justify-center text-base flex-shrink-0">
-                        {n.icon}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex justify-between items-baseline gap-2">
-                          <h4 className={cn('text-[15px] leading-snug', n.unread ? 'font-semibold text-zinc-900 dark:text-white' : 'font-medium text-zinc-600 dark:text-zinc-300')}>{n.title}</h4>
-                          <span className="text-[12px] text-zinc-400 whitespace-nowrap">{n.time}</span>
-                        </div>
-                        {n.body && <p className="text-[13px] text-zinc-500 dark:text-zinc-400 line-clamp-2 mt-0.5">{n.body}</p>}
-                        {n.important && <span className="mt-1 inline-flex items-center gap-1 text-[11px] font-semibold text-red-700 dark:text-[var(--ios-red)]"><AlertCircle className="w-3 h-3" /> Important</span>}
-                      </div>
-                      {n.unread && <div className="w-2.5 h-2.5 rounded-full bg-tint mt-1.5 flex-shrink-0" />}
-                    </div>
-                  ))
-                )}
-              </div>
-
-              <EmailNotificationsSwitch compact />
-
-              <div className="px-5 py-3 sheet-safe-bottom flex justify-between items-center" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
-                <button onClick={() => { markRead(); import('sonner').then(m => m.toast.success('All marked as read')); }} className="text-[15px] font-medium text-tint-text">Mark all as read</button>
-                {/* The full list: filters, snooze, settings (Stage 5 · Q9). */}
-                <Link href="/notifications" onClick={() => setShowNotifications(false)} className="text-[15px] font-semibold text-tint-text">See all</Link>
-              </div>
-            </motion.div>
-          </>
+          <NotificationsPanel notes={notifications} unread={unreadCount} onClose={closePanel} onRead={(ids) => void markRead(ids)}
+            onOpen={(n) => { if (n.unread) void markRead([n.id]); if (n.link?.startsWith('/')) { setShowNotifications(false); router.push(n.link); } }} />
         )}
       </AnimatePresence>
     </>

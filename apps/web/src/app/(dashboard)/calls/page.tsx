@@ -23,6 +23,7 @@ import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { MeetingNotesSheet } from '@/components/call/MeetingNotes';
 import { CallRecordingSheet } from '@/components/call/CallRecordingSheet';
 import { OfficeHoursCard } from '@/components/call/OfficeHours';
+import { MeetHome } from '@/components/call/MeetHome';
 
 /** One call (src/server/calls.ts recentCalls, Stage 4 · 2.13). */
 interface CallRow {
@@ -76,13 +77,15 @@ export default function CallsPage() {
   const chip = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/15 transition-colors';
   return (
     <>
-      <Topbar title="Messages" subtitle="Scheduled calls, and every call you were in over the last 30 days" />
+      <Topbar title="Meet & call" subtitle="Meetings, voice rooms and every call you were in over the last 30 days" />
       <Suspense fallback={null}><NoteFromLink /></Suspense>
       <CommsDeck />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
           <div className="space-y-5 min-w-0">
+          <MeetHome />
           <Favorites />
+          <h2 className="text-sm font-semibold text-zinc-600 dark:text-zinc-300">Recent calls</h2>
           <div className="flex gap-2" role="tablist">
             {(['all', 'missed', 'notes'] as const).map((f) => (
               <button key={f} role="tab" aria-selected={filter === f} onClick={() => setFilter(f)} className={cn('relative isolate px-4 py-2 rounded-xl text-sm font-semibold transition-colors', filter === f ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>

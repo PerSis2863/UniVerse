@@ -28,26 +28,24 @@ const PLACES: Place[] = [
   { label: 'Trace', lat: 30, lon: 118, tone: 'pink' },
   { label: 'Relief', lat: -3, lon: 36, tone: 'aqua' },
   { label: 'Green', lat: -12, lon: -56, tone: 'aqua' },
-  { label: 'Play', lat: 38, lon: -98, tone: 'pink' },
   { label: 'Travel', lat: -34, lon: 151, tone: 'aqua' },
 ];
-const ARCS: [number, number][] = [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3], [3, 4], [4, 1], [1, 5], [3, 5]];
+const ARCS: [number, number][] = [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3], [1, 4], [3, 4]];
 /** The app at each place, in PLACES' order. */
-const IDS: AppId[] = ['campus', 'trace', 'relief', 'green', 'play', 'travel'];
+const IDS: AppId[] = ['campus', 'trace', 'relief', 'green', 'travel'];
 /** Three more things each app does (beyond its tagline and line in apps.ts): only what it really does. */
 const DETAILS: Record<AppId, string[]> = {
   campus: ['Assignments and quizzes, graded with rubrics', 'Attendance, the timetable and the calendar', 'Messages between students, teachers and parents'],
   trace: ['Signed codes, and a warning when a label looks copied', 'Live maps of scans, recalls and warranties', 'EU Digital Product Passports'],
   relief: ['Alerts for helpers nearby, never showing where they are', 'A notification when someone answers', 'Organisations with members, supplies and volunteer shifts'],
   green: ['Streaks, badges and a weekly challenge', 'Teams that act together', 'A map of what was done'],
-  play: ['Up to eight friends in a room with a code', 'Leaderboards to climb', '3D worlds to explore'],
   travel: ['Guides to see, eat and sleep anywhere', 'Day-by-day plans with friends', 'Stays, flights and tours to book'],
 };
 const short = (id: AppId) => appById(id).name.replace('UniVerse ', '');
 
 /** M164: each app's real number from the site's daily totals (none for UniVersity; under 10 isn't sent). */
 const TOTAL: Partial<Record<AppId, [TotalKey, string]>> = {
-  trace: ['scans', 'products checked'], relief: ['helped', 'people helped'], green: ['co2Kg', 'kg of CO₂ saved'], play: ['games', 'games played'],
+  trace: ['scans', 'products checked'], relief: ['helped', 'people helped'], green: ['co2Kg', 'kg of CO₂ saved'],
 };
 
 export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId) => void }) {
@@ -83,7 +81,8 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           {ids.map((a, i) => {
             const open = chosen === i, info = appById(a), total = TOTAL[a] && totals?.[TOTAL[a]![0]];
             return (
-              <motion.li key={a} layout transition={{ type: 'spring', stiffness: 420, damping: 38 }}
+              // M225: a plain item (framer's `layout` measured the list on every frame the page drew).
+              <li key={a}
                 className={cn('world-glass overflow-hidden transition-[box-shadow] duration-200', open && 'ring-1 ring-white/30')}>
                 <button type="button" aria-expanded={open} onClick={() => setChosen(open ? null : i)} onMouseEnter={() => setHover(i)} onFocus={() => setHover(i)} onBlur={() => setHover(null)}
                   className="w-full flex items-center gap-3 px-4 py-3 text-start">
@@ -110,7 +109,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
                     </motion.div>
                   )}
                 </AnimatePresence>
-              </motion.li>
+              </li>
             );
           })}
         </ul>

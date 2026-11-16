@@ -1,6 +1,6 @@
 'use client';
 
-import { Brain, Gamepad2, Globe2, HandHeart, Keyboard, Leaf, LifeBuoy, MapPin, Recycle, ScanLine, Ship, TreePine, Trophy, Truck, Users } from 'lucide-react';
+import { HandHeart, Leaf, MapPin, TreePine, Trophy, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import type { AppId } from '@/lib/apps';
@@ -8,7 +8,7 @@ import { useShownApps } from '@/lib/shown-apps';
 import { Accent, CountUp, Reveal, ghost, primary } from './bits';
 
 // The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a section each for Relief,
-// Green and Play, and the grid of every app. Illustrations only: no invented customers or numbers
+// Green, and the grid of every app. Illustrations only: no invented customers or numbers
 // about real people.
 
 function Feature({ icon: Icon, title, text, color }: { icon: typeof Leaf; title: string; text: string; color: string }) {
@@ -59,31 +59,6 @@ export function GreenSection() {
   );
 }
 
-export function PlaySection() {
-  return (
-    <section id="play" className="px-6 py-24 scroll-mt-24">
-      <div className="max-w-6xl mx-auto">
-        <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Games that teach <Accent>something.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Thirteen games and four 3D worlds, solo or with friends.</p></Reveal>
-        <div className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {([
-            [Brain, 'Quiz Clash', 'Fast questions, faster streaks.', '#a5b4fc'],
-            [ScanLine, 'Spot the Fake', 'Four labels. One is fake.', '#9cc3fb'],
-            [Truck, 'Supply Run', 'Send the right supplies, fast.', '#fdba74'],
-            [Recycle, 'Recycle Rush', 'Right bin, more CO₂ saved.', '#6ee7b7'],
-            [Keyboard, 'Type Race', 'Type fast, race your friends.', '#c4b5fd'],
-            [Globe2, 'World Pin', 'Pin the city on the map.', '#9cc3fb'],
-            [LifeBuoy, 'Flood Rescue', 'Fly in, lift people to safety.', '#fdba74'],
-            [Ship, 'Ocean Cleanup', 'Scoop the plastic, miss the turtles.', '#67e8f9'],
-          ] as const).map(([icon, t, d, c], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color={c} /></Reveal>)}
-        </div>
-        <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=play" className={primary}><Gamepad2 className="w-4 h-4" aria-hidden />Play free</Link><Link href="/login?app=play" className={ghost}>Sign in to Play</Link></div></Reveal>
-      </div>
-    </section>
-  );
-}
-
-/** Every app, with what it's for: one account opens them all. */
 export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
   // M203: only the apps the owner shows; with one, the page is all about it already.
   const apps = useShownApps();

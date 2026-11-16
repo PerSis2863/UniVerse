@@ -18,11 +18,10 @@ import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
 import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { AppsGrid, GreenSection, ReliefSection, PlaySection } from '@/components/landing/ImpactApps';
+import { AppsGrid, GreenSection, ReliefSection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
-import { ProductWindow } from '@/components/landing/ProductWindow';
 import { Accent, EASE, Live, Motion, Reveal, ghost, primary } from '@/components/landing/bits';
 import type { AppId } from '@/lib/apps';
 import { setChosenApp, useChosenApp } from '@/lib/chosen-app';
@@ -35,7 +34,6 @@ const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
 const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
 const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
 const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
-const PlayScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
 const TravelScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
 const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
 const MapsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.MapsSection));
@@ -43,7 +41,6 @@ const HowSection = dynamic(() => import('@/components/landing/Business').then((m
 const CampaignsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.CampaignsSection));
 const PricingSection = dynamic(() => import('@/components/landing/Business').then((m) => m.PricingSection));
 const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.GreenMore));
-const PlayMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.PlayMore));
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 /** M130: the other apps' parts start loading when the pointer or focus reaches the tabs, so the first
  *  switch to an app doesn't wait for (and stall on) its code. */
@@ -85,10 +82,6 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
     { q: 'Where do the guides come from?', a: 'From Wikivoyage, written by travellers: every place with its address, hours and prices.' },
     { q: 'Can I book through UniVerse?', a: 'Stays, flights and tours open on our partners’ sites with your place and dates filled in.' },
   ],
-  play: [
-    { q: 'Do I need friends online to play?', a: 'No. Every game works solo. For friends, share a room code.' },
-    { q: 'Is it free?', a: 'Yes, every game is free.' },
-  ],
   green: [
     { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },
   ],
@@ -106,7 +99,6 @@ const HERO: Record<AppId, Hero> = {
   campus: { words: ['The', 'school', 'day', 'runs'], accent: 'itself.', text: 'Classes, grades and messages in one calm place.', note: 'free for students', card: <CampusScene /> },
   trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'Scan the code. See if it’s real.', note: 'free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={SMALL}>Scan a sample</Link> },
   relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
-  play: { words: ['Games', 'that', 'teach'], accent: 'something.', text: 'Quick games that teach. Solo or with friends.', note: 'free · up to 8 in a room', card: <PlayScene /> },
   travel: { words: ['Plan', 'trips'], accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', note: 'free · plan with friends', card: <TravelScene /> },
   green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
@@ -167,6 +159,9 @@ export default function ShowcasePage() {
   const [installed, setInstalled] = useState(false);
   const [guide, setGuide] = useState(false);
   // The hero picture drifts up a little slower than the page as you scroll (parallax): `.hero-drift`, M133.
+
+  // M225: smooth jumps to the page's sections (#faq…) while the landing is open (globals.css html.mkt-smooth-root).
+  useEffect(() => { const h = document.documentElement; h.classList.add('mkt-smooth-root'); return () => h.classList.remove('mkt-smooth-root'); }, []);
 
   useEffect(() => {
     if (user) router.replace(homeFor(user));
@@ -262,11 +257,8 @@ export default function ShowcasePage() {
             </div>
           </section>
 
-          {/* M116: UniVersity's home as it really looks, big, right under the hero. Its top shows on a
-              tall first screen because the hero is 9rem shorter than the screen on wide screens (M117);
-              it was pulled up with a negative margin, which covered the hero's last row and its
-              picture's cards wherever the hero filled the screen (the owner's screenshot, 6 Nov). */}
-          {later === 'campus' && <ProductWindow />}
+          {/* M223 (the owner, 16 Nov: "remove this from the main page"): no picture of UniVersity's home under the
+              hero any more (M116's ProductWindow). */}
           <WorldSection app={later} onShow={pick} />
           <LiveTotals />
 
@@ -279,7 +271,6 @@ export default function ShowcasePage() {
           {(warm === 'trace' || later === 'trace') && <AppPart shown={later === 'trace'}><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></AppPart>}
           {(warm === 'relief' || later === 'relief') && <AppPart shown={later === 'relief'}><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></AppPart>}
           {(warm === 'green' || later === 'green') && <AppPart shown={later === 'green'}><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></AppPart>}
-          {(warm === 'play' || later === 'play') && <AppPart shown={later === 'play'}><Motion kind="tilt"><PlaySection /></Motion><Motion kind="scrub"><PlayMore /></Motion></AppPart>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 

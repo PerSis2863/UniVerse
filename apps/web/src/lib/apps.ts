@@ -5,7 +5,7 @@
 // in, and the switcher at its top (and the hub, /hub) moves between them. Shared tools (Messages,
 // Collaborate, Calls, Settings) belong to every app.
 
-export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'play' | 'travel';
+export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'travel';
 
 export interface ImpactApp {
   id: AppId;
@@ -24,7 +24,9 @@ export const APPS: ImpactApp[] = [
   {
     id: 'campus', name: 'UniVersity', tagline: 'Schools and universities', color: '#6366f1',
     impact: 'Courses, grades and parents, in one place.',
-    paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application'],
+    // M224 (the owner, 16 Nov: "remove the game app from the website and it should be under the University app"): the
+    // games (/play) are UniVersity's Games section; Play is no longer an app of its own.
+    paths: ['/student', '/teacher', '/admin', '/parent', '/library', '/marketplace', '/campus-map', '/donations', '/hall', '/impact-league', '/impact-rooms', '/application', '/play'],
   },
   {
     id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
@@ -47,11 +49,6 @@ export const APPS: ImpactApp[] = [
     id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
     impact: 'Guides, day-by-day plans and greener trips.',
     paths: ['/travel'],
-  },
-  {
-    id: 'play', name: 'UniVerse Play', tagline: 'Games that teach something', color: '#e46bdb',
-    impact: 'Thirteen games that teach, solo or with friends.',
-    paths: ['/play'],
   },
 ];
 
@@ -79,7 +76,11 @@ export function appFor(path: string): ImpactApp | null {
   return APPS.find((a) => a.paths.some((p) => under(path, p))) ?? null;
 }
 
-export const appById = (id: AppId) => APPS.find((a) => a.id === id)!;
+/** M224: an id saved before an app was folded into another (a chat made in Play: 'play', now UniVersity's Games) is
+ *  UniVersity's, so nothing reading old rows meets an app that isn't there. */
+export const knownApp = (id: string | null | undefined): AppId => (APPS.some((a) => a.id === id) ? (id as AppId) : 'campus');
+
+export const appById = (id: AppId) => APPS.find((a) => a.id === knownApp(id))!;
 
 /** Where an app opens for someone: Campus by role, the others at their own page. */
 export function appHome(id: AppId, role?: string | null) {

@@ -229,7 +229,6 @@ export function TravelGuide() {
                       </label>
                     )}
                   </div>
-                  <PinMap listings={shown} />
                   <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {shown.map((l, i) => <ListingCard key={`${l.name}-${i}`} guide={g.title} l={l} saved={saved.get(l.name)} near={nice(g.title)} />)}
                   </ul>
@@ -264,34 +263,3 @@ function Fact({ icon: Icon, label, value }: { icon: LucideIcon; label: string; v
   );
 }
 
-/** Where the listed places are, relative to each other (no street map: a pin cloud on the place's own
- *  grid, the far-off few left out); a pin opens the place's map. */
-function PinMap({ listings }: { listings: Listing[] }) {
-  const pts = listings.filter((l) => l.lat !== undefined && l.lon !== undefined) as (Listing & { lat: number; lon: number })[];
-  if (pts.length < 3) return null;
-  const q = (arr: number[], k: number) => { const s = [...arr].sort((a, b) => a - b); return s[Math.min(s.length - 1, Math.max(0, Math.round(k * (s.length - 1))))]; };
-  const lats = pts.map((p) => p.lat), lons = pts.map((p) => p.lon);
-  const [la0, la1, lo0, lo1] = [q(lats, 0.04), q(lats, 0.96), q(lons, 0.04), q(lons, 0.96)];
-  const inside = pts.filter((p) => p.lat >= la0 && p.lat <= la1 && p.lon >= lo0 && p.lon <= lo1);
-  const k = Math.cos(((la0 + la1) / 2) * (Math.PI / 180)), w = Math.max(1e-4, (lo1 - lo0) * k), h = Math.max(1e-4, la1 - la0);
-  const W = 100, H = Math.max(28, Math.min(60, (h / w) * 100));
-  const COL: Record<string, string> = { see: '#0ea5e9', do: '#8b5cf6', eat: '#f97316', drink: '#ec4899', sleep: '#10b981', buy: '#eab308', go: '#64748b', other: '#64748b' };
-  return (
-    <figure className="panel overflow-hidden p-3">
-      {/* The dots repeat the cards' Map buttons for the mouse: hidden from screen readers. */}
-      <svg viewBox={`-4 -4 ${W + 8} ${H + 8}`} className="block h-auto w-full" aria-hidden>
-        <rect x={-4} y={-4} width={W + 8} height={H + 8} rx={3} className="fill-indigo-500/[0.05]" />
-        {Array.from({ length: 5 }, (_, i) => <line key={i} x1={(i * W) / 4} x2={(i * W) / 4} y1={0} y2={H} className="stroke-zinc-400/15" strokeWidth={0.2} />)}
-        {inside.map((p, i) => {
-          const x = (((p.lon - lo0) * k) / w) * W, y = H - ((p.lat - la0) / h) * H;
-          return (
-            <a key={i} href={`https://www.openstreetmap.org/?mlat=${p.lat}&mlon=${p.lon}#map=17/${p.lat}/${p.lon}`} target="_blank" rel="noopener noreferrer" tabIndex={-1}>
-              <circle cx={x} cy={y} r={1.6} fill={COL[p.kind] ?? COL.other} stroke="white" strokeWidth={0.4}><title>{p.name}</title></circle>
-            </a>
-          );
-        })}
-      </svg>
-      <figcaption className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Each dot is one of these places, north at the top. Tap one for its map.</figcaption>
-    </figure>
-  );
-}

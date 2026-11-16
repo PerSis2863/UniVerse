@@ -41,7 +41,8 @@ describe('the page’s app before the first paint', () => {
     expect(run('/trace/brand')).toBe('trace');
     expect(run('/student/courses')).toBe('campus');
     expect(run('/relief', 'green')).toBe('relief');
-    expect(run('/?app=play')).toBe('play');
+    expect(run('/?app=travel')).toBe('travel');
+    expect(run('/?app=play')).toBe('campus'); // M224: Play is UniVersity's Games now
     expect(run('/login?app=relief')).toBe('relief');
     expect(run('/hub', 'green')).toBe('green');
     expect(run('/student/inbox', 'trace')).toBe('trace');
@@ -49,7 +50,7 @@ describe('the page’s app before the first paint', () => {
   });
   it('agrees with appFor on every app address', () => {
     for (const path of ['/trace', '/carry/x', '/green/teams', '/play/stormfall', '/teacher', '/parent', '/collab', '/console']) {
-      expect(run(path, 'play')).toBe(appFor(path)?.id ?? 'play');
+      expect(run(path, 'travel')).toBe(appFor(path)?.id ?? 'travel');
     }
   });
 });
@@ -58,10 +59,10 @@ describe('the page’s app before the first paint', () => {
 describe('the apps the website shows, before the first paint', () => {
   it('hides the other apps and picks a shown one', () => {
     expect(page('/', 'trace', ['relief'])).toEqual({ app: 'relief', css: '[data-uv-app]:not([data-uv-app="relief"]),[data-uv-many]{display:none!important}' });
-    expect(page('/', 'campus', ['campus', 'play']).css).toBe('[data-uv-app]:not([data-uv-app="campus"]):not([data-uv-app="play"]){display:none!important}');
-    expect(page('/login', null, ['green', 'play']).app).toBe('green');
+    expect(page('/', 'campus', ['campus', 'travel']).css).toBe('[data-uv-app]:not([data-uv-app="campus"]):not([data-uv-app="travel"]){display:none!important}');
+    expect(page('/login', null, ['green', 'travel']).app).toBe('green');
     expect(page('/trace/brand', null, ['relief']).app).toBe('trace'); // its own page: the app sends people on
-    expect(page('/', 'trace', ['campus', 'trace', 'relief', 'green', 'travel', 'play'])).toEqual({ app: 'trace', css: null });
+    expect(page('/', 'trace', ['campus', 'trace', 'relief', 'green', 'travel'])).toEqual({ app: 'trace', css: null });
     expect(page('/', 'trace', ['nonsense'])).toEqual({ app: 'trace', css: null });
   });
 });

@@ -2,6 +2,7 @@
 
 import { createContext, useContext, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import { animate, m as motion, useInView } from 'framer-motion';
+import { useIdle } from '@/lib/use-idle';
 import { cn } from '@/lib/utils';
 
 /** One formatter for every counting number (toLocaleString made one per frame, M211). */
@@ -37,7 +38,9 @@ export function Live({ children, away = false, className }: { children: React.Re
     io.observe(el);
     return () => io.disconnect();
   }, []);
-  const off = outer || away || !seen;
+  // M225: and while the visitor has left the page alone for 30 s (src/lib/use-idle.ts).
+  const idle = useIdle();
+  const off = outer || away || !seen || idle;
   return <div ref={ref} className={className} data-away={off || undefined}><Away.Provider value={off}>{children}</Away.Provider></div>;
 }
 

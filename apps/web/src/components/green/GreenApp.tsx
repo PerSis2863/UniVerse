@@ -415,7 +415,6 @@ function Burst() {
 /** Everyone's actions on the map (0.1° areas): a green glow, brighter with more CO₂ saved. */
 export function GreenMap() {
   const dark = useDarkMode();
-  const calm = useReducedMotion();
   const { data } = useSWR<{ cells: { lat: number; lng: number; kg: number; actions: number; place: string | null }[] }>('/green/map', fetcher);
   const cells = useMemo(() => (data?.cells ?? []).map((c) => { const [bx, by] = toBase(c.lng, c.lat); return { ...c, bx, by }; }), [data]);
   const max = Math.max(1, ...cells.map((c) => c.kg));
@@ -435,13 +434,13 @@ export function GreenMap() {
   const draw = (f: Frame) => {
     frame.current = f;
     if (hoverView.current && hoverView.current !== viewKey(f)) { hoverView.current = ''; setHover(null); }
-    const { ctx, t } = f, g = glow(EMERALD);
+    const { ctx } = f, g = glow(EMERALD);
     const zf = Math.min(2.4, Math.max(1, Math.pow(f.zoom, 0.3)));
     ctx.save(); ctx.globalCompositeOperation = f.dark ? 'lighter' : 'source-over';
-    cells.forEach((c, i) => {
+    cells.forEach((c) => {
       const x = f.sx(c.bx), y = f.sy(c.by);
       if (x < -40 || x > f.w + 40 || y < -40 || y > f.h + 40) return;
-      const n = Math.sqrt(c.kg / max), r = (8 + n * 26) * zf * (calm ? 1 : 1 + 0.06 * Math.sin(t / 900 + i));
+      const n = Math.sqrt(c.kg / max), r = (8 + n * 26) * zf; // M225: still (they breathed: the whole map redrawn on the page's thread every frame)
       ctx.globalAlpha = f.dark ? 0.3 + n * 0.5 : 0.2 + n * 0.35; ctx.drawImage(g, x - r, y - r, r * 2, r * 2);
     });
     ctx.restore();
@@ -465,7 +464,7 @@ export function GreenMap() {
         <h2 id="gmap-h" className="font-bold text-zinc-900 dark:text-white flex-1">Everyone’s actions</h2>
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
-      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={!calm && cells.length > 0} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
+      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={false} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
         <AnimatePresence>
           {hover && hc && (
             <motion.div key={hover.i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}

@@ -7795,3 +7795,105 @@ The owner sent the "1 problem(s) need a look" email and asked for M219's two lef
   them, the way back. A drag there only reorders what it shows (`reorderWithin` in `src/lib/arrange.ts`).
 - **Checked:** `landing-switch-ui.mjs` (above), `top-nav-ui.mjs` (no name in both the bar and the page's row; a drag
   kept after a reload and put back), the unit test of `reorderWithin`, `pnpm check`.
+
+## M222: the notifications panel, Apple style (16 Nov)
+
+The owner, with a picture of the old panel (navy, emoji icons): "the notification panel doesn't look good so please
+work on it and make it look good and redesign it like apple style and make it ultra smooth".
+
+- **`src/components/notifications/NotificationsPanel.tsx`** (the page bar, `Topbar`, keeps the data, the unread count
+  and marking read; the panel loads on its own, fetched while the page is idle so the first tap opens it at once). iOS's
+  Notification Centre in the project's look, solid surfaces (no glass, §8): grouped grey (#f2f2f7) with white cards in
+  light mode, near-black (#0c0c0e) with #1c1c1e cards in dark; on a computer it floats 8 px from the window's edges,
+  rounded 26 px; on a phone it fills the screen.
+- **A notification:** an icon like an app's (its kind in iOS's own colours, `KIND`: messages blue, calls green, events
+  red, grades indigo, announcements orange, warnings amber; a kind that is an app's id, or a link into an app, shows
+  that app's icon; otherwise a grey bell), its title on two lines at most with the time ("now", "5m ago", "3h ago",
+  "2d ago", then the date), a dot while unread, two lines of text, "Important" on warnings and errors. Grouped Today,
+  Yesterday, Earlier; the same notification several times in a row (same title and kind) is one **stack** with layers
+  under it ("2 more"): a tap opens it, "Show less" closes it. `src/lib/notification-stacks.ts` (`when`, `byDay`,
+  `stacks`, tested).
+- **Controls:** "Read all" and a round close button in the header; iOS's segmented control (a grey track, a white thumb,
+  #636366 in dark: the `.notif-sheet` rules at the end of `globals.css`, the pills stay everywhere else) for All, Unread,
+  Important; a finger swipes a card to mark it read (`SwipeRow`; a stack: all of it); Escape and the dimmed page close
+  it, and focus goes back to the bell. Email notifications and "See all notifications" are one grouped card at the foot.
+- **Motion:** the sheet slides in on the smooth spring as one `transform` (the compositor runs it) and out in 240 ms;
+  the rows rise in one after another while it opens (`data-entering`, 35 ms apart, the glide spring); a filter or a
+  stack slides the rows that stay (`morph`, deep). Reduce Motion: fades.
+- **Checked:** `scripts/checks/notifications-panel-ui.mjs` (1280 dark and light, 390: no frame over 50 ms while it
+  opens, the day groups, 15 notifications as 7 rows with 5 stacks, a stack opened and closed, Unread, Escape, axe),
+  `pnpm check`.
+
+## M223: no picture of the student home on the landing (16 Nov)
+
+The owner, with a screenshot of it: "remove this from the main page". M116's `ProductWindow` (UniVersity's home drawn in a
+browser frame under the hero) is gone, file and all; the hero keeps its height, so the next section's top still shows on
+a tall screen.
+
+## M224: Play is UniVersity's Games section, no longer an app (16 Nov)
+
+The owner: "remove the game app from the website and it should be under the University app make a sub section there and
+add all these games there".
+
+- `'play'` is out of `AppId` and `APPS`; `/play` is one of UniVersity's paths, so the games pages (same addresses, the
+  arcade, the leaderboards, STORMFALL, rooms with codes) show UniVersity's menu, colour and scene. Every role's
+  UniVersity menu has **Games** (`/play`; students: after Learn).
+- Gone with it: the landing's Play tab, hero card, sections (`PlaySection`, `PlayMore`, the quiz "try it", `PlayScene`),
+  FAQ and sign-up lines; its place on the landing's globe; Play's backdrop scene and colour rules (`html[data-app=play]`);
+  the hub's games card (two fewer queries); Play's phone tabs and menu. The three 3D worlds that were Play's own
+  (`GAMES[].app`) are UniVersity's.
+- **Old rows:** a chat or anything saved with app `'play'` reads as UniVersity's (`knownApp` in `src/lib/apps.ts`;
+  `appById` and `AppIcon` fall back to it), so nothing meets an app that isn't there.
+- **Checked:** the type check found every place; a browser: the landing's tabs are the five apps, `/play` is UniVersity's
+  (`data-app=campus`, 13 games), the hub has no Play; `pnpm check`.
+
+## M225: the lag, measured and cut (16 Nov)
+
+The owner: "still the website laggs alot so please fix it properly this time remember that cpu limit should not get high".
+All of it in the browser (no Worker CPU). Measured on the built site with the CPU slowed 4x
+(`scripts/checks/lag-profile.mjs`: loading, scrolling with the mouse moving; and traces of the page left alone):
+
+- **What was busy:** the app's scene behind every page, on its background thread, redrew every frame the screen gives
+  (up to 120 a second) at up to 2.5x sharpness: 0.35–1 s of every 5 s of one core with nobody touching anything
+  (Green's the most). The landing's main thread stayed busy too (its demos, framer's `layout` on the planet's list of
+  apps measuring every frame), and two `html:has(…)` rules (`.mkt-smooth`, `main#main`) restyled the root on every
+  change anywhere (316 times in a scroll). Green's map breathed its dots, redrawing the whole map on the page's
+  thread every frame it showed.
+- **Now:** the scene draws 30 a second at 1.5x and 2 M pixels at most (`backdropLoop`, `resize` in `src/lib/backdrop.ts`):
+  half the cost (Green 998 → 509 ms in 5 s, homes 349 → 167). After 30 s with no pointer, key, wheel, touch or scroll
+  (`src/lib/use-idle.ts`: `useIdle`, `onIdleChange`) the scene rests and the landing's looping demos (`Live`) stop; any
+  input wakes them: the landing left alone goes to 0. The `:has` rules are classes set by the page (`html.mkt-smooth-root`
+  by the landing, `html.in-app` by `DashboardShell` before its first paint). The planet's list is plain `li`s; the
+  landing's bars and gauges grow with transforms (`Proof`, `Glue`), not heights and widths. Green's map dots are still
+  (`live={false}`: it draws when moved). Scrolling the landing: slow frames 5 → 2, long tasks 54 ms → none; the student
+  home's loading long tasks 1.46 s → 0.88 s.
+- **Rules:** decorative motion that loops rests when the person leaves the page alone (`useIdle`); no `:has()` on `html`
+  or `body` (a class set by the page instead); a canvas on the page's thread is not `live` for decoration.
+
+## M226: no dot plot in a Travel guide's places (16 Nov)
+
+The owner, with a screenshot of it: "what the hell is this ? i dont understand what this is providing to the user". The
+`PinMap` above a guide's list of places (dots on a blank grid, "north at the top", no streets or names) is gone: every
+place's card has its own Map button, and Travel's Map (M209) shows the real places on a real map.
+
+## M227: Meet & call (16 Nov)
+
+The owner, with a picture of Messages' tabs: "replace the call and rename it as meet and call you do redesign of call
+section also and add more features of discord and zoom and all the other big major app".
+
+- **The tab** (`CommsDeck`) and search say **Meet & call** (a camera icon); the page is still `/calls`.
+- **The front door** (`src/components/call/MeetHome.tsx`, at the top of the page), like Zoom's home: **New meeting** (a
+  call link made at once, `POST /api/calls/links`: the link, its code, Start with video or voice, Copy invitation, Share),
+  **Join** (a code or a pasted link: only our own `/call/…` or `/hall/…` comes out of it, `meetingPath` in
+  `src/lib/meet.ts`; camera on or voice only; the call's own check-yourself screen comes next), **Schedule** (the form
+  `ScheduledCalls` already has, `?schedule=1`), **Voice rooms** (Discord's channels: every group chat's always-open room,
+  `r_<chat>`, lit and first while someone's in it). Then **Happening now** (live calls, one tap to join) and **In every
+  meeting** (what CallView already has, so people find it: waiting room, breakout rooms, polls, whiteboard, captions,
+  recording and notes, hand, reactions, screen share, background blur, Q&A, views, keys, push to talk). The call log
+  under **Recent calls**; Favorites lost its "Call link" (New meeting does it).
+- **In a call** (`CallView`): Zoom's keys (M mute, V camera, H hand, C chat, P people, ? lists them; not while typing or
+  with Ctrl, Cmd or Alt; `callKey`) and Discord's push to talk (hold Space while muted; not on a focused button).
+- No new server work: the links, the calls list and the chats list are the ones the page already loads.
+- **Checked:** `scripts/checks/meet-ui.mjs` (1280 dark and light, 390: the tab's name, a new link with its code, Join
+  refusing another site and taking ours, Voice rooms, Schedule, axe on the page and each sheet), the unit test of
+  `src/lib/meet.ts`, `pnpm check`.

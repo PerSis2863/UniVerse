@@ -26,7 +26,7 @@ import type { ChatFolder } from './ChatFolders';
 import type { LaterData } from './ChatDialogs';
 import { useOnceParam } from '@/lib/use-once-param';
 import { useCurrentApp } from '@/lib/current-app';
-import { APPS, appById } from '@/lib/apps';
+import { APPS, appById, knownApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
 
@@ -89,7 +89,7 @@ export function MessagingHub() {
   // M203: only the apps the owner shows; with one, there are no other apps' chats to bring in.
   const shownApps = useShownApps();
   const many = shownApps.length > 1;
-  const inScope = useCallback((c: ConversationSummary) => c.isOfficial || (allApps && many ? shownApps.some((a) => a.id === (c.app ?? 'campus')) : (c.app ?? 'campus') === app), [allApps, many, shownApps, app]);
+  const inScope = useCallback((c: ConversationSummary) => c.isOfficial || (allApps && many ? shownApps.some((a) => a.id === knownApp(c.app)) : knownApp(c.app) === app), [allApps, many, shownApps, app]);
   const [dialog, setDialog] = useState<null | 'chat' | 'group'>(null);
   useOnceParam('new', (v) => setDialog(v === 'group' ? 'group' : 'chat')); // ?new=chat from the phone's "+" menu
   const [view, setView] = useState<'chats' | 'archived'>('chats');
@@ -214,7 +214,7 @@ export function MessagingHub() {
   }, [data, search, filter, view, activeFolder, lockedChats, inScope]);
   const totalUnread = (data?.conversations ?? []).filter((c) => inScope(c) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   // New messages in the other apps' chats, shown on the "All apps" switch.
-  const elsewhere = allApps || !many ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && shownApps.some((x) => x.id === (c.app ?? 'campus')) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
+  const elsewhere = allApps || !many ? 0 : (data?.conversations ?? []).filter((c) => !inScope(c) && shownApps.some((x) => x.id === knownApp(c.app)) && !c.muted && !c.archived).reduce((n, c) => n + c.unread, 0);
   const archivedCount = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived).length;
   const archivedUnread = (data?.conversations ?? []).filter((c) => inScope(c) && c.archived && c.unread > 0).length;
   // Chat streaks (M17, Snapchat): days in a row we've both written, on one-to-one chats.
@@ -507,7 +507,7 @@ export function MessagingHub() {
                       {c.private && <Lock className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" aria-label="Private chat" />}{c.title} {c.isOfficial && <BadgeCheck className="w-4 h-4 text-indigo-500 shrink-0" />}{c.status?.statusEmoji && <span className="shrink-0 text-sm" title={c.status.statusText ?? undefined}>{c.status.statusEmoji}</span>}
                     </p>
                     <span className="flex items-center gap-1.5 shrink-0">
-                      {allApps && many && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(c.app ?? 'campus').name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(c.app ?? 'campus').color }} aria-hidden />{SHORT[c.app ?? 'campus']}</span>}
+                      {allApps && many && !c.isOfficial && <span className="inline-flex items-center gap-1 rounded-full border border-zinc-200 px-1.5 py-px text-[11px] font-semibold text-zinc-600 dark:border-white/10 dark:text-zinc-300" title={`From ${appById(knownApp(c.app)).name}`}><span className="h-1.5 w-1.5 rounded-full" style={{ background: appById(knownApp(c.app)).color }} aria-hidden />{SHORT[knownApp(c.app)]}</span>}
                       {!c.isGroup && streaks[c.id] && <span className="streak" title={`${streaks[c.id]}-day streak: you've both written every day`} aria-label={`${streaks[c.id]}-day streak`}><i aria-hidden>🔥</i>{streaks[c.id]}</span>}
                       {c.lastMessage && <span className={cn('text-[11px]', c.unread && !c.muted ? 'text-indigo-500 font-semibold' : 'text-zinc-400')}>{timeLabel(c.lastMessage.createdAt)}</span>}
                     </span>
