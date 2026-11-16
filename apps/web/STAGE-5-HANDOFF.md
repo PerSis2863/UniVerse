@@ -7869,3 +7869,9 @@ All of it in the browser (no Worker CPU). Measured on the built site with the CP
   home's loading long tasks 1.46 s → 0.88 s.
 - **Rules:** decorative motion that loops rests when the person leaves the page alone (`useIdle`); no `:has()` on `html`
   or `body` (a class set by the page instead); a canvas on the page's thread is not `live` for decoration.
+
+## M226: no dot plot in a Travel guide's places (16 Nov)
+
+The owner, with a screenshot of it: "what the hell is this ? i dont understand what this is providing to the user". The
+`PinMap` above a guide's list of places (dots on a blank grid, "north at the top", no streets or names) is gone: every
+place's card has its own Map button, and Travel's Map (M209) shows the real places on a real map.
