@@ -7759,3 +7759,11 @@ wrong reading:
   outside it (both menus).
 - **Checked:** `scripts/checks/top-nav-ui.mjs` (1440, 1280, 1024 in both themes, 390, and the installed app emulated):
   the bar there and the side menu not, nothing cut off, a group's list, axe, no sideways scroll), `pnpm check`.
+
+## M220: light mode is the default (16 Nov)
+
+The owner: "make the light colour as default". With nothing saved (`localStorage.theme` unset) the page is light: the
+head script in `src/app/layout.tsx` adds `.dark` only for `dark`, or `system` on a dark device; `getSavedTheme()`
+(`src/lib/theme.ts`) answers `light`, and so do the theme menu's and Settings' first render. `public/manifest.json`'s
+start colours are the light page's (#f1f2f4). A person who chose dark or "system" keeps it (it's saved). Checked in a
+browser: a new visitor's landing and a signed-in home are light (the bar colour #f1f2f4), a saved dark stays dark.

@@ -218,7 +218,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **On the branch, not merged yet:** M219 (16 Nov), on a computer in a browser the menu is a bar across the top
+- **On the branch, not merged yet:** M220 (16 Nov), light mode is the default (dark for those who chose it). M219 (16 Nov), on a computer in a browser the menu is a bar across the top
   (`TopNav`: groups open as lists, More for what doesn't fit; the installed app and phones keep the side menu), and M218
   (the apps' sections moved into the side menu) undone: the rows of tabs are back. M217 (16 Nov), Relief's ten new features (Most urgent, Matches, live disaster
   Alerts, Be ready: plan, go-bag, emergency numbers, weather risks, a phone card; First aid; My hours with a certificate;
@@ -256,12 +256,12 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
-  inside the app; dark stays the default; the scenes stay): M134–M135 and M138 done (shared rules reach every
+  inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
   page, card titles and tables included); the "···" menu on the main pages (M139; other pages swap their headings for `CardHead` when touched), the calendar's Timeline and the date range picker (M140); the activity log's heatmap, tabs and outcome labels (M141); the "New …" windows with "Start from" cards (M142), a teacher's courses as the Agent Center (M143): everything in the videos is in, except the side menu's section headings (the owner chose simpler menus, M27); **realistic 3D app backgrounds** (lit 3D scenes with depth, off the
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M220** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M221** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -429,7 +429,8 @@ file used only from config goes in its `BY_CONFIG` list).
 ## 8. Design and motion
 
 **The look (M124, the owner, 8 Nov 2026: the "Ballast" reels for light mode, the "Relay" recording for
-dark mode).** Dark mode is the default; the website's top bar has a dark/light switch (`ThemeSwitch`).
+dark mode).** Light mode is the default since M220 (the owner, 16 Nov: "make the light colour as default"; dark
+until then, and kept for anyone who chose it); the website's top bar has a dark/light switch (`ThemeSwitch`).
 **Light (Ballast):** a cool light-grey page (#f1f2f4), white cards with a hairline and a soft shadow, ink
 text, black main buttons, one blue (#2563eb) for charts, icons, links, focus and what's chosen; a white
 side menu whose chosen entry is a raised white card. **Dark (Relay):** near-black (#070808), the

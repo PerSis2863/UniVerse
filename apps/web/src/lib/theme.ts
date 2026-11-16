@@ -20,8 +20,9 @@ function syncBars(dark: boolean) {
 export const getSystemTheme = (): 'dark' | 'light' =>
   typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 
+/** M220 (the owner, 16 Nov: "make the light colour as default"): light until someone picks dark or "system". */
 export function getSavedTheme(): Theme {
-  try { return (localStorage.getItem('theme') as Theme | null) ?? 'dark'; } catch { return 'dark'; }
+  try { return (localStorage.getItem('theme') as Theme | null) ?? 'light'; } catch { return 'light'; }
 }
 
 /**
