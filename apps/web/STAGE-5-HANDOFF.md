@@ -7829,3 +7829,20 @@ work on it and make it look good and redesign it like apple style and make it ul
 The owner, with a screenshot of it: "remove this from the main page". M116's `ProductWindow` (UniVersity's home drawn in a
 browser frame under the hero) is gone, file and all; the hero keeps its height, so the next section's top still shows on
 a tall screen.
+
+## M224: Play is UniVersity's Games section, no longer an app (16 Nov)
+
+The owner: "remove the game app from the website and it should be under the University app make a sub section there and
+add all these games there".
+
+- `'play'` is out of `AppId` and `APPS`; `/play` is one of UniVersity's paths, so the games pages (same addresses, the
+  arcade, the leaderboards, STORMFALL, rooms with codes) show UniVersity's menu, colour and scene. Every role's
+  UniVersity menu has **Games** (`/play`; students: after Learn).
+- Gone with it: the landing's Play tab, hero card, sections (`PlaySection`, `PlayMore`, the quiz "try it", `PlayScene`),
+  FAQ and sign-up lines; its place on the landing's globe; Play's backdrop scene and colour rules (`html[data-app=play]`);
+  the hub's games card (two fewer queries); Play's phone tabs and menu. The three 3D worlds that were Play's own
+  (`GAMES[].app`) are UniVersity's.
+- **Old rows:** a chat or anything saved with app `'play'` reads as UniVersity's (`knownApp` in `src/lib/apps.ts`;
+  `appById` and `AppIcon` fall back to it), so nothing meets an app that isn't there.
+- **Checked:** the type check found every place; a browser: the landing's tabs are the five apps, `/play` is UniVersity's
+  (`data-app=campus`, 13 games), the hub has no Play; `pnpm check`.

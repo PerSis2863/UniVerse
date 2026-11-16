@@ -1,8 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { BedDouble, Bike, Camera, Check, Crown, Droplets, Home, Leaf, Plane, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, Sun, TreePine, Utensils } from 'lucide-react';
+import { BedDouble, Bike, Camera, Check, Droplets, Home, Leaf, Plane, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, Sun, TreePine, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EASE, useCalm } from './bits';
 import { pop, still, useStep } from './HeroScenes';
@@ -191,67 +190,6 @@ function Green() {
   );
 }
 
-/* ── Play: a neon race track ──
-   Four players race round a glowing oval at their own pace, each a light with a comet tail (SVG
-   animateMotion: smooth and cheap); the board below re-orders as they overtake, with laps. */
-const TRACK = 'M 70 40 H 330 A 60 60 0 0 1 330 160 H 70 A 60 60 0 0 1 70 40 Z';
-const RACERS = [
-  { n: 'You', c: '#4f8ef7', lap: 6.2, at: 0 },
-  { n: 'Leo', c: '#10b981', lap: 6.6, at: 0.12 },
-  { n: 'Omar', c: '#f97316', lap: 7.1, at: 0.24 },
-  { n: 'Maya', c: '#818cf8', lap: 6.9, at: 0.36 },
-];
-
-function Play() {
-  const calm = useCalm();
-  const [t, setT] = useState(0); // seconds since the race started, for the board
-  useEffect(() => {
-    if (calm) return;
-    const start = performance.now();
-    const id = setInterval(() => setT((performance.now() - start) / 1000), 400);
-    return () => clearInterval(id);
-  }, [calm]);
-  const run = RACERS.map((r) => ({ ...r, d: r.at + t / r.lap })).sort((a, b) => b.d - a.d);
-  return (
-    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="Four players racing round a neon track while the room's board re-orders">
-      <div className="flex items-center justify-between px-5 pt-5 font-mono text-xs text-zinc-300">
-        <span>Type Race · room K7Q2MX</span>
-        <span className="inline-flex items-center gap-1.5"><span className="relative flex h-2 w-2"><span className="absolute inset-0 animate-ping rounded-full bg-fuchsia-400/70" /><span className="relative h-2 w-2 rounded-full bg-fuchsia-400" /></span>live</span>
-      </div>
-      <svg viewBox="0 0 400 200" className="mx-auto mt-2 block w-[92%]" aria-hidden>
-        <defs><filter id="race-glow"><feGaussianBlur stdDeviation="3" /></filter></defs>
-        <path d={TRACK} fill="none" stroke="#4f8ef7" strokeWidth="18" opacity="0.12" />
-        <path d={TRACK} fill="none" stroke="rgba(122,174,250,0.55)" strokeWidth="1.5" style={{ filter: 'drop-shadow(0 0 6px #4f8ef7)' }} />
-        <path d={TRACK} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" strokeDasharray="4 8" />
-        <line x1="200" y1="28" x2="200" y2="52" stroke="#fff" strokeWidth="2" strokeDasharray="3 3" />
-        <text x="200" y="110" textAnchor="middle" className="fill-white font-mono text-[22px] font-bold">LAP {Math.floor(run[0].d) + 1}</text>
-        <text x="200" y="128" textAnchor="middle" className="fill-fuchsia-200 font-mono text-[11px]">first to 10 wins</text>
-        {RACERS.map((r) => (
-          <g key={r.n}>
-            {[0.3, 0.2, 0.1, 0].map((lag, k) => (
-              <circle key={k} r={k === 3 ? 6 : 5 - k} fill={r.c} opacity={k === 3 ? 1 : 0.2 + k * 0.15} filter={k === 3 ? undefined : 'url(#race-glow)'}>
-                {!calm && <animateMotion dur={`${r.lap}s`} repeatCount="indefinite" path={TRACK} begin={`${-(r.at * r.lap) - lag}s`} />}
-              </circle>
-            ))}
-          </g>
-        ))}
-      </svg>
-      <ol className="absolute inset-x-2 bottom-2 space-y-1">
-        {run.map((r, i) => (
-          <motion.li key={r.n} layout transition={{ type: 'spring', stiffness: 380, damping: 32 }} className={cn('flex items-center gap-2.5 rounded-full px-3.5 py-1.5 bg-black/30 ring-1 ring-white/[0.07]', r.n === 'You' && 'bg-fuchsia-500/20 ring-fuchsia-400/50 shadow-[0_0_24px_-6px_rgba(79,142,247,0.7)]')}>
-            <span className="w-4 font-mono text-xs text-zinc-300">{i + 1}</span>
-            <span className="h-2.5 w-2.5 rounded-full" style={{ background: r.c, boxShadow: `0 0 10px ${r.c}` }} />
-            <span className="text-sm font-semibold text-white">{r.n}</span>
-            {i === 0 && <Crown className="h-4 w-4 text-amber-300" aria-hidden />}
-            <span className="ms-auto font-mono text-xs tabular-nums text-zinc-300">lap {Math.floor(r.d) + 1}</span>
-            <span className="w-14 text-end font-mono text-sm tabular-nums text-white">{Math.round(60 + (r.d % 1) * 40 + Math.floor(r.d) * 3)} wpm</span>
-          </motion.li>
-        ))}
-      </ol>
-    </div>
-  );
-}
-
 // M202: Travel's card: a trip drawn as a route between three cities with a plane flying it, and the
 // plan day by day underneath (a place to see, to eat, to sleep).
 const ROUTE = 'M40 150 C 110 40, 190 40, 220 110 S 330 170, 360 60';
@@ -303,5 +241,4 @@ function Travel() {
 export const TraceScene = still(Trace);
 export const ReliefScene = still(Relief);
 export const GreenScene = still(Green);
-export const PlayScene = still(Play);
 export const TravelScene = still(Travel);

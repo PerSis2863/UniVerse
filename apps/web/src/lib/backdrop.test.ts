@@ -79,7 +79,7 @@ describe('the frame loop', () => {
     expect(frames).toHaveLength(1); // still arriving
     run(1200);
     expect(frames).toHaveLength(0); // arrived: held
-    loop.app('play', 1200);
+    loop.app('travel', 1200);
     run(1500);
     expect(frames).toHaveLength(1);
   });

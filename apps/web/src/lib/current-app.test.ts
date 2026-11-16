@@ -10,7 +10,7 @@ describe('the app you are in', () => {
   it("is the page's own app", () => {
     vi.stubGlobal('localStorage', store({ 'uv-last-app': 'green' }));
     expect(currentAppNow('/relief/orgs')).toBe('relief');
-    expect(currentAppNow('/play')).toBe('play');
+    expect(currentAppNow('/play')).toBe('campus'); // M224: the games are UniVersity's
   });
   it('on a shared page, the app last used, then the one chosen, then UniVersity', () => {
     vi.stubGlobal('localStorage', store({ 'uv-last-app': 'green' }));

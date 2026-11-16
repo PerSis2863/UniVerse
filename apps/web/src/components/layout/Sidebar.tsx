@@ -162,6 +162,8 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
+    // M224: the games (once the Play app) are UniVersity's Games section.
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
     {
       label: 'Careers & impact', icon: Briefcase,
@@ -204,6 +206,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/knowledge', label: 'Knowledge & library', also: ['/library'] },
       ]
     },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/teacher/settings?section=profile', label: 'nav.settings', icon: Settings },
   ],
   ADMIN: [
@@ -248,6 +251,7 @@ export const navByRole: Record<string, NavItem[]> = {
     },
     { href: '/admin/insights', label: 'Insights', icon: BarChart3, also: ['/admin/early-warning', '/admin/analytics', '/admin/reports', '/admin/reports/report-cards', '/admin/reports/grading-scale', '/admin/impact-metrics', '/admin/insights/warehouse'] },
     { href: '/collab', label: 'Collaborate', icon: PenTool, also: ['/boards', '/code', '/tasks', '/docs', '/sheets', '/slides', '/spaces', '/studio', '/files'] },
+    { href: '/play', label: 'Games', icon: Gamepad2, also: ['/play/game', '/play/leaderboard', '/play/stormfall'] },
     { href: '/admin/settings', label: 'nav.settings', icon: Settings },
   ],
 };
@@ -260,7 +264,7 @@ const sharedNav = (role: string): NavItem[] => [
 ];
 
 /** Each app's icon in the hub's menu. */
-const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, play: Gamepad2, travel: Plane };
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
@@ -286,10 +290,6 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   green: [
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
-  ],
-  play: [
-    { href: '/play', label: 'Arcade', icon: Gamepad2, also: ['/play/game'] },
-    { href: '/play/leaderboard', label: 'Leaderboards', icon: Trophy },
   ],
 };
 

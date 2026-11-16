@@ -14,14 +14,12 @@ const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
 const TraceScene = dynamic(() => import('./HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
 const ReliefScene = dynamic(() => import('./HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
 const GreenScene = dynamic(() => import('./HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
-const PlayScene = dynamic(() => import('./HeroScenesLab').then((m) => m.PlayScene), { loading: scene });
 const TravelScene = dynamic(() => import('./HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
 
 const SIDE: Record<AppId, { head: string; accent: string; text: string; card: React.ReactNode; foot: string }> = {
   campus: { head: 'The school day runs', accent: 'itself.', text: 'Classes, grades and messages in one calm place.', card: <CampusScene />, foot: '13 languages / 8 question types / $0 for students' },
   trace: { head: 'Every product gets a', accent: 'passport.', text: 'Scan the code. See if it’s real.', card: <TraceScene />, foot: '10,000 passports free / no card' },
   relief: { head: 'Help that reaches people', accent: 'fast.', text: 'Ask for help or offer it, on one live map.', card: <ReliefScene />, foot: 'for people in need, volunteers and NGOs' },
-  play: { head: 'Games that teach', accent: 'something.', text: 'Quick games that teach. Solo or with friends.', card: <PlayScene />, foot: 'solo or up to 8 in a room' },
   travel: { head: 'Plan trips', accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', card: <TravelScene />, foot: 'for travellers, families and friends' },
   green: { head: 'Climate action you can', accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', card: <GreenScene />, foot: 'for schools, companies and clubs' },
 };

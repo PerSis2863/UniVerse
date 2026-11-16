@@ -42,12 +42,12 @@ const ink = (c: Rgb, dark: boolean) => (dark ? mix(c, WHITE, 0.3) : mix(c, INK, 
 const wrap = (x: number, m: number) => ((x % m) + m) % m;
 
 /** Each app's colour (src/lib/apps.ts) and a second one that sits well beside it. */
-const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], play: [34, 211, 238], travel: [253, 186, 116] };
+const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], travel: [253, 186, 116] };
 /** Green's fireflies. */
 const FIREFLY: Rgb = [253, 230, 168];
 /** M132: UniVersity wears the site's own accent (blue, lighter on the dark page since M212), as its buttons do. */
 const CAMPUS = { dark: { base: [110, 162, 248] as Rgb, alt: [56, 189, 248] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
-const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, play: 53, travel: 67 };
+const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, travel: 67 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */
 function rng(seed: number) {
@@ -453,75 +453,6 @@ const green: Make = (v, rnd, hue) => {
   };
 };
 
-// ── Play: a neon floor to the horizon, game-pad symbols floating above ──
-const play: Make = (v, rnd, hue) => {
-  const n = v.phone ? 5 : 9;
-  const shapes = Array.from({ length: n }, (_, i) => ({ kind: i % 4, x: (i + 0.5) / n + (rnd() - 0.5) * 0.05, y: 0.12 + rnd() * 0.36, z: 0.5 + rnd() * 0.5, s: 12 + rnd() * 14, ph: rnd() * TAU, rs: (rnd() - 0.5) * 0.5 }));
-  const sky = Array.from({ length: v.phone ? 24 : 44 }, () => ({ x: rnd(), y: rnd() * 0.55, ph: rnd() * TAU, tw: 0.8 + rnd() * 1.5 }));
-  const horizon = () => v.h * (v.phone ? 0.68 : 0.6);
-  return {
-    soft(c, t, a) {
-      const hy = horizon();
-      wash(c, v, t, a, hue, [0.5, 0.95, 0.85, 0.1]);
-      pool(c, v.w * 0.5, hy, Math.max(v.w, v.h) * 0.45, hue.base, (v.dark ? 0.45 : 0.2) * a);
-    },
-    sharp(c, t, a) {
-      const hy = horizon(), cx = v.w * 0.5, deep = v.h - hy, line = ink(hue.base, v.dark), cool = ink(hue.alt, v.dark);
-      // Stars over the horizon.
-      c.fillStyle = rgb(v.dark ? mix(hue.alt, WHITE, 0.6) : cool);
-      for (const s of sky) {
-        c.globalAlpha = a * 0.6 * (0.3 + 0.7 * (0.5 + 0.5 * Math.sin(t * s.tw + s.ph)));
-        c.fillRect(s.x * v.w, s.y * v.h, 1.4, 1.4);
-      }
-      // The floor: lines running from the vanishing point, rows rushing towards us.
-      const fade = c.createLinearGradient(0, hy, 0, v.h);
-      fade.addColorStop(0, rgba(line, 0));
-      fade.addColorStop(1, rgba(line, 0.5));
-      c.globalAlpha = a;
-      c.strokeStyle = fade;
-      c.lineWidth = 1;
-      const spokes = v.phone ? 8 : 14;
-      c.beginPath();
-      for (let i = -spokes; i <= spokes; i++) { c.moveTo(cx, hy); c.lineTo(cx + (i * v.w * 1.6) / spokes, v.h); }
-      c.stroke();
-      c.strokeStyle = rgb(line);
-      const rows = 16, u0 = wrap(t * 0.35, 1);
-      for (let k = 0; k < rows; k++) {
-        const z = k + 1 - u0;
-        if (z <= 0.2) continue;
-        const y = hy + deep / z;
-        if (y > v.h) continue;
-        c.globalAlpha = a * 0.5 * (1 - z / (rows + 1));
-        c.beginPath();
-        c.moveTo(0, y);
-        c.lineTo(v.w, y);
-        c.stroke();
-      }
-      c.globalAlpha = a * 0.7;
-      c.lineWidth = 1.4;
-      c.beginPath();
-      c.moveTo(0, hy);
-      c.lineTo(v.w, hy);
-      c.stroke();
-      // Triangle, circle, square, cross: bobbing and turning slowly.
-      c.lineWidth = 1.6;
-      for (const s of shapes) {
-        const x = s.x * v.w, y = s.y * v.h + Math.sin(t * 0.6 + s.ph) * 8, r = s.s * s.z;
-        c.strokeStyle = rgb(s.kind % 2 ? cool : line);
-        c.globalAlpha = a * 0.55 * s.z;
-        turned(c, v, x, y, s.ph + t * s.rs, () => {
-          c.beginPath();
-          if (s.kind === 0) { c.moveTo(0, -r); c.lineTo(r * 0.87, r * 0.5); c.lineTo(-r * 0.87, r * 0.5); c.closePath(); }
-          else if (s.kind === 1) c.arc(0, 0, r * 0.8, 0, TAU);
-          else if (s.kind === 2) c.rect(-r * 0.7, -r * 0.7, r * 1.4, r * 1.4);
-          else { c.moveTo(-r * 0.7, -r * 0.7); c.lineTo(r * 0.7, r * 0.7); c.moveTo(r * 0.7, -r * 0.7); c.lineTo(-r * 0.7, r * 0.7); }
-          c.stroke();
-        });
-      }
-    },
-  };
-};
-
 // ── Travel: dashed routes arcing between places, paper planes flying them, clouds drifting (M202) ──
 interface Route { a: { x: number; y: number }; b: { x: number; y: number }; lift: number; sp: number; ph: number; alt: boolean }
 const travel: Make = (v, rnd, hue) => {
@@ -569,7 +500,7 @@ const travel: Make = (v, rnd, hue) => {
   };
 };
 
-const SCENES: Record<AppId, Make> = { campus, trace, relief, green, play, travel };
+const SCENES: Record<AppId, Make> = { campus, trace, relief, green, travel };
 
 export type Backdrop = ReturnType<typeof makeBackdrop>;
 
