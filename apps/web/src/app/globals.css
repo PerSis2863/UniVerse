@@ -3,7 +3,16 @@
 /* `short:` a laptop-height screen or less: sign in tightens so it fits without scrolling. */
 @custom-variant short (@media (max-height: 860px));
 /* M219: a computer's browser, where the menu is the bar across the top (TopNav.tsx `TOP_NAV`); the installed app keeps the side menu. */
-@custom-variant topnav (@media (min-width: 1024px) and (display-mode: browser));
+/* M219 / M231: the menu across the top (src/lib/top-nav.ts): on a computer, when chosen in Settings → Appearance
+   (<html data-menu="top">), or left on Automatic in the browser, full screen included. */
+@custom-variant topnav {
+  @media (min-width: 1024px) {
+    &:where(:root[data-menu="top"] *) { @slot; }
+    @media (display-mode: browser), (display-mode: fullscreen) {
+      &:where(:root:not([data-menu]) *) { @slot; }
+    }
+  }
+}
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */

@@ -97,7 +97,7 @@ export default function MentorsPage() {
       <Topbar title="Internships" subtitle="Talk to alumni and mentors one to one" />
       <SectionTabs tabs={INTERNSHIP_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <motion.div variants={list} initial="hidden" animate="show" className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-5">
+        <motion.div variants={list} initial="hidden" animate="show" className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-5">
           {sessions.length > 0 && (
             <motion.section variants={fadeUp} className="panel p-4 sm:p-5" aria-labelledby="sessions-h">
               <h2 id="sessions-h" className="font-bold text-zinc-900 dark:text-white">Your sessions</h2>

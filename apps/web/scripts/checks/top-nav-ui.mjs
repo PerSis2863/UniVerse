@@ -1,7 +1,8 @@
 // M219 the menu as a bar across the top on a computer's browser (the side menu stays in the installed app and on
 // phones): at 1440, 1280 and 1024 (dark and light) the bar is there and the side menu isn't, every entry fits or
 // is under More, a group's list opens with its pages, the chosen page is lit; at 390 the phone's tab bar is kept;
-// the installed app (display-mode standalone, emulated) keeps the side menu. axe, no sideways scroll, no page
+// the installed app (display-mode standalone, emulated) keeps the side menu; M231: full screen counts as the browser
+// (the rule's text), and the choice in Settings → Appearance (top or side) wins either way. axe, no sideways scroll, no page
 // errors; the page starts under the bar with no empty row; no name both in the bar and in the page's own row of
 // sections; an entry dragged to another place stays there and is put back from the account menu (M221). Runs against `local:serve` (or BASE=… for local:dev); SHOTS=<dir> saves screenshots.
 import { createRequire } from 'node:module';
@@ -67,7 +68,7 @@ for (const [email, path, theme, width] of runs) {
   await page.waitForTimeout(1200);
   const names = () => chips.allInnerTexts().then((a) => a.map((t) => t.trim()));
   const before = await names();
-  const from = await chips.filter({ hasText: 'Settings' }).boundingBox(), to = await chips.first().boundingBox();
+  const from = await chips.last().boundingBox(), to = await chips.first().boundingBox();
   await page.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await page.mouse.down();
   for (let i = 1; i <= 12; i++) await page.mouse.move(from.x + from.width / 2 + ((to.x + 4) - (from.x + from.width / 2)) * (i / 12), from.y + from.height / 2);
@@ -96,5 +97,19 @@ await page.locator('aside[aria-label="Navigation"]').waitFor({ timeout: 120_000 
 out.installed = { sideMenu: await page.locator('aside[aria-label="Navigation"]').count(), bar: await page.locator('header.top-nav').count() };
 if (shots) await page.screenshot({ path: `${shots}/top-nav-installed-1280.png` });
 await ctx.close();
+// M231: the choice in Settings → Appearance wins: the side menu in a browser, the top bar in the installed app.
+for (const [place, installed] of [['side', false], ['top', true]]) {
+  const c = await signedIn(browser, base, 'demo@admin.com', { width: 1280, height: 900 });
+  await c.addInitScript(([p, inst]) => {
+    localStorage.setItem('uv-menu', p);
+    if (inst) { const mm = window.matchMedia.bind(window); window.matchMedia = (q) => (q.includes('display-mode: browser') ? { ...mm('(min-width: 99999px)'), matches: false, media: q, addEventListener() {}, removeEventListener() {} } : mm(q)); }
+  }, [place, installed]);
+  const pg = await c.newPage();
+  await pg.goto(`${base}/admin`, { waitUntil: 'load', timeout: 180_000 });
+  await pg.locator(place === 'side' ? 'aside[aria-label="Navigation"]' : 'header.top-nav').waitFor({ timeout: 120_000 });
+  out[`chosen-${place}${installed ? '-installed' : ''}`] = { sideMenu: await pg.locator('aside[aria-label="Navigation"]').count(), bar: await pg.locator('header.top-nav').count(), dataMenu: await pg.evaluate(() => document.documentElement.dataset.menu ?? null) };
+  if (shots) await pg.screenshot({ path: `${shots}/top-nav-chosen-${place}.png` });
+  await c.close();
+}
 console.log(JSON.stringify(out, null, 2));
 await browser.close();

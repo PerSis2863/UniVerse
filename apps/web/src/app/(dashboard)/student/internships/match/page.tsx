@@ -153,7 +153,7 @@ export default function SkillsMatchPage() {
       <Topbar title="Internships" subtitle="How your verified skills match open internships and NGO projects" />
       <SectionTabs tabs={INTERNSHIP_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-5">
+        <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-5">
           {error ? (
             <p className="text-sm text-rose-600 dark:text-rose-400">{(error as Error).message || 'Couldn’t load your matches. Please try again shortly.'}</p>
           ) : isLoading || !data ? (

@@ -8004,3 +8004,23 @@ quality is bad… check if any other problems are there like this".
   (`src/lib/use-wake-lock.ts`) keeps it awake while the call is live. No doubled audio found.
 - **Rules:** a new kind of tile gets its fit from `videoFit` (or `fill` when the layout sizes it), never a fixed
   `object-cover`; anything holding a phone's screen during a live activity uses `useWakeLock`.
+
+## M231: the top bar in full screen, a menu choice in Settings, pages that use a big screen (16–17 Nov)
+
+The owner, 16 Nov: "in full screen mode it show the horizontal bar in the verticle way which was earlier design…
+in the setting add a option… from verticle to horizontal"; "the owner console section and a lot of spaces in left
+and right side… see where else like this problem would be".
+
+- **Full screen.** A browser in full screen (F11) reports `display-mode: fullscreen`, not `browser`, so it got the
+  installed app's side menu. `IN_BROWSER` (`src/lib/top-nav.ts`) now counts both; the `topnav` CSS variant in
+  `globals.css` matches it.
+- **The choice.** Settings → Appearance → "Menu on a computer": Automatic (as before), Across the top, Down the side.
+  Kept on the device (`uv-menu`, `display-prefs.ts`), applied before the first paint by the early script
+  (`html[data-menu]`), so there's no flash. `useTopNav()` reads it with `useSyncExternalStore`; the CSS variant
+  reads `data-menu` first. Checked in `scripts/checks/top-nav-ui.mjs` (the chosen side menu in a browser, the chosen
+  top bar in the installed app; its M221 drag test now drags the bar's last entry: Settings left the bar).
+- **Wide screens.** The console (`max-w-6xl`) and 17 dashboard and list pages (fees, meals, who sees what, the
+  internship pages, the life board, mastery, early warning, reconciliation, impact reports, passport, tutoring,
+  course analytics, the warehouse, the marketplace) went to `max-w-[2000px]`. A sweep of 195 pages at 1920 px found
+  62 capped; the rest are forms, reading pages and chats, kept narrow on purpose (lines near 75 characters).
+- **Rules:** a new dashboard or list page uses `max-w-[2000px]` (or no cap); forms and reading stay narrow.

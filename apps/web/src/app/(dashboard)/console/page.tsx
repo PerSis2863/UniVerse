@@ -110,11 +110,11 @@ export default function OwnerConsole() {
 
   return (
     <div className="console-deck flex-1 overflow-y-auto">
-      <header className="px-4 sm:px-8 pt-4 sm:pt-6 max-w-6xl mx-auto">
+      <header className="px-4 sm:px-8 pt-4 sm:pt-6 w-full max-w-[2000px] mx-auto">
         <DeckHeader needs={attention ? attention.items.length : null} search={tables && <ConsoleSearch tables={tables.tables} onGo={go} />} />
         <DeckNav tab={tab} badges={attention?.badges} onTab={(t) => { setTab(t); setFocus({ n: focus.n + 1 }); if (t !== 'people') setPerson(null); if (t === 'data') setDataTable(null); }} />
       </header>
-      <main className="px-4 sm:px-8 py-6 max-w-6xl mx-auto">
+      <main className="px-4 sm:px-8 py-6 w-full max-w-[2000px] mx-auto">
         <TabPanel k={`${tab}-${person ?? ''}`}>
         {tab === 'overview' ? (
           <Overview onPerson={openPerson} onTab={(t, status) => show(t, { status })} />

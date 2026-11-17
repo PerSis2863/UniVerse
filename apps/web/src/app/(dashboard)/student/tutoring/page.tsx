@@ -16,7 +16,7 @@ export default function StudentTutoringPage() {
       />
       <SectionTabs tabs={STUDENT_BOARD_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="mx-auto max-w-6xl">
+        <div className="mx-auto max-w-[2000px]">
           <PeerTutoringTimeBank />
         </div>
       </div>
