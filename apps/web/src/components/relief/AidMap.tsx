@@ -13,7 +13,8 @@ import { useDarkMode } from '@/lib/use-dark';
 const ROUTE = '#f97316';
 export interface AidPoint { lat: number; lng: number; place: string | null }
 
-export default function AidMap({ points, moving }: { points: AidPoint[]; moving: boolean }) {
+/** `color`: the route's (M242: a trip's story uses Travel's sky). */
+export default function AidMap({ points, moving, color = ROUTE }: { points: AidPoint[]; moving: boolean; color?: string }) {
   const dark = useDarkMode();
   const calm = !!useReducedMotion();
   const base = useMemo(() => points.map((p) => ({ ...p, b: toBase(p.lng, p.lat) })), [points]);
@@ -29,17 +30,17 @@ export default function AidMap({ points, moving }: { points: AidPoint[]; moving:
     const xy = base.map((p) => [f.sx(p.b[0]), f.sy(p.b[1])] as const);
     ctx.save();
     ctx.setLineDash([7, 7]); ctx.lineDashOffset = moving && !calm ? -t / 45 : 0;
-    ctx.strokeStyle = ROUTE; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineCap = 'round'; ctx.globalAlpha = 0.95;
     ctx.beginPath(); xy.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
     ctx.restore();
-    const g = glow(ROUTE);
+    const g = glow(color);
     xy.forEach(([x, y], i) => {
       const last = i === xy.length - 1;
       if (last) {
         const ph = moving && !calm ? (t / 1600) % 1 : 0.35;
         ctx.globalAlpha = 0.55 * (1 - ph); ctx.drawImage(g, x - 14 - ph * 26, y - 14 - ph * 26, 28 + ph * 52, 28 + ph * 52); ctx.globalAlpha = 1;
       }
-      ctx.fillStyle = last ? ROUTE : dark ? '#fafafa' : '#18181b';
+      ctx.fillStyle = last ? color : dark ? '#fafafa' : '#18181b';
       ctx.strokeStyle = dark ? '#0b0b0c' : '#fff'; ctx.lineWidth = 2.5;
       ctx.beginPath(); ctx.arc(x, y, last ? 7 : 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
       const label = base[i].place;

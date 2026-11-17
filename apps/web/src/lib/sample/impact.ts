@@ -761,6 +761,15 @@ export function sampleTripPacking() {
   const p = (id: string, item: string, grp: string, done = false) => ({ id, item, grp, done, doneBy: done ? 'sample-friend' : null });
   return { items: [p('sample-p-1', 'Passport (valid six months past the trip)', 'Documents', true), p('sample-p-2', 'Comfortable walking shoes', 'Clothes'), p('sample-p-3', 'A light jacket for the evenings', 'Weather'), p('sample-p-4', 'Sunscreen', 'Health', true)] };
 }
+/** GET /travel/trips/:id/journal (M242): the sample trip's notes (written for the demo). */
+export function sampleTripJournal() {
+  const e = (id: string, day: number, text: string, place: string, by: string, mine: boolean) => ({ id, day, text, photoUrl: null, place, shared: true, mine, by, createdAt: new Date().toISOString() });
+  return { entries: [
+    e('sample-j-1', 0, 'Landed at noon and went straight to Belém for custard tarts, still warm. The queue moves fast.', 'Belém', 'Maya', false),
+    e('sample-j-2', 0, 'Sunset from the castle walls: the whole city goes gold.', 'São Jorge Castle', 'You', true),
+    e('sample-j-3', 1, 'Tram 28 was packed, so we walked the hills instead and found a tiny fado bar.', 'Alfama', 'Maya', false),
+  ] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {

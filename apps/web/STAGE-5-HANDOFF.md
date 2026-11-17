@@ -8238,3 +8238,16 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   local.
 - **Rule:** new languages go in `LANGUAGES` with every phrase (the test fails otherwise) and in `BY_COUNTRY`; have a
   native speaker check them where possible (these were written for UniVerse, not checked by native speakers).
+
+## M242: a trip's journal and its story (17 Nov)
+
+- **Where:** the trip page's **Journal** part (`trip-journal.tsx`): **Write** (a day of the trip, a note, a place, a
+  photo, "In the family link") with everyone's entries live, and **Story** (the route on the map, then each day with its
+  photos and notes). `Story` is exported for the family link (M248).
+- **Server** (`src/server/travel-trip-journal.ts`, tested): `GET/POST /travel/trips/:id/journal`, `PATCH` (the author:
+  text, shared) and `DELETE` (the author or the trip's starter) `…/journal/:entryId`; members only (`tripFor`); a day
+  must be one of the trip's; at most 500 entries; `publish` refreshes the others' pages. Database update **0228**
+  (`travel_trip_journal`). Sample answer `sampleTripJournal`.
+- **Photos** go through the app's own `/api/upload` (shrunk first, `shrinkImage`), as Green's proofs; only an app file
+  address is kept (`isAppFileUrl`).
+- **The route** is Relief's `AidMap` (the d3 world canvas), now with a `color` (Travel's sky here).

@@ -13,6 +13,7 @@ import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
+import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
@@ -131,6 +132,11 @@ export default function impactAppsModule(router: Router) {
   travel.post<{ id: string }>('trips/:id/packing', ({ user, params, body }) => addTripPacking(user, params.id, body ?? {}));
   travel.patch<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params, body }) => updateTripPacking(user, params.id, params.itemId, body ?? {}));
   travel.delete<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params }) => removeTripPacking(user, params.id, params.itemId));
+  // M242 (src/server/travel-trip-journal.ts): the trip's journal.
+  travel.get<{ id: string }>('trips/:id/journal', ({ user, params }) => tripJournal(user, params.id));
+  travel.post<{ id: string }>('trips/:id/journal', ({ user, params, body }) => addJournalEntry(user, params.id, body ?? {}));
+  travel.patch<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params, body }) => updateJournalEntry(user, params.id, params.entryId, body ?? {}));
+  travel.delete<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params }) => removeJournalEntry(user, params.id, params.entryId));
   travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
   travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
   travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));

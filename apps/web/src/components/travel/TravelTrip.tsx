@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Languages, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Languages, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -23,6 +23,9 @@ import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
 import { TripMoney } from './trip-money';
 import { TripPacking } from './trip-packing';
 import { TripToday } from './trip-today';
+import { tripToday } from '@/lib/travel-today';
+import { useNow } from '@/lib/use-now';
+import { TripJournal } from './trip-journal';
 import { TripOffline } from './trip-offline';
 import { readPack } from '@/lib/trip-offline-save';
 
@@ -41,11 +44,16 @@ const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loadin
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
-  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock },
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'journal', label: 'Journal', icon: NotebookPen },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
   { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck },
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
+/** Today's day number on the trip (in the first city's time), or null outside it. */
+function todayIndex(start: string | null, stops: TripAnswer['stops'], now: number) {
+  const t = tripToday(start, stops, [], new Date(now));
+  return t.state === 'during' ? stopDates(start, stops)[t.stop].offset + t.day : null;
+}
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 const range = (from: string | null, to: string | null) => {
   if (!from || !to) return null;
@@ -64,6 +72,7 @@ export function TravelTrip() {
   useEffect(() => { if (error && id) void readPack<TripAnswer>(id).then((p) => setSaved(p ? { trip: p.trip, at: p.savedAt } : null)); }, [error, id]);
   const data = live ?? (error ? saved?.trip : undefined), offline = !live && !!data;
   const [chosen, setChosen] = useState<string | null>(null);
+  const now = useNow();
   const [adding, setAdding] = useState(false);
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
@@ -178,6 +187,7 @@ export function TravelTrip() {
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
         <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
       </div>}
+      {part === 'journal' && <TripJournal tripId={t.id} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
       {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'today' && <TripToday start={t.startDate} stops={stops} items={data.items} />}
 
