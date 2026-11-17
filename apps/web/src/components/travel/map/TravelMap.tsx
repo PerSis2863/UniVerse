@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Camera, ChevronUp, Compass, Footprints, Layers, LocateFixed, Minus, Plus, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BookOpen, Box, Camera, Compass, Footprints, Info, Layers, LocateFixed, Maximize2, Minimize2, Minus, Plus, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useDarkMode } from '@/lib/use-dark';
@@ -102,6 +102,8 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   const [shift, setShift] = useState(0); // half hours from now
   const [bearing, setBearing] = useState(0);
   const [open, setOpen] = useState(false); // the panel on a phone
+  const [credits, setCredits] = useState(false); // the full map credits shown
+  const [full, setFull] = useState(false); // M236: the map over the whole window
   const applied = useRef<StyleSpecification | null>(null); // the design the map has
 
   // Data for what's in view (rounded, so small moves reuse the answer).
@@ -188,6 +190,13 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
       map.on('load', read);
       map.on('rotate', () => setBearing(map!.getBearing()));
       map.on('idle', () => readList(map!));
+      // M236: the first 'idle' could pass before the list was listening for it (the list stayed empty until the map
+      // was moved): also read it once the places' tiles have loaded, a moment after the last one.
+      let soon: ReturnType<typeof setTimeout> | undefined;
+      map.on('sourcedata', (e) => {
+        if (e.sourceId !== 'openmaptiles' || !e.isSourceLoaded) return;
+        clearTimeout(soon); soon = setTimeout(() => { if (!gone && map && !map.isMoving()) readList(map); }, 250);
+      });
       map.on('click', (e) => onClick(map!, e.point.x, e.point.y, e.lngLat.lat, e.lngLat.lng));
       for (const id of ['uv-stories', 'uv-reviews', 'uv-street', 'uv-hit']) {
         map.on('mouseenter', id, () => { map!.getCanvas().style.cursor = 'pointer'; });
@@ -327,38 +336,22 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   const startClock = clockText(zone, when), sunTxt = sun ? `Sunrise ${clockText(zone, sun.rise)} · golden hour ${clockText(zone, sun.goldenEvening)} · sunset ${clockText(zone, sun.set)}` : 'No sunrise or sunset today';
   const panelTitle = picked ? null : walk ? `A ${Math.round(walk.total / 6) / 10} h walk` : `${CATEGORIES.find((c) => c.id === cat)!.label} here`;
   return (
-    <div className="relative h-[calc(100dvh-12rem)] min-h-[32rem] overflow-hidden rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
+    <div className={cn('overflow-hidden bg-zinc-200 dark:bg-zinc-900', full ? 'fixed inset-0 z-[70]' : 'relative h-[calc(100dvh-12rem)] min-h-[32rem] rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10 sm:-mx-8 sm:-mb-8 sm:h-[calc(100dvh-9.25rem)] sm:rounded-none sm:ring-0')}
+      data-no-arrange data-no-motion onKeyDown={(e) => { if (e.key === 'Escape' && full) setFull(false); }}>
       <PinSource ref={pinBox} />
       {/* Inline: MapLibre's own stylesheet makes its container position: relative. */}
       <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map" />
       {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
 
-      {/* Search and the kinds of place. */}
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2 sm:end-auto sm:w-[24rem]">
-        <div className="pointer-events-auto rounded-2xl bg-[var(--card-bg)] p-1.5 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
-          <PlaceSearch label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(t)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => toast.error('That place isn’t on the map.'))} />
-        </div>
-        <div className="pointer-events-auto -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
-          {CATEGORIES.map((c) => {
-            const Icon = PINS[c.id].icon;
-            return (
-              <button key={c.id} type="button" aria-pressed={cat === c.id} onClick={() => { setCat(c.id); setFilter(''); endWalk(); pick(null); }}
-                className={cn('inline-flex shrink-0 items-center gap-1.5 rounded-full py-1.5 pe-3.5 ps-2.5 text-sm font-semibold shadow-md ring-1 transition-colors', cat === c.id ? 'bg-indigo-700 text-white ring-indigo-700' : 'bg-[var(--card-bg)] text-zinc-800 ring-black/5 hover:bg-zinc-100 dark:text-zinc-100 dark:ring-white/10 dark:hover:bg-white/10')}>
-                <span className="flex h-5 w-5 items-center justify-center rounded-full text-white" style={{ background: PINS[c.id].color }} aria-hidden><Icon className="h-3 w-3" /></span>{c.label}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Controls. */}
       {/* A row under the kinds of place on a phone (pinch to zoom there), a column on the right on a computer. */}
-      <div className="absolute end-3 top-[6.9rem] z-20 flex flex-row items-start gap-2 sm:top-3 sm:flex-col">
+      <div className="absolute end-3 top-3 z-20 flex flex-col items-end gap-2">
         <div className={cn(group, 'hidden flex-col divide-y divide-zinc-200 sm:flex dark:divide-white/10')}>
           <button type="button" className={ctl} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
           <button type="button" className={ctl} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
         </div>
-        <div className={cn(group, 'flex-row divide-x divide-zinc-200 sm:flex-col sm:divide-x-0 sm:divide-y dark:divide-white/10')}>
+        <button type="button" className={cn(group, ctl)} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
+        <div className={cn(group, 'flex-col divide-y divide-zinc-200 dark:divide-white/10')}>
           <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass className="h-5 w-5 transition-transform" style={{ transform: `rotate(${-bearing - 45}deg)` }} aria-hidden /></button>
           <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
           <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
@@ -366,7 +359,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
       </div>
       {layers && (
         <div id="map-layers" role="dialog" aria-label="Map layers" onKeyDown={(e) => { if (e.key === 'Escape') setLayers(false); }}
-          className="absolute end-3 top-[10.2rem] z-40 w-[min(18rem,calc(100%-1.5rem))] origin-top-right rounded-2xl bg-[var(--card-bg)] p-3 shadow-2xl ring-1 ring-black/5 animate-[layers-in_180ms_var(--ease-out-soft)] motion-reduce:animate-none dark:ring-white/10 sm:end-16 sm:top-3 rtl:origin-top-left">
+          className="absolute end-16 top-3 z-40 w-[min(18rem,calc(100%-5.5rem))] origin-top-right rounded-2xl bg-[var(--card-bg)] p-3 shadow-2xl ring-1 ring-black/5 animate-[layers-in_180ms_var(--ease-out-soft)] motion-reduce:animate-none dark:ring-white/10 rtl:origin-top-left">
           <div className="mb-2 flex items-center justify-between"><h3 className="font-semibold text-zinc-900 dark:text-white">Layers</h3><button type="button" onClick={() => setLayers(false)} className="btn-ghost btn-sm p-1" aria-label="Close layers"><X className="h-4 w-4" aria-hidden /></button></div>
           <Segmented<'map' | 'sat'> label="Map" className="mb-3" value={show.satellite ? 'sat' : 'map'} onChange={(v) => setShow((x) => ({ ...x, satellite: v === 'sat' }))} segments={[{ value: 'map', label: 'Map' }, { value: 'sat', label: 'Satellite' }]} />
           {show.satellite && <p className="-mt-1 mb-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Pictures from the Sentinel-2 satellites: clear for cities, coasts and nature, soft close up.</p>}
@@ -386,20 +379,29 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
         </div>
       )}
 
-      {/* The panel: the places in view, a place, or a walk; with the hour and the sun. */}
-      <aside aria-label="Places" className={cn('absolute inset-x-2 bottom-2 z-30 flex max-h-[58%] flex-col rounded-2xl bg-[var(--card-bg)] shadow-2xl ring-1 ring-black/5 dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-[7.4rem] sm:max-h-none sm:w-[24rem]')}>
-        <div className="border-b border-zinc-200/70 p-3 dark:border-white/10">
-          <div className="flex items-center gap-2">
-            <Sun className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
-            <label className="min-w-0 flex-1 text-xs font-semibold text-zinc-700 dark:text-zinc-200">
-              <span className="flex justify-between gap-2"><span>{shift ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][clock.day]} ${startClock}` : `Now ${startClock}`} <span className="font-normal text-zinc-500 dark:text-zinc-400">their time</span></span>{shift > 0 && <button type="button" onClick={() => setShift(0)} className="text-indigo-700 dark:text-indigo-300">Now</button>}</span>
-              <input type="range" min={0} max={47} step={1} value={shift} onChange={(e) => setShift(Number(e.target.value))} aria-label="The hour at this place" className="mt-1 w-full accent-indigo-600" />
-            </label>
-            <button type="button" onClick={() => setOpen((o) => !o)} className="btn-ghost btn-sm p-1.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}><ChevronUp className={cn('h-5 w-5 transition-transform duration-200', !open && 'rotate-180')} aria-hidden /></button>
+      {/* M236: one panel as Apple Maps' sidebar: search on top, the kinds of place as round icons, the places (or a
+          place, or a walk), the hour and the sun as a quiet footer. On a phone it is a sheet at the bottom with a grab
+          handle (as Apple Maps on an iPhone): the search and kinds always, the rest when pulled up. */}
+      <aside aria-label="Places" className="absolute inset-x-2 bottom-2 z-30 flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] bg-[var(--card-bg)] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-3 sm:max-h-none sm:w-[23rem]">
+        <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-1 pt-2 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
+          <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
+        </button>
+        <div className="px-3 pb-2 sm:pt-3">
+          <PlaceSearch label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(t)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => toast.error('That place isn’t on the map.'))} />
+          <div className="-mx-3 mt-3 flex gap-1 overflow-x-auto px-3 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
+            {CATEGORIES.map((c) => {
+              const Icon = PINS[c.id].icon, on = cat === c.id;
+              return (
+                <button key={c.id} type="button" aria-pressed={on} onClick={() => { setCat(c.id); setFilter(''); endWalk(); pick(null); }}
+                  className="group flex w-[3.9rem] shrink-0 flex-col items-center gap-1 rounded-xl py-1 transition-transform duration-150 active:scale-95">
+                  <span className={cn('flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm transition-[box-shadow] duration-200', on ? 'ring-[3px] ring-offset-2 ring-offset-[var(--card-bg)]' : 'opacity-90 group-hover:opacity-100')} style={{ background: PINS[c.id].color, ...(on ? { '--tw-ring-color': PINS[c.id].color } as React.CSSProperties : {}) }} aria-hidden><Icon className="h-5 w-5" /></span>
+                  <span className={cn('max-w-full truncate text-[11.5px]', on ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{c.label}</span>
+                </button>
+              );
+            })}
           </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{sunTxt}. The buildings are lit from where the sun is.</p>
         </div>
-        <div className={cn('min-h-0 flex-1 flex-col p-3', open ? 'flex' : 'hidden sm:flex')}>
+        <div className={cn('min-h-0 flex-1 flex-col border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} /> : (
             <>
               {walk ? (
@@ -433,7 +435,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
                   <input type="search" value={filter} onChange={(e) => setFilter(e.target.value.slice(0, 60))} placeholder={`Filter ${list.length} places in view…`} className="w-full rounded-xl border border-zinc-200 bg-white py-1.5 pe-3 ps-8 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
                 </label>
               )}
-              <ol className="min-h-0 flex-1 space-y-1 overflow-y-auto pe-1">
+              <ol className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-2">
                 {walk ? walk.stops.map((s, i) => (
                   <li key={s.key}>
                     <p className="ps-9 text-xs text-zinc-500 dark:text-zinc-400"><Footprints className="me-1 inline h-3.5 w-3.5" aria-hidden />{s.walk} min walk</p>
@@ -444,14 +446,20 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
                   </li>
                 )) : shown.map((p) => (
                   <li key={p.key}>
-                    <button type="button" onClick={() => pick({ type: 'place', key: /^[NWR]\d+$/.test(p.key) ? p.key : null, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.cls, lat: p.lat, lon: p.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
-                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-white ring-2 ring-white shadow-sm dark:ring-zinc-900" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-3.5 w-3.5" />; })()}</span>
-                      <span className="min-w-0 flex-1"><span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{kindOf(p.cls, p.sub)}</span></span>
+                    <button type="button" onClick={() => pick({ type: 'place', key: /^[NWR]\d+$/.test(p.key) ? p.key : null, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.cls, lat: p.lat, lon: p.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ring-2 ring-white shadow-sm dark:ring-zinc-900" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-4 w-4" />; })()}</span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-zinc-900 dark:text-white" translate="no">{p.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{kindOf(p.cls, p.sub)}</span></span>
                       {view && <span className="shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{metres(km(view, p) ?? 0)}</span>}
                     </button>
                   </li>
                 ))}
-                {!walk && !shown.length && <li className="px-2 py-4 text-sm text-zinc-600 dark:text-zinc-300">{list.length ? `No place here matches “${filter.trim()}”.` : view && view.zoom < 12 ? 'Zoom in to see the places here.' : 'None of these in view: move the map or pick another kind.'}</li>}
+                {!walk && !shown.length && (
+                  <li className="flex flex-col items-center px-4 py-8 text-center">
+                    <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full text-white opacity-90" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-6 w-6" />; })()}</span>
+                    <span className="font-semibold text-zinc-900 dark:text-white">{list.length ? 'No match' : view && view.zoom < 12 ? 'Zoom in a little' : `No ${CATEGORIES.find((c) => c.id === cat)!.label.toLowerCase()} in view`}</span>
+                    <span className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{list.length ? `Nothing here matches “${filter.trim()}”.` : view && view.zoom < 12 ? 'Places show up once you’re closer in.' : 'Move the map, or pick another kind above.'}</span>
+                  </li>
+                )}
               </ol>
               {walk && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-200/70 pt-2 text-xs text-zinc-600 dark:border-white/10 dark:text-zinc-300">
@@ -464,10 +472,33 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
             </>
           )}
         </div>
-        <p className="border-t border-zinc-200/70 px-3 py-1.5 text-[11px] leading-snug text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-          Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
-        </p>
+        {/* The hour there (the buildings are lit from where the sun is), quietly at the foot. */}
+        <div className={cn('items-center gap-2.5 border-t border-zinc-200/70 px-3.5 py-2.5 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
+          <Sun className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+          <label className="min-w-0 flex-1">
+            <span className="flex items-baseline justify-between gap-2 text-xs">
+              <span className="font-semibold text-zinc-800 dark:text-zinc-100">{shift ? `${['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'][clock.day]} ${startClock}` : `Now ${startClock}`} <span className="font-normal text-zinc-500 dark:text-zinc-400">their time</span></span>
+              {shift > 0 && <button type="button" onClick={() => setShift(0)} className="font-semibold text-indigo-700 dark:text-indigo-300">Now</button>}
+            </span>
+            <input type="range" min={0} max={47} step={1} value={shift} onChange={(e) => setShift(Number(e.target.value))} aria-label="The hour at this place" className="mt-1 h-1 w-full accent-indigo-600" />
+            <span className="mt-0.5 block truncate text-[11px] text-zinc-500 dark:text-zinc-400" title={sunTxt}>{sunTxt}</span>
+          </label>
+        </div>
       </aside>
+      {/* M236: the credits the map's licences ask for (OpenStreetMap, OpenMapTiles), small as Apple Maps' "Legal": a short
+          line, the rest behind the (i). On a phone at the top, clear of the sheet. */}
+      <div className="absolute start-2 top-2 z-10 max-w-[calc(100%-5rem)] sm:bottom-1 sm:end-1 sm:start-auto sm:top-auto">
+        {credits ? (
+          <p className="relative rounded-lg bg-white/90 px-2 py-1 pe-7 text-[11px] leading-snug text-zinc-600 shadow-sm dark:bg-black/70 dark:text-zinc-300">
+            Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
+            <button type="button" onClick={() => setCredits(false)} className="absolute end-1 top-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10" aria-label="Hide the map credits"><X className="h-3.5 w-3.5" aria-hidden /></button>
+          </p>
+        ) : (
+          <button type="button" onClick={() => setCredits(true)} className="inline-flex items-center gap-1 rounded-full bg-white/85 px-2 py-0.5 text-[11px] text-zinc-600 shadow-sm hover:bg-white dark:bg-black/60 dark:text-zinc-300" aria-label="Map credits: © OpenStreetMap and others">
+            © OpenStreetMap <Info className="h-3 w-3" aria-hidden />
+          </button>
+        )}
+      </div>
     </div>
   );
 }

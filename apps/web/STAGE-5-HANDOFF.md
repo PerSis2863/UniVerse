@@ -8127,3 +8127,30 @@ and right side… see where else like this problem would be".
   course analytics, the warehouse, the marketplace) went to `max-w-[2000px]`. A sweep of 195 pages at 1920 px found
   62 capped; the rest are forms, reading pages and chats, kept narrow on purpose (lines near 75 characters).
 - **Rules:** a new dashboard or list page uses `max-w-[2000px]` (or no cap); forms and reading stay narrow.
+
+## M236: the maps in Apple Maps' look, bigger, with an Apple-style panel (17 Nov)
+
+The owner, 17 Nov: "please upgrade the map because it needs to look flawless and same as apple maps"; then, on the side
+panel: "make it more look elegant overall map is looking small"; "also do that for other maps in the apps"; on the
+credits line: "can you remove this".
+
+- **Seen on real streets.** This machine can't reach OpenFreeMap, so the design was checked on central Helsinki from
+  OpenStreetMap (pyrosm's bundled extract) turned into the same layers as the live tiles and served to the map in a
+  browser test, with Noto Sans glyphs (the scratch `map-look.mjs`, `osm2omt.py`; not in the repo).
+- **The design** (`map-style.ts`): Apple's own ground colour (#f9f5ed), soft greens, bright blue water, light buildings
+  with a fine edge, tinted hospital, school and railway grounds, grey squares, footpaths as thin solid lines (no
+  brown dashes), tunnels left off, street names in normal case (main roads darker), water names upright.
+- **Every place an icon** (`map-layers.ts` `uv-poi`, `pins.tsx` `pinOfClass`): a small round icon in its kind's
+  colour with the name beside it in that colour (new kinds: health, learning, other), not grey dots; names over 26
+  letters only close in (`shortName`, zoom only at the top of the expression).
+- **A real bug fixed:** the place list could stay empty ("None of these in view" beside visible pins) until the map
+  was moved: the first `idle` could pass before the list listened. It is also read once the places' tiles have
+  loaded (`sourcedata`, debounced 250 ms).
+- **The panel** (`TravelMap.tsx`): one panel as Apple Maps' sidebar: search on top, the kinds of place as round
+  icons, roomy rows, a friendlier empty state, the hour and the sun as a quiet footer; on a phone a bottom sheet with
+  a grab handle. The map runs edge to edge under the tab row on a computer (taller), with a Full screen button
+  (Escape leaves). The credits are a small "© OpenStreetMap ⓘ" that opens the full line (the licences require it on
+  the map). Green's and Relief's maps are taller on a computer, their lists floating over the map's left side.
+- **Checked:** axe clean (computer and phone, light and dark), no page errors; the list fills on first load.
+- **Not done:** the map's labels still use Noto Sans (OpenFreeMap's fonts). Apple's San Francisco is closest to the
+  site's Inter; serving Inter as map glyphs (`maplibre-font-maker-node` could make them) is a possible next step.

@@ -1,15 +1,15 @@
 'use client';
 
-import { BedDouble, BookOpen, Coffee, Landmark, Palette, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
+import { BedDouble, BookOpen, Coffee, Cross, GraduationCap, Landmark, MapPin, Palette, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
 import type { Map as MLMap } from 'maplibre-gl';
-import type { CategoryId } from '@/lib/travel-map';
+import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
 
 // M214 (the owner, on the map: "this thing look messy … user cant understand what to look for … it should
 // look sharp"): each kind of place gets a round pin in its own colour with its icon, drawn at twice the
 // screen's size so it stays sharp, and placed by the map without overlapping (the notable ones first).
 // The icons are the app's own (lucide), read from hidden SVGs this component renders.
 
-export const PINS: Record<CategoryId | 'story' | 'review', { icon: LucideIcon; color: string }> = {
+export const PINS: Record<CategoryId | 'story' | 'review' | 'health' | 'learn' | 'other', { icon: LucideIcon; color: string }> = {
   see: { icon: Landmark, color: '#e11d48' },
   eat: { icon: Utensils, color: '#ea580c' },
   cafe: { icon: Coffee, color: '#a16207' },
@@ -21,8 +21,22 @@ export const PINS: Record<CategoryId | 'story' | 'review', { icon: LucideIcon; c
   go: { icon: TrainFront, color: '#0369a1' },
   story: { icon: BookOpen, color: '#d97706' },
   review: { icon: Star, color: '#047857' },
+  // M236: the map's other places, each in its kind's colour as Apple Maps shows them (not grey dots).
+  health: { icon: Cross, color: '#dc2626' },
+  learn: { icon: GraduationCap, color: '#8b6b3d' },
+  other: { icon: MapPin, color: '#6b7280' },
 };
 export type PinId = keyof typeof PINS;
+/** Which pin a map place of this class takes: its kind's (museums their own), health, learning, else a grey one. */
+export function pinOfClass(): [string[], PinId][] {
+  const by = new Map<PinId, string[]>(), seen = new Set<string>();
+  const put = (id: PinId, classes: readonly string[]) => { for (const c of classes) if (!seen.has(c)) { seen.add(c); by.set(id, [...(by.get(id) ?? []), c]); } };
+  put('museum', ['museum', 'art_gallery']);
+  put('health', ['hospital', 'pharmacy', 'doctors', 'dentist', 'clinic']);
+  put('learn', ['college', 'school', 'university', 'library', 'kindergarten']);
+  for (const c of CATEGORIES) put(c.id, c.classes);
+  return [...by.entries()].map(([id, classes]) => [classes, id]);
+}
 /** A pin's name colour beside it on the map (M233, as Apple Maps does): its own colour, lighter on the dark map. */
 export function labelColor(id: PinId, dark: boolean): string {
   const hex = PINS[id].color, mix = dark ? 0.4 : 0;
@@ -44,7 +58,7 @@ const R = 2; // drawn at twice the size
 /** An icon as a picture (never waiting more than a second: the map doesn't wait on its pins). */
 const load = (svg: string) => new Promise<HTMLImageElement | null>((ok) => { const img = new Image(); const t = setTimeout(() => ok(null), 1000); img.onload = () => { clearTimeout(t); ok(img); }; img.onerror = () => { clearTimeout(t); ok(null); }; img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`; });
 
-/** A pin per kind: a 30 px disc in its colour, a white rim and its white icon; and a small grey dot for other places. */
+/** A pin per kind: a 30 px disc in its colour, a white rim and its white icon. */
 export async function drawPins(root: HTMLElement | null): Promise<PinImages> {
   const out: PinImages = new Map();
   const size = 34 * R, c = document.createElement('canvas');
@@ -65,15 +79,6 @@ export async function drawPins(root: HTMLElement | null): Promise<PinImages> {
     g.beginPath(); g.arc(size / 2, size / 2, 13 * R, 0, Math.PI * 2); g.fillStyle = PINS[id].color; g.fill();
     if (icon) g.drawImage(icon, size / 2 - 8 * R, size / 2 - 8 * R, 16 * R, 16 * R);
     out.set(`uv-pin-${id}`, g.getImageData(0, 0, size, size));
-  }
-  // Other places: a small dot with a hairline rim.
-  const d = 10 * R, dc = document.createElement('canvas');
-  dc.width = d; dc.height = d;
-  const dg = dc.getContext('2d', { willReadFrequently: true });
-  if (dg) {
-    dg.beginPath(); dg.arc(d / 2, d / 2, 4 * R, 0, Math.PI * 2); dg.fillStyle = '#ffffff'; dg.fill();
-    dg.beginPath(); dg.arc(d / 2, d / 2, 3 * R, 0, Math.PI * 2); dg.fillStyle = '#8b95a1'; dg.fill();
-    out.set('uv-dot', dg.getImageData(0, 0, d, d));
   }
   return out;
 }

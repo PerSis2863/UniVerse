@@ -1,6 +1,7 @@
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
 import { sunPosition } from '@/lib/travel-local';
 import { mapStyle } from './map-style';
+import { labelColor, pinOfClass } from './pins';
 
 // The layers UniVerse adds to Travel's map (M209) on top of OpenFreeMap's style: 3D buildings and places
 // where the style has none (its dark one), the chosen kind of place, the selected place, Wikipedia's
@@ -74,12 +75,20 @@ export function addLayers(map: MLMap, dark: boolean) {
   }
   const halo = dark ? '#0b0c0e' : '#ffffff', ink = dark ? '#f4f6f8' : '#111214';
   const name: ExpressionSpecification = ['coalesce', ['get', 'name_en'], ['get', 'name']];
-  // Other places, where the style shows none (its dark one): a small dot and a quiet name, close in only, and
-  // never over anything else (M214: the map was a sea of dots).
+  /** A place's name, but a long one (over 26 letters) only from this zoom: a map's names stay a line or two. */
+  const short: ExpressionSpecification = ['case', ['<=', ['length', name], 26], name, ''];
+  const shortName = (from: number): ExpressionSpecification => ['step', ['zoom'], short, from, name]; // zoom only at the top
+  // M236: every other place as Apple Maps shows it: a small round icon in its kind's colour with its name beside
+  // it in that colour, close in only and never over anything else (M214: the map was a sea of dots). Names too
+  // long for a map (some artworks' titles) are left off until very close.
   if (!layers.some((l) => (l as { 'source-layer'?: string })['source-layer'] === 'poi')) {
-    map.addLayer({ id: 'uv-poi', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 16, filter: ['<=', ['get', 'rank'], 20],
-      layout: { 'icon-image': 'uv-dot', 'symbol-sort-key': ['get', 'rank'], 'icon-padding': 4, 'text-field': name, 'text-font': font, 'text-size': 11, 'text-offset': [0, 0.8], 'text-anchor': 'top', 'text-max-width': 8, 'text-optional': true, 'text-padding': 4 },
-      paint: { 'text-color': dark ? '#aeb6c0' : '#6b6f78', 'text-halo-color': halo, 'text-halo-width': 1.2 } });
+    const kinds = pinOfClass();
+    const byKind = (value: (id: (typeof kinds)[number][1]) => string, fallback: string): ExpressionSpecification =>
+      ['match', ['get', 'class'], ...kinds.flatMap(([classes, id]) => [classes, value(id)]), fallback] as unknown as ExpressionSpecification;
+    map.addLayer({ id: 'uv-poi', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 15.5, filter: ['<=', ['get', 'rank'], 20],
+      layout: { 'icon-image': byKind((id) => `uv-pin-${id}`, 'uv-pin-other'), 'icon-size': ['interpolate', ['linear'], ['zoom'], 15.5, 0.5, 18, 0.62], 'symbol-sort-key': ['get', 'rank'], 'icon-padding': ['interpolate', ['linear'], ['zoom'], 15.5, 10, 18, 4],
+        'text-field': shortName(17), 'text-font': font, 'text-size': 11.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [0.95, 0], 'text-max-width': 8, 'text-optional': true, 'text-padding': 3 },
+      paint: { 'text-color': byKind((id) => labelColor(id, dark), dark ? '#aeb6c0' : '#6b6f78'), 'text-halo-color': halo, 'text-halo-width': 1.5 } });
   }
   // The chosen place: a ring under its pin.
   map.addLayer({ id: 'uv-sel', type: 'circle', source: 'uv-sel', paint: { 'circle-radius': 22, 'circle-color': 'rgba(14,165,233,0.22)', 'circle-stroke-color': ACCENT, 'circle-stroke-width': 3, 'circle-pitch-alignment': 'map' } });
@@ -89,7 +98,7 @@ export function addLayers(map: MLMap, dark: boolean) {
   map.addLayer({ id: 'uv-hit', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 12, filter: NOTHING,
     layout: { 'icon-image': 'uv-pin-see', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.62, 15, 0.85, 17, 1], 'icon-padding': ['interpolate', ['linear'], ['zoom'], 12, 14, 15, 7, 17, 3], 'symbol-sort-key': ['get', 'rank'],
       // Apple Maps' way (M233): the name beside the pin, bold, in the pin's colour (showClasses sets it).
-      'text-field': ['step', ['zoom'], '', 14, name], 'text-font': bold, 'text-size': 12.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.15, 0], 'text-max-width': 9, 'text-optional': true, 'text-padding': 3 },
+      'text-field': ['step', ['zoom'], '', 14, short, 16.5, name], 'text-font': bold, 'text-size': 12.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.15, 0], 'text-max-width': 9, 'text-optional': true, 'text-padding': 3 },
     paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.8 } });
   // UniVerse's reviews: a star pin with the average beside it, always shown.
   map.addLayer({ id: 'uv-reviews', type: 'symbol', source: 'uv-reviews', layout: { 'icon-image': 'uv-pin-review', 'icon-size': 0.9, 'icon-allow-overlap': true, 'text-field': ['get', 'label'], 'text-font': font, 'text-size': 11, 'text-offset': [1.3, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
