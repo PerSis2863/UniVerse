@@ -8433,3 +8433,45 @@ so this checks the plan's times instead.
   first time and kept in `travel_trips.chatId` (database update **0235**); each later open makes its people the trip's
   again (who joined added, who left or was removed taken out) and refreshes their chat lists. Messages does the rest
   (live, calls, files).
+
+## M259: the world's destinations on Travel's map, and more map features (17 Nov)
+
+The owner, 17 Nov: "add all the destinations and upgrade the map and add more features in it and make it ultra smooth";
+asked what "all" meant, they chose both (every town on the map now, and a bigger hand-picked list) and all four features
+offered (destinations layer, a trip on the map, search this area plus saved places, smoother).
+
+- **Every town on the map** (`src/components/travel/map/map-world.ts`): `public/geo/destinations.json` (24,362 towns and
+  cities of 15,000+ people and every capital, GeoNames CC BY 4.0 via all-the-cities 3.1.0, credited in the map's credits;
+  ~350 kB gzipped, fetched once, only when the layer shows) as white dots with names (`uv-dest-city` ≥300k from the
+  globe, `uv-dest-town` from zoom 5.5), biggest first, below zoom 10.5; the base map's `city-names` and `town-names`
+  step aside while it shows (`showWorld`). The hand-picked places are round **photo pins** (`uv-ideas`, placed first):
+  the map's `styleimagemissing` asks for `uv-photo-<i>|<commons path>`, a placeholder goes in at once and the 120 px
+  Commons thumbnail replaces it (`updateImage`; upload.wikimedia.org allows the canvas). The Commons folder (MD5) of each
+  photo is in the same file. **Re-run `npx tsx scripts/gen-destinations.mts <all-the-cities folder>` after adding places
+  or changing photos** (instructions in the script).
+- **Tap a destination** (`DestCard.tsx`): its photo and line (hand-picked), country, the time there, people, this month's
+  weather, Open the guide, Explore the streets (glides to zoom 14.5), Directions, Start a trip here; the map glides over
+  to it. Zoomed out, the panel lists the hand-picked places on the side of the globe facing you, nearest first.
+- **A first visit opens on the globe** (`HOME`), no longer Lisbon; a kept view or `?at=` still wins.
+- **160 more hand-picked places** (375; rows at the end of `ROWS` in `travel-ideas.ts`): positions from GeoNames or by
+  hand into `travel-places.json`. **[next session with Wikimedia access]** they have no photo, banner or climate yet (this
+  machine can't reach Wikivoyage): run `NODE_USE_ENV_PROXY=1 npx tsx scripts/gen-travel-data.mts --places` then
+  `--photos`, check the new photos by eye, then `gen-destinations.mts` again. Until then their cards show the soft
+  gradient and "Find where to go" ranks them without weather. Lake District had no position (its guide title is a
+  disambiguation page): set by hand.
+- **A trip on the map:** Layers → "A trip on the map" (your trips): the way through its cities (dashed sky line,
+  numbered), its places in their day's colour (`DAY_COLORS`, the day counted across the whole trip from `stopDates`),
+  framed clear of the panel; a chip on top with the trip's name (opens it), All / Day n, close. Tapping a city zooms in;
+  a place opens its card. From `GET /travel/trips/:id` (no new route).
+- **Saved places as hearts** (Layers → "My saved places", on by default; `GET /travel/saved`), a heart's card is the
+  place card.
+- **Search this area:** the panel's filter box (from zoom 12) also searches: Search or Enter asks Nominatim
+  (`areaSearchUrl`, `bounded=1` to the view, one search a press as its rules ask; already in `connect-src`) and lists what
+  it found with blue search pins (`foundOf`); after moving the map a "Search this area" pill searches again.
+- **Smoother:** the compass turned from the map's `rotate` event straight on the icon (it re-rendered the whole map
+  component every frame of a turn); `refreshExpiredTiles: false`, more tile zooms cached, pending tiles cancelled while
+  zooming; glides share one ease-in-out curve; denser places spaced wider.
+- **Checked:** `map-world.test.ts` (a trip's features and days, destinations, Nominatim's answer), a browser run on
+  `local:dev` (OpenFreeMap and Wikimedia answered locally): the globe with towns and photo pins, a card, search this
+  area and the pill after moving, a trip with its days, axe clean at 1280 dark and 390 light, no page errors.
+  **Not seen live:** real Commons thumbnails in the pins and real map tiles under them: look once merged.

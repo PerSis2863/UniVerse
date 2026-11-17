@@ -1,6 +1,7 @@
 import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
 import { sunPosition } from '@/lib/travel-local';
 import { mapStyle } from './map-style';
+import { addWorldLayers } from './map-world';
 import { labelColor, pinOfClass } from './pins';
 
 // The layers UniVerse adds to Travel's map (M209) on top of OpenFreeMap's style: 3D buildings and places
@@ -133,6 +134,8 @@ export function addLayers(map: MLMap, dark: boolean) {
     layout: { 'text-field': ['get', 'label'], 'text-font': bold, 'text-size': 16, 'icon-image': 'uv-bubble', 'icon-text-fit': 'both', 'icon-text-fit-padding': [4, 9, 4, 9], 'icon-allow-overlap': true, 'text-allow-overlap': true, 'text-anchor': 'bottom', 'text-offset': [0, -0.7] },
     paint: { 'text-color': '#ffffff' } });
   map.addLayer({ id: 'uv-me-dot', type: 'circle', source: 'uv-me', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
+  // M259: the world's destinations, a trip, saved places and what "Search this area" found, under the routes.
+  addWorldLayers(map, dark, font, bold);
   // The globe when zoomed out (flat close in, as MapLibre does by itself).
   map.setProjection({ type: 'globe' });
 }

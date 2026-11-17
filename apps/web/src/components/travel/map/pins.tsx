@@ -1,6 +1,6 @@
 'use client';
 
-import { BedDouble, BookOpen, Coffee, Cross, GraduationCap, Landmark, MapPin, Palette, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
+import { BedDouble, BookOpen, Coffee, Cross, GraduationCap, Heart, Landmark, MapPin, Palette, Search, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
 import type { Map as MLMap } from 'maplibre-gl';
 import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
 
@@ -9,7 +9,7 @@ import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
 // screen's size so it stays sharp, and placed by the map without overlapping (the notable ones first).
 // The icons are the app's own (lucide), read from hidden SVGs this component renders.
 
-export const PINS: Record<CategoryId | 'story' | 'review' | 'health' | 'learn' | 'other', { icon: LucideIcon; color: string }> = {
+export const PINS: Record<CategoryId | 'story' | 'review' | 'health' | 'learn' | 'other' | 'saved' | 'found', { icon: LucideIcon; color: string }> = {
   see: { icon: Landmark, color: '#e11d48' },
   eat: { icon: Utensils, color: '#ea580c' },
   cafe: { icon: Coffee, color: '#a16207' },
@@ -25,6 +25,9 @@ export const PINS: Record<CategoryId | 'story' | 'review' | 'health' | 'learn' |
   health: { icon: Cross, color: '#dc2626' },
   learn: { icon: GraduationCap, color: '#8b6b3d' },
   other: { icon: MapPin, color: '#6b7280' },
+  // M259: your saved places (hearts) and what "Search this area" found.
+  saved: { icon: Heart, color: '#e11d48' },
+  found: { icon: Search, color: '#1f87ff' },
 };
 export type PinId = keyof typeof PINS;
 /** Which pin a map place of this class takes: its kind's (museums their own), health, learning, else a grey one. */

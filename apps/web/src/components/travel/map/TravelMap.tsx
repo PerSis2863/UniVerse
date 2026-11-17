@@ -5,7 +5,9 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Camera, Compass, Footprints, Info, Layers, LocateFixed, Maximize2, Minimize2, Minus, Navigation, Plus, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BookOpen, Box, Camera, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import Link from '@/components/ui/Link';
+import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useDarkMode } from '@/lib/use-dark';
@@ -14,6 +16,8 @@ import { bubbleAt, CATEGORIES, classesOf, kindOf, listingKind, routeOf, routeUrl
 import { osmKey, type Photo, type Story } from '@/lib/travel-place';
 import { clockText, localClock, sunTimes, zoneAt } from '@/lib/travel-local';
 import { km } from '@/lib/travel-plan';
+import { IDEAS } from '@/lib/travel-ideas';
+import type { Saved } from '../travel-ui';
 import { cn } from '@/lib/utils';
 import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
@@ -22,6 +26,8 @@ import { mapRequest } from './map-style';
 import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
 import { PlaceCard, type Picked } from './PlaceCard';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
+import { DestCard } from './DestCard';
+import { areaSearchUrl, DAY_COLORS, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
@@ -41,8 +47,9 @@ import { TripPicker } from './TripPicker';
 type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: number; e: number };
 /** M233: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
 type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
-const KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 38.7139, lon: -9.1394, zoom: 14 };
-const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false };
+// M259: a first visit opens on the globe with the world's destinations (Lisbon before).
+const KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
+const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false, world: true, saved: true };
 type Show = typeof SHOW;
 /** The layers chosen last time on this device. */
 function shownBefore(): Show {
@@ -61,7 +68,7 @@ const ctl = 'flex h-11 w-11 items-center justify-center text-zinc-800 transition
 function startAt(at: string | null) {
   const m = at ? /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,(\d+(?:\.\d+)?))?$/.exec(at) : null;
   if (m) return { lat: Number(m[1]), lon: Number(m[2]), zoom: Number(m[3] ?? 15) };
-  try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); if (v && Number.isFinite(v.lat) && Number.isFinite(v.lon)) return { lat: v.lat, lon: v.lon, zoom: Math.min(18, Math.max(3, v.zoom ?? 14)) }; } catch { /* private mode */ }
+  try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); if (v && Number.isFinite(v.lat) && Number.isFinite(v.lon)) return { lat: v.lat, lon: v.lon, zoom: Math.min(18, Math.max(1, v.zoom ?? 14)) }; } catch { /* private mode */ }
   return HOME;
 }
 
@@ -81,6 +88,9 @@ function drawWalk(m: MLMap, w: Walk | null) {
     { type: 'Feature', geometry: { type: 'Point', coordinates: bubbleAt(path, [w.start, ...w.stops]) }, properties: { role: 'time', label: `${w.stops.reduce((t, s) => t + s.walk, 0)} min` } },
   ] });
 }
+/** Room around what's framed, clear of the panel (beside it on a computer, the sheet under it on a phone). */
+const clearOfPanel = (m: MLMap) => (m.getContainer().clientWidth >= 640 ? { top: 90, bottom: 60, left: 420, right: 80 } : { top: 110, bottom: 300, left: 40, right: 70 });
+const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, number, number] | null }) {
   if (to.box && Math.abs(to.box[2] - to.box[0]) > 0.01) m.fitBounds([[to.box[0], to.box[1]], [to.box[2], to.box[3]]], { padding: 40, maxZoom: 15, duration: calm() ? 0 : 1800 });
   else m.flyTo({ center: [to.lon, to.lat], zoom: 15, duration: calm() ? 0 : 1800, essential: true });
@@ -102,7 +112,6 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const routeAbort = useRef<AbortController | null>(null);
   const walking = !!walk;
   const [shift, setShift] = useState(0); // half hours from now
-  const [bearing, setBearing] = useState(0);
   const [open, setOpen] = useState(false); // the panel on a phone
   const [credits, setCredits] = useState(false); // the full map credits shown
   const [full, setFull] = useState(false); // M236: the map over the whole window
@@ -112,6 +121,14 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const [here, setHere] = useState<{ lat: number; lon: number; x: number; y: number } | null>(null);
   const [measure, setMeasure] = useState<{ lat: number; lon: number }[] | null>(null);
   const pinned = useRef(false);
+  const compass = useRef<SVGSVGElement>(null); // M259: turned straight from the map's rotate event, not through React (60 renders a second)
+  // M259: the world's destinations, a trip on the map, saved places and "Search this area".
+  const [dest, setDest] = useState<Dest | null>(null);
+  const [worldIn, setWorldIn] = useState(false); // the destinations file has arrived (lists show its pictures)
+  const [tripId, setTripId] = useState<string | null>(null);
+  const [tripDay, setTripDay] = useState<number | null>(null);
+  const [found, setFound] = useState<{ q: string; at: string; places: Found[] } | null>(null);
+  const [seeking, setSeeking] = useState(false);
   const applied = useRef<StyleSpecification | null>(null); // the design the map has
 
   // Data for what's in view (rounded, so small moves reuse the answer).
@@ -121,6 +138,24 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const box4 = view && view.zoom >= 11 ? `s=${view.s.toFixed(3)}&w=${view.w.toFixed(3)}&n=${view.n.toFixed(3)}&e=${view.e.toFixed(3)}` : null;
   const { data: reviewed } = useSWR<{ places: { place: string; name: string; lat: number; lon: number; average: number; count: number }[] }>(show.reviews && box4 ? `/travel/reviews/near?${box4}` : null, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
 
+  const { data: savedData } = useSWR<{ saved: Saved[] }>(show.saved ? '/travel/saved' : null, fetcher, { revalidateOnFocus: false });
+  const { data: tripList } = useSWR<{ trips: { id: string; name: string; cities: string[] }[] }>(layers || tripId ? '/travel/trips' : null, fetcher, { revalidateOnFocus: false });
+  const { data: tripData } = useSWR<{ trip: { name: string; startDate: string | null }; stops: TripMap['stops']; items: TripMap['items'] }>(tripId ? `/travel/trips/${tripId}` : null, fetcher, { revalidateOnFocus: false });
+  const tripMap = useMemo<TripMap | null>(() => (tripData ? { stops: tripData.stops, items: tripData.items, startDate: tripData.trip.startDate } : null), [tripData]);
+  const tripFc = useMemo(() => tripFeatures(tripMap, tripDay), [tripMap, tripDay]);
+  const tripDays = useMemo(() => tripDaysOn(tripMap), [tripMap]);
+  const savedList = useMemo(() => (show.saved ? savedData?.saved ?? [] : []).filter((x) => x.lat != null && x.lon != null), [show.saved, savedData]);
+  const savedFc = useMemo(() => points(savedList.map((x, i) => ({ lat: x.lat!, lon: x.lon!, props: { i, n: x.name } }))), [savedList]);
+  const foundFc = useMemo(() => points((found?.places ?? []).map((f, i) => ({ lat: f.lat, lon: f.lon, props: { i, n: f.name } }))), [found]);
+  // Zoomed out: the hand-picked places in view (the panel's list there).
+  const destList = useMemo(() => {
+    if (!show.world || !view || view.zoom >= WORLD_ZOOM) return [];
+    const inLon = (lon: number) => (view.w <= view.e ? lon >= view.w && lon <= view.e : lon >= view.w || lon <= view.e);
+    // The nearest the middle first; on the globe only the side facing you (the box there spans the world).
+    const far = view.zoom < 4 ? 7000 : Infinity;
+    return IDEAS.flatMap((i) => (i.lat != null && i.lon != null && i.lat >= view.s && i.lat <= view.n && inLon(i.lon) ? [{ i, d: km(view, { lat: i.lat, lon: i.lon }) ?? 0 }] : []))
+      .filter((x) => x.d < far).sort((a, z) => a.d - z.d).slice(0, 40).map((x) => x.i);
+  }, [show.world, view]);
   const storyList = useMemo(() => (show.stories ? stories?.stories ?? [] : []), [show.stories, stories]);
   const reviewFc = useMemo(() => points((show.reviews ? reviewed?.places ?? [] : []).map((r) => ({ lat: r.lat, lon: r.lon, props: { place: r.place, name: r.name, label: `${r.average}★` } }))), [show.reviews, reviewed]);
   const when = useMemo(() => new Date((now || 0) + shift * 1_800_000), [now, shift]);
@@ -158,6 +193,11 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     if (me.current) setData(m, 'uv-me', me.current);
     setData(m, 'uv-route', routeFeatures(dir, routes));
     setData(m, 'uv-measure', measureFeatures(measure));
+    showWorld(m, show.world);
+    if (show.world) void loadWorld().then((w) => { setWorld(m, 'uv-dest', w.dest); setWorld(m, 'uv-ideas', w.ideas); }).catch(() => {});
+    setWorld(m, 'uv-saved', savedFc);
+    setWorld(m, 'uv-trip', tripFc);
+    setWorld(m, 'uv-found', foundFc);
     setReady(true);
   });
   const onPick = useEffectEvent((p: Picked) => pick(p));
@@ -171,6 +211,19 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const alt = dir && hits.find((f) => f.layer.id === 'uv-route-alt');
     if (alt && dir) { setDir({ ...dir, chosen: Number(alt.properties.i) || 0 }); return; }
     if (show.street && hits.some((f) => f.layer.id === 'uv-street') && !hits.some((f) => f.layer.id === 'uv-stories' || f.layer.id === 'uv-reviews')) { void lookAround(lat, lon); return; }
+    // M259: your own pins first (they sit on top), then a trip's city, then the world's destinations.
+    const mine = hits.find((f) => f.layer.id === 'uv-found' || f.layer.id === 'uv-saved' || f.layer.id === 'uv-trip-item');
+    if (mine) {
+      const [lon2, lat2] = (mine.geometry as GeoJSON.Point).coordinates, i = Number(mine.properties.i);
+      const f = mine.layer.id === 'uv-found' ? found?.places[i] : undefined;
+      if (f) pick({ type: 'place', key: f.key, name: f.name, kind: kindOf(f.cls, f.sub), cls: f.sub, lat: f.lat, lon: f.lon });
+      else pick({ type: 'place', key: null, name: String(mine.properties.n), kind: mine.layer.id === 'uv-saved' ? 'One of your saved places' : `On your trip · ${mine.properties.label}`, lat: lat2, lon: lon2 });
+      return;
+    }
+    const stop = hits.find((f) => f.layer.id === 'uv-trip-stop');
+    if (stop) { const [lon2, lat2] = (stop.geometry as GeoJSON.Point).coordinates; m.flyTo({ center: [lon2, lat2], zoom: Math.max(m.getZoom(), 12.5), duration: calm() ? 0 : 1400, essential: true, easing: ease }); return; }
+    const place = hits.find((f) => f.layer.id === 'uv-ideas' || f.layer.id === 'uv-dest-city' || f.layer.id === 'uv-dest-town');
+    if (place) { const [lon2, lat2] = (place.geometry as GeoJSON.Point).coordinates; openDest(destOf(place.properties, lat2, lon2)); return; }
     const story = hits.find((f) => f.layer.id === 'uv-stories'), rev = hits.find((f) => f.layer.id === 'uv-reviews' || f.layer.id === 'uv-reviews-stars');
     const poi = hits.find((f) => f.sourceLayer === 'poi' && (f.properties.name || f.properties.name_en));
     if (story) { const st = storyList[Number(story.properties.i)]; if (st) pick({ type: 'story', story: st }); }
@@ -194,6 +247,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       map = new ml.Map({
         container: box.current, style, center: [s.lon, s.lat], zoom: s.zoom, pitch: 0, maxPitch: 75,
         transformRequest: mapRequest, attributionControl: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), fadeDuration: 150, maplibreLogo: false,
+        // M259: smoother on every device: no second fetch of tiles that only aged, more tiles kept while moving about.
+        refreshExpiredTiles: false, maxTileCacheZoomLevels: 6, cancelPendingTileRequestsWhileZooming: true,
       });
       mapRef.current = map;
       const read = () => {
@@ -204,7 +259,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       map.on('style.load', () => onStyle(map!));
       map.on('moveend', read);
       map.on('load', read);
-      map.on('rotate', () => setBearing(map!.getBearing()));
+      map.on('rotate', () => { if (compass.current) compass.current.style.transform = `rotate(${-map!.getBearing() - 45}deg)`; });
+      watchPhotos(map);
       map.on('idle', () => readList(map!));
       // M236: the first 'idle' could pass before the list was listening for it (the list stayed empty until the map
       // was moved): also read it once the places' tiles have loaded, a moment after the last one.
@@ -220,7 +276,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       map.on('touchstart', (e) => { clearTimeout(hold); if (e.originalEvent.touches.length === 1) hold = setTimeout(() => onHere(e.lngLat.lat, e.lngLat.lng, e.point.x, e.point.y), 550); });
       for (const ev of ['touchend', 'touchmove', 'movestart'] as const) map.on(ev, () => clearTimeout(hold));
       map.on('movestart', (e) => { if ((e as { originalEvent?: Event }).originalEvent) onMoved(); });
-      for (const id of ['uv-stories', 'uv-reviews', 'uv-street', 'uv-hit']) {
+      for (const id of ['uv-stories', 'uv-reviews', 'uv-street', 'uv-hit', ...WORLD_LAYERS]) {
         map.on('mouseenter', id, () => { map!.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', id, () => { map!.getCanvas().style.cursor = ''; });
       }
@@ -253,6 +309,26 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     requestAnimationFrame(() => setHere({ lat: c.lat, lon: c.lng, x: at2.x, y: at2.y }));
   }, [ready, pin]);
   useEffect(() => { const m = mapRef.current; if (m && ready) { showClasses(m, classesOf(cat), `uv-pin-${cat}`, labelColor(cat, dark)); readList(m); } }, [cat, ready, dark]);
+  // M259: the world's destinations (loaded the first time they show), your saved places, a trip, what was found.
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !ready) return;
+    showWorld(m, show.world);
+    if (!show.world) return;
+    let gone = false;
+    loadWorld().then((w) => { const m2 = mapRef.current; if (gone || !m2) return; setWorld(m2, 'uv-dest', w.dest); setWorld(m2, 'uv-ideas', w.ideas); setWorldIn(true); })
+      .catch(() => { if (!gone) toast.error('The world’s destinations couldn’t load: try again in a moment.'); });
+    return () => { gone = true; };
+  }, [show.world, ready]);
+  useEffect(() => { const m = mapRef.current; if (m && ready) setWorld(m, 'uv-saved', savedFc); }, [savedFc, ready]);
+  useEffect(() => { const m = mapRef.current; if (m && ready) setWorld(m, 'uv-found', foundFc); }, [foundFc, ready]);
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !ready) return;
+    setWorld(m, 'uv-trip', tripFc);
+    const b = tripBox(tripFc); // the trip (or the day chosen) framed, clear of the panel
+    if (b) m.fitBounds(b, { padding: clearOfPanel(m), maxZoom: 14, duration: calm() ? 0 : 1400, easing: ease });
+  }, [tripFc, ready]);
   // Where the sun is, for the hour chosen, lights the buildings.
   useEffect(() => { const m = mapRef.current; if (m && ready && view) skyFor(m, sunlight(m, view.lat, view.lon, when).altitude, dark); }, [ready, view, when, dark]);
   // Wikipedia's stories and UniVerse's reviews on the map.
@@ -302,8 +378,33 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(place)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => {});
   }, [place, ready]);
 
+  /** M259: a destination tapped: its card, and a glide over to it (a city's streets come into view). */
+  function openDest(d: Dest) {
+    setPicked(null); setDir(null); endWalk(); setDest(d); setOpen(true);
+    const m = mapRef.current;
+    if (!m) return;
+    drawPicked(m, null);
+    const to = Math.max(m.getZoom(), d.idea ? 8.5 : 10), offset: [number, number] = window.innerWidth >= 640 ? [190, 0] : [0, -140];
+    if (calm()) m.jumpTo({ center: [d.lon, d.lat], zoom: to });
+    else m.flyTo({ center: [d.lon, d.lat], zoom: to, offset, speed: 1.1, curve: 1.42, maxDuration: 2600, essential: true, easing: ease });
+  }
+  /** M259: "Search this area": what OpenStreetMap knows by that name in the map's view (one search a press). */
+  async function searchArea(q: string) {
+    const m = mapRef.current, t = q.trim().slice(0, 80);
+    if (!m || t.length < 2 || seeking) return;
+    const b = m.getBounds(), c = m.getCenter();
+    setSeeking(true);
+    try {
+      const res = await fetch(areaSearchUrl(t, { s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() }));
+      const places = res.ok ? foundOf(await res.json()) : [];
+      setFound({ q: t, at: `${c.lat.toFixed(3)},${c.lng.toFixed(3)},${m.getZoom().toFixed(1)}`, places });
+      setFilter(''); pick(null); setOpen(true);
+      if (!places.length) toast(`Nothing called “${t}” in view: move the map or zoom out a little.`);
+    } catch { toast.error('Couldn’t search just now.'); } finally { setSeeking(false); }
+  }
   function pick(p: Picked | null) {
     setPicked(p);
+    setDest(null);
     if (p) setOpen(true);
     const m = mapRef.current;
     if (!m) return;
@@ -315,7 +416,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       const offset: [number, number] = window.innerWidth >= 640 ? [190, 40] : [0, -140];
       if (calm()) m.jumpTo({ center: [at2.lon, at2.lat], zoom: to });
       else if (to - z < 0.5) m.easeTo({ center: [at2.lon, at2.lat], offset, duration: 650, easing: (t) => 1 - Math.pow(1 - t, 3) });
-      else m.flyTo({ center: [at2.lon, at2.lat], zoom: to, pitch: show.d3 ? 58 : 0, offset, speed: 0.9, curve: 1.3, maxDuration: 1600, essential: true, easing: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2) });
+      else m.flyTo({ center: [at2.lon, at2.lat], zoom: to, pitch: show.d3 ? 58 : 0, offset, speed: 0.9, curve: 1.3, maxDuration: 1600, essential: true, easing: ease });
     }
   }
   const findMe = () => navigator.geolocation?.getCurrentPosition((p) => {
@@ -380,7 +481,9 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const shown = filter.trim() ? list.filter((p) => fold(p.name).includes(fold(filter.trim()))) : list;
 
   const startClock = clockText(zone, when), sunTxt = sun ? `Sunrise ${clockText(zone, sun.rise)} · golden hour ${clockText(zone, sun.goldenEvening)} · sunset ${clockText(zone, sun.set)}` : 'No sunrise or sunset today';
-  const panelTitle = picked ? null : walk ? `A ${Math.round(walk.total / 6) / 10} h walk` : `${CATEGORIES.find((c) => c.id === cat)!.label} here`;
+  const dests = !walk && !found && show.world && !!view && view.zoom < WORLD_ZOOM; // zoomed out: the destinations in view
+  const panelTitle = picked ? null : walk ? `A ${Math.round(walk.total / 6) / 10} h walk` : found ? `“${found.q}” in this area` : dests ? 'Destinations in view' : `${CATEGORIES.find((c) => c.id === cat)!.label} here`;
+  const moved = !!found && !!view && found.at !== `${view.lat.toFixed(3)},${view.lon.toFixed(3)},${view.zoom.toFixed(1)}`;
   return (
     <div className={cn('overflow-hidden bg-zinc-200 dark:bg-zinc-900', full ? 'fixed inset-0 z-[70]' : 'relative h-[calc(100dvh-12rem)] min-h-[32rem] rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10 sm:-mx-8 sm:-mb-8 sm:h-[calc(100dvh-9.25rem)] sm:rounded-none sm:ring-0')}
       data-no-arrange data-no-motion onKeyDown={(e) => { if (e.key === 'Escape' && full) setFull(false); }}>
@@ -398,12 +501,37 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
         </div>
         <button type="button" className={cn(group, ctl)} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
         <div className={cn(group, 'flex-col divide-y divide-zinc-200 dark:divide-white/10')}>
-          <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass className="h-5 w-5 transition-transform" style={{ transform: `rotate(${-bearing - 45}deg)` }} aria-hidden /></button>
+          <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass ref={compass} className="h-5 w-5" style={{ transform: 'rotate(-45deg)' }} aria-hidden /></button>
           <button type="button" className={cn(ctl, measure && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Measure distance" aria-pressed={!!measure} onClick={() => { setHere(null); setMeasure((x) => (x ? null : [])); }}><Ruler className="h-5 w-5" aria-hidden /></button>
           <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
           <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
         </div>
       </div>
+      {/* M259: a trip on the map (its days to pick from) and "Search this area" again once the map has moved. */}
+      {(tripId || moved) && (
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex flex-col items-center gap-2 px-16 sm:top-3 sm:ps-[25rem]">
+          {moved && found && (
+            <button type="button" disabled={seeking} onClick={() => void searchArea(found.q)} className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0b55c4] shadow-lg ring-1 ring-black/5 transition-transform duration-150 active:scale-95 dark:bg-[#1f232b] dark:text-[#8cc0ff] dark:ring-white/10">
+              {seeking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RotateCw className="h-4 w-4" aria-hidden />}Search this area
+            </button>
+          )}
+          {tripId && (
+            <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-2xl bg-white/95 py-1.5 pe-1.5 ps-3 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10">
+              <Luggage className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
+              <Link href={`/travel/trip?id=${tripId}`} className="max-w-[10rem] truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-white" translate="no">{tripData?.trip.name ?? 'Your trip'}</Link>
+              {tripDays.length > 0 && (
+                <div className="flex max-w-[50vw] gap-1 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Day of the trip">
+                  <button type="button" aria-pressed={tripDay == null} onClick={() => setTripDay(null)} className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', tripDay == null ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200')}>All</button>
+                  {tripDays.map((d) => (
+                    <button key={d} type="button" aria-pressed={tripDay === d} onClick={() => setTripDay(d)} className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', tripDay === d ? 'text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200')} style={tripDay === d ? { background: DAY_COLORS[(d - 1) % DAY_COLORS.length] } : undefined}>Day {d}</button>
+                  ))}
+                </div>
+              )}
+              <button type="button" onClick={() => { setTripId(null); setTripDay(null); }} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Hide the trip"><X className="h-4 w-4" aria-hidden /></button>
+            </div>
+          )}
+        </div>
+      )}
       {layers && (
         <div id="map-layers" role="dialog" aria-label="Map layers" onKeyDown={(e) => { if (e.key === 'Escape') setLayers(false); }}
           className="absolute end-16 top-3 z-40 w-[min(18rem,calc(100%-5.5rem))] origin-top-right rounded-2xl bg-[var(--card-bg)] p-3 shadow-2xl ring-1 ring-black/5 animate-[layers-in_180ms_var(--ease-out-soft)] motion-reduce:animate-none dark:ring-white/10 rtl:origin-top-left">
@@ -411,7 +539,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           <Segmented<'map' | 'sat'> label="Map" className="mb-3" value={show.satellite ? 'sat' : 'map'} onChange={(v) => setShow((x) => ({ ...x, satellite: v === 'sat' }))} segments={[{ value: 'map', label: 'Map' }, { value: 'sat', label: 'Satellite' }]} />
           {show.satellite && <p className="-mt-1 mb-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Pictures from the Sentinel-2 satellites: clear for cities, coasts and nature, soft close up.</p>}
           <ul className="space-y-0.5">
-            {([['d3', '3D hills and buildings', Box], ['transit', 'Trains, metro and ferries', TrainFront], ['street', 'Street photos (look around)', ScanEye], ['rings', 'Walking distance', Footprints], ['photos', 'Photos people took', Camera], ['stories', 'Stories of places', BookOpen], ['reviews', 'UniVerse reviews', Star]] as const).map(([k, label, Icon]) => (
+            {([['world', 'Destinations of the world', Globe2], ['saved', 'My saved places', Heart], ['d3', '3D hills and buildings', Box], ['transit', 'Trains, metro and ferries', TrainFront], ['street', 'Street photos (look around)', ScanEye], ['rings', 'Walking distance', Footprints], ['photos', 'Photos people took', Camera], ['stories', 'Stories of places', BookOpen], ['reviews', 'UniVerse reviews', Star]] as const).map(([k, label, Icon]) => (
               <li key={k}>
                 <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.06]">
                   <Icon className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
@@ -423,6 +551,14 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           </ul>
           {show.street && <p className="mt-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Zoom in close: orange lines are streets someone photographed. Tap one to look around.</p>}
           {show.rings && <p className="mt-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Rings around the middle of the map: 5, 10 and 15 minutes on foot.</p>}
+          {/* M259: one of your trips drawn on the map: its cities in order, its places by day. */}
+          <label className="mt-2 block border-t border-zinc-200/70 px-2 pt-3 dark:border-white/10">
+            <span className="mb-1 flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-100"><Luggage className="h-4 w-4 text-zinc-500 dark:text-zinc-400" aria-hidden />A trip on the map</span>
+            <select value={tripId ?? ''} onChange={(e) => { setTripId(e.target.value || null); setTripDay(null); }} className="w-full rounded-lg border border-zinc-200 bg-white px-2 py-1.5 text-sm text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100">
+              <option value="">None</option>
+              {(tripList?.trips ?? []).map((t) => <option key={t.id} value={t.id}>{t.name}{t.cities.length ? ` (${t.cities.slice(0, 3).join(', ')})` : ''}</option>)}
+            </select>
+          </label>
         </div>
       )}
 
@@ -430,7 +566,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           place, or a walk), the hour and the sun as a quiet footer. On a phone it is a sheet at the bottom with a grab
           handle (as Apple Maps on an iPhone): the search and kinds always, the rest when pulled up. */}
       <aside aria-label="Places" className="absolute inset-x-2 bottom-2 z-30 flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] bg-[var(--card-bg)] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-3 sm:max-h-none sm:w-[23rem]">
-        <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-1 pt-2 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
+        <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-2 pt-2.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
           <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
         </button>
         <div className="px-3 pb-2 sm:pt-3">
@@ -449,7 +585,10 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           </div>
         </div>
         <div className={cn('min-h-0 flex-1 flex-col border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
-          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} /> : dir ? <DirectionsCard d={dir} set={setDir} routes={routes} loading={routing} failed={noRoute} myPlace={myPlace} onClose={() => setDir(null)} /> : (
+          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} /> : dest ? (
+            <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
+              onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: window.innerWidth >= 640 ? [190, 0] : [0, -140], duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
+          ) : dir ? <DirectionsCard d={dir} set={setDir} routes={routes} loading={routing} failed={noRoute} myPlace={myPlace} onClose={() => setDir(null)} /> : (
             <>
               {walk ? (
                 // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.
@@ -463,8 +602,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                 </div>
               ) : (
               <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
-                {(
+                <h3 className="min-w-0 truncate font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
+                {found ? <button type="button" onClick={() => setFound(null)} className="btn-ghost btn-sm p-1" aria-label="Clear the search"><X className="h-4 w-4" aria-hidden /></button> : !dests && (
                   <span className="flex items-center gap-1">
                     <label className="sr-only" htmlFor="walk-for">How long a walk</label>
                     <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-lg border border-zinc-200 bg-white px-1.5 py-1 text-xs font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
@@ -475,12 +614,16 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                 )}
               </div>
               )}
-              {!walk && list.length > 6 && (
-                <label className="relative mb-2 block">
-                  <span className="sr-only">Filter these places</span>
-                  <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
-                  <input type="search" value={filter} onChange={(e) => setFilter(e.target.value.slice(0, 60))} placeholder={`Filter ${list.length} places in view…`} className="w-full rounded-xl border border-zinc-200 bg-white py-1.5 pe-3 ps-8 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
-                </label>
+              {/* M259: filter the places in view as you type; Search (or Enter) asks OpenStreetMap for anything by that name in view. */}
+              {!walk && !found && !dests && view && view.zoom >= 12 && (
+                <form className="mb-2 flex items-center gap-1.5" onSubmit={(e) => { e.preventDefault(); void searchArea(filter); }}>
+                  <label className="relative block min-w-0 flex-1">
+                    <span className="sr-only">Filter these places, or search this area</span>
+                    <Search className="pointer-events-none absolute start-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" aria-hidden />
+                    <input type="search" value={filter} onChange={(e) => setFilter(e.target.value.slice(0, 60))} placeholder={list.length > 6 ? `Filter ${list.length} places, or search here…` : 'Search this area: pizza, ATM, beach…'} className="w-full rounded-xl border border-zinc-200 bg-white py-1.5 pe-3 ps-8 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
+                  </label>
+                  {filter.trim().length >= 2 && <button type="submit" disabled={seeking} className="btn-secondary btn-sm inline-flex shrink-0 items-center gap-1">{seeking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Search className="h-4 w-4" aria-hidden />}Search</button>}
+                </form>
               )}
               <ol className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-2">
                 {walk ? walk.stops.map((s, i) => (
@@ -491,7 +634,27 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                       <span className="min-w-0"><span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{s.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{kindOf(s.cls, s.sub)} · at {clockText(zone, new Date(when.getTime() + s.at * 60_000))}, about {s.stay} min</span></span>
                     </button>
                   </li>
-                )) : shown.map((p) => (
+                )) : found ? found.places.map((f, i) => (
+                  <li key={f.key ?? `${f.name}-${i}`}>
+                    <button type="button" onClick={() => pick({ type: 'place', key: f.key, name: f.name, kind: kindOf(f.cls, f.sub), cls: f.sub, lat: f.lat, lon: f.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ring-2 ring-white shadow-sm dark:ring-zinc-900" style={{ background: PINS.found.color }} aria-hidden><Search className="h-4 w-4" /></span>
+                      <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-zinc-900 dark:text-white" translate="no">{f.name}</span><span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{kindOf(f.cls, f.sub)}{f.address ? ` · ${f.address}` : ''}</span></span>
+                      {view && <span className="shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{metres(km(view, f) ?? 0)}</span>}
+                    </button>
+                  </li>
+                )) : dests ? destList.map((d) => {
+                  const thumb = worldIn ? thumbOf(d.title) : null;
+                  return (
+                    <li key={d.title}>
+                      <button type="button" onClick={() => openDest({ name: d.title.replace(/ \(.*\)$/, ''), cc: d.cc, lat: d.lat!, lon: d.lon!, pop: 0, idea: d })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                        <span className="h-11 w-11 shrink-0 overflow-hidden rounded-full bg-gradient-to-br from-sky-300 to-sky-600 ring-2 ring-white shadow-sm dark:ring-zinc-900" aria-hidden>
+                          {thumb && <Pic src={thumb} shown={44} loading="lazy" className="h-full w-full object-cover" />}
+                        </span>
+                        <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-zinc-900 dark:text-white" translate="no">{d.title.replace(/ \(.*\)$/, '')}</span><span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{d.country} · {d.blurb}</span></span>
+                      </button>
+                    </li>
+                  );
+                }) : shown.map((p) => (
                   <li key={p.key}>
                     <button type="button" onClick={() => pick({ type: 'place', key: /^[NWR]\d+$/.test(p.key) ? p.key : null, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.cls, lat: p.lat, lon: p.lon })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2.5 text-start transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ring-2 ring-white shadow-sm dark:ring-zinc-900" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-4 w-4" />; })()}</span>
@@ -500,7 +663,14 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                     </button>
                   </li>
                 ))}
-                {!walk && !shown.length && (
+                {dests && !destList.length && (
+                  <li className="flex flex-col items-center px-4 py-8 text-center">
+                    <Globe2 className="mb-3 h-10 w-10 text-sky-500" aria-hidden />
+                    <span className="font-semibold text-zinc-900 dark:text-white">No hand-picked places here</span>
+                    <span className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Tap any town on the map for its guide, or zoom out.</span>
+                  </li>
+                )}
+                {!walk && !found && !dests && !shown.length && (
                   <li className="flex flex-col items-center px-4 py-8 text-center">
                     <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full text-white opacity-90" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-6 w-6" />; })()}</span>
                     <span className="font-semibold text-zinc-900 dark:text-white">{list.length ? 'No match' : view && view.zoom < 12 ? 'Zoom in a little' : `No ${CATEGORIES.find((c) => c.id === cat)!.label.toLowerCase()} in view`}</span>
@@ -540,7 +710,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       <div className="absolute start-2 top-2 z-10 max-w-[calc(100%-5rem)] sm:bottom-1 sm:end-1 sm:start-auto sm:top-auto">
         {credits ? (
           <p className="relative rounded-lg bg-white/90 px-2 py-1 pe-7 text-[11px] leading-snug text-zinc-600 shadow-sm dark:bg-black/70 dark:text-zinc-300">
-            Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
+            Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{show.world && <> · Destinations <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" className="underline">GeoNames</a> (CC BY 4.0), photos Wikimedia Commons</>}{found && <> · Search <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a></>}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
             <button type="button" onClick={() => setCredits(false)} className="absolute end-1 top-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10" aria-label="Hide the map credits"><X className="h-3.5 w-3.5" aria-hidden /></button>
           </p>
         ) : (
