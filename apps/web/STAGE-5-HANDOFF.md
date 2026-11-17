@@ -8534,3 +8534,23 @@ the launch pause).
   once merged.
 - **Left out on purpose:** live traffic (needs a paid service), lane guidance (the free router has no lanes), speed limits,
   a live-moving shared arrival link (it would need the server to hold your position: the shared message has the time).
+
+## M261: security updates (17 Nov)
+
+The owner, 17 Nov: "run the next js security upgrade now and whatever else is there" (after `next dev` printed Next.js's
+security notice).
+
+- **Before:** `pnpm audit` found 8: Next.js 16.4.4 (moderate: a `'use cache'` function called through `unstable_cache()`
+  could show one root param's data under another; fixed in 16.4.5), and in the tools that only run on a developer's
+  machine: Vitest 3.2.4 and its `@vitest/mocker` (critical, moderate: its UI server and mock redirects could read files),
+  Tinypool (critical: prototype pollution to code execution) and Zod inside eslint-plugin-react-hooks (high: memory on
+  oversized input).
+- **Now:** `next` and `eslint-config-next` 16.4.5 (3 Nov: two weeks old, the rule's minimum), `@opennextjs/cloudflare`
+  1.20.16 (3 Nov; pinned exactly, moved with Next as M77 asks; 1.20.17 of 12 Nov is too new), `vitest` 4.1.12 (15 Oct; 5.x
+  would be a bigger jump for nothing), root overrides `zod@<4.6.6` → 4.6.7 and `tinypool@<2.1.2` → 2.2.0. `pnpm audit`: no
+  known vulnerabilities. Vitest 4 needed no change to `vitest.config.ts` or any test.
+- **Checked:** `pnpm check` (1,764 tests), `pnpm local:build` (6.1 minutes, server code 52.7 of 64 MB). The page code
+  itself is unchanged.
+- **The 160 places' photos and weather (M259, M260):** the owner's cloud environment **"UniVerse"** already allows
+  Wikivoyage, Wikidata, Commons, upload.wikimedia.org, Wikipedia and NASA POWER. A session started in that environment
+  (not "Default") can run M259's three commands; this session could not switch to it.
