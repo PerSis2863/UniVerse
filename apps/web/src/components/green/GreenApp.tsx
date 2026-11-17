@@ -138,7 +138,7 @@ export function GreenApp() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #111113 100%)' }}>
-        <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
+        <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-300/30"><Leaf className="w-3.5 h-3.5" aria-hidden />Your impact</span>

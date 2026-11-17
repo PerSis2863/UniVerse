@@ -54,24 +54,35 @@ export function rings(ctx: CanvasRenderingContext2D, x: number, y: number, r: nu
     ctx.beginPath(); ctx.arc(x, y, r + ph * reach, 0, Math.PI * 2); ctx.stroke();
   }
 }
+/** The still part of a marker (halo, disc, shadow, ring, icon), drawn once per look, icon, theme and size, then stamped
+ *  every frame with drawImage: a canvas shadow per marker per frame is what makes a busy map stutter. */
+const stamps = new Map<string, HTMLCanvasElement>();
+function stamp(look: Look, icons: Icons, icon: string, accent: string, dark: boolean, s: number) {
+  const img = icons.get(`${icon}:${look === 'ink' ? (dark ? 'ink' : 'white') : look === 'hot' ? 'white' : look === 'risk' ? 'accent' : dark ? 'white' : 'muted'}`);
+  const key = `${look}|${icon}|${accent}|${dark}|${s}|${img ? 1 : 0}`;
+  const had = stamps.get(key);
+  if (had) return had;
+  const r = (look === 'hot' ? 15 : look === 'plain' ? 10.5 : 13) * s, halo = look === 'hot' ? 13 : look === 'risk' ? 10 : 0, half = Math.ceil(r + halo * s + 6);
+  const c = document.createElement('canvas'); c.width = c.height = half * 2 * PX;
+  const ctx = c.getContext('2d')!; ctx.scale(PX, PX);
+  const x = half, y = half;
+  if (halo) { ctx.fillStyle = alpha(accent, look === 'hot' ? 0.2 : 0.16); ctx.beginPath(); ctx.arc(x, y, r + halo * s, 0, Math.PI * 2); ctx.fill(); }
+  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.28)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
+  ctx.fillStyle = look === 'ink' ? (dark ? '#f4f4f5' : '#18181b') : look === 'hot' ? accent : dark ? '#26282e' : '#ffffff';
+  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  if (look === 'risk' || look === 'hot') { ctx.strokeStyle = look === 'hot' ? '#ffffff' : accent; ctx.lineWidth = look === 'hot' ? 3 : 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
+  if (look === 'plain') { ctx.strokeStyle = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
+  const d = (look === 'plain' ? 11 : 14) * s;
+  if (img) ctx.drawImage(img, x - d / 2, y - d / 2, d, d);
+  if (img) stamps.set(key, c); // until the icons arrive, drawn again next time
+  return c;
+}
 /** A round marker with its icon. */
 export function unit(ctx: CanvasRenderingContext2D, x: number, y: number, look: Look, icons: Icons, icon: string, o: { accent: string; dark: boolean; t: number; calm: boolean; scale?: number; badge?: string }) {
-  const s = o.scale ?? 1, r = (look === 'hot' ? 15 : look === 'plain' ? 10.5 : 13) * s;
-  if (look === 'risk' || look === 'hot') {
-    ctx.fillStyle = alpha(o.accent, look === 'hot' ? 0.2 : 0.16);
-    ctx.beginPath(); ctx.arc(x, y, r + (look === 'hot' ? 13 : 10) * s, 0, Math.PI * 2); ctx.fill();
-    if (look === 'hot') rings(ctx, x, y, r + 4, o.accent, o.t, o.calm, 30 * s);
-  }
-  ctx.save();
-  ctx.shadowColor = 'rgba(0,0,0,0.28)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
-  ctx.fillStyle = look === 'ink' ? (o.dark ? '#f4f4f5' : '#18181b') : look === 'hot' ? o.accent : o.dark ? '#26282e' : '#ffffff';
-  ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
-  ctx.restore();
-  if (look === 'risk' || look === 'hot') { ctx.strokeStyle = look === 'hot' ? '#ffffff' : o.accent; ctx.lineWidth = look === 'hot' ? 3 : 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
-  if (look === 'plain') { ctx.strokeStyle = o.dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.1)'; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
-  const tone = look === 'ink' ? (o.dark ? 'ink' : 'white') : look === 'hot' ? 'white' : look === 'risk' ? 'accent' : o.dark ? 'white' : 'muted';
-  const img = icons.get(`${icon}:${tone}`), d = (look === 'plain' ? 11 : 14) * s;
-  if (img) ctx.drawImage(img, x - d / 2, y - d / 2, d, d);
+  const s = Math.round((o.scale ?? 1) * 20) / 20, r = (look === 'hot' ? 15 : look === 'plain' ? 10.5 : 13) * s;
+  const c = stamp(look, icons, icon, o.accent, o.dark, s), w = c.width / PX;
+  ctx.drawImage(c, x - w / 2, y - w / 2, w, w);
+  if (look === 'hot') rings(ctx, x, y, r + 4, o.accent, o.t, o.calm, 30 * s);
   if (o.badge) { // a small dot at the top right (green: someone's on it)
     ctx.fillStyle = o.badge; ctx.strokeStyle = o.dark ? '#17191e' : '#ffffff'; ctx.lineWidth = 2;
     ctx.beginPath(); ctx.arc(x + r * 0.72, y - r * 0.72, 4.5 * s, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
@@ -81,8 +92,8 @@ export function unit(ctx: CanvasRenderingContext2D, x: number, y: number, look: 
 export function count(ctx: CanvasRenderingContext2D, x: number, y: number, n: number, dark: boolean, hot: boolean, accent: string) {
   const r = 11 + Math.min(7, Math.log2(n) * 2.2);
   if (hot) { ctx.fillStyle = alpha(accent, 0.18); ctx.beginPath(); ctx.arc(x, y, r + 8, 0, Math.PI * 2); ctx.fill(); }
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.28)'; ctx.shadowBlur = 8; ctx.shadowOffsetY = 2;
-  ctx.fillStyle = dark ? '#f4f4f5' : '#18181b'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+  ctx.fillStyle = 'rgba(0,0,0,0.16)'; ctx.beginPath(); ctx.arc(x, y + 1.5, r + 1.5, 0, Math.PI * 2); ctx.fill(); // a soft edge without a canvas shadow
+  ctx.fillStyle = dark ? '#f4f4f5' : '#18181b'; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
   if (hot) { ctx.strokeStyle = accent; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.stroke(); }
   ctx.fillStyle = dark ? '#18181b' : '#ffffff'; ctx.font = `700 ${n > 99 ? 11 : 12}px Inter, ui-sans-serif, system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
   ctx.fillText(String(n), x, y + 0.5);

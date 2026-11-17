@@ -211,7 +211,7 @@ export default function QuizzesPage() {
                       key={quiz.id}
                       className="bg-white dark:bg-zinc-900/40 border border-zinc-200 dark:border-white/[0.06] rounded-2xl p-6 hover:border-indigo-500/30 transition group relative overflow-hidden"
                     >
-                      <div className={`absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-3xl opacity-10 -me-16 -mt-16`} />
+                      <div className={`pointer-events-none absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full blur-3xl opacity-10 -me-16 -mt-16`} aria-hidden />
                       <div className="flex justify-between items-start mb-4 relative z-10">
                         <div>
                           <div className="text-xs font-bold text-zinc-500 dark:text-zinc-400 mb-1">{quiz.course.name}</div>

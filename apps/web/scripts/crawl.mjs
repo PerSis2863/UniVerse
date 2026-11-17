@@ -105,7 +105,8 @@ for (const [role, pages] of Object.entries(byRole)) {
           for (const el of document.querySelectorAll('body *')) {
             const r = el.getBoundingClientRect();
             if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > H * 3) continue;
-            if ((r.right > W + 2 || r.left < -2) && shown(el) && !clipped(el) && getComputedStyle(el).position !== 'fixed') wide.push(el);
+            // Crossing the screen's edge (a drawer waiting wholly off the screen isn't).
+            if (((r.right > W + 2 && r.left < W) || (r.left < -2 && r.right > 0)) && shown(el) && !clipped(el) && getComputedStyle(el).position !== 'fixed') wide.push(el);
           }
           // Only the outermost of each (its children stick out with it).
           for (const el of wide.filter((e) => !wide.some((o) => o !== e && o.contains(e))).slice(0, 4)) { const r = el.getBoundingClientRect(); out.push(`sticks out ${Math.round(Math.max(r.right - W, -r.left))} px: ${name(el)}`); }
@@ -149,6 +150,7 @@ for (const [role, pages] of Object.entries(byRole)) {
       problems.unshift(`did not load: ${String(e.message).split('\n')[0].slice(0, 120)}`);
     }
     results.push({ role, path, problems: [...new Set(problems)] });
+    if (process.argv.includes('--stream')) console.log(`${problems.length ? 'PROBLEM' : 'ok'} ${path} (${role})${problems.length ? `\n  - ${[...new Set(problems)].slice(0, 6).join('\n  - ')}` : ''}`);
     await page.close();
   }
   await ctx.close();

@@ -122,7 +122,7 @@ function Wallet() {
                 <div className="mt-3 grid sm:grid-cols-2 gap-3">
                   {data.balances.map((b, i) => (
                     <motion.article key={b.brand.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', stiffness: 360, damping: 32 }} className="panel p-5 relative overflow-hidden">
-                      <span aria-hidden className="absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-25" style={{ background: b.brand.color ?? '#4f8ef7' }} />
+                      <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-25" style={{ background: b.brand.color ?? '#4f8ef7' }} />
                       <div className="relative flex items-center gap-3">
                         <span className="w-10 h-10 rounded-2xl grid place-items-center text-white font-black" style={{ background: b.brand.color ?? '#4f8ef7' }} aria-hidden>{b.brand.name.slice(0, 1)}</span>
                         <span className="min-w-0 flex-1"><span className="block font-bold text-zinc-900 dark:text-white truncate">{b.brand.name}</span><span className="block text-xs text-zinc-500">1 point = {money(b.brand.pointValue, b.brand.currency)}</span></span>
