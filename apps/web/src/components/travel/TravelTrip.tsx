@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -21,6 +21,7 @@ import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
 import { TripMoney } from './trip-money';
 import { TripPacking } from './trip-packing';
+import { TripToday } from './trip-today';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
 // and how to get between them, each city's days with places dragged into them, the whole trip's budget,
@@ -32,6 +33,12 @@ export interface TripAnswer {
   trip: { id: string; name: string; startDate: string | null; travellers: number; style: Style; currency: string; updatedAt: string };
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
+/** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
+const PARTS = [
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock },
+  { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
+] as const;
+type Part = (typeof PARTS)[number]['value'];
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 const range = (from: string | null, to: string | null) => {
   if (!from || !to) return null;
@@ -40,7 +47,7 @@ const range = (from: string | null, to: string | null) => {
 };
 
 export function TravelTrip() {
-  const sp = useSearchParams(), id = sp.get('id') ?? '', part = sp.get('part') === 'money' ? 'money' : sp.get('part') === 'packing' ? 'packing' : 'plan';
+  const sp = useSearchParams(), id = sp.get('id') ?? '', part = PARTS.find((p) => p.value === sp.get('part'))?.value ?? 'plan';
   const router = useRouter();
   const key = id ? `/travel/trips/${id}` : null;
   const refreshInterval = useLiveInterval(30_000, 0);
@@ -153,8 +160,10 @@ export function TravelTrip() {
         </label>
       </section>
 
-      <Segmented<'plan' | 'money' | 'packing'> label="Part of the trip" large value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
-        segments={[{ value: 'plan', label: 'Plan', icon: <Route className="h-4 w-4" aria-hidden /> }, { value: 'money', label: 'Money', icon: <Wallet className="h-4 w-4" aria-hidden /> }, { value: 'packing', label: 'Packing', icon: <Luggage className="h-4 w-4" aria-hidden /> }]} />
+      <Segmented<Part> label="Part of the trip" large className="max-w-full overflow-x-auto" value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
+        segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
+
+      {part === 'today' && <TripToday start={t.startDate} stops={stops} items={data.items} />}
 
       {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}

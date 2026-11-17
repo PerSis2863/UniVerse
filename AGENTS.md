@@ -218,6 +218,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
+- **On the branch `claude/travel-ten-features` (made from `claude/great-hamilton-8g8xdm`), not merged yet:** the
+  owner's Travel features of 17 Nov, as parts of a trip's page: M239 (Today: the next place, when to leave, the walk there).
 - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M238 (17 Nov), every trip has a picture (`tripCover`). M237 (17 Nov), Google Maps' tools on Travel's map
   (directions by walking, cycling or driving; what's here with share; measure; `MapTools.tsx`, `src/lib/map-tools.ts`) and
   the maps' labels in Inter (`scripts/map-glyphs.py`, `public/fonts/map`, `mapRequest`). M236 (17 Nov), the maps in Apple Maps' look (its colours, every place a
@@ -277,7 +279,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M239** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M240** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`

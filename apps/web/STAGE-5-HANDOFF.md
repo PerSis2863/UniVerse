@@ -8193,3 +8193,19 @@ trips list and the trip page: the chosen place, else one of its places or a plac
 country's first pictured place (a letter or two short is fine: "Netherland" → Amsterdam, "Germany" → Berlin), else a
 place or country the name mentions ("Summer in Italy"), else a scenic (nature, beach or mountain) picture, always the
 same for the same name. **Rule:** anything that shows a trip's picture uses `tripCover`.
+
+## M239: a trip's Today mode (17 Nov)
+
+The owner, 17 Nov: "add 10 biggest and unique and something different types of features in the travel… synched…
+ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-features`).
+
+- **Where:** the trip page's new **Today** part (`?part=today`, `trip-today.tsx`; the parts are one `PARTS` list in
+  `TravelTrip.tsx`, which later items extend). No new route: it works from the trip already loaded.
+- **Logic** (`src/lib/travel-today.ts`, tested): which city and day of the trip it is **in that city's own time**
+  (`zoneAt`, `localClock`), the day's places as a timetable from 9:00 (each place's minutes, `hop` between them), what's
+  on now, what's next and when to leave for it. Before or after the trip, or for any other day, a day picker previews it.
+- **The walk there** reuses the map's walking router (`useRoutes` from `map/MapTools.tsx`, FOSSGIS, from the browser):
+  from the place before, or "From where I am" (asks for the position only on that press). "On the map" opens Travel's
+  map at the place. The weather is the guide's own `/travel/weather` for that day.
+- **Rule:** the times are a plan's guesses (9:00 start, the place's minutes); the order and minutes are edited on the
+  Plan, never here.
