@@ -1,4 +1,4 @@
-import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
+import type { ExpressionSpecification, FilterSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
 import { IDEAS, type Idea } from '@/lib/travel-ideas';
 import { stopDates, type PlanItem, type PlanStop } from '@/lib/travel-plan';
 
@@ -148,15 +148,21 @@ export function addWorldLayers(map: MLMap, dark: boolean, font: string[], bold: 
     paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.8, 'icon-opacity': ['interpolate', ['linear'], ['zoom'], 12.4, 1, 13, 0], 'text-opacity': ['interpolate', ['linear'], ['zoom'], 12.4, 1, 13, 0] },
   }, before);
   // A trip: the way between its cities, its places by day, its cities numbered in order.
-  map.addLayer({ id: 'uv-trip-edge', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'path'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 4, 10, 7], 'line-opacity': dark ? 0.25 : 0.9 } }, before);
-  map.addLayer({ id: 'uv-trip-path', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'path'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0ea5e9', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2, 10, 4], 'line-dasharray': [2, 1.5] } }, before);
+  // M264: the way travelled in ink, the way ahead dotted grey (the owner's recording), over a soft white edge.
+  const pathOf = (done: boolean): FilterSpecification => ['all', ['==', ['get', 'role'], 'path'], ['==', ['get', 'done'], done]];
+  map.addLayer({ id: 'uv-trip-edge', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'path'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#000000' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 5, 10, 8], 'line-opacity': dark ? 0.35 : 0.9 } }, before);
+  map.addLayer({ id: 'uv-trip-path', type: 'line', source: 'uv-trip', filter: pathOf(true), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#f4f4f5' : '#18181b', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2.5, 10, 4.5] } }, before);
+  map.addLayer({ id: 'uv-trip-ahead', type: 'line', source: 'uv-trip', filter: pathOf(false), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#a1a1aa' : '#52525b', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2.2, 10, 3.5], 'line-dasharray': [0.2, 2.2] } }, before);
   map.addLayer({ id: 'uv-trip-item', type: 'circle', source: 'uv-trip', filter: ['==', ['get', 'role'], 'item'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 12, 7, 16, 9], 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } }, before);
   map.addLayer({ id: 'uv-trip-item-name', type: 'symbol', source: 'uv-trip', minzoom: 11.5, filter: ['==', ['get', 'role'], 'item'],
     layout: { 'text-field': ['concat', ['get', 'label'], ' · ', ['get', 'n']], 'text-font': bold, 'text-size': 12, 'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-max-width': 10, 'text-optional': true, 'text-padding': 2 },
     paint: { 'text-color': ['get', 'color'], 'text-halo-color': halo, 'text-halo-width': 1.8 } }, before);
-  map.addLayer({ id: 'uv-trip-stop', type: 'circle', source: 'uv-trip', filter: ['==', ['get', 'role'], 'stop'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 10, 10, 14], 'circle-color': '#0ea5e9', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } }, before);
+  // Cities as ink circles with their number (the recording's markers); the one you're in today in the sky blue with a halo.
+  const now: ExpressionSpecification = ['==', ['get', 'state'], 'now'];
+  map.addLayer({ id: 'uv-trip-halo', type: 'circle', source: 'uv-trip', filter: ['all', ['==', ['get', 'role'], 'stop'], now], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 20, 10, 26], 'circle-color': '#0ea5e9', 'circle-opacity': 0.2 } }, before);
+  map.addLayer({ id: 'uv-trip-stop', type: 'circle', source: 'uv-trip', filter: ['==', ['get', 'role'], 'stop'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, 10, 10, 14], 'circle-color': ['case', now, '#0284c7', dark ? '#f4f4f5' : '#18181b'], 'circle-opacity': ['case', ['==', ['get', 'state'], 'done'], 0.75, 1], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': ['case', now, 3, 2] } }, before);
   map.addLayer({ id: 'uv-trip-num', type: 'symbol', source: 'uv-trip', filter: ['==', ['get', 'role'], 'stop'],
-    layout: { 'text-field': ['get', 'num'], 'text-font': bold, 'text-size': 13, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': '#ffffff' } }, before);
+    layout: { 'text-field': ['get', 'num'], 'text-font': bold, 'text-size': 13, 'text-allow-overlap': true, 'text-ignore-placement': true }, paint: { 'text-color': ['case', now, '#ffffff', dark ? '#18181b' : '#ffffff'] } }, before);
   map.addLayer({ id: 'uv-trip-name', type: 'symbol', source: 'uv-trip', filter: ['==', ['get', 'role'], 'stop'],
     layout: { 'text-field': ['get', 'n'], 'text-font': bold, 'text-size': 14, 'text-anchor': 'top', 'text-offset': [0, 1.35], 'text-max-width': 9, 'text-optional': true },
     paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 2 } }, before);
@@ -180,13 +186,19 @@ export const WORLD_LAYERS = ['uv-dest-town', 'uv-dest-city', 'uv-ideas', 'uv-tri
 
 export interface TripMap { stops: PlanStop[]; items: PlanItem[]; startDate: string | null }
 /** A trip on the map: the way through its cities in order, each city numbered, each place in its day's colour. */
-export function tripFeatures(t: TripMap | null, day: number | null): GeoJSON.FeatureCollection {
+export function tripFeatures(t: TripMap | null, day: number | null, today: number | null = null): GeoJSON.FeatureCollection {
   if (!t) return EMPTY;
-  const stops = t.stops.filter((s) => s.lat != null && s.lon != null), dates = stopDates(t.startDate, t.stops);
-  const first = new Map(t.stops.map((s, i) => [s.id, dates[i]?.offset ?? 0]));
+  const dates = stopDates(t.startDate, t.stops), first = new Map(t.stops.map((s, i) => [s.id, dates[i]?.offset ?? 0]));
+  const stops = t.stops.map((s, i) => ({ s, from: (dates[i]?.offset ?? 0) + 1, to: (dates[i]?.offset ?? 0) + s.days })).filter((x) => x.s.lat != null && x.s.lon != null);
   const features: GeoJSON.Feature[] = [];
-  if (stops.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: stops.map((s) => [s.lon!, s.lat!]) }, properties: { role: 'path' } });
-  stops.forEach((s, i) => features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [s.lon!, s.lat!] }, properties: { role: 'stop', num: String(i + 1), n: s.name } }));
+  // M264 (the owner's recording): the way already travelled solid, the way still ahead dotted; `today` is the trip's day
+  // number today (1 = its first day), null when it isn't known. The city you're in now is `now`.
+  const at = (x: (typeof stops)[number]) => (today == null || today < x.from ? 'next' : today > x.to ? 'done' : 'now');
+  const cur = today == null ? -1 : stops.reduce((k, x, i) => (today >= x.from ? i : k), -1);
+  const line = (part: typeof stops, done: boolean) => { if (part.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: part.map((x) => [x.s.lon!, x.s.lat!]) }, properties: { role: 'path', done } }); };
+  line(stops.slice(0, cur + 1), true);
+  line(stops.slice(Math.max(0, cur)), false);
+  stops.forEach((x, i) => features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.s.lon!, x.s.lat!] }, properties: { role: 'stop', num: String(i + 1), n: x.s.name, state: at(x) } }));
   for (const it of t.items) {
     if (it.lat == null || it.lon == null) continue;
     const d = it.day == null ? null : (first.get(it.stopId) ?? 0) + it.day + 1;

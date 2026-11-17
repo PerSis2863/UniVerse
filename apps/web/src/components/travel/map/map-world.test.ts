@@ -26,6 +26,16 @@ describe('a trip on the map', () => {
     expect(tripFeatures(null, null).features).toEqual([]);
     expect(tripBox(tripFeatures(null, null))).toBeNull();
   });
+  it('draws the way travelled solid and the way ahead dotted, with the city of today (M264)', () => {
+    const paths = (today: number | null) => tripFeatures(trip, null, today).features.filter((f) => f.properties?.role === 'path').map((f) => [f.properties?.done, (f.geometry as GeoJSON.LineString).coordinates.length]);
+    const states = (today: number | null) => tripFeatures(trip, null, today).features.filter((f) => f.properties?.role === 'stop').map((f) => f.properties?.state);
+    expect(paths(null)).toEqual([[false, 2]]);
+    expect(states(null)).toEqual(['next', 'next']);
+    expect(states(2)).toEqual(['now', 'next']); // day 2: in Lisbon (days 1–3)
+    expect(paths(4)).toEqual([[true, 2]]); // day 4: in Porto, the way there travelled
+    expect(states(4)).toEqual(['done', 'now']);
+    expect(states(9)).toEqual(['done', 'done']);
+  });
 });
 
 describe('destinations', () => {

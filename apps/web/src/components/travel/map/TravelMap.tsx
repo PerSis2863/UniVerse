@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Camera, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BookOpen, Box, Calendar, Camera, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -31,6 +31,7 @@ import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from '
 import { DestCard } from './DestCard';
 import { areaSearchUrl, DAY_COLORS, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
+import { CountChips, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
 // maps … something different that nobody has"): OpenFreeMap's vector map of OpenStreetMap (every street,
@@ -147,8 +148,20 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const { data: tripList } = useSWR<{ trips: { id: string; name: string; cities: string[] }[] }>(layers || tripId ? '/travel/trips' : null, fetcher, { revalidateOnFocus: false });
   const { data: tripData } = useSWR<{ trip: { name: string; startDate: string | null }; stops: TripMap['stops']; items: TripMap['items'] }>(tripId ? `/travel/trips/${tripId}` : null, fetcher, { revalidateOnFocus: false });
   const tripMap = useMemo<TripMap | null>(() => (tripData ? { stops: tripData.stops, items: tripData.items, startDate: tripData.trip.startDate } : null), [tripData]);
-  const tripFc = useMemo(() => tripFeatures(tripMap, tripDay), [tripMap, tripDay]);
+  // M264: the trip's day number today (1 = its first day), so the way travelled is solid and today's city stands out.
+  const tripToday = tripMap?.startDate && now ? Math.floor((now - Date.parse(`${tripMap.startDate}T00:00:00`)) / 86_400_000) + 1 : null;
+  const tripFc = useMemo(() => tripFeatures(tripMap, tripDay, tripToday), [tripMap, tripDay, tripToday]);
   const tripDays = useMemo(() => tripDaysOn(tripMap), [tripMap]);
+  // M264: the trip's numbers along the map's foot: days, cities and the km between them, places planned, places a day.
+  const tripStats = useMemo(() => {
+    if (!tripMap) return null;
+    const at = tripMap.stops.filter((x) => x.lat != null && x.lon != null), perDay = new Map<string, number>();
+    for (const f of tripFeatures(tripMap, null).features) if (f.properties?.role === 'item') perDay.set(f.properties.label, (perDay.get(f.properties.label) ?? 0) + 1);
+    return {
+      days: tripMap.stops.reduce((t, x) => t + x.days, 0), cities: at.length, places: tripMap.items.length, planned: tripMap.items.filter((i) => i.day != null).length, perDay,
+      km: Math.round(at.slice(1).reduce((t, x, i) => t + (km({ lat: at[i].lat!, lon: at[i].lon! }, { lat: x.lat!, lon: x.lon! }) ?? 0), 0)),
+    };
+  }, [tripMap]);
   const savedList = useMemo(() => (show.saved ? savedData?.saved ?? [] : []).filter((x) => x.lat != null && x.lon != null), [show.saved, savedData]);
   const savedFc = useMemo(() => points(savedList.map((x, i) => ({ lat: x.lat!, lon: x.lon!, props: { i, n: x.name } }))), [savedList]);
   const foundFc = useMemo(() => points((found?.places ?? []).map((f, i) => ({ lat: f.lat, lon: f.lon, props: { i, n: f.name } }))), [found]);
@@ -332,8 +345,19 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const m = mapRef.current;
     if (!m || !ready) return;
     setWorld(m, 'uv-trip', tripFc);
+    // M264: today's city pulses (two rings going out, CSS on the compositor; still with Reduce Motion).
+    const nowStop = tripFc.features.find((f) => f.properties?.role === 'stop' && f.properties.state === 'now');
+    let ring: Marker | null = null, gone = false;
+    if (nowStop) void import('maplibre-gl').then((ml) => {
+      if (gone) return;
+      const el = document.createElement('div');
+      el.className = 'cmd-travel cmd-ring pointer-events-none h-11 w-11 rounded-full'; // MapLibre positions it (absolute)
+      ring = new ml.Marker({ element: el }).setLngLat((nowStop.geometry as GeoJSON.Point).coordinates as [number, number]).addTo(m);
+    });
     const b = tripBox(tripFc); // the trip (or the day chosen) framed, clear of the panel
-    if (b) m.fitBounds(b, { padding: clearOfPanel(m), maxZoom: 14, duration: calm() ? 0 : 1400, easing: ease });
+    // On a computer the trip's number cards take the map's foot (M264): frame the trip above them.
+    if (b) m.fitBounds(b, { padding: m.getContainer().clientWidth >= 1024 ? { ...clearOfPanel(m), bottom: 170 } : clearOfPanel(m), maxZoom: 14, duration: calm() ? 0 : 1400, easing: ease });
+    return () => { gone = true; ring?.remove(); };
   }, [tripFc, ready]);
   // Where the sun is, for the hour chosen, lights the buildings.
   useEffect(() => { const m = mapRef.current; if (m && ready && view) skyFor(m, sunlight(m, view.lat, view.lon, when).altitude, dark); }, [ready, view, when, dark]);
@@ -536,12 +560,9 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
               <Luggage className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
               <Link href={`/travel/trip?id=${tripId}`} className="max-w-[10rem] truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-white" translate="no">{tripData?.trip.name ?? 'Your trip'}</Link>
               {tripDays.length > 0 && (
-                <div className="flex max-w-[50vw] gap-1 overflow-x-auto [scrollbar-width:none]" role="group" aria-label="Day of the trip">
-                  <button type="button" aria-pressed={tripDay == null} onClick={() => setTripDay(null)} className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', tripDay == null ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200')}>All</button>
-                  {tripDays.map((d) => (
-                    <button key={d} type="button" aria-pressed={tripDay === d} onClick={() => setTripDay(d)} className={cn('shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold', tripDay === d ? 'text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200')} style={tripDay === d ? { background: DAY_COLORS[(d - 1) % DAY_COLORS.length] } : undefined}>Day {d}</button>
-                  ))}
-                </div>
+                // M264: the days as the recording's chips, each with how many places it has.
+                <CountChips<string> label="Day of the trip" className="max-w-[50vw] bg-transparent p-0 shadow-none ring-0 dark:bg-transparent" value={tripDay == null ? 'all' : String(tripDay)} onChange={(v) => setTripDay(v === 'all' ? null : Number(v))}
+                  items={[{ id: 'all', label: 'All', count: tripStats?.planned }, ...tripDays.map((d) => ({ id: String(d), label: `Day ${d}`, count: tripStats?.perDay.get(`Day ${d}`), dot: DAY_COLORS[(d - 1) % DAY_COLORS.length] }))]} />
               )}
               <button type="button" onClick={() => { setTripId(null); setTripDay(null); }} className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Hide the trip"><X className="h-4 w-4" aria-hidden /></button>
             </div>
@@ -722,6 +743,20 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
         onFrom={(s) => directionsTo(dir?.to ?? null, s)} onTo={(s) => directionsTo(s, dir?.from ?? myPlace())} onMeasure={() => { setMeasure([{ lat: here.lat, lon: here.lon }]); setHere(null); }} />}
       {measure && <MeasureBar pts={measure} onUndo={() => setMeasure(measure.slice(0, -1))} onClear={() => setMeasure([])} onDone={() => setMeasure(null)} />}
       </>)}
+      {/* M264: a trip's numbers along the map's foot (a computer: the phone's sheet has the bottom). */}
+      {!nav && tripId && tripStats && !picked && !dir && !walk && (
+        <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
+          <StatStrip className="pointer-events-auto">
+            <StatCard label="Days" icon={Calendar} value={tripStats.days} unit={tripToday != null && tripToday >= 1 && tripToday <= tripStats.days ? `today is day ${tripToday}` : tripToday != null && tripToday < 1 ? `starts in ${1 - tripToday} d` : undefined} delay={0}
+              foot={<TickStrip max={30} parts={Array.from({ length: Math.min(30, tripStats.days) }, (_, i) => ({ n: 1, color: tripToday != null && i + 1 < tripToday ? (dark ? '#e4e4e7' : '#27272a') : i + 1 === tripToday ? '#0ea5e9' : dark ? '#52525b' : '#d4d4d8' }))} />} />
+            <StatCard label="Cities" icon={MapPin} value={tripStats.cities} unit={tripStats.km ? `${tripStats.km.toLocaleString()} km between` : undefined} delay={50} />
+            <StatCard label="Places" icon={Star} value={tripStats.places} unit={`${tripStats.planned} on a day`} delay={100}
+              foot={<TickStrip parts={tripDays.map((d) => ({ n: tripStats.perDay.get(`Day ${d}`) ?? 0, color: DAY_COLORS[(d - 1) % DAY_COLORS.length] }))} />} />
+            <StatCard label="Busiest day" icon={Sun} tone="accent" value={tripDays.length ? `Day ${tripDays.reduce((b, d) => ((tripStats.perDay.get(`Day ${d}`) ?? 0) > (tripStats.perDay.get(`Day ${b}`) ?? 0) ? d : b), tripDays[0])}` : '–'} delay={150}
+              unit={tripDays.length ? `${Math.max(...tripDays.map((d) => tripStats.perDay.get(`Day ${d}`) ?? 0))} places` : undefined} />
+          </StatStrip>
+        </div>
+      )}
       {nav && <Navigate mapRef={mapRef} trip={nav} dark={dark} onEnd={endNav} onLook={(p) => { endNav(); void lookAround(p.lat, p.lon); }} />}
       {/* M236: the credits the map's licences ask for (OpenStreetMap, OpenMapTiles), small as Apple Maps' "Legal": a short
           line, the rest behind the (i). On a phone at the top, clear of the sheet. */}

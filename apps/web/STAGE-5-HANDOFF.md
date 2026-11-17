@@ -8609,3 +8609,19 @@ owner's exception to the launch pause. The look is followed, not the product (no
   strip, Journeys, the fleet city) unchanged.
 - `tag()` in `marks.tsx` flips to the left of its point near the map's right edge. A dark chip dot is light in dark mode.
 - **Checked:** `trace-command-ui.mjs` (sample mode) at 1280 dark and 390 light, axe clean, no sideways scroll, no errors.
+
+## M264: the map "command" look, part 3: Travel's trip on the map (17 Nov)
+
+- **`tripFeatures(t, day, today)`** (`map-world.ts`, tested): `today` is the trip's day number (1 = its first day, from
+  `startDate` and `useNow`; null without a start date); the way between cities splits into `done` (to the city you're
+  in) and ahead; each city gets `state` (`done`, `now`, `next`). Layers: travelled in ink (white in dark), ahead dotted
+  grey (`uv-trip-ahead`), cities as ink circles with their number (dimmed once done), today's city sky blue with a halo
+  (`uv-trip-halo`) and a DOM marker with `.cmd-ring` pulsing (CSS; removed with the trip).
+- **The trip's chip:** the days as `CountChips` (All and each day with how many places it has, the day's colour as the
+  dot). **Number cards** (a computer only: the phone's sheet has the bottom): days (a tick per day: done ink, today sky)
+  with "today is day n" or "starts in n d", cities and the km between them, places with a tick per place in its day's
+  colour, the busiest day. The trip is framed above the cards (bottom padding 170 on a computer).
+- **Left for later, on purpose:** a "Needs you" queue for Travel (the trip page's Today and Ready tabs already list what to
+  do; repeating them on the map would show the same thing twice), and Travel's other map views (places, walks, directions:
+  their own Apple Maps look from M233–M260 stays).
+- **Checked:** `travel-command-ui.mjs` (1280 dark, 390 light, tiles refused), axe clean, no errors; `pnpm check`.
