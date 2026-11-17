@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, TramFront, Umbrella } from 'lucide-react';
+import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, Sunrise, Sunset, TramFront, Umbrella } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { indoorIdeas, outdoors, wet } from '@/lib/travel-rain';
 import type { Guide, Listing } from '@/lib/travel-guide';
@@ -11,7 +11,7 @@ import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { useNow } from '@/lib/use-now';
 import { distance, duration } from '@/lib/map-tools';
-import { clock, tripToday, type Slot } from '@/lib/travel-today';
+import { clock, dayLight, tripToday, type Slot } from '@/lib/travel-today';
 import type { PlanItem, PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { useRoutes, type Spot } from './map/MapTools';
@@ -67,6 +67,7 @@ function Day({ tripId, stop, t, live, onAdded }: { tripId: string; stop: PlanSto
   const { data: weather } = useSWR<{ days: WeatherDay[] }>(stop.lat !== null && stop.lon !== null ? `/travel/weather?lat=${stop.lat.toFixed(2)}&lon=${stop.lon.toFixed(2)}` : null, fetcher, { revalidateOnFocus: false });
   const w = weather?.days.find((d) => d.date === t.date);
   const W = w ? sky(w.symbol) : null;
+  const light = dayLight(stop, t.date), photoSpot = t.slots.map((x) => x.item).find((i) => outdoors(i))?.name;
   if (!t.slots.length) return <Empty text={`Nothing is planned for this day in ${nice(stop.name)} yet. Add places on the Plan.`} />;
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
@@ -98,6 +99,12 @@ function Day({ tripId, stop, t, live, onAdded }: { tripId: string; stop: PlanSto
                 <p className="text-sm text-zinc-600 dark:text-zinc-300">{W.words}{w.rain >= 1 ? ` · ${w.rain.toFixed(1)} mm of rain: take an umbrella` : ''}</p></div>
             </div>
           ) : <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">The forecast reaches about a week ahead; this day isn’t in it yet.</p>}
+          {light && (
+            <div className="mt-4 border-t border-zinc-200/70 pt-3 text-sm dark:border-white/10" aria-label="Daylight">
+              <p className="flex flex-wrap gap-x-4 gap-y-1 text-zinc-700 dark:text-zinc-200"><span className="inline-flex items-center gap-1.5"><Sunrise className="h-4 w-4 text-amber-500" aria-hidden />{light.rise}</span><span className="inline-flex items-center gap-1.5"><Sunset className="h-4 w-4 text-amber-600" aria-hidden />{light.set}</span><span className="text-zinc-500 dark:text-zinc-400">{Math.floor(light.minutes / 60)} h {light.minutes % 60} min of daylight</span></p>
+              <p className="mt-1 text-zinc-600 dark:text-zinc-300">Golden hours for photos: {light.morning[0]}–{light.morning[1]} and {light.evening[0]}–{light.evening[1]}{photoSpot ? <>, perhaps at <span translate="no">{photoSpot}</span></> : ''}.</p>
+            </div>
+          )}
         </section>
         {wet(w) && <RainPlan tripId={tripId} stop={stop} day={t.day} slots={t.slots} onAdded={onAdded} />}
         <section className="panel p-5" aria-labelledby="today-plan">

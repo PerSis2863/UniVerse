@@ -8349,3 +8349,11 @@ chosen in the session and listed to the owner).
   the day's places first, each with "Add to today" (it goes on that day, last).
 - **Logic** (`src/lib/travel-rain.ts`, tested): outdoors by the place's name, else its words (parks, viewpoints,
   castles, beaches…), never when it reads as indoors (museums, churches, markets halls…).
+
+## M250: the day's light (17 Nov)
+
+- **Where:** the trip's **Today** part, in the weather card: sunrise, sunset and the hours of daylight, and the golden
+  hours for photos (the sun under 6°), with the day's first outdoor place as a suggestion. Works for any day of the
+  trip (no forecast needed).
+- **Logic:** `dayLight` in `src/lib/travel-today.ts` (tested: Lisbon's 07:11 sunrise on 9 April, Svalbard's midnight sun
+  gives none), from the map's sun maths (`sunTimes`, `travel-local.ts`), in the city's own time.

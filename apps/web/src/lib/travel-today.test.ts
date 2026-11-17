@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clock, timetable, tripToday } from './travel-today';
+import { clock, dayLight, timetable, tripToday } from './travel-today';
 import type { PlanItem, PlanStop } from './travel-plan';
 
 const stop = (id: string, lat: number, lon: number, days: number, position: number): PlanStop => ({ id, guide: id, name: id, cc: 'PT', lat, lon, days, position });
@@ -35,5 +35,18 @@ describe('Today mode (M239)', () => {
     const t = tripToday('2027-04-08', stops, items, new Date('2027-01-01T00:00:00Z'), { stop: 0, day: 0 });
     expect(t.state === 'during' && t.slots.map((s) => s.item.id)).toEqual(['castle']);
     expect(clock(545)).toBe('09:05');
+  });
+});
+
+describe('the day’s light (M250)', () => {
+  it('gives sunrise, sunset and the golden hours in the city’s own time', () => {
+    const l = dayLight(stops[0], '2027-04-09')!;
+    expect(l.rise).toMatch(/^07:1\d$/); // about 07:11 in Lisbon
+    expect(l.set).toMatch(/^20:0\d$|^20:1\d$/);
+    expect(l.morning[0]).toBe(l.rise);
+    expect(l.evening[1]).toBe(l.set);
+    expect(l.minutes).toBeGreaterThan(12 * 60);
+    expect(dayLight({ lat: null, lon: null, cc: null }, '2027-04-09')).toBeNull();
+    expect(dayLight({ lat: 78.2, lon: 15.6, cc: 'SJ' }, '2027-06-21')).toBeNull(); // Svalbard's midnight sun
   });
 });

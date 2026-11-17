@@ -1,4 +1,4 @@
-import { localClock, zoneAt } from './travel-local';
+import { localClock, sunTimes, zoneAt } from './travel-local';
 import { addDays, hop, stopDates, type PlanItem, type PlanStop } from './travel-plan';
 
 // M239: a trip's Today mode, pure so it answers at once and the tests hold it: which city and day of the trip
@@ -58,3 +58,13 @@ export function tripToday(startDate: string | null, stops: PlanStop[], items: Pl
 
 /** "09:30" from minutes past midnight. */
 export const clock = (m: number) => `${String(Math.floor(m / 60) % 24).padStart(2, '0')}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+
+/** M250: a day's light at a city, in its own time: sunrise, sunset, the golden hours (the sun under 6°) and how long
+ *  the day is; null without a position or in polar day or night. */
+export function dayLight(s: Pick<PlanStop, 'lat' | 'lon' | 'cc'>, date: string) {
+  if (s.lat === null || s.lon === null) return null;
+  const zone = stopZone(s), t = sunTimes(s.lat, s.lon, new Date(`${date}T12:00:00Z`));
+  if (!t) return null;
+  const at = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
+  return { rise: at(t.rise), set: at(t.set), morning: [at(t.rise), at(t.goldenMorning)] as const, evening: [at(t.goldenEvening), at(t.set)] as const, minutes: Math.round((+t.set - +t.rise) / 60_000) };
+}
