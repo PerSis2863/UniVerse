@@ -15,6 +15,7 @@ import { sealOldSecrets } from './secret-box';
 import { countSiteTotals } from './site-totals';
 import { greenStreakNudges } from './green';
 import { shiftReminders } from './relief-orgs';
+import { docReminders } from './travel-docs';
 import { dueSoonNudges, weeklyProgress } from './come-back';
 
 // The daily jobs, in steps (Stage 5 · bug review). D1 answers at most 50 queries in one run on
@@ -153,6 +154,8 @@ export const STEPS: Step[] = [
   // UniVerse Green: a nudge for people whose streak ends today unless they log something (M61).
   // UniVerse Relief: a reminder for everyone signed up for a shift in the next 24 hours (M106).
   { job: 'relief-shifts', run: () => shiftReminders(left) },
+  // M245: Travel's document reminders (a passport expiring, a trip starting), in the app only.
+  { job: 'travel-docs', run: () => docReminders(left) },
   { job: 'green-streaks', run: async () => (left() < 14 ? { done: false } : { done: true, info: await greenStreakNudges() }) },
   // M197: reasons to come back: work due soon (students and their teacher), and students' week on Mondays.
   { job: 'due-soon', run: () => inSlices(14, async (n) => { const r = await dueSoonNudges(n); return { more: r.checked === n, count: r.sent }; }) },

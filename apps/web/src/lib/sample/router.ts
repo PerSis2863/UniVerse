@@ -1041,6 +1041,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/travel\/visa$/, ({ q }) => ok(impact.sampleTravelVisa(q.get('p')))],
   [/^\/travel\/saved$/, ({ db: d }) => ok(impact.sampleTravelSaved(d.me))],
   [/^\/travel\/trips$/, () => ok(impact.sampleTravelTrips())],
+  [/^\/travel\/docs$/, () => ok(impact.sampleTravelDocs())],
   [/^\/travel\/board$/, () => ok(impact.sampleTravelBoard())],
   [/^\/travel\/place$/, () => ok(impact.sampleTravelPlace())],
   [/^\/travel\/where$/, () => ok(impact.sampleTravelWhere())],

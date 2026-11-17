@@ -14,6 +14,7 @@ import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
 import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } from '../travel-trip-polls';
+import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
 import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
@@ -158,6 +159,11 @@ export default function impactAppsModule(router: Router) {
   travel.post<{ id: string }>('trips/:id/items/move', ({ user, params, body }) => moveTravelItems(user, params.id, body ?? {}));
   travel.patch<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params, body }) => updateTravelItem(user, params.id, params.itemId, body ?? {}));
   travel.delete<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params }) => removeTravelItem(user, params.id, params.itemId));
+  // M245 (src/server/travel-docs.ts): my documents and their reminders (only ever my own rows).
+  travel.get('docs', ({ user, query }) => travelDocs(user, query));
+  travel.post('docs', ({ user, body }) => addTravelDoc(user, body ?? {}));
+  travel.patch<{ id: string }>('docs/:id', ({ user, params, body }) => updateTravelDoc(user, params.id, body ?? {}));
+  travel.delete<{ id: string }>('docs/:id', ({ user, params }) => removeTravelDoc(user, params.id));
   // M207 (src/server/travel-board.ts): the travellers board, adults who opt in, by city and dates.
   travel.get('board', ({ user, query }) => travelBoard(user, query));
   travel.post('board', ({ user, body }) => joinTravelBoard(user, body ?? {}));

@@ -7615,6 +7615,7 @@ model TravelTrip {
   packing    TravelTripPack[]
   journal    TravelTripJournal[]
   polls      TravelTripPoll[]
+  docs       TravelDoc[]
 
   @@index([ownerId])
   @@map("travel_trips")
@@ -7687,6 +7688,26 @@ model TravelTripVote {
 
   @@id([pollId, userId, choice])
   @@map("travel_trip_votes")
+}
+
+/// M245: a traveller's own document for a trip (or none): kind, name, expiry; only its owner sees it.
+model TravelDoc {
+  id        String      @id @default(cuid())
+  userId    String
+  tripId    String?
+  trip      TravelTrip? @relation(fields: [tripId], references: [id], onDelete: SetNull)
+  kind      String      @default("other")
+  label     String      @default("")
+  /// YYYY-MM-DD
+  expires   String?
+  note      String?
+  /// The reminders already sent (src/lib/travel-docs.ts keys, comma-separated).
+  reminded  String      @default("")
+  createdAt DateTime    @default(now())
+
+  @@index([userId])
+  @@index([tripId])
+  @@map("travel_docs")
 }
 
 /// M215: a thing on a trip's shared packing list, ticked when someone has packed it.

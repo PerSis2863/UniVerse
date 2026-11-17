@@ -8276,3 +8276,20 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
 - **Server:** `PATCH /travel/trips/:id/me { zone | null }` (`setTripZone`, `isZone` checked), the members' `zone` in the
   trip's answer; database update **0230** (`travel_trip_members.zone`). A home clock shows a rough place, so it's
   shared only by choice.
+
+## M245: a traveller's documents and their reminders (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-docs.tsx`): passport, visa, insurance, bookings, licence,
+  vaccination; a name, an expiry date, a note; "just for this trip" or every trip; what needs doing now beside each one;
+  "not added yet: passport and travel insurance".
+- **Rules** (`src/lib/travel-docs.ts`, tested): expired, expiring in 30 / 7 days, expiring during the trip, a passport
+  under six months past the trip's end, the trip 30 / 7 / 1 days away. **Names and dates only, never a number** (said on
+  the page).
+- **Server** (`src/server/travel-docs.ts`, tested): `GET/POST /travel/docs`, `PATCH/DELETE /travel/docs/:id`; **every
+  query carries `userId`**: nobody else on a trip ever sees them (a trip document needs the trip to be one of yours). A
+  new expiry date clears the sent reminders. Database update **0231** (`travel_docs`; deleting the trip keeps the
+  document without it).
+- **Reminders:** the daily job `travel-docs` (`docReminders`, after `relief-shifts`): each due alert once (`reminded`),
+  `notify` with `email: false`, two queries each, stops when the run's room is low and carries on next run.
+- **Also committed:** `scripts/checks/travel-ten-ui.mjs`, the browser check of the new trip parts (LIVE=0 for local:dev,
+  which has no live updates).

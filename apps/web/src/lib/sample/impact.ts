@@ -778,6 +778,13 @@ export function sampleTripPolls() {
     { id: 'sample-poll-2', kind: 'stay', question: 'Where to stay in Porto?', multi: true, closed: false, by: 'You', mine: true, createdAt: at, options: [{ text: 'Ribeira, by the river', voters: ['Maya'] }, { text: 'Cedofeita, quieter', voters: [] }], chosen: [], people: 1 },
   ] };
 }
+/** GET /travel/docs (M245): sample documents (made up; names and dates only). */
+export function sampleTravelDocs() {
+  return { docs: [
+    { id: 'sample-doc-1', tripId: null, kind: 'passport', label: 'Passport', expires: '2027-08-30', note: null, reminded: '' },
+    { id: 'sample-doc-2', tripId: 'sample-trip-1', kind: 'insurance', label: 'Travel insurance', expires: '2027-12-31', note: 'Policy in my email', reminded: '' },
+  ] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {
