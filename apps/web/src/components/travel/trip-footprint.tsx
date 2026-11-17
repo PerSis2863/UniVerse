@@ -43,7 +43,7 @@ export function TripFootprint({ tripId, stops, travellers, onChange }: { tripId:
                   {l.modes.map((m) => {
                     const I = ICON[m], on = m === l.mode;
                     return (
-                      <button key={m} type="button" aria-pressed={on} onClick={() => { if (!on) void pick(l.stopId, m); }}
+                      <button key={m} type="button" aria-pressed={on} onClick={() => { if (!on || !l.chosen) void pick(l.stopId, m); }}
                         className={cn('inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition-[background-color,border-color] duration-150', on ? 'border-indigo-500 bg-indigo-500 text-white' : 'border-zinc-200 text-zinc-700 dark:border-white/10 dark:text-zinc-200')}>
                         <I className="h-3.5 w-3.5" aria-hidden />{TRAVEL_FACTORS[m].label} · {kg(legKg(l.km, m, travellers))}
                       </button>

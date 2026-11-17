@@ -99,12 +99,46 @@ try {
   await alice.page.keyboard.press('Escape');
   await part(bob, 'phrases', 390);
 
-  // Ready and Share (as far as they're built).
-  for (const name of ['ready', 'share']) {
-    const has = await alice.page.locator('main').getByRole('group', { name: 'Part of the trip' }).getByRole('button', { name: new RegExp(name, 'i') }).count();
-    if (!has) continue;
-    await part(alice, name, 1280);
-    await part(bob, name, 390);
+  // Ready: the footprint's train goes to Green; a document with its warning.
+  await part(alice, 'ready', 1280);
+  const foot = alice.page.getByRole('region', { name: 'Footprint' });
+  await foot.getByRole('button', { name: /^Train/ }).click();
+  await alice.page.getByText(/Logged in Green/).waitFor({ timeout: 30_000 });
+  r.green = true;
+  const docs = alice.page.getByRole('region', { name: 'Documents' });
+  await docs.getByLabel('Expires (optional)').fill(new Date(Date.now() + 20 * 86_400_000).toISOString().slice(0, 10));
+  await docs.getByRole('button', { name: 'Add' }).click();
+  await docs.getByText(/Passport expires in 20 days/).waitFor({ timeout: 30_000 });
+  r.docWarning = true;
+  r.holidays = (await alice.page.getByRole('region', { name: 'Holidays and events' }).innerText()).replace(/\s+/g, ' ').slice(0, 160);
+  r.axe.push(...(await axe(alice.page)).map((x) => `ready-after 1280 ${x}`));
+  r.bobSeesDoc = await (await call(alice.page, B, 'GET', `/travel/docs?trip=${trip.id}`)).docs.length;
+  await part(bob, 'ready', 390);
+
+  // Share: the family link, I'm safe, and the page signed out.
+  await part(alice, 'share', 1280);
+  await alice.page.getByRole('button', { name: 'Turn on the family link' }).click();
+  const link = await alice.page.locator('code').filter({ hasText: '/journey/' }).innerText({ timeout: 30_000 });
+  await alice.page.getByPlaceholder(/Landed/).fill('All good here');
+  await alice.page.getByRole('button', { name: 'I’m safe' }).click();
+  await alice.page.getByText('All good here').waitFor({ timeout: 30_000 });
+  r.axe.push(...(await axe(alice.page)).map((x) => `share-after 1280 ${x}`));
+  await part(bob, 'share', 390);
+  for (const [theme, width] of [['light', 390], ['dark', 1280]]) {
+    const ctx = await browser.newContext({ viewport: { width, height: 900 }, ...(width < 600 ? { isMobile: true, hasTouch: true } : {}) });
+    await ctx.addInitScript((th) => { localStorage.setItem('theme', th); localStorage.setItem('uv-cookies', 'essential'); }, theme);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`family: ${e.message.slice(0, 160)}`));
+    await page.goto(link, { waitUntil: 'load', timeout: 180_000 });
+    await page.getByRole('heading', { name: 'Ten features check' }).waitFor({ timeout: 120_000 });
+    await page.getByText(/checked in safe/).waitFor({ timeout: 30_000 });
+    const text = await page.locator('main').innerText();
+    r.familyNoEmail = !/@/.test(text);
+    r.familyStory = text.includes('Custard tarts');
+    if (shots) await page.screenshot({ path: `${shots}/travel-family-${width}.png`, fullPage: true });
+    r.axe.push(...(await axe(page)).map((x) => `family ${width} ${x}`));
+    if (await wide(page)) r.wide.push(`family ${width}`);
+    await ctx.close();
   }
   await part(bob, 'today', 390);
 } catch (e) {

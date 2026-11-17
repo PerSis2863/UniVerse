@@ -15,6 +15,7 @@ import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
 import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } from '../travel-trip-polls';
 import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
+import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
 import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
@@ -145,6 +146,12 @@ export default function impactAppsModule(router: Router) {
   travel.post<{ id: string; pollId: string }>('trips/:id/polls/:pollId/vote', ({ user, params, body }) => voteTripPoll(user, params.id, params.pollId, body ?? {}));
   travel.patch<{ id: string; pollId: string }>('trips/:id/polls/:pollId', ({ user, params, body }) => updateTripPoll(user, params.id, params.pollId, body ?? {}));
   travel.delete<{ id: string; pollId: string }>('trips/:id/polls/:pollId', ({ user, params }) => removeTripPoll(user, params.id, params.pollId));
+  // M248 (src/server/travel-trip-share.ts): the family link and "I'm safe".
+  travel.get<{ id: string }>('trips/:id/share', ({ user, params }) => tripShare(user, params.id));
+  travel.post<{ id: string }>('trips/:id/share', ({ user, params }) => shareTrip(user, params.id));
+  travel.delete<{ id: string }>('trips/:id/share', ({ user, params }) => unshareTrip(user, params.id));
+  travel.post<{ id: string }>('trips/:id/safe', ({ user, params, body }) => checkInSafe(user, params.id, body ?? {}));
+  travel.get<{ code: string }>('shared/:code', { public: true }, ({ params }) => sharedTrip(params.code));
   travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
   travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
   travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));

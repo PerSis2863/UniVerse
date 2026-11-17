@@ -7606,6 +7606,8 @@ model TravelTrip {
   currency   String             @default("EUR")
   /// The invite code friends join with.
   code       String             @unique
+  /// M248: the family link's code (a read-only page of the plan), null while it's off.
+  shareCode  String?            @unique
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @default(now()) @updatedAt
   members    TravelTripMember[]
@@ -7616,6 +7618,7 @@ model TravelTrip {
   journal    TravelTripJournal[]
   polls      TravelTripPoll[]
   docs       TravelDoc[]
+  checkins   TravelTripCheckin[]
 
   @@index([ownerId])
   @@map("travel_trips")
@@ -7708,6 +7711,20 @@ model TravelDoc {
   @@index([userId])
   @@index([tripId])
   @@map("travel_docs")
+}
+
+/// M248: "I'm safe" from someone on a trip: shown on the family link and told to the others planning it.
+model TravelTripCheckin {
+  id        String     @id @default(cuid())
+  tripId    String
+  trip      TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  userId    String
+  note      String?
+  place     String?
+  createdAt DateTime   @default(now())
+
+  @@index([tripId])
+  @@map("travel_trip_checkins")
 }
 
 /// M215: a thing on a trip's shared packing list, ticked when someone has packed it.

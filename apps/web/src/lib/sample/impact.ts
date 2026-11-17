@@ -785,6 +785,10 @@ export function sampleTravelDocs() {
     { id: 'sample-doc-2', tripId: 'sample-trip-1', kind: 'insurance', label: 'Travel insurance', expires: '2027-12-31', note: 'Policy in my email', reminded: '' },
   ] };
 }
+/** GET /travel/trips/:id/share (M248): the sample trip's family link is off; Maya checked in (made up). */
+export function sampleTripShare() {
+  return { code: null, checkins: [{ id: 'sample-c-1', by: 'Maya', note: 'Landed, all good!', place: 'Lisbon', at: new Date(Date.now() - 2 * 3_600_000).toISOString() }] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {

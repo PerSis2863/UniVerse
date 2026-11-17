@@ -137,6 +137,7 @@ const PUBLIC_MODULE: Record<string, string> = {
   'trace GET dpp/:gtin': 'a product’s EU Digital Product Passport (public by design)',
   'impact-apps GET aid/:code': 'an aid box’s trip for donors (M151): the unguessable code in its link or QR code; towns and times, never people',
   'trace GET supplier': 'the supplier portal: the key in its link',
+  'impact-apps GET shared/:code': 'a trip’s family link (M248): the unguessable code its travellers turned on; first names, cities, places, check-ins, never emails or phones',
   'trace POST supplier': 'the supplier portal: the key in its link',
 };
 

@@ -8317,3 +8317,24 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   `green: true` with the train records a Green `TRANSIT` action for the person who chose it, once a leg (found by its
   note), through `logGreenAction` (so Green's own limits hold); tested in `travel-trip-mode.test.ts`. Database update
   **0232** (`travel_trip_stops.mode`).
+
+## M248: share the trip with family, and "I'm safe" (17 Nov)
+
+- **Where:** the trip page's **Share** part (`trip-share.tsx`): "Turn on the family link" (anyone on the trip), Send /
+  Copy, New link (the old one stops), Turn off; "I'm safe" with an optional note, and the check-ins (live).
+- **The family page** `/journey/<code>` (`src/app/journey/[code]/`, built once as `/journey/open` like `/aid/<code>`;
+  `/journey` is Travel's in `apps.ts`; kept out of search): the trip's name, dates, cities and first names, the latest
+  check-in, where they are today and what's next (`tripToday`), each day's plan (`timetable`), and the journal's
+  **Story** (only entries left "In the family link"). Refreshes while someone looks (`useActivePoll`, as the aid page).
+- **Server** (`src/server/travel-trip-share.ts`, tested): `GET/POST/DELETE /travel/trips/:id/share`,
+  `POST /travel/trips/:id/safe`, and the public `GET /travel/shared/:code` (16-letter code; listed with its reason in
+  `route-gates.test.ts`): **first names only, never an email, phone or account id** (the test checks the answer). A
+  check-in tells the others on the trip (`notifyMany`, `email: false`), keeps the last 50, and (Relief's M150) marks the
+  person safe in any live Relief emergency within its radius of today's city (`reliefSafe`, nobody told). Database
+  update **0233** (`travel_trips.shareCode`, `travel_trip_checkins`).
+- **Fixed while testing M247:** a leg whose way was only guessed (the train) did nothing when pressed; a press now saves
+  it (and logs the Green action).
+- **Checked** (`scripts/checks/travel-ten-ui.mjs` on local:dev with LIVE=0): every new part at 1280 dark and 390 light,
+  axe clean, no sideways scroll, no page errors; Bob never sees Alice's documents; the family page opens signed out with
+  no email on it. **Still to see on the built site:** the live pushes between two people (local:dev has no live
+  updates) and Nager.Date / the routers' real answers.
