@@ -8172,7 +8172,9 @@ directions, place details, what's here and share, measure distance) and "using t
   "Public transport in Google Maps". From the round blue button beside the search, a place card's Directions, or
   "what's here".
 - **Place details** were already there (the place card through `/travel/place`: hours and open now, phone, website,
-  address); its Directions now opens the in-map directions.
+  address); its Directions now opens the in-map directions, and so do a story's Directions and the photos' Go there
+  (`GoButton`; the old link to openstreetmap.org's directions is gone: the owner, 17 Nov, "it should show direction in
+  my own website").
 - **What's here + share** (`HereCard`): a right-click, or a press and hold on a touch screen: the address (Nominatim,
   from the browser; `nominatim.openstreetmap.org` added to `connect-src`), Directions from / to here, Measure, Copy
   coordinates, Share (a link `…/travel?view=map&at=…&pin=1` that opens with that card).
