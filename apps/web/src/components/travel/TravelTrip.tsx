@@ -1,10 +1,11 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Languages, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -35,11 +36,14 @@ export interface TripAnswer {
   trip: { id: string; name: string; startDate: string | null; travellers: number; style: Style; currency: string; updatedAt: string };
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
+// The parts that bring much code or data load only when opened.
+const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
+
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
   { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
-  { value: 'ready', label: 'Ready', icon: ShieldCheck },
+  { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck },
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
@@ -174,6 +178,7 @@ export function TravelTrip() {
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
         <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
       </div>}
+      {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'today' && <TripToday start={t.startDate} stops={stops} items={data.items} />}
 
       {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}

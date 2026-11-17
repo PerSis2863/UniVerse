@@ -8225,3 +8225,16 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   a "No signal" line.
 - **Not kept (said on the page):** photos, weather, walking routes, opening hours, later changes by friends. Changes
   made offline fail with the usual message (no offline queue). **Not seen live:** OpenFreeMap's real answers.
+
+## M241: a trip's phrasebook with voice (17 Nov)
+
+- **Where:** the trip page's **Phrases** part (`trip-phrases.tsx`, loaded with `next/dynamic` only when opened).
+- **Data** (`src/lib/travel-phrases.ts`, tested): 23 phrases in five groups (greetings, getting by, directions, food
+  and allergies, help) and the numbers 1–10, in 19 languages (Spanish twice, Portuguese twice), with how to say each
+  for non-Latin scripts; `languageFor(cc)` picks a country's (`'english'` where English is the main language, null
+  where there's none yet). Polite forms; "a / b" for the man's and woman's forms (the voice reads the first).
+- **Voice:** the browser's own `speechSynthesis` (free, on the device): the language's voice when the device has one,
+  else it says how to add one; "Slowly" reads at 0.65. **Show it big:** a full-screen card (Escape closes) to show a
+  local.
+- **Rule:** new languages go in `LANGUAGES` with every phrase (the test fails otherwise) and in `BY_COUNTRY`; have a
+  native speaker check them where possible (these were written for UniVerse, not checked by native speakers).
