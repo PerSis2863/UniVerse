@@ -8293,3 +8293,14 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   `notify` with `email: false`, two queries each, stops when the run's room is low and carries on next run.
 - **Also committed:** `scripts/checks/travel-ten-ui.mjs`, the browser check of the new trip parts (LIVE=0 for local:dev,
   which has no live updates).
+
+## M246: holidays and events on the trip's dates (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-holidays.tsx`): per city, its dates, the public holidays of its
+  country on those days with what may close ("Banks, offices and many shops may close…", "in some regions" for
+  regional ones), and the festivals its guide mentions, those naming one of the trip's months first, others marked
+  "(date not given)"; those naming another month are left out.
+- **Sources:** Nager.Date (`date.nager.at/api/v3/PublicHolidays/<year>/<CC>`, free, no account), fetched by the browser
+  (added to `connect-src` in `security-headers.ts`; no Worker CPU; SWR keeps it an hour); festivals from the guide the
+  page already loads (`/travel/guide`). Logic in `src/lib/travel-holidays.ts` (tested).
+- **Not seen live:** Nager.Date's real answers (this machine can't reach it); a 204/404 counts as "no holidays".
