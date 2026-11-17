@@ -14,7 +14,7 @@ import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
 import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
-import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { addTravelItem, addTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
@@ -121,6 +121,7 @@ export default function impactAppsModule(router: Router) {
   travel.delete<{ id: string }>('saved/:id', ({ user, params }) => removeTravelPlace(user, params.id));
   // M206 (src/server/travel-trips.ts): trips planned alone or with friends; every route checks membership.
   travel.get('trips', ({ user }) => travelTrips(user));
+  travel.get('trips/stays', ({ user }) => travelTripStays(user));
   travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
   // M215: a trip's shared costs and packing list.

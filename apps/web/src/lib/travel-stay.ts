@@ -33,3 +33,22 @@ export function aroundStay(g: Guide, stay: { lat: number; lon: number }, per = 6
   }
   return out;
 }
+
+/** The district guides a stay is most likely in: a big city's sights link to their district's guide ("Paris/8th
+ *  arrondissement"); those of the sights nearest the stay, at most `max`, nearest first. */
+export function districtsNear(g: Guide, stay: { lat: number; lon: number }, max = 2): string[] {
+  const out: string[] = [];
+  const near = g.sections.flatMap((s) => s.listings)
+    .filter((l) => l.guide?.startsWith(`${g.title}/`) && Number.isFinite(l.lat) && Number.isFinite(l.lon))
+    .map((l) => ({ guide: l.guide!, km: km(stay, { lat: l.lat!, lon: l.lon! }) ?? 999 }))
+    .sort((a, b) => a.km - b.km);
+  for (const n of near) if (!out.includes(n.guide) && out.length < max) out.push(n.guide);
+  return out;
+}
+
+/** A city's guide with its districts' listings added (a name listed twice is kept once). */
+export function withDistricts(g: Guide, districts: (Guide | undefined)[]): Guide {
+  const seen = new Set(g.sections.flatMap((s) => s.listings.map((l) => l.name.toLowerCase())));
+  const extra = districts.flatMap((d) => d?.sections ?? []).map((s) => ({ ...s, listings: s.listings.filter((l) => { const k = l.name.toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }) }));
+  return { ...g, sections: [...g.sections, ...extra] };
+}

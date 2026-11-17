@@ -15,6 +15,8 @@ export interface Listing {
   phone?: string; hours?: string; price?: string; lat?: number; lon?: number; text?: string;
   /** The sub-heading it sits under ("Budget", "Fine dining"). */
   group?: string;
+  /** M232: the guide its name links to (a big city's sights link to their district's: "Paris/7th arrondissement"). */
+  guide?: string;
 }
 export interface GuideSection { part: GuidePart; title: string; text: string[]; listings: Listing[] }
 export interface Guide {
@@ -98,12 +100,13 @@ export function listingFrom(t: ReturnType<typeof templateParams>, group?: string
   const name = clean(t.named.name);
   if (!name || !KINDS.has(kind) && t.name !== 'listing') return null;
   const url = t.named.url?.trim();
+  const link = /^\s*\[\[([^|\]#]+)/.exec(t.named.name ?? '');
   return {
     kind: (KINDS.has(kind) ? kind : 'other') as ListingKind, name,
     alt: clean(t.named.alt), url: url && /^https?:\/\//.test(url) ? url : undefined,
     address: clean(t.named.address), directions: clean(t.named.directions), phone: clean(t.named.phone),
     hours: clean(t.named.hours), price: clean(t.named.price), lat: num(t.named.lat), lon: num(t.named.long ?? t.named.lon),
-    text: clean(t.named.content ?? t.named.description), group,
+    text: clean(t.named.content ?? t.named.description), group, guide: link?.[1].trim() || undefined,
   };
 }
 

@@ -114,7 +114,7 @@ type GuideRecord = Guide & { tips: Tips; climate?: Climate };
 /** A Wikivoyage article read and kept 14 days (following up to two redirects); null when there's none. */
 async function readArticle(asked: string): Promise<GuideRecord | null> {
   let title = asked;
-  return cached<GuideRecord>(`guide3:${asked.toLowerCase()}`, 14 * DAY, async () => {
+  return cached<GuideRecord>(`guide4:${asked.toLowerCase()}`, 14 * DAY, async () => {
     for (let hop = 0; hop < 2; hop++) {
       const r = await fetch(`https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}?action=raw`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (r.status === 404) return null;

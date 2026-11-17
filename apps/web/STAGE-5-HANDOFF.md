@@ -8012,7 +8012,7 @@ type it in… it should recommend the areas to visit, foods, shopping and many m
   guide, the guide's must-see places with their notes (tap: the place's card) and its **areas to explore** (tap: that
   area's own guide and highlights). The guide is the one Travel keeps (`/travel/guide`, 14 days). `readGuide` now reads a
   `{{Regionlist}}` whose regions aren't links but list their districts (Paris: 21 arrondissements, each with what's
-  there); the cache key moved to `guide3:` so kept guides are read again once.
+  there); the cache key moved to `guide4:` so kept guides are read again once.
 - **Your stay**: "Where are you staying?" under the search finds a hotel or address (`/travel/where` now also returns
   its town and name, `where3:`), marks it "Your stay", and the panel shows what's around it from the town's guide,
   nearest first with the walk (`src/lib/travel-stay.ts` `aroundStay`: must-see, things to do, food, cafés and drinks,
@@ -8022,4 +8022,12 @@ type it in… it should recommend the areas to visit, foods, shopping and many m
 - **Checked:** `scripts/checks/travel-stay-ui.mjs` (Paris: must-see and areas, Food lists places with no "zoom in", Le
   Bristol found and marked, walks, 40 restaurants nearest it; axe clean at 1280 dark and 390 light, no sideways scroll),
   the unit tests, `pnpm check`. Worker: one Nominatim lookup per typed stay (kept 90 days) and the guide's cached read.
+- **Its two left-outs, done (the owner: "please work on it"):** a big city's own food, drink and shopping picks:
+  a guide listing keeps the guide its name links to (`Listing.guide`; Paris's sights link to their arrondissement's), so
+  `districtsNear` finds the one or two district guides nearest the stay and `withDistricts` adds their listings (a
+  name listed twice kept once); around Le Bristol: the 8th's restaurants, bars and shops, 27 places with the walk.
+  Hotels saved on a trip (`kind: 'sleep'` items): `GET /travel/trips/stays` (members only, 20 newest, with the stop's
+  guide) is offered under the field ("From your trips"), one tap uses it (looked up by name and address when it has no
+  position). The search, kinds and stay rows can grow, so the panel and the map's buttons sit under them (`--top-h`,
+  from a ResizeObserver) instead of at fixed heights. Checked by the same `travel-stay-ui.mjs`.
 - **Rule:** places of a kind need the map at street level: bring the map there (`closeIn`), never ask people to zoom.

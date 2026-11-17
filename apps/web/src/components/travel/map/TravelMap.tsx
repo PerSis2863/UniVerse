@@ -54,6 +54,7 @@ const ctl = 'flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--car
 
 /** Where to open: ?at=lat,lon,zoom, else the last view on this device, else Lisbon. */
 type Stay = { lat: number; lon: number; name: string; city: string | null };
+type TripStay = { id: string; name: string; address: string | null; lat: number | null; lon: number | null; city: string; guide: string; trip: string };
 /** M232: the stay someone typed in, kept on this device (a convenience: nothing is saved anywhere else). */
 function savedStay(): Stay | null {
   try { const v = JSON.parse(localStorage.getItem(STAY) ?? 'null'); return v && Number.isFinite(v.lat) && Number.isFinite(v.lon) && typeof v.name === 'string' ? v : null; } catch { return null; }
@@ -91,7 +92,20 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   // M232: the guide of the place that was searched (or opened from its guide): its highlights in the panel.
   const [stay, setStay] = useState<Stay | null>(savedStay);
   const [stayText, setStayText] = useState('');
+  const [stayFocus, setStayFocus] = useState(false);
+  // M232: the stays saved on my trips, offered as one tap.
+  const { data: tripStays } = useSWR<{ stays: TripStay[] }>('/travel/trips/stays', fetcher, { revalidateOnFocus: false });
   const stayMark = useRef<Marker | null>(null);
+  // M232: how tall the search and kinds are (they grow with a stay and the trips' stays): the panel and the map's
+  // buttons sit just under them.
+  const topBox = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = topBox.current, host = el?.parentElement;
+    if (!el || !host) return;
+    const ro = new ResizeObserver(() => host.style.setProperty('--top-h', `${el.offsetHeight}px`));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
   // M232: counts what the person asked the map to do; a slow lookup for where the page opened doesn't override it.
   const asked = useRef(0);
   const catNow = useRef<CategoryId>('see');
@@ -299,12 +313,23 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
     if (q.length < 3) return;
     asked.current++;
     void api.get<{ lat: number; lon: number; city: string | null; name: string | null }>(`/travel/where?q=${encodeURIComponent(q)}`).then(({ data }) => {
-      const s: Stay = { lat: data.lat, lon: data.lon, name: data.name ?? q, city: data.city };
-      setStay(s); setStayText(''); setCat('see'); pick(null); endWalk(); setOpen(true);
-      if (s.city) setGuideOf(s.city);
-      try { localStorage.setItem(STAY, JSON.stringify(s)); } catch { /* private mode */ }
-      if (mapRef.current) fly(mapRef.current, { lat: s.lat, lon: s.lon });
+      setStayText('');
+      applyStay({ lat: data.lat, lon: data.lon, name: data.name ?? q, city: data.city });
     }).catch(() => toast.error('We couldn’t find that. Try the hotel’s name with its town, or its address.'));
+  }
+  function applyStay(s: Stay) {
+    asked.current++;
+    setStay(s); setCat('see'); pick(null); endWalk(); setOpen(true); setStayFocus(false);
+    if (s.city) setGuideOf(s.city);
+    try { localStorage.setItem(STAY, JSON.stringify(s)); } catch { /* private mode */ }
+    if (mapRef.current) fly(mapRef.current, { lat: s.lat, lon: s.lon });
+  }
+  /** A stay saved on one of my trips: its place (looked up when it was saved without one) and its city's guide. */
+  function tripStay(t: TripStay) {
+    if (t.lat !== null && t.lon !== null) { applyStay({ lat: t.lat, lon: t.lon, name: t.name, city: t.guide }); return; }
+    void api.get<{ lat: number; lon: number }>(`/travel/where?q=${encodeURIComponent(`${t.name}, ${t.address ?? t.city}`)}`)
+      .then(({ data }) => applyStay({ lat: data.lat, lon: data.lon, name: t.name, city: t.guide }))
+      .catch(() => toast.error(`We couldn’t find ${t.name} on the map. Type its address instead.`));
   }
   function forgetStay() {
     setStay(null);
@@ -376,15 +401,23 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
       {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
 
       {/* Search and the kinds of place. */}
-      <div className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2 sm:end-auto sm:w-[24rem]">
+      <div ref={topBox} className="pointer-events-none absolute inset-x-3 top-3 z-20 flex flex-col gap-2 sm:end-auto sm:w-[24rem]">
         <div className="pointer-events-auto rounded-2xl bg-[var(--card-bg)] p-1.5 shadow-lg ring-1 ring-black/5 dark:ring-white/10">
           <PlaceSearch label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }} />
           <form onSubmit={findStay} className="mt-1 flex items-center gap-2 border-t border-zinc-200/70 px-2 pt-1.5 dark:border-white/10">
             <BedDouble className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-            <input value={stayText} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
+            <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
             {stayText.trim().length >= 3 && <button type="submit" className="btn-primary btn-sm">Find</button>}
             {stay && !stayText && <button type="button" onClick={forgetStay} className="btn-ghost btn-sm p-1" aria-label="Forget where I'm staying"><X className="h-4 w-4" aria-hidden /></button>}
           </form>
+          {(stayFocus || !stay) && !stayText && (tripStays?.stays.length ?? 0) > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5 px-2 pb-1 pt-1.5" role="group" aria-label="Stays on your trips">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">From your trips:</span>
+              {tripStays!.stays.slice(0, 4).map((t) => (
+                <button key={t.id} type="button" onClick={() => tripStay(t)} title={`${t.name}, ${t.city} (${t.trip})`} className="max-w-[12rem] truncate rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-200 dark:bg-white/[0.08] dark:text-zinc-100 dark:hover:bg-white/[0.14]"><span translate="no">{t.name}</span> · {t.city}</button>
+              ))}
+            </div>
+          )}
         </div>
         <div className="pointer-events-auto -mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
           {CATEGORIES.map((c) => {
@@ -401,7 +434,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
 
       {/* Controls. */}
       {/* A row under the kinds of place on a phone (pinch to zoom there), a column on the right on a computer. */}
-      <div className="absolute end-3 top-[10rem] z-20 flex flex-row gap-2 sm:top-3 sm:flex-col">
+      <div className="absolute end-3 top-[calc(var(--top-h,8.5rem)+1.25rem)] z-20 flex flex-row gap-2 sm:top-3 sm:flex-col">
         <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
         <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
         <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass className="h-5 w-5 transition-transform" style={{ transform: `rotate(${-bearing - 45}deg)` }} aria-hidden /></button>
@@ -431,7 +464,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
       )}
 
       {/* The panel: the places in view, a place, or a walk; with the hour and the sun. */}
-      <aside aria-label="Places" className={cn('absolute inset-x-2 bottom-2 z-30 flex max-h-[58%] flex-col rounded-2xl bg-[var(--card-bg)] shadow-2xl ring-1 ring-black/5 dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-[9.9rem] sm:max-h-none sm:w-[24rem]')}>
+      <aside aria-label="Places" className={cn('absolute inset-x-2 bottom-2 z-30 flex max-h-[58%] flex-col rounded-2xl bg-[var(--card-bg)] shadow-2xl ring-1 ring-black/5 dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-[calc(var(--top-h,8.5rem)+1.25rem)] sm:max-h-none sm:w-[24rem]')}>
         <div className="border-b border-zinc-200/70 p-3 dark:border-white/10">
           <div className="flex items-center gap-2">
             <Sun className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />

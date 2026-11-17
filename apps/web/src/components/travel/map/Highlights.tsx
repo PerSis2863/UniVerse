@@ -4,7 +4,7 @@ import useSWR from 'swr';
 import { BedDouble, Landmark, MapPinned } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
 import type { Guide, Listing } from '@/lib/travel-guide';
-import { aroundStay, STAY_KINDS, walkMinutes } from '@/lib/travel-stay';
+import { aroundStay, districtsNear, STAY_KINDS, walkMinutes, withDistricts } from '@/lib/travel-stay';
 
 // M232 (the owner, 17 Nov: "give recommendation about the historic areas and facts about everything which is unique
 // or people visit a lot"): the map's panel, for the place that was searched, lists its guide's must-see sights (each
@@ -29,13 +29,17 @@ export type NearbyKind = (typeof NEARBY)[number][0];
 
 export function Highlights({ title, stay, onSight, onArea, onNearby }: { title: string; stay?: { lat: number; lon: number; name: string } | null; onSight: (s: Listing & { lat: number; lon: number }) => void; onArea: (title: string) => void; onNearby?: (kind: NearbyKind) => void }) {
   const { data, isLoading } = useSWR<Answer>(`/travel/guide?d=${encodeURIComponent(title)}`, fetcher, { revalidateOnFocus: false });
+  // A big city keeps its restaurants, cafés and shops in its district guides: those of the district(s) the stay is in.
+  const [d1, d2] = data && stay ? districtsNear(data.guide, stay) : [];
+  const { data: a1 } = useSWR<Answer>(d1 ? `/travel/guide?d=${encodeURIComponent(d1)}` : null, fetcher, { revalidateOnFocus: false });
+  const { data: a2 } = useSWR<Answer>(d2 ? `/travel/guide?d=${encodeURIComponent(d2)}` : null, fetcher, { revalidateOnFocus: false });
   if (isLoading) return <div className="mb-2 h-24 animate-pulse rounded-xl bg-zinc-100 dark:bg-white/[0.05]" aria-busy="true" />;
   const g = data?.guide;
   const sights = sightsOf(g);
   const areas = (g?.places ?? []).filter((p) => p.text).slice(0, 10);
   if (!g || (!sights.length && !areas.length && !stay)) return null;
   const name = g.title.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
-  const around = stay ? aroundStay(g, stay) : null;
+  const around = stay ? aroundStay(withDistricts(g, [a1?.guide, a2?.guide]), stay) : null;
   const head = 'mb-1 flex items-center gap-1.5 px-2 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400';
   return (
     <section aria-label={`Highlights of ${name}`} className="mb-3 space-y-3 border-b border-zinc-200/70 pb-3 dark:border-white/10">
