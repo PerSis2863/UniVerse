@@ -8357,3 +8357,16 @@ chosen in the session and listed to the owner).
   trip (no forecast needed).
 - **Logic:** `dayLight` in `src/lib/travel-today.ts` (tested: Lisbon's 07:11 sunrise on 9 April, Svalbard's midnight sun
   gives none), from the map's sun maths (`sunTimes`, `travel-local.ts`), in the city's own time.
+
+## M251: the opening-hours check (17 Nov)
+
+In place of the "day trips" first listed to the owner: the trip's "Add places" already lists the guide's day trips (M206),
+so this checks the plan's times instead.
+
+- **Where:** the trip's **Today** part, at the top: "Opening hours: 2 places may not be open when the plan has you
+  there", each with the day, the time the timetable puts you there, the problem (closed, opens later, closes before you
+  leave) and the hours it read.
+- **Logic** (`src/lib/travel-hours.ts`, tested): OSM's format through `readHours` (`opening-hours.ts`), else the guides'
+  words: the first time range ("10:00–18:30", "9AM-5PM", "10.00 to 22.00"), a day span before it ("Tu-Su"), "closed
+  Mondays"; anything else says nothing (never a wrong warning on purpose). The weekday is the trip day's date; the time
+  is the Today timetable's (from 9:00).

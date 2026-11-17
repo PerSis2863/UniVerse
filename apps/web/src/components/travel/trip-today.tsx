@@ -6,6 +6,7 @@ import { toast } from 'sonner';
 import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, Sunrise, Sunset, TramFront, Umbrella } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { indoorIdeas, outdoors, wet } from '@/lib/travel-rain';
+import { tripHoursIssues } from '@/lib/travel-hours';
 import type { Guide, Listing } from '@/lib/travel-guide';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
@@ -29,6 +30,7 @@ export function TripToday({ tripId, start, stops, items, onAdded }: { tripId: st
   const now = useNow();
   const [pick, setPick] = useState<{ stop: number; day: number } | null>(null);
   const live = useMemo(() => tripToday(start, stops, items, new Date(now)), [start, stops, items, now]);
+  const issues = useMemo(() => tripHoursIssues(start, stops, items), [start, stops, items]);
   const shown = useMemo(() => (pick ? tripToday(start, stops, items, new Date(now), pick) : live), [pick, live, start, stops, items, now]);
 
   if (live.state === 'empty') return <Empty text="Add a place to the trip first: Today shows each day’s plan as you go." />;
@@ -54,6 +56,20 @@ export function TripToday({ tripId, start, stops, items, onAdded }: { tripId: st
         </label>
         {pick && live.state === 'during' && <button type="button" className="btn-secondary btn-sm" onClick={() => setPick(null)}>Back to today</button>}
       </section>
+      {issues.length > 0 && (
+        <section className="panel p-5" aria-labelledby="today-hours">
+          <h3 id="today-hours" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Clock className="h-5 w-5 text-amber-600 dark:text-amber-400" aria-hidden />Opening hours</h3>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{issues.length === 1 ? 'One place' : `${issues.length} places`} may not be open when the plan has you there. Move {issues.length === 1 ? 'it' : 'them'} to another day or time on the Plan.</p>
+          <ul className="mt-2 divide-y divide-zinc-200/70 dark:divide-white/10">
+            {issues.slice(0, 8).map((x) => (
+              <li key={`${x.item.id}-${x.date}`} className="py-2 text-sm">
+                <span className="font-semibold text-zinc-900 dark:text-white" translate="no">{x.item.name}</span> <span className="text-amber-800 dark:text-amber-300">{x.problem}</span>
+                <span className="block text-zinc-600 dark:text-zinc-300">{new Date(`${x.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'short', timeZone: 'UTC' })} at {clock(x.start)} · hours: <span translate="no">{x.hours}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
       {shown.state !== 'during'
         ? <Empty text="Pick a day to see its plan." />
         : <Day key={`${shown.stop}:${shown.day}`} tripId={tripId} stop={stops[shown.stop]} t={shown} live={!pick && live.state === 'during'} onAdded={onAdded} />}
