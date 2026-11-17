@@ -2,7 +2,7 @@
 
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
-import type { ExpressionSpecification, GeoJSONSource, Map as MLMap } from 'maplibre-gl';
+import type { ExpressionSpecification, GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
 import { ExternalLink, LocateFixed } from 'lucide-react';
 import { useDarkMode } from '@/lib/use-dark';
@@ -33,7 +33,7 @@ const filterOf = (shown: Set<KindId>): ExpressionSpecification => ['in', ['get',
 const colour: ExpressionSpecification = ['match', ['get', 'subclass'], ...KINDS.flatMap((k) => k.sub.flatMap((s) => [s, k.color])), '#71717a'] as unknown as ExpressionSpecification;
 
 export default function GreenPlaces() {
-  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<string | null>(null);
+  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
   const dark = useDarkMode();
   const [ready, setReady] = useState(false), [zoom, setZoom] = useState(HOME.zoom);
   const [spots, setSpots] = useState<Spot[]>([]), [centre, setCentre] = useState(HOME);

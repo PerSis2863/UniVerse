@@ -86,8 +86,8 @@ export function TravelGuide() {
   return (
     <div className="space-y-6">
       {/* The photo and the opening. */}
-      <section className="relative isolate flex min-h-[18rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 sm:min-h-[22rem] sm:p-8">
-        <Cover file={g.banner} width={1600} priority className="-z-10" />
+      <section className="relative isolate flex min-h-[18rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 pt-16 sm:min-h-[22rem] sm:p-8 sm:pt-16">
+        <Cover photo={g.photo} banner={g.banner} sizes="100vw" priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/35 to-black/10" aria-hidden />
         <Link href="/travel" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4" aria-hidden />Explore</Link>
         {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-indigo-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}

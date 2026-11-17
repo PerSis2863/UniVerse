@@ -125,7 +125,7 @@ function MatchCard({ m, rank, share, days, currency, onPlan }: { m: Match; rank:
   return (
     <li data-key={idea.title} className="card flex flex-col overflow-hidden">
       <Link href={`/travel/guide?d=${encodeURIComponent(idea.title)}`} className="group relative block h-36 shrink-0 overflow-hidden">
-        <Cover file={idea.banner} width={640} priority={rank <= 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
+        <Cover photo={idea.photo} banner={idea.banner} sizes="(min-width: 1536px) 25vw, (min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" priority={rank <= 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
         <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden />
         <span className="absolute start-3 top-3 inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-black/55 px-2 text-sm font-semibold tabular-nums text-white ring-1 ring-white/25" aria-hidden>{rank}</span>
         <span className="absolute inset-x-3 bottom-2.5 flex items-end justify-between gap-2">
