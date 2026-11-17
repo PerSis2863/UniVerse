@@ -8370,3 +8370,10 @@ so this checks the plan's times instead.
   words: the first time range ("10:00–18:30", "9AM-5PM", "10.00 to 22.00"), a day span before it ("Tu-Su"), "closed
   Mondays"; anything else says nothing (never a wrong warning on purpose). The weekday is the trip day's date; the time
   is the Today timetable's (from 9:00).
+
+## M252: the arrival guide (17 Nov)
+
+- **Where:** the trip's **Today** part, on the first day in each city: "Arriving in Porto": the guide's "Get in"
+  (paragraphs about airports, stations and ports first), "Get around", and the travel-card tip when the guide has one.
+- **Logic:** `arrival` in `src/lib/travel-today.ts` (tested), from the guide the page already loads (`/travel/guide`, the
+  same SWR key as the rain plan, so one request). It's in the offline pack too (M240 saves each city's guide text).

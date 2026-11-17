@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, Sunrise, Sunset, TramFront, Umbrella } from 'lucide-react';
+import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, PlaneLanding, Sun, Sunrise, Sunset, TramFront, Umbrella } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { indoorIdeas, outdoors, wet } from '@/lib/travel-rain';
 import { tripHoursIssues } from '@/lib/travel-hours';
@@ -12,7 +12,7 @@ import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { useNow } from '@/lib/use-now';
 import { distance, duration } from '@/lib/map-tools';
-import { clock, dayLight, tripToday, type Slot } from '@/lib/travel-today';
+import { arrival, clock, dayLight, tripToday, type Slot } from '@/lib/travel-today';
 import type { PlanItem, PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { useRoutes, type Spot } from './map/MapTools';
@@ -88,6 +88,7 @@ function Day({ tripId, stop, t, live, onAdded }: { tripId: string; stop: PlanSto
   return (
     <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="space-y-6">
+        {t.day === 0 && <Arrival stop={stop} />}
         {live && (current || next) && (
           <section className="panel p-5" aria-labelledby="today-next">
             {current && <p className="text-sm text-zinc-600 dark:text-zinc-300">Now: <span className="font-semibold text-zinc-900 dark:text-white" translate="no">{current.item.name}</span> until {clock(current.end)}</p>}
@@ -177,6 +178,26 @@ function WalkThere({ to, from }: { to: Spot; from: Spot | null }) {
           {r.steps.filter((s) => s.km > 0 || s.text === 'You have arrived').slice(0, 12).map((s, i) => <li key={i} className="flex gap-3"><span className="w-14 shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{s.km ? distance(s.km) : ''}</span><span>{s.text}</span></li>)}
         </ol>
       </>}
+    </section>
+  );
+}
+
+/** M252: the first day in a city: how to get in from the airport or station, and how to get around. */
+function Arrival({ stop }: { stop: PlanStop }) {
+  const { data } = useSWR<{ guide: Guide; tips?: { transit?: string[] } | null }>(`/travel/guide?d=${encodeURIComponent(stop.guide)}`, fetcher, { revalidateOnFocus: false });
+  const a = data ? arrival(data.guide, data.tips) : null;
+  if (a && !a.getIn.length && !a.around.length) return null;
+  return (
+    <section className="panel p-5" aria-labelledby="today-arrive">
+      <h3 id="today-arrive" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><PlaneLanding className="h-5 w-5 text-indigo-500" aria-hidden />Arriving in <span translate="no">{nice(stop.name)}</span></h3>
+      {!a ? <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400" role="status">Opening the guide…</p> : (
+        <div className="mt-2 space-y-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200" translate="no">
+          {a.getIn.length > 0 && <div><p className="font-semibold text-zinc-900 dark:text-white">Getting in</p>{a.getIn.map((p, i) => <p key={i} className="mt-1">{p}</p>)}</div>}
+          {a.around.length > 0 && <div><p className="font-semibold text-zinc-900 dark:text-white">Getting around</p>{a.around.map((p, i) => <p key={i} className="mt-1">{p}</p>)}</div>}
+          {a.card && <p className="rounded-xl bg-indigo-500/10 p-3 text-zinc-800 dark:text-zinc-100">{a.card}</p>}
+        </div>
+      )}
+      <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">From the city’s guide on Wikivoyage (CC BY-SA). Saved for offline with the trip.</p>
     </section>
   );
 }

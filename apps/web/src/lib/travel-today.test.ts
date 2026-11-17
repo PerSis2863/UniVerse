@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { clock, dayLight, timetable, tripToday } from './travel-today';
+import { arrival, clock, dayLight, timetable, tripToday } from './travel-today';
 import type { PlanItem, PlanStop } from './travel-plan';
 
 const stop = (id: string, lat: number, lon: number, days: number, position: number): PlanStop => ({ id, guide: id, name: id, cc: 'PT', lat, lon, days, position });
@@ -48,5 +48,19 @@ describe('the day’s light (M250)', () => {
     expect(l.minutes).toBeGreaterThan(12 * 60);
     expect(dayLight({ lat: null, lon: null, cc: null }, '2027-04-09')).toBeNull();
     expect(dayLight({ lat: 78.2, lon: 15.6, cc: 'SJ' }, '2027-06-21')).toBeNull(); // Svalbard's midnight sun
+  });
+});
+
+describe('arriving in a city (M252)', () => {
+  it('puts the airports and stations first, a few paragraphs each', () => {
+    const g = { sections: [
+      { part: 'get in', text: ['People have come to the city for centuries, by every road there is.', 'Lisbon airport is 7 km north of the centre; the red metro line runs to it.', 'x'] },
+      { part: 'get around', text: ['The metro, trams and buses take one rechargeable card.', 'Walking is the best way to see the hills.'] },
+    ] };
+    const a = arrival(g, { transit: ['A Viva Viagem card covers the metro.'] }, 2);
+    expect(a.getIn[0]).toMatch(/^Lisbon airport/);
+    expect(a.getIn).toHaveLength(2);
+    expect(a.around).toHaveLength(2);
+    expect(a.card).toBe('A Viva Viagem card covers the metro.');
   });
 });

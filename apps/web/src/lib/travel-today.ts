@@ -68,3 +68,11 @@ export function dayLight(s: Pick<PlanStop, 'lat' | 'lon' | 'cc'>, date: string) 
   const at = (d: Date) => new Intl.DateTimeFormat('en-GB', { timeZone: zone, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).format(d);
   return { rise: at(t.rise), set: at(t.set), morning: [at(t.rise), at(t.goldenMorning)] as const, evening: [at(t.goldenEvening), at(t.set)] as const, minutes: Math.round((+t.set - +t.rise) / 60_000) };
 }
+
+/** M252: arriving in a city: the guide's "Get in" (paragraphs about airports and stations first) and "Get around",
+ *  a few paragraphs each, and the travel-card tip when there is one. */
+export function arrival(g: { sections: { part: string; text: string[] }[] }, tips?: { transit?: string[] } | null, n = 3) {
+  const part = (p: string) => g.sections.filter((s) => s.part === p).flatMap((s) => s.text).filter((t) => t.length > 30);
+  const firstIn = (list: string[]) => [...list].sort((a, b) => Number(/airport|station|terminal|train|bus|ferry|port/i.test(b)) - Number(/airport|station|terminal|train|bus|ferry|port/i.test(a)));
+  return { getIn: firstIn(part('get in')).slice(0, n), around: part('get around').slice(0, n), card: tips?.transit?.[0] ?? null };
+}
