@@ -8554,3 +8554,42 @@ security notice).
 - **The 160 places' photos and weather (M259, M260):** the owner's cloud environment **"UniVerse"** already allows
   Wikivoyage, Wikidata, Commons, upload.wikimedia.org, Wikipedia and NASA POWER. A session started in that environment
   (not "Default") can run M259's three commands; this session could not switch to it.
+
+## M262: the map "command" look, part 1: the kit and Relief (17 Nov)
+
+The owner, 17 Nov, with a screen recording (a logistics dashboard concept on Instagram): "make me a exact same design and
+animations and ui in the trace and relief and travel app and where ever it feels to fitted because it contains map". The
+owner's exception to the launch pause. The look is followed, not the product (no name, logo, trucks or its wording).
+
+- **The kit** (`src/components/map-ui/Command.tsx`): `CountChips` (white bar, the chosen chip ink with its count),
+  `StatStrip` / `StatCard` (number cards along the map's foot; a sideways row on a phone, four across on a computer) with
+  `TickStrip`, `MiniLine`, `InkPill`; `Callout` + `placeCallout` (a white card pinned beside a place, moved by the map's
+  own frame with `transform`, never a React render a frame; `room` keeps it clear of a side card); `RoutePill`;
+  `QueueCard` (source and age, due chip, title, three facts, why, links, the black approve button; `hot` adds the accent
+  ring); `ProposalSheet` (Now / After table with the After column tinted, steps `now` / `ready` / `later`: on approval the
+  `now` ones tick off one by one, then "Approved"; it opens over the page, so it takes `app` for its colours); `undoToast`.
+  **Canvas marks** (`marks.tsx`, for WorldCanvas maps): `IconSource` + `drawIcons` (lucide icons drawn once into small
+  canvases in white, ink, grey and the accent), `unit` (ink / risk / hot / plain markers, a badge dot), `count`, `rings`,
+  `incident`, `zone`, `route` (done ink, planned dotted, new accent), `tag`.
+- **Colours:** `--cmd` (rings, halos, tints), `--cmd-ink` (text), `--cmd-fill` (filled pills, 4.5:1 with white) per app:
+  `.cmd-relief` orange (the recording's), `.cmd-trace` pink, `.cmd-travel` sky (M132: each app its own colour). CSS:
+  `cmd-pop`, `cmd-sheet`, `cmd-ring` (paused while scrolling; still with Reduce Motion), at the end of `globals.css`.
+- **Relief** (`ReliefApp.tsx`): the kinds of help and "Ask or offer help" above; a "Needs you" queue on the left (on a
+  phone under the map) with a `QueueCard` per post (most urgent and nearest first); the map taller with chips (All, Needs,
+  Offers, Urgent: the same filter for the list), the zoom and Near me in one capsule, markers drawn with `unit` (urgent and
+  open: white with the orange ring and halo, critical ones pulse; someone on it: a green dot; offers small and white;
+  several close together: a number in an ink circle), the chosen one orange with rings, a dashed zone and the dotted way
+  from where you are, its card pinned beside it and the full card on the right (a sheet on a phone); number cards (open
+  needs with a tick per need, being helped, urgent, helped in 30 days with "n need you"), counted from the same list
+  as the map (the server's stats could be a moment older). The six number tiles above the map are gone (the cards
+  replace them); the "Help, moving" funnel and radar now sit under the map. **"I can help" in the queue** opens the plan:
+  status, helper, how it shows, messages (now and after), the steps (the distance if known; put you down as the helper;
+  tell the person; later, mark it delivered), the details; approve runs the same `take` as before, and the toast's Undo
+  runs `release` (both tell the person who asked, as before). The side card's own "I can help" still takes it at once.
+- **Checked:** `relief-command-ui.mjs` on `local:dev` (1280 dark, 390 light): chips and counts, the queue card, the pinned
+  card, the plan, the steps ticking to Approved, taken then open again after Undo; axe clean, no sideways scroll, no page
+  errors. `pnpm check`.
+- **Next (M263, M264):** Trace's tracking map (shipments: ink markers, a late or too-warm one with the ring, its route done
+  and planned, a pinned card, number cards, "needs you" for the brand: alerts, likely copies, recalls) and Travel (a trip's
+  day on the map: pinned card for the next place, the walk drawn as done / planned, number cards; the Today tab's checks
+  as "needs you").

@@ -3109,3 +3109,21 @@ html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: 
 .notif-sheet[data-entering] .notif-row { animation: notif-in 520ms var(--spring-glide, var(--ease-glide)) both; animation-delay: calc(min(var(--i, 0), 10) * 35ms + 80ms); }
 @keyframes notif-in { from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .notif-sheet[data-entering] .notif-row { animation: tracks-fade 200ms ease both; } }
+
+/* M262: the map command look (the owner's screen recording, 17 Nov; src/components/map-ui/Command.tsx). `--cmd` is the
+   accent for rings, halos and tints, `--cmd-ink` the darker one for text and filled pills (4.5:1 with white). Each app
+   keeps its own colour (M132): Relief's orange is the recording's. */
+.cmd-relief { --cmd: #f26322; --cmd-ink: #c2410c; --cmd-fill: #c2410c; }
+.cmd-trace { --cmd: #ec4899; --cmd-ink: #be185d; --cmd-fill: #be185d; }
+.cmd-travel { --cmd: #0ea5e9; --cmd-ink: #0369a1; --cmd-fill: #0369a1; }
+.dark :is(.cmd-relief) { --cmd-ink: #fb923c; } .dark :is(.cmd-trace) { --cmd-ink: #f472b6; } .dark :is(.cmd-travel) { --cmd-ink: #38bdf8; }
+@keyframes cmd-pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
+.cmd-pop { animation: cmd-pop 280ms var(--ease-glide) backwards; }
+@keyframes cmd-sheet { from { opacity: 0; transform: translateY(18px) scale(0.97); } }
+.cmd-sheet { animation: cmd-sheet 320ms var(--ease-glide) backwards; }
+/* A pulsing pair of rings round a place that needs attention (DOM markers; the canvas maps draw their own). */
+@keyframes cmd-ring { from { transform: scale(0.55); opacity: 0.8; } to { transform: scale(1.9); opacity: 0; } }
+.cmd-ring::before, .cmd-ring::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid var(--cmd); animation: cmd-ring 2.4s var(--ease-out-soft) infinite; pointer-events: none; }
+.cmd-ring::after { animation-delay: 1.2s; }
+html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cmd-pop, .cmd-sheet { animation-name: tl-fade; } .cmd-ring::before, .cmd-ring::after { animation: none; opacity: 0.4; transform: scale(1.3); } }

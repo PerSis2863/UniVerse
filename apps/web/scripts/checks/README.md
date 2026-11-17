@@ -65,6 +65,7 @@ remove it at the end; if one stops halfway, run it again or reset the local data
 | `trace-fakes-api.mjs` | M147: reports of fake labels through the API: refused for a genuine unit, once per person on a likely copy, signed in, the brand's Radar lists the shop without the reporter. |
 | `relief-places-api.mjs` | M148: the shelter board through the API: a coordinator shares the status, a volunteer can't, beds clamped, the board shows it without codes or people, signed out refused. |
 | `relief-skills-api.mjs` | M149: skills matching through the API: a helper with the skill hears "Your skill is needed" despite narrow filters, others the usual alert, never the asker. |
+| `relief-command-ui.mjs` | M262 Relief's map in the command look: needs queue, chips, number cards, pinned card, "I can help" as a plan (Now / After, steps ticking, Approved), Undo gives it back. Posts three needs and an offer, closed after. Axe 1280 dark, 390 light. |
 | `relief-safety-api.mjs` | M150: the "I'm safe" check-in through the API: only coordinators declare and end, only the people you talk with are told and see it, refused once ended. |
 | `relief-aid-api.mjs` | M151: traceable aid through the API: coordinators pack, members move it forward only, the public trip shows no people, followers hear each step, wrong codes 404. |
 | `fields-ui.mjs` | M161: on the pages with date and time fields (admin, teacher, student; 1280 and 390): none narrower than what it holds, none beside its label, no sideways scroll. |
