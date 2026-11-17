@@ -267,3 +267,19 @@ export const IDEAS: Idea[] = ROWS.map(([title, cc, themes, tags, blurb, banner, 
     banner: banner ?? read.banner, photo: (photo ?? read.photo) || undefined, lat: read.lat, lon: read.lon, climate: read.climate,
   };
 });
+
+const fold = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+const pictured = (i: Idea | undefined) => (i && (i.photo || i.banner) ? i : undefined);
+/** M238: the picture for a trip (the owner, 17 Nov: a trip named "Netherland" or "Germany" had a blank one): its chosen
+ *  place, else one of its places or a place named like the trip, else that country (a letter short is fine:
+ *  "Netherland"), else a place or country the name mentions ("Summer in Italy"), else a scenic one, always the same
+ *  for that name. */
+export function tripCover(t: { name: string; cover?: string | null; places?: (string | null | undefined)[] }): Idea | undefined {
+  const exact = (s?: string | null) => (s ? pictured(IDEAS.find((i) => fold(i.title) === fold(s.split(',')[0]))) : undefined);
+  const name = fold(t.name);
+  const country = (s: string) => s.length >= 4 && IDEAS.find((i) => (i.photo || i.banner) && (fold(i.country) === s || (fold(i.country).startsWith(s) && fold(i.country).length - s.length <= 2) || (s.startsWith(fold(i.country)) && s.length - fold(i.country).length <= 2)));
+  const words = (s: string) => new RegExp(`(^|[^a-z])${s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}($|[^a-z])`).test(name);
+  return exact(t.cover) ?? t.places?.map(exact).find(Boolean) ?? exact(t.name) ?? (country(name) || undefined)
+    ?? pictured(IDEAS.find((i) => (i.photo || i.banner) && (words(fold(i.title)) || words(fold(i.country)))))
+    ?? (() => { const scenic = IDEAS.filter((i) => i.photo && i.themes.some((x) => x === 'Nature' || x === 'Beaches' || x === 'Mountains')); let h = 0; for (const c of name) h = (h * 31 + c.charCodeAt(0)) >>> 0; return scenic[h % Math.max(1, scenic.length)]; })();
+}

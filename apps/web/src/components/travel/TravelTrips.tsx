@@ -8,7 +8,7 @@ import { CalendarDays, Loader2, MapPin, Plus, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
-import { IDEAS } from '@/lib/travel-ideas';
+import { tripCover } from '@/lib/travel-ideas';
 import { addDays } from '@/lib/travel-plan';
 import { Cover, startTrip } from './travel-ui';
 
@@ -61,7 +61,7 @@ export function TravelTrips({ join }: { join: string | null }) {
             <li key={t.id}>
               <Link href={`/travel/trip?id=${t.id}`} className="group card block overflow-hidden">
                 <span className="relative block h-32 overflow-hidden">
-                  <Cover {...IDEAS.find((i) => i.title === t.cover)} sizes={TRIP_SIZES} priority={n < 3} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
+                  <Cover {...tripCover({ name: t.name, cover: t.cover, places: t.cities })} sizes={TRIP_SIZES} priority={n < 3} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
                   <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" aria-hidden />
                   <span className="absolute inset-x-4 bottom-3 block truncate text-lg font-semibold text-white" translate="no">{t.name}</span>
                 </span>

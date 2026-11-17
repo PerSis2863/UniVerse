@@ -11,7 +11,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { CURRENCIES, STYLES, STYLE_IDS, money, type Style } from '@/lib/travel-find';
-import { IDEAS } from '@/lib/travel-ideas';
+import { tripCover } from '@/lib/travel-ideas';
 import { betweenLinks, ferryLikely } from '@/lib/travel-book';
 import { bestOrder, leg, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
@@ -71,7 +71,7 @@ export function TravelTrip() {
     await mutate();
   };
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
-  const total = tripDays(stops), cover = IDEAS.find((i) => i.title === stops[0]?.guide);
+  const total = tripDays(stops), cover = tripCover({ name: t.name, cover: stops[0]?.guide, places: stops.map((x) => x.guide) });
   const when = range(dates[0]?.from ?? null, dates[dates.length - 1]?.to ?? null);
   const invite = typeof window !== 'undefined' ? `${location.origin}/travel/saved?join=${data.code}` : '';
 

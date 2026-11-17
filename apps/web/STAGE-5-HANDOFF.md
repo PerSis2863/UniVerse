@@ -8183,3 +8183,13 @@ directions, place details, what's here and share, measure distance) and "using t
 - **Checked:** unit tests (`map-tools.test.ts`), a browser run on the Helsinki test map (right-click, two routes,
   cycling, measuring: 150 m, 2,529 m²), axe clean, no page errors. **Not seen live:** the real routers' and Nominatim's
   answers (this machine can't reach them); look at them once merged.
+
+## M238: every trip has a picture (17 Nov)
+
+The owner, 17 Nov: "the netherland and germany doesnt have photo if i click on new trip and just type name then it shows
+blank photo". A trip's picture came only from its chosen place (`cover`), so a trip named after a country, or anything
+else typed, had a blank gradient. `tripCover` (`src/lib/travel-ideas.ts`, tested in `travel-cover.test.ts`), used by the
+trips list and the trip page: the chosen place, else one of its places or a place named like the trip, else that
+country's first pictured place (a letter or two short is fine: "Netherland" → Amsterdam, "Germany" → Berlin), else a
+place or country the name mentions ("Summer in Italy"), else a scenic (nature, beach or mountain) picture, always the
+same for the same name. **Rule:** anything that shows a trip's picture uses `tripCover`.
