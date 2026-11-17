@@ -743,7 +743,7 @@ export function sampleTravelTrip(me: { id: string; name?: string }) {
       item('sample-item-5', 'sample-stop-1', null, 0, 'Time Out Market', 'eat', 38.7069, -9.1459, 75, { price: '€8–20' }),
       item('sample-item-6', 'sample-stop-2', 0, 0, 'Livraria Lello', 'see', 41.1469, -8.6149, 30, { price: '€10' }),
     ],
-    members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false }],
+    members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true, zone: null }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false, zone: 'America/New_York' }],
   };
 }
 /** GET /travel/trips/:id/expenses (M215): costs shared with the sample friend (made up). */

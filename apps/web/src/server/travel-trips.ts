@@ -3,6 +3,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { LISTING_KINDS } from '@/lib/travel-guide';
 import { CURRENCIES, STYLE_IDS } from '@/lib/travel-find';
 import { isDay, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isZone } from '@/lib/travel-jetlag';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, strings, type Body } from './body';
 import { publish } from './realtime';
@@ -90,7 +91,7 @@ export async function travelTrip(u: SessionUser, id: string) {
   const [stops, items, members] = await Promise.all([
     prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, take: MAX_STOPS }),
     prisma.travelTripItem.findMany({ where: { tripId: id }, orderBy: [{ day: 'asc' }, { position: 'asc' }], take: MAX_ITEMS }),
-    prisma.travelTripMember.findMany({ where: { tripId: id }, orderBy: { joinedAt: 'asc' }, take: MAX_MEMBERS, select: { userId: true } }),
+    prisma.travelTripMember.findMany({ where: { tripId: id }, orderBy: { joinedAt: 'asc' }, take: MAX_MEMBERS, select: { userId: true, zone: true } }),
   ]);
   const people = await prisma.user.findMany({ where: { id: { in: members.map((m) => m.userId) } }, select: { id: true, name: true, avatar: true } });
   const owner = trip.ownerId === u.id;
@@ -99,7 +100,7 @@ export async function travelTrip(u: SessionUser, id: string) {
     // The invite code is every member's to share (they plan together), never shown off the trip.
     code: trip.code, owner, ownerId: trip.ownerId, me: u.id,
     stops, items,
-    members: members.map((m) => { const p = people.find((x) => x.id === m.userId); return { id: m.userId, name: shortName(p?.name), avatar: p?.avatar ?? null, owner: m.userId === trip.ownerId }; }),
+    members: members.map((m) => { const p = people.find((x) => x.id === m.userId); return { id: m.userId, name: shortName(p?.name), avatar: p?.avatar ?? null, owner: m.userId === trip.ownerId, zone: m.zone }; }),
   };
 }
 
@@ -145,6 +146,15 @@ export async function joinTravelTrip(u: SessionUser, b: Body) {
   await notifyMany(ids, { type: 'event', title: `${shortName(u.name)} is planning “${trip.name}” with you`, body: 'They joined with the invite link.', link: `/travel/trip?id=${trip.id}`, email: false });
   await changed(trip.id);
   return { trip: { id: trip.id } };
+}
+
+/** PATCH /travel/trips/:id/me { zone }: M244: show the group my home clock (an IANA zone), or stop (null). */
+export async function setTripZone(u: SessionUser, id: string, b: Body) {
+  await tripFor(u, id);
+  if (b.zone !== null && !isZone(b.zone)) throw new BadRequestException('Pick a time zone.');
+  await prisma.travelTripMember.update({ where: { tripId_userId: { tripId: id, userId: u.id } }, data: { zone: b.zone as string | null } });
+  await changed(id);
+  return { ok: true };
 }
 
 /** POST /travel/trips/:id/code: the owner makes a new invite link (the old one stops working). */

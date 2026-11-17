@@ -8262,3 +8262,17 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   (closed) and `DELETE …/polls/:pollId`; members only; at most 30 polls; `publish` refreshes everyone's page, and the
   voter's own page moves their name at once. Database update **0229** (`travel_trip_polls`, `travel_trip_votes`).
 - **Rule:** the bars are `<Fill>` (with a colour class: `.fill` has none of its own).
+
+## M244: the jet-lag planner and the group's clocks (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-jetlag.tsx`): home time zone (the device's, or the one you shared),
+  the trip city flown to, the flight day (the trip's start), usual sleep and wake; the plan as cards from three days
+  before to settled; clocks for each of the trip's zones and for everyone who chose "Show my clock".
+- **Logic** (`src/lib/travel-jetlag.ts`, tested): `zoneOffset` from `Intl` (summer time included), `shiftHours` the short
+  way round (±12 h), `jetLagPlan`: before an eastward flight an hour earlier each day (westward later, up to 3 h), then
+  daylight in the morning and a dim evening going east (beyond 8 h, the first two mornings dim), daylight in the late
+  afternoon and a dim early morning going west; about a day a time zone east, 1.5 west, at most 8. Under 3 h: "little jet
+  lag". Said on the page: general guidance, not medical advice.
+- **Server:** `PATCH /travel/trips/:id/me { zone | null }` (`setTripZone`, `isZone` checked), the members' `zone` in the
+  trip's answer; database update **0230** (`travel_trip_members.zone`). A home clock shows a rough place, so it's
+  shared only by choice.

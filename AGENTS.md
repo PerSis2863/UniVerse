@@ -219,7 +219,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
 - **On the branch `claude/travel-ten-features` (made from `claude/great-hamilton-8g8xdm`), not merged yet:** the
-  owner's Travel features of 17 Nov, as parts of a trip's page: M239 (Today: the next place, when to leave, the walk there), M240 (Ready → Save for offline: plan, guides, map tiles), M241 (Phrases: 19 languages, read aloud), M242 (Journal: notes and photos per day, the story with the route; 0228), M243 (Votes: group polls, live; 0229).
+  owner's Travel features of 17 Nov, as parts of a trip's page: M239 (Today: the next place, when to leave, the walk there), M240 (Ready → Save for offline: plan, guides, map tiles), M241 (Phrases: 19 languages, read aloud), M242 (Journal: notes and photos per day, the story with the route; 0228), M243 (Votes: group polls, live; 0229), M244 (Ready → jet lag and the group's clocks; 0230).
 - **On the branch `claude/great-hamilton-8g8xdm`, not merged yet:** M238 (17 Nov), every trip has a picture (`tripCover`). M237 (17 Nov), Google Maps' tools on Travel's map
   (directions by walking, cycling or driving; what's here with share; measure; `MapTools.tsx`, `src/lib/map-tools.ts`) and
   the maps' labels in Inter (`scripts/map-glyphs.py`, `public/fonts/map`, `mapRequest`). M236 (17 Nov), the maps in Apple Maps' look (its colours, every place a
@@ -279,7 +279,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M244** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M245** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -296,7 +296,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0230`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0231`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

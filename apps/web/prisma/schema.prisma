@@ -7710,6 +7710,8 @@ model TravelTripMember {
   trip     TravelTrip @relation(fields: [tripId], references: [id], onDelete: Cascade)
   userId   String
   joinedAt DateTime   @default(now())
+  /// M244: their home time zone, when they chose to show the group their clock.
+  zone     String?
 
   @@id([tripId, userId])
   @@index([userId])

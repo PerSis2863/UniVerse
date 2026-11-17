@@ -28,6 +28,7 @@ import { useNow } from '@/lib/use-now';
 import { TripJournal } from './trip-journal';
 import { TripPolls } from './trip-polls';
 import { TripOffline } from './trip-offline';
+import { TripJetLag } from './trip-jetlag';
 import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
@@ -35,7 +36,7 @@ import { readPack } from '@/lib/trip-offline-save';
 // friends planning it together (an invite link; their changes arrive live) and a calendar file. M215: two
 // more parts beside the plan (?part=money|packing): shared costs and settling up, and a packing list.
 
-interface Member { id: string; name: string; avatar: string | null; owner: boolean }
+interface Member { id: string; name: string; avatar: string | null; owner: boolean; zone?: string | null }
 export interface TripAnswer {
   trip: { id: string; name: string; startDate: string | null; travellers: number; style: Style; currency: string; updatedAt: string };
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
@@ -186,6 +187,7 @@ export function TravelTrip() {
         segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
 
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+        <TripJetLag tripId={t.id} stops={stops} start={t.startDate} members={data.members} me={data.me} refresh={() => void mutate()} />
         <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
       </div>}
       {part === 'polls' && <TripPolls tripId={t.id} owner={data.owner} ideas={{ place: [...data.items.filter((x) => x.day === null).map((x) => x.name), ...stops.map((s) => nice(s.name))], date: when ? [when] : [] }} />}
