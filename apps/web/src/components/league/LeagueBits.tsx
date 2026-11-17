@@ -1,5 +1,6 @@
 import { STATUS_LABEL, type LeagueStatus } from '@/lib/impact-league';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Small pieces shared by the Impact League pages (Stage 5 · D14).
 
@@ -45,7 +46,7 @@ export function Progress({ done, total, label, count = true }: { done: number; t
   return (
     <div className="flex items-center gap-2">
       <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={total} aria-valuenow={done} className="h-1.5 flex-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-        <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${pct}%` }} />
+        <Fill value={(pct) / 100} className="h-full rounded-full bg-emerald-500" />
       </div>
       {count && <span className="text-xs tabular-nums text-zinc-600 dark:text-zinc-400 shrink-0">{done}/{total}</span>}
     </div>

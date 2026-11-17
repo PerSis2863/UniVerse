@@ -7,9 +7,10 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { LoadError } from '@/components/ui/LoadError';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
-import { fadeUp, list, spring } from '@/lib/motion';
+import { fadeUp, list } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { Band } from '@/lib/mastery';
+import { Fill } from '@/components/ui/Fill';
 
 // A student's Learning DNA for one course (Stage 5 · D1; src/server/learning-dna.ts): each concept as
 // a tile that fills and glows as it's mastered, grouped under broader concepts, and what to study
@@ -94,7 +95,7 @@ function Tile({ c }: { c: Concept }) {
         {b.label}{c.n > 0 && c.trend > 0.05 && <TrendingUp className="w-3 h-3" aria-label="improving" />}{c.n > 0 && c.trend < -0.05 && <TrendingDown className="w-3 h-3" aria-label="slipping" />}
       </p>
       <div className="mt-2 h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="img" aria-label={c.n ? `${Math.round(c.level * 100)}% from ${c.n} answer${c.n === 1 ? '' : 's'}` : 'No answers yet'}>
-        <motion.div className={cn('h-full rounded-full', b.fill)} initial={{ width: 0 }} animate={{ width: `${c.n ? Math.max(6, c.level * 100) : 0}%` }} transition={spring.gentle} />
+        <Fill value={(c.n ? Math.max(6, c.level * 100) : 0) / 100} className={cn('h-full rounded-full', b.fill)} />
       </div>
       <p className="mt-1 text-[10px] text-zinc-600 dark:text-zinc-400 tabular-nums">{c.n ? `${c.n} answer${c.n === 1 ? '' : 's'}` : '—'}{c.asked ? ` · asked the tutor ${c.asked}×` : ''}</p>
     </li>

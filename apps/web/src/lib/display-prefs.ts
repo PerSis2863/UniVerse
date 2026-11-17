@@ -88,7 +88,7 @@ export function setAccent(a: Accent) {
 }
 
 /** For app/layout.tsx: applies the saved text size, accent and reduce motion before the first paint. */
-/** M231: the menu on a computer: across the top or down the side; `auto` is the top in a browser (full screen
+/** M235: the menu on a computer: across the top or down the side; `auto` is the top in a browser (full screen
  *  too) and the side in the installed app. Kept on this device, on <html data-menu> (the `topnav:` variant
  *  and useTopNav read it), set before the first paint by the script below. */
 export type MenuPlace = 'auto' | 'top' | 'side';

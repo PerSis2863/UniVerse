@@ -20,7 +20,10 @@ export const UA = 'UniVerseTravel/1.0 (https://github.com/PerSis2863/UniVerse; t
 const HOUR = 3_600_000, DAY = 24 * HOUR;
 
 export async function fetchJson<T>(url: string): Promise<T | null> {
-  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) });
+  // A source that is slow or unreachable is "busy" (503), like one that answers with an error: not a fault of
+  // the site's own (M231: a Nominatim timeout was logged as a server error).
+  const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA, Accept: 'application/json' }, signal: AbortSignal.timeout(8000) })
+    .catch(() => { throw new ServiceUnavailableException('The travel guide service is busy. Try again in a minute.'); });
   if (r.status === 404) return null;
   if (!r.ok) throw new ServiceUnavailableException('The travel guide service is busy. Try again in a minute.');
   return (await r.json()) as T;
@@ -131,7 +134,7 @@ const credit = (title: string) => ({ source: 'Wikivoyage', licence: 'CC BY-SA 3.
 /** M204: the topics a country's article usually covers better than a city's. */
 const COUNTRY_TOPICS = ['tipping', 'water', 'scams', 'manners', 'dress', 'visa'] as const;
 
-/** M228: a place's cover photo (a Commons file), looked up once a month: one of Explore's places has its own
+/** M232: a place's cover photo (a Commons file), looked up once a month: one of Explore's places has its own
  *  (checked by hand); any other its Wikidata main image (P18), else Wikivoyage's own page image, when photoOk
  *  (a wide, sharp photo, not a map or a flag). Null: the guide's banner stays. */
 async function photoFor(title: string): Promise<string | null> {

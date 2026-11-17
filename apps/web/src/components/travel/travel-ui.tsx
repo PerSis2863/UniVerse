@@ -32,10 +32,10 @@ export function useHome(): [string | null, (c: string) => void] {
   return [chosen ?? guess, set];
 }
 
-/** How wide a card's picture is shown, for the browser to pick a width (M228). */
+/** How wide a card's picture is shown, for the browser to pick a width (M232). */
 export const CARD_SIZES = '(min-width: 1536px) 25vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw';
 
-/** A place's photo (M228: its own photo, else the guide's banner, else a soft gradient), filling its box,
+/** A place's photo (M232: its own photo, else the guide's banner, else a soft gradient), filling its box,
  *  in Wikimedia's widths so phones and sharp screens each get enough pixels. `sizes` is how wide it's shown. */
 export function Cover({ photo, banner, sizes, className, priority }: { photo?: string | null; banner?: string | null; sizes: string; className?: string; priority?: boolean }) {
   const [broken, setBroken] = useState<string[]>([]);

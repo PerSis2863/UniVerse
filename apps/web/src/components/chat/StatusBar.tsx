@@ -168,7 +168,7 @@ function StatusViewer({ people, start, onClose, onDeleted }: { people: Person[];
           <div className="absolute bottom-0 inset-x-0 p-3 pb-[calc(env(safe-area-inset-bottom)+0.75rem)] bg-gradient-to-t from-black/70 to-transparent space-y-2" onPointerDown={(e) => e.stopPropagation()}>
             <div className="flex justify-center gap-1.5" role="group" aria-label="React">
               {REACTIONS.map((r) => (
-                <motion.button key={r} whileTap={{ scale: 0.8 }} type="button" onClick={() => void react(r)} aria-pressed={mine === r} aria-label={`React ${r}`} className={cn('w-10 h-10 rounded-full text-xl grid place-items-center transition-colors', mine === r ? 'bg-white/40 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20')}>{r}</motion.button>
+                <motion.button key={r} type="button" onClick={() => void react(r)} aria-pressed={mine === r} aria-label={`React ${r}`} className={cn('w-10 h-10 rounded-full text-xl grid place-items-center transition-colors active:scale-[0.8]', mine === r ? 'bg-white/40 ring-2 ring-white' : 'bg-white/10 hover:bg-white/20')}>{r}</motion.button>
               ))}
             </div>
             <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); void sendReply(); }}>
@@ -249,7 +249,7 @@ function StatusComposer({ onClose, onPosted }: { onClose: () => void; onPosted: 
             <button key={c} type="button" onClick={() => setColor(c)} aria-label="Background colour" className={cn('w-7 h-7 rounded-full shrink-0 ring-2', color === c ? 'ring-white' : 'ring-white/30')} style={{ background: c }} />
           ))}</div>}
           {photo && <div className="flex-1" />}
-          <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => void post()} disabled={busy || (!photo && !text.trim())} aria-label="Share status" className="w-12 h-12 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow-lg disabled:opacity-50">
+          <motion.button type="button" onClick={() => void post()} disabled={busy || (!photo && !text.trim())} aria-label="Share status" className="w-12 h-12 rounded-full bg-white text-indigo-600 flex items-center justify-center shadow-lg disabled:opacity-50 active:scale-[0.92]">
             {busy ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
           </motion.button>
         </div>

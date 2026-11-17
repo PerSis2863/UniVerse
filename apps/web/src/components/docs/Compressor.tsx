@@ -6,6 +6,7 @@ import { AlertCircle, Archive, CheckCircle2, Download, FileUp, Loader2, Minimize
 import { Segmented } from '@/components/ui/Segmented';
 import { LEVELS, LEVEL_ORDER, METHOD_NOTE, formatSize, methodFor, savedPercent, type Level } from '@/lib/compress';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Tools → Compress (src/components/docs/compress-engine.ts): drop files, pick how
 // strongly, see each file's size before and after, download. It all happens on this device.
@@ -113,7 +114,7 @@ export function Compressor({ onClose }: { onClose?: () => void }) {
                   <div className="flex items-center gap-2" aria-live="polite">
                     <Loader2 className="w-4 h-4 animate-spin text-indigo-500 shrink-0" aria-hidden />
                     <div role="progressbar" aria-label={`Compressing ${r.file.name}`} aria-valuemin={0} aria-valuemax={100} aria-valuenow={r.fraction != null ? Math.round(r.fraction * 100) : undefined} className="h-1.5 flex-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-                      <div className={cn('h-full rounded-full bg-indigo-500 transition-[width]', r.fraction == null && 'w-1/3 animate-pulse')} style={r.fraction != null ? { width: `${Math.round(r.fraction * 100)}%` } : undefined} />
+                      {r.fraction != null ? <Fill quick value={r.fraction} className="h-full rounded-full bg-indigo-500" /> : <div className="h-full w-1/3 rounded-full bg-indigo-500 animate-pulse" />}
                     </div>
                     <span className="text-xs text-zinc-600 dark:text-zinc-400 tabular-nums shrink-0">{r.progress}</span>
                   </div>

@@ -8,6 +8,7 @@ import { api } from '@/lib/api';
 import { authedJson } from '@/lib/authed-fetch';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // The guided tour (Stage 5 · Q18): a few stops for each role that point at the real buttons: the
 // menu item, the phone's tab bar, the search field, the bell. Each stop finds its button on screen
@@ -178,7 +179,7 @@ export function WelcomeTour({ role }: { role?: string }) {
         <h2 id="tour-title" className="mt-1.5 font-bold text-lg text-zinc-900 dark:text-white leading-snug">{stop.title}</h2>
         <p id="tour-text" className="text-sm text-zinc-600 dark:text-zinc-300 mt-1">{stop.text}{spot?.via ? ` ${spot.via}` : ''}</p>
         <div className="mt-3 h-1 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" aria-hidden>
-          <div className="h-full rounded-full bg-indigo-600 transition-[width]" style={{ width: `${((step + 1) / stops.length) * 100}%` }} />
+          <Fill quick value={(((step + 1) / stops.length) * 100) / 100} className="h-full rounded-full bg-indigo-600" />
         </div>
         <div className="mt-4 flex items-center gap-1.5">
           <button type="button" onClick={finish} className="btn-ghost btn-sm">Skip tour</button>

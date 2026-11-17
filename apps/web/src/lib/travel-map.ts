@@ -67,7 +67,7 @@ export function walkFrom(start: { lat: number; lon: number }, places: MapPlace[]
   return { stops, total: t, km: Math.round(dist * 10) / 10 };
 }
 
-// M229: the walk along real streets. FOSSGIS's free OSRM walking router (routing.openstreetmap.de, OpenStreetMap
+// M233: the walk along real streets. FOSSGIS's free OSRM walking router (routing.openstreetmap.de, OpenStreetMap
 // data, no account; its path segment is always "driving") is asked from the browser once per walk. Its legs
 // give the true walking minutes and distance; without it the walk keeps its estimate and straight lines.
 type Pt = { lat: number; lon: number };

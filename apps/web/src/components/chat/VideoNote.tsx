@@ -86,8 +86,8 @@ export function VideoNoteRecorder({ onSend, onClose }: { onSend: (file: File, du
       </motion.div>
       <p className="text-white/80 text-sm tabular-nums h-5">{phase === 'recording' ? `${Math.floor(secs)}s of ${MAX_SEC}s` : phase === 'ready' ? 'Up to a minute' : `${result?.secs ?? 0}s`}</p>
       <div className="flex items-center gap-4">
-        {phase === 'ready' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={start} aria-label="Start recording" className="w-16 h-16 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-xl"><Circle className="w-7 h-7 fill-current" /></motion.button>}
-        {phase === 'recording' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => rec.current?.stop()} aria-label="Stop" className="w-16 h-16 rounded-full bg-white text-rose-600 flex items-center justify-center shadow-xl"><Square className="w-6 h-6 fill-current" /></motion.button>}
+        {phase === 'ready' && <motion.button type="button" onClick={start} aria-label="Start recording" className="w-16 h-16 rounded-full bg-rose-600 text-white flex items-center justify-center shadow-xl active:scale-[0.9]"><Circle className="w-7 h-7 fill-current" /></motion.button>}
+        {phase === 'recording' && <motion.button type="button" onClick={() => rec.current?.stop()} aria-label="Stop" className="w-16 h-16 rounded-full bg-white text-rose-600 flex items-center justify-center shadow-xl active:scale-[0.9]"><Square className="w-6 h-6 fill-current" /></motion.button>}
         {(phase === 'review' || phase === 'sending') && (
           <>
             <button type="button" disabled={phase === 'sending'} onClick={() => { setResult(null); setPhase('ready'); }} className="px-5 py-3 rounded-full bg-white/10 text-white text-sm font-semibold inline-flex items-center gap-2 disabled:opacity-50"><RotateCcw className="w-4 h-4" />Retake</button>

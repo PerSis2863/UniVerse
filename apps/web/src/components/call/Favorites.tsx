@@ -64,7 +64,7 @@ export function Favorites() {
               {editing ? null : (
                 <div className="mt-2 flex gap-1.5">
                   {(['audio', 'video'] as const).map((k) => (
-                    <motion.button key={k} whileTap={{ scale: 0.88 }} type="button" disabled={!!busy} onClick={() => void call(f, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${f.name}`} className="flex-1 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center">
+                    <motion.button key={k} type="button" disabled={!!busy} onClick={() => void call(f, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${f.name}`} className="flex-1 h-8 rounded-full bg-white/20 hover:bg-white/30 backdrop-blur flex items-center justify-center active:scale-[0.88]">
                       {busy === f.id + k ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : k === 'video' ? <Video className="w-3.5 h-3.5" /> : <Phone className="w-3.5 h-3.5" />}
                     </motion.button>
                   ))}

@@ -4,7 +4,7 @@ import PLACES from './travel-places.json';
 // destination" ranks. Each opens its Wikivoyage guide (the title). The country, themes, interests and
 // the blurb are ours; the position, the month-by-month climate and the banner photo (Wikimedia Commons)
 // come from each guide, read ahead by `npx tsx scripts/gen-travel-data.mts --places` into
-// travel-places.json (run it again after adding a place here), and its cover photo by `--photos` (M228).
+// travel-places.json (run it again after adding a place here), and its cover photo by `--photos` (M232).
 
 export const THEMES = ['Cities', 'Beaches', 'Mountains', 'Food', 'Culture', 'Nature'] as const;
 export type Theme = (typeof THEMES)[number];
@@ -24,13 +24,13 @@ export type Interest = (typeof INTERESTS)[number]['id'];
 export interface PlaceClimate { high: number[]; low: number[]; rain: number[] }
 export interface Idea {
   title: string; country: string; cc: string; themes: Theme[]; tags: Interest[]; blurb: string; banner?: string;
-  /** M228: a real photo of the place (a Commons file, checked by hand), shown in place of the 7:1 banner. */
+  /** M232: a real photo of the place (a Commons file, checked by hand), shown in place of the 7:1 banner. */
   photo?: string;
   lat?: number; lon?: number; climate?: PlaceClimate;
 }
 
 // [guide title, country code, themes (C cities, B beaches, M mountains, F food, U culture, N nature),
-//  interests, blurb, banner (else the guide's own), photo (else the one read ahead, M228; '' for none)].
+//  interests, blurb, banner (else the guide's own), photo (else the one read ahead, M232; '' for none)].
 // The first 24 are Explore's first cards.
 type Row = [string, string, string, string, string, string?, string?];
 const ROWS: Row[] = [

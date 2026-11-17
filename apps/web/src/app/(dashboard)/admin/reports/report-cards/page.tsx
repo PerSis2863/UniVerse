@@ -20,6 +20,7 @@ import { fadeUp, list, spring } from '@/lib/motion';
 import { reportCardsPage, type ReportCardData } from '@/lib/report-card';
 import { openPrintable } from '@/lib/open-printable';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Admin → Insights → Report cards (Stage 5 · B15.3): start a round for a term, make the cards in
 // batches (with a progress bar), add comments, print, then publish to students (in-app only).
@@ -150,7 +151,7 @@ function Bar({ p }: { p: Progress }) {
   return (
     <div className="mt-3">
       <div role="progressbar" aria-label="Making report cards" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value} className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-        <motion.div className="h-full rounded-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${value}%` }} transition={spring.smooth} />
+        <Fill value={value / 100} className="h-full rounded-full bg-indigo-500" />
       </div>
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 tabular-nums" aria-live="polite">Making cards… {p.done} of {p.total}</p>
     </div>

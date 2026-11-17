@@ -6,7 +6,7 @@ type Sentinel = { release: () => Promise<void> };
 type WakeLockNav = Navigator & { wakeLock?: { request: (t: 'screen') => Promise<Sentinel> } };
 
 /**
- * Keeps the screen awake while `active` (M230: a call on a phone, whose screen dimmed and locked when nobody
+ * Keeps the screen awake while `active` (M234: a call on a phone, whose screen dimmed and locked when nobody
  * touched it, stopping the camera and the sound). The browser drops the lock when the tab is hidden, so it is
  * asked for again when the tab comes back. Where the browser can't, the screen sleeps as before.
  */

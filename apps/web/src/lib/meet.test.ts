@@ -24,7 +24,7 @@ describe('Meet & call (M227)', () => {
   });
 });
 
-describe('fitting a camera picture to its box (M230)', () => {
+describe('fitting a camera picture to its box (M234)', () => {
   it('fills when the shapes are close and shows it whole when far apart', () => {
     expect(videoFit(16 / 9, 16 / 9)).toBe('cover');
     expect(videoFit(4 / 3, 16 / 9)).toBe('cover');

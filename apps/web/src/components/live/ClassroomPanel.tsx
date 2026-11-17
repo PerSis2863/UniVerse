@@ -16,6 +16,7 @@ import { useLiveInterval } from '@/lib/realtime-client';
 import { captionsSupported, useCaptions } from '@/lib/use-captions';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Teacher's Live page → In-person class (Stage 5 · D7, src/server/classroom.ts): start a session,
 // project the changing code, watch who's here and who's lost, read questions, take notes with the
@@ -144,7 +145,7 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
           <p className="text-2xl font-black tabular-nums text-zinc-900 dark:text-white">{lost} lost <span className="text-base font-semibold text-zinc-500">· {following} following</span></p>
           {online && <p className="text-xs text-zinc-600 dark:text-zinc-400">Room and online together ({online.lost} lost online)</p>}
           <div className="mt-2 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="img" aria-label={`${Math.round(lostShare * 100)}% of the class is lost`}>
-            <div className="h-full rounded-full bg-amber-500 transition-[width] duration-500" style={{ width: `${Math.round(lostShare * 100)}%` }} />
+            <Fill value={(Math.round(lostShare * 100)) / 100} className="h-full rounded-full bg-amber-500" />
           </div>
           {lostShare >= 0.2 && <p className="mt-2 text-xs text-amber-700 dark:text-amber-300">A fifth of the class is lost: a good moment to explain it another way.</p>}
         </div>

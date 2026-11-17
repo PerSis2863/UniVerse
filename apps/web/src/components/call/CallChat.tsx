@@ -159,8 +159,8 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000} placeholder="Message everyone"
                 onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void submit(); } }}
                 className="flex-1 min-w-0 resize-none max-h-28 rounded-2xl bg-white/[0.07] border border-white/10 px-3.5 py-2.5 text-sm placeholder:text-zinc-500 focus:outline-none focus:border-indigo-400/60" />
-              <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!text.trim() || busy} aria-label="Send"
-                className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40"><SendHorizontal className="w-4 h-4" /></motion.button>
+              <motion.button type="submit" disabled={!text.trim() || busy} aria-label="Send"
+                className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40 active:scale-[0.9]"><SendHorizontal className="w-4 h-4" /></motion.button>
             </form>
           </motion.aside>
         </>

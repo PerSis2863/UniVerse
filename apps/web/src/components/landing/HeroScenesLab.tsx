@@ -43,19 +43,19 @@ function Trace() {
         })}
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
-      <motion.div className="absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]" animate={calm ? undefined : { rotateY: [-14, 14, -14], rotateX: [8, -4, 8] }} transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }} style={{ transformPerspective: 900 }}>
+      <div className={cn('absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]', !calm && 'scene-tilt')}>
         <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(79,142,247,0.55)]">
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,transparent_30%,rgba(79,142,247,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)] bg-[length:250%_100%] [animation:holo_5s_linear_infinite]" aria-hidden />
+          <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden><div className={cn('absolute inset-y-0 -start-[75%] w-[250%] bg-[linear-gradient(115deg,transparent_30%,rgba(79,142,247,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)]', !calm && 'holo-pan')} /></div>
           <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
           <p className="text-xs text-zinc-300">unit 1,204 of 5,000</p>
           <div className="relative mt-4 grid grid-cols-7 gap-1 rounded-xl bg-white p-2.5">
             {Array.from({ length: 49 }, (_, i) => <span key={i} className={cn('aspect-square rounded-[2px]', (i * 7 + (i % 5) * 3) % 3 === 0 || [0, 1, 7, 8, 5, 6, 12, 13, 35, 36, 42, 43].includes(i) ? 'bg-zinc-900' : 'bg-transparent')} />)}
-            {!calm && s < 2 && <motion.span className="absolute inset-x-1 h-0.5 bg-pink-500 shadow-[0_0_14px_3px_rgba(79,142,247,0.8)]" animate={{ top: ['8%', '92%', '8%'] }} transition={{ duration: 1.6, repeat: Infinity, ease: 'easeInOut' }} />}
+            {!calm && s < 2 && <span aria-hidden className="scan-sweep absolute inset-x-1 inset-y-0 pointer-events-none"><span className="block h-0.5 bg-pink-500 shadow-[0_0_14px_3px_rgba(79,142,247,0.8)]" /></span>}
           </div>
           <p className="mt-3 flex items-center gap-1.5 text-xs text-zinc-300"><ScanLine className="h-3.5 w-3.5 text-pink-300" aria-hidden />{scanned ? 'Scanned in Paris 11e' : 'Scanning…'}</p>
         </div>
-      </motion.div>
+      </div>
       <AnimatePresence>
         {scanned && <motion.div key="g" {...pop} className="absolute end-2 top-[150px] flex items-center gap-2 rounded-2xl bg-emerald-400 px-3.5 py-2 text-sm font-bold text-emerald-950 shadow-[0_10px_40px_-8px_rgba(52,211,153,0.7)]"><ShieldCheck className="h-4 w-4" aria-hidden />Genuine</motion.div>}
         {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
@@ -141,7 +141,7 @@ function Green() {
     <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A planet turning while green patches bloom and the CO₂ saved climbs">
       {/* stars */}
       {[[8, 12], [22, 30], [86, 18], [74, 8], [92, 44], [12, 52], [60, 14]].map(([x, y], i) => (
-        <motion.span key={i} aria-hidden className="absolute h-1 w-1 rounded-full bg-white" style={{ left: `${x}%`, top: `${y}%` }} animate={calm ? undefined : { opacity: [0.2, 0.9, 0.2] }} transition={{ duration: 2.4 + (i % 3), delay: i * 0.3, repeat: Infinity, ease: 'easeInOut' }} />
+        <span key={i} aria-hidden className={cn('absolute h-1 w-1 rounded-full bg-white', calm ? 'opacity-50' : 'twinkle')} style={{ left: `${x}%`, top: `${y}%`, animationDuration: `${2.4 + (i % 3)}s`, animationDelay: `${i * 0.3}s` }} />
       ))}
       {/* the counter */}
       <div className="absolute inset-x-0 top-6 text-center">
@@ -160,19 +160,19 @@ function Green() {
           <path d={RING} transform="translate(0 0)" fill="none" stroke="rgba(110,231,183,0.18)" strokeWidth="1.5" strokeDasharray="2 6" />
         </svg>
         <div className="absolute left-1/2 top-[25px] h-[250px] w-[250px] -translate-x-1/2 overflow-hidden rounded-full bg-[#0a2a1f] shadow-[0_0_80px_-10px_rgba(52,211,153,0.55),inset_0_0_40px_rgba(52,211,153,0.25)]">
-          <motion.div className="flex h-full w-[200%]" animate={calm ? undefined : { x: ['0%', '-50%'] }} transition={{ duration: 26, repeat: Infinity, ease: 'linear' }}>
+          <div className={cn('flex h-full w-[200%]', !calm && 'scene-pan')}>
             {band}{band}
-          </motion.div>
+          </div>
           {/* light and shade: lit top-left, night on the right */}
           <span aria-hidden className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.22),transparent_38%),radial-gradient(circle_at_85%_70%,rgba(0,0,0,0.75),transparent_62%)]" />
         </div>
         <span aria-hidden className="absolute left-1/2 top-[13px] h-[274px] w-[274px] -translate-x-1/2 rounded-full ring-1 ring-emerald-300/25" />
         {/* things on the ring (they ride the same ellipse) */}
         {!calm && [TreePine, Bike, Recycle].map((Icon, i) => (
-          <motion.span key={i} aria-hidden className="absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
-            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg' }} initial={{ offsetDistance: `${i * 33}%` }} animate={{ offsetDistance: [`${i * 33}%`, `${i * 33 + 100}%`] }} transition={{ duration: 18, repeat: Infinity, ease: 'linear' }}>
+          <span key={i} aria-hidden className="ring-ride absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
+            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg', animationDelay: `${-i * 6}s` }}>
             <Icon className="h-4 w-4" />
-          </motion.span>
+          </span>
         ))}
       </div>
       {/* the ticker */}

@@ -34,7 +34,7 @@ export interface MapHandle {
 }
 
 const PAL = {
-  // M229 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
+  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
   // the same colours as Travel's street map (travel/map/map-style.ts). Neutral greys before (M94).
   light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
   dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },

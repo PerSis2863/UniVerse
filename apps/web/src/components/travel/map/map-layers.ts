@@ -8,10 +8,10 @@ import { mapStyle } from './map-style';
 // street-level photo coverage, walking-distance rings and where I am. Added again whenever the style
 // changes (light and dark). Every tile comes straight from its free source to the browser: no Worker CPU.
 
-/** Travel's own map design (M229, map-style.ts), on OpenFreeMap's tiles. */
+/** Travel's own map design (M233, map-style.ts), on OpenFreeMap's tiles. */
 export const STYLE = { light: mapStyle(false), dark: mapStyle(true) } as const;
 export const ACCENT = '#0ea5e9';
-/** The walk's blue, as directions are drawn in Apple Maps (M229). */
+/** The walk's blue, as directions are drawn in Apple Maps (M233). */
 const ROUTE = '#1f87ff', ROUTE_EDGE = '#0b5bd3';
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const NOTHING: ExpressionSpecification = ['==', ['get', 'class'], '__none__'];
@@ -88,12 +88,12 @@ export function addLayers(map: MLMap, dark: boolean) {
   // The chosen kind of place: its pin and name, the notable first, none over another.
   map.addLayer({ id: 'uv-hit', type: 'symbol', source: 'openmaptiles', 'source-layer': 'poi', minzoom: 12, filter: NOTHING,
     layout: { 'icon-image': 'uv-pin-see', 'icon-size': ['interpolate', ['linear'], ['zoom'], 12, 0.62, 15, 0.85, 17, 1], 'icon-padding': ['interpolate', ['linear'], ['zoom'], 12, 14, 15, 7, 17, 3], 'symbol-sort-key': ['get', 'rank'],
-      // Apple Maps' way (M229): the name beside the pin, bold, in the pin's colour (showClasses sets it).
+      // Apple Maps' way (M233): the name beside the pin, bold, in the pin's colour (showClasses sets it).
       'text-field': ['step', ['zoom'], '', 14, name], 'text-font': bold, 'text-size': 12.5, 'text-anchor': 'left', 'text-justify': 'left', 'text-offset': [1.15, 0], 'text-max-width': 9, 'text-optional': true, 'text-padding': 3 },
     paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.8 } });
   // UniVerse's reviews: a star pin with the average beside it, always shown.
   map.addLayer({ id: 'uv-reviews', type: 'symbol', source: 'uv-reviews', layout: { 'icon-image': 'uv-pin-review', 'icon-size': 0.9, 'icon-allow-overlap': true, 'text-field': ['get', 'label'], 'text-font': font, 'text-size': 11, 'text-offset': [1.3, 0], 'text-anchor': 'left', 'text-optional': true }, paint: { 'text-color': ink, 'text-halo-color': halo, 'text-halo-width': 1.6 } });
-  // M229: the walk, drawn the way Apple Maps draws directions: one clean blue line with a darker blue edge along
+  // M233: the walk, drawn the way Apple Maps draws directions: one clean blue line with a darker blue edge along
   // the streets (dashed only when the walking router didn't answer and it is straight), a blue "you start here"
   // dot, numbered blue stops with their names, and the walking time in one blue bubble just above its longest stretch. Added
   // last, so above every pin.
@@ -183,7 +183,7 @@ export function meArea(lat: number, lon: number, metres: number): GeoJSON.Featur
   ] };
 }
 
-/** M229: the time bubble: a blue rounded box with a white rim, stretched around its text (64 × 56 at 2x). */
+/** M233: the time bubble: a blue rounded box with a white rim, stretched around its text (64 × 56 at 2x). */
 function bubbleImage(): ImageData {
   const w = 64, h = 56, c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d')!;
@@ -195,7 +195,7 @@ function bubbleImage(): ImageData {
 }
 
 const FADED = 0.28, BUILDINGS_FADED = 0.3; // the flat footprints at 0.7
-/** M229: while a walk is shown, everything else steps back (other pins and their names, the map's own places,
+/** M233: while a walk is shown, everything else steps back (other pins and their names, the map's own places,
  *  the 3D buildings) so the walk can be read; put back as the style had it when the walk ends. `fresh`: a new
  *  style was just loaded, so what was kept from the old one no longer applies. */
 export function focusWalk(map: MLMap, on: boolean, fresh = false) {

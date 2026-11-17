@@ -48,8 +48,8 @@ export function ReactionBar({ open, onClose, onReact, hand, onHand }: {
               {REACTIONS.map((e, i) => (
                 <motion.button key={e} type="button" onClick={() => onReact(e)} aria-label={`React ${e}`}
                   initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.025 }}
-                  whileHover={{ scale: 1.2, y: -2 }} whileTap={{ scale: 0.85 }}
-                  className="w-11 h-11 rounded-full text-2xl flex items-center justify-center hover:bg-white/10">{e}</motion.button>
+                  whileHover={{ scale: 1.2, y: -2 }}
+                  className="w-11 h-11 rounded-full text-2xl flex items-center justify-center hover:bg-white/10 active:scale-[0.85]">{e}</motion.button>
               ))}
               <span className="w-px h-7 bg-white/10 mx-1" />
               <button type="button" onClick={onHand} aria-pressed={hand}

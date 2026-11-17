@@ -1,7 +1,7 @@
 // M219 the menu as a bar across the top on a computer's browser (the side menu stays in the installed app and on
 // phones): at 1440, 1280 and 1024 (dark and light) the bar is there and the side menu isn't, every entry fits or
 // is under More, a group's list opens with its pages, the chosen page is lit; at 390 the phone's tab bar is kept;
-// the installed app (display-mode standalone, emulated) keeps the side menu; M231: full screen counts as the browser
+// the installed app (display-mode standalone, emulated) keeps the side menu; M235: full screen counts as the browser
 // (the rule's text), and the choice in Settings → Appearance (top or side) wins either way. axe, no sideways scroll, no page
 // errors; the page starts under the bar with no empty row; no name both in the bar and in the page's own row of
 // sections; an entry dragged to another place stays there and is put back from the account menu (M221). Runs against `local:serve` (or BASE=… for local:dev); SHOTS=<dir> saves screenshots.
@@ -97,7 +97,7 @@ await page.locator('aside[aria-label="Navigation"]').waitFor({ timeout: 120_000 
 out.installed = { sideMenu: await page.locator('aside[aria-label="Navigation"]').count(), bar: await page.locator('header.top-nav').count() };
 if (shots) await page.screenshot({ path: `${shots}/top-nav-installed-1280.png` });
 await ctx.close();
-// M231: the choice in Settings → Appearance wins: the side menu in a browser, the top bar in the installed app.
+// M235: the choice in Settings → Appearance wins: the side menu in a browser, the top bar in the installed app.
 for (const [place, installed] of [['side', false], ['top', true]]) {
   const c = await signedIn(browser, base, 'demo@admin.com', { width: 1280, height: 900 });
   await c.addInitScript(([p, inst]) => {

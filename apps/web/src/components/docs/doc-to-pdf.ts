@@ -31,6 +31,10 @@ async function makeFrame(): Promise<{ win: Window; doc: Document; remove: () => 
   const f = document.createElement('iframe');
   f.setAttribute('aria-hidden', 'true');
   f.tabIndex = -1;
+  // M228 (the threat model, 16 Nov): the frame lays out other people's files (a web page, Markdown, Word), so nothing in
+  // them may run: no scripts at all in it (`sandbox` without allow-scripts; its frames inherit that). Same origin
+  // stays, so this page can still lay it out and draw it.
+  f.setAttribute('sandbox', 'allow-same-origin');
   f.style.cssText = 'position:fixed;left:-30000px;top:0;width:1700px;height:1400px;border:0;opacity:0;pointer-events:none';
   const loaded = new Promise<void>((res) => { f.onload = () => res(); });
   f.srcdoc = '<!doctype html><html><head><meta charset="utf-8"></head><body style="margin:0;background:#fff"></body></html>';

@@ -19,6 +19,7 @@ import { fetcher } from '@/lib/fetcher';
 import { TabPill } from '@/components/ui/Glide';
 import { finalGrade, type Category } from '@/lib/gradebook';
 import { MyReportCards } from '@/components/dashboard/MyReportCards';
+import { Fill } from '@/components/ui/Fill';
 
 // GPA per term (Jan–Jun = Spring, Jul–Dec = Fall), from real grades on a 4.0 scale.
 function gpaByTerm(grades: { score: number; maxScore: number; gradedAt?: string; createdAt?: string }[]) {
@@ -486,12 +487,8 @@ export default function GradesPage() {
                     <td className="py-4 px-4 text-center">
                       <div className="text-sm font-semibold text-zinc-700 dark:text-zinc-200">{record.percentage}%</div>
                       <div className="w-16 h-1 rounded-full bg-zinc-200 dark:bg-zinc-700 mx-auto mt-1 overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${record.percentage}%` }}
-                          transition={{ delay: Math.min(i, 6) * 0.03 + 0.2, duration: 0.6 }}
-                          className={cn('h-full rounded-full', record.percentage >= 90 ? 'bg-emerald-500' : record.percentage >= 80 ? 'bg-indigo-500' : record.percentage >= 70 ? 'bg-amber-500' : 'bg-red-500')}
-                        />
+                        <Fill value={record.percentage / 100} delay={Math.min(i, 6) * 30 + 200}
+                          className={cn('h-full rounded-full', record.percentage >= 90 ? 'bg-emerald-500' : record.percentage >= 80 ? 'bg-indigo-500' : record.percentage >= 70 ? 'bg-amber-500' : 'bg-red-500')} />
                       </div>
                     </td>
                     <td className="py-4 px-4 text-center">

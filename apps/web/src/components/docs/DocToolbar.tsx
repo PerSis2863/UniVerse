@@ -6,9 +6,22 @@ import { toast } from 'sonner';
 import { Bold, Code, Heading1, Heading2, Heading3, ImagePlus, Italic, Link2, List, ListChecks, ListOrdered, Loader2, Minus, Quote, Redo2, SquareCode, Strikethrough, Table, Underline, Undo2 } from 'lucide-react';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { cn } from '@/lib/utils';
+import { DictateButton } from '@/components/ui/DictateButton';
+import { joinDictation } from '@/lib/dictation';
 
 // The formatting toolbar of the document editor (DocEditor.tsx) and of lesson pages
 // (src/components/lessons/LessonPage.tsx). Its own file so lesson pages don't load the live room.
+
+/** M229: a dictated phrase typed at the cursor, joined like typing (a space, a capital after a sentence; a spoken
+ *  "new line" starts a new paragraph). */
+export function dictateInto(editor: Editor, said: string) {
+  const { from } = editor.state.selection;
+  const before = editor.state.doc.textBetween(Math.max(0, from - 200), from, '\n');
+  const piece = joinDictation(before, said).slice(before.length);
+  const chain = editor.chain().focus();
+  piece.split(/\n+/).forEach((part, i) => { if (i) chain.splitBlock(); if (part) chain.insertContent(part); });
+  chain.run();
+}
 
 /** The formatting toolbar. */
 export function DocToolbar({ editor, disabled }: { editor: Editor | null; disabled: boolean }) {
@@ -40,6 +53,7 @@ export function DocToolbar({ editor, disabled }: { editor: Editor | null; disabl
     <div className="flex items-center gap-0.5 overflow-x-auto [scrollbar-width:none] px-2 py-1.5">
       {btn(false, 'Undo', Undo2, () => c().undo().run())}
       {btn(false, 'Redo', Redo2, () => c().redo().run())}
+      {!disabled && <DictateButton className="w-8 h-8 rounded-lg" onText={(t) => dictateInto(editor, t)} />}
       {sep('a')}
       {btn(s?.h1, 'Title', Heading1, () => c().toggleHeading({ level: 1 }).run())}
       {btn(s?.h2, 'Heading', Heading2, () => c().toggleHeading({ level: 2 }).run())}

@@ -1,6 +1,6 @@
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification, StyleSpecification } from 'maplibre-gl';
 
-// M229 (the owner, 16 Nov 2026, showing Apple Maps: "make the whole map design like this"): Travel's own map
+// M233 (the owner, 16 Nov 2026, showing Apple Maps: "make the whole map design like this"): Travel's own map
 // design in place of OpenFreeMap's ready-made ones, drawn from the same OpenFreeMap tiles (OpenMapTiles
 // schema) and fonts, straight to the browser as before. Calm land, soft green parks, clear blue water, white
 // (light) or slate (dark) streets with a quiet edge, street names in small spaced capitals, district names in

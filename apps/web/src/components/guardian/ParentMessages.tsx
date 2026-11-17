@@ -176,7 +176,7 @@ function ChatSheet({ teacher, studentId, child, chatId, onStarted, onClose }: {
         <textarea value={text} onChange={(e) => setText(e.target.value)} rows={1} maxLength={2000} aria-label={`Message to ${teacher.name}`} placeholder={`Write to ${teacher.name.split(' ')[0]} about ${child}…`}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); } }}
           className="input flex-1 min-h-11 max-h-32 resize-none py-2.5" />
-        <motion.button whileTap={{ scale: 0.9 }} type="submit" disabled={!text.trim()} aria-label="Send" className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center disabled:opacity-40 shrink-0">
+        <motion.button type="submit" disabled={!text.trim()} aria-label="Send" className="w-11 h-11 rounded-full bg-gradient-to-br from-indigo-600 to-fuchsia-600 text-white flex items-center justify-center disabled:opacity-40 shrink-0 active:scale-[0.9]">
           <Send className="w-4 h-4" />
         </motion.button>
       </form>

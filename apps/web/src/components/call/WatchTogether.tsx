@@ -262,8 +262,8 @@ export function WatchStage({ watch, skew, mod, status, held = false, onSend }: {
             className="absolute inset-x-0 bottom-0 w-full h-1.5 accent-fuchsia-500 cursor-pointer disabled:cursor-default" />
         </div>
         <div className="flex items-center gap-2 flex-wrap">
-          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggle} disabled={!view.ready || !!failed}
-            className="w-10 h-10 rounded-full bg-white text-zinc-900 flex items-center justify-center disabled:opacity-40"
+          <motion.button type="button" onClick={toggle} disabled={!view.ready || !!failed}
+            className="w-10 h-10 rounded-full bg-white text-zinc-900 flex items-center justify-center disabled:opacity-40 active:scale-[0.9]"
             aria-label={isPlaying ? (ctl && !ownMode ? 'Pause for everyone' : 'Pause just for me') : (ctl && !ownMode ? 'Play for everyone' : 'Play just for me')}>
             {isPlaying ? <Pause className="w-5 h-5" /> : <Play className="w-5 h-5 ms-0.5" />}
           </motion.button>

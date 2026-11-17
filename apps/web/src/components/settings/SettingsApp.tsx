@@ -36,6 +36,7 @@ import { searchSettings, settingHref } from '@/lib/settings-index';
 import { AvatarCropper } from './AvatarCropper';
 import { FileDrop } from '@/components/ui/FileDrop';
 import { RINGTONES, chooseRingtone, chosenRingtone, ringtone, type Ringtone } from '@/lib/call-sounds';
+import { Fill } from '@/components/ui/Fill';
 
 // Sections show one at a time: their heavier parts (sign-in security, account deletion, school
 // settings, consents, family) load when their section opens.
@@ -660,7 +661,7 @@ function Storage({ role }: { role: Role }) {
       {usage && usage.quota > 0 && (
         <div className="space-y-2">
           <div className="flex justify-between text-sm"><span className="text-zinc-500">Used on this device</span><span className="font-semibold text-zinc-900 dark:text-white">{mb(usage.used)}</span></div>
-          <div className="h-2 rounded-full bg-[var(--fill)] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" initial={{ width: 0 }} animate={{ width: `${Math.max(1, Math.min(100, (usage.used / usage.quota) * 100))}%` }} transition={spring.gentle} /></div>
+          <div className="h-2 rounded-full bg-[var(--fill)] overflow-hidden"><Fill value={(Math.max(1, Math.min(100, (usage.used / usage.quota) * 100))) / 100} className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" /></div>
         </div>
       )}
       {role === 'STUDENT' && (

@@ -6,10 +6,10 @@
 //    may pick the iPhone as its microphone or camera (Continuity). The phone is then busy, so it
 //    can't use its own microphone in the same call. Unless the person chose it, we pick the Mac's
 //    own device instead, and remember any device they do choose.
-// 2. Noise suppression, like Discord's: "Standard" (the default since M230) is the browser's own, the
+// 2. Noise suppression, like Discord's: "Standard" (the default since M234) is the browser's own, the
 //    natural-sounding voice processing Meet and Zoom use in a browser; "Strong" adds RNNoise (a small
 //    neural network, on this device, in an AudioWorklet) and a gentle noise gate, for noisy places;
-//    "Off" sends the raw microphone (music). Strong was the default until M230: its gate chopped the
+//    "Off" sends the raw microphone (music). Strong was the default until M234: its gate chopped the
 //    starts and ends of words and it made voices watery, worst on phones (the owner: "audio quality is bad").
 
 export type NoiseMode = 'strong' | 'standard' | 'off';

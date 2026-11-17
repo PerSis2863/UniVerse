@@ -32,7 +32,7 @@ export function callKey(e: { key: string; ctrlKey: boolean; metaKey: boolean; al
 /** The keys, as the help lists them. */
 export const CALL_KEYS: [string, string][] = [['M', 'Mute or unmute'], ['V', 'Camera on or off'], ['H', 'Raise or lower your hand'], ['C', 'Chat'], ['P', 'People'], ['Space (hold)', 'Talk while muted'], ['?', 'These keys']];
 
-// M230 (the owner: a friend joining from a phone, "the camera doesnt cover the area it should"): a phone held
+// M234 (the owner: a friend joining from a phone, "the camera doesnt cover the area it should"): a phone held
 // upright sends a tall picture; cropped to fill a wide box it showed a narrow band of the face. A picture
 // whose shape is far from its box's is shown whole on dark (as Zoom and FaceTime do); one close to it fills.
 /** How a camera picture (width / height) fits its box: `cover` fills (cropping a little), `contain` shows it all. */
