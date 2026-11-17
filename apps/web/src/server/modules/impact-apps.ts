@@ -17,7 +17,7 @@ import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } 
 import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
 import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
 import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
-import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
+import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
@@ -131,6 +131,11 @@ export default function impactAppsModule(router: Router) {
   travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
   travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));
   travel.delete<{ id: string; expenseId: string }>('trips/:id/expenses/:expenseId', ({ user, params }) => removeTripExpense(user, params.id, params.expenseId));
+  // M254: the before-you-go checklist.
+  travel.get<{ id: string }>('trips/:id/todos', ({ user, params }) => tripTodos(user, params.id));
+  travel.post<{ id: string }>('trips/:id/todos', ({ user, params, body }) => addTripTodos(user, params.id, body ?? {}));
+  travel.patch<{ id: string; todoId: string }>('trips/:id/todos/:todoId', ({ user, params, body }) => updateTripTodo(user, params.id, params.todoId, body ?? {}));
+  travel.delete<{ id: string; todoId: string }>('trips/:id/todos/:todoId', ({ user, params }) => removeTripTodo(user, params.id, params.todoId));
   travel.get<{ id: string }>('trips/:id/packing', ({ user, params }) => tripPacking(user, params.id));
   travel.post<{ id: string }>('trips/:id/packing', ({ user, params, body }) => addTripPacking(user, params.id, body ?? {}));
   travel.patch<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params, body }) => updateTripPacking(user, params.id, params.itemId, body ?? {}));

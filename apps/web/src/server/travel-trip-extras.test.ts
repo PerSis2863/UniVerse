@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
-import { addTripExpense, addTripPacking, removeTripExpense } from './travel-trip-extras';
+import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, updateTripTodo } from './travel-trip-extras';
 import type { SessionUser } from '@/lib/server-auth';
 
 // M215: a trip's shared costs and packing list are for its members only, and stay within D1's limits.
@@ -9,6 +9,7 @@ vi.mock('@/lib/db', () => ({
     travelTripMember: { findUnique: vi.fn(), findMany: vi.fn() },
     travelTripExpense: { count: vi.fn().mockResolvedValue(0), create: vi.fn().mockResolvedValue({ id: 'x1' }), deleteMany: vi.fn() },
     travelTripPack: { findMany: vi.fn(), createMany: vi.fn() },
+    travelTripTodo: { findMany: vi.fn().mockResolvedValue([{ text: 'Get euros' }]), createMany: vi.fn(), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
   },
 }));
 vi.mock('./realtime', () => ({ publish: vi.fn() }));
@@ -48,5 +49,21 @@ describe('packing list', () => {
     const calls = vi.mocked(prisma.travelTripPack.createMany).mock.calls;
     expect(calls.map((c) => (c[0].data as unknown[]).length)).toEqual([10, 10, 3]);
     expect((calls[0][0].data as { grp: string }[])[0].grp).toBe('Other');
+  });
+});
+
+describe('before-you-go checklist (M254)', () => {
+  it('adds each thing once, for someone on the trip, by a real date', async () => {
+    const r = await addTripTodos(me, 't1', { items: [{ text: 'Book the train', assignee: 'ben', due: '2027-03-20' }, { text: 'get EUROS' }, { text: 'Visa', assignee: 'stranger', due: 'soon' }] });
+    expect(r.added).toBe(2);
+    expect(vi.mocked(prisma.travelTripTodo.createMany).mock.calls[0][0].data).toEqual([
+      { tripId: 't1', text: 'Book the train', assignee: 'ben', due: '2027-03-20', createdBy: 'ana' },
+      { tripId: 't1', text: 'Visa', assignee: null, due: null, createdBy: 'ana' },
+    ]);
+  });
+  it('ticks with who did it, and refuses someone off the trip', async () => {
+    await updateTripTodo(me, 't1', 'x1', { done: true });
+    expect(prisma.travelTripTodo.updateMany).toHaveBeenCalledWith({ where: { id: 'x1', tripId: 't1' }, data: { done: true, doneBy: 'ana' } });
+    await expect(updateTripTodo(me, 't1', 'x1', { assignee: 'stranger' })).rejects.toThrow(/someone on the trip/);
   });
 });

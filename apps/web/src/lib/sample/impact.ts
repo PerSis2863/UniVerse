@@ -789,6 +789,13 @@ export function sampleTravelDocs() {
 export function sampleTripShare() {
   return { code: null, checkins: [{ id: 'sample-c-1', by: 'Maya', note: 'Landed, all good!', place: 'Lisbon', at: new Date(Date.now() - 2 * 3_600_000).toISOString() }] };
 }
+/** GET /travel/trips/:id/todos (M254): the sample trip's checklist (made up). */
+export function sampleTripTodos() {
+  return { todos: [
+    { id: 'sample-t-1', text: 'Book the train from Lisbon to Porto', assignee: 'sample-friend', due: '2027-03-20', done: false, doneBy: null },
+    { id: 'sample-t-2', text: 'Check passports are valid six months after the trip', assignee: null, due: null, done: true, doneBy: 'sample-friend' },
+  ] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {

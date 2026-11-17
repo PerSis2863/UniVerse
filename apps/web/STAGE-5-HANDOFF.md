@@ -8386,3 +8386,13 @@ so this checks the plan's times instead.
   full-screen card with the stay's name and address and "Please take me to this address" in the local language
   (`TAKE_ME` in `src/lib/travel-phrases.ts`, 19 languages, tested against `LANGUAGES`). Escape closes it.
 - **Not added on purpose:** personal medical details or a contact's phone (they'd sit on a shared trip).
+
+## M254: the before-you-go checklist (17 Nov)
+
+- **Where:** the trip page's Packing part, now called **Checklist** (`?part=packing` as before): "Before you go" on top
+  (`trip-todos.tsx`), the packing list below. Each to-do has who's doing it (anyone on the trip) and by when (late ones
+  in red); tick it and everyone sees who did; ideas from the trip (book the way between each pair of cities, a stay in
+  each, passports, insurance, the bank, the offline pack, the family link), one by one or "Add all".
+- **Server** (in `src/server/travel-trip-extras.ts`, beside the packing list, tested): `GET/POST /travel/trips/:id/todos`,
+  `PATCH/DELETE …/todos/:todoId`; members only; an assignee must be on the trip; the same text once; at most 100;
+  `publish` refreshes everyone's page. Database update **0234** (`travel_trip_todos`).

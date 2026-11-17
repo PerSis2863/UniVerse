@@ -22,6 +22,7 @@ import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
 import { TripMoney } from './trip-money';
 import { TripPacking } from './trip-packing';
+import { TripTodos } from './trip-todos';
 import { TripToday } from './trip-today';
 import { tripToday } from '@/lib/travel-today';
 import { useNow } from '@/lib/use-now';
@@ -52,7 +53,7 @@ const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loadin
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
   { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen },
-  { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
+  { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Checklist', icon: Luggage },
   { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck }, { value: 'share', label: 'Share', icon: HeartHandshake },
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
@@ -206,6 +207,7 @@ export function TravelTrip() {
       {part === 'today' && <TripToday tripId={t.id} start={t.startDate} stops={stops} items={data.items} onAdded={() => void mutate()} />}
 
       {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
+      {part === 'packing' && <TripTodos tripId={t.id} stops={stops} start={t.startDate} members={data.members} me={data.me} />}
       {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}
 
       {part === 'plan' && <>
