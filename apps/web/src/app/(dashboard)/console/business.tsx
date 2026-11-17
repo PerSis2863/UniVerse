@@ -2,7 +2,6 @@
 
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
-import { m as motion } from 'framer-motion';
 import { AlertOctagon, Building2, Crown, Globe2, ScanLine } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { useActivePoll } from '@/lib/realtime-client';
@@ -11,6 +10,7 @@ import { InstrumentBoard, type InstrumentCell } from '@/components/instruments/B
 import { Facts, HeatStrip, Meter, Ring, Spark, Stack } from '@/components/instruments/parts';
 import { cn } from '@/lib/utils';
 import { card, fetcher, ConsoleSkeleton } from './shared';
+import { Fill } from '@/components/ui/Fill';
 
 // The owner console's Business section (UniVerse Trace across every brand): GET /trace/owner
 // (src/server/trace-owner.ts). The network's size, what it earns, scans and copies per day, the
@@ -65,7 +65,7 @@ export function BusinessPanel() {
                   {x.suspect > 0 && <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400">{x.suspect} copies</span>}
                   <span className="font-mono text-xs tabular-nums text-zinc-600 dark:text-zinc-300 w-14 text-right">{fmt(x.scans)}</span>
                 </div>
-                <div className="mt-1 ml-8 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" initial={{ width: 0 }} animate={{ width: `${(x.scans / maxBrand) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.03 }} /></div>
+                <div className="mt-1 ml-8 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><Fill value={x.scans / maxBrand} className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" delay={(i * 0.03) * 1000} /></div>
               </li>
             ))}
             {!b.topBrands.length && <li className="text-sm text-zinc-500">No brands yet.</li>}
@@ -79,7 +79,7 @@ export function BusinessPanel() {
             {b.countries.map((c, i) => (
               <li key={c.country} className="text-sm">
                 <div className="flex items-center gap-2"><span aria-hidden>{flag(c.country)}</span><span className="flex-1 text-zinc-800 dark:text-zinc-100">{c.country}</span><span className="font-mono text-xs text-zinc-600 dark:text-zinc-300">{fmt(c.scans)}</span></div>
-                <div className="mt-1 ml-6 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-indigo-500" initial={{ width: 0 }} animate={{ width: `${(c.scans / maxCountry) * 100}%` }} transition={{ duration: 0.7, delay: i * 0.03 }} /></div>
+                <div className="mt-1 ml-6 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><Fill value={c.scans / maxCountry} className="h-full rounded-full bg-indigo-500" delay={(i * 0.03) * 1000} /></div>
               </li>
             ))}
           </ul>

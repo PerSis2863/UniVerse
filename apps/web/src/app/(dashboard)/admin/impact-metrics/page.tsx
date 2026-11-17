@@ -11,6 +11,7 @@ import { SectionTabs, ADMIN_INSIGHT_TABS } from '@/components/layout/SectionTabs
 import { authedJson } from '@/lib/authed-fetch';
 import { SearchBox, RoleChip, StatusChip, fmtDate, fmtAgo, ROLE_LABEL } from '@/components/impact/AdminPeople';
 import { TabPill } from '@/components/ui/Glide';
+import { Fill } from '@/components/ui/Fill';
 
 interface ImpactData {
   kpis: { students: number; ngos: number; activeProjects: number; impactPoints: number };
@@ -178,12 +179,7 @@ export default function ImpactMetricsPage() {
                       <span className="text-zinc-900 dark:text-white font-bold tabular-nums">{s.count} · {pct}%</span>
                     </div>
                     <div className="h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${pct}%` }}
-                        transition={{ duration: 0.9, delay: 0.3 + i * 0.08 }}
-                        className="h-full bg-indigo-500 rounded-full"
-                      />
+                      <Fill value={pct / 100} className="h-full bg-indigo-500 rounded-full" delay={(0.3 + i * 0.08) * 1000} />
                     </div>
                   </div>
                 );

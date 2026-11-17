@@ -2467,8 +2467,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                   </p>
                 );
               })()}
-              <motion.button whileTap={{ scale: 0.97 }} type="button" onClick={() => { haptic('tap'); resumeJoin.current?.(); }}
-                className="w-full py-3.5 rounded-2xl font-bold text-base bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30">
+              <motion.button type="button" onClick={() => { haptic('tap'); resumeJoin.current?.(); }}
+                className="w-full py-3.5 rounded-2xl font-bold text-base bg-gradient-to-r from-indigo-500 via-violet-500 to-fuchsia-500 shadow-lg shadow-fuchsia-500/30 active:scale-[0.97]">
                 {callId.startsWith('o_') && !info?.host ? 'Join the line' : 'Join now'}
               </motion.button>
             </div>
@@ -2674,27 +2674,27 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                 <span className="shrink-0 inline-flex items-center gap-1.5 px-3 h-11 rounded-full bg-white/10 text-xs font-semibold text-zinc-200" title="You’re watching this webinar. Raise your hand to ask to speak."><Presentation className="w-4 h-4 text-fuchsia-300" />Watching</span>
               ) : (
                 <>
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn(btn, 'shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff /> : <Mic />}</motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void toggleCamera()} aria-pressed={camera} disabled={cameraBusy}
+                  <motion.button type="button" onClick={toggleMute} aria-pressed={muted} aria-label={muted ? 'Unmute' : 'Mute'} className={cn('active:scale-[0.9]', btn, 'shrink-0', muted ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>{muted ? <MicOff /> : <Mic />}</motion.button>
+                  <motion.button type="button" onClick={() => void toggleCamera()} aria-pressed={camera} disabled={cameraBusy}
                     aria-label={camera ? 'Turn camera off' : 'Turn camera on'} title={camera ? 'Turn camera off' : kind === 'audio' ? 'Switch to video' : 'Turn camera on'}
-                    className={cn(btn, 'shrink-0', camera ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}>
+                    className={cn('active:scale-[0.9]', btn, 'shrink-0', camera ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}>
                     {cameraBusy ? <Loader2 className="animate-spin" /> : camera ? <Video /> : <VideoOff />}
                   </motion.button>
                 </>
               )}
-              {phase !== 'live' && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn(btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>}
+              {phase !== 'live' && <motion.button type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn('active:scale-[0.9]', btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>}
               {phase === 'live' && (
                 <>
-                  {canShare && !audienceMe && <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn(btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={toggleHand} aria-pressed={!!myHand} aria-label={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'} title={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'}
-                    className={cn(btn, 'shrink-0', !audienceMe && 'hidden sm:flex', myHand ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-white/10 hover:bg-white/20')}><Hand /></motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
-                    className={cn(btn, 'shrink-0 relative', reactOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                  {canShare && !audienceMe && <motion.button type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn('active:scale-[0.9]', btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+                  <motion.button type="button" onClick={toggleHand} aria-pressed={!!myHand} aria-label={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'} title={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'}
+                    className={cn('active:scale-[0.9]', btn, 'shrink-0', !audienceMe && 'hidden sm:flex', myHand ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-white/10 hover:bg-white/20')}><Hand /></motion.button>
+                  <motion.button type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
+                    className={cn('active:scale-[0.9]', btn, 'shrink-0 relative', reactOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <Smile />
                     {myHand && <span className="sm:hidden absolute top-0.5 end-0.5 w-5 h-5 rounded-full bg-amber-400 text-[11px] flex items-center justify-center" aria-hidden>✋</span>}
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => openPanel(chatOpen ? null : 'chat')} aria-expanded={chatOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'} title="Chat"
-                    className={cn(btn, 'shrink-0 relative', chatOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                  <motion.button type="button" onClick={() => openPanel(chatOpen ? null : 'chat')} aria-expanded={chatOpen} aria-label={unread ? `Chat, ${unread} new` : 'Chat'} title="Chat"
+                    className={cn('active:scale-[0.9]', btn, 'shrink-0 relative', chatOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MessageSquare />
                     <AnimatePresence>
                       {unread > 0 && (
@@ -2702,8 +2702,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                       )}
                     </AnimatePresence>
                   </motion.button>
-                  <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
-                    className={cn(btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
+                  <motion.button type="button" onClick={() => { haptic('tap'); setReactOpen(false); setMoreOpen((o) => !o); }} aria-expanded={moreOpen} aria-label="More options" title="More"
+                    className={cn('active:scale-[0.9]', btn, 'shrink-0 relative', moreOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}>
                     <MoreHorizontal />
                     {(cc || recording || notes) && <span className="absolute top-1.5 end-1.5 w-2 h-2 rounded-full bg-fuchsia-400" aria-hidden />}
                   </motion.button>
@@ -2711,7 +2711,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               )}
             </>
           )}
-          <motion.button whileTap={{ scale: 0.9 }} type="button" onClick={() => void leave()} aria-label="Leave call" className={cn(btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
+          <motion.button type="button" onClick={() => void leave()} aria-label="Leave call" className={cn('active:scale-[0.9]', btn, 'shrink-0 bg-rose-600 hover:bg-rose-500')}><PhoneOff /></motion.button>
         </div>
       </motion.footer>
       <FloatingReactions items={floats} />

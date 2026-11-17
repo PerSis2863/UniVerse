@@ -37,7 +37,7 @@ import { TripPicker } from './TripPicker';
 // from its free source to the browser; the Worker does nothing more.
 
 type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: number; e: number };
-/** M229: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
+/** M233: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
 type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
 const KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 38.7139, lon: -9.1394, zoom: 14 };
 const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false };
@@ -50,7 +50,7 @@ function shownBefore(): Show {
 const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const metres = (d: number) => (d < 1 ? `${Math.round(d * 100) * 10} m` : `${d.toFixed(1)} km`);
-// M229: the map's buttons grouped in rounded capsules, as Apple Maps does (zoom in one, the rest in another).
+// M233: the map's buttons grouped in rounded capsules, as Apple Maps does (zoom in one, the rest in another).
 const group = 'flex overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10';
 const round = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-200 active:scale-95 dark:bg-white/[0.08] dark:text-white dark:hover:bg-white/[0.14]';
 const ctl = 'flex h-11 w-11 items-center justify-center text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-100 active:scale-95 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
@@ -75,7 +75,7 @@ function drawWalk(m: MLMap, w: Walk | null) {
     { type: 'Feature', geometry: { type: 'LineString', coordinates: path }, properties: { exact: !!w.path } },
     { type: 'Feature', geometry: { type: 'Point', coordinates: [w.start.lon, w.start.lat] }, properties: { role: 'start' } },
     ...w.stops.map((s, i) => ({ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] }, properties: { role: 'stop', n: String(i + 1), name: s.name, order: i + 1 } })),
-    // The whole walk's walking minutes in one bubble on its longest stretch, as Apple Maps shows a route (M229).
+    // The whole walk's walking minutes in one bubble on its longest stretch, as Apple Maps shows a route (M233).
     { type: 'Feature', geometry: { type: 'Point', coordinates: bubbleAt(path, [w.start, ...w.stops]) }, properties: { role: 'time', label: `${w.stops.reduce((t, s) => t + s.walk, 0)} min` } },
   ] });
 }
@@ -210,7 +210,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   // Wikipedia's stories and UniVerse's reviews on the map.
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-stories', points(storyList.map((st, i) => ({ lat: st.lat, lon: st.lon, props: { i } })))); }, [storyList, ready]);
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-reviews', reviewFc); }, [reviewFc, ready]);
-  // The walk on the map, and everything else stepping back while it is shown (M229).
+  // The walk on the map, and everything else stepping back while it is shown (M233).
   useEffect(() => { const m = mapRef.current; if (m && ready) { drawWalk(m, walk); focusWalk(m, !!walk); } }, [walk, ready]);
   // Photos people took here: small round pictures (at most 30).
   useEffect(() => {
@@ -235,7 +235,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   useEffect(() => {
     const m = mapRef.current;
     try { localStorage.setItem(LOOK, JSON.stringify(show)); } catch { /* private mode */ }
-    // After the layers, the walk's focus again: the 3D switch would otherwise bring buildings over the walk (M229).
+    // After the layers, the walk's focus again: the 3D switch would otherwise bring buildings over the walk (M233).
     if (m && ready) { applyLook(m, show); focusWalk(m, walking); }
   }, [show, ready, walking]);
   // 3D: tilt when turned on or off.
@@ -403,7 +403,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} /> : (
             <>
               {walk ? (
-                // M229: the walk's card heads like Apple Maps' directions: Share, the walk, close.
+                // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.
                 <div className="mb-3 flex items-center gap-2">
                   <button type="button" onClick={() => void shareWalk()} className={round} aria-label="Share this walk"><Share className="h-[18px] w-[18px]" aria-hidden /></button>
                   <div className="min-w-0 flex-1 text-center">

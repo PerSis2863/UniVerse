@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import type { LectureMicroLessonData, RevisionReel, MindMapNode } from '@/server/lecture-micro-lessons';
 import { authedFetch } from '@/lib/authed-fetch';
+import { Fill } from '@/components/ui/Fill';
 
 interface LectureRevisionReelsProps {
   initialLesson?: LectureMicroLessonData;
@@ -337,17 +338,7 @@ export function LectureRevisionReels({
                     setIsPlaying(true);
                   }}
                 >
-                  <div
-                    className="h-full bg-white transition-[width] duration-100 ease-linear"
-                    style={{
-                      width:
-                        idx < activeReelIdx
-                          ? '100%'
-                          : idx === activeReelIdx
-                          ? `${progress}%`
-                          : '0%',
-                    }}
-                  />
+                  <Fill quick value={idx < activeReelIdx ? 1 : idx === activeReelIdx ? progress / 100 : 0} className="h-full bg-white" />
                 </div>
               ))}
             </div>

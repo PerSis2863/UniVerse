@@ -37,7 +37,7 @@ describe('street photos (M214)', () => {
   });
 });
 
-describe('the walk along real streets (M229)', () => {
+describe('the walk along real streets (M233)', () => {
   const start = { lat: 47.21, lon: -1.564 }, a = { key: 'N1', name: 'A', rank: 1, lat: 47.216, lon: -1.556, walk: 9, stay: 15, at: 9 }, b = { key: 'N2', name: 'B', rank: 2, lat: 47.218, lon: -1.553, walk: 3, stay: 20, at: 27 };
   // The router's real answer for these three points (trimmed path).
   const answer = { code: 'Ok', routes: [{ geometry: { type: 'LineString', coordinates: [[-1.564026, 47.210038], [-1.561622, 47.212201], [-1.556096, 47.21606], [-1.552985, 47.21796]] }, legs: [{ duration: 843.8, distance: 1055.2 }, { duration: 309.2, distance: 383.7 }] }] };
@@ -64,7 +64,7 @@ describe('the walk along real streets (M229)', () => {
   });
 });
 
-describe('the walk time bubble (M229)', () => {
+describe('the walk time bubble (M233)', () => {
   it('sits on the path by the middle of the longest stretch, never on a stop', () => {
     const path: [number, number][] = [[0, 0], [1, 0], [1, 4], [2, 4]];
     expect(bubbleAt(path, [{ lat: 0, lon: 0 }, { lat: 0, lon: 1 }, { lat: 4, lon: 1 }, { lat: 4, lon: 2 }])).toEqual([1, 2]);

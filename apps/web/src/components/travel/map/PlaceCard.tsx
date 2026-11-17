@@ -105,7 +105,7 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
 /** How wide the card's pictures are shown (the side panel, or a phone's sheet). */
 const CARD_PHOTO = '(min-width: 640px) 24rem, 100vw';
 
-/** M228: a Commons picture across the card, in the widths it needs (a 320 px thumbnail was blown up). */
+/** M232: a Commons picture across the card, in the widths it needs (a 320 px thumbnail was blown up). */
 function CardPhoto({ file, fallback }: { file: string | null; fallback?: string }) {
   const src = file ? commonsImage(file, 960) : fallback;
   if (!src) return null;

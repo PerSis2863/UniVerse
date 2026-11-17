@@ -8,7 +8,7 @@ import { Bell, BellOff, Languages, Loader2, MessageCircleQuestion, RefreshCw, Se
 import { authedJson } from '@/lib/authed-fetch';
 import { errorMessage } from '@/lib/api';
 import { LANGUAGES } from '@/lib/languages';
-import { fadeUp, spring } from '@/lib/motion';
+import { fadeUp } from '@/lib/motion';
 import { DAYS, MAX_QUESTION, type WeekFacts } from '@/lib/parent-copilot';
 import { useNow } from '@/lib/use-now';
 import { speechSupported, useSpeech } from '@/lib/use-speech';
@@ -137,7 +137,7 @@ export function ParentCopilot({ studentId }: { studentId: string }) {
           <label htmlFor="ask-child" className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5"><MessageCircleQuestion className="w-4 h-4 text-indigo-600 dark:text-indigo-300" aria-hidden />Ask about {child}</label>
           <div className="flex gap-2">
             <input id="ask-child" value={question} onChange={(e) => setQuestion(e.target.value.slice(0, MAX_QUESTION))} placeholder={`e.g. How is ${child} doing in maths?`} className="input flex-1 min-h-11" disabled={asking || data.asksLeft === 0} />
-            <motion.button whileTap={{ scale: 0.92 }} transition={spring.snappy} type="submit" disabled={asking || question.trim().length < 3 || data.asksLeft === 0} aria-label="Ask" className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-teal-600 text-white grid place-items-center disabled:opacity-40">
+            <motion.button type="submit" disabled={asking || question.trim().length < 3 || data.asksLeft === 0} aria-label="Ask" className="w-11 h-11 shrink-0 rounded-full bg-gradient-to-br from-indigo-600 to-teal-600 text-white grid place-items-center disabled:opacity-40 active:scale-[0.92]">
               {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             </motion.button>
           </div>

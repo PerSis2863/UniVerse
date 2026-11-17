@@ -81,7 +81,7 @@ export function ScheduledCalls({ role }: { role?: string }) {
     <section className="space-y-3">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5"><CalendarClock className="w-4 h-4" />Upcoming</h2>
-        <motion.button whileTap={{ scale: 0.94 }} type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors">
+        <motion.button type="button" onClick={() => setOpen(true)} className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold shadow-lg shadow-indigo-600/20 transition-colors active:scale-[0.94]">
           <CalendarPlus className="w-4 h-4" />Schedule
         </motion.button>
       </div>
@@ -107,7 +107,7 @@ export function ScheduledCalls({ role }: { role?: string }) {
                     </span>
                   </span>
                   {joinable ? (
-                    <motion.button whileTap={{ scale: 0.92 }} initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring.snappy} type="button" disabled={busy === c.id} onClick={() => void join(c)} className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 transition-colors shrink-0">
+                    <motion.button initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} transition={spring.snappy} type="button" disabled={busy === c.id} onClick={() => void join(c)} className="px-4 py-2 rounded-full bg-emerald-500 hover:bg-emerald-400 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 transition-colors shrink-0 active:scale-[0.92]">
                       {busy === c.id ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Join'}
                     </motion.button>
                   ) : (
@@ -212,7 +212,7 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
           </select>
           {templateById(template) && <span className="block text-[11px] text-zinc-500">When you join: {[templateById(template)!.lobby && 'waiting room', templateById(template)!.notes && 'notes', templateById(template)!.captions && 'captions'].filter(Boolean).join(', ') || 'no changes'}{' '}on, and an agenda of {templateById(template)!.agenda.length} items ({totalMinutes(templateById(template)!.agenda)} min) ready to start.</span>}
         </label>
-        <motion.button whileTap={{ scale: 0.97 }} type="submit" disabled={saving || !chosen} className="btn-primary w-full justify-center">
+        <motion.button type="submit" disabled={saving || !chosen} className="btn-primary w-full justify-center active:scale-[0.97]">
           {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <CalendarPlus className="w-4 h-4" />}Schedule
         </motion.button>
         <p className="text-[11px] text-zinc-500 text-center">Members get an in-app and push reminder 15 minutes before. Class calls also appear on the class calendar.</p>

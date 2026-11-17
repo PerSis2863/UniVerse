@@ -1,7 +1,7 @@
 // UniVerse Travel's tables read ahead (M205), run by hand when they need refreshing, from apps/web:
 //   npx tsx scripts/gen-travel-data.mts --places   each place's position, climate and banner (Wikivoyage; NASA POWER's
 //                                                 averages, public domain, where a guide has no climate chart)
-//   npx tsx scripts/gen-travel-data.mts --photos   each place's cover photo (M228): its Wikidata main image (P18),
+//   npx tsx scripts/gen-travel-data.mts --photos   each place's cover photo (M232): its Wikidata main image (P18),
 //                                                 else its Wikipedia article's, else Wikivoyage's own page image,
 //                                                 checked by photoOk (a photo, wide, sharp); else the banner stays
 //   npx tsx scripts/gen-travel-data.mts --money    price levels and exchange rates (World Bank, CC BY 4.0)
@@ -59,13 +59,13 @@ const CLIMATE_AT: Record<string, [number, number]> = {
   Tasmania: [-42.88, 147.33], 'Lake District': [54.43, -2.96], Fiji: [-17.76, 177.44], 'Swiss Alps': [46.69, 7.86], Lofoten: [68.23, 14.56], Maldives: [4.18, 73.51],
 };
 
-/** M228: places NASA's coarse grid gets wrong (a lake shore averaged with the Alps): a nearby guide's climate. */
+/** M232: places NASA's coarse grid gets wrong (a lake shore averaged with the Alps): a nearby guide's climate. */
 const CLIMATE_LIKE: Record<string, string> = { 'Lake Como': 'Milan' };
 
 async function places() {
   const src = readFileSync(new URL('travel-ideas.ts', LIB), 'utf8');
   const titles = [...src.matchAll(/^\s*\['([^']+)', '[A-Z]{2}'/gm)].map((m) => m[1]);
-  // Only places not read yet or without a climate (M228); `--all` reads every one again.
+  // Only places not read yet or without a climate (M232); `--all` reads every one again.
   const out = (want.has('--all') ? {} : JSON.parse(readFileSync(new URL('travel-places.json', LIB), 'utf8'))) as Record<string, unknown>;
   for (const k of Object.keys(out)) if (!titles.includes(k)) delete out[k];
   for (const title of titles) {
@@ -87,7 +87,7 @@ async function places() {
   console.log(`${Object.keys(out).length} of ${titles.length} places`);
 }
 
-/** M228: a cover photo per place. Only Wikimedia's REST endpoints and Special:EntityData (the action API
+/** M232: a cover photo per place. Only Wikimedia's REST endpoints and Special:EntityData (the action API
  *  answers 429 to shared cloud addresses), one request at a time with a pause; no SPARQL, no proxies. */
 async function photos() {
   const file = new URL('travel-places.json', LIB);

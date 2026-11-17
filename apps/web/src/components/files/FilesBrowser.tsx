@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/auth';
 import { removeWithUndo } from '@/lib/undo';
 import { FolderCard, fileMeta } from './FolderCard';
+import { Fill } from '@/components/ui/Fill';
 
 // A files hub (Stage 4 · 3.7, src/server/space-files.ts): folders, files with every version,
 // previews (PDF, text, photos), and where a file is used. Used for a space's files and for My
@@ -130,7 +131,7 @@ export function FilesBrowser({ kind, id, rootLabel = 'Files', back, emptyHint }:
 
       {data && (
         <div className="flex items-center gap-3 text-xs text-zinc-500">
-          <div className="flex-1 max-w-xs h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden"><motion.div className={cn('h-full rounded-full', pct > 90 ? 'bg-rose-500' : 'bg-indigo-500')} initial={{ width: 0 }} animate={{ width: `${pct}%` }} transition={spring.gentle} /></div>
+          <div className="flex-1 max-w-xs h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden"><Fill value={pct / 100} className={cn('h-full rounded-full', pct > 90 ? 'bg-rose-500' : 'bg-indigo-500')} /></div>
           {formatBytes(data.usage) || '0 KB'} of {formatBytes(data.quota)} used
           <span className="hidden sm:inline">· Drop files here to upload</span>
         </div>

@@ -10,6 +10,7 @@ import { toast } from 'sonner';
 import { api } from '@/lib/api';
 import { openPrivateFile } from '@/lib/private-file';
 import { SectionTabs, STUDENT_RECORDS_TABS } from '@/components/layout/SectionTabs';
+import { Fill } from '@/components/ui/Fill';
 
 type Doc = {
   id: string;
@@ -244,10 +245,7 @@ export default function DocumentsPage() {
                           <span className="text-zinc-400">{uploadProgress}%</span>
                         </div>
                         <div className="h-2 bg-zinc-800 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-500 transition-[width] duration-200 ease-out"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
+                          <Fill quick value={(uploadProgress) / 100} className="h-full bg-indigo-500" />
                         </div>
                       </div>
                     )}

@@ -141,17 +141,17 @@ export default function CallsPage() {
                       </span>
                     </div>
                     {c.live ? (
-                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(`/call/${c.callId}`)} className="px-4 py-2 rounded-full bg-emerald-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/25">Join</motion.button>
+                      <motion.button type="button" onClick={() => router.push(`/call/${c.callId}`)} className="px-4 py-2 rounded-full bg-emerald-700 text-white text-sm font-bold shadow-lg shadow-emerald-500/25 active:scale-[0.92]">Join</motion.button>
                     ) : chat ? (
                       <div className="flex gap-1 shrink-0">
                         {(['audio', 'video'] as const).map((k) => (
-                          <motion.button key={k} whileTap={{ scale: 0.88 }} type="button" disabled={!!busy} onClick={() => void callBack(c, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${c.title}`} className="w-10 h-10 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 transition-colors">
+                          <motion.button key={k} type="button" disabled={!!busy} onClick={() => void callBack(c, k)} aria-label={`${k === 'video' ? 'Video' : 'Voice'} call ${c.title}`} className="w-10 h-10 rounded-full flex items-center justify-center text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/10 transition-colors active:scale-[0.88]">
                             {busy === c.key + k ? <Loader2 className="w-5 h-5 animate-spin" /> : k === 'video' ? <Video className="w-5 h-5" /> : <Phone className="w-5 h-5" />}
                           </motion.button>
                         ))}
                       </div>
                     ) : (
-                      <motion.button whileTap={{ scale: 0.92 }} type="button" onClick={() => router.push(c.type === 'hall' ? `/hall/${c.callId}` : `/call/${c.callId}`)} className="shrink-0 px-3.5 py-2 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-500/15">Join again</motion.button>
+                      <motion.button type="button" onClick={() => router.push(c.type === 'hall' ? `/hall/${c.callId}` : `/call/${c.callId}`)} className="shrink-0 px-3.5 py-2 rounded-full bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 text-xs font-bold hover:bg-indigo-500/15 active:scale-[0.92]">Join again</motion.button>
                     )}
                   </motion.li>
                 );

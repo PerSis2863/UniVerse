@@ -88,9 +88,9 @@ export function SchoolAnalytics() {
           <div className="flex flex-wrap gap-2">
             {(moreIdeas ? SUGGESTIONS : SUGGESTIONS.slice(0, 4)).map((s) => (
               <motion.button
-                key={s.q} type="button" whileTap={{ scale: 0.96 }} disabled={busy}
+                key={s.q} type="button" disabled={busy}
                 onClick={() => { setQuestion(s.q); void open(s.metric, { days: s.days, order: s.order }); }}
-                className="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/15 transition-colors text-start"
+                className="px-3 py-1.5 rounded-full text-xs font-medium bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/15 transition-colors text-start active:scale-[0.96]"
               >
                 {s.q}
               </motion.button>

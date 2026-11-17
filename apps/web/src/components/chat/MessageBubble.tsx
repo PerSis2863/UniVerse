@@ -27,6 +27,7 @@ import { appLink, firstLink, youtubeId } from '@/lib/app-links';
 import { AppLinkCard, YouTubeCard } from './LinkCards';
 import { PrivateText } from './PrivateText';
 import { EFFECTS } from '@/lib/message-effects';
+import { Fill } from '@/components/ui/Fill';
 
 // Each person keeps the same colour everywhere, so a list of chats is easy to scan.
 /**
@@ -327,7 +328,7 @@ export function MessageBubble(p: Props) {
             return (
               <button key={i} onClick={() => { haptic('tap'); p.onVote(i); }} disabled={m.pending}
                 className={cn('relative w-full text-start rounded-xl px-3 py-2 overflow-hidden border transition-colors', mine ? 'border-white/25 hover:bg-white/10' : 'border-zinc-200 dark:border-white/10 hover:bg-zinc-50 dark:hover:bg-white/[0.04]')}>
-                <span className={cn('absolute inset-y-0 start-0 transition-[width] duration-500', mine ? 'bg-white/20' : 'bg-indigo-500/15')} style={{ width: `${pct}%` }} />
+                <Fill value={(pct) / 100} className={cn('absolute inset-y-0 start-0', mine ? 'bg-white/20': 'bg-indigo-500/15')} />
                 <span className="relative flex items-center gap-2">
                   <span className={cn('w-4 h-4 rounded-full border-2 flex items-center justify-center shrink-0', chosen ? (mine ? 'bg-white border-white text-indigo-600' : 'bg-indigo-600 border-indigo-600 text-white') : mine ? 'border-white/60' : 'border-zinc-300 dark:border-white/30')}>
                     {chosen && <Check className="w-3 h-3" />}

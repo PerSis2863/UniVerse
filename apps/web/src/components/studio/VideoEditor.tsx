@@ -9,6 +9,7 @@ import { clock } from '@/lib/audio-edit';
 import { haptic } from '@/lib/haptics';
 import { IMAGE_SECONDS, OUTPUTS, clipBegins, clipLength, fitRect, locate, moveClip, overlaysAt, parseCaptions, pickFormat, retrim, splitAt, toVtt, totalLength, wrapText, type Clip, type OutputId, type Overlay, type Place } from '@/lib/video-edit';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // The Studio video editor (Stage 5 · B9.15; src/lib/video-edit.ts): clips from videos and pictures
 // played one after another (trim, split, reorder, duplicate, each clip's own volume), text and
@@ -629,7 +630,7 @@ export function VideoEditor({ files, onClose }: { files: File[]; onClose: () => 
           <div role="dialog" aria-modal="true" aria-labelledby="export-title" className="w-full max-w-sm rounded-3xl bg-white dark:bg-[#151517] p-5 space-y-3">
             <h2 id="export-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Film className="w-4 h-4 text-indigo-500" aria-hidden />Making your video…</h2>
             <div role="progressbar" aria-label="Export progress" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(exporting.progress * 100)} className="h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden">
-              <div className="h-full bg-indigo-600 transition-[width]" style={{ width: `${Math.round(exporting.progress * 100)}%` }} />
+              <Fill quick value={(Math.round(exporting.progress * 100)) / 100} className="h-full bg-indigo-600" />
             </div>
             <p className="text-sm text-zinc-500 tabular-nums">{clock(exporting.progress * total)} of {clock(total)}. Keep this tab open and in front until it’s done.</p>
             <button type="button" onClick={cancelExport} className="btn-secondary btn-sm w-full">Cancel</button>

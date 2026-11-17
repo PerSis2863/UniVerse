@@ -12,6 +12,7 @@ import { THREE, World, glowSprite, type SkyLook } from './world/core';
 import { bag, bottle, can, cup, part, turtle, whole } from './world/props';
 import { Board, ocean, rainField, swell } from './world/board';
 import { haptic } from '@/lib/haptics';
+import { Fill } from '@/components/ui/Fill';
 
 // Ocean Cleanup (src/lib/play/ocean.ts): a boat on a living sea that turns from calm to a storm.
 // Plastic drifts down; scoop it up for points and combos. Sea life costs points (unless a shield is
@@ -411,7 +412,7 @@ export function OceanCleanup({ seed, startsAt, clock, onProgress, onStats }: Gam
         </div>
         <button type="button" onClick={() => { sweepAsk.current = true; }} disabled={hud.sweep < 1}
           className="absolute bottom-14 end-4 z-10 inline-flex h-12 items-center gap-2 overflow-hidden rounded-full bg-cyan-300 px-4 text-sm font-black text-cyan-950 shadow-[0_5px_0_rgba(0,0,0,0.35)] active:translate-y-1 active:shadow-none disabled:bg-zinc-800 disabled:text-zinc-300">
-          <span className="absolute inset-y-0 start-0 bg-cyan-200/60 transition-[width] duration-200" style={{ width: `${hud.sweep * 100}%` }} aria-hidden />
+          <Fill quick value={hud.sweep} className="absolute inset-y-0 start-0 bg-cyan-200/60" />
           <Waves className="relative h-4 w-4" aria-hidden /><span className="relative">{hud.sweep >= 1 ? 'Sweep!' : `Sweep ${Math.round(hud.sweep * 100)}%`}</span><kbd className="relative hidden rounded bg-black/15 px-1 text-[11px] font-medium [@media(pointer:fine)]:inline">Space</kbd>
         </button>
         <div className="pointer-events-none absolute inset-x-3 bottom-3 flex flex-wrap justify-center gap-2">

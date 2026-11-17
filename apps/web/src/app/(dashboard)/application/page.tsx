@@ -300,7 +300,7 @@ export default function ApplicationPage() {
   if (standalone) {
     return (
       <div className="min-h-screen bg-zinc-50 dark:bg-[#151517]">
-        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white/80 dark:bg-[#151517]/80 backdrop-blur">
+        <header className="sticky top-0 z-10 flex items-center justify-between px-4 sm:px-8 h-16 border-b border-zinc-200/70 dark:border-white/[0.06] bg-white dark:bg-[#151517]">
           <div className="flex items-center gap-2">
             <UniverseLogo className="w-8 h-8" />
             <span className="font-bold text-zinc-900 dark:text-white">{pageTitle}</span>

@@ -35,10 +35,14 @@ export function startPageTransition(motion: PageMotion) {
 /** How the page that's arriving should move. */
 export const pageMotion = () => nextMotion;
 
+let enteredAt = -1e9;
 /** The arriving page has used its motion: later changes (e.g. a redirect) just fade. */
 export function pageEntranceShown() {
   nextMotion = 'fade';
+  enteredAt = performance.now();
 }
+/** M231: a whole page came in a moment ago (its entrance is moving it): what arrived with it isn't a new row. */
+export const pageJustEntered = () => performance.now() - enteredAt < 250;
 
 /** A phone with little memory (Android reports it; iPhones don't): decorative blur and drifting light are left out there. */
 export const lowEndDevice = () => typeof navigator !== 'undefined' && ((navigator as Navigator & { deviceMemory?: number }).deviceMemory ?? 8) <= 2;

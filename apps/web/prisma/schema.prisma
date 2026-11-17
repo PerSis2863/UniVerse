@@ -5092,15 +5092,35 @@ model Task {
   blockedBy   String?
   /// A due-soon automation already told about it (Stage 5 · B9.10)
   dueRemindedAt DateTime?
+  /// M230: the Gantt bar starts here (null: when the card was made); a milestone is a diamond on its due day
+  startAt     DateTime?
+  milestone   Boolean       @default(false)
   createdById String
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
   comments    TaskComment[]
+  timeEntries TaskTimeEntry[]
 
   @@index([boardId])
   @@index([assigneeId, doneAt])
   @@index([listId])
   @@map("tasks")
+}
+
+/// M230: time spent on a card (who, how many minutes, a note).
+model TaskTimeEntry {
+  id      String   @id @default(cuid())
+  taskId  String
+  task    Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  boardId String
+  userId  String
+  minutes Int
+  note    String?
+  at      DateTime @default(now())
+
+  @@index([taskId])
+  @@index([boardId])
+  @@map("task_time_entries")
 }
 
 model TaskComment {

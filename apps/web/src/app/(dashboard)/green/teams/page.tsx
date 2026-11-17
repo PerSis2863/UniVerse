@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { Segmented } from '@/components/ui/Segmented';
 import { GreenTabs } from '@/components/green/GreenTabs';
+import { Fill } from '@/components/ui/Fill';
 
 // UniVerse Green → teams: start a team or join one with its code, see each member's CO₂ saved, the
 // team leaderboard and the top people of the last 30 days, confirmed actions only (src/server/green.ts).
@@ -94,7 +95,7 @@ export default function GreenTeamsPage() {
                         <span className="text-[11px] text-zinc-500">{t.members} people</span>
                         <span className="font-mono text-xs w-20 text-right text-emerald-600 dark:text-emerald-400">{fmt(t.kg)} kg</span>
                       </div>
-                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><motion.div className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" initial={{ width: 0 }} animate={{ width: `${(t.kg / max) * 100}%` }} transition={{ duration: 0.8, delay: i * 0.03 }} /></div>
+                      <div className="mt-1 ml-8 h-1.5 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden"><Fill value={t.kg / max} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" delay={(i * 0.03) * 1000} /></div>
                     </motion.li>
                   ))}
                 </ol>

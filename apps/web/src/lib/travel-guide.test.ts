@@ -71,7 +71,7 @@ describe('Travel guides', () => {
   });
 });
 
-describe('cover photos (M228)', () => {
+describe('cover photos (M232)', () => {
   it('takes wide, sharp photos and refuses banners, maps, flags, collages and small or tall files', () => {
     expect(photoOk('Rome Skyline (8012016319).jpg', 4000, 2667)).toBe(true);
     expect(photoOk('Paris banner.jpg', 2100, 300)).toBe(false);

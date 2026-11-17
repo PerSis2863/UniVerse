@@ -29,6 +29,7 @@ import useSWR, { mutate as globalMutate } from 'swr';
 import { fetcher } from '@/lib/fetcher';
 import { courseColor } from '@/lib/course-color';
 import { TeacherLive } from '@/components/live/HomeLive';
+import { Fill } from '@/components/ui/Fill';
 
 interface TeacherCourse { id?: string; name: string; code: string; color?: string | null; students: number; completion: number }
 interface RecentStudent { name: string; course: string; score: number; status: string }
@@ -127,13 +128,7 @@ export default function TeacherDashboard() {
                       </div>
                     </div>
                     <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.06] overflow-hidden">
-                      <motion.div
-                        className="h-full rounded-full"
-                        style={{ backgroundColor: courseColor(c.color, c.code) }}
-                        initial={{ width: 0 }}
-                        animate={{ width: `${c.completion}%` }}
-                        transition={{ duration: 1, ease: 'easeOut', delay: 0.2 + i * 0.1 }}
-                      />
+                      <Fill value={c.completion / 100} className="h-full rounded-full" style={{ backgroundColor: courseColor(c.color, c.code) }} delay={(0.2 + i * 0.1) * 1000} />
                     </div>
                   </motion.div>
                 ))}

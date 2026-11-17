@@ -28,6 +28,7 @@ import { WritingReplay } from '@/components/assignments/WritingReplay';
 import { RubricLevels } from '@/components/assignments/RubricKeys';
 import type { GroupMode } from '@/lib/group-maker';
 import { SUBMIT_KINDS, SUBMIT_LABEL, type SubmitKind } from '@/lib/submit-kinds';
+import { Fill } from '@/components/ui/Fill';
 
 interface RubricItem { id: string; criterion: string; description: string | null; points: number }
 interface Score { id: string; score: number; comment: string }
@@ -294,7 +295,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               <div className="panel p-3">
                 <div className="flex items-baseline justify-between text-xs text-zinc-500 mb-1.5"><span><b className="text-zinc-900 dark:text-white tabular-nums">{returned}</b> of {subs.length} returned</span><span className="hidden lg:inline">J / K: next / previous</span></div>
                 <div className="h-1.5 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden" role="progressbar" aria-label="Grades returned" aria-valuemin={0} aria-valuemax={subs.length} aria-valuenow={returned}>
-                  <div className="h-full rounded-full bg-emerald-500 transition-[width] duration-500" style={{ width: `${subs.length ? (returned / subs.length) * 100 : 0}%` }} />
+                  <Fill value={(subs.length ? (returned / subs.length) * 100 : 0) / 100} className="h-full rounded-full bg-emerald-500" />
                 </div>
               </div>
               <ReceiptSummary receipts={subs.map((s) => s.aiReceipt ?? null)} policy={data.aiPolicy ?? 'FREE'} className="panel" />

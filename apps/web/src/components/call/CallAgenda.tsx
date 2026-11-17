@@ -7,6 +7,7 @@ import { agendaClock, clockText, MEETING_TEMPLATES, totalMinutes, type Agenda, t
 import { useTick } from '@/lib/use-now';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // The call's agenda (Stage 5 · B8.3; src/lib/call-agenda.ts): a bar on the call with the item
 // running and its time left (amber in the last minute, red when it runs over), the hosts' buttons
@@ -51,7 +52,7 @@ export function AgendaBar({ agenda, skew, canRun, onGo, onEdit }: { agenda: Agen
         )}
       </div>
       <div className="mt-1.5 h-1 rounded-full bg-white/10 overflow-hidden" aria-hidden>
-        <div className={cn('h-full transition-[width] duration-500', c.overrun ? 'bg-rose-400' : c.soon ? 'bg-amber-400' : 'bg-sky-400')} style={{ width: `${pct}%` }} />
+        <Fill value={(pct) / 100} className={cn('h-full', c.overrun ? 'bg-rose-400': c.soon ? 'bg-amber-400': 'bg-sky-400')} />
       </div>
       {c.overrun && <p className="mt-1 text-[11px] text-rose-200">Over time{c.next ? ` · next: ${c.next.title}` : ''}</p>}
       {c.soon && <p className="mt-1 text-[11px] text-amber-200">Less than a minute left{c.next ? ` · next: ${c.next.title}` : ''}</p>}

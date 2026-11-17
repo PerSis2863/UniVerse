@@ -15,6 +15,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { BASE, arcPoints, glow, quad, toBase } from './engine';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
+import { Fill } from '@/components/ui/Fill';
 
 // The live market map (UniVerse Trace; the owner, 24 Oct 2026: "make the live map in detail like
 // very detail with animations, transitions and it should be ultra smooth"). Where a brand's
@@ -716,7 +717,7 @@ export function MarketMap() {
                         <span className="font-mono text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(g.scans)}</span>
                       </span>
                       <span className="mt-1 ml-6 block h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
-                        <motion.span className="block h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" initial={{ width: 0 }} animate={{ width: `${(g.scans / topMax) * 100}%` }} transition={{ duration: 0.7, delay: n * 0.03, ease: [0.22, 1, 0.36, 1] }} />
+                        <Fill value={g.scans / topMax} className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" delay={(n * 0.03) * 1000} />
                       </span>
                     </button>
                   </li>

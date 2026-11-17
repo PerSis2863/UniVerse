@@ -2070,6 +2070,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/docs\/([^/]+)$/, () => fail('Documents aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/([^/]+)$/, () => fail('Task boards aren’t in the sample yet.', 404)],
   [/^\/api\/tasks\/items\/([^/]+)\/comments$/, () => ok([])],
+  [/^\/api\/tasks\/items\/([^/]+)\/time$/, () => ok({ canEdit: false, me: 'sample', total: 0, entries: [] })],
   [/^\/api\/chat\/starred$/, ({ db: d }) => ok(d.conversations.flatMap((c) => visible(d, c).filter((m: any) => d.starred.has(m.id)).map((m: any) => ({ ...decorateMsg(d, m), chat: { id: c.id, title: c.title } }))))],
   [/^\/api\/chat\/conversations\/([^/]+)\/messages$/, ({ db: d, m, q }) => {
     const c = d.conversations.find((x) => x.id === m[1]); if (!c) return fail('Conversation not found.', 404);

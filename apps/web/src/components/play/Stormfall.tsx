@@ -10,6 +10,7 @@ import { useRatingGate } from './AgeGate';
 import type { PlayMe } from './GameShell';
 import { FpsMeter, fpsShown, showFps } from './FpsMeter';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // STORMFALL (M82): a Unity shooter (a battle royale plus Outbreak, undead survival on two more maps;
 // source in games/stormfall at the repo root, the current one in the owner's Unity repo), built for the
@@ -164,7 +165,7 @@ export function StormfallPlayer() {
                 )}
                 {phase === 'loading' && (
                   <div className="mx-auto mt-6 w-64" role="progressbar" aria-label="Downloading the game" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)}>
-                    <div className="h-1.5 overflow-hidden rounded-full bg-white/15"><div className="h-full rounded-full bg-amber-400 transition-[width] duration-200" style={{ width: `${Math.round(progress * 100)}%` }} /></div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-white/15"><Fill quick value={(Math.round(progress * 100)) / 100} className="h-full rounded-full bg-amber-400" /></div>
                     <p className="mt-2 inline-flex items-center gap-1.5 text-xs text-zinc-300"><Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />{progress < 0.9 ? `Downloading ${Math.round(progress * 100)}%` : 'Building the world…'}</p>
                   </div>
                 )}

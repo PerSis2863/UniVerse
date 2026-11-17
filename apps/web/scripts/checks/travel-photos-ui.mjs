@@ -1,4 +1,4 @@
-// M228 Travel's photos: each place's own photo, sharp at its size. On Explore, Find where to go, Trips and a guide
+// M232 Travel's photos: each place's own photo, sharp at its size. On Explore, Find where to go, Trips and a guide
 // (Kyoto, one of Explore's places; Ghent, any other place: its photo found by the server), at 1280 and 390 (a phone
 // at 2x), light and dark: the cards' pictures are photos (not the 7:1 banners), the browser picked a width at least
 // as wide as the picture is shown (no blowing up), cards below the fold wait (lazy), axe (serious/critical), no

@@ -96,7 +96,7 @@ export function EmojiPicker({ onPick, custom = [], onClose, className }: {
         ) : (
           sections.map((s) => (
             <section key={s.id} data-section={s.id} className="scroll-mt-1">
-              <p className="sticky top-0 z-[1] px-1.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 bg-white/95 dark:bg-[#151517]/95 backdrop-blur">{s.label}</p>
+              <p className="sticky top-0 z-[1] px-1.5 pt-2 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500 bg-white dark:bg-[#151517]">{s.label}</p>
               <div className="grid grid-cols-8 gap-0.5">{s.items.map(cell)}</div>
             </section>
           ))

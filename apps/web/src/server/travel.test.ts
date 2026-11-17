@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { countryFacts, weatherDays } from './travel';
+import { describe, expect, it, vi } from 'vitest';
+import { countryFacts, fetchJson, weatherDays } from './travel';
 
 // M202: country facts from the table kept in the app; a forecast's hours into days, in the place's time.
 describe('Travel facts', () => {
@@ -16,5 +16,10 @@ describe('Travel facts', () => {
     // Kyoto (135° E): 03:00 UTC is midday there.
     const days = weatherDays([at('2026-11-15T00:00:00Z', 9, 'cloudy'), at('2026-11-15T03:00:00Z', 15, 'clearsky_day', 0.4), at('2026-11-15T12:00:00Z', 6, 'clearsky_night')], 135.76);
     expect(days).toEqual([{ date: '2026-11-15', min: 6, max: 15, symbol: 'clearsky_day', rain: 0.4 }]);
+  });
+  it('calls a slow or unreachable source busy, not a fault (M231)', async () => {
+    const real = globalThis.fetch;
+    globalThis.fetch = vi.fn(() => Promise.reject(new DOMException('The operation was aborted due to timeout', 'TimeoutError'))) as typeof fetch;
+    try { await expect(fetchJson('https://example.org/x')).rejects.toMatchObject({ status: 503 }); } finally { globalThis.fetch = real; }
   });
 });

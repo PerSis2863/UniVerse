@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 import { Btn, Field } from './QuickTools';
 import { printOnly, uid, useKept } from './kept';
 import { BRANCH, nf, rnd, Segments, Stat } from './bits';
+import { Fill } from '@/components/ui/Fill';
 
 // Collaborate → Create → Study and teach, fifth set (M75): times tables, spelling tests, telling the
 // time, a number line, Venn diagrams, a history timeline, probability, trigonometry, triangles,
@@ -277,7 +278,7 @@ function Molar() {
         <>
           <p className="text-3xl font-bold text-zinc-900 dark:text-white" role="status"><span className="font-mono">{nf(r.total, 3)}</span> g/mol</p>
           <ul className="space-y-1.5">{r.parts.map(([el, n, m], i) => (
-            <li key={el} className="grid grid-cols-[60px_1fr_auto] items-center gap-2 text-sm"><span className="font-mono font-bold text-zinc-900 dark:text-white">{el}<sub>{n > 1 ? n : ''}</sub></span><span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><motion.span className="block h-full rounded-full" style={{ background: BRANCH[i % BRANCH.length] }} initial={{ width: 0 }} animate={{ width: `${(m / r.total) * 100}%` }} transition={spring.smooth} /></span><span className="font-mono tabular-nums text-zinc-900 dark:text-white">{nf(m, 3)} · {nf((m / r.total) * 100, 1)}%</span></li>
+            <li key={el} className="grid grid-cols-[60px_1fr_auto] items-center gap-2 text-sm"><span className="font-mono font-bold text-zinc-900 dark:text-white">{el}<sub>{n > 1 ? n : ''}</sub></span><span className="h-3 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={m / r.total} className="h-full rounded-full" style={{ background: BRANCH[i % BRANCH.length] }} /></span><span className="font-mono tabular-nums text-zinc-900 dark:text-white">{nf(m, 3)} · {nf((m / r.total) * 100, 1)}%</span></li>
           ))}</ul>
         </>
       )}

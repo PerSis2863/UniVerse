@@ -7,6 +7,7 @@ import { Check, HeartHandshake } from 'lucide-react';
 import { authedJson } from '@/lib/authed-fetch';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { Fill } from '@/components/ui/Fill';
 
 // Study planner → plans a teacher made for me (upgrade 3, early help). Written as encouragement:
 // what to do this week, from whom; the student ticks steps off and the teacher sees progress.
@@ -49,7 +50,7 @@ export function SupportPlans() {
               <span className="shrink-0 text-xs font-bold tabular-nums text-zinc-500">{done}/{total}</span>
             </div>
             <div className="mt-3 h-1.5 rounded-full bg-zinc-200/70 dark:bg-white/10 overflow-hidden">
-              <motion.div className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" initial={false} animate={{ width: `${total ? (done / total) * 100 : 0}%` }} transition={spring.smooth} />
+              <Fill value={(total ? (done / total) * 100 : 0) / 100} className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" />
             </div>
             <ol className="mt-4 space-y-2">
               {p.plan.steps.map((s, i) => {
