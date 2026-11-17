@@ -8415,3 +8415,12 @@ so this checks the plan's times instead.
 - **Server:** `POST /travel/trips/:id/copy` (`copyTravelTrip` in `src/server/travel-trips.ts`, tested in
   `travel-trip-mode.test.ts`): only from a trip you're planning; your 50-trip limit; at most 80 places, five a query
   (about 17 values each, under D1's 100), so a copy stays well under 50 queries.
+
+## M257: your travel in numbers (17 Nov)
+
+- **Where:** the top of Travel's **Trips** list (`TravelTrips.tsx`): "Your travel so far" (trips that have ended) or,
+  before any, "Your trips to come": countries (with their flags), cities, days, kilometres between cities and the CO₂ of
+  getting between them (one traveller), and how many trips are done and to come.
+- **Data:** `GET /travel/trips` now gives each trip's `route` (each city's name, country, position, days and way
+  there) from the same query; the sums in `src/lib/travel-stats.ts` (tested), the CO₂ through the trip footprint
+  (M247, factors from `green.ts`). Sample answer updated.

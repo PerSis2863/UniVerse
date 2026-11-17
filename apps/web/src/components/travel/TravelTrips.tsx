@@ -11,13 +11,15 @@ import { fetcher } from '@/lib/fetcher';
 import { tripCover } from '@/lib/travel-ideas';
 import { addDays } from '@/lib/travel-plan';
 import { Cover, startTrip } from './travel-ui';
+import { useNow } from '@/lib/use-now';
+import { flag, travelStats, type RouteStop } from '@/lib/travel-stats';
 
 const TRIP_SIZES = '(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw';
 
 // My trips in UniVerse Travel (M206): the trips I'm planning, alone or with friends, and a new one. An
 // invite link (/travel/saved?join=CODE) asks before joining a friend's trip.
 
-interface TripRow { id: string; name: string; startDate: string | null; mine: boolean; cities: string[]; cover: string | null; days: number; people: number; places: number }
+interface TripRow { id: string; name: string; startDate: string | null; mine: boolean; cities: string[]; cover: string | null; days: number; people: number; places: number; route?: RouteStop[] }
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 
 export function TravelTrips({ join }: { join: string | null }) {
@@ -32,6 +34,7 @@ export function TravelTrips({ join }: { join: string | null }) {
 
   return (
     <div className="space-y-6">
+      {data && data.trips.length > 0 && <TravelStats trips={data.trips} />}
       {join && (
         <section className="panel flex flex-wrap items-center gap-4 p-5" aria-label="Invitation">
           <Users className="h-8 w-8 shrink-0 text-indigo-500" aria-hidden />
@@ -79,5 +82,30 @@ export function TravelTrips({ join }: { join: string | null }) {
         </ul>
       )}
     </div>
+  );
+}
+
+/** M257: my travel in numbers across my trips: done and to come. */
+function TravelStats({ trips }: { trips: TripRow[] }) {
+  const now = useNow();
+  if (!now) return null;
+  const st = travelStats(trips.map((t) => ({ startDate: t.startDate, route: t.route ?? [] })), new Date(now).toISOString().slice(0, 10));
+  const show = st.done.trips ? st.done : st.coming;
+  const tiles = [
+    { label: show.countries.length === 1 ? 'Country' : 'Countries', value: show.countries.length },
+    { label: show.cities === 1 ? 'City' : 'Cities', value: show.cities },
+    { label: show.days === 1 ? 'Day' : 'Days', value: show.days },
+    { label: 'Km between cities', value: show.km.toLocaleString() },
+    { label: 'kg CO₂ getting there', value: show.kg.toLocaleString() },
+  ];
+  return (
+    <section className="panel p-5" aria-labelledby="stats-h">
+      <h2 id="stats-h" className="text-lg font-semibold text-zinc-900 dark:text-white">{st.done.trips ? 'Your travel so far' : 'Your trips to come'}</h2>
+      <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{st.done.trips ? `${st.done.trips} ${st.done.trips === 1 ? 'trip' : 'trips'} done${st.coming.trips ? `, ${st.coming.trips} to come` : ''}.` : `${st.coming.trips} ${st.coming.trips === 1 ? 'trip' : 'trips'} being planned.`}</p>
+      <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+        {tiles.map((x) => <div key={x.label} className="rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.04]"><dt className="text-xs text-zinc-600 dark:text-zinc-300">{x.label}</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{x.value}</dd></div>)}
+      </dl>
+      {show.countries.length > 0 && <p className="mt-3 text-xl" role="img" aria-label={`Countries: ${show.countries.join(', ')}`}>{show.countries.map(flag).join(' ')}</p>}
+    </section>
   );
 }

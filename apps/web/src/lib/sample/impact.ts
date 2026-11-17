@@ -725,7 +725,7 @@ export function sampleTravelVisa(p: string | null) {
 }
 /** GET /travel/trips (M206): a sample trip being planned with a friend. */
 export function sampleTravelTrips() {
-  return { trips: [{ id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', mine: true, updatedAt: new Date().toISOString(), cities: ['Lisbon', 'Porto'], cover: 'Lisbon', days: 5, people: 2, places: 6 }] };
+  return { trips: [{ id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', mine: true, updatedAt: new Date().toISOString(), cities: ['Lisbon', 'Porto'], cover: 'Lisbon', days: 5, people: 2, places: 6, route: [{ name: 'Lisbon', cc: 'PT', lat: 38.7139, lon: -9.1394, days: 3, mode: null }, { name: 'Porto', cc: 'PT', lat: 41.1496, lon: -8.611, days: 2, mode: 'train' }] }] };
 }
 /** GET /travel/trips/:id */
 export function sampleTravelTrip(me: { id: string; name?: string }) {

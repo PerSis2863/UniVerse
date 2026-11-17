@@ -60,11 +60,13 @@ async function changed(tripId: string) {
 export async function travelTrips(u: SessionUser) {
   const rows = await prisma.travelTripMember.findMany({
     where: { userId: u.id }, take: MAX_TRIPS,
-    select: { trip: { select: { id: true, name: true, startDate: true, ownerId: true, updatedAt: true, stops: { select: { name: true, days: true, guide: true }, orderBy: { position: 'asc' } }, _count: { select: { members: true, items: true } } } } },
+    select: { trip: { select: { id: true, name: true, startDate: true, ownerId: true, updatedAt: true, stops: { select: { name: true, days: true, guide: true, cc: true, lat: true, lon: true, mode: true }, orderBy: { position: 'asc' } }, _count: { select: { members: true, items: true } } } } },
   });
   const trips = rows.map(({ trip: t }) => ({
     id: t.id, name: t.name, startDate: t.startDate, mine: t.ownerId === u.id, updatedAt: t.updatedAt,
-    cities: t.stops.map((s) => s.name), cover: t.stops[0]?.guide ?? null, days: tripDays(t.stops), people: t._count.members, places: t._count.items,
+    cities: t.stops.map((s) => s.name), cover: t.stops[0]?.guide ?? null,
+    // M257: each city's country, position and way there, for the travel stats.
+    route: t.stops.map((s) => ({ name: s.name, cc: s.cc, lat: s.lat, lon: s.lon, days: s.days, mode: s.mode })), days: tripDays(t.stops), people: t._count.members, places: t._count.items,
   })).sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
   return { trips };
 }
