@@ -31,6 +31,7 @@ import { TripOffline } from './trip-offline';
 import { TripJetLag } from './trip-jetlag';
 import { TripDocs } from './trip-docs';
 import { TripHolidays } from './trip-holidays';
+import { TripFootprint } from './trip-footprint';
 import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
@@ -189,6 +190,7 @@ export function TravelTrip() {
         segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
 
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+        <TripFootprint tripId={t.id} stops={stops} travellers={t.travellers} onChange={() => void mutate()} />
         <TripHolidays stops={stops} dates={dates} />
         <TripDocs tripId={t.id} start={dates[0]?.from ?? null} end={dates[dates.length - 1]?.to ?? null} />
         <TripJetLag tripId={t.id} stops={stops} start={t.startDate} members={data.members} me={data.me} refresh={() => void mutate()} />

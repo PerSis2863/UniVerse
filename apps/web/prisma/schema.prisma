@@ -7751,6 +7751,8 @@ model TravelTripStop {
   lon      Float?
   days     Int              @default(2)
   position Int              @default(0)
+  /// M247: how they get here from the city before (src/lib/green.ts TRAVEL_MODES), or null for the likely way.
+  mode     String?
   items    TravelTripItem[]
 
   @@index([tripId])

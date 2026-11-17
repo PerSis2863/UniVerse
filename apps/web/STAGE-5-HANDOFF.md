@@ -8304,3 +8304,16 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   (added to `connect-src` in `security-headers.ts`; no Worker CPU; SWR keeps it an hour); festivals from the guide the
   page already loads (`/travel/guide`). Logic in `src/lib/travel-holidays.ts` (tested).
 - **Not seen live:** Nager.Date's real answers (this machine can't reach it); a 204/404 counts as "no holidays".
+
+## M247: the trip's footprint, linked to Green (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-footprint.tsx`): the CO₂ of getting between the trip's cities for all
+  its travellers (and each), a bar against the greenest version, and per leg a choice of ways (plane, train, coach, car,
+  ferry, each with its kg), "By coach: 40 kg less", "Guessed: pick how you'll go".
+- **Factors** only in `src/lib/green.ts` (`TRAVEL_MODES`, `TRAVEL_FACTORS`: UK government conversion factors 2024,
+  rounded; short flights count more, a car is shared by up to four). The sums in `src/lib/travel-footprint.ts` (tested):
+  roads and rails 1.2 × the straight line; no road or rail over sea (`ferryLikely`), only a plane past 2,000 km.
+- **Server:** `PATCH /travel/trips/:id/stops/:stopId` now takes `mode` (and `days`, as before, both optional); `mode` +
+  `green: true` with the train records a Green `TRANSIT` action for the person who chose it, once a leg (found by its
+  note), through `logGreenAction` (so Green's own limits hold); tested in `travel-trip-mode.test.ts`. Database update
+  **0232** (`travel_trip_stops.mode`).

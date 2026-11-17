@@ -2,7 +2,8 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { LISTING_KINDS } from '@/lib/travel-guide';
 import { CURRENCIES, STYLE_IDS } from '@/lib/travel-find';
-import { isDay, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isDay, leg, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isMode } from '@/lib/travel-footprint';
 import { isZone } from '@/lib/travel-jetlag';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, strings, type Body } from './body';
@@ -10,6 +11,7 @@ import { publish } from './realtime';
 import { notifyMany } from './email';
 import { shortName } from './play';
 import { placeOf } from './travel';
+import { logGreenAction } from './green';
 
 // UniVerse Travel's trip planner (M206, the owner's Airbnb list items 4, 5 and 7): a trip of one or
 // more cities with their days, the places planned into those days, and friends planning it together
@@ -192,18 +194,35 @@ export async function addTravelStop(u: SessionUser, id: string, b: Body) {
   return { stop };
 }
 
-/** PATCH /travel/trips/:id/stops/:stopId { days }: places planned past the new last day go back to "not planned". */
+/** PATCH /travel/trips/:id/stops/:stopId { days?, mode?, green? }: places planned past a new last day go back to
+ *  "not planned". M247: `mode` is how they get here from the city before; choosing the train with `green` records a
+ *  Green action for the one who chose it (once a leg). */
 export async function updateTravelStop(u: SessionUser, id: string, stopId: string, b: Body) {
-  await tripFor(u, id);
-  const days = whole(b.days, 1, MAX_DAYS);
-  if (!days) throw new BadRequestException(`Between 1 and ${MAX_DAYS} days.`);
-  const stops = await prisma.travelTripStop.findMany({ where: { tripId: id }, select: { id: true, days: true }, take: MAX_STOPS });
-  if (!stops.some((s) => s.id === stopId)) throw new NotFoundException('That place isn’t on this trip.');
-  if (tripDays(stops.map((s) => (s.id === stopId ? { days } : s))) > MAX_DAYS) throw new BadRequestException(`A trip can be ${MAX_DAYS} days long.`);
-  await prisma.travelTripStop.update({ where: { id: stopId }, data: { days } });
-  await prisma.travelTripItem.updateMany({ where: { tripId: id, stopId, day: { gte: days } }, data: { day: null } });
+  const trip = await tripFor(u, id);
+  const stops = await prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, select: { id: true, days: true, name: true, lat: true, lon: true }, take: MAX_STOPS });
+  const at = stops.findIndex((s) => s.id === stopId);
+  if (at < 0) throw new NotFoundException('That place isn’t on this trip.');
+  const data: { days?: number; mode?: string | null } = {};
+  if ('days' in b) {
+    const days = whole(b.days, 1, MAX_DAYS);
+    if (!days) throw new BadRequestException(`Between 1 and ${MAX_DAYS} days.`);
+    if (tripDays(stops.map((s) => (s.id === stopId ? { days } : s))) > MAX_DAYS) throw new BadRequestException(`A trip can be ${MAX_DAYS} days long.`);
+    data.days = days;
+  }
+  if ('mode' in b) { if (b.mode !== null && !isMode(b.mode)) throw new BadRequestException('Pick how you’ll travel.'); data.mode = b.mode as string | null; }
+  await prisma.travelTripStop.update({ where: { id: stopId }, data });
+  if (data.days) await prisma.travelTripItem.updateMany({ where: { tripId: id, stopId, day: { gte: data.days } }, data: { day: null } });
+  const prev = stops[at - 1], l = prev ? leg(prev, stops[at]) : null;
+  let green: { kg: number } | null = null;
+  if (data.mode === 'train' && b.green === true && prev && l) {
+    const note = `Train: ${prev.name} → ${stops[at].name} (${trip.name})`.slice(0, 300);
+    if (!(await prisma.greenAction.findFirst({ where: { userId: u.id, kind: 'TRANSIT', note }, select: { id: true } }))) {
+      const a = await logGreenAction(u, { kind: 'TRANSIT', amount: Math.min(2000, Math.round(l.km * 1.2)), note, place: stops[at].name });
+      green = { kg: a.co2Kg };
+    }
+  }
   await changed(id);
-  return { ok: true };
+  return { ok: true, green };
 }
 
 /** DELETE /travel/trips/:id/stops/:stopId (its places go with it). */
