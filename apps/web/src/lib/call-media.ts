@@ -6,9 +6,11 @@
 //    may pick the iPhone as its microphone or camera (Continuity). The phone is then busy, so it
 //    can't use its own microphone in the same call. Unless the person chose it, we pick the Mac's
 //    own device instead, and remember any device they do choose.
-// 2. Noise suppression, like Discord's: "Strong" runs RNNoise (a small neural network, on this
-//    device, in an AudioWorklet) plus a noise gate that silences the gaps between words; "Standard"
-//    is the browser's own; "Off" sends the raw microphone (music).
+// 2. Noise suppression, like Discord's: "Standard" (the default since M230) is the browser's own, the
+//    natural-sounding voice processing Meet and Zoom use in a browser; "Strong" adds RNNoise (a small
+//    neural network, on this device, in an AudioWorklet) and a gentle noise gate, for noisy places;
+//    "Off" sends the raw microphone (music). Strong was the default until M230: its gate chopped the
+//    starts and ends of words and it made voices watery, worst on phones (the owner: "audio quality is bad").
 
 export type NoiseMode = 'strong' | 'standard' | 'off';
 
@@ -16,7 +18,7 @@ const KEY = { noise: 'uv-call-noise', mic: 'uv-call-mic', cam: 'uv-call-cam', sp
 const read = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
 const write = (k: string, v: string | null) => { try { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch { /* private mode */ } };
 
-export const noiseMode = (): NoiseMode => (['strong', 'standard', 'off'].includes(read(KEY.noise) ?? '') ? (read(KEY.noise) as NoiseMode) : 'strong');
+export const noiseMode = (): NoiseMode => (['strong', 'standard', 'off'].includes(read(KEY.noise) ?? '') ? (read(KEY.noise) as NoiseMode) : 'standard');
 export const setNoiseMode = (m: NoiseMode) => write(KEY.noise, m);
 export const chosenDevice = (kind: 'mic' | 'cam' | 'speaker') => read(KEY[kind]);
 export const chooseDevice = (kind: 'mic' | 'cam' | 'speaker', id: string | null) => write(KEY[kind], id);
@@ -123,7 +125,8 @@ export async function cleanMic(raw: MediaStreamTrack, mode: NoiseMode): Promise<
     highpass.type = 'highpass';
     highpass.frequency.value = 85;
     const rnnoise = new lib.RnnoiseWorkletNode(ctx, { maxChannels: 1, wasmBinary });
-    const gate = new lib.NoiseGateWorkletNode(ctx, { openThreshold: -48, closeThreshold: -54, holdMs: 180, maxChannels: 1 });
+    // A gentle gate: quiet voices (a phone held away) stay open, and it holds through the pauses inside a sentence.
+    const gate = new lib.NoiseGateWorkletNode(ctx, { openThreshold: -58, closeThreshold: -64, holdMs: 400, maxChannels: 1 });
     const out = ctx.createMediaStreamDestination();
     src.connect(highpass).connect(rnnoise).connect(gate).connect(out);
     await ctx.resume().catch(() => {});

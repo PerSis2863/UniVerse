@@ -7983,3 +7983,24 @@ like this for the other things also… this is not how apple map looks like so p
   router's real answer format imitated along the streets (and refused, for the straight fallback): computer
   and phone, light and dark, no page errors, axe clean on the walk card. **Not seen yet on the real map:**
   look at Travel → Map in a city once it is live (colours on real parks, rivers and buildings).
+
+## M230: calls from a phone fill the screen, clearer sound, the screen stays awake (16–17 Nov)
+
+The owner, 16 Nov: "when he join the camera doesnt cover the area it should if he joins from the phone and the audio
+quality is bad… check if any other problems are there like this".
+
+- **The picture's shape.** Every tile was a 16:9 box with `object-cover`, so a phone's tall picture was cut to a
+  band of a face on a laptop. `videoFit(videoRatio, boxRatio)` (`src/lib/meet.ts`, tested) covers the box when the
+  shapes are close and shows the whole picture (`contain`) when they differ by more than 1.35x; a shared screen is
+  always `contain`. A tall picture (`isPortrait`) gets a tall 3:4 tile in the grid, its height capped to the window
+  (checked: a phone's 360×640 picture now fills a 444×592 tile on a laptop). The Tile measures its box and the
+  video (ResizeObserver, `loadedmetadata`, `resize`: a phone turned sideways changes it).
+- **Two people on a phone** (`phoneDuo`): the other person fills the screen and you are a small 3:4 tile in the
+  corner, as FaceTime and WhatsApp do; those tiles pass `fill` (the layout sizes them, the picture covers them).
+- **Sound.** "Strong" noise removal (RNNoise plus a gate) was the default on every call: it chewed words and cut the
+  starts and ends of sentences. The default is now **Standard** (the browser's own echo and noise handling);
+  Strong stays a choice, with a gentler gate (open −58 dB, close −64 dB, 400 ms hold). Opus stays at 64 kbps.
+- **Sweep:** a phone's screen locked during a call (camera and sound stopped): `useWakeLock`
+  (`src/lib/use-wake-lock.ts`) keeps it awake while the call is live. No doubled audio found.
+- **Rules:** a new kind of tile gets its fit from `videoFit` (or `fill` when the layout sizes it), never a fixed
+  `object-cover`; anything holding a phone's screen during a live activity uses `useWakeLock`.

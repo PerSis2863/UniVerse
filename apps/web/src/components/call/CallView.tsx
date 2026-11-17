@@ -1,6 +1,8 @@
 'use client';
 
-import { CALL_KEYS, callKey } from '@/lib/meet';
+import { CALL_KEYS, callKey, isPortrait, videoFit } from '@/lib/meet';
+import { useMedia } from '@/lib/use-media';
+import { useWakeLock } from '@/lib/use-wake-lock';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -246,11 +248,12 @@ function useLiveVideo(stream: MediaStream | null) {
   return !!stream?.getVideoTracks().some((t) => t.readyState === 'live' && t.enabled && !t.muted);
 }
 
-function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight, className, hand }: {
+function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, paused, compact, animateLayout, onShow, videoRef, silent, screen, spotlight, fill, className, hand }: {
   id: string; name: string; stream: MediaStream | null; mirrored?: boolean; muted?: boolean; camera: boolean; me?: boolean; quality?: Quality; state?: string; silent?: boolean;
   paused?: boolean; compact?: boolean; animateLayout?: boolean; onShow?: () => void; videoRef?: (v: HTMLVideoElement | null) => void;
   /** Showing a shared screen: fit it whole instead of cropping. */ screen?: boolean;
   /** Takes the whole first row (someone is sharing their screen). */ spotlight?: boolean;
+  /** The layout sizes the box and the picture fills it (a phone's two-person view, as FaceTime does). */ fill?: boolean;
   className?: string;
   /** Their place in the raised-hands queue. */ hand?: number;
 }) {
@@ -267,19 +270,37 @@ function Tile({ id, name, stream, mirrored, muted, camera, me, quality, state, p
     if (stream) void v.play().catch(() => {});
   }, [stream, live, me]);
   const hasVideo = camera && !paused && live;
+  // M230: the picture's shape and the box's, so a phone's tall picture isn't cropped to a band (videoFit).
+  const box = useRef<HTMLDivElement | null>(null);
+  const [shape, setShape] = useState<{ video: number | null; box: number | null }>({ video: null, box: null });
+  useEffect(() => {
+    const v = ref.current, b = box.current;
+    if (!v || !b) return;
+    const read = () => setShape((s) => {
+      // The box's laid-out size (offset*), not its on-screen one: that one is scaled while the tiles glide.
+      const video = v.videoWidth && v.videoHeight ? v.videoWidth / v.videoHeight : null, boxR = b.offsetWidth && b.offsetHeight ? b.offsetWidth / b.offsetHeight : null;
+      return s.video === video && s.box !== null && boxR !== null && Math.abs(s.box - boxR) < 0.02 ? s : { video, box: boxR };
+    });
+    read();
+    v.addEventListener('loadedmetadata', read); v.addEventListener('resize', read); // a phone turned sideways
+    const ro = new ResizeObserver(read); ro.observe(b);
+    return () => { v.removeEventListener('loadedmetadata', read); v.removeEventListener('resize', read); ro.disconnect(); };
+  }, [stream]);
+  const fit = screen ? 'contain' : fill ? 'cover' : videoFit(shape.video, shape.box);
   return (
     <motion.div
+      ref={box}
       layout={animateLayout}
       initial={{ opacity: 0, scale: 0.92 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
       transition={spring.smooth}
       data-tile={id}
-      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', compact ? 'rounded-2xl' : 'rounded-3xl', spotlight && 'col-span-full', className, speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
+      className={cn('relative overflow-hidden bg-zinc-900/80 aspect-video flex items-center justify-center ring-2 transition-shadow duration-200', hasVideo && !screen && !fill && isPortrait(shape.video) && 'aspect-[3/4] w-auto justify-self-center h-[min(calc(100dvh-13rem),40rem)]', compact ? 'rounded-2xl' : 'rounded-3xl', spotlight && 'col-span-full', className, speaking ? 'ring-emerald-400/90 shadow-[0_0_40px_-8px_rgba(52,211,153,0.6)]' : 'ring-transparent')}
     >
       {/* Remote audio plays through this element too, so it stays even with the camera off. */}
       <video ref={(v) => { ref.current = v; videoRef?.(v); }} data-peer={id} autoPlay playsInline muted={me || silent}
-        className={cn('absolute inset-0 w-full h-full transition-[opacity,transform] duration-500 ease-out', screen ? 'object-contain bg-black' : 'object-cover', hasVideo ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.03]', mirrored && !screen && '-scale-x-100')} />
+        className={cn('absolute inset-0 w-full h-full transition-[opacity,transform] duration-500 ease-out', fit === 'contain' ? 'object-contain bg-black' : 'object-cover', hasVideo ? 'opacity-100 scale-100' : 'opacity-0 scale-[1.03]', mirrored && !screen && '-scale-x-100')} />
       <AnimatePresence>
         {!hasVideo && (
           <motion.div key="avatar" initial={{ opacity: 0, scale: 0.8 }} animate={{ opacity: 1, scale: speaking ? 1.08 : 1 }} exit={{ opacity: 0, scale: 0.85 }} transition={spring.smooth}
@@ -599,6 +620,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const audioOnlyRef = useRef(false);
   // 2G mode (Stage 4 · 4.11): voice only at 16 kbps, both ways; set in Settings, before joining or in More.
   const twoG = useLowData((s) => s.twoG);
+  const narrow = useMedia('(max-width: 639px)'); // a phone: two people get FaceTime's layout (M230)
   const twoGRef = useRef(twoG);
   const twoGApplied = useRef<boolean | null>(null);
   const poorSince = useRef<number | null>(null);
@@ -646,6 +668,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const micClean = useRef<CleanMic | null>(null);
   const rawMic = useRef<MediaStreamTrack | null>(null);
   // "You're muted" when I talk while muted (Stage 5 · Q23); it goes after a few seconds.
+  useWakeLock(phase === 'live'); // the screen stays on during a call (a phone's dimmed and stopped the camera, M230)
   useTalkingWhileMuted(rawMic, muted, phase === 'live', () => { setMutedTalk(true); setTimeout(() => setMutedTalk(false), 4000); });
 
   const send = (msg: unknown) => { if (ws.current?.readyState === WebSocket.OPEN) ws.current.send(JSON.stringify(msg)); };
@@ -2335,6 +2358,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   };
   const lines = Object.entries(captions).sort((a, b) => a[1].at - b[1].at).slice(-3);
   // Spatial audio: group calls with at least two others, while live and not on hold.
+  const phoneDuo = narrow && list.length === 1;
   const spatialOn = spatial && !listening && phase === 'live' && !held && !!info && !info.oneToOne && list.length >= 2;
   // The interpreter I listen to (if they're still one) and a sign language interpreter to keep on screen.
   const hearing = listening && interp[listening]?.kind === 'spoken' ? listening : null;
@@ -2517,7 +2541,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               ) : watching && watch ? (
                 <WatchStage watch={watch} skew={skew} mod={canModerate} status={watchStatus} held={held} onSend={send} />
               ) : lit === 'me' ? (
-                <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me hand={handPos('me')} className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
+                <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me hand={handPos('me')} fill className="absolute inset-0 h-full w-full aspect-auto rounded-none" />
               ) : lit ? (
                 <Tile key={lit.peer.peerId} id={lit.peer.peerId} name={lit.peer.name} stream={lit.stream} silent={held || spatialOn} muted={lit.muted} camera={lit.camera} quality={lit.quality} state={lit.state}
                   paused={lit.paused || audioOnly} onShow={() => showVideo(lit.peer.peerId)} hand={handPos(lit.peer.peerId)} className="absolute inset-0 h-full w-full aspect-auto rounded-none"
@@ -2532,6 +2556,19 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
                     paused={r.paused || audioOnly} onShow={() => showVideo(r.peer.peerId)} compact hand={handPos(r.peer.peerId)} className="h-full shrink-0"
                     videoRef={r.peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
                 ))}
+              </AnimatePresence>
+            </div>
+          </main>
+        ) : phoneDuo ? (
+          // M230: two people on a phone, as FaceTime and WhatsApp do: the other person on the whole screen, me in a
+          // small box in the corner (two small boxes stacked left most of a phone's screen empty).
+          <main data-call-stage className="relative flex-1 min-h-0 p-2">
+            <div className="relative h-full w-full overflow-hidden rounded-3xl bg-black">
+              <AnimatePresence initial={false}>
+                <Tile key={list[0].peer.peerId} id={list[0].peer.peerId} name={list[0].peer.name} stream={list[0].stream} silent={held || spatialOn} muted={list[0].muted} camera={list[0].camera} quality={list[0].quality} state={list[0].state}
+                  paused={list[0].paused || audioOnly} onShow={() => showVideo(list[0].peer.peerId)} hand={handPos(list[0].peer.peerId)} fill className="absolute inset-0 h-full w-full aspect-auto rounded-none"
+                  videoRef={list[0].peer.peerId === firstRemoteId ? (v) => { firstRemoteVideo.current = v; } : undefined} />
+                <Tile key="me" id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me compact fill hand={handPos('me')} className="absolute bottom-3 end-3 z-10 w-28 aspect-[3/4] shadow-2xl ring-white/20" />
               </AnimatePresence>
             </div>
           </main>
@@ -2802,14 +2839,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
             <section className="space-y-2">
               <p className="text-xs font-semibold uppercase tracking-wider text-zinc-400 flex items-center gap-1.5"><Sparkles className="w-3.5 h-3.5 text-fuchsia-300" /> Noise suppression</p>
               <div className="grid grid-cols-3 gap-1 p-1 rounded-2xl bg-white/[0.06]">
-                {([['strong', 'Strong'], ['standard', 'Standard'], ['off', 'Off']] as const).map(([m, label]) => (
+                {([['standard', 'Standard'], ['strong', 'Strong'], ['off', 'Off']] as const).map(([m, label]) => (
                   <button key={m} type="button" onClick={() => pickNoise(m)} aria-pressed={noise === m} className={cn('relative isolate py-2 rounded-xl text-sm font-semibold transition-colors', noise === m ? 'text-white' : 'text-zinc-400 hover:text-white')}>
                     {noise === m && <motion.span layoutId="noise-pill" transition={spring.snappy} className="absolute inset-0 -z-10 rounded-xl bg-gradient-to-r from-indigo-500 to-fuchsia-500" />}
                     {label}
                   </button>
                 ))}
               </div>
-              <p className="text-xs text-zinc-400">{noise === 'strong' ? 'AI removes background noise (fans, typing, traffic, voices far away) on this device, and silences the gaps between your words.' : noise === 'standard' ? 'Your browser’s own noise reduction.' : 'Your microphone as it is (for music).'}</p>
+              <p className="text-xs text-zinc-400">{noise === 'strong' ? 'For noisy places: AI also removes background noise (fans, typing, traffic, voices far away) on this device. Voices can sound less natural.' : noise === 'standard' ? 'The clearest, most natural voice: your browser’s own echo and noise reduction.' : 'Your microphone as it is (for music).'}</p>
             </section>
             {devices.mics.length > 0 && (
               <section className="space-y-1.5">
