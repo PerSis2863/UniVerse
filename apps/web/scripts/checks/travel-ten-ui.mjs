@@ -40,9 +40,10 @@ const live = async (page, loc) => {
 };
 const today = new Date().toISOString().slice(0, 10);
 const A = 'alice@student.com', B = 'bob@student.com';
+const TRIP = `Ten features check ${Date.now().toString(36)}`; // new each run: a train leg is logged in Green once
 
 const alice = await open(A, 'dark', 1280);
-const { trip } = await call(alice.page, A, 'POST', '/travel/trips', { name: 'Ten features check', startDate: today, stop: { guide: 'Lisbon', name: 'Lisbon', cc: 'PT', lat: 38.7139, lon: -9.1394, days: 2 } });
+const { trip } = await call(alice.page, A, 'POST', '/travel/trips', { name: TRIP, startDate: today, stop: { guide: 'Lisbon', name: 'Lisbon', cc: 'PT', lat: 38.7139, lon: -9.1394, days: 2 } });
 const { stop } = await call(alice.page, A, 'POST', `/travel/trips/${trip.id}/stops`, { guide: 'Porto', name: 'Porto', cc: 'PT', lat: 41.1496, lon: -8.611, days: 2 });
 const first = (await call(alice.page, A, 'GET', `/travel/trips/${trip.id}`)).stops[0];
 for (const [i, [name, lat, lon]] of [['Belém Tower', 38.6916, -9.216], ['Jerónimos Monastery', 38.6979, -9.2068], ['Time Out Market', 38.7069, -9.1459]].entries()) {
@@ -130,7 +131,7 @@ try {
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(`family: ${e.message.slice(0, 160)}`));
     await page.goto(link, { waitUntil: 'load', timeout: 180_000 });
-    await page.getByRole('heading', { name: 'Ten features check' }).waitFor({ timeout: 120_000 });
+    await page.getByRole('heading', { name: TRIP }).waitFor({ timeout: 120_000 });
     await page.getByText(/checked in safe/).waitFor({ timeout: 30_000 });
     const text = await page.locator('main').innerText();
     r.familyNoEmail = !/@/.test(text);
