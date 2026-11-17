@@ -314,3 +314,29 @@ export async function moveTravelItems(u: SessionUser, id: string, b: Body) {
   await changed(id);
   return { ok: true };
 }
+
+/** POST /travel/trips/:id/copy { name? }: M256: a new trip of my own from one I'm planning: its cities, days, ways of
+ *  travel and planned places (at most 80, five to a query: about 17 values each, under D1's 100), not its people, costs, journal or votes;
+ *  the dates left for me to pick. */
+export async function copyTravelTrip(u: SessionUser, id: string, b: Body) {
+  const from = await tripFor(u, id);
+  if ((await prisma.travelTripMember.count({ where: { userId: u.id } })) >= MAX_TRIPS) throw new BadRequestException(`You’re planning ${MAX_TRIPS} trips: delete an old one first.`);
+  const [stops, items] = await Promise.all([
+    prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, take: MAX_STOPS }),
+    prisma.travelTripItem.findMany({ where: { tripId: id }, orderBy: [{ day: 'asc' }, { position: 'asc' }], take: 80 }),
+  ]);
+  const trip = await prisma.travelTrip.create({
+    data: {
+      ownerId: u.id, name: clip(b.name, 80) ?? `${from.name} (copy)`.slice(0, 80), code: newCode(), travellers: from.travellers, style: from.style, currency: from.currency,
+      members: { create: { userId: u.id } },
+      stops: { create: stops.map((s) => ({ guide: s.guide, name: s.name, cc: s.cc, lat: s.lat, lon: s.lon, days: s.days, position: s.position, mode: s.mode })) },
+    },
+    select: { id: true },
+  });
+  const made = await prisma.travelTripStop.findMany({ where: { tripId: trip.id }, select: { id: true, position: true }, take: MAX_STOPS });
+  const stopFor = new Map(stops.map((s) => [s.id, made.find((m) => m.position === s.position)?.id]));
+  const rows = items.filter((i) => stopFor.get(i.stopId)).map((i) => ({ tripId: trip.id, stopId: stopFor.get(i.stopId)!, day: i.day, position: i.position, name: i.name, kind: i.kind, lat: i.lat, lon: i.lon, hours: i.hours, price: i.price, minutes: i.minutes, note: i.note, address: i.address, url: i.url, addedById: u.id }));
+  for (let i = 0; i < rows.length; i += 5) await prisma.travelTripItem.createMany({ data: rows.slice(i, i + 5) });
+  publish([u.id], { type: 'refresh', keys: ['/travel/trips'] });
+  return { trip };
+}

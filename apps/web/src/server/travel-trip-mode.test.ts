@@ -42,3 +42,23 @@ describe('a leg’s way of travel', () => {
     expect(prisma.travelTripItem.updateMany).toHaveBeenCalled();
   });
 });
+
+describe('copying a trip (M256)', () => {
+  it('copies cities and planned places into a new trip of my own, five places a query', async () => {
+    const { copyTravelTrip } = await import('./travel-trips');
+    const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>;
+    db.travelTripMember.count = vi.fn().mockResolvedValue(3);
+    db.travelTrip.create = vi.fn().mockResolvedValue({ id: 'new' });
+    db.travelTripItem.findMany = vi.fn().mockResolvedValue(Array.from({ length: 12 }, (_, i) => ({ id: `i${i}`, stopId: 's2', day: 0, position: i, name: `P${i}`, kind: 'see', lat: null, lon: null, hours: null, price: null, minutes: 60, note: null, address: null, url: null })));
+    db.travelTripItem.createMany = vi.fn();
+    vi.mocked(prisma.travelTripMember.findUnique).mockResolvedValue({ trip: { id: 't1', ownerId: 'zoe', name: 'Portugal', travellers: 2, style: 'mid', currency: 'EUR' } } as never);
+    vi.mocked(prisma.travelTripStop.findMany).mockResolvedValueOnce([{ id: 's1', guide: 'Lisbon', name: 'Lisbon', cc: 'PT', lat: 1, lon: 2, days: 2, position: 0, mode: null }, { id: 's2', guide: 'Porto', name: 'Porto', cc: 'PT', lat: 3, lon: 4, days: 2, position: 1, mode: 'train' }] as never)
+      .mockResolvedValueOnce([{ id: 'n1', position: 0 }, { id: 'n2', position: 1 }] as never);
+    expect(await copyTravelTrip(ana, 't1', {})).toEqual({ trip: { id: 'new' } });
+    const made = db.travelTrip.create.mock.calls[0][0].data;
+    expect(made).toMatchObject({ ownerId: 'ana', name: 'Portugal (copy)', members: { create: { userId: 'ana' } } });
+    expect(made.stops.create[1]).toMatchObject({ guide: 'Porto', mode: 'train', position: 1 });
+    expect(db.travelTripItem.createMany).toHaveBeenCalledTimes(3);
+    expect(db.travelTripItem.createMany.mock.calls[0][0].data[0]).toMatchObject({ tripId: 'new', stopId: 'n2', name: 'P0', addedById: 'ana' });
+  });
+});

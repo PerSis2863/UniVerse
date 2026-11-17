@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, HeartHandshake, LogOut, Languages, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, LogOut, Languages, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -138,6 +138,14 @@ export function TravelTrip() {
       toast.success('Invite link copied: send it to the friends you’re travelling with.');
     } catch { /* closed the share sheet */ }
   };
+  /** M256: a new trip of my own from this one (cities, days, ways and planned places). */
+  const copy = async () => {
+    try {
+      const { data: r } = await api.post<{ trip: { id: string } }>(`/travel/trips/${t.id}/copy`, {});
+      toast.success('Copied: a new trip of your own. Pick its dates.');
+      router.push(`/travel/trip?id=${r.trip.id}`);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t copy the trip.')); }
+  };
   const remove = async () => {
     if (!confirm(data.owner ? `Delete “${t.name}” for everyone planning it?` : `Leave “${t.name}”? You can join again with its link.`)) return;
     try { await api.delete(`/travel/trips/${t.id}`); router.push('/travel/saved'); } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); }
@@ -162,6 +170,7 @@ export function TravelTrip() {
           </span>
           <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-zinc-900"><Share2 className="h-4 w-4" aria-hidden />Invite friends</button>
           <button type="button" onClick={calendar} disabled={!t.startDate || !stops.length} title={t.startDate ? undefined : 'Pick a start date first'} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25 disabled:opacity-50"><CalendarPlus className="h-4 w-4" aria-hidden />Add to calendar</button>
+          <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25"><CopyPlus className="h-4 w-4" aria-hidden />Copy trip</button>
         </div>
       </section>
 

@@ -8406,3 +8406,12 @@ so this checks the plan's times instead.
   link carries `&on=<date>`, so a second run finds it), about five queries and one cached weather call a trip
   (`travelWeather`), stopping when the run's room is low. The words are `briefing` in `src/lib/travel-today.ts` (tested).
 - **Note:** the daily jobs run once a day at the Worker's set time, so the briefing comes then, not at each city's dawn.
+
+## M256: copy a trip (17 Nov)
+
+- **Where:** "Copy trip" in a trip's header, beside Add to calendar: a new trip of your own (named "… (copy)") with the
+  same cities in order, days, ways of travel, style, currency and travellers, and its places where they were planned;
+  not its people, costs, packing, to-dos, journal, votes or family link; dates left to pick. Opens the copy.
+- **Server:** `POST /travel/trips/:id/copy` (`copyTravelTrip` in `src/server/travel-trips.ts`, tested in
+  `travel-trip-mode.test.ts`): only from a trip you're planning; your 50-trip limit; at most 80 places, five a query
+  (about 17 values each, under D1's 100), so a copy stays well under 50 queries.
