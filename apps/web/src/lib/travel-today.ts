@@ -76,3 +76,12 @@ export function arrival(g: { sections: { part: string; text: string[] }[] }, tip
   const firstIn = (list: string[]) => [...list].sort((a, b) => Number(/airport|station|terminal|train|bus|ferry|port/i.test(b)) - Number(/airport|station|terminal|train|bus|ferry|port/i.test(a)));
   return { getIn: firstIn(part('get in')).slice(0, n), around: part('get around').slice(0, n), card: tips?.transit?.[0] ?? null };
 }
+
+/** M255: the morning briefing's words for a day of the trip: the city, the day, the first places with their times,
+ *  and the weather when known. */
+export function briefing(city: string, day: number, slots: Slot[], w?: { min: number; max: number; rain: number } | null) {
+  const places = slots.slice(0, 3).map((s) => `${s.item.name} ${clock(s.start)}`).join(', ');
+  const more = slots.length > 3 ? ` and ${slots.length - 3} more` : '';
+  const sky = w ? ` ${Math.round(w.min)}–${Math.round(w.max)}°${w.rain >= 2 ? ', rain: take an umbrella' : ''}.` : '';
+  return { title: `Day ${day + 1}: today in ${city}`, body: `${slots.length ? `${places}${more}.` : 'Nothing planned: a free day.'}${sky}` };
+}

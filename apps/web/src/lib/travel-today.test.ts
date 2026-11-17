@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { arrival, clock, dayLight, timetable, tripToday } from './travel-today';
+import { arrival, briefing, clock, dayLight, timetable, tripToday } from './travel-today';
 import type { PlanItem, PlanStop } from './travel-plan';
 
 const stop = (id: string, lat: number, lon: number, days: number, position: number): PlanStop => ({ id, guide: id, name: id, cc: 'PT', lat, lon, days, position });
@@ -62,5 +62,14 @@ describe('arriving in a city (M252)', () => {
     expect(a.getIn).toHaveLength(2);
     expect(a.around).toHaveLength(2);
     expect(a.card).toBe('A Viva Viagem card covers the metro.');
+  });
+});
+
+describe('the morning briefing (M255)', () => {
+  it('says the city, the first places and the weather', () => {
+    const b = briefing('Lisbon', 1, timetable(items.slice(0, 2)), { min: 12.4, max: 19.6, rain: 4 });
+    expect(b.title).toBe('Day 2: today in Lisbon');
+    expect(b.body).toMatch(/^tower 09:00, monastery \d\d:\d\d\. 12–20°, rain: take an umbrella\.$/);
+    expect(briefing('Porto', 3, []).body).toBe('Nothing planned: a free day.');
   });
 });

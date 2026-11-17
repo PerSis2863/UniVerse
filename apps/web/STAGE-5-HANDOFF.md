@@ -8396,3 +8396,13 @@ so this checks the plan's times instead.
 - **Server** (in `src/server/travel-trip-extras.ts`, beside the packing list, tested): `GET/POST /travel/trips/:id/todos`,
   `PATCH/DELETE …/todos/:todoId`; members only; an assignee must be on the trip; the same text once; at most 100;
   `publish` refreshes everyone's page. Database update **0234** (`travel_trip_todos`).
+
+## M255: the morning briefing on trip days (17 Nov)
+
+- **What:** each day of a trip under way, everyone on it gets an in-app notification (`email: false`): "Day 4: today in
+  Porto · Livraria Lello 09:00, … and 2 more. 11–18°, rain: take an umbrella." Tapping it opens the trip's Today part.
+- **How:** the daily job `travel-briefing` (`morningBriefings`, `src/server/travel-briefing.ts`, tested, after
+  `travel-docs`): trips that started in the last 60 days and are under way today (UTC dates), once a trip a day (the
+  link carries `&on=<date>`, so a second run finds it), about five queries and one cached weather call a trip
+  (`travelWeather`), stopping when the run's room is low. The words are `briefing` in `src/lib/travel-today.ts` (tested).
+- **Note:** the daily jobs run once a day at the Worker's set time, so the briefing comes then, not at each city's dawn.
