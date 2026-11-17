@@ -8475,3 +8475,62 @@ offered (destinations layer, a trip on the map, search this area plus saved plac
   `local:dev` (OpenFreeMap and Wikimedia answered locally): the globe with towns and photo pins, a card, search this
   area and the pill after moving, a trip with its days, axe clean at 1280 dark and 390 light, no page errors.
   **Not seen live:** real Commons thumbnails in the pins and real map tiles under them: look once merged.
+
+## M260: live turn-by-turn navigation on Travel's map, and more Google + Apple Maps directions features (17 Nov)
+
+The owner, 17 Nov: "do all the left over … the maps … needs to upgrade on the next level … combined features of both google
+maps and apple maps … specially the directions part where it navigates you live … ultra smooth" (the owner's exception to
+the launch pause).
+
+- **Left over from M259, still left over:** this machine can't reach Wikivoyage, Wikimedia Commons or Wikidata (the
+  network's gateway refuses them, 403), so the 160 new hand-picked places still have no photo, banner or climate. Nothing
+  was made up. **[next session with Wikimedia access]** the same three commands as M259's note (`gen-travel-data.mts
+  --places`, `--photos` checked by eye, then `gen-destinations.mts`).
+- **Live navigation** (`src/components/travel/map/Navigate.tsx`; logic in `src/lib/navigation.ts`, tested): Directions →
+  **Start** on the chosen route. The map goes full screen; the panel and the map's buttons step aside. The phone's position
+  (`watchPosition`, high accuracy; never sent anywhere) is snapped to the route (`snapTo`: the nearest point, going back
+  costs as much as being off, so a route that passes itself keeps the right part). **Smooth:** the arrow (a MapLibre
+  `Marker`, flat on the map, turned with it) glides between fixes *along the route* (`pointAt`, around corners) over the
+  time between fixes; the bearing (the route's direction 20 m ahead, `headingAt`) and the zoom ease every frame
+  (`turnToward`, exponential); the camera is `jumpTo` on our own `requestAnimationFrame`, tilted (walk 45°, cycle 50°,
+  drive 58°) with you low on the screen (`setPadding` top 42%); the loop rests when nothing moves. **No React render a
+  frame:** React renders once a fix (the banner and the bar). The travelled part fades to grey by moving a `line-gradient`
+  step (`navGradient`, source `uv-nav` with `lineMetrics`), not new data each frame. **Driving:** the zoom pulls out with
+  speed and in before a turn (`followZoom`), three spoken cues (800, 250, 70 m) instead of two, a km/h bubble.
+- **The screen:** a dark banner (both themes) with the turn's arrow (`TurnIcon.tsx`: one drawn arrow for every angle,
+  U-turn, roundabout, start, stop, end), the metres counting down (`bannerDistance`) and the words, sliding in (`.swap`) when
+  the turn changes; "Then …" when the next turn is within 1 km; on the right mute, the whole route (overview) and **share my
+  arrival time** (share sheet or copied: "On my way to …: arriving about 14:35" with a link to the place); at the bottom the
+  arrival time, minutes and distance left (router pace, `progressAt`), "See the turns" (the turns still to come), **End**.
+  Moving the map yourself stops following and shows **Re-centre** (a finger or the mouse pauses the camera at once on
+  `pointerdown`: a `jumpTo` every frame would cancel MapLibre's drag; a plain tap lets it carry on). **Arrival**
+  (`hasArrived`: 15 m walking, 30 m driving) stops the position and shows a card: the place, time and distance travelled,
+  **Look around** (Panoramax street photos there), Done (back to the directions card). The screen stays awake
+  (`useWakeLock`) until arrival.
+- **Spoken turns** (`cueAt`, `cueText`): each said once ("Head off along X for 550 metres, then turn right onto Y", "In 100
+  metres, turn right onto Y", "Turn right onto Y", "Your destination is in 60 metres", "You have arrived at your
+  destination"). The browser's own voice (`speechSynthesis`, free, nothing sent); `primeSpeech()` on the Start press (phones
+  speak only after a tap). The line goes into an `aria-live` element first and is spoken **as the page shows it**: when the
+  page is translated (UiTranslator) the translated words in the page's language, else English. Mute is remembered on the
+  device (`uv-nav-muted`).
+- **A new route when you leave it:** three fixes in a row further off than 30 m (45 driving) plus up to 30 m of the phone's
+  own doubt (`isOff`) ask the same router again from where you are (through the stops not yet reached), at most once in 10
+  s; "Finding a new route…", then the arrow glides onto the new line.
+- **Directions, more of Google's and Apple's** (`MapTools.tsx`): **stops on the way** (up to three, orange dots; the router
+  takes them in order, without other ways then); **Leave now / Leave at / Arrive by** with a time (each route says "Arrive
+  14:35" or "Leave by 13:50"); **Avoid** tolls, motorways or ferries when driving (OSRM's `exclude`, one at a time as the
+  car profile allows; if the router refuses, the fastest is shown and the card says so); each route's **time in a bubble on
+  the map**, the others grey with **+N min** (`bubbleSpot`: on the stretch furthest from the other routes; tap one to take it)
+  and the same in the list; "live traffic isn't counted" under driving times; **Home, Work and recent places** as chips under
+  an empty field (kept on the device, `uv-map-kept`; set from "what's here": Set as Home / Set as Work); turn arrows in the
+  list. `routesOf` now reads every leg's turns with their place, time, kind and roundabout exit; `stepText` knows ramps,
+  roundabout exits, end of road and new names.
+- **A real bug fixed:** on a phone, "Directions to here" left the directions in the closed bottom sheet; it opens now.
+- **Checked:** `navigation.test.ts` (11), `pnpm check`; `scripts/checks/travel-nav-ui.mjs` on `local:dev` with a simulated
+  walk (Playwright geolocation; router, Nominatim and tiles answered in the test): 1280 dark and 390 light, both routes with
+  +4 min, Start, the countdown 560 → 170 m, the nine spoken lines, one new route after going off, Re-centre after a drag, the
+  turns list, arrival, back to directions; axe clean, no sideways scroll, no page errors. **Not seen live:** real GPS on a
+  phone, the real router's turns and real tiles under the route (this machine can't reach them): walk a few streets with it
+  once merged.
+- **Left out on purpose:** live traffic (needs a paid service), lane guidance (the free router has no lanes), speed limits,
+  a live-moving shared arrival link (it would need the server to hold your position: the shared message has the time).

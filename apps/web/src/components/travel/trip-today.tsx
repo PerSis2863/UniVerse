@@ -153,7 +153,7 @@ function SlotRow({ s, state }: { s: Slot; state: 'now' | 'done' | 'next' | null 
 function WalkThere({ to, from }: { to: Spot; from: Spot | null }) {
   const [me, setMe] = useState<Spot | null>(null), [locating, setLocating] = useState(false);
   const start = me ?? from;
-  const { routes, loading, failed } = useRoutes(start ? { from: start, to, mode: 'foot', chosen: 0 } : null);
+  const { routes, loading, failed } = useRoutes(start ? { from: start, to, mode: 'foot', chosen: 0, via: [], avoid: '' } : null);
   const r = routes[0];
   const locate = () => {
     if (!navigator.geolocation) return;

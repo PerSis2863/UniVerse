@@ -116,7 +116,17 @@ export function addLayers(map: MLMap, dark: boolean) {
   map.addLayer({ id: 'uv-route-alt', type: 'line', source: 'uv-route', filter: route('alt'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#7b8494' : '#a3acb9', 'line-width': width(4, 7) } });
   map.addLayer({ id: 'uv-route-edge', type: 'line', source: 'uv-route', filter: route('main'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_EDGE, 'line-width': width(7, 11) } });
   map.addLayer({ id: 'uv-route-line', type: 'line', source: 'uv-route', filter: route('main'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8) } });
-  map.addLayer({ id: 'uv-route-ends', type: 'circle', source: 'uv-route', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'role'], 'from', '#ffffff', '#ea4335'], 'circle-stroke-color': ['match', ['get', 'role'], 'from', ROUTE, '#ffffff'], 'circle-stroke-width': 3 } });
+  map.addLayer({ id: 'uv-route-ends', type: 'circle', source: 'uv-route', filter: ['all', ['==', ['geometry-type'], 'Point'], ['!=', ['get', 'role'], 'time']], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'role'], 'from', '#ffffff', 'via', '#f59e0b', '#ea4335'], 'circle-stroke-color': ['match', ['get', 'role'], 'from', ROUTE, '#ffffff'], 'circle-stroke-width': 3 } });
+  // M260: each route's time in a bubble on its own stretch (the chosen in blue, the others grey with how much longer).
+  if (!map.hasImage('uv-bubble-alt')) map.addImage('uv-bubble-alt', bubbleImage(dark ? '#5b6472' : '#8a94a3'), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[26, 30]], content: [14, 10, 50, 46] });
+  map.addLayer({ id: 'uv-route-time', type: 'symbol', source: 'uv-route', filter: ['==', ['get', 'role'], 'time'],
+    layout: { 'text-field': ['get', 'label'], 'text-font': bold, 'text-size': 14, 'icon-image': ['case', ['get', 'main'], 'uv-bubble', 'uv-bubble-alt'], 'icon-text-fit': 'both', 'icon-text-fit-padding': [3, 8, 3, 8], 'text-anchor': 'bottom', 'text-offset': [0, -0.6], 'symbol-sort-key': ['case', ['get', 'main'], 0, 1], 'text-padding': 4 },
+    paint: { 'text-color': '#ffffff' } });
+  // M260: live navigation's route: the part already travelled fades to grey (a line-gradient moved as you go: no
+  // new data a frame), the rest in the walk's blue with its darker edge.
+  if (!map.getSource('uv-nav')) map.addSource('uv-nav', { type: 'geojson', data: EMPTY, lineMetrics: true });
+  map.addLayer({ id: 'uv-nav-edge', type: 'line', source: 'uv-nav', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-width': width(9, 15), 'line-gradient': navGradient(0, dark, true) } });
+  map.addLayer({ id: 'uv-nav-line', type: 'line', source: 'uv-nav', layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-width': width(6, 11), 'line-gradient': navGradient(0, dark, false) } });
   map.addLayer({ id: 'uv-measure-line', type: 'line', source: 'uv-measure', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': dark ? '#ffffff' : '#111214', 'line-width': 2.5, 'line-dasharray': [2, 1.2] } });
   map.addLayer({ id: 'uv-measure-area', type: 'fill', source: 'uv-measure', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': ROUTE, 'fill-opacity': 0.12 } }, 'uv-measure-line');
   map.addLayer({ id: 'uv-measure-pts', type: 'circle', source: 'uv-measure', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': '#ffffff', 'circle-stroke-color': dark ? '#ffffff' : '#111214', 'circle-stroke-width': 2.5 } });
@@ -206,13 +216,13 @@ export function meArea(lat: number, lon: number, metres: number): GeoJSON.Featur
 }
 
 /** M233: the time bubble: a blue rounded box with a white rim, stretched around its text (64 × 56 at 2x). */
-function bubbleImage(): ImageData {
+function bubbleImage(fill = ROUTE): ImageData {
   const w = 64, h = 56, c = document.createElement('canvas'); c.width = w; c.height = h;
   const g = c.getContext('2d')!;
   g.shadowColor = 'rgba(0,0,0,0.3)'; g.shadowBlur = 6; g.shadowOffsetY = 2;
   g.beginPath(); g.roundRect(4, 4, w - 8, h - 10, 18); g.fillStyle = '#ffffff'; g.fill();
   g.shadowColor = 'transparent';
-  g.beginPath(); g.roundRect(7, 7, w - 14, h - 16, 15); g.fillStyle = ROUTE; g.fill();
+  g.beginPath(); g.roundRect(7, 7, w - 14, h - 16, 15); g.fillStyle = fill; g.fill();
   return g.getImageData(0, 0, w, h);
 }
 
@@ -239,4 +249,11 @@ export function focusWalk(map: MLMap, on: boolean, fresh = false) {
     else if (l.type === 'fill-extrusion') set(l.id, 'visibility', 'none', true);
     else if (l.type === 'fill' && l.id === 'building') set(l.id, 'fill-opacity', BUILDINGS_FADED + 0.4);
   }
+}
+
+/** M260: the navigation line's colours, travelled (grey) up to `done` (0–1 of its length), then still to go (blue). */
+export function navGradient(done: number, dark: boolean, edge: boolean): ExpressionSpecification {
+  const ahead = edge ? ROUTE_EDGE : ROUTE, behind = edge ? (dark ? 'rgba(70,78,92,0.9)' : 'rgba(120,128,142,0.75)') : dark ? 'rgba(120,130,146,0.85)' : 'rgba(170,178,190,0.9)';
+  const at = Math.min(0.99999, Math.max(0.00001, done));
+  return ['step', ['line-progress'], behind, at, ahead];
 }

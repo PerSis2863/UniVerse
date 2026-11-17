@@ -24,6 +24,8 @@ import { PlaceSearch } from '../travel-ui';
 import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showClasses, skyFor, sunlight, STYLE } from './map-layers';
 import { mapRequest } from './map-style';
 import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
+import { Navigate, primeSpeech, type NavTrip } from './Navigate';
+import type { Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
@@ -117,7 +119,10 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const [full, setFull] = useState(false); // M236: the map over the whole window
   // M237: Google Maps' tools: directions, "what's here" (right-click or press and hold), measuring.
   const [dir, setDir] = useState<Directions | null>(null);
-  const { routes, loading: routing, failed: noRoute } = useRoutes(dir);
+  const { routes, loading: routing, failed: noRoute, avoided } = useRoutes(dir);
+  // M260: live turn-by-turn navigation along the chosen route (Navigate.tsx); the window's full-screen state before it.
+  const [nav, setNav] = useState<NavTrip | null>(null);
+  const fullBefore = useRef(false);
   const [here, setHere] = useState<{ lat: number; lon: number; x: number; y: number } | null>(null);
   const [measure, setMeasure] = useState<{ lat: number; lon: number }[] | null>(null);
   const pinned = useRef(false);
@@ -208,7 +213,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     setHere(null);
     if (measure) { setMeasure([...measure, { lat, lon }]); return; }
     const hits = m.queryRenderedFeatures([[x - 8, y - 8], [x + 8, y + 8]]);
-    const alt = dir && hits.find((f) => f.layer.id === 'uv-route-alt');
+    if (nav) return; // navigating: the map is only looked at
+    const alt = dir && hits.find((f) => f.layer.id === 'uv-route-alt' || (f.layer.id === 'uv-route-time' && !f.properties.main));
     if (alt && dir) { setDir({ ...dir, chosen: Number(alt.properties.i) || 0 }); return; }
     if (show.street && hits.some((f) => f.layer.id === 'uv-street') && !hits.some((f) => f.layer.id === 'uv-stories' || f.layer.id === 'uv-reviews')) { void lookAround(lat, lon); return; }
     // M259: your own pins first (they sit on top), then a trip's city, then the world's destinations.
@@ -466,7 +472,16 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const c = mapRef.current?.getCenter();
     return c ? { lat: c.lat, lon: c.lng, name: 'Middle of the map' } : null;
   };
-  const directionsTo = (to: Spot | null, from: Spot | null = myPlace()) => { pick(null); endWalk(); setHere(null); setMeasure(null); setDir({ from, to, mode: dir?.mode ?? 'foot', chosen: 0 }); };
+  const directionsTo = (to: Spot | null, from: Spot | null = myPlace()) => { pick(null); endWalk(); setHere(null); setMeasure(null); setOpen(true); setDir({ from, to, mode: dir?.mode ?? 'foot', chosen: 0, via: [], avoid: dir?.avoid ?? '' }); };
+  /** M260: Start: the map becomes the navigation (full screen, the panel and the map's buttons out of the way). */
+  const startNav = (r: Route) => {
+    if (!dir?.to) return;
+    primeSpeech();
+    fullBefore.current = full;
+    setFull(true); setLayers(false); setHere(null); setMeasure(null); setOpen(false);
+    setNav({ route: r, mode: dir.mode, to: dir.to, via: dir.via, avoid: dir.avoid });
+  };
+  const endNav = () => { setNav(null); setFull(fullBefore.current); setOpen(true); };
   const endWalk = () => { routeAbort.current?.abort(); setWalk(null); };
   /** The walk to someone else (or another app): the phone's share sheet, else its directions link copied. */
   const shareWalk = async () => {
@@ -492,6 +507,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map" />
       {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
 
+      {!nav && (<>
       {/* Controls. */}
       {/* A row under the kinds of place on a phone (pinch to zoom there), a column on the right on a computer. */}
       <div className="absolute end-3 top-3 z-20 flex flex-col items-end gap-2">
@@ -588,7 +604,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} /> : dest ? (
             <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
               onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: window.innerWidth >= 640 ? [190, 0] : [0, -140], duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
-          ) : dir ? <DirectionsCard d={dir} set={setDir} routes={routes} loading={routing} failed={noRoute} myPlace={myPlace} onClose={() => setDir(null)} /> : (
+          ) : dir ? <DirectionsCard d={dir} set={setDir} routes={routes} loading={routing} failed={noRoute} avoided={avoided} now={now} myPlace={myPlace} onStart={startNav} onClose={() => setDir(null)} /> : (
             <>
               {walk ? (
                 // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.
@@ -705,9 +721,11 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       {here && <HereCard p={here} zoom={view?.zoom ?? 16} x={Math.min(here.x, (box.current?.clientWidth ?? 400) - 264)} y={Math.min(here.y, (box.current?.clientHeight ?? 600) - 300)} onClose={() => setHere(null)}
         onFrom={(s) => directionsTo(dir?.to ?? null, s)} onTo={(s) => directionsTo(s, dir?.from ?? myPlace())} onMeasure={() => { setMeasure([{ lat: here.lat, lon: here.lon }]); setHere(null); }} />}
       {measure && <MeasureBar pts={measure} onUndo={() => setMeasure(measure.slice(0, -1))} onClear={() => setMeasure([])} onDone={() => setMeasure(null)} />}
+      </>)}
+      {nav && <Navigate mapRef={mapRef} trip={nav} dark={dark} onEnd={endNav} onLook={(p) => { endNav(); void lookAround(p.lat, p.lon); }} />}
       {/* M236: the credits the map's licences ask for (OpenStreetMap, OpenMapTiles), small as Apple Maps' "Legal": a short
           line, the rest behind the (i). On a phone at the top, clear of the sheet. */}
-      <div className="absolute start-2 top-2 z-10 max-w-[calc(100%-5rem)] sm:bottom-1 sm:end-1 sm:start-auto sm:top-auto">
+      <div className={cn('absolute z-10 max-w-[calc(100%-5rem)]', nav ? 'bottom-[6.5rem] end-2 sm:bottom-1 sm:end-1' : 'start-2 top-2 sm:bottom-1 sm:end-1 sm:start-auto sm:top-auto')}>
         {credits ? (
           <p className="relative rounded-lg bg-white/90 px-2 py-1 pe-7 text-[11px] leading-snug text-zinc-600 shadow-sm dark:bg-black/70 dark:text-zinc-300">
             Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{show.world && <> · Destinations <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" className="underline">GeoNames</a> (CC BY 4.0), photos Wikimedia Commons</>}{found && <> · Search <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a></>}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
