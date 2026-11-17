@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M266 is the latest).
+  builds on it). The newest notes are at the end (M267 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -279,7 +279,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M267** (another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M268** (another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`

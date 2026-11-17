@@ -139,7 +139,7 @@ class MapEngine {
   land: HTMLCanvasElement | null = null; landKey = '';
   /** The view the land picture was drawn for, and the margin drawn round it (M65: while the map moves
    *  the picture is moved and scaled instead of redrawn, then redrawn sharp once it rests). */
-  landView: View | null = null; landM = 0; busyUntil = 0;
+  landView: View | null = null; landM = 0; busyUntil = 0; lastLive = 0;
   world: Country[] = []; detail: Detail = '110m';
   /** M172: the extra places, once loaded (tier 1, then tier 2), and whether any were named in the last picture. */
   placesA: Place[] = []; placesB: Place[] = []; placesAsked = 0; named = false;
@@ -224,6 +224,11 @@ class MapEngine {
     }
     // Still being moved by hand (drag, pinch, trackpad): keep the cheap picture, then one sharp frame.
     const busy = moving || t < this.busyUntil;
+    // Resting with only the page's pulses moving: 30 frames a second are enough (half the work on a phone, as
+    // the app scenes, M225); moved by hand or gliding, every frame.
+    // (A redraw asked for meanwhile still happens: the next frame is asked for either way.)
+    if (!busy && t - this.lastLive < 30) { if (this.visible) this.raf = requestAnimationFrame(this.frame); return; }
+    this.lastLive = t;
     this.paint(t, busy);
     if ((busy || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
     else this.last = 0;

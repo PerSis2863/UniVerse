@@ -126,8 +126,11 @@ export function TrackingMap() {
     return { x: g.from[0] + (g.to[0] - g.from[0]) * e, y: g.from[1] + (g.to[1] - g.from[1]) * e, h: lerpAngle(g.h0, g.h1, e) };
   };
 
+  const mapBox = useRef<HTMLDivElement>(null);
   const select = (id: string | null) => {
     setSelected(id);
+    // On a phone the list is under the map: bring the map back into view (17 Nov).
+    if (id && window.innerWidth < 1280) mapBox.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     const s = ships.find((x) => x.id === id);
     if (!s) return;
     const pts = [...s.stops, ...(s.dest ? [s.dest] : []), ...(s.position ? [s.position] : [])];
@@ -290,7 +293,7 @@ export function TrackingMap() {
         </section>
 
         {/* Map */}
-        <div className={cn('panel relative overflow-hidden p-0 order-1 xl:order-2 xl:sticky xl:top-4', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
+        <div ref={mapBox} className={cn('panel relative scroll-mt-20 overflow-hidden p-0 order-1 xl:order-2 xl:sticky xl:top-4', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
           <IconSource ref={iconBox} icons={{ truck: Truck }} />
           <WorldCanvas ref={map} label="Map of your shipments and where they are now" homeBox={homeBox} dark={dark} live={!calm && ships.length > 0} draw={draw} onPoint={onPoint}
             className={cn('w-full', full ? 'flex-1' : 'h-[72vh] min-h-[500px] max-h-[860px]', picking && '[&_[role=application]]:cursor-crosshair')}>
@@ -303,7 +306,7 @@ export function TrackingMap() {
               ))}
             </div>
             {sel && sel.status === 'IN_TRANSIT' && (
-              <Callout ref={pinned} key={sel.id}>
+              <Callout ref={pinned} key={sel.id} className="hidden lg:block">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"><Truck className="h-5 w-5" aria-hidden /></span>
                   <div className="min-w-0"><p className="truncate text-[15px] font-semibold" translate="no">{sel.label}, {sel.product}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{sel.speedKmh != null ? `${Math.round(sel.speedKmh)} km/h` : 'Speed not known'}{sel.dest ? `, heading to ${city(sel.dest.place)}` : ''}</p></div>

@@ -174,7 +174,21 @@ export function ReliefApp() {
       map.current?.flyTo([h.lng - 0.4, h.lat - 0.25, h.lng + 0.4, h.lat + 0.25], { maxZoom: 120 });
     }, () => toast.error('Your position isn’t shared. You can still tap the map.'), { timeout: 8000, maximumAge: 300_000 });
   };
-  const focus = (p: ReliefPost) => { setSelected(p.id); map.current?.flyTo([p.lng - 0.08, p.lat - 0.05, p.lng + 0.08, p.lat + 0.05], { maxZoom: 150 }); };
+  const mapBox = useRef<HTMLDivElement>(null);
+  const focus = (p: ReliefPost) => {
+    setSelected(p.id); map.current?.flyTo([p.lng - 0.08, p.lat - 0.05, p.lng + 0.08, p.lat + 0.05], { maxZoom: 150 });
+    // On a phone the list is under the map: bring the map back into view (the owner, 17 Nov: hard to use on a phone).
+    if (window.innerWidth < 1280) mapBox.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
+  // Opens on where the needs are (the whole world looked empty, 17 Nov), once, unless a link chose one.
+  const framed = useRef(false);
+  useEffect(() => {
+    if (framed.current || !data?.posts.length || selected) return;
+    framed.current = true;
+    const pts = data.posts.filter((p) => p.type === 'NEED' && p.status === 'OPEN');
+    const use = pts.length ? pts : data.posts, lats = use.map((p) => p.lat), lngs = use.map((p) => p.lng);
+    setTimeout(() => map.current?.flyTo([Math.min(...lngs) - 0.3, Math.min(...lats) - 0.2, Math.max(...lngs) + 0.3, Math.max(...lats) + 0.2], { maxZoom: 60 }), 150);
+  }, [data, selected]);
 
   const hoverView = useRef('');
   const draw = (f: Frame) => {
@@ -333,7 +347,7 @@ export function ReliefApp() {
           })}
         </section>
 
-        <div className="panel relative order-1 overflow-hidden p-0 xl:order-2">
+        <div ref={mapBox} className="panel relative order-1 scroll-mt-20 overflow-hidden p-0 xl:order-2">
           <IconSource ref={iconBox} icons={KIND_ICON} />
           <WorldCanvas ref={map} label="Map of needs and offers of help" homeBox={WORLD} dark={dark} live={!calm} draw={draw} onPoint={onPoint} className="w-full h-[74vh] min-h-[520px] max-h-[880px]">
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-label="Loading" /></div>}
@@ -346,7 +360,7 @@ export function ReliefApp() {
               <button type="button" aria-label="Near me" title="Near me" onClick={locate} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><LocateFixed className="h-[18px] w-[18px]" aria-hidden /></button>
             </div>
             {sel && !picking && (
-              <Callout ref={pinned} key={sel.id}>
+              <Callout ref={pinned} key={sel.id} className="hidden lg:block">
                 <div className="flex items-center gap-3">
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">{(() => { const I = KIND_ICON[sel.kind]; return <I className="h-5 w-5" aria-hidden />; })()}</span>
                   <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{sel.title}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{sel.people} {sel.people === 1 ? 'person' : 'people'} · {sel.type === 'OFFER' ? 'offer' : URGENCY_LABEL[sel.urgency].toLowerCase()}{sel.place ? ` · ${sel.place}` : ''}</p></div>
