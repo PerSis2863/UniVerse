@@ -8377,3 +8377,12 @@ so this checks the plan's times instead.
   (paragraphs about airports, stations and ports first), "Get around", and the travel-card tip when the guide has one.
 - **Logic:** `arrival` in `src/lib/travel-today.ts` (tested), from the guide the page already loads (`/travel/guide`, the
   same SWR key as the rain plan, so one request). It's in the offline pack too (M240 saves each city's guide text).
+
+## M253: the trip's safety card (17 Nov)
+
+- **Where:** the trip's **Ready** part (`trip-safety.tsx`, loaded with `next/dynamic` when the part opens): each
+  country's emergency numbers as red `tel:` buttons and its calling code (`travel-countries.json`, from Wikidata), and
+  where you're staying in each city (the trip's planned **Sleep** places, added from the guide) with "Show a driver": a
+  full-screen card with the stay's name and address and "Please take me to this address" in the local language
+  (`TAKE_ME` in `src/lib/travel-phrases.ts`, 19 languages, tested against `LANGUAGES`). Escape closes it.
+- **Not added on purpose:** personal medical details or a contact's phone (they'd sit on a shared trip).

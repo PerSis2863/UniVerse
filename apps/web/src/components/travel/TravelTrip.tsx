@@ -46,6 +46,7 @@ export interface TripAnswer {
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
 // The parts that bring much code or data load only when opened.
+const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
 const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
@@ -192,6 +193,7 @@ export function TravelTrip() {
 
       {part === 'share' && <TripShare tripId={t.id} name={t.name} />}
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+        <TripSafety stops={stops} items={data.items} />
         <TripFootprint tripId={t.id} stops={stops} travellers={t.travellers} onChange={() => void mutate()} />
         <TripHolidays stops={stops} dates={dates} />
         <TripDocs tripId={t.id} start={dates[0]?.from ?? null} end={dates[dates.length - 1]?.to ?? null} />

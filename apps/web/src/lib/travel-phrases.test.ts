@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { LANGUAGES, PHRASES, languageFor } from './travel-phrases';
+import { LANGUAGES, PHRASES, TAKE_ME, languageFor } from './travel-phrases';
 
 describe('phrasebook (M241)', () => {
   it('has every phrase and the numbers in every language, with how to say it for other scripts', () => {
@@ -11,6 +11,7 @@ describe('phrasebook (M241)', () => {
       expect(l.tag).toMatch(/^[a-z]{2}-[A-Z]{2}$/);
     }
     expect(new Set(LANGUAGES.map((l) => l.id)).size).toBe(LANGUAGES.length);
+    expect(Object.keys(TAKE_ME).sort()).toEqual(LANGUAGES.map((l) => l.id).sort()); // M253's driver phrase in each
   });
   it('picks the language of a country', () => {
     expect(languageFor('pt')).toMatchObject({ id: 'pt' });

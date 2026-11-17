@@ -109,3 +109,21 @@ export function languageFor(cc: string | null): Language | 'english' | null {
   if (ENGLISH.has(c)) return 'english';
   return languageById(BY_COUNTRY[c] ?? '') ?? null;
 }
+
+/** M253: "Please take me to this address", for the safety card's driver view, in every language above. */
+export const TAKE_ME: Record<string, { text: string; say?: string }> = {
+  es: { text: 'Por favor, lléveme a esta dirección.' }, 'es-419': { text: 'Por favor, lléveme a esta dirección.' },
+  fr: { text: 'Pouvez-vous m’emmener à cette adresse, s’il vous plaît ?' }, de: { text: 'Bitte bringen Sie mich zu dieser Adresse.' },
+  it: { text: 'Mi porti a questo indirizzo, per favore.' }, pt: { text: 'Leve-me a esta morada, por favor.' }, 'pt-BR': { text: 'Por favor, me leve a este endereço.' },
+  nl: { text: 'Wilt u mij naar dit adres brengen, alstublieft?' },
+  el: { text: 'Παρακαλώ, πηγαίνετέ με σε αυτή τη διεύθυνση.', say: 'Parakaló, pigénete me se aftí ti diéfthinsi.' },
+  tr: { text: 'Lütfen beni bu adrese götürün.' },
+  ja: { text: 'この住所までお願いします。', say: 'Kono jūsho made onegai shimasu.' },
+  ko: { text: '이 주소로 가 주세요.', say: 'I jusoro ga juseyo.' },
+  zh: { text: '请带我去这个地址。', say: 'Qǐng dài wǒ qù zhège dìzhǐ.' },
+  th: { text: 'กรุณาพาไปที่อยู่นี้', say: 'Karunaa phaa pai thii yuu nii.' },
+  vi: { text: 'Làm ơn đưa tôi đến địa chỉ này.' }, id: { text: 'Tolong antar saya ke alamat ini.' },
+  ar: { text: 'من فضلك خذني إلى هذا العنوان.', say: 'Min faḍlak khudhnī ilā hādhā al-ʿunwān.' },
+  hi: { text: 'कृपया मुझे इस पते पर ले चलिए।', say: 'Kripya mujhe is pate par le chaliye.' },
+  ru: { text: 'Отвезите меня, пожалуйста, по этому адресу.', say: 'Otvezite menya, pozhaluysta, po etomu adresu.' },
+};
