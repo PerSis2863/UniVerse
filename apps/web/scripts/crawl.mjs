@@ -8,7 +8,11 @@
 // notes: the error screen or Next's error overlay, uncaught errors, console errors, requests that
 // failed or answered 5xx, a page still showing only a skeleton after loading, and sideways scrolling.
 // --phone opens every page as a phone (390 × 844, touch), --dark in dark mode, and --axe adds the
-// accessibility check (axe-core, WCAG 2.2 AA, serious and critical only). Needs Playwright
+// accessibility check (axe-core, WCAG 2.2 AA, serious and critical only). --layout (the owner, 17 Nov: "check other
+// area where the ui is overlapping or doesnt fit properly … in mobile") adds: parts sticking out past the screen's edge
+// (not inside something that scrolls or clips), and buttons, links and fields covered by something else or overlapping
+// another (checked between the top bar and the phone's tab bar). --guest opens the website's public pages signed out.
+// Needs Playwright
 // (see scripts/browser-session.mjs). Exits 1 when any page has a problem.
 
 import { readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -43,6 +47,8 @@ const EMAIL = { student: 'demo@student.com', teacher: 'demo@teacher.com', admin:
 const phone = process.argv.includes('--phone');
 const dark = process.argv.includes('--dark');
 const withAxe = process.argv.includes('--axe');
+const layout = process.argv.includes('--layout');
+const guest = process.argv.includes('--guest');
 const AXE = withAxe ? createRequire(import.meta.url).resolve('axe-core/axe.min.js') : null;
 // The owner console needs the owner account; sign-in and sign-up pages redirect when signed in.
 const SKIP = [/^\/console/, /^\/(login|register|forgot-password|reset-password)$/];
@@ -51,13 +57,17 @@ const IGNORE = [/\/api\/realtime\/ticket$/];
 const ignored = (url) => { try { return IGNORE.some((re) => re.test(new URL(url).pathname)); } catch { return false; } };
 
 // --paths: just those (pages with an id in them too, e.g. /student/courses/<id>).
-const all = paths ?? routes().filter((r) => !SKIP.some((re) => re.test(r)));
-const byRole = Object.groupBy(all, ROLE_OF);
+const PUBLIC = ['/', '/login', '/register', '/forgot-password', '/t/demo', '/privacy', '/terms'];
+const all = paths ?? (guest ? PUBLIC : routes().filter((r) => !SKIP.some((re) => re.test(r))));
+const byRole = guest ? { guest: all } : Object.groupBy(all, ROLE_OF);
 const browser = await launch();
 const results = [];
 for (const [role, pages] of Object.entries(byRole)) {
   if (only && only !== role) continue;
-  const ctx = await signedIn(browser, base, EMAIL[role], phone ? { width: 390, height: 844 } : undefined, phone ? { isMobile: true, hasTouch: true } : {});
+  const ctx = role === 'guest'
+    ? await browser.newContext({ viewport: phone ? { width: 390, height: 844 } : { width: 1366, height: 900 }, ...(phone ? { isMobile: true, hasTouch: true } : {}) })
+    : await signedIn(browser, base, EMAIL[role], phone ? { width: 390, height: 844 } : undefined, phone ? { isMobile: true, hasTouch: true } : {});
+  await ctx.addInitScript(() => { try { localStorage.setItem('uv-cookies', 'essential'); } catch { /* none */ } });
   await ctx.addInitScript((d) => localStorage.setItem('theme', d ? 'dark' : 'light'), dark);
   for (const path of pages) {
     const page = await ctx.newPage();
@@ -82,6 +92,50 @@ for (const [role, pages] of Object.entries(byRole)) {
       if (state.errorScreen) problems.unshift('error screen');
       if (state.onlySkeleton) problems.push('still loading (only a skeleton) after load');
       if (state.wide) problems.push('scrolls sideways');
+      if (layout) {
+        await page.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect?.getTiming().iterations !== Infinity), null, { timeout: 5000 }).catch(() => {});
+        await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+        problems.push(...await page.evaluate(() => {
+          const out = [], W = window.innerWidth, H = window.innerHeight;
+          const name = (el) => { const t = (el.getAttribute('aria-label') || el.innerText || el.getAttribute('placeholder') || el.tagName).trim().replace(/\s+/g, ' ').slice(0, 40); return `${el.tagName.toLowerCase()} "${t}"`; };
+          const shown = (el) => { const cs = getComputedStyle(el); return cs.visibility !== 'hidden' && cs.display !== 'none' && Number(cs.opacity) > 0.05; };
+          // Inside something that scrolls sideways or clips: sticking out there is meant.
+          const clipped = (el) => { for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) { const ox = getComputedStyle(p).overflowX; if (ox !== 'visible') return true; } return false; };
+          const wide = [];
+          for (const el of document.querySelectorAll('body *')) {
+            const r = el.getBoundingClientRect();
+            if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > H * 3) continue;
+            if ((r.right > W + 2 || r.left < -2) && shown(el) && !clipped(el) && getComputedStyle(el).position !== 'fixed') wide.push(el);
+          }
+          // Only the outermost of each (its children stick out with it).
+          for (const el of wide.filter((e) => !wide.some((o) => o !== e && o.contains(e))).slice(0, 4)) { const r = el.getBoundingClientRect(); out.push(`sticks out ${Math.round(Math.max(r.right - W, -r.left))} px: ${name(el)}`); }
+          const ctl = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, textarea, [role=button], [role=tab], [role=radio]')].filter((el) => {
+            const r = el.getBoundingClientRect();
+            return r.width >= 8 && r.height >= 8 && r.top >= 76 && r.bottom <= H - 96 && r.left >= 0 && r.right <= W && shown(el) && getComputedStyle(el).pointerEvents !== 'none';
+          });
+          const covered = [];
+          for (const el of ctl) {
+            const r = el.getBoundingClientRect(), hit = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            if (!hit || el.contains(hit) || hit.contains(el) || hit.closest('label')?.contains(el)) continue;
+            if (hit.closest('[role=dialog], [aria-modal=true]') && !el.closest('[role=dialog], [aria-modal=true]')) continue; // a sheet open on purpose
+            covered.push(`${name(el)} covered by ${name(hit)}`);
+          }
+          out.push(...covered.slice(0, 4));
+          const pairs = [];
+          for (let i = 0; i < ctl.length && pairs.length < 4; i++) for (let j = i + 1; j < ctl.length; j++) {
+            const a = ctl[i], b = ctl[j];
+            if (a.contains(b) || b.contains(a)) continue;
+            // A button placed inside a field on purpose (show the password, clear, search): not an overlap.
+            const inField = (x, y) => /^(INPUT|TEXTAREA|SELECT)$/.test(x.tagName) && getComputedStyle(y).position === 'absolute';
+            if (inField(a, b) || inField(b, a)) continue;
+            const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+            const w = Math.min(ra.right, rb.right) - Math.max(ra.left, rb.left), h = Math.min(ra.bottom, rb.bottom) - Math.max(ra.top, rb.top);
+            if (w > 4 && h > 4 && w * h > 0.25 * Math.min(ra.width * ra.height, rb.width * rb.height)) { pairs.push(`${name(a)} overlaps ${name(b)}`); break; }
+          }
+          out.push(...pairs);
+          return out;
+        }));
+      }
       if (AXE) {
         // Let entrance animations finish first (rows mid-fade read as low contrast).
         await page.waitForFunction(() => !document.getAnimations().some((x) => x.playState === 'running' && x.effect?.getTiming().iterations !== Infinity), null, { timeout: 5000 }).catch(() => {});
