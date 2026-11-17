@@ -778,7 +778,7 @@ export function sampleTravelPlace() {
   return { place: { key: 'N398922337', name: 'Pastéis de Belém', kind: 'Pastry shop', lat: 38.6975, lon: -9.2033, cc: 'PT', city: 'Lisbon', address: 'Rua de Belém 84-92, Belém, Lisbon', phone: null, website: 'https://pasteisdebelem.pt', menu: null, hours: 'Mo-Su 08:00-21:00', cuisine: ['Regional'], facts: ['Wheelchair accessible', 'Since 1837'], wikidata: null, about: 'The bakery that has made Belém’s custard tarts since 1837.', image: null, wiki: null }, credit: 'Facts: OpenStreetMap contributors (ODbL), Wikidata, Wikipedia (CC BY-SA)' };
 }
 /** GET /travel/where */
-export const sampleTravelWhere = () => ({ lat: 38.7139, lon: -9.1394, box: [-9.23, 38.69, -9.09, 38.8] });
+export const sampleTravelWhere = () => ({ lat: 38.7139, lon: -9.1394, box: [-9.23, 38.69, -9.09, 38.8], city: 'Lisbon', name: null });
 /** GET /travel/photos, /travel/stories */
 export const sampleTravelPhotos = () => ({ photos: [], credit: 'Photos: Wikimedia Commons (each by its author, under its licence)' });
 export const sampleTravelStories = () => ({ stories: [{ title: 'Belém Tower', lat: 38.6916, lon: -9.216, extract: 'A 16th-century fortress on the Tagus, where ships set out on the voyages of discovery.', thumb: null, url: 'https://en.wikipedia.org/wiki/Bel%C3%A9m_Tower' }], credit: 'Stories: Wikipedia (CC BY-SA 4.0)' });

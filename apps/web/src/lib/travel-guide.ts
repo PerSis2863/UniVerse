@@ -137,6 +137,15 @@ export function readGuide(title: string, wiki: string): Guide {
           if (!nm) continue;
           const link = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/.exec(nm);
           if (link) g.places.push({ title: link[1].trim(), name: plain(link[2] ?? link[1]), text: clean(t.named[`region${n}description`]) });
+          else {
+            // M232: a group of districts ("Central Paris") whose guides are its items ([[Paris/1st arrondissement|1st arr.]]);
+            // the description has a part per item ('''1e''': …): an area each, else the group as one.
+            const items = [...(t.named[`region${n}items`] ?? '').matchAll(/\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g)];
+            const desc = t.named[`region${n}description`] ?? '';
+            const bits = desc.split(/'''[^'\n]{1,16}''':\s*/).map((x) => x.trim()).filter(Boolean);
+            if (items.length && bits.length === items.length) items.forEach((it, k) => g.places.push({ title: it[1].trim(), name: `${plain(it[2] ?? it[1])}, ${plain(nm)}`, text: clean(bits[k]) }));
+            else if (items.length) g.places.push({ title: items[0][1].trim(), name: plain(nm), text: clean(desc) });
+          }
         }
       }
       for (const line of body.split('\n')) {

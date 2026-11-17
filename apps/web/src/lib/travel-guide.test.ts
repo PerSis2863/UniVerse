@@ -69,4 +69,23 @@ describe('Travel guides', () => {
     expect(new URL(bookingLinks('Rome', { checkin: '2027-05-09', checkout: '2027-05-01' })[0].url).searchParams.get('checkin')).toBeNull();
     expect(mapLink('Golden Hall', { lat: 35, lon: 135 })).toContain('mlat=35&mlon=135');
   });
+  it('reads a group of districts as an area each (M232: Paris)', () => {
+    const wiki = `==Districts==
+{{Regionlist
+| region1name=Central Paris
+| region1items=[[Paris/1st arrondissement|1st arr.]], [[Paris/2nd arrondissement|2nd arr.]]
+| region1description='''1e''': The ''Louvre'' and the Tuileries. '''2e''': The old covered passages.
+| region2name=Paris Hills
+| region2items=[[Paris/18th arrondissement|18th arr.]]
+| region2description=Montmartre and the Sacré Cœur.
+}}
+==See==
+`;
+    const g = readGuide('Paris', wiki);
+    expect(g.places).toEqual([
+      { title: 'Paris/1st arrondissement', name: '1st arr., Central Paris', text: 'The Louvre and the Tuileries.' },
+      { title: 'Paris/2nd arrondissement', name: '2nd arr., Central Paris', text: 'The old covered passages.' },
+      { title: 'Paris/18th arrondissement', name: '18th arr., Paris Hills', text: 'Montmartre and the Sacré Cœur.' },
+    ]);
+  });
 });

@@ -68,12 +68,15 @@ export async function travelStories(_u: SessionUser, q: Query) {
 export async function travelWhere(_u: SessionUser, q: Query) {
   const term = (first(q.q) ?? '').replace(/\//g, ' ').replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
   if (term.length < 2) throw new BadRequestException('Pick a place.');
-  const at = await cached<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`where2:${term.toLowerCase()}`, 90 * DAY, async () => {
-    const rows = await fetchJson<{ lat: string; lon: string; boundingbox?: string[] }[]>(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(term)}&format=jsonv2&limit=1&accept-language=en`);
+  // M232: also the town it's in (a hotel typed in finds its city's guide), and the name OpenStreetMap gives it.
+  type Row = { lat: string; lon: string; boundingbox?: string[]; name?: string; address?: Record<string, string> };
+  const at = await cached<{ lat: number; lon: number; box: [number, number, number, number] | null; city: string | null; name: string | null }>(`where3:${term.toLowerCase()}`, 90 * DAY, async () => {
+    const rows = await fetchJson<Row[]>(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(term)}&format=jsonv2&limit=1&addressdetails=1&accept-language=en`);
     const r = rows?.[0];
     if (!r) return null;
     const b = r.boundingbox?.map(Number); // [south, north, west, east]
-    return { lat: Number(r.lat), lon: Number(r.lon), box: b && b.length === 4 && b.every(Number.isFinite) ? [b[2], b[0], b[3], b[1]] : null };
+    const a = r.address ?? {};
+    return { lat: Number(r.lat), lon: Number(r.lon), box: b && b.length === 4 && b.every(Number.isFinite) ? [b[2], b[0], b[3], b[1]] : null, city: a.city ?? a.town ?? a.village ?? a.municipality ?? null, name: r.name || null };
   });
   if (!at) throw new NotFoundException('That place isn’t on the map.');
   return at;
