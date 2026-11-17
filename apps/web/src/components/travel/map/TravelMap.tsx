@@ -25,11 +25,11 @@ import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showCl
 import { mapRequest } from './map-style';
 import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
 import { Navigate, primeSpeech, type NavTrip } from './Navigate';
-import type { Route } from '@/lib/map-tools';
+import { directionsUrl, routesOf, type Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
-import { areaSearchUrl, DAY_COLORS, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
+import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { CountChips, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 
@@ -150,7 +150,34 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const tripMap = useMemo<TripMap | null>(() => (tripData ? { stops: tripData.stops, items: tripData.items, startDate: tripData.trip.startDate } : null), [tripData]);
   // M264: the trip's day number today (1 = its first day), so the way travelled is solid and today's city stands out.
   const tripToday = tripMap?.startDate && now ? Math.floor((now - Date.parse(`${tripMap.startDate}T00:00:00`)) / 86_400_000) + 1 : null;
-  const tripFc = useMemo(() => tripFeatures(tripMap, tripDay, tripToday), [tripMap, tripDay, tripToday]);
+  // M265 (the owner: "the direction line should bend like that"): the ways between the cities along the real roads (the
+  // car router, from the browser; flights and ferries an arc), and the chosen day's places joined by the walk along the
+  // streets. Asked once per trip and per day; straight lines until (or unless) the router answers.
+  const [tripLegs, setTripLegs] = useState<{ key: string; legs: Map<string, [number, number][]> } | null>(null);
+  const [tripWalk, setTripWalk] = useState<{ key: string; path: [number, number][] } | null>(null);
+  const legsKey = useMemo(() => roadLegs(tripMap).map((l) => l.key).join(','), [tripMap]);
+  useEffect(() => {
+    const want = roadLegs(tripMap);
+    if (!want.length) return;
+    const ctl = new AbortController();
+    void Promise.all(want.map((l) => fetch(directionsUrl('car', l.a, l.b), { signal: ctl.signal }).then((r) => r.json()).then((a) => [l.key, routesOf(a)[0]?.path] as const).catch(() => [l.key, undefined] as const)))
+      .then((got) => { if (!ctl.signal.aborted) setTripLegs({ key: legsKey, legs: new Map(got.filter((g): g is readonly [string, [number, number][]] => !!g[1]).map((g) => [g[0], g[1]])) }); });
+    return () => ctl.abort();
+  }, [legsKey, tripMap]);
+  const dayStops = useMemo(() => {
+    if (!tripMap || tripDay == null) return [];
+    const ids = new Set(tripFeatures(tripMap, tripDay).features.filter((f) => f.properties?.role === 'item').map((f) => f.properties!.id as string));
+    return tripMap.items.filter((i) => ids.has(i.id) && i.lat != null && i.lon != null).sort((a, z) => a.position - z.position).slice(0, 10).map((i) => ({ lat: i.lat!, lon: i.lon! }));
+  }, [tripMap, tripDay]);
+  const walkKey = dayStops.map((p) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`).join(';');
+  useEffect(() => {
+    if (dayStops.length < 2) return;
+    const ctl = new AbortController();
+    fetch(directionsUrl('foot', dayStops[0], dayStops[dayStops.length - 1], { via: dayStops.slice(1, -1) }), { signal: ctl.signal })
+      .then((r) => r.json()).then((a) => { const path = routesOf(a)[0]?.path; if (path) setTripWalk({ key: walkKey, path }); }).catch(() => {});
+    return () => ctl.abort();
+  }, [walkKey, dayStops]);
+  const tripFc = useMemo(() => tripFeatures(tripMap, tripDay, tripToday, tripLegs?.key === legsKey ? tripLegs.legs : undefined, tripWalk?.key === walkKey && dayStops.length > 1 ? tripWalk.path : null), [tripMap, tripDay, tripToday, tripLegs, legsKey, tripWalk, walkKey, dayStops]);
   const tripDays = useMemo(() => tripDaysOn(tripMap), [tripMap]);
   // M264: the trip's numbers along the map's foot: days, cities and the km between them, places planned, places a day.
   const tripStats = useMemo(() => {

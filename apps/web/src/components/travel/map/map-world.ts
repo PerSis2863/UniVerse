@@ -153,6 +153,9 @@ export function addWorldLayers(map: MLMap, dark: boolean, font: string[], bold: 
   map.addLayer({ id: 'uv-trip-edge', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'path'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#000000' : '#ffffff', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 5, 10, 8], 'line-opacity': dark ? 0.35 : 0.9 } }, before);
   map.addLayer({ id: 'uv-trip-path', type: 'line', source: 'uv-trip', filter: pathOf(true), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#f4f4f5' : '#18181b', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2.5, 10, 4.5] } }, before);
   map.addLayer({ id: 'uv-trip-ahead', type: 'line', source: 'uv-trip', filter: pathOf(false), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#a1a1aa' : '#52525b', 'line-width': ['interpolate', ['linear'], ['zoom'], 2, 2.2, 10, 3.5], 'line-dasharray': [0.2, 2.2] } }, before);
+  // M265: the chosen day's walk along the streets, the directions' blue with a darker edge (it bends at every turn).
+  map.addLayer({ id: 'uv-trip-walk-edge', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'walk'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#0b5bd3', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 6, 16, 11] } }, before);
+  map.addLayer({ id: 'uv-trip-walk', type: 'line', source: 'uv-trip', filter: ['==', ['get', 'role'], 'walk'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': '#1f87ff', 'line-width': ['interpolate', ['linear'], ['zoom'], 12, 3.5, 16, 7.5] } }, before);
   map.addLayer({ id: 'uv-trip-item', type: 'circle', source: 'uv-trip', filter: ['==', ['get', 'role'], 'item'], paint: { 'circle-radius': ['interpolate', ['linear'], ['zoom'], 4, 3, 12, 7, 16, 9], 'circle-color': ['get', 'color'], 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 2 } }, before);
   map.addLayer({ id: 'uv-trip-item-name', type: 'symbol', source: 'uv-trip', minzoom: 11.5, filter: ['==', ['get', 'role'], 'item'],
     layout: { 'text-field': ['concat', ['get', 'label'], ' · ', ['get', 'n']], 'text-font': bold, 'text-size': 12, 'text-anchor': 'left', 'text-offset': [0.9, 0], 'text-max-width': 10, 'text-optional': true, 'text-padding': 2 },
@@ -184,9 +187,27 @@ export function showWorld(map: MLMap, on: boolean) {
 export const setWorld = (map: MLMap, id: WorldSource, data: GeoJSON.FeatureCollection) => (map.getSource(id) as GeoJSONSource | undefined)?.setData(data);
 export const WORLD_LAYERS = ['uv-dest-town', 'uv-dest-city', 'uv-ideas', 'uv-trip-stop', 'uv-trip-item', 'uv-saved', 'uv-found'] as const;
 
-export interface TripMap { stops: PlanStop[]; items: PlanItem[]; startDate: string | null }
+export interface TripMap { stops: (PlanStop & { mode?: string | null })[]; items: PlanItem[]; startDate: string | null }
+/** M265: the key of the way from one city to the next (its routed path is kept under it). */
+export const legKey = (a: { id: string }, b: { id: string }) => `${a.id}>${b.id}`;
+/** A flight or a ferry: a gentle arc (the sea and the sky have no roads), its bow a seventh of its length. */
+export function bow(a: [number, number], b: [number, number], n = 24): [number, number][] {
+  const dx = b[0] - a[0], dy = b[1] - a[1], cx = (a[0] + b[0]) / 2 - dy / 7, cy = (a[1] + b[1]) / 2 + dx / 7;
+  return Array.from({ length: n + 1 }, (_, i) => { const t = i / n, u = 1 - t; return [u * u * a[0] + 2 * u * t * cx + t * t * b[0], u * u * a[1] + 2 * u * t * cy + t * t * b[1]] as [number, number]; });
+}
+/** The ways between a trip's cities worth asking the road router for: not flown or sailed, and under 1,500 km. */
+export function roadLegs(t: TripMap | null): { key: string; a: { lat: number; lon: number }; b: { lat: number; lon: number } }[] {
+  const at = (t?.stops ?? []).filter((x) => x.lat != null && x.lon != null), out: { key: string; a: { lat: number; lon: number }; b: { lat: number; lon: number } }[] = [];
+  for (let i = 1; i < at.length; i++) {
+    const a = at[i - 1], b = at[i], far = Math.hypot(b.lat! - a.lat!, (b.lon! - a.lon!) * Math.cos((a.lat! * Math.PI) / 180)) * 111;
+    if (b.mode === 'plane' || b.mode === 'ferry' || far > 1500) continue;
+    out.push({ key: legKey(a, b), a: { lat: a.lat!, lon: a.lon! }, b: { lat: b.lat!, lon: b.lon! } });
+  }
+  return out.slice(0, 12);
+}
 /** A trip on the map: the way through its cities in order, each city numbered, each place in its day's colour. */
-export function tripFeatures(t: TripMap | null, day: number | null, today: number | null = null): GeoJSON.FeatureCollection {
+/** `legs`: the routed path of each way between cities (by `legKey`); `walk`: the chosen day's walk along the streets. */
+export function tripFeatures(t: TripMap | null, day: number | null, today: number | null = null, legs?: ReadonlyMap<string, [number, number][]>, walk?: [number, number][] | null): GeoJSON.FeatureCollection {
   if (!t) return EMPTY;
   const dates = stopDates(t.startDate, t.stops), first = new Map(t.stops.map((s, i) => [s.id, dates[i]?.offset ?? 0]));
   const stops = t.stops.map((s, i) => ({ s, from: (dates[i]?.offset ?? 0) + 1, to: (dates[i]?.offset ?? 0) + s.days })).filter((x) => x.s.lat != null && x.s.lon != null);
@@ -195,7 +216,17 @@ export function tripFeatures(t: TripMap | null, day: number | null, today: numbe
   // number today (1 = its first day), null when it isn't known. The city you're in now is `now`.
   const at = (x: (typeof stops)[number]) => (today == null || today < x.from ? 'next' : today > x.to ? 'done' : 'now');
   const cur = today == null ? -1 : stops.reduce((k, x, i) => (today >= x.from ? i : k), -1);
-  const line = (part: typeof stops, done: boolean) => { if (part.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: part.map((x) => [x.s.lon!, x.s.lat!]) }, properties: { role: 'path', done } }); };
+  // Each way between two cities: along the roads when the router answered, an arc when flown or sailed, else straight.
+  const leg = (a: (typeof stops)[number], b: (typeof stops)[number]): [number, number][] => {
+    const pa: [number, number] = [a.s.lon!, a.s.lat!], pb: [number, number] = [b.s.lon!, b.s.lat!];
+    return legs?.get(legKey(a.s, b.s)) ?? (b.s.mode === 'plane' || b.s.mode === 'ferry' ? bow(pa, pb) : [pa, pb]);
+  };
+  const line = (part: typeof stops, done: boolean) => {
+    if (part.length < 2) return;
+    const coordinates = part.slice(1).flatMap((x, i) => leg(part[i], x).slice(i ? 1 : 0));
+    features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates }, properties: { role: 'path', done } });
+  };
+  if (walk && walk.length > 1) features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: walk }, properties: { role: 'walk' } });
   line(stops.slice(0, cur + 1), true);
   line(stops.slice(Math.max(0, cur)), false);
   stops.forEach((x, i) => features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [x.s.lon!, x.s.lat!] }, properties: { role: 'stop', num: String(i + 1), n: x.s.name, state: at(x) } }));

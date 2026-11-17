@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { areaSearchUrl, destOf, foundOf, tripBox, tripDaysOn, tripFeatures, type TripMap } from './map-world';
+import { areaSearchUrl, bow, destOf, foundOf, legKey, roadLegs, tripBox, tripDaysOn, tripFeatures, type TripMap } from './map-world';
 import { IDEAS } from '@/lib/travel-ideas';
 
 const stop = (id: string, name: string, lat: number | null, lon: number | null, days: number, position: number) => ({ id, guide: name, name, cc: 'PT', lat, lon, days, position });
@@ -69,5 +69,19 @@ describe('search this area', () => {
       { key: 'R9', name: 'Praça', cls: '', sub: '', lat: 38.72, lon: -9.14, address: 'Lisboa' },
     ]);
     expect(foundOf({ error: 'busy' })).toEqual([]);
+  });
+  it('follows the roads between cities, arcs a flight, and draws the day’s walk (M265)', () => {
+    expect(roadLegs(trip).map((l) => l.key)).toEqual(['a>b']);
+    const road: [number, number][] = [[-9.14, 38.72], [-8.9, 39.6], [-8.61, 41.15]];
+    const path = tripFeatures(trip, null, null, new Map([[legKey({ id: 'a' }, { id: 'b' }), road]])).features.find((f) => f.properties?.role === 'path');
+    expect((path!.geometry as GeoJSON.LineString).coordinates).toEqual(road);
+    const flown: TripMap = { ...trip, stops: trip.stops.map((x) => (x.id === 'b' ? { ...x, mode: 'plane' } : x)) };
+    expect(roadLegs(flown)).toEqual([]);
+    const arc = bow([0, 0], [10, 0]);
+    expect(arc[0]).toEqual([0, 0]);
+    expect(arc[arc.length - 1]).toEqual([10, 0]);
+    expect(arc[12][1]).toBeCloseTo(0.71, 1); // bowed to one side half way
+    const walk = tripFeatures(trip, 1, null, undefined, [[-9.2, 38.69], [-9.15, 38.7], [-9.13, 38.71]]).features.filter((f) => f.properties?.role === 'walk');
+    expect(walk).toHaveLength(1);
   });
 });

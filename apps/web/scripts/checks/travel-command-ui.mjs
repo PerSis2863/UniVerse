@@ -33,6 +33,14 @@ try {
     const ctx = await signedIn(browser, base, 'alice@student.com', { width, height: phone ? 844 : 900 }, phone ? { isMobile: true, hasTouch: true } : {});
     await ctx.addInitScript((th) => { localStorage.setItem('theme', th); localStorage.setItem('uv-cookies', 'essential'); }, theme);
     await ctx.route(/tiles\.openfreemap\.org|elevation-tiles|tiles\.maps\.eox|panoramax|wikimedia/, (rt) => rt.fulfill({ status: 404, body: '' }));
+    // M265: the routers answered here with a road that bends (a zigzag through every point asked).
+    r.routed = [];
+    await ctx.route(/routing\.openstreetmap\.de/, (rt) => {
+      const url = rt.request().url(), pts = /driving\/([^?]+)/.exec(url)[1].split(';').map((p) => p.split(',').map(Number));
+      r.routed.push(/routed-(\w+)/.exec(url)[1]);
+      const path = pts.slice(1).flatMap((b, i) => { const a = pts[i]; return [a, [a[0] + (b[0] - a[0]) * 0.3 + 0.01, a[1] + (b[1] - a[1]) * 0.3], [a[0] + (b[0] - a[0]) * 0.7 - 0.01, a[1] + (b[1] - a[1]) * 0.7], b]; });
+      return rt.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ code: 'Ok', routes: [{ duration: 600, distance: 1000, geometry: { coordinates: path }, legs: [{ steps: [] }] }] }) });
+    });
     const page = await ctx.newPage();
     page.on('pageerror', (e) => errors.push(`${width}: ${e.message.slice(0, 160)}`));
     await page.goto(`${base}/travel?view=map&at=40,-9,6`, { waitUntil: 'load', timeout: 180_000 });
@@ -45,9 +53,9 @@ try {
     });
     await page.getByRole('button', { name: 'Close layers' }).click();
     const days = page.getByRole('radiogroup', { name: 'Day of the trip' });
-    await days.waitFor({ timeout: 30_000 });
+    await days.waitFor({ timeout: 30_000 }).catch(async (e) => { if (shots) await page.screenshot({ path: `${shots}/travel-fail-${width}.png` }); console.log(JSON.stringify(errors)); throw e; });
     await page.waitForTimeout(2200);
-    r.days = (await days.innerText()).replace(/\s+/g, ' ');
+    r.days = await days.innerText({ timeout: 5000 }).then((t) => t.replace(/\s+/g, ' ')).catch(async () => { if (shots) await page.screenshot({ path: `${shots}/travel-gone-${width}.png` }); return `gone; errors: ${JSON.stringify(errors)}`; });
     r.ring = await page.locator('.cmd-ring').count();
     r.stats = await page.locator('.cmd-travel .cmd-pop').allInnerTexts().then((t) => t.map((x) => x.replace(/\s+/g, ' ')));
     r.layers = await page.evaluate(() => { const m = document.querySelector('.maplibregl-map'); return m ? 'map' : 'none'; });
@@ -55,6 +63,9 @@ try {
     r.axe.push(...(await axe(page)).map((x) => `trip ${x}`));
     await days.getByRole('radio', { name: /Day 2/ }).click();
     r.day2 = await days.getByRole('radio', { name: /Day 2/ }).getAttribute('aria-checked');
+    await page.waitForTimeout(2500);
+    r.routedAfterDay = [...new Set(r.routed)];
+    if (shots) await page.screenshot({ path: `${shots}/travel-day-walk-${width}.png` });
     r.wide = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
     await ctx.close();
   }
