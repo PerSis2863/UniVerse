@@ -8251,3 +8251,14 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
 - **Photos** go through the app's own `/api/upload` (shrunk first, `shrinkImage`), as Green's proofs; only an app file
   address is kept (`isAppFileUrl`).
 - **The route** is Relief's `AidMap` (the d3 world canvas), now with a `color` (Travel's sky here).
+
+## M243: a trip's group polls (17 Nov)
+
+- **Where:** the trip page's **Votes** part (`trip-polls.tsx`): "Ask the group" (a place, dates, a stay or anything;
+  2–8 choices, ideas from the trip's unplanned places and cities; "pick more than one"), and each poll with a bar per
+  choice, who chose it, Leading / Chosen, close and remove (its asker or the trip's starter).
+- **Server** (`src/server/travel-trip-polls.ts`, tested): `GET/POST /travel/trips/:id/polls`,
+  `POST …/polls/:pollId/vote { choices }` (replaces my choices; one unless `multi`; refused when closed), `PATCH`
+  (closed) and `DELETE …/polls/:pollId`; members only; at most 30 polls; `publish` refreshes everyone's page, and the
+  voter's own page moves their name at once. Database update **0229** (`travel_trip_polls`, `travel_trip_votes`).
+- **Rule:** the bars are `<Fill>` (with a colour class: `.fill` has none of its own).

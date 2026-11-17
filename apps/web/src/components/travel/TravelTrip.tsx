@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Languages, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Languages, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -26,6 +26,7 @@ import { TripToday } from './trip-today';
 import { tripToday } from '@/lib/travel-today';
 import { useNow } from '@/lib/use-now';
 import { TripJournal } from './trip-journal';
+import { TripPolls } from './trip-polls';
 import { TripOffline } from './trip-offline';
 import { readPack } from '@/lib/trip-offline-save';
 
@@ -44,7 +45,7 @@ const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loadin
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
-  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'journal', label: 'Journal', icon: NotebookPen },
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
   { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck },
 ] as const;
@@ -187,6 +188,7 @@ export function TravelTrip() {
       {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
         <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
       </div>}
+      {part === 'polls' && <TripPolls tripId={t.id} owner={data.owner} ideas={{ place: [...data.items.filter((x) => x.day === null).map((x) => x.name), ...stops.map((s) => nice(s.name))], date: when ? [when] : [] }} />}
       {part === 'journal' && <TripJournal tripId={t.id} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
       {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'today' && <TripToday start={t.startDate} stops={stops} items={data.items} />}

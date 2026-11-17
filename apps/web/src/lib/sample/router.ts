@@ -1051,6 +1051,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/travel\/trips\/([^/]+)\/expenses$/, ({ db: d }) => ok(impact.sampleTripExpenses(d.me))],
   [/^\/travel\/trips\/([^/]+)\/packing$/, () => ok(impact.sampleTripPacking())],
   [/^\/travel\/trips\/([^/]+)\/journal$/, () => ok(impact.sampleTripJournal())],
+  [/^\/travel\/trips\/([^/]+)\/polls$/, () => ok(impact.sampleTripPolls())],
   [/^\/travel\/trips\/([^/]+)$/, ({ db: d }) => ok(impact.sampleTravelTrip(d.me))],
   [/^\/green\/teams$/, ({ db: d }) => ok(impact.sampleGreenTeams(d.me))],
   [/^\/green\/footprints$/, () => ok(impact.sampleGreenFootprints())],

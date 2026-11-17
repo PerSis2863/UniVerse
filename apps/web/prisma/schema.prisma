@@ -7614,6 +7614,7 @@ model TravelTrip {
   expenses   TravelTripExpense[]
   packing    TravelTripPack[]
   journal    TravelTripJournal[]
+  polls      TravelTripPoll[]
 
   @@index([ownerId])
   @@map("travel_trips")
@@ -7656,6 +7657,36 @@ model TravelTripJournal {
 
   @@index([tripId])
   @@map("travel_trip_journal")
+}
+
+/// M243: a vote among the people planning a trip (a place, dates, a stay…): `options` is a JSON list of 2–8 words.
+model TravelTripPoll {
+  id        String           @id @default(cuid())
+  tripId    String
+  trip      TravelTrip       @relation(fields: [tripId], references: [id], onDelete: Cascade)
+  kind      String           @default("other")
+  question  String
+  options   String
+  multi     Boolean          @default(false)
+  closed    Boolean          @default(false)
+  createdBy String
+  createdAt DateTime         @default(now())
+  votes     TravelTripVote[]
+
+  @@index([tripId])
+  @@map("travel_trip_polls")
+}
+
+/// M243: one person's choice in a poll (several rows when the poll takes several).
+model TravelTripVote {
+  pollId    String
+  poll      TravelTripPoll @relation(fields: [pollId], references: [id], onDelete: Cascade)
+  userId    String
+  choice    Int
+  createdAt DateTime       @default(now())
+
+  @@id([pollId, userId, choice])
+  @@map("travel_trip_votes")
 }
 
 /// M215: a thing on a trip's shared packing list, ticked when someone has packed it.

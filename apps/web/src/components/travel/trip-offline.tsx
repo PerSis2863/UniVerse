@@ -48,7 +48,7 @@ export function TripOffline<T>({ tripId, trip, stops, items }: { tripId: string;
       {pack === undefined ? null : busy ? (
         <div className="mt-3" role="status">
           <p className="text-sm text-zinc-700 dark:text-zinc-200">Saving… {Math.round((busy.done / Math.max(1, busy.total)) * 100)}%</p>
-          <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10"><Fill value={busy.done / Math.max(1, busy.total)} quick /></div>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10"><Fill value={busy.done / Math.max(1, busy.total)} className="bg-indigo-500" quick /></div>
           <button type="button" className="btn-ghost btn-sm mt-2" onClick={() => stop.current?.abort()}>Stop</button>
         </div>
       ) : pack ? (

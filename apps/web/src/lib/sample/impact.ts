@@ -770,6 +770,14 @@ export function sampleTripJournal() {
     e('sample-j-3', 1, 'Tram 28 was packed, so we walked the hills instead and found a tiny fado bar.', 'Alfama', 'Maya', false),
   ] };
 }
+/** GET /travel/trips/:id/polls (M243): the sample trip's votes (made up). */
+export function sampleTripPolls() {
+  const at = new Date().toISOString();
+  return { polls: [
+    { id: 'sample-poll-1', kind: 'place', question: 'Day trip from Lisbon?', multi: false, closed: false, by: 'Maya', mine: false, createdAt: at, options: [{ text: 'Sintra', voters: ['Maya', 'You'] }, { text: 'Cascais', voters: [] }, { text: 'Évora', voters: [] }], chosen: [0], people: 2 },
+    { id: 'sample-poll-2', kind: 'stay', question: 'Where to stay in Porto?', multi: true, closed: false, by: 'You', mine: true, createdAt: at, options: [{ text: 'Ribeira, by the river', voters: ['Maya'] }, { text: 'Cedofeita, quieter', voters: [] }], chosen: [], people: 1 },
+  ] };
+}
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {
   return {
