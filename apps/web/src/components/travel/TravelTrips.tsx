@@ -12,6 +12,8 @@ import { IDEAS } from '@/lib/travel-ideas';
 import { addDays } from '@/lib/travel-plan';
 import { Cover, startTrip } from './travel-ui';
 
+const TRIP_SIZES = '(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw';
+
 // My trips in UniVerse Travel (M206): the trips I'm planning, alone or with friends, and a new one. An
 // invite link (/travel/saved?join=CODE) asks before joining a friend's trip.
 
@@ -59,7 +61,7 @@ export function TravelTrips({ join }: { join: string | null }) {
             <li key={t.id}>
               <Link href={`/travel/trip?id=${t.id}`} className="group card block overflow-hidden">
                 <span className="relative block h-32 overflow-hidden">
-                  <Cover file={IDEAS.find((i) => i.title === t.cover)?.banner} width={640} priority={n < 3} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
+                  <Cover {...IDEAS.find((i) => i.title === t.cover)} sizes={TRIP_SIZES} priority={n < 3} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
                   <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" aria-hidden />
                   <span className="absolute inset-x-4 bottom-3 block truncate text-lg font-semibold text-white" translate="no">{t.name}</span>
                 </span>

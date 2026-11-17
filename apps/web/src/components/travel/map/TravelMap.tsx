@@ -3,23 +3,23 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import type { Map as MLMap, Marker } from 'maplibre-gl';
+import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Camera, ChevronUp, Compass, Footprints, Layers, LocateFixed, Minus, Plus, ScanEye, Search, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BookOpen, Box, Camera, ChevronUp, Compass, Footprints, Layers, LocateFixed, Minus, Plus, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
-import { CATEGORIES, classesOf, kindOf, listingKind, sameOnce, streetPhotoOf, walkFrom, type CategoryId, type MapPlace } from '@/lib/travel-map';
+import { bubbleAt, CATEGORIES, classesOf, kindOf, listingKind, routeOf, routeUrl, sameOnce, streetPhotoOf, walkFrom, walkInGoogle, withLegs, type CategoryId, type MapPlace } from '@/lib/travel-map';
 import { osmKey, type Photo, type Story } from '@/lib/travel-place';
 import { clockText, localClock, sunTimes, zoneAt } from '@/lib/travel-local';
 import { km } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
-import { addLayers, applyLook, meArea, points, rings, setData, showClasses, skyFor, sunlight, STYLE } from './map-layers';
+import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showClasses, skyFor, sunlight, STYLE } from './map-layers';
 import { PlaceCard, type Picked } from './PlaceCard';
-import { addPins, drawPins, PINS, PinSource, type PinImages } from './pins';
+import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { TripPicker } from './TripPicker';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
@@ -37,9 +37,10 @@ import { TripPicker } from './TripPicker';
 // from its free source to the browser; the Worker does nothing more.
 
 type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: number; e: number };
-type Walk = ReturnType<typeof walkFrom>;
+/** M233: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
+type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
 const KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 38.7139, lon: -9.1394, zoom: 14 };
-const SHOW = { photos: false, stories: true, reviews: true, d3: true, satellite: false, transit: false, street: false, rings: false };
+const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false };
 type Show = typeof SHOW;
 /** The layers chosen last time on this device. */
 function shownBefore(): Show {
@@ -49,7 +50,10 @@ function shownBefore(): Show {
 const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const metres = (d: number) => (d < 1 ? `${Math.round(d * 100) * 10} m` : `${d.toFixed(1)} km`);
-const ctl = 'flex h-10 w-10 items-center justify-center rounded-xl bg-[var(--card-bg)] text-zinc-800 shadow-md ring-1 ring-black/5 transition-transform duration-150 active:scale-95 dark:text-zinc-100 dark:ring-white/10';
+// M233: the map's buttons grouped in rounded capsules, as Apple Maps does (zoom in one, the rest in another).
+const group = 'flex overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10';
+const round = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-200 active:scale-95 dark:bg-white/[0.08] dark:text-white dark:hover:bg-white/[0.14]';
+const ctl = 'flex h-11 w-11 items-center justify-center text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-100 active:scale-95 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
 
 /** Where to open: ?at=lat,lon,zoom, else the last view on this device, else Lisbon. */
 function startAt(at: string | null) {
@@ -64,10 +68,15 @@ function drawPicked(m: MLMap, p: Picked | null) {
   setData(m, 'uv-sel', points(at2 ? [{ lat: at2.lat, lon: at2.lon, props: {} }] : []));
 }
 function drawWalk(m: MLMap, w: Walk | null) {
-  const c = m.getCenter();
-  setData(m, 'uv-walk', !w ? points([]) : { type: 'FeatureCollection', features: [
-    { type: 'Feature', geometry: { type: 'LineString', coordinates: [[c.lng, c.lat], ...w.stops.map((s) => [s.lon, s.lat])] }, properties: {} },
-    ...w.stops.map((s, i) => ({ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] }, properties: { n: String(i + 1) } })),
+  if (!w) { setData(m, 'uv-walk', points([])); return; }
+  const path = w.path ?? [[w.start.lon, w.start.lat] as [number, number], ...w.stops.map((s) => [s.lon, s.lat] as [number, number])];
+  setData(m, 'uv-walk', { type: 'FeatureCollection', features: [
+    // Along the streets when the router answered (exact), else straight from stop to stop (dashed).
+    { type: 'Feature', geometry: { type: 'LineString', coordinates: path }, properties: { exact: !!w.path } },
+    { type: 'Feature', geometry: { type: 'Point', coordinates: [w.start.lon, w.start.lat] }, properties: { role: 'start' } },
+    ...w.stops.map((s, i) => ({ type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] }, properties: { role: 'stop', n: String(i + 1), name: s.name, order: i + 1 } })),
+    // The whole walk's walking minutes in one bubble on its longest stretch, as Apple Maps shows a route (M233).
+    { type: 'Feature', geometry: { type: 'Point', coordinates: bubbleAt(path, [w.start, ...w.stops]) }, properties: { role: 'time', label: `${w.stops.reduce((t, s) => t + s.walk, 0)} min` } },
   ] });
 }
 function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, number, number] | null }) {
@@ -88,10 +97,12 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   const [list, setList] = useState<MapPlace[]>([]);
   const [walk, setWalk] = useState<Walk | null>(null);
   const [walkFor, setWalkFor] = useState(180);
+  const routeAbort = useRef<AbortController | null>(null);
+  const walking = !!walk;
   const [shift, setShift] = useState(0); // half hours from now
   const [bearing, setBearing] = useState(0);
   const [open, setOpen] = useState(false); // the panel on a phone
-  const applied = useRef<string | null>(null); // the style the map has
+  const applied = useRef<StyleSpecification | null>(null); // the design the map has
 
   // Data for what's in view (rounded, so small moves reuse the answer).
   const near = view && view.zoom >= 12 ? `lat=${view.lat.toFixed(2)}&lon=${view.lon.toFixed(2)}&r=${Math.min(10_000, Math.round((km({ lat: view.s, lon: view.w }, { lat: view.n, lon: view.e }) ?? 4) * 500 / 100) * 100)}` : null;
@@ -127,12 +138,13 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   const onStyle = useEffectEvent((m: MLMap) => {
     addPins(m, pins.current);
     addLayers(m, dark);
-    showClasses(m, classesOf(cat), `uv-pin-${cat}`);
+    showClasses(m, classesOf(cat), `uv-pin-${cat}`, labelColor(cat, dark));
     setData(m, 'uv-stories', points(storyList.map((st, i) => ({ lat: st.lat, lon: st.lon, props: { i } }))));
     setData(m, 'uv-reviews', reviewFc);
     drawWalk(m, walk);
     drawPicked(m, picked);
     applyLook(m, show);
+    focusWalk(m, !!walk, true);
     if (me.current) setData(m, 'uv-me', me.current);
     setReady(true);
   });
@@ -162,7 +174,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
       const { start: s, style } = firstView();
       applied.current = style;
       map = new ml.Map({
-        container: box.current, style, center: [s.lon, s.lat], zoom: s.zoom, pitch: s.zoom >= 15 ? 50 : 0, maxPitch: 75,
+        container: box.current, style, center: [s.lon, s.lat], zoom: s.zoom, pitch: 0, maxPitch: 75,
         attributionControl: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), fadeDuration: 150, maplibreLogo: false,
       });
       mapRef.current = map;
@@ -192,12 +204,14 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
     if (m && ready && applied.current !== style) { applied.current = style; m.setStyle(style); }
   }, [dark, ready]);
   // The kind of place chosen.
-  useEffect(() => { const m = mapRef.current; if (m && ready) { showClasses(m, classesOf(cat), `uv-pin-${cat}`); readList(m); } }, [cat, ready]);
+  useEffect(() => { const m = mapRef.current; if (m && ready) { showClasses(m, classesOf(cat), `uv-pin-${cat}`, labelColor(cat, dark)); readList(m); } }, [cat, ready, dark]);
   // Where the sun is, for the hour chosen, lights the buildings.
   useEffect(() => { const m = mapRef.current; if (m && ready && view) skyFor(m, sunlight(m, view.lat, view.lon, when).altitude, dark); }, [ready, view, when, dark]);
   // Wikipedia's stories and UniVerse's reviews on the map.
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-stories', points(storyList.map((st, i) => ({ lat: st.lat, lon: st.lon, props: { i } })))); }, [storyList, ready]);
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-reviews', reviewFc); }, [reviewFc, ready]);
+  // The walk on the map, and everything else stepping back while it is shown (M233).
+  useEffect(() => { const m = mapRef.current; if (m && ready) { drawWalk(m, walk); focusWalk(m, !!walk); } }, [walk, ready]);
   // Photos people took here: small round pictures (at most 30).
   useEffect(() => {
     const m = mapRef.current;
@@ -221,8 +235,9 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
   useEffect(() => {
     const m = mapRef.current;
     try { localStorage.setItem(LOOK, JSON.stringify(show)); } catch { /* private mode */ }
-    if (m && ready) applyLook(m, show);
-  }, [show, ready]);
+    // After the layers, the walk's focus again: the 3D switch would otherwise bring buildings over the walk (M233).
+    if (m && ready) { applyLook(m, show); focusWalk(m, walking); }
+  }, [show, ready, walking]);
   // 3D: tilt when turned on or off.
   useEffect(() => {
     const m = mapRef.current;
@@ -284,12 +299,28 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
     }
     const w = walkFrom({ lat: c.lat, lon: c.lng }, sights, walkFor);
     if (!w.stops.length) { toast('No sights within a walk of here: move the map or zoom in.'); return; }
-    setWalk(w); setPicked(null); setOpen(true);
-    drawWalk(m, w);
+    const start = { lat: c.lat, lon: c.lng };
+    setWalk({ ...w, start, path: null, routing: true }); setPicked(null); setOpen(true);
+    // The path along the streets and the true walking minutes, from the walking router (straight lines until then, or if it fails).
+    routeAbort.current?.abort();
+    const ask = new AbortController(); routeAbort.current = ask;
+    fetch(routeUrl(start, w.stops), { signal: ask.signal })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((answer) => { const r = routeOf(answer, w.stops.length); setWalk((now) => (now && now.start === start ? (r ? { ...withLegs(now, r.legs), path: r.path, routing: false } : { ...now, routing: false }) : now)); })
+      .catch(() => { if (!ask.signal.aborted) setWalk((now) => (now && now.start === start ? { ...now, routing: false } : now)); });
     const lons = [c.lng, ...w.stops.map((s) => s.lon)], lats = [c.lat, ...w.stops.map((s) => s.lat)];
-    m.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding: { top: 120, bottom: 120, left: window.innerWidth >= 640 ? 420 : 40, right: 80 }, maxZoom: 16.5, duration: calm() ? 0 : 1200 });
+    m.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { pitch: 0, bearing: 0, padding: { top: 120, bottom: 120, left: window.innerWidth >= 640 ? 420 : 40, right: 80 }, maxZoom: 16.5, duration: calm() ? 0 : 1200 });
   };
-  const endWalk = () => { setWalk(null); if (mapRef.current) drawWalk(mapRef.current, null); };
+  const endWalk = () => { routeAbort.current?.abort(); setWalk(null); };
+  /** The walk to someone else (or another app): the phone's share sheet, else its directions link copied. */
+  const shareWalk = async () => {
+    if (!walk) return;
+    const url = walkInGoogle(walk.start, walk.stops), title = `A ${Math.round(walk.total / 6) / 10} h walk: ${walk.stops.map((x) => x.name).join(', ')}`;
+    try {
+      if (navigator.share) await navigator.share({ title, url });
+      else { await navigator.clipboard.writeText(url); toast.success('Link to the walk copied'); }
+    } catch { /* closed the share sheet */ }
+  };
   const toggle = (k: keyof Show) => setShow((s) => ({ ...s, [k]: !s[k] }));
   const shown = filter.trim() ? list.filter((p) => fold(p.name).includes(fold(filter.trim()))) : list;
 
@@ -322,12 +353,16 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
 
       {/* Controls. */}
       {/* A row under the kinds of place on a phone (pinch to zoom there), a column on the right on a computer. */}
-      <div className="absolute end-3 top-[6.9rem] z-20 flex flex-row gap-2 sm:top-3 sm:flex-col">
-        <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
-        <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
-        <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass className="h-5 w-5 transition-transform" style={{ transform: `rotate(${-bearing - 45}deg)` }} aria-hidden /></button>
-        <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
-        <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white ring-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
+      <div className="absolute end-3 top-[6.9rem] z-20 flex flex-row items-start gap-2 sm:top-3 sm:flex-col">
+        <div className={cn(group, 'hidden flex-col divide-y divide-zinc-200 sm:flex dark:divide-white/10')}>
+          <button type="button" className={ctl} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={ctl} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
+        </div>
+        <div className={cn(group, 'flex-row divide-x divide-zinc-200 sm:flex-col sm:divide-x-0 sm:divide-y dark:divide-white/10')}>
+          <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass className="h-5 w-5 transition-transform" style={{ transform: `rotate(${-bearing - 45}deg)` }} aria-hidden /></button>
+          <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
+        </div>
       </div>
       {layers && (
         <div id="map-layers" role="dialog" aria-label="Map layers" onKeyDown={(e) => { if (e.key === 'Escape') setLayers(false); }}
@@ -367,9 +402,20 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
         <div className={cn('min-h-0 flex-1 flex-col p-3', open ? 'flex' : 'hidden sm:flex')}>
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} /> : (
             <>
+              {walk ? (
+                // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.
+                <div className="mb-3 flex items-center gap-2">
+                  <button type="button" onClick={() => void shareWalk()} className={round} aria-label="Share this walk"><Share className="h-[18px] w-[18px]" aria-hidden /></button>
+                  <div className="min-w-0 flex-1 text-center">
+                    <h3 className="truncate text-[17px] font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
+                    <span className="mt-0.5 inline-block rounded-full bg-[#1f87ff]/[0.12] px-2.5 py-0.5 text-xs font-semibold text-[#0b55c4] dark:bg-[#1f87ff]/20 dark:text-[#8cc0ff]">{walk.stops.length} stops · {walk.km} km on foot</span>
+                  </div>
+                  <button type="button" onClick={endWalk} className={round} aria-label="End walk"><X className="h-5 w-5" aria-hidden /></button>
+                </div>
+              ) : (
               <div className="mb-2 flex items-center justify-between gap-2">
                 <h3 className="font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
-                {walk ? <button type="button" onClick={endWalk} className="btn-ghost btn-sm inline-flex items-center gap-1"><X className="h-4 w-4" aria-hidden />End</button> : (
+                {(
                   <span className="flex items-center gap-1">
                     <label className="sr-only" htmlFor="walk-for">How long a walk</label>
                     <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-lg border border-zinc-200 bg-white px-1.5 py-1 text-xs font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
@@ -379,6 +425,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
                   </span>
                 )}
               </div>
+              )}
               {!walk && list.length > 6 && (
                 <label className="relative mb-2 block">
                   <span className="sr-only">Filter these places</span>
@@ -409,6 +456,8 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
               {walk && (
                 <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-zinc-200/70 pt-2 text-xs text-zinc-600 dark:border-white/10 dark:text-zinc-300">
                   <span>{walk.stops.length} stops · {walk.km} km on foot · back by {clockText(zone, new Date(when.getTime() + walk.total * 60_000))}</span>
+                  {!walk.path && <span className="w-full text-zinc-500 dark:text-zinc-400" role="status">{walk.routing ? 'Finding the way along the streets…' : 'Straight lines between stops: the street route couldn’t load.'}</span>}
+                  <a href={walkInGoogle(walk.start, walk.stops)} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm inline-flex items-center gap-1"><Footprints className="h-4 w-4" aria-hidden />Directions in Google Maps</a>
                   <TripPicker items={walk.stops.map((s) => ({ name: s.name, kind: listingKind(s.cls), lat: s.lat, lon: s.lon }))} city={null} cc={null} />
                 </div>
               )}
@@ -416,7 +465,7 @@ export default function TravelMap({ at, place }: { at: string | null; place: str
           )}
         </div>
         <p className="border-t border-zinc-200/70 px-3 py-1.5 text-[11px] leading-snug text-zinc-500 dark:border-white/10 dark:text-zinc-400">
-          Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}
+          Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
         </p>
       </aside>
     </div>

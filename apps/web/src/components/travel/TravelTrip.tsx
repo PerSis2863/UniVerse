@@ -71,7 +71,7 @@ export function TravelTrip() {
     await mutate();
   };
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
-  const total = tripDays(stops), banner = IDEAS.find((i) => i.title === stops[0]?.guide)?.banner;
+  const total = tripDays(stops), cover = IDEAS.find((i) => i.title === stops[0]?.guide);
   const when = range(dates[0]?.from ?? null, dates[dates.length - 1]?.to ?? null);
   const invite = typeof window !== 'undefined' ? `${location.origin}/travel/saved?join=${data.code}` : '';
 
@@ -112,7 +112,7 @@ export function TravelTrip() {
     <div className="space-y-6">
       {/* The trip: its name, when, the cities and who's planning it. */}
       <section className="relative isolate flex min-h-[14rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 pt-16 sm:p-8 sm:pt-16">
-        <Cover file={banner} width={1600} priority className="-z-10" />
+        <Cover {...cover} sizes="100vw" priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/40 to-black/10" aria-hidden />
         <Link href="/travel/saved" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />Trips</Link>
         <label className="sr-only" htmlFor="trip-name">Trip name</label>

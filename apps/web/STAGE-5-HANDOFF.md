@@ -7997,3 +7997,92 @@ browser: no Worker CPU added. The rules are in AGENTS.md §8 ("No double animati
   tinypool, zod in eslint's plugin): nothing in the live site.
 - **Rule:** no animation on what the motion layer animates; bars `<Fill>`; loops CSS on transform / opacity; one press
   per button; no glass over the moving scene.
+
+## M232: sharp photos in Travel, and 70 more places (16 Nov)
+
+(Built as M228 on `claude/great-hamilton-8g8xdm` while another session used M228–M231; renumbered M232 when
+merged, with that branch's map work M229 → M233. Their commits keep the old numbers.)
+
+The owner, with a screenshot of Explore: "can you add high quality pictures here because this is look bad and also do
+this for other area also if you could"; then "please add more destinations in there".
+
+- **Why it looked bad:** the cards showed each guide's Wikivoyage *banner*, a 2100×300 strip (7:1), asked at 720 px
+  wide and blown up into a 2:1 card: a blurry slice.
+- **A real photo per place:** `npx tsx scripts/gen-travel-data.mts --photos` stores `photo` (a Commons file) in
+  `travel-places.json`: the place's Wikidata main image (P18), else its Wikipedia article's, else Wikivoyage's own page
+  image, when `photoOk` (`src/lib/travel-guide.ts`) agrees: a bitmap photo, ≥1600 px wide, ratio 1.2–2.6, and no map,
+  flag, locator, collage, satellite or banner in its name. `null` means looked for and none found. Every chosen photo
+  was looked at on contact sheets; bad ones (maps, satellite views, dull or wrong shots) are replaced by hand with the
+  **7th column** of a `travel-ideas.ts` row (`undefined` in the 6th keeps the guide's banner; `''` means no photo).
+- **Trap:** from cloud machines Wikimedia's action API (`/w/api.php`) answers 429. The script uses only the REST
+  endpoints (`/api/rest_v1/page/summary`, `/w/rest.php/v1/file`), `Special:EntityData`, one request at a time with a
+  pause; no SPARQL, no proxies. Thumbnails only come at Wikimedia's standard widths (`PHOTO_STEPS`: 500, 960, 1280, 1920).
+- **Shown sharp:** `Cover` (`travel-ui.tsx`) takes `photo`, `banner` and `sizes` and draws a plain `<img>` through
+  `Photo` (`components/ui`, which now takes a `srcSet` for pictures kept elsewhere) with `commonsSrcSet`: the browser
+  picks the width for the card and the screen; lazy below the fold, `fetchPriority="high"` for the first cards. If the
+  photo fails it falls back to the banner, then the gradient. Explore, Find where to go, Trips, the guide and the trip
+  header all use it (`CARD_SIZES`, or `100vw` for headers).
+- **Any other place's guide:** `photoFor` in `src/server/travel.ts` looks up the Wikidata / Wikivoyage photo once a
+  month (`photo1:` in the travel cache, 3–4 small requests on the first visit) and returns `guide.photo`; Explore's own
+  places use their row's photo.
+- **Other areas:** the map's place card (`PlaceCard.tsx`) showed Wikipedia story pictures fetched at 320 px and
+  Commons photos at 400 px across a 24 rem card; they now come in the same widths (`commonsFileOf` finds the file
+  behind a thumbnail address). Checked and left: the landing (drawn scenes, no photos), the hub, Green's proof photos
+  and other uploads (shown small, or already in several widths through `Photo`), the map's round photo markers and the
+  search's 40 px thumbnails.
+- **70 more places** (145 → 215: e.g. Lyon, Cinque Terre, Dolomites, San Sebastián, Bergen, Faroe Islands, Nara,
+  Bhutan, Wadi Rum, Namibia, Madagascar, Boston, Yellowstone, Iguazu Falls, Uyuni, Milford Sound). `--places` now reads
+  only places not read yet or without a climate (`--all` for everything). The Faroe Islands' price level is a guess
+  (1.3, DKK) in `travel-money.json` and the script.
+- **Finished after the first pass (the owner: "please work on this and whatever is left"):** all 215 places have a
+  climate (NASA POWER for the 30 new ones whose guides have none; in a cloud session run the script with
+  `NODE_USE_ENV_PROXY=1`, or Node's fetch can't resolve the host); Lake Como borrows Milan's guide climate
+  (`CLIMATE_LIKE`: NASA's grid averaged the lake with the Alps, 2 °C January highs). Every chosen photo has now been
+  looked at (Commons' REST search, `/w/rest.php/v1/search/page`, finds files when the action API won't answer);
+  Tunis (Sidi Bou Said), Uyuni (the salt flat), Puerto Vallarta (its crowned church), Hokkaido (Shiretoko's lakes) and
+  Hanoi (the Huc Bridge) got hand-picked photos; no place shows a banner any more.
+- **Also:** a guide's header on a phone left its text running under the "← Explore" button (a long first paragraph):
+  it has room at the top now (`pt-16`, as the trip's header).
+- **Checked:** `scripts/checks/travel-photos-ui.mjs` (Explore, Find, Trips, the Kyoto and Ghent guides at 1280 and 390
+  at 2x, light and dark: photos not banners, the width picked covers the pixels shown, cards below the fold lazy, axe,
+  no sideways scroll). Cloud sessions can't load Wikimedia's pictures (429), so there run it with `STAND_IN=1`: the
+  photo requests are answered with labelled stand-ins of the asked width. Unit tests for `photoOk`, `commonsFileOf`,
+  `commonsSrcSet`; `pnpm check`.
+## M233: Travel's map in Apple Maps' look, and walks you can follow (16 Nov)
+
+The owner, on a walk in Travel → Map: "i cant understand the path and see the things clearly in the map please
+fix it properly"; then, showing Apple Maps' directions: "make it like the 2nd photo… make the whole map design
+like this for the other things also… this is not how apple map looks like so please do it properly".
+
+- **The walk along real streets.** `routeUrl` / `routeOf` / `withLegs` (`src/lib/travel-map.ts`, tested): the
+  browser asks FOSSGIS's free OSRM walking router (`routing.openstreetmap.de/routed-foot/…/driving/…`, no
+  account; credited in the map's footer while a walk shows; added to `connect-src` in `security-headers.ts`)
+  once per walk; its legs replace the estimated minutes and km. Without an answer the walk stays straight and
+  dashed, and the card says so. A walk keeps its `start` (it used to follow the map's middle when dragged).
+- **The walk's look** (`map-layers.ts`): one blue line with a darker edge (`ROUTE`), a blue start dot, numbered
+  blue stops with their names, the walking minutes in one bubble just above its longest stretch (`bubbleAt`;
+  a stretchable `uv-bubble` image). While a walk shows, `focusWalk` fades the other pins and their names and
+  hides the 3D buildings: with the hills on, buildings draw after the flat map and covered the line even
+  laid flat (tried first). The view goes flat (pitch 0, north up). **Tried and dropped:** arrows along the
+  line (they read as breaks) and a bubble per stretch (crowded on phones).
+- **The walk's card:** Apple's header (round Share, the walk with a blue summary pill, round close "End walk");
+  Share uses the phone's share sheet or copies the walk's Google Maps link; "Directions in Google Maps"
+  (`walkInGoogle`, up to nine stops between start and end).
+- **The map design** (`src/components/travel/map/map-style.ts`): Travel's own style in place of OpenFreeMap's
+  liberty and dark, on the same tiles (`tiles.openfreemap.org/planet`, OpenMapTiles schema) and fonts (Noto
+  Sans Regular, Bold, Italic): cream land, green parks, blue water, white streets in light; blue-slate land,
+  deep green parks, blue water, slate streets in dark (Apple Maps' tones); street names in small spaced
+  capitals, district names in spaced bold capitals. No sprite: every icon is ours. `STYLE` is now the two
+  style objects (so `applied` refs hold objects). The first symbol layer (street names) is Regular, which
+  `fontOf` hands to our labels; `bold` swaps Regular for Bold. Green's places map and Relief's alerts map use
+  the same `STYLE`, so they changed too.
+- **Pins:** names beside the pin, bold, in the pin's colour (`labelColor`, lighter on the dark map). The map's
+  buttons in two rounded capsules (zoom; north, where I am, layers). The 3D switch is off by default and the
+  map opens flat, as Apple's does (a choice already kept on the device stays).
+- **The world maps** (`WorldCanvas.tsx` `PAL`: Trace, Relief, Green, the landing, World Pin): blue sea and
+  cream land in light, navy sea and slate land in dark, the same tones.
+- **Checked** on a made-up neighbourhood (this machine can't reach OpenFreeMap or the router): vector tiles
+  built with geojson-vt and vt-pbf in the scratchpad, served by Playwright in place of OpenFreeMap's, the
+  router's real answer format imitated along the streets (and refused, for the straight fallback): computer
+  and phone, light and dark, no page errors, axe clean on the walk card. **Not seen yet on the real map:**
+  look at Travel → Map in a city once it is live (colours on real parks, rivers and buildings).

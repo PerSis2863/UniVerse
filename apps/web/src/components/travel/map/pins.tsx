@@ -23,6 +23,12 @@ export const PINS: Record<CategoryId | 'story' | 'review', { icon: LucideIcon; c
   review: { icon: Star, color: '#047857' },
 };
 export type PinId = keyof typeof PINS;
+/** A pin's name colour beside it on the map (M233, as Apple Maps does): its own colour, lighter on the dark map. */
+export function labelColor(id: PinId, dark: boolean): string {
+  const hex = PINS[id].color, mix = dark ? 0.4 : 0;
+  const ch = (i: number) => Math.round(parseInt(hex.slice(i, i + 2), 16) * (1 - mix) + 255 * mix).toString(16).padStart(2, '0');
+  return `#${ch(1)}${ch(3)}${ch(5)}`;
+}
 export type PinImages = Map<string, ImageData>;
 
 /** The icons as hidden SVGs, to draw the pins from. */

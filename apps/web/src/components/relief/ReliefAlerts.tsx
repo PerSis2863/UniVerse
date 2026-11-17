@@ -3,7 +3,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import type { GeoJSONSource, Map as MLMap } from 'maplibre-gl';
+import type { GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Activity, CloudLightning, Droplets, ExternalLink, Flame, LocateFixed, Mountain, Sun, type LucideIcon } from 'lucide-react';
@@ -24,7 +24,7 @@ const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-red
 
 export default function ReliefAlerts() {
   const { data } = useSWR<{ alerts: Alert[]; credit: string }>('/relief/alerts', fetcher, { revalidateOnFocus: false });
-  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<string | null>(null);
+  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
   const dark = useDarkMode();
   const [ready, setReady] = useState(false), [kinds, setKinds] = useState<Set<AlertKind>>(new Set(Object.keys(ALERT_KINDS) as AlertKind[]));
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null), [picked, setPicked] = useState<string | null>(null);

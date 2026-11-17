@@ -18,7 +18,9 @@ export interface Listing {
 }
 export interface GuideSection { part: GuidePart; title: string; text: string[]; listings: Listing[] }
 export interface Guide {
-  title: string; summary: string[]; banner?: string; lat?: number; lon?: number; parent?: string;
+  title: string; summary: string[]; banner?: string;
+  /** M232: a real photo of the place (a Commons file), added by the server; the banner when there's none. */
+  photo?: string; lat?: number; lon?: number; parent?: string;
   sections: GuideSection[];
   /** A big city's districts, or a country's or region's cities and places: each its own guide. */
   places: { title: string; name: string; text?: string }[];
@@ -185,3 +187,24 @@ export function readGuide(title: string, wiki: string): Guide {
 export const wikivoyageUrl = (title: string) => `https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}`;
 /** A Commons file's picture at a width (the banner, a place's photo). */
 export const commonsImage = (file: string, width = 1280) => `https://commons.wikimedia.org/wiki/Special:FilePath/${encodeURIComponent(file.replace(/ /g, '_'))}?width=${width}`;
+
+/** Wikimedia's standard thumbnail widths (other widths are slower or refused), for a picture's srcSet (M232). */
+export const PHOTO_STEPS = [500, 960, 1280, 1920] as const;
+export const commonsSrcSet = (file: string) => PHOTO_STEPS.map((w) => `${commonsImage(file, w)} ${w}w`).join(', ');
+
+/** M232: the Commons file behind a Wikimedia thumbnail's address (".../commons/thumb/a/ab/F.jpg/320px-F.jpg"),
+ *  so it can be shown at the width it needs; null for anything else (a Wikipedia-only file, another host). */
+export function commonsFileOf(url: string | null | undefined): string | null {
+  const m = url && /^https:\/\/upload\.wikimedia\.org\/wikipedia\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?]+)/.exec(url);
+  if (!m) return null;
+  try { return decodeURIComponent(m[1]).replace(/_/g, ' '); } catch { return null; }
+}
+
+/** M232: whether a Commons file can be a place's cover photo: a photo (not a drawing, map, flag, locator or
+ *  collage), at least 1600 px wide and landscape enough for a wide card (Wikivoyage's banners are 7:1 strips). */
+export function photoOk(file: string, width: number, height: number, mediatype = 'BITMAP'): boolean {
+  if (mediatype !== 'BITMAP' || !/\.(jpe?g|png|webp|tiff?)$/i.test(file)) return false;
+  if (/\b(map|maps|karte|carte|mapa|flag|locator|location|montage|collage|mosaic|composite|collection|banner|logo|coat of arms|seal|emblem|diagram|plan|chart|sign|satellite|landsat|topography|projection|from space)\b/i.test(file.replace(/[_-]/g, ' '))) return false;
+  const ratio = width / height;
+  return width >= 1600 && ratio >= 1.2 && ratio <= 2.6;
+}
