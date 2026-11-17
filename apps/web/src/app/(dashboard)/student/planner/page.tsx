@@ -5,6 +5,7 @@ import { format, isToday, isTomorrow, parseISO } from 'date-fns';
 import { toast } from 'sonner';
 import { AlertCircle, BookOpen, CalendarDays, Clock, Loader2, RefreshCw, Sparkles, Target } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
+import { SectionTabs, HOME_TABS } from '@/components/layout/SectionTabs';
 import { DeadlineList, type DeadlineItem } from '@/components/progress/DeadlineList';
 import Link from '@/components/ui/Link';
 import { authedJson } from '@/lib/authed-fetch';
@@ -97,6 +98,7 @@ export default function StudyPlannerPage() {
   return (
     <>
       <Topbar title="Study planner" subtitle="A week of study built around what’s due" />
+      <SectionTabs tabs={HOME_TABS} />
       <div className="flex-1 p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl w-full mx-auto">
 
         {/* Plans a teacher made for me (early help) */}

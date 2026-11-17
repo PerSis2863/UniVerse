@@ -57,7 +57,6 @@ export const STUDENT_TUTOR_MODES: SectionTab[] = [
   { href: '/student/tutor', label: 'Type' },
   { href: '/student/voice-tutor', label: 'Talk' },
   { href: '/student/oral-practice', label: 'Oral practice' },
-  { href: '/student/tutoring', label: 'Peer time-bank' },
   { href: '/student/semester', label: 'My semester' },
 ];
 
@@ -289,6 +288,11 @@ export const TABS_BY_ROLE: Record<string, SectionTab[][]> = {
   ADMIN: [ADMIN_PEOPLE_TABS, SAFETY_TABS, ADMIN_COURSE_TABS, ADMIN_LEARN_TABS, ADMIN_FINANCE_TABS, MONITORING_TABS, PARTNER_TABS, IMPACT_REPORT_TABS, ADMIN_CREDENTIAL_TABS, ADMIN_INSIGHT_TABS, COLLAB_TABS],
 };
 
+/** The row of tabs a page belongs to for this role (its own tab or one it's `also` under), if any. */
+export function tabsFor(path: string, role: string | undefined): SectionTab[] | null {
+  return (role && TABS_BY_ROLE[role]?.find((g) => g.some((t) => t.href === path || t.also?.includes(path)))) || null;
+}
+
 /** The marketplace's tabs: the courses section of whoever is looking. */
 export function MarketplaceTabs() {
   const role = useAuthStore((st) => st.user?.role);
@@ -319,7 +323,7 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
   }, [role, here, group]); // eslint-disable-line react-hooks/exhaustive-deps
   if (shown.length < 2) return null;
   return (
-    <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', end && 'flex flex-wrap items-center gap-3')}>
+    <nav aria-label={label} data-steady className={cn(small ? 'px-4 sm:px-8 pt-3' : 'px-4 sm:px-8 pt-4', 'flex flex-wrap items-center gap-3')}>
       <div className={cn('ios-segmented', !small && 'large')} onPointerLeave={() => setHover(null)}>
         {shown.map((t) => {
           const on = pathname === t.href || !!t.also?.includes(pathname);
@@ -335,6 +339,8 @@ export function SectionTabs({ tabs, small, label = 'Sections', end }: { tabs: Se
         })}
       </div>
       {end}
+      {/* The page's own buttons, put here by Topbar (the bar across the top, and phones). */}
+      <div data-tabs-end className="ms-auto flex flex-wrap items-center gap-2 empty:hidden [&>*]:max-w-full" />
     </nav>
   );
 }

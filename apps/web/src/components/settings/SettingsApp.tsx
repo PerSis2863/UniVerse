@@ -354,7 +354,7 @@ function Profile({ role }: { role: Role }) {
         <FileDrop hint={false} accept="image/*" onFiles={(f) => pick(f[0], 'photo')} className="rounded-full shrink-0">
         <button type="button" onClick={() => file.current?.click()} title="Or drop a photo here" className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
           {me.avatar ? <Image src={me.avatar} alt="" fill unoptimized sizes="80px" className="object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
-          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
+          <span className="absolute inset-0 bg-black/25 pointer-fine:bg-black/40 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
         </button>
         </FileDrop>
         <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Profile photo" onChange={(e) => { pick(e.target.files?.[0], 'photo'); e.target.value = ''; }} />
