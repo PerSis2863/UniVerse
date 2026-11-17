@@ -75,7 +75,7 @@ export function TravelExplore() {
   const recent = (saved?.saved ?? []).slice(0, 6);
 
   const switcher = <TravelTabs />;
-  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} /></div>;
+  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} pin={sp.get('pin') === '1'} /></div>;
   if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (

@@ -64,7 +64,7 @@ export function CourseAnalyticsBoard({ base }: { base: string }) {
   }
 
   return (
-    <div className="p-4 md:p-8 max-w-6xl mx-auto space-y-5 min-w-0 w-full">
+    <div className="p-4 md:p-8 max-w-[2000px] mx-auto space-y-5 min-w-0 w-full">
       <div className="flex flex-col sm:flex-row sm:items-center gap-3">
         <label className="flex-1 min-w-0">
           <span className="sr-only">Course</span>

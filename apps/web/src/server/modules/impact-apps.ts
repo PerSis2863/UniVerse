@@ -13,8 +13,12 @@ import { declareIncident, endIncident, markSafe, reliefContacts, reliefIncidents
 import { reliefSmsOn } from '../relief-sms';
 import { aidFollowing, aidPublic, createAid, followAid, orgAid, stepAid } from '../relief-aid';
 import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSearch, travelVisa, travelWeather } from '../travel';
-import { addTripExpense, addTripPacking, removeTripExpense, removeTripPacking, tripExpenses, tripPacking, updateTripPacking } from '../travel-trip-extras';
-import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } from '../travel-trip-polls';
+import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
+import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
+import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
+import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
+import { addTravelItem, addTravelStop, createTravelTrip, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
@@ -127,13 +131,38 @@ export default function impactAppsModule(router: Router) {
   travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
   travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));
   travel.delete<{ id: string; expenseId: string }>('trips/:id/expenses/:expenseId', ({ user, params }) => removeTripExpense(user, params.id, params.expenseId));
+  // M254: the before-you-go checklist.
+  travel.get<{ id: string }>('trips/:id/todos', ({ user, params }) => tripTodos(user, params.id));
+  travel.post<{ id: string }>('trips/:id/todos', ({ user, params, body }) => addTripTodos(user, params.id, body ?? {}));
+  travel.patch<{ id: string; todoId: string }>('trips/:id/todos/:todoId', ({ user, params, body }) => updateTripTodo(user, params.id, params.todoId, body ?? {}));
+  travel.delete<{ id: string; todoId: string }>('trips/:id/todos/:todoId', ({ user, params }) => removeTripTodo(user, params.id, params.todoId));
   travel.get<{ id: string }>('trips/:id/packing', ({ user, params }) => tripPacking(user, params.id));
   travel.post<{ id: string }>('trips/:id/packing', ({ user, params, body }) => addTripPacking(user, params.id, body ?? {}));
   travel.patch<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params, body }) => updateTripPacking(user, params.id, params.itemId, body ?? {}));
   travel.delete<{ id: string; itemId: string }>('trips/:id/packing/:itemId', ({ user, params }) => removeTripPacking(user, params.id, params.itemId));
+  // M242 (src/server/travel-trip-journal.ts): the trip's journal.
+  travel.get<{ id: string }>('trips/:id/journal', ({ user, params }) => tripJournal(user, params.id));
+  travel.post<{ id: string }>('trips/:id/journal', ({ user, params, body }) => addJournalEntry(user, params.id, body ?? {}));
+  travel.patch<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params, body }) => updateJournalEntry(user, params.id, params.entryId, body ?? {}));
+  travel.delete<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params }) => removeJournalEntry(user, params.id, params.entryId));
+  // M243 (src/server/travel-trip-polls.ts): the trip's group polls.
+  travel.get<{ id: string }>('trips/:id/polls', ({ user, params }) => tripPolls(user, params.id));
+  travel.post<{ id: string }>('trips/:id/polls', ({ user, params, body }) => addTripPoll(user, params.id, body ?? {}));
+  travel.post<{ id: string; pollId: string }>('trips/:id/polls/:pollId/vote', ({ user, params, body }) => voteTripPoll(user, params.id, params.pollId, body ?? {}));
+  travel.patch<{ id: string; pollId: string }>('trips/:id/polls/:pollId', ({ user, params, body }) => updateTripPoll(user, params.id, params.pollId, body ?? {}));
+  travel.delete<{ id: string; pollId: string }>('trips/:id/polls/:pollId', ({ user, params }) => removeTripPoll(user, params.id, params.pollId));
+  // M248 (src/server/travel-trip-share.ts): the family link and "I'm safe".
+  travel.get<{ id: string }>('trips/:id/share', ({ user, params }) => tripShare(user, params.id));
+  travel.post<{ id: string }>('trips/:id/share', ({ user, params }) => shareTrip(user, params.id));
+  travel.delete<{ id: string }>('trips/:id/share', ({ user, params }) => unshareTrip(user, params.id));
+  travel.post<{ id: string }>('trips/:id/safe', ({ user, params, body }) => checkInSafe(user, params.id, body ?? {}));
+  travel.get<{ code: string }>('shared/:code', { public: true }, ({ params }) => sharedTrip(params.code));
   travel.get<{ id: string }>('trips/:id', ({ user, params }) => travelTrip(user, params.id));
   travel.patch<{ id: string }>('trips/:id', ({ user, params, body }) => updateTravelTrip(user, params.id, body ?? {}));
   travel.delete<{ id: string }>('trips/:id', ({ user, params }) => deleteTravelTrip(user, params.id));
+  travel.patch<{ id: string }>('trips/:id/me', ({ user, params, body }) => setTripZone(user, params.id, body ?? {})); // M244
+  travel.post<{ id: string }>('trips/:id/chat', ({ user, params }) => tripChat(user, params.id)); // M258
+  travel.post<{ id: string }>('trips/:id/copy', ({ user, params, body }) => copyTravelTrip(user, params.id, body ?? {})); // M256
   travel.post<{ id: string }>('trips/:id/code', ({ user, params }) => newTravelTripCode(user, params.id));
   travel.delete<{ id: string; userId: string }>('trips/:id/members/:userId', ({ user, params }) => removeTravelTripMember(user, params.id, params.userId));
   travel.post<{ id: string }>('trips/:id/stops', ({ user, params, body }) => addTravelStop(user, params.id, body ?? {}));
@@ -144,6 +173,11 @@ export default function impactAppsModule(router: Router) {
   travel.post<{ id: string }>('trips/:id/items/move', ({ user, params, body }) => moveTravelItems(user, params.id, body ?? {}));
   travel.patch<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params, body }) => updateTravelItem(user, params.id, params.itemId, body ?? {}));
   travel.delete<{ id: string; itemId: string }>('trips/:id/items/:itemId', ({ user, params }) => removeTravelItem(user, params.id, params.itemId));
+  // M245 (src/server/travel-docs.ts): my documents and their reminders (only ever my own rows).
+  travel.get('docs', ({ user, query }) => travelDocs(user, query));
+  travel.post('docs', ({ user, body }) => addTravelDoc(user, body ?? {}));
+  travel.patch<{ id: string }>('docs/:id', ({ user, params, body }) => updateTravelDoc(user, params.id, body ?? {}));
+  travel.delete<{ id: string }>('docs/:id', ({ user, params }) => removeTravelDoc(user, params.id));
   // M207 (src/server/travel-board.ts): the travellers board, adults who opt in, by city and dates.
   travel.get('board', ({ user, query }) => travelBoard(user, query));
   travel.post('board', ({ user, body }) => joinTravelBoard(user, body ?? {}));

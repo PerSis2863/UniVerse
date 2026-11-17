@@ -1,17 +1,18 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { CURRENCIES, STYLES, STYLE_IDS, money, type Style } from '@/lib/travel-find';
-import { IDEAS } from '@/lib/travel-ideas';
+import { tripCover } from '@/lib/travel-ideas';
 import { betweenLinks, ferryLikely } from '@/lib/travel-book';
 import { bestOrder, leg, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
@@ -21,16 +22,47 @@ import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
 import { TripMoney } from './trip-money';
 import { TripPacking } from './trip-packing';
+import { TripTodos } from './trip-todos';
+import { TripToday } from './trip-today';
+import { tripToday } from '@/lib/travel-today';
+import { useNow } from '@/lib/use-now';
+import { inboxFor } from '@/lib/apps';
+import { useAuthStore } from '@/store/auth';
+import { TripJournal } from './trip-journal';
+import { TripPolls } from './trip-polls';
+import { TripOffline } from './trip-offline';
+import { TripJetLag } from './trip-jetlag';
+import { TripDocs } from './trip-docs';
+import { TripHolidays } from './trip-holidays';
+import { TripFootprint } from './trip-footprint';
+import { TripShare } from './trip-share';
+import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
 // and how to get between them, each city's days with places dragged into them, the whole trip's budget,
 // friends planning it together (an invite link; their changes arrive live) and a calendar file. M215: two
 // more parts beside the plan (?part=money|packing): shared costs and settling up, and a packing list.
 
-interface Member { id: string; name: string; avatar: string | null; owner: boolean }
+interface Member { id: string; name: string; avatar: string | null; owner: boolean; zone?: string | null }
 export interface TripAnswer {
   trip: { id: string; name: string; startDate: string | null; travellers: number; style: Style; currency: string; updatedAt: string };
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
+}
+// The parts that bring much code or data load only when opened.
+const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
+const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
+
+/** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
+const PARTS = [
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen },
+  { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Checklist', icon: Luggage },
+  { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck }, { value: 'share', label: 'Share', icon: HeartHandshake },
+] as const;
+type Part = (typeof PARTS)[number]['value'];
+/** Today's day number on the trip (in the first city's time), or null outside it. */
+function todayIndex(start: string | null, stops: TripAnswer['stops'], now: number) {
+  const t = tripToday(start, stops, [], new Date(now));
+  return t.state === 'during' ? stopDates(start, stops)[t.stop].offset + t.day : null;
 }
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 const range = (from: string | null, to: string | null) => {
@@ -40,12 +72,18 @@ const range = (from: string | null, to: string | null) => {
 };
 
 export function TravelTrip() {
-  const sp = useSearchParams(), id = sp.get('id') ?? '', part = sp.get('part') === 'money' ? 'money' : sp.get('part') === 'packing' ? 'packing' : 'plan';
+  const sp = useSearchParams(), id = sp.get('id') ?? '', part = PARTS.find((p) => p.value === sp.get('part'))?.value ?? 'plan';
   const router = useRouter();
   const key = id ? `/travel/trips/${id}` : null;
   const refreshInterval = useLiveInterval(30_000, 0);
-  const { data, error, mutate } = useSWR<TripAnswer>(key, fetcher, { refreshInterval, revalidateOnFocus: true });
+  const { data: live, error, mutate } = useSWR<TripAnswer>(key, fetcher, { refreshInterval, revalidateOnFocus: true });
+  // M240: with no signal, the copy saved for offline (if any) stands in, read-only in effect.
+  const [saved, setSaved] = useState<{ trip: TripAnswer; at: string } | null>(null);
+  useEffect(() => { if (error && id) void readPack<TripAnswer>(id).then((p) => setSaved(p ? { trip: p.trip, at: p.savedAt } : null)); }, [error, id]);
+  const data = live ?? (error ? saved?.trip : undefined), offline = !live && !!data;
   const [chosen, setChosen] = useState<string | null>(null);
+  const now = useNow();
+  const role = useAuthStore((s) => s.user?.role);
   const [adding, setAdding] = useState(false);
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
@@ -53,7 +91,7 @@ export function TravelTrip() {
   const dates = useMemo(() => stopDates(t?.startDate ?? null, stops), [t, stops]);
   const budget = useMemo(() => (t && stops.length ? tripBudget(t, stops, data!.items) : null), [t, stops, data]);
 
-  if (error) return (
+  if (error && !data) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
       <Route className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">{(error as Error).message || 'That trip didn’t open.'}</p>
@@ -71,7 +109,7 @@ export function TravelTrip() {
     await mutate();
   };
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
-  const total = tripDays(stops), cover = IDEAS.find((i) => i.title === stops[0]?.guide);
+  const total = tripDays(stops), cover = tripCover({ name: t.name, cover: stops[0]?.guide, places: stops.map((x) => x.guide) });
   const when = range(dates[0]?.from ?? null, dates[dates.length - 1]?.to ?? null);
   const invite = typeof window !== 'undefined' ? `${location.origin}/travel/saved?join=${data.code}` : '';
 
@@ -103,6 +141,21 @@ export function TravelTrip() {
       toast.success('Invite link copied: send it to the friends you’re travelling with.');
     } catch { /* closed the share sheet */ }
   };
+  /** M258: the trip's group chat in Messages (made the first time). */
+  const chat = async () => {
+    try {
+      const { data: r } = await api.post<{ conversationId: string }>(`/travel/trips/${t.id}/chat`);
+      router.push(`${inboxFor(role)}?c=${encodeURIComponent(r.conversationId)}`);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t open the chat.')); }
+  };
+  /** M256: a new trip of my own from this one (cities, days, ways and planned places). */
+  const copy = async () => {
+    try {
+      const { data: r } = await api.post<{ trip: { id: string } }>(`/travel/trips/${t.id}/copy`, {});
+      toast.success('Copied: a new trip of your own. Pick its dates.');
+      router.push(`/travel/trip?id=${r.trip.id}`);
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t copy the trip.')); }
+  };
   const remove = async () => {
     if (!confirm(data.owner ? `Delete “${t.name}” for everyone planning it?` : `Leave “${t.name}”? You can join again with its link.`)) return;
     try { await api.delete(`/travel/trips/${t.id}`); router.push('/travel/saved'); } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); }
@@ -110,6 +163,7 @@ export function TravelTrip() {
 
   return (
     <div className="space-y-6">
+      {offline && saved && <p className="panel flex items-center gap-2 p-3 text-sm text-zinc-700 dark:text-zinc-200" role="status"><WifiOff className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />No signal: this is the copy saved on {new Date(saved.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}. Changes need a connection.</p>}
       {/* The trip: its name, when, the cities and who's planning it. */}
       <section className="relative isolate flex min-h-[14rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 pt-16 sm:p-8 sm:pt-16">
         <Cover {...cover} sizes="100vw" priority className="-z-10" />
@@ -126,6 +180,8 @@ export function TravelTrip() {
           </span>
           <button type="button" onClick={() => void share()} className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-zinc-900"><Share2 className="h-4 w-4" aria-hidden />Invite friends</button>
           <button type="button" onClick={calendar} disabled={!t.startDate || !stops.length} title={t.startDate ? undefined : 'Pick a start date first'} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25 disabled:opacity-50"><CalendarPlus className="h-4 w-4" aria-hidden />Add to calendar</button>
+          <button type="button" onClick={() => void chat()} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25"><MessagesSquare className="h-4 w-4" aria-hidden />Trip chat</button>
+          <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-3.5 py-1.5 text-sm font-semibold text-white ring-1 ring-white/25"><CopyPlus className="h-4 w-4" aria-hidden />Copy trip</button>
         </div>
       </section>
 
@@ -153,10 +209,25 @@ export function TravelTrip() {
         </label>
       </section>
 
-      <Segmented<'plan' | 'money' | 'packing'> label="Part of the trip" large value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
-        segments={[{ value: 'plan', label: 'Plan', icon: <Route className="h-4 w-4" aria-hidden /> }, { value: 'money', label: 'Money', icon: <Wallet className="h-4 w-4" aria-hidden /> }, { value: 'packing', label: 'Packing', icon: <Luggage className="h-4 w-4" aria-hidden /> }]} />
+      <Segmented<Part> label="Part of the trip" large className="max-w-full overflow-x-auto" value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
+        segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
+
+      {part === 'share' && <TripShare tripId={t.id} name={t.name} />}
+      {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+        <TripSafety stops={stops} items={data.items} />
+        <TripFootprint tripId={t.id} stops={stops} travellers={t.travellers} onChange={() => void mutate()} />
+        <TripHolidays stops={stops} dates={dates} />
+        <TripDocs tripId={t.id} start={dates[0]?.from ?? null} end={dates[dates.length - 1]?.to ?? null} />
+        <TripJetLag tripId={t.id} stops={stops} start={t.startDate} members={data.members} me={data.me} refresh={() => void mutate()} />
+        <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
+      </div>}
+      {part === 'polls' && <TripPolls tripId={t.id} owner={data.owner} ideas={{ place: [...data.items.filter((x) => x.day === null).map((x) => x.name), ...stops.map((s) => nice(s.name))], date: when ? [when] : [] }} />}
+      {part === 'journal' && <TripJournal tripId={t.id} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
+      {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
+      {part === 'today' && <TripToday tripId={t.id} start={t.startDate} stops={stops} items={data.items} onAdded={() => void mutate()} />}
 
       {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
+      {part === 'packing' && <TripTodos tripId={t.id} stops={stops} start={t.startDate} members={data.members} me={data.me} />}
       {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}
 
       {part === 'plan' && <>

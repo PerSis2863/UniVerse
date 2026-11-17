@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { callKey, inviteText, meetingPath } from './meet';
+import { callKey, inviteText, isPortrait, meetingPath, videoFit } from './meet';
 
 describe('Meet & call (M227)', () => {
   it('turns a pasted link or a code into our own page, and nothing else', () => {
@@ -21,5 +21,19 @@ describe('Meet & call (M227)', () => {
     expect(callKey(k('m'), true)).toBeNull();
     expect(callKey(k('m', { metaKey: true }), false)).toBeNull();
     expect(callKey(k('x'), false)).toBeNull();
+  });
+});
+
+describe('fitting a camera picture to its box (M234)', () => {
+  it('fills when the shapes are close and shows it whole when far apart', () => {
+    expect(videoFit(16 / 9, 16 / 9)).toBe('cover');
+    expect(videoFit(4 / 3, 16 / 9)).toBe('cover');
+    expect(videoFit(9 / 16, 16 / 9)).toBe('contain'); // a phone held upright in a wide box
+    expect(videoFit(16 / 9, 390 / 700)).toBe('contain'); // a laptop filling a phone's tall screen
+    expect(videoFit(9 / 16, 3 / 4)).toBe('cover');
+    expect(videoFit(null, 1)).toBe('cover');
+  });
+  it('knows a phone held upright', () => {
+    expect([isPortrait(9 / 16), isPortrait(16 / 9), isPortrait(null)]).toEqual([true, false, false]);
   });
 });

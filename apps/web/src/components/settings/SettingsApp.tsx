@@ -22,7 +22,7 @@ import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
-import { ACCENTS, accent as savedAccent, setAccent, type Accent, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -472,6 +472,7 @@ function Appearance() {
   const [cc, setCc] = useState(captionsByDefault);
   const [camOff, setCamOff] = useState(() => typeof window !== 'undefined' && cameraOffByDefault());
   const [mirror, setMirror] = useState(() => typeof window === 'undefined' || mirrorSelf());
+  const [menu, setMenu] = useState<MenuPlace>(() => (typeof window === 'undefined' ? 'auto' : menuPlace()));
   const [week, setWeek] = useState<'mon' | 'sun'>(() => (typeof window !== 'undefined' && weekStartsOn() === 0 ? 'sun' : 'mon'));
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
@@ -492,6 +493,10 @@ function Appearance() {
             </button>
           ))}
         </div>
+      </div>
+      <div className="space-y-2" data-setting="menu-place"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Menu on a computer</p>
+        <Choice id="menu" value={menu} onPick={(v) => { setMenu(v); setMenuPlace(v); }} options={[['auto', 'Automatic'], ['top', 'Across the top'], ['side', 'Down the side']]} />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Automatic puts it across the top in a browser (full screen too) and down the side in the installed app. Phones keep their own menu.</p>
       </div>
       <div className="space-y-2" data-setting="text-size"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />

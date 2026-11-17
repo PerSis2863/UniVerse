@@ -12,7 +12,7 @@ export default function AnalyticsWarehousePage() {
         subtitle="Anonymized learning event warehousing, comparative term analysis, xAPI live telemetry, and academic research access."
       />
       <SectionTabs tabs={ADMIN_INSIGHT_TABS} />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto max-w-[2000px] px-4 sm:px-6 lg:px-8 py-6">
         <AnalyticsWarehousePanel />
       </main>
     </div>

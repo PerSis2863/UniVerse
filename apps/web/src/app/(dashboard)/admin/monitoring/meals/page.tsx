@@ -38,7 +38,7 @@ export default function KitchenPage() {
       <Topbar title="Pre-orders" subtitle="What to prepare, and orders to hand over" />
       <SectionTabs tabs={MONITORING_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-4">
+        <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-4">
           <Segmented<'today' | 'tomorrow'> label="Day" value={day} onChange={setDay} segments={[{ value: 'today', label: 'Today' }, { value: 'tomorrow', label: 'Tomorrow' }]} />
           {error ? <div className="panel p-5"><p className="text-sm text-rose-600 dark:text-rose-400">{(error as Error).message}</p></div>
             : isLoading || !data ? <ContentSkeleton variant="list" />

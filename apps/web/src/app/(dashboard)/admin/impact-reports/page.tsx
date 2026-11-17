@@ -56,7 +56,7 @@ export default function ImpactReportsPage() {
     <>
       <Topbar title="Verified impact reports" subtitle="Signed reports of verified student impact for sponsors and partners (CSRD-ready)" />
       <SectionTabs tabs={IMPACT_REPORT_TABS} />
-      <div className="p-4 md:p-8 max-w-6xl mx-auto min-w-0 w-full space-y-6">
+      <div className="p-4 md:p-8 max-w-[2000px] mx-auto min-w-0 w-full space-y-6">
       <SearchBox
         value={q}
         onChange={setQ}

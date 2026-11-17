@@ -48,7 +48,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
   return (
     <div className="space-y-5">
       <header className="relative overflow-hidden rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 sm:p-7">
-        <div aria-hidden className={`absolute -top-24 -end-24 w-72 h-72 rounded-full bg-gradient-to-br ${t.soft} blur-3xl`} />
+        <div aria-hidden className={`pointer-events-none absolute -top-24 -end-24 w-72 h-72 rounded-full bg-gradient-to-br ${t.soft} blur-3xl`} />
         <div className="relative flex flex-col sm:flex-row sm:items-center gap-4">
           {p.avatar
             ? <img src={p.avatar} {...photoSrcSet(p.avatar, 80)} alt="" className="w-20 h-20 rounded-2xl object-cover" />

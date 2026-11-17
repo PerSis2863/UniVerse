@@ -13,7 +13,7 @@ export default function TeacherMasteryPage() {
     <>
       <Topbar title="Mastery" subtitle="Learning DNA: which concepts your class has mastered, and what to re-teach" />
       <SectionTabs tabs={TEACHER_STUDENT_TABS} />
-      <div className="p-4 md:p-8 max-w-5xl mx-auto w-full space-y-4">
+      <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full space-y-4">
         {!courses ? <ContentSkeleton variant="list" /> : !chosen ? <p className="text-sm text-zinc-500">You don’t teach any courses yet.</p> : (
           <>
             <CoursePicker courses={courses} value={chosen.id} onChange={choose} />

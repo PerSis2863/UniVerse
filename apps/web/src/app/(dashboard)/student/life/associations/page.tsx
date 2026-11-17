@@ -129,7 +129,7 @@ export default function AssociationsPage() {
                 key={club.id}
                 className="group relative bg-[#151517] border border-white/[0.06] rounded-3xl p-6 hover:border-indigo-500/30 transition overflow-hidden flex flex-col h-full"
               >
-                <div className={`absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -me-16 -mt-16 group-hover:opacity-20 transition-opacity`} />
+                <div className={`pointer-events-none absolute top-0 end-0 w-32 h-32 bg-gradient-to-br from-indigo-500 to-purple-600 opacity-10 rounded-full blur-3xl -me-16 -mt-16 group-hover:opacity-20 transition-opacity`} aria-hidden />
                 
                 <div className="flex items-start justify-between mb-4 relative z-10">
                   <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-2xl shadow-lg`}>

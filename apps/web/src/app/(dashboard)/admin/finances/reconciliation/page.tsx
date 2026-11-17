@@ -12,7 +12,7 @@ export default function AdminReconciliationPage() {
         subtitle="Manage Razorpay UPI and Stripe merchant accounts, audit online fee settlements, and process refunds"
       />
       <SectionTabs tabs={ADMIN_FINANCE_TABS} />
-      <div className="p-4 md:p-8 max-w-6xl mx-auto w-full">
+      <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full">
         <PaymentReconciliationPanel />
       </div>
     </>

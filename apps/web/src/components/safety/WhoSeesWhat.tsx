@@ -39,7 +39,7 @@ export function WhoSeesWhat() {
   ];
   return (
     <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-      <div className="max-w-5xl space-y-6">
+      <div className="max-w-[2000px] space-y-6">
         <section className="panel p-5" aria-labelledby="wsw-roles">
           <h2 id="wsw-roles" className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><Users className="w-4 h-4" aria-hidden />Who sees what</h2>
           {/* Phones: one block per role; wider screens: the table. */}

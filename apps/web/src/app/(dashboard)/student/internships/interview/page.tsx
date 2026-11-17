@@ -100,7 +100,7 @@ export default function InterviewPracticePage() {
       <Topbar title="Internships" subtitle="Practise interview questions and get feedback" />
       <SectionTabs tabs={INTERNSHIP_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <motion.div variants={list} initial="hidden" animate="show" className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-5">
+        <motion.div variants={list} initial="hidden" animate="show" className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-5">
           <motion.section variants={fadeUp} className="panel p-4 sm:p-5" aria-labelledby="role-h">
             <h2 id="role-h" className="font-bold text-zinc-900 dark:text-white">What are you interviewing for?</h2>
             <form className="mt-3 flex flex-col sm:flex-row gap-2" onSubmit={(e) => { e.preventDefault(); void getQuestions(); }}>

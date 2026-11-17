@@ -100,3 +100,54 @@ export async function removeTripPacking(u: SessionUser, id: string, itemId: stri
   await tell(id, 'packing');
   return { ok: true };
 }
+
+// ——— M254: the before-you-go checklist ———
+
+const MAX_TODOS = 100;
+const tellTodos = async (tripId: string) => publish(await memberIds(tripId), { type: 'refresh', keys: [`/travel/trips/${tripId}/todos`] });
+
+/** GET /travel/trips/:id/todos */
+export async function tripTodos(u: SessionUser, id: string) {
+  await tripFor(u, id);
+  const rows = await prisma.travelTripTodo.findMany({ where: { tripId: id }, orderBy: [{ done: 'asc' }, { createdAt: 'asc' }], take: MAX_TODOS, select: { id: true, text: true, assignee: true, due: true, done: true, doneBy: true } });
+  return { todos: rows };
+}
+
+/** POST /travel/trips/:id/todos { items: [{ text, assignee?, due? }] }: one or several (suggestions), the same text once. */
+export async function addTripTodos(u: SessionUser, id: string, b: Body) {
+  await tripFor(u, id);
+  const members = await memberIds(id);
+  const asked = (Array.isArray(b.items) ? b.items : []).slice(0, 20).map((x) => {
+    const o = (x && typeof x === 'object' ? x : {}) as Body;
+    return { text: clip(o.text, 120), assignee: typeof o.assignee === 'string' && members.includes(o.assignee) ? o.assignee : null, due: isDay(o.due) ? o.due : null };
+  }).filter((x): x is { text: string; assignee: string | null; due: string | null } => !!x.text);
+  if (!asked.length) throw new BadRequestException('Say what needs doing.');
+  const have = new Set((await prisma.travelTripTodo.findMany({ where: { tripId: id }, select: { text: true }, take: MAX_TODOS })).map((r) => r.text.toLowerCase()));
+  const fresh = asked.filter((x) => { const k = x.text.toLowerCase(); if (have.has(k)) return false; have.add(k); return true; });
+  if (have.size > MAX_TODOS) throw new BadRequestException(`A checklist keeps ${MAX_TODOS} things.`);
+  for (let i = 0; i < fresh.length; i += CHUNK) await prisma.travelTripTodo.createMany({ data: fresh.slice(i, i + CHUNK).map((x) => ({ tripId: id, ...x, createdBy: u.id })) });
+  if (fresh.length) await tellTodos(id);
+  return { added: fresh.length };
+}
+
+/** PATCH /travel/trips/:id/todos/:todoId { done?, assignee?, due? } */
+export async function updateTripTodo(u: SessionUser, id: string, todoId: string, b: Body) {
+  await tripFor(u, id);
+  const data: { done?: boolean; doneBy?: string | null; assignee?: string | null; due?: string | null } = {};
+  if (typeof b.done === 'boolean') { data.done = b.done; data.doneBy = b.done ? u.id : null; }
+  if ('assignee' in b) { if (b.assignee !== null && !(typeof b.assignee === 'string' && (await memberIds(id)).includes(b.assignee))) throw new BadRequestException('Pick someone on the trip.'); data.assignee = b.assignee as string | null; }
+  if ('due' in b) { if (b.due !== null && !isDay(b.due)) throw new BadRequestException('Pick a date.'); data.due = b.due as string | null; }
+  const r = await prisma.travelTripTodo.updateMany({ where: { id: todoId, tripId: id }, data });
+  if (!r.count) throw new NotFoundException('That isn’t on the list any more.');
+  await tellTodos(id);
+  return { ok: true };
+}
+
+/** DELETE /travel/trips/:id/todos/:todoId */
+export async function removeTripTodo(u: SessionUser, id: string, todoId: string) {
+  await tripFor(u, id);
+  const r = await prisma.travelTripTodo.deleteMany({ where: { id: todoId, tripId: id } });
+  if (!r.count) throw new NotFoundException('That isn’t on the list any more.');
+  await tellTodos(id);
+  return { ok: true };
+}

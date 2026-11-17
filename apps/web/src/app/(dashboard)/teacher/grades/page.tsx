@@ -129,9 +129,10 @@ export default function TeacherGradesPage() {
           <select aria-label="Course" className={cn('input', 'md:w-80')} value={courseId} onChange={(e) => { setCourseId(e.target.value); setAdding(null); }}>
             {courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}
           </select>
-          <div className="flex gap-2">
-            <div className="relative flex-1 md:w-64">
-              <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+          {/* On a phone the search has its own row (it was squeezed to 52 px beside five buttons). */}
+          <div className="flex flex-wrap gap-2 sm:flex-nowrap">
+            <div className="relative w-full sm:w-auto sm:flex-1 md:w-64">
+              <Search className="pointer-events-none absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" aria-hidden />
               <input className={cn('input', 'ps-9')} placeholder="Search students…" value={search} onChange={(e) => setSearch(e.target.value)} />
             </div>
             <button onClick={() => setEditingCats(true)} disabled={!courseId} className="btn-secondary text-sm px-3 flex items-center gap-1.5" aria-label="Categories and weights"><Layers className="w-4 h-4" /> <span className="hidden lg:inline">Categories</span></button>

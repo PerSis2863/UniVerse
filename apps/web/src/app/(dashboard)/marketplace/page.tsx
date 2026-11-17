@@ -12,7 +12,7 @@ export default function MarketplacePage() {
         subtitle="Discover, peer-review, and import accredited syllabi, lesson bundles, and interactive problem sets."
       />
       <MarketplaceTabs />
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto max-w-[2000px] px-4 sm:px-6 lg:px-8 py-6">
         <MarketplaceCatalog />
       </main>
     </div>

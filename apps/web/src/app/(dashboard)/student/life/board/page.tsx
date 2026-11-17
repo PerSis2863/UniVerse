@@ -170,7 +170,7 @@ function Board() {
       <Topbar title="Campus board" subtitle="Buy, sell and swap; share rides; find a room" />
       <SectionTabs tabs={LIFE_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-4">
+        <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <Segmented label="Show" value={view} onChange={(v) => router.replace(`${path}?section=${v}`, { scroll: false })} segments={VIEWS} className="self-start" />
             <span className="flex-1" />

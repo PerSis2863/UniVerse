@@ -8086,6 +8086,595 @@ like this for the other things also… this is not how apple map looks like so p
   router's real answer format imitated along the streets (and refused, for the straight fallback): computer
   and phone, light and dark, no page errors, axe clean on the walk card. **Not seen yet on the real map:**
   look at Travel → Map in a city once it is live (colours on real parks, rivers and buildings).
+
+## M234: calls from a phone fill the screen, clearer sound, the screen stays awake (16–17 Nov)
+
+The owner, 16 Nov: "when he join the camera doesnt cover the area it should if he joins from the phone and the audio
+quality is bad… check if any other problems are there like this".
+
+- **The picture's shape.** Every tile was a 16:9 box with `object-cover`, so a phone's tall picture was cut to a
+  band of a face on a laptop. `videoFit(videoRatio, boxRatio)` (`src/lib/meet.ts`, tested) covers the box when the
+  shapes are close and shows the whole picture (`contain`) when they differ by more than 1.35x; a shared screen is
+  always `contain`. A tall picture (`isPortrait`) gets a tall 3:4 tile in the grid, its height capped to the window
+  (checked: a phone's 360×640 picture now fills a 444×592 tile on a laptop). The Tile measures its box and the
+  video (ResizeObserver, `loadedmetadata`, `resize`: a phone turned sideways changes it).
+- **Two people on a phone** (`phoneDuo`): the other person fills the screen and you are a small 3:4 tile in the
+  corner, as FaceTime and WhatsApp do; those tiles pass `fill` (the layout sizes them, the picture covers them).
+- **Sound.** "Strong" noise removal (RNNoise plus a gate) was the default on every call: it chewed words and cut the
+  starts and ends of sentences. The default is now **Standard** (the browser's own echo and noise handling);
+  Strong stays a choice, with a gentler gate (open −58 dB, close −64 dB, 400 ms hold). Opus stays at 64 kbps.
+- **Sweep:** a phone's screen locked during a call (camera and sound stopped): `useWakeLock`
+  (`src/lib/use-wake-lock.ts`) keeps it awake while the call is live. No doubled audio found.
+- **Rules:** a new kind of tile gets its fit from `videoFit` (or `fill` when the layout sizes it), never a fixed
+  `object-cover`; anything holding a phone's screen during a live activity uses `useWakeLock`.
+
+## M235: the top bar in full screen, a menu choice in Settings, pages that use a big screen (16–17 Nov)
+
+The owner, 16 Nov: "in full screen mode it show the horizontal bar in the verticle way which was earlier design…
+in the setting add a option… from verticle to horizontal"; "the owner console section and a lot of spaces in left
+and right side… see where else like this problem would be".
+
+- **Full screen.** A browser in full screen (F11) reports `display-mode: fullscreen`, not `browser`, so it got the
+  installed app's side menu. `IN_BROWSER` (`src/lib/top-nav.ts`) now counts both; the `topnav` CSS variant in
+  `globals.css` matches it.
+- **The choice.** Settings → Appearance → "Menu on a computer": Automatic (as before), Across the top, Down the side.
+  Kept on the device (`uv-menu`, `display-prefs.ts`), applied before the first paint by the early script
+  (`html[data-menu]`), so there's no flash. `useTopNav()` reads it with `useSyncExternalStore`; the CSS variant
+  reads `data-menu` first. Checked in `scripts/checks/top-nav-ui.mjs` (the chosen side menu in a browser, the chosen
+  top bar in the installed app; its M221 drag test now drags the bar's last entry: Settings left the bar).
+- **Wide screens.** The console (`max-w-6xl`) and 17 dashboard and list pages (fees, meals, who sees what, the
+  internship pages, the life board, mastery, early warning, reconciliation, impact reports, passport, tutoring,
+  course analytics, the warehouse, the marketplace) went to `max-w-[2000px]`. A sweep of 195 pages at 1920 px found
+  62 capped; the rest are forms, reading pages and chats, kept narrow on purpose (lines near 75 characters).
+- **Rules:** a new dashboard or list page uses `max-w-[2000px]` (or no cap); forms and reading stay narrow.
+
+## M236: the maps in Apple Maps' look, bigger, with an Apple-style panel (17 Nov)
+
+The owner, 17 Nov: "please upgrade the map because it needs to look flawless and same as apple maps"; then, on the side
+panel: "make it more look elegant overall map is looking small"; "also do that for other maps in the apps"; on the
+credits line: "can you remove this".
+
+- **Seen on real streets.** This machine can't reach OpenFreeMap, so the design was checked on central Helsinki from
+  OpenStreetMap (pyrosm's bundled extract) turned into the same layers as the live tiles and served to the map in a
+  browser test, with Noto Sans glyphs (the scratch `map-look.mjs`, `osm2omt.py`; not in the repo).
+- **The design** (`map-style.ts`): Apple's own ground colour (#f9f5ed), soft greens, bright blue water, light buildings
+  with a fine edge, tinted hospital, school and railway grounds, grey squares, footpaths as thin solid lines (no
+  brown dashes), tunnels left off, street names in normal case (main roads darker), water names upright.
+- **Every place an icon** (`map-layers.ts` `uv-poi`, `pins.tsx` `pinOfClass`): a small round icon in its kind's
+  colour with the name beside it in that colour (new kinds: health, learning, other), not grey dots; names over 26
+  letters only close in (`shortName`, zoom only at the top of the expression).
+- **A real bug fixed:** the place list could stay empty ("None of these in view" beside visible pins) until the map
+  was moved: the first `idle` could pass before the list listened. It is also read once the places' tiles have
+  loaded (`sourcedata`, debounced 250 ms).
+- **The panel** (`TravelMap.tsx`): one panel as Apple Maps' sidebar: search on top, the kinds of place as round
+  icons, roomy rows, a friendlier empty state, the hour and the sun as a quiet footer; on a phone a bottom sheet with
+  a grab handle. The map runs edge to edge under the tab row on a computer (taller), with a Full screen button
+  (Escape leaves). The credits are a small "© OpenStreetMap ⓘ" that opens the full line (the licences require it on
+  the map). Green's and Relief's maps are taller on a computer, their lists floating over the map's left side.
+- **Checked:** axe clean (computer and phone, light and dark), no page errors; the list fills on first load.
+- **Not done:** the map's labels still use Noto Sans (OpenFreeMap's fonts). Apple's San Francisco is closest to the
+  site's Inter; serving Inter as map glyphs (`maplibre-font-maker-node` could make them) is a possible next step.
+
+## M237: Google Maps' tools on Travel's map, and its labels in Inter (17 Nov)
+
+The owner, 17 Nov: "upgrade the map even more like add features of google maps in it" (chose all four offered:
+directions, place details, what's here and share, measure distance) and "using the site's own font… please do this".
+
+- **Labels in Inter** (the site's font, the nearest to Apple's San Francisco): `scripts/map-glyphs.py` makes MapLibre glyph
+  files (24 px signed distance fields, 3 px margin, top offset −26 as the map service's own) from `public/fonts/inter`
+  into `public/fonts/map/InterRegular|InterBold` (about 1 MB, 12 ranges: Latin and extended Latin). `mapRequest`
+  (`map-style.ts`, every map's `transformRequest`) serves those ranges from the site and the rest (Greek, Cyrillic,
+  Arabic…) from OpenFreeMap's Noto Sans. Re-run the script if the Inter files change (it prints the ranges for
+  `GLYPH_RANGES`).
+- **Directions** (`MapTools.tsx` `DirectionsCard`, logic in `src/lib/map-tools.ts`): from (your location, else the map's
+  middle) and to, swap, Walk / Cycle / Drive (FOSSGIS's foot, bike and car routers, from the browser), up to three
+  routes (the others grey on the map, tap one to take it), the turns, the route framed clear of the panel, and
+  "Public transport in Google Maps". From the round blue button beside the search, a place card's Directions, or
+  "what's here".
+- **Place details** were already there (the place card through `/travel/place`: hours and open now, phone, website,
+  address); its Directions now opens the in-map directions, and so do a story's Directions and the photos' Go there
+  (`GoButton`; the old link to openstreetmap.org's directions is gone: the owner, 17 Nov, "it should show direction in
+  my own website").
+- **What's here + share** (`HereCard`): a right-click, or a press and hold on a touch screen: the address (Nominatim,
+  from the browser; `nominatim.openstreetmap.org` added to `connect-src`), Directions from / to here, Measure, Copy
+  coordinates, Share (a link `…/travel?view=map&at=…&pin=1` that opens with that card).
+- **Measure distance** (`MeasureBar`, the ruler among the map's buttons): click points; the length, and the area inside
+  from three points; undo, clear, done.
+- **Checked:** unit tests (`map-tools.test.ts`), a browser run on the Helsinki test map (right-click, two routes,
+  cycling, measuring: 150 m, 2,529 m²), axe clean, no page errors. **Not seen live:** the real routers' and Nominatim's
+  answers (this machine can't reach them); look at them once merged.
+
+## M238: every trip has a picture (17 Nov)
+
+The owner, 17 Nov: "the netherland and germany doesnt have photo if i click on new trip and just type name then it shows
+blank photo". A trip's picture came only from its chosen place (`cover`), so a trip named after a country, or anything
+else typed, had a blank gradient. `tripCover` (`src/lib/travel-ideas.ts`, tested in `travel-cover.test.ts`), used by the
+trips list and the trip page: the chosen place, else one of its places or a place named like the trip, else that
+country's first pictured place (a letter or two short is fine: "Netherland" → Amsterdam, "Germany" → Berlin), else a
+place or country the name mentions ("Summer in Italy"), else a scenic (nature, beach or mountain) picture, always the
+same for the same name. **Rule:** anything that shows a trip's picture uses `tripCover`.
+
+## M239: a trip's Today mode (17 Nov)
+
+The owner, 17 Nov: "add 10 biggest and unique and something different types of features in the travel… synched…
+ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-features`).
+
+- **Where:** the trip page's new **Today** part (`?part=today`, `trip-today.tsx`; the parts are one `PARTS` list in
+  `TravelTrip.tsx`, which later items extend). No new route: it works from the trip already loaded.
+- **Logic** (`src/lib/travel-today.ts`, tested): which city and day of the trip it is **in that city's own time**
+  (`zoneAt`, `localClock`), the day's places as a timetable from 9:00 (each place's minutes, `hop` between them), what's
+  on now, what's next and when to leave for it. Before or after the trip, or for any other day, a day picker previews it.
+- **The walk there** reuses the map's walking router (`useRoutes` from `map/MapTools.tsx`, FOSSGIS, from the browser):
+  from the place before, or "From where I am" (asks for the position only on that press). "On the map" opens Travel's
+  map at the place. The weather is the guide's own `/travel/weather` for that day.
+- **Rule:** the times are a plan's guesses (9:00 start, the place's minutes); the order and minutes are edited on the
+  Plan, never here.
+
+## M240: a trip saved for offline use (17 Nov)
+
+- **Where:** the trip page's new **Ready** part (`?part=ready`, `trip-offline.tsx`): "Save for offline", the size and
+  date, the guides readable offline, a "Map of <city>" button per city, Save again, Remove, and what isn't kept.
+- **What's kept** (`src/lib/trip-offline-save.ts`, all in the browser, nothing on the server): one Cache Storage cache
+  per trip (`uv-trip-<id>`): the trip as last loaded (`/offline/trip/<id>.json`), each city's guide as text, the map
+  service's description (`tiles.openfreemap.org/planet`), the map tiles around the cities (6 km, zoom 5–14) and the
+  planned places (1 km, zoom 12–14), at most 500 (`tripTiles` in `trip-offline.ts`, tested), the map's Inter fonts;
+  plus the trip page and a map page per city in the service worker's `pages-v2`, and the map's code (importing
+  `TravelMap` stores its chunks in `static-v2`). The browser is asked to keep it (`storage.persist`).
+- **The service worker** (`src/worker/index.ts`) answers `tiles.openfreemap.org` and `/fonts/map/` requests from any
+  `uv-trip-` cache first, the network otherwise. **The trip page** shows the saved copy when its data can't load, with
+  a "No signal" line.
+- **Not kept (said on the page):** photos, weather, walking routes, opening hours, later changes by friends. Changes
+  made offline fail with the usual message (no offline queue). **Not seen live:** OpenFreeMap's real answers.
+
+## M241: a trip's phrasebook with voice (17 Nov)
+
+- **Where:** the trip page's **Phrases** part (`trip-phrases.tsx`, loaded with `next/dynamic` only when opened).
+- **Data** (`src/lib/travel-phrases.ts`, tested): 23 phrases in five groups (greetings, getting by, directions, food
+  and allergies, help) and the numbers 1–10, in 19 languages (Spanish twice, Portuguese twice), with how to say each
+  for non-Latin scripts; `languageFor(cc)` picks a country's (`'english'` where English is the main language, null
+  where there's none yet). Polite forms; "a / b" for the man's and woman's forms (the voice reads the first).
+- **Voice:** the browser's own `speechSynthesis` (free, on the device): the language's voice when the device has one,
+  else it says how to add one; "Slowly" reads at 0.65. **Show it big:** a full-screen card (Escape closes) to show a
+  local.
+- **Rule:** new languages go in `LANGUAGES` with every phrase (the test fails otherwise) and in `BY_COUNTRY`; have a
+  native speaker check them where possible (these were written for UniVerse, not checked by native speakers).
+
+## M242: a trip's journal and its story (17 Nov)
+
+- **Where:** the trip page's **Journal** part (`trip-journal.tsx`): **Write** (a day of the trip, a note, a place, a
+  photo, "In the family link") with everyone's entries live, and **Story** (the route on the map, then each day with its
+  photos and notes). `Story` is exported for the family link (M248).
+- **Server** (`src/server/travel-trip-journal.ts`, tested): `GET/POST /travel/trips/:id/journal`, `PATCH` (the author:
+  text, shared) and `DELETE` (the author or the trip's starter) `…/journal/:entryId`; members only (`tripFor`); a day
+  must be one of the trip's; at most 500 entries; `publish` refreshes the others' pages. Database update **0228**
+  (`travel_trip_journal`). Sample answer `sampleTripJournal`.
+- **Photos** go through the app's own `/api/upload` (shrunk first, `shrinkImage`), as Green's proofs; only an app file
+  address is kept (`isAppFileUrl`).
+- **The route** is Relief's `AidMap` (the d3 world canvas), now with a `color` (Travel's sky here).
+
+## M243: a trip's group polls (17 Nov)
+
+- **Where:** the trip page's **Votes** part (`trip-polls.tsx`): "Ask the group" (a place, dates, a stay or anything;
+  2–8 choices, ideas from the trip's unplanned places and cities; "pick more than one"), and each poll with a bar per
+  choice, who chose it, Leading / Chosen, close and remove (its asker or the trip's starter).
+- **Server** (`src/server/travel-trip-polls.ts`, tested): `GET/POST /travel/trips/:id/polls`,
+  `POST …/polls/:pollId/vote { choices }` (replaces my choices; one unless `multi`; refused when closed), `PATCH`
+  (closed) and `DELETE …/polls/:pollId`; members only; at most 30 polls; `publish` refreshes everyone's page, and the
+  voter's own page moves their name at once. Database update **0229** (`travel_trip_polls`, `travel_trip_votes`).
+- **Rule:** the bars are `<Fill>` (with a colour class: `.fill` has none of its own).
+
+## M244: the jet-lag planner and the group's clocks (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-jetlag.tsx`): home time zone (the device's, or the one you shared),
+  the trip city flown to, the flight day (the trip's start), usual sleep and wake; the plan as cards from three days
+  before to settled; clocks for each of the trip's zones and for everyone who chose "Show my clock".
+- **Logic** (`src/lib/travel-jetlag.ts`, tested): `zoneOffset` from `Intl` (summer time included), `shiftHours` the short
+  way round (±12 h), `jetLagPlan`: before an eastward flight an hour earlier each day (westward later, up to 3 h), then
+  daylight in the morning and a dim evening going east (beyond 8 h, the first two mornings dim), daylight in the late
+  afternoon and a dim early morning going west; about a day a time zone east, 1.5 west, at most 8. Under 3 h: "little jet
+  lag". Said on the page: general guidance, not medical advice.
+- **Server:** `PATCH /travel/trips/:id/me { zone | null }` (`setTripZone`, `isZone` checked), the members' `zone` in the
+  trip's answer; database update **0230** (`travel_trip_members.zone`). A home clock shows a rough place, so it's
+  shared only by choice.
+
+## M245: a traveller's documents and their reminders (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-docs.tsx`): passport, visa, insurance, bookings, licence,
+  vaccination; a name, an expiry date, a note; "just for this trip" or every trip; what needs doing now beside each one;
+  "not added yet: passport and travel insurance".
+- **Rules** (`src/lib/travel-docs.ts`, tested): expired, expiring in 30 / 7 days, expiring during the trip, a passport
+  under six months past the trip's end, the trip 30 / 7 / 1 days away. **Names and dates only, never a number** (said on
+  the page).
+- **Server** (`src/server/travel-docs.ts`, tested): `GET/POST /travel/docs`, `PATCH/DELETE /travel/docs/:id`; **every
+  query carries `userId`**: nobody else on a trip ever sees them (a trip document needs the trip to be one of yours). A
+  new expiry date clears the sent reminders. Database update **0231** (`travel_docs`; deleting the trip keeps the
+  document without it).
+- **Reminders:** the daily job `travel-docs` (`docReminders`, after `relief-shifts`): each due alert once (`reminded`),
+  `notify` with `email: false`, two queries each, stops when the run's room is low and carries on next run.
+- **Also committed:** `scripts/checks/travel-ten-ui.mjs`, the browser check of the new trip parts (LIVE=0 for local:dev,
+  which has no live updates).
+
+## M246: holidays and events on the trip's dates (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-holidays.tsx`): per city, its dates, the public holidays of its
+  country on those days with what may close ("Banks, offices and many shops may close…", "in some regions" for
+  regional ones), and the festivals its guide mentions, those naming one of the trip's months first, others marked
+  "(date not given)"; those naming another month are left out.
+- **Sources:** Nager.Date (`date.nager.at/api/v3/PublicHolidays/<year>/<CC>`, free, no account), fetched by the browser
+  (added to `connect-src` in `security-headers.ts`; no Worker CPU; SWR keeps it an hour); festivals from the guide the
+  page already loads (`/travel/guide`). Logic in `src/lib/travel-holidays.ts` (tested).
+- **Not seen live:** Nager.Date's real answers (this machine can't reach it); a 204/404 counts as "no holidays".
+
+## M247: the trip's footprint, linked to Green (17 Nov)
+
+- **Where:** the trip page's **Ready** part (`trip-footprint.tsx`): the CO₂ of getting between the trip's cities for all
+  its travellers (and each), a bar against the greenest version, and per leg a choice of ways (plane, train, coach, car,
+  ferry, each with its kg), "By coach: 40 kg less", "Guessed: pick how you'll go".
+- **Factors** only in `src/lib/green.ts` (`TRAVEL_MODES`, `TRAVEL_FACTORS`: UK government conversion factors 2024,
+  rounded; short flights count more, a car is shared by up to four). The sums in `src/lib/travel-footprint.ts` (tested):
+  roads and rails 1.2 × the straight line; no road or rail over sea (`ferryLikely`), only a plane past 2,000 km.
+- **Server:** `PATCH /travel/trips/:id/stops/:stopId` now takes `mode` (and `days`, as before, both optional); `mode` +
+  `green: true` with the train records a Green `TRANSIT` action for the person who chose it, once a leg (found by its
+  note), through `logGreenAction` (so Green's own limits hold); tested in `travel-trip-mode.test.ts`. Database update
+  **0232** (`travel_trip_stops.mode`).
+
+## M248: share the trip with family, and "I'm safe" (17 Nov)
+
+- **Where:** the trip page's **Share** part (`trip-share.tsx`): "Turn on the family link" (anyone on the trip), Send /
+  Copy, New link (the old one stops), Turn off; "I'm safe" with an optional note, and the check-ins (live).
+- **The family page** `/journey/<code>` (`src/app/journey/[code]/`, built once as `/journey/open` like `/aid/<code>`;
+  `/journey` is Travel's in `apps.ts`; kept out of search): the trip's name, dates, cities and first names, the latest
+  check-in, where they are today and what's next (`tripToday`), each day's plan (`timetable`), and the journal's
+  **Story** (only entries left "In the family link"). Refreshes while someone looks (`useActivePoll`, as the aid page).
+- **Server** (`src/server/travel-trip-share.ts`, tested): `GET/POST/DELETE /travel/trips/:id/share`,
+  `POST /travel/trips/:id/safe`, and the public `GET /travel/shared/:code` (16-letter code; listed with its reason in
+  `route-gates.test.ts`): **first names only, never an email, phone or account id** (the test checks the answer). A
+  check-in tells the others on the trip (`notifyMany`, `email: false`), keeps the last 50, and (Relief's M150) marks the
+  person safe in any live Relief emergency within its radius of today's city (`reliefSafe`, nobody told). Database
+  update **0233** (`travel_trips.shareCode`, `travel_trip_checkins`).
+- **Fixed while testing M247:** a leg whose way was only guessed (the train) did nothing when pressed; a press now saves
+  it (and logs the Green action).
+- **Checked** (`scripts/checks/travel-ten-ui.mjs` on local:dev with LIVE=0): every new part at 1280 dark and 390 light,
+  axe clean, no sideways scroll, no page errors; Bob never sees Alice's documents; the family page opens signed out with
+  no email on it. **Still to see on the built site:** the live pushes between two people (local:dev has no live
+  updates) and Nager.Date / the routers' real answers.
+
+## M249: a day's rain plan (17 Nov)
+
+The owner, 17 Nov, after the ten: "add 10 more features and make sure everything is ultra smooth in this" (M249–M258,
+chosen in the session and listed to the owner).
+
+- **Where:** the trip's **Today** part, on a day whose forecast says rain (`wet`: 2 mm or more, or rain, sleet, snow or
+  thunder in the sky): "Rain plan" names the day's outdoor places and lists indoor places from the city's guide, nearest
+  the day's places first, each with "Add to today" (it goes on that day, last).
+- **Logic** (`src/lib/travel-rain.ts`, tested): outdoors by the place's name, else its words (parks, viewpoints,
+  castles, beaches…), never when it reads as indoors (museums, churches, markets halls…).
+
+## M250: the day's light (17 Nov)
+
+- **Where:** the trip's **Today** part, in the weather card: sunrise, sunset and the hours of daylight, and the golden
+  hours for photos (the sun under 6°), with the day's first outdoor place as a suggestion. Works for any day of the
+  trip (no forecast needed).
+- **Logic:** `dayLight` in `src/lib/travel-today.ts` (tested: Lisbon's 07:11 sunrise on 9 April, Svalbard's midnight sun
+  gives none), from the map's sun maths (`sunTimes`, `travel-local.ts`), in the city's own time.
+
+## M251: the opening-hours check (17 Nov)
+
+In place of the "day trips" first listed to the owner: the trip's "Add places" already lists the guide's day trips (M206),
+so this checks the plan's times instead.
+
+- **Where:** the trip's **Today** part, at the top: "Opening hours: 2 places may not be open when the plan has you
+  there", each with the day, the time the timetable puts you there, the problem (closed, opens later, closes before you
+  leave) and the hours it read.
+- **Logic** (`src/lib/travel-hours.ts`, tested): OSM's format through `readHours` (`opening-hours.ts`), else the guides'
+  words: the first time range ("10:00–18:30", "9AM-5PM", "10.00 to 22.00"), a day span before it ("Tu-Su"), "closed
+  Mondays"; anything else says nothing (never a wrong warning on purpose). The weekday is the trip day's date; the time
+  is the Today timetable's (from 9:00).
+
+## M252: the arrival guide (17 Nov)
+
+- **Where:** the trip's **Today** part, on the first day in each city: "Arriving in Porto": the guide's "Get in"
+  (paragraphs about airports, stations and ports first), "Get around", and the travel-card tip when the guide has one.
+- **Logic:** `arrival` in `src/lib/travel-today.ts` (tested), from the guide the page already loads (`/travel/guide`, the
+  same SWR key as the rain plan, so one request). It's in the offline pack too (M240 saves each city's guide text).
+
+## M253: the trip's safety card (17 Nov)
+
+- **Where:** the trip's **Ready** part (`trip-safety.tsx`, loaded with `next/dynamic` when the part opens): each
+  country's emergency numbers as red `tel:` buttons and its calling code (`travel-countries.json`, from Wikidata), and
+  where you're staying in each city (the trip's planned **Sleep** places, added from the guide) with "Show a driver": a
+  full-screen card with the stay's name and address and "Please take me to this address" in the local language
+  (`TAKE_ME` in `src/lib/travel-phrases.ts`, 19 languages, tested against `LANGUAGES`). Escape closes it.
+- **Not added on purpose:** personal medical details or a contact's phone (they'd sit on a shared trip).
+
+## M254: the before-you-go checklist (17 Nov)
+
+- **Where:** the trip page's Packing part, now called **Checklist** (`?part=packing` as before): "Before you go" on top
+  (`trip-todos.tsx`), the packing list below. Each to-do has who's doing it (anyone on the trip) and by when (late ones
+  in red); tick it and everyone sees who did; ideas from the trip (book the way between each pair of cities, a stay in
+  each, passports, insurance, the bank, the offline pack, the family link), one by one or "Add all".
+- **Server** (in `src/server/travel-trip-extras.ts`, beside the packing list, tested): `GET/POST /travel/trips/:id/todos`,
+  `PATCH/DELETE …/todos/:todoId`; members only; an assignee must be on the trip; the same text once; at most 100;
+  `publish` refreshes everyone's page. Database update **0234** (`travel_trip_todos`).
+
+## M255: the morning briefing on trip days (17 Nov)
+
+- **What:** each day of a trip under way, everyone on it gets an in-app notification (`email: false`): "Day 4: today in
+  Porto · Livraria Lello 09:00, … and 2 more. 11–18°, rain: take an umbrella." Tapping it opens the trip's Today part.
+- **How:** the daily job `travel-briefing` (`morningBriefings`, `src/server/travel-briefing.ts`, tested, after
+  `travel-docs`): trips that started in the last 60 days and are under way today (UTC dates), once a trip a day (the
+  link carries `&on=<date>`, so a second run finds it), about five queries and one cached weather call a trip
+  (`travelWeather`), stopping when the run's room is low. The words are `briefing` in `src/lib/travel-today.ts` (tested).
+- **Note:** the daily jobs run once a day at the Worker's set time, so the briefing comes then, not at each city's dawn.
+
+## M256: copy a trip (17 Nov)
+
+- **Where:** "Copy trip" in a trip's header, beside Add to calendar: a new trip of your own (named "… (copy)") with the
+  same cities in order, days, ways of travel, style, currency and travellers, and its places where they were planned;
+  not its people, costs, packing, to-dos, journal, votes or family link; dates left to pick. Opens the copy.
+- **Server:** `POST /travel/trips/:id/copy` (`copyTravelTrip` in `src/server/travel-trips.ts`, tested in
+  `travel-trip-mode.test.ts`): only from a trip you're planning; your 50-trip limit; at most 80 places, five a query
+  (about 17 values each, under D1's 100), so a copy stays well under 50 queries.
+
+## M257: your travel in numbers (17 Nov)
+
+- **Where:** the top of Travel's **Trips** list (`TravelTrips.tsx`): "Your travel so far" (trips that have ended) or,
+  before any, "Your trips to come": countries (with their flags), cities, days, kilometres between cities and the CO₂ of
+  getting between them (one traveller), and how many trips are done and to come.
+- **Data:** `GET /travel/trips` now gives each trip's `route` (each city's name, country, position, days and way
+  there) from the same query; the sums in `src/lib/travel-stats.ts` (tested), the CO₂ through the trip footprint
+  (M247, factors from `green.ts`). Sample answer updated.
+
+## M258: the trip chat (17 Nov)
+
+- **Where:** "Trip chat" in a trip's header: opens the trip's group chat in Messages (the inbox for your role, `?c=`),
+  named after the trip, Travel's (`app: 'travel'`), the trip's starter its admin.
+- **Server:** `POST /travel/trips/:id/chat` (`tripChat` in `src/server/travel-trips.ts`, tested): any member; made the
+  first time and kept in `travel_trips.chatId` (database update **0235**); each later open makes its people the trip's
+  again (who joined added, who left or was removed taken out) and refreshes their chat lists. Messages does the rest
+  (live, calls, files).
+
+## M259: the world's destinations on Travel's map, and more map features (17 Nov)
+
+The owner, 17 Nov: "add all the destinations and upgrade the map and add more features in it and make it ultra smooth";
+asked what "all" meant, they chose both (every town on the map now, and a bigger hand-picked list) and all four features
+offered (destinations layer, a trip on the map, search this area plus saved places, smoother).
+
+- **Every town on the map** (`src/components/travel/map/map-world.ts`): `public/geo/destinations.json` (24,362 towns and
+  cities of 15,000+ people and every capital, GeoNames CC BY 4.0 via all-the-cities 3.1.0, credited in the map's credits;
+  ~350 kB gzipped, fetched once, only when the layer shows) as white dots with names (`uv-dest-city` ≥300k from the
+  globe, `uv-dest-town` from zoom 5.5), biggest first, below zoom 10.5; the base map's `city-names` and `town-names`
+  step aside while it shows (`showWorld`). The hand-picked places are round **photo pins** (`uv-ideas`, placed first):
+  the map's `styleimagemissing` asks for `uv-photo-<i>|<commons path>`, a placeholder goes in at once and the 120 px
+  Commons thumbnail replaces it (`updateImage`; upload.wikimedia.org allows the canvas). The Commons folder (MD5) of each
+  photo is in the same file. **Re-run `npx tsx scripts/gen-destinations.mts <all-the-cities folder>` after adding places
+  or changing photos** (instructions in the script).
+- **Tap a destination** (`DestCard.tsx`): its photo and line (hand-picked), country, the time there, people, this month's
+  weather, Open the guide, Explore the streets (glides to zoom 14.5), Directions, Start a trip here; the map glides over
+  to it. Zoomed out, the panel lists the hand-picked places on the side of the globe facing you, nearest first.
+- **A first visit opens on the globe** (`HOME`), no longer Lisbon; a kept view or `?at=` still wins.
+- **160 more hand-picked places** (375; rows at the end of `ROWS` in `travel-ideas.ts`): positions from GeoNames or by
+  hand into `travel-places.json`. **[next session with Wikimedia access]** they have no photo, banner or climate yet (this
+  machine can't reach Wikivoyage): run `NODE_USE_ENV_PROXY=1 npx tsx scripts/gen-travel-data.mts --places` then
+  `--photos`, check the new photos by eye, then `gen-destinations.mts` again. Until then their cards show the soft
+  gradient and "Find where to go" ranks them without weather. Lake District had no position (its guide title is a
+  disambiguation page): set by hand.
+- **A trip on the map:** Layers → "A trip on the map" (your trips): the way through its cities (dashed sky line,
+  numbered), its places in their day's colour (`DAY_COLORS`, the day counted across the whole trip from `stopDates`),
+  framed clear of the panel; a chip on top with the trip's name (opens it), All / Day n, close. Tapping a city zooms in;
+  a place opens its card. From `GET /travel/trips/:id` (no new route).
+- **Saved places as hearts** (Layers → "My saved places", on by default; `GET /travel/saved`), a heart's card is the
+  place card.
+- **Search this area:** the panel's filter box (from zoom 12) also searches: Search or Enter asks Nominatim
+  (`areaSearchUrl`, `bounded=1` to the view, one search a press as its rules ask; already in `connect-src`) and lists what
+  it found with blue search pins (`foundOf`); after moving the map a "Search this area" pill searches again.
+- **Smoother:** the compass turned from the map's `rotate` event straight on the icon (it re-rendered the whole map
+  component every frame of a turn); `refreshExpiredTiles: false`, more tile zooms cached, pending tiles cancelled while
+  zooming; glides share one ease-in-out curve; denser places spaced wider.
+- **Checked:** `map-world.test.ts` (a trip's features and days, destinations, Nominatim's answer), a browser run on
+  `local:dev` (OpenFreeMap and Wikimedia answered locally): the globe with towns and photo pins, a card, search this
+  area and the pill after moving, a trip with its days, axe clean at 1280 dark and 390 light, no page errors.
+  **Not seen live:** real Commons thumbnails in the pins and real map tiles under them: look once merged.
+
+## M260: live turn-by-turn navigation on Travel's map, and more Google + Apple Maps directions features (17 Nov)
+
+The owner, 17 Nov: "do all the left over … the maps … needs to upgrade on the next level … combined features of both google
+maps and apple maps … specially the directions part where it navigates you live … ultra smooth" (the owner's exception to
+the launch pause).
+
+- **Left over from M259, still left over:** this machine can't reach Wikivoyage, Wikimedia Commons or Wikidata (the
+  network's gateway refuses them, 403), so the 160 new hand-picked places still have no photo, banner or climate. Nothing
+  was made up. **[next session with Wikimedia access]** the same three commands as M259's note (`gen-travel-data.mts
+  --places`, `--photos` checked by eye, then `gen-destinations.mts`).
+- **Live navigation** (`src/components/travel/map/Navigate.tsx`; logic in `src/lib/navigation.ts`, tested): Directions →
+  **Start** on the chosen route. The map goes full screen; the panel and the map's buttons step aside. The phone's position
+  (`watchPosition`, high accuracy; never sent anywhere) is snapped to the route (`snapTo`: the nearest point, going back
+  costs as much as being off, so a route that passes itself keeps the right part). **Smooth:** the arrow (a MapLibre
+  `Marker`, flat on the map, turned with it) glides between fixes *along the route* (`pointAt`, around corners) over the
+  time between fixes; the bearing (the route's direction 20 m ahead, `headingAt`) and the zoom ease every frame
+  (`turnToward`, exponential); the camera is `jumpTo` on our own `requestAnimationFrame`, tilted (walk 45°, cycle 50°,
+  drive 58°) with you low on the screen (`setPadding` top 42%); the loop rests when nothing moves. **No React render a
+  frame:** React renders once a fix (the banner and the bar). The travelled part fades to grey by moving a `line-gradient`
+  step (`navGradient`, source `uv-nav` with `lineMetrics`), not new data each frame. **Driving:** the zoom pulls out with
+  speed and in before a turn (`followZoom`), three spoken cues (800, 250, 70 m) instead of two, a km/h bubble.
+- **The screen:** a dark banner (both themes) with the turn's arrow (`TurnIcon.tsx`: one drawn arrow for every angle,
+  U-turn, roundabout, start, stop, end), the metres counting down (`bannerDistance`) and the words, sliding in (`.swap`) when
+  the turn changes; "Then …" when the next turn is within 1 km; on the right mute, the whole route (overview) and **share my
+  arrival time** (share sheet or copied: "On my way to …: arriving about 14:35" with a link to the place); at the bottom the
+  arrival time, minutes and distance left (router pace, `progressAt`), "See the turns" (the turns still to come), **End**.
+  Moving the map yourself stops following and shows **Re-centre** (a finger or the mouse pauses the camera at once on
+  `pointerdown`: a `jumpTo` every frame would cancel MapLibre's drag; a plain tap lets it carry on). **Arrival**
+  (`hasArrived`: 15 m walking, 30 m driving) stops the position and shows a card: the place, time and distance travelled,
+  **Look around** (Panoramax street photos there), Done (back to the directions card). The screen stays awake
+  (`useWakeLock`) until arrival.
+- **Spoken turns** (`cueAt`, `cueText`): each said once ("Head off along X for 550 metres, then turn right onto Y", "In 100
+  metres, turn right onto Y", "Turn right onto Y", "Your destination is in 60 metres", "You have arrived at your
+  destination"). The browser's own voice (`speechSynthesis`, free, nothing sent); `primeSpeech()` on the Start press (phones
+  speak only after a tap). The line goes into an `aria-live` element first and is spoken **as the page shows it**: when the
+  page is translated (UiTranslator) the translated words in the page's language, else English. Mute is remembered on the
+  device (`uv-nav-muted`).
+- **A new route when you leave it:** three fixes in a row further off than 30 m (45 driving) plus up to 30 m of the phone's
+  own doubt (`isOff`) ask the same router again from where you are (through the stops not yet reached), at most once in 10
+  s; "Finding a new route…", then the arrow glides onto the new line.
+- **Directions, more of Google's and Apple's** (`MapTools.tsx`): **stops on the way** (up to three, orange dots; the router
+  takes them in order, without other ways then); **Leave now / Leave at / Arrive by** with a time (each route says "Arrive
+  14:35" or "Leave by 13:50"); **Avoid** tolls, motorways or ferries when driving (OSRM's `exclude`, one at a time as the
+  car profile allows; if the router refuses, the fastest is shown and the card says so); each route's **time in a bubble on
+  the map**, the others grey with **+N min** (`bubbleSpot`: on the stretch furthest from the other routes; tap one to take it)
+  and the same in the list; "live traffic isn't counted" under driving times; **Home, Work and recent places** as chips under
+  an empty field (kept on the device, `uv-map-kept`; set from "what's here": Set as Home / Set as Work); turn arrows in the
+  list. `routesOf` now reads every leg's turns with their place, time, kind and roundabout exit; `stepText` knows ramps,
+  roundabout exits, end of road and new names.
+- **A real bug fixed:** on a phone, "Directions to here" left the directions in the closed bottom sheet; it opens now.
+- **Checked:** `navigation.test.ts` (11), `pnpm check`; `scripts/checks/travel-nav-ui.mjs` on `local:dev` with a simulated
+  walk (Playwright geolocation; router, Nominatim and tiles answered in the test): 1280 dark and 390 light, both routes with
+  +4 min, Start, the countdown 560 → 170 m, the nine spoken lines, one new route after going off, Re-centre after a drag, the
+  turns list, arrival, back to directions; axe clean, no sideways scroll, no page errors. **Not seen live:** real GPS on a
+  phone, the real router's turns and real tiles under the route (this machine can't reach them): walk a few streets with it
+  once merged.
+- **Left out on purpose:** live traffic (needs a paid service), lane guidance (the free router has no lanes), speed limits,
+  a live-moving shared arrival link (it would need the server to hold your position: the shared message has the time).
+
+## M261: security updates (17 Nov)
+
+The owner, 17 Nov: "run the next js security upgrade now and whatever else is there" (after `next dev` printed Next.js's
+security notice).
+
+- **Before:** `pnpm audit` found 8: Next.js 16.4.4 (moderate: a `'use cache'` function called through `unstable_cache()`
+  could show one root param's data under another; fixed in 16.4.5), and in the tools that only run on a developer's
+  machine: Vitest 3.2.4 and its `@vitest/mocker` (critical, moderate: its UI server and mock redirects could read files),
+  Tinypool (critical: prototype pollution to code execution) and Zod inside eslint-plugin-react-hooks (high: memory on
+  oversized input).
+- **Now:** `next` and `eslint-config-next` 16.4.5 (3 Nov: two weeks old, the rule's minimum), `@opennextjs/cloudflare`
+  1.20.16 (3 Nov; pinned exactly, moved with Next as M77 asks; 1.20.17 of 12 Nov is too new), `vitest` 4.1.12 (15 Oct; 5.x
+  would be a bigger jump for nothing), root overrides `zod@<4.6.6` → 4.6.7 and `tinypool@<2.1.2` → 2.2.0. `pnpm audit`: no
+  known vulnerabilities. Vitest 4 needed no change to `vitest.config.ts` or any test.
+- **Checked:** `pnpm check` (1,764 tests), `pnpm local:build` (6.1 minutes, server code 52.7 of 64 MB). The page code
+  itself is unchanged.
+- **The 160 places' photos and weather (M259, M260):** the owner's cloud environment **"UniVerse"** already allows
+  Wikivoyage, Wikidata, Commons, upload.wikimedia.org, Wikipedia and NASA POWER. A session started in that environment
+  (not "Default") can run M259's three commands; this session could not switch to it.
+
+## M262: the map "command" look, part 1: the kit and Relief (17 Nov)
+
+The owner, 17 Nov, with a screen recording (a logistics dashboard concept on Instagram): "make me a exact same design and
+animations and ui in the trace and relief and travel app and where ever it feels to fitted because it contains map". The
+owner's exception to the launch pause. The look is followed, not the product (no name, logo, trucks or its wording).
+
+- **The kit** (`src/components/map-ui/Command.tsx`): `CountChips` (white bar, the chosen chip ink with its count),
+  `StatStrip` / `StatCard` (number cards along the map's foot; a sideways row on a phone, four across on a computer) with
+  `TickStrip`, `MiniLine`, `InkPill`; `Callout` + `placeCallout` (a white card pinned beside a place, moved by the map's
+  own frame with `transform`, never a React render a frame; `room` keeps it clear of a side card); `RoutePill`;
+  `QueueCard` (source and age, due chip, title, three facts, why, links, the black approve button; `hot` adds the accent
+  ring); `ProposalSheet` (Now / After table with the After column tinted, steps `now` / `ready` / `later`: on approval the
+  `now` ones tick off one by one, then "Approved"; it opens over the page, so it takes `app` for its colours); `undoToast`.
+  **Canvas marks** (`marks.tsx`, for WorldCanvas maps): `IconSource` + `drawIcons` (lucide icons drawn once into small
+  canvases in white, ink, grey and the accent), `unit` (ink / risk / hot / plain markers, a badge dot), `count`, `rings`,
+  `incident`, `zone`, `route` (done ink, planned dotted, new accent), `tag`.
+- **Colours:** `--cmd` (rings, halos, tints), `--cmd-ink` (text), `--cmd-fill` (filled pills, 4.5:1 with white) per app:
+  `.cmd-relief` orange (the recording's), `.cmd-trace` pink, `.cmd-travel` sky (M132: each app its own colour). CSS:
+  `cmd-pop`, `cmd-sheet`, `cmd-ring` (paused while scrolling; still with Reduce Motion), at the end of `globals.css`.
+- **Relief** (`ReliefApp.tsx`): the kinds of help and "Ask or offer help" above; a "Needs you" queue on the left (on a
+  phone under the map) with a `QueueCard` per post (most urgent and nearest first); the map taller with chips (All, Needs,
+  Offers, Urgent: the same filter for the list), the zoom and Near me in one capsule, markers drawn with `unit` (urgent and
+  open: white with the orange ring and halo, critical ones pulse; someone on it: a green dot; offers small and white;
+  several close together: a number in an ink circle), the chosen one orange with rings, a dashed zone and the dotted way
+  from where you are, its card pinned beside it and the full card on the right (a sheet on a phone); number cards (open
+  needs with a tick per need, being helped, urgent, helped in 30 days with "n need you"), counted from the same list
+  as the map (the server's stats could be a moment older). The six number tiles above the map are gone (the cards
+  replace them); the "Help, moving" funnel and radar now sit under the map. **"I can help" in the queue** opens the plan:
+  status, helper, how it shows, messages (now and after), the steps (the distance if known; put you down as the helper;
+  tell the person; later, mark it delivered), the details; approve runs the same `take` as before, and the toast's Undo
+  runs `release` (both tell the person who asked, as before). The side card's own "I can help" still takes it at once.
+- **Checked:** `relief-command-ui.mjs` on `local:dev` (1280 dark, 390 light): chips and counts, the queue card, the pinned
+  card, the plan, the steps ticking to Approved, taken then open again after Undo; axe clean, no sideways scroll, no page
+  errors. `pnpm check`.
+- **Next (M263, M264):** Trace's tracking map (shipments: ink markers, a late or too-warm one with the ring, its route done
+  and planned, a pinned card, number cards, "needs you" for the brand: alerts, likely copies, recalls) and Travel (a trip's
+  day on the map: pinned card for the next place, the walk drawn as done / planned, number cards; the Today tab's checks
+  as "needs you").
+
+## M263: the map "command" look, part 2: Trace's tracking map (17 Nov)
+
+- **`TrackingMap.tsx`** with the M262 kit (`.cmd-trace`, pink `#ec4899`): the road behind (stops and the phone's trail up to
+  the marker) one ink line, the road ahead dotted (the chosen one's in pink) to a dashed zone with a white tag (place,
+  "Arrives …", the time from `performance.timeOrigin + t`: no `Date.now()` in render), where it left a ringed dot with
+  "Left 6:12 AM"; each shipment on the move a round truck (`unit`: ink; white with the pink ring and halo when `atRisk`:
+  breaches recorded or too warm now; the chosen one pink with rings), its card pinned beside it (speed, heading to,
+  time to go, the reading, a `Fill` of the journey, "Check the cargo at the next stop" when at risk). Chips (All, On the
+  move, Delivered, At risk), the controls in one capsule, the old legend gone (the tags say it). Number cards: on the
+  move (a tick per shipment), delivered, at risk, next arrival with "n need you". **Needs you** above the list: a batch
+  that ran warm ("too warm" only when the latest reading is over the limit, else "ran warm on the way"; Show it) and one
+  on the move without a destination (Set destination: the existing pick-on-the-map). The rest of the page (the live
+  strip, Journeys, the fleet city) unchanged.
+- `tag()` in `marks.tsx` flips to the left of its point near the map's right edge. A dark chip dot is light in dark mode.
+- **Checked:** `trace-command-ui.mjs` (sample mode) at 1280 dark and 390 light, axe clean, no sideways scroll, no errors.
+
+## M264: the map "command" look, part 3: Travel's trip on the map (17 Nov)
+
+- **`tripFeatures(t, day, today)`** (`map-world.ts`, tested): `today` is the trip's day number (1 = its first day, from
+  `startDate` and `useNow`; null without a start date); the way between cities splits into `done` (to the city you're
+  in) and ahead; each city gets `state` (`done`, `now`, `next`). Layers: travelled in ink (white in dark), ahead dotted
+  grey (`uv-trip-ahead`), cities as ink circles with their number (dimmed once done), today's city sky blue with a halo
+  (`uv-trip-halo`) and a DOM marker with `.cmd-ring` pulsing (CSS; removed with the trip).
+- **The trip's chip:** the days as `CountChips` (All and each day with how many places it has, the day's colour as the
+  dot). **Number cards** (a computer only: the phone's sheet has the bottom): days (a tick per day: done ink, today sky)
+  with "today is day n" or "starts in n d", cities and the km between them, places with a tick per place in its day's
+  colour, the busiest day. The trip is framed above the cards (bottom padding 170 on a computer).
+- **Left for later, on purpose:** a "Needs you" queue for Travel (the trip page's Today and Ready tabs already list what to
+  do; repeating them on the map would show the same thing twice), and Travel's other map views (places, walks, directions:
+  their own Apple Maps look from M233–M260 stays).
+- **Checked:** `travel-command-ui.mjs` (1280 dark, 390 light, tiles refused), axe clean, no errors; `pnpm check`.
+
+## M265: a trip's ways follow the real roads, a day's walk the streets (17 Nov)
+
+The owner, 17 Nov, on a screenshot of M264's test (the map empty because the test refused the tiles; live, the streets
+show): "it shows all the directions … like take left or right then the direction line should bend like that".
+
+- **Between cities** (`roadLegs`, `legKey`, `bow` in `map-world.ts`, tested): each way under 1,500 km that isn't flown or
+  sailed (the stop's `mode`, M247) is asked of FOSSGIS's car router from the browser (`directionsUrl('car', …)`, one
+  request per way, at most 12, once per trip); its path replaces the straight line (`tripFeatures(…, legs)`). Flights and
+  ferries are a gentle arc (`bow`). Until (or unless) the router answers, straight lines. Trains use the road's path (no
+  free rail router): close enough on a map of a country.
+- **A chosen day:** its places (in their order, up to 10) are joined by the walking router's path along the streets (role
+  `walk`, the directions' blue with its darker edge, `uv-trip-walk`), and the map frames that day's places (it framed the
+  whole trip before, which left the walk tiny).
+- **No Worker CPU:** the routers answer the browser; `routing.openstreetmap.de` was already in `connect-src` (M233).
+
+## M266: the command look on Travel's other map views (17 Nov)
+
+The owner, 17 Nov: "Travel's other map views (places, walks, directions) … please do this one".
+
+- **A tapped place** (place, story, photo): the recording's card pinned beside it on a computer (`Callout`, moved by the
+  map's own `move` event with `placeCallout`, no React render a frame): an ink icon, its name and kind, a Directions
+  button; two rings pulsing round it (a MapLibre `Marker` with `.cmd-ring`, removed with the pick). The panel still
+  shows the full card.
+- **Number cards** along the map's foot on a computer (`StatStrip` / `StatCard`, from what the map already holds: no new
+  request): a walk (stops, distance, walking minutes, back by), directions (time, distance, turns, arrival leaving now),
+  or the area in view from zoom 12 (the chosen kind in view, stories, reviewed places, your saved places). Directions and
+  walks are framed above the cards (bottom padding 170 on a computer).
+
+## The phone sweep and the harsh test before the merge (17 Nov)
+
+The owner, 17 Nov: "check other area where the ui is overlapping or doesnt fit properly in the website and app in
+mobile"; then "do a big and harsh test … ultra smooth … should not increase cpu limit of cloudflare neither the request
+and merge after all of this is done".
+
+- **`scripts/crawl.mjs --layout`** (phone, every page per role; `--guest` for the website's public pages; `--stream`
+  prints each page as it goes): parts crossing the screen's edge (a drawer waiting wholly off the screen is fine),
+  buttons and fields covered by something else, two controls overlapping (a button placed inside a field is fine). Run
+  it on `local:serve`: `local:dev` ran out of memory under the crawl and restarted mid-way.
+- **Fixed:** decorative blurred circles (`absolute … blur-2xl/3xl`, 29 of them) now `pointer-events-none`: on Medical
+  one sat over "Update Profile" so it couldn't be pressed; the teacher's grade search has its own row on a phone (it was
+  52 px wide beside five buttons); Lost & found's "today / 2 days ago" comes from `useNow` (0 on the server), ending
+  React error #418 there.
+- **Left as they are (by design):** a small button placed on a card (a course's colour dot, a folder's "+"); the demo
+  admin's refused writes (read-only, §2); Trace's 403 for an account without a brand ("Start your brand"); the
+  calendar link's 503 without `SESSION_SECRET` (the owner's key, live only); Wikimedia photos unreachable from this machine.
+- **Smoother:** the canvas maps' markers (`unit`) are drawn once per look, icon, theme and size and stamped each frame
+  (a canvas shadow per marker per frame stuttered busy maps); the count circles lost their per-frame shadow too.
+- **Cloudflare:** nothing in M260–M266 adds an API route or a server request: the routers, tiles, speech and position
+  are the browser's own or free services it talks to directly. Build: 52.8 of 64 MB server code, under 5 minutes.
 ## M234
 
 (Built as M232 on `claude/funny-galileo-y4mz9r` while another session used M232–M233 for Travel; renumbered
@@ -8145,3 +8734,15 @@ answer a student with "Start your brand first"; the logo's light plays three tim
 admin's 403 on saving a setting is its read-only design; `/api/calendar-link` 503 locally is the missing
 `SESSION_SECRET` ([owner]); a one-off ChunkLoadError is handled by `recovery-script.ts`. The crawl scripts
 were one-offs (not committed); `scripts/checks/main-pages-smooth.mjs` and the axe checks remain the kept ones.
+
+## The owner's error email of 17 Nov ("2 problem(s) need a look")
+
+- **"undefined" on /travel, iOS Safari, 5 times by 2 people** (diagnosed by the reporter as an inbox crash: wrong): the
+  error monitor's capture-phase `error` listener on `window` also hears a picture, video or sound that failed to load
+  (Travel's Commons photos, often on iOS Safari); such an event has no `error` and no `message`, so it was reported as
+  "undefined". Nobody saw a broken page. `src/lib/error-monitor.ts` now leaves alone failed loads on any element but
+  scripts and stylesheets (still reported as `ChunkLoadError`), events with nothing in them, and promises turned down
+  with nothing.
+- **`/api/core/travel/place` timed out once** (16 Nov 17:02): already fixed by M231 the same evening (a slow source
+  answers 503 "busy", not a site error); not seen since.
+- **[owner]:** mark both reports resolved in the console (Overview → Problems) once this is live.

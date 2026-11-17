@@ -12,6 +12,7 @@ import { confirmDialog } from '@/components/ui/Dialogs';
 import { authedJson } from '@/lib/authed-fetch';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { useAuthStore } from '@/store/auth';
+import { useNow } from '@/lib/use-now';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import type { LostFoundItem } from '@/components/campus/lost-found';
@@ -34,7 +35,7 @@ export default function LostFoundPage() {
   const key = tab === 'mine' ? '/api/campus/lost-found?mine=1' : `/api/campus/lost-found?kind=${tab}`;
   const { data, isLoading, error, mutate } = useSWR<LostFoundItem[]>(key, authedJson);
   const [form, setForm] = useState(false);
-  const [now] = useState(() => Date.now());
+  const now = useNow(); // 0 while rendering on the server, so both draw the same (React error #418 before)
 
   const message = async (it: LostFoundItem) => {
     try {
@@ -98,7 +99,7 @@ export default function LostFoundPage() {
                         {it.description && <p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-line">{it.description}</p>}
                         <p className="text-xs text-zinc-500 flex flex-wrap gap-x-2">
                           {it.location && <span className="inline-flex items-center gap-1"><MapPin className="w-3 h-3" />{it.location}</span>}
-                          <span>{mine ? 'You' : it.reporter.name} · {ago(it.createdAt, now)}</span>
+                          <span>{mine ? 'You' : it.reporter.name} · {now ? ago(it.createdAt, now) : ''}</span>
                           {it.status !== 'OPEN' && <span className="font-semibold">{it.status === 'RESOLVED' ? 'Sorted' : 'Removed by an admin'}</span>}
                         </p>
                         <div className="flex flex-wrap gap-2 pt-1 mt-auto">
