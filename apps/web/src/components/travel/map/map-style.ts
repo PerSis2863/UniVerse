@@ -8,7 +8,19 @@ import type { ExpressionSpecification, FilterSpecification, LayerSpecification, 
 
 const TILES = 'https://tiles.openfreemap.org/planet';
 const GLYPHS = 'https://tiles.openfreemap.org/fonts/{fontstack}/{range}.pbf';
-const REGULAR = ['Noto Sans Regular'], BOLD = ['Noto Sans Bold'];
+// M237: the labels in Inter (the site's own font, the nearest to Apple's San Francisco), made into the map's glyph
+// files by scripts/map-glyphs.py (public/fonts/map). Scripts Inter lacks (Greek, Cyrillic, Arabic…) come from the map
+// service's Noto Sans, through mapRequest.
+const REGULAR = ['InterRegular'], BOLD = ['InterBold'];
+/** The glyph ranges public/fonts/map holds (as scripts/map-glyphs.py printed them). */
+const GLYPH_RANGES = new Set(['0-255', '256-511', '512-767', '768-1023', '7424-7679', '7680-7935', '8192-8447', '8448-8703', '8704-8959', '11264-11519', '42752-43007', '65024-65279']);
+/** The map's requests (MapLibre's transformRequest): Inter's glyphs from the site, other scripts from Noto Sans. */
+export function mapRequest(url: string): { url: string } {
+  const m = /^https:\/\/tiles\.openfreemap\.org\/fonts\/(InterRegular|InterBold)\/(\d+-\d+)\.pbf$/.exec(url);
+  if (!m) return { url };
+  if (GLYPH_RANGES.has(m[2])) return { url: `${location.origin}/fonts/map/${m[1]}/${m[2]}.pbf` };
+  return { url: `https://tiles.openfreemap.org/fonts/${m[1] === 'InterBold' ? 'Noto%20Sans%20Bold' : 'Noto%20Sans%20Regular'}/${m[2]}.pbf` };
+}
 
 const LIGHT = {
   // M236: Apple Maps' own tones (its land is #f9f5ed): warm off-white ground, soft greens, bright blue water,

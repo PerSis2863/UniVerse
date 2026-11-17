@@ -8154,3 +8154,30 @@ credits line: "can you remove this".
 - **Checked:** axe clean (computer and phone, light and dark), no page errors; the list fills on first load.
 - **Not done:** the map's labels still use Noto Sans (OpenFreeMap's fonts). Apple's San Francisco is closest to the
   site's Inter; serving Inter as map glyphs (`maplibre-font-maker-node` could make them) is a possible next step.
+
+## M237: Google Maps' tools on Travel's map, and its labels in Inter (17 Nov)
+
+The owner, 17 Nov: "upgrade the map even more like add features of google maps in it" (chose all four offered:
+directions, place details, what's here and share, measure distance) and "using the site's own font… please do this".
+
+- **Labels in Inter** (the site's font, the nearest to Apple's San Francisco): `scripts/map-glyphs.py` makes MapLibre glyph
+  files (24 px signed distance fields, 3 px margin, top offset −26 as the map service's own) from `public/fonts/inter`
+  into `public/fonts/map/InterRegular|InterBold` (about 1 MB, 12 ranges: Latin and extended Latin). `mapRequest`
+  (`map-style.ts`, every map's `transformRequest`) serves those ranges from the site and the rest (Greek, Cyrillic,
+  Arabic…) from OpenFreeMap's Noto Sans. Re-run the script if the Inter files change (it prints the ranges for
+  `GLYPH_RANGES`).
+- **Directions** (`MapTools.tsx` `DirectionsCard`, logic in `src/lib/map-tools.ts`): from (your location, else the map's
+  middle) and to, swap, Walk / Cycle / Drive (FOSSGIS's foot, bike and car routers, from the browser), up to three
+  routes (the others grey on the map, tap one to take it), the turns, the route framed clear of the panel, and
+  "Public transport in Google Maps". From the round blue button beside the search, a place card's Directions, or
+  "what's here".
+- **Place details** were already there (the place card through `/travel/place`: hours and open now, phone, website,
+  address); its Directions now opens the in-map directions.
+- **What's here + share** (`HereCard`): a right-click, or a press and hold on a touch screen: the address (Nominatim,
+  from the browser; `nominatim.openstreetmap.org` added to `connect-src`), Directions from / to here, Measure, Copy
+  coordinates, Share (a link `…/travel?view=map&at=…&pin=1` that opens with that card).
+- **Measure distance** (`MeasureBar`, the ruler among the map's buttons): click points; the length, and the area inside
+  from three points; undo, clear, done.
+- **Checked:** unit tests (`map-tools.test.ts`), a browser run on the Helsinki test map (right-click, two routes,
+  cycling, measuring: 150 m, 2,529 m²), axe clean, no page errors. **Not seen live:** the real routers' and Nominatim's
+  answers (this machine can't reach them); look at them once merged.

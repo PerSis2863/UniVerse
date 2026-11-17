@@ -16,7 +16,7 @@ export const ACCENT = '#0ea5e9';
 const ROUTE = '#1f87ff', ROUTE_EDGE = '#0b5bd3';
 const EMPTY = { type: 'FeatureCollection' as const, features: [] };
 const NOTHING: ExpressionSpecification = ['==', ['get', 'class'], '__none__'];
-export const SOURCES = ['uv-sel', 'uv-stories', 'uv-reviews', 'uv-walk', 'uv-rings', 'uv-me'] as const;
+export const SOURCES = ['uv-sel', 'uv-stories', 'uv-reviews', 'uv-walk', 'uv-rings', 'uv-me', 'uv-route', 'uv-measure'] as const;
 
 // M214: free sources the browser reads directly (no Worker in between): elevation for relief and 3D terrain
 // (AWS's open Terrain Tiles, terrarium encoding), satellite pictures (EOX's Sentinel-2 cloudless 2016,
@@ -109,6 +109,16 @@ export function addLayers(map: MLMap, dark: boolean) {
   if (!map.hasImage('uv-bubble')) map.addImage('uv-bubble', bubbleImage(), { pixelRatio: 2, stretchX: [[28, 36]], stretchY: [[26, 30]], content: [14, 10, 50, 46] });
   const walkLine = (exact: boolean): FilterSpecification => ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'exact'], exact]];
   const width = (a: number, b: number): ExpressionSpecification => ['interpolate', ['linear'], ['zoom'], 12, a, 16, b];
+  // M237: directions as Google and Apple Maps draw them: the other ways in grey (tap one to take it), the chosen in
+  // blue with a darker edge, a white start dot and a red end pin; and the measuring line with its points.
+  const route = (role: string): FilterSpecification => ['all', ['==', ['geometry-type'], 'LineString'], ['==', ['get', 'role'], role]];
+  map.addLayer({ id: 'uv-route-alt', type: 'line', source: 'uv-route', filter: route('alt'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': dark ? '#7b8494' : '#a3acb9', 'line-width': width(4, 7) } });
+  map.addLayer({ id: 'uv-route-edge', type: 'line', source: 'uv-route', filter: route('main'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_EDGE, 'line-width': width(7, 11) } });
+  map.addLayer({ id: 'uv-route-line', type: 'line', source: 'uv-route', filter: route('main'), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8) } });
+  map.addLayer({ id: 'uv-route-ends', type: 'circle', source: 'uv-route', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': ['match', ['get', 'role'], 'from', '#ffffff', '#ea4335'], 'circle-stroke-color': ['match', ['get', 'role'], 'from', ROUTE, '#ffffff'], 'circle-stroke-width': 3 } });
+  map.addLayer({ id: 'uv-measure-line', type: 'line', source: 'uv-measure', filter: ['==', ['geometry-type'], 'LineString'], paint: { 'line-color': dark ? '#ffffff' : '#111214', 'line-width': 2.5, 'line-dasharray': [2, 1.2] } });
+  map.addLayer({ id: 'uv-measure-area', type: 'fill', source: 'uv-measure', filter: ['==', ['geometry-type'], 'Polygon'], paint: { 'fill-color': ROUTE, 'fill-opacity': 0.12 } }, 'uv-measure-line');
+  map.addLayer({ id: 'uv-measure-pts', type: 'circle', source: 'uv-measure', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 5, 'circle-color': '#ffffff', 'circle-stroke-color': dark ? '#ffffff' : '#111214', 'circle-stroke-width': 2.5 } });
   map.addLayer({ id: 'uv-walk-edge', type: 'line', source: 'uv-walk', filter: ['==', ['geometry-type'], 'LineString'], layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE_EDGE, 'line-width': width(7, 12) } });
   map.addLayer({ id: 'uv-walk-line', type: 'line', source: 'uv-walk', filter: walkLine(true), layout: { 'line-cap': 'round', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8.5) } });
   map.addLayer({ id: 'uv-walk-straight', type: 'line', source: 'uv-walk', filter: walkLine(false), layout: { 'line-cap': 'butt', 'line-join': 'round' }, paint: { 'line-color': ROUTE, 'line-width': width(4.5, 8.5), 'line-dasharray': [1.6, 1] } });

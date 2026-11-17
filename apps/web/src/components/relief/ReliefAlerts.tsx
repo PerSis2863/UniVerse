@@ -12,6 +12,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { ALERT_KINDS, distanceKm, type Alert, type AlertKind } from '@/lib/relief-plus';
 import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
+import { mapRequest } from '@/components/travel/map/map-style';
 
 // Relief → Alerts (M217): disasters happening now around the world: GDACS's orange and red alerts (earthquakes,
 // tropical cyclones, floods, volcanoes, droughts, wildfires; the UN and European Commission's system) and the
@@ -52,7 +53,7 @@ export default function ReliefAlerts() {
       ml.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
       if (gone || !box.current) return;
       applied.current = firstStyle();
-      map = new ml.Map({ container: box.current, style: applied.current, center: [10, 20], zoom: 1.2, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
+      map = new ml.Map({ container: box.current, style: applied.current, center: [10, 20], zoom: 1.2, transformRequest: mapRequest, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
       mapRef.current = map;
       map.on('style.load', () => onStyle(map!));
       map.on('click', (e) => onClick(map!, e.point.x, e.point.y));

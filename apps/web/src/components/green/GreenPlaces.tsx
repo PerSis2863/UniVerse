@@ -10,6 +10,7 @@ import { osmKey } from '@/lib/travel-place';
 import { km } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
+import { mapRequest } from '@/components/travel/map/map-style';
 
 // Green → Green places (M216): where to recycle, refill a bottle, hire a bike, charge an electric car, buy
 // second-hand or at a market, near you. OpenStreetMap's own places, read from the map's tiles as you move
@@ -86,7 +87,7 @@ export default function GreenPlaces() {
       if (gone || !box.current) return;
       const { s, style } = first();
       applied.current = style;
-      map = new ml.Map({ container: box.current, style: applied.current, center: [s.lon, s.lat], zoom: s.zoom, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
+      map = new ml.Map({ container: box.current, style: applied.current, center: [s.lon, s.lat], zoom: s.zoom, transformRequest: mapRequest, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
       mapRef.current = map;
       map.on('style.load', () => onStyle(map!));
       map.on('idle', () => read(map!));
