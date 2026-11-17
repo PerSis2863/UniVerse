@@ -121,7 +121,9 @@ export function tag(ctx: CanvasRenderingContext2D, x: number, y: number, title: 
   ctx.font = '600 12px Inter, ui-sans-serif, system-ui';
   const w1 = ctx.measureText(title).width;
   ctx.font = '500 11px Inter, ui-sans-serif, system-ui';
-  const w2 = sub ? ctx.measureText(sub).width : 0, w = Math.max(w1, w2) + 20, h = sub ? 38 : 26, left = x + 12, top = y - h / 2;
+  const w2 = sub ? ctx.measureText(sub).width : 0, w = Math.max(w1, w2) + 20, h = sub ? 38 : 26, top = y - h / 2;
+  // Beside the point, on its left when there's no room on the right.
+  const room = ctx.canvas.clientWidth || Infinity, left = x + 12 + w > room - 56 ? x - 12 - w : x + 12;
   ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2;
   ctx.fillStyle = dark ? '#1f2127' : '#ffffff'; ctx.beginPath(); ctx.roundRect(left, top, w, h, 9); ctx.fill(); ctx.restore();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';

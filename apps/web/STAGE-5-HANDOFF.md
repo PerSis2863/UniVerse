@@ -8593,3 +8593,19 @@ owner's exception to the launch pause. The look is followed, not the product (no
   and planned, a pinned card, number cards, "needs you" for the brand: alerts, likely copies, recalls) and Travel (a trip's
   day on the map: pinned card for the next place, the walk drawn as done / planned, number cards; the Today tab's checks
   as "needs you").
+
+## M263: the map "command" look, part 2: Trace's tracking map (17 Nov)
+
+- **`TrackingMap.tsx`** with the M262 kit (`.cmd-trace`, pink `#ec4899`): the road behind (stops and the phone's trail up to
+  the marker) one ink line, the road ahead dotted (the chosen one's in pink) to a dashed zone with a white tag (place,
+  "Arrives …", the time from `performance.timeOrigin + t`: no `Date.now()` in render), where it left a ringed dot with
+  "Left 6:12 AM"; each shipment on the move a round truck (`unit`: ink; white with the pink ring and halo when `atRisk`:
+  breaches recorded or too warm now; the chosen one pink with rings), its card pinned beside it (speed, heading to,
+  time to go, the reading, a `Fill` of the journey, "Check the cargo at the next stop" when at risk). Chips (All, On the
+  move, Delivered, At risk), the controls in one capsule, the old legend gone (the tags say it). Number cards: on the
+  move (a tick per shipment), delivered, at risk, next arrival with "n need you". **Needs you** above the list: a batch
+  that ran warm ("too warm" only when the latest reading is over the limit, else "ran warm on the way"; Show it) and one
+  on the move without a destination (Set destination: the existing pick-on-the-map). The rest of the page (the live
+  strip, Journeys, the fleet city) unchanged.
+- `tag()` in `marks.tsx` flips to the left of its point near the map's right edge. A dark chip dot is light in dark mode.
+- **Checked:** `trace-command-ui.mjs` (sample mode) at 1280 dark and 390 light, axe clean, no sideways scroll, no errors.
