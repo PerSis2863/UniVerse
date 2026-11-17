@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Calendar, Camera, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BookOpen, Box, Calendar, Camera, Clock3, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -25,13 +25,13 @@ import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showCl
 import { mapRequest } from './map-style';
 import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
 import { Navigate, primeSpeech, type NavTrip } from './Navigate';
-import { directionsUrl, routesOf, type Route } from '@/lib/map-tools';
+import { directionsUrl, distance, duration, MODES, routesOf, type Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
 import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
-import { CountChips, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
+import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
 // maps … something different that nobody has"): OpenFreeMap's vector map of OpenStreetMap (every street,
@@ -127,6 +127,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const [here, setHere] = useState<{ lat: number; lon: number; x: number; y: number } | null>(null);
   const [measure, setMeasure] = useState<{ lat: number; lon: number }[] | null>(null);
   const pinned = useRef(false);
+  const pickCard = useRef<HTMLDivElement>(null); // M266: the card pinned beside a tapped place
   const compass = useRef<SVGSVGElement>(null); // M259: turned straight from the map's rotate event, not through React (60 renders a second)
   // M259: the world's destinations, a trip on the map, saved places and "Search this area".
   const [dest, setDest] = useState<Dest | null>(null);
@@ -344,7 +345,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const m = mapRef.current, r = routes[0];
     if (!m || !r) return;
     const xs = r.path.map((c) => c[0]), ys = r.path.map((c) => c[1]), wide = m.getContainer().clientWidth >= 640;
-    m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: wide ? { top: 60, bottom: 60, left: 420, right: 80 } : { top: 70, bottom: 300, left: 40, right: 70 }, duration: calm() ? 0 : 900, maxZoom: 17 });
+    m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: wide ? { top: 60, bottom: m.getContainer().clientWidth >= 1024 ? 170 : 60, left: 420, right: 80 } : { top: 70, bottom: 300, left: 40, right: 70 }, duration: calm() ? 0 : 900, maxZoom: 17 });
   }, [routes]);
   // A shared spot (…&pin=1): its "what's here" card, once the map is ready.
   useEffect(() => {
@@ -386,6 +387,25 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     if (b) m.fitBounds(b, { padding: m.getContainer().clientWidth >= 1024 ? { ...clearOfPanel(m), bottom: 170 } : clearOfPanel(m), maxZoom: 14, duration: calm() ? 0 : 1400, easing: ease });
     return () => { gone = true; ring?.remove(); };
   }, [tripFc, ready]);
+  // M266 (the owner's recording, on Travel's other views): a tapped place gets the recording's card pinned beside it
+  // (moved by the map's own 'move' event, never a React render a frame) and two rings pulsing round it (CSS).
+  const pickedAt = picked ? (picked.type === 'place' ? picked : picked.type === 'story' ? picked.story : picked.photo) : null;
+  useEffect(() => {
+    const m = mapRef.current, el = pickCard.current;
+    if (!m || !ready || !pickedAt || nav) return;
+    const room = () => m.getContainer().clientWidth;
+    const place = () => { const p = m.project([pickedAt.lon, pickedAt.lat]); placeCallout(el, p.x, p.y, room(), m.getContainer().clientHeight, 26); };
+    place();
+    m.on('move', place);
+    let ring: Marker | null = null, gone = false;
+    void import('maplibre-gl').then((ml) => {
+      if (gone) return;
+      const d = document.createElement('div');
+      d.className = 'cmd-travel cmd-ring pointer-events-none h-10 w-10 rounded-full'; // MapLibre positions it (absolute)
+      ring = new ml.Marker({ element: d }).setLngLat([pickedAt.lon, pickedAt.lat]).addTo(m);
+    });
+    return () => { gone = true; m.off('move', place); ring?.remove(); };
+  }, [pickedAt, ready, nav]);
   // Where the sun is, for the hour chosen, lights the buildings.
   useEffect(() => { const m = mapRef.current; if (m && ready && view) skyFor(m, sunlight(m, view.lat, view.lon, when).altitude, dark); }, [ready, view, when, dark]);
   // Wikipedia's stories and UniVerse's reviews on the map.
@@ -515,7 +535,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       .then((answer) => { const r = routeOf(answer, w.stops.length); setWalk((now) => (now && now.start === start ? (r ? { ...withLegs(now, r.legs), path: r.path, routing: false } : { ...now, routing: false }) : now)); })
       .catch(() => { if (!ask.signal.aborted) setWalk((now) => (now && now.start === start ? { ...now, routing: false } : now)); });
     const lons = [c.lng, ...w.stops.map((s) => s.lon)], lats = [c.lat, ...w.stops.map((s) => s.lat)];
-    m.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { pitch: 0, bearing: 0, padding: { top: 120, bottom: 120, left: window.innerWidth >= 640 ? 420 : 40, right: 80 }, maxZoom: 16.5, duration: calm() ? 0 : 1200 });
+    m.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { pitch: 0, bearing: 0, padding: { top: 120, bottom: window.innerWidth >= 1024 ? 170 : 120, left: window.innerWidth >= 640 ? 420 : 40, right: 80 }, maxZoom: 16.5, duration: calm() ? 0 : 1200 });
   };
   const myPlace = (): Spot | null => {
     const pt = me.current?.features.find((f) => f.geometry.type === 'Point')?.geometry as GeoJSON.Point | undefined;
@@ -770,6 +790,44 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
         onFrom={(s) => directionsTo(dir?.to ?? null, s)} onTo={(s) => directionsTo(s, dir?.from ?? myPlace())} onMeasure={() => { setMeasure([{ lat: here.lat, lon: here.lon }]); setHere(null); }} />}
       {measure && <MeasureBar pts={measure} onUndo={() => setMeasure(measure.slice(0, -1))} onClear={() => setMeasure([])} onDone={() => setMeasure(null)} />}
       </>)}
+      {/* M266: the tapped place's card, pinned beside it on the map (a computer: the panel shows the rest). */}
+      {!nav && !measure && picked && pickedAt && (
+        <div className="cmd-travel pointer-events-none absolute inset-0 z-20 hidden overflow-hidden lg:block">
+          <Callout ref={pickCard} key={`${pickedAt.lat},${pickedAt.lon}`} className="w-60">
+            <div className="flex items-center gap-3">
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">{picked.type === 'story' ? <BookOpen className="h-5 w-5" aria-hidden /> : picked.type === 'place' ? <MapPin className="h-5 w-5" aria-hidden /> : <Camera className="h-5 w-5" aria-hidden />}</span>
+              <div className="min-w-0"><p className="truncate text-[15px] font-semibold" translate="no">{picked.type === 'place' ? picked.name : picked.type === 'story' ? picked.story.title : picked.type === 'photo' ? picked.photo.title : 'Street photo'}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{picked.type === 'place' ? picked.kind : picked.type === 'story' ? 'A story of this place' : 'A photo taken here'}</p></div>
+            </div>
+            <button type="button" onClick={() => directionsTo({ lat: pickedAt.lat, lon: pickedAt.lon, name: picked.type === 'place' ? picked.name : picked.type === 'story' ? picked.story.title : 'This place' })} className="mt-3 inline-flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-zinc-900 text-[13px] font-semibold text-white dark:bg-white dark:text-zinc-900"><Navigation className="h-4 w-4" aria-hidden />Directions</button>
+          </Callout>
+        </div>
+      )}
+      {/* M266: the numbers of what's on the map along its foot (a computer): a walk, directions, or the area in view. */}
+      {!nav && !tripId && !measure && (() => {
+        const r = dir ? routes[dir.chosen] ?? routes[0] : null;
+        const cards = walk ? [
+          { label: 'Stops', icon: Footprints, value: walk.stops.length, unit: 'on the way' },
+          { label: 'Distance', icon: Ruler, value: `${walk.km} km`, unit: walk.path ? 'along the streets' : 'straight lines' },
+          { label: 'Walking', icon: Clock3, value: `${walk.stops.reduce((t, x) => t + x.walk, 0)} min`, unit: `${walk.total} min with the visits` },
+          { label: 'Back by', icon: Sun, value: clockText(zone, new Date(when.getTime() + walk.total * 60_000)), unit: 'their time', tone: 'accent' as const },
+        ] : r && dir ? [
+          { label: 'Time', icon: Clock3, value: duration(r.minutes), unit: MODES.find((x) => x.id === dir.mode)!.label.toLowerCase() },
+          { label: 'Distance', icon: Ruler, value: distance(r.km), unit: routes.length > 1 ? `${routes.length} ways` : undefined },
+          { label: 'Turns', icon: Navigation, value: r.steps.filter((x) => x.type !== 'depart' && x.type !== 'arrive').length, unit: dir.via.length ? `${dir.via.length} stop${dir.via.length === 1 ? '' : 's'}` : undefined },
+          { label: 'Arrive', icon: Sun, value: now ? new Date(now + r.minutes * 60_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–', unit: 'leaving now', tone: 'accent' as const },
+        ] : view && view.zoom >= 12 && !picked && !dest && !found ? [
+          { label: `${CATEGORIES.find((c) => c.id === cat)!.label} in view`, icon: PINS[cat].icon, value: list.length, unit: list.length >= 40 ? 'or more' : undefined },
+          { label: 'Stories', icon: BookOpen, value: show.stories ? storyList.length : '–', unit: show.stories ? 'nearby' : 'layer off' },
+          { label: 'Reviewed', icon: Star, value: show.reviews ? reviewed?.places.length ?? 0 : '–', unit: 'on UniVerse' },
+          { label: 'Saved', icon: Heart, value: savedList.filter((x) => x.lat! >= view.s && x.lat! <= view.n && x.lon! >= view.w && x.lon! <= view.e).length, unit: 'of yours here' },
+        ] : null;
+        if (!cards) return null;
+        return (
+          <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
+            <StatStrip className="pointer-events-auto">{cards.map((c, i) => <StatCard key={c.label} label={c.label} icon={c.icon} value={c.value} unit={c.unit} tone={'tone' in c ? c.tone : undefined} delay={i * 50} />)}</StatStrip>
+          </div>
+        );
+      })()}
       {/* M264: a trip's numbers along the map's foot (a computer: the phone's sheet has the bottom). */}
       {!nav && tripId && tripStats && !picked && !dir && !walk && (
         <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
