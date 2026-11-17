@@ -1,10 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, Trash2, Users, Wallet } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, LogOut, Luggage, MapPin, Minus, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -22,6 +22,8 @@ import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
 import { TripMoney } from './trip-money';
 import { TripPacking } from './trip-packing';
 import { TripToday } from './trip-today';
+import { TripOffline } from './trip-offline';
+import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
 // and how to get between them, each city's days with places dragged into them, the whole trip's budget,
@@ -37,6 +39,7 @@ export interface TripAnswer {
 const PARTS = [
   { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Packing', icon: Luggage },
+  { value: 'ready', label: 'Ready', icon: ShieldCheck },
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
@@ -51,7 +54,11 @@ export function TravelTrip() {
   const router = useRouter();
   const key = id ? `/travel/trips/${id}` : null;
   const refreshInterval = useLiveInterval(30_000, 0);
-  const { data, error, mutate } = useSWR<TripAnswer>(key, fetcher, { refreshInterval, revalidateOnFocus: true });
+  const { data: live, error, mutate } = useSWR<TripAnswer>(key, fetcher, { refreshInterval, revalidateOnFocus: true });
+  // M240: with no signal, the copy saved for offline (if any) stands in, read-only in effect.
+  const [saved, setSaved] = useState<{ trip: TripAnswer; at: string } | null>(null);
+  useEffect(() => { if (error && id) void readPack<TripAnswer>(id).then((p) => setSaved(p ? { trip: p.trip, at: p.savedAt } : null)); }, [error, id]);
+  const data = live ?? (error ? saved?.trip : undefined), offline = !live && !!data;
   const [chosen, setChosen] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
 
@@ -60,7 +67,7 @@ export function TravelTrip() {
   const dates = useMemo(() => stopDates(t?.startDate ?? null, stops), [t, stops]);
   const budget = useMemo(() => (t && stops.length ? tripBudget(t, stops, data!.items) : null), [t, stops, data]);
 
-  if (error) return (
+  if (error && !data) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
       <Route className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
       <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">{(error as Error).message || 'That trip didn’t open.'}</p>
@@ -117,6 +124,7 @@ export function TravelTrip() {
 
   return (
     <div className="space-y-6">
+      {offline && saved && <p className="panel flex items-center gap-2 p-3 text-sm text-zinc-700 dark:text-zinc-200" role="status"><WifiOff className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />No signal: this is the copy saved on {new Date(saved.at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}. Changes need a connection.</p>}
       {/* The trip: its name, when, the cities and who's planning it. */}
       <section className="relative isolate flex min-h-[14rem] flex-col justify-end overflow-hidden rounded-[var(--radius-card)] p-6 pt-16 sm:p-8 sm:pt-16">
         <Cover {...cover} sizes="100vw" priority className="-z-10" />
@@ -163,6 +171,9 @@ export function TravelTrip() {
       <Segmented<Part> label="Part of the trip" large className="max-w-full overflow-x-auto" value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
         segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
 
+      {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+        <TripOffline tripId={t.id} trip={data} stops={stops} items={data.items} />
+      </div>}
       {part === 'today' && <TripToday start={t.startDate} stops={stops} items={data.items} />}
 
       {part === 'money' && <TripMoney tripId={t.id} members={data.members} me={data.me} currency={t.currency} budget={budget?.total ?? null} countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}

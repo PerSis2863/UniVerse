@@ -8209,3 +8209,19 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   map at the place. The weather is the guide's own `/travel/weather` for that day.
 - **Rule:** the times are a plan's guesses (9:00 start, the place's minutes); the order and minutes are edited on the
   Plan, never here.
+
+## M240: a trip saved for offline use (17 Nov)
+
+- **Where:** the trip page's new **Ready** part (`?part=ready`, `trip-offline.tsx`): "Save for offline", the size and
+  date, the guides readable offline, a "Map of <city>" button per city, Save again, Remove, and what isn't kept.
+- **What's kept** (`src/lib/trip-offline-save.ts`, all in the browser, nothing on the server): one Cache Storage cache
+  per trip (`uv-trip-<id>`): the trip as last loaded (`/offline/trip/<id>.json`), each city's guide as text, the map
+  service's description (`tiles.openfreemap.org/planet`), the map tiles around the cities (6 km, zoom 5–14) and the
+  planned places (1 km, zoom 12–14), at most 500 (`tripTiles` in `trip-offline.ts`, tested), the map's Inter fonts;
+  plus the trip page and a map page per city in the service worker's `pages-v2`, and the map's code (importing
+  `TravelMap` stores its chunks in `static-v2`). The browser is asked to keep it (`storage.persist`).
+- **The service worker** (`src/worker/index.ts`) answers `tiles.openfreemap.org` and `/fonts/map/` requests from any
+  `uv-trip-` cache first, the network otherwise. **The trip page** shows the saved copy when its data can't load, with
+  a "No signal" line.
+- **Not kept (said on the page):** photos, weather, walking routes, opening hours, later changes by friends. Changes
+  made offline fail with the usual message (no offline queue). **Not seen live:** OpenFreeMap's real answers.

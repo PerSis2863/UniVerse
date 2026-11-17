@@ -85,6 +85,28 @@ self.addEventListener('fetch', (event) => {
   event.respondWith(takeShare(event.request));
 });
 
+// M240: a trip saved for offline use (src/lib/trip-offline-save.ts) keeps its map's tiles, the map service's
+// description and the map's fonts in a `uv-trip-<id>` cache. Those requests are answered from there first (the
+// tiles don't change between their dated versions), and from the network as before when no trip saved them.
+const TRIP_CACHE = /^uv-trip-/;
+self.addEventListener('fetch', (event) => {
+  if (event.request.method !== 'GET') return;
+  const url = new URL(event.request.url);
+  const map = url.host === 'tiles.openfreemap.org' || (url.origin === self.location.origin && url.pathname.startsWith('/fonts/map/'));
+  if (!map) return;
+  event.respondWith(fromTripPack(event.request));
+});
+
+async function fromTripPack(req: Request): Promise<Response> {
+  try {
+    for (const name of (await caches.keys()).filter((k) => TRIP_CACHE.test(k))) {
+      const hit = await (await caches.open(name)).match(req.url);
+      if (hit) return hit;
+    }
+  } catch { /* storage unavailable: the network as usual */ }
+  return fetch(req);
+}
+
 async function takeShare(req: Request): Promise<Response> {
   const q = new URLSearchParams();
   try {
