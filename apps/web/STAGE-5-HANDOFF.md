@@ -8734,3 +8734,15 @@ answer a student with "Start your brand first"; the logo's light plays three tim
 admin's 403 on saving a setting is its read-only design; `/api/calendar-link` 503 locally is the missing
 `SESSION_SECRET` ([owner]); a one-off ChunkLoadError is handled by `recovery-script.ts`. The crawl scripts
 were one-offs (not committed); `scripts/checks/main-pages-smooth.mjs` and the axe checks remain the kept ones.
+
+## The owner's error email of 17 Nov ("2 problem(s) need a look")
+
+- **"undefined" on /travel, iOS Safari, 5 times by 2 people** (diagnosed by the reporter as an inbox crash: wrong): the
+  error monitor's capture-phase `error` listener on `window` also hears a picture, video or sound that failed to load
+  (Travel's Commons photos, often on iOS Safari); such an event has no `error` and no `message`, so it was reported as
+  "undefined". Nobody saw a broken page. `src/lib/error-monitor.ts` now leaves alone failed loads on any element but
+  scripts and stylesheets (still reported as `ChunkLoadError`), events with nothing in them, and promises turned down
+  with nothing.
+- **`/api/core/travel/place` timed out once** (16 Nov 17:02): already fixed by M231 the same evening (a slow source
+  answers 503 "busy", not a site error); not seen since.
+- **[owner]:** mark both reports resolved in the console (Overview → Problems) once this is live.
