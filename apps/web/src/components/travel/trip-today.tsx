@@ -2,7 +2,11 @@
 
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
-import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, TramFront } from 'lucide-react';
+import { toast } from 'sonner';
+import { CalendarClock, Clock, Footprints, LocateFixed, MapPin, Navigation, Sun, TramFront, Umbrella } from 'lucide-react';
+import { api, errorMessage } from '@/lib/api';
+import { indoorIdeas, outdoors, wet } from '@/lib/travel-rain';
+import type { Guide, Listing } from '@/lib/travel-guide';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { useNow } from '@/lib/use-now';
@@ -21,7 +25,7 @@ interface WeatherDay { date: string; min: number; max: number; symbol: string | 
 const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 const at = (i: PlanItem): Spot | null => (i.lat !== null && i.lon !== null ? { lat: i.lat, lon: i.lon, name: i.name } : null);
 
-export function TripToday({ start, stops, items }: { start: string | null; stops: PlanStop[]; items: PlanItem[] }) {
+export function TripToday({ tripId, start, stops, items, onAdded }: { tripId: string; start: string | null; stops: PlanStop[]; items: PlanItem[]; onAdded: () => void }) {
   const now = useNow();
   const [pick, setPick] = useState<{ stop: number; day: number } | null>(null);
   const live = useMemo(() => tripToday(start, stops, items, new Date(now)), [start, stops, items, now]);
@@ -52,12 +56,12 @@ export function TripToday({ start, stops, items }: { start: string | null; stops
       </section>
       {shown.state !== 'during'
         ? <Empty text="Pick a day to see its plan." />
-        : <Day key={`${shown.stop}:${shown.day}`} stop={stops[shown.stop]} t={shown} live={!pick && live.state === 'during'} />}
+        : <Day key={`${shown.stop}:${shown.day}`} tripId={tripId} stop={stops[shown.stop]} t={shown} live={!pick && live.state === 'during'} onAdded={onAdded} />}
     </div>
   );
 }
 
-function Day({ stop, t, live }: { stop: PlanStop; t: Extract<ReturnType<typeof tripToday>, { state: 'during' }>; live: boolean }) {
+function Day({ tripId, stop, t, live, onAdded }: { tripId: string; stop: PlanStop; t: Extract<ReturnType<typeof tripToday>, { state: 'during' }>; live: boolean; onAdded: () => void }) {
   const next = t.next >= 0 ? t.slots[t.next] : null, current = t.current >= 0 ? t.slots[t.current] : null;
   const from = next && t.next > 0 ? t.slots[t.next - 1] : null;
   const { data: weather } = useSWR<{ days: WeatherDay[] }>(stop.lat !== null && stop.lon !== null ? `/travel/weather?lat=${stop.lat.toFixed(2)}&lon=${stop.lon.toFixed(2)}` : null, fetcher, { revalidateOnFocus: false });
@@ -95,6 +99,7 @@ function Day({ stop, t, live }: { stop: PlanStop; t: Extract<ReturnType<typeof t
             </div>
           ) : <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">The forecast reaches about a week ahead; this day isn’t in it yet.</p>}
         </section>
+        {wet(w) && <RainPlan tripId={tripId} stop={stop} day={t.day} slots={t.slots} onAdded={onAdded} />}
         <section className="panel p-5" aria-labelledby="today-plan">
           <h3 id="today-plan" className="text-lg font-semibold text-zinc-900 dark:text-white">The day</h3>
           <ol className="mt-3 space-y-1">{t.slots.map((s, i) => <SlotRow key={s.item.id} s={s} state={i === t.current ? 'now' : live && s.end <= t.now ? 'done' : i === t.next ? 'next' : null} />)}</ol>
@@ -149,6 +154,36 @@ function WalkThere({ to, from }: { to: Spot; from: Spot | null }) {
           {r.steps.filter((s) => s.km > 0 || s.text === 'You have arrived').slice(0, 12).map((s, i) => <li key={i} className="flex gap-3"><span className="w-14 shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{s.km ? distance(s.km) : ''}</span><span>{s.text}</span></li>)}
         </ol>
       </>}
+    </section>
+  );
+}
+
+/** M249: on a wet day, the day's outdoor places and indoor ones from the guide to add instead. */
+function RainPlan({ tripId, stop, day, slots, onAdded }: { tripId: string; stop: PlanStop; day: number; slots: Slot[]; onAdded: () => void }) {
+  const { data } = useSWR<{ guide: Guide }>(`/travel/guide?d=${encodeURIComponent(stop.guide)}`, fetcher, { revalidateOnFocus: false });
+  const [added, setAdded] = useState<string[]>([]);
+  const out = slots.filter((s) => outdoors(s.item)).map((s) => s.item.name);
+  const ideas = data ? indoorIdeas(data.guide.sections.flatMap((s) => s.listings), slots.map((s) => s.item)) : [];
+  const add = async (l: Listing) => {
+    try {
+      await api.post(`/travel/trips/${tripId}/items`, { stopId: stop.id, day, name: l.name, kind: l.kind, lat: l.lat, lon: l.lon, hours: l.hours, price: l.price, note: l.text?.slice(0, 600), address: l.address, url: l.url });
+      setAdded((a) => [...a, l.name]); toast.success(`${l.name} added to this day.`); onAdded();
+    } catch (e) { toast.error(errorMessage(e, 'Couldn’t add that place.')); }
+  };
+  return (
+    <section className="panel p-5" aria-labelledby="today-rain">
+      <h3 id="today-rain" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Umbrella className="h-5 w-5 text-indigo-500" aria-hidden />Rain plan</h3>
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{out.length ? <>Rain is forecast. Outdoors today: <span translate="no">{out.join(', ')}</span>. Move {out.length === 1 ? 'it' : 'them'} to a drier day on the Plan, or add somewhere indoors:</> : 'Rain is forecast, but today’s places are mostly indoors. Somewhere else indoors nearby:'}</p>
+      {!data ? <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400" role="status">Looking for indoor places…</p> : ideas.length ? (
+        <ul className="mt-2 divide-y divide-zinc-200/70 dark:divide-white/10">
+          {(ideas as Listing[]).map((l) => (
+            <li key={l.name} className="flex items-center gap-3 py-2">
+              <span className="min-w-0 flex-1 text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{l.name}{l.price && <span className="font-normal text-zinc-500 dark:text-zinc-400"> · {l.price}</span>}</span>
+              <button type="button" disabled={added.includes(l.name)} onClick={() => void add(l)} className="btn-secondary btn-sm">{added.includes(l.name) ? 'Added' : 'Add to today'}</button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">The guide doesn’t list indoor places here.</p>}
     </section>
   );
 }

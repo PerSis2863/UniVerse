@@ -8338,3 +8338,14 @@ ultra smooth" (they chose ten; this is the first, on branch `claude/travel-ten-f
   axe clean, no sideways scroll, no page errors; Bob never sees Alice's documents; the family page opens signed out with
   no email on it. **Still to see on the built site:** the live pushes between two people (local:dev has no live
   updates) and Nager.Date / the routers' real answers.
+
+## M249: a day's rain plan (17 Nov)
+
+The owner, 17 Nov, after the ten: "add 10 more features and make sure everything is ultra smooth in this" (M249–M258,
+chosen in the session and listed to the owner).
+
+- **Where:** the trip's **Today** part, on a day whose forecast says rain (`wet`: 2 mm or more, or rain, sleet, snow or
+  thunder in the sky): "Rain plan" names the day's outdoor places and lists indoor places from the city's guide, nearest
+  the day's places first, each with "Add to today" (it goes on that day, last).
+- **Logic** (`src/lib/travel-rain.ts`, tested): outdoors by the place's name, else its words (parks, viewpoints,
+  castles, beaches…), never when it reads as indoors (museums, churches, markets halls…).
