@@ -8424,3 +8424,12 @@ so this checks the plan's times instead.
 - **Data:** `GET /travel/trips` now gives each trip's `route` (each city's name, country, position, days and way
   there) from the same query; the sums in `src/lib/travel-stats.ts` (tested), the CO₂ through the trip footprint
   (M247, factors from `green.ts`). Sample answer updated.
+
+## M258: the trip chat (17 Nov)
+
+- **Where:** "Trip chat" in a trip's header: opens the trip's group chat in Messages (the inbox for your role, `?c=`),
+  named after the trip, Travel's (`app: 'travel'`), the trip's starter its admin.
+- **Server:** `POST /travel/trips/:id/chat` (`tripChat` in `src/server/travel-trips.ts`, tested): any member; made the
+  first time and kept in `travel_trips.chatId` (database update **0235**); each later open makes its people the trip's
+  again (who joined added, who left or was removed taken out) and refreshes their chat lists. Messages does the rest
+  (live, calls, files).

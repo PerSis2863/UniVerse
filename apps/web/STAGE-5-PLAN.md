@@ -1663,3 +1663,4 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M255 | Morning briefing (the owner's ten more, 17 Nov) | **Done** (branch `claude/travel-ten-features`) | On each day of a trip, everyone on it gets a note in the app with the day's city, first places and times, and the weather. |
 | M256 | Copy a trip (the owner's ten more, 17 Nov) | **Done** (branch `claude/travel-ten-features`) | "Copy trip" makes a new trip of your own with the same cities, days and planned places, ready for new dates. |
 | M257 | Your travel stats (the owner's ten more, 17 Nov) | **Done** (branch `claude/travel-ten-features`) | Countries, cities, days, kilometres and CO₂ across your trips, done and to come, at the top of the Trips list. |
+| M258 | Trip chat (the owner's ten more, 17 Nov) | **Done** (branch `claude/travel-ten-features`) | "Trip chat" opens a group chat in Messages for everyone on the trip, kept to the trip's people. Database update 0235. |

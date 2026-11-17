@@ -342,3 +342,23 @@ export async function copyTravelTrip(u: SessionUser, id: string, b: Body) {
   publish([u.id], { type: 'refresh', keys: ['/travel/trips'] });
   return { trip };
 }
+
+/** POST /travel/trips/:id/chat: M258: the trip's group chat in Messages, made the first time, its people kept the
+ *  same as the trip's (those who joined added, those who left taken out). Any member. */
+export async function tripChat(u: SessionUser, id: string) {
+  const trip = await tripFor(u, id);
+  const members = await memberIds(id);
+  const found = trip.chatId ? await prisma.conversation.findUnique({ where: { id: trip.chatId }, select: { id: true, participants: { select: { userId: true } } } }) : null;
+  if (!found) {
+    const c = await prisma.conversation.create({ data: { isGroup: true, name: trip.name.slice(0, 80), app: 'travel', createdById: u.id, participants: { create: members.map((m) => ({ userId: m, role: m === trip.ownerId ? 'ADMIN' : 'MEMBER' })) } }, select: { id: true } });
+    await prisma.travelTrip.update({ where: { id }, data: { chatId: c.id } });
+    publish(members, { type: 'refresh', keys: ['/api/chat/conversations'] });
+    return { conversationId: c.id };
+  }
+  const now = new Set(found.participants.map((p) => p.userId));
+  const add = members.filter((m) => !now.has(m)), gone = [...now].filter((m) => !members.includes(m));
+  if (add.length) await prisma.conversationParticipant.createMany({ data: add.map((userId) => ({ conversationId: found.id, userId })) });
+  if (gone.length) await prisma.conversationParticipant.deleteMany({ where: { conversationId: found.id, userId: { in: gone } } });
+  if (add.length || gone.length) publish([...members, ...gone], { type: 'refresh', keys: ['/api/chat/conversations'] });
+  return { conversationId: found.id };
+}

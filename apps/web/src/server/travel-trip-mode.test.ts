@@ -62,3 +62,21 @@ describe('copying a trip (M256)', () => {
     expect(db.travelTripItem.createMany.mock.calls[0][0].data[0]).toMatchObject({ tripId: 'new', stopId: 'n2', name: 'P0', addedById: 'ana' });
   });
 });
+
+describe('the trip chat (M258)', () => {
+  it('makes one group chat of everyone on the trip, then keeps its people the same', async () => {
+    const { tripChat } = await import('./travel-trips');
+    const db = prisma as unknown as Record<string, Record<string, ReturnType<typeof vi.fn>>>;
+    db.conversation = { findUnique: vi.fn(), create: vi.fn().mockResolvedValue({ id: 'c1' }) };
+    db.conversationParticipant = { createMany: vi.fn(), deleteMany: vi.fn() };
+    vi.mocked(prisma.travelTripMember.findMany).mockResolvedValue([{ userId: 'ana' }, { userId: 'ben' }] as never);
+    vi.mocked(prisma.travelTripMember.findUnique).mockResolvedValue({ trip: { id: 't1', ownerId: 'ana', name: 'Portugal', chatId: null } } as never);
+    expect(await tripChat(ana, 't1')).toEqual({ conversationId: 'c1' });
+    expect(db.conversation.create.mock.calls[0][0].data).toMatchObject({ isGroup: true, name: 'Portugal', app: 'travel', participants: { create: [{ userId: 'ana', role: 'ADMIN' }, { userId: 'ben', role: 'MEMBER' }] } });
+    vi.mocked(prisma.travelTripMember.findUnique).mockResolvedValue({ trip: { id: 't1', ownerId: 'ana', name: 'Portugal', chatId: 'c1' } } as never);
+    db.conversation.findUnique.mockResolvedValue({ id: 'c1', participants: [{ userId: 'ana' }, { userId: 'zoe' }] });
+    expect(await tripChat(ana, 't1')).toEqual({ conversationId: 'c1' });
+    expect(db.conversationParticipant.createMany).toHaveBeenCalledWith({ data: [{ conversationId: 'c1', userId: 'ben' }] });
+    expect(db.conversationParticipant.deleteMany).toHaveBeenCalledWith({ where: { conversationId: 'c1', userId: { in: ['zoe'] } } });
+  });
+});

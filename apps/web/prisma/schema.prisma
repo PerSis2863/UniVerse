@@ -7608,6 +7608,8 @@ model TravelTrip {
   code       String             @unique
   /// M248: the family link's code (a read-only page of the plan), null while it's off.
   shareCode  String?            @unique
+  /// M258: the trip's group chat (a Conversation), once someone has opened it.
+  chatId     String?
   createdAt  DateTime           @default(now())
   updatedAt  DateTime           @default(now()) @updatedAt
   members    TravelTripMember[]
