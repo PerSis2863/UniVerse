@@ -8625,3 +8625,53 @@ owner's exception to the launch pause. The look is followed, not the product (no
   do; repeating them on the map would show the same thing twice), and Travel's other map views (places, walks, directions:
   their own Apple Maps look from M233–M260 stays).
 - **Checked:** `travel-command-ui.mjs` (1280 dark, 390 light, tiles refused), axe clean, no errors; `pnpm check`.
+
+## M265: a trip's ways follow the real roads, a day's walk the streets (17 Nov)
+
+The owner, 17 Nov, on a screenshot of M264's test (the map empty because the test refused the tiles; live, the streets
+show): "it shows all the directions … like take left or right then the direction line should bend like that".
+
+- **Between cities** (`roadLegs`, `legKey`, `bow` in `map-world.ts`, tested): each way under 1,500 km that isn't flown or
+  sailed (the stop's `mode`, M247) is asked of FOSSGIS's car router from the browser (`directionsUrl('car', …)`, one
+  request per way, at most 12, once per trip); its path replaces the straight line (`tripFeatures(…, legs)`). Flights and
+  ferries are a gentle arc (`bow`). Until (or unless) the router answers, straight lines. Trains use the road's path (no
+  free rail router): close enough on a map of a country.
+- **A chosen day:** its places (in their order, up to 10) are joined by the walking router's path along the streets (role
+  `walk`, the directions' blue with its darker edge, `uv-trip-walk`), and the map frames that day's places (it framed the
+  whole trip before, which left the walk tiny).
+- **No Worker CPU:** the routers answer the browser; `routing.openstreetmap.de` was already in `connect-src` (M233).
+
+## M266: the command look on Travel's other map views (17 Nov)
+
+The owner, 17 Nov: "Travel's other map views (places, walks, directions) … please do this one".
+
+- **A tapped place** (place, story, photo): the recording's card pinned beside it on a computer (`Callout`, moved by the
+  map's own `move` event with `placeCallout`, no React render a frame): an ink icon, its name and kind, a Directions
+  button; two rings pulsing round it (a MapLibre `Marker` with `.cmd-ring`, removed with the pick). The panel still
+  shows the full card.
+- **Number cards** along the map's foot on a computer (`StatStrip` / `StatCard`, from what the map already holds: no new
+  request): a walk (stops, distance, walking minutes, back by), directions (time, distance, turns, arrival leaving now),
+  or the area in view from zoom 12 (the chosen kind in view, stories, reviewed places, your saved places). Directions and
+  walks are framed above the cards (bottom padding 170 on a computer).
+
+## The phone sweep and the harsh test before the merge (17 Nov)
+
+The owner, 17 Nov: "check other area where the ui is overlapping or doesnt fit properly in the website and app in
+mobile"; then "do a big and harsh test … ultra smooth … should not increase cpu limit of cloudflare neither the request
+and merge after all of this is done".
+
+- **`scripts/crawl.mjs --layout`** (phone, every page per role; `--guest` for the website's public pages; `--stream`
+  prints each page as it goes): parts crossing the screen's edge (a drawer waiting wholly off the screen is fine),
+  buttons and fields covered by something else, two controls overlapping (a button placed inside a field is fine). Run
+  it on `local:serve`: `local:dev` ran out of memory under the crawl and restarted mid-way.
+- **Fixed:** decorative blurred circles (`absolute … blur-2xl/3xl`, 29 of them) now `pointer-events-none`: on Medical
+  one sat over "Update Profile" so it couldn't be pressed; the teacher's grade search has its own row on a phone (it was
+  52 px wide beside five buttons); Lost & found's "today / 2 days ago" comes from `useNow` (0 on the server), ending
+  React error #418 there.
+- **Left as they are (by design):** a small button placed on a card (a course's colour dot, a folder's "+"); the demo
+  admin's refused writes (read-only, §2); Trace's 403 for an account without a brand ("Start your brand"); the
+  calendar link's 503 without `SESSION_SECRET` (the owner's key, live only); Wikimedia photos unreachable from this machine.
+- **Smoother:** the canvas maps' markers (`unit`) are drawn once per look, icon, theme and size and stamped each frame
+  (a canvas shadow per marker per frame stuttered busy maps); the count circles lost their per-frame shadow too.
+- **Cloudflare:** nothing in M260–M266 adds an API route or a server request: the routers, tiles, speech and position
+  are the browser's own or free services it talks to directly. Build: 52.8 of 64 MB server code, under 5 minutes.

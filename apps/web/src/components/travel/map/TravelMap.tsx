@@ -382,11 +382,13 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       el.className = 'cmd-travel cmd-ring pointer-events-none h-11 w-11 rounded-full'; // MapLibre positions it (absolute)
       ring = new ml.Marker({ element: el }).setLngLat((nowStop.geometry as GeoJSON.Point).coordinates as [number, number]).addTo(m);
     });
-    const b = tripBox(tripFc); // the trip (or the day chosen) framed, clear of the panel
+    // The trip framed, or, with a day chosen, that day's places (its walk then fills the view), clear of the panel.
+    const dayOnly = tripDay != null ? { type: 'FeatureCollection' as const, features: tripFc.features.filter((f) => f.properties?.role === 'item') } : null;
+    const b = tripBox(dayOnly && dayOnly.features.length ? dayOnly : tripFc);
     // On a computer the trip's number cards take the map's foot (M264): frame the trip above them.
     if (b) m.fitBounds(b, { padding: m.getContainer().clientWidth >= 1024 ? { ...clearOfPanel(m), bottom: 170 } : clearOfPanel(m), maxZoom: 14, duration: calm() ? 0 : 1400, easing: ease });
     return () => { gone = true; ring?.remove(); };
-  }, [tripFc, ready]);
+  }, [tripFc, ready, tripDay]);
   // M266 (the owner's recording, on Travel's other views): a tapped place gets the recording's card pinned beside it
   // (moved by the map's own 'move' event, never a React render a frame) and two rings pulsing round it (CSS).
   const pickedAt = picked ? (picked.type === 'place' ? picked : picked.type === 'story' ? picked.story : picked.photo) : null;

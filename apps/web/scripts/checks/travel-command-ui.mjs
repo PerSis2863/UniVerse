@@ -38,7 +38,7 @@ try {
     await ctx.route(/routing\.openstreetmap\.de/, (rt) => {
       const url = rt.request().url(), pts = /driving\/([^?]+)/.exec(url)[1].split(';').map((p) => p.split(',').map(Number));
       r.routed.push(/routed-(\w+)/.exec(url)[1]);
-      const path = pts.slice(1).flatMap((b, i) => { const a = pts[i]; return [a, [a[0] + (b[0] - a[0]) * 0.3 + 0.01, a[1] + (b[1] - a[1]) * 0.3], [a[0] + (b[0] - a[0]) * 0.7 - 0.01, a[1] + (b[1] - a[1]) * 0.7], b]; });
+      const path = pts.slice(1).flatMap((b, i) => { const a = pts[i]; const k = Math.hypot(b[0] - a[0], b[1] - a[1]) * 0.15; return [a, [a[0] + (b[0] - a[0]) * 0.3 + k, a[1] + (b[1] - a[1]) * 0.3], [a[0] + (b[0] - a[0]) * 0.7 - k, a[1] + (b[1] - a[1]) * 0.7], b]; });
       return rt.fulfill({ contentType: 'application/json', headers: { 'access-control-allow-origin': '*' }, body: JSON.stringify({ code: 'Ok', routes: [{ duration: 600, distance: 1000, geometry: { coordinates: path }, legs: [{ steps: [] }] }] }) });
     });
     const page = await ctx.newPage();
