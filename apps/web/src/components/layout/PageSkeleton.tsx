@@ -2,7 +2,7 @@
 // like the page that's coming, on each screen size, so nothing jumps when it arrives: home pages
 // (figures and panels), lists (messages, notifications, people: rows with a picture and two lines),
 // card grids (courses, projects, boards) and a course (its banner, then rows). Used by
-// (dashboard)/loading.tsx, the start-up screen (AppSkeleton) and while a tapped page downloads
+// (dashboard)/loading.tsx (under the page's real tabs, M234), the start-up screen (AppSkeleton) and while a tapped page downloads
 // (PendingPage).
 
 export type SkeletonVariant = 'dashboard' | 'list' | 'cards' | 'detail';
@@ -16,23 +16,13 @@ export function skeletonFor(path: string | null | undefined): SkeletonVariant {
   return 'dashboard';
 }
 
+// Pages have no visible title since M210, and with the menu across the top (M219) nothing sits above
+// their content: only the installed app on a computer keeps its own bar (search, bell), so only it
+// gets a placeholder bar. Anything taller here made the page jump up when it arrived (M234).
 const Title = () => (
-  <>
-    {/* Phones: a large title, its line and the tab row */}
-    <div className="lg:hidden px-4 pt-3 pb-2 space-y-2">
-      <div className="skeleton h-9 w-52 rounded-xl" />
-      <div className="skeleton h-3.5 w-64 rounded-lg" />
-      <div className="skeleton h-9 w-full rounded-[11px] mt-3" />
-    </div>
-    {/* Larger screens: the title bar */}
-    <div className="hidden lg:flex h-16 px-8 items-center justify-between">
-      <div className="space-y-2">
-        <div className="skeleton h-5 w-44 rounded-lg" />
-        <div className="skeleton h-3 w-60 rounded-lg" />
-      </div>
-      <div className="skeleton h-9 w-56 rounded-[10px]" />
-    </div>
-  </>
+  <div className="hidden lg:flex topnav:hidden h-16 px-8 items-center justify-end">
+    <div className="skeleton h-9 w-56 rounded-[10px]" />
+  </div>
 );
 
 /** A row of a list: a picture, a name and a line. */
@@ -46,10 +36,11 @@ const Row = ({ i }: { i: number }) => (
   </div>
 );
 
-export function PageSkeleton({ variant = 'dashboard' }: { variant?: SkeletonVariant }) {
+/** `bare`: no bar at the top (the page's real bar and tabs are already drawn above it, M234). */
+export function PageSkeleton({ variant = 'dashboard', bare }: { variant?: SkeletonVariant; bare?: boolean }) {
   return (
     <div role="status" aria-label="Loading" className="skeleton-in flex flex-col flex-1 min-w-0">
-      <Title />
+      {!bare && <Title />}
       {variant === 'dashboard' && (
         <>
           <div className="lg:hidden p-4 space-y-3">

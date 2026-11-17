@@ -529,7 +529,7 @@ export function MessagingHub() {
               </SwipeRow>
               {(
                 <button onClick={(e) => { e.stopPropagation(); setMenuFor(menuFor === c.id ? null : c.id); }} aria-label="Chat options"
-                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#151517]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'opacity-0 group-hover:opacity-100')}>
+                  className={cn('absolute end-2 top-2 p-1 rounded-full bg-white/90 dark:bg-[#151517]/90 text-zinc-500 shadow-sm transition-opacity hidden md:block', menuFor === c.id ? 'opacity-100' : 'pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus-visible:opacity-100')}>
                   <MoreHorizontal className="w-4 h-4" />
                 </button>
               )}

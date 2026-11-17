@@ -102,7 +102,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
           shown only when there are some. */}
       <h1 className={cn('sr-only', !top && 'lg:hidden')}>{title}</h1>
       {!hideMobileTitle && (leftNode || ((action || rightNode) && !slot)) ? (
-        <div className="lg:hidden px-4 pt-3 pb-2">
+        <div data-bar className="lg:hidden px-4 pt-3 pb-2">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">{leftNode}</div>
             <ArrangeButton className="shrink-0" />
@@ -115,7 +115,7 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
           </div>
           {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
         </div>
-      ) : <div className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
+      ) : <div data-bar className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
 
       <span ref={findSlot} hidden />
       {slot && (rightNode || action) && createPortal(<>

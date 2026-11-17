@@ -288,6 +288,11 @@ export const TABS_BY_ROLE: Record<string, SectionTab[][]> = {
   ADMIN: [ADMIN_PEOPLE_TABS, SAFETY_TABS, ADMIN_COURSE_TABS, ADMIN_LEARN_TABS, ADMIN_FINANCE_TABS, MONITORING_TABS, PARTNER_TABS, IMPACT_REPORT_TABS, ADMIN_CREDENTIAL_TABS, ADMIN_INSIGHT_TABS, COLLAB_TABS],
 };
 
+/** The row of tabs a page belongs to for this role (its own tab or one it's `also` under), if any. */
+export function tabsFor(path: string, role: string | undefined): SectionTab[] | null {
+  return (role && TABS_BY_ROLE[role]?.find((g) => g.some((t) => t.href === path || t.also?.includes(path)))) || null;
+}
+
 /** The marketplace's tabs: the courses section of whoever is looking. */
 export function MarketplaceTabs() {
   const role = useAuthStore((st) => st.user?.role);

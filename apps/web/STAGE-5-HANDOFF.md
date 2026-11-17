@@ -8023,3 +8023,34 @@ computers), now the buttons sit under the tabs' row (`Topbar` portals into `[dat
 the installed app on a computer keeps its own bar). Rule: put `<SectionTabs>` straight after `<Topbar>`,
 never inside a wrapper, on every page of its group, and keep a page in one group (a second group's row
 vanishes on it). Checked: tabs at the same place on 11 pages in 4 groups, both widths, no sideways scroll.
+
+## M234
+
+**A deep check of every page and every row of tabs** (the owner, 16 Nov: "check for more… go through sub
+pages… everything is in place and works properly and the animations are properly established"). On the
+built site (`local:build` + `local:serve`): every page in the guide's list (205, minus sign-in and
+public-code pages) opened as student, teacher and admin at 1440 and 390 px (410 visits), recording page
+errors, failed requests, error screens, empty pages, sideways scroll, layout shift, text left invisible
+by an animation and animations that never end; then every row of section tabs clicked through as a
+person would (298 clicks, both widths), watching the row frame by frame. Found and fixed:
+- **The row of tabs vanished for ~300 ms** on tabs whose page wasn't downloaded yet (Marketplace, Offline,
+  Library, Impact rooms and League, Startups, Campus map, Medical, Collaborate's Files / Code / Tasks…;
+  worst on phones, which have no hover to preload). `(dashboard)/loading.tsx` now draws the page's real
+  `Topbar` and `SectionTabs` (`tabsFor(path, role)` in `SectionTabs.tsx`) above a `bare` skeleton.
+- **Then the row dipped 10 px and glided back** as the real page replaced the loading view: the motion
+  layer's `arrive` (`scroll-motion.ts`) treated the new tab row as arriving content. It now skips the
+  page's frame (`FRAME`: `[data-steady]`, `[data-bar]` on Topbar's phone rows, `.app-topbar`).
+- **The loading skeleton still drew the old title bar** (titles went in M210, the top menu came in M219), so
+  every slow page jumped up when it arrived: its `Title` is now only the installed app's bar.
+- **Admin → Billing's plan card stayed invisible on phones** (framer `whileInView` with a −60 px margin,
+  on top of the motion layer's own reveal: the double animation §8 forbids); removed there and in
+  `SupportPanel`. Only the website (landing) keeps `whileInView`.
+- **Hover-only things invisible on touch screens** (§6): Green's "Delete this action", Settings' "Change
+  photo" (lighter dimming on touch), Collaborate's quick buttons and Messages' "Chat options" on tablets,
+  Communities' "Join", the bar values on Finances and Impact: now `pointer-fine:opacity-0
+  pointer-fine:group-hover:opacity-100` (hidden only where there's a mouse).
+Checked and fine: no crashes, error screens, empty pages or sideways scroll anywhere; Trace's PRO pages
+answer a student with "Start your brand first"; the logo's light plays three times by design; the demo
+admin's 403 on saving a setting is its read-only design; `/api/calendar-link` 503 locally is the missing
+`SESSION_SECRET` ([owner]); a one-off ChunkLoadError is handled by `recovery-script.ts`. The crawl scripts
+were one-offs (not committed); `scripts/checks/main-pages-smooth.mjs` and the axe checks remain the kept ones.

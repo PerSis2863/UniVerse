@@ -255,6 +255,8 @@ function rollChanged(records: MutationRecord[]) {
 /** Starts scroll motion for the whole app (once). Returns a stop function. */
 const LOADING = '.skeleton, [aria-busy="true"], [role="status"][aria-label="Loading"]';
 const LIST = 'ul, ol, tbody, [role="list"], [role="feed"], [role="log"]';
+/** A page's frame, which the loading view (app/(dashboard)/loading.tsx) already showed: not an arrival. */
+const FRAME = '[data-steady], [data-bar], .app-topbar';
 
 /** Already moving: a part of the page's entrance (WAAPI, PendingPage runs it first), its own CSS
  *  animation (a message's arrival) or framer-motion (inline opacity / transform while it plays). */
@@ -309,7 +311,8 @@ function arrive(records: MutationRecord[]) {
       if (el.matches(LOADING) || el.closest('[data-no-motion]')) continue;
       fold ||= window.innerHeight;
       const big = el.getBoundingClientRect().height > fold * 0.6 && el.children.length > 1;
-      parts.push(...(big ? (Array.from(el.children) as HTMLElement[]) : [el]));
+      // M234: the page's frame (its bar and row of tabs, drawn already by the loading view) stays still.
+      parts.push(...(big ? (Array.from(el.children) as HTMLElement[]) : [el]).filter((p) => !p.matches(FRAME)));
     }
   }
   if (!parts.length) return;

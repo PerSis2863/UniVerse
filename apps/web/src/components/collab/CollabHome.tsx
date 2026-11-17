@@ -201,7 +201,7 @@ export function CollabHome() {
                           <span className="block text-sm font-semibold text-zinc-900 dark:text-white truncate" translate="no">{i.title}</span>
                           <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{K.label} · {i.sub}{now ? ` · ${formatDistanceStrict(new Date(i.at), now, { addSuffix: true })}` : ''}</span>
                         </Link>
-                        <span className="relative z-10 flex gap-0.5 transition-opacity duration-150 md:opacity-0 md:group-hover:opacity-100 md:group-focus-within:opacity-100">
+                        <span className="relative z-10 flex gap-0.5 transition-opacity duration-150 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 group-focus-within:opacity-100">
                           <button type="button" onClick={() => setShare(i)} aria-label={`Share ${i.title} with a QR code`} className="p-1.5 rounded-full text-zinc-400 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><QrIcon className="w-4 h-4" /></button>
                           {i.opened && <button type="button" onClick={() => void removeOpened(i)} aria-label={`Remove ${i.title} from my Home`} title="Remove from my Home" className="p-1.5 rounded-full text-zinc-400 hover:text-red-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>}
                           <button type="button" onClick={() => void togglePin(i)} aria-pressed={on} aria-label={on ? `Unpin ${i.title}` : `Pin ${i.title}`} className={cn('p-1.5 rounded-full hover:bg-zinc-100 dark:hover:bg-white/10', on ? 'text-fuchsia-500' : 'text-zinc-400 hover:text-fuchsia-500')}><Pin className="w-4 h-4 rotate-45" /></button>

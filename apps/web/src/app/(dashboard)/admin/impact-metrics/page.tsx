@@ -150,7 +150,7 @@ export default function ImpactMetricsPage() {
             <div className="h-64 flex items-end justify-between gap-2">
               {(data?.impactByMonth ?? []).map((m, i) => (
                 <div key={m.month + i} className="flex-1 h-full flex flex-col items-center justify-end gap-2 group">
-                  <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity tabular-nums">{nf.format(m.value)}</span>
+                  <span className="text-[11px] font-bold text-zinc-700 dark:text-zinc-300 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 transition-opacity tabular-nums">{nf.format(m.value)}</span>
                   <motion.div
                     initial={{ height: 0 }}
                     animate={{ height: `${(m.value / maxMonth) * 85}%` }}

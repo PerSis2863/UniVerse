@@ -122,7 +122,7 @@ function ChannelRow({ ch, active, onOpen }: { ch: Channel; active: boolean; onOp
             <span className="block text-sm text-zinc-700 dark:text-zinc-200 truncate">{ch.name}{ch.private && <Lock className="inline w-3 h-3 ms-1 -mt-0.5 text-zinc-400" aria-label="private" />}</span>
             {!!peers?.count && <span className="block text-[11px] text-emerald-600 dark:text-emerald-400 truncate">{peers.names.slice(0, 3).map((n) => n.split(' ')[0]).join(', ')}{peers.count > 3 ? ` +${peers.count - 3}` : ''} inside</span>}
           </span>
-          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 opacity-0 group-hover:opacity-100">Join</span>
+          <span className="text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100">Join</span>
         </button>
       </li>
     );

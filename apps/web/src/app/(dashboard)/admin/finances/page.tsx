@@ -283,7 +283,7 @@ export default function AdminFinances() {
             <div className="h-56 flex items-end gap-2 border-b border-zinc-200 dark:border-zinc-800/50">
               {monthlyRevenue.map((m) => (
                 <div key={m.key} className="flex-1 h-full flex flex-col justify-end items-center group">
-                  <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity mb-1 tabular-nums">
+                  <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 transition-opacity mb-1 tabular-nums">
                     ${m.total.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </span>
                   <div
