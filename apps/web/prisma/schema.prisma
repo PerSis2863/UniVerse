@@ -7907,6 +7907,8 @@ model TravelReview {
   hidden    Boolean              @default(false)
   createdAt DateTime             @default(now())
   updatedAt DateTime             @default(now()) @updatedAt
+  /// M322: the visitor's accessibility notes, JSON AccessNote (src/lib/travel-access.ts)
+  access    String?
   reports   TravelReviewReport[]
 
   @@unique([userId, place])

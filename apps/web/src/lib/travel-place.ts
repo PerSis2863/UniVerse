@@ -1,3 +1,4 @@
+import { accessFromTags, type MapAccess } from './travel-access';
 // Real places on Travel's map (M209), read from public sources: a place's facts from OpenStreetMap (through
 // Nominatim: its hours, phone, website, menu, cuisine, access, payment; ODbL), its photo and a line about it
 // from Wikidata and Wikipedia (CC0, CC BY-SA), photos people took nearby from Wikimedia Commons (each with
@@ -10,6 +11,8 @@ export interface PlaceInfo {
   cuisine: string[]; facts: string[]; wikidata: string | null; about: string | null; image: string | null; wiki: string | null;
   /** M270: what's known about it (built, heritage, designer, style, height, visitors, awards…) and a fun fact. */
   known?: string[]; funFact?: string | null;
+  /** M322: what the map's data says about getting in and around. */
+  access?: MapAccess | null;
   /** Made while a source was busy: made again sooner. */
   partial?: boolean;
 }
@@ -66,6 +69,7 @@ export function placeFromNominatim(r: Nominatim): PlaceInfo {
     lat: Number(r.lat), lon: Number(r.lon), cc: a.country_code ? a.country_code.toUpperCase() : null, city,
     address: [street, a.suburb ?? a.neighbourhood ?? a.quarter, city].filter(Boolean).join(', ') || null,
     phone: clean(t.phone ?? t['contact:phone'], 40), website: url(t.website ?? t['contact:website']), menu: url(t['website:menu']),
+    access: accessFromTags(t),
     hours: clean(t.opening_hours, 300), cuisine: (t.cuisine ?? '').split(';').map((c) => cap(c.trim().replace(/_/g, ' '))).filter(Boolean).slice(0, 4),
     facts, wikidata: /^Q\d+$/.test(t.wikidata ?? '') ? t.wikidata : null, about: null, image: null, wiki: null, known, funFact: null,
   };

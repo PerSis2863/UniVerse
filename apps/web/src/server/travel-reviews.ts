@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { accessSummary, cleanAccess, type AccessNote } from '@/lib/travel-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { isPlaceKey } from '@/lib/travel-place';
 import { BadRequestException, NotFoundException } from './http';
@@ -19,16 +20,21 @@ export const summary = (rows: Row[]) => {
 };
 
 /** GET /travel/reviews?place=N123: a place's reviews, locals' and visitors' apart, newest first. */
+/** A stored accessibility note (JSON), checked again. */
+const readAccess = (s: string | null): AccessNote | null => { try { return s ? cleanAccess(JSON.parse(s)) : null; } catch { return null; } };
+
 export async function travelReviews(u: SessionUser, q: Query) {
   const place = first(q.place);
   if (!isPlaceKey(place)) throw new BadRequestException('Pick a place.');
-  const rows = await prisma.travelReview.findMany({ where: { place, hidden: false }, orderBy: { updatedAt: 'desc' }, take: 200, select: { id: true, userId: true, rating: true, text: true, local: true, visited: true, updatedAt: true } });
+  const rows = await prisma.travelReview.findMany({ where: { place, hidden: false }, orderBy: { updatedAt: 'desc' }, take: 200, select: { id: true, userId: true, rating: true, text: true, local: true, visited: true, updatedAt: true, access: true } });
   const names = rows.length ? await prisma.user.findMany({ where: { id: { in: [...new Set(rows.slice(0, MAX_SHOWN).map((r) => r.userId))] } }, select: { id: true, name: true } }) : [];
   const mine = rows.find((r) => r.userId === u.id) ?? null;
   return {
     summary: summary(rows),
+    // M322: what visitors said about getting in and around.
+    access: accessSummary(rows.map((r) => readAccess(r.access))),
     reviews: rows.slice(0, MAX_SHOWN).map((r) => ({ id: r.id, name: shortName(names.find((n) => n.id === r.userId)?.name), rating: r.rating, text: r.text, local: r.local, visited: r.visited, at: r.updatedAt, mine: r.userId === u.id })),
-    mine: mine && { id: mine.id, rating: mine.rating, text: mine.text, local: mine.local, visited: mine.visited },
+    mine: mine && { id: mine.id, rating: mine.rating, text: mine.text, local: mine.local, visited: mine.visited, access: readAccess(mine.access) },
   };
 }
 
@@ -52,7 +58,8 @@ export async function saveTravelReview(u: SessionUser, b: Body) {
   const visited = typeof b.visited === 'string' && /^\d{4}-(0[1-9]|1[0-2])$/.test(b.visited) && b.visited <= new Date().toISOString().slice(0, 7) ? b.visited : null;
   const lat = typeof b.lat === 'number' && Math.abs(b.lat) <= 90 ? b.lat : null, lon = typeof b.lon === 'number' && Math.abs(b.lon) <= 180 ? b.lon : null;
   if ((await prisma.travelReview.count({ where: { userId: u.id, updatedAt: { gt: new Date(Date.now() - DAY) } } })) >= 30) throw new BadRequestException('That’s 30 reviews today: write more tomorrow.');
-  const data = { name, lat, lon, rating, text, local: b.local === true, visited, hidden: false };
+  const access = cleanAccess(b.access);
+  const data = { name, lat, lon, rating, text, local: b.local === true, visited, hidden: false, access: access ? JSON.stringify(access) : null };
   const review = await prisma.travelReview.upsert({ where: { userId_place: { userId: u.id, place } }, create: { userId: u.id, place, ...data }, update: data, select: { id: true } });
   // A changed review starts afresh: earlier reports were about the old words.
   await prisma.travelReviewReport.deleteMany({ where: { reviewId: review.id } });

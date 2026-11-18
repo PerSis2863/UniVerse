@@ -9427,3 +9427,17 @@ The owner's 32 features, Travel 1. The journal (M242) already held each member's
   of 10) as journal entries; the others' pages update live. **Save all** zips the shown photos in the browser (`fflate`,
   stored, no recompression). Test: `travel-album.test.ts`.
 - No new table: an album photo is a journal entry without text (it shows in the journal too).
+
+## M322: accessibility details for places (18 Nov)
+
+The owner's 32 features, Travel 2 (the last of the 32). Place cards already said "Wheelchair accessible" from
+OpenStreetMap's `wheelchair` tag.
+
+- **The map's data** (`accessFromTags` in `src/lib/travel-access.ts`, tested): `wheelchair`, `toilets:wheelchair`,
+  `hearing_loop`, `elevator`/`lift`, `wheelchair:description`, in `PlaceInfo.access` (`placeFromNominatim`); the card
+  shows them with "(OpenStreetMap)". Places already in `travel_cache` (30 days) get it when they're fetched again.
+- **Visitors' notes** (`travel_reviews.access`, 0254, JSON checked by `cleanAccess`): yes / no for step-free entrance,
+  accessible toilet, lift or ramp, quiet, places to sit, and a 300-character note, in the review form
+  (`Reviews.tsx`); `GET /travel/reviews` adds `access` (`accessSummary`: per thing, yes of those who answered; five notes).
+- **The 32 are done** (M291–M322). Next in this round: a check of the new screens in a browser, the page-weight numbers
+  for M306, then more new features (the owner: "also make more new features").

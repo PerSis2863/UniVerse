@@ -101,6 +101,9 @@ function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place'
             </div>
           )}
           {info.facts.length > 0 && <ul className="flex flex-wrap gap-1.5">{info.facts.map((f) => <li key={f} className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200">{f}</li>)}</ul>}
+          {info.access && (info.access.toilet !== null || info.access.hearingLoop !== null || info.access.lift !== null || info.access.description) && (
+            <p className="text-xs text-zinc-700 dark:text-zinc-200">{[info.access.toilet !== null && (info.access.toilet ? 'Accessible toilet' : 'No accessible toilet'), info.access.lift !== null && (info.access.lift ? 'Lift' : 'No lift'), info.access.hearingLoop !== null && (info.access.hearingLoop ? 'Hearing loop' : 'No hearing loop')].filter(Boolean).join(' · ')}{info.access.description ? <> · <span translate="no">{info.access.description}</span></> : null}<span className="text-zinc-500"> (OpenStreetMap)</span></p>
+          )}
           {info.address && <p className="flex items-start gap-1.5 text-sm text-zinc-600 dark:text-zinc-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{info.address}</p>}
         </>
       )}
