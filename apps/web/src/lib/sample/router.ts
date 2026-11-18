@@ -13,6 +13,7 @@ import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
 import * as biz from './green-business';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 import * as impact from './impact';
+import * as extra from './new-features';
 import { localPlan } from '@/lib/ask';
 
 // Answers the app's API requests from example data while sample mode is on.
@@ -1793,6 +1794,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Report cards (Stage 5 · B15.3): none in the sample.
   [/^\/api\/report-cards\/mine$/, () => ok({ cards: [] })],
   [/^\/api\/admin\/report-cards$/, () => ok({ runs: [], school: 'Sample University' })],
+  // Paper exams (M291).
+  [/^\/exam-papers$/, () => ok(extra.samplePapers())],
+  [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],
   // Question bank (Stage 5 · B4.1): empty in the sample.
   [/^\/api\/courses\/([^/]+)\/question-bank$/, () => ok({ questions: [], difficulties: ['EASY', 'MEDIUM', 'HARD'] })],
   // Gradebook categories (Stage 5 · B3.4): none in the sample, so finals are plain averages.
@@ -2821,6 +2825,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/tutoring\/sessions\/([^/]+)\/complete$/, ({ body }) => ok({ session: { id: 'sess_sample_1', status: 'COMPLETED', ...body }, tutorStats: { balanceCredits: 5, averageRating: 4.9, sessionsCompletedAsTutor: 4, badgeAwarded: true } })],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/exam-papers(\/.*)?$/, () => { notice(); return ok({ paper: { id: 'sample-paper' }, score: 0, total: 0, posted: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/enrolment$/, () => { notice(); return ok({ ok: true }); }],

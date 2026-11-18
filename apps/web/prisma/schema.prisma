@@ -8193,3 +8193,38 @@ model ReliefPlan {
 
   @@map("relief_plans")
 }
+
+/// M291: a printed exam in up to four versions (A–D). `versions` is JSON PaperVersion[] (src/lib/exam-paper.ts):
+/// each version's questions as printed, its answer key and rubrics. Teachers of the course only.
+model ExamPaper {
+  id           String    @id @default(cuid())
+  courseId     String
+  title        String
+  instructions String?
+  minutes      Int?
+  versions     String
+  createdById  String?
+  /// When the marks were last sent to the gradebook
+  postedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  marks        ExamMark[]
+
+  @@index([courseId])
+  @@map("exam_papers")
+}
+
+/// M291: one student's marks on a paper exam: their version and per question the answer or rubric points (JSON Marks).
+model ExamMark {
+  paperId   String
+  paper     ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  studentId String
+  version   String
+  marks     String
+  score     Float     @default(0)
+  updatedAt DateTime  @updatedAt
+
+  @@id([paperId, studentId])
+  @@index([studentId])
+  @@map("exam_marks")
+}

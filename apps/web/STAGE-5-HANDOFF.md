@@ -8989,3 +8989,21 @@ errors or bugs". What was looked at, what was found, what was fixed:
 - **Left:** `arrange-cross-ui.mjs` is out of date since M219 (on a computer the menu is the top bar, so `#side-nav` has
   no Messages entry): it fails with or without this change. The read-only demo admin's 403 on `PATCH /users/me` (tests
   only). Local chunk-load blips under the crawl's load (the files exist and load).
+
+## M291: paper exams from the question bank (18 Nov)
+
+The owner: "please add all the 32 features you told me earlier" (the list of M290's reply; this is UniVersity 1). Quizzes
+already had pools, shuffling and exam mode on screen; what was missing was the printed exam.
+
+- **Quizzes → Paper exams** (`PaperExams.tsx`, `/exam-papers`, `src/server/exam-papers.ts`, logic `src/lib/exam-paper.ts`):
+  pick bank questions (by tag), add written questions with a rubric (up to 6 criteria) and a model answer, choose 1–4
+  versions. Version A keeps the order; B–D mix the questions (written ones stay last) and, if asked, the options.
+  Versions are made once and stored (`exam_papers.versions`), so a reprint is the same paper. Print a version or its
+  key (`html[data-printing="report"]` + `.print-report`, as Green Business's report).
+- **Marking:** per student their version, the letters or number they wrote (checked against that version's key) and
+  rubric points; the server works the score out again (`cleanMarks`, `paperScore`). **Send to the gradebook** replaces
+  the paper's own `grades` rows (course + title + those students) in groups of 15, so a class of 500 stays under 50 queries.
+- **Access:** the course's teachers only (`courseAccess().canManage`); students never get a paper or its key here.
+- Database update **0238** (`exam_papers`, `exam_marks`). Sample answers in `src/lib/sample/new-features.ts` (the file for
+  M291 onwards).
+- **Rule:** a paper's versions are frozen when it's made: change a bank question afterwards and the paper keeps the old text.
