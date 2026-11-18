@@ -202,3 +202,10 @@ export function sampleGreenArea() {
     ],
   };
 }
+
+/** GET /green/budget (M319): a budget a little over at this rate. */
+export const sampleBudget = () => ({
+  budget: 300,
+  plan: { parts: [{ id: 'travel', label: 'Getting around', kg: 95, fromBills: false }, { id: 'flights', label: 'Flights', kg: 25, fromBills: false }, { id: 'home', label: 'Home energy', kg: 118, fromBills: true }, { id: 'food', label: 'Food', kg: 125, fromBills: false }, { id: 'stuff', label: 'Things you buy', kg: 42, fromBills: false }], elapsed: 0.6, soFar: 225, forecast: 330, saved: 18 },
+  state: { over: 30, state: 'close' }, suggestions: { fairShare: 208, footprint: 365 },
+});

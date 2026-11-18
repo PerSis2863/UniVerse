@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { CarbonBudget } from './CarbonBudget';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Check, Flame, Lightbulb, Plus, Target, Trash2 } from 'lucide-react';
@@ -49,6 +50,7 @@ export function GreenGoals() {
 
   return (
     <div className="grid grid-cols-1 gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
+      <div className="xl:col-span-2"><CarbonBudget /></div>
       <section className="panel p-5" aria-labelledby="goal-h" data-no-motion>
         <h3 id="goal-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Target className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />This month’s goal</h3>
         {!data ? <div className="mt-4 h-40 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> : (

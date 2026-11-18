@@ -8383,6 +8383,8 @@ model GreenHome {
   /// M318: the neighbourhood, a 0.1° square (its south-west corner)
   areaLat   Float?
   areaLng   Float?
+  /// M319: the monthly carbon budget, kg CO₂e
+  budgetKg  Float?
 
   @@index([areaLat, areaLng])
 

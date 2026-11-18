@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { greenBudget, setGreenBudget } from '../green-budget';
 import { addAreaChallenge, greenArea, removeAreaChallenge, setGreenArea } from '../green-area';
 import { greenHome, readHomeBill, removeBill, saveBill, setGreenHome } from '../green-home';
 import { incidentReport, orgIncidents } from '../relief-report';
@@ -230,6 +231,9 @@ export default function impactAppsModule(router: Router) {
   green.post('home/bills', ({ user, body }) => saveBill(user, body ?? {}));
   green.delete<{ id: string }>('home/bills/:id', ({ user, params }) => removeBill(user, params.id));
   green.post('home/read', { status: 200 }, ({ user, body }) => readHomeBill(user, body ?? {}));
+  // M319: a monthly carbon budget.
+  green.get('budget', ({ user }) => greenBudget(user));
+  green.put('budget', ({ user, body }) => setGreenBudget(user, body ?? {}));
   // M318: neighbourhood challenges.
   green.get('area', ({ user }) => greenArea(user));
   green.put('area', ({ user, body }) => setGreenArea(user, body ?? {}));

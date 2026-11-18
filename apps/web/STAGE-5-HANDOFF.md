@@ -9392,3 +9392,14 @@ people who live near each other.
   at most), each with its confirmed progress. Setting one tells the neighbours in the app (200 at most, `email: false`);
   only whoever set it removes it. Test: `green-area.test.ts`.
 - **`Neighbourhood.tsx`** under the weekly challenge on Green's home; `pace()` says on or behind pace.
+
+## M319: a monthly carbon budget with a forecast (18 Nov)
+
+The owner's 32 features, Green 3.
+
+- **`monthPlan`** (`src/lib/carbon-budget.ts`, tested): a twelfth of each part of the latest footprint (`footprint()` from
+  M216's answers), home energy replaced by this month's bills (M317, the person's share by household size) when there
+  are any, less confirmed actions' CO₂ this month; so far = the month's share gone by; forecast = where it ends at this
+  rate. `budgetState`: under, close (within 10 %), over. `FAIR_SHARE_KG_MONTH` 208 (2.5 t a year, IGES 2019).
+- **`/green/budget`** (`src/server/green-budget.ts`; the budget in `green_homes.budgetKg`, 0252), **`CarbonBudget.tsx`**
+  at the top of Green → Goals; without a footprint it points to the Footprint tab.
