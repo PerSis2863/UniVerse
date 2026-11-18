@@ -3,6 +3,7 @@ import { buildVersions, paperTotal, type SourceQuestion } from '@/lib/exam-paper
 import type { SampleDb } from './data';
 import { stepsFor } from '@/lib/early-warning-steps';
 import { lessonDates, mondayOf } from '@/lib/lesson-plan';
+import { biggestDrop, funnelSteps } from '@/lib/trace-funnel';
 
 // Sample answers for the features of M291 onwards (made up), so "Explore with sample data" shows them filled.
 
@@ -121,5 +122,17 @@ export function sampleParentWeek(q: URLSearchParams) {
     missed: [{ course: 'CS220', title: 'Hash tables worksheet', kind: 'assignment', due: day(3) }],
     nextWeek: [{ course: 'CS301', title: 'Midterm (paper)', kind: 'quiz', due: day(9), done: false }],
     announcements: [{ course: 'CS301', title: 'Midterm next Tuesday' }],
+  };
+}
+
+/** GET /trace/funnel (M307): a made-up brand's funnel. */
+export function sampleFunnel(q: URLSearchParams) {
+  const days = Number(q.get('days')) || 90, k = days / 90;
+  const c = (n: number) => Math.round(n * k);
+  const steps = funnelSteps({ scanned: c(1840), sold: c(1290), owned: c(410), warranted: c(330), reviewed: c(96) });
+  const products = [{ id: 'sample-p-1', name: 'Trail runner' }, { id: 'sample-p-2', name: 'Canvas tote' }, { id: 'sample-p-3', name: 'Water bottle' }];
+  return {
+    days, product: q.get('product'), products, steps, drop: biggestDrop(steps)?.key ?? null,
+    byProduct: products.map((p, i) => ({ productId: p.id, name: p.name, steps: funnelSteps({ scanned: c(900 - i * 250), sold: c(640 - i * 180), owned: c(220 - i * 70), warranted: c(180 - i * 60), reviewed: c(50 - i * 15) }) })),
   };
 }

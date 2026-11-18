@@ -10,6 +10,7 @@ import { errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cn } from '@/lib/utils';
 import { Fill } from '@/components/ui/Fill';
+import { ScanFunnel } from '@/components/trace/ScanFunnel';
 
 // Insights (UniVerse Trace): what a brand's scans say about the weeks ahead. The next 14 days of
 // checks (a forecast with its likely range), the busiest hours of the week, each shipment's CO₂, what
@@ -150,6 +151,7 @@ function Body() {
           </div>
         </motion.section>
       </div>
+      <div className="mt-4"><ScanFunnel /></div>
     </>
   );
 }

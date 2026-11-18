@@ -9238,3 +9238,14 @@ the heaviest: `/docs/open` 576 KB (the editor), `/travel/trip` 468 KB, `/console
 - **Left:** the shared shell and layout (the framework, the menus, the arranging layer M290 tried to defer and took
   back), the document editor (ProseMirror and Yjs are the page). Sizes after this change: in the build at the end of
   this round of features.
+
+## M307: a brand's scan funnel (18 Nov)
+
+The owner's 32 features, Trace 1 ("how many scans turn into sales").
+
+- **`GET /trace/funnel?days=30|90|365&product=`** (`src/server/trace-funnel.ts`, the brand's team only via `brandOf`): one
+  SQL over `trace_scans` joined to `trace_codes` (sold = the code claimed by a shop, `claimedAt`), `trace_owners`,
+  `trace_warranties`, `trace_reviews`, counting distinct units; and the same per product (top 8 by units scanned).
+- **The steps** (`src/lib/trace-funnel.ts` `funnelSteps`, `biggestDrop`, tested): each step's count, share of all and of
+  the step before; the biggest drop is marked once there are 20 units, with a plain hint (`HINT` in `ScanFunnel.tsx`).
+- **`ScanFunnel.tsx`** at the end of Trace → Insights; bars are `<Fill>`. Counts only: never who scanned.

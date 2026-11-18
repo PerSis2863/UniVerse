@@ -1808,6 +1808,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/course-announcements\/[^/]+\/[^/]+\/readers$/, ({ db: d }) => ok(extra.sampleReaders(d))],
   // A parent's week (M300).
   [/^\/parent-week$/, ({ q }) => ok(extra.sampleParentWeek(q))],
+  // Trace's scan funnel (M307).
+  [/^\/trace\/funnel$/, ({ q }) => ok(extra.sampleFunnel(q))],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],
