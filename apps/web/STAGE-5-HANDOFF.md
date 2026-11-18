@@ -9070,3 +9070,19 @@ The owner's 32 features, UniVersity 5. Office hours were a live line only (open 
   tells them; the teacher is told of bookings and cancellations; a teacher removing a time tells everyone on it. In-app
   and push, never email (`notify`, `email: false`); times in messages are UTC (`when`).
 - `office_slots`, `office_waitlist` (0242). Test: `office-slots.test.ts` (a taken time refused, the waiting list moves up).
+
+## M296: portfolios with work and private share links (18 Nov)
+
+The owner's 32 features, UniVersity 6. The skills passport already had a public page (`/passport/<slug>`, `/p/<handle>`)
+with skills, credentials, evidence and impact; what was missing was the student's own work and a private way to share.
+
+- **My work** (`PortfolioEditor.tsx` on `/student/passport`, `/portfolio`, `src/server/portfolio.ts`): up to 24 pieces:
+  a graded hand-in (`assignment_submissions` with status RETURNED: its course code and, if ticked, the grade are copied
+  in when added; never the teacher's feedback), a project or a link, each with the student's words (2,000 characters),
+  moved up and down. Shown on the passport (`passportContent` → `work`, `PassportView`'s Work section).
+- **Links are checked** (`safeUrl`): only `https://` or the app's own `/api/files/…` (no `..`), so a page others open
+  never carries `javascript:` or `data:` links; they open with `rel="noopener noreferrer nofollow"`.
+- **Private links** (`portfolio_shares`, 24-character tokens): 7, 30, 90 or 180 days, a label only the student sees,
+  views counted, removable. `publicPassport(slug)` takes a token in place of the slug (`sharedOwner`), so the same page
+  and API serve it, public or not, until it expires. Ten links at most.
+- `portfolio_items`, `portfolio_shares` (0243). Test: `portfolio.test.ts`.

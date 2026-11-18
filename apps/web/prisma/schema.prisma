@@ -8303,3 +8303,35 @@ model OfficeWaitlist {
   @@index([studentId])
   @@map("office_waitlist")
 }
+
+/// M296: one piece of work on a student's portfolio (src/server/portfolio.ts): a graded hand-in (WORK, with its course
+/// and grade copied when added), a PROJECT or a LINK, with the student's own words (`body`).
+model PortfolioItem {
+  id           String   @id @default(cuid())
+  userId       String
+  kind         String   @default("PROJECT")
+  title        String
+  body         String?
+  url          String?
+  submissionId String?
+  course       String?
+  grade        String?
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, position])
+  @@map("portfolio_items")
+}
+
+/// M296: a private link to a student's passport and portfolio that works until `expiresAt` (or until removed).
+model PortfolioShare {
+  token     String   @id
+  userId    String
+  label     String?
+  expiresAt DateTime
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("portfolio_shares")
+}

@@ -5,6 +5,7 @@ import { cleanPassportHandle, cleanPassportTheme, type PassportTheme } from '@/l
 import { CredentialSigner, publicAppUrl, verifyUrlFor } from './services/credential-signer';
 import { didWeb, signCredential, verifyCredential } from './vc-data-integrity';
 import { evidenceGroups } from './skill-evidence';
+import { portfolioWork, sharedOwner } from './portfolio';
 
 // Skills passport: the public page a student can share, and Open Badges 3.0 (1EdTech) exports of
 // their verified impact credentials. The badges are Verifiable Credentials signed with the
@@ -50,7 +51,7 @@ type Sections = { showSkills: boolean; showCredentials: boolean; showCourses: bo
 /** What the passport shows (only the sections the student turned on). `owner`: the student's own
  *  preview, which also lists evidence they hid from the public page. */
 export async function passportContent(userId: string, sections: Sections, owner = false) {
-  const [user, skills, credentials, courses, points, evidence] = await Promise.all([
+  const [user, skills, credentials, courses, points, evidence, work] = await Promise.all([
     prisma.user.findUnique({ where: { id: userId }, select: { name: true, avatar: true, createdAt: true, studentProfile: { select: { department: true } } } }),
     sections.showSkills
       ? prisma.studentSkill.findMany({ where: { userId }, orderBy: [{ endorsements: 'desc' }, { name: 'asc' }], take: 40, select: { name: true, category: true, level: true, endorsements: true } })
@@ -67,6 +68,8 @@ export async function passportContent(userId: string, sections: Sections, owner 
       : Promise.resolve([]),
     sections.showImpact ? prisma.impactPoint.aggregate({ where: { userId }, _sum: { points: true } }) : Promise.resolve(null),
     sections.showEvidence !== false ? evidenceGroups(userId, owner) : Promise.resolve([]),
+    // M296: the pieces of work the student chose to show.
+    portfolioWork(userId),
   ]);
   if (!user) return null;
   return {
@@ -79,6 +82,7 @@ export async function passportContent(userId: string, sections: Sections, owner 
     courses: sections.showCourses ? courses.map((e) => e.course) : undefined,
     // Proof of learning: skills backed by graded work, passed quizzes and issued credentials
     evidence: sections.showEvidence !== false ? evidence.filter((g) => owner || g.count > 0) : undefined,
+    work: work.length ? work : undefined,
     impact: sections.showImpact
       ? {
           hours: credentials.reduce((n, c) => n + c.hoursCompleted, 0),
@@ -119,8 +123,10 @@ async function publicPassportRow(p: { id: string; userId: string; headline: stri
 export async function publicPassport(slug: string) {
   if (!/^[A-Za-z0-9_-]{8,32}$/.test(slug)) return null;
   const p = await prisma.skillPassport.findUnique({ where: { slug } });
-  if (!p || !p.isPublic) return null;
-  return publicPassportRow(p);
+  if (p?.isPublic) return publicPassportRow(p);
+  // M296: a private share link (a token in place of the slug) shows it while the link lasts, public or not.
+  const owner = await sharedOwner(slug);
+  return owner ? publicPassportRow(await prisma.skillPassport.findUnique({ where: { userId: owner } })) : null;
 }
 
 /** Public portfolio by vanity handle (/p/<handle>). */

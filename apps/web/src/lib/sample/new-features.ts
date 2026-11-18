@@ -85,3 +85,16 @@ export function sampleOfficeSlots(d: SampleDb) {
     teachers: [{ id: 'sample-u-meera', name: 'Dr. Meera Iyer', courses: ['CS301'], slots: [0, 15, 30, 45].map((m, i) => ({ id: `sample-os-${i}`, startAt: at(1, 14, m), durationMin: 15, mode: 'VIDEO', location: null, mine: i === 1, taken: i === 0 || i === 2, topic: i === 1 ? 'Threads lab' : null, waiting: i === 0 ? 1 : 0, place: i === 0 ? 1 : null, callId: 'o_sample' })) }],
   };
 }
+
+/** GET /portfolio (M296): two pieces of work and one private link. */
+export function samplePortfolio() {
+  return {
+    work: [
+      { id: 'sample-pf-1', kind: 'WORK', title: 'A round-robin scheduler in C', body: 'I wrote the scheduler for the OS lab and measured how the quantum changes waiting time.', url: null, course: 'CS301', grade: '18/20' },
+      { id: 'sample-pf-2', kind: 'PROJECT', title: 'Campus food-waste tracker', body: 'With three classmates we logged what the canteen threw away for a month.', url: 'https://example.org/food-waste', course: null, grade: null },
+    ],
+    shares: [{ token: 'sample-share-token-123456', label: 'Internship at Acme', url: '/passport/sample-share-token-123456', expiresAt: new Date(Date.now() + 20 * 86_400_000).toISOString(), expired: false, views: 3, createdAt: new Date().toISOString() }],
+    handIns: [{ id: 'sample-sub-1', title: 'Threads and locks report', course: 'CS301', grade: '16/20' }],
+    shareDays: [7, 30, 90, 180],
+  };
+}

@@ -25,6 +25,8 @@ export interface PassportData {
   /** Proof of learning: skills backed by checked work */
   evidence?: EvidenceGroup[];
   strengths?: string | null;
+  /** M296: pieces of work the student shows, each with their own words. */
+  work?: { id: string; kind: string; title: string; body: string | null; url: string | null; course: string | null; grade: string | null }[];
 }
 
 export interface EvidenceGroup {
@@ -84,6 +86,8 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
           <p className="mt-2 text-[15px] leading-relaxed text-zinc-800 dark:text-zinc-100">{p.strengths}</p>
         </motion.section>
       )}
+
+      {p.work && <WorkSection work={p.work} />}
 
       {p.evidence && <EvidenceSection groups={p.evidence} onHide={onHide} />}
 
@@ -218,6 +222,25 @@ function EvidenceSection({ groups, onHide }: { groups: EvidenceGroup[]; onHide?:
           })}
         </ul>
       )}
+    </section>
+  );
+}
+
+/** M296: the student's chosen work, with what they say about it. */
+function WorkSection({ work }: { work: NonNullable<PassportData['work']> }) {
+  return (
+    <section className="rounded-3xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-5 sm:p-6">
+      <h2 className="font-bold text-zinc-900 dark:text-white">Work</h2>
+      <ul className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        {work.map((w) => (
+          <li key={w.id} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] p-4">
+            <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{w.title}</p>
+            {(w.course || w.grade) && <p className="mt-0.5 text-xs text-zinc-500">{[w.course, w.grade ? `Grade ${w.grade}` : null].filter(Boolean).join(' · ')}</p>}
+            {w.body && <p className="mt-2 text-sm leading-relaxed text-zinc-700 dark:text-zinc-200 whitespace-pre-line" translate="no">{w.body}</p>}
+            {w.url && <a href={w.url} target="_blank" rel="noopener noreferrer nofollow" className="mt-2 inline-block text-sm text-indigo-600 dark:text-indigo-300 hover:underline break-all">{w.kind === 'LINK' ? 'Open the link' : 'See the work'}</a>}
+          </li>
+        ))}
+      </ul>
     </section>
   );
 }

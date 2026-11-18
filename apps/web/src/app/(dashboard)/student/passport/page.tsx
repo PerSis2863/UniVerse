@@ -16,6 +16,7 @@ import { QrCode } from '@/components/ui/QrCode';
 import { Switch } from '@/components/ui/Switch';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { CvBuilder } from '@/components/passport/CvBuilder';
+import { PortfolioEditor } from '@/components/passport/PortfolioEditor';
 import { linkedInAddCertificationUrl } from '@/lib/linkedin-cert';
 import { COMPANY } from '@/lib/company';
 import { PASSPORT_THEMES, PASSPORT_THEME_CLASS, type PassportTheme } from '@/lib/passport-theme';
@@ -182,6 +183,8 @@ export default function SkillsPassportPage() {
               className="w-full rounded-xl bg-zinc-100 dark:bg-white/[0.06] px-3 py-2 text-sm text-zinc-900 dark:text-white outline-none focus:ring-2 focus:ring-indigo-500/40" />
             <p className="text-[11px] text-zinc-500">Shown at the top of your passport with Skills with evidence. AI only uses your evidence; you can change every word.</p>
           </section>
+
+          <PortfolioEditor onChanged={() => void mutate()} />
 
           <section className="rounded-3xl border border-indigo-500/20 bg-indigo-500/[0.05] p-5">
             <p className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-5 h-5 text-indigo-500" /> Open Badges 3.0</p>
