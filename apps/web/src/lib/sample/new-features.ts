@@ -98,3 +98,9 @@ export function samplePortfolio() {
     shareDays: [7, 30, 90, 180],
   };
 }
+
+/** GET /course-announcements/:courseId/:id/readers (M299): most of the class has seen it. */
+export function sampleReaders(d: SampleDb) {
+  const people = (d.classmates as any[]).map((s, i) => ({ id: s.id, name: s.name, seenAt: i < 3 ? new Date(Date.now() - i * 3600_000).toISOString() : null, ackAt: i < 2 ? new Date(Date.now() - i * 3600_000).toISOString() : null }));
+  return { needsAck: true, remindedAt: null, canRemind: true, people };
+}

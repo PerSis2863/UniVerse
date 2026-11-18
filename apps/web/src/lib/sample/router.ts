@@ -1804,6 +1804,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/office-slots$/, ({ db: d }) => ok(extra.sampleOfficeSlots(d))],
   // Portfolio work and private links (M296).
   [/^\/portfolio$/, () => ok(extra.samplePortfolio())],
+  // Who has read an announcement (M299).
+  [/^\/course-announcements\/[^/]+\/[^/]+\/readers$/, ({ db: d }) => ok(extra.sampleReaders(d))],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],
@@ -2839,6 +2841,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/revision-packs$/, () => { notice(); return ok({ id: 'sample-pack', usedAi: true }); }],
   ['POST', /^\/office-slots(\/[^/]+\/(book|wait|cancel))?$/, () => { notice(); return ok({ ok: true, opened: 0, place: 1, movedUp: false }); }],
   ['POST', /^\/portfolio\/(items|shares)$/, () => { notice(); return ok({ item: { id: 'sample-pf-new' }, token: 'sample', url: '/passport/sample' }); }],
+  ['POST', /^\/course-announcements\/[^/]+\/[^/]+\/(remind|ack)$/, () => { notice(); return ok({ reminded: 0, ackAt: new Date().toISOString() }); }],
   ['POST', /^\/exam-papers(\/.*)?$/, () => { notice(); return ok({ paper: { id: 'sample-paper' }, score: 0, total: 0, posted: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],

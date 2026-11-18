@@ -17,7 +17,8 @@ import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
 import { authedJson } from '@/lib/authed-fetch';
-import { fetcher } from '@/lib/fetcher';
+import { api, fetcher } from '@/lib/fetcher';
+import { errorMessage } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { isUploadedFileUrl } from '@/lib/file-urls';
 import { isRecordingUrl, openPrivateFile } from '@/lib/private-file';
@@ -81,7 +82,7 @@ interface Board {
   /** The course's own teacher or an admin: copying it and changing its team. */
   owns?: boolean;
   staffRole?: 'CO_TEACHER' | 'TA' | null;
-  announcements: { id: string; title: string; body: string; createdAt: string; publishAt?: string | null; sentAt?: string | null; pinnedAt?: string | null; author: { name: string }; _count?: { reads: number } }[];
+  announcements: { id: string; title: string; body: string; createdAt: string; publishAt?: string | null; sentAt?: string | null; pinnedAt?: string | null; author: { name: string }; _count?: { reads: number }; needsAck?: boolean; reads?: { ackAt: string | null }[] }[];
   materials: { id: string; title: string; type: 'PDF' | 'DOCX' | 'VIDEO' | 'IMAGE' | 'OTHER'; fileUrl: string; size: string | null; createdAt: string }[];
   readings: { id: string; title: string; description: string | null; url: string | null; category: string | null }[];
   events: { id: string; title: string; description: string | null; startAt: string; endAt: string; type: string }[];
@@ -448,7 +449,7 @@ function RemoveBtn({ onClick }: { onClick: () => void }) {
 // ─── Announcements ─────────────────────────────────────────────────────────
 
 function Announcements({ board, canManage, refresh }: SectionProps) {
-  const [form, setForm] = useState<{ title: string; body: string; later: boolean; at: string } | null>(null);
+  const [form, setForm] = useState<{ title: string; body: string; later: boolean; at: string; needsAck: boolean } | null>(null);
   const { post, busy } = usePost(board.course.id, refresh);
   const remove = useRemove(board.course.id, refresh);
   const courseId = board.course.id;
@@ -459,15 +460,16 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
     void authedJson(`/api/courses/${courseId}/announcements/seen`, { method: 'POST', body: JSON.stringify({ ids: shown.split(',') }) }).catch(() => {});
   }, [courseId, shown]);
   const students = board.course._count.enrollments;
+  const [readers, setReaders] = useState<string | null>(null);
   const send = async () => {
     if (!form) return;
     const publishAt = form.later && form.at ? new Date(form.at).toISOString() : undefined;
     if (form.later && !publishAt) return void toast.error('Choose when to send it.');
-    if (await post({ kind: 'announcement', title: form.title, body: form.body, publishAt }, publishAt ? `Scheduled for ${when(publishAt)}` : 'Announcement posted')) setForm(null);
+    if (await post({ kind: 'announcement', title: form.title, body: form.body, publishAt, needsAck: form.needsAck }, publishAt ? `Scheduled for ${when(publishAt)}` : 'Announcement posted')) setForm(null);
   };
   return (
     <>
-      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '', later: false, at: '' })} />} />
+      <SectionHead icon={Bell} title="Announcements" count={board.announcements.length} action={canManage && !form && <AddButton label="Post" onClick={() => setForm({ title: '', body: '', later: false, at: '', needsAck: false })} />} />
       {form && (
         <FormShell title="New announcement — enrolled students get a notification" onClose={() => setForm(null)}>
           <input className="input" placeholder="Title" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
@@ -485,6 +487,7 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
               </label>
             )}
           </fieldset>
+          <label className="flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200"><input type="checkbox" checked={form.needsAck} onChange={(e) => setForm({ ...form, needsAck: e.target.checked })} /> Ask students to confirm they’ve read it</label>
           <button disabled={busy || !form.title.trim() || !form.body.trim()} onClick={() => void send()} className="btn-primary">{busy && <Loader2 className="w-4 h-4 animate-spin" />} {form.later ? 'Schedule announcement' : 'Post announcement'}</button>
         </FormShell>
       )}
@@ -509,14 +512,65 @@ function Announcements({ board, canManage, refresh }: SectionProps) {
                   )}</div>} />
                 <div className="flex items-center justify-between gap-2 flex-wrap mt-3">
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">Posted by <span className="text-indigo-600 dark:text-indigo-400 font-medium">{a.author.name}</span></p>
-                  {canManage && !waiting && a._count && <p className="text-xs text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> Seen by {a._count.reads} of {students}</p>}
+                  {canManage && !waiting && a._count && <button type="button" onClick={() => setReaders(a.id)} className="text-xs text-zinc-600 dark:text-zinc-400 inline-flex items-center gap-1 hover:underline"><Eye className="w-3.5 h-3.5" aria-hidden /> Seen by {a._count.reads} of {students}{a.needsAck ? ' · asks to confirm' : ''}</button>}
+                  {!canManage && a.needsAck && <AckButton courseId={courseId} id={a.id} acked={!!a.reads?.[0]?.ackAt} onDone={() => void refresh()} />}
                 </div>
               </div>
             );
           })}
         </div>
       )}
+      {readers && <ReadersSheet courseId={courseId} id={readers} title={board.announcements.find((a) => a.id === readers)?.title ?? ''} onClose={() => setReaders(null)} />}
     </>
+  );
+}
+
+/** M299: "I've read it" on an announcement that asks. */
+function AckButton({ courseId, id, acked, onDone }: { courseId: string; id: string; acked: boolean; onDone: () => void }) {
+  const [busy, setBusy] = useState(false);
+  if (acked) return <span className="text-xs font-medium text-emerald-700 dark:text-emerald-300 inline-flex items-center gap-1"><CheckCircle2 className="w-3.5 h-3.5" aria-hidden /> You confirmed you’ve read it</span>;
+  return (
+    <button type="button" disabled={busy} className="btn-primary btn-sm" onClick={async () => {
+      setBusy(true);
+      try { await api.post(`/course-announcements/${courseId}/${id}/ack`, {}); toast.success('Thanks, your teacher can see you’ve read it'); onDone(); }
+      catch (e) { toast.error(errorMessage(e, 'Couldn’t save that.')); }
+      finally { setBusy(false); }
+    }}>{busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden />}I’ve read it</button>
+  );
+}
+
+/** M299: who has seen an announcement (and confirmed it, if it asks), with a reminder to the rest. */
+function ReadersSheet({ courseId, id, title, onClose }: { courseId: string; id: string; title: string; onClose: () => void }) {
+  const { data, mutate } = useSWR<{ needsAck: boolean; canRemind: boolean; people: { id: string; name: string; seenAt: string | null; ackAt: string | null }[] }>(`/course-announcements/${courseId}/${id}/readers`, fetcher);
+  const [busy, setBusy] = useState(false);
+  const done = (p: { seenAt: string | null; ackAt: string | null }) => (data?.needsAck ? !!p.ackAt : !!p.seenAt);
+  const rest = data?.people.filter((p) => !done(p)) ?? [];
+  const remind = async () => {
+    setBusy(true);
+    try { const r = await api.post<{ reminded: number }>(`/course-announcements/${courseId}/${id}/remind`, {}); toast.success(r.data.reminded ? `Reminded ${r.data.reminded} ${r.data.reminded === 1 ? 'student' : 'students'}` : 'Everyone has seen it'); void mutate(); }
+    catch (e) { toast.error(errorMessage(e, 'Couldn’t send the reminder.')); }
+    finally { setBusy(false); }
+  };
+  return (
+    <Sheet title={`Who has read “${title}”`} onClose={onClose} footer={data && rest.length > 0 ? (
+      <div className="flex items-center justify-end gap-2">
+        {!data.canRemind && <span className="me-auto text-xs text-zinc-500">Reminded in the last 12 hours</span>}
+        <button type="button" className="btn-primary btn-sm" disabled={busy || !data.canRemind} onClick={() => void remind()}>{busy && <Loader2 className="w-4 h-4 animate-spin" aria-hidden />}Remind the {rest.length} who haven’t</button>
+      </div>
+    ) : undefined}>
+      {!data ? <div className="h-32 rounded-2xl skeleton" /> : (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {[{ label: data.needsAck ? 'Not confirmed yet' : 'Not seen yet', list: rest }, { label: data.needsAck ? 'Confirmed' : 'Seen', list: data.people.filter(done) }].map((g) => (
+            <section key={g.label}>
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">{g.label} <span className="font-normal text-zinc-500 tabular-nums">{g.list.length}</span></h3>
+              <ul className="mt-1 max-h-72 space-y-0.5 overflow-y-auto text-sm">
+                {g.list.map((p) => <li key={p.id} className="flex justify-between gap-2 text-zinc-700 dark:text-zinc-200"><span className="truncate" translate="no">{p.name}</span>{(p.ackAt ?? p.seenAt) && <span className="shrink-0 text-xs text-zinc-500">{when((p.ackAt ?? p.seenAt)!)}</span>}</li>)}
+              </ul>
+            </section>
+          ))}
+        </div>
+      )}
+    </Sheet>
   );
 }
 

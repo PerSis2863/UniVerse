@@ -9116,3 +9116,18 @@ The owner's 32 features, UniVersity 8. Admin → Timetable already marked clashi
   bookings and with that weekday's timetable classes in the room ("CS101 has a class in this room then").
   `rooms.service.test.ts` covers it.
 - **A person's calendar** (`CalendarBoard`) says which of their weekly classes overlap (`weekClashes`), with who to tell.
+
+## M299: announcement read receipts, reminders and confirmations (18 Nov)
+
+The owner's 32 features, UniVersity 9. Course announcements were already translatable (`TranslatableAnnouncement`) and
+counted ("Seen by 28 of 32", B2); this makes the receipts useful.
+
+- **Who has read it** (`ReadersSheet` in `CourseBoard.tsx`; `GET /course-announcements/:courseId/:id/readers`, the
+  course's teachers and TAs): every enrolled student, seen (and confirmed) with when, or not yet.
+- **Remind the rest** (`remindAnnouncement`, teachers): an in-app note to those who haven't seen it (or, if it asks, haven't
+  confirmed), at most every 12 hours (`announcements.remindedAt`, claimed by `updateMany`).
+- **Ask students to confirm** (a tick when posting; `announcements.needsAck`): students get **I've read it**
+  (`acknowledgeAnnouncement`, enrolled students only; `announcement_reads.ackAt`). The board sends students their own
+  read row only.
+- Routes in `src/server/modules/school-plus.ts` (`teaching()` checks the course role). 0245. Test:
+  `course-announcements-ack.test.ts`. `owner-schema.json` regenerated for 0238–0245.

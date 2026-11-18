@@ -863,6 +863,9 @@ model Announcement {
   publishAt DateTime?
   /// When the notice went out (a scheduled one: null until then).
   sentAt    DateTime?
+  /// M299: students are asked to confirm they've read it; the teacher's last reminder to the rest
+  needsAck   Boolean           @default(false)
+  remindedAt DateTime?
   pinnedAt  DateTime?
   reads     AnnouncementRead[]
 
@@ -879,6 +882,8 @@ model AnnouncementRead {
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   readAt         DateTime     @default(now())
+  /// M299: when the student confirmed it ("I've read it"), for announcements that ask
+  ackAt          DateTime?
 
   @@id([announcementId, userId])
   @@index([userId])
