@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { IncidentReports } from './IncidentReports';
 import type { Forecast } from '@/lib/supply-forecast';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
@@ -109,6 +110,7 @@ function Overview({ d, run, go, onChange }: { d: OrgData; run: boolean; go: (t: 
         <p className="mt-2 text-xs text-zinc-500">{d.org.lat === null ? 'No base set: set one to see the needs near you.' : `Base set${d.org.place ? ` in ${d.org.place}` : ''} (rounded to about 500 m).`} Started {new Date(d.org.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
       </section>
       {run && <Emergency d={d} />}
+      <IncidentReports orgId={d.org.id} />
       <LiveStatus d={d} run={run} onChange={onChange} />
       {run && d.org.code && <Invite org={d.org} onChange={onChange} />}
       <LeaveButton org={d.org} />

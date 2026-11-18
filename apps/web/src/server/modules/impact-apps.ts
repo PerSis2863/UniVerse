@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { incidentReport, orgIncidents } from '../relief-report';
 import prisma from '@/lib/db';
 import { parseShownApps } from '@/lib/shown-apps-list';
 import { hubStats } from '../hub';
@@ -72,6 +73,9 @@ export default function impactAppsModule(router: Router) {
   relief.post('incidents', ({ user, body }) => declareIncident(user, body ?? {}));
   relief.post<{ id: string }>('incidents/:id/end', { status: 200 }, ({ user, params }) => endIncident(user, params.id));
   relief.post<{ id: string }>('incidents/:id/safe', { status: 200 }, ({ user, params, body }) => markSafe(user, params.id, body ?? {}));
+  // M314: an emergency's timeline and report, and an organisation's past emergencies.
+  relief.get<{ id: string }>('incidents/:id/report', ({ user, params }) => incidentReport(user, params.id));
+  relief.get<{ id: string }>('orgs/:id/incidents', ({ user, params }) => orgIncidents(user, params.id));
   relief.get('contacts', ({ user }) => reliefContacts(user));
   relief.get('sms', () => reliefSmsOn());
   relief.get<{ id: string }>('orgs/:id/aid', ({ user, params }) => orgAid(user, params.id));

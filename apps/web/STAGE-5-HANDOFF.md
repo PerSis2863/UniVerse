@@ -9323,3 +9323,17 @@ The owner's 32 features, Relief 2. Supplies had a quantity, a "low at" level and
   before). States: ok, soon (10 days or less), now (3 or less), unknown (nothing went out lately).
 - `GET /relief/orgs/:id` sends `forecast` with each supply (one more query: four weeks of outgoing moves, up to 3,000);
   `OrgDashboard`'s supply rows show it under the name.
+
+## M314: an emergency's timeline and report (18 Nov)
+
+The owner's 32 features, Relief 3. Emergencies (M150) could be declared, ended and answered "I'm safe"; nothing stayed
+afterwards but the rows.
+
+- **`GET /relief/orgs/:id/incidents`** (the organisation's, newest first, with how many marked safe) and **`GET
+  /relief/incidents/:id/report`** (`src/server/relief-report.ts`): members of the incident's organisation only
+  (`orgRole`). The report reads, for the incident's window (start to end, or now): `relief_safe` (total and per hour,
+  up to a week), posts inside its radius (a box first, then `kmBetween`), the organisation's outgoing supply moves and
+  shifts. Numbers, needs by kind, supplies given out, and a timeline (declared, each need, each delivery, shifts,
+  ended; 80 at most). Test: `relief-report.test.ts`.
+- **`IncidentReports.tsx`** in an organisation's Overview (every member sees past emergencies; declaring stays the
+  coordinators'), the report in a sheet, printable (`.print-report`).

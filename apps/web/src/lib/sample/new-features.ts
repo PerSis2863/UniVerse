@@ -161,3 +161,20 @@ export function sampleCompare(q: URLSearchParams) {
   ];
   return { choices, rows, best: bestOf(rows) };
 }
+
+/** GET /relief/orgs/:id/incidents and /relief/incidents/:id/report (M314): one past flood. */
+export function sampleIncidents() {
+  const start = new Date(Date.now() - 4 * 86_400_000).toISOString(), end = new Date(Date.now() - 2 * 86_400_000).toISOString();
+  return { incidents: [{ id: 'sample-inc', title: 'River flooding in the old town', place: 'Old town', startedAt: start, endsAt: end, safe: 214, over: true }] };
+}
+export function sampleIncidentReport() {
+  const t0 = Date.now() - 4 * 86_400_000, at = (h: number) => new Date(t0 + h * 3600_000).toISOString();
+  return {
+    incident: { id: 'sample-inc', title: 'River flooding in the old town', place: 'Old town', radiusKm: 5, startedAt: at(0), endsAt: at(48), over: true, org: 'Riverside Aid' },
+    numbers: { hours: 48, safe: 214, needs: 37, offers: 22, taken: 33, delivered: 29, helped: 118, shifts: 6, volunteers: 41 },
+    byKind: [{ kind: 'WATER', n: 12 }, { kind: 'SHELTER', n: 9 }, { kind: 'FOOD', n: 8 }, { kind: 'MEDICAL', n: 5 }, { kind: 'TRANSPORT', n: 3 }],
+    safeByHour: Array.from({ length: 48 }, (_, h) => Math.max(0, Math.round(30 * Math.exp(-h / 6) + (h % 5)))),
+    used: [{ name: 'Bottled water', unit: 'crates', out: 140 }, { name: 'Blankets', unit: 'pieces', out: 85 }, { name: 'Food parcels', unit: 'parcels', out: 62 }],
+    timeline: [{ at: at(0), kind: 'start', text: 'Declared: River flooding in the old town (Old town)' }, { at: at(1), kind: 'need', text: 'Need: Drinking water for 6 (6 people)' }, { at: at(3), kind: 'shift', text: 'Shift: Sandbags at the bridge (9 volunteers)' }, { at: at(5), kind: 'done', text: 'Delivered: Drinking water for 6' }, { at: at(48), kind: 'end', text: 'Ended' }],
+  };
+}
