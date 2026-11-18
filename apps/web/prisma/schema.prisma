@@ -7348,6 +7348,10 @@ model ReliefPost {
   @@index([helperId])
   @@index([helperOrgId])
   @@map("relief_posts")
+  /// M316: the device outbox's id for a post made offline (a retried send makes no second post)
+  clientId    String?
+
+  @@unique([userId, clientId])
 }
 
 /// M106: an organisation in Relief (NGO, food bank, shelter, community group). Base rounded like posts.

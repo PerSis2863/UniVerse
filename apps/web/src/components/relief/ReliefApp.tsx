@@ -1,6 +1,7 @@
 'use client';
 
 import { PlacesBoard } from './PlacesBoard';
+import { enqueue, isOfflineError, newClientId, outboxSupported } from '@/lib/outbox';
 import { Translatable } from '@/components/shared/Translatable';
 import { SafetyCheck } from './SafetyCheck';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -510,11 +511,19 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
     e.preventDefault();
     if (!where) { toast.error('Where is it? Use your location or tap the map.'); return; }
     setSaving(true);
+    // M316: an id from this device, so a request saved with no signal and sent later never posts twice.
+    const body = { ...f, people: Number(f.people), lat: where.lat, lng: where.lng, clientId: newClientId() };
     try {
-      const res = await api.post<ReliefPost>('/relief/posts', { ...f, people: Number(f.people), lat: where.lat, lng: where.lng });
+      const res = await api.post<ReliefPost>('/relief/posts', body);
       toast.success(f.type === 'NEED' ? 'Posted. Helpers nearby can see it now.' : 'Thank you! Your offer is on the map.');
       onDone({ ...res.data, by: null, helper: null, mine: true, helping: false, org: runs.find((o) => o.id === f.orgId) ?? null });
-    } catch (err) { toast.error(errorMessage(err, 'Could not post it.')); } finally { setSaving(false); }
+    } catch (err) {
+      if ((!navigator.onLine || isOfflineError(err)) && outboxSupported()) {
+        await enqueue({ id: body.clientId, kind: 'relief', url: '/api/core/relief/posts', method: 'POST', body, label: `${f.type === 'NEED' ? 'Request' : 'Offer'}: ${f.title.slice(0, 60)}`, ref: 'relief' });
+        toast.success('Saved on this phone', { description: 'No signal: it goes on the map by itself as soon as there is one. Call the emergency number if it can’t wait.', duration: 9000 });
+        onClose();
+      } else toast.error(errorMessage(err, 'Could not post it.'));
+    } finally { setSaving(false); }
   };
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[120] grid place-items-end sm:place-items-center bg-black/40 p-0 sm:p-4" onClick={onClose}>

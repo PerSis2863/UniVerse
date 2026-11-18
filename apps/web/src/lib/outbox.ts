@@ -9,7 +9,7 @@ import { authedFetch } from '@/lib/authed-fetch';
 // this device's private chat key (B7.6) and the last answers of a few reads (M46,
 // src/lib/offline-reads.ts), and it's all wiped at sign-out.
 
-export type OutboxKind = 'quiz' | 'assignment' | 'message';
+export type OutboxKind = 'quiz' | 'assignment' | 'message' | 'relief';
 export interface OutboxItem {
   id: string; // also the client id the server dedupes on
   kind: OutboxKind;

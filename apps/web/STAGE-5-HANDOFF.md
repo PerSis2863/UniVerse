@@ -9350,3 +9350,16 @@ UI catalog); what an asker *wrote* stayed in their language.
 - The post card (`ReliefApp.tsx`) shows title and details through `Translatable` (one "Translate" for both, the text
   marked `translate="no"`); the form says "Write in your own language: helpers can translate it into theirs".
 - Not added: reading levels for posts (they're short).
+
+## M316: Relief requests saved on the phone with no signal (18 Nov)
+
+The owner's 32 features, Relief 5. The device outbox (`src/lib/outbox.ts`, upgrade 4) already sent quiz answers,
+hand-ins and messages made offline; Relief posts failed with "Could not post it".
+
+- **`PostForm`** (`ReliefApp.tsx`) gives each post a `clientId` (`newClientId`); if sending fails with no connection
+  (`!navigator.onLine` or `isOfflineError`), it's queued (`enqueue`, kind `relief`, `POST /api/core/relief/posts`) and the
+  person told it goes on the map by itself when there's signal (and to call the emergency number if it can't wait).
+  `OfflineBar` flushes the outbox when the connection returns, as for the other kinds.
+- **Never twice:** `createReliefPost` returns the post a `(userId, clientId)` already made (`relief_posts.clientId`,
+  unique with the user, 0249); `clientIdOf` checks the id's shape. Test: `relief-offline.test.ts`.
+- **Batch 3 (Trace 5, Relief 5, M307–M316) checked:** unit tests, lint, types after each item.
