@@ -3009,6 +3009,8 @@ model StudentRiskFlag {
   handledAt     DateTime?
   handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
   followUpScore Int? // score at the 7-day follow-up of a support plan (upgrade 3)
+  /// M292: the score's history, JSON [{ at, score }] (src/lib/early-warning-steps.ts)
+  history       String?
   plans         SupportPlan[]
   computedAt    DateTime      @default(now())
   createdAt     DateTime      @default(now())

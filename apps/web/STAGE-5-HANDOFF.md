@@ -9007,3 +9007,18 @@ already had pools, shuffling and exam mode on screen; what was missing was the p
 - Database update **0238** (`exam_papers`, `exam_marks`). Sample answers in `src/lib/sample/new-features.ts` (the file for
   M291 onwards).
 - **Rule:** a paper's versions are frozen when it's made: change a bank question afterwards and the paper keeps the old text.
+
+## M292: early warnings with what to do and the score's trend (18 Nov)
+
+The owner's 32 features, UniVersity 2 ("early warnings for teachers: who's slipping and what to do"). Early warning
+already flagged students with reasons, a check-in message and a support plan (Stage 5); this adds the rest.
+
+- **What usually helps** (`src/lib/early-warning-steps.ts` `stepsFor`): plain rules per reason code (attendance,
+  grades, grade-drop, quizzes, inactive), at most five steps without repeats, each with why and a link to the tool
+  (office hours in Calls, the mastery map, the gradebook, quizzes for a second chance). Sent with each flag by
+  `GET /api/early-warning` (`steps`); shown in the flag's detail (`WhatToDo`).
+- **The score's history:** `student_risk_flags.history` (0239), JSON `[{ at, score }]`, one point a day, the latest 12,
+  written only when the score changes (`withScore`; flags from before start from their last score, `pastOf`).
+  `trendOf` compares now with about a week before (±10): a "Getting worse" or "Improving" chip on the row and a
+  `Spark` line in the detail (its values also as screen-reader text).
+- The board had no sample answer; it has one now (`sampleEarlyWarning`).

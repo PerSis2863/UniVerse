@@ -1794,6 +1794,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Report cards (Stage 5 · B15.3): none in the sample.
   [/^\/api\/report-cards\/mine$/, () => ok({ cards: [] })],
   [/^\/api\/admin\/report-cards$/, () => ok({ runs: [], school: 'Sample University' })],
+  // Early warning with its steps and trend (M292).
+  [/^\/api\/early-warning$/, ({ db: d }) => ok(extra.sampleEarlyWarning(d))],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],

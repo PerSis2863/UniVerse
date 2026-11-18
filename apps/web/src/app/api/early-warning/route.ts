@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { readHistory, stepsFor } from '@/lib/early-warning-steps';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { plansForFlags } from '@/server/support-plans';
@@ -49,6 +50,9 @@ export async function GET(req: Request) {
       },
       course: user.role === 'ADMIN' ? f.course : { id: f.course.id, code: f.course.code, name: f.course.name },
       plan: plans.get(f.id) ?? null,
+      // M292: the score's history and what to do about each reason.
+      history: readHistory(f.history),
+      steps: stepsFor(Array.isArray(f.reasons) ? (f.reasons as { code: string }[]) : []),
     })),
     summary: {
       atRisk: count((c) => (c.status === 'OPEN' || c.status === 'CONTACTED') && c.level === 'AT_RISK'),
