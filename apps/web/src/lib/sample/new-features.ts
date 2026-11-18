@@ -209,3 +209,16 @@ export const sampleBudget = () => ({
   plan: { parts: [{ id: 'travel', label: 'Getting around', kg: 95, fromBills: false }, { id: 'flights', label: 'Flights', kg: 25, fromBills: false }, { id: 'home', label: 'Home energy', kg: 118, fromBills: true }, { id: 'food', label: 'Food', kg: 125, fromBills: false }, { id: 'stuff', label: 'Things you buy', kg: 42, fromBills: false }], elapsed: 0.6, soFar: 225, forecast: 330, saved: 18 },
   state: { over: 30, state: 'close' }, suggestions: { fairShare: 208, footprint: 365 },
 });
+
+/** GET /green/swaps (M320): a few neighbours' posts. */
+export function sampleSwaps() {
+  const at = (d: number) => new Date(Date.now() - d * 86_400_000).toISOString();
+  return {
+    area: { lat: 12.9, lng: 77.5 }, kept: 14,
+    posts: [
+      { id: 'sample-sw-1', kind: 'GIVE', category: 'kids', title: 'Kids’ bike, 16 inch', details: 'Rides well, needs a new bell.', status: 'OPEN', createdAt: at(1), mine: false, by: 'Priya', userId: 'sample-u-priya', reported: false, here: true },
+      { id: 'sample-sw-2', kind: 'REPAIR_OFFER', category: 'electronics', title: 'I fix phone screens and laptop keyboards', details: 'Saturdays at the community hall.', status: 'OPEN', createdAt: at(3), mine: false, by: 'Omar', userId: 'sample-u-omar', reported: false, here: false },
+      { id: 'sample-sw-3', kind: 'LEND', category: 'tools', title: 'Ladder and drill to lend', details: null, status: 'OPEN', createdAt: at(5), mine: true, by: 'You', userId: null, reported: false, here: true },
+    ],
+  };
+}

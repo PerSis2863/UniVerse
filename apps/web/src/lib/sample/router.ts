@@ -1828,6 +1828,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/green\/area$/, () => ok(extra.sampleGreenArea())],
   // A monthly carbon budget (M319).
   [/^\/green\/budget$/, () => ok(extra.sampleBudget())],
+  // The swap and repair board (M320).
+  [/^\/green\/swaps$/, () => ok(extra.sampleSwaps())],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],

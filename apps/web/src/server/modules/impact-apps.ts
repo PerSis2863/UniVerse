@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { addSwap, doneSwap, greenSwaps, removeSwap, reportSwap } from '../green-swaps';
 import { greenBudget, setGreenBudget } from '../green-budget';
 import { addAreaChallenge, greenArea, removeAreaChallenge, setGreenArea } from '../green-area';
 import { greenHome, readHomeBill, removeBill, saveBill, setGreenHome } from '../green-home';
@@ -231,6 +232,12 @@ export default function impactAppsModule(router: Router) {
   green.post('home/bills', ({ user, body }) => saveBill(user, body ?? {}));
   green.delete<{ id: string }>('home/bills/:id', ({ user, params }) => removeBill(user, params.id));
   green.post('home/read', { status: 200 }, ({ user, body }) => readHomeBill(user, body ?? {}));
+  // M320: the swap and repair board.
+  green.get('swaps', ({ user, query }) => greenSwaps(user, query));
+  green.post('swaps', ({ user, body }) => addSwap(user, body ?? {}));
+  green.post<{ id: string }>('swaps/:id/done', { status: 200 }, ({ user, params }) => doneSwap(user, params.id));
+  green.post<{ id: string }>('swaps/:id/report', { status: 200 }, ({ user, params }) => reportSwap(user, params.id));
+  green.delete<{ id: string }>('swaps/:id', ({ user, params }) => removeSwap(user, params.id));
   // M319: a monthly carbon budget.
   green.get('budget', ({ user }) => greenBudget(user));
   green.put('budget', ({ user, body }) => setGreenBudget(user, body ?? {}));

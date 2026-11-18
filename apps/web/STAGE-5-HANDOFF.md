@@ -9403,3 +9403,15 @@ The owner's 32 features, Green 3.
   rate. `budgetState`: under, close (within 10 %), over. `FAIR_SHARE_KG_MONTH` 208 (2.5 t a year, IGES 2019).
 - **`/green/budget`** (`src/server/green-budget.ts`; the budget in `green_homes.budgetKg`, 0252), **`CarbonBudget.tsx`**
   at the top of Green → Goals; without a footprint it points to the Footprint tab.
+
+## M320: a swap and repair board (18 Nov)
+
+The owner's 32 features, Green 4.
+
+- **Green → Swap & repair** (a new tab, `GREEN_VIEWS` `swap`; `SwapBoard.tsx`; `/green/swaps`, `src/server/green-swaps.ts`):
+  kinds and categories in `src/lib/green-swap.ts`; posts belong to the poster's 0.1° neighbourhood (M318; without one the
+  tab shows the Neighbourhood card to choose it) and show there and in the eight squares around it, open ones for 30
+  days, ten open per person. First names only; **Message** opens a direct chat (`/api/chat/conversations`), never a
+  phone or address (the form says so). Done → "kept in use around here" for the month.
+- **Reports** (`green_swap_reports`, once per person, never your own): three hide a post (`HIDE_AT_REPORTS`). Deleting an
+  account removes the person's posts. 0253. Test: `green-swaps.test.ts`.

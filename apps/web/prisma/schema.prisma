@@ -8424,3 +8424,35 @@ model GreenAreaChallenge {
   @@index([areaLat, areaLng, endsAt])
   @@map("green_area_challenges")
 }
+
+/// M320: a post on the swap and repair board (src/server/green-swaps.ts), in its 0.1° neighbourhood.
+model GreenSwap {
+  id        String            @id @default(cuid())
+  userId    String
+  kind      String
+  category  String            @default("other")
+  title     String
+  details   String?
+  areaLat   Float
+  areaLng   Float
+  status    String            @default("OPEN")
+  reports   Int               @default(0)
+  createdAt DateTime          @default(now())
+  doneAt    DateTime?
+  reported  GreenSwapReport[]
+
+  @@index([areaLat, areaLng, status])
+  @@index([userId])
+  @@map("green_swaps")
+}
+
+/// M320: one person's report of a swap post (once each; three hide it).
+model GreenSwapReport {
+  swapId    String
+  swap      GreenSwap @relation(fields: [swapId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime  @default(now())
+
+  @@id([swapId, userId])
+  @@map("green_swap_reports")
+}

@@ -46,6 +46,7 @@ export async function eraseAccount(userId: string) {
     prisma.officeSlot.deleteMany({ where: { teacherId: userId } }),
     prisma.greenBill.deleteMany({ where: { userId } }),
     prisma.greenHome.deleteMany({ where: { userId } }),
+    prisma.greenSwap.deleteMany({ where: { userId } }),
     prisma.user.update({
       where: { id: userId },
       data: {
