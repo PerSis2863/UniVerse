@@ -8843,3 +8843,14 @@ needed and the map can get that area… and also see this type of thing can be d
 - **Checked:** `scripts/checks/bare-chrome-ui.mjs` (on a phone the bar is gone on the three maps and back on leaving;
   axe clean, no sideways scroll), `pnpm check`.
 - **Rule:** a new page that is one big map calls `useBareChrome()` and adds `var(--bare-gain)` to its height on phones.
+
+## M272: Travel's map asks the server less while you move it (18 Nov)
+
+The owner: "make travel app more efficient… ultra smooth specially maps". Measured on the built site (Paris, dragging and
+zooming, CPU slowed 4×): almost all the work while moving is MapLibre drawing (already tuned in M259/M267: pixel ratio
+capped at 2, short label fades, tiles kept). What wasted Worker requests: every stop of the map asked for UniVerse's
+reviews of the new view (the box was matched to ~100 m) and the stories again at every zoom.
+
+- `nearKey` / `boxKey` (`src/lib/travel-map.ts`, tested): the middle snapped to 0.02° (~2 km) with a radius from four
+  steps, the box outwards to 0.05° (~5 km); a small pan reuses the answer (SWR's key doesn't change).
+- **Rule:** what a map view asks the server for is snapped to a grid; never a key from the exact view.

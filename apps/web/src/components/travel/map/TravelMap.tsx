@@ -12,7 +12,7 @@ import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
-import { bubbleAt, CATEGORIES, classesOf, kindOf, listingKind, routeOf, routeUrl, sameOnce, streetPhotoOf, walkFrom, walkInGoogle, withLegs, type CategoryId, type MapPlace } from '@/lib/travel-map';
+import { boxKey, nearKey, bubbleAt, CATEGORIES, classesOf, kindOf, listingKind, routeOf, routeUrl, sameOnce, streetPhotoOf, walkFrom, walkInGoogle, withLegs, type CategoryId, type MapPlace } from '@/lib/travel-map';
 import { osmKey, type Photo, type Story } from '@/lib/travel-place';
 import { clockText, localClock, sunTimes, zoneAt } from '@/lib/travel-local';
 import { km } from '@/lib/travel-plan';
@@ -160,10 +160,10 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const applied = useRef<StyleSpecification | null>(null); // the design the map has
 
   // Data for what's in view (rounded, so small moves reuse the answer).
-  const near = view && view.zoom >= 12 ? `lat=${view.lat.toFixed(2)}&lon=${view.lon.toFixed(2)}&r=${Math.min(10_000, Math.round((km({ lat: view.s, lon: view.w }, { lat: view.n, lon: view.e }) ?? 4) * 500 / 100) * 100)}` : null;
+  const near = view && view.zoom >= 12 ? nearKey(view, (km({ lat: view.s, lon: view.w }, { lat: view.n, lon: view.e }) ?? 4) / 2) : null;
   const { data: stories } = useSWR<{ stories: Story[] }>(show.stories && near ? `/travel/stories?${near}` : null, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
   const { data: photos } = useSWR<{ photos: Photo[]; credit: string }>(show.photos && near ? `/travel/photos?${near}` : null, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
-  const box4 = view && view.zoom >= 11 ? `s=${view.s.toFixed(3)}&w=${view.w.toFixed(3)}&n=${view.n.toFixed(3)}&e=${view.e.toFixed(3)}` : null;
+  const box4 = view && view.zoom >= 11 ? boxKey(view) : null;
   const { data: reviewed } = useSWR<{ places: { place: string; name: string; lat: number; lon: number; average: number; count: number }[] }>(show.reviews && box4 ? `/travel/reviews/near?${box4}` : null, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
 
   const { data: savedData } = useSWR<{ saved: Saved[] }>(show.saved ? '/travel/saved' : null, fetcher, { revalidateOnFocus: false });
