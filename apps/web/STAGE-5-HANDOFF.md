@@ -8955,3 +8955,37 @@ teacher), Green, Relief, Trace and the hub on a phone and a computer, then a cra
 - **Checked:** the phone and computer crawls (213 pages each, `--layout`), the Travel checks, `pnpm check`. Browser only.
 - **Rules:** a grid with columns from a breakpoint up also gets `grid-cols-1`; after a layout change run
   `node scripts/crawl.mjs <url> --phone --layout` and read the "cut off" lines.
+
+## M290: a deep check of every app: errors, security, speed, motion, accessibility (18 Nov)
+
+The owner: "do deep analysis of all the apps in website and mobile… animations, security, performance, efficiency or
+errors or bugs". What was looked at, what was found, what was fixed:
+
+- **The live error log** (production `error_reports`, read-only): nothing new since 17 Nov. The last one ("undefined",
+  5 times on /travel from iPhones) was a photo failing to load, already no longer reported (`error-monitor.ts`, 17 Nov):
+  **[owner]** mark it resolved in the console. The many rows of 29–30 Oct are the sample world's made-up errors.
+- **Security:**
+  - **Fixed:** a spreadsheet cell's colour, fill, size and alignment went into the version preview's HTML as they were
+    (`src/lib/sheet/render.ts`), so a shared file could carry `url(…)` (blocked by the site's image rules, but still) or
+    `red;position:fixed;…` to restyle the preview. Now only real colours (`colour`, tested in `render.test.ts`), sizes
+    and alignments pass.
+  - **Looked at, sound:** raw SQL (166 places: every outside value a `?`; the interpolations are table names,
+    placeholders and constants); the 15 raw-HTML spots (escaped, or the site's own scripts); sign-in's `next` only goes
+    to this site's pages; the security headers (images only from listed sites); `pnpm audit` no known flaws; Green
+    Business (new today): every action checks the person's role in that company, its public links 15 random characters.
+- **Speed, measured on a phone slowed 4× (built site):** pages show their content in 1.5–2.8 s and settle; no API call
+  asked twice.
+  - **Fixed: Relief's live map kept the phone ~36% busy forever** (the canvas map asked for 60 frames a second to pulse
+    the requests). `WorldCanvas` (Relief, Trace's maps, Green's) now pulses at 30 a second woken by a timer, **rests
+    after 30 s with nobody touching anything** (4% busy) and wakes at a touch, a key or the mouse.
+    `scripts/checks/map-rest-ui.mjs` checks it.
+  - **Tried and taken back:** loading the arranging code (`arrange-dom`, ~10 KB a page) after the page: two arranging
+    checks failed with it (`arrange-ui`, `arrange-keep-ui`), so it stays loaded with the page. Every page is over the
+    bundle report's 200 KB target as on 4 Nov (M96): what's left is the framework, the shell and the arranging layer.
+- **Motion:** no loop on the page's thread (`repeat: Infinity` none); the 103 rows with their own framer-motion entrance
+  are skipped by the motion layer (no double play).
+- **Accessibility:** all 213 pages in dark mode on a phone with axe: two problems, both fixed (Studio's "New" badge
+  contrast; Trace Insights' heat table scrollable by keyboard).
+- **Left:** `arrange-cross-ui.mjs` is out of date since M219 (on a computer the menu is the top bar, so `#side-nav` has
+  no Messages entry): it fails with or without this change. The read-only demo admin's 403 on `PATCH /users/me` (tests
+  only). Local chunk-load blips under the crawl's load (the files exist and load).

@@ -178,7 +178,7 @@ function Heat({ grid }: { grid: number[][] }) {
   const max = Math.max(1, ...grid.flat());
   const order = [1, 2, 3, 4, 5, 6, 0];
   return (
-    <div className="mt-3 overflow-x-auto">
+    <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Scans by day and hour">
       <div className="min-w-[560px]">
         {order.map((wd) => (
           <div key={wd} className="flex items-center gap-1 mb-1">

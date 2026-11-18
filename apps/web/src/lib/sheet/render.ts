@@ -6,6 +6,8 @@ import type { V } from './values';
 // A workbook as HTML (Office suite): for its saved versions (search reads them, "Ask your
 // semester" too), printing and PDF. What each cell shows, with its look. Import-free.
 
+/** A CSS colour written as #hex, rgb()/rgba()/hsl() with plain numbers, or a colour name: nothing else. */
+export const colour = (c: unknown): c is string => typeof c === 'string' && /^(#[0-9a-f]{3,8}|(rgb|rgba|hsl|hsla)\([\d\s.,%/]+\)|[a-z]{3,20})$/i.test(c.trim());
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 function css(s: Style | undefined): string {
@@ -14,10 +16,12 @@ function css(s: Style | undefined): string {
   if (s.b) out.push('font-weight:bold');
   if (s.i) out.push('font-style:italic');
   if (s.u || s.st) out.push(`text-decoration:${[s.u && 'underline', s.st && 'line-through'].filter(Boolean).join(' ')}`);
-  if (s.color) out.push(`color:${s.color}`);
-  if (s.bg) out.push(`background:${s.bg}`);
-  if (s.align) out.push(`text-align:${s.align}`);
-  if (s.size) out.push(`font-size:${s.size}pt`);
+  // M290: a cell's style comes from a shared file: only real colours, sizes and alignments reach the page (a colour of
+  // `url(…)` would load an outside address for whoever opens the preview; `red;position:fixed` would restyle it).
+  if (colour(s.color)) out.push(`color:${s.color}`);
+  if (colour(s.bg)) out.push(`background:${s.bg}`);
+  if (s.align && ['left', 'center', 'right', 'justify', 'start', 'end'].includes(s.align)) out.push(`text-align:${s.align}`);
+  if (s.size && Number.isFinite(+s.size) && +s.size > 0 && +s.size < 200) out.push(`font-size:${+s.size}pt`);
   if (s.font) out.push(`font-family:'${s.font.replace(/'/g, '')}'`);
   if (s.wrap) out.push('white-space:pre-wrap');
   return out.join(';');

@@ -40,6 +40,8 @@ const PAL = {
   dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
+/** M290: how long the page's pulses keep moving with nobody touching anything. */
+const REST_MS = 30_000;
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
 const cities = () => (cityPts ??= CITIES.map(([name, lat, lng, rank]) => { const [bx, by] = toBase(lng, lat); return { name, bx, by, rank }; }));
 const CITY_ZOOM = [0, 2.2, 4.5, 9];
@@ -136,10 +138,12 @@ class MapEngine {
   fly: null | { from: View; to: View; start: number; dur: number } = null;
   drift = { vx: 0, vy: 0 };
   raf = 0; last = 0; visible = true; placed = false;
+  // M290: the page's pulses rest after 30 s untouched (as the app scenes, M225) and wake at a touch, a key or the mouse.
+  timer = 0; lastActive = performance.now();
   land: HTMLCanvasElement | null = null; landKey = '';
   /** The view the land picture was drawn for, and the margin drawn round it (M65: while the map moves
    *  the picture is moved and scaled instead of redrawn, then redrawn sharp once it rests). */
-  landView: View | null = null; landM = 0; busyUntil = 0; lastLive = 0;
+  landView: View | null = null; landM = 0; busyUntil = 0;
   world: Country[] = []; detail: Detail = '110m';
   /** M172: the extra places, once loaded (tier 1, then tier 2), and whether any were named in the last picture. */
   placesA: Place[] = []; placesB: Place[] = []; placesAsked = 0; named = false;
@@ -155,12 +159,16 @@ class MapEngine {
     io.observe(el);
     const vis = () => { this.visible = !document.hidden; this.kick(); };
     document.addEventListener('visibilitychange', vis);
+    const wake = () => { const rested = performance.now() - this.lastActive > REST_MS; this.lastActive = performance.now(); if (rested) this.kick(); };
+    const wakeOn = ['pointerdown', 'pointermove', 'keydown', 'wheel', 'touchstart'] as const;
+    for (const ev of wakeOn) window.addEventListener(ev, wake, { passive: true });
+    this.off.push(() => { for (const ev of wakeOn) window.removeEventListener(ev, wake); });
     this.off.push(() => ro.disconnect(), () => io.disconnect(), () => document.removeEventListener('visibilitychange', vis));
     this.useWorld('110m');
     if (interactive) this.listen();
   }
 
-  destroy() { this.off.forEach((f) => f()); cancelAnimationFrame(this.raf); this.raf = 0; }
+  destroy() { this.off.forEach((f) => f()); cancelAnimationFrame(this.raf); clearTimeout(this.timer); this.raf = 0; this.timer = 0; }
 
   private useWorld(detail: Detail) {
     this.detail = detail;
@@ -184,7 +192,7 @@ class MapEngine {
   }
 
   // ─── Frames ───
-  kick = () => { if (!this.raf && this.visible && this.w) this.raf = requestAnimationFrame(this.frame); };
+  kick = () => { if (this.timer) { clearTimeout(this.timer); this.timer = 0; } if (!this.raf && this.visible && this.w) this.raf = requestAnimationFrame(this.frame); };
 
   private frame = (t: number) => {
     this.raf = 0;
@@ -225,12 +233,14 @@ class MapEngine {
     // Still being moved by hand (drag, pinch, trackpad): keep the cheap picture, then one sharp frame.
     const busy = moving || t < this.busyUntil;
     // Resting with only the page's pulses moving: 30 frames a second are enough (half the work on a phone, as
-    // the app scenes, M225); moved by hand or gliding, every frame.
-    // (A redraw asked for meanwhile still happens: the next frame is asked for either way.)
-    if (!busy && t - this.lastLive < 30) { if (this.visible) this.raf = requestAnimationFrame(this.frame); return; }
-    this.lastLive = t;
+    // the app scenes, M225), woken by a timer instead of every frame (M290: 60 wake-ups a second before), and
+    // none after 30 s untouched; moved by hand or gliding, every frame. A redraw asked for meanwhile (`kick`)
+    // cancels the timer and draws at once.
     this.paint(t, busy);
-    if ((busy || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
+    const live = this.p.current.live && performance.now() - this.lastActive < REST_MS;
+    if (!this.visible) this.last = 0;
+    else if (busy) this.raf = requestAnimationFrame(this.frame);
+    else if (live) this.timer = window.setTimeout(() => { this.timer = 0; this.raf = requestAnimationFrame(this.frame); }, 18);
     else this.last = 0;
   };
 
