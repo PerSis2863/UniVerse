@@ -62,3 +62,22 @@ export async function removeJournalEntry(u: SessionUser, id: string, entryId: st
   await tell(id);
   return { ok: true };
 }
+
+/**
+ * M321: POST /travel/trips/:id/journal/photos { day, photoUrls, place? }: several photos into the trip's album at once
+ * (each a journal entry with its photo, on that day; 20 a request).
+ */
+export async function addAlbumPhotos(u: SessionUser, id: string, b: Body) {
+  await tripFor(u, id);
+  const days = tripDays(await prisma.travelTripStop.findMany({ where: { tripId: id }, select: { days: true }, take: 12 }));
+  const day = typeof b.day === 'number' && Number.isInteger(b.day) && b.day >= 0 && b.day < Math.max(1, days) ? b.day : null;
+  if (day === null) throw new BadRequestException('Pick a day of the trip.');
+  const urls = (Array.isArray(b.photoUrls) ? b.photoUrls : []).filter(isAppFileUrl).slice(0, 20);
+  if (!urls.length) throw new BadRequestException('Add at least one photo.');
+  if ((await prisma.travelTripJournal.count({ where: { tripId: id } })) + urls.length > MAX) throw new BadRequestException(`A trip keeps ${MAX} journal entries and photos.`);
+  const place = clip(b.place, 80);
+  // Groups of 10 (8 values each; D1 takes 100 a statement).
+  for (let i = 0; i < urls.length; i += 10) await prisma.travelTripJournal.createMany({ data: urls.slice(i, i + 10).map((photoUrl) => ({ tripId: id, userId: u.id, day, photoUrl, place, shared: b.shared !== false })) });
+  await tell(id);
+  return { added: urls.length };
+}

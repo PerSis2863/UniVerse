@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, Images, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -50,13 +50,14 @@ const TripJetLag = dynamic(() => import('./trip-jetlag').then((m) => m.TripJetLa
 const TripDocs = dynamic(() => import('./trip-docs').then((m) => m.TripDocs), { ssr: false, loading: partLoading });
 const TripHolidays = dynamic(() => import('./trip-holidays').then((m) => m.TripHolidays), { ssr: false, loading: partLoading });
 const TripFootprint = dynamic(() => import('./trip-footprint').then((m) => m.TripFootprint), { ssr: false, loading: partLoading });
+const TripAlbum = dynamic(() => import('./trip-album').then((m) => m.TripAlbum), { ssr: false, loading: partLoading });
 const TripShare = dynamic(() => import('./trip-share').then((m) => m.TripShare), { ssr: false, loading: partLoading });
 const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
-  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen },
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen }, { value: 'album', label: 'Album', icon: Images },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Checklist', icon: Luggage },
   { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck }, { value: 'share', label: 'Share', icon: HeartHandshake },
 ] as const;
@@ -226,6 +227,7 @@ export function TravelTrip() {
       </div>}
       {part === 'polls' && <TripPolls tripId={t.id} owner={data.owner} ideas={{ place: [...data.items.filter((x) => x.day === null).map((x) => x.name), ...stops.map((s) => nice(s.name))], date: when ? [when] : [] }} />}
       {part === 'journal' && <TripJournal tripId={t.id} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
+      {part === 'album' && <TripAlbum tripId={t.id} name={t.name} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
       {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'today' && <TripToday tripId={t.id} start={t.startDate} stops={stops} items={data.items} onAdded={() => void mutate()} />}
 

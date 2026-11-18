@@ -9415,3 +9415,15 @@ The owner's 32 features, Green 4.
   phone or address (the form says so). Done → "kept in use around here" for the month.
 - **Reports** (`green_swap_reports`, once per person, never your own): three hide a post (`HIDE_AT_REPORTS`). Deleting an
   account removes the person's posts. 0253. Test: `green-swaps.test.ts`.
+
+## M321: a shared photo album per trip (18 Nov)
+
+The owner's 32 features, Travel 1. The journal (M242) already held each member's photos per day.
+
+- **The trip's Album part** (`trip-album.tsx`, `PARTS` `album`, loaded when opened): the journal entries with a photo,
+  grouped by day (`tripDayList`), filtered by person; tapping one opens a full view (arrow keys, Escape; the arrows flip
+  for right-to-left languages). **Add photos**: up to 20 at once, shrunk on the device (`shrinkImage`), uploaded, then
+  `POST /travel/trips/:id/journal/photos` (`addAlbumPhotos`: members only, app files only, a day of the trip, in groups
+  of 10) as journal entries; the others' pages update live. **Save all** zips the shown photos in the browser (`fflate`,
+  stored, no recompression). Test: `travel-album.test.ts`.
+- No new table: an album photo is a journal entry without text (it shows in the journal too).

@@ -21,7 +21,7 @@ import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSea
 import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } from '../travel-trip-polls';
 import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
 import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
-import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
+import { addAlbumPhotos, addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
 import { addTravelItem, addTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
@@ -161,6 +161,8 @@ export default function impactAppsModule(router: Router) {
   // M242 (src/server/travel-trip-journal.ts): the trip's journal.
   travel.get<{ id: string }>('trips/:id/journal', ({ user, params }) => tripJournal(user, params.id));
   travel.post<{ id: string }>('trips/:id/journal', ({ user, params, body }) => addJournalEntry(user, params.id, body ?? {}));
+  // M321: the trip's shared album (photos many at once).
+  travel.post<{ id: string }>('trips/:id/journal/photos', ({ user, params, body }) => addAlbumPhotos(user, params.id, body ?? {}));
   travel.patch<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params, body }) => updateJournalEntry(user, params.id, params.entryId, body ?? {}));
   travel.delete<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params }) => removeJournalEntry(user, params.id, params.entryId));
   // M243 (src/server/travel-trip-polls.ts): the trip's group polls.
