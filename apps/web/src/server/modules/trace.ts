@@ -3,6 +3,7 @@ import { scanFunnel } from '../trace-funnel';
 import { getWatch, setWatch } from '../trace-watch';
 import { brandClaims, fileClaim, moveClaim, myClaims, withdrawClaim } from '../trace-claims';
 import { shopGuide } from '../trace-shop';
+import { compareProducts } from '../trace-compare';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { first } from '../body';
 import { audit } from '../audit';
@@ -64,6 +65,8 @@ export default function traceModule(router: Router) {
   r.get('claims/mine', ({ user }) => myClaims(user));
   // M310: a new shop's setup guide.
   r.get('shop-guide', ({ user }) => shopGuide(user));
+  // M311: compare products I own or checked.
+  r.get('compare', ({ user, query }) => compareProducts(user, query));
   r.get('claims', ({ user, query }) => brandClaims(user, query));
   r.post<{ id: string }>('claims/:id/status', { status: 200 }, ({ user, params, body }) => moveClaim(user, params.id, body ?? {}));
   r.post<{ id: string }>('claims/:id/withdraw', { status: 200 }, ({ user, params }) => withdrawClaim(user, params.id));

@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useNow } from '@/lib/use-now';
 import { UnitClaim } from '@/components/trace/WarrantyClaims';
+import { CompareProducts } from '@/components/trace/CompareProducts';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -73,6 +74,7 @@ function Vault() {
             {data.map((it, i) => <Card key={it.id} it={it} i={i} onChange={() => void mutate()} />)}
           </ul>
         )}
+      <CompareProducts />
     </>
   );
 }

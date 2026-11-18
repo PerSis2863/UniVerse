@@ -9290,3 +9290,15 @@ The owner's 32 features, Trace 4.
   and the tier (`tierFor`, sales in 90 days). Steps (`src/lib/shop-guide.ts`, tested): join, counter sign (ticked on the
   device, `uv-shop-sign`), record a delivery, check a unit at the first sale, points; it hides once all are done. People
   who aren't shops see one "Run a shop? Set it up" button.
+
+## M311: comparing products side by side (18 Nov)
+
+The owner's 32 features, Trace 5.
+
+- **`CompareProducts.tsx`** under the vault; `GET /trace/compare?ids=a,b` (`src/server/trace-compare.ts`): only products
+  the person owns (vault) or has checked (their scans) can be picked (no browsing a brand's catalogue); with two to four
+  ids, each one's facts from its product row and Digital Product Passport (`readDpp`: carbon, recycled, recyclable,
+  durability, repair score, made in) and its reviews (average, count).
+- **Best per fact** (`bestOf` in `src/lib/trace-compare.ts`, tested): lower is better for price and carbon, higher for the
+  rest; none when fewer than two have a value or all tie; prices only in one currency. Marked in green and for screen
+  readers ("best").

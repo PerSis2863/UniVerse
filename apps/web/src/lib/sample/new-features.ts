@@ -4,6 +4,7 @@ import type { SampleDb } from './data';
 import { stepsFor } from '@/lib/early-warning-steps';
 import { lessonDates, mondayOf } from '@/lib/lesson-plan';
 import { biggestDrop, funnelSteps } from '@/lib/trace-funnel';
+import { bestOf } from '@/lib/trace-compare';
 
 // Sample answers for the features of M291 onwards (made up), so "Explore with sample data" shows them filled.
 
@@ -149,3 +150,14 @@ export function sampleClaims(mine: boolean) {
 
 /** GET /trace/shop-guide (M310): a shop halfway set up. */
 export const sampleShopGuide = () => ({ shop: true, brands: 1, stops: 2, sales: 0, points: 0, tier: { label: 'Bronze', sales: 0, next: { label: 'Silver', need: 20 } } });
+
+/** GET /trace/compare (M311): two shoes side by side. */
+export function sampleCompare(q: URLSearchParams) {
+  const choices = [{ id: 'sample-p-1', name: 'Trail runner', category: 'Shoes' }, { id: 'sample-p-4', name: 'City sneaker', category: 'Shoes' }];
+  if ((q.get('ids') ?? '').split(',').length < 2) return { choices, rows: [], best: {} };
+  const rows = [
+    { id: 'sample-p-1', name: 'Trail runner', brand: 'Northwind', category: 'Shoes', imageUrl: null, price: 120, currency: 'EUR', warrantyMonths: 24, stars: 4.4, reviews: 38, carbonKg: 11.2, recycledContent: 40, recyclable: 60, durabilityYears: 3, repairScore: 7, madeIn: 'Portugal' },
+    { id: 'sample-p-4', name: 'City sneaker', brand: 'Urbano', category: 'Shoes', imageUrl: null, price: 95, currency: 'EUR', warrantyMonths: 12, stars: 4.1, reviews: 112, carbonKg: 14.8, recycledContent: 15, recyclable: 30, durabilityYears: 2, repairScore: 4, madeIn: 'Vietnam' },
+  ];
+  return { choices, rows, best: bestOf(rows) };
+}
