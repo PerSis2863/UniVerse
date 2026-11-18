@@ -9475,3 +9475,26 @@ The owner, during the 32: "also make more new features". The first of a few that
   events (`oh-<id>`, not movable: their `userId` is empty): a student's own ("Office hours with Dr Iyer"), a teacher's
   booked ones ("Office hours: Ana"), with the topic as the description. No new route; the offline copy of
   `/office-slots` (M305) means they show without a connection too.
+
+## M326: scrolling glides, like tripist.app (18 Nov)
+
+The owner: "take inspiration from this website… it takes time to scroll and it feels really good". tripist.app is a
+Framer site whose Smooth Scroll part runs Lenis with `duration = intensity / 10`, and it sets 25: each wheel turn moves
+a target and the page eases there over 2.5 s on Lenis's expo-out curve (`1.001 − 2^(−10t)`: half the way in a quarter
+of a second, then a long soft stop). No new library: **`src/lib/smooth-scroll.ts`** (about 80 lines), started with the
+other motion in `ScrollMotion.tsx`, on every page (the landing and the app: both scroll the document).
+
+- **Native everywhere else:** touch (phones keep their own momentum, as tripist), keys, the scroll bar, `#links`,
+  Shift / Ctrl / Alt / ⌘ + wheel (sideways, pinch zoom), a wheel something already took (`defaultPrevented`: maps,
+  games), canvases, frames, videos, fields, dialogs, `.maplibregl-map`, `data-scroll-native`, fixed bars and sheets, a
+  part that scrolls by itself until its end (or always, with `overscroll-behavior: contain`), a page locked with
+  `overflow: hidden` (viewers), the top and the end (the device's bounce). A key, the scroll bar or a new page moving
+  the page lets the glide go (it checks `scrollY` each frame). `scrollTo({ behavior: 'instant' })`, so the landing's
+  `scroll-behavior: smooth` doesn't fight it.
+- **Off** with Reduce Motion (the device's or the app's) and with **Settings → Appearance → Smooth scrolling** (on by
+  default; `uv-smooth` = '0' on the device; `SMOOTH_EVENT`).
+- While anything scrolls (`html[data-scrolling]`), frames don't catch the wheel (`pointer-events: none` on `iframe`).
+- Measured (dev server, 1280 px): one 400 px wheel turn on the landing 136 → 226 → 285 → 328 … 398 px every 150 ms;
+  the student home and Travel the same; End during a glide jumps to the end. Test: `smooth-scroll.test.ts`.
+- **For code that builds on it:** a part with its own wheel handling should `preventDefault` (or carry
+  `data-scroll-native`); never put `scroll-behavior: smooth` on `html` for the glide's sake.

@@ -19,6 +19,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'reading-level', section: 'appearance', label: 'Reading level', keywords: 'simpler words grade easy read' },
   { id: 'select-help', section: 'appearance', label: 'Help with selected text', keywords: 'listen read aloud simpler selection' },
   { id: 'reduce-motion', section: 'appearance', label: 'Reduce motion', keywords: 'animation sliding moving' },
+  { id: 'smooth-scroll', section: 'appearance', label: 'Smooth scrolling', keywords: 'glide wheel mouse trackpad scroll slow inertia' },
   { id: 'vibration', section: 'appearance', label: 'Vibration', keywords: 'haptics tap buzz' },
   { id: 'sounds', section: 'appearance', label: 'Sounds', keywords: 'sound chime audio beep' },
   { id: 'bold', section: 'appearance', label: 'Bold text', keywords: 'heavier font' },

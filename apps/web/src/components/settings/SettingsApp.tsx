@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArrange } from '@/store/arrange';
-import { Accessibility, Bell, Move, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, Mouse, Move, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -22,7 +22,7 @@ import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
-import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setSmoothScroll, smoothScrollOn, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -468,6 +468,7 @@ function Appearance() {
   const [theme, setTheme] = useState<Theme>(() => (typeof window === 'undefined' ? 'light' : getSavedTheme()));
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
   const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && appReduceMotion());
+  const [smooth, setSmooth] = useState(() => typeof window === 'undefined' || smoothScrollOn());
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
   const [sounds, setSnd] = useState(() => typeof window !== 'undefined' && soundsOn());
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
@@ -512,6 +513,9 @@ function Appearance() {
       </Row>
       <Row setting="reduce-motion" icon={Accessibility} title="Reduce motion" desc="Pages and buttons change without moving or sliding (your device’s own setting is followed too).">
         <Switch checked={reduce} label="Reduce motion" onChange={(on) => { setReduce(on); setAppReduceMotion(on); }} />
+      </Row>
+      <Row setting="smooth-scroll" icon={Mouse} title="Smooth scrolling" desc="Scrolling with a mouse or trackpad glides to a soft stop. Phones keep their own scrolling; Reduce motion turns it off.">
+        <Switch checked={smooth} label="Smooth scrolling" onChange={(on) => { setSmooth(on); setSmoothScroll(on); }} />
       </Row>
       <ArrangeRows />
       <Row setting="vibration" icon={Vibrate} title="Vibration" desc="A light tap when you press buttons and switch tabs (phones).">
