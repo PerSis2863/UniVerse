@@ -16,7 +16,21 @@ const KEPT: { re: RegExp; today?: boolean }[] = [
   { re: /^\/api\/student\/overview\?dow=\d$/ }, // one per weekday: its classes are that day's
   { re: /^\/api\/core\/dashboard\/teacher$/ },
   { re: /^\/api\/home\?tz=[^&]*$/, today: true },
+  // M305: more of the day readable without a connection: the calendar, work due and grades, the
+  // notifications, a course's lesson plan and revision packs, office-hours bookings, a parent's week,
+  // and Relief's emergency plan (when the network is down is when it's needed).
+  { re: /^\/api\/core\/calendar\/my$/ },
+  { re: /^\/api\/assignments$/ },
+  { re: /^\/api\/core\/grades\/student$/ },
+  { re: /^\/api\/notifications$/ },
+  { re: /^\/api\/core\/lesson-plans\?courseId=[\w-]+$/ },
+  { re: /^\/api\/core\/revision-packs\?courseId=[\w-]+$/ },
+  { re: /^\/api\/core\/office-slots$/ },
+  { re: /^\/api\/core\/parent-week\?studentId=[\w-]+$/ },
+  { re: /^\/api\/core\/relief\/plan$/ },
 ];
+/** Whether a read is one of those kept for offline use (tests and the offline page). */
+export const keptOffline = (url: string) => KEPT.some((k) => k.re.test(url));
 const MAX_AGE = 14 * 24 * 3600_000;
 // The chat list is asked for again with every new message: save each read at most every 30 s.
 const savedAt = new Map<string, number>();

@@ -9210,3 +9210,17 @@ The owner's 32 features, Platform 4. Q9 had push / summary / in-app per kind, mu
 - **Preview:** `GET /api/notifications/settings` returns `preview` (`digestText` of the person's unread notifications of
   the last week), shown as "Waiting for it now".
 - Tests in `notify-prefs.test.ts`. **Rule:** a new app with its own notifications gets its own group (types + tags).
+
+## M305: more pages that work offline (18 Nov)
+
+The owner's 32 features, Platform 5. Offline already: visited pages' shells (service worker), courses saved as packs,
+work queued in the outbox, a trip saved for offline (M240), and the last answer of six reads (M46,
+`src/lib/offline-reads.ts`, kept in the device's IndexedDB, wiped at sign-out, never in the service worker's cache).
+
+- **Nine more reads kept** (`KEPT`): `/api/core/calendar/my`, `/api/assignments`, `/api/core/grades/student`,
+  `/api/notifications`, `/api/core/lesson-plans?courseId=…`, `/api/core/revision-packs?courseId=…`,
+  `/api/core/office-slots`, `/api/core/parent-week?studentId=…` and `/api/core/relief/plan`. Every GET through `api` or
+  `authedJson` uses them by itself (`withOfflineCopy`). `keptOffline(url)` is tested.
+- **The offline page** (`public/offline.html`, plain script, `textContent` only) shows **My emergency plan** first
+  (meeting points, contacts, needs) when it was saved: no connection is when it's needed.
+- **Rule:** keep only reads that belong to the person and are small; a URL with more query parts isn't matched.
