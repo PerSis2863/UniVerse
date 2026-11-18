@@ -9224,3 +9224,17 @@ work queued in the outbox, a trip saved for offline (M240), and the last answer 
 - **The offline page** (`public/offline.html`, plain script, `textContent` only) shows **My emergency plan** first
   (meeting points, contacts, needs) when it was saved: no connection is when it's needed.
 - **Rule:** keep only reads that belong to the person and are small; a URL with more query parts isn't matched.
+
+## M306: lighter pages, first round (18 Nov)
+
+The owner's 32 features, Platform 6. `node scripts/bundle-report.mjs` on the last build (M290's): the shared shell is
+139 KB (gzipped) on every page, the dashboard layout 32 KB more; **0 of 255 pages** within target (dashboards 200 KB);
+the heaviest: `/docs/open` 576 KB (the editor), `/travel/trip` 468 KB, `/console` 422 KB, `/relief/orgs` 406 KB.
+
+- **A trip** (`TravelTrip.tsx`): its parts were all imported up front although one shows at a time; the 12 besides Plan
+  (Today, Money, Packing, Checklist, Journal, Votes, Save for offline, jet lag, documents, holidays, footprint, Share) are
+  now `dynamic()` with a skeleton, as Safety and Phrases already were.
+- **Relief → Organisations** (`ReliefOrgs.tsx`): `OrgDashboard` loads when an organisation is opened.
+- **Left:** the shared shell and layout (the framework, the menus, the arranging layer M290 tried to defer and took
+  back), the document editor (ProseMirror and Yjs are the page). Sizes after this change: in the build at the end of
+  this round of features.

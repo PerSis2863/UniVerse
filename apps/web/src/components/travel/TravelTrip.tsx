@@ -20,22 +20,10 @@ import { Cover, PlaceSearch } from './travel-ui';
 import { TripDays, type Move, type TripItem } from './trip-days';
 import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
-import { TripMoney } from './trip-money';
-import { TripPacking } from './trip-packing';
-import { TripTodos } from './trip-todos';
-import { TripToday } from './trip-today';
 import { tripToday } from '@/lib/travel-today';
 import { useNow } from '@/lib/use-now';
 import { inboxFor } from '@/lib/apps';
 import { useAuthStore } from '@/store/auth';
-import { TripJournal } from './trip-journal';
-import { TripPolls } from './trip-polls';
-import { TripOffline } from './trip-offline';
-import { TripJetLag } from './trip-jetlag';
-import { TripDocs } from './trip-docs';
-import { TripHolidays } from './trip-holidays';
-import { TripFootprint } from './trip-footprint';
-import { TripShare } from './trip-share';
 import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
@@ -49,6 +37,20 @@ export interface TripAnswer {
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
 // The parts that bring much code or data load only when opened.
+// M306: the trip's other parts load when opened (the page opens on Plan): ~100 KB less on first load.
+const partLoading = () => <div className="h-72 skeleton rounded-[var(--radius-card)]" />;
+const TripMoney = dynamic(() => import('./trip-money').then((m) => m.TripMoney), { ssr: false, loading: partLoading });
+const TripPacking = dynamic(() => import('./trip-packing').then((m) => m.TripPacking), { ssr: false, loading: partLoading });
+const TripTodos = dynamic(() => import('./trip-todos').then((m) => m.TripTodos), { ssr: false, loading: partLoading });
+const TripToday = dynamic(() => import('./trip-today').then((m) => m.TripToday), { ssr: false, loading: partLoading });
+const TripJournal = dynamic(() => import('./trip-journal').then((m) => m.TripJournal), { ssr: false, loading: partLoading });
+const TripPolls = dynamic(() => import('./trip-polls').then((m) => m.TripPolls), { ssr: false, loading: partLoading });
+const TripOffline = dynamic(() => import('./trip-offline').then((m) => m.TripOffline), { ssr: false, loading: partLoading });
+const TripJetLag = dynamic(() => import('./trip-jetlag').then((m) => m.TripJetLag), { ssr: false, loading: partLoading });
+const TripDocs = dynamic(() => import('./trip-docs').then((m) => m.TripDocs), { ssr: false, loading: partLoading });
+const TripHolidays = dynamic(() => import('./trip-holidays').then((m) => m.TripHolidays), { ssr: false, loading: partLoading });
+const TripFootprint = dynamic(() => import('./trip-footprint').then((m) => m.TripFootprint), { ssr: false, loading: partLoading });
+const TripShare = dynamic(() => import('./trip-share').then((m) => m.TripShare), { ssr: false, loading: partLoading });
 const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
