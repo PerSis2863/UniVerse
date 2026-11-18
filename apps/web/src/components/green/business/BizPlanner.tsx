@@ -70,7 +70,7 @@ export function BizPlanner({ org, role, year, overview, onChanged }: SectionProp
           })}
         </ul>
         <div className="mt-5 rounded-2xl bg-emerald-500/[0.08] p-4">
-          <p className="text-sm text-zinc-700 dark:text-zinc-200">All together: <strong className="tabular-nums">−{tonnes(cutKg)}</strong> a year, {now ? Math.round((cutKg / now) * 100) : 0}% of {year}’s footprint, leaving <strong className="tabular-nums">{tonnes(Math.max(0, now - cutKg))}</strong>.</p>
+          <p className="text-sm text-zinc-700 dark:text-zinc-200">All together: <strong className="tabular-nums">−{tonnes(cutKg)}</strong> a year, {now ? Math.round((cutKg / now) * 100) : 0}% of {year}’s footprint, leaving <strong className="tabular-nums">{tonnes(Math.max(0, now - cutKg))}</strong>.{org.carbonPrice ? <> At your internal carbon price that’s <strong className="tabular-nums">{Math.round((cutKg / 1000) * org.carbonPrice).toLocaleString()} {org.currency}</strong> a year.</> : null}</p>
         </div>
         {edit && <button type="button" className="btn-primary mt-4" onClick={() => void savePlan()}>Save the plan</button>}
         <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">An estimate from this year’s lines: electric vehicles at about 0.18 kWh a km and heat pumps at three units of heat per unit of electricity, both on your country’s grid. The costs are yours to enter.</p>

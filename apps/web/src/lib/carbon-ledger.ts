@@ -14,6 +14,8 @@ export type CarbonCategory = {
   factor: number; source: string;
   /** Energy in GJ per unit (fuels and electricity), for energy reporting (BRSR, CSRD E1-5). */
   gj?: number;
+  /** M276: kg CO₂e upstream per unit (extracting, refining and delivering the fuel: "well to tank"), scope 3 category 3. */
+  wtt?: number;
 };
 
 const DEFRA = 'UK government GHG conversion factors 2024 (DESNZ/DEFRA)';
@@ -25,15 +27,21 @@ export const UNIT_LABEL: Record<CarbonUnit, string> = { L: 'litres', kWh: 'kWh',
 
 export const CATEGORIES: CarbonCategory[] = [
   // Scope 1: fuel burnt in the company's own boilers, machines and vehicles, and refrigerant leaks
-  { id: 'diesel', label: 'Diesel', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.51, source: DEFRA, gj: 0.036 },
-  { id: 'petrol', label: 'Petrol', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.08, source: DEFRA, gj: 0.032 },
-  { id: 'lpg', label: 'LPG', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 1.56, source: DEFRA, gj: 0.0247 },
-  { id: 'gas', label: 'Natural gas', scope: 1, unit: 'kWh', group: 'Fuel and vehicles', factor: 0.183, source: DEFRA, gj: 0.0036 },
-  { id: 'heating-oil', label: 'Heating oil', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.54, source: DEFRA, gj: 0.0358 },
-  { id: 'fleet-km', label: 'Company cars (distance)', scope: 1, unit: 'km', group: 'Fuel and vehicles', factor: 0.168, source: `${DEFRA}, an average car` },
+  { id: 'diesel', label: 'Diesel', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.51, source: DEFRA, gj: 0.036, wtt: 0.61 },
+  { id: 'petrol', label: 'Petrol', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.08, source: DEFRA, gj: 0.032, wtt: 0.59 },
+  { id: 'lpg', label: 'LPG', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 1.56, source: DEFRA, gj: 0.0247, wtt: 0.19 },
+  { id: 'gas', label: 'Natural gas', scope: 1, unit: 'kWh', group: 'Fuel and vehicles', factor: 0.183, source: DEFRA, gj: 0.0036, wtt: 0.031 },
+  { id: 'cng', label: 'CNG (compressed natural gas)', scope: 1, unit: 'kg', group: 'Fuel and vehicles', factor: 2.54, source: DEFRA, gj: 0.047, wtt: 0.43 },
+  { id: 'coal', label: 'Coal (industrial)', scope: 1, unit: 'kg', group: 'Fuel and vehicles', factor: 2.4, source: DEFRA, gj: 0.025, wtt: 0.4 },
+  { id: 'wood', label: 'Wood pellets or chips', scope: 1, unit: 'kg', group: 'Fuel and vehicles', factor: 0.053, source: `${DEFRA}; the wood’s own CO₂ is biogenic and reported apart`, gj: 0.017, wtt: 0.17 },
+  { id: 'heating-oil', label: 'Heating oil', scope: 1, unit: 'L', group: 'Fuel and vehicles', factor: 2.54, source: DEFRA, gj: 0.0358, wtt: 0.53 },
+  { id: 'fleet-km', label: 'Company cars (distance)', scope: 1, unit: 'km', group: 'Fuel and vehicles', factor: 0.168, source: `${DEFRA}, an average car`, wtt: 0.045 },
   { id: 'r410a', label: 'Refrigerant R-410A leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 2088, source: AR4 },
   { id: 'r134a', label: 'Refrigerant R-134a leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 1430, source: AR4 },
   { id: 'r32', label: 'Refrigerant R-32 leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 675, source: AR4 },
+  { id: 'r404a', label: 'Refrigerant R-404A leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 3922, source: AR4 },
+  { id: 'r407c', label: 'Refrigerant R-407C leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 1774, source: AR4 },
+  { id: 'r22', label: 'Refrigerant R-22 leaked', scope: 1, unit: 'kg', group: 'Refrigerants', factor: 1810, source: AR4 },
   // Scope 2: bought electricity and heat
   { id: 'electricity', label: 'Electricity from the grid', scope: 2, unit: 'kWh', group: 'Electricity and heat', factor: 0.48, source: 'The country’s average grid (see the note); your supplier’s own figure is better', gj: 0.0036 },
   { id: 'electricity-green', label: 'Electricity on a renewable tariff', scope: 2, unit: 'kWh', group: 'Electricity and heat', factor: 0, source: 'Market-based: 0 with renewable certificates (GHG Protocol scope 2 guidance); keep the certificates', gj: 0.0036 },
@@ -62,10 +70,13 @@ export const CATEGORIES: CarbonCategory[] = [
   { id: 'buy-capital', label: 'Machines, vehicles and buildings bought', scope: 3, s3: 2, unit: 'money', group: 'Things bought (by spend)', factor: 0.4, source: SPEND },
   { id: 'supplier', label: 'From a supplier’s own figures', scope: 3, s3: 1, unit: 'kg', group: 'Suppliers', factor: 1, source: 'The supplier’s own reported emissions, our share by spend' },
   { id: 'commute', label: 'Staff commuting', scope: 3, s3: 7, unit: 'kg', group: 'Staff', factor: 1, source: 'The staff commute survey: distance × days × mode, DEFRA factors' },
+  { id: 'upstream', label: 'Fuel and energy upstream (worked out)', scope: 3, s3: 3, unit: 'kg', group: 'Worked out', factor: 1, source: `${'UK government GHG conversion factors 2024 (DESNZ/DEFRA)'}, well-to-tank; electricity’s grid losses and fuel supply as a share of the grid factor` },
 ];
 export const categoryById = (id: unknown) => CATEGORIES.find((c) => c.id === id) ?? null;
 /** Categories a person picks for a line (the supplier and commute lines come from those features). */
-export const PICKABLE = CATEGORIES.filter((c) => c.id !== 'supplier' && c.id !== 'commute');
+export const PICKABLE = CATEGORIES.filter((c) => c.id !== 'supplier' && c.id !== 'commute' && c.id !== 'upstream');
+/** Lines made by a feature, never typed: a supplier's answer, the staff survey, the worked-out upstream. */
+export const MADE = ['supplier', 'commute', 'upstream'];
 
 /** Location-based grid electricity, kg CO₂e per kWh: recent national averages, rounded (IEA, Ember; India: CEA CO₂
  *  baseline database; UK: DESNZ 2024; US: EPA eGRID). A supplier's own figure is better. */
@@ -107,23 +118,90 @@ export const WORK_WEEKS = 46;
 /** A year of one person's commute: there and back, days a week, 46 working weeks. */
 export const commuteKgYear = (mode: string, kmOneWay: number, daysWeek: number) => r3((COMMUTE[mode]?.kgKm ?? 0) * Math.min(300, Math.max(0, kmOneWay)) * 2 * Math.min(7, Math.max(0, daysWeek)) * WORK_WEEKS);
 
+// ——— Data quality (M276) ———
+/** How good a line's number is, from a meter or invoice down to a guess from money spent: the uncertainty each carries
+ *  (the GHG Protocol's uncertainty guidance, as tiers) and a score from 1 (best) to 5, PCAF-style. */
+export const QUALITY = {
+  measured: { label: 'Measured (meter, invoice, fuel card)', pct: 5, score: 1 },
+  calculated: { label: 'Calculated (distance, weight, hours)', pct: 15, score: 2 },
+  estimated: { label: 'Estimated (an average or a share)', pct: 30, score: 4 },
+  spend: { label: 'From money spent', pct: 50, score: 5 },
+} as const;
+export type Quality = keyof typeof QUALITY;
+export const isQuality = (v: unknown): v is Quality => typeof v === 'string' && v in QUALITY;
+export const defaultQuality = (category: string): Quality => (categoryById(category)?.unit === 'money' ? 'spend' : category === 'supplier' ? 'measured' : category === 'commute' ? 'estimated' : 'calculated');
+
+/** Electricity's own upstream (grid losses and the supply of the power stations' fuel) as a share of the grid factor:
+ *  the UK's from DESNZ 2024 (T&D plus well-to-tank, about a third), India's higher losses, elsewhere a rough 15%. */
+export const ELEC_UPSTREAM: Record<string, number> = { GB: 0.33, IN: 0.2 };
+const elecUpstream = (country: string | null | undefined) => ELEC_UPSTREAM[(country ?? '').toUpperCase()] ?? 0.15;
+
 // ——— Totals ———
-export type Line = { period: string; category: string; scope: number; kg: number; quantity: number };
-export type Totals = { kg: number; scope: Record<1 | 2 | 3, number>; byCategory: Record<string, number>; byMonth: Record<string, number>; gj: number };
-export function totals(lines: Line[], year?: number): Totals {
-  const t: Totals = { kg: 0, scope: { 1: 0, 2: 0, 3: 0 }, byCategory: {}, byMonth: {}, gj: 0 };
+export type Line = { period: string; category: string; scope: number; kg: number; quantity: number; quality?: string | null; site?: string | null };
+export type Totals = {
+  kg: number; scope: Record<1 | 2 | 3, number>; byCategory: Record<string, number>; byMonth: Record<string, number>; gj: number;
+  /** M276: scope 2 both ways the GHG Protocol asks: the grid's average (location) and the company's own contracts (market). */
+  scope2: { location: number; market: number };
+  /** kg by data quality, the ± kg (root sum of squares) and the weighted score (1 best, 5 worst). */
+  quality: { kg: Record<string, number>; uncertaintyKg: number; score: number };
+  bySite: Record<string, number>;
+};
+/** The year's totals. With `upstream`, fuel and electricity also bring their worked-out upstream (scope 3 category 3). */
+export function totals(lines: Line[], year?: number, opts: { country?: string | null; upstream?: boolean } = {}): Totals {
+  const t: Totals = { kg: 0, scope: { 1: 0, 2: 0, 3: 0 }, byCategory: {}, byMonth: {}, gj: 0, scope2: { location: 0, market: 0 }, quality: { kg: {}, uncertaintyKg: 0, score: 0 }, bySite: {} };
+  let sq = 0, score = 0;
+  const grid = gridFactor(opts.country), add = (cat: string, period: string, kg: number, scope: 1 | 2 | 3, q: string, site: string | null | undefined) => {
+    t.kg += kg; t.scope[scope] += kg;
+    t.byCategory[cat] = (t.byCategory[cat] ?? 0) + kg;
+    t.byMonth[period] = (t.byMonth[period] ?? 0) + kg;
+    t.quality.kg[q] = (t.quality.kg[q] ?? 0) + kg;
+    if (site) t.bySite[site] = (t.bySite[site] ?? 0) + kg;
+    sq += (kg * (QUALITY[q as Quality]?.pct ?? 30) / 100) ** 2;
+    score += kg * (QUALITY[q as Quality]?.score ?? 4);
+  };
   for (const l of lines) {
     if (year && yearOf(l.period) !== year) continue;
-    const s = (l.scope === 1 || l.scope === 2 ? l.scope : 3) as 1 | 2 | 3;
-    t.kg += l.kg; t.scope[s] += l.kg;
-    t.byCategory[l.category] = (t.byCategory[l.category] ?? 0) + l.kg;
-    t.byMonth[l.period] = (t.byMonth[l.period] ?? 0) + l.kg;
-    t.gj += (categoryById(l.category)?.gj ?? 0) * l.quantity;
+    const s = (l.scope === 1 || l.scope === 2 ? l.scope : 3) as 1 | 2 | 3, c = categoryById(l.category);
+    add(l.category, l.period, l.kg, s, isQuality(l.quality) ? l.quality : defaultQuality(l.category), l.site);
+    t.gj += (c?.gj ?? 0) * l.quantity;
+    if (s === 2) {
+      t.scope2.market += l.kg;
+      t.scope2.location += l.category === 'electricity' || l.category === 'electricity-green' ? l.quantity * grid : l.kg;
+    }
+    if (opts.upstream && l.category !== 'upstream') {
+      const up = (c?.wtt ?? 0) * l.quantity + (l.category === 'electricity' || l.category === 'electricity-green' ? l.quantity * grid * elecUpstream(opts.country) : 0);
+      if (up > 0) add('upstream', l.period, up, 3, 'estimated', l.site);
+    }
   }
-  t.kg = r3(t.kg); t.gj = r3(t.gj);
+  t.kg = r3(t.kg); t.gj = r3(t.gj); t.scope2 = { location: r3(t.scope2.location), market: r3(t.scope2.market) };
   for (const s of [1, 2, 3] as const) t.scope[s] = r3(t.scope[s]);
+  for (const k of Object.keys(t.byCategory)) t.byCategory[k] = r3(t.byCategory[k]);
+  for (const k of Object.keys(t.quality.kg)) t.quality.kg[k] = r3(t.quality.kg[k]);
+  t.quality.uncertaintyKg = r3(Math.sqrt(sq));
+  t.quality.score = t.kg > 0 ? Math.round((score / t.kg) * 10) / 10 : 0;
   return t;
 }
+
+// ——— Scope 3's fifteen categories (M277): each counted, not relevant, or left out with a reason ———
+export const S3_CATEGORIES: { n: number; name: string; hint: string }[] = [
+  { n: 1, name: 'Purchased goods and services', hint: 'What you buy to make or sell: materials, parts, services.' },
+  { n: 2, name: 'Capital goods', hint: 'Machines, vehicles, buildings and computers you buy.' },
+  { n: 3, name: 'Fuel- and energy-related activities', hint: 'Making and delivering your fuel and power (worked out from your scope 1 and 2 lines).' },
+  { n: 4, name: 'Upstream transport and distribution', hint: 'Freight you pay for, to you and between your sites.' },
+  { n: 5, name: 'Waste generated in operations', hint: 'Landfill, recycling, compost, treatment.' },
+  { n: 6, name: 'Business travel', hint: 'Flights, trains, taxis and hotels for work.' },
+  { n: 7, name: 'Employee commuting', hint: 'How staff get to work (the staff survey), and working from home.' },
+  { n: 8, name: 'Upstream leased assets', hint: 'Offices or vehicles you lease, if not already in scopes 1 and 2.' },
+  { n: 9, name: 'Downstream transport and distribution', hint: 'Delivery of sold products you don’t pay for.' },
+  { n: 10, name: 'Processing of sold products', hint: 'What others do to your products before they’re used.' },
+  { n: 11, name: 'Use of sold products', hint: 'Energy your products use in their life (cars, appliances, fuels).' },
+  { n: 12, name: 'End-of-life treatment of sold products', hint: 'How your products and packaging are thrown away.' },
+  { n: 13, name: 'Downstream leased assets', hint: 'Things you own and lease out.' },
+  { n: 14, name: 'Franchises', hint: 'Franchisees’ emissions, if you are a franchisor.' },
+  { n: 15, name: 'Investments', hint: 'Emissions of what you invest in or lend to (banks, funds).' },
+];
+export const SCREEN = ['included', 'not-relevant', 'excluded'] as const;
+export type Screen = (typeof SCREEN)[number];
 /** Tonnes, for people: "12.4 t". */
 export const tonnes = (kg: number) => `${(kg / 1000).toLocaleString(undefined, { maximumFractionDigits: kg >= 100_000 ? 0 : 1 })} t`;
 

@@ -2,9 +2,10 @@ import { createHash } from 'node:crypto';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import {
-  CATEGORIES, COMMUTE, CURRENCIES, LEVERS, USD_PER, categoryById, commuteKgYear, factorFor, isPeriod, kgFor, leverCuts,
-  targetPath, totals, yearOf, type Lever, type LeverId, type Line,
+  CATEGORIES, COMMUTE, CURRENCIES, LEVERS, MADE, S3_CATEGORIES, SCREEN, USD_PER, categoryById, commuteKgYear, defaultQuality, factorFor, isPeriod,
+  isQuality, kgFor, leverCuts, targetPath, totals, yearOf, type Lever, type LeverId, type Line, type Screen,
 } from '@/lib/carbon-ledger';
+import { bizCredits, billingOf, needPro, verificationFor, LIMITS } from './green-business-plus';
 import { parseDpp, readDpp } from '@/lib/dpp';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { first, str, type Body, type Query } from './body';
@@ -22,9 +23,10 @@ import { logAiUse } from './ai-receipts';
 // unguessable codes (S…, C…, A…) on the public page /carbon/[code]: those answers never carry an email or a phone,
 // and the log holds no names. The server always works the numbers out itself from quantity × factor.
 
-type Role = 'owner' | 'editor' | 'viewer';
-const RANK: Record<Role, number> = { viewer: 0, editor: 1, owner: 2 };
-const ROLES = Object.keys(RANK) as Role[];
+// M278: a verifier reads like a viewer, and asks questions and signs in Verify.
+export type Role = 'owner' | 'editor' | 'viewer' | 'verifier';
+const RANK: Record<Role, number> = { verifier: 0, viewer: 0, editor: 1, owner: 2 };
+const ROLES: Role[] = ['owner', 'editor', 'viewer'];
 const MAX_ORGS = 40, MAX_MEMBERS = 50, MAX_SUPPLIERS = 300, MAX_BATCH = 120, MAX_YEAR_LINES = 5000;
 const ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const newCode = (prefix: 'S' | 'C' | 'A') => prefix + [...crypto.getRandomValues(new Uint8Array(15))].map((x) => ALPHABET[x % ALPHABET.length]).join('');
@@ -34,11 +36,11 @@ const thisYear = () => new Date().getUTCFullYear();
 const yearQ = (q: Query) => { const y = Number(first(q.year)); return y >= 2000 && y <= 2100 ? y : thisYear(); };
 const fmtKg = (kg: number) => `${r3(kg).toLocaleString('en')} kg`;
 
-type Org = NonNullable<Awaited<ReturnType<typeof prisma.greenOrg.findUnique>>>;
+export type Org = NonNullable<Awaited<ReturnType<typeof prisma.greenOrg.findUnique>>>;
 
 // ——— Access ———
 /** The company and my role in it: as a member, or through the consultancy that manages it. */
-async function access(u: SessionUser, id: string, need: Role): Promise<{ org: Org; role: Role }> {
+export async function access(u: SessionUser, id: string, need: Role): Promise<{ org: Org; role: Role }> {
   const org = await prisma.greenOrg.findUnique({ where: { id } });
   if (!org) throw new NotFoundException('That company isn’t here.');
   const mine = await prisma.greenOrgMember.findUnique({ where: { orgId_userId: { orgId: id, userId: u.id } } });
@@ -55,7 +57,7 @@ async function access(u: SessionUser, id: string, need: Role): Promise<{ org: Or
 
 // ——— The log ———
 /** Adds a link to the company's chain: each row's hash covers the one before it, so a rewrite shows. */
-async function log(orgId: string, userId: string | null, action: string, detail: string) {
+export async function log(orgId: string, userId: string | null, action: string, detail: string) {
   const last = await prisma.greenAudit.findFirst({ where: { orgId }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { hash: true } });
   const prevHash = last?.hash ?? '0'.repeat(64), createdAt = new Date();
   const hash = sha([prevHash, orgId, action, detail.slice(0, 400), userId ?? '', createdAt.toISOString()].join('|'));
@@ -86,6 +88,16 @@ function readSettings(b: Body, partial: boolean) {
   if (has('baseYear')) data.baseYear = b.baseYear === null || b.baseYear === '' ? null : num(b.baseYear, 2000, 2100);
   if (has('targetYear')) data.targetYear = b.targetYear === null || b.targetYear === '' ? null : num(b.targetYear, 2001, 2100);
   if (has('targetPct')) data.targetPct = b.targetPct === null || b.targetPct === '' ? null : num(b.targetPct, 0, 100);
+  if (has('carbonPrice')) data.carbonPrice = b.carbonPrice === null || b.carbonPrice === '' ? null : num(b.carbonPrice, 0, 1e7);
+  if ('screening' in b && b.screening && typeof b.screening === 'object') {
+    // M277: each of scope 3's fifteen categories counted, not relevant, or left out with a reason.
+    const out: Record<number, { status: Screen; reason: string | null }> = {};
+    for (const c of S3_CATEGORIES) {
+      const v = (b.screening as Record<string, Body>)[c.n];
+      if (v && SCREEN.includes(v.status as Screen)) out[c.n] = { status: v.status as Screen, reason: short(v.reason, 300) };
+    }
+    data.screening = JSON.stringify(out);
+  }
   if (typeof data.employees === 'number') data.employees = Math.round(data.employees);
   for (const k of ['baseYear', 'targetYear'] as const) if (typeof data[k] === 'number') data[k] = Math.round(data[k] as number);
   return data;
@@ -117,7 +129,9 @@ export async function createBizOrg(u: SessionUser, b: Body) {
     const { org } = await access(u, b.consultancyId, 'editor');
     if (org.kind !== 'consultancy') throw new BadRequestException('Only a consultancy has clients.');
     if (kind !== 'company') throw new BadRequestException('A client is a company.');
-    if ((await prisma.greenOrg.count({ where: { consultancyId: org.id } })) >= 200) throw new BadRequestException('A consultancy has 200 clients at most here.');
+    const clients = await prisma.greenOrg.count({ where: { consultancyId: org.id } });
+    if (clients >= 200) throw new BadRequestException('A consultancy has 200 clients at most here.');
+    if (clients >= LIMITS.clients && (await billingOf(org)).tier !== 'CONSULTANCY' && (await billingOf(org)).on) throw new ForbiddenException(`The free plan manages ${LIMITS.clients} clients: choose Consultancy in Team & plan for more.`);
     consultancyId = org.id;
   } else if ((await prisma.greenOrgMember.count({ where: { userId: u.id } })) >= MAX_ORGS) throw new BadRequestException(`You work on ${MAX_ORGS} companies already.`);
   const org = await prisma.greenOrg.create({ data: { ...(data as { name: string }), kind, consultancyId, createdById: u.id }, select: { id: true } });
@@ -151,12 +165,18 @@ export async function deleteBizOrg(u: SessionUser, id: string) {
 }
 
 async function yearLines(orgId: string, year: number): Promise<Line[]> {
-  return prisma.greenEntry.findMany({ where: { orgId, period: { gte: `${year}-01`, lte: `${year}-12` } }, select: { period: true, category: true, scope: true, kg: true, quantity: true }, take: MAX_YEAR_LINES });
+  return prisma.greenEntry.findMany({ where: { orgId, period: { gte: `${year}-01`, lte: `${year}-12` } }, select: { period: true, category: true, scope: true, kg: true, quantity: true, quality: true, site: true }, take: MAX_YEAR_LINES });
 }
 const publicOrg = (o: Org) => ({
   id: o.id, name: o.name, kind: o.kind, country: o.country, industry: o.industry, employees: o.employees, revenue: o.revenue, currency: o.currency,
-  baseYear: o.baseYear, targetYear: o.targetYear, targetPct: o.targetPct, consultancyId: o.consultancyId,
+  baseYear: o.baseYear, targetYear: o.targetYear, targetPct: o.targetPct, consultancyId: o.consultancyId, carbonPrice: o.carbonPrice,
+  screening: readScreening(o.screening),
 });
+export function readScreening(json: string | null | undefined): Record<number, { status: Screen; reason: string | null }> {
+  try { const v = JSON.parse(json || '{}'); return v && typeof v === 'object' ? v : {}; } catch { return {}; }
+}
+/** The year's totals with the worked-out upstream (scope 3 category 3) and scope 2 both ways. */
+export const yearTotals = (org: { country: string | null }, lines: Line[], year: number) => totals(lines, year, { country: org.country, upstream: true });
 
 /** GET /green/biz/:id?year=: the company with its year (scopes, categories, months) against the year before. */
 export async function bizOrg(u: SessionUser, id: string, q: Query) {
@@ -171,24 +191,27 @@ export async function bizOrg(u: SessionUser, id: string, q: Query) {
   ]);
   return {
     org: publicOrg(org), role, year, consultancy: consultancy?.name ?? null,
-    totals: totals(now, year), before: totals(before, year - 1),
+    totals: yearTotals(org, now, year), before: yearTotals(org, before, year - 1),
     years: [...new Set(years.map((p) => yearOf(p.period)))].sort((a, b) => b - a),
     counts: { lines: now.length, suppliers, answered, commutes },
-    plan: readPlan(org.plan),
+    plan: readPlan(org.plan), billing: await billingOf(org), sites: [...new Set(now.map((l) => l.site).filter((x): x is string => !!x))].sort(),
   };
 }
 
 // ——— The ledger ———
 function readLine(org: Org, b: Body) {
   const cat = categoryById(b.category);
-  if (!cat || cat.id === 'supplier' || cat.id === 'commute') throw new BadRequestException('Pick what this line is.');
+  if (!cat || MADE.includes(cat.id)) throw new BadRequestException('Pick what this line is.');
   if (!isPeriod(b.period)) throw new BadRequestException('Pick the month.');
   const quantity = num(b.quantity, 0, 1e12);
   if (quantity === null) throw new BadRequestException('Give the amount as a number.');
   const own = b.factor === undefined || b.factor === null || b.factor === '' ? null : num(b.factor, 0, 100_000);
   const factor = own ?? factorFor(cat, org.country, org.currency);
   const factorSource = own !== null ? short(b.factorSource, 160) ?? 'The company’s own factor' : cat.source;
-  return { period: b.period as string, category: cat.id, scope: cat.scope, quantity, factor, factorSource, kg: kgFor(quantity, factor), note: short(b.note, 200) };
+  return {
+    period: b.period as string, category: cat.id, scope: cat.scope, quantity, factor, factorSource, kg: kgFor(quantity, factor), note: short(b.note, 200),
+    quality: isQuality(b.quality) ? b.quality : defaultQuality(cat.id), site: short(b.site, 60),
+  };
 }
 const describe = (l: { category: string; period: string; quantity: number; kg: number }) => `${categoryById(l.category)?.label ?? l.category}, ${l.period}: ${r3(l.quantity).toLocaleString('en')} ${categoryById(l.category)?.unit ?? ''} = ${fmtKg(l.kg)}`;
 
@@ -198,7 +221,7 @@ export async function bizEntries(u: SessionUser, id: string, q: Query) {
   const year = yearQ(q);
   const rows = await prisma.greenEntry.findMany({
     where: { orgId: id, period: { gte: `${year}-01`, lte: `${year}-12` } }, orderBy: [{ period: 'desc' }, { createdAt: 'desc' }], take: MAX_YEAR_LINES,
-    select: { id: true, period: true, category: true, scope: true, quantity: true, factor: true, factorSource: true, kg: true, note: true, source: true, refId: true, updatedAt: true },
+    select: { id: true, period: true, category: true, scope: true, quantity: true, factor: true, factorSource: true, kg: true, note: true, source: true, refId: true, quality: true, site: true, updatedAt: true },
   });
   return { year, entries: rows };
 }
@@ -207,6 +230,7 @@ export async function bizEntries(u: SessionUser, id: string, q: Query) {
 export async function addBizEntry(u: SessionUser, id: string, b: Body) {
   const { org } = await access(u, id, 'editor');
   const line = readLine(org, b);
+  await roomFor(org, [line.period], 1);
   const row = await prisma.greenEntry.create({ data: { ...line, orgId: id, source: 'manual', createdById: u.id }, select: { id: true } });
   await log(id, u.id, 'added', describe(line));
   return { id: row.id, kg: line.kg };
@@ -223,6 +247,7 @@ export async function addBizEntries(u: SessionUser, id: string, b: Body) {
     try { return readLine(org, (r && typeof r === 'object' ? r : {}) as Body); }
     catch (e) { throw new BadRequestException(`Line ${i + 1}: ${(e as Error).message}`); }
   });
+  await roomFor(org, lines.map((l) => l.period), lines.length);
   // D1 takes at most 100 bound values a query: five rows a query.
   for (let i = 0; i < lines.length; i += 5) {
     await prisma.greenEntry.createMany({ data: lines.slice(i, i + 5).map((l) => ({ ...l, orgId: id, source, createdById: u.id })) });
@@ -255,9 +280,19 @@ export async function deleteBizEntry(u: SessionUser, id: string, eid: string) {
   return { ok: true };
 }
 
+/** M280: a free company (while the owner's plans are on) keeps LIMITS.lines lines a year. */
+async function roomFor(org: Org, periods: string[], adding: number) {
+  const bill = await billingOf(org);
+  if (bill.pro) return;
+  for (const y of new Set(periods.map(yearOf))) {
+    const have = await prisma.greenEntry.count({ where: { orgId: org.id, period: { gte: `${y}-01`, lte: `${y}-12` } } });
+    if (have + adding > LIMITS.lines) throw new ForbiddenException(`The free plan keeps ${LIMITS.lines} lines a year: choose Pro in Team & plan for more.`);
+  }
+}
+
 // ——— Reading a bill with AI (M270) ———
 const BILL_SYSTEM = `You read a company's utility bill, fuel receipt, travel invoice or expense report and list the activity in it for a carbon footprint.
-Only list amounts that are written on it. Categories (use the id): ${CATEGORIES.filter((c) => c.id !== 'supplier' && c.id !== 'commute').map((c) => `${c.id} = ${c.label} (${c.unit === 'money' ? 'amount spent' : c.unit})`).join('; ')}.
+Only list amounts that are written on it. Categories (use the id): ${CATEGORIES.filter((c) => !MADE.includes(c.id)).map((c) => `${c.id} = ${c.label} (${c.unit === 'money' ? 'amount spent' : c.unit})`).join('; ')}.
 Give each line the month it covers as YYYY-MM (the end of the billing period), the quantity in the category's unit (convert units you are sure of: MWh to kWh ×1000, gallons to litres ×3.785, tonnes to kg ×1000), and a short note (the supplier and what it is). If nothing fits, return no lines.`;
 const BILL_SCHEMA = {
   type: 'OBJECT',
@@ -267,7 +302,8 @@ const BILL_SCHEMA = {
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 /** POST /green/biz/:id/read-bill { text } or { image: { mimeType, data } }: lines the AI found, for a person to check (not saved). */
 export async function readBill(u: SessionUser, id: string, b: Body) {
-  await access(u, id, 'editor');
+  const { org } = await access(u, id, 'editor');
+  await needPro(org, 'Reading bills with AI');
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('Reading bills with AI is off right now. Type the lines in, or import a spreadsheet.', 503);
   const textIn = (str(b.text) ?? '').slice(0, 12_000).trim();
   const img = b.image && typeof b.image === 'object' ? (b.image as Body) : null;
@@ -280,7 +316,7 @@ export async function readBill(u: SessionUser, id: string, b: Body) {
   const prompt = `This year is ${thisYear()}. List the activity lines.${textIn ? `\n\n${textIn}` : ''}`;
   const out = mime && data ? await geminiJsonImage<{ lines: Body[] }>(BILL_SYSTEM, prompt, { mimeType: mime, data }, BILL_SCHEMA, 1500) : await geminiJson<{ lines: Body[] }>(BILL_SYSTEM, prompt, BILL_SCHEMA, 1500);
   const lines = (out?.lines ?? []).slice(0, 40).map((l) => ({
-    category: categoryById(l.category) && l.category !== 'supplier' && l.category !== 'commute' ? (l.category as string) : null,
+    category: categoryById(l.category) && !MADE.includes(l.category as string) ? (l.category as string) : null,
     period: isPeriod(l.period) ? l.period : null, quantity: num(l.quantity, 0, 1e12), note: short(l.note, 200),
   })).filter((l) => l.category && l.quantity !== null);
   return { lines, left: spend.left };
@@ -330,11 +366,13 @@ export async function bizSuppliers(u: SessionUser, id: string, q: Query) {
 }
 /** POST /green/biz/:id/suppliers { name, contact?, spend, year } */
 export async function addBizSupplier(u: SessionUser, id: string, b: Body) {
-  await access(u, id, 'editor');
   const name = short(b.name, 80);
   if (!name) throw new BadRequestException('The supplier’s name.');
   const year = num(b.year, 2000, 2100) ?? thisYear();
-  if ((await prisma.greenSupplier.count({ where: { orgId: id } })) >= MAX_SUPPLIERS) throw new BadRequestException(`${MAX_SUPPLIERS} suppliers at most.`);
+  const { org } = await access(u, id, 'editor');
+  const have = await prisma.greenSupplier.count({ where: { orgId: id } });
+  if (have >= MAX_SUPPLIERS) throw new BadRequestException(`${MAX_SUPPLIERS} suppliers at most.`);
+  if (have >= LIMITS.suppliers && !(await billingOf(org)).pro) throw new ForbiddenException(`The free plan asks ${LIMITS.suppliers} suppliers: choose Pro in Team & plan for more.`);
   const s = await prisma.greenSupplier.create({ data: { orgId: id, name, contact: short(b.contact, 120), spend: num(b.spend, 0, 1e13), year: Math.round(year), code: newCode('S') }, select: { id: true, code: true } });
   await log(id, u.id, 'supplier', `Supplier asked for ${Math.round(year)}: ${name}`);
   return s;
@@ -404,7 +442,8 @@ function readCommute(b: Body) {
 // ——— Auditor link and the log ———
 /** POST /green/biz/:id/audit-link { on }: a read-only link for an auditor (its owners). */
 export async function bizAuditLink(u: SessionUser, id: string, b: Body) {
-  await access(u, id, 'owner');
+  const { org } = await access(u, id, 'owner');
+  if (b.on !== false) await needPro(org, 'The auditor’s link');
   const auditCode = b.on === false ? null : newCode('A');
   await prisma.greenOrg.update({ where: { id }, data: { auditCode } });
   await log(id, u.id, 'link', auditCode ? 'Auditor link made' : 'Auditor link turned off');
@@ -457,7 +496,7 @@ async function reportFor(org: Org, year: number) {
     prisma.greenAudit.findFirst({ where: { orgId: org.id }, orderBy: [{ createdAt: 'desc' }, { id: 'desc' }], select: { hash: true, createdAt: true } }),
     org.consultancyId ? prisma.greenOrg.findUnique({ where: { id: org.consultancyId }, select: { name: true } }) : null,
   ]);
-  const t = totals(lines, year), base = baseLines ? totals(baseLines, org.baseYear!) : org.baseYear === year ? t : null;
+  const t = yearTotals(org, lines, year), base = baseLines ? yearTotals(org, baseLines, org.baseYear!) : org.baseYear === year ? t : null;
   const byS3: Record<number, number> = {};
   for (const [cat, kg] of Object.entries(t.byCategory)) { const c = categoryById(cat); if (c?.scope === 3 && c.s3) byS3[c.s3] = r3((byS3[c.s3] ?? 0) + kg); }
   const plan = readPlan(org.plan), cuts = leverCuts(t.byCategory, plan.levers, org.country);
@@ -470,6 +509,11 @@ async function reportFor(org: Org, year: number) {
     factors: factorRows.map((f) => ({ category: f.category, label: categoryById(f.category)?.label ?? f.category, unit: categoryById(f.category)?.unit ?? '', factor: f.factor, source: f.factorSource })),
     data: { lines: lines.length, suppliers: supplierRows.length, suppliersAnswered: supplierRows.filter((s) => s.status === 'answered').length, commuteAnswers: commutes },
     audit: head ? { hash: head.hash, at: head.createdAt } : null,
+    // M276–M279: scope 2 both ways, data quality, the scope 3 screening, sites, the carbon price, certificates and
+    // offsets (beside the footprint, never netted off), and the year's verification.
+    scope2: t.scope2, quality: t.quality, bySite: t.bySite, screening: readScreening(org.screening),
+    carbonCost: org.carbonPrice ? Math.round((t.kg / 1000) * org.carbonPrice) : null,
+    credits: await bizCredits(org.id, year), verification: await verificationFor(org.id, year, t, head?.hash ?? null),
   };
 }
 /** GET /green/biz/:id/report?year= */
@@ -493,7 +537,8 @@ export async function bizTrace(u: SessionUser, id: string) {
 /** POST /green/biz/:id/trace { year, scopes: [1,2,3], products: [{ id, units }] }: the year's footprint shared over the
  *  units made, written on each product's passport (the brand's members only; the company's editors). */
 export async function pushBizTrace(u: SessionUser, id: string, b: Body) {
-  await access(u, id, 'editor');
+  const { org } = await access(u, id, 'editor');
+  await needPro(org, 'Carbon on Trace passports');
   const m = await prisma.traceBrandMember.findFirst({ where: { userId: u.id }, orderBy: { createdAt: 'asc' }, select: { brandId: true } });
   if (!m) throw new ForbiddenException('Start your brand in Trace first.');
   const year = num(b.year, 2000, 2100) ?? thisYear();
@@ -503,7 +548,7 @@ export async function pushBizTrace(u: SessionUser, id: string, b: Body) {
   if (!picks.length || !scopes.size) throw new BadRequestException('Pick the products and how many of each you made.');
   const products = await prisma.traceProduct.findMany({ where: { id: { in: picks.map((p) => p.id) }, brandId: m.brandId }, select: { id: true, dpp: true } });
   if (products.length !== picks.length) throw new NotFoundException('Some of those products aren’t your brand’s.');
-  const t = totals(await yearLines(id, year), year);
+  const t = yearTotals(org, await yearLines(id, year), year);
   const kg = [...scopes].reduce((a, s) => a + t.scope[s as 1 | 2 | 3], 0), units = picks.reduce((a, p) => a + p.units, 0);
   if (!(kg > 0)) throw new BadRequestException(`There’s no footprint for ${year} yet.`);
   const perUnit = r3(kg / units), method = `Company footprint ÷ units, ${year}, scope ${[...scopes].sort().join('+')}`.slice(0, 60);
@@ -524,16 +569,16 @@ export async function bizClients(u: SessionUser, id: string, q: Query) {
   const clients = await prisma.greenOrg.findMany({ where: { consultancyId: id }, orderBy: { name: 'asc' }, take: 200, select: { id: true, name: true, industry: true, country: true, employees: true, baseYear: true, targetPct: true, targetYear: true } });
   if (!clients.length) return { year, clients: [] };
   const ids = clients.map((c) => c.id);
-  const lines = await prisma.greenEntry.findMany({ where: { orgId: { in: ids }, period: { gte: `${year - 1}-01`, lte: `${year}-12` } }, select: { orgId: true, period: true, scope: true, kg: true, category: true }, take: 20_000 });
+  const lines = await prisma.greenEntry.findMany({ where: { orgId: { in: ids }, period: { gte: `${year - 1}-01`, lte: `${year}-12` } }, select: { orgId: true, period: true, scope: true, kg: true, category: true, quantity: true, quality: true }, take: 20_000 });
   const suppliers = await prisma.greenSupplier.groupBy({ by: ['orgId', 'status'], where: { orgId: { in: ids }, year }, _count: true });
   return {
     year,
     clients: clients.map((c) => {
       const mine = lines.filter((l) => l.orgId === c.id), now = mine.filter((l) => yearOf(l.period) === year), before = mine.filter((l) => yearOf(l.period) === year - 1);
-      const sum = (ls: typeof mine, s?: number) => r3(ls.filter((l) => !s || l.scope === s).reduce((a, l) => a + l.kg, 0));
+      const tn = yearTotals(c, now, year), tb = yearTotals(c, before, year - 1);
       const months = new Set(now.map((l) => l.period)).size;
       const asked = suppliers.filter((s) => s.orgId === c.id).reduce((a, s) => a + s._count, 0), answered = suppliers.find((s) => s.orgId === c.id && s.status === 'answered')?._count ?? 0;
-      return { ...c, kg: sum(now), scope: { 1: sum(now, 1), 2: sum(now, 2), 3: sum(now, 3) }, before: sum(before), months, asked, answered };
+      return { ...c, kg: tn.kg, scope: tn.scope, before: tb.kg, months, asked, answered, quality: tn.quality.score };
     }),
   };
 }

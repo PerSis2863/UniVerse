@@ -1,21 +1,22 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
-import { addBizEntry, addBizEntries, answerCarbonLink, bizOrg, carbonLink, createBizOrg, removeBizMember, supplierShareKg, updateBizEntry, verifyChain } from './green-business';
+import { addBizEntry, addBizEntries, addBizSupplier, answerCarbonLink, bizOrg, carbonLink, createBizOrg, readBill, removeBizMember, supplierShareKg, updateBizEntry, verifyChain } from './green-business';
 import type { SessionUser } from '@/lib/server-auth';
 
 // M269–M275: Green → Business keeps to who may do what, works numbers out itself, and keeps an honest log.
 const db = vi.hoisted(() => ({
   greenOrg: { findUnique: vi.fn(), create: vi.fn(), update: vi.fn(), count: vi.fn() },
   greenOrgMember: { findUnique: vi.fn(), count: vi.fn(), create: vi.fn(), delete: vi.fn(), findMany: vi.fn() },
-  greenEntry: { create: vi.fn(), createMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn() },
+  greenEntry: { create: vi.fn(), createMany: vi.fn(), findFirst: vi.fn(), update: vi.fn(), findMany: vi.fn(), deleteMany: vi.fn(), count: vi.fn() },
   greenAudit: { findFirst: vi.fn(), create: vi.fn() },
-  greenSupplier: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn() },
+  greenSupplier: { findUnique: vi.fn(), update: vi.fn(), count: vi.fn(), create: vi.fn() },
   greenCommute: { count: vi.fn(), create: vi.fn(), upsert: vi.fn(), findMany: vi.fn() },
 }));
 vi.mock('@/lib/db', () => ({ default: db }));
 vi.mock('./email', () => ({ notify: vi.fn() }));
 vi.mock('./ai-budget', () => ({ spendAi: vi.fn() }));
-vi.mock('./moderation', () => ({ featureOff: vi.fn() }));
+const featureOff = vi.hoisted(() => vi.fn());
+vi.mock('./moderation', () => ({ featureOff }));
 vi.mock('./gemini', () => ({ geminiJson: vi.fn(), geminiJsonImage: vi.fn() }));
 vi.mock('./ai-receipts', () => ({ logAiUse: vi.fn() }));
 
@@ -27,6 +28,7 @@ beforeEach(() => {
   db.greenAudit.findFirst.mockResolvedValue(null);
   db.greenEntry.create.mockResolvedValue({ id: 'e1' });
   db.greenEntry.findMany.mockResolvedValue([]);
+  featureOff.mockResolvedValue(true); // the owner's plans are off, as they start: everything open
 });
 
 describe('access', () => {
@@ -134,5 +136,36 @@ describe('share links', () => {
     expect(db.greenEntry.create.mock.calls[0][0].data).toMatchObject({ category: 'commute', kg: 1000 }); // 1 answer scaled to 10 staff
     db.greenCommute.count.mockResolvedValue(300);
     await expect(answerCarbonLink('CABC', { mode: 'car', kmOneWay: 10, daysWeek: 5 })).rejects.toThrow(/full/);
+  });
+});
+
+describe('plans (M280)', () => {
+  beforeEach(() => { db.greenOrgMember.findUnique.mockResolvedValue({ role: 'owner' }); featureOff.mockResolvedValue(false); });
+  it('keeps a free company to its yearly lines and suppliers when the owner’s plans are on', async () => {
+    db.greenEntry.count.mockResolvedValue(150);
+    await expect(addBizEntry(me, 'o1', { period: '2026-01', category: 'diesel', quantity: 1 })).rejects.toThrow(/150 lines/);
+    db.greenSupplier.count.mockResolvedValue(5);
+    await expect(addBizSupplier(me, 'o1', { name: 'X' })).rejects.toThrow(/5 suppliers/);
+    await expect(readBill(me, 'o1', { text: 'bill' })).rejects.toThrow(/Pro/);
+  });
+  it('lets a Pro company and a paying consultancy’s client through', async () => {
+    db.greenEntry.count.mockResolvedValue(150);
+    db.greenOrg.findUnique.mockResolvedValue({ ...org, tier: 'PRO' });
+    await expect(addBizEntry(me, 'o1', { period: '2026-01', category: 'diesel', quantity: 1 })).resolves.toBeTruthy();
+    db.greenOrg.findUnique.mockImplementation(({ where }: { where: { id: string } }) => Promise.resolve(where.id === 'c1' ? { ...org, id: 'c1', kind: 'consultancy', tier: 'CONSULTANCY' } : { ...org, tier: 'FREE', consultancyId: 'c1' }));
+    await expect(addBizEntry(me, 'o1', { period: '2026-01', category: 'diesel', quantity: 1 })).resolves.toBeTruthy();
+  });
+});
+
+describe('data quality and sites (M276)', () => {
+  beforeEach(() => db.greenOrgMember.findUnique.mockResolvedValue({ role: 'editor' }));
+  it('keeps a line’s quality and site, money lines counting as spend', async () => {
+    await addBizEntry(me, 'o1', { period: '2026-01', category: 'diesel', quantity: 1, quality: 'measured', site: 'Pune plant' });
+    expect(db.greenEntry.create.mock.calls[0][0].data).toMatchObject({ quality: 'measured', site: 'Pune plant' });
+    await addBizEntry(me, 'o1', { period: '2026-01', category: 'buy-it', quantity: 1000, quality: 'nonsense' });
+    expect(db.greenEntry.create.mock.calls[1][0].data.quality).toBe('spend');
+  });
+  it('never lets a person type a worked-out line', async () => {
+    await expect(addBizEntry(me, 'o1', { period: '2026-01', category: 'upstream', quantity: 1 })).rejects.toThrow(/what this line is/);
   });
 });

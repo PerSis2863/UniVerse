@@ -25,6 +25,10 @@ import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews
 import { reliefAlerts, reliefHours, reliefPlan, saveReliefPlan } from '../relief-plus';
 import { addGreenPledge, checkGreenPledge, createGreenEvent, deleteGreenEvent, goingGreenEvent, greenEvents, greenFootprints, greenGoals, removeGreenPledge, reportGreenEvent, saveFootprint, setGreenGoal } from '../green-plus';
 import {
+  addBizCredit, answerQuery, askQuery, bizBenchmark, bizCheckout, bizCreditList, bizPortal, bizVerifications, closeQuery, inviteVerifier,
+  removeBizCredit, signVerification, withdrawVerification,
+} from '../green-business-plus';
+import {
   addBizEntries, addBizEntry, addBizMember, addBizSupplier, answerCarbonLink, bizAudit, bizAuditLink, bizClients, bizEntries, bizList, bizMembers, bizOrg,
   bizReport, bizStaff, bizSuppliers, bizSurveyLink, bizTrace, carbonLink, createBizOrg, deleteBizEntry, deleteBizOrg, pushBizTrace, readBill,
   removeBizMember, removeBizSupplier, saveBizPlan, updateBizEntry, updateBizOrg,
@@ -257,6 +261,21 @@ export default function impactAppsModule(router: Router) {
   green.get<Biz>('biz/:id/trace', ({ user, params }) => bizTrace(user, params.id));
   green.post<Biz>('biz/:id/trace', { status: 200 }, ({ user, params, body }) => pushBizTrace(user, params.id, body ?? {}));
   green.get<Biz>('biz/:id/clients', ({ user, params, query }) => bizClients(user, params.id, query));
+  // M276–M281: plans, certificates and offsets, verification, the industry benchmark.
+  type V = Biz & { vid: string };
+  green.post<Biz>('biz/:id/billing', { status: 200 }, ({ user, params, body, req }) => bizCheckout(user, params.id, body ?? {}, new URL(req.url).origin));
+  green.post<Biz>('biz/:id/billing/portal', { status: 200 }, ({ user, params, req }) => bizPortal(user, params.id, new URL(req.url).origin));
+  green.get<Biz>('biz/:id/credits', ({ user, params, query }) => bizCreditList(user, params.id, query));
+  green.post<Biz>('biz/:id/credits', ({ user, params, body }) => addBizCredit(user, params.id, body ?? {}));
+  green.delete<Biz & { cid: string }>('biz/:id/credits/:cid', ({ user, params }) => removeBizCredit(user, params.id, params.cid));
+  green.get<Biz>('biz/:id/benchmark', ({ user, params, query }) => bizBenchmark(user, params.id, query));
+  green.get<Biz>('biz/:id/verifications', ({ user, params }) => bizVerifications(user, params.id));
+  green.post<Biz>('biz/:id/verifications', ({ user, params, body }) => inviteVerifier(user, params.id, body ?? {}));
+  green.post<V>('biz/:id/verifications/:vid/queries', ({ user, params, body }) => askQuery(user, params.id, params.vid, body ?? {}));
+  green.post<V & { qid: string }>('biz/:id/verifications/:vid/queries/:qid/answer', { status: 200 }, ({ user, params, body }) => answerQuery(user, params.id, params.vid, params.qid, body ?? {}));
+  green.post<V & { qid: string }>('biz/:id/verifications/:vid/queries/:qid/close', { status: 200 }, ({ user, params }) => closeQuery(user, params.id, params.vid, params.qid));
+  green.post<V>('biz/:id/verifications/:vid/sign', { status: 200 }, ({ user, params, body }) => signVerification(user, params.id, params.vid, body ?? {}));
+  green.post<V>('biz/:id/verifications/:vid/withdraw', { status: 200 }, ({ user, params }) => withdrawVerification(user, params.id, params.vid));
   // The share links on /carbon/[code]: suppliers, staff and auditors, by an unguessable code; never emails or phones.
   green.get<{ code: string }>('link/:code', { public: true }, ({ params }) => carbonLink(params.code));
   green.post<{ code: string }>('link/:code', { public: true, status: 200 }, ({ params, body }) => answerCarbonLink(params.code, body ?? {}));

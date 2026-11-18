@@ -3,20 +3,21 @@
 import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { Copy, History, Link2Off, ShieldCheck, ShieldAlert, Trash2, UserPlus, Users } from 'lucide-react';
+import { Copy, CreditCard, History, Link2Off, ShieldCheck, ShieldAlert, Trash2, UserPlus, Users } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { copy, linkOf } from './BizSuppliers';
-import { field, h3, icon, label, muted, type Role, type SectionProps } from './shared';
+import { field, h3, icon, label, muted, type Billing, type Role, type SectionProps } from './shared';
 
-// Green → Business → Log & sharing (M274, M269): who works on the footprint (owners, editors, viewers), the auditor's
-// read-only link, and the change log: every change, chained by its fingerprint so a rewritten row shows.
+// Green → Business → Team & plan (M274, M269, M280): who works on the footprint (owners, editors, viewers, and an
+// independent verifier), the plan (Free, Pro, Consultancy, paid through Stripe while the owner's switch is on), the
+// auditor's read-only link, and the change log: every change, chained by its fingerprint so a rewritten row shows.
 
 type Audit = { auditCode: string | null; whole: boolean; count: number; head: string | null; rows: { id: string; action: string; detail: string; who: string | null; hash: string; createdAt: string }[] };
 type Members = { members: { userId: string; name: string; role: Role; me: boolean }[]; consultancy: string | null };
-const ROLE_TEXT: Record<Role, string> = { owner: 'Owner', editor: 'Editor', viewer: 'Viewer' };
+const ROLE_TEXT: Record<Role, string> = { owner: 'Owner', editor: 'Editor', viewer: 'Viewer', verifier: 'Verifier (independent)' };
 
-export function BizLog({ org, role, onChanged, onPick }: SectionProps) {
+export function BizLog({ org, role, overview, onChanged, onPick }: SectionProps) {
   const { data: audit, mutate } = useSWR<Audit>(`/green/biz/${org.id}/audit`, fetcher);
   const { data: people, mutate: reload } = useSWR<Members>(`/green/biz/${org.id}/members`, fetcher);
   const [f, setF] = useState({ email: '', role: 'editor' });
@@ -40,6 +41,7 @@ export function BizLog({ org, role, onChanged, onPick }: SectionProps) {
   };
   return (
     <div className="space-y-6">
+      <PlanPanel org={org} role={role} billing={overview.billing} lines={overview.counts.lines} />
       <div className="grid gap-6 lg:grid-cols-2">
         <section className="panel p-5" aria-labelledby="ppl-h">
           <h3 id="ppl-h" className={h3}><Users className={icon} aria-hidden />People</h3>
@@ -88,5 +90,44 @@ export function BizLog({ org, role, onChanged, onPick }: SectionProps) {
       </section>
       {owner && <button type="button" className="btn-secondary text-red-600 dark:text-red-400" onClick={() => void del()}>Delete this company</button>}
     </div>
+  );
+}
+
+/** M280: the plan. While the owner's switch is off there's nothing to pay: everything is open. */
+function PlanPanel({ org, role, billing, lines }: { org: SectionProps['org']; role: Role; billing: Billing; lines: number }) {
+  const [busy, setBusy] = useState(false);
+  const go = async (portal: boolean, body?: unknown) => {
+    setBusy(true);
+    try { const r = portal ? await api.post<{ url: string }>(`/green/biz/${org.id}/billing/portal`) : await api.post<{ url: string }>(`/green/biz/${org.id}/billing`, body ?? {}); window.location.assign(r.data.url); }
+    catch (e) { toast.error(errorMessage(e, 'Couldn’t open payments.')); setBusy(false); }
+  };
+  const money = (c: number | null | undefined) => (c ? `US$${(c / 100).toLocaleString(undefined, { maximumFractionDigits: 2 })} a month` : 'price to come');
+  const plans: { tier: 'FREE' | 'PRO' | 'CONSULTANCY'; name: string; price?: number | null; what: string[] }[] = [
+    { tier: 'FREE', name: 'Free', what: [`${billing.limits.lines} lines a year`, `${billing.limits.suppliers} suppliers`, 'Staff survey, planner, report', 'Change log and benchmark'] },
+    { tier: 'PRO', name: 'Pro', price: billing.prices?.pro ?? null, what: ['Unlimited lines and suppliers', 'Bills read by AI', 'Independent verification', 'Auditor’s link', 'Carbon on Trace passports'] },
+    ...(org.kind === 'consultancy' ? [{ tier: 'CONSULTANCY' as const, name: 'Consultancy', price: billing.prices?.consultancy ?? null, what: ['Unlimited clients', 'Pro for every client', 'Reports under your name'] }] : []),
+  ];
+  return (
+    <section className="panel p-5" aria-labelledby="plan-h">
+      <h3 id="plan-h" className={h3}><CreditCard className={icon} aria-hidden />Plan</h3>
+      {!billing.on ? (
+        <p className={`mt-2 ${muted}`}>Everything in Green → Business is free for now: no plan to choose.</p>
+      ) : (
+        <>
+          <p className={`mt-2 ${muted}`}>You’re on <strong>{billing.tier === 'FREE' ? 'Free' : billing.tier === 'PRO' ? 'Pro' : 'Consultancy'}</strong>{billing.tier === 'FREE' ? ` (${lines} of ${billing.limits.lines} lines this year)` : ''}{billing.pro && billing.tier === 'FREE' ? ': your consultancy’s plan covers you' : ''}.</p>
+          <div className="mt-4 grid gap-4 md:grid-cols-3">
+            {plans.map((p) => (
+              <div key={p.tier} className={`rounded-2xl border p-4 ${billing.tier === p.tier ? 'border-emerald-500/60 bg-emerald-500/[0.05]' : 'border-[var(--hairline)]'}`}>
+                <p className="font-semibold text-zinc-900 dark:text-white">{p.name}</p>
+                <p className="text-sm text-zinc-600 dark:text-zinc-300">{p.tier === 'FREE' ? 'Free' : money(p.price)}</p>
+                <ul className="mt-2 space-y-1 text-sm text-zinc-700 dark:text-zinc-200">{p.what.map((w) => <li key={w}>· {w}</li>)}</ul>
+                {role === 'owner' && p.tier !== 'FREE' && billing.tier === 'FREE' && <button type="button" disabled={busy} className="btn-primary mt-3" onClick={() => void go(false, { tier: p.tier })}>Choose {p.name}</button>}
+              </div>
+            ))}
+          </div>
+          {role === 'owner' && billing.tier !== 'FREE' && <button type="button" disabled={busy} className="btn-secondary mt-4" onClick={() => void go(true)}>Manage billing</button>}
+        </>
+      )}
+    </section>
   );
 }

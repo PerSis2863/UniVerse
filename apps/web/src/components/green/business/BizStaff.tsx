@@ -7,6 +7,7 @@ import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { COMMUTE } from '@/lib/carbon-ledger';
 import { copy, linkOf } from './BizSuppliers';
+import { Bar } from './Bar';
 import { canEdit, h3, icon, kgText, muted, pct, tonnes, type SectionProps } from './shared';
 
 // Green → Business → Staff (M272): one link for the whole team: how each person gets to work, how far and how often
@@ -16,7 +17,7 @@ import { canEdit, h3, icon, kgText, muted, pct, tonnes, type SectionProps } from
 type Staff = { surveyCode: string | null; answers: number; employees: number | null; byMode: Record<string, { people: number; kg: number }>; kg: number; linked: number; greenSaved: { kg: number; actions: number } };
 
 export function BizStaff({ org, role, year, onChanged }: SectionProps) {
-  const { data, mutate } = useSWR<Staff>(`/green/biz/${org.id}/staff?year=${year}`, fetcher);
+  const { data, mutate } = useSWR<Staff>(`/green/biz/${org.id}/staff?year=${year}`, fetcher, { keepPreviousData: true });
   const toggle = async (on: boolean) => {
     try { const r = await api.post<{ surveyCode: string | null }>(`/green/biz/${org.id}/survey`, { on }); await mutate(); onChanged(); if (r.data.surveyCode) void copy(linkOf(r.data.surveyCode), 'The survey link'); }
     catch (e) { toast.error(errorMessage(e, 'Couldn’t change the link.')); }
@@ -49,7 +50,7 @@ export function BizStaff({ org, role, year, onChanged }: SectionProps) {
                 {modes.map(([m, v]) => (
                   <li key={m}>
                     <div className="flex justify-between gap-3 text-sm"><span className="text-zinc-700 dark:text-zinc-200">{COMMUTE[m]?.label ?? m} · {v.people} {v.people === 1 ? 'person' : 'people'}</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{kgText(v.kg)}</span></div>
-                    <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10" aria-hidden><span className="block h-full origin-left rounded-full bg-emerald-600 rtl:origin-right" style={{ transform: `scaleX(${pct(v.people, data.answers) / 100})` }} /></div>
+                    <Bar value={pct(v.people, data.answers) / 100} />
                   </li>
                 ))}
               </ul>

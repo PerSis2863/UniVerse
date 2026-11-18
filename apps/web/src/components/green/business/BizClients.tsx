@@ -14,7 +14,7 @@ import { canEdit, change, countryName, h3, icon, muted, pct, tonnes, type Sectio
 type Client = { id: string; name: string; industry: string | null; country: string | null; employees: number | null; kg: number; scope: Record<1 | 2 | 3, number>; before: number; months: number; asked: number; answered: number };
 
 export function BizClients({ org, role, year, onChanged, onPick }: SectionProps) {
-  const { data, mutate } = useSWR<{ clients: Client[] }>(`/green/biz/${org.id}/clients?year=${year}`, fetcher);
+  const { data, mutate } = useSWR<{ clients: Client[] }>(`/green/biz/${org.id}/clients?year=${year}`, fetcher, { keepPreviousData: true });
   const [adding, setAdding] = useState(false);
   const list = data?.clients ?? [];
   const total = list.reduce((a, c) => a + c.kg, 0);

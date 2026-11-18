@@ -12,12 +12,14 @@ import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { CURRENCIES } from '@/lib/carbon-ledger';
-import { COUNTRIES, MONTHS, S3_NAMES, SCOPE_TEXT, catLabel, change, field, h3, icon, label, muted, pct, tonnes, type BizOrgRow, type BizOverview } from './shared';
+import { Bar } from './Bar';
+import { COUNTRIES, MONTHS, SCOPE_TEXT, catLabel, change, field, h3, icon, label, muted, pct, tonnes, type BizOrgRow, type BizOverview } from './shared';
 
-// Green → Business (M269–M275): a company measures its carbon footprint the way the GHG Protocol counts it, and a
+// Green → Business (M269–M281): a company measures its carbon footprint the way the GHG Protocol counts it, and a
 // consultancy does it for its clients. The overview, then a section each: the ledger (with imports and bills read by
-// AI), suppliers (and Trace's passports), staff commuting, the reduction planner, the report, and the log with its
-// people and auditor link. Each section loads only when opened.
+// AI), suppliers (and Trace's passports), staff commuting, the reduction planner, certificates and offsets, independent
+// verification, the report, and the team with its plan, auditor link and log. Each section loads only when opened. A
+// verifier sees only what they review.
 
 const wait = () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />;
 const SECTIONS = {
@@ -26,11 +28,13 @@ const SECTIONS = {
   staff: dynamic(() => import('./BizStaff').then((m) => m.BizStaff), { loading: wait }),
   planner: dynamic(() => import('./BizPlanner').then((m) => m.BizPlanner), { loading: wait }),
   report: dynamic(() => import('./BizReport').then((m) => m.BizReportSection), { loading: wait }),
-  log: dynamic(() => import('./BizLog').then((m) => m.BizLog), { loading: wait }),
+  credits: dynamic(() => import('./BizCredits').then((m) => m.BizCredits), { loading: wait }),
+  verify: dynamic(() => import('./BizVerify').then((m) => m.BizVerify), { loading: wait }),
+  team: dynamic(() => import('./BizLog').then((m) => m.BizLog), { loading: wait }),
   clients: dynamic(() => import('./BizClients').then((m) => m.BizClients), { loading: wait }),
 };
 type Section = 'overview' | keyof typeof SECTIONS;
-const LABELS: Record<Section, string> = { overview: 'Overview', clients: 'Clients', ledger: 'Ledger', suppliers: 'Suppliers', staff: 'Staff', planner: 'Planner', report: 'Report', log: 'Log & sharing' };
+const LABELS: Record<Section, string> = { overview: 'Overview', clients: 'Clients', ledger: 'Ledger', suppliers: 'Suppliers', staff: 'Staff', planner: 'Planner', credits: 'Certificates & offsets', verify: 'Verify', report: 'Report', team: 'Team & plan' };
 const PICK = 'uv-green-biz';
 
 export function GreenBusiness() {
@@ -63,7 +67,8 @@ function Company({ row, onChanged, onPick }: { row: BizOrgRow; onChanged: () => 
   const sp = useSearchParams(), router = useRouter(), path = usePathname();
   const [year, setYear] = useState(new Date().getFullYear());
   const { data, mutate } = useSWR<BizOverview>(`/green/biz/${row.id}?year=${year}`, fetcher, { keepPreviousData: true });
-  const sections: Section[] = [...(row.kind === 'consultancy' ? (['clients'] as const) : []), 'overview', 'ledger', 'suppliers', 'staff', 'planner', 'report', 'log'];
+  const sections: Section[] = row.role === 'verifier' ? ['verify', 'overview', 'ledger', 'report']
+    : [...(row.kind === 'consultancy' ? (['clients'] as const) : []), 'overview', 'ledger', 'suppliers', 'staff', 'planner', 'credits', 'verify', 'report', 'team'];
   const raw = sp.get('b') as Section | null, section: Section = raw && sections.includes(raw) ? raw : sections[0];
   const go = (s: Section) => { const q = new URLSearchParams(sp.toString()); q.set('b', s); router.replace(`${path}?${q}`, { scroll: false }); };
   const years = [...new Set([new Date().getFullYear(), ...(data?.years ?? [])])].sort((a, b) => b - a);
@@ -86,36 +91,43 @@ function Company({ row, onChanged, onPick }: { row: BizOrgRow; onChanged: () => 
 function Overview({ data, go }: { data: BizOverview; go: (s: Section) => void }) {
   const t = data.totals, b = data.before, d = change(t.kg, b.kg);
   const months = MONTHS(data.year).map((m) => (t.byMonth[m] ?? 0) / 1000);
-  const top = Object.entries(t.byCategory).sort((x, y) => y[1] - x[1]).slice(0, 5);
+  const top = Object.entries(t.byCategory).sort((x, y) => y[1] - x[1]).slice(0, 6);
+  const measured = pct(t.quality.kg.measured ?? 0, t.kg), sites = Object.entries(t.bySite).sort((x, y) => y[1] - x[1]);
   const cells: InstrumentCell[] = [
     {
       id: 'total', label: `Footprint ${data.year}`, value: t.kg / 1000, digits: 1, unit: 't CO₂e',
-      note: d === null ? 'No year before to compare' : `${d <= 0 ? '↓' : '↑'} ${Math.abs(d)}% on ${data.year - 1}`,
+      note: `± ${tonnes(t.quality.uncertaintyKg)} · ${d === null ? 'no year before' : `${d <= 0 ? '↓' : '↑'} ${Math.abs(d)}% on ${data.year - 1}`}`,
       body: <Spark values={months} />,
-      detail: { title: `${data.org.name}: tonnes CO₂e a month`, description: 'Every scope, by the month each line covers.', series: months, labels: MONTHS(data.year).map((m) => m.slice(5)), before: MONTHS(data.year - 1).map((m) => (b.byMonth[m] ?? 0) / 1000) },
+      detail: { title: `${data.org.name}: tonnes CO₂e a month`, description: 'Every scope, by the month each line covers, with the worked-out upstream.', series: months, labels: MONTHS(data.year).map((m) => m.slice(5)), before: MONTHS(data.year - 1).map((m) => (b.byMonth[m] ?? 0) / 1000) },
     },
     ...([1, 2, 3] as const).map((s) => ({
-      id: `s${s}`, label: SCOPE_TEXT[s].title, value: t.scope[s] / 1000, digits: 1, unit: 't', note: SCOPE_TEXT[s].what,
+      id: `s${s}`, label: SCOPE_TEXT[s].title, value: t.scope[s] / 1000, digits: 1, unit: 't',
+      note: s === 2 ? `Market-based; ${tonnes(t.scope2.location)} by the grid` : SCOPE_TEXT[s].what,
       body: <Meter pct={pct(t.scope[s], t.kg)} />,
     })),
     {
-      id: 'intensity', label: 'Per person', value: data.org.employees ? t.kg / 1000 / data.org.employees : 0, digits: 2, unit: 't each',
-      note: data.org.employees ? `${data.org.employees.toLocaleString()} staff` : 'Add your headcount in Report → details',
-      body: <Facts rows={[['Energy used', `${Math.round(t.gj).toLocaleString()} GJ`], ['Lines this year', String(data.counts.lines)]]} />,
+      id: 'quality', label: 'Data quality', value: t.quality.score, digits: 1, unit: 'of 5 (1 best)', warn: t.quality.score > 3.5,
+      note: `${measured}% from meters and invoices`,
+      body: <Meter pct={measured} />,
     },
     {
-      id: 'data', label: 'Suppliers answered', value: data.counts.answered, unit: `of ${data.counts.suppliers}`, warn: data.counts.suppliers > data.counts.answered,
-      note: `${data.counts.commutes} staff commute answers`,
-      body: <Meter pct={pct(data.counts.answered, data.counts.suppliers)} />,
+      id: 'intensity', label: 'Per person', value: data.org.employees ? t.kg / 1000 / data.org.employees : 0, digits: 2, unit: 't each',
+      note: data.org.employees ? `${data.org.employees.toLocaleString()} staff` : 'Add your headcount in Report',
+      // Six cells, two even rows: the data behind it sits here as facts.
+      body: <Facts rows={[['Energy used', `${Math.round(t.gj).toLocaleString()} GJ`], ['Suppliers answered', `${data.counts.answered} of ${data.counts.suppliers}`], ['Staff commute answers', String(data.counts.commutes)], ...(data.org.carbonPrice ? [['Carbon cost', `${Math.round((t.kg / 1000) * data.org.carbonPrice).toLocaleString()} ${data.org.currency}`] as [string, string]] : [['Lines this year', String(data.counts.lines)] as [string, string]])]} />,
     },
   ];
+  const linkBtn = 'font-semibold text-emerald-700 underline dark:text-emerald-300';
   return (
     <div className="space-y-6">
+      {data.billing.on && !data.billing.pro && (
+        <p className="rounded-2xl bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-200">Free plan: {data.counts.lines} of {data.billing.limits.lines} lines for {data.year}. AI bills, verification, the auditor’s link and Trace passports come with Pro. <button type="button" className="font-semibold underline" onClick={() => go('team')}>See plans</button></p>
+      )}
       <InstrumentBoard icon={Factory} title={data.org.name} subtitle={data.consultancy ? `Managed by ${data.consultancy}` : 'GHG Protocol, scopes 1–3'} cells={cells} live={false} storageKey={`green-biz-${data.org.id}`} />
       {t.kg === 0 ? (
         <section className="panel p-5">
           <h3 className={h3}><Building2 className={icon} aria-hidden />Start with your bills</h3>
-          <p className={`mt-2 ${muted}`}>Add a month of electricity, the fuel your vans used and last year’s flights. Each line shows the factor it used and where it comes from; you can type in your supplier’s own figure instead.</p>
+          <p className={`mt-2 ${muted}`}>Add a month of electricity, the fuel your vans used and last year’s flights. Each line shows the factor it used and where it comes from; you can type in your supplier’s own figure instead. The upstream of your fuel and power (scope 3, category 3) is worked out for you.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             <button type="button" className="btn-primary" onClick={() => go('ledger')}>Add the first lines</button>
             <button type="button" className="btn-secondary" onClick={() => go('suppliers')}>Ask your suppliers</button>
@@ -123,20 +135,53 @@ function Overview({ data, go }: { data: BizOverview; go: (s: Section) => void })
           </div>
         </section>
       ) : (
-        <section className="panel p-5" aria-labelledby="biz-top">
-          <h3 id="biz-top" className={h3}>Where it comes from</h3>
-          <ul className="mt-3 space-y-2.5">
-            {top.map(([cat, kg]) => (
-              <li key={cat}>
-                <div className="flex justify-between gap-3 text-sm"><span className="text-zinc-700 dark:text-zinc-200">{catLabel(cat)}</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{tonnes(kg)} · {pct(kg, t.kg)}%</span></div>
-                <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10" aria-hidden><span className="block h-full origin-left rounded-full bg-emerald-600 rtl:origin-right" style={{ transform: `scaleX(${t.kg ? kg / t.kg : 0})` }} /></div>
-              </li>
-            ))}
-          </ul>
-          {Object.keys(S3_NAMES).length > 0 && <p className={`mt-4 ${muted}`}>Plan cuts for the biggest lines in <button type="button" className="font-semibold text-emerald-700 underline dark:text-emerald-300" onClick={() => go('planner')}>Planner</button>; send the year’s report from <button type="button" className="font-semibold text-emerald-700 underline dark:text-emerald-300" onClick={() => go('report')}>Report</button>.</p>}
-        </section>
+        <div className="grid gap-6 xl:grid-cols-2">
+          <section className="panel p-5" aria-labelledby="biz-top">
+            <h3 id="biz-top" className={h3}>Where it comes from</h3>
+            <ul className="mt-3 space-y-2.5">
+              {top.map(([cat, kg]) => (
+                <li key={cat}>
+                  <div className="flex justify-between gap-3 text-sm"><span className="text-zinc-700 dark:text-zinc-200">{catLabel(cat)}</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{tonnes(kg)} · {pct(kg, t.kg)}%</span></div>
+                  <Bar value={t.kg ? kg / t.kg : 0} />
+                </li>
+              ))}
+            </ul>
+            <p className={`mt-4 ${muted}`}>Plan cuts in <button type="button" className={linkBtn} onClick={() => go('planner')}>Planner</button>; have it checked in <button type="button" className={linkBtn} onClick={() => go('verify')}>Verify</button>; send it from <button type="button" className={linkBtn} onClick={() => go('report')}>Report</button>.</p>
+          </section>
+          <div className="space-y-6">
+            <Benchmark orgId={data.org.id} year={data.year} industry={data.org.industry} />
+            {sites.length > 0 && (
+              <section className="panel p-5" aria-labelledby="biz-sites">
+                <h3 id="biz-sites" className={h3}>By site</h3>
+                <ul className="mt-3 space-y-2.5">{sites.map(([site, kg]) => <li key={site}><div className="flex justify-between gap-3 text-sm"><span className="text-zinc-700 dark:text-zinc-200" translate="no">{site}</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{tonnes(kg)}</span></div><Bar value={t.kg ? kg / t.kg : 0} tone="bg-sky-600" /></li>)}</ul>
+              </section>
+            )}
+          </div>
+        </div>
       )}
     </div>
+  );
+}
+
+type Quart = { p25: number; median: number; p75: number; mine: number | null; rank: number | null };
+/** M279: the company against others in its industry (quartiles, five at least), never a name or a number of theirs. */
+function Benchmark({ orgId, year, industry }: { orgId: string; year: number; industry: string | null }) {
+  const { data } = useSWR<{ industry: string | null; peers: number; enough: boolean; perPerson?: Quart | null; perMusd?: Quart | null }>(`/green/biz/${orgId}/benchmark?year=${year}`, fetcher, { keepPreviousData: true });
+  const row = (title: string, q: Quart | null | undefined, unit: string) => q && (
+    <div className="mt-3">
+      <div className="flex justify-between gap-3 text-sm"><span className="text-zinc-700 dark:text-zinc-200">{title}</span><span className="font-semibold tabular-nums text-zinc-900 dark:text-white">{q.mine === null ? '–' : `${q.mine} ${unit}`}</span></div>
+      <p className="mt-0.5 text-xs text-zinc-600 dark:text-zinc-400">Middle half {q.p25}–{q.p75} {unit}, median {q.median}{q.rank !== null ? ` · ${q.rank <= 50 ? `lower than ${100 - q.rank}%` : `higher than ${q.rank}%`} of them` : ''}</p>
+      {q.rank !== null && <Bar value={q.rank / 100} tone={q.rank <= 50 ? 'bg-emerald-600' : 'bg-amber-500'} />}
+    </div>
+  );
+  return (
+    <section className="panel p-5" aria-labelledby="biz-bench">
+      <h3 id="biz-bench" className={h3}>Against similar companies</h3>
+      {!industry ? <p className={`mt-2 ${muted}`}>Add your industry in Report to compare with others.</p>
+        : !data ? <div className="mt-3 h-16 rounded-xl skeleton" />
+        : !data.enough ? <p className={`mt-2 ${muted}`}>{data.peers} other {data.peers === 1 ? 'company' : 'companies'} in “{industry}” {data.peers === 1 ? 'has' : 'have'} data for {year}: comparisons show from five, so nobody can be picked out.</p>
+        : <>{<p className={`mt-1 ${muted}`}>{data.peers} companies in “{industry}”, {year}.</p>}{row('Tonnes per person', data.perPerson, 't')}{row('Tonnes per million US$ of revenue', data.perMusd, 't')}</>}
+    </section>
   );
 }
 

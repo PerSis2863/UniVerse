@@ -1,20 +1,23 @@
-import { CATEGORIES, GRID, UNIT_LABEL, categoryById, type Totals } from '@/lib/carbon-ledger';
+import { CATEGORIES, GRID, MADE, UNIT_LABEL, categoryById, type Screen, type Totals } from '@/lib/carbon-ledger';
 
 // Green → Business (M269–M275): what the business screens share: the shapes the server answers with, the field
 // styles of Green's other forms, and how numbers read.
 
-export type Role = 'owner' | 'editor' | 'viewer';
+export type Role = 'owner' | 'editor' | 'viewer' | 'verifier';
 export type BizOrgRow = { id: string; name: string; kind: 'company' | 'consultancy'; role: Role; consultancy: string | null; consultancyId: string | null };
 export type BizOrg = {
   id: string; name: string; kind: 'company' | 'consultancy'; country: string | null; industry: string | null; employees: number | null;
   revenue: number | null; currency: string; baseYear: number | null; targetYear: number | null; targetPct: number | null; consultancyId: string | null;
+  carbonPrice: number | null; screening: Record<number, { status: Screen; reason: string | null }>;
 };
+export type Billing = { on: boolean; tier: 'FREE' | 'PRO' | 'CONSULTANCY'; pro: boolean; limits: { lines: number; suppliers: number; clients: number }; prices: { pro: number | null; consultancy: number | null } | null };
 export type Lever = { share: number; cost: number; saving: number };
 export type BizOverview = {
   org: BizOrg; role: Role; year: number; consultancy: string | null; totals: Totals; before: Totals; years: number[];
   counts: { lines: number; suppliers: number; answered: number; commutes: number }; plan: { levers: Record<string, Lever> };
+  billing: Billing; sites: string[];
 };
-export type Entry = { id: string; period: string; category: string; scope: number; quantity: number; factor: number; factorSource: string; kg: number; note: string | null; source: string; refId: string | null; updatedAt: string };
+export type Entry = { id: string; period: string; category: string; scope: number; quantity: number; factor: number; factorSource: string; kg: number; note: string | null; source: string; refId: string | null; quality: string | null; site: string | null; updatedAt: string };
 
 export const field = 'mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white';
 export const label = 'block text-xs font-semibold text-zinc-600 dark:text-zinc-300';
@@ -27,7 +30,7 @@ export const SCOPE_TEXT: Record<number, { title: string; what: string; tone: str
   3: { title: 'Scope 3', what: 'Travel, freight, waste, purchases, suppliers, commuting', tone: '#a16207' },
 };
 /** The GHG Protocol's names for the scope 3 categories the ledger uses. */
-export const S3_NAMES: Record<number, string> = { 1: 'Purchased goods and services', 2: 'Capital goods', 4: 'Upstream transport', 5: 'Waste', 6: 'Business travel', 7: 'Employee commuting' };
+export const S3_NAMES: Record<number, string> = { 1: 'Purchased goods and services', 2: 'Capital goods', 3: 'Fuel- and energy-related activities', 4: 'Upstream transport', 5: 'Waste', 6: 'Business travel', 7: 'Employee commuting' };
 
 export const tonnes = (kg: number) => `${(kg / 1000).toLocaleString(undefined, { maximumFractionDigits: kg >= 100_000 ? 0 : 2 })} t`;
 export const kgText = (kg: number) => `${Math.round(kg).toLocaleString()} kg`;
@@ -37,7 +40,7 @@ export const unitText = (category: string) => { const c = categoryById(category)
 export const catLabel = (category: string) => categoryById(category)?.label ?? category;
 export const groups = () => {
   const out = new Map<string, typeof CATEGORIES>();
-  for (const c of CATEGORIES) if (c.id !== 'supplier' && c.id !== 'commute') out.set(c.group, [...(out.get(c.group) ?? []), c]);
+  for (const c of CATEGORIES) if (!MADE.includes(c.id)) out.set(c.group, [...(out.get(c.group) ?? []), c]);
   return [...out];
 };
 const regionNames = typeof Intl !== 'undefined' && 'DisplayNames' in Intl ? new Intl.DisplayNames(undefined, { type: 'region' }) : null;
@@ -48,4 +51,4 @@ export const monthName = (period: string) => new Date(`${period}-15T00:00:00Z`).
 
 /** What every section gets from the company page. */
 export type SectionProps = { org: BizOrg; role: Role; year: number; overview: BizOverview; onChanged: () => void; onPick: (id: string) => void };
-export const canEdit = (r: Role) => r !== 'viewer';
+export const canEdit = (r: Role) => r === 'owner' || r === 'editor';

@@ -10,9 +10,9 @@ const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = baseUrl().replace('3100', '8787');
 const fail = [], out = [];
-const H = { Authorization: 'Bearer mock-token-demo@student.com', 'Content-Type': 'application/json' };
-const call = async (method, path, body) => {
-  const r = await fetch(`${base}/api/core${path}`, { method, headers: H, body: body ? JSON.stringify(body) : undefined });
+const H = (who = 'demo@student.com') => ({ Authorization: `Bearer mock-token-${who}`, 'Content-Type': 'application/json' });
+const call = async (method, path, body, who) => {
+  const r = await fetch(`${base}/api/core${path}`, { method, headers: H(who), body: body ? JSON.stringify(body) : undefined });
   const j = await r.json().catch(() => null);
   if (!r.ok) throw new Error(`${method} ${path}: ${r.status} ${JSON.stringify(j)}`);
   return j;
@@ -20,13 +20,24 @@ const call = async (method, path, body) => {
 const year = new Date().getFullYear();
 
 const { id } = await call('POST', '/green/biz', { name: `Check Co ${Date.now()}`, country: 'IN', currency: 'INR', employees: 50, revenue: 100_000_000, industry: 'Textiles' });
-await call('POST', `/green/biz/${id}/entries`, { period: `${year}-01`, category: 'electricity', quantity: 10_000 });
+await call('POST', `/green/biz/${id}/entries`, { period: `${year}-01`, category: 'electricity', quantity: 10_000, quality: 'measured', site: 'Main plant' });
+await call('POST', `/green/biz/${id}/credits`, { kind: 'rec', year, quantity: 5, registry: 'I-REC Standard', retired: true });
 await call('POST', `/green/biz/${id}/entries/batch`, { rows: [{ period: `${year}-02`, category: 'diesel', quantity: 300 }, { period: `${year}-02`, category: 'flight-short', quantity: 4000, note: 'DEL-BOM' }] });
 const sup = await call('POST', `/green/biz/${id}/suppliers`, { name: 'Check Cotton', spend: 1_000_000, year });
 const { surveyCode } = await call('POST', `/green/biz/${id}/survey`, { on: true });
 const { auditCode } = await call('POST', `/green/biz/${id}/audit-link`, { on: true });
 const before = await call('GET', `/green/biz/${id}?year=${year}`);
 if (Math.round(before.totals.scope[2]) !== 7160) fail.push(`electricity in India should be 7,160 kg, got ${before.totals.scope[2]}`);
+if (!(before.totals.byCategory.upstream > 0)) fail.push('no worked-out upstream (scope 3 category 3)');
+if (before.totals.scope2.location !== before.totals.scope2.market) fail.push('grid electricity should be the same both ways');
+
+// M278: a teacher's demo account plays the independent verifier: asks, the company answers, the verifier signs.
+const ver = await call('POST', `/green/biz/${id}/verifications`, { email: 'demo@teacher.com', firm: 'Check Assurance', year });
+const q = await call('POST', `/green/biz/${id}/verifications/${ver.id}/queries`, { question: 'Where is the January bill?' }, 'demo@teacher.com');
+await call('POST', `/green/biz/${id}/verifications/${ver.id}/queries/${q.id}/answer`, { answer: 'Bill 4471, attached.' });
+await call('POST', `/green/biz/${id}/verifications/${ver.id}/sign`, { standard: 'ISO 14064-3', level: 'limited', scopes: [1, 2, 3], opinion: 'Nothing came to our attention.' }, 'demo@teacher.com');
+const signed = await call('GET', `/green/biz/${id}/report?year=${year}`);
+if (!(signed.verification?.intact && !signed.verification.changed)) fail.push(`the report isn't verified after signing: ${JSON.stringify(signed.verification)}`);
 
 const browser = await launch();
 try {
@@ -35,12 +46,12 @@ try {
     await ctx.addInitScript(([t, org]) => { try { localStorage.setItem('theme', t); localStorage.setItem('uv-green-biz', org); } catch { /* fine */ } }, [theme, id]);
     const page = await ctx.newPage();
     page.on('pageerror', (e) => fail.push(`${width} ${theme}: ${e.message}`));
-    for (const b of ['overview', 'ledger', 'suppliers', 'staff', 'planner', 'report', 'log']) {
+    for (const b of ['overview', 'ledger', 'suppliers', 'staff', 'planner', 'credits', 'verify', 'report', 'team']) {
       const what = `${b} ${width} ${theme}`;
       await page.goto(`${base}/green?view=business&b=${b}`, { waitUntil: 'load', timeout: 240_000 });
       await page.getByRole('group', { name: 'Section' }).waitFor({ timeout: 60_000 }).catch(() => fail.push(`${what}: no sections`));
       await page.waitForTimeout(2200);
-      const want = { overview: /Footprint \d{4}/, ledger: /Electricity from the grid/, suppliers: /Check Cotton/, staff: /Copy the survey link/, planner: /What if/, report: /BRSR, Principle 6/, log: /The log is whole/ }[b];
+      const want = { overview: /Footprint \d{4}/, ledger: /Electricity from the grid/, suppliers: /Check Cotton/, staff: /Copy the survey link/, planner: /What if/, credits: /Renewable claim/, verify: /Check Assurance/, report: /Verified: limited assurance/, team: /The log is whole/ }[b];
       if (!(await page.getByText(want).first().isVisible().catch(() => false))) fail.push(`${what}: didn't show ${want}`);
       if (await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) fail.push(`${what}: scrolls sideways`);
       await page.addScriptTag({ path: AXE });
@@ -85,6 +96,9 @@ const after = await call('GET', `/green/biz/${id}?year=${year}`);
 const s3 = after.totals.byCategory;
 if (!(Math.round(s3.supplier ?? 0) === 10_000)) fail.push(`the supplier's share should be 10,000 kg (1M of 10M revenue × 100 t), got ${s3.supplier}`);
 if (!(s3.commute > 0)) fail.push('the commute answer didn’t make a commuting line');
+await call('POST', `/green/biz/${id}/entries`, { period: `${year}-03`, category: 'diesel', quantity: 50 });
+const moved = await call('GET', `/green/biz/${id}/report?year=${year}`);
+if (!moved.verification?.changed) fail.push('a change after signing should show on the report');
 const audit = await call('GET', `/green/biz/${id}/audit`);
 if (!audit.whole) fail.push('the log isn’t whole');
 out.push(`company ${id}: ${Math.round(after.totals.kg)} kg, log ${audit.count} rows`);

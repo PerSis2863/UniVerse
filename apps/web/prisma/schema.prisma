@@ -8024,6 +8024,11 @@ model GreenOrg {
   consultancyId String?
   auditCode     String?  @unique
   surveyCode    String?  @unique
+  tier                 String  @default("FREE")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  screening            String  @default("{}")
+  carbonPrice          Float?
   createdById   String
   createdAt     DateTime @default(now())
   updatedAt     DateTime @default(now()) @updatedAt
@@ -8058,6 +8063,8 @@ model GreenEntry {
   note         String?
   source       String   @default("manual")
   refId        String?
+  quality      String?
+  site         String?
   createdById  String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @default(now()) @updatedAt
@@ -8116,6 +8123,64 @@ model GreenCommute {
   @@unique([orgId, userId, year])
   @@index([orgId, year])
   @@map("green_commutes")
+}
+
+/// M279: an energy certificate (REC, I-REC, GO), an offset or a removal: reported beside the footprint, never netted off it.
+model GreenCredit {
+  id        String   @id @default(cuid())
+  orgId     String
+  year      Int
+  kind      String
+  quantity  Float
+  registry  String?
+  project   String?
+  serial    String?
+  vintage   Int?
+  retired   Boolean  @default(false)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([orgId, year])
+  @@map("green_credits")
+}
+
+/// M278: an independent verifier's review of a year, and the statement they sign over the numbers it covered.
+model GreenVerification {
+  id            String    @id @default(cuid())
+  orgId         String
+  year          Int
+  verifierId    String
+  firm          String
+  status        String    @default("reviewing")
+  standard      String?
+  level         String?
+  scopes        String?
+  accreditation String?
+  opinion       String?
+  snapshot      String?
+  signature     String?
+  signedAt      DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([orgId, year])
+  @@index([verifierId])
+  @@map("green_verifications")
+}
+
+/// M278: a verifier's question on a line (or the year), and the company's answer.
+model GreenQuery {
+  id             String    @id @default(cuid())
+  orgId          String
+  verificationId String
+  entryId        String?
+  question       String
+  answer         String?
+  status         String    @default("open")
+  createdAt      DateTime  @default(now())
+  answeredAt     DateTime?
+
+  @@index([verificationId])
+  @@map("green_queries")
 }
 
 /// M217: a person's emergency plan (JSON: src/lib/relief-plus.ts Plan) and go-bag ticks (JSON list of KIT ids).

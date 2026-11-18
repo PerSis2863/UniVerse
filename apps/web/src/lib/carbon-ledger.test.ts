@@ -61,3 +61,26 @@ describe('carbon ledger', () => {
     expect(costPerTonne(undefined, 2000)).toBeNull();
   });
 });
+
+describe('second wave (M276)', () => {
+  it('works out the upstream of fuel and electricity as scope 3 category 3, only when asked', () => {
+    const lines = [{ period: '2026-01', category: 'diesel', scope: 1, kg: 251, quantity: 100 }, { period: '2026-01', category: 'electricity', scope: 2, kg: 207, quantity: 1000 }];
+    expect(totals(lines, 2026).byCategory.upstream).toBeUndefined();
+    const t = totals(lines, 2026, { country: 'GB', upstream: true });
+    expect(t.byCategory.upstream).toBeCloseTo(100 * 0.61 + 1000 * 0.207 * 0.33, 3);
+    expect(t.scope[3]).toBe(t.byCategory.upstream);
+  });
+  it('reports scope 2 both ways: a renewable tariff is 0 by contract but not by grid', () => {
+    const t = totals([{ period: '2026-01', category: 'electricity-green', scope: 2, kg: 0, quantity: 1000 }], 2026, { country: 'IN' });
+    expect(t.scope2).toEqual({ market: 0, location: 716 });
+  });
+  it('weighs data quality and adds uncertainty as a root sum of squares', () => {
+    const t = totals([
+      { period: '2026-01', category: 'diesel', scope: 1, kg: 300, quantity: 1, quality: 'measured' },
+      { period: '2026-01', category: 'buy-it', scope: 3, kg: 400, quantity: 1 },
+    ], 2026);
+    expect(t.quality.kg).toEqual({ measured: 300, spend: 400 });
+    expect(t.quality.uncertaintyKg).toBeCloseTo(Math.sqrt(15 ** 2 + 200 ** 2), 2);
+    expect(t.quality.score).toBeCloseTo((300 * 1 + 400 * 5) / 700, 1);
+  });
+});

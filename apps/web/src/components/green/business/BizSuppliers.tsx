@@ -19,7 +19,7 @@ export const copy = async (text: string, what: string) => { try { await navigato
 
 export function BizSuppliers({ org, role, year, onChanged }: SectionProps) {
   const key = `/green/biz/${org.id}/suppliers?year=${year}`;
-  const { data, mutate } = useSWR<{ suppliers: Supplier[]; currency: string }>(key, fetcher);
+  const { data, mutate } = useSWR<{ suppliers: Supplier[]; currency: string }>(key, fetcher, { keepPreviousData: true });
   const [f, setF] = useState({ name: '', contact: '', spend: '' });
   const edit = canEdit(role);
   const add = async (e: React.FormEvent) => {
