@@ -8907,3 +8907,23 @@ Screenshots of every Travel page at 1280 and 390, light and dark, then the fixes
   wins the cascade): a card whose photo must reach its edges needs `p-0!`.
 - **Rule:** a guide's long text goes through `Prose`; Travel's actions sit where the eye already is (on the picture),
   booking links in one row.
+
+## M288: a trip's page and Find where to go, tidier, above all on a phone (18 Nov)
+
+The owner, after M287: "do more work like this on major things". Screenshots of every part of a trip (Plan, Today,
+Votes, Journal, Money, Checklist, Phrases, Ready, Share) and Find where to go at 1280 and 390, then:
+
+- **The trip's settings** (start date, travellers, style, currency) show on Plan and Money, the parts they change, and
+  on every part until the trip has a start date. On the others the part comes straight under the picture (on a phone
+  it was about 330 px of the same form before each part).
+- **A stop on the route** (phone): the name and dates keep the row, the days and order buttons go under them (the dates
+  stood in a column of five lines: "Apr / 12, / 2027").
+- **Today**: its line ("The trip starts in 141 days…") takes the row on a phone, the day picker under it.
+- **Money**: the three figures two across on a phone (You spans the row); the prices table is as wide as its countries
+  need (`7 + 5.5 rem` each), so two countries fit a phone without sideways scrolling (it was fixed at 28 rem).
+- **Find where to go**: no glow behind the first card; on a phone days and month share a row, then the budget and the
+  passport (`max-sm:order-*`).
+- **Checked:** `travel-look-ui.mjs` now also checks the trip's parts (no settings above Today, a stop's dates on one
+  line, the prices table fitting a phone, Money axe clean); `travel-trip-ui`, `travel-find-ui`, `travel-money-ui`,
+  `travel-ten-ui` pass; `pnpm check`. Browser only.
+- **Rule:** a form that repeats above every part of a page shows only where it changes something.

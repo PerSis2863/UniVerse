@@ -42,7 +42,7 @@ export function TripToday({ tripId, start, stops, items, onAdded }: { tripId: st
     <div className="space-y-6">
       <section className="panel flex flex-wrap items-center gap-3 p-5" aria-label="Which day">
         <CalendarClock className="h-5 w-5 text-indigo-500" aria-hidden />
-        <p className="min-w-0 flex-1 text-sm text-zinc-700 dark:text-zinc-200">
+        <p className="min-w-0 flex-1 basis-[calc(100%-2rem)] text-sm text-zinc-700 dark:text-zinc-200 sm:basis-0">
           {live.state === 'before' && `The trip starts in ${live.days} ${live.days === 1 ? 'day' : 'days'}. Here’s how a day will run.`}
           {live.state === 'after' && 'This trip is over. Look back at any day.'}
           {live.state === 'during' && !pick && `Today is day ${live.day + 1} in ${nice(stops[live.stop].name)}. It’s ${clock(live.now)} there.`}

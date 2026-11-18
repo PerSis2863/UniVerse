@@ -1,4 +1,4 @@
-// M287 Travel's look and smoothness: a guide's opening kept to three lines with Plan a trip and the map on its
+// M287–M288 Travel's look and smoothness: a guide's opening kept to three lines with Plan a trip and the map on its
 // picture, the booking links in one row, the parts' tabs staying in view while you scroll, long text behind
 // "Read more" at a readable width, a part opening at once; trip cards with the photo to their edges. Axe at
 // 1280 (dark) and 390 (light, a touch phone), no sideways scroll, no page errors. Needs the internet
@@ -52,6 +52,24 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
     r.flushPhoto = await card.evaluate((a) => { const p = a.firstElementChild.getBoundingClientRect(), b = a.getBoundingClientRect(); return Math.abs(p.left - b.left) < 2 && Math.abs(p.top - b.top) < 2; });
   }
   r.axeTrips = await axe(page);
+  // M288: a trip's parts: the settings only where they change something; on a phone a stop's dates on one line and
+  // the prices table without sideways scrolling.
+  const H = { Authorization: 'Bearer mock-token-alice@student.com' };
+  const trip = (await fetch(`${base}/api/core/travel/trips`, { headers: H }).then((x) => x.json())).trips.find((t) => t.places > 0 && t.startDate);
+  if (trip) {
+    await page.goto(`${base}/travel/trip?id=${trip.id}&part=today`, { waitUntil: 'load', timeout: 180_000 });
+    await page.getByRole('region', { name: 'Which day' }).waitFor({ timeout: 60_000 });
+    r.detailsOnToday = await page.getByRole('region', { name: 'Trip details' }).count();
+    await page.goto(`${base}/travel/trip?id=${trip.id}`, { waitUntil: 'load', timeout: 180_000 });
+    await page.getByRole('region', { name: 'Trip details' }).waitFor({ timeout: 60_000 });
+    r.stopDateLines = await page.locator('ol li p.text-xs').first().evaluate((p) => Math.round(p.getBoundingClientRect().height / parseFloat(getComputedStyle(p).lineHeight)));
+    await page.goto(`${base}/travel/trip?id=${trip.id}&part=money`, { waitUntil: 'load', timeout: 180_000 });
+    const prices = page.getByRole('region', { name: 'Prices in each country' });
+    await prices.waitFor({ timeout: 60_000 });
+    r.pricesFit = await prices.evaluate((el) => el.scrollWidth <= el.clientWidth + 1);
+    r.axeMoney = await axe(page);
+    r.wideMoney = await wide();
+  }
   r.wideTrips = await wide();
   r.errors = errors;
   if (r.hero > 3) fails.push(`${k}: the opening is ${r.hero} lines`);
@@ -62,8 +80,11 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
   if (r.readMore === false) fails.push(`${k}: Read more showed nothing`);
   if (r.lineChars > 100) fails.push(`${k}: ~${r.lineChars} characters a line`);
   if (r.flushPhoto === false) fails.push(`${k}: the trip photo is inset`);
-  for (const x of ['axeTop', 'axeDo', 'axeTrips']) if (r[x].length) fails.push(`${k} ${x}: ${r[x].join('; ')}`);
-  for (const x of ['wideTop', 'wideDo', 'wideTrips']) if (r[x]) fails.push(`${k}: sideways scroll (${x})`);
+  if (r.detailsOnToday) fails.push(`${k}: the trip's settings above Today`);
+  if (r.stopDateLines > 1) fails.push(`${k}: a stop's dates on ${r.stopDateLines} lines`);
+  if (phone && r.pricesFit === false) fails.push(`${k}: the prices table scrolls sideways`);
+  for (const x of ['axeTop', 'axeDo', 'axeTrips', 'axeMoney']) if (r[x]?.length) fails.push(`${k} ${x}: ${r[x].join('; ')}`);
+  for (const x of ['wideTop', 'wideDo', 'wideTrips', 'wideMoney']) if (r[x]) fails.push(`${k}: sideways scroll (${x})`);
   if (errors.length) fails.push(`${k}: page errors ${errors.join(' | ')}`);
   await ctx.close();
 }
