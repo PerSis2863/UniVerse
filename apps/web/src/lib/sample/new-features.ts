@@ -72,3 +72,16 @@ export function sampleRevisionPacks(d: SampleDb) {
   };
   return { canEdit, sources: canEdit ? [{ id: 'sample-src-1', title: 'Week 1 slides', kind: 'material', chars: 9200 }] : [], packs: [{ id: 'sample-pack', title: 'Midterm revision', pack, sources: ['Week 1 slides', 'Week 2 slides'], usedAi: true, published: true, createdAt: new Date().toISOString() }] };
 }
+
+/** GET /office-slots (M295): a teacher's coming times, or a student's teachers' times (one booked, one waited for). */
+export function sampleOfficeSlots(d: SampleDb) {
+  const at = (days: number, h: number, m = 0) => { const t = new Date(); t.setDate(t.getDate() + days); t.setHours(h, m, 0, 0); return t.toISOString(); };
+  if (d.me.role === 'TEACHER' || d.me.role === 'ADMIN') {
+    const names = (d.classmates as any[]).map((s) => s.name);
+    return { role: 'teacher', lengths: [10, 15, 20, 30, 45, 60], slots: [0, 15, 30, 45].map((m, i) => ({ id: `sample-os-${i}`, startAt: at(1, 14, m), durationMin: 15, mode: 'VIDEO', location: null, topic: i === 0 ? 'Problem set 3' : null, student: i < 2 ? names[i] : null, waiting: i === 0 ? 2 : 0 })) };
+  }
+  return {
+    role: 'student',
+    teachers: [{ id: 'sample-u-meera', name: 'Dr. Meera Iyer', courses: ['CS301'], slots: [0, 15, 30, 45].map((m, i) => ({ id: `sample-os-${i}`, startAt: at(1, 14, m), durationMin: 15, mode: 'VIDEO', location: null, mine: i === 1, taken: i === 0 || i === 2, topic: i === 1 ? 'Threads lab' : null, waiting: i === 0 ? 1 : 0, place: i === 0 ? 1 : null, callId: 'o_sample' })) }],
+  };
+}

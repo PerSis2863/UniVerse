@@ -8271,3 +8271,35 @@ model RevisionPack {
   @@index([courseId])
   @@map("revision_packs")
 }
+
+/// M295: a bookable office-hours time (src/server/office-slots.ts). `studentId` set: booked (claimed by a guarded update).
+model OfficeSlot {
+  id          String           @id @default(cuid())
+  teacherId   String
+  startAt     DateTime
+  durationMin Int              @default(15)
+  mode        String           @default("VIDEO")
+  location    String?
+  studentId   String?
+  topic       String?
+  bookedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  waiting     OfficeWaitlist[]
+
+  @@index([teacherId, startAt])
+  @@index([studentId])
+  @@map("office_slots")
+}
+
+/// M295: a student waiting for a booked office-hours time, first come first served (by createdAt).
+model OfficeWaitlist {
+  slotId    String
+  slot      OfficeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  studentId String
+  topic     String?
+  createdAt DateTime   @default(now())
+
+  @@id([slotId, studentId])
+  @@index([studentId])
+  @@map("office_waitlist")
+}

@@ -9054,3 +9054,19 @@ a whole course or a part of it, before an exam.
   `email: false`). Students see published packs only; answers open one by one; the checklist's ticks are kept on the
   device (`localStorage` `uv-pack:<id>`, a per-viewer convenience). Printable (`.print-report`).
 - `revision_packs` (0241). **Rule:** sources are cut to 24,000 characters in all, shared fairly (`joinSources`).
+
+## M295: office hours you can book, with a waiting list (18 Nov)
+
+The owner's 32 features, UniVersity 5. Office hours were a live line only (open now, join the queue, Stage 4 · 4.7).
+
+- **Calls → Bookable office hours** (`OfficeBooking.tsx` under `OfficeHoursCard`, `/office-slots`,
+  `src/server/office-slots.ts`, routes in the new `src/server/modules/school-plus.ts` for UniVersity's additions):
+  a teacher opens a span (up to 10 hours, 90 days ahead) cut into meetings of 10–60 minutes with an optional break
+  (`slotTimes` from parent meetings, skipping their own times), by video (the office-hours room `o_<teacherId>`)
+  or in a place.
+- **Students** see their own teachers' times for 30 days: **Book** (claimed by `updateMany … studentId: null`, so two
+  can't take one; at least 15 minutes ahead; two coming bookings per teacher), or **Join the waiting list** of a
+  taken one (ten at most). **Cancel** gives the time to the first one waiting (`giveToNext`, claimed the same way) and
+  tells them; the teacher is told of bookings and cancellations; a teacher removing a time tells everyone on it. In-app
+  and push, never email (`notify`, `email: false`); times in messages are UTC (`when`).
+- `office_slots`, `office_waitlist` (0242). Test: `office-slots.test.ts` (a taken time refused, the waiting list moves up).
