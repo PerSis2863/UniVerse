@@ -9378,3 +9378,17 @@ company bills (M270-era).
   `home-bill`), only fills the form.
 - **`HomeEnergy.tsx`** at the end of Green → Footprint's questions. Deleting an account removes the bills and home
   (`eraseAccount`); "Download my data" has them by `userId`. 0250.
+
+## M318: neighbourhood challenges (18 Nov)
+
+The owner's 32 features, Green 2. Green had a weekly challenge for everyone and teams with codes; nothing for the
+people who live near each other.
+
+- **The neighbourhood** (`green_homes.areaLat/areaLng`, 0251; `areaOf` in `src/lib/green-area.ts`, tested): the 0.1°
+  square's south-west corner, as Green's map rounds positions; the device's position is used once and never stored.
+- **`/green/area`** (`src/server/green-area.ts`): with fewer than `MIN_NEIGHBOURS` (3) people in the square, only the
+  count; otherwise this month's and last month's confirmed kg CO₂ of everyone there (one SQL joining `green_actions` and
+  `green_homes`) and the area's challenges (`green_area_challenges`: kind, goal in its units, 7/14/30 days, three running
+  at most), each with its confirmed progress. Setting one tells the neighbours in the app (200 at most, `email: false`);
+  only whoever set it removes it. Test: `green-area.test.ts`.
+- **`Neighbourhood.tsx`** under the weekly challenge on Green's home; `pace()` says on or behind pace.

@@ -190,3 +190,15 @@ export function sampleGreenHome() {
   const by = months.map((m) => { const kg = Math.round(bills.filter((b) => b.month === m).reduce((s, b) => s + b.kg, 0) * 10) / 10; return { month: m, kg, perPerson: Math.round((kg / 2) * 10) / 10 }; });
   return { home: { people: 2, country: 'GB' }, bills, months: by, compare: { month: months[11], kg: by[11].kg, vsYearAgo: null, vsAverage: 35 }, kwhMonth: 270 };
 }
+
+/** GET /green/area (M318): a lively neighbourhood with two challenges. */
+export function sampleGreenArea() {
+  const day = 86_400_000, now = Date.now();
+  return {
+    area: { lat: 12.9, lng: 77.5 }, neighbours: 37, enough: true, month: { kg: 1284.5, lastKg: 1102 },
+    challenges: [
+      { id: 'sample-ac-1', title: 'Bike to work fortnight', kind: 'CYCLE', unit: 'km', goal: 1500, progress: 940, startsAt: new Date(now - 8 * day).toISOString(), endsAt: new Date(now + 6 * day).toISOString(), over: false, mine: false },
+      { id: 'sample-ac-2', title: '200 kg recycled this month', kind: 'RECYCLE', unit: 'kg', goal: 200, progress: 61, startsAt: new Date(now - 14 * day).toISOString(), endsAt: new Date(now + 16 * day).toISOString(), over: false, mine: true },
+    ],
+  };
+}

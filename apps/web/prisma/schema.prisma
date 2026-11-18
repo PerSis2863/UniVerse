@@ -8380,6 +8380,11 @@ model GreenHome {
   people    Int      @default(1)
   country   String?
   updatedAt DateTime @updatedAt
+  /// M318: the neighbourhood, a 0.1° square (its south-west corner)
+  areaLat   Float?
+  areaLng   Float?
+
+  @@index([areaLat, areaLng])
 
   @@map("green_homes")
 }
@@ -8399,4 +8404,21 @@ model GreenBill {
 
   @@unique([userId, month, kind])
   @@map("green_bills")
+}
+
+/// M318: a challenge for a neighbourhood (a 0.1° square): a kind of action, a goal in its units, a few weeks.
+model GreenAreaChallenge {
+  id        String   @id @default(cuid())
+  areaLat   Float
+  areaLng   Float
+  title     String
+  kind      String
+  goal      Float
+  startsAt  DateTime
+  endsAt    DateTime
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([areaLat, areaLng, endsAt])
+  @@map("green_area_challenges")
 }

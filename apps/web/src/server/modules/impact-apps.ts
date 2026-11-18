@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { addAreaChallenge, greenArea, removeAreaChallenge, setGreenArea } from '../green-area';
 import { greenHome, readHomeBill, removeBill, saveBill, setGreenHome } from '../green-home';
 import { incidentReport, orgIncidents } from '../relief-report';
 import prisma from '@/lib/db';
@@ -229,6 +230,11 @@ export default function impactAppsModule(router: Router) {
   green.post('home/bills', ({ user, body }) => saveBill(user, body ?? {}));
   green.delete<{ id: string }>('home/bills/:id', ({ user, params }) => removeBill(user, params.id));
   green.post('home/read', { status: 200 }, ({ user, body }) => readHomeBill(user, body ?? {}));
+  // M318: neighbourhood challenges.
+  green.get('area', ({ user }) => greenArea(user));
+  green.put('area', ({ user, body }) => setGreenArea(user, body ?? {}));
+  green.post('area/challenges', ({ user, body }) => addAreaChallenge(user, body ?? {}));
+  green.delete<{ id: string }>('area/challenges/:id', ({ user, params }) => removeAreaChallenge(user, params.id));
   green.post('footprints', ({ user, body }) => saveFootprint(user, body ?? {}));
   green.get('goals', ({ user }) => greenGoals(user));
   green.put('goals', ({ user, body }) => setGreenGoal(user, body ?? {}));

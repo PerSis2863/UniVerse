@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
+import { Neighbourhood } from './Neighbourhood';
 import useSWR from 'swr';
 import Image from 'next/image';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
@@ -223,6 +224,7 @@ export function GreenApp() {
               {c.team === null && <Link href="/green/teams" className="btn-secondary btn-sm mt-4 inline-flex">Join or start a team</Link>}
             </section>
           )}
+          <Neighbourhood />
           <TeamProofs onDone={() => void mutate()} />
         </div>
       </div>
