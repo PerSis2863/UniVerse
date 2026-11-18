@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M268 is the latest).
+  builds on it). The newest notes are at the end (M275 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -69,7 +69,10 @@ software or website in the main website… where they create a impact"). Each ap
 - **Relief** (`/relief`): needs and offers of help on a live map, with notifications and nearby
   alerts for helpers, and organisations (`/relief/orgs`: NGOs with members, supplies and volunteer shifts).
 - **Green** (`/green`): climate actions with the CO₂ they save, streaks, badges, a weekly challenge,
-  teams and a map.
+  teams and a map; **Business** (`/green?view=business`, M269–M275): a company's carbon footprint by the GHG
+  Protocol's scopes 1–3 (a ledger with sourced factors, spreadsheet import, bills read by AI), suppliers and staff
+  answering by link, Trace passports' carbon per unit, a reduction planner, a BRSR / CSRD-style draft report, a
+  hash-chained log with an auditor's link (`/carbon/[code]`), and consultancies managing client companies.
 - **Travel** (`/travel`, M183): find any place; its guide (what to see, do, eat, drink, where to sleep,
   getting around, staying safe and polite) from Wikivoyage, the country's facts and emergency numbers, the
   week's weather; saved places; stays, flights, tours and trains booked with partners; **Find where to go**
@@ -235,7 +238,10 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   Google Maps). M232 (16 Nov), Travel's pictures sharp: a real photo per place (Wikidata's main image, checked by eye; `photo` in `travel-ideas.ts` rows overrides) in place of the 7:1 banners, in Wikimedia's widths (`Cover`, `commonsSrcSet`), the map card's pictures too; 70 more places (215), each with its weather. M231 (16 Nov), a sweep for errors and smoothness (progress bars `<Fill>`, loops in CSS, one press per button, the motion layer's forced layouts gone, no glass behind sheets; the rules in §8 and `motion-rules.test.ts`; Next 16.4.5 from 30 Nov). M230 (16 Nov), projects in Tasks: the Timeline a Gantt chart (start days, milestones, lines to waiting cards, drag to move) and time logged on cards (`TimeLog`, 0227). M229 (16 Nov), voice typing (`DictateButton`, `src/lib/dictation.ts`) in chats, documents and Quick notes. M228 (16 Nov), a Grim Prompter threat model (report given to the owner privately, not committed; the PDF layout frame sandboxed). M227 (16 Nov), Calls is **Meet & call** (`MeetHome`: New meeting, Join, Schedule, voice rooms, happening now; in a call Zoom's keys and push to talk, `src/lib/meet.ts`). M226 (16 Nov), no dot plot above a Travel guide's places. M225 (16 Nov), the lag measured and cut in the browser (the scene 30 a second at 1.5x, resting after 30 s untouched with the landing's demos, `useIdle`; no `html:has`; Green's map still). M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
   icons, grouped by day, stacks, iOS's segmented control, swipe to read, smooth spring motion).
 - **Merged 18 Nov (PR #136):** M268 (17 Nov; built as M232 on `claude/youthful-fermi-sbdtcp`), Travel's map: kinds glide in over a city, the guide's highlights and areas (`Highlights.tsx`, Regionlist districts), "Where are you staying?" with what's around it (`src/lib/travel-stay.ts`: a big city's district picks; the stays saved on trips, `GET /travel/trips/stays`).
-- **On a branch, not merged yet:** nothing that was found on 18 Nov.
+- **On the branch `claude/funny-galileo-y4mz9r`, not merged yet (18 Nov, the owner's exception to the pause: "build it now",
+  all seven parts):** M269–M275, **Green → Business**, a carbon-footprint platform for companies and consultancies (the
+  Business tab in Green; `src/lib/carbon-ledger.ts`, `src/server/green-business.ts`, `components/green/business/`,
+  the public `/carbon/[code]`; database update 0236). Charging companies (Stripe) was left out.
 - **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
   hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
   an app's own row of tabs. M220 (16 Nov), light mode is the default (dark for those who chose it). M219 (16 Nov), on a computer in a browser the menu is a bar across the top
@@ -281,7 +287,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M269** (another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M276** (M269–M275: Green → Business, 18 Nov; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -298,7 +304,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0236`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0237`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

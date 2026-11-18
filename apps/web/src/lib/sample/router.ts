@@ -10,6 +10,7 @@ import { answerText, cleanQuestionInput, forStudent, markAnswer, metaOf, typeOf 
 import { DEFAULT_PREFS, GROUP_OF_TYPE, NOTE_GROUPS } from '@/lib/notify-prefs';
 import { builtInQuestions, countFillers, lengthAdvice, starParts, wordCount } from '@/lib/careers';
 import { carbonSummary, kgFor, activityOf } from '@/lib/carbon';
+import * as biz from './green-business';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 import * as impact from './impact';
 import { localPlan } from '@/lib/ask';
@@ -1063,6 +1064,18 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/green\/events$/, () => ok(impact.sampleGreenEvents())],
   [/^\/green\/map$/, () => ok(impact.sampleGreenMap())],
   [/^\/green\/proofs$/, () => ok(impact.sampleGreenProofs())],
+  // M269–M275: Green → Business.
+  [/^\/green\/biz$/, () => ok(biz.sampleBizList())],
+  [/^\/green\/biz\/([^/]+)\/entries$/, ({ m, q }) => ok(biz.sampleBizEntries(m[1], q))],
+  [/^\/green\/biz\/([^/]+)\/suppliers$/, ({ m, q }) => ok(biz.sampleBizSuppliers(m[1], q))],
+  [/^\/green\/biz\/([^/]+)\/staff$/, () => ok(biz.sampleBizStaff())],
+  [/^\/green\/biz\/([^/]+)\/members$/, ({ db: d }) => ok(biz.sampleBizMembers(d.me))],
+  [/^\/green\/biz\/([^/]+)\/audit$/, () => ok(biz.sampleBizAudit())],
+  [/^\/green\/biz\/([^/]+)\/report$/, ({ m, q }) => ok(biz.sampleBizReport(m[1], q))],
+  [/^\/green\/biz\/([^/]+)\/trace$/, () => ok(biz.sampleBizTrace())],
+  [/^\/green\/biz\/([^/]+)\/clients$/, ({ m, q }) => ok(biz.sampleBizClients(m[1], q))],
+  [/^\/green\/biz\/([^/]+)$/, ({ m, q }) => ok(biz.sampleBizOrg(m[1], q))],
+  [/^\/green\/link\/([^/]+)$/, () => ok(biz.sampleCarbonLink())],
   [/^\/trace\/brand$/, () => ok(impact.sampleTraceBrand())],
   [/^\/trace\/products$/, () => ok(impact.sampleTraceProducts())],
   [/^\/trace\/takebacks$/, () => ok(impact.sampleTraceTakebacks())],
