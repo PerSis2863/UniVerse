@@ -43,7 +43,7 @@ export function RevisionPacks({ courseId }: { courseId: string }) {
               <button type="button" onClick={() => setOpen(p.id)} className="card w-full p-4 text-start">
                 <span className="flex items-center gap-2">
                   <span className="font-semibold text-zinc-900 dark:text-white me-auto" translate="no">{p.title}</span>
-                  {data.canEdit && <span className={cn('badge', p.published ? 'badge-green' : 'badge-amber')}>{p.published ? 'Shared' : 'Draft'}</span>}
+                  {data.canEdit && <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', p.published ? 'bg-emerald-500/10 text-emerald-800 dark:text-emerald-200' : 'bg-amber-500/10 text-amber-900 dark:text-amber-200')}>{p.published ? 'Shared' : 'Draft'}</span>}
                 </span>
                 <span className="mt-1 block text-sm text-zinc-600 dark:text-zinc-300">{p.pack.topics.length} topics · {p.pack.questions.length} practice questions</span>
               </button>

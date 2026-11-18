@@ -35,10 +35,10 @@ export function ShopGuide() {
       <span className="block h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.06]"><Fill value={p.done / p.total} className="bg-pink-500" /></span>
       <ol className="space-y-2">
         {steps.map((s, i) => (
-          <li key={s.id} className={cn('flex gap-3 text-sm', s.done && 'opacity-70')}>
+          <li key={s.id} className="flex gap-3 text-sm">
             <span className={cn('mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[11px] font-semibold', s.done ? 'bg-emerald-500 text-white' : 'bg-zinc-100 text-zinc-700 dark:bg-white/10 dark:text-zinc-200')}>{s.done ? <Check className="w-3 h-3" aria-label="Done" /> : i + 1}</span>
             <span className="min-w-0 flex-1">
-              <span className="block font-medium text-zinc-900 dark:text-white">{s.title}</span>
+              <span className={cn('block font-medium', s.done ? 'text-zinc-600 line-through dark:text-zinc-300' : 'text-zinc-900 dark:text-white')}>{s.title}</span>
               <span className="block text-zinc-600 dark:text-zinc-300">{s.how}</span>
               {s.id === 'sign' && <label className="mt-1 inline-flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={sign} onChange={(e) => tick(e.target.checked)} />It’s up at my counter</label>}
             </span>

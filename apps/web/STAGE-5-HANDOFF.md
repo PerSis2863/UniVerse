@@ -9441,3 +9441,20 @@ OpenStreetMap's `wheelchair` tag.
   (`Reviews.tsx`); `GET /travel/reviews` adds `access` (`accessSummary`: per thing, yes of those who answered; five notes).
 - **The 32 are done** (M291–M322). Next in this round: a check of the new screens in a browser, the page-weight numbers
   for M306, then more new features (the owner: "also make more new features").
+
+## M323: the 32 features' screens in a browser, and fixes (18 Nov)
+
+The owner's 32 features, "a smoothness pass on every new screen". `pnpm local:build` (5.2 min; server code 53.7 of 64 MB),
+`pnpm local:serve`, then **`scripts/checks/new-screens-ui.mjs`** (new): 22 screens in sample mode (so each has data:
+`src/lib/sample/new-features.ts`) at 390 and 1280 px, light and dark: axe serious/critical, sideways scrolling, page and
+console errors.
+
+- **No page errors, nothing scrolling sideways.** Fixed what axe found: a course board's chosen tab (`text-indigo-600` on
+  the tab bar's #ececec, 4.37:1, on every course) now `text-indigo-700`; the revision pack's Shared/Draft badge; the shop
+  guide's finished steps (no `opacity-70`: a struck-through title instead); the funnel's table and Trace Insights'
+  recent reviews now keyboard-scrollable regions; Insights' Gold tier `text-amber-800`, 11 px. Seen in a screenshot: the
+  lesson plan's topic box squeezed on a phone (now its own line below the date).
+- **Left:** the campus map's building buttons (older): their `aria-label` doesn't include all their visible text
+  (`label-content-name-mismatch`).
+- **M306's numbers** (`bundle-report.mjs` on this build): `/travel/trip` 468 → 421 KB, `/relief/orgs` 406 → 323 KB;
+  `/relief/mine` 389 → 398 KB (the route planner and the outbox), `/green` 394 → 395 KB.

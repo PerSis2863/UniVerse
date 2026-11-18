@@ -246,7 +246,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
           {TABS.filter((t) => t.id !== 'projects' || canManage).map((t) => (
             <button key={t.id} onClick={() => setTab(t.id)} aria-current={tab === t.id ? 'page' : undefined}
               className={cn('relative flex items-center gap-1.5 px-3 py-3.5 text-xs font-semibold whitespace-nowrap transition-colors',
-                tab === t.id ? 'text-indigo-600 dark:text-indigo-300' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
+                tab === t.id ? 'text-indigo-700 dark:text-indigo-300' : 'text-zinc-500 hover:text-zinc-900 dark:hover:text-white')}>
               <t.icon className="w-3.5 h-3.5" /> {t.label}
               {tab === t.id && <motion.span layoutId="board-tab" transition={spring.snappy} className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-indigo-500" />}
             </button>

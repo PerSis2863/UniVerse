@@ -97,8 +97,8 @@ export function LessonPlanner({ courseId }: { courseId: string }) {
                 <li key={k} className="border-t border-zinc-100 px-2 py-2 dark:border-white/[0.06]">
                   <div className="flex flex-wrap items-center gap-2 sm:flex-nowrap">
                     <span className="w-32 shrink-0 text-sm text-zinc-700 dark:text-zinc-200"><span className="block font-medium">{fmt(d.day)}</span><span className="text-xs text-zinc-500 tabular-nums">{d.start}–{d.end} · {d.type.toLowerCase()}</span></span>
-                    <input aria-label={`Topic for ${fmt(d.day)} ${d.start}`} className={cn('input min-w-0 flex-1', l.done && 'line-through text-zinc-500')} maxLength={160} placeholder="Topic" value={l.topic} onChange={(e) => change(d, { topic: e.target.value })} />
-                    <label className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={l.done} onChange={(e) => change(d, { done: e.target.checked })} />Taught</label>
+                    <input aria-label={`Topic for ${fmt(d.day)} ${d.start}`} className={cn('input order-last min-w-0 basis-full sm:order-none sm:basis-0 sm:flex-1', l.done && 'line-through text-zinc-500')} maxLength={160} placeholder="Topic" value={l.topic} onChange={(e) => change(d, { topic: e.target.value })} />
+                    <label className="ms-auto flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300 sm:ms-0"><input type="checkbox" checked={l.done} onChange={(e) => change(d, { done: e.target.checked })} />Taught</label>
                     <button type="button" className="btn-ghost btn-sm" aria-expanded={expanded} onClick={() => setOpen(expanded ? null : k)}><ChevronDown className={cn('w-4 h-4 transition-transform', expanded && 'rotate-180')} aria-hidden /><span className="sr-only">Details for {fmt(d.day)}</span></button>
                   </div>
                   {expanded && (

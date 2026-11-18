@@ -52,7 +52,7 @@ export function ScanFunnel() {
           </ol>
           {data.drop && HINT[data.drop] && <p className="rounded-xl bg-rose-500/10 px-3 py-2 text-sm text-rose-900 dark:text-rose-100">Most people stop before “{data.steps.find((s) => s.key === data.drop)?.label}”. {HINT[data.drop]}</p>}
           {!product && data.byProduct.length > 1 && (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto" tabIndex={0} role="region" aria-label="The funnel per product">
               <table className="w-full text-sm">
                 <caption className="sr-only">The funnel per product</caption>
                 <thead><tr className="text-start text-xs text-zinc-500">{['Product', ...data.steps.map((s) => s.label)].map((h) => <th key={h} scope="col" className="px-2 py-1 text-start font-medium">{h}</th>)}</tr></thead>

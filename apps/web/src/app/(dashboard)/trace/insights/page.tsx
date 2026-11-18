@@ -29,7 +29,7 @@ interface Insights {
 }
 
 const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-const TIER: Record<string, string> = { Gold: 'bg-amber-400/20 text-amber-700 dark:text-amber-200', Silver: 'bg-zinc-400/20 text-zinc-700 dark:text-zinc-200', Bronze: 'bg-orange-700/15 text-orange-800 dark:text-orange-300' };
+const TIER: Record<string, string> = { Gold: 'bg-amber-400/20 text-amber-800 dark:text-amber-200', Silver: 'bg-zinc-400/20 text-zinc-700 dark:text-zinc-200', Bronze: 'bg-orange-700/15 text-orange-800 dark:text-orange-300' };
 const rise = (i: number) => ({ initial: { opacity: 0, y: 10 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.05, duration: 0.35, ease: [0.23, 1, 0.32, 1] as const } });
 
 export default function InsightsPage() {
@@ -91,7 +91,7 @@ function Body() {
                   })}
                 </div>
               </div>
-              <ul className="mt-4 space-y-2 max-h-64 overflow-y-auto">
+              <ul className="mt-4 space-y-2 max-h-64 overflow-y-auto" tabIndex={0} aria-label="Recent reviews">
                 {data.reviews.recent.filter((r) => r.text).map((r) => (
                   <li key={r.id} className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] px-3 py-2 text-sm">
                     <span className="text-amber-500" aria-label={`${r.stars} stars`}>{'★'.repeat(r.stars)}<span className="text-zinc-300 dark:text-zinc-600">{'★'.repeat(5 - r.stars)}</span></span>
@@ -113,7 +113,7 @@ function Body() {
                 <li key={s.rank} className="flex items-center gap-3 text-sm">
                   <span className="w-5 font-mono text-xs text-zinc-500">{s.rank}</span>
                   <span className="flex-1 min-w-0 truncate text-zinc-900 dark:text-white">{s.name}</span>
-                  <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-bold', TIER[s.tier.label])}>{s.tier.label}</span>
+                  <span className={cn('rounded-full px-2 py-0.5 text-[11px] font-bold', TIER[s.tier.label])}>{s.tier.label}</span>
                   <span className="w-14 text-end font-mono text-xs tabular-nums">{s.sales}</span>
                 </li>
               ))}
