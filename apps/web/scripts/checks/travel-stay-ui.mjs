@@ -1,8 +1,8 @@
-// M232 Travel's map for a city and a stay: opened on Paris (from its guide), the Sights panel shows the guide's
+// M268 Travel's map for a city and a stay: opened on Paris (from its guide), the Sights panel shows the guide's
 // must-see places and its areas (districts with what's there); Food, picked over the whole city, glides in and lists
 // restaurants instead of asking to zoom in; a hotel typed in ("Hotel Le Bristol Paris") is found and marked, and the
 // panel recommends what's around it (must-see with the walk, areas) with buttons for the nearest restaurants, cafés,
-// bars and shops; with the stay's district guide, the city's own picks for food and shopping (M232); a hotel saved on a
+// bars and shops; with the stay's district guide, the city's own picks for food and shopping (M268); a hotel saved on a
 // trip is offered under the field and used with one tap. Axe at 1280 (dark) and 390 (light), no sideways scroll, no page errors. Needs the internet
 // (OpenFreeMap, Nominatim, Wikivoyage). Runs against `local:serve` (or BASE=…).
 import { createRequire } from 'node:module';

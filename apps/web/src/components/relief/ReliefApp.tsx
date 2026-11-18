@@ -2,13 +2,13 @@
 
 import { PlacesBoard } from './PlacesBoard';
 import { SafetyCheck } from './SafetyCheck';
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
@@ -29,6 +29,9 @@ import { Funnel } from '@/components/live/Funnel';
 import { Radar } from '@/components/live/Radar';
 import { Journey } from '@/components/live/Journey';
 import { useActivePoll } from '@/lib/realtime-client';
+import { Fill } from '@/components/ui/Fill';
+import { Callout, CountChips, InkPill, placeCallout, ProposalSheet, QueueCard, StatCard, StatStrip, TickStrip, undoToast } from '@/components/map-ui/Command';
+import { count, drawIcons, IconSource, route, unit, zone, type Icons } from '@/components/map-ui/marks';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
 // engine as Trace), the most urgent and nearest needs first, "I can help", messages, and delivered.
@@ -49,7 +52,7 @@ interface ReliefMap {
 }
 
 export const KIND_ICON: Record<ReliefKind, typeof Utensils> = { FOOD: Utensils, WATER: Droplets, SHELTER: Home, MEDICAL: Stethoscope, TRANSPORT: Car, CLOTHES: Shirt, OTHER: Package };
-const OFFER = '#14b8a6', DONE = '#22c55e';
+const OFFER = '#14b8a6', DONE = '#22c55e', ACCENT = '#f26322'; // M262: the recording's orange (`.cmd-relief`)
 
 /** M172: a name on the map with a soft halo, and a fainter second line (where it is) when given. */
 function label(ctx: CanvasRenderingContext2D, f: Frame, text: string, x: number, y: number, sub: string | null) {
@@ -70,6 +73,9 @@ const many = (n: number, one: string, more = `${one}s`) => `${n} ${n === 1 ? one
 interface Draft { type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; details: string; people: string; urgency: Urgency; place: string; orgId: string; textId: string; skill: Skill | '' }
 const EMPTY: Draft = { type: 'NEED', kind: 'FOOD', title: '', details: '', people: '1', urgency: 'MEDIUM', place: '', orgId: '', textId: '', skill: '' };
 const WORLD: Box = [-170, -56, 180, 76];
+/** M262: a need still waiting that's critical or high: the map's orange ring, the "Urgent" chip. */
+const urgentOf = (p: ReliefPost) => p.type === 'NEED' && p.status === 'OPEN' && (p.urgency === 'CRITICAL' || p.urgency === 'HIGH');
+const waited = (iso: string, now: number) => { const m = Math.max(0, Math.round((now - new Date(iso).getTime()) / 60_000)); return m < 60 ? `${m} min` : m < 2880 ? `${Math.round(m / 60)} h` : `${Math.round(m / 1440)} days`; };
 
 /** The actions a person can take on a post. */
 export function PostActions({ p, onChange, small }: { p: ReliefPost; onChange: () => void; small?: boolean }) {
@@ -108,7 +114,7 @@ export function ReliefApp() {
   // (Only while someone is using the tab: an idle one asked every 20 s all day, M169.)
   const mapPoll = useActivePoll(20_000);
   const { data, mutate } = useSWR<ReliefMap>('/relief/map', fetcher, { refreshInterval: mapPoll, keepPreviousData: true });
-  const [type, setType] = useState<'ALL' | 'NEED' | 'OFFER'>('ALL');
+  const [type, setType] = useState<'ALL' | 'NEED' | 'OFFER' | 'URGENT'>('ALL');
   const [kinds, setKinds] = useState<Set<ReliefKind>>(new Set());
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null);
   // An alert's link (/relief?post=<id>) opens with that post chosen.
@@ -143,7 +149,16 @@ export function ReliefApp() {
   const [hover, setHover] = useState<{ key: string; x: number; y: number; mw: number; post?: ReliefPost; group?: ReliefPost[]; org?: Place } | null>(null);
   const [orgSel, setOrgSel] = useState<Place | null>(null);
 
-  const posts = useMemo(() => (data?.posts ?? []).filter((p) => (type === 'ALL' || p.type === type) && (!kinds.size || kinds.has(p.kind))), [data, type, kinds]);
+  const posts = useMemo(() => (data?.posts ?? []).filter((p) => (type === 'ALL' || (type === 'URGENT' ? urgentOf(p) : p.type === type)) && (!kinds.size || kinds.has(p.kind))), [data, type, kinds]);
+  // M262: the map's marks drawn from the kinds' icons (made once), the card pinned to the chosen need, "I can help" as a plan to approve.
+  const iconBox = useRef<HTMLDivElement>(null), icons = useRef<Icons>(new Map()), pinned = useRef<HTMLDivElement>(null);
+  useEffect(() => { void drawIcons(iconBox.current, ACCENT).then((m) => { icons.current = m; map.current?.redraw(); }); }, []);
+  const [offering, setOffering] = useState<ReliefPost | null>(null);
+  const all = data?.posts ?? [];
+  // The cards along the map's foot count the same list the map shows (one answer, never two moments apart).
+  const open = all.filter((p) => p.type === 'NEED' && p.status === 'OPEN');
+  const live = { openNeeds: open.length, peopleWaiting: open.reduce((t, p) => t + p.people, 0), inProgress: all.filter((p) => p.type === 'NEED' && p.status === 'TAKEN').length, offers: all.filter((p) => p.type === 'OFFER').length };
+  const counts = { ALL: all.length, NEED: all.filter((p) => p.type === 'NEED').length, OFFER: all.filter((p) => p.type === 'OFFER').length, URGENT: all.filter(urgentOf).length };
   const ordered = useMemo(() => [...posts].sort((a, b) => (a.type === b.type ? needScore(b, here, now || 0) - needScore(a, here, now || 0) : a.type === 'NEED' ? -1 : 1)), [posts, here, now]);
   const sel = posts.find((p) => p.id === selected) ?? null;
   const model = useMemo(() => ({
@@ -159,7 +174,21 @@ export function ReliefApp() {
       map.current?.flyTo([h.lng - 0.4, h.lat - 0.25, h.lng + 0.4, h.lat + 0.25], { maxZoom: 120 });
     }, () => toast.error('Your position isn’t shared. You can still tap the map.'), { timeout: 8000, maximumAge: 300_000 });
   };
-  const focus = (p: ReliefPost) => { setSelected(p.id); map.current?.flyTo([p.lng - 0.08, p.lat - 0.05, p.lng + 0.08, p.lat + 0.05], { maxZoom: 150 }); };
+  const mapBox = useRef<HTMLDivElement>(null);
+  const focus = (p: ReliefPost) => {
+    setSelected(p.id); map.current?.flyTo([p.lng - 0.08, p.lat - 0.05, p.lng + 0.08, p.lat + 0.05], { maxZoom: 150 });
+    // On a phone the list is under the map: bring the map back into view (the owner, 17 Nov: hard to use on a phone).
+    if (window.innerWidth < 1280) mapBox.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
+  };
+  // Opens on where the needs are (the whole world looked empty, 17 Nov), once, unless a link chose one.
+  const framed = useRef(false);
+  useEffect(() => {
+    if (framed.current || !data?.posts.length || selected) return;
+    framed.current = true;
+    const pts = data.posts.filter((p) => p.type === 'NEED' && p.status === 'OPEN');
+    const use = pts.length ? pts : data.posts, lats = use.map((p) => p.lat), lngs = use.map((p) => p.lng);
+    setTimeout(() => map.current?.flyTo([Math.min(...lngs) - 0.3, Math.min(...lats) - 0.2, Math.max(...lngs) + 0.3, Math.max(...lats) + 0.2], { maxZoom: 60 }), 150);
+  }, [data, selected]);
 
   const hoverView = useRef('');
   const draw = (f: Frame) => {
@@ -198,40 +227,30 @@ export function ReliefApp() {
     const loose = pts.filter((q) => q.item.id === selected);
     const grouped = f.zoom < 60 ? groupNear(pts.filter((q) => q.item.id !== selected), 38) : pts.filter((q) => q.item.id !== selected).map((q) => ({ x: q.x, y: q.y, items: [q.item] }));
     groups.current = grouped.filter((g) => g.items.length > 1);
-    for (const g of groups.current) {
-      // A disc with a ring split by kind (critical, high, medium, low needs, offers) and the count.
-      const n = g.items.length, r = bubble(n);
-      const shares = new Map<string, number>();
-      for (const p of g.items) { const c = p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency]; shares.set(c, (shares.get(c) ?? 0) + 1); }
-      if (!calm && g.items.some((p) => p.type === 'NEED' && p.status === 'OPEN' && p.urgency === 'CRITICAL')) {
-        const ph = (t / 1600) % 1; ctx.globalAlpha = (1 - ph) * 0.45; ctx.strokeStyle = URGENCY_COLOR.CRITICAL; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.arc(g.x, g.y, r + 3 + ph * 16, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
-      }
-      ctx.fillStyle = f.dark ? 'rgba(17,17,19,0.92)' : 'rgba(255,255,255,0.96)';
-      ctx.beginPath(); ctx.arc(g.x, g.y, r, 0, Math.PI * 2); ctx.fill();
-      let a0 = -Math.PI / 2;
-      ctx.lineWidth = 3.5; ctx.lineCap = 'butt';
-      for (const [c, k] of shares) { const a1 = a0 + (k / n) * Math.PI * 2; ctx.strokeStyle = c; ctx.beginPath(); ctx.arc(g.x, g.y, r - 1.75, a0, a1); ctx.stroke(); a0 = a1; }
-      ctx.fillStyle = f.dark ? '#f4f4f5' : '#18181b'; ctx.font = `700 ${n > 99 ? 10 : 11}px ui-sans-serif, system-ui`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(String(n), g.x, g.y + 0.5);
+    // M262, the recording's marks: several close together as a number in an ink circle (an accent ring when one is
+    // urgent); a need as an ink circle with its kind's icon, white with an orange ring and a soft halo when urgent and
+    // still open (critical ones pulse), a green dot once someone's on it; an offer small and white; the chosen one
+    // orange with two rings pulsing out, the dotted way to it from where you are, and its card pinned beside it.
+    const o = { accent: ACCENT, dark: f.dark, t, calm: !!calm };
+    for (const g of groups.current) count(ctx, g.x, g.y, g.items.length, f.dark, g.items.some(urgentOf), ACCENT);
+    const singles = [...grouped.filter((g) => g.items.length === 1).map((g) => ({ item: g.items[0], x: g.x, y: g.y })), ...loose];
+    const chosen = singles.find((q) => q.item.id === selected);
+    if (here && chosen) { const [hx, hy] = toBase(here.lng, here.lat); route(ctx, [[sx(hx), sy(hy)], [chosen.x, chosen.y]], 'plan', o); }
+    const sc = Math.min(1.15, Math.max(0.85, Math.pow(zf, 0.4)));
+    for (const q of singles) {
+      const p = q.item;
+      if (p === chosen?.item) continue;
+      const urgent = urgentOf(p);
+      unit(ctx, q.x, q.y, p.type === 'OFFER' ? 'plain' : urgent ? 'risk' : 'ink', icons.current, p.kind, { ...o, scale: sc, badge: p.status === 'TAKEN' ? DONE : undefined });
+      if (urgent && p.urgency === 'CRITICAL' && !calm) { const ph = ((t / 1400) + (q.x % 1)) % 1; ctx.globalAlpha = (1 - ph) * 0.6; ctx.strokeStyle = ACCENT; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(q.x, q.y, 14 * sc + ph * 20, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1; }
+      if (f.zoom > 24) label(ctx, f, p.title, q.x + 16 * sc + 6, q.y, f.zoom > 40 ? p.place : null);
     }
-    for (const q of [...grouped.filter((g) => g.items.length === 1).map((g) => ({ item: g.items[0], x: g.x, y: g.y })), ...loose]) {
-      const p = q.item, x = q.x, y = q.y, bx = x;
-      const color = p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency];
-      const r = (p.type === 'OFFER' ? 5 : 4 + Math.min(6, Math.sqrt(p.people) * 1.4)) * Math.sqrt(zf);
-      if (p.type === 'NEED' && p.status === 'OPEN' && !calm && (p.urgency === 'CRITICAL' || p.urgency === 'HIGH')) {
-        const ph = ((t / (p.urgency === 'CRITICAL' ? 1100 : 1800)) + (bx % 1)) % 1;
-        ctx.globalAlpha = (1 - ph) * 0.7; ctx.strokeStyle = color; ctx.lineWidth = 1.6;
-        ctx.beginPath(); ctx.arc(x, y, r + ph * 22, 0, Math.PI * 2); ctx.stroke(); ctx.globalAlpha = 1;
-      }
-      ctx.fillStyle = color; ctx.strokeStyle = f.dark ? '#0c0c0e' : '#fff'; ctx.lineWidth = 2;
-      if (p.type === 'OFFER') { ctx.save(); ctx.translate(x, y); ctx.rotate(Math.PI / 4); ctx.fillRect(-r, -r, r * 2, r * 2); ctx.strokeRect(-r, -r, r * 2, r * 2); ctx.restore(); }
-      else { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
-      if (p.status === 'TAKEN') { ctx.strokeStyle = DONE; ctx.lineWidth = 2.5; ctx.beginPath(); ctx.arc(x, y, r + 3.5, 0, Math.PI * 2); ctx.stroke(); }
-      if (p.id === selected) { ctx.strokeStyle = f.dark ? '#fff' : '#111113'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(x, y, r + 7 + (calm ? 0 : Math.sin(t / 260) * 1.5), 0, Math.PI * 2); ctx.stroke(); }
-      // Close in, each one says what it is and where (M172: the place under the title).
-      if (f.zoom > 24 || p.id === selected) label(ctx, f, p.title, x + r + 6, y, f.zoom > 40 || p.id === selected ? p.place : null);
+    if (chosen) {
+      if (chosen.item.type === 'NEED' && chosen.item.status === 'OPEN') zone(ctx, chosen.x, chosen.y, 34, ACCENT);
+      unit(ctx, chosen.x, chosen.y, 'hot', icons.current, chosen.item.kind, o);
     }
+    // On a computer the chosen one's side card takes the right of the map: the pinned card keeps to the room left of it.
+    placeCallout(pinned.current, chosen ? chosen.x : -9999, chosen ? chosen.y : -9999, f.w, f.h, 30, f.w >= 760 && window.innerWidth >= 1024 ? f.w - 420 : f.w);
     if (here) { const [hx, hy] = toBase(here.lng, here.lat); const x = sx(hx), y = sy(hy); ctx.fillStyle = '#3b82f6'; ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fill(); ctx.stroke(); }
     if (picked) { const [px, py] = toBase(picked.lng, picked.lat); const x = sx(px), y = sy(py); ctx.fillStyle = '#f97316'; ctx.beginPath(); ctx.moveTo(x, y); ctx.arc(x, y - 16, 8, Math.PI * 0.75, Math.PI * 0.25); ctx.closePath(); ctx.fill(); ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x, y - 16, 3, 0, Math.PI * 2); ctx.fill(); }
   };
@@ -284,18 +303,141 @@ export function ReliefApp() {
   return (
     <div className="space-y-4">
       <SafetyCheck here={here} onNeedHelp={() => { setDraft({ ...EMPTY, urgency: 'CRITICAL' }); setPicked(here); setPosting(true); }} />
-      <dl className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2">
-        {[
-          // Darker shades on the light page so the numbers keep 4.5:1.
-          ['Open needs', s?.openNeeds, 'text-orange-700 dark:text-orange-400'], ['People waiting', s?.peopleWaiting, 'text-red-700 dark:text-red-400'], ['Being helped', s?.inProgress, 'text-green-700 dark:text-green-400'],
-          ['Offers', s?.offers, 'text-teal-700 dark:text-teal-300'], ['Helped · 30 days', s?.helped, 'text-green-700 dark:text-green-400'], ['Average response', s ? (s.avgMinutes === null ? '–' : s.avgMinutes < 120 ? `${s.avgMinutes} min` : `${Math.round(s.avgMinutes / 60)} h`) : undefined, 'text-sky-700 dark:text-sky-400'],
-        ].map(([k, v, c], i) => (
-          <motion.div key={k as string} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }} className="panel px-4 py-3">
-            <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{k as string}</dt>
-            <dd className={cn('mt-0.5 font-mono text-xl tabular-nums', c as string)}>{v ?? '…'}</dd>
-          </motion.div>
-        ))}
-      </dl>
+      {/* M262 (the owner's recording): the needs queue on the left, the map with its chips, controls, pinned card and
+          number cards along its foot, the chosen request beside it; on a phone the map first, the queue under it. */}
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kinds of help">
+          {RELIEF_KINDS.map((k) => { const I = KIND_ICON[k], on = kinds.has(k); return (
+            <button key={k} type="button" aria-pressed={on} onClick={() => setKinds((v) => { const n = new Set(v); if (n.has(k)) n.delete(k); else n.add(k); return n; })}
+              className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition-colors', on ? 'border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-200' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              <I className="w-3.5 h-3.5" aria-hidden />{RELIEF_KIND_LABEL[k]}
+            </button>
+          ); })}
+        </div>
+        <div className="ms-auto flex gap-2">
+          <button type="button" onClick={() => { setPicked(here); setPosting(true); }} className="btn-primary btn-sm"><Plus className="w-4 h-4" />Ask or offer help</button>
+        </div>
+      </div>
+
+      <div className="cmd-relief grid items-start gap-3 xl:grid-cols-[400px_1fr]">
+        <section aria-label="Needs you" className="order-2 space-y-2.5 xl:order-1 xl:max-h-[min(78vh,880px)] xl:overflow-y-auto xl:pe-1">
+          <div className="px-1 pb-1 pt-0.5">
+            <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">Needs you{counts.URGENT > 0 && <span className="rounded-md bg-[var(--cmd-fill)] px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">{counts.URGENT}</span>}</h2>
+            <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{s ? `${s.helped} helped in 30 days. ` : ''}The most urgent and nearest first.</p>
+          </div>
+          {!data && Array.from({ length: 3 }, (_, i) => <div key={i} className="h-40 rounded-2xl skeleton" />)}
+          {data && ordered.length === 0 && <div className="panel p-6 text-center text-sm text-zinc-500"><HandHeart className="w-6 h-6 mx-auto text-orange-400" aria-hidden /><p className="mt-2">Nothing here right now. Be the first: ask for help or offer it, and it shows on the map at once. Helpers nearby make the map useful, so invite your neighbours.</p><InviteButton app="relief" text="I’m on UniVerse Relief: neighbours asking for and offering help on one map. Join so we can help each other:" label="Invite neighbours" className="mt-4 flex-wrap justify-center" /></div>}
+          {ordered.slice(0, 60).map((p, i) => {
+            const by = p.mine ? 'you' : p.org?.name ?? p.by?.name ?? 'someone', far = here ? distanceM(here, p) / 1000 : null;
+            return (
+              <div key={p.id} className="cmd-pop" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
+                <QueueCard icon={KIND_ICON[p.kind]} source={p.type === 'OFFER' ? `Offer · ${RELIEF_KIND_LABEL[p.kind]}` : RELIEF_KIND_LABEL[p.kind]} ago={now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : undefined}
+                  due={urgentOf(p) ? `${URGENCY_LABEL[p.urgency]} · ${waited(p.createdAt, now || Date.parse(p.createdAt))}` : undefined}
+                  hot={urgentOf(p)} chosen={selected === p.id} title={p.title} onOpen={() => focus(p)}
+                  facts={[
+                    { k: 'People', v: p.people, sub: p.type === 'OFFER' ? 'can be helped' : 'waiting' },
+                    far != null ? { k: 'Distance', v: `${far < 10 ? far.toFixed(1) : Math.round(far)} km`, sub: p.place ?? 'nearby' } : { k: 'Where', v: <span translate="no">{p.place ?? 'On the map'}</span>, sub: 'about 500 m' },
+                    p.status === 'TAKEN' ? { k: 'Helper', v: p.helping ? 'You' : p.helperOrg?.name ?? p.helper?.name ?? 'Someone', sub: 'on the way' } : { k: p.skill ? 'Needs' : 'Asked by', v: p.skill ? SKILL_LABEL[p.skill] : by, sub: p.skill ? 'a skill' : p.org ? 'organisation' : 'person' },
+                  ]}
+                  note={p.details} noteIcon={MessageSquare}
+                  links={<><button type="button" onClick={() => focus(p)} className="font-medium hover:underline">Show on map</button></>}
+                  approve={p.type === 'NEED' && p.status === 'OPEN' && !p.mine ? { label: 'I can help', onClick: () => setOffering(p) } : null} />
+              </div>
+            );
+          })}
+        </section>
+
+        <div ref={mapBox} className="panel relative order-1 scroll-mt-20 overflow-hidden p-0 xl:order-2">
+          <IconSource ref={iconBox} icons={KIND_ICON} />
+          <WorldCanvas ref={map} label="Map of needs and offers of help" homeBox={WORLD} dark={dark} live={!calm} draw={draw} onPoint={onPoint} className="w-full h-[74vh] min-h-[520px] max-h-[880px]">
+            {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-label="Loading" /></div>}
+            <CountChips<'ALL' | 'NEED' | 'OFFER' | 'URGENT'> label="Show" className="absolute start-3 top-3 z-10 max-w-[calc(100%-4.5rem)]" value={type} onChange={setType}
+              items={[{ id: 'ALL', label: 'All', count: counts.ALL }, { id: 'NEED', label: 'Needs', count: counts.NEED, dot: dark ? '#e4e4e7' : '#18181b' }, { id: 'OFFER', label: 'Offers', count: counts.OFFER, dot: OFFER }, { id: 'URGENT', label: 'Urgent', count: counts.URGENT, dot: ACCENT }]} />
+            <div className="absolute end-3 top-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 divide-y divide-zinc-200 dark:bg-[#1b1d22]/95 dark:ring-white/10 dark:divide-white/10">
+              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything']] as const).map(([id, Icon, lbl]) => (
+                <button key={id} type="button" aria-label={lbl} title={lbl} onClick={() => (id === 'home' ? map.current?.home() : map.current?.zoomBy(id === 'in' ? 1.8 : 1 / 1.8))} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><Icon className="h-[18px] w-[18px]" aria-hidden /></button>
+              ))}
+              <button type="button" aria-label="Near me" title="Near me" onClick={locate} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><LocateFixed className="h-[18px] w-[18px]" aria-hidden /></button>
+            </div>
+            {sel && !picking && (
+              <Callout ref={pinned} key={sel.id} className="hidden lg:block">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900">{(() => { const I = KIND_ICON[sel.kind]; return <I className="h-5 w-5" aria-hidden />; })()}</span>
+                  <div className="min-w-0"><p className="truncate text-[15px] font-semibold">{sel.title}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{sel.people} {sel.people === 1 ? 'person' : 'people'} · {sel.type === 'OFFER' ? 'offer' : URGENCY_LABEL[sel.urgency].toLowerCase()}{sel.place ? ` · ${sel.place}` : ''}</p></div>
+                </div>
+                <div className="mt-3 flex items-baseline justify-between gap-2 text-sm">
+                  <span className="font-semibold">{sel.status === 'OPEN' ? `Waiting ${waited(sel.createdAt, now || Date.parse(sel.createdAt))}` : sel.status === 'TAKEN' ? 'Someone’s on the way' : 'Delivered'}</span>
+                  <span className={cn('text-xs font-semibold', sel.status === 'OPEN' ? 'text-[var(--cmd-ink)]' : 'text-emerald-700 dark:text-emerald-400')}>{sel.status === 'OPEN' ? (sel.type === 'OFFER' ? 'Offered' : 'Needs a helper') : sel.status === 'TAKEN' ? (sel.helping ? 'You’re helping' : 'Being helped') : 'Helped'}</span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={sel.status === 'OPEN' ? 0.18 : sel.status === 'TAKEN' ? 0.62 : 1} className="bg-zinc-900 dark:bg-white" /></div>
+              </Callout>
+            )}
+            <AnimatePresence>
+              {picking && (
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-16 z-20 flex items-center gap-2 rounded-full bg-orange-700 text-white px-4 py-2 text-xs font-semibold shadow-lg">
+                  <Crosshair className="w-3.5 h-3.5" aria-hidden />Tap where it is (shown about 500 m away)
+                  <button type="button" onClick={() => { setPicking(false); setPosting(true); }} aria-label="Cancel" className="ml-1 w-5 h-5 grid place-items-center rounded-full hover:bg-white/15"><X className="w-3 h-3" /></button>
+                </motion.div>
+              )}
+              {(sel || orgSel) && !picking && (
+                <motion.div key={sel?.id ?? orgSel!.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 12 }} transition={{ type: 'spring', stiffness: 380, damping: 34 }}
+                  className="absolute inset-x-3 bottom-3 z-20 max-h-[55%] overflow-y-auto rounded-2xl bg-white p-4 shadow-[0_14px_40px_-14px_rgba(0,0,0,0.4)] ring-1 ring-black/5 dark:bg-[#1b1d22] dark:ring-white/10 lg:inset-x-auto lg:bottom-auto lg:end-16 lg:top-3 lg:max-h-[calc(100%-10rem)] lg:w-[340px]">
+                  {sel ? <><PostCard p={sel} now={now} here={here} onChange={() => void mutate()} /><button type="button" onClick={() => setSelected(null)} className="absolute end-2 top-2 rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button></> : <OrgCard o={orgSel!} onClose={() => setOrgSel(null)} />}
+                </motion.div>
+              )}
+              {hover && !picking && (
+                <motion.div key={hover.key} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+                  className="pointer-events-none absolute z-30 w-64 rounded-xl border border-zinc-200/70 bg-white p-3 text-xs text-zinc-600 shadow-xl dark:border-white/10 dark:bg-[#1b1d22] dark:text-zinc-300"
+                  style={{ left: Math.max(8, Math.min(hover.x + 14, hover.mw - 270)), top: hover.y > 170 ? hover.y - 14 : hover.y + 16, translate: hover.y > 170 ? '0 -100%' : undefined, transformOrigin: hover.y > 170 ? 'left bottom' : 'left top' }}>
+                  <MapCard hover={hover} now={now} />
+                </motion.div>
+              )}
+            </AnimatePresence>
+            {s && !(sel || orgSel) && (
+              <StatStrip className="pointer-events-auto absolute inset-x-3 bottom-3 z-10">
+                <StatCard label="Open needs" icon={HandHeart} value={live.openNeeds} unit={`${live.peopleWaiting} waiting`} delay={0}
+                  foot={<TickStrip parts={URGENCIES.slice().reverse().map((u) => ({ n: all.filter((p) => p.type === 'NEED' && p.status === 'OPEN' && p.urgency === u).length, color: u === 'CRITICAL' || u === 'HIGH' ? ACCENT : dark ? '#a1a1aa' : '#27272a' }))} />} />
+                <StatCard label="Being helped" icon={Users} value={live.inProgress} unit="on the way" delay={50}
+                  foot={<div className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={live.inProgress / Math.max(1, live.openNeeds + live.inProgress)} className="bg-zinc-900 dark:bg-white" /></div>} />
+                <StatCard label="Urgent" icon={AlertTriangle} tone="accent" value={counts.URGENT} unit="need someone now" delay={100}
+                  foot={<p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{live.offers} {live.offers === 1 ? 'offer' : 'offers'} on the map</p>} />
+                <StatCard label="Helped · 30 days" icon={BadgeCheck} value={s.helped} unit={s.avgMinutes == null ? undefined : `answered in ${s.avgMinutes < 120 ? `${s.avgMinutes} min` : `${Math.round(s.avgMinutes / 60)} h`}`} delay={150}
+                  foot={counts.URGENT > 0 ? <InkPill onClick={() => setType('URGENT')}>{counts.URGENT} need you</InkPill> : <p className="text-xs text-zinc-500 dark:text-zinc-400">No one urgent is waiting</p>} />
+              </StatStrip>
+            )}
+          </WorldCanvas>
+        </div>
+      </div>
+
+      {offering && (
+        <ProposalSheet app="relief" open onClose={() => setOffering(null)} icon={KIND_ICON[offering.kind]} source={`${RELIEF_KIND_LABEL[offering.kind]} · ${URGENCY_LABEL[offering.urgency]} need`}
+          ago={now ? `asked ${formatDistanceToNow(new Date(offering.createdAt), { addSuffix: true })}` : undefined} title={offering.title}
+          due={urgentOf(offering) ? `Waiting ${waited(offering.createdAt, now || Date.parse(offering.createdAt))}` : undefined}
+          changes={[
+            { k: 'Status', now: `Waiting ${waited(offering.createdAt, now || Date.parse(offering.createdAt))}`, nowWarn: urgentOf(offering), next: 'Someone’s on the way' },
+            { k: 'Helper', now: 'Nobody yet', next: 'You' },
+            { k: 'On the map', now: 'Shown as waiting', next: 'Shown as being helped' },
+            { k: 'Messages', now: '–', next: `With ${offering.org?.name ?? offering.by?.name ?? 'them'}` },
+          ]}
+          steps={[
+            ...(here ? [{ who: 'Distance', what: `${(distanceM(here, offering) / 1000).toFixed(1)} km from you`, before: 'Checked from where you are', after: 'Checked from where you are', when: 'ready' as const }] : []),
+            { who: 'Relief', what: 'Put you down as the helper', before: 'Runs when you confirm', after: 'Done: others see it’s taken', when: 'now' as const },
+            { who: 'Notifications', what: `Tell ${offering.org?.name ?? offering.by?.name ?? 'the person who asked'} you’re coming`, before: 'Runs when you confirm', after: 'Sent just now', when: 'now' as const },
+            { who: 'You', what: 'Mark it delivered when it’s done', before: 'After you’ve helped', after: 'After you’ve helped', when: 'later' as const },
+          ]}
+          note={offering.details ?? `${offering.people} ${offering.people === 1 ? 'person' : 'people'}${offering.place ? ` near ${offering.place}` : ''}. Shown about 500 m from where they are: message them for the exact place.`} noteIcon={MessageSquare}
+          approveLabel="I can help"
+          onApprove={async () => {
+            const p = offering;
+            try {
+              await api.post(`/relief/posts/${p.id}/take`);
+              void mutate();
+              setTimeout(() => setOffering(null), 1700);
+              undoToast(`You’re helping with “${p.title.slice(0, 60)}”. They’ve been told.`, () => { void api.post(`/relief/posts/${p.id}/release`).then(() => { toast('Given back: it’s open for others again.'); void mutate(); }).catch((e) => toast.error(errorMessage(e, 'Couldn’t undo.'))); });
+              return true;
+            } catch (e) { toast.error(errorMessage(e, 'Could not do that.')); return false; }
+          }} />
+      )}
 
       {s && (
         // M48: how requests move from asked to helped, as a stream of light.
@@ -310,95 +452,6 @@ export function ReliefApp() {
           </div>
         </LiveCard>
       )}
-
-      <div className="flex flex-wrap items-center gap-2">
-        <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
-          {([['ALL', 'Everything'], ['NEED', 'Needs'], ['OFFER', 'Offers']] as const).map(([id, label]) => (
-            <button key={id} type="button" role="radio" aria-checked={type === id} onClick={() => setType(id)} className={cn('relative rounded-full px-3 py-1.5 text-xs font-semibold transition-colors', type === id ? 'text-white' : 'text-zinc-600 dark:text-zinc-300')}>
-              {type === id && <motion.span layoutId="relief-type" className="absolute inset-0 rounded-full bg-orange-700" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
-              <span className="relative">{label}</span>
-            </button>
-          ))}
-        </div>
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kinds of help">
-          {RELIEF_KINDS.map((k) => { const I = KIND_ICON[k], on = kinds.has(k); return (
-            <button key={k} type="button" aria-pressed={on} onClick={() => setKinds((v) => { const n = new Set(v); if (n.has(k)) n.delete(k); else n.add(k); return n; })}
-              className={cn('inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1.5 text-xs font-semibold transition-colors', on ? 'border-orange-500/50 bg-orange-500/10 text-orange-700 dark:text-orange-200' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
-              <I className="w-3.5 h-3.5" aria-hidden />{RELIEF_KIND_LABEL[k]}
-            </button>
-          ); })}
-        </div>
-        <div className="ml-auto flex gap-2">
-          <button type="button" onClick={locate} className="btn-secondary btn-sm"><LocateFixed className="w-4 h-4" />Near me</button>
-          <button type="button" onClick={() => { setPicked(here); setPosting(true); }} className="btn-primary btn-sm"><Plus className="w-4 h-4" />Ask or offer help</button>
-        </div>
-      </div>
-
-      <div className="grid xl:grid-cols-[1fr_380px] gap-4 items-start">
-        <div className="panel overflow-hidden p-0">
-          <WorldCanvas ref={map} label="Map of needs and offers of help" homeBox={WORLD} dark={dark} live={!calm} draw={draw} onPoint={onPoint} className="w-full h-[62vh] min-h-[380px] max-h-[720px]">
-            {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-label="Loading" /></div>}
-            <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" aria-label={label} title={label} onClick={() => (id === 'home' ? map.current?.home() : map.current?.zoomBy(id === 'in' ? 1.8 : 1 / 1.8))} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 active:scale-95 transition"><Icon className="w-4 h-4" aria-hidden /></button>
-              ))}
-            </div>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
-              {URGENCIES.slice().reverse().map((u) => <span key={u} className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full" style={{ background: URGENCY_COLOR[u] }} />{URGENCY_LABEL[u]} need</span>)}
-              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rotate-45" style={{ background: OFFER }} />Offer</span>
-              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-full border-2" style={{ borderColor: DONE }} />Someone’s helping</span>
-              <span className="flex items-center gap-2"><span className="w-2.5 h-2.5 rounded-[3px] bg-green-600" />Shelter, food bank or group</span>
-              <span className="flex items-center gap-2"><span className="grid w-3.5 h-3.5 place-items-center rounded-full border-2 border-orange-500 text-[8px] font-bold leading-none" aria-hidden>3</span>Several close together</span>
-            </div>
-            <AnimatePresence>
-              {picking && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-3 flex items-center gap-2 rounded-full bg-orange-500 text-white px-4 py-2 text-xs font-semibold shadow-lg">
-                  <Crosshair className="w-3.5 h-3.5" aria-hidden />Tap where it is (shown about 500 m away)
-                  <button type="button" onClick={() => { setPicking(false); setPosting(true); }} aria-label="Cancel" className="ml-1 w-5 h-5 grid place-items-center rounded-full hover:bg-white/15"><X className="w-3 h-3" /></button>
-                </motion.div>
-              )}
-              {sel && !picking && (
-                <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[440px] rounded-2xl bg-white/95 dark:bg-[#111113]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
-                  <PostCard p={sel} now={now} here={here} onChange={() => void mutate()} />
-                </motion.div>
-              )}
-              {orgSel && !sel && !picking && (
-                <motion.div key={orgSel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
-                  className="absolute left-3 right-3 bottom-3 sm:right-auto sm:w-[400px] rounded-2xl bg-white/95 dark:bg-[#111113]/92 backdrop-blur p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
-                  <OrgCard o={orgSel} onClose={() => setOrgSel(null)} />
-                </motion.div>
-              )}
-              {hover && !picking && (
-                <motion.div key={hover.key} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
-                  className="pointer-events-none absolute z-10 w-64 rounded-xl border border-zinc-200/70 bg-white/95 p-3 text-xs text-zinc-600 shadow-xl dark:border-white/10 dark:bg-[#111113]/95 dark:text-zinc-300"
-                  style={{ left: Math.max(8, Math.min(hover.x + 14, hover.mw - 270)), top: hover.y > 170 ? hover.y - 14 : hover.y + 16, translate: hover.y > 170 ? '0 -100%' : undefined, transformOrigin: hover.y > 170 ? 'left bottom' : 'left top' }}>
-                  <MapCard hover={hover} now={now} />
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </WorldCanvas>
-        </div>
-
-        <section aria-label="Needs and offers" className="space-y-2 xl:max-h-[calc(62vh+4px)] xl:overflow-y-auto xl:pr-1">
-          {!data && Array.from({ length: 4 }, (_, i) => <div key={i} className="panel h-24 skeleton" />)}
-          {data && ordered.length === 0 && <div className="panel p-6 text-center text-sm text-zinc-500"><HandHeart className="w-6 h-6 mx-auto text-orange-400" aria-hidden /><p className="mt-2">Nothing here right now. Be the first: ask for help or offer it, and it shows on the map at once. Helpers nearby make the map useful, so invite your neighbours.</p><InviteButton app="relief" text="I’m on UniVerse Relief: neighbours asking for and offering help on one map. Join so we can help each other:" label="Invite neighbours" className="mt-4 flex-wrap justify-center" /></div>}
-          {ordered.slice(0, 60).map((p, i) => {
-            const I = KIND_ICON[p.kind];
-            return (
-              <motion.button key={p.id} type="button" layout initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 10) * 0.025 }} onClick={() => focus(p)}
-                className={cn('panel w-full p-3.5 text-left flex gap-3 items-start transition-shadow', selected === p.id && 'ring-2 ring-orange-500/50')}>
-                <span className="w-10 h-10 shrink-0 rounded-2xl grid place-items-center text-white" style={{ background: p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency] }}><I className="w-5 h-5" aria-hidden /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block font-semibold text-sm text-zinc-900 dark:text-white truncate">{p.title}</span>
-                  <span className="block text-[11px] text-zinc-500 truncate">{p.type === 'OFFER' ? 'Offer' : `${URGENCY_LABEL[p.urgency]} · ${p.people} ${p.people === 1 ? 'person' : 'people'}`} · {p.place ?? 'nearby'}{here ? ` · ${(distanceM(here, p) / 1000).toFixed(1)} km` : ''}</span>
-                  <span className="block text-[11px] text-zinc-500 dark:text-zinc-400">{formatDistanceToNow(new Date(p.createdAt), { addSuffix: true })}{p.status === 'TAKEN' ? ` · ${p.helper?.name ?? 'someone'} is helping` : ''}{p.skill ? ` · needs: ${SKILL_LABEL[p.skill].toLowerCase()}` : ''}</span>
-                </span>
-              </motion.button>
-            );
-          })}
-        </section>
-      </div>
 
       {/* M148: shelters, food banks and groups that said how they are */}
       <PlacesBoard here={here} onShow={(p) => { map.current?.flyTo([p.lng - 0.06, p.lat - 0.04, p.lng + 0.06, p.lat + 0.04], { maxZoom: 150 }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />

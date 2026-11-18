@@ -138,7 +138,7 @@ export function GreenApp() {
   return (
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #111113 100%)' }}>
-        <span aria-hidden className="absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
+        <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
         <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-300/30"><Leaf className="w-3.5 h-3.5" aria-hidden />Your impact</span>
@@ -289,7 +289,7 @@ export function GreenApp() {
                       : a.photoUrl ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300"><Clock className="w-3.5 h-3.5" aria-hidden />Waiting</span>
                       : <label className="inline-flex items-center gap-1 rounded-full border border-zinc-200 dark:border-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 cursor-pointer hover:border-emerald-500/60"><Camera className="w-3.5 h-3.5" aria-hidden />Add proof<input type="file" accept="image/*" className="sr-only" onChange={(e) => void addPhoto(a.id, e.target.files?.[0])} /></label>}
                     <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">−{a.co2Kg} kg</span>
-                    <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="w-7 h-7 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 opacity-0 group-hover:opacity-100 focus:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
+                    <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="w-7 h-7 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
                   </li>
                 ); })}
               </ul>

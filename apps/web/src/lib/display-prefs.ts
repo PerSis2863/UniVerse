@@ -88,4 +88,16 @@ export function setAccent(a: Accent) {
 }
 
 /** For app/layout.tsx: applies the saved text size, accent and reduce motion before the first paint. */
-export const DISPLAY_PREFS_SCRIPT = `(function(){try{var d=document.documentElement,s=localStorage,t=s.getItem('uv-text');if(t==='large'||t==='larger'||t==='largest')d.dataset.text=t;var a=s.getItem('uv-accent');if(a&&/^(violet|blue|teal|rose|amber)$/.test(a))d.dataset.accent=a;if(s.getItem('uv-reduce-motion')==='1')d.classList.add('reduce-motion');${Object.values(READING_AIDS).map((a) => `if(s.getItem('${a.key}')==='1')d.classList.add('${a.cls}');`).join('')}}catch(e){}})();`;
+/** M235: the menu on a computer: across the top or down the side; `auto` is the top in a browser (full screen
+ *  too) and the side in the installed app. Kept on this device, on <html data-menu> (the `topnav:` variant
+ *  and useTopNav read it), set before the first paint by the script below. */
+export type MenuPlace = 'auto' | 'top' | 'side';
+export const MENU_EVENT = 'uv-menu';
+export const menuPlace = (): MenuPlace => { const v = get('uv-menu'); return v === 'top' || v === 'side' ? v : 'auto'; };
+export function setMenuPlace(v: MenuPlace) {
+  set('uv-menu', v === 'auto' ? null : v);
+  if (v === 'auto') delete document.documentElement.dataset.menu; else document.documentElement.dataset.menu = v;
+  window.dispatchEvent(new Event(MENU_EVENT));
+}
+
+export const DISPLAY_PREFS_SCRIPT = `(function(){try{var d=document.documentElement,s=localStorage,t=s.getItem('uv-text');if(t==='large'||t==='larger'||t==='largest')d.dataset.text=t;var a=s.getItem('uv-accent');if(a&&/^(violet|blue|teal|rose|amber)$/.test(a))d.dataset.accent=a;if(s.getItem('uv-reduce-motion')==='1')d.classList.add('reduce-motion');var m=s.getItem('uv-menu');if(m==='top'||m==='side')d.dataset.menu=m;${Object.values(READING_AIDS).map((a) => `if(s.getItem('${a.key}')==='1')d.classList.add('${a.cls}');`).join('')}}catch(e){}})();`;

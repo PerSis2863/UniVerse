@@ -2,12 +2,12 @@
 
 import { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
-import Image from 'next/image';
 import { toast } from 'sonner';
-import { Bookmark, BookOpen, Clock, ExternalLink, Footprints, Globe, Loader2, MapPin, Phone, UtensilsCrossed, X } from 'lucide-react';
+import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Loader2, MapPin, Navigation, Phone, UtensilsCrossed, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
-import { commonsImage } from '@/lib/travel-guide';
+import { commonsFileOf, commonsImage, commonsSrcSet } from '@/lib/travel-guide';
+import { Photo as Pic } from '@/components/ui/Photo';
 import { dayText, openState, readHours } from '@/lib/opening-hours';
 import { localClock, zoneAt } from '@/lib/travel-local';
 import { listingKind, type StreetPhoto } from '@/lib/travel-map';
@@ -36,22 +36,26 @@ async function save(p: { name: string; kind: string; lat: number; lon: number; c
     toast.success(`Saved ${p.name}`);
   } catch (e) { toast.error(errorMessage(e, 'Couldn’t save it.')); }
 }
-const directions = (lat: number, lon: number) => `https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=%3B${lat}%2C${lon}`;
+type Go = (to: { lat: number; lon: number; name: string }) => void;
+/** Directions on Travel's own map (M237), never another website. */
+const GoButton = ({ to, onGo, label = 'Directions' }: { to: { lat: number; lon: number; name: string }; onGo: Go; label?: string }) => (
+  <button type="button" onClick={() => onGo(to)} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Navigation className="h-4 w-4" aria-hidden />{label}</button>
+);
 
-export function PlaceCard({ picked, at, onClose }: { picked: Picked; at: Date; onClose: () => void }) {
+export function PlaceCard({ picked, at, onClose, onDirections }: { picked: Picked; at: Date; onClose: () => void; onDirections: Go }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-end">
         <button type="button" onClick={onClose} className="btn-ghost btn-sm p-1.5" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="-mt-8 min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
-        {picked.type === 'place' ? <PlaceBody p={picked} at={at} /> : picked.type === 'story' ? <StoryBody s={picked.story} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} /> : <PhotoBody ph={picked.photo} />}
+        {picked.type === 'place' ? <PlaceBody p={picked} at={at} onDirections={onDirections} /> : picked.type === 'story' ? <StoryBody s={picked.story} onGo={onDirections} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} onGo={onDirections} /> : <PhotoBody ph={picked.photo} onGo={onDirections} />}
       </div>
     </div>
   );
 }
 
-function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date }) {
+function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place' }>; at: Date; onDirections: Go }) {
   const key = p.key ? `/travel/place?osm=${p.key}` : `/travel/place?name=${encodeURIComponent(p.name)}&lat=${p.lat.toFixed(5)}&lon=${p.lon.toFixed(5)}`;
   const { data, error, isLoading } = useSWR<{ place: PlaceInfo; credit: string }>(key, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
   const [week, setWeek] = useState(false);
@@ -66,7 +70,7 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white" translate="no">{name}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{kind}{info?.cuisine.length ? ` · ${info.cuisine.join(', ')}` : ''}</p>
       </div>
-      {info?.image && <Image src={commonsImage(info.image, 640)} alt="" width={640} height={352} unoptimized className="h-44 w-full rounded-xl object-cover" />}
+      {info?.image && <CardPhoto file={info.image} />}
       {isLoading && <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Looking it up…</p>}
       {error && <p className="text-sm text-zinc-600 dark:text-zinc-300">OpenStreetMap has nothing more on this place yet.</p>}
       {info && (
@@ -89,7 +93,7 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
         </>
       )}
       <div className="flex flex-wrap gap-1.5">
-        <a href={directions(p.lat, p.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Directions</a>
+        <GoButton to={{ lat: p.lat, lon: p.lon, name: info?.name ?? p.name }} onGo={onDirections} />
         {info?.phone && <a href={`tel:${info.phone.replace(/[^\d+]/g, '')}`} className={link}><Phone className="h-4 w-4" aria-hidden />Call</a>}
         {info?.website && <a href={info.website} target="_blank" rel="noopener noreferrer nofollow" className={link}><Globe className="h-4 w-4" aria-hidden />Website</a>}
         {info?.menu && <a href={info.menu} target="_blank" rel="noopener noreferrer nofollow" className={link}><UtensilsCrossed className="h-4 w-4" aria-hidden />Menu</a>}
@@ -102,18 +106,28 @@ function PlaceBody({ p, at }: { p: Extract<Picked, { type: 'place' }>; at: Date 
   );
 }
 
-function StoryBody({ s }: { s: Story }) {
+/** How wide the card's pictures are shown (the side panel, or a phone's sheet). */
+const CARD_PHOTO = '(min-width: 640px) 24rem, 100vw';
+
+/** M232: a Commons picture across the card, in the widths it needs (a 320 px thumbnail was blown up). */
+function CardPhoto({ file, fallback }: { file: string | null; fallback?: string }) {
+  const src = file ? commonsImage(file, 960) : fallback;
+  if (!src) return null;
+  return <Pic src={src} srcSet={file ? commonsSrcSet(file) : undefined} shown={CARD_PHOTO} alt="" loading="lazy" className="h-44 w-full rounded-xl object-cover" />;
+}
+
+function StoryBody({ s, onGo }: { s: Story; onGo: Go }) {
   return (
     <>
       <div className="pe-8">
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white" translate="no">{s.title}</h3>
         <p className="flex items-center gap-1 text-sm text-amber-700 dark:text-amber-300"><BookOpen className="h-4 w-4" aria-hidden />A story from Wikipedia</p>
       </div>
-      {s.thumb && <Image src={s.thumb} alt="" width={640} height={352} unoptimized className="h-44 w-full rounded-xl object-cover" />}
+      {s.thumb && <CardPhoto file={commonsFileOf(s.thumb)} fallback={s.thumb} />}
       <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{s.extract}</p>
       <div className="flex flex-wrap gap-1.5">
         <a href={s.url} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />Read on Wikipedia</a>
-        <a href={directions(s.lat, s.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Directions</a>
+        <GoButton to={{ lat: s.lat, lon: s.lon, name: s.title }} onGo={onGo} />
         <button type="button" onClick={() => void save({ name: s.title, kind: 'see', lat: s.lat, lon: s.lon, city: null, note: s.extract, url: s.url })} className={link}><Bookmark className="h-4 w-4" aria-hidden />Save</button>
         <TripPicker items={[{ name: s.title, kind: 'see', lat: s.lat, lon: s.lon, note: s.extract, url: s.url }]} city={null} cc={null} />
       </div>
@@ -123,28 +137,28 @@ function StoryBody({ s }: { s: Story }) {
   );
 }
 
-function PhotoBody({ ph }: { ph: Photo }) {
+function PhotoBody({ ph, onGo }: { ph: Photo; onGo: Go }) {
   return (
     <>
-      <Image src={ph.thumb} alt={ph.title} width={ph.w} height={ph.h} unoptimized className="mt-8 h-auto w-full rounded-xl object-cover" />
+      <Pic src={ph.thumb} srcSet={`${ph.thumb} ${ph.w}w, ${commonsSrcSet(ph.file)}`} shown={CARD_PHOTO} alt={ph.title} width={ph.w} height={ph.h} loading="lazy" className="mt-8 h-auto w-full rounded-xl object-cover" />
       <div>
         <h3 className="font-semibold text-zinc-900 dark:text-white" translate="no">{ph.title}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{ph.author ? `By ${ph.author}` : 'Author on Commons'}{ph.licence ? ` · ${ph.licence}` : ''}</p>
       </div>
       <div className="flex flex-wrap gap-1.5">
         <a href={ph.page} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />On Wikimedia Commons</a>
-        <a href={directions(ph.lat, ph.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Go there</a>
+<GoButton to={{ lat: ph.lat, lon: ph.lon, name: ph.title }} onGo={onGo} label="Go there" />
       </div>
     </>
   );
 }
 
 /** M214: what the street looks like here, from Panoramax (people's street-level photos, CC BY-SA 4.0). */
-function StreetBody({ ph }: { ph: StreetPhoto }) {
+function StreetBody({ ph, onGo }: { ph: StreetPhoto; onGo: Go }) {
   const when = ph.at ? new Date(ph.at).toLocaleDateString(undefined, { month: 'long', year: 'numeric' }) : null;
   return (
     <>
-      <Image src={ph.sd} alt="The street at this spot" width={1024} height={768} unoptimized className="mt-8 h-auto w-full rounded-xl bg-zinc-200 object-cover dark:bg-white/[0.06]" />
+      <Pic src={ph.sd} shown={CARD_PHOTO} alt="The street at this spot" width={1024} height={768} loading="lazy" className="mt-8 h-auto w-full rounded-xl bg-zinc-200 object-cover dark:bg-white/[0.06]" />
       <div>
         <h3 className="font-semibold text-zinc-900 dark:text-white">The street here</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{[when && `Taken ${when}`, ph.heading !== null && `looking ${['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'][Math.round(ph.heading / 45) % 8]}`].filter(Boolean).join(', ')}</p>
@@ -152,7 +166,7 @@ function StreetBody({ ph }: { ph: StreetPhoto }) {
       </div>
       <div className="flex flex-wrap gap-1.5">
         <a href={ph.hd} target="_blank" rel="noopener noreferrer" className={link}><ExternalLink className="h-4 w-4" aria-hidden />Full-size photo</a>
-        <a href={directions(ph.lat, ph.lon)} target="_blank" rel="noopener noreferrer" className={link}><Footprints className="h-4 w-4" aria-hidden />Go there</a>
+<GoButton to={{ lat: ph.lat, lon: ph.lon, name: 'Street photo' }} onGo={onGo} label="Go there" />
       </div>
     </>
   );

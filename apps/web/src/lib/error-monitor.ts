@@ -159,12 +159,18 @@ export function installErrorMonitor(): void {
       if (/\/_next\/static\//.test(src)) captureError(new Error(`ChunkLoadError: failed to load ${src.split('/').pop()}`), 'chunk');
       return;
     }
+    // A picture, video or sound that failed to load (a Commons photo on Travel, often on iOS Safari) fires a plain
+    // `error` event on its element: not a crash, and with nothing in it. It was reported as "undefined" (the live
+    // error log, 17 Nov: 5 times on /travel); the element shows its own fallback.
+    if (target && target !== (window as unknown as HTMLElement) && target.nodeType === 1) return;
+    if (!event.error && !event.message) return;
     captureError(event.error || event.message, 'runtime', { filename: event.filename, lineno: event.lineno, colno: event.colno });
   }, true);
 
   window.addEventListener('unhandledrejection', (event) => {
     // Firebase's pop-up glitch is handled where the sign-in runs (popupSignIn in src/lib/firebase.ts).
     if (/INTERNAL ASSERTION FAILED: Pending promise was never set/i.test(String(event.reason?.message ?? event.reason))) return;
+    if (event.reason == null) return; // a promise turned down with nothing: no message, no place, nothing to fix
     captureError(event.reason, 'promise');
   });
 

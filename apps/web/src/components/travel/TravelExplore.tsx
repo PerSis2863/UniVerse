@@ -9,7 +9,7 @@ import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { IDEAS, THEMES, type Theme } from '@/lib/travel-ideas';
 import { cn } from '@/lib/utils';
-import { Cover, PlaceSearch, startTrip, type Saved } from './travel-ui';
+import { CARD_SIZES, Cover, PlaceSearch, startTrip, type Saved } from './travel-ui';
 import { TravelTabs } from './TravelTabs';
 
 // UniVerse Travel's Explore (M202): find any place with a guide as you type (Wikivoyage's titles), or
@@ -75,7 +75,7 @@ export function TravelExplore() {
   const recent = (saved?.saved ?? []).slice(0, 6);
 
   const switcher = <TravelTabs />;
-  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} /></div>;
+  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} pin={sp.get('pin') === '1'} /></div>;
   if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (
@@ -130,7 +130,7 @@ export function TravelExplore() {
           {cards.map((i, n) => (
             <li key={i.title}>
               <Link href={guideHref(i.title)} className="group relative block h-64 overflow-hidden rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10">
-                <Cover file={i.banner} width={720} priority={n < 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
+                <Cover photo={i.photo} banner={i.banner} sizes={CARD_SIZES} priority={n < 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
                 <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" aria-hidden />
                 <span className="absolute inset-x-0 bottom-0 p-4">
                   <span className="block text-xs font-semibold uppercase tracking-wider text-indigo-200">{i.country}</span>

@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from 'sonner';
-import { Check, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, PackageCheck, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { QrCode } from '@/components/ui/QrCode';
 import { api, errorMessage } from '@/lib/api';
@@ -16,7 +16,9 @@ import { STAGES, STAGE_LABEL, STAGE_SHORT, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
-import { glow, toBase } from './engine';
+import { toBase } from './engine';
+import { Callout, CountChips, InkPill, placeCallout, QueueCard, RoutePill, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
+import { drawIcons, IconSource, route, tag, unit, zone, type Icons } from '@/components/map-ui/marks';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 import { LiveCard } from '@/components/live/LiveCard';
 import { CityView } from '@/components/live/CityView';
@@ -42,7 +44,10 @@ interface Ship {
 }
 
 const WORLD: Box = [-170, -56, 180, 76];
-const PINK = '#4f8ef7', PINK_SOFT = '#7aaefa';
+const ACCENT = '#ec4899'; // M263: Trace's pink (`.cmd-trace`)
+/** Too warm now, or it has been: the accent ring on the map, the "At risk" chip. */
+const warmNow = (s: Ship) => s.tempC != null && s.maxTempC != null && s.tempC > s.maxTempC;
+const atRisk = (s: Ship) => s.status === 'IN_TRANSIT' && ((s.breaches ?? 0) > 0 || (s.tempC != null && s.maxTempC != null && s.tempC > s.maxTempC));
 const STATUS: Record<string, { label: string; cls: string }> = {
   IN_TRANSIT: { label: 'On the move', cls: 'bg-pink-500/12 text-pink-700 dark:text-pink-200' },
   DELIVERED: { label: 'Delivered', cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' },
@@ -68,7 +73,7 @@ export function TrackingMap() {
   const poll = useActivePoll(5000);
   const { data, error, mutate } = useSWR<{ now: string; shipments: Ship[] }>('/trace/map/tracking', fetcher, { refreshInterval: poll, keepPreviousData: true });
   const [selected, setSelected] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'all' | 'moving' | 'done'>('all');
+  const [filter, setFilter] = useState<'all' | 'moving' | 'done' | 'risk'>('all');
   const [full, setFull] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
@@ -80,7 +85,10 @@ export function TrackingMap() {
   const fitted = useRef(false);
 
   const ships = useMemo(() => data?.shipments ?? [], [data]);
-  const shown = ships.filter((s) => filter === 'all' || (filter === 'moving' ? s.status === 'IN_TRANSIT' : s.status === 'DELIVERED'));
+  const shown = ships.filter((s) => filter === 'all' || (filter === 'risk' ? atRisk(s) : filter === 'moving' ? s.status === 'IN_TRANSIT' : s.status === 'DELIVERED'));
+  // M263: the truck drawn once from its icon; the card pinned to the chosen shipment.
+  const iconBox = useRef<HTMLDivElement>(null), icons = useRef<Icons>(new Map()), pinned = useRef<HTMLDivElement>(null);
+  useEffect(() => { void drawIcons(iconBox.current, ACCENT).then((m) => { icons.current = m; map.current?.redraw(); }); }, []);
   const sel = ships.find((s) => s.id === selected) ?? null;
 
   // New positions: start each marker's glide from wherever it's drawn right now.
@@ -118,8 +126,11 @@ export function TrackingMap() {
     return { x: g.from[0] + (g.to[0] - g.from[0]) * e, y: g.from[1] + (g.to[1] - g.from[1]) * e, h: lerpAngle(g.h0, g.h1, e) };
   };
 
+  const mapBox = useRef<HTMLDivElement>(null);
   const select = (id: string | null) => {
     setSelected(id);
+    // On a phone the list is under the map: bring the map back into view (17 Nov).
+    if (id && window.innerWidth < 1280) mapBox.current?.scrollIntoView({ behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth', block: 'start' });
     const s = ships.find((x) => x.id === id);
     if (!s) return;
     const pts = [...s.stops, ...(s.dest ? [s.dest] : []), ...(s.position ? [s.position] : [])];
@@ -128,92 +139,53 @@ export function TrackingMap() {
   const findIt = (s: Ship) => { if (s.position) map.current?.flyTo([s.position.lng - 0.35, s.position.lat - 0.22, s.position.lng + 0.35, s.position.lat + 0.22], { maxZoom: 120 }); };
 
   // ─── Drawing (every frame) ───
+  // M262/M263 (the owner's recording): the road behind in ink through every stop and the phone's trail, the road ahead
+  // dotted grey to a dashed zone round where it's going, a white tag where it left; each shipment on the move a round
+  // truck (ink; white with the accent ring and a halo when too warm; the chosen one in the accent with two rings pulsing
+  // out and its card pinned beside it).
   const draw = (f: Frame) => {
     frameRef.current = f;
     const { ctx, view, t, zoom } = f, k = view.k, still = reduced();
     const sx = (lng: number, lat: number): [number, number] => f.at(lng, lat);
     const bs = (b: [number, number]): [number, number] => [view.x + b[0] * k, view.y + b[1] * k];
-    const ink = f.dark ? '#e4e4e7' : '#27272a', paper = f.dark ? '#0c0c0e' : '#ffffff';
+    const ink = f.dark ? '#e4e4e7' : '#27272a', paper = f.dark ? '#0c0c0e' : '#ffffff', o = { accent: ACCENT, dark: f.dark, t, calm: still };
     const order = [...shown].sort((a, b) => (a.id === selected ? 1 : 0) - (b.id === selected ? 1 : 0));
-
+    let chosenAt: [number, number] | null = null;
     for (const s of order) {
-      const focus = !selected || s.id === selected || s.id === hover;
+      const focus = !selected || s.id === selected || s.id === hover, mine = s.id === selected;
       ctx.globalAlpha = focus ? 1 : 0.28;
       const stops = s.stops.map((p) => sx(p.lng, p.lat));
       const m = s.status === 'IN_TRANSIT' ? markerAt(s, t) : null;
       const mp = m ? bs([m.x, m.y]) : null;
-
-      // The road behind: solid through every stop.
-      if (stops.length > 1) {
-        ctx.strokeStyle = ink; ctx.globalAlpha = (focus ? 1 : 0.28) * (s.status === 'DELIVERED' ? 0.55 : 0.75);
-        ctx.lineWidth = s.id === selected ? 2.6 : 1.8; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
-        ctx.beginPath(); stops.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
-        ctx.globalAlpha = focus ? 1 : 0.28;
-      }
-      // Since the last stop: the trail the phone sent, in pink, up to where the marker is drawn.
-      if (mp && stops.length) {
-        const trail = s.trail.slice(0, -1).map((p) => sx(p.lng, p.lat));
-        ctx.save();
-        // A faint wide line under a crisp one (M65: a blurred shadow here was redrawn every frame).
-        ctx.lineCap = 'round'; ctx.lineJoin = 'round';
-        ctx.beginPath(); ctx.moveTo(...stops[stops.length - 1]); for (const p of trail) ctx.lineTo(...p); ctx.lineTo(...mp);
-        if (f.dark) { ctx.strokeStyle = 'rgba(79,142,247,0.18)'; ctx.lineWidth = s.id === selected ? 8 : 6; ctx.stroke(); }
-        ctx.strokeStyle = PINK; ctx.lineWidth = s.id === selected ? 3 : 2.2; ctx.stroke();
-        ctx.restore();
-        // Older trail points fade out.
-        trail.forEach(([x, y], i) => { ctx.globalAlpha = (focus ? 1 : 0.28) * (0.15 + (i / trail.length) * 0.6); ctx.fillStyle = PINK_SOFT; ctx.beginPath(); ctx.arc(x, y, 1.6, 0, Math.PI * 2); ctx.fill(); });
-        ctx.globalAlpha = focus ? 1 : 0.28;
-      }
-      // The road ahead: dashed, flowing toward where it's going.
+      // The road behind, through every stop and the trail the phone sent, up to where the marker is drawn.
+      const behind: [number, number][] = [...stops, ...(mp ? [...s.trail.slice(0, -1).map((p) => sx(p.lng, p.lat)), mp] : [])];
+      if (behind.length > 1) { ctx.globalAlpha = (focus ? 1 : 0.28) * (s.status === 'DELIVERED' ? 0.5 : 1); route(ctx, behind, 'done', o); ctx.globalAlpha = focus ? 1 : 0.28; }
+      // The road ahead, dotted, to the destination's zone.
       if (s.dest && s.status !== 'DELIVERED') {
         const from = mp ?? stops[stops.length - 1];
-        if (from) {
-          const d = sx(s.dest.lng, s.dest.lat);
-          ctx.save(); ctx.setLineDash([7, 6]); ctx.lineDashOffset = still ? 0 : -t / 45;
-          ctx.strokeStyle = f.dark ? 'rgba(122,174,250,0.7)' : 'rgba(193,58,146,0.6)'; ctx.lineWidth = 2;
-          ctx.beginPath(); ctx.moveTo(...from); ctx.lineTo(...d); ctx.stroke(); ctx.restore();
-          // The destination: a flag in a slow pulse.
-          const p = still ? 0 : (t % 2200) / 2200;
-          ctx.strokeStyle = PINK; ctx.globalAlpha = (focus ? 1 : 0.28) * (1 - p) * 0.8; ctx.lineWidth = 1.5;
-          ctx.beginPath(); ctx.arc(d[0], d[1], 6 + p * 16, 0, Math.PI * 2); ctx.stroke();
-          ctx.globalAlpha = focus ? 1 : 0.28;
-          ctx.fillStyle = paper; ctx.strokeStyle = PINK; ctx.lineWidth = 2.2;
-          ctx.beginPath(); ctx.arc(d[0], d[1], 5.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-          ctx.fillStyle = PINK; ctx.beginPath(); ctx.arc(d[0], d[1], 2.2, 0, Math.PI * 2); ctx.fill();
-          if (s.id === selected || zoom > 4) label(ctx, f, d[0], d[1] + 16, `→ ${city(s.dest.place)}`, PINK, true);
-        }
+        const d = sx(s.dest.lng, s.dest.lat);
+        if (from) route(ctx, [from, d], mine ? 'new' : 'plan', o);
+        zone(ctx, d[0], d[1], mine ? 30 : 18, ACCENT);
+        if (mine || zoom > 4) tag(ctx, d[0] + 6, d[1], city(s.dest.place), s.etaMinutes != null ? `Arrives ${new Date(performance.timeOrigin + t + s.etaMinutes * 60_000).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}` : 'Destination', f.dark);
       }
-      // Stops.
+      // Where it left (a ringed dot and its tag), and the stops between.
       s.stops.forEach((p, i) => {
         const [x, y] = stops[i], last = i === s.stops.length - 1 && s.status === 'DELIVERED';
-        ctx.fillStyle = last ? '#10b981' : paper; ctx.strokeStyle = last ? paper : ink; ctx.lineWidth = 2;
-        ctx.beginPath(); ctx.arc(x, y, i === 0 ? 5.5 : 4.5, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        if (i === 0) { ctx.fillStyle = ink; ctx.beginPath(); ctx.arc(x, y, 2, 0, Math.PI * 2); ctx.fill(); }
+        ctx.fillStyle = last ? '#10b981' : paper; ctx.strokeStyle = last ? paper : ink; ctx.lineWidth = i === 0 ? 3 : 2;
+        ctx.beginPath(); ctx.arc(x, y, i === 0 ? 6 : 4, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
         if (last) { ctx.strokeStyle = '#fff'; ctx.lineWidth = 1.6; ctx.beginPath(); ctx.moveTo(x - 2.2, y); ctx.lineTo(x - 0.5, y + 1.8); ctx.lineTo(x + 2.4, y - 1.8); ctx.stroke(); }
-        if (s.id === selected || zoom > 7) label(ctx, f, x, y - 14, `${STAGE_LABEL[p.stage as Stage] ?? p.stage} · ${city(p.place)}`, ink, false);
+        if (i === 0 && (mine || zoom > 6)) tag(ctx, x, y, city(p.place), `Left ${new Date(p.at).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit' })}`, f.dark);
+        else if (mine && i > 0) label(ctx, f, x, y - 14, `${STAGE_LABEL[p.stage as Stage] ?? p.stage} · ${city(p.place)}`, ink, false);
       });
-      // The shipment itself: radar pulse, glow, a dot with an arrow for the way it's heading.
+      // The shipment itself.
       if (mp && m) {
-        const [x, y] = mp;
-        if (!still) {
-          for (const lag of [0, 0.5]) {
-            const p = ((t / 2000 + lag) % 1);
-            ctx.globalAlpha = (focus ? 1 : 0.28) * (1 - p) * 0.55; ctx.strokeStyle = PINK; ctx.lineWidth = 1.5;
-            ctx.beginPath(); ctx.arc(x, y, 10 + p * 26, 0, Math.PI * 2); ctx.stroke();
-          }
-        }
-        ctx.globalAlpha = (focus ? 1 : 0.28) * (f.dark ? 0.9 : 0.5);
-        const g = glow(PINK); ctx.drawImage(g, x - 22, y - 22, 44, 44);
-        ctx.globalAlpha = focus ? 1 : 0.28;
-        ctx.fillStyle = PINK; ctx.strokeStyle = '#fff'; ctx.lineWidth = 2.5;
-        ctx.beginPath(); ctx.arc(x, y, s.id === selected ? 11 : 9, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
-        ctx.save(); ctx.translate(x, y); ctx.rotate((m.h * Math.PI) / 180);
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.moveTo(0, -5.5); ctx.lineTo(4, 4); ctx.lineTo(0, 2); ctx.lineTo(-4, 4); ctx.closePath(); ctx.fill();
-        ctx.restore();
-        if (s.id === selected || s.id === hover || zoom > 2.5) label(ctx, f, x, y - 24, `${s.label}${s.speedKmh ? ` · ${Math.round(s.speedKmh)} km/h` : ''}`, PINK, true);
+        unit(ctx, mp[0], mp[1], mine ? 'hot' : atRisk(s) ? 'risk' : 'ink', icons.current, 'truck', o);
+        if (mine) chosenAt = mp;
+        else if (s.id === hover || zoom > 2.5) label(ctx, f, mp[0], mp[1] - 26, `${s.label}${s.speedKmh ? ` · ${Math.round(s.speedKmh)} km/h` : ''}`, ink, true);
       }
     }
     ctx.globalAlpha = 1;
+    placeCallout(pinned.current, chosenAt ? chosenAt[0] : -9999, chosenAt ? chosenAt[1] : -9999, f.w, f.h, 32);
   };
 
   // ─── Pointer ───
@@ -268,28 +240,46 @@ export function TrackingMap() {
   }
 
   const moving = ships.filter((s) => s.status === 'IN_TRANSIT').length;
+  const delivered = ships.filter((s) => s.status === 'DELIVERED').length, risky = ships.filter(atRisk).length;
+  const etas = ships.filter((s) => s.status === 'IN_TRANSIT' && s.etaMinutes != null).map((s) => s.etaMinutes!), nextEta = etas.length ? Math.min(...etas) : null;
+  // M263: what needs the brand: a shipment too warm, one on the move with nowhere to go.
+  const needs = [...ships.filter(atRisk).map((s) => ({ s, why: 'warm' as const })), ...ships.filter((s) => s.status === 'IN_TRANSIT' && !s.dest).map((s) => ({ s, why: 'dest' as const }))].slice(0, 6);
   const homeBox = ships.length ? boxOf(ships.flatMap((s) => [...s.stops, ...(s.dest ? [s.dest] : [])])) : WORLD;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center gap-2">
-        <div role="radiogroup" aria-label="Show" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
-          {([['all', `All · ${ships.length}`], ['moving', `On the move · ${moving}`], ['done', 'Delivered']] as const).map(([id, label]) => (
-            <button key={id} type="button" role="radio" aria-checked={filter === id} onClick={() => setFilter(id)} className={cn('relative rounded-full px-3 py-1.5 text-xs font-semibold transition-colors', filter === id ? 'text-white' : 'text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white')}>
-              {filter === id && <motion.span layoutId="track-filter" className="absolute inset-0 rounded-full bg-indigo-600" transition={{ type: 'spring', stiffness: 460, damping: 36 }} />}
-              <span className="relative">{label}</span>
-            </button>
-          ))}
-        </div>
-        <span className="ml-auto inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+        <span className="ms-auto inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
           <span className="relative flex w-2.5 h-2.5" aria-hidden><span className={cn('absolute inset-0 rounded-full bg-pink-500', poll && moving && 'animate-ping opacity-60')} /><span className="relative w-2.5 h-2.5 rounded-full bg-pink-500" /></span>
           {poll ? 'Live · updates every 5 s' : 'Paused'}
         </span>
       </div>
 
-      <div className="grid xl:grid-cols-[360px_1fr] gap-4 items-start">
-        {/* Shipments */}
-        <section aria-label="Shipments" className="space-y-2 xl:max-h-[calc(100vh-220px)] xl:overflow-y-auto xl:pr-1 order-2 xl:order-1">
+      <div className="cmd-trace grid xl:grid-cols-[380px_1fr] gap-3 items-start">
+        {/* Needs you, then every shipment (M263) */}
+        <section aria-label="Shipments" className="space-y-2.5 xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:pe-1 order-2 xl:order-1">
+          {needs.length > 0 && (
+            <div className="space-y-2.5">
+              <h2 className="flex items-center gap-2 px-1 text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">Needs you<span className="rounded-md bg-[var(--cmd-fill)] px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">{needs.length}</span></h2>
+              {needs.map(({ s, why }, i) => (
+                <div key={s.id} className="cmd-pop" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
+                  <QueueCard icon={why === 'warm' ? Thermometer : Flag} source={why === 'warm' ? 'Cold chain' : 'Tracking'} ago={s.lastPingAt ? `seen ${formatDistanceToNowStrict(new Date(s.lastPingAt), { addSuffix: true })}` : undefined}
+                    due={why === 'warm' ? `${s.breaches ?? 0} warm reading${s.breaches === 1 ? '' : 's'}` : undefined} hot={why === 'warm'} chosen={selected === s.id}
+                    title={why === 'warm' ? (warmNow(s) ? `${s.label} is too warm: ${s.tempC} °C` : `${s.label} ran warm on the way`) : `Say where ${s.label} is going`}
+                    facts={[
+                      { k: 'Product', v: <span translate="no">{s.product}</span>, sub: `${s.quantity.toLocaleString()} units` },
+                      why === 'warm' ? { k: 'Keep at', v: `${s.maxTempC ?? '–'} °C`, sub: 'or colder' } : { k: 'Left', v: city(s.stops[0]?.place), sub: s.stops[0] ? new Date(s.stops[0].at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '' },
+                      { k: 'Speed', v: s.speedKmh != null ? `${Math.round(s.speedKmh)} km/h` : '–', sub: s.kmLeft != null ? `${Math.round(s.kmLeft)} km left` : 'no destination' },
+                    ]}
+                    note={why === 'warm' ? 'Check the cargo at its next stop; buyers who scan a unit see the reading on its passport.' : 'Without a destination the map can’t show the road ahead or when it arrives.'} noteIcon={why === 'warm' ? AlertTriangle : Navigation}
+                    links={<button type="button" onClick={() => select(s.id)} className="font-medium hover:underline">Show on map</button>}
+                    approve={why === 'warm' ? { label: 'Show it', onClick: () => select(s.id) } : { label: 'Set destination', onClick: () => { setPicking(s.id); toast('Click the map where this batch is going.'); } }}
+                    onOpen={() => select(s.id)} />
+                </div>
+              ))}
+              <h2 className="px-1 pt-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300">Every shipment</h2>
+            </div>
+          )}
           {!data && Array.from({ length: 3 }, (_, i) => <div key={i} className="panel h-28 skeleton" />)}
           {data && shown.length === 0 && (
             <div className="panel p-6 text-center text-sm text-zinc-500">
@@ -303,17 +293,32 @@ export function TrackingMap() {
         </section>
 
         {/* Map */}
-        <div className={cn('panel overflow-hidden p-0 order-1 xl:order-2 xl:sticky xl:top-4', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
+        <div ref={mapBox} className={cn('panel relative scroll-mt-20 overflow-hidden p-0 order-1 xl:order-2 xl:sticky xl:top-4', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
+          <IconSource ref={iconBox} icons={{ truck: Truck }} />
           <WorldCanvas ref={map} label="Map of your shipments and where they are now" homeBox={homeBox} dark={dark} live={!calm && ships.length > 0} draw={draw} onPoint={onPoint}
-            className={cn('w-full', full ? 'flex-1' : 'h-[62vh] min-h-[380px] max-h-[760px]', picking && '[&_[role=application]]:cursor-crosshair')}>
+            className={cn('w-full', full ? 'flex-1' : 'h-[72vh] min-h-[500px] max-h-[860px]', picking && '[&_[role=application]]:cursor-crosshair')}>
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
-            <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
-                  <Icon className="w-4 h-4" aria-hidden />
-                </button>
+            <CountChips<'all' | 'moving' | 'done' | 'risk'> label="Show" className="absolute start-3 top-3 z-10 max-w-[calc(100%-4.5rem)]" value={filter} onChange={setFilter}
+              items={[{ id: 'all', label: 'All', count: ships.length }, { id: 'moving', label: 'On the move', count: moving, dot: dark ? '#e4e4e7' : '#18181b' }, { id: 'done', label: 'Delivered', count: delivered, dot: '#10b981' }, { id: 'risk', label: 'At risk', count: risky, dot: ACCENT }]} />
+            <div className="absolute end-3 top-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 divide-y divide-zinc-200 dark:bg-[#1b1d22]/95 dark:ring-white/10 dark:divide-white/10">
+              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, lbl]) => (
+                <button key={id} type="button" onClick={() => control(id)} aria-label={lbl} title={lbl} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><Icon className="h-[18px] w-[18px]" aria-hidden /></button>
               ))}
             </div>
+            {sel && sel.status === 'IN_TRANSIT' && (
+              <Callout ref={pinned} key={sel.id} className="hidden lg:block">
+                <div className="flex items-center gap-3">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"><Truck className="h-5 w-5" aria-hidden /></span>
+                  <div className="min-w-0"><p className="truncate text-[15px] font-semibold" translate="no">{sel.label}, {sel.product}</p><p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{sel.speedKmh != null ? `${Math.round(sel.speedKmh)} km/h` : 'Speed not known'}{sel.dest ? `, heading to ${city(sel.dest.place)}` : ''}</p></div>
+                </div>
+                <div className="mt-3 flex items-baseline justify-between gap-2 text-sm">
+                  <span className="font-semibold">{sel.etaMinutes != null ? `${duration(sel.etaMinutes)} to go` : 'No arrival time yet'}</span>
+                  <span className={cn('text-xs font-semibold', atRisk(sel) ? 'text-[var(--cmd-ink)]' : 'text-zinc-500 dark:text-zinc-400')}>{atRisk(sel) ? (warmNow(sel) ? `${sel.tempC} °C, too warm` : `${sel.tempC ?? '–'} °C, ran warm`) : sel.tempC != null ? `${sel.tempC} °C` : sel.kmLeft != null ? `${Math.round(sel.kmLeft)} km left` : ''}</span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={progress(sel)} className="bg-zinc-900 dark:bg-white" /></div>
+                {atRisk(sel) && <div className="mt-3"><RoutePill icon={Thermometer}>Check the cargo at the next stop</RoutePill></div>}
+              </Callout>
+            )}
             <AnimatePresence>
               {picking && (
                 <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-3 flex items-center gap-2 rounded-full bg-indigo-600 text-white px-4 py-2 text-xs font-semibold shadow-lg">
@@ -334,7 +339,6 @@ export function TrackingMap() {
                 </motion.form>
               )}
             </AnimatePresence>
-            {/* The selected shipment, over the map */}
             <AnimatePresence>
               {sel && sel.status === 'IN_TRANSIT' && (
                 <motion.div key={sel.id} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
@@ -343,11 +347,18 @@ export function TrackingMap() {
                 </motion.div>
               )}
             </AnimatePresence>
-            <div className="absolute left-3 top-3 hidden sm:flex flex-col gap-1 rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-2 text-[11px] text-zinc-600 dark:text-zinc-300 shadow-sm border border-zinc-200/70 dark:border-white/10">
-              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-zinc-600 dark:bg-zinc-300 rounded" />Done</span>
-              <span className="flex items-center gap-2"><span className="w-4 h-0.5 bg-pink-500 rounded shadow-[0_0_6px_#4f8ef7]" />Live trail</span>
-              <span className="flex items-center gap-2"><span className="w-4 border-t-2 border-dashed border-pink-500" />Still to go</span>
-            </div>
+            {ships.length > 0 && !sel && !dest && (
+              <StatStrip className="pointer-events-auto absolute inset-x-3 bottom-3 z-10">
+                <StatCard label="On the move" icon={Truck} value={moving} unit={`of ${ships.length}`} delay={0}
+                  foot={<TickStrip parts={[{ n: moving - risky, color: dark ? '#e4e4e7' : '#27272a' }, { n: risky, color: ACCENT }, { n: ships.length - moving, color: dark ? '#52525b' : '#d4d4d8' }]} />} />
+                <StatCard label="Delivered" icon={PackageCheck} value={delivered} unit={ships.length ? `${Math.round((delivered / ships.length) * 100)}%` : undefined} delay={50}
+                  foot={<div className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={delivered / Math.max(1, ships.length)} className="bg-zinc-900 dark:bg-white" /></div>} />
+                <StatCard label="At risk" icon={AlertTriangle} tone="accent" value={risky} unit="ran warm" delay={100}
+                  foot={<p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{ships.filter((x) => x.tempC != null).length} with a thermometer</p>} />
+                <StatCard label="Next arrival" icon={Clock} value={nextEta != null ? duration(nextEta) : '–'} delay={150}
+                  foot={needs.length ? <InkPill onClick={() => setFilter(risky ? 'risk' : 'moving')}>{needs.length} need you</InkPill> : <p className="text-xs text-zinc-500 dark:text-zinc-400">Nothing needs you</p>} />
+              </StatStrip>
+            )}
           </WorldCanvas>
         </div>
       </div>

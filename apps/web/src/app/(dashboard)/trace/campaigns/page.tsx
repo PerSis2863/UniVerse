@@ -207,7 +207,7 @@ function CampaignCard({ c, index, product, currency, pointValue, canPay, onChang
   };
   return (
     <motion.article layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index, 6) * 0.04, type: 'spring', stiffness: 360, damping: 32 }} className={cn('panel p-5 relative overflow-hidden', c.status === 'ENDED' && 'opacity-70')}>
-      {c.status === 'ACTIVE' && <span aria-hidden className="absolute -right-10 -top-10 w-32 h-32 rounded-full bg-pink-500/15 blur-2xl" />}
+      {c.status === 'ACTIVE' && <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 w-32 h-32 rounded-full bg-pink-500/15 blur-2xl" />}
       <div className="relative flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h3 className="font-bold text-zinc-900 dark:text-white">{c.title}</h3>

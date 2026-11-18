@@ -67,6 +67,51 @@ export function walkFrom(start: { lat: number; lon: number }, places: MapPlace[]
   return { stops, total: t, km: Math.round(dist * 10) / 10 };
 }
 
+// M233: the walk along real streets. FOSSGIS's free OSRM walking router (routing.openstreetmap.de, OpenStreetMap
+// data, no account; its path segment is always "driving") is asked from the browser once per walk. Its legs
+// give the true walking minutes and distance; without it the walk keeps its estimate and straight lines.
+type Pt = { lat: number; lon: number };
+export const ROUTER = 'https://routing.openstreetmap.de/routed-foot/route/v1/driving/';
+/** The router's question for a walk from `start` through its stops in order. */
+export const routeUrl = (start: Pt, stops: Pt[]) => `${ROUTER}${[start, ...stops].map((p) => `${p.lon.toFixed(5)},${p.lat.toFixed(5)}`).join(';')}?overview=full&geometries=geojson`;
+/** The path and each leg's minutes and km from the router's answer, or null when it isn't a usable one. */
+export function routeOf(answer: unknown, legsWanted: number): { path: [number, number][]; legs: { min: number; km: number }[] } | null {
+  const r = (answer as { code?: string; routes?: { geometry?: { coordinates?: unknown }; legs?: { duration?: unknown; distance?: unknown }[] }[] } | null);
+  const route = r?.code === 'Ok' ? r.routes?.[0] : undefined;
+  const coords = route?.geometry?.coordinates, legs = route?.legs;
+  if (!Array.isArray(coords) || coords.length < 2 || !Array.isArray(legs) || legs.length !== legsWanted) return null;
+  const path = coords.filter((c): c is [number, number] => Array.isArray(c) && Number.isFinite(c[0]) && Number.isFinite(c[1])).map(([lon, lat]) => [lon, lat] as [number, number]);
+  if (path.length < 2) return null;
+  return { path, legs: legs.map((l) => ({ min: Math.max(1, Math.round(Number(l.duration) / 60) || 1), km: Math.max(0, Number(l.distance) / 1000 || 0) })) };
+}
+/** The walk again with the router's walking minutes (the visits keep their length). */
+export function withLegs<W extends { stops: WalkStop[]; total: number; km: number }>(w: W, legs: { min: number; km: number }[]): W {
+  let t = 0;
+  const stops = w.stops.map((s, i) => { const walk = legs[i]?.min ?? s.walk, at = t + walk; t = at + s.stay; return { ...s, walk, at }; });
+  return { ...w, stops, total: t, km: Math.round(legs.reduce((a, l) => a + l.km, 0) * 10) / 10 };
+}
+/** Where the walk's time bubble sits: on the path, by the middle of its longest stretch between stops (so never
+ *  on a stop). */
+export function bubbleAt(path: [number, number][], points: Pt[]): [number, number] {
+  let a = points[0], b = points[1] ?? points[0], best = -1;
+  for (let i = 1; i < points.length; i++) { const d = Math.hypot(points[i].lon - points[i - 1].lon, points[i].lat - points[i - 1].lat); if (d > best) { best = d; a = points[i - 1]; b = points[i]; } }
+  const mid = { x: (a.lon + b.lon) / 2, y: (a.lat + b.lat) / 2 };
+  let near: [number, number] = path[0] ?? [mid.x, mid.y], nearD = Infinity;
+  for (let i = 1; i < path.length; i++) {
+    const [x1, y1] = path[i - 1], [x2, y2] = path[i], dx = x2 - x1, dy = y2 - y1, l2 = dx * dx + dy * dy;
+    const t = l2 ? Math.max(0, Math.min(1, ((mid.x - x1) * dx + (mid.y - y1) * dy) / l2)) : 0;
+    const p: [number, number] = [x1 + dx * t, y1 + dy * t], d = Math.hypot(p[0] - mid.x, p[1] - mid.y);
+    if (d < nearD) { nearD = d; near = p; }
+  }
+  return near;
+}
+/** Walking directions for the whole walk in Google Maps (it takes up to nine stops between start and end). */
+export function walkInGoogle(start: Pt, stops: Pt[]): string {
+  const at = (p: Pt) => `${p.lat.toFixed(5)},${p.lon.toFixed(5)}`, last = stops[stops.length - 1] ?? start;
+  const via = stops.slice(0, -1).slice(0, 9).map(at).join('|');
+  return `https://www.google.com/maps/dir/?api=1&travelmode=walking&origin=${at(start)}&destination=${at(last)}${via ? `&waypoints=${encodeURIComponent(via)}` : ''}`;
+}
+
 /** M214: a street-level photo from Panoramax (CC BY-SA 4.0), on one of the instances the site's pictures
  *  may come from (the rest are skipped: the page's security rules list where pictures load from). */
 export interface StreetPhoto { id: string; thumb: string; sd: string; hd: string; at: string | null; by: string | null; lat: number; lon: number; heading: number | null }

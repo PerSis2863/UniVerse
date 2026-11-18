@@ -2,6 +2,7 @@
 import { useRouter } from 'next/navigation';
 import { openCommandPalette } from '@/lib/palette';
 import { useState, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Bell, Search, Plus } from 'lucide-react';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
@@ -9,6 +10,7 @@ import { ThemeToggle } from '@/components/ThemeToggle';
 import { ArrangeButton } from '@/components/ArrangeMode';
 import { LanguageMenu } from './LanguageMenu';
 import { useTopNav } from '@/lib/top-nav';
+import { useMedia } from '@/lib/use-media';
 import { AnimatePresence } from 'framer-motion';
 import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
@@ -49,6 +51,15 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
   // M219: on a computer's browser the bar across the top has the search, theme, language and bell: this bar
   // only shows the page's own controls, and isn't there when the page has none (no empty row under the bar).
   const top = useTopNav();
+  // With the bar across the top, and on phones, a page's buttons sit at the end of its section tabs' row
+  // (SectionTabs' `data-tabs-end`), so moving between a tab with buttons and one without never pushes the
+  // tabs down. The installed app on a computer keeps them in its own bar, which is always there.
+  const phone = useMedia('(max-width: 1023.98px)');
+  const tabsRow = (top || phone) && !leftNode;
+  const [slot, setSlot] = useState<HTMLElement | null>(null);
+  const findSlot = useCallback((el: HTMLSpanElement | null) => {
+    setSlot(el && tabsRow ? el.parentElement?.querySelector<HTMLElement>('[data-tabs-end]') ?? null : null);
+  }, [tabsRow]);
 
 
   // Its code arrives while the page is idle, so the first tap on the bell opens it at once.
@@ -90,8 +101,8 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
       {/* Phones: the page's name for screen readers only (M210); its actions and controls stay, in a row
           shown only when there are some. */}
       <h1 className={cn('sr-only', !top && 'lg:hidden')}>{title}</h1>
-      {!hideMobileTitle && (leftNode || action || rightNode) ? (
-        <div className="lg:hidden px-4 pt-3 pb-2">
+      {!hideMobileTitle && (leftNode || ((action || rightNode) && !slot)) ? (
+        <div data-bar className="lg:hidden px-4 pt-3 pb-2">
           <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-3">
             <div className="flex items-center gap-3 min-w-0 flex-1">{leftNode}</div>
             <ArrangeButton className="shrink-0" />
@@ -104,10 +115,15 @@ export function Topbar({ title, action, rightNode, leftNode, hideMobileTitle }: 
           </div>
           {rightNode && <div className="mt-3 flex flex-wrap items-center gap-2 [&>*]:max-w-full">{rightNode}</div>}
         </div>
-      ) : <div className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
+      ) : <div data-bar className="lg:hidden flex justify-end px-4"><ArrangeButton className="mt-2" /></div>}
 
+      <span ref={findSlot} hidden />
+      {slot && (rightNode || action) && createPortal(<>
+        {rightNode}
+        {action && <button onClick={action.onClick} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" strokeWidth={2.4} />{action.label}</button>}
+      </>, slot)}
       {/* Desktop: iPadOS navigation bar, clear at the top and frosted once the page scrolls under it. */}
-      {(!top || leftNode || rightNode || action) && <header className={cn('app-topbar hidden lg:flex z-20 nav-edge items-center justify-between gap-4', top ? 'px-6 xl:px-8 pt-3 pb-1' : 'lg:sticky lg:top-0 px-8 min-h-16 py-2')}>
+      {(!top || leftNode || ((rightNode || action) && !slot)) && <header className={cn('app-topbar hidden lg:flex z-20 nav-edge items-center justify-between gap-4', top ? 'px-6 xl:px-8 pt-3 pb-1' : 'lg:sticky lg:top-0 px-8 min-h-16 py-2')}>
         <div className="flex items-center gap-4 min-w-0">
           {!top && <h1 className="sr-only">{title}</h1>}
           {leftNode}

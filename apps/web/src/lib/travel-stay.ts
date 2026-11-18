@@ -1,7 +1,7 @@
 import type { Guide, Listing } from './travel-guide';
 import { km } from './travel-plan';
 
-// M232 (the owner, 17 Nov: "if I had booked a hotel somewhere and I type it in… recommend the areas to visit, foods,
+// M268 (the owner, 17 Nov: "if I had booked a hotel somewhere and I type it in… recommend the areas to visit, foods,
 // shopping and many more"): what a city's guide lists, grouped by kind and nearest the stay first, with the walk.
 
 export const STAY_KINDS = [

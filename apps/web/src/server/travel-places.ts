@@ -68,7 +68,7 @@ export async function travelStories(_u: SessionUser, q: Query) {
 export async function travelWhere(_u: SessionUser, q: Query) {
   const term = (first(q.q) ?? '').replace(/\//g, ' ').replace(/\s*\([^)]*\)/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 120);
   if (term.length < 2) throw new BadRequestException('Pick a place.');
-  // M232: also the town it's in (a hotel typed in finds its city's guide), and the name OpenStreetMap gives it.
+  // M268: also the town it's in (a hotel typed in finds its city's guide), and the name OpenStreetMap gives it.
   type Row = { lat: string; lon: string; boundingbox?: string[]; name?: string; address?: Record<string, string> };
   const at = await cached<{ lat: number; lon: number; box: [number, number, number, number] | null; city: string | null; name: string | null }>(`where3:${term.toLowerCase()}`, 90 * DAY, async () => {
     const rows = await fetchJson<Row[]>(`https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(term)}&format=jsonv2&limit=1&addressdetails=1&accept-language=en`);

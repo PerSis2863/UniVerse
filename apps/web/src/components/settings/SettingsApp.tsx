@@ -22,7 +22,7 @@ import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
-import { ACCENTS, accent as savedAccent, setAccent, type Accent, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
+import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
 import useSWR from 'swr';
@@ -354,7 +354,7 @@ function Profile({ role }: { role: Role }) {
         <FileDrop hint={false} accept="image/*" onFiles={(f) => pick(f[0], 'photo')} className="rounded-full shrink-0">
         <button type="button" onClick={() => file.current?.click()} title="Or drop a photo here" className="relative w-20 h-20 rounded-full overflow-hidden bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-2xl font-black flex items-center justify-center shrink-0 group" aria-label="Change photo">
           {me.avatar ? <Image src={me.avatar} alt="" fill unoptimized sizes="80px" className="object-cover" /> : (me.name ?? '?').charAt(0).toUpperCase()}
-          <span className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
+          <span className="absolute inset-0 bg-black/25 pointer-fine:bg-black/40 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 group-focus-visible:opacity-100 transition-opacity flex items-center justify-center">{busy === 'photo' ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5" />}</span>
         </button>
         </FileDrop>
         <input ref={file} type="file" accept="image/*" className="hidden" aria-label="Profile photo" onChange={(e) => { pick(e.target.files?.[0], 'photo'); e.target.value = ''; }} />
@@ -472,6 +472,7 @@ function Appearance() {
   const [cc, setCc] = useState(captionsByDefault);
   const [camOff, setCamOff] = useState(() => typeof window !== 'undefined' && cameraOffByDefault());
   const [mirror, setMirror] = useState(() => typeof window === 'undefined' || mirrorSelf());
+  const [menu, setMenu] = useState<MenuPlace>(() => (typeof window === 'undefined' ? 'auto' : menuPlace()));
   const [week, setWeek] = useState<'mon' | 'sun'>(() => (typeof window !== 'undefined' && weekStartsOn() === 0 ? 'sun' : 'mon'));
   const [level, setLevel] = useState<ReadingLevelPref>(() => (typeof window === 'undefined' ? 'original' : readingLevel()));
   const [selHelp, setSelHelp] = useState(() => typeof window !== 'undefined' && selectHelp());
@@ -492,6 +493,10 @@ function Appearance() {
             </button>
           ))}
         </div>
+      </div>
+      <div className="space-y-2" data-setting="menu-place"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Menu on a computer</p>
+        <Choice id="menu" value={menu} onPick={(v) => { setMenu(v); setMenuPlace(v); }} options={[['auto', 'Automatic'], ['top', 'Across the top'], ['side', 'Down the side']]} />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Automatic puts it across the top in a browser (full screen too) and down the side in the installed app. Phones keep their own menu.</p>
       </div>
       <div className="space-y-2" data-setting="text-size"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />

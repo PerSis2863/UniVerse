@@ -2,13 +2,16 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { LISTING_KINDS } from '@/lib/travel-guide';
 import { CURRENCIES, STYLE_IDS } from '@/lib/travel-find';
-import { isDay, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isDay, leg, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isMode } from '@/lib/travel-footprint';
+import { isZone } from '@/lib/travel-jetlag';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { oneOf, str, strings, type Body } from './body';
 import { publish } from './realtime';
 import { notifyMany } from './email';
 import { shortName } from './play';
 import { placeOf } from './travel';
+import { logGreenAction } from './green';
 
 // UniVerse Travel's trip planner (M206, the owner's Airbnb list items 4, 5 and 7): a trip of one or
 // more cities with their days, the places planned into those days, and friends planning it together
@@ -57,16 +60,18 @@ async function changed(tripId: string) {
 export async function travelTrips(u: SessionUser) {
   const rows = await prisma.travelTripMember.findMany({
     where: { userId: u.id }, take: MAX_TRIPS,
-    select: { trip: { select: { id: true, name: true, startDate: true, ownerId: true, updatedAt: true, stops: { select: { name: true, days: true, guide: true }, orderBy: { position: 'asc' } }, _count: { select: { members: true, items: true } } } } },
+    select: { trip: { select: { id: true, name: true, startDate: true, ownerId: true, updatedAt: true, stops: { select: { name: true, days: true, guide: true, cc: true, lat: true, lon: true, mode: true }, orderBy: { position: 'asc' } }, _count: { select: { members: true, items: true } } } } },
   });
   const trips = rows.map(({ trip: t }) => ({
     id: t.id, name: t.name, startDate: t.startDate, mine: t.ownerId === u.id, updatedAt: t.updatedAt,
-    cities: t.stops.map((s) => s.name), cover: t.stops[0]?.guide ?? null, days: tripDays(t.stops), people: t._count.members, places: t._count.items,
+    cities: t.stops.map((s) => s.name), cover: t.stops[0]?.guide ?? null,
+    // M257: each city's country, position and way there, for the travel stats.
+    route: t.stops.map((s) => ({ name: s.name, cc: s.cc, lat: s.lat, lon: s.lon, days: s.days, mode: s.mode })), days: tripDays(t.stops), people: t._count.members, places: t._count.items,
   })).sort((a, b) => +new Date(b.updatedAt) - +new Date(a.updatedAt));
   return { trips };
 }
 
-/** M232: GET /travel/trips/stays: the hotels and other stays saved on my trips (newest trips first), with the city
+/** M268: GET /travel/trips/stays: the hotels and other stays saved on my trips (newest trips first), with the city
  *  each is in, so the map can recommend what's around one without it being typed in again. */
 export async function travelTripStays(u: SessionUser) {
   const rows = await prisma.travelTripItem.findMany({
@@ -100,7 +105,7 @@ export async function travelTrip(u: SessionUser, id: string) {
   const [stops, items, members] = await Promise.all([
     prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, take: MAX_STOPS }),
     prisma.travelTripItem.findMany({ where: { tripId: id }, orderBy: [{ day: 'asc' }, { position: 'asc' }], take: MAX_ITEMS }),
-    prisma.travelTripMember.findMany({ where: { tripId: id }, orderBy: { joinedAt: 'asc' }, take: MAX_MEMBERS, select: { userId: true } }),
+    prisma.travelTripMember.findMany({ where: { tripId: id }, orderBy: { joinedAt: 'asc' }, take: MAX_MEMBERS, select: { userId: true, zone: true } }),
   ]);
   const people = await prisma.user.findMany({ where: { id: { in: members.map((m) => m.userId) } }, select: { id: true, name: true, avatar: true } });
   const owner = trip.ownerId === u.id;
@@ -109,7 +114,7 @@ export async function travelTrip(u: SessionUser, id: string) {
     // The invite code is every member's to share (they plan together), never shown off the trip.
     code: trip.code, owner, ownerId: trip.ownerId, me: u.id,
     stops, items,
-    members: members.map((m) => { const p = people.find((x) => x.id === m.userId); return { id: m.userId, name: shortName(p?.name), avatar: p?.avatar ?? null, owner: m.userId === trip.ownerId }; }),
+    members: members.map((m) => { const p = people.find((x) => x.id === m.userId); return { id: m.userId, name: shortName(p?.name), avatar: p?.avatar ?? null, owner: m.userId === trip.ownerId, zone: m.zone }; }),
   };
 }
 
@@ -157,6 +162,15 @@ export async function joinTravelTrip(u: SessionUser, b: Body) {
   return { trip: { id: trip.id } };
 }
 
+/** PATCH /travel/trips/:id/me { zone }: M244: show the group my home clock (an IANA zone), or stop (null). */
+export async function setTripZone(u: SessionUser, id: string, b: Body) {
+  await tripFor(u, id);
+  if (b.zone !== null && !isZone(b.zone)) throw new BadRequestException('Pick a time zone.');
+  await prisma.travelTripMember.update({ where: { tripId_userId: { tripId: id, userId: u.id } }, data: { zone: b.zone as string | null } });
+  await changed(id);
+  return { ok: true };
+}
+
 /** POST /travel/trips/:id/code: the owner makes a new invite link (the old one stops working). */
 export async function newTravelTripCode(u: SessionUser, id: string) {
   const trip = await tripFor(u, id);
@@ -192,18 +206,35 @@ export async function addTravelStop(u: SessionUser, id: string, b: Body) {
   return { stop };
 }
 
-/** PATCH /travel/trips/:id/stops/:stopId { days }: places planned past the new last day go back to "not planned". */
+/** PATCH /travel/trips/:id/stops/:stopId { days?, mode?, green? }: places planned past a new last day go back to
+ *  "not planned". M247: `mode` is how they get here from the city before; choosing the train with `green` records a
+ *  Green action for the one who chose it (once a leg). */
 export async function updateTravelStop(u: SessionUser, id: string, stopId: string, b: Body) {
-  await tripFor(u, id);
-  const days = whole(b.days, 1, MAX_DAYS);
-  if (!days) throw new BadRequestException(`Between 1 and ${MAX_DAYS} days.`);
-  const stops = await prisma.travelTripStop.findMany({ where: { tripId: id }, select: { id: true, days: true }, take: MAX_STOPS });
-  if (!stops.some((s) => s.id === stopId)) throw new NotFoundException('That place isn’t on this trip.');
-  if (tripDays(stops.map((s) => (s.id === stopId ? { days } : s))) > MAX_DAYS) throw new BadRequestException(`A trip can be ${MAX_DAYS} days long.`);
-  await prisma.travelTripStop.update({ where: { id: stopId }, data: { days } });
-  await prisma.travelTripItem.updateMany({ where: { tripId: id, stopId, day: { gte: days } }, data: { day: null } });
+  const trip = await tripFor(u, id);
+  const stops = await prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, select: { id: true, days: true, name: true, lat: true, lon: true }, take: MAX_STOPS });
+  const at = stops.findIndex((s) => s.id === stopId);
+  if (at < 0) throw new NotFoundException('That place isn’t on this trip.');
+  const data: { days?: number; mode?: string | null } = {};
+  if ('days' in b) {
+    const days = whole(b.days, 1, MAX_DAYS);
+    if (!days) throw new BadRequestException(`Between 1 and ${MAX_DAYS} days.`);
+    if (tripDays(stops.map((s) => (s.id === stopId ? { days } : s))) > MAX_DAYS) throw new BadRequestException(`A trip can be ${MAX_DAYS} days long.`);
+    data.days = days;
+  }
+  if ('mode' in b) { if (b.mode !== null && !isMode(b.mode)) throw new BadRequestException('Pick how you’ll travel.'); data.mode = b.mode as string | null; }
+  await prisma.travelTripStop.update({ where: { id: stopId }, data });
+  if (data.days) await prisma.travelTripItem.updateMany({ where: { tripId: id, stopId, day: { gte: data.days } }, data: { day: null } });
+  const prev = stops[at - 1], l = prev ? leg(prev, stops[at]) : null;
+  let green: { kg: number } | null = null;
+  if (data.mode === 'train' && b.green === true && prev && l) {
+    const note = `Train: ${prev.name} → ${stops[at].name} (${trip.name})`.slice(0, 300);
+    if (!(await prisma.greenAction.findFirst({ where: { userId: u.id, kind: 'TRANSIT', note }, select: { id: true } }))) {
+      const a = await logGreenAction(u, { kind: 'TRANSIT', amount: Math.min(2000, Math.round(l.km * 1.2)), note, place: stops[at].name });
+      green = { kg: a.co2Kg };
+    }
+  }
   await changed(id);
-  return { ok: true };
+  return { ok: true, green };
 }
 
 /** DELETE /travel/trips/:id/stops/:stopId (its places go with it). */
@@ -294,4 +325,50 @@ export async function moveTravelItems(u: SessionUser, id: string, b: Body) {
   }
   await changed(id);
   return { ok: true };
+}
+
+/** POST /travel/trips/:id/copy { name? }: M256: a new trip of my own from one I'm planning: its cities, days, ways of
+ *  travel and planned places (at most 80, five to a query: about 17 values each, under D1's 100), not its people, costs, journal or votes;
+ *  the dates left for me to pick. */
+export async function copyTravelTrip(u: SessionUser, id: string, b: Body) {
+  const from = await tripFor(u, id);
+  if ((await prisma.travelTripMember.count({ where: { userId: u.id } })) >= MAX_TRIPS) throw new BadRequestException(`You’re planning ${MAX_TRIPS} trips: delete an old one first.`);
+  const [stops, items] = await Promise.all([
+    prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, take: MAX_STOPS }),
+    prisma.travelTripItem.findMany({ where: { tripId: id }, orderBy: [{ day: 'asc' }, { position: 'asc' }], take: 80 }),
+  ]);
+  const trip = await prisma.travelTrip.create({
+    data: {
+      ownerId: u.id, name: clip(b.name, 80) ?? `${from.name} (copy)`.slice(0, 80), code: newCode(), travellers: from.travellers, style: from.style, currency: from.currency,
+      members: { create: { userId: u.id } },
+      stops: { create: stops.map((s) => ({ guide: s.guide, name: s.name, cc: s.cc, lat: s.lat, lon: s.lon, days: s.days, position: s.position, mode: s.mode })) },
+    },
+    select: { id: true },
+  });
+  const made = await prisma.travelTripStop.findMany({ where: { tripId: trip.id }, select: { id: true, position: true }, take: MAX_STOPS });
+  const stopFor = new Map(stops.map((s) => [s.id, made.find((m) => m.position === s.position)?.id]));
+  const rows = items.filter((i) => stopFor.get(i.stopId)).map((i) => ({ tripId: trip.id, stopId: stopFor.get(i.stopId)!, day: i.day, position: i.position, name: i.name, kind: i.kind, lat: i.lat, lon: i.lon, hours: i.hours, price: i.price, minutes: i.minutes, note: i.note, address: i.address, url: i.url, addedById: u.id }));
+  for (let i = 0; i < rows.length; i += 5) await prisma.travelTripItem.createMany({ data: rows.slice(i, i + 5) });
+  publish([u.id], { type: 'refresh', keys: ['/travel/trips'] });
+  return { trip };
+}
+
+/** POST /travel/trips/:id/chat: M258: the trip's group chat in Messages, made the first time, its people kept the
+ *  same as the trip's (those who joined added, those who left taken out). Any member. */
+export async function tripChat(u: SessionUser, id: string) {
+  const trip = await tripFor(u, id);
+  const members = await memberIds(id);
+  const found = trip.chatId ? await prisma.conversation.findUnique({ where: { id: trip.chatId }, select: { id: true, participants: { select: { userId: true } } } }) : null;
+  if (!found) {
+    const c = await prisma.conversation.create({ data: { isGroup: true, name: trip.name.slice(0, 80), app: 'travel', createdById: u.id, participants: { create: members.map((m) => ({ userId: m, role: m === trip.ownerId ? 'ADMIN' : 'MEMBER' })) } }, select: { id: true } });
+    await prisma.travelTrip.update({ where: { id }, data: { chatId: c.id } });
+    publish(members, { type: 'refresh', keys: ['/api/chat/conversations'] });
+    return { conversationId: c.id };
+  }
+  const now = new Set(found.participants.map((p) => p.userId));
+  const add = members.filter((m) => !now.has(m)), gone = [...now].filter((m) => !members.includes(m));
+  if (add.length) await prisma.conversationParticipant.createMany({ data: add.map((userId) => ({ conversationId: found.id, userId })) });
+  if (gone.length) await prisma.conversationParticipant.deleteMany({ where: { conversationId: found.id, userId: { in: gone } } });
+  if (add.length || gone.length) publish([...members, ...gone], { type: 'refresh', keys: ['/api/chat/conversations'] });
+  return { conversationId: found.id };
 }

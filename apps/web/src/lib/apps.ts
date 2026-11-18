@@ -48,7 +48,7 @@ export const APPS: ImpactApp[] = [
     // with friends, and booking through partners.
     id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
     impact: 'Guides, day-by-day plans and greener trips.',
-    paths: ['/travel'],
+    paths: ['/travel', '/journey'],
   },
 ];
 

@@ -34,9 +34,10 @@ export interface MapHandle {
 }
 
 const PAL = {
-  // Neutral since M94 (the owner's photos: black and white with warm light; the maps were slate blue).
-  light: { sea: '#e7e7e9', deep: '#dedee1', land: '#fbfbfb', edge: '#c9c9ce', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
-  dark: { sea: '#0c0c0e', deep: '#08080a', land: '#1d1d21', edge: '#34343b', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
+  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
+  // the same colours as Travel's street map (travel/map/map-style.ts). Neutral greys before (M94).
+  light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
+  dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 let cityPts: { name: string; bx: number; by: number; rank: number }[] | null = null;
@@ -138,7 +139,7 @@ class MapEngine {
   land: HTMLCanvasElement | null = null; landKey = '';
   /** The view the land picture was drawn for, and the margin drawn round it (M65: while the map moves
    *  the picture is moved and scaled instead of redrawn, then redrawn sharp once it rests). */
-  landView: View | null = null; landM = 0; busyUntil = 0;
+  landView: View | null = null; landM = 0; busyUntil = 0; lastLive = 0;
   world: Country[] = []; detail: Detail = '110m';
   /** M172: the extra places, once loaded (tier 1, then tier 2), and whether any were named in the last picture. */
   placesA: Place[] = []; placesB: Place[] = []; placesAsked = 0; named = false;
@@ -223,6 +224,11 @@ class MapEngine {
     }
     // Still being moved by hand (drag, pinch, trackpad): keep the cheap picture, then one sharp frame.
     const busy = moving || t < this.busyUntil;
+    // Resting with only the page's pulses moving: 30 frames a second are enough (half the work on a phone, as
+    // the app scenes, M225); moved by hand or gliding, every frame.
+    // (A redraw asked for meanwhile still happens: the next frame is asked for either way.)
+    if (!busy && t - this.lastLive < 30) { if (this.visible) this.raf = requestAnimationFrame(this.frame); return; }
+    this.lastLive = t;
     this.paint(t, busy);
     if ((busy || this.p.current.live) && this.visible) this.raf = requestAnimationFrame(this.frame);
     else this.last = 0;

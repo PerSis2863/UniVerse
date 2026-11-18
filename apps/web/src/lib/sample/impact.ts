@@ -725,7 +725,7 @@ export function sampleTravelVisa(p: string | null) {
 }
 /** GET /travel/trips (M206): a sample trip being planned with a friend. */
 export function sampleTravelTrips() {
-  return { trips: [{ id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', mine: true, updatedAt: new Date().toISOString(), cities: ['Lisbon', 'Porto'], cover: 'Lisbon', days: 5, people: 2, places: 6 }] };
+  return { trips: [{ id: 'sample-trip-1', name: 'Portugal in spring', startDate: '2027-04-08', mine: true, updatedAt: new Date().toISOString(), cities: ['Lisbon', 'Porto'], cover: 'Lisbon', days: 5, people: 2, places: 6, route: [{ name: 'Lisbon', cc: 'PT', lat: 38.7139, lon: -9.1394, days: 3, mode: null }, { name: 'Porto', cc: 'PT', lat: 41.1496, lon: -8.611, days: 2, mode: 'train' }] }] };
 }
 /** GET /travel/trips/:id */
 export function sampleTravelTrip(me: { id: string; name?: string }) {
@@ -743,7 +743,7 @@ export function sampleTravelTrip(me: { id: string; name?: string }) {
       item('sample-item-5', 'sample-stop-1', null, 0, 'Time Out Market', 'eat', 38.7069, -9.1459, 75, { price: '€8–20' }),
       item('sample-item-6', 'sample-stop-2', 0, 0, 'Livraria Lello', 'see', 41.1469, -8.6149, 30, { price: '€10' }),
     ],
-    members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false }],
+    members: [{ id: me.id, name: (me.name ?? 'You').split(' ')[0], avatar: null, owner: true, zone: null }, { id: 'sample-friend', name: 'Maya', avatar: null, owner: false, zone: 'America/New_York' }],
   };
 }
 /** GET /travel/trips/:id/expenses (M215): costs shared with the sample friend (made up). */
@@ -760,6 +760,41 @@ export function sampleTripExpenses(me: { id: string }) {
 export function sampleTripPacking() {
   const p = (id: string, item: string, grp: string, done = false) => ({ id, item, grp, done, doneBy: done ? 'sample-friend' : null });
   return { items: [p('sample-p-1', 'Passport (valid six months past the trip)', 'Documents', true), p('sample-p-2', 'Comfortable walking shoes', 'Clothes'), p('sample-p-3', 'A light jacket for the evenings', 'Weather'), p('sample-p-4', 'Sunscreen', 'Health', true)] };
+}
+/** GET /travel/trips/:id/journal (M242): the sample trip's notes (written for the demo). */
+export function sampleTripJournal() {
+  const e = (id: string, day: number, text: string, place: string, by: string, mine: boolean) => ({ id, day, text, photoUrl: null, place, shared: true, mine, by, createdAt: new Date().toISOString() });
+  return { entries: [
+    e('sample-j-1', 0, 'Landed at noon and went straight to Belém for custard tarts, still warm. The queue moves fast.', 'Belém', 'Maya', false),
+    e('sample-j-2', 0, 'Sunset from the castle walls: the whole city goes gold.', 'São Jorge Castle', 'You', true),
+    e('sample-j-3', 1, 'Tram 28 was packed, so we walked the hills instead and found a tiny fado bar.', 'Alfama', 'Maya', false),
+  ] };
+}
+/** GET /travel/trips/:id/polls (M243): the sample trip's votes (made up). */
+export function sampleTripPolls() {
+  const at = new Date().toISOString();
+  return { polls: [
+    { id: 'sample-poll-1', kind: 'place', question: 'Day trip from Lisbon?', multi: false, closed: false, by: 'Maya', mine: false, createdAt: at, options: [{ text: 'Sintra', voters: ['Maya', 'You'] }, { text: 'Cascais', voters: [] }, { text: 'Évora', voters: [] }], chosen: [0], people: 2 },
+    { id: 'sample-poll-2', kind: 'stay', question: 'Where to stay in Porto?', multi: true, closed: false, by: 'You', mine: true, createdAt: at, options: [{ text: 'Ribeira, by the river', voters: ['Maya'] }, { text: 'Cedofeita, quieter', voters: [] }], chosen: [], people: 1 },
+  ] };
+}
+/** GET /travel/docs (M245): sample documents (made up; names and dates only). */
+export function sampleTravelDocs() {
+  return { docs: [
+    { id: 'sample-doc-1', tripId: null, kind: 'passport', label: 'Passport', expires: '2027-08-30', note: null, reminded: '' },
+    { id: 'sample-doc-2', tripId: 'sample-trip-1', kind: 'insurance', label: 'Travel insurance', expires: '2027-12-31', note: 'Policy in my email', reminded: '' },
+  ] };
+}
+/** GET /travel/trips/:id/share (M248): the sample trip's family link is off; Maya checked in (made up). */
+export function sampleTripShare() {
+  return { code: null, checkins: [{ id: 'sample-c-1', by: 'Maya', note: 'Landed, all good!', place: 'Lisbon', at: new Date(Date.now() - 2 * 3_600_000).toISOString() }] };
+}
+/** GET /travel/trips/:id/todos (M254): the sample trip's checklist (made up). */
+export function sampleTripTodos() {
+  return { todos: [
+    { id: 'sample-t-1', text: 'Book the train from Lisbon to Porto', assignee: 'sample-friend', due: '2027-03-20', done: false, doneBy: null },
+    { id: 'sample-t-2', text: 'Check passports are valid six months after the trip', assignee: null, due: null, done: true, doneBy: 'sample-friend' },
+  ] };
 }
 /** GET /travel/board (M207): sample travellers in the same city on the same dates (made up). */
 export function sampleTravelBoard() {

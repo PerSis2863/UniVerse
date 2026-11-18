@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M232 is the latest).
+  builds on it). The newest notes are at the end (M268 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -116,7 +116,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
   them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
   (11); 5 (cheap phones) was left out by the owner.
-- **On `main`** (live): everything through **M231** (M228–M231 merged 16 Nov, PR #131; M222–M227, PR #130; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M268** (M268 merged 18 Nov, PR #136; M267, PR #135; M234–M266 merged 17 Nov, PR #134; M222–M233 below; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -204,8 +204,8 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     M101).
   - **Shared:** the hub and the Impact Wallet (M24), Collaborate (M68, M71–M76), the owner console (M64,
     M79, M92).
-  - **Platform:** the security review and its fixes (M62, M78, M87), Next.js 16.4.4 with the Cloudflare
-    adapter 1.20.15, always moved together (M77), Prisma's query compiler shared (M88), "too many SQL
+  - **Platform:** the security review and its fixes (M62, M78, M87), Next.js 16.4.5 with the Cloudflare
+    adapter 1.20.16, always moved together (M77; M261 on the branch), Prisma's query compiler shared (M88), "too many SQL
     variables" fixed for every list (M73), 500 people a month on the $5 plan (M28), checks on every push
     (M87).
   - **The launch focus (M110–M116):** a size alarm before every deploy and Relief's emergency line (M110),
@@ -218,9 +218,24 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
     without the constellation and the player card (M119); CPU: in-app page changes answered from
     Cloudflare's cache (M120); Messages, professional (M121); every game almost full screen (M122,
     `--play-h`); Solar Voyager in place of Orbit Breach (M123).
-- **Merged 16 Nov (PR #131 and PR #130):** M231 (16 Nov), a sweep for errors and smoothness (progress bars `<Fill>`, loops in CSS, one press per button, the motion layer's forced layouts gone, no glass behind sheets; the rules in §8 and `motion-rules.test.ts`; Next 16.4.5 from 30 Nov). M230 (16 Nov), projects in Tasks: the Timeline a Gantt chart (start days, milestones, lines to waiting cards, drag to move) and time logged on cards (`TimeLog`, 0227). M229 (16 Nov), voice typing (`DictateButton`, `src/lib/dictation.ts`) in chats, documents and Quick notes. M228 (16 Nov), a Grim Prompter threat model (report given to the owner privately, not committed; the PDF layout frame sandboxed). M227 (16 Nov), Calls is **Meet & call** (`MeetHome`: New meeting, Join, Schedule, voice rooms, happening now; in a call Zoom's keys and push to talk, `src/lib/meet.ts`). M226 (16 Nov), no dot plot above a Travel guide's places. M225 (16 Nov), the lag measured and cut in the browser (the scene 30 a second at 1.5x, resting after 30 s untouched with the landing's demos, `useIdle`; no `html:has`; Green's map still). M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
+- **Merged 17–18 Nov (PR #134; M267, PR #135; from `claude/travel-ten-features`, made from `claude/great-hamilton-8g8xdm`):** the
+  owner's Travel features of 17 Nov, as parts of a trip's page: M239 (Today: the next place, when to leave, the walk there), M240 (Ready → Save for offline: plan, guides, map tiles), M241 (Phrases: 19 languages, read aloud), M242 (Journal: notes and photos per day, the story with the route; 0228), M243 (Votes: group polls, live; 0229), M244 (Ready → jet lag and the group's clocks; 0230), M245 (Ready → documents, only their owner's, with reminders; 0231), M246 (Ready → holidays and festivals on your dates), M247 (Ready → footprint; the train logs a Green action; 0232), M248 (Share: the family link `/journey/<code>` and "I'm safe"; 0233); then the owner's ten more: M249 (Today → rain plan), M250 (Today → sunrise, sunset, golden hours), M251 (Today → opening-hours check), M252 (Today → arrival guide), M253 (Ready → safety card), M254 (Checklist → before-you-go to-dos; 0234), M255 (the morning briefing, daily job `travel-briefing`), M256 (Copy trip), M257 (Trips → your travel in numbers), M258 (Trip chat in Messages; 0235); then M259 (the map: every town of 15,000+ people and 375 hand-picked places with photo pins, a trip drawn by day, saved hearts, Search this area, smoother; `map-world.ts`, `public/geo/destinations.json`); then M260 (live turn-by-turn navigation: Directions → Start, the camera following you smoothly, spoken turns, a new route when you leave it, arrival; stops, leave at / arrive by, avoid, +N min bubbles, Home / Work / recent; `Navigate.tsx`, `src/lib/navigation.ts`); then M261 (security updates: Next.js 16.4.5 with the adapter 1.20.16, Vitest 4.1.12, Zod and Tinypool pinned: no known advisories); then M262 (the owner's map recording, part 1: the shared kit `src/components/map-ui/` and Relief's live map in that look: Needs you queue, chips, pinned card, number cards, I can help as a plan with Undo); M263, Trace's tracking map in that look; M264, Travel's trip on the map in that look; M265, a trip's ways along the real roads and a day's walk along the streets; M266, the look on Travel's other map views, a phone sweep of every page with `crawl.mjs --layout` and its fixes, smoother map markers). The 160 new places' photos and weather still wait for a machine that reaches Wikimedia.
+- **Merged 17 Nov (PR #134, from `claude/great-hamilton-8g8xdm`):** M238 (17 Nov), every trip has a picture (`tripCover`). M237 (17 Nov), Google Maps' tools on Travel's map
+  (directions by walking, cycling or driving; what's here with share; measure; `MapTools.tsx`, `src/lib/map-tools.ts`) and
+  the maps' labels in Inter (`scripts/map-glyphs.py`, `public/fonts/map`, `mapRequest`). M236 (17 Nov), the maps in Apple Maps' look (its colours, every place a
+  coloured icon), an Apple-style panel (a bottom sheet on phones), Travel's map edge to edge with full screen, small credits,
+  Green's and Relief's maps taller with floating lists, the place list filled on first load. M235 (17 Nov), a browser in full screen keeps the top
+  bar, Settings → Appearance → "Menu on a computer" (Automatic, Across the top, Down the side; `uv-menu`, `html[data-menu]`),
+  the console and 17 dashboard and list pages fill a wide screen (`max-w-[2000px]`). M234 (17 Nov), calls: a phone's tall
+  picture shown whole (`videoFit`), two people on a phone FaceTime-style, Standard sound by default, the screen kept awake
+  (`useWakeLock`).
+- **Merged 16–17 Nov (PR #130 M222–M227, PR #131 M228–M231, PR #132 M232–M233):** M233 (16 Nov), Travel's map in Apple Maps' look (its own map design,
+  light and dark, also on Green's and Relief's street maps; the world maps in the same colours; flat by default)
+  and walks along real streets (FOSSGIS walking router, one blue line, a time bubble, Share, Directions in
+  Google Maps). M232 (16 Nov), Travel's pictures sharp: a real photo per place (Wikidata's main image, checked by eye; `photo` in `travel-ideas.ts` rows overrides) in place of the 7:1 banners, in Wikimedia's widths (`Cover`, `commonsSrcSet`), the map card's pictures too; 70 more places (215), each with its weather. M231 (16 Nov), a sweep for errors and smoothness (progress bars `<Fill>`, loops in CSS, one press per button, the motion layer's forced layouts gone, no glass behind sheets; the rules in §8 and `motion-rules.test.ts`; Next 16.4.5 from 30 Nov). M230 (16 Nov), projects in Tasks: the Timeline a Gantt chart (start days, milestones, lines to waiting cards, drag to move) and time logged on cards (`TimeLog`, 0227). M229 (16 Nov), voice typing (`DictateButton`, `src/lib/dictation.ts`) in chats, documents and Quick notes. M228 (16 Nov), a Grim Prompter threat model (report given to the owner privately, not committed; the PDF layout frame sandboxed). M227 (16 Nov), Calls is **Meet & call** (`MeetHome`: New meeting, Join, Schedule, voice rooms, happening now; in a call Zoom's keys and push to talk, `src/lib/meet.ts`). M226 (16 Nov), no dot plot above a Travel guide's places. M225 (16 Nov), the lag measured and cut in the browser (the scene 30 a second at 1.5x, resting after 30 s untouched with the landing's demos, `useIdle`; no `html:has`; Green's map still). M224 (16 Nov), Play folded into UniVersity as its **Games** section (no Play app any more; `/play` is UniVersity's, `knownApp` for old rows). M223 (16 Nov), no picture of the student home on the landing (`ProductWindow` removed). M222 (16 Nov), the notifications panel in Apple's style (`NotificationsPanel.tsx`: app-like
   icons, grouped by day, stacks, iOS's segmented control, swipe to read, smooth spring motion).
-- **On the branch, not merged yet:** M232 (17 Nov), Travel's map: kinds glide in over a city, the guide's highlights and areas (`Highlights.tsx`, Regionlist districts), "Where are you staying?" with what's around it (`src/lib/travel-stay.ts`: a big city's district picks; the stays saved on trips, `GET /travel/trips/stays`).
+- **Merged 18 Nov (PR #136):** M268 (17 Nov; built as M232 on `claude/youthful-fermi-sbdtcp`), Travel's map: kinds glide in over a city, the guide's highlights and areas (`Highlights.tsx`, Regionlist districts), "Where are you staying?" with what's around it (`src/lib/travel-stay.ts`: a big city's district picks; the stays saved on trips, `GET /travel/trips/stays`).
+- **On a branch, not merged yet:** nothing that was found on 18 Nov.
 - **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
   hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
   an app's own row of tabs. M220 (16 Nov), light mode is the default (dark for those who chose it). M219 (16 Nov), on a computer in a browser the menu is a bar across the top
@@ -266,7 +281,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M233** (M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M269** (another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -283,7 +298,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0228`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0236`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

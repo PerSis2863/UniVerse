@@ -3,7 +3,7 @@
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
-import type { GeoJSONSource, Map as MLMap } from 'maplibre-gl';
+import type { GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Activity, CloudLightning, Droplets, ExternalLink, Flame, LocateFixed, Mountain, Sun, type LucideIcon } from 'lucide-react';
@@ -12,6 +12,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { ALERT_KINDS, distanceKm, type Alert, type AlertKind } from '@/lib/relief-plus';
 import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
+import { mapRequest } from '@/components/travel/map/map-style';
 
 // Relief → Alerts (M217): disasters happening now around the world: GDACS's orange and red alerts (earthquakes,
 // tropical cyclones, floods, volcanoes, droughts, wildfires; the UN and European Commission's system) and the
@@ -24,7 +25,7 @@ const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-red
 
 export default function ReliefAlerts() {
   const { data } = useSWR<{ alerts: Alert[]; credit: string }>('/relief/alerts', fetcher, { revalidateOnFocus: false });
-  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<string | null>(null);
+  const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
   const dark = useDarkMode();
   const [ready, setReady] = useState(false), [kinds, setKinds] = useState<Set<AlertKind>>(new Set(Object.keys(ALERT_KINDS) as AlertKind[]));
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null), [picked, setPicked] = useState<string | null>(null);
@@ -52,7 +53,7 @@ export default function ReliefAlerts() {
       ml.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
       if (gone || !box.current) return;
       applied.current = firstStyle();
-      map = new ml.Map({ container: box.current, style: applied.current, center: [10, 20], zoom: 1.2, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
+      map = new ml.Map({ container: box.current, style: applied.current, center: [10, 20], zoom: 1.2, transformRequest: mapRequest, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1) });
       mapRef.current = map;
       map.on('style.load', () => onStyle(map!));
       map.on('click', (e) => onClick(map!, e.point.x, e.point.y));
@@ -74,8 +75,8 @@ export default function ReliefAlerts() {
   const toggle = (k: AlertKind) => setKinds((s) => { const n = new Set(s); if (n.has(k)) n.delete(k); else n.add(k); return n; });
 
   return (
-    <div className="grid gap-4 lg:grid-cols-[24rem_minmax(0,1fr)]">
-      <aside className="panel flex max-h-[calc(100dvh-14rem)] min-h-[22rem] flex-col p-4" aria-label="Disaster alerts">
+    <div className="relative grid gap-4 lg:block">
+      <aside className="panel flex max-h-[calc(100dvh-14rem)] min-h-[22rem] flex-col p-4 lg:absolute lg:start-3 lg:top-3 lg:bottom-3 lg:z-10 lg:max-h-none lg:rounded-[1.375rem] lg:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] lg:w-[24rem]" aria-label="Disaster alerts">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="Kinds of disaster">
           {(Object.keys(ALERT_KINDS) as AlertKind[]).map((k) => { const I = ICON[k]; return (
             <button key={k} type="button" aria-pressed={kinds.has(k)} onClick={() => toggle(k)} className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition-colors', kinds.has(k) ? 'bg-white text-zinc-900 ring-zinc-300 dark:bg-white/[0.08] dark:text-white dark:ring-white/20' : 'text-zinc-500 ring-zinc-200 dark:text-zinc-400 dark:ring-white/10')}><I className="h-3.5 w-3.5" aria-hidden />{ALERT_KINDS[k]}</button>
@@ -102,7 +103,7 @@ export default function ReliefAlerts() {
           )}
         <p className="mt-2 border-t border-zinc-200/70 pt-2 text-[11px] leading-snug text-zinc-500 dark:border-white/10 dark:text-zinc-400">{data?.credit ?? 'Alerts: GDACS and USGS'}, every 15 minutes. For warnings where you are, follow your local authorities. Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap</a></p>
       </aside>
-      <div className="relative h-[calc(100dvh-14rem)] min-h-[24rem] overflow-hidden rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
+      <div className="relative h-[calc(100dvh-14rem)] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
         <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of disaster alerts" />
         {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
         <div className="pointer-events-none absolute bottom-3 end-3 flex gap-2 rounded-xl bg-[var(--card-bg)] px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow ring-1 ring-black/5 dark:text-zinc-200 dark:ring-white/10" aria-hidden>

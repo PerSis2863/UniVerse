@@ -367,8 +367,8 @@ export function PeerTutoringTimeBank() {
 
       {/* Hero / Time-Bank Balance Banner */}
       <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-950 via-slate-900 to-emerald-950 p-6 md:p-8 text-white border border-indigo-800/40 shadow-2xl">
-        <div className="absolute -end-16 -top-16 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" />
-        <div className="absolute -start-16 -bottom-16 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" />
+        <div className="pointer-events-none absolute -end-16 -top-16 h-64 w-64 rounded-full bg-emerald-500/10 blur-3xl" aria-hidden />
+        <div className="pointer-events-none absolute -start-16 -bottom-16 h-64 w-64 rounded-full bg-indigo-500/10 blur-3xl" aria-hidden />
 
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">

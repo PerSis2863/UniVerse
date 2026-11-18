@@ -670,7 +670,7 @@ export function MarketMap() {
             {cell && (
               <motion.section key={cell.key} layout initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98, transition: { duration: 0.16 } }} transition={{ type: 'spring', stiffness: 360, damping: 32 }}
                 className="panel p-5 relative overflow-hidden" aria-label={`About ${cell.place ?? 'this place'}`}>
-                <span aria-hidden className="absolute -right-10 -top-10 w-36 h-36 rounded-full bg-pink-500/15 blur-2xl" />
+                <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 w-36 h-36 rounded-full bg-pink-500/15 blur-2xl" />
                 <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
                 <p className="text-2xl" aria-hidden>{flag(ccOf(cell.place, cell.country))}</p>
                 <h3 className="mt-1 font-bold text-zinc-900 dark:text-white pr-8">{cell.place ?? 'Unknown place'}</h3>
@@ -746,7 +746,7 @@ export function MarketMap() {
 
           {market?.locked && (
             <section className="panel p-5 relative overflow-hidden">
-              <span aria-hidden className="absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-fuchsia-500/15 blur-2xl" />
+              <span aria-hidden className="pointer-events-none absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-fuchsia-500/15 blur-2xl" />
               <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Lock className="w-4 h-4 text-fuchsia-500" aria-hidden />Category market</h3>
               <p className="mt-1 text-sm text-zinc-500">On PRO, the map also shows every brand’s scans in {market.category ?? 'your category'} (anonymised, live), your share in each city and where you’re missing.</p>
               <button type="button" onClick={() => setLocked(true)} className="btn-secondary btn-sm mt-3">What it shows</button>

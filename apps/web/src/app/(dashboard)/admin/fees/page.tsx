@@ -9,7 +9,7 @@ export default function AdminFeesPage() {
     <>
       <Topbar title="School fees" subtitle="Fee plans, bills, payments and receipts" />
       <SectionTabs tabs={ADMIN_FINANCE_TABS} />
-      <div className="p-4 md:p-8 max-w-5xl mx-auto w-full">
+      <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full">
         <FeesAdmin />
       </div>
     </>

@@ -16,6 +16,19 @@ export const GREEN_FACTORS: Record<GreenKind, { label: string; unit: string; uni
   CLEANUP: { label: 'Cleaned up litter', unit: 'kg', units: 'kg', kg: 0.5, how: 'About 0.5 kg once the litter is sorted and recycled', max: 1000 },
 };
 
+/** M247: what getting between places emits, in kg CO₂e per passenger-km (UK government greenhouse gas conversion
+ *  factors 2024, rounded): a flight under 500 km counts more (take-off and landing weigh more), a car's per-car figure is
+ *  shared by up to four travellers. Used by Travel's trip footprint (src/lib/travel-footprint.ts). */
+export const TRAVEL_MODES = ['plane', 'train', 'bus', 'car', 'ferry'] as const;
+export type TravelMode = (typeof TRAVEL_MODES)[number];
+export const TRAVEL_FACTORS: Record<TravelMode, { label: string; kg: number; short?: number; perCar?: boolean }> = {
+  plane: { label: 'Plane', kg: 0.15, short: 0.25 },
+  train: { label: 'Train', kg: 0.035 },
+  bus: { label: 'Coach', kg: 0.027 },
+  car: { label: 'Car', kg: 0.17, perCar: true },
+  ferry: { label: 'Ferry', kg: 0.11 },
+};
+
 export const co2For = (kind: GreenKind, amount: number) => Math.round(GREEN_FACTORS[kind].kg * amount * 100) / 100;
 
 /** Days in a row (up to today or yesterday) with at least one action; days are YYYY-MM-DD. */

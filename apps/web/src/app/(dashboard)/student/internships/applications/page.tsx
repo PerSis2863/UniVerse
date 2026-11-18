@@ -215,7 +215,7 @@ export default function ApplicationsPage() {
       <Topbar title="Internships" subtitle="Every application in one place, with next steps and notes" />
       <SectionTabs tabs={INTERNSHIP_TABS} />
       <div className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-8 max-w-5xl mx-auto w-full min-w-0 space-y-5">
+        <div className="p-4 md:p-8 max-w-[2000px] mx-auto w-full min-w-0 space-y-5">
           {error ? (
             <div className="panel p-5"><p className="text-sm text-rose-600 dark:text-rose-400">{(error as Error).message || 'Couldn’t load your applications.'}</p><button type="button" className="btn-secondary btn-sm mt-3" onClick={() => mutate()}>Try again</button></div>
           ) : isLoading || !data ? (

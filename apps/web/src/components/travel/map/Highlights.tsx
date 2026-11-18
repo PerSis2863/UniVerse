@@ -6,7 +6,7 @@ import { fetcher } from '@/lib/fetcher';
 import type { Guide, Listing } from '@/lib/travel-guide';
 import { aroundStay, districtsNear, STAY_KINDS, walkMinutes, withDistricts } from '@/lib/travel-stay';
 
-// M232 (the owner, 17 Nov: "give recommendation about the historic areas and facts about everything which is unique
+// M268 (the owner, 17 Nov: "give recommendation about the historic areas and facts about everything which is unique
 // or people visit a lot"): the map's panel, for the place that was searched, lists its guide's must-see sights (each
 // with the guide's short note about it) and the areas worth exploring (a big city's districts). The guide is the
 // one Travel already keeps (Wikivoyage, cached 14 days on the server, the same answer as the guide page): no new

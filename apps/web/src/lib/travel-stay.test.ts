@@ -12,7 +12,7 @@ const guide = {
   ],
 } as unknown as Guide;
 
-describe('around a stay (M232)', () => {
+describe('around a stay (M268)', () => {
   it('groups the guide by kind, nearest first, with a walk', () => {
     const near = aroundStay(guide, { lat: 48.8534, lon: 2.3488 });
     expect(near.see.map((s) => s.name)).toEqual(['Near church', 'Far tower']);
@@ -22,7 +22,7 @@ describe('around a stay (M232)', () => {
     expect(walkMinutes(near.see[0].km)).toBeLessThan(5);
     expect(walkMinutes(0)).toBe(1);
   });
-  it('finds the stay\'s district from the sights near it and adds its places (M232)', () => {
+  it('finds the stay\'s district from the sights near it and adds its places (M268)', () => {
     const city = { title: 'Paris', summary: [], places: [], sections: [{ part: 'see', title: 'See', text: [], listings: [
       { kind: 'see', name: 'Arc', lat: 48.8738, lon: 2.295, guide: 'Paris/8th arrondissement' },
       { kind: 'see', name: 'Tower', lat: 48.858, lon: 2.2945, guide: 'Paris/7th arrondissement' },

@@ -3,7 +3,16 @@
 /* `short:` a laptop-height screen or less: sign in tightens so it fits without scrolling. */
 @custom-variant short (@media (max-height: 860px));
 /* M219: a computer's browser, where the menu is the bar across the top (TopNav.tsx `TOP_NAV`); the installed app keeps the side menu. */
-@custom-variant topnav (@media (min-width: 1024px) and (display-mode: browser));
+/* M219 / M235: the menu across the top (src/lib/top-nav.ts): on a computer, when chosen in Settings → Appearance
+   (<html data-menu="top">), or left on Automatic in the browser, full screen included. */
+@custom-variant topnav {
+  @media (min-width: 1024px) {
+    &:where(:root[data-menu="top"] *) { @slot; }
+    @media (display-mode: browser), (display-mode: fullscreen) {
+      &:where(:root:not([data-menu]) *) { @slot; }
+    }
+  }
+}
 @config "../../tailwind.config.ts";
 
 /* ─── Design tokens ─────────────────────────────── */
@@ -799,7 +808,7 @@ html, body { overflow-x: clip; max-width: 100%; }
 @media (hover: hover) { .lift:hover { transform: translate3d(0, -2px, 0); box-shadow: 0 14px 32px -16px rgba(0, 0, 0, 0.25); } }
 .lift:active { transform: scale(0.985); }
 
-/* M231: a progress bar's fill (components/ui/Fill.tsx) moves instead of growing: the graphics chip runs it.
+/* M235: a progress bar's fill (components/ui/Fill.tsx) moves instead of growing: the graphics chip runs it.
    No overshoot (it would open a gap at the track's start). */
 .fill { display: block; width: 100%; height: 100%; transform: translateX(calc((var(--fill, 0) - 1) * 100%)); transition: transform 0.7s var(--ease-glide); }
 [dir='rtl'] .fill { transform: translateX(calc((1 - var(--fill, 0)) * 100%)); }
@@ -1174,7 +1183,7 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 @media (prefers-reduced-motion: reduce) { .hero-in { animation: none; } }
 
 /* Navigation progress bar */
-/* M231: it slides in (transform) rather than growing (width): page changes are when the page's thread is busiest,
+/* M235: it slides in (transform) rather than growing (width): page changes are when the page's thread is busiest,
    and the graphics chip keeps a slide smooth then. The bar is always full width; its end (and the comet) leads. */
 @keyframes nav-progress-run { from { transform: translateX(-100%); } 20% { transform: translateX(-55%); } 60% { transform: translateX(-25%); } to { transform: translateX(-8%); } }
 @keyframes nav-progress-run-rtl { from { transform: translateX(100%); } 20% { transform: translateX(55%); } 60% { transform: translateX(25%); } to { transform: translateX(8%); } }
@@ -1184,11 +1193,11 @@ html.theme-reveal::view-transition-old(root), html.theme-reveal::view-transition
 
 @keyframes btn-spin { to { transform: rotate(360deg); } }
 
-/* M231: a scanner's line sweeping down and up (the landing's Trace scene). The wrapper is the box's full height and
+/* M235: a scanner's line sweeping down and up (the landing's Trace scene). The wrapper is the box's full height and
    moves by its own height, so the line travels the box on the graphics chip (it moved by `top` before). */
 @keyframes scan-sweep { 0%, 100% { transform: translateY(8%); } 50% { transform: translateY(92%); } }
 .scan-sweep { animation: scan-sweep 1.6s ease-in-out infinite; }
-/* M231: loops that framer-motion drove from the page's thread every frame, now CSS on the graphics chip. */
+/* M235: loops that framer-motion drove from the page's thread every frame, now CSS on the graphics chip. */
 @keyframes scene-tilt { 0%, 100% { transform: perspective(900px) rotateY(-14deg) rotateX(8deg); } 50% { transform: perspective(900px) rotateY(14deg) rotateX(-4deg); } }
 .scene-tilt { animation: scene-tilt 8s ease-in-out infinite; }
 @keyframes scene-pan { to { transform: translateX(-50%); } }
@@ -1549,7 +1558,7 @@ html.reduce-motion .aurora-a, html.reduce-motion .aurora-b { animation: none; }
 /* Words that rise out of a mask one after another (the landing headline). */
 .word-mask { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: 0.08em; margin-bottom: -0.08em; }
 .word-rise { display: inline-block; animation: word-rise 900ms var(--ease-glide) backwards; }
-@keyframes word-rise { from { transform: translate3d(0, 105%, 0) rotate(4deg); opacity: 0; } } /* M231: no blur (it repainted every frame while the page loaded) */
+@keyframes word-rise { from { transform: translate3d(0, 105%, 0) rotate(4deg); opacity: 0; } } /* M235: no blur (it repainted every frame while the page loaded) */
 @media (prefers-reduced-motion: reduce) { .word-rise { animation-name: backdrop-in; } }
 
 /* ═══ M34 → M52 · The look everywhere ════════════════════════════════════════════════════════════
@@ -1799,7 +1808,7 @@ html.reduce-motion :is(.folder-front, .folder-file, .folder-stack) { transition:
 @keyframes flow-row { 0%, 30%, 100% { background-color: transparent; } 5%, 22% { background-color: rgb(255 255 255 / 0.06); } }
 /* The role chain's dots light up one after another. */
 .bento-step { box-shadow: 0 0 10px #4f8ef7; animation: bento-step 2s ease-in-out infinite; }
-@keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); } } /* M231: the glow is fixed (.bento-step), only opacity and size move */
+@keyframes bento-step { 0%, 100% { opacity: 0.3; transform: scale(0.8); } 30% { opacity: 1; transform: scale(1.3); } } /* M235: the glow is fixed (.bento-step), only opacity and size move */
 @media (prefers-reduced-motion: reduce) { .flow-on, .flow-row, .bento-step { animation: none; } .flow-comet { display: none; } }
 html.reduce-motion :is(.flow-on, .flow-row, .bento-step) { animation: none; }
 html.reduce-motion .flow-comet { display: none; }
@@ -2179,7 +2188,7 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 @keyframes play-burst { from { transform: translate3d(0, 0, 0) scale(1); opacity: 1; } to { transform: translate3d(var(--dx), var(--dy), 0) scale(0.3); opacity: 0; } }
 .play-burst > i { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; border-radius: 9999px; animation: play-burst 700ms var(--ease-out-soft) forwards; }
 @keyframes play-pulse-ring { 50% { opacity: 1; } }
-/* M231: the glow is fixed; an inner ring pulses by opacity (the glow's box-shadow repainted every frame). */
+/* M235: the glow is fixed; an inner ring pulses by opacity (the glow's box-shadow repainted every frame). */
 .play-lightning { box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.14), 0 0 55px rgba(251, 191, 36, 0.24); }
 .play-lightning::before { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; box-shadow: inset 0 0 0 2px rgba(251, 191, 36, 0.55), inset 0 0 40px rgba(251, 191, 36, 0.18); opacity: 0.25; animation: play-pulse-ring 1.2s ease-in-out infinite; }
 /* A boss question (Quiz Clash, M39): a warm gold light sweeps across the card once. */
@@ -2202,7 +2211,7 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 @keyframes play-smoke { 0% { transform: translate3d(-50%, 0, 0) scale(0.8); opacity: 0; } 20% { opacity: 1; } 100% { transform: translate3d(-50%, -40px, 0) scale(1.4); opacity: 0; } }
 .play-smoke { animation: play-smoke 900ms ease-out forwards; }
 @media (prefers-reduced-motion: reduce) { .play-lid, .play-smoke { animation: none; } .play-smoke { display: none; } }
-@keyframes holo { from { transform: translate3d(-60%, 0, 0); } to { transform: translate3d(40%, 0, 0); } } /* M231: slides (it moved a background before) */
+@keyframes holo { from { transform: translate3d(-60%, 0, 0); } to { transform: translate3d(40%, 0, 0); } } /* M235: slides (it moved a background before) */
 .holo-pan { animation: holo 5s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .holo-pan { animation: none !important; } }
 /* M36 · The 3D worlds: Night Shift's jump scare and static. */
@@ -2210,7 +2219,7 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 .play-scare { animation: play-scare 950ms cubic-bezier(0.2, 0.9, 0.3, 1) forwards; }
 @keyframes play-static { to { transform: translate3d(60px, 40px, 0); } }
 .play-static { overflow: hidden; }
-.play-static::before { content: ''; position: absolute; inset: -120px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: play-static 0.25s steps(4) infinite; } /* M231: moved, not repainted */
+.play-static::before { content: ''; position: absolute; inset: -120px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='1.4' numOctaves='1'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); animation: play-static 0.25s steps(4) infinite; } /* M235: moved, not repainted */
 @media (prefers-reduced-motion: reduce) { .play-scare { animation-name: rm-fade; animation-direction: reverse; } .play-static::before { animation: none; } }
 /* Night Shift (M99): the torch panel heaves when you're out of breath. */
 @keyframes play-breath { 50% { transform: scale(1.035); } }
@@ -2218,7 +2227,7 @@ html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, r
 @media (prefers-reduced-motion: reduce) { .play-breath { animation: none; } }
 /* M38 · Rewind: a cool tint with drifting scanlines while time runs backwards. */
 .play-rewind { overflow: hidden; background: radial-gradient(ellipse at center, transparent 45%, rgba(8, 145, 178, 0.35)); mix-blend-mode: screen; }
-.play-rewind::before { content: ''; position: absolute; inset: -5px 0 0; background: repeating-linear-gradient(0deg, rgba(103, 232, 249, 0.07) 0 2px, transparent 2px 5px); animation: play-rewind 0.4s linear infinite; } /* M231: moved, not repainted */
+.play-rewind::before { content: ''; position: absolute; inset: -5px 0 0; background: repeating-linear-gradient(0deg, rgba(103, 232, 249, 0.07) 0 2px, transparent 2px 5px); animation: play-rewind 0.4s linear infinite; } /* M235: moved, not repainted */
 @keyframes play-rewind { to { transform: translate3d(0, 5px, 0); } }
 @media (prefers-reduced-motion: reduce) { .play-rewind::before { animation: none; } }
 /* M38 · Bullet time: the edges go deep blue and a slow pulse breathes in from them. */
@@ -2519,7 +2528,7 @@ html.dark .sidebar-pill, .dark .sidebar-pill { box-shadow: 0 0 0 1px rgba(255, 2
 .ios-glass { background: var(--material-thick); -webkit-backdrop-filter: none; backdrop-filter: none; }
 html[data-scrolled] .nav-edge { background: var(--topbar-bg); -webkit-backdrop-filter: none; backdrop-filter: none; }
 [data-sonner-toaster] [data-sonner-toast] { -webkit-backdrop-filter: none; backdrop-filter: none; }
-/* M231: what's behind a sheet or dialog is dimmed, not blurred (iOS does the same): a full-screen blur over the app's
+/* M235: what's behind a sheet or dialog is dimmed, not blurred (iOS does the same): a full-screen blur over the app's
    moving scene was worked out again on every frame while it was open. */
 .fixed.inset-0:is(.backdrop-blur-sm, .backdrop-blur, .backdrop-blur-md, .backdrop-blur-lg, .backdrop-blur-xl, .backdrop-blur-2xl, .backdrop-blur-3xl) { -webkit-backdrop-filter: none; backdrop-filter: none; }
 
@@ -3100,3 +3109,21 @@ html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: 
 .notif-sheet[data-entering] .notif-row { animation: notif-in 520ms var(--spring-glide, var(--ease-glide)) both; animation-delay: calc(min(var(--i, 0), 10) * 35ms + 80ms); }
 @keyframes notif-in { from { opacity: 0; transform: translate3d(0, 12px, 0) scale(0.97); } }
 @media (prefers-reduced-motion: reduce) { .notif-sheet[data-entering] .notif-row { animation: tracks-fade 200ms ease both; } }
+
+/* M262: the map command look (the owner's screen recording, 17 Nov; src/components/map-ui/Command.tsx). `--cmd` is the
+   accent for rings, halos and tints, `--cmd-ink` the darker one for text and filled pills (4.5:1 with white). Each app
+   keeps its own colour (M132): Relief's orange is the recording's. */
+.cmd-relief { --cmd: #f26322; --cmd-ink: #c2410c; --cmd-fill: #c2410c; }
+.cmd-trace { --cmd: #ec4899; --cmd-ink: #be185d; --cmd-fill: #be185d; }
+.cmd-travel { --cmd: #0ea5e9; --cmd-ink: #0369a1; --cmd-fill: #0369a1; }
+.dark :is(.cmd-relief) { --cmd-ink: #fb923c; } .dark :is(.cmd-trace) { --cmd-ink: #f472b6; } .dark :is(.cmd-travel) { --cmd-ink: #38bdf8; }
+@keyframes cmd-pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
+.cmd-pop { animation: cmd-pop 280ms var(--ease-glide) backwards; }
+@keyframes cmd-sheet { from { opacity: 0; transform: translateY(18px) scale(0.97); } }
+.cmd-sheet { animation: cmd-sheet 320ms var(--ease-glide) backwards; }
+/* A pulsing pair of rings round a place that needs attention (DOM markers; the canvas maps draw their own). */
+@keyframes cmd-ring { from { transform: scale(0.55); opacity: 0.8; } to { transform: scale(1.9); opacity: 0; } }
+.cmd-ring::before, .cmd-ring::after { content: ''; position: absolute; inset: 0; border-radius: 9999px; border: 1.5px solid var(--cmd); animation: cmd-ring 2.4s var(--ease-out-soft) infinite; pointer-events: none; }
+.cmd-ring::after { animation-delay: 1.2s; }
+html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .cmd-pop, .cmd-sheet { animation-name: tl-fade; } .cmd-ring::before, .cmd-ring::after { animation: none; opacity: 0.4; transform: scale(1.3); } }
