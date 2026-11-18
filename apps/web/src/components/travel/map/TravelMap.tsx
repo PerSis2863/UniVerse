@@ -804,7 +804,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           </Callout>
         </div>
       )}
-      {/* M266: the numbers of what's on the map along its foot (a computer): a walk, directions, or the area in view. */}
+      {/* M266: the numbers of what's on the map along its foot (a computer): a walk or directions (the area's numbers
+          were dropped: the owner found the map busy, 17 Nov). */}
       {!nav && !tripId && !measure && (() => {
         const r = dir ? routes[dir.chosen] ?? routes[0] : null;
         const cards = walk ? [
@@ -817,11 +818,6 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           { label: 'Distance', icon: Ruler, value: distance(r.km), unit: routes.length > 1 ? `${routes.length} ways` : undefined },
           { label: 'Turns', icon: Navigation, value: r.steps.filter((x) => x.type !== 'depart' && x.type !== 'arrive').length, unit: dir.via.length ? `${dir.via.length} stop${dir.via.length === 1 ? '' : 's'}` : undefined },
           { label: 'Arrive', icon: Sun, value: now ? new Date(now + r.minutes * 60_000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '–', unit: 'leaving now', tone: 'accent' as const },
-        ] : view && view.zoom >= 12 && !picked && !dest && !found ? [
-          { label: `${CATEGORIES.find((c) => c.id === cat)!.label} in view`, icon: PINS[cat].icon, value: list.length, unit: list.length >= 40 ? 'or more' : undefined },
-          { label: 'Stories', icon: BookOpen, value: show.stories ? storyList.length : '–', unit: show.stories ? 'nearby' : 'layer off' },
-          { label: 'Reviewed', icon: Star, value: show.reviews ? reviewed?.places.length ?? 0 : '–', unit: 'on UniVerse' },
-          { label: 'Saved', icon: Heart, value: savedList.filter((x) => x.lat! >= view.s && x.lat! <= view.n && x.lon! >= view.w && x.lon! <= view.e).length, unit: 'of yours here' },
         ] : null;
         if (!cards) return null;
         return (

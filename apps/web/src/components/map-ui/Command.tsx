@@ -39,8 +39,9 @@ export function CountChips<T extends string>({ items, value, onChange, label, cl
 
 /** The number cards along the foot of the map (two across on a phone, four on a computer). */
 export function StatStrip({ children, className }: { children: ReactNode; className?: string }) {
-  // A phone: one row that scrolls sideways (the map stays in view); a computer: four across.
-  return <div className={cn('flex gap-2 overflow-x-auto [scrollbar-width:none] lg:grid lg:grid-cols-4 lg:overflow-visible', className)}>{children}</div>;
+  // On a phone they're left out (the owner, 17 Nov: the maps felt busy; the chips over the map carry the counts); a
+  // tablet one row that scrolls sideways; a computer four across.
+  return <div className={cn('hidden gap-2 overflow-x-auto [scrollbar-width:none] sm:flex lg:grid lg:grid-cols-4 lg:overflow-visible', className)}>{children}</div>;
 }
 /** One number card: its name and icon, the number (and a word after it), and a small picture under it. */
 export function StatCard({ label, icon: Icon, value, unit, tone, foot, delay = 0 }: {
@@ -147,7 +148,7 @@ export function QueueCard({ icon: Icon, source, ago, due, title, facts, note, no
           ))}
         </dl>
       )}
-      {note && <p className="mt-3 flex items-start gap-2 text-[13px] text-zinc-600 dark:text-zinc-300">{NoteIcon && <NoteIcon className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}<span className="line-clamp-2">{note}</span></p>}
+      {note && <p className="mt-3 hidden items-start gap-2 text-[13px] sm:flex text-zinc-600 dark:text-zinc-300">{NoteIcon && <NoteIcon className="mt-0.5 h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}<span className="line-clamp-2">{note}</span></p>}
       {(links || approve) && (
         <div className="mt-3 flex items-center gap-3 border-t border-zinc-200/70 pt-3 text-sm dark:border-white/10">
           <div className="flex min-w-0 flex-1 items-center gap-2 text-zinc-600 dark:text-zinc-300">{links}</div>

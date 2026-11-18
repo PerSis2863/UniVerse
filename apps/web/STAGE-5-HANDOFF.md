@@ -8746,3 +8746,25 @@ were one-offs (not committed); `scripts/checks/main-pages-smooth.mjs` and the ax
 - **`/api/core/travel/place` timed out once** (16 Nov 17:02): already fixed by M231 the same evening (a slow source
   answers 503 "busy", not a site error); not seen since.
 - **[owner]:** mark both reports resolved in the console (Overview → Problems) once this is live.
+
+## M267: the maps calmer, smoother and easier on a phone (17 Nov)
+
+The owner, 17 Nov: "check if any other problems are there in the system and also the map ui doesnt feel that good";
+asked what, they chose all four: looks empty or plain, too busy, not smooth, hard to use on a phone.
+
+- **The live error log:** nothing new since the merge (the two of the owner's email are the newest: fixed); the rest are
+  old (fixed then, or the console's sample reports of late October without a browser).
+- **Smoother:** `WorldCanvas` (Relief, Trace and every canvas map) draws at most 30 frames a second while it rests with only
+  the page's pulses moving (60 while moved by hand or gliding; a redraw asked for meanwhile still comes, the next frame
+  is asked for either way); `tag()` has no canvas shadow blur (a soft fill instead). Measured on a phone at 4× slower CPU
+  (software drawing, no graphics chip): Relief and Travel steady at 60 while dragging; Trace's slow frames 17 → 12 in
+  2.5 s, the rest being the land picture's copy each frame, which a phone's graphics chip does cheaply.
+- **Less busy:** the number cards (`StatStrip`) are left out on phones (the chips carry the counts), a queue card's note
+  is left out on phones, Travel's "area in view" cards are gone (a walk's and directions' stay), and on a phone the card
+  pinned to a chosen need or shipment is left out (the sheet at the bottom says the same; on a computer both).
+- **Less empty:** Relief's map opens framed on its open needs (all posts when none is open), once, unless a link chose one.
+- **On a phone:** "Show on map" (Relief) and choosing a shipment (Trace) bring the map back into view (the list is under it).
+- **Not done, a next step if the owner wants it:** Relief's and Trace's maps are drawn without streets (countries,
+  coasts, towns); putting Relief on the street map Travel, Green and Relief's alerts already use would show the
+  neighbourhood around each need. This machine can't load street tiles to check it, so it was left for a session that
+  can (the owner's "UniVerse" environment would need `tiles.openfreemap.org` allowed).

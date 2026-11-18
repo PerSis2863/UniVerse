@@ -135,8 +135,9 @@ export function tag(ctx: CanvasRenderingContext2D, x: number, y: number, title: 
   const w2 = sub ? ctx.measureText(sub).width : 0, w = Math.max(w1, w2) + 20, h = sub ? 38 : 26, top = y - h / 2;
   // Beside the point, on its left when there's no room on the right.
   const room = ctx.canvas.clientWidth || Infinity, left = x + 12 + w > room - 56 ? x - 12 - w : x + 12;
-  ctx.save(); ctx.shadowColor = 'rgba(0,0,0,0.18)'; ctx.shadowBlur = 10; ctx.shadowOffsetY = 2;
-  ctx.fillStyle = dark ? '#1f2127' : '#ffffff'; ctx.beginPath(); ctx.roundRect(left, top, w, h, 9); ctx.fill(); ctx.restore();
+  // A soft edge drawn as a fill (a canvas shadow blur per tag per frame is what stutters a busy map).
+  ctx.fillStyle = dark ? 'rgba(0,0,0,0.35)' : 'rgba(0,0,0,0.08)'; ctx.beginPath(); ctx.roundRect(left - 0.5, top + 1.5, w + 1, h + 1, 9.5); ctx.fill();
+  ctx.fillStyle = dark ? '#1f2127' : '#ffffff'; ctx.beginPath(); ctx.roundRect(left, top, w, h, 9); ctx.fill();
   ctx.textAlign = 'left'; ctx.textBaseline = 'middle';
   ctx.font = '600 12px Inter, ui-sans-serif, system-ui'; ctx.fillStyle = dark ? '#f4f4f5' : '#18181b'; ctx.fillText(title, left + 10, sub ? top + 13 : y);
   if (sub) { ctx.font = '500 11px Inter, ui-sans-serif, system-ui'; ctx.fillStyle = dark ? '#a1a1aa' : '#71717a'; ctx.fillText(sub, left + 10, top + 27); }
