@@ -9468,3 +9468,10 @@ The owner, during the 32: "also make more new features". The first of a few that
   (type, options, key, meta); others from the paper (choice → the right option's text, multi → JSON of the right texts,
   number → its value, written → SHORT with the model answer and the rubric's total). Nine rows a statement. Test:
   `exam-papers.test.ts`. The button sits beside Remove on a paper.
+
+## M325: office-hours bookings in the calendar (18 Nov)
+
+- **`useOfficeEvents`** in `CalendarBoard.tsx` reads `/office-slots` (M295) and adds the booked times as `OFFICE_HOURS`
+  events (`oh-<id>`, not movable: their `userId` is empty): a student's own ("Office hours with Dr Iyer"), a teacher's
+  booked ones ("Office hours: Ana"), with the topic as the description. No new route; the offline copy of
+  `/office-slots` (M305) means they show without a connection too.

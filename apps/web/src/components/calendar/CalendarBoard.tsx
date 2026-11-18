@@ -38,7 +38,9 @@ export function useCalendar() {
   const mine = useMyCourseColors();
   // M200: events from a connected Google or Outlook calendar, read live, shown in grey (not movable here).
   const outside = useOutsideEvents();
-  const entries = useMemo(() => toEntries(slotList.map((s) => (s.course?.code && mine[s.course.code] ? { ...s, course: { ...s.course, color: mine[s.course.code] } } : s)), [...eventList, ...outside], me), [slotList, eventList, outside, me, mine]);
+  // M325: booked office-hours times (a student's own, a teacher's with who booked), not movable here.
+  const office = useOfficeEvents();
+  const entries = useMemo(() => toEntries(slotList.map((s) => (s.course?.code && mine[s.course.code] ? { ...s, course: { ...s.course, color: mine[s.course.code] } } : s)), [...eventList, ...outside, ...office], me), [slotList, eventList, outside, office, me, mine]);
   /** Moves one of your events: shown at once, put back if the server says no. */
   const move = (id: string, startAt: Date, endAt: Date) => {
     const times = { startAt: startAt.toISOString(), endAt: endAt.toISOString() };
@@ -50,6 +52,21 @@ export function useCalendar() {
 export type CalendarData = ReturnType<typeof useCalendar>;
 
 const NO_OUTSIDE: CalEvent[] = [];
+
+type OfficeAnswer =
+  | { role: 'teacher'; slots: { id: string; startAt: string; durationMin: number; student: string | null; topic: string | null }[] }
+  | { role: 'student'; teachers: { name: string; slots: { id: string; startAt: string; durationMin: number; mine: boolean; topic: string | null }[] }[] };
+const NO_OFFICE: CalEvent[] = [];
+/** M325: office-hours times that are booked, as calendar events (src/server/office-slots.ts). */
+function useOfficeEvents(): CalEvent[] {
+  const { data } = useSWR<OfficeAnswer>('/office-slots', fetcher);
+  return useMemo(() => {
+    if (!data) return NO_OFFICE;
+    const end = (s: { startAt: string; durationMin: number }) => new Date(Date.parse(s.startAt) + s.durationMin * 60_000).toISOString();
+    if (data.role === 'teacher') return data.slots.filter((s) => s.student).map((s) => ({ id: `oh-${s.id}`, userId: '', title: `Office hours: ${s.student}`, description: s.topic, startAt: s.startAt, endAt: end(s), type: 'OFFICE_HOURS' }));
+    return data.teachers.flatMap((t) => t.slots.filter((s) => s.mine).map((s) => ({ id: `oh-${s.id}`, userId: '', title: `Office hours with ${t.name}`, description: s.topic, startAt: s.startAt, endAt: end(s), type: 'OFFICE_HOURS' })));
+  }, [data]);
+}
 /** Events of the calendars I connected (Settings → Connected accounts), from a week ago to two months ahead. */
 function useOutsideEvents(): CalEvent[] {
   const { data: list } = useSWR<{ services: { id: string; kind: string; connected: unknown }[] }>('/api/connections', authedJson, { revalidateOnFocus: false });
