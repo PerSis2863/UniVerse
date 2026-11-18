@@ -5,6 +5,7 @@ import { dailyCounts } from '@/lib/daily-counts';
 import { CoursesService } from '../services/courses.service';
 import { audit } from '../audit';
 import { lessonPlan, lessonsToCalendar, saveLessons } from '../lesson-plans';
+import { listPacks, makePack, removePack, updatePack } from '../revision-packs';
 import { first, str } from '../body';
 
 const courses = new CoursesService();
@@ -60,4 +61,10 @@ export default function coursesModule(router: Router) {
   lessons.post('', { roles: ['ADMIN', 'TEACHER'] }, ({ user, body }) => saveLessons(user, body));
   lessons.post('calendar', { roles: ['ADMIN', 'TEACHER'] }, ({ user, body }) => lessonsToCalendar(user, body));
 
+  // Revision packs (M294): made by the course's teachers from its materials, read by its students once published.
+  const packs = router.controller('revision-packs');
+  packs.get('', ({ user, query }) => listPacks(user, str(query.courseId) ?? ''));
+  packs.post('', { roles: ['ADMIN', 'TEACHER'] }, ({ user, body }) => makePack(user, body));
+  packs.patch<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, ({ user, params, body }) => updatePack(user, params.id, body));
+  packs.delete<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, ({ user, params }) => removePack(user, params.id));
 }

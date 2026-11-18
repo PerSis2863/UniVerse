@@ -54,3 +54,21 @@ export function sampleLessonPlan(d: SampleDb) {
   }));
   return { canEdit, slots, materials: [{ id: 'sample-m-1', title: 'Week 1 slides' }, { id: 'sample-m-2', title: 'Scheduler starter code' }], modules: ['Processes', 'Threads', 'Memory', 'File systems'], lessons };
 }
+
+/** GET /revision-packs?courseId= (M294): one shared pack. */
+export function sampleRevisionPacks(d: SampleDb) {
+  const canEdit = d.me.role === 'TEACHER' || d.me.role === 'ADMIN';
+  const pack = {
+    overview: 'Operating systems share one machine between many programs. This pack covers how they schedule work, keep threads apart and manage memory.',
+    topics: [
+      { title: 'Processes and scheduling', summary: 'A process is a running program with its own memory. The scheduler decides which one runs next, trading fairness against how quickly jobs finish.', points: ['A context switch saves and restores registers', 'Round robin is fair; shortest job first finishes most jobs soonest', 'Long jobs can starve under shortest job first'], terms: [{ term: 'Quantum', meaning: 'How long a process runs before the scheduler may switch.' }] },
+      { title: 'Threads and locks', summary: 'Threads share their process’s memory, so two can change the same value at once. Locks make one wait for the other.', points: ['A race gives different results each run', 'Deadlock needs four conditions; breaking one prevents it'], terms: [{ term: 'Mutex', meaning: 'A lock only one thread can hold at a time.' }] },
+    ],
+    questions: [
+      { q: 'Why can shortest job first starve a long job?', a: 'If short jobs keep arriving, the scheduler always picks one of them first, so the long job never reaches the front.', topic: 'Processes and scheduling' },
+      { q: 'Name the four conditions for deadlock.', a: 'Mutual exclusion, hold and wait, no preemption and circular wait.', topic: 'Threads and locks' },
+    ],
+    checklist: ['I can explain a context switch', 'I can compare two scheduling algorithms', 'I can spot a race in a short program'],
+  };
+  return { canEdit, sources: canEdit ? [{ id: 'sample-src-1', title: 'Week 1 slides', kind: 'material', chars: 9200 }] : [], packs: [{ id: 'sample-pack', title: 'Midterm revision', pack, sources: ['Week 1 slides', 'Week 2 slides'], usedAi: true, published: true, createdAt: new Date().toISOString() }] };
+}

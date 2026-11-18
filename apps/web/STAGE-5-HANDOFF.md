@@ -9038,3 +9038,19 @@ The owner's 32 features, UniVersity 3 ("a term lesson planner linked to material
 - Students read the coming classes (no editing); `lesson_plans` (0240) one row per planned class (`courseId, day, slotId`).
 - **Rule:** saving sends at most 60 lessons a request (the planner splits bigger saves); a lesson saved with no topic
   is removed from the plan.
+
+## M294: revision packs from a course's own materials (18 Nov)
+
+The owner's 32 features, UniVersity 4. Class sessions already had study packs (one class each); this is the pack for
+a whole course or a part of it, before an exam.
+
+- **A course's Revision tab** (`RevisionPacks.tsx`, `/revision-packs`, `src/server/revision-packs.ts`, shape in
+  `src/lib/revision-pack.ts`): the teacher picks up to 20 of the course's sources (the text the AI tutor reads,
+  `course_sources`) and, if wanted, the recaps of recorded classes; **one AI request** (`spendAi`, `logAiUse` kind
+  `revision`, `MATH_RULE`) gives an overview, 3–10 topics (summary, key points, terms), 8–20 practice questions with
+  answers and an "I can…" checklist. The answer is untrusted: `cleanPack` keeps it to its shape and sizes.
+- **Without AI** (allowance spent, switch off, nothing with text): `outlinePack`, one topic per module with its items.
+- A pack starts as a draft; **Share with the class** publishes it and tells the students in the app (`notifyMany`,
+  `email: false`). Students see published packs only; answers open one by one; the checklist's ticks are kept on the
+  device (`localStorage` `uv-pack:<id>`, a per-viewer convenience). Printable (`.print-report`).
+- `revision_packs` (0241). **Rule:** sources are cut to 24,000 characters in all, shared fairly (`joinSources`).

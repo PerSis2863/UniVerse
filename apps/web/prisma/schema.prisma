@@ -8253,3 +8253,21 @@ model LessonPlan {
   @@unique([courseId, day, slotId])
   @@map("lesson_plans")
 }
+
+/// M294: a revision pack made from a course's own materials (src/lib/revision-pack.ts: `content` is JSON RevisionPack,
+/// `sources` the titles it was made from). Students see it once `published`.
+model RevisionPack {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  content     String
+  sources     String   @default("[]")
+  usedAi      Boolean  @default(false)
+  published   Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@map("revision_packs")
+}

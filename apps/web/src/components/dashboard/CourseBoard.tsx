@@ -12,7 +12,7 @@ import { vtName } from '@/lib/view-transition';
 import { toast } from 'sonner';
 import {
   Bell, BookOpen, Calendar, CheckCircle2, Download, ExternalLink, FileText, Film, Image as ImageIcon,
-  BadgeCheck, CalendarRange, Clock, Copy, Eye, Layers, Link2, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
+  BadgeCheck, BookCheck, CalendarRange, Clock, Copy, Eye, Layers, Link2, Loader2, MessagesSquare, Pin, UserPlus, NotebookPen, Paperclip, PenTool, Plus, Sparkles, Send, Star, Trash2, Users, Wand2, X, Languages, Mic, type LucideIcon, } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { FeatureGuide, ExampleRow } from '@/components/ui/FeatureGuide';
 import { uploadChatFile } from '@/components/chat/chat-client';
@@ -52,6 +52,8 @@ const MaterialReader = dynamic(() => import('@/components/dashboard/MaterialRead
 const CourseGroupProjects = dynamic(() => import('@/components/groups/CourseGroupProjects').then((m) => m.CourseGroupProjects), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseOralChecks = dynamic(() => import('@/components/oral/CourseOralChecks').then((m) => m.CourseOralChecks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 // The term lesson planner (M293), its own tab, loaded when opened.
+// Revision packs (M294), their own tab.
+const RevisionPacks = dynamic(() => import('@/components/dashboard/RevisionPacks').then((m) => m.RevisionPacks), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const LessonPlanner = dynamic(() => import('@/components/dashboard/LessonPlanner').then((m) => m.LessonPlanner), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const CourseModules = dynamic(() => import('@/components/dashboard/CourseModules').then((m) => m.CourseModules), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const ClassSessions = dynamic(() => import('@/components/dashboard/ClassSessions').then((m) => m.ClassSessions), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
@@ -97,6 +99,7 @@ const TABS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'board', label: 'Announcements', icon: Bell },
   { id: 'modules', label: 'Modules', icon: Layers },
   { id: 'lessons', label: 'Lesson plan', icon: CalendarRange },
+  { id: 'revision', label: 'Revision', icon: BookCheck },
   // The course's discussion board (Stage 5 · B2).
   { id: 'discussion', label: 'Discussion', icon: MessagesSquare },
   { id: 'sessions', label: 'Class sessions', icon: NotebookPen },
@@ -265,6 +268,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
                 {tab === 'board' && <Announcements board={board} canManage={canManage} refresh={mutate} />}
                 {tab === 'modules' && course && <CourseModules courseId={course.id} />}
                 {tab === 'lessons' && course && <LessonPlanner courseId={course.id} />}
+                {tab === 'revision' && course && <RevisionPacks courseId={course.id} />}
                 {tab === 'discussion' && course && <CourseDiscussion courseId={course.id} openId={threadId} onOpen={setThreadId} />}
                 {tab === 'sessions' && <ClassSessions sessions={board.sessions ?? []} canManage={canManage} materials={board.materials} openId={sessionId} refresh={() => void mutate()} />}
                 {tab === 'materials' && <Materials board={board} canManage={canManage} refresh={mutate} />}
