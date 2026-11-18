@@ -6,7 +6,7 @@ import { esc, fold } from './ics-text';
 // grouping a city's places into days by how close they are, the cities in a sensible order, getting
 // between them, the whole trip's budget and its calendar file.
 
-export interface PlanStop { id: string; guide: string; name: string; cc: string | null; lat: number | null; lon: number | null; days: number; position: number }
+export interface PlanStop { id: string; guide: string; name: string; cc: string | null; lat: number | null; lon: number | null; days: number; position: number; starts?: string | null }
 export interface PlanItem { id: string; stopId: string; day: number | null; position: number; name: string; kind: string; lat: number | null; lon: number | null; hours: string | null; price: string | null; minutes: number; note?: string | null }
 export interface PlanTrip { name: string; startDate: string | null; travellers: number; style: Style; currency: string }
 
@@ -61,11 +61,71 @@ export function km(a: Pos, b: Pos) {
   return 12_742 * Math.asin(Math.sqrt(h));
 }
 /** Getting from one place to the next in a city: a walk up to 2 km, else the metro, a bus or a taxi. */
-export function hop(a: Pos, b: Pos): { minutes: number; walk: boolean } | null {
+export function hop(a: Pos, b: Pos): { minutes: number; walk: boolean; metres: number } | null {
   const d = km(a, b);
   if (d === null) return null;
-  const street = d * 1.3; // streets aren't straight
-  return street <= 2 ? { minutes: Math.max(1, Math.round((street / 4.5) * 60)), walk: true } : { minutes: Math.round(10 + (street / 20) * 60), walk: false };
+  const street = d * 1.3, metres = Math.round(street * 1000); // streets aren't straight
+  return street <= 2 ? { minutes: Math.max(1, Math.round((street / 4.5) * 60)), walk: true, metres } : { minutes: Math.round(10 + (street / 20) * 60), walk: false, metres };
+}
+
+/** M327: "84 m", "1.2 km". */
+export const distance = (metres: number) => (metres < 950 ? `${Math.max(10, Math.round(metres / 10) * 10)} m` : `${(metres / 1000).toFixed(metres < 9950 ? 1 : 0)} km`);
+/** M327: a day starts at 9:00 unless the traveller changes it. */
+export const DAY_START = 9 * 60;
+/** M329: when a city's days start: its `starts` JSON (day → minutes, 5:00 to 15:00 on the half hour), checked. */
+export function readStarts(v: unknown): Record<number, number> {
+  let o: unknown = v;
+  if (typeof v === 'string') { try { o = JSON.parse(v); } catch { return {}; } }
+  const out: Record<number, number> = {};
+  if (o && typeof o === 'object') for (const [k, m] of Object.entries(o as Record<string, unknown>).slice(0, 60)) {
+    const d = Number(k);
+    if (Number.isInteger(d) && d >= 0 && d < 60 && typeof m === 'number' && m >= 300 && m <= 900 && m % 30 === 0) out[d] = m;
+  }
+  return out;
+}
+/** M327: minutes after midnight as a clock time in the reader's way ("9:05 AM", "09:05"). */
+export const clock = (m: number) => new Date(Date.UTC(2000, 0, 1, 0, Math.round(m))).toLocaleTimeString(undefined, { hour: 'numeric', minute: '2-digit', timeZone: 'UTC' });
+
+/** M327: a day's clock: when each place starts and ends from `start` (leaving the stay first, when there's one),
+ *  the way there from the one before, the minutes spent getting about, and when you're back. */
+export function daySchedule(list: (Pos & { minutes: number })[], start = DAY_START, stay: Pos | null = null) {
+  let t = start, travel = 0;
+  const stops = list.map((it, i) => {
+    const before = i === 0 ? stay : list[i - 1], way = before ? hop(before, it) : null;
+    if (way) { t += way.minutes; travel += way.minutes; }
+    const at = { from: t, to: t + it.minutes, way };
+    t += it.minutes;
+    return at;
+  });
+  const back = stay && list.length ? hop(list[list.length - 1], stay) : null;
+  if (back) travel += back.minutes;
+  return { stops, travel, back, end: t + (back?.minutes ?? 0) };
+}
+
+/** M327: the shortest round of a day's places, from the stay and back when there's one (else from the first):
+ *  the nearest next place each time, then 2-opt. Places without a position keep the end. */
+export function dayOrder<T extends Pos>(list: T[], stay: Pos | null = null): T[] {
+  const loose = list.filter((p) => !located(p)), rest = list.filter(located);
+  if (rest.length < 2) return [...rest, ...loose];
+  const home = stay && located(stay) ? stay : null;
+  const route: T[] = [];
+  let at: Pos = home ?? rest[0];
+  if (!home) route.push(rest.shift()!);
+  while (rest.length) {
+    let best = 0;
+    for (let i = 1; i < rest.length; i++) if (km(at, rest[i])! < km(at, rest[best])!) best = i;
+    at = rest.splice(best, 1)[0];
+    route.push(at as T);
+  }
+  const length = (r: T[]) => r.reduce((n, p, i) => n + (i ? km(r[i - 1], p)! : home ? km(home, p)! : 0), 0) + (home ? km(r[r.length - 1], home)! : 0);
+  for (let better = true, rounds = 0; better && rounds < 20; rounds++) {
+    better = false;
+    for (let i = home ? 0 : 1; i < route.length - 1; i++) for (let j = i + 1; j < route.length; j++) {
+      const next = [...route.slice(0, i), ...route.slice(i, j + 1).reverse(), ...route.slice(j + 1)];
+      if (length(next) < length(route) - 0.01) { route.splice(0, route.length, ...next); better = true; }
+    }
+  }
+  return [...route, ...loose];
 }
 
 /** Visit order inside a day: the nearest next place each time, starting from an end. */

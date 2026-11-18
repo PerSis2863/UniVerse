@@ -7811,6 +7811,8 @@ model TravelTripStop {
   position Int              @default(0)
   /// M247: how they get here from the city before (src/lib/green.ts TRAVEL_MODES), or null for the likely way.
   mode     String?
+  /// M329: when each day starts (JSON: day index → minutes after midnight); 9:00 for the others.
+  starts   String?
   items    TravelTripItem[]
 
   @@index([tripId])
@@ -7836,6 +7838,10 @@ model TravelTripItem {
   note      String?
   address   String?
   url       String?
+  /// M327: a Wikimedia Commons file from the guide's listing, shown on the itinerary's card.
+  photo     String?
+  /// M327: when it was ticked off on the itinerary.
+  doneAt    DateTime?
   addedById String?
   createdAt DateTime       @default(now())
 

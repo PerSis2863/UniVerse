@@ -17,6 +17,10 @@ export interface Listing {
   group?: string;
   /** M268: the guide its name links to (a big city's sights link to their district's: "Paris/7th arrondissement"). */
   guide?: string;
+  /** M327: its photo, a Commons file name (its own, else its Wikidata item's main image, added by the server). */
+  image?: string;
+  /** M327: its Wikidata item (Q…). */
+  wikidata?: string;
 }
 export interface GuideSection { part: GuidePart; title: string; text: string[]; listings: Listing[] }
 export interface Guide {
@@ -97,6 +101,9 @@ const num = (v?: string) => { const n = Number(v); return v && Number.isFinite(n
 const clean = (v?: string) => { const t = v ? plain(v) : ''; return t && t !== '-' ? t : undefined; };
 
 /** A listing template ({{see|name=…}}, {{listing|type=eat|…}}) to a place. */
+/** M327: a listing's `image=` (a Commons file name), for the itinerary's cards. */
+const imageFile = (v: string | undefined) => { const f = v?.trim().replace(/^(file|image):/i, '').trim(); return f && f.length <= 200 && /\.(jpe?g|png|webp|gif|tiff?)$/i.test(f) && !/[#<>[\]|{}]/.test(f) ? f : undefined; };
+
 export function listingFrom(t: ReturnType<typeof templateParams>, group?: string): Listing | null {
   const kind = (t.name === 'listing' || t.name === 'marker' ? (t.named.type ?? 'other') : t.name).toLowerCase();
   const name = clean(t.named.name);
@@ -109,6 +116,8 @@ export function listingFrom(t: ReturnType<typeof templateParams>, group?: string
     address: clean(t.named.address), directions: clean(t.named.directions), phone: clean(t.named.phone),
     hours: clean(t.named.hours), price: clean(t.named.price), lat: num(t.named.lat), lon: num(t.named.long ?? t.named.lon),
     text: clean(t.named.content ?? t.named.description), group, guide: link?.[1].trim() || undefined,
+    image: imageFile(t.named.image),
+    wikidata: /^Q\d{1,10}$/.test(t.named.wikidata?.trim() ?? '') ? t.named.wikidata!.trim() : undefined,
   };
 }
 

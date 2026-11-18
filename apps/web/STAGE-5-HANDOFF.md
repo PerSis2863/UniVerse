@@ -9498,3 +9498,56 @@ other motion in `ScrollMotion.tsx`, on every page (the landing and the app: both
   the student home and Travel the same; End during a glide jumps to the end. Test: `smooth-scroll.test.ts`.
 - **For code that builds on it:** a part with its own wheel handling should `preventDefault` (or carry
   `data-scroll-native`); never put `scroll-behavior: smooth` on `html` for the glide's sake.
+
+## M327: a trip's days in the itinerary look of the owner's picture (18 Nov)
+
+The owner sent tripist's itinerary screen: "please make it like this in the mobile as well as website". `trip-days.tsx`
+rewritten (the board of columns is gone):
+
+- **Day circles** (weekday over the day's number, the chosen one filled; a dot when a day has places; "Later" for the
+  places on no day), **Total travel today**, then the day as a **timeline**: a dashed tick-off ring per place
+  (`travel_trip_items.doneAt`, PATCH `{ done }`), its **photo** (`photo`, a Commons file from the guide listing's
+  `image=`, or its Wikidata item's main image P18: `listingPhotos` in `travel.ts`, one `wbgetentities` call per guide,
+  a month; guides re-read as `guide5:`), name (two lines), a kind chip (Sight amber, Shopping green, Food rose…), its
+  clock time and length, a ≡ handle. Between places: the walk or ride with its distance and **Directions** (Google
+  Maps, walking or transit). The stay (the city's first `sleep` place with a position) is the day's start and end
+  ("Leave 9:00 AM", "Back 6:40 PM") and the walk back.
+- **Round buttons** float at the bottom (sticky, above the assistant's button): ✨ (M329's planner), the day's options
+  (shortest round from the stay, spread the places over the days, when the day starts) and + (opens Add places and
+  scrolls to it). On a phone they step aside while a place is open. A computer gets the day at a glance beside it.
+- Tap a place for its note, hours, price, time there, day, order, map and remove. Drag a place up or down, or onto
+  another day's circle (`data-day`).
+- `src/lib/travel-plan.ts`: `hop` gives `metres`; `distance`, `clock`, `DAY_START`, `daySchedule`, `dayOrder`
+  (nearest next then 2-opt, as a round from the stay). Database update **0255** (`photo`, `doneAt`).
+- Checked in a browser (dev, 390 and 1280, light and dark): axe clean, nothing sideways, no page errors.
+- **Trap:** `.card` sits in the utilities layer, so `p-0` loses to its padding: use `p-0!`.
+
+## M329: an automatic, detailed itinerary, from the hotel you booked or just the city (18 Nov)
+
+The owner: "apply the way tripist make a itinerary based on where are visiting… or even not… if user had already booked
+the hotel… automated itinerary based on where are you staying and it should be a detailed one".
+
+- **`src/lib/travel-itinerary.ts`** (`makeItinerary`, runs in the browser, no AI, no Worker time): the city's guide
+  with its districts' (a big city keeps its sights in district guides; up to 8, four at a time), each place scored for
+  the chosen interests (8: famous, history, museums, parks and views, food, shopping, nightlife, children), how much the
+  guide says, a photo or Wikidata item, and nearness to the stay; the best ones split over the days **by direction from
+  the stay** (each day one part of town; its district named in the message), each day the **shortest round** from the
+  stay, then **lunch** near where you are at 12:30, a **coffee** mid-afternoon (Relaxed and Balanced), **dinner** near
+  the last place when the day runs past 16:30, a **bar** after it for Nightlife. Paces: Relaxed 3 places from 10:00,
+  Balanced 4 from 9:00, Packed 6 from 8:30 (`most`: the longest stay at one place). Lighter first and last days (half the
+  places; the first starts at 14:00, after check-in). Places already on the trip stay; unplanned ones are fitted in.
+  Closed or "temporarily" places are skipped; nothing is added twice. Test: `travel-itinerary.test.ts`.
+- **On a trip:** ✨ → `TripPlanSheet` (`trip-plan.tsx`): where you're staying (typed and found with `/travel/where`,
+  or one saved on a trip; kept as the city's stay), pace, interests, every day or only the empty ones, lighter first and
+  last days.
+- **On Trips:** "Booked a hotel? Get your days planned" → `BookedPlan`: the hotel typed (its town becomes the city), or
+  the booking confirmation **pasted and read** (`POST /travel/booking/read`, `src/server/travel-booking.ts`: one AI
+  request within the day's allowance and the owner's AI switch, nothing kept), or just a city; arrival date and nights →
+  a new trip with the stay and every day planned, then the trip opens.
+- **`POST /travel/trips/:id/plan`** (`planTravelStop`): up to 60 places a call (the page sends more in further calls),
+  5 a statement, the moves of places already there (only that city's), checked like any added place.
+- **When each day starts** is the city's own: `travel_trip_stops.starts` (JSON day → minutes, 5:00–15:00 on the half
+  hour, `readStarts`), set by the planner and by the day's options, shared with everyone on the trip. Database update
+  **0256**.
+- Tried in a browser: "Hotel Avenida Palace, Lisbon", 3 nights, History and Food → four days, each in one part of town,
+  with photos, times, walks, lunch and dinner.

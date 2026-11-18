@@ -23,7 +23,8 @@ import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../t
 import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
 import { addAlbumPhotos, addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
-import { addTravelItem, addTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { readBooking } from '../travel-booking';
+import { addTravelItem, addTravelStop, planTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
@@ -145,6 +146,8 @@ export default function impactAppsModule(router: Router) {
   travel.get('trips/stays', ({ user }) => travelTripStays(user));
   travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/plan', ({ user, params, body }) => planTravelStop(user, params.id, body ?? {}));
+  travel.post('booking/read', ({ user, body }) => readBooking(user, body ?? {}));
   // M215: a trip's shared costs and packing list.
   travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
   travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));

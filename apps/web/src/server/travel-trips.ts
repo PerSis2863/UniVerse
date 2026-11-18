@@ -2,7 +2,7 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { LISTING_KINDS } from '@/lib/travel-guide';
 import { CURRENCIES, STYLE_IDS } from '@/lib/travel-find';
-import { isDay, leg, minutesFor, tripDays } from '@/lib/travel-plan';
+import { isDay, leg, minutesFor, readStarts, tripDays } from '@/lib/travel-plan';
 import { isMode } from '@/lib/travel-footprint';
 import { isZone } from '@/lib/travel-jetlag';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -51,6 +51,12 @@ export async function memberIds(tripId: string) {
   return (await prisma.travelTripMember.findMany({ where: { tripId }, select: { userId: true }, take: MAX_MEMBERS + 1 })).map((m) => m.userId);
 }
 /** Tell everyone planning it (their open pages refetch) and note the change time. */
+/** M327: a Wikimedia Commons file name (a guide listing's `image`), or null. */
+export function commonsFile(v: unknown): string | null {
+  const f = typeof v === 'string' ? v.trim().replace(/^(file|image):/i, '').trim() : '';
+  return f.length <= 200 && /^[^#<>[\]|{}/\\]+\.(jpe?g|png|webp|gif|tiff?)$/i.test(f) ? f : null;
+}
+
 async function changed(tripId: string) {
   await prisma.travelTrip.update({ where: { id: tripId }, data: { updatedAt: new Date() } }).catch(() => {});
   publish(await memberIds(tripId), { type: 'refresh', keys: [`/travel/trips/${tripId}`, '/travel/trips'] });
@@ -206,7 +212,7 @@ export async function addTravelStop(u: SessionUser, id: string, b: Body) {
   return { stop };
 }
 
-/** PATCH /travel/trips/:id/stops/:stopId { days?, mode?, green? }: places planned past a new last day go back to
+/** PATCH /travel/trips/:id/stops/:stopId { days?, mode?, starts?, green? }: places planned past a new last day go back to
  *  "not planned". M247: `mode` is how they get here from the city before; choosing the train with `green` records a
  *  Green action for the one who chose it (once a leg). */
 export async function updateTravelStop(u: SessionUser, id: string, stopId: string, b: Body) {
@@ -214,7 +220,7 @@ export async function updateTravelStop(u: SessionUser, id: string, stopId: strin
   const stops = await prisma.travelTripStop.findMany({ where: { tripId: id }, orderBy: { position: 'asc' }, select: { id: true, days: true, name: true, lat: true, lon: true }, take: MAX_STOPS });
   const at = stops.findIndex((s) => s.id === stopId);
   if (at < 0) throw new NotFoundException('That place isn’t on this trip.');
-  const data: { days?: number; mode?: string | null } = {};
+  const data: { days?: number; mode?: string | null; starts?: string | null } = {};
   if ('days' in b) {
     const days = whole(b.days, 1, MAX_DAYS);
     if (!days) throw new BadRequestException(`Between 1 and ${MAX_DAYS} days.`);
@@ -222,6 +228,8 @@ export async function updateTravelStop(u: SessionUser, id: string, stopId: strin
     data.days = days;
   }
   if ('mode' in b) { if (b.mode !== null && !isMode(b.mode)) throw new BadRequestException('Pick how you’ll travel.'); data.mode = b.mode as string | null; }
+  // M329: when each day starts.
+  if ('starts' in b) { const st = readStarts(b.starts); data.starts = Object.keys(st).length ? JSON.stringify(st) : null; }
   await prisma.travelTripStop.update({ where: { id: stopId }, data });
   if (data.days) await prisma.travelTripItem.updateMany({ where: { tripId: id, stopId, day: { gte: data.days } }, data: { day: null } });
   const prev = stops[at - 1], l = prev ? leg(prev, stops[at]) : null;
@@ -274,19 +282,20 @@ export async function addTravelItem(u: SessionUser, id: string, b: Body) {
     data: {
       tripId: id, stopId, day, position: (last?.position ?? -1) + 1, name, kind, lat: coord(b.lat, 90), lon: coord(b.lon, 180),
       hours: clip(b.hours, 160), price: clip(b.price, 120), minutes: whole(b.minutes, 0, 720) ?? minutesFor(kind, name, note ?? ''),
-      note, address: clip(b.address, 200), url: url && /^https?:\/\//.test(url) ? url : null, addedById: u.id,
+      note, address: clip(b.address, 200), url: url && /^https?:\/\//.test(url) ? url : null, photo: commonsFile(b.photo), addedById: u.id,
     },
   });
   await changed(id);
   return { item };
 }
 
-/** PATCH /travel/trips/:id/items/:itemId { minutes?, note? } */
+/** PATCH /travel/trips/:id/items/:itemId { minutes?, note?, done? } */
 export async function updateTravelItem(u: SessionUser, id: string, itemId: string, b: Body) {
   await tripFor(u, id);
-  const data: { minutes?: number; note?: string | null } = {};
+  const data: { minutes?: number; note?: string | null; doneAt?: Date | null } = {};
   if ('minutes' in b) { const m = whole(b.minutes, 0, 720); if (m === null) throw new BadRequestException('Up to 12 hours.'); data.minutes = m; }
   if ('note' in b) data.note = clip(b.note, 600);
+  if ('done' in b) data.doneAt = b.done === true ? new Date() : null;
   const r = await prisma.travelTripItem.updateMany({ where: { id: itemId, tripId: id }, data });
   if (!r.count) throw new NotFoundException('That place isn’t on this trip.');
   await changed(id);
@@ -315,7 +324,13 @@ export async function moveTravelItems(u: SessionUser, id: string, b: Body) {
     if (m.day !== null && day === null) throw new BadRequestException('That day isn’t on the trip.');
     return { itemId, stopId, day, position };
   });
-  // 7 values a place plus the trip: 12 a query stays under D1's 100.
+  await applyMoves(id, moves);
+  await changed(id);
+  return { ok: true };
+}
+
+/** Moves places (7 values a place plus the trip: 12 a query stays under D1's 100). */
+async function applyMoves(id: string, moves: { itemId: string; stopId: string; day: number | null; position: number }[]) {
   for (let i = 0; i < moves.length; i += 12) {
     const part = moves.slice(i, i + 12), when = part.map(() => 'WHEN ? THEN ?').join(' ');
     await prisma.$executeRawUnsafe(
@@ -323,8 +338,35 @@ export async function moveTravelItems(u: SessionUser, id: string, b: Body) {
       ...part.flatMap((m) => [m.itemId, m.stopId]), ...part.flatMap((m) => [m.itemId, m.day]), ...part.flatMap((m) => [m.itemId, m.position]), id, ...part.map((m) => m.itemId),
     );
   }
+}
+
+/** M329: POST /travel/trips/:id/plan { stopId, items: [{ day, position, name, kind, lat, lon, minutes, … }], moves: [{ id, day, position }] }:
+ *  the automatic itinerary's places for one city added at once, and the places already there moved to fit. */
+export async function planTravelStop(u: SessionUser, id: string, b: Body) {
+  await tripFor(u, id);
+  const stopId = str(b.stopId) ?? '';
+  const stop = await prisma.travelTripStop.findFirst({ where: { id: stopId, tripId: id }, select: { days: true } });
+  if (!stop) throw new NotFoundException('That place isn’t on this trip.');
+  const raw = Array.isArray(b.items) ? (b.items as Body[]).slice(0, 60) : []; // the page sends more in further calls
+  const rows = raw.map((x) => {
+    const name = clip(x.name, 120), kind = oneOf(KINDS, x.kind) ? x.kind : 'see', note = clip(x.note, 600), url = clip(x.url, 400);
+    return name ? {
+      tripId: id, stopId, day: whole(x.day, 0, stop.days - 1), position: whole(x.position, 0, MAX_ITEMS) ?? 0, name, kind, lat: coord(x.lat, 90), lon: coord(x.lon, 180),
+      hours: clip(x.hours, 160), price: clip(x.price, 120), minutes: whole(x.minutes, 0, 720) ?? minutesFor(kind, name, note ?? ''),
+      note, address: clip(x.address, 200), url: url && /^https?:\/\//.test(url) ? url : null, photo: commonsFile(x.photo), addedById: u.id,
+    } : null;
+  }).filter((r) => r !== null);
+  if ((await prisma.travelTripItem.count({ where: { tripId: id } })) + rows.length > MAX_ITEMS) throw new BadRequestException(`A trip can hold ${MAX_ITEMS} places: take some off first.`);
+  const mine = new Set((await prisma.travelTripItem.findMany({ where: { tripId: id, stopId }, select: { id: true }, take: MAX_ITEMS })).map((x) => x.id));
+  const moves = (Array.isArray(b.moves) ? (b.moves as Body[]).slice(0, 120) : []).flatMap((m) => {
+    const itemId = str(m.id), day = whole(m.day, 0, stop.days - 1), position = whole(m.position, 0, MAX_ITEMS);
+    return itemId && mine.has(itemId) && day !== null && position !== null ? [{ itemId, stopId, day, position }] : [];
+  });
+  // 18 values a place: 5 a statement stays under D1's 100.
+  for (let i = 0; i < rows.length; i += 5) await prisma.travelTripItem.createMany({ data: rows.slice(i, i + 5) });
+  await applyMoves(id, moves);
   await changed(id);
-  return { ok: true };
+  return { added: rows.length, moved: moves.length };
 }
 
 /** POST /travel/trips/:id/copy { name? }: M256: a new trip of my own from one I'm planning: its cities, days, ways of

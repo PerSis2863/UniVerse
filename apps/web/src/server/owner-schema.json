@@ -53397,6 +53397,17 @@
      "updatedAt": false
     },
     {
+     "name": "starts",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
      "name": "items",
      "type": "TravelTripItem",
      "kind": "object",
@@ -53600,6 +53611,28 @@
     {
      "name": "url",
      "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "photo",
+     "type": "String",
+     "kind": "scalar",
+     "list": false,
+     "optional": true,
+     "id": false,
+     "unique": false,
+     "hasDefault": false,
+     "updatedAt": false
+    },
+    {
+     "name": "doneAt",
+     "type": "DateTime",
      "kind": "scalar",
      "list": false,
      "optional": true,

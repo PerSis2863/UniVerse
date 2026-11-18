@@ -18,7 +18,7 @@ import type { TripItem } from './trip-days';
 
 const KINDS = [['see', 'See'], ['do', 'Do'], ['eat', 'Eat'], ['drink', 'Drink'], ['sleep', 'Sleep'], ['buy', 'Buy'], ['go', 'Day trips']] as const;
 type Kind = (typeof KINDS)[number][0];
-interface Pickable { name: string; kind: string; lat?: number | null; lon?: number | null; hours?: string | null; price?: string | null; note?: string | null; address?: string | null; url?: string | null }
+interface Pickable { name: string; kind: string; lat?: number | null; lon?: number | null; hours?: string | null; price?: string | null; note?: string | null; address?: string | null; url?: string | null; photo?: string | null }
 
 export function TripAdd({ tripId, stop, items, onAdded }: { tripId: string; stop: PlanStop; items: TripItem[]; onAdded: () => void }) {
   const [from, setFrom] = useState<'saved' | 'guide'>('saved');
@@ -29,12 +29,12 @@ export function TripAdd({ tripId, stop, items, onAdded }: { tripId: string; stop
   const mine = useMemo(() => (saved?.saved ?? []).filter((s) => s.guide === stop.guide || s.guide.startsWith(`${stop.guide}/`)), [saved, stop.guide]);
   const listed = useMemo(() => (guide?.guide.sections ?? []).flatMap((s) => s.listings).filter((l: Listing) => (kind === 'go' ? l.kind === 'go' || l.kind === 'other' : l.kind === kind)), [guide, kind]);
   const have = new Set(items.map((i) => i.name));
-  const list: Pickable[] = from === 'saved' ? mine.map((s) => ({ name: s.name, kind: s.kind, lat: s.lat, lon: s.lon, note: s.note, address: s.address, url: s.url })) : listed.map((l) => ({ name: l.name, kind: l.kind === 'other' ? 'go' : l.kind, lat: l.lat, lon: l.lon, hours: l.hours, price: l.price, note: l.text, address: l.address, url: l.url }));
+  const list: Pickable[] = from === 'saved' ? mine.map((s) => ({ name: s.name, kind: s.kind, lat: s.lat, lon: s.lon, note: s.note, address: s.address, url: s.url })) : listed.map((l) => ({ name: l.name, kind: l.kind === 'other' ? 'go' : l.kind, lat: l.lat, lon: l.lon, hours: l.hours, price: l.price, note: l.text, address: l.address, url: l.url, photo: l.image }));
 
   const add = async (p: Pickable) => {
     setBusy(p.name);
     try {
-      await api.post(`/travel/trips/${tripId}/items`, { stopId: stop.id, name: p.name, kind: p.kind, lat: p.lat ?? undefined, lon: p.lon ?? undefined, hours: p.hours ?? undefined, price: p.price ?? undefined, note: p.note?.slice(0, 600) ?? undefined, address: p.address ?? undefined, url: p.url ?? undefined });
+      await api.post(`/travel/trips/${tripId}/items`, { stopId: stop.id, name: p.name, kind: p.kind, lat: p.lat ?? undefined, lon: p.lon ?? undefined, hours: p.hours ?? undefined, price: p.price ?? undefined, note: p.note?.slice(0, 600) ?? undefined, address: p.address ?? undefined, url: p.url ?? undefined, photo: p.photo ?? undefined });
       onAdded();
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t add that place.')); } finally { setBusy(null); }
   };

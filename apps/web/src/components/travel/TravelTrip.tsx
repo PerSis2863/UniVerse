@@ -52,6 +52,7 @@ const TripHolidays = dynamic(() => import('./trip-holidays').then((m) => m.TripH
 const TripFootprint = dynamic(() => import('./trip-footprint').then((m) => m.TripFootprint), { ssr: false, loading: partLoading });
 const TripAlbum = dynamic(() => import('./trip-album').then((m) => m.TripAlbum), { ssr: false, loading: partLoading });
 const TripShare = dynamic(() => import('./trip-share').then((m) => m.TripShare), { ssr: false, loading: partLoading });
+const TripPlanSheet = dynamic(() => import('./trip-plan').then((m) => m.TripPlanSheet), { ssr: false });
 const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
@@ -63,6 +64,13 @@ const PARTS = [
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
 /** Today's day number on the trip (in the first city's time), or null outside it. */
+/** M327: which of a city's days today is (0-based), or null. */
+function dayHere(from: string | null, days: number, now: number) {
+  if (!from || !now) return null;
+  const d = Math.floor((now - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+  return d >= 0 && d < days ? d : null;
+}
+
 function todayIndex(start: string | null, stops: TripAnswer['stops'], now: number) {
   const t = tripToday(start, stops, [], new Date(now));
   return t.state === 'during' ? stopDates(start, stops)[t.stop].offset + t.day : null;
@@ -88,6 +96,7 @@ export function TravelTrip() {
   const now = useNow();
   const role = useAuthStore((s) => s.user?.role);
   const [adding, setAdding] = useState(false);
+  const [planning, setPlanning] = useState(false);
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
   const stop = stops.find((s) => s.id === chosen) ?? stops[0];
@@ -296,12 +305,16 @@ export function TravelTrip() {
             <button type="button" onClick={() => setAdding((a) => !a)} aria-expanded={adding} className={cn('btn-sm inline-flex items-center gap-1.5', adding ? 'btn-secondary' : 'btn-primary')}>{adding ? <Check className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}{adding ? 'Done adding' : 'Add places'}</button>
           </div>
           {stops.length > 1 && <Segmented className="mt-3 max-w-full overflow-x-auto" label="City" value={stop.id} onChange={setChosen} segments={stops.map((s) => ({ value: s.id, label: nice(s.name) }))} />}
-          {adding && <TripAdd tripId={t.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} onAdded={() => void mutate()} />}
+          {adding && <div id="trip-add" className="scroll-mt-24"><TripAdd tripId={t.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} onAdded={() => void mutate()} /></div>}
           <div className="mt-4">
             <TripDays key={stop.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} from={dates[stops.indexOf(stop)]?.from ?? null} onMove={onMove}
+              today={dayHere(dates[stops.indexOf(stop)]?.from ?? null, stop.days, now)} onAdd={() => { setAdding(true); requestAnimationFrame(() => document.getElementById('trip-add')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }} onMagic={() => setPlanning(true)}
+              onStarts={(starts) => void change({ stops: stops.map((x) => (x.id === stop.id ? { ...x, starts: JSON.stringify(starts) } : x)) }, () => api.patch(`/travel/trips/${t.id}/stops/${stop.id}`, { starts }))}
+              onDone={(it, done) => void change({ items: data.items.map((x) => (x.id === it.id ? { ...x, doneAt: done ? new Date().toISOString() : null } : x)) }, () => api.patch(`/travel/trips/${t.id}/items/${it.id}`, { done }))}
               onTime={(it, minutes) => void change({ items: data.items.map((x) => (x.id === it.id ? { ...x, minutes } : x)) }, () => api.patch(`/travel/trips/${t.id}/items/${it.id}`, { minutes }))}
               onRemove={(it) => void change({ items: data.items.filter((x) => x.id !== it.id) }, () => api.delete(`/travel/trips/${t.id}/items/${it.id}`))} />
           </div>
+          {planning && <TripPlanSheet tripId={t.id} stop={stop} items={data.items} onClose={() => setPlanning(false)} onDone={() => void mutate()} />}
         </section>
       )}
       {/* M207: there and back, where to stay, who else is there. */}
