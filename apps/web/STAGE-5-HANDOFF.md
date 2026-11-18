@@ -9163,3 +9163,23 @@ The owner's 32 features, Platform 1. Two-step sign-in was for admins and the own
   (email only for admins); emailed codes are now refused for non-admins (they cost emails).
 - 0246 (`users.totpSecret`, `totpOn`, `totpStep`). Tests: `totp.test.ts`.
 - **Rule:** never send `totpSecret` anywhere after setup; "Download my data" skips it.
+
+## M302: "Download my data" complete, a readable copy, deletion covering the new tables (18 Nov)
+
+The owner's 32 features, Platform 2. Download and deletion existed (GDPR / DPDPA); checking them found a real gap.
+
+- **The gap:** `exportUserData` (`src/server/export.ts`) followed only Prisma *relations* to `User` (userId, studentId,
+  senderId…). Most tables since Stage 5 name their person by a **plain column** (no relation), so **75 tables** were never
+  in the file: Trace scans, points, warranties, reviews, ownership; Relief posts, watches, plans, safe check-ins; Green
+  actions, goals, pledges, footprints; Travel trips, saved places, journals, documents, reviews; docs, task boards,
+  game scores, arrangements; and today's portfolio items, office-hours bookings and exam marks. They're found now by
+  their plain `OWN_LINKS` column (`NOT_THEIRS` keeps out `CommunityReport.senderId`, others' reports about you;
+  `PortfolioShare` and `totpSecret`/`totpStep` stay out). `export.test.ts` checks it reaches 200+ tables.
+- **Readable copy** (`src/lib/data-page.ts`, a button beside Download): the same JSON made into one HTML page in the
+  browser (a contents list, a table per kind of record), every value escaped (`data-page.test.ts`).
+- **Deletion** (`eraseAccount`): also deletes portfolio items and private links, office-hours waiting lists, frees the
+  person's bookings, removes their own office-hours times, and clears the authenticator secret.
+- **Rule:** a new table that holds a person's rows by a plain column is in the download automatically when the column
+  is one of `OWN_LINKS`; if it's personal, add it to `eraseAccount` too.
+- **Left as it was:** the export reads ~220 tables in one request (above the usual 50 queries); it worked at 146 and runs
+  rarely. If it ever fails on D1, split it into parts.

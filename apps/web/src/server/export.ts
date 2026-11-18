@@ -11,10 +11,13 @@ type Model = { name: string; delegate: string; fields: Field[] };
 const MODELS = schema.models as Model[];
 
 const OWN_LINKS = new Set(['userId', 'studentId', 'ownerId', 'senderId', 'authorId', 'postedById', 'reporterId', 'uploadedById', 'initiatorId', 'foundedById']);
-const SKIP_MODELS = new Set(['OwnerChange', 'StoredFile', 'AuditLog', 'ErrorReport']);
+// PortfolioShare: its tokens open the person's passport; they're listed in the app, not in a file that may travel.
+const SKIP_MODELS = new Set(['OwnerChange', 'StoredFile', 'AuditLog', 'ErrorReport', 'PortfolioShare']);
 // Internal or security-sensitive columns people don't need (and that shouldn't sit in a download).
-const SKIP_FIELDS = new Set(['firebaseUid', 'passwordHash', 'pushSubscription', 'fingerprint', 'data']);
+const SKIP_FIELDS = new Set(['firebaseUid', 'passwordHash', 'pushSubscription', 'fingerprint', 'data', 'totpSecret', 'totpStep']);
 const MAX_PER_TABLE = 5000;
+// Columns named like "theirs" that aren't: a report someone else made about a message they sent.
+const NOT_THEIRS = new Set(['CommunityReport.senderId']);
 
 const delegate = (m: Model) => (prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<unknown[]> }>)[m.delegate];
 const select = (m: Model) => Object.fromEntries(m.fields.filter((f) => f.kind !== 'object' && f.type !== 'Bytes' && !SKIP_FIELDS.has(f.name)).map((f) => [f.name, true]));
@@ -26,6 +29,12 @@ export async function exportUserData(userId: string) {
   const links = MODELS.flatMap((m) =>
     SKIP_MODELS.has(m.name) ? [] : m.fields.filter((f) => f.kind === 'object' && f.type === 'User' && f.relationFields?.length && OWN_LINKS.has(f.relationFields[0])).map((f) => ({ m, fk: f.relationFields![0] })),
   );
+  // M302: tables that name their person by a plain column (no relation to User): 75 were left out before (Trace,
+  // Relief, Green and Travel rows, documents, task boards, portfolio work, office-hours bookings, paper-exam marks).
+  for (const m of MODELS) {
+    if (SKIP_MODELS.has(m.name) || m.name === 'User' || links.some((l) => l.m.name === m.name)) continue;
+    for (const f of m.fields) if (f.kind === 'scalar' && f.type === 'String' && OWN_LINKS.has(f.name) && !NOT_THEIRS.has(`${m.name}.${f.name}`)) links.push({ m, fk: f.name });
+  }
   const data: Record<string, unknown[]> = {};
   for (const { m, fk } of links) {
     const rows = await delegate(m).findMany({ where: { [fk]: userId }, select: select(m), take: MAX_PER_TABLE });
