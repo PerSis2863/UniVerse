@@ -39,7 +39,7 @@ function Bingo() {
         </div>
       </div>
       <div className="flex flex-wrap items-end gap-2"><Field label="Cards to print"><input type="number" min={1} max={40} className="input w-24" value={cards} onChange={(e) => setCards(Math.max(1, Math.min(40, +e.target.value || 1)))} /></Field><Btn onClick={() => setSeed(seed + 1)}><Shuffle className="w-3.5 h-3.5" aria-hidden />New cards</Btn><Btn onClick={() => printOnly('bingo-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print the cards</Btn></div>
-      <div id="bingo-sheet" className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div id="bingo-sheet" className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {sheet.map((card, k) => (
           <table key={k} className="w-full bg-white text-zinc-900 text-center border-collapse ring-1 ring-black/20 break-inside-avoid">
             <thead><tr>{[...LETTERS].map((l) => <th key={l} className="bg-[#111113] text-white py-1 font-bold">{l}</th>)}</tr></thead>
@@ -66,7 +66,7 @@ function GameBoard() {
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2"><Btn on={edit} onClick={() => setEdit(!edit)}><Pencil className="w-3.5 h-3.5" aria-hidden />{edit ? 'Done writing' : 'Write the questions'}</Btn><Btn onClick={() => setB({ ...b, clues: b.clues.map((col) => col.map((x) => ({ ...x, used: false }))), teams: b.teams.map((t) => ({ ...t, score: 0 })) })}><RotateCcw className="w-3.5 h-3.5" aria-hidden />New game</Btn><Btn onClick={() => setB({ ...b, teams: [...b.teams, { name: `Team ${String.fromCharCode(65 + b.teams.length)}`, score: 0 }] })}><Plus className="w-3.5 h-3.5" aria-hidden />Team</Btn><FullBtn full={isFull} onClick={() => void toggle()} /></div>
       {edit ? (
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">{b.cats.map((cat, c) => (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">{b.cats.map((cat, c) => (
           <fieldset key={c} className="space-y-1.5 rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10 p-2">
             <input className="input py-1.5 font-bold" aria-label={`Category ${c + 1}`} value={cat} onChange={(e) => setB({ ...b, cats: b.cats.map((x, i) => (i === c ? e.target.value : x)) })} />
             {b.clues[c].map((x, r) => <div key={r} className="space-y-1"><span className="text-xs font-mono text-zinc-600 dark:text-zinc-300">{pts(r)}</span><input className="input py-1 text-sm" aria-label={`${cat} ${pts(r)} question`} placeholder="Question" value={x.q} onChange={(e) => setClue(c, r, { q: e.target.value })} /><input className="input py-1 text-sm" aria-label={`${cat} ${pts(r)} answer`} placeholder="Answer" value={x.a} onChange={(e) => setClue(c, r, { a: e.target.value })} /></div>)}
@@ -105,7 +105,7 @@ function NameTags() {
   const names = v.names.split('\n').map((x) => x.trim()).filter(Boolean);
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_220px]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_220px]">
         <Field label="Names, one a line"><textarea className="input min-h-[130px]" value={v.names} onChange={(e) => setV({ ...v, names: e.target.value })} /></Field>
         <div className="space-y-2"><Field label="Under the name"><input className="input" value={v.sub} onChange={(e) => setV({ ...v, sub: e.target.value })} /></Field>
           <div className="flex flex-wrap gap-1.5">{BRANCH.slice(0, 6).map((c, i) => <button key={c} type="button" onClick={() => setV({ ...v, colour: i })} aria-label={`Colour ${i + 1}`} aria-pressed={v.colour === i} className={cn('w-7 h-7 rounded-full ring-2', v.colour === i ? 'ring-pink-500' : 'ring-transparent')} style={{ background: c }} />)}</div>
@@ -144,7 +144,7 @@ function Queue() {
           <FullBtn full={isFull} onClick={() => void toggle()} />
         </div>
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <section aria-label="Hands up" className="space-y-2">
           <h3 className="text-sm font-bold text-zinc-900 dark:text-white">Tap a name when a hand goes up</h3>
           <div className="flex flex-wrap gap-1.5">{q.people.map((p) => { const inLine = q.line.includes(p); return <button key={p} type="button" disabled={inLine} onClick={() => setQ({ ...q, line: [...q.line, p] })} className={cn('inline-flex items-center gap-1 rounded-full px-3 py-1.5 text-sm font-semibold ring-1 transition-[transform,opacity] active:scale-95', inLine ? 'opacity-40 ring-zinc-300' : 'ring-pink-500 text-zinc-900 dark:text-white hover:bg-pink-500/10')} translate="no"><Hand className="w-3.5 h-3.5" aria-hidden />{p}{q.turns[p] ? <span className="text-xs text-zinc-600 dark:text-zinc-300 tabular-nums">·{q.turns[p]}</span> : null}</button>; })}</div>

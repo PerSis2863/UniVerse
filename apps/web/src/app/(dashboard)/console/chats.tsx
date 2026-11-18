@@ -397,7 +397,7 @@ export function AnnouncePanel() {
     }
   };
   return (
-    <div className="grid lg:grid-cols-[1fr_340px] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-6 items-start">
       <form onSubmit={(e) => { e.preventDefault(); void send(); }} className={cn(card, 'p-5 space-y-3')}>
         <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Megaphone className="w-4 h-4 text-indigo-500" /> Send an announcement</h2>
         <p className="text-xs text-zinc-500">It lands in everyone’s notifications (the bell), from UniVerse. Banned people don’t get it.</p>

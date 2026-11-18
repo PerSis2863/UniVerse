@@ -61,7 +61,7 @@ export function DocPagesPanel({ doc, canEdit, canMove, onChanged }: { doc: { id:
 
   if (!doc.children.length && !doc.backlinks.length && !canEdit && !canMove) return null;
   return (
-    <section aria-label="Pages" className="max-w-3xl mx-auto mb-10 px-1 grid sm:grid-cols-2 gap-3">
+    <section aria-label="Pages" className="max-w-3xl mx-auto mb-10 px-1 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <div className="panel p-4 space-y-2">
         <div className="flex items-center justify-between gap-2">
           <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Pages inside</h2>

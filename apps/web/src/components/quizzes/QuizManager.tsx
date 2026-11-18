@@ -99,7 +99,7 @@ export function QuizManager({ quizId, onClose, onChanged }: { quizId: string; on
                   </button>
                 ))}
               </div>
-              <div className="grid sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <label className="text-xs text-zinc-500">Due date
                   <input type="datetime-local" className="input" defaultValue={toLocalInput(quiz.dueDate)} onBlur={(e) => e.target.value !== toLocalInput(quiz.dueDate) && patch({ dueDate: e.target.value ? new Date(e.target.value).toISOString() : null }, 'Due date saved')} />
                 </label>

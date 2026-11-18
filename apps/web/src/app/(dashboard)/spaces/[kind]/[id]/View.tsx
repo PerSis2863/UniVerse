@@ -70,7 +70,7 @@ function SpacePage({ kind, id }: { kind: string; id: string }) {
             <button type="button" onClick={() => router.push(`/hall/h${data.callId}`)} className="btn-secondary" title="A map you walk around with your classmates: voices get louder as you get closer"><Coffee className="w-4 h-4" />Study Hall</button>
             <button type="button" onClick={() => router.push(`/call/${data.callId}`)} className="btn-primary"><Video className="w-4 h-4" />{data.kind === 'course' ? 'Class call' : 'Group call'}</button>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {section('Documents', FileText, data.docs.map((d) => ({ href: `/docs/${d.id}`, title: d.title, meta: when(d.updatedAt) })), () => void make('doc'), busy === 'doc', 'No documents yet.')}
             {section(`Tasks${data.openTasks ? ` · ${data.openTasks} open` : ''}`, KanbanSquare, data.boards.map((b) => ({ href: `/tasks/${b.id}`, title: b.title, meta: `${b.tasks} card${b.tasks === 1 ? '' : 's'}` })), () => void make('board'), busy === 'board', 'No task boards yet.')}
             {data.kind === 'course' && section('Code rooms', Code2, data.code.map((c) => ({ href: `/code/${c.id}`, title: c.title, meta: when(c.updatedAt) })), () => router.push('/code'), false, 'No code rooms yet.')}

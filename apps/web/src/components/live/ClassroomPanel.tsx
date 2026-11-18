@@ -139,7 +139,7 @@ function RunningClass({ id, onEnded }: { id: string; onEnded: () => void }) {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <div className={cn('rounded-2xl p-4 border', lostShare >= 0.2 ? 'border-amber-500/40 bg-amber-500/5' : 'border-zinc-200/70 dark:border-white/[0.07]')} aria-live="polite">
           <p className="text-xs text-zinc-500 dark:text-zinc-400">Right now</p>
           <p className="text-2xl font-black tabular-nums text-zinc-900 dark:text-white">{lost} lost <span className="text-base font-semibold text-zinc-500">· {following} following</span></p>

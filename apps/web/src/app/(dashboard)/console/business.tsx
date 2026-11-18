@@ -52,7 +52,7 @@ export function BusinessPanel() {
     <div className="space-y-6">
       <InstrumentBoard icon={ScanLine} title="UniVerse Trace" subtitle={`${b.brands} brands · ${fmt(b.units)} passports · last 30 days`} cells={cells} storageKey="console-business" />
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className={cn(card, 'p-5')} aria-labelledby="biz-brands">
           <h3 id="biz-brands" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Building2 className="w-4 h-4 text-pink-500" aria-hidden />Busiest brands</h3>
           <ol className="mt-3 space-y-2">

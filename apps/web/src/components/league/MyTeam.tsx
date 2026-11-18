@@ -118,7 +118,7 @@ function ProjectForm({ team, act }: { team: LeagueTeamView; act: LeagueAct }) {
   };
   return (
     <form onSubmit={save} className="space-y-3" aria-label="Your project">
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <Field label="Team name">{(p) => <input {...p} className="input" maxLength={40} required value={name} onChange={(e) => setName(e.target.value)} />}</Field>
         {team.seats > 0 && <Field label="Looking for (optional)" hint="Shown to students looking for a team.">{(p) => <input {...p} className="input" maxLength={200} value={lookingFor} onChange={(e) => setLookingFor(e.target.value)} placeholder="Someone who likes data" />}</Field>}
       </div>

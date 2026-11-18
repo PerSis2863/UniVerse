@@ -197,7 +197,7 @@ export default function AdminAssociationsMonitoringPage() {
                 : (
                   <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
                     {people.map((p) => (
-                      <li key={p.user.id ?? p.clubs[0].id} className="p-4 grid gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
+                      <li key={p.user.id ?? p.clubs[0].id} className="p-4 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:items-center">
                         <PersonCell person={p.user} extra={[p.user.studentProfile?.department, p.user.studentProfile?.year ? `Year ${p.user.studentProfile.year}` : null].filter(Boolean).join(' · ') || null} />
                         <div className="flex flex-wrap gap-1.5">
                           {p.clubs.map((c) => (

@@ -68,7 +68,7 @@ export function CampusUsage({ date, campus, buildings }: { date: string; campus:
               <span>None</span><span className="h-2.5 w-24 rounded-full" style={{ background: 'linear-gradient(to right, rgba(39,39,42,.12), rgba(39,39,42,1))' }} /><span>Every room</span>
             </p>
           </div>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <RoomList title="Busiest rooms" rooms={busiest} weeks={data.weeks} empty="No room was used." />
             <RoomList title="Least used rooms" rooms={quiet} weeks={data.weeks} empty="" />
           </div>

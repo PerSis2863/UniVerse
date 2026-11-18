@@ -134,7 +134,7 @@ function LineForm({ org, year, sites, draft, setDraft, editing, onSave, onCancel
   return (
     <form className="panel p-5 space-y-4" onSubmit={(e) => { e.preventDefault(); onSave(); }} aria-labelledby="line-form">
       <h3 id="line-form" className={h3}><ListPlus className={icon} aria-hidden />{editing ? 'Change the line' : 'A new line'}</h3>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <label className={`${label} lg:col-span-2`}>What it is<select value={draft.category} onChange={set('category')} className={field}>{groups().map(([g, cs]) => <optgroup key={g} label={g}>{cs.map((c) => <option key={c.id} value={c.id}>{c.label} (scope {c.scope})</option>)}</optgroup>)}</select></label>
         <label className={label}>Month<select value={draft.period} onChange={set('period')} className={field}>{MONTHS(year).map((m) => <option key={m} value={m}>{monthName(m)}</option>)}</select></label>
         <label className={label}>Amount, {cat?.unit === 'money' ? `${org.currency} spent` : unitText(draft.category)}<input required type="number" min={0} step="any" inputMode="decimal" value={draft.quantity} onChange={set('quantity')} className={field} /></label>

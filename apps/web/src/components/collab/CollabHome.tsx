@@ -144,13 +144,13 @@ export function CollabHome() {
           </div>
         </section>
 
-        <div className="grid lg:grid-cols-3 gap-6 items-start">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
           <div className="lg:col-span-2 space-y-6 min-w-0">
             {/* Pinned: glide into place as they're added or taken away. */}
             {pinned.length > 0 && !q && (
               <section aria-labelledby="pinned-h">
                 <h3 id="pinned-h" className="text-sm font-bold text-zinc-700 dark:text-zinc-300 mb-2 inline-flex items-center gap-1.5"><Pin className="w-4 h-4 text-fuchsia-500 rotate-45" /> Pinned</h3>
-                <div className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
                   <AnimatePresence initial={false}>
                     {pinned.map((p) => {
                       const K = KIND[p.kind];

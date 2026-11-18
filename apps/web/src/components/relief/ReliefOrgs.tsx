@@ -63,14 +63,14 @@ function Home({ join, shift }: { join: string | null; shift: string | null }) {
               </div>
             </div>
             <div className="mt-3">
-              {!data ? <div className="grid sm:grid-cols-2 gap-3"><div className="panel h-28 skeleton" /><div className="panel h-28 skeleton" /></div>
+              {!data ? <div className="grid grid-cols-1 sm:grid-cols-2 gap-3"><div className="panel h-28 skeleton" /><div className="panel h-28 skeleton" /></div>
                 : data.orgs.length === 0 ? (
                   <div className="panel p-6 text-sm text-zinc-600 dark:text-zinc-300 max-w-[70ch]">
                     <p className="font-semibold text-zinc-900 dark:text-white">Run your NGO, food bank, shelter or community group here.</p>
                     <p className="mt-1">Keep count of your supplies, plan volunteer shifts, and take on needs from the live map together. Start one, or join with the code a coordinator shared with you.</p>
                   </div>
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {data.orgs.map((o, i) => (
                       <motion.div key={o.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}>
                         <Link href={`/relief/orgs?org=${o.id}`} className="panel p-4 flex items-start gap-3 hover:border-orange-500/40 transition-colors">
@@ -96,7 +96,7 @@ function Home({ join, shift }: { join: string | null; shift: string | null }) {
           {!!data?.mine.length && (
             <section aria-labelledby="my-shifts-h">
               <h2 id="my-shifts-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><CalendarClock className="w-5 h-5 text-orange-500" aria-hidden />Your shifts</h2>
-              <div className="mt-3 grid md:grid-cols-2 gap-3">{first(data.mine).map((s) => <ShiftCard key={s.id} s={s} now={now} hot={s.id === shift} onChange={() => void mutate()} />)}</div>
+              <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">{first(data.mine).map((s) => <ShiftCard key={s.id} s={s} now={now} hot={s.id === shift} onChange={() => void mutate()} />)}</div>
             </section>
           )}
 
@@ -106,7 +106,7 @@ function Home({ join, shift }: { join: string | null; shift: string | null }) {
             <div className="mt-3">
               {!data ? <div className="panel h-28 skeleton" />
                 : data.shifts.length === 0 ? <p className="panel p-6 text-sm text-zinc-500 text-center">No open shifts in the next 30 days. Organisations post them here.</p>
-                  : <div className="grid md:grid-cols-2 gap-3">{first(data.shifts).map((s) => <ShiftCard key={s.id} s={s} now={now} hot={s.id === shift} onChange={() => void mutate()} />)}</div>}
+                  : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{first(data.shifts).map((s) => <ShiftCard key={s.id} s={s} now={now} hot={s.id === shift} onChange={() => void mutate()} />)}</div>}
             </div>
           </section>
 

@@ -37,7 +37,7 @@ function Base() {
         <ul className="divide-y divide-zinc-200 dark:divide-white/10 rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10">{out.rows.map(([l, x]) => <li key={l} className="flex items-center gap-3 px-3 py-2"><span className="w-20 text-xs text-zinc-600 dark:text-zinc-300">{l}</span><span className="flex-1 min-w-0 break-all font-mono text-zinc-900 dark:text-white">{x}</span><CopyBtn text={x} /></li>)}</ul>
       )}
       <Field label="Text as bytes (UTF-8)"><input className="input" value={text} onChange={(e) => setText(e.target.value)} /></Field>
-      <div className="grid gap-2 sm:grid-cols-2 font-mono text-xs text-zinc-900 dark:text-white">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 font-mono text-xs text-zinc-900 dark:text-white">
         <p className="rounded-xl bg-zinc-100/70 dark:bg-white/[0.05] p-3 break-all">{bytes.map((b) => b.toString(2).padStart(8, '0')).join(' ')}</p>
         <p className="rounded-xl bg-zinc-100/70 dark:bg-white/[0.05] p-3 break-all">{bytes.map((b) => b.toString(16).padStart(2, '0')).join(' ')}</p>
       </div>
@@ -65,7 +65,7 @@ function Shadow() {
   const css = `box-shadow: ${s.soft && !s.inset ? `0 1px 2px ${rgba(s.colour, Math.round(s.alpha / 3))}, ` : ''}${main};\nborder-radius: ${s.radius}px;`;
   const num = (k: 'x' | 'y' | 'blur' | 'spread' | 'alpha' | 'radius', l: string, min: number, max: number) => <label className="flex items-center justify-between gap-2 text-sm text-zinc-700 dark:text-zinc-200"><span className="w-20">{l}</span><input type="range" min={min} max={max} value={s[k]} onChange={(e) => setS({ ...s, [k]: +e.target.value })} className="flex-1 accent-pink-500" /><span className="w-10 text-end font-mono tabular-nums">{s[k]}</span></label>;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
         {num('x', 'Across', -50, 50)}{num('y', 'Down', -50, 50)}{num('blur', 'Blur', 0, 100)}{num('spread', 'Spread', -50, 50)}{num('alpha', 'Strength %', 0, 100)}{num('radius', 'Corners', 0, 80)}
         <div className="flex flex-wrap items-end gap-2">

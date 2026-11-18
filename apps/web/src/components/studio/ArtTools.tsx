@@ -42,7 +42,7 @@ function Poster() {
     wrap(p.more, 44, Math.max(y + 120, 1450), 500, t.ink, 1.35);
   }, [p]);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_320px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_320px]">
       <div className="space-y-2">
         {(['title', 'tag', 'date', 'place', 'more'] as const).map((k) => <Field key={k} label={{ title: 'Title', tag: 'Line above', date: 'When', place: 'Where', more: 'Details' }[k]}><input className="input" value={p[k]} onChange={(e) => setP({ ...p, [k]: e.target.value })} /></Field>)}
         <div className="flex flex-wrap gap-1.5">{THEMES.map((t, i) => <Btn key={t.n} on={p.theme === i} onClick={() => setP({ ...p, theme: i })}>{t.n}</Btn>)}</div>
@@ -66,9 +66,9 @@ function BizCard() {
     g.fillStyle = soft; g.font = '500 34px Inter, system-ui, sans-serif'; g.fillText(v.org, 90, 340); g.fillText(v.line1, 90, 470); g.fillText(v.line2, 90, 520);
   }, [v]);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_420px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_420px]">
       <div className="space-y-2">
-        <div className="grid gap-2 sm:grid-cols-2">{(['name', 'role', 'org', 'line1', 'line2'] as const).map((k) => <Field key={k} label={{ name: 'Name', role: 'Role', org: 'School or company', line1: 'Contact line 1', line2: 'Contact line 2' }[k]}><input className="input" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>)}<Field label="Colour"><input type="color" className="input h-11 p-1" value={v.colour} onChange={(e) => setV({ ...v, colour: e.target.value })} /></Field></div>
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">{(['name', 'role', 'org', 'line1', 'line2'] as const).map((k) => <Field key={k} label={{ name: 'Name', role: 'Role', org: 'School or company', line1: 'Contact line 1', line2: 'Contact line 2' }[k]}><input className="input" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>)}<Field label="Colour"><input type="color" className="input h-11 p-1" value={v.colour} onChange={(e) => setV({ ...v, colour: e.target.value })} /></Field></div>
         <div className="flex flex-wrap gap-2"><Btn on={v.dark} onClick={() => setV({ ...v, dark: !v.dark })}>Dark card</Btn><Btn onClick={() => savePng(ref.current, 'business-card.png')}><Download className="w-3.5 h-3.5" aria-hidden />Save picture</Btn><Btn onClick={() => { const url = ref.current?.toDataURL('image/png'); const w = document.getElementById('cards-sheet'); if (url && w) { w.innerHTML = Array.from({ length: 10 }, () => `<img src="${url}" alt="" style="width:85mm;height:55mm;margin:2mm;display:inline-block" />`).join(''); printOnly('cards-sheet'); } }}><Printer className="w-3.5 h-3.5" aria-hidden />Print 10</Btn></div>
         <div id="cards-sheet" className="hidden print:block" aria-hidden />
       </div>
@@ -114,7 +114,7 @@ function Blob() {
   const d = useMemo(() => blobPath(v.points, v.wobble, seeded(v.seed)), [v.points, v.wobble, v.seed]);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${v.a}"/><stop offset="1" stop-color="${v.b}"/></linearGradient></defs><path d="${d}" fill="url(#g)"/></svg>`;
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_280px]">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_280px]">
       <div className="space-y-2">
         <Field label={`Points: ${v.points}`}><input type="range" min={3} max={14} value={v.points} onChange={(e) => setV({ ...v, points: +e.target.value })} className="w-full accent-pink-500" /></Field>
         <Field label={`Wobble: ${Math.round(v.wobble * 100)}%`}><input type="range" min={0} max={0.9} step={0.05} value={v.wobble} onChange={(e) => setV({ ...v, wobble: +e.target.value })} className="w-full accent-pink-500" /></Field>

@@ -12,13 +12,13 @@ import { card } from './shared';
 export function FlowsPanel() {
   const [open, setOpen] = useState(FLOWS[0].id);
   return (
-    <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] gap-6 items-start">
+    <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,520px)] gap-6 items-start">
       <div>
         <h2 className="text-lg font-bold text-zinc-900 dark:text-white">Feature flows</h2>
         <p className="mt-1 text-sm text-zinc-500 max-w-xl">
           {FLOWS.length} jobs UniVerse runs by itself: something happens, one question, and the two ways it can go. A person is only asked where the card shows it.
         </p>
-        <ul className="mt-4 grid sm:grid-cols-2 gap-2">
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
           {FLOWS.map((f) => (
             <li key={f.id}>
               <button type="button" onClick={() => setOpen(f.id)} aria-pressed={open === f.id}

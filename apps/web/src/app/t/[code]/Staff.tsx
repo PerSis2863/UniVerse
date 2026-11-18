@@ -114,7 +114,7 @@ export function StaffView({ data: first, code, carrierKey }: { data: StaffAnswer
         <motion.section {...rise(2)} className="passport-card p-5" aria-labelledby="stop-h">
           <h2 id="stop-h" className="font-bold">Record where it is</h2>
           <p className="mt-1 text-xs text-zinc-400">With the time and your town (your phone’s position, rounded to about 10 km, when you allow it).</p>
-          <div className="mt-3 grid gap-2 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {data.canRecord.map((s) => {
               const isNext = s.stage === next?.stage, did = done.has(`${s.stage}:${data.role}`);
               return (

@@ -34,7 +34,7 @@ export function ReportCardList({ cards, hint, className }: { cards: PublishedCar
     <motion.section variants={fadeUp} initial="hidden" animate="show" className={className} aria-labelledby="report-cards-title">
       <h2 id="report-cards-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ClipboardList className="w-5 h-5 text-indigo-500" /> Report cards</h2>
       <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1 mb-4">{hint}</p>
-      <motion.ul variants={list} initial="hidden" animate="show" className="grid gap-3 md:grid-cols-2">
+      <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-1 gap-3 md:grid-cols-2">
         {cards.map((c) => (
           <motion.li key={c.id} variants={fadeUp} className="rounded-2xl border border-zinc-200/70 dark:border-white/[0.07] p-4 flex flex-col">
             <p className="font-semibold text-zinc-900 dark:text-white">{c.run.title}</p>

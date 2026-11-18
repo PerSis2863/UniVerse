@@ -84,7 +84,7 @@ export function AnswerInput({ q, value, onChange, label, compact = false }: { q:
         return q.ask?.image ? <PictureTap image={q.ask.image} value={text} onChange={onChange} label={label} /> : <p className="text-sm text-zinc-600 dark:text-zinc-400">The picture is missing.</p>;
       case 'BLANKS':
         return (
-          <div role="group" aria-label={label} className="grid gap-2 sm:grid-cols-2">
+          <div role="group" aria-label={label} className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {Array.from({ length: q.ask?.blanks ?? 0 }, (_, k) => (
               <label key={k} className="text-sm text-zinc-800 dark:text-zinc-200">Blank {k + 1}
                 <input type="text" value={list[k] ?? ''} maxLength={200} onChange={(e) => { const next = [...list]; while (next.length <= k) next.push(''); next[k] = e.target.value; onChange(next); }} className={cn(field, 'mt-1')} />
@@ -96,7 +96,7 @@ export function AnswerInput({ q, value, onChange, label, compact = false }: { q:
         return (
           <div role="group" aria-label={label} className="space-y-2">
             {(q.ask?.lefts ?? []).map((left, k) => (
-              <label key={left} className="grid gap-1 sm:grid-cols-[1fr_1fr] sm:items-center text-sm text-zinc-800 dark:text-zinc-200">
+              <label key={left} className="grid grid-cols-1 gap-1 sm:grid-cols-[1fr_1fr] sm:items-center text-sm text-zinc-800 dark:text-zinc-200">
                 <span className="font-medium">{left}</span>
                 <select value={list[k] ?? ''} onChange={(e) => { const next = [...list]; while (next.length <= k) next.push(''); next[k] = e.target.value; onChange(next); }} className={field}>
                   <option value="">Choose…</option>

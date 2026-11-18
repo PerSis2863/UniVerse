@@ -17,7 +17,7 @@ const CHANNELS = [
 export default function ContactPage() {
   return (
     <LegalShell eyebrow="Company" title="Contact us" intro={<>We’re a small team and we read every message. Pick the right address below and we’ll get back to you, usually within one working day.</>}>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {CHANNELS.map((c) => (
           <div id={c.id} key={c.id} className="scroll-mt-28 rounded-2xl border border-white/10 bg-white/[0.03] p-5 flex flex-col">
             <c.icon className="w-5 h-5 text-indigo-400" />

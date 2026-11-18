@@ -182,7 +182,7 @@ export function QuizClash({ seed, startsAt, endsAt, clock, onProgress, onStats }
             </div>
             <h2 className="mt-4 text-2xl font-semibold leading-snug text-white text-balance sm:text-4xl">{q.q}</h2>
           </div>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
             {q.options.map((o, k) => {
               const isAnswer = answered && k === q.answer;
               const wrongPick = answered && s.picked === k && k !== q.answer;

@@ -59,7 +59,7 @@ export function WhoSeesWhat() {
             </table>
           </div>
         </section>
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <section className="panel p-5" aria-labelledby="wsw-kept">
             <h2 id="wsw-kept" className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><Lock className="w-4 h-4" aria-hidden />Kept to your school</h2>
             <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{data?.everyone ? 'You see every school (UniVerse’s owner).' : data ? `${data.schools.join(' and ')}: another school’s admins, teachers and students can’t see any of this.` : ' '}</p>

@@ -85,7 +85,7 @@ export function MyMealOrders() {
   return (
     <section className="space-y-2" aria-labelledby="my-meals-h">
       <h3 id="my-meals-h" className="font-bold text-zinc-900 dark:text-white inline-flex items-center gap-1.5"><ShoppingBasket className="w-4 h-4" aria-hidden /> Your pre-orders</h3>
-      <ul className="grid sm:grid-cols-2 gap-3">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {live.map((o) => (
           <li key={o.id} className="rounded-2xl border border-zinc-200 dark:border-white/10 p-4 flex items-start gap-3">
             <div className="text-center shrink-0">

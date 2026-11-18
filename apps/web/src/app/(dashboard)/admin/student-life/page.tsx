@@ -25,7 +25,7 @@ export default function AdminStudentLifePage() {
               Include past events and menus
             </label>
           </div>
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
             <CampusItemManager kind="EVENT" label="Event" query={q} showPast={showPast} categories={['Career', 'Social', 'Academic', 'Impact', 'Sports', 'Culture']} />
             <CampusItemManager kind="MENU" label="Menu" query={q} showPast={showPast} categories={['Breakfast', 'Lunch', 'Dinner', 'Snacks']} />
             <CampusItemManager kind="SERVICE" label="Service" query={q} categories={['Dining', 'Cafés', 'Transport', 'Store', 'Health', 'Housing', 'Other']} />

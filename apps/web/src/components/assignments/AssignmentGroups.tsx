@@ -67,7 +67,7 @@ export function GroupsEditor({ assignmentId, groups, students, canManage, onChan
         </div>
       )}
       {groups.length ? (
-        <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {groups.map((g) => (
             <li key={g.id} className="rounded-xl border border-zinc-200 dark:border-white/10 p-3">
               <div className="flex items-center gap-1">

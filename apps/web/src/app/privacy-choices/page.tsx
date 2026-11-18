@@ -31,7 +31,7 @@ export default function PrivacyChoicesPage() {
       </Section>
 
       <Section title="Choices in your account">
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {CHOICES.map((c) => (
             <Card key={c.title}>
               <p className="font-semibold text-white">{c.title}</p>

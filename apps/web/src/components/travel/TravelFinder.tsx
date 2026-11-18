@@ -55,10 +55,10 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
   return (
     <div className="space-y-6">
       <section className="panel relative p-6 sm:p-8" aria-labelledby="find-title">
-        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden><span className="absolute -start-24 -top-24 h-72 w-72 rounded-full bg-indigo-400/15 blur-3xl" /></span>
         <h2 id="find-title" className="relative font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ fontSize: 'clamp(1.7rem, 3vw, 2.4rem)', lineHeight: 1.1 }}>Where should I <em className="accent-word pe-1">go?</em></h2>
         <p className="relative mt-2 max-w-2xl text-zinc-600 dark:text-zinc-300">Your days, budget and what you love: {IDEAS.length} places ranked for that month, with the reasons.</p>
-        <div className="relative mt-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {/* M288: on a phone days and month share a row, then the budget and the passport. */}
+        <div className="relative mt-6 grid grid-cols-2 gap-4 xl:grid-cols-4">
           <div>
             <span className={labelCls} id="find-days">Days</span>
             <div className="mt-1 flex items-center gap-1 rounded-xl border border-zinc-200 bg-white p-1 dark:border-white/10 dark:bg-white/[0.05]" role="group" aria-labelledby="find-days">
@@ -67,7 +67,7 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
               <button type="button" className="btn-ghost btn-sm" aria-label="One day more" disabled={days >= 60} onClick={() => change(() => setDays((d) => Math.min(60, d + 1)))}><Plus className="h-4 w-4" aria-hidden /></button>
             </div>
           </div>
-          <div>
+          <div className="col-span-2 max-sm:order-1 sm:col-span-1">
             <label className={labelCls} htmlFor="find-budget">Budget per person</label>
             <div className="mt-1 flex gap-2">
               <input id="find-budget" type="number" inputMode="numeric" min={0} step={50} value={budget || ''} placeholder="Any" onChange={(e) => { const v = Math.max(0, Number(e.target.value) || 0); change(() => setBudget(v)); }} className={cn(field, 'mt-0 min-w-0 flex-1 tabular-nums')} />
@@ -81,7 +81,7 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
               {MONTHS.map((m, i) => <option key={m} value={i}>{m}</option>)}
             </select>
           </label>
-          <label className={labelCls}>Your passport
+          <label className={cn(labelCls, 'col-span-2 max-sm:order-2 sm:col-span-1')}>Your passport
             <select value={pass ?? ''} onChange={(e) => { const v = e.target.value; change(() => setPassport(v || null)); }} className={field}>
               <option value="">Don’t check visas</option>
               {passports.map(([c, n]) => <option key={c} value={c}>{n}</option>)}
@@ -106,7 +106,7 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
 
       <section aria-labelledby="find-results">
         <h2 id="find-results" className="sr-only">Best places for you</h2>
-        <ol ref={list} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite">
+        <ol ref={list} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite">
           {ranked.slice(0, shown).map((m, n) => <MatchCard key={m.idea.title} m={m} rank={n + 1} share={Math.max(0.06, (m.score - bottom) / Math.max(1, top - bottom))} days={days} currency={cur} onPlan={onPlan ? () => onPlan(m, days, mon) : undefined} />)}
         </ol>
         {shown < ranked.length && <button type="button" onClick={() => setShown((s) => s + 12)} className="btn-secondary mt-4 inline-flex items-center gap-2">Show more places<ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>}
@@ -123,7 +123,7 @@ function MatchCard({ m, rank, share, days, currency, onPlan }: { m: Match; rank:
   const { idea, weather } = m;
   const words = m.score >= 7 ? 'Great match' : m.score >= 4 ? 'Good match' : m.score >= 1 ? 'Worth a look' : 'Not a great fit';
   return (
-    <li data-key={idea.title} className="card flex flex-col overflow-hidden">
+    <li data-key={idea.title} className="card flex flex-col overflow-hidden p-0!">
       <Link href={`/travel/guide?d=${encodeURIComponent(idea.title)}`} className="group relative block h-36 shrink-0 overflow-hidden">
         <Cover photo={idea.photo} banner={idea.banner} sizes="(min-width: 1536px) 25vw, (min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" priority={rank <= 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
         <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden />

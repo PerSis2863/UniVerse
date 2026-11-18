@@ -35,7 +35,7 @@ function Cv() {
     <fieldset className="space-y-2">
       <legend className="text-sm font-bold text-zinc-900 dark:text-white">{label}</legend>
       {c[k].map((j) => (
-        <div key={j.id} className="rounded-xl ring-1 ring-zinc-200 dark:ring-white/10 p-2 grid gap-2 sm:grid-cols-3">
+        <div key={j.id} className="rounded-xl ring-1 ring-zinc-200 dark:ring-white/10 p-2 grid grid-cols-1 gap-2 sm:grid-cols-3">
           <input className="input" aria-label="Role" value={j.role} onChange={(e) => set({ [k]: c[k].map((x) => (x.id === j.id ? { ...x, role: e.target.value } : x)) })} placeholder="Role" />
           <input className="input" aria-label="Where" value={j.org} onChange={(e) => set({ [k]: c[k].map((x) => (x.id === j.id ? { ...x, org: e.target.value } : x)) })} placeholder="Where" />
           <div className="flex gap-1"><input className="input" aria-label="When" value={j.when} onChange={(e) => set({ [k]: c[k].map((x) => (x.id === j.id ? { ...x, when: e.target.value } : x)) })} placeholder="When" />
@@ -59,10 +59,10 @@ function Cv() {
   );
   const modern = c.look === 'modern', skills = c.skills.split(',').map((s) => s.trim()).filter(Boolean);
   return (
-    <div className="grid gap-5 2xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-5 2xl:grid-cols-2">
       <div className="space-y-3">
         <div className="flex flex-wrap gap-2"><Btn on={modern} onClick={() => set({ look: 'modern' })}>Modern</Btn><Btn on={!modern} onClick={() => set({ look: 'classic' })}>Classic</Btn><Btn onClick={() => printOnly('cv-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print or save as PDF</Btn></div>
-        <div className="grid gap-2 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           <Field label="Name"><input className="input" value={c.name} onChange={(e) => set({ name: e.target.value })} /></Field>
           <Field label="Headline"><input className="input" value={c.title} onChange={(e) => set({ title: e.target.value })} /></Field>
         </div>
@@ -123,7 +123,7 @@ function Cloud() {
   }, [words, look]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-[1fr_220px]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1fr_220px]">
         <Field label="Your text"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
         <div className="space-y-2">
           <Field label={`Words: ${max}`}><input type="range" min={10} max={120} value={max} onChange={(e) => setMax(+e.target.value)} className="w-full accent-pink-500" /></Field>
@@ -231,7 +231,7 @@ function Playground() {
         </select>
         <Btn onClick={() => save('page.html', doc.replace(/<script>\(\(\)=>\{const s=.*?<\/script>/, ''), 'text/html')}><Download className="w-3.5 h-3.5" aria-hidden />Save as .html</Btn>
       </div>
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <textarea aria-label={`${tab.toUpperCase()} code`} spellCheck={false} value={code[tab]} onChange={(e) => setCode({ ...code, [tab]: e.target.value })}
           onKeyDown={(e) => { if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); const el = e.currentTarget, s = el.selectionStart, v = el.value; setCode({ ...code, [tab]: `${v.slice(0, s)}  ${v.slice(el.selectionEnd)}` }); requestAnimationFrame(() => el.setSelectionRange(s + 2, s + 2)); } }}
           className="input min-h-[360px] font-mono text-[13px] leading-relaxed resize-y bg-zinc-950 text-zinc-100 dark:bg-black/40" />
@@ -258,7 +258,7 @@ function Barcode() {
   const png = () => { const svg = svgRef.current; if (!svg) return; const img = new Image(); img.onload = () => { const c = document.createElement('canvas'); c.width = W * 2; c.height = H * 2; const g = c.getContext('2d')!; g.fillStyle = '#fff'; g.fillRect(0, 0, c.width, c.height); g.drawImage(img, 0, 0, c.width, c.height); c.toBlob((b) => b && save('barcode.png', b, 'image/png')); }; img.src = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(new XMLSerializer().serializeToString(svg))}`; };
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_140px_140px]">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_140px_140px]">
         <Field label="Text or number"><input className={cn('input font-mono', bars.err && 'ring-2 ring-rose-500')} value={t} onChange={(e) => setT(e.target.value.slice(0, 48))} aria-invalid={!!bars.err} /></Field>
         <Field label={`Height: ${h}`}><input type="range" min={40} max={180} value={h} onChange={(e) => setH(+e.target.value)} className="w-full accent-pink-500" /></Field>
         <Field label={`Bar width: ${w}`}><input type="range" min={1} max={4} value={w} onChange={(e) => setW(+e.target.value)} className="w-full accent-pink-500" /></Field>

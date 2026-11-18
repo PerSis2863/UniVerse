@@ -31,7 +31,7 @@ function Replace() {
   const found = useMemo(() => findReplace(t, f, r, { caseSensitive: cs, words: w }).count, [t, f, r, cs, w]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2"><Field label="Find"><input className="input" value={f} onChange={(e) => setF(e.target.value)} /></Field><Field label="Replace with"><input className="input" value={r} onChange={(e) => setR(e.target.value)} /></Field></div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><Field label="Find"><input className="input" value={f} onChange={(e) => setF(e.target.value)} /></Field><Field label="Replace with"><input className="input" value={r} onChange={(e) => setR(e.target.value)} /></Field></div>
       <div className="flex flex-wrap items-center gap-3 text-sm text-zinc-700 dark:text-zinc-200">
         <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={cs} onChange={(e) => setCs(e.target.checked)} className="accent-pink-500" />Match case</label>
         <label className="inline-flex items-center gap-1.5"><input type="checkbox" checked={w} onChange={(e) => setW(e.target.checked)} className="accent-pink-500" />Whole words</label>
@@ -49,7 +49,7 @@ function Readability() {
   const [t, setT] = useKept('uv-draft-read', '');
   const r = useMemo(() => readability(t), [t]);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_240px]">
       <Field label="Your text (English)"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
       <dl className="grid grid-cols-2 gap-2 content-start text-sm">
         <Stat k="Reading ease" v={r ? r.ease : '—'} /><Stat k="That is" v={r?.label ?? '—'} />
@@ -69,7 +69,7 @@ function Cite() {
   return (
     <div className="space-y-3">
       <div className="flex gap-2"><Btn on={style === 'apa'} onClick={() => setStyle('apa')}>APA</Btn><Btn on={style === 'mla'} onClick={() => setStyle('mla')}>MLA</Btn></div>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Field label="Authors (Last, First; Last, First)"><input className="input" value={s.authors} onChange={set('authors')} /></Field>
         <Field label="Title"><input className="input" value={s.title} onChange={set('title')} /></Field>
         <Field label="Website or publisher"><input className="input" value={s.site} onChange={set('site')} /></Field>
@@ -157,7 +157,7 @@ function Calc() {
   const run = () => { if (preview && !err) { setHist((h) => [[x, preview] as [string, string], ...h].slice(0, 20)); setX(preview.replace(/,/g, '')); } };
   const keys = ['7', '8', '9', '÷', '4', '5', '6', '×', '1', '2', '3', '−', '0', '.', '%', '+', '(', ')', '^', 'sqrt('];
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_220px]">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_220px]">
       <div className="space-y-2">
         <Field label="Sum (press Enter)"><input className="input font-mono text-lg" value={x} onChange={(e) => setX(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && run()} placeholder="(12 + 8) × 3%" /></Field>
         <p role="status" className={cn('font-mono text-2xl', err ? 'text-base text-rose-600 dark:text-rose-300' : 'text-zinc-900 dark:text-white')}>{err || (preview ? `= ${preview}` : '')}</p>
@@ -193,7 +193,7 @@ function Percent() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap gap-2"><Field label="A"><input className="input w-32" inputMode="decimal" value={a} onChange={(e) => setA(e.target.value)} /></Field><Field label="B"><input className="input w-32" inputMode="decimal" value={b} onChange={(e) => setB(e.target.value)} /></Field></div>
-      <dl className="grid gap-2 sm:grid-cols-2 text-sm">
+      <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-sm">
         <Stat k="A% of B" v={ok ? nf((x / 100) * y) : '—'} /><Stat k="A is what % of B" v={ok && y ? `${nf((x / y) * 100, 2)}%` : '—'} />
         <Stat k="Change from A to B" v={ok && x ? `${nf(((y - x) / Math.abs(x)) * 100, 2)}%` : '—'} /><Stat k="B with A% added" v={ok ? nf(y * (1 + x / 100)) : '—'} />
       </dl>
@@ -215,7 +215,7 @@ function Picker() {
         <Btn onClick={() => setOut(groups(names, n, rand))}>Make groups</Btn>
       </div>
       {one && <p role="status" className="text-3xl font-bold text-zinc-900 dark:text-white" translate="no">{one}</p>}
-      {out && <ol className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">{out.map((g, i) => <li key={i} className="rounded-xl bg-zinc-100/70 dark:bg-white/[0.05] p-3"><p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Group {i + 1}</p><p className="text-sm" translate="no">{g.join(', ')}</p></li>)}</ol>}
+      {out && <ol className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">{out.map((g, i) => <li key={i} className="rounded-xl bg-zinc-100/70 dark:bg-white/[0.05] p-3"><p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">Group {i + 1}</p><p className="text-sm" translate="no">{g.join(', ')}</p></li>)}</ol>}
     </div>
   );
 }
@@ -242,7 +242,7 @@ function Chart() {
   }, [rows, kind, title]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-[1fr_200px]"><Field label="Label and number, one a line"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_200px]"><Field label="Label and number, one a line"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
         <div className="space-y-2"><Field label="Title"><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field><div className="flex gap-2"><Btn on={kind === 'bar'} onClick={() => setKind('bar')}>Bars</Btn><Btn on={kind === 'line'} onClick={() => setKind('line')}>Line</Btn></div></div></div>
       <canvas ref={ref} role="img" aria-label={`${kind} chart: ${title}`} className="w-full rounded-xl ring-1 ring-black/10" />
       <Btn onClick={() => ref.current?.toBlob((b) => b && save('chart.png', b, 'image/png'))}><Download className="w-3.5 h-3.5" aria-hidden />Save picture</Btn>
@@ -399,7 +399,7 @@ function Time() {
   return (
     <div className="space-y-3">
       <div className="flex items-end gap-2"><Field label="A Unix time or a date"><input className="input font-mono" value={v} onChange={(e) => setV(e.target.value)} /></Field><Btn onClick={() => setV(String(Math.floor(Date.now() / 1000)))}>Now</Btn></div>
-      {rows.length ? <dl className="grid gap-2 sm:grid-cols-2 text-sm">{rows.map(([k, x]) => <Stat key={k} k={k} v={x} />)}</dl> : <p className="text-sm text-rose-600 dark:text-rose-300">Not a time I can read.</p>}
+      {rows.length ? <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-sm">{rows.map(([k, x]) => <Stat key={k} k={k} v={x} />)}</dl> : <p className="text-sm text-rose-600 dark:text-rose-300">Not a time I can read.</p>}
     </div>
   );
 }
@@ -411,7 +411,7 @@ function Url() {
   return (
     <div className="space-y-3">
       <Field label="Web address"><input className="input font-mono" value={v} onChange={(e) => setV(e.target.value)} /></Field>
-      {p ? <dl className="grid gap-2 sm:grid-cols-2 text-sm"><Stat k="Protocol" v={p.protocol} /><Stat k="Site" v={p.host} /><Stat k="Path" v={p.path} /><Stat k="Section (#)" v={p.hash || '—'} />
+      {p ? <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 text-sm"><Stat k="Protocol" v={p.protocol} /><Stat k="Site" v={p.host} /><Stat k="Path" v={p.path} /><Stat k="Section (#)" v={p.hash || '—'} />
         {p.query.map(([k, x], i) => <Stat key={i} k={`?${k}`} v={x || '(empty)'} />)}</dl> : <p className="text-sm text-rose-600 dark:text-rose-300">Not a full web address (it needs https://).</p>}
     </div>
   );
@@ -427,7 +427,7 @@ function Jwt() {
       <p className="text-xs text-zinc-600 dark:text-zinc-300">Read on this device only. A token is like a password: don’t paste one you don’t own.</p>
       <Field label="Token"><textarea className={area} value={v} onChange={(e) => setV(e.target.value)} spellCheck={false} /></Field>
       {v.trim() && !p && <p className="text-sm text-rose-600 dark:text-rose-300">Not a JWT.</p>}
-      {p && <div className="grid gap-3 md:grid-cols-2">{(['header', 'payload'] as const).map((k) => <div key={k}><p className="text-xs font-semibold">{k === 'header' ? 'Header' : 'Payload'}</p><pre className="mt-1 overflow-x-auto rounded-xl bg-zinc-100 dark:bg-white/[0.06] p-3 text-xs">{JSON.stringify(p[k], null, 2)}</pre></div>)}</div>}
+      {p && <div className="grid grid-cols-1 gap-3 md:grid-cols-2">{(['header', 'payload'] as const).map((k) => <div key={k}><p className="text-xs font-semibold">{k === 'header' ? 'Header' : 'Payload'}</p><pre className="mt-1 overflow-x-auto rounded-xl bg-zinc-100 dark:bg-white/[0.06] p-3 text-xs">{JSON.stringify(p[k], null, 2)}</pre></div>)}</div>}
       {exp && <p className="text-sm">Expires {exp.toLocaleString()}</p>}
     </div>
   );

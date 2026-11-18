@@ -227,7 +227,7 @@ export function AnalyticsPanel({ onPerson }: { onPerson: (id: string) => void })
       </div>
       <InstrumentBoard icon={Activity} title="How UniVerse is used" subtitle={`${t.people} people · ${per}`} cells={cells} storageKey="console-analytics"
         ranges={[{ id: '7', label: '7 days' }, { id: '30', label: '30 days' }, { id: '90', label: '90 days' }]} range={String(days) as '7' | '30' | '90'} onRange={(r) => setDays(Number(r))} />
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <Ranked title="Most opened pages" empty="No page views yet." rows={data.pages.map((p) => ({ key: p.path, label: p.path, sub: `${p.people} ${p.people === 1 ? 'person' : 'people'}`, value: p.views }))} />
         <Ranked title="Most pressed buttons" empty="No button presses yet." rows={data.buttons.map((b) => ({ key: `${b.label}${b.path}`, label: `“${b.label}”`, sub: b.path, value: b.clicks }))} />
         <Ranked title="Most active people" empty="Nobody yet." onClick={onPerson} rows={data.busiest.map((b) => ({ key: b.id, label: b.name, sub: b.role.toLowerCase(), value: b.events }))} />
@@ -391,7 +391,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
         ['Waiting to be paid', money(total(of('PENDING'))), `${count(of('PENDING'))} payments${overdue ? ` · ${overdue} overdue invoices` : ''}`],
         ['Subscriptions', money(data.subscriptions.mrr), `a month from ${data.subscriptions.paying} paying ${data.subscriptions.paying === 1 ? 'organization' : 'organizations'} (estimate)`],
       ]} />
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5 lg:col-span-2')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Money received per day · 30 days</h2>
           <Bars values={data.perDay.map((d) => d.total)} labels={labels} title={(i) => `${labels[i]}: ${money(data.perDay[i].total)}`} />
@@ -413,7 +413,7 @@ export function MoneyPanel({ onPerson }: { onPerson: (id: string) => void }) {
         <p className="text-xs text-zinc-500 mb-3">Changes here fix UniVerse’s records only. Stripe is not charged or refunded, so do refunds in Stripe too.</p>
         <PaymentList rows={recent} money={money} onPerson={onPerson} />
       </div>
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className={cn(card, 'p-5')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Invoices</h2>
           {data.invoices.length === 0 ? <p className="text-sm text-zinc-500">No invoices yet.</p> : (

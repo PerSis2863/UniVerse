@@ -52,7 +52,7 @@ export function ImpactReportView({ report, verified }: { report: ImpactCallRepor
         {report.ai && <span className="ms-1 inline-flex items-center gap-0.5 text-[10px] text-zinc-400 align-middle"><Sparkles className="w-3 h-3" />written with AI from the figures</span>}
       </motion.p>
       {report.call && (report.call.decisions.length > 0 || report.call.nextSteps.length > 0) && (
-        <motion.div variants={fadeUp} className="grid sm:grid-cols-2 gap-3">
+        <motion.div variants={fadeUp} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {report.call.decisions.length > 0 && (
             <div>
               <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wide">Decided at the call</p>

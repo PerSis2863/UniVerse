@@ -39,7 +39,7 @@ export function BizStaff({ org, role, year, onChanged }: SectionProps) {
           ) : canEdit(role) ? <button type="button" className="btn-primary" onClick={() => void toggle(true)}>Make the survey link</button> : <p className={muted}>No survey link yet.</p>}
         </div>
       </section>
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="panel p-5" aria-labelledby="staff-modes">
           <h3 id="staff-modes" className={h3}><Bike className={icon} aria-hidden />How they get to work ({year})</h3>
           {!data.answers ? <p className={`mt-2 ${muted}`}>No answers yet.</p> : (

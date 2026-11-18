@@ -35,7 +35,7 @@ export function RealPeopleCard() {
           </div>
         ))}
       </dl>
-      <div className="mt-5 grid gap-6 lg:grid-cols-[1fr_auto]">
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_auto]">
         <div>
           <h3 className="text-xs font-medium text-zinc-600 dark:text-zinc-300">People who did something in each app</h3>
           <ul className="mt-2 space-y-2">

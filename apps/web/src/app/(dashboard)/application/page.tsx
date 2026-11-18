@@ -330,7 +330,7 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
           Staff accounts can see and change students&apos; work, so an admin checks every application. You keep your student account while you wait.
         </p>
       </div>
-      <div className="grid sm:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
           const Icon = ROLE_INFO[r].icon;
           return (
@@ -342,7 +342,7 @@ function Intro({ onPick }: { onPick: (r: Requested) => void }) {
           );
         })}
       </div>
-      <ol className="grid sm:grid-cols-3 gap-3 text-sm">
+      <ol className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
         {['Tell us where you work and how to confirm it', 'An admin reviews it (usually within 1–2 days)', 'You get staff access, or a clear reason why not'].map((t, i) => (
           <li key={t} className="tone-panel flex gap-3 p-4 rounded-2xl border border-zinc-200/80 dark:border-white/[0.06]">
             <span className="w-6 h-6 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white text-xs font-bold flex items-center justify-center">{i + 1}</span>
@@ -433,7 +433,7 @@ function Summary({ app }: { app: Application }) {
           <p className="text-xs text-zinc-500">{info?.label ?? app.requestedRole} application{app.submittedAt ? ` · sent ${format(new Date(app.submittedAt), 'd MMM yyyy')}` : ''}</p>
         </div>
       </div>
-      <dl className="grid sm:grid-cols-2 gap-2.5 text-sm">
+      <dl className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 text-sm">
         {rows.filter(([, v]) => v).map(([k, v]) => (
           <div key={k} className="min-w-0 px-3.5 py-2.5 rounded-xl bg-white/70 dark:bg-white/[0.04] border border-zinc-200/60 dark:border-white/[0.05]">
             <dt className="text-[11px] font-semibold uppercase tracking-wide text-indigo-500 dark:text-indigo-300">{k}</dt>
@@ -546,7 +546,7 @@ function ApplicationForm({
       {canChangeRole && (
         <fieldset>
           <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">I&apos;m applying as</legend>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             {(Object.keys(ROLE_INFO) as Requested[]).map((r) => {
               const Icon = ROLE_INFO[r].icon;
               const on = f.requestedRole === r;
@@ -564,7 +564,7 @@ function ApplicationForm({
 
       <section className="space-y-4">
         <h3 className="font-semibold text-zinc-900 dark:text-white">{ngo ? 'Your organization' : stu ? 'Where you study' : 'Where you teach'}</h3>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={ngo ? 'Organization' : stu ? 'University or school' : 'Institution'} required hint={ngo ? undefined : 'Search 10,000+ universities worldwide, or type your own.'}>
             {ngo ? (
               <input className={input} value={f.institution} onChange={set('institution')} maxLength={150} placeholder="e.g. Green Earth Foundation" />
@@ -601,7 +601,7 @@ function ApplicationForm({
           <h3 className="font-semibold text-zinc-900 dark:text-white">How we can confirm it&apos;s you</h3>
           <p className="text-sm text-zinc-500 mt-0.5">{stu ? 'Upload your student card or enrolment certificate (or give your university email). Documents get you approved fastest.' : 'Give at least one. A work email or a document gets you approved fastest.'}</p>
         </div>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label={stu ? 'University email' : 'Work email'} hint="Your address at the institution; an admin may write to you there.">
             <input className={input} type="email" value={f.workEmail} onChange={set('workEmail')} maxLength={150} placeholder="name@university.edu" />
           </Field>

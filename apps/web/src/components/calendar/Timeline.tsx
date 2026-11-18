@@ -178,7 +178,7 @@ export function TimelineSummary<T>({ days, today, nowMin, on, when, onOpen }: {
     return m < 60 ? `in ${m} min` : `in ${Math.round(m / 60)} h`;
   };
   return (
-    <div className="grid gap-4 md:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
       <section className="card">
         <CardHead title="Busy this week" sub="Time in class or at events, day by day" />
         <ul className="space-y-3">

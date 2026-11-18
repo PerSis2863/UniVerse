@@ -93,7 +93,7 @@ function Periodic() {
         <input className="input w-56" value={q} onChange={(e) => setQ(e.target.value)} placeholder="Find: iron, Fe, 26…" aria-label="Find an element" />
         {(Object.keys(FAMILIES) as Family[]).map((f) => <button key={f} type="button" onClick={() => setFam(fam === f ? null : f)} aria-pressed={fam === f} className={cn('rounded-full px-2.5 py-1 text-xs font-semibold text-zinc-900 ring-1 ring-black/10 transition-transform active:scale-95', fam === f && 'ring-2 ring-pink-600')} style={{ background: FAM_COLOUR[f] }}>{FAMILIES[f]}</button>)}
       </div>
-      <div className="grid gap-4 2xl:grid-cols-[1fr_240px]">
+      <div className="grid grid-cols-1 gap-4 2xl:grid-cols-[1fr_240px]">
         <div tabIndex={0} role="region" aria-label="Periodic table (scrolls sideways)" className="relative overflow-x-auto pb-1 focus-visible:outline-2 focus-visible:outline-pink-500">
           <div className="grid gap-0.5 min-w-[760px]" style={{ gridTemplateColumns: 'repeat(18, minmax(0, 1fr))', gridTemplateRows: 'repeat(7, auto) 10px repeat(2, auto)' }}>
             {ELEMENTS.map((e) => { const on = match(e); return (
@@ -157,7 +157,7 @@ function Quiz() {
               <legend className="px-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300">Question {k + 1}</legend>
               <div className="flex gap-2"><input className="input" aria-label={`Question ${k + 1}`} value={qq.q} onChange={(e) => put({ questions: quiz.questions.map((x) => (x.id === qq.id ? { ...x, q: e.target.value } : x)) })} placeholder="The question" />
                 <button type="button" onClick={() => put({ questions: quiz.questions.filter((x) => x.id !== qq.id) })} aria-label={`Remove question ${k + 1}`} className="btn-ghost btn-icon"><Trash2 className="w-4 h-4" aria-hidden /></button></div>
-              <div className="grid gap-2 sm:grid-cols-2">
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                 {qq.options.map((o, j) => (
                   <label key={j} className="flex items-center gap-2">
                     <input type="radio" name={`ans-${qq.id}`} checked={qq.answer === j} onChange={() => put({ questions: quiz.questions.map((x) => (x.id === qq.id ? { ...x, answer: j } : x)) })} className="accent-pink-500" aria-label={`Answer ${j + 1} is right`} />
@@ -181,7 +181,7 @@ function Quiz() {
         <motion.div key={cur.id} initial={{ opacity: 0, x: 16 }} animate={{ opacity: 1, x: 0 }} transition={spring.smooth} className="space-y-3">
           <div className="flex items-center gap-3"><span className="flex-1 h-2 rounded-full bg-zinc-200 dark:bg-white/10 overflow-hidden"><Fill value={((i / order.length) * 100) / 100} className="h-full bg-pink-500" /></span><span className="text-sm font-mono tabular-nums text-zinc-600 dark:text-zinc-300">{i + 1}/{order.length}</span></div>
           <p className="text-xl font-bold text-zinc-900 dark:text-white" translate="no">{cur.q}</p>
-          <div className="grid gap-2 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {cur.options.map((o, j) => o && (
               <button key={j} type="button" disabled={picked !== null} onClick={() => { setPicked(j); if (j === cur.answer) setRight(right + 1); }}
                 className={cn('rounded-2xl border-2 p-3 text-start font-semibold transition-[background-color,border-color,transform] active:scale-[0.98] disabled:cursor-default', picked === null ? 'border-zinc-200 dark:border-white/10 hover:border-pink-500 text-zinc-900 dark:text-white' : j === cur.answer ? 'border-emerald-600 bg-emerald-500/15 text-zinc-900 dark:text-white' : picked === j ? 'border-rose-600 bg-rose-500/15 text-zinc-900 dark:text-white' : 'border-zinc-200 dark:border-white/10 opacity-60 text-zinc-900 dark:text-white')} translate="no">
@@ -214,7 +214,7 @@ function Seating() {
   const tap = (k: number) => { if (pick === null) return setPick(k); const next = [...seats]; [next[pick], next[k]] = [next[k], next[pick]]; setS({ ...s, seats: next }); setPick(null); };
   const missing = names.filter((x) => !seats.includes(x));
   return (
-    <div className="grid gap-4 lg:grid-cols-[220px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[220px_1fr]">
       <div className="space-y-2">
         <Field label="Names, one a line"><textarea className="input min-h-[200px] text-sm" value={s.names} onChange={(e) => setS({ ...s, names: e.target.value })} /></Field>
         <div className="grid grid-cols-2 gap-2"><Field label="Rows"><input type="number" min={1} max={12} className="input" value={s.rows} onChange={(e) => setS({ ...s, rows: Math.max(1, Math.min(12, +e.target.value || 1)) })} /></Field><Field label="Seats a row"><input type="number" min={1} max={12} className="input" value={s.cols} onChange={(e) => setS({ ...s, cols: Math.max(1, Math.min(12, +e.target.value || 1)) })} /></Field></div>
@@ -249,7 +249,7 @@ function DiceCoins() {
   const flip = () => { const c = rnd(2) ? 'Heads' : 'Tails'; setCoin(c); setFlips(flips + 1); log(`Coin: ${c}`); };
   const pickNum = () => { const a = Math.min(lo, hi), b = Math.max(lo, hi), v = a + rnd(b - a + 1); setNum(v); log(`Number ${a}–${b}: ${v}`); };
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
       <section className="rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10 p-4 space-y-3 text-center" aria-label="Dice">
         <div className="flex flex-wrap justify-center gap-3 min-h-16">
           {dice.map((d, k) => (
@@ -339,14 +339,14 @@ function Shapes() {
   const [shape, setShape] = useState('Rectangle'), [vals, setVals] = useState<Record<string, string>>({ Length: '8', Width: '5', Radius: '3', Base: '6', Height: '4', 'Side a': '5', 'Side b': '5', Top: '4', Bottom: '8', Side: '3' }), [unit, setUnit] = useState('cm');
   const s = SHAPES[shape], v = s.inputs.map((k) => Math.max(0, +vals[k] || 0));
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_160px]">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_160px]">
       <div className="space-y-3">
         <div className="flex flex-wrap gap-1.5">{Object.keys(SHAPES).map((k) => <Btn key={k} on={shape === k} onClick={() => setShape(k)}>{k}</Btn>)}</div>
         <div className="flex flex-wrap items-end gap-2">
           {s.inputs.map((k) => <Field key={k} label={k}><input className="input w-24 font-mono" inputMode="decimal" value={vals[k] ?? ''} onChange={(e) => setVals({ ...vals, [k]: e.target.value })} /></Field>)}
           <Field label="Unit"><select className="input w-auto!" value={unit} onChange={(e) => setUnit(e.target.value)}>{['mm', 'cm', 'm', 'km', 'in', 'ft'].map((u) => <option key={u}>{u}</option>)}</select></Field>
         </div>
-        <dl className="grid gap-2 sm:grid-cols-3 text-sm">
+        <dl className="grid grid-cols-1 gap-2 sm:grid-cols-3 text-sm">
           {s.out(v).map(([k, n, f]) => <div key={k} className="rounded-xl bg-zinc-100/70 dark:bg-white/[0.05] px-3 py-2"><dt className="text-[11px] text-zinc-600 dark:text-zinc-300">{k} · <span className="font-mono">{f}</span></dt><dd className="font-mono tabular-nums text-lg font-bold text-zinc-900 dark:text-white">{nf(n, 3)} {unit}{/Area|Surface/.test(k) ? '²' : /Volume/.test(k) ? '³' : ''}</dd></div>)}
         </dl>
       </div>
@@ -397,7 +397,7 @@ function Traffic() {
         <p className={cn('max-w-md text-center font-bold text-zinc-900 dark:text-white', isFull ? 'text-6xl' : 'text-3xl')} role="status" translate="no">{labels[on]}</p>
       </div>
       {!isFull && (
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           {LIGHTS.map((l) => <Field key={l.k} label={`${l.k[0].toUpperCase()}${l.k.slice(1)} means`}><input className="input" value={labels[l.k]} onChange={(e) => setLabels({ ...labels, [l.k]: e.target.value })} /></Field>)}
         </div>
       )}

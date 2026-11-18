@@ -419,7 +419,7 @@ function Flow() {
   const W = 40 + (down ? f.rows : f.layers) * (BW + GX), H = 60 + (down ? f.layers : f.rows) * (BH + GY);
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-[280px_1fr]">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-[280px_1fr]">
         <div className="space-y-2">
           <Field label="Steps, one arrow a line"><textarea className={cn(area, 'min-h-[220px]')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
           <p className="text-xs text-zinc-600 dark:text-zinc-300"><code>A -&gt; B</code> joins two steps; add <code>: label</code> to name the arrow.</p>

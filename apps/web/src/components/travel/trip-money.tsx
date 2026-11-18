@@ -46,13 +46,13 @@ export function TripMoney({ tripId, members, me, currency, budget, countries }: 
   return (
     <div className="space-y-6">
       {/* Where things stand. */}
-      <section className="grid gap-4 sm:grid-cols-3" aria-label="Where the money stands">
-        <div className="panel p-5">
+      <section className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4" aria-label="Where the money stands">
+        <div className="panel p-4 sm:p-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">Spent so far</p>
           <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{cash(spentHere, currency)}</p>
           {Object.entries(out).filter(([c]) => c !== currency).map(([c, v]) => <p key={c} className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">+ {cash(v.total, c)}</p>)}
         </div>
-        <div className="panel p-5">
+        <div className="panel p-4 sm:p-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">Against the budget</p>
           {budget ? (
             <>
@@ -62,18 +62,18 @@ export function TripMoney({ tripId, members, me, currency, budget, countries }: 
             </>
           ) : <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Add places to the trip for an estimate.</p>}
         </div>
-        <div className="panel p-5">
+        <div className="panel col-span-2 p-4 sm:col-span-1 sm:p-5">
           <p className="text-sm text-zinc-600 dark:text-zinc-300">You</p>
           {!mine.length ? <p className="mt-1 text-2xl font-semibold text-zinc-900 dark:text-white">All square</p>
             : mine.map(([c, v]) => <p key={c} className={cn('mt-1 text-2xl font-semibold tabular-nums', v > 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-600 dark:text-red-400')}>{v > 0 ? `You’re owed ${cash(v, c)}` : `You owe ${cash(-v, c)}`}</p>)}
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <section className="panel p-5" aria-labelledby="costs-h">
           <h3 id="costs-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Wallet className="h-5 w-5 text-indigo-500" aria-hidden />Shared costs</h3>
           <AddCost key={members.length} tripId={tripId} members={members} me={me} currency={currency} countries={countries} onAdded={() => void mutate()} />
-          {!data ? <div className="mt-4 h-24 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
+          {!data ? <div className="mt-4 h-24 skeleton rounded-xl" aria-busy="true" />
             : !list.length ? <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">Nothing yet. Add what someone paid for the group: dinner, tickets, a room. Everyone planning the trip sees it.</p>
             : (
               <ul className="mt-4 divide-y divide-zinc-200/70 dark:divide-white/10" data-no-motion>
@@ -137,7 +137,7 @@ function AddCost({ tripId, members, me, currency, countries, onAdded }: { tripId
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t add that.')); } finally { setBusy(false); }
   };
   return (
-    <form className="mt-4 grid gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+    <form className="mt-4 grid grid-cols-1 gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]" onSubmit={(e) => { e.preventDefault(); void save(); }}>
       <label className={label}>What for<input value={what} onChange={(e) => setWhat(e.target.value.slice(0, 80))} placeholder="Dinner, tickets, a taxi…" className={field} /></label>
       <label className={label}>How much<input value={amount} onChange={(e) => setAmount(e.target.value.slice(0, 16))} inputMode="decimal" placeholder="0.00" aria-invalid={amount !== '' && !cents} className={cn(field, 'tabular-nums')} /></label>
       <label className={label}>Currency
@@ -198,7 +198,7 @@ function Everyday({ countries, currency }: { countries: string[]; currency: stri
     <section className="panel p-5" aria-labelledby="everyday-h" data-no-motion>
       <h3 id="everyday-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ShoppingBag className="h-5 w-5 text-indigo-500" aria-hidden />What things cost there</h3>
       <div className="mt-3 overflow-x-auto" tabIndex={0} role="region" aria-label="Prices in each country">
-        <table className="w-full min-w-[28rem] text-sm">
+        <table className="w-full text-sm" style={{ minWidth: `${7 + ccs.length * 5.5}rem` }}>
           <thead><tr className="text-start text-xs text-zinc-500 dark:text-zinc-400"><th scope="col" className="py-1.5 text-start font-semibold">About</th>{ccs.map((cc) => <th key={cc} scope="col" className="py-1.5 text-end font-semibold">{dn?.of(cc) ?? cc}</th>)}</tr></thead>
           <tbody className="divide-y divide-zinc-200/70 dark:divide-white/10">
             {EVERYDAY.map(([what, usd]) => (

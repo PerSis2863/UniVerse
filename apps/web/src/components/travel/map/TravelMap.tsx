@@ -667,7 +667,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       <PinSource ref={pinBox} />
       {/* Inline: MapLibre's own stylesheet makes its container position: relative. */}
       <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map" />
-      {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
+      {!ready && <div className="absolute inset-0 skeleton" aria-busy="true" />}
 
       {!nav && (<>
       {/* Controls. */}

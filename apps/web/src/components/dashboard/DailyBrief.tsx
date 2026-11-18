@@ -181,7 +181,7 @@ export function DailyBrief() {
       {empty ? (
         <p className="text-sm text-zinc-500">Nothing on today: no classes, nothing due and nobody waiting for you. Enjoy it.</p>
       ) : (
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           {since && (
             <div className="sm:col-span-2">
               <Section icon={History} title={`Since your last visit, ${formatDistanceToNowStrict(new Date(since.from))} ago · ${since.total}`}>

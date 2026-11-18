@@ -244,7 +244,7 @@ export default function AdminAdministrativeClient() {
                     <label className={label}>Document Title</label>
                     <input aria-label="Document Title" required value={docForm.title} onChange={(e) => setDocForm({ ...docForm, title: e.target.value })} type="text" className="input" />
                   </div>
-                  <div className="grid sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <label className={label}>Type</label>
                       <select aria-label="Type" value={docForm.type} onChange={(e) => setDocForm({ ...docForm, type: e.target.value })} className="input">
@@ -339,7 +339,7 @@ export default function AdminAdministrativeClient() {
                   {shownDocs.map((doc) => {
                     const mine = !!me?.id && doc.user?.id === me.id;
                     return (
-                      <li key={doc.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_auto] md:items-center">
+                      <li key={doc.id} className="p-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.1fr)_minmax(0,1.3fr)_auto] md:items-center">
                         <div className="min-w-0">
                           <p className="font-medium text-zinc-900 dark:text-white break-words">{doc.title}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-zinc-500">
@@ -377,7 +377,7 @@ export default function AdminAdministrativeClient() {
                 : shownPayments.length === 0 ? empty('No payments match your search.') : (
                 <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/60">
                   {shownPayments.map((p) => (
-                    <li key={p.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
+                    <li key={p.id} className="p-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)_auto] md:items-center">
                       <PersonCell person={p.user} />
                       <div className="min-w-0 text-sm">
                         <p className="text-zinc-900 dark:text-white break-words">{p.description}</p>

@@ -33,7 +33,8 @@ export function KpiCard({ title, value, icon: Icon, change, sub, href, warn }: K
         {href && <ArrowUpRight className="absolute end-5 top-5 w-4 h-4 text-zinc-500 opacity-0 transition-opacity duration-200 group-hover:opacity-100 pointer-coarse:hidden" aria-hidden />}
       </div>
       <div className="mt-3 flex items-baseline gap-2">
-        <div className="text-[28px] leading-none font-semibold tracking-[-0.02em] text-zinc-900 dark:text-white tabular-nums">{shown}</div>
+        {/* M289: a long figure ($57,728.72) is smaller on a phone's half-width card instead of running past its edge. */}
+        <div className={cn('leading-none font-semibold tracking-[-0.02em] text-zinc-900 dark:text-white tabular-nums', String(shown).length > 7 ? 'text-[22px] sm:text-[28px]' : 'text-[28px]')}>{shown}</div>
         {change !== undefined && change !== 0 && (
           <span className={cn('inline-flex items-center gap-0.5 rounded-md px-1.5 py-0.5 text-xs font-semibold', isPositive ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-400/10 dark:text-emerald-300' : 'bg-rose-50 text-rose-700 dark:bg-rose-400/10 dark:text-rose-300')}>
             {isPositive ? <TrendingUp className="w-3 h-3" aria-hidden /> : <TrendingDown className="w-3 h-3" aria-hidden />}

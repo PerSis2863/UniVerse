@@ -80,7 +80,7 @@ export default function HubPage() {
 
           <section aria-labelledby="apps-h">
             <h2 id="apps-h" className="text-lg font-bold text-zinc-900 dark:text-white">Your apps</h2>
-            <div className="mt-3 grid md:grid-cols-2 gap-4">
+            <div className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-4">
               {apps.map((a, i) => {
                 const mine = data?.apps[a.id]?.mine;
                 return (

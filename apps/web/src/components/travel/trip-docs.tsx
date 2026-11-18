@@ -60,7 +60,7 @@ export function TripDocs({ tripId, start, end }: { tripId: string; start: string
         </ul>
       )}
       {data && missing.length > 0 && <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Not added yet: {missing.map((k) => DOC_LABEL[k].toLowerCase()).join(' and ')}.</p>}
-      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Kind
           <select value={kind} onChange={(e) => setKind(e.target.value as DocKind)} className={field}>{DOC_KINDS.map((k) => <option key={k} value={k}>{DOC_LABEL[k]}</option>)}</select>
         </label>

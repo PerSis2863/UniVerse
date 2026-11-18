@@ -3,8 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
-import { ArrowLeft, Map as MapIcon, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
+import { ArrowLeft, Map as MapIcon, Route, BedDouble, Bus, Camera, Car, ChefHat, ChevronDown, ChevronRight, Compass, ExternalLink, Info, Languages, Lightbulb, MapPin, Phone, Plane, Search, ShieldAlert, ShoppingBag, Siren, Ticket, Train, Utensils, Wallet, Wine, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { fetcher } from '@/lib/fetcher';
 import { bookingLinks, hostelLink, type BookKind } from '@/lib/travel-book';
@@ -47,12 +46,13 @@ const guideHref = (title: string) => `/travel/guide?d=${encodeURIComponent(title
 export function TravelGuide() {
   const d = useSearchParams().get('d') ?? '';
   const router = useRouter();
-  const calm = useReducedMotion();
   const { data, error } = useSWR<Answer>(d ? `/travel/guide?d=${encodeURIComponent(d)}` : null, fetcher, { revalidateOnFocus: false });
   const g = data?.guide;
   const { data: wx } = useSWR<{ days: WeatherDay[]; credit: string }>(g?.lat !== undefined && g?.lon !== undefined ? `/travel/weather?lat=${g.lat.toFixed(2)}&lon=${g.lon.toFixed(2)}` : null, fetcher, { revalidateOnFocus: false });
   const { data: savedData } = useSWR<{ saved: Saved[] }>('/travel/saved', fetcher);
   const [tab, setTab] = useState<Tab>('overview');
+  // M287: a part slides in from the side of the tab pressed (`.swap`), at once: no waiting for the old one to leave.
+  const [dir, setDir] = useState<'next' | 'back' | undefined>();
   const [filter, setFilter] = useState('');
   // M204: the Eat, Drink and Sleep tabs narrow by price band and by what people can eat.
   const [band, setBand] = useState<'budget' | 'mid' | 'splurge' | null>(null);
@@ -70,7 +70,7 @@ export function TravelGuide() {
       <Link href="/travel" className="btn-primary mt-5 inline-flex items-center gap-2"><Search className="h-4 w-4" aria-hidden />Search another place</Link>
     </div>
   );
-  if (!g) return <div className="space-y-4" aria-busy="true"><div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/70 dark:bg-white/[0.06]" /><div className="h-24 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /></div>;
+  if (!g) return <div className="space-y-4" aria-busy="true"><div className="h-72 skeleton rounded-[var(--radius-card)]" /><div className="h-24 skeleton rounded-[var(--radius-card)]" /></div>;
 
   const c = data.country, books = bookingLinks(g.title);
   const current = tabs.find((t) => t.id === tab) ?? tabs[0];
@@ -90,17 +90,22 @@ export function TravelGuide() {
         <Cover photo={g.photo} banner={g.banner} sizes="100vw" priority className="-z-10" />
         <span className="absolute inset-0 -z-10 bg-gradient-to-t from-black/85 via-black/35 to-black/10" aria-hidden />
         <Link href="/travel" className="absolute start-4 top-4 inline-flex items-center gap-1 rounded-full bg-black/45 px-3 py-1.5 text-sm font-semibold text-white ring-1 ring-white/20"><ArrowLeft className="h-4 w-4" aria-hidden />Explore</Link>
-        {g.parent && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-indigo-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
+        {g.parent && nice(g.parent) !== nice(g.title) && <Link href={guideHref(g.parent)} className="mb-1 inline-flex w-fit items-center gap-1 text-sm font-semibold text-indigo-200 hover:text-white" translate="no">{nice(g.parent)}<ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></Link>}
         <h2 className="text-4xl font-semibold tracking-tight text-white sm:text-5xl" translate="no">{nice(g.title)}</h2>
-        {g.summary[0] && <p className="mt-3 max-w-3xl text-base leading-relaxed text-zinc-100">{g.summary[0]}</p>}
+        {g.summary[0] && <p className="mt-3 line-clamp-3 max-w-2xl text-base leading-relaxed text-zinc-100">{g.summary[0]}</p>}
+        {/* M287: what to do with the place sits on its picture: plan a trip (M206), see it on the map (M209). */}
+        <div className="mt-5 flex flex-wrap gap-2">
+          <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-zinc-900"><Route className="h-4 w-4" aria-hidden />Plan a trip<span className="hidden sm:inline">&nbsp;here</span></button>
+          <Link href={g.lat !== undefined && g.lon !== undefined ? `/travel?view=map&at=${g.lat.toFixed(5)},${g.lon.toFixed(5)},14` : `/travel?view=map&d=${encodeURIComponent(g.title)}`} className="inline-flex items-center gap-1.5 rounded-full bg-black/45 px-4 py-2 text-sm font-semibold text-white ring-1 ring-white/25"><MapIcon className="h-4 w-4" aria-hidden /><span className="sm:hidden">Map</span><span className="hidden sm:inline">See on the map</span></Link>
+        </div>
       </section>
 
       {/* The country's facts and the week's weather. */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {c && (
           <section className="panel p-5" aria-label={`About ${c.name}`}>
             <p className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><span className="text-2xl" aria-hidden>{c.flag}</span>{c.name}{c.capital && <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">· capital {c.capital}</span>}</p>
-            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            <div className="mt-4 grid grid-cols-2 gap-3">
               <Fact icon={Wallet} label="Money" value={c.currencies.map((m) => `${m.name} (${m.code})`).join(', ') || '—'} />
               <Fact icon={Languages} label="Languages" value={c.languages.join(', ') || '—'} />
               {c.drives && <Fact icon={Car} label="Cars drive on the" value={c.drives === 'left' ? 'left' : 'right'} />}
@@ -114,11 +119,11 @@ export function TravelGuide() {
         {wx && wx.days.length > 0 && (
           <section className="panel p-5" aria-label="The weather this week">
             <p className="text-lg font-semibold text-zinc-900 dark:text-white">This week’s weather</p>
-            <ul className="mt-4 grid grid-cols-4 gap-2 sm:grid-cols-7">
+            <ul className="mt-4 grid grid-cols-7 gap-1 sm:gap-2">
               {wx.days.map((w, i) => {
                 const s = sky(w.symbol);
                 return (
-                  <li key={w.date} className="flex flex-col items-center gap-1 rounded-xl bg-zinc-50 px-1 py-2.5 text-center dark:bg-white/[0.04]" title={`${s.words}${w.rain ? `, ${w.rain} mm rain` : ''}`}>
+                  <li key={w.date} className="flex min-w-0 flex-col items-center gap-1 rounded-xl bg-zinc-50 px-0.5 py-2.5 text-center dark:bg-white/[0.04]" title={`${s.words}${w.rain ? `, ${w.rain} mm rain` : ''}`}>
                     <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400">{i === 0 ? 'Today' : new Date(`${w.date}T12:00:00`).toLocaleDateString(undefined, { weekday: 'short' })}</span>
                     <s.icon className="h-6 w-6 text-indigo-500" aria-label={s.words} />
                     <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{w.max}°</span>
@@ -132,25 +137,23 @@ export function TravelGuide() {
         )}
       </div>
 
-      {/* Booking with partners. */}
-      <section className="panel flex flex-wrap items-center gap-2 p-4" aria-label="Book">
-        <p className="me-2 text-sm font-semibold text-zinc-900 dark:text-white">Book for {nice(g.title)}</p>
-        {books.map((b) => { const Icon = BOOK_ICON[b.kind]; return (
-          <a key={b.kind} href={b.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1.5" title={`Opens ${b.partner}`}><Icon className="h-4 w-4" aria-hidden />{b.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {b.partner}</span></a>
-        ); })}
-        {/* M209: this place on the map. */}
-        <Link href={g.lat !== undefined && g.lon !== undefined ? `/travel?view=map&at=${g.lat.toFixed(5)},${g.lon.toFixed(5)},14` : `/travel?view=map&d=${encodeURIComponent(g.title)}`} className="btn-secondary btn-sm ms-auto inline-flex items-center gap-1.5"><MapIcon className="h-4 w-4" aria-hidden />See on the map</Link>
-        {/* M206: a trip with this place first. */}
-        <button type="button" onClick={() => void startTrip(router, { guide: g.title, lat: g.lat, lon: g.lon, cc: c?.code, days: 3 })} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Route className="h-4 w-4" aria-hidden />Plan a trip here</button>
+      {/* Booking with partners: one row (sideways on a phone, M287). */}
+      <section className="panel flex items-center gap-3 p-3 sm:p-4" aria-label={`Book for ${nice(g.title)}`}>
+        <p className="hidden shrink-0 ps-1 text-sm font-semibold text-zinc-900 dark:text-white sm:block">Book</p>
+        <ul className="-my-1 flex min-w-0 flex-1 gap-2 overflow-x-auto py-1 [scrollbar-width:none]">
+          {books.map((b) => { const Icon = BOOK_ICON[b.kind]; return (
+            <li key={b.kind} className="shrink-0"><a href={b.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1.5 whitespace-nowrap" title={`Opens ${b.partner}`}><Icon className="h-4 w-4" aria-hidden />{b.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {b.partner}</span></a></li>
+          ); })}
+        </ul>
       </section>
 
       {/* The parts. */}
-      <div className="sticky top-0 z-10 -mx-1 overflow-x-auto px-1 py-1 [scrollbar-width:none]">
+      <div className="sticky top-[calc(var(--mobile-header-h)+var(--safe-top))] z-10 -mx-1 overflow-x-auto px-1 py-1 [scrollbar-width:none] lg:top-16">
         <div className="flex w-max gap-1.5 rounded-2xl bg-[var(--card-bg)] p-1 ring-1 ring-zinc-200 dark:ring-white/10" role="tablist" aria-label="Parts of the guide">
           {tabs.map((t) => {
             const n = t.parts.reduce((k, p) => k + (parts.get(p)?.listings.length ?? 0), 0);
             return (
-              <button key={t.id} type="button" role="tab" aria-selected={current.id === t.id} onClick={() => { setTab(t.id); setFilter(''); setBand(null); setDiet(null); }}
+              <button key={t.id} type="button" role="tab" aria-selected={current.id === t.id} onClick={() => { setDir(tabs.indexOf(t) > tabs.indexOf(current) ? 'next' : tabs.indexOf(t) < tabs.indexOf(current) ? 'back' : undefined); setTab(t.id); setFilter(''); setBand(null); setDiet(null); }}
                 className={cn('inline-flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-semibold transition-colors', current.id === t.id ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/[0.07]')}>
                 <t.icon className="h-4 w-4" aria-hidden />{t.label}{t.id !== 'overview' && n > 0 && <span className={cn('rounded-full px-1.5 text-xs tabular-nums', current.id === t.id ? 'bg-white/20 text-white dark:bg-zinc-900/10 dark:text-zinc-900' : 'bg-zinc-200/80 text-zinc-700 dark:bg-white/15 dark:text-zinc-200')}>{n}</span>}
               </button>
@@ -159,20 +162,19 @@ export function TravelGuide() {
         </div>
       </div>
 
-      <AnimatePresence mode="wait" initial={false}>
-        <motion.div key={current.id} role="tabpanel" aria-label={current.label} initial={calm ? { opacity: 0 } : { opacity: 0, transform: 'translateY(8px)' }} animate={{ opacity: 1, transform: 'translateY(0px)' }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }} className="space-y-6">
+      <div key={current.id} role="tabpanel" aria-label={current.label} className="swap space-y-6" data-dir={dir}>
           {current.id === 'overview' && (
             <>
-              {(g.summary.length > 1 || parts.get('understand')?.text.length) && (
+              {(g.summary.length > 1 || (g.summary[0]?.length ?? 0) > LONG || parts.get('understand')?.text.length) && (
                 <section className="panel p-6">
                   <p className="mb-2 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Info className="h-5 w-5 text-indigo-500" aria-hidden />Good to know</p>
-                  <div className="space-y-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">{[...g.summary.slice(1), ...(parts.get('understand')?.text ?? [])].map((p, i) => <p key={i}>{p}</p>)}</div>
+                  <Prose paras={[...((g.summary[0]?.length ?? 0) > LONG ? g.summary : g.summary.slice(1)), ...(parts.get('understand')?.text ?? [])]} />
                 </section>
               )}
               {g.places.length > 0 && (
                 <section aria-labelledby="guide-places">
                   <h3 id="guide-places" className="mb-3 text-lg font-semibold text-zinc-900 dark:text-white">Places in {nice(g.title)}</h3>
-                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {g.places.map((p) => (
                       <li key={p.title}><Link href={guideHref(p.title)} className="card flex h-full items-start gap-3 p-4 transition-[transform] duration-200 hover:-translate-y-0.5">
                         <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden />
@@ -183,7 +185,7 @@ export function TravelGuide() {
                 </section>
               )}
               {parts.get('go next')?.text.length ? (
-                <section className="panel p-6"><p className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">Go next</p><ul className="space-y-1.5 text-[15px] text-zinc-700 dark:text-zinc-300">{parts.get('go next')!.text.map((p, i) => <li key={i}>{p}</li>)}</ul></section>
+                <section className="panel p-6"><p className="mb-2 text-lg font-semibold text-zinc-900 dark:text-white">Go next</p><ul className="max-w-[75ch] space-y-1.5 text-[15px] text-zinc-700 dark:text-zinc-300">{parts.get('go next')!.text.map((p, i) => <li key={i}>{p}</li>)}</ul></section>
               ) : null}
             </>
           )}
@@ -193,14 +195,14 @@ export function TravelGuide() {
           {current.id === 'eat' && data.tips?.dishes?.length ? (
             <section aria-labelledby="guide-dishes" className="panel p-6">
               <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-indigo-500" aria-hidden />What to try</h3>
-              <ul className="mt-3 grid gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
+              <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
             </section>
           ) : null}
           {current.id !== 'overview' && current.id !== 'know' && (
             <>
               {sections.some((s) => s.text.length) && (
-                <section className="panel space-y-3 p-6 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
-                  {sections.map((s) => s.text.length > 0 && <div key={s.part} className="space-y-3">{sections.length > 1 && <p className="font-semibold text-zinc-900 dark:text-white">{s.title}</p>}{s.text.map((p, i) => <p key={i}>{p}</p>)}</div>)}
+                <section className="panel space-y-5 p-6">
+                  {sections.map((s) => s.text.length > 0 && <div key={s.part} className="space-y-2">{sections.length > 1 && <p className="font-semibold text-zinc-900 dark:text-white">{s.title}</p>}<Prose paras={s.text} keep={1} /></div>)}
                 </section>
               )}
               {/* M207: hostels beside hotels, for the same place. */}
@@ -229,7 +231,7 @@ export function TravelGuide() {
                       </label>
                     )}
                   </div>
-                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {shown.map((l, i) => <ListingCard key={`${l.name}-${i}`} guide={g.title} l={l} saved={saved.get(l.name)} near={nice(g.title)} />)}
                   </ul>
                 </>
@@ -237,14 +239,32 @@ export function TravelGuide() {
               {!listings.length && !sections.some((s) => s.text.length) && <p className="panel p-6 text-zinc-600 dark:text-zinc-300">Nothing here yet for {nice(g.title)}.{g.places.length ? ' Try one of its districts in the Overview.' : ''}</p>}
             </>
           )}
-        </motion.div>
-      </AnimatePresence>
+      </div>
 
       <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-500 dark:text-zinc-400">
         <span>Guide: <a href={data.credit.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">{data.credit.source}<ExternalLink className="h-3 w-3" aria-hidden /></a> ({data.credit.licence}), written by travellers; add what you know there.</span>
         {g.banner && <span>Photo: Wikimedia Commons.</span>}
         <span>Map data © OpenStreetMap contributors.</span>
       </p>
+    </div>
+  );
+}
+
+/** The hero shows three lines of the opening; longer than this, it's also given in full in Good to know. */
+const LONG = 260;
+
+/** A guide's running text (M287): about 75 characters a line, the first paragraphs, the rest a tap away. */
+function Prose({ paras, keep = 2 }: { paras: string[]; keep?: number }) {
+  const [all, setAll] = useState(false);
+  const more = paras.length - keep;
+  return (
+    <div className="max-w-[75ch] space-y-3 text-[15px] leading-relaxed text-zinc-700 dark:text-zinc-300">
+      {(all ? paras : paras.slice(0, keep)).map((p, i) => <p key={i}>{p}</p>)}
+      {more > 0 && (
+        <button type="button" aria-expanded={all} onClick={() => setAll(!all)} className="inline-flex items-center gap-1 text-sm font-semibold text-indigo-600 hover:underline dark:text-indigo-300">
+          {all ? 'Show less' : `Read more (${more} ${more === 1 ? 'paragraph' : 'paragraphs'})`}<ChevronDown className={cn('h-4 w-4 transition-transform duration-200', all && 'rotate-180')} aria-hidden />
+        </button>
+      )}
     </div>
   );
 }

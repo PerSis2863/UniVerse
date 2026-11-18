@@ -290,7 +290,7 @@ function TeacherAssignmentPage({ id }: { id: string }) {
               No answers yet. Students in {data.course.code} see this assignment under Assignments{data.dueDate ? `, due ${new Date(data.dueDate).toLocaleString()}` : ''}.
             </div>
           ) : (
-            <div className="grid lg:grid-cols-[18rem_1fr] gap-5 items-start">
+            <div className="grid grid-cols-1 lg:grid-cols-[18rem_1fr] gap-5 items-start">
               <div className="space-y-2">
               <div className="panel p-3">
                 <div className="flex items-baseline justify-between text-xs text-zinc-500 mb-1.5"><span><b className="text-zinc-900 dark:text-white tabular-nums">{returned}</b> of {subs.length} returned</span><span className="hidden lg:inline">J / K: next / previous</span></div>
@@ -478,7 +478,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
 
         <p className="text-xs text-zinc-600 dark:text-zinc-400">Quick scoring: in a row of levels, press 0–5 (fifths of the points) and it moves on to the next criterion.</p>
         {detail.rubric.map((r) => (
-          <div key={r.id} className="grid sm:grid-cols-[1fr_7rem] gap-2">
+          <div key={r.id} className="grid grid-cols-1 sm:grid-cols-[1fr_7rem] gap-2">
             <div>
               <label htmlFor={`score-${r.id}`} className="text-sm font-medium text-zinc-900 dark:text-white">{r.criterion}</label>
               {r.description && <p className="text-xs text-zinc-500">{r.description}</p>}
@@ -515,7 +515,7 @@ function Grader({ detail, sub, group, onChange, onReturned }: { detail: Detail; 
         {group && (each ? (
           <fieldset className="space-y-2">
             <legend className="text-sm font-medium text-zinc-900 dark:text-white">A grade for each member <span className="font-normal text-zinc-600 dark:text-zinc-400">(empty: the group’s {withPenalty(total, penalty)})</span></legend>
-            <ul className="grid sm:grid-cols-2 gap-2">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {group.members.map((m) => (
                 <li key={m.id} className="flex items-center gap-2">
                   <label htmlFor={`own-${m.id}`} className="flex-1 min-w-0 text-sm text-zinc-800 dark:text-zinc-200 truncate">{m.name}</label>

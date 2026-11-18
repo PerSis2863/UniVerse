@@ -90,7 +90,7 @@ function Icon() {
   useEffect(() => { if (big.current) draw(big.current, 512); small.current.forEach((c, k) => c && draw(c, SIZES[k])); }, [draw]);
   const dl = (px: number) => { const c = document.createElement('canvas'); draw(c, px); savePng(c, `icon-${px}.png`); };
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_240px]">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_240px]">
       <div className="space-y-3">
         <div className="grid gap-2 grid-cols-2 sm:grid-cols-4">
           <Field label="Letters or emoji"><input className="input text-lg" value={v.text} onChange={(e) => setV({ ...v, text: e.target.value })} /></Field>
@@ -162,7 +162,7 @@ function ColourBlind() {
         {pic.img && <Btn onClick={() => savePng(b.current, 'colour-blind-view.png')}><Download className="w-3.5 h-3.5" aria-hidden />Save the view</Btn>}
       </div>
       {pic.img ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <figure><canvas ref={a} className="w-full rounded-xl ring-1 ring-black/10" role="img" aria-label="Original" /><figcaption className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">Original</figcaption></figure>
           <figure><canvas ref={b} className="w-full rounded-xl ring-1 ring-black/10" role="img" aria-label={kind} /><figcaption className="mt-1 text-xs text-zinc-600 dark:text-zinc-300">{kind}</figcaption></figure>
         </div>
@@ -201,7 +201,7 @@ function Pixel() {
   };
   const exportPng = () => { const c = document.createElement('canvas'), s = Math.max(1, Math.floor(1024 / p.n)); c.width = c.height = p.n * s; const g = c.getContext('2d')!; p.px.forEach((v, i) => { if (v) { g.fillStyle = v; g.fillRect((i % p.n) * s, Math.floor(i / p.n) * s, s, s); } }); savePng(c, 'pixel-art.png'); };
   return (
-    <div className="grid gap-4 md:grid-cols-[1fr_220px]">
+    <div className="grid grid-cols-1 gap-4 md:grid-cols-[1fr_220px]">
       <canvas ref={ref} className="w-full max-w-[512px] aspect-square rounded-xl ring-1 ring-black/10 touch-none cursor-crosshair [image-rendering:pixelated]" role="img" aria-label={`Pixel art, ${p.n} by ${p.n}`}
         onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); down.current = true; paint(cell(e), true); }}
         onPointerMove={(e) => { if (down.current && (tool === 'pen' || tool === 'erase')) paint(cell(e), false); }}
@@ -363,7 +363,7 @@ function Focus() {
   }, [on, kind]);
   return (
     <div className="space-y-4">
-      <div className="grid gap-2 sm:grid-cols-3">{NOISES.map(([k, l]) => <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k} className={cn('rounded-2xl border-2 p-4 text-start transition-[border-color,transform] active:scale-[0.98]', kind === k ? 'border-pink-500 bg-pink-500/10' : 'border-zinc-200 dark:border-white/10')}><span className="block font-bold text-zinc-900 dark:text-white capitalize">{k}</span><span className="text-xs text-zinc-600 dark:text-zinc-300">{l.split(': ')[1]}</span></button>)}</div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{NOISES.map(([k, l]) => <button key={k} type="button" onClick={() => setKind(k)} aria-pressed={kind === k} className={cn('rounded-2xl border-2 p-4 text-start transition-[border-color,transform] active:scale-[0.98]', kind === k ? 'border-pink-500 bg-pink-500/10' : 'border-zinc-200 dark:border-white/10')}><span className="block font-bold text-zinc-900 dark:text-white capitalize">{k}</span><span className="text-xs text-zinc-600 dark:text-zinc-300">{l.split(': ')[1]}</span></button>)}</div>
       <div className="flex flex-wrap items-center gap-3">
         <button type="button" onClick={() => { setOn(!on); setEnds(!on && mins ? Date.now() + mins * 60000 : 0); }} className="btn-primary">{on ? <Pause className="w-4 h-4" aria-hidden /> : <Play className="w-4 h-4" aria-hidden />}{on ? 'Stop' : 'Play'}</button>
         <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-200">Volume<input type="range" min={0} max={100} value={vol} onChange={(e) => setVol(+e.target.value)} className="accent-pink-500" /></label>

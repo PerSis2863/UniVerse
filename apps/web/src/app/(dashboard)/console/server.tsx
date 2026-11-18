@@ -137,7 +137,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
 
       <TabPanel k={section}>
       {section === 'status' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start stagger">
           <AppsCard key={`a-${data.control.updatedAt}`} apps={data.control.apps ?? null} onSaved={() => void mutate()} />
           {/* Two columns of about equal height: the site and your emails | what everyone sees. */}
           <div className="space-y-6">
@@ -154,7 +154,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       )}
 
       {section === 'usage' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start stagger">
           <div className="space-y-6">
             <PlanUsageCard usage={data.usage} />
             {data.email && <EmailCard email={data.email} />}
@@ -171,14 +171,14 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
       {section === 'cloudflare' && <CloudflareCard />}
 
       {section === 'setup' && (
-        <div className="grid xl:grid-cols-[2fr_1fr] gap-6 items-start stagger">
+        <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6 items-start stagger">
           {data.settings && <SettingsCard settings={data.settings} />}
           <TestEmailCard configured={!!data.email} />
         </div>
       )}
 
       {section === 'activity' && (
-        <div className="grid xl:grid-cols-2 gap-6 items-start stagger">
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 items-start stagger">
           <OnlineCard online={data.online} />
           <div className={cn(card, 'p-6')}>
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-1"><History className="w-5 h-5 text-indigo-500" /> Server changes</h2>
@@ -357,7 +357,7 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
           ))}
         </ul>
       )}
-      <div className="mt-4 grid sm:grid-cols-3 gap-3">
+      <div className="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-3">
         {input('student', 'Per student, each day')}
         {input('staff', 'Per teacher or admin, each day')}
         {input('site', 'Whole site, each day')}
@@ -460,7 +460,7 @@ function CloudflareCard() {
             <Stat label="Build minutes" value={b ? `${b.minutesUsed}${b.partial ? '+' : ''}` : '–'} sub={b ? `of ${b.minutesLimit.toLocaleString()} this month · ${b.count} builds` : undefined} tone={buildPct > 80 ? 'bg-rose-500' : 'bg-violet-500'} />
             <Stat label="Database" value={db ? size(db.bytes) : '–'} sub={db ? `of 5 GB${db.tables ? ` · ${db.tables} tables` : ''}` : undefined} tone="bg-emerald-500" />
           </div>
-          <div className="grid xl:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
             <Panel icon={Users} title="Visitors · last 7 days">
               {t ? (
                 <>
@@ -643,7 +643,7 @@ function SwitchCard({ control, onSaved }: { control: Control; onSaved: () => voi
         {control.mode !== 'LIVE' && control.until && !ended ? `Back to Live by itself on ${format(new Date(control.until), 'd MMM, HH:mm')}. ` : ''}
         Changes reach everyone within a minute. You can always get in.
       </p>
-      <div className="grid sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Server mode">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Server mode">
         {MODES.map((m) => (
           <button key={m.id} role="radio" aria-checked={mode === m.id} onClick={() => setMode(m.id)}
             className={cn('h-full text-start rounded-2xl border p-4 flex flex-col items-start justify-start transition-colors', mode === m.id ? TONES[m.tone] : 'border-zinc-200 dark:border-white/10 hover:border-indigo-500/40')}>
@@ -654,7 +654,7 @@ function SwitchCard({ control, onSaved }: { control: Control; onSaved: () => voi
         ))}
       </div>
       {mode !== 'LIVE' && (
-        <div className="mt-4 grid sm:grid-cols-[1fr_16rem] gap-3">
+        <div className="mt-4 grid grid-cols-1 sm:grid-cols-[1fr_16rem] gap-3">
           <label className="text-sm">
             <span className="text-xs text-zinc-500">Message for everyone (optional)</span>
             <input className={cn(field, 'mt-1')} maxLength={500} value={message} onChange={(e) => setMessage(e.target.value)} placeholder={mode === 'MAINTENANCE' ? 'UniVerse is being updated. Your work is saved.' : 'UniVerse is in read-only mode for maintenance'} />
@@ -741,7 +741,7 @@ function AppsCard({ apps, onSaved }: { apps: string | null; onSaved: () => void 
           </button>
         )}
       </div>
-      <ul className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-2">
+      <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-6 gap-2">
         {APPS.map((a) => {
           const on = shown.includes(a.id), only = shown.length === 1 && on;
           return (
@@ -793,7 +793,7 @@ function FeatureCard({ switches, onSaved }: { switches: string | null; onSaved: 
     <div className={cn(card, 'p-6')}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><ToggleRight className="w-4 h-4 text-indigo-500" /> Feature switches</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">Turn one part of UniVerse off for everyone while the rest keeps working. People see a short “turned off for now” message. Changes reach everyone within a minute, and you can still use everything.</p>
-      <ul className="grid sm:grid-cols-2 gap-2">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {FEATURE_SWITCHES.map((f) => {
           const on = !off.includes(f.id);
           return (
@@ -856,7 +856,7 @@ function SchoolSwitchesCard({ switches, orgs, onSaved }: { switches: string | nu
           {orgs.map((o) => <option key={o.id} value={o.id}>{o.name}{byOrg[o.id]?.length ? ` · ${byOrg[o.id].length} off` : ''}</option>)}
         </select>
       </label>
-      <ul className="grid sm:grid-cols-2 gap-2">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {FEATURE_SWITCHES.filter((f) => f.id !== 'signups' && !f.optIn).map((f) => {
           const on = !offHere.includes(f.id);
           return (
@@ -974,12 +974,12 @@ export function PlanUsageCard({ usage }: { usage: PlanUsage | null }) {
                 ? `On the free plan these reset every day at 00:00 UTC (5:30 AM in India). If one reaches 100%, Cloudflare stops UniVerse until then. You get a notification and a push at 70% and 90%; Workers Paid ($5 a month) lifts them.`
                 : 'Running. The app pauses itself at 90% of any allowance, so the plan stays at $5. You get an email at 70%.'}
           </p>
-          {free && today.length > 0 && <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{today.map((m) => <MeterTile key={m.key} m={m} />)}</ul>}
+          {free && today.length > 0 && <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">{today.map((m) => <MeterTile key={m.key} m={m} />)}</ul>}
           {free && !today.length && <p className="text-sm text-zinc-500">Today&apos;s figures appear after the next check.</p>}
           {monthly.length > 0 && (
             <>
               {free && <h3 className="mt-5 mb-2 text-sm font-semibold text-zinc-900 dark:text-white">Files this billing month <span className="font-normal text-zinc-500">(charged past the free allowance; the app pauses itself at 90%)</span></h3>}
-              <ul className="grid sm:grid-cols-2 xl:grid-cols-3 gap-3">{monthly.map((m) => <MeterTile key={m.key} m={m} />)}</ul>
+              <ul className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">{monthly.map((m) => <MeterTile key={m.key} m={m} />)}</ul>
             </>
           )}
           {usage.error && <p className="mt-3 text-xs text-amber-700 dark:text-amber-400 whitespace-pre-wrap">Couldn&apos;t read some of it: {usage.error}</p>}

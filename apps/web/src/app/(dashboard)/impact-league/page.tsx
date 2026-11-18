@@ -46,11 +46,11 @@ export default function ImpactLeaguePage() {
           )}
           <AnimatePresence initial={false}>{creating && <NewChallenge onClose={() => setCreating(false)} onMade={() => void mutate()} />}</AnimatePresence>
           {error && !data ? <LoadError onRetry={() => mutate()} />
-            : !data ? <div className="grid md:grid-cols-2 gap-4">{[0, 1].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
+            : !data ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[0, 1].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
             : data.challenges.length === 0 ? (
               <EmptyState icon={Trophy} title="No challenges yet" hint={data.canCreate ? 'Start the first one: pick a UN goal and a question worth working on.' : 'When a challenge opens, it shows here and you can form a team with students from other universities.'} />
             ) : (
-              <motion.ul variants={list} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-4">
+              <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.challenges.map((c) => (
                   <motion.li key={c.id} variants={fadeUp}>
                     <Link href={`/impact-league/${c.id}`} className="panel p-4 flex flex-col gap-3 h-full hover:border-indigo-400/60 transition-colors">

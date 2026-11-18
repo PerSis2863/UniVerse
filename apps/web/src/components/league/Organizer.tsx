@@ -195,7 +195,7 @@ function Settings({ d }: { d: LeagueDetail }) {
             <span className="text-sm text-zinc-800 dark:text-zinc-200">Teams must mix universities<span className="block text-xs text-zinc-600 dark:text-zinc-400">At least two universities in a team to hand in. Teams with students under 18 stay within one university, so they can’t enter.</span></span>
             <Switch checked={f.mixCampuses} onChange={(v) => set('mixCampuses', v)} label="Teams must mix universities" />
           </label>
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <Field label="Sign-up closes (optional)">{(p) => <input {...p} type="datetime-local" className="input" value={f.signupClosesAt} onChange={(e) => set('signupClosesAt', e.target.value)} />}</Field>
             <Field label="Demo day (optional)">{(p) => <input {...p} type="datetime-local" className="input" value={f.demoDayAt} onChange={(e) => set('demoDayAt', e.target.value)} />}</Field>
             <Field label="Hours on credentials">{(p) => <input {...p} type="number" min={0} max={200} className="input" value={f.creditHours} onChange={(e) => set('creditHours', Number(e.target.value))} />}</Field>

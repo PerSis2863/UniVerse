@@ -34,7 +34,7 @@ export function TeamList({ d, act }: { d: LeagueDetail; act: LeagueAct }) {
       {d.teams.length === 0 ? (
         <EmptyState icon={Users} title="No teams yet" hint={c.status === 'OPEN' ? 'Be the first: start a team and others can join it.' : 'Teams form once the challenge opens.'} />
       ) : (
-        <motion.ul variants={list} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-3" aria-label="Teams">
+        <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-3" aria-label="Teams">
           {d.teams.map((t) => <motion.li key={t.id} variants={fadeUp}><TeamCard t={t} d={d} act={act} /></motion.li>)}
         </motion.ul>
       )}

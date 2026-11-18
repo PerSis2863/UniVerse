@@ -147,7 +147,7 @@ function AddForm({ builtIn, onCancel, onCreated }: { builtIn: string[]; onCancel
   const setCommand = (i: number, patch: Partial<Command>) => setCommands((list) => list.map((c, j) => (j === i ? { ...c, ...patch } : c)));
   return (
     <form onSubmit={(e) => { e.preventDefault(); void save(); }} className="mt-4 rounded-xl border border-zinc-200 dark:border-white/10 p-4 space-y-3" aria-label="Add a chat app">
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Name<input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} required placeholder="Library desk" className={cn(input, 'mt-1')} /></label>
         <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">The app’s address<input value={url} onChange={(e) => setUrl(e.target.value)} type="url" required placeholder="https://…" className={cn(input, 'mt-1')} /></label>
       </div>

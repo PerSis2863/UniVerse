@@ -134,7 +134,7 @@ function NewAssignment({ onClose, onCreated }: { onClose: () => void; onCreated:
         <h3 className="font-semibold text-zinc-900 dark:text-white">New assignment</h3>
         <button type="button" onClick={onClose} aria-label="Close" className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="space-y-1 text-sm"><span className="text-zinc-600 dark:text-zinc-400">Course</span>
           <select required value={courseId} onChange={(e) => setCourseId(e.target.value)} className="input">
             <option value="" disabled>{courses ? 'Choose a course…' : 'Loading…'}</option>

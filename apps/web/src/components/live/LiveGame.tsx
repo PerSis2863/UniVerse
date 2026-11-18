@@ -116,7 +116,7 @@ export function LiveGameHost({ courseId }: { courseId: string }) {
               <p className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">{data.question.question}</p>
               {g.status === 'QUESTION' && <Countdown endsAt={g.endsAt} />}
             </div>
-            <ul className="grid sm:grid-cols-2 gap-2">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {data.question.options.map((o, i) => {
                 const right = data.reveal?.right === o;
                 const n = data.reveal?.counts[i] ?? 0;

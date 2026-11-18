@@ -122,7 +122,7 @@ function NewCheck({ courseId, onDone }: { courseId: string; onDone: (id?: string
         </div>
         <Field label="Topic" hint="What the oral is about; the examiner stays on it.">{(p) => <input {...p} className="input" maxLength={300} required value={topic} onChange={(e) => setTopic(e.target.value)} placeholder="CPU scheduling: round-robin, priorities, starvation" />}</Field>
         <Field label="Questions to cover (optional)" hint="One per line. The examiner asks them and follows up on each answer.">{(p) => <textarea {...p} className="input min-h-[5rem]" maxLength={2000} value={questions} onChange={(e) => setQuestions(e.target.value)} />}</Field>
-        <div className="grid sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           {kind === 'LANGUAGE' && <Field label="Language">{(p) => <select {...p} className="input" value={lang} onChange={(e) => setLang(e.target.value)}>{Object.entries(LANGUAGES).map(([c, l]) => <option key={c} value={c}>{l.name}</option>)}</select>}</Field>}
           <Field label="Length">{(p) => <select {...p} className="input" value={minutes} onChange={(e) => setMinutes(Number(e.target.value))}>{[3, 5, 8, 10, 15].map((m) => <option key={m} value={m}>{m} minutes</option>)}</select>}</Field>
           <Field label="Due (optional)">{(p) => <input {...p} type="datetime-local" className="input" value={dueAt} onChange={(e) => setDueAt(e.target.value)} />}</Field>

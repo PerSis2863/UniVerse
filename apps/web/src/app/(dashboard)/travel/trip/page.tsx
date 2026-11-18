@@ -10,7 +10,7 @@ export default function TravelTripPage() {
   return (
     <>
       <Topbar title="Trip" subtitle="Cities, days, budget and friends" />
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+      <div className="flex-1 overflow-x-clip p-4 sm:p-8">
         <div className="w-full space-y-6"><Suspense><TravelTabs /><TravelTrip /></Suspense></div>
       </div>
     </>

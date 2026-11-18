@@ -214,7 +214,7 @@ export function CourseBoard({ role, tabs }: { role: Role; tabs?: ReactNode }) {
               <p className="text-xs text-zinc-500">{course?.teacher?.name ?? 'Instructor'}{board ? ` · ${board.course._count.enrollments} student${board.course._count.enrollments === 1 ? '' : 's'}` : ''}</p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             {role === 'student' ? (
               <>
                 {course && <SaveOfflineButton courseId={course.id} code={course.code} />}
@@ -590,7 +590,7 @@ function Readings({ board, canManage, refresh }: SectionProps) {
       {form && (
         <FormShell title="Recommend a paper, article or book" onClose={() => setForm(null)}>
           <input className="input" placeholder="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input className="input" placeholder="https://… (optional)" maxLength={1000} value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} />
             <select aria-label="Category" className="input" value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{['Paper', 'Article', 'Book', 'Video', 'Website'].map((c) => <option key={c}>{c}</option>)}</select>
           </div>
@@ -738,7 +738,7 @@ function Events({ board, canManage, refresh, side }: SectionProps & { side: 'stu
       {form && (
         <FormShell title="Schedule a session, exam or deadline" onClose={() => setForm(null)}>
           <input className="input" placeholder="Title, e.g. Midterm exam" aria-label="Title" maxLength={200} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} />
-          <div className="grid sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />
             <select aria-label="Duration minutes" className="input" value={form.durationMinutes} onChange={(e) => setForm({ ...form, durationMinutes: Number(e.target.value) })}>{[30, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m} min</option>)}</select>
             <select aria-label="Type" className="input" value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })}>{Object.entries(EVENT_TYPES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}</select>

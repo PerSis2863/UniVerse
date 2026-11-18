@@ -358,7 +358,7 @@ function Data({ tables, schema, initial }: { tables: { name: string; title: stri
       <div className="space-y-4">
       <SearchBox value={find} onChange={setFind} placeholder={`Search ${tables.length} tables`} />
       {shown.length === 0 && <p className="text-sm text-zinc-500">No table matches.</p>}
-      <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {shown.map((t) => (
           <li key={t.name}><button onClick={() => { setTable(t.name); setSkip(0); setQ(''); }} className={cn(card, 'w-full p-3 text-start flex justify-between hover:border-indigo-500/40')}><span className="text-sm font-medium text-zinc-900 dark:text-white">{t.title}</span><span className="text-xs text-zinc-400">{t.count}</span></button></li>
         ))}

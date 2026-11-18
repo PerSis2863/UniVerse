@@ -64,7 +64,7 @@ function GlobeBody({ ships }: { ships: GlobeShipment[] }) {
     <div className="panel p-8 text-center text-sm text-zinc-500 dark:text-zinc-400">Ship a batch and it appears here, moving toward its destination.</div>
   );
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_340px] items-start">
       <div className="panel relative overflow-hidden p-0">
         <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pt-4">
           <h2 className="font-bold text-zinc-900 dark:text-white">Your shipments, live</h2>

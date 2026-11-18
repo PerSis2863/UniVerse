@@ -62,7 +62,7 @@ export function DppEditor({ product, onDone }: { product: { id: string; name: st
       </ol>
 
       <form onSubmit={(e) => void save(e)} className="mt-5 space-y-6">
-        <fieldset className="grid gap-3 sm:grid-cols-2">
+        <fieldset className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <legend className="sr-only">The product and its maker</legend>
           <label className="block"><span className={label}>GTIN (the number under its barcode)</span><input value={gtin} onChange={(e) => setGtin(e.target.value)} inputMode="numeric" maxLength={18} className="input mt-1 font-mono" placeholder="05012345678900" /></label>
           <label className="block"><span className={label}>Made in (country)</span><input value={f.madeIn ?? ''} onChange={(e) => set('madeIn', e.target.value)} maxLength={80} className="input mt-1" placeholder="Portugal" /></label>
@@ -97,7 +97,7 @@ export function DppEditor({ product, onDone }: { product: { id: string; name: st
           <label className="block"><span className={label}>Spare parts (years)</span><input type="number" min={0} max={50} step="0.5" value={f.spareYears} onChange={(e) => set('spareYears', e.target.value)} className="input mt-1" /></label>
         </fieldset>
 
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {([['care', 'Care and use'], ['repair', 'How to repair it'], ['endOfLife', 'End of life: recycling or taking it back']] as const).map(([k, l]) => (
             <label key={k} className="block"><span className={label}>{l}</span><textarea rows={4} maxLength={1500} value={f[k] ?? ''} onChange={(e) => set(k, e.target.value)} className="input mt-1 resize-y" /></label>
           ))}
@@ -179,7 +179,7 @@ function Suppliers({ productId, onUsed }: { productId: string; onUsed: (d: Dpp) 
     <section className="mt-6 border-t border-[var(--card-border)] pt-5" aria-labelledby={`sup-${productId}`}>
       <h4 id={`sup-${productId}`} className="font-bold text-zinc-900 dark:text-white">Ask your suppliers</h4>
       <p className="text-xs text-zinc-500 max-w-[65ch]">Send a supplier a link to describe their material: where it comes from, its recycled share, footprint and certificates. They need no account; you check their answer before it goes in.</p>
-      <form onSubmit={(e) => void ask(e)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto] items-end">
+      <form onSubmit={(e) => void ask(e)} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto] items-end">
         <label className="block"><span className={label}>Supplier</span><input required maxLength={120} value={f.supplier} onChange={(e) => setF({ ...f, supplier: e.target.value })} className="input mt-1" placeholder="Vidrios del Sur" /></label>
         <label className="block"><span className={label}>Which material or part</span><input required maxLength={200} value={f.asks} onChange={(e) => setF({ ...f, asks: e.target.value })} className="input mt-1" placeholder="Glass bottle 500 ml" /></label>
         <button type="submit" disabled={busy === 'new'} className="btn-primary btn-sm mb-0.5">{busy === 'new' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" aria-hidden />}Make a link</button>

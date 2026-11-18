@@ -110,7 +110,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
       </section>
       <RealPeopleCard />
       <LaunchBoard />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <PeopleNow online={data.online} signIns={data.signInsToday} newUsers={data.newUsers} recent={data.recentSignIns} />
         <Everyone roles={data.roles} />
       </div>
@@ -118,7 +118,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
 
       <PlanUsageCard usage={data.usage ?? null} />
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5')}>
           <h2 className={h2}><UserPlus className="w-4 h-4 text-indigo-500 dark:text-indigo-300" aria-hidden /> New accounts · 14 days</h2>
           <p className="mt-1 text-3xl font-bold tracking-tight text-zinc-900 dark:text-white"><Ticker value={signUps.reduce((a, d) => a + d.count, 0)} /></p>
@@ -137,7 +137,7 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
           <div className="mt-3">
             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-2">People matching “{dq}”{found ? ` · ${found.total}` : ''}</p>
             {!found ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : found.people.length === 0 ? <p className="text-sm text-zinc-500">Nobody.</p> : (
-              <ul className="grid sm:grid-cols-2 gap-1">{found.people.slice(0, 10).map((p) => (
+              <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1">{found.people.slice(0, 10).map((p) => (
                 <li key={p.id}><button type="button" onClick={() => onPerson(p.id)} className="w-full text-start rounded-lg px-2 py-1.5 hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                   <span className="text-sm font-semibold text-zinc-900 dark:text-white">{p.name}</span> <span className="text-[10px] font-bold uppercase text-zinc-400">{p.owner ? 'owner' : p.role}</span>
                   <span className="block text-xs text-zinc-500 truncate">{p.email}{p.phone ? ` · ${p.phone}` : ''}</span>
@@ -148,11 +148,11 @@ export function Overview({ onPerson, onTab }: { onPerson: (id: string) => void; 
         )}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className={cn(card, 'p-5')}>
           <h2 className={cn(h2, 'mb-4')}><span className="w-2 h-2 rounded-full bg-emerald-500 deck-ping" /> Online now</h2>
           {online.length === 0 ? <p className="text-sm text-zinc-500">{q ? 'Nobody online matches.' : 'Nobody right now.'}</p> : (
-            <ul className="grid sm:grid-cols-2 gap-2">{online.map((u) => (
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">{online.map((u) => (
               <li key={u.id}>
                 <button type="button" onClick={() => onPerson(u.id)} className="w-full flex items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
                   <span className="relative shrink-0 w-9 h-9 rounded-full grid place-items-center text-xs font-bold text-zinc-800 bg-zinc-200 dark:text-white dark:bg-white/10">

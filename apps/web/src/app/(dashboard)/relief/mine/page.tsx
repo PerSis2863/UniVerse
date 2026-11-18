@@ -24,7 +24,7 @@ export default function ReliefMinePage() {
   const { data, mutate } = useSWR<{ mine: ReliefPost[]; helping: ReliefPost[]; helped: number }>('/relief/mine', fetcher);
   const list = (rows: ReliefPost[], empty: string) => (
     !data ? <div className="panel h-32 skeleton" /> : rows.length === 0 ? <p className="panel p-6 text-sm text-zinc-500 text-center">{empty}</p> : (
-      <div className="grid md:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
         {rows.map((p, i) => (
           <motion.div key={p.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className="panel p-4">
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{STATUS[p.status] ?? p.status}</p>

@@ -66,7 +66,8 @@ const CLIMATE_LIKE: Record<string, string> = { 'Lake Como': 'Milan' };
 
 async function places() {
   const src = readFileSync(new URL('travel-ideas.ts', LIB), 'utf8');
-  const titles = [...src.matchAll(/^\s*\['([^']+)', '[A-Z]{2}'/gm)].map((m) => m[1]);
+  // A title in single quotes (an apostrophe escaped) or in double quotes ("Xi'an").
+  const titles = [...src.matchAll(/^\s*\[(?:'((?:[^'\\]|\\.)+)'|"([^"]+)"), '[A-Z]{2}'/gm)].map((m) => (m[1] ?? m[2]).replace(/\\'/g, "'"));
   // Only places not read yet or without a climate (M232); `--all` reads every one again.
   const out = (want.has('--all') ? {} : JSON.parse(readFileSync(new URL('travel-places.json', LIB), 'utf8'))) as Record<string, unknown>;
   for (const k of Object.keys(out)) if (!titles.includes(k)) delete out[k];

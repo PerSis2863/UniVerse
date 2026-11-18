@@ -89,7 +89,7 @@ export default function TeacherCourses() {
         ) : (
           <>
             {/* M143: the reels' Agent Center: three summary cards, then a card per course */}
-            <div className="grid gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.6fr)_minmax(0,1fr)_minmax(0,1fr)]">
               <section className="card">
                 <CardHead title="Students by course" sub="Who is enrolled in each" />
                 <ul className="space-y-2.5">
@@ -121,7 +121,7 @@ export default function TeacherCourses() {
               </section>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
               {courses.map((course) => {
                 const days = activity?.[course.id] ?? new Array<number>(DAYS).fill(0);
                 const sum = days.reduce((a, b) => a + b, 0);

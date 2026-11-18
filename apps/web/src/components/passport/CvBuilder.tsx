@@ -92,7 +92,7 @@ export function CvBuilder({ onClose }: { onClose: () => void }) {
       </div>
     }>
       {error ? <p className="text-sm text-rose-700 dark:text-rose-300">{(error as Error).message}</p> : !data ? <div className="h-64 rounded-2xl skeleton" /> : (
-        <div className="grid gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-[18rem_minmax(0,1fr)]">
           <div className="space-y-3">
             <Segmented<CvTemplate> label="Look" value={template} onChange={setTemplate} segments={CV_TEMPLATES} className="w-full" />
             <label className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">Name

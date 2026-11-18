@@ -109,7 +109,7 @@ export default function OralPracticePage() {
                 <Field label={TOPIC_LABEL[kind]} hint={TOPIC_HINT[kind]}>
                   {(p) => <input {...p} className="input" maxLength={200} value={topic} onChange={(e) => setTopic(e.target.value)} />}
                 </Field>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {kind === 'LANGUAGE' && (
                     <Field label="Language">
                       {(p) => <select {...p} className="input" value={lang} onChange={(e) => setLang(e.target.value)}>{Object.entries(LANGUAGES).map(([code, l]) => <option key={code} value={code}>{l.name}</option>)}</select>}

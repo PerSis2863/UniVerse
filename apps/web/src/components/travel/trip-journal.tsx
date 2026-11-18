@@ -69,7 +69,7 @@ function Write({ url, days, today, entries, refresh }: { url: string; days: Retu
   };
   const act = async (call: () => Promise<unknown>) => { try { await call(); } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); } refresh(); };
   return (
-    <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
       <section className="panel space-y-3 p-5" aria-labelledby="j-new">
         <h3 id="j-new" className="text-lg font-semibold text-zinc-900 dark:text-white">New entry</h3>
         <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Day

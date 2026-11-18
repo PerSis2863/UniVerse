@@ -125,7 +125,7 @@ function ImpactRoomPage({ id }: { id: string }) {
             ))}
           </motion.div>
 
-          <div className="grid lg:grid-cols-[1fr_340px] gap-4 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-4 items-start">
             {/* Posts */}
             <section className="space-y-3 min-w-0">
               <div className={`panel p-4`}>

@@ -216,7 +216,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
       </div>
 
       {sum && (
-        <div className="grid lg:grid-cols-[1.25fr_1fr] gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[1.25fr_1fr] gap-4">
           <div className="grid grid-cols-2 gap-3">
             {kpis.map((k) => (
               <div key={k.label} className={cn('rounded-2xl p-4 border', k.tone === 'ink' ? 'bg-zinc-900 dark:bg-white border-transparent text-white dark:text-zinc-900' : k.tone === 'alert' ? 'bg-rose-500/[0.08] border-rose-500/20' : k.tone === 'soft' ? 'bg-indigo-500/[0.07] border-indigo-500/15' : 'bg-white dark:bg-zinc-900/50 border-zinc-200 dark:border-white/[0.06]')}>
@@ -250,7 +250,7 @@ export function ErrorsPanel({ onPerson, focus }: { onPerson?: (id: string) => vo
         </div>
       )}
 
-      <div className="grid lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] gap-4 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,24rem)_minmax(0,1fr)] gap-4 items-start">
         {/* The list */}
         <div className={cn('space-y-3 min-w-0', open && 'hidden lg:block')}>
           <div className="flex flex-wrap gap-1 items-center">

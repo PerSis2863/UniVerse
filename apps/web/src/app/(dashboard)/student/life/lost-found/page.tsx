@@ -71,7 +71,7 @@ export default function LostFoundPage() {
           </div>
           <AnimatePresence>{form && <ReportForm onClose={() => setForm(false)} onDone={(kind) => { setForm(false); setTab(kind); void mutate(); }} />}</AnimatePresence>
           {isLoading ? (
-            <div className="grid sm:grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-2xl skeleton" />)}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-2xl skeleton" />)}</div>
           ) : error ? (
             <p className="text-sm text-rose-500">{(error as Error).message}</p>
           ) : !data?.length ? (
@@ -81,7 +81,7 @@ export default function LostFoundPage() {
               <p className="text-sm text-zinc-500">Posts stay up for 30 days. Tap Post to add one.</p>
             </div>
           ) : (
-            <ul className="grid sm:grid-cols-2 gap-3">
+            <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <AnimatePresence initial={false}>
                 {data.map((it) => {
                   const mine = it.reporter.id === me;

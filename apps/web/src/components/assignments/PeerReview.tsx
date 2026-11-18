@@ -156,7 +156,7 @@ function ReviewForm({ n, review, rubric, open, url, onDone }: { n: number; revie
         <fieldset className="space-y-3" disabled={!open || busy}>
           <legend className="text-sm font-semibold text-zinc-900 dark:text-white">Your review</legend>
           {rubric.map((r) => (
-            <div key={r.id} className="grid sm:grid-cols-[1fr_6rem] gap-2">
+            <div key={r.id} className="grid grid-cols-1 sm:grid-cols-[1fr_6rem] gap-2">
               <label htmlFor={`peer-${review.id}-${r.id}`} className="text-sm text-zinc-800 dark:text-zinc-200">{r.criterion} <span className="text-zinc-600 dark:text-zinc-400">(out of {r.points})</span>
                 <input aria-label={`Comment on ${r.criterion}`} value={scores[r.id]?.comment ?? ''} maxLength={600} onChange={(e) => setScores((s) => ({ ...s, [r.id]: { ...s[r.id], comment: e.target.value } }))} placeholder="A comment (optional)" className="input mt-1 py-1.5 text-sm" />
               </label>

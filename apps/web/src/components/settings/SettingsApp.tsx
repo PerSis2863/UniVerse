@@ -368,12 +368,12 @@ function Profile({ role }: { role: Role }) {
           </span>
         </div>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3" data-setting="name">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" data-setting="name">
         <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Full name</span><input className="input" value={form.name} maxLength={80} onChange={(e) => set('name', e.target.value)} /></label>
         <label className="space-y-1"><span className="text-xs font-medium text-zinc-500">Phone (for account recovery; never shown)</span><input className="input" value={form.phone} maxLength={30} inputMode="tel" placeholder="+91 …" onChange={(e) => set('phone', e.target.value)} /></label>
         <label className="space-y-1 sm:col-span-2"><span className="text-xs font-medium text-zinc-500">Email (your sign-in, can’t be changed here)</span><input className="input opacity-70" value={me.email ?? ''} readOnly /></label>
       </div>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="space-y-1" data-setting="pronouns"><span className="text-xs font-medium text-zinc-500">Pronouns (optional)</span>
           <input className="input" list={pronounList} value={form.pronouns} maxLength={30} onChange={(e) => set('pronouns', e.target.value)} placeholder="e.g. she/her" />
           <datalist id={pronounList}>{PRONOUN_SUGGESTIONS.map((p) => <option key={p} value={p} />)}</datalist>

@@ -88,7 +88,7 @@ function RadarBody() {
 
       <WinDesk />
 
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ScanList title="Likely copies" icon={ShieldAlert} rows={data.suspect} empty="No label was checked far from its first check." hint="Each of these labels was checked far from where it was first checked: the code was probably copied. Block the code from the console if it keeps happening." />
         <ScanList title="Grey market" icon={Globe2} rows={data.diverted} empty="Every check came from the countries each batch was sold to." hint="Checks from outside the countries a batch was meant for (set them on the batch in the console): stock sold on where it shouldn’t be." />
       </div>

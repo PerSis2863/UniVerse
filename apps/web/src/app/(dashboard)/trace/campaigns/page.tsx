@@ -93,7 +93,7 @@ function Campaigns() {
             </motion.div>
           )}
         </AnimatePresence>
-        {!list ? <div className="grid md:grid-cols-2 gap-4"><div className="panel h-40 skeleton" /><div className="panel h-40 skeleton" /></div>
+        {!list ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4"><div className="panel h-40 skeleton" /><div className="panel h-40 skeleton" /></div>
           : list.length === 0 && !creating ? (
             <div className="panel p-8 text-center">
               <Target className="w-8 h-8 mx-auto text-pink-500" aria-hidden />
@@ -101,7 +101,7 @@ function Campaigns() {
               <p className="mt-1 text-sm text-zinc-500 max-w-md mx-auto">Pick a city on the market map, or start one here: shops there earn your bonus each time they scan a genuine unit they sold.</p>
             </div>
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {list.map((c, i) => <CampaignCard key={c.id} c={c} index={i} product={products?.find((p) => p.id === c.productId)?.name ?? null} currency={currency} pointValue={pointValue} canPay={!!info?.billing?.open} onChange={() => void mutate()} />)}
             </div>
           )}
@@ -152,8 +152,8 @@ function CampaignForm({ products, fromMap, currency, pointValue, onDone }: { pro
   };
 
   return (
-    <form onSubmit={(e) => void save(e)} className="panel p-5 grid md:grid-cols-[1fr_280px] gap-5">
-      <div className="grid sm:grid-cols-2 gap-3">
+    <form onSubmit={(e) => void save(e)} className="panel p-5 grid grid-cols-1 md:grid-cols-[1fr_280px] gap-5">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Name (shops see it)</span><input required maxLength={100} value={f.title} onChange={set('title')} className="input mt-1" placeholder="Paris launch: +50 points per genuine bottle" /></label>
         <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Product</span>
           <select value={f.productId} onChange={set('productId')} className="input mt-1"><option value="">Every product</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>

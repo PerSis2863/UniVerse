@@ -85,7 +85,7 @@ function Wallet() {
     <>
       <section className="trace-hero relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white">
         <span aria-hidden className="passport-glow passport-glow-a" />
-        <div className="relative grid lg:grid-cols-[1fr_360px] gap-8 items-center">
+        <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-8 items-center">
           <div>
             <span className="passport-pill">Your points</span>
             <p className="mt-4 font-mono text-6xl sm:text-7xl font-light tabular-nums tracking-tight">{data ? <CountUp value={data.total} /> : '…'}</p>
@@ -113,13 +113,13 @@ function Wallet() {
 
       {data && data.balances.length > 0 && <WalletLive data={data} />}
 
-      <div className="grid lg:grid-cols-[1fr_380px] gap-6 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_380px] gap-6 items-start">
         <div className="space-y-6">
           <section aria-labelledby="bal-h">
             <h2 id="bal-h" className="text-lg font-bold text-zinc-900 dark:text-white">By brand</h2>
-            {!data ? <div className="mt-3 grid sm:grid-cols-2 gap-3"><div className="panel h-36 skeleton" /><div className="panel h-36 skeleton" /></div>
+            {!data ? <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3"><div className="panel h-36 skeleton" /><div className="panel h-36 skeleton" /></div>
               : data.balances.length === 0 ? <p className="mt-2 text-sm text-zinc-500">No points yet. Each genuine product you sell or fit earns the brand’s points here.</p> : (
-                <div className="mt-3 grid sm:grid-cols-2 gap-3">
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {data.balances.map((b, i) => (
                     <motion.article key={b.brand.id} layout initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, type: 'spring', stiffness: 360, damping: 32 }} className="panel p-5 relative overflow-hidden">
                       <span aria-hidden className="pointer-events-none absolute -right-8 -top-8 w-28 h-28 rounded-full blur-2xl opacity-25" style={{ background: b.brand.color ?? '#4f8ef7' }} />

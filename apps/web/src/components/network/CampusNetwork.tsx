@@ -78,7 +78,7 @@ export function CampusDirectory({ network, onEdit }: { network: Network; onEdit?
     <section className="space-y-3" aria-labelledby="campus-directory">
       <h2 id="campus-directory" className="text-lg font-bold text-zinc-900 dark:text-white">Campuses in the network</h2>
       <CampusMap campuses={network.campuses} />
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 stagger">
         {network.campuses.map((c) => (
           <div key={c.id} className={cn('panel', 'p-4 flex flex-col gap-3', c.id === mine && 'ring-1 ring-indigo-400/60')}>
             <div className="flex items-start gap-3">
@@ -247,7 +247,7 @@ function CampusForm({ editing, onDone, onCancel }: { editing: CampusCard | null;
         <h3 className="font-bold text-zinc-900 dark:text-white">{editing ? `Edit ${editing.name}` : 'Add a campus'}</h3>
         <button type="button" onClick={onCancel} aria-label="Close" className="p-1.5 rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className="space-y-1 sm:col-span-2"><span className={label}>Name</span><input id="campus-name" required maxLength={120} value={f.name} onChange={set('name')} className="input" placeholder="e.g. Lakeside University" /></label>
         <label className="space-y-1 sm:col-span-2"><span className={label}>Email domains</span><input id="campus-domains" value={f.emailDomains} onChange={set('emailDomains')} className="input" placeholder="lakeside.edu, student.lakeside.edu" />
           <span className="block text-[11px] text-zinc-500">People who sign in with these addresses join this campus automatically. Shared services like gmail.com aren’t allowed.</span></label>
@@ -359,7 +359,7 @@ function People({ network, onChange }: { network: Network; onChange: () => void 
   return (
     <section className="space-y-3" aria-labelledby="campus-people">
       <h2 id="campus-people" className="text-lg font-bold text-zinc-900 dark:text-white">Who belongs where</h2>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <div className={cn('panel', 'p-4 space-y-3')}>
           <p className="text-sm text-zinc-600 dark:text-zinc-300">
             {network.unassigned ? <><b className="text-zinc-900 dark:text-white">{nf.format(network.unassigned)}</b> active students and teachers don’t belong to a campus yet. They can still see every course.</> : 'Every active student and teacher belongs to a campus.'}

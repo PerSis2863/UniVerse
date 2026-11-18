@@ -91,7 +91,7 @@ function Body({ d }: { d: Brand }) {
       {d.products.length > 0 && (
         <motion.section {...rise(3)} className="mt-6" aria-labelledby="products-h">
           <h2 id="products-h" className="font-bold">Products</h2>
-          <ul className="mt-3 grid sm:grid-cols-2 gap-3">
+          <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {d.products.map((p) => (
               <li key={p.id} className="passport-card p-4 flex gap-3">
                 {p.imageUrl
@@ -113,7 +113,7 @@ function Body({ d }: { d: Brand }) {
         <motion.section {...rise(4)} className="mt-6" aria-labelledby="reviews-h">
           <h2 id="reviews-h" className="font-bold">What owners say</h2>
           <p className="text-xs text-zinc-400">Only people holding a genuine unit can review it, once per unit.</p>
-          <ul className="mt-3 grid sm:grid-cols-2 gap-3">
+          <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-3">
             {d.reviews.map((x, i) => (
               <li key={i} className="passport-card p-4">
                 <span role="img" className="text-amber-300" aria-label={`${x.stars} of 5 stars`}>{'★'.repeat(x.stars)}<span className="text-zinc-600">{'★'.repeat(5 - x.stars)}</span></span>

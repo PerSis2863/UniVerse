@@ -8854,3 +8854,104 @@ reviews of the new view (the box was matched to ~100 m) and the stories again at
 - `nearKey` / `boxKey` (`src/lib/travel-map.ts`, tested): the middle snapped to 0.02° (~2 km) with a radius from four
   steps, the box outwards to 0.05° (~5 km); a small pan reuses the answer (SWR's key doesn't change).
 - **Rule:** what a map view asks the server for is snapped to a grid; never a key from the exact view.
+
+## M286: a picture for every Travel destination, and 74 more places (18 Nov; built as M269)
+
+The owner (a screenshot of Explore with blank cards: Córdoba, Toledo, Ibiza, Bilbao, Málaga, Marseille…): "some of them
+are not showing photo here and also add more destinations there". 160 places had never been looked up by
+`gen-travel-data.mts --photos`, so they had no photo.
+
+- **74 more places** (rows after Samoa in `src/lib/travel-ideas.ts`: Assisi, Matera, Ronda, Annecy, Delft, Berat, Hoi
+  An's neighbours, Galle, Jaisalmer, Khiva, Etosha, Arches, Kauai, Ouro Preto, Salta, Kakadu…): 448 in all, each with
+  its position and climate in `travel-places.json`.
+- **Photos:** 436 places show a real Commons photo, 13 of them chosen by hand in the row's 7th column (the
+  pick read ahead was a satellite view, an airport, a ferry or haze: Oahu, Tahiti, Svalbard, Cardiff, Chiang Rai,
+  Corsica, Provence, Capri, Hue, Gyeongju, Bilbao, Rovinj, Mysore), and the last 12 show the guide's wide banner. None is
+  blank. Every new photo was looked at on a contact sheet before it went in.
+- **Renamed** to their Wikivoyage titles (the old names were disambiguation pages): Glacier National Park (Montana),
+  Lake District National Park, Sharm el-Sheikh, Big Island, Cebu City.
+- **The script** (`scripts/gen-travel-data.mts`): Wikimedia answers this machine with "too many requests", so `get()`
+  waits as asked (Retry-After, else 20 s more each try, 6 tries), pauses 1.5 s between calls and saves after each place;
+  it reads rows written with either kind of quote (`"Xi'an"`).
+- **Left out:** the weather for a few new places and better photos for the 12 banner places wait for a machine
+  Wikimedia doesn't slow down (run `--photos` again there).
+- **Rule:** a new place gets its row, then `npx tsx scripts/gen-travel-data.mts` and `--photos`; look at its photo and
+  set the 7th column when the pick is wrong.
+
+## M287: Travel looks more professional and moves more smoothly (18 Nov)
+
+The owner: make Travel "more professional, modern and smoother overall" (M285 was the faster map; this is the rest).
+Screenshots of every Travel page at 1280 and 390, light and dark, then the fixes:
+
+- **The guide** (`TravelGuide.tsx`): the opening on the picture is three lines (it ran to 13 on a phone); when it's cut
+  short it's given in full in Good to know. **Plan a trip here** and **See on the map** sit on the picture (on a phone
+  "Plan a trip" and "Map"), and the booking links are one row ("Book"), sideways on a phone (they wrapped onto 4–5
+  rows). The weather is one row of seven on phones too; the country's facts two across. No crumb that repeats the
+  title (Kyoto › Kyoto). **Running text** (`Prose`): about 75 characters a line, the first paragraphs, the rest behind
+  "Read more (N paragraphs)" (a part's own text shows one paragraph, so its places come sooner). **The parts' tabs stay
+  in view** while you scroll (they never did: see the trap below). A part opens at once and slides in from the side of
+  the tab pressed (`.swap` with `data-dir`; it was framer-motion's `mode="wait"`, which made the new part wait for the
+  old to fade out).
+- **Explore**: no glow behind the first card; the country is in the line under a place's name, not a small label above it.
+- **Trips and Find where to go**: the photo reaches the card's edges (it sat inset in the card's padding). The numbers
+  on Trips: the fifth tile spans the row on a phone.
+- **A trip**: the buttons on its picture (Invite friends, Add to calendar, Trip chat, Copy trip) are one row on a phone,
+  sideways, instead of three; the start date and travellers side by side.
+- **Loading**: every Travel placeholder is the shimmering `.skeleton` (they were `animate-pulse` boxes).
+- **Checked:** `scripts/checks/travel-look-ui.mjs` (all of the above, axe clean at 1280 dark and 390 light, no sideways
+  scroll, a part in 60–80 ms); `travel-ui`, `travel-trip-ui`, `travel-find-ui`, `travel-map-ui` (two stale lines fixed:
+  Directions is a button since M283, and the walk's line shows twice) and `bare-chrome-ui` pass; `pnpm check`.
+  Browser only: nothing more for the Worker.
+- **Traps:** a page wrapper with `overflow-y-auto` that doesn't scroll itself (the window does) stops every `sticky`
+  inside it: Travel's four pages now use `overflow-x-clip`. `.card`'s padding beats Tailwind's `p-*` (the card rule
+  wins the cascade): a card whose photo must reach its edges needs `p-0!`.
+- **Rule:** a guide's long text goes through `Prose`; Travel's actions sit where the eye already is (on the picture),
+  booking links in one row.
+
+## M288: a trip's page and Find where to go, tidier, above all on a phone (18 Nov)
+
+The owner, after M287: "do more work like this on major things". Screenshots of every part of a trip (Plan, Today,
+Votes, Journal, Money, Checklist, Phrases, Ready, Share) and Find where to go at 1280 and 390, then:
+
+- **The trip's settings** (start date, travellers, style, currency) show on Plan and Money, the parts they change, and
+  on every part until the trip has a start date. On the others the part comes straight under the picture (on a phone
+  it was about 330 px of the same form before each part).
+- **A stop on the route** (phone): the name and dates keep the row, the days and order buttons go under them (the dates
+  stood in a column of five lines: "Apr / 12, / 2027").
+- **Today**: its line ("The trip starts in 141 days…") takes the row on a phone, the day picker under it.
+- **Money**: the three figures two across on a phone (You spans the row); the prices table is as wide as its countries
+  need (`7 + 5.5 rem` each), so two countries fit a phone without sideways scrolling (it was fixed at 28 rem).
+- **Find where to go**: no glow behind the first card; on a phone days and month share a row, then the budget and the
+  passport (`max-sm:order-*`).
+- **Checked:** `travel-look-ui.mjs` now also checks the trip's parts (no settings above Today, a stop's dates on one
+  line, the prices table fitting a phone, Money axe clean); `travel-trip-ui`, `travel-find-ui`, `travel-money-ui`,
+  `travel-ten-ui` pass; `pnpm check`. Browser only.
+- **Rule:** a form that repeats above every part of a page shows only where it changes something.
+
+## M289: nothing cut off on a phone: grids, UniVersity's pages and a crawl that finds it (18 Nov)
+
+The owner: "please do a lot more like this and then merge it". Screenshots of UniVersity's main pages (student and
+teacher), Green, Relief, Trace and the hub on a phone and a computer, then a crawl of all 213 pages.
+
+- **The cause, found once and fixed everywhere:** a grid given columns only from a breakpoint up (`grid sm:grid-cols-2`)
+  is one `auto` column on a phone, and that column grows to its longest line that won't break (a `truncate`, a
+  `whitespace-nowrap`), so a card's text ran past its edge and was cut off: "Finish setting up your account" on every
+  home, the empty-state cards (`FeatureGuide`) on ~15 pages, a teacher's course cards, the timetable's empty week. **422
+  grids in 209 files** got `grid-cols-1` (one column that shrinks to the screen). `src/lib/layout-rules.test.ts` fails a
+  new one.
+- **The crawl** (`scripts/crawl.mjs --layout`) now also reports **text cut off by a box that clips** (not an ellipsis,
+  not inside something that scrolls, not screen-reader text). On phones: 74 cut-off texts on 25 pages before, 1 after
+  (fixed too: the admin home's long revenue figure, `KpiCard` 22 px on a phone when the figure is longer than 7
+  characters). On a computer: none, no part sticking out.
+- **UniVersity:** the course page's buttons (All my grades, Message instructor; Invite students, Teaching team, Copy to a
+  new term, Gradebook, Quizzes) wrap instead of running off a phone; Grades: the transcript's title no longer squeezed
+  to a letter by its course picker, its table fits a phone (`px-2 sm:px-4`), and rows no longer slide in twice
+  (framer-motion on each row on top of the motion layer); "Finish setting up your account" is a solid card (it was glass).
+  `FeatureGuide`'s Example badge 11 px (was 10).
+- **Looked at and left:** the remaining "overlaps" in the crawl are buttons placed on cards on purpose (a course's colour,
+  a folder's +, a tool's star), a link wrapping onto two lines, and map chips scrolled partly out of their strip; the
+  read-only demo admin's `PATCH /users/me` 403 (the tour's "seen", tests only); `/api/calendar-link` 503 locally (no
+  `SESSION_SECRET`).
+- **Checked:** the phone and computer crawls (213 pages each, `--layout`), the Travel checks, `pnpm check`. Browser only.
+- **Rules:** a grid with columns from a breakpoint up also gets `grid-cols-1`; after a layout change run
+  `node scripts/crawl.mjs <url> --phone --layout` and read the "cut off" lines.

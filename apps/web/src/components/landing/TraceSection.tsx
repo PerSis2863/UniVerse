@@ -22,7 +22,7 @@ export function TraceSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">One code. Supply chain <Accent>and</Accent> marketing.</h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">One scan tells you where it is and who holds it.</p></Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
           {SIDES.map((s, i) => (
             <Reveal key={s.who} delay={0.1 + i * 0.06}>
               <div className="h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-pink-400/40 transition-shadow">

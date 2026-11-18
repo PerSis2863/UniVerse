@@ -245,7 +245,7 @@ function DeckForm({ a, update }: { a: Deck; update: (x: Partial<Deck>) => void }
         {d.cards.map((c, i) => (
           <li key={i} className="rounded-xl border border-zinc-200 dark:border-white/10 p-2.5 flex gap-2 items-start">
             <span className="text-xs font-bold text-zinc-600 dark:text-zinc-400 w-5 pt-2 tabular-nums shrink-0">{i + 1}</span>
-            <div className="flex-1 min-w-0 grid sm:grid-cols-2 gap-2">
+            <div className="flex-1 min-w-0 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <textarea rows={2} value={c.front} maxLength={500} onChange={(e) => setCard(i, { front: e.target.value })} aria-label={`Card ${i + 1}, front`} placeholder="Front: a word or question" className="input text-sm" />
               <textarea rows={2} value={c.back} maxLength={500} onChange={(e) => setCard(i, { back: e.target.value })} aria-label={`Card ${i + 1}, back`} placeholder="Back: the meaning or answer" className="input text-sm" />
             </div>

@@ -45,7 +45,7 @@ export function GreenTry() {
   };
 
   return (
-    <div className={`${tile} p-5 sm:p-7 grid lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8`}>
+    <div className={`${tile} p-5 sm:p-7 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8`}>
       <div>
         <div role="group" aria-label="Action" className="flex flex-wrap gap-2">
           {GREEN_KINDS.map((g) => {
@@ -155,7 +155,7 @@ export function ReliefTry() {
   };
 
   return (
-    <div className={`${tile} overflow-hidden grid lg:grid-cols-[1.4fr_1fr]`}>
+    <div className={`${tile} overflow-hidden grid grid-cols-1 lg:grid-cols-[1.4fr_1fr]`}>
       <div className="relative">
         <WorldCanvas label="A sample map of needs around you" homeBox={HOME} dark live={!calm} draw={draw} interactive={false} className="w-full h-[300px] sm:h-[380px] lg:h-full lg:min-h-[440px]" />
         <span className="absolute top-3 start-3 rounded-full bg-black/60 px-2.5 py-1 text-[11px] text-zinc-200">sample</span>

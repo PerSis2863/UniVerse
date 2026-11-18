@@ -255,7 +255,7 @@ export function TrackingMap() {
         </span>
       </div>
 
-      <div className="cmd-trace grid xl:grid-cols-[380px_1fr] gap-3 items-start">
+      <div className="cmd-trace grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-3 items-start">
         {/* Needs you, then every shipment (M263) */}
         <section aria-label="Shipments" className="space-y-2.5 xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:pe-1 order-2 xl:order-1">
           {needs.length > 0 && (

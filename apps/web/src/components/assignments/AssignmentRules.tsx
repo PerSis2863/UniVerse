@@ -59,7 +59,7 @@ export function RulesEditor({ assignmentId, rules, canManage, onSaved }: { assig
   );
   return (
     <div className="space-y-3">
-      <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {field('latePenalty', 'Late penalty (% a day)', 'Empty: none. Each started day counts.', 100)}
         {field('lateGraceMinutes', 'Grace (minutes)', 'Still on time this long after.', 10_080)}
         {field('latePenaltyMax', 'Most it can lose (%)', 'Usually 100.', 100)}
@@ -116,7 +116,7 @@ export function Extensions({ assignmentId, dueDate, students, extensions, onChan
       )}
       {adding ? (
         <form className="panel p-3 space-y-3" onSubmit={async (e) => { e.preventDefault(); if (await send({ studentId: f.studentId, dueDate: new Date(f.due).toISOString(), extraAttempts: Number(f.extraAttempts) || 0, note: f.note }, `${name(f.studentId)} has until ${when(new Date(f.due).toISOString())}`)) setAdding(false); }}>
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <label className="block text-sm"><span className="font-medium text-zinc-800 dark:text-zinc-200">Student</span>
               <select required value={f.studentId} onChange={(e) => setF({ ...f, studentId: e.target.value })} className="input mt-1 py-1.5">
                 <option value="">Choose…</option>

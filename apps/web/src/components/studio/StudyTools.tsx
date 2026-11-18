@@ -132,7 +132,7 @@ function Grades() {
   const need = avg == null ? null : needed(avg, doneW, g.target, rest);
   const credits = g.courses.reduce((a, c) => a + c.credits, 0), gpa = credits ? g.courses.reduce((a, c) => a + (LETTER[c.grade] ?? 0) * c.credits, 0) / credits : null;
   return (
-    <div className="grid gap-6 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
       <section className="space-y-3" aria-labelledby="w-h">
         <h3 id="w-h" className="font-bold text-zinc-900 dark:text-white">Weighted average</h3>
         {g.rows.map((r, k) => (
@@ -195,7 +195,7 @@ function StudyPlan() {
         <Btn onClick={() => printOnly('study-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print</Btn>
       </div>
       {plan.short.length > 0 && <p role="alert" className="rounded-xl bg-amber-100 dark:bg-amber-400/15 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">Not enough days: {plan.short.map((s) => `${s.name} is ${s.hours} h short`).join(', ')}. Add hours a day or start sooner.</p>}
-      <ol id="study-sheet" className="grid gap-1.5 sm:grid-cols-2">
+      <ol id="study-sheet" className="grid grid-cols-1 gap-1.5 sm:grid-cols-2">
         {plan.days.map((d) => { const exam = p.exams.filter((e) => e.date === d.date); return (
           <li key={d.date} className="flex items-center gap-2 rounded-xl ring-1 ring-zinc-200 dark:ring-white/10 px-3 py-2">
             <span className="w-24 shrink-0 text-xs font-mono tabular-nums text-zinc-600 dark:text-zinc-300">{new Date(`${d.date}T12:00:00Z`).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' })}</span>
@@ -270,7 +270,7 @@ function WordSearch() {
   };
   const fresh = () => { setSeed(seed + 1); setFound([]); setFirst(null); };
   return (
-    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr]">
       <div className="space-y-2">
         <Field label="Words, one a line"><textarea className={area} value={words} onChange={(e) => { setWords(e.target.value); setFound([]); }} /></Field>
         <Field label={`Size: ${size} × ${size}`}><input type="range" min={8} max={18} value={size} onChange={(e) => { setSize(+e.target.value); setFound([]); }} className="w-full accent-pink-500" /></Field>
@@ -325,7 +325,7 @@ function Certificate() {
   }, [f]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         <Field label="Title"><input className="input" value={f.title} onChange={(e) => setF({ ...f, title: e.target.value.slice(0, 40) })} /></Field>
         <Field label="Name"><input className="input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value.slice(0, 32) })} /></Field>
         <Field label="What for"><input className="input" value={f.why} onChange={(e) => setF({ ...f, why: e.target.value.slice(0, 70) })} /></Field>
@@ -381,7 +381,7 @@ function Wheel() {
     requestAnimationFrame(step);
   };
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_240px]">
       <div className="relative mx-auto w-full max-w-[420px]">
         <canvas ref={ref} onClick={spin} className="w-full aspect-square rounded-full cursor-pointer will-change-transform" role="img" aria-label={`A wheel with ${names.length} names`} />
         <span className="absolute -top-1 start-1/2 -translate-x-1/2 rtl:translate-x-1/2 w-0 h-0 border-x-[14px] border-x-transparent border-t-[26px] border-t-zinc-900 dark:border-t-white" aria-hidden />

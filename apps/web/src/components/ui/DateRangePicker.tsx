@@ -131,7 +131,7 @@ function Panel({ value, today, presets, clearable, onDone }: { value: DayRange; 
             <button type="button" onClick={() => turn(-1)} aria-label="Previous month" className="btn-ghost btn-icon rounded-full w-8 h-8"><ChevronLeft className="w-4 h-4 rtl:rotate-180" /></button>
             <button type="button" onClick={() => turn(1)} aria-label="Next month" className="btn-ghost btn-icon rounded-full w-8 h-8"><ChevronRight className="w-4 h-4 rtl:rotate-180" /></button>
           </div>
-          <div key={format(month, 'yyyy-MM')} className="drp-months -mt-9 grid sm:grid-cols-2 gap-6" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
+          <div key={format(month, 'yyyy-MM')} className="drp-months -mt-9 grid grid-cols-1 sm:grid-cols-2 gap-6" data-dir={dir > 0 ? 'next' : dir < 0 ? 'back' : undefined}>
             {[month, addMonths(month, 1)].map((m, i) => (
               <Month key={i} month={m} first={first} today={today} stop={stop} from={from} end={end} picking={!!from && !to} className={i ? 'hidden sm:block' : undefined}
                 onPick={pick} onHover={setHover} />

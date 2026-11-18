@@ -56,7 +56,7 @@ export function GreenYear({ year, totals }: { year: Record<string, number>; tota
   };
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
       <section className="panel p-5" aria-labelledby="year-h">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 id="year-h" className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><CalendarDays className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden />Your year</h2>

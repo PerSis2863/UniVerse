@@ -36,7 +36,7 @@ export function BizCredits({ org, role, year, onChanged }: SectionProps) {
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <section className="panel p-5" aria-labelledby="cr-rec">
           <h3 id="cr-rec" className={h3}><Zap className={icon} aria-hidden />Renewable claim ({year})</h3>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-white">{data.recMwh.toLocaleString()}<span className="ms-1 text-base font-normal text-zinc-500 dark:text-zinc-400">MWh of certificates</span></p>
@@ -57,7 +57,7 @@ export function BizCredits({ org, role, year, onChanged }: SectionProps) {
       {edit && (
         <form onSubmit={(e) => void add(e)} className="panel p-5 space-y-3" aria-labelledby="cr-add">
           <h3 id="cr-add" className={h3}>Add to the register</h3>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className={label}>What it is<select value={f.kind} onChange={set('kind')} className={field}>{(Object.keys(KIND) as Credit['kind'][]).map((k) => <option key={k} value={k}>{KIND[k].label}</option>)}</select></label>
             <label className={label}>Amount, {KIND[f.kind].unit}<input required type="number" min={0} step="any" inputMode="decimal" value={f.quantity} onChange={set('quantity')} className={field} /></label>
             <label className={label}>Registry<input maxLength={60} value={f.registry} onChange={set('registry')} placeholder={f.kind === 'rec' ? 'e.g. I-REC Standard' : 'e.g. Verra, Gold Standard'} className={field} /></label>

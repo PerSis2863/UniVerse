@@ -97,12 +97,12 @@ function StartBrand({ onDone }: { onDone: () => void }) {
     <>
       <section className="trace-hero relative overflow-hidden rounded-[32px] p-8 sm:p-12 text-white">
         <span aria-hidden className="passport-glow passport-glow-a" />
-        <div className="relative grid lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
+        <div className="relative grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-10 items-center">
           <div>
             <span className="passport-pill">UniVerse Trace · free to start</span>
             <h2 className="mt-4 text-4xl sm:text-5xl font-black tracking-tight leading-[1.05]">Every product gets a passport.</h2>
             <p className="mt-4 text-lg text-zinc-300">One code on each unit. Buyers scan it and see it’s genuine. Shops scan it and earn your points. You see where every product sells, live on a map, where each shipment is right now, and every copied label the moment it appears.</p>
-            <ul className="mt-6 grid sm:grid-cols-2 gap-2 text-sm text-zinc-200">
+            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-2 text-sm text-zinc-200">
               {['10,000 passports free', 'Live market map', 'Real-time shipment tracking', 'Pay only per verified scan'].map((t) => (
                 <li key={t} className="flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-pink-300 shrink-0" aria-hidden />{t}</li>
               ))}
@@ -125,7 +125,7 @@ function StartBrand({ onDone }: { onDone: () => void }) {
           </form>
         </div>
       </section>
-      <section className="grid sm:grid-cols-3 gap-4">
+      <section className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
           [ScanLine, '1 · Passports', 'Add a product, make a batch, print one signed code per unit. Nobody can guess or forge one.'],
           [Globe2, '2 · Live maps', 'Every scan lights up its city. Every shipment moves on the map while a driver shares the link.'],
@@ -248,7 +248,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
         <div className="mt-3 h-[90px]"><Heartbeat values={ov.scans} marks={ov.suspect} label="Scans per day, likely copies marked" /></div>
       </LiveCard>
 
-      <div className="grid sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {([['/trace/map', Globe2, 'Market map', 'Where it sells, city by city, live'], ['/trace/tracking', Truck, 'Tracking', 'Every shipment, where it is now'], ['/trace/campaigns', Megaphone, 'Campaigns', 'Pay per verified sale']] as const).map(([href, Icon, t, d]) => (
           <Link key={href} href={href} className="panel p-4 flex items-center gap-3 group hover:-translate-y-0.5 transition-transform">
             <span className="w-10 h-10 rounded-2xl grid place-items-center bg-pink-500/10 text-pink-600 dark:text-pink-300"><Icon className="w-5 h-5" aria-hidden /></span>
@@ -278,12 +278,12 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
             </div>
           </div>
         )}
-        <div className="grid lg:grid-cols-2 gap-4">{products.map((p) => <ProductCard key={p.id} p={p} onChange={reload} />)}</div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">{products.map((p) => <ProductCard key={p.id} p={p} onChange={reload} />)}</div>
       </section>
 
       {products.some((p) => p.takeBackHow) && <Takebacks />}
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="panel p-5" aria-labelledby="recent-h">
           <h2 id="recent-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-indigo-500" />Latest scans</h2>
           {ov.recent.length === 0 ? <p className="mt-3 text-sm text-zinc-500">No scans yet. Print a code and scan it with your phone.</p> : (
@@ -315,7 +315,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
 
 function PlanCard({ pro }: { pro: boolean }) {
   return (
-    <section id="plan" className="grid md:grid-cols-2 gap-4 scroll-mt-24" aria-label="Plans">
+    <section id="plan" className="grid grid-cols-1 md:grid-cols-2 gap-4 scroll-mt-24" aria-label="Plans">
       <div className={cn('panel p-6', !pro && 'ring-2 ring-pink-500/40')}>
         <p className="text-xs font-bold tracking-wider text-zinc-500">FREE {!pro && '· YOUR PLAN'}</p>
         <p className="mt-2 text-3xl font-black text-zinc-900 dark:text-white">0 €</p>
@@ -349,7 +349,7 @@ function BrandSettings({ brand, pro, onDone }: { brand: Brand; pro: boolean; onD
     catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setSaving(false); }
   };
   return (
-    <form onSubmit={(e) => void save(e)} className="panel p-5 grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+    <form onSubmit={(e) => void save(e)} className="panel p-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
       <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Brand name</span><input required maxLength={80} value={f.name} onChange={set('name')} className="input mt-1" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Category{pro ? '' : ' (decides your market on PRO)'}</span><input list="trace-categories-2" maxLength={60} value={f.category} onChange={set('category')} className="input mt-1" /><datalist id="trace-categories-2">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Colour</span><input type="color" value={f.color} onChange={set('color')} className="input mt-1 h-10 p-1" /></label>
@@ -396,7 +396,7 @@ function ProductForm({ onDone }: { onDone: () => void }) {
     catch (err) { toast.error(errorMessage(err, 'Could not add the product.')); } finally { setSaving(false); }
   };
   return (
-    <form onSubmit={(e) => void save(e)} className="panel p-5 grid sm:grid-cols-2 gap-3">
+    <form onSubmit={(e) => void save(e)} className="panel p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <label className="block sm:col-span-2"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Product name</span><input required maxLength={120} value={f.name} onChange={set('name')} className="input mt-1" placeholder="Cold-pressed olive oil, 500 ml" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Category</span><input maxLength={60} value={f.category} onChange={set('category')} className="input mt-1" placeholder="Food, auto parts, cosmetics…" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Photo address (https)</span><input type="url" value={f.imageUrl} onChange={set('imageUrl')} className="input mt-1" placeholder="https://…" /></label>
@@ -567,7 +567,7 @@ function ProductExtras({ p, onDone }: { p: Product; onDone: () => void }) {
   };
   const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF({ ...f, [k]: e.target.value });
   return (
-    <form onSubmit={(e) => void save(e)} className="mt-4 rounded-2xl bg-pink-500/[0.05] ring-1 ring-pink-500/15 p-4 grid sm:grid-cols-2 gap-3">
+    <form onSubmit={(e) => void save(e)} className="mt-4 rounded-2xl bg-pink-500/[0.05] ring-1 ring-pink-500/15 p-4 grid grid-cols-1 sm:grid-cols-2 gap-3">
       <p className="sm:col-span-2 text-xs text-zinc-600 dark:text-zinc-300"><b>Instant win:</b> the first person to check a winning unit sees a prize and a code to claim it. Which units win is fixed when they’re made, so rescanning can’t cheat it.</p>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">One in how many units wins (empty for none)</span><input type="number" min={2} max={1000000} value={f.winOdds} onChange={set('winOdds')} className="input mt-1" placeholder="50" /></label>
       <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">The prize</span><input maxLength={120} value={f.winPrize} onChange={set('winPrize')} className="input mt-1" placeholder="A free bottle" /></label>
@@ -594,7 +594,7 @@ function BatchGuard({ batch, onChange }: { batch: Batch; onChange: () => void })
     try { await call(); toast.success(done); onChange(); } catch (err) { toast.error(errorMessage(err, 'Could not save.')); } finally { setBusy(null); }
   };
   return (
-    <div className="mt-3 grid gap-3 lg:grid-cols-2">
+    <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-2">
       <div className="rounded-2xl bg-white dark:bg-white/[0.04] p-3 space-y-3">
         <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Sold only in (country codes, e.g. FR DE BE; empty for anywhere)</span>
           <span className="mt-1 flex gap-2"><input value={countries} onChange={(e) => setCountries(e.target.value.toUpperCase())} className="input flex-1 font-mono" placeholder="FR DE BE" />

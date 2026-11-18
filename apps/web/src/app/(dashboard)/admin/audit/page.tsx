@@ -190,7 +190,7 @@ export default function AdminAuditLog() {
         )}
 
         {/* M141: the reels' Agent Activity: when things happen, and how many of each */}
-        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.7fr)_minmax(0,1fr)]">
           <section className="card">
             <CardHead title="When things happen" sub={`By day and hour in your time zone${from || to ? ', in these dates' : ''}`} />
             {heat ? <DayHourHeat cells={heat.cells} /> : <div className="h-40 rounded-xl skeleton" />}

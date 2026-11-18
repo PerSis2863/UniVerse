@@ -2450,7 +2450,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.div>
       ) : phase === 'prejoin' ? (
         <motion.main initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
-          <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
+          <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4">
               <div>
@@ -2500,7 +2500,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </motion.main>
       ) : phase === 'lobby' ? (
         <motion.main key="lobby" initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="flex-1 overflow-y-auto p-4 flex items-center justify-center">
-          <div className="w-full max-w-4xl grid md:grid-cols-[1.4fr_1fr] gap-6 items-center">
+          <div className="w-full max-w-4xl grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-6 items-center">
             <Tile id="me" name={myName} stream={local} mirrored={mirror} muted={muted} camera={camera} me />
             <div className="space-y-4 text-center md:text-start">
               <div className="relative w-14 h-14 mx-auto md:mx-0">

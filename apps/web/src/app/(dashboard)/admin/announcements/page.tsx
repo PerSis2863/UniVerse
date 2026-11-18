@@ -76,7 +76,7 @@ export default function AdminAnnouncements() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-8">
           {/* The studio: write, and watch it on a phone. */}
-          <section className="panel relative overflow-hidden p-5 sm:p-7 grid lg:grid-cols-[minmax(0,1fr)_300px] gap-8 items-center" aria-labelledby="studio-h">
+          <section className="panel relative overflow-hidden p-5 sm:p-7 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_300px] gap-8 items-center" aria-labelledby="studio-h">
             <div className="space-y-4 min-w-0">
               <div className="flex items-center justify-between gap-2">
                 <h2 id="studio-h" className="text-2xl font-black text-zinc-900 dark:text-white inline-flex items-center gap-2">

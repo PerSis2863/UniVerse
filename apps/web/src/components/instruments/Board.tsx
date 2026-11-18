@@ -65,7 +65,7 @@ export function InstrumentBoard<R extends string>({ icon: Icon, title, subtitle,
           <CardMenu title={title} />
         </header>
         <LayoutGroup id={storageKey}>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 [grid-auto-flow:dense]">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 [grid-auto-flow:dense]">
             {cells.map((c) => {
               const isOpen = opened?.id === c.id;
               return (
@@ -149,7 +149,7 @@ function Detail<R extends string>({ cell, detail, storageKey, onClose, ranges, r
         </div>
         <button type="button" onClick={onClose} aria-label="Close the detail" className="w-8 h-8 shrink-0 rounded-lg grid place-items-center text-zinc-500 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-white/[0.06]"><X className="w-4 h-4" /></button>
       </div>
-      <div className="mt-4 grid gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
+      <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-[180px_minmax(0,1fr)]">
         <div className="flex flex-col">
           <span className="flex items-baseline gap-1.5">
             <Roll value={cell.value} digits={cell.digits} className="font-mono text-4xl font-light tracking-tight text-zinc-900 dark:text-white" />

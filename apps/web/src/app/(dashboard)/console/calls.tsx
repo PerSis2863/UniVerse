@@ -97,7 +97,7 @@ export function CallsPanel({ onPerson }: { onPerson: (id: string) => void }) {
             <p className="mt-2 text-[11px] text-zinc-500 flex gap-3"><span><span className="inline-block w-2 h-2 rounded-sm bg-indigo-500 me-1" />connected</span><span><span className="inline-block w-2 h-2 rounded-sm bg-rose-500 me-1" />failed</span></p>
           </div>
 
-          <div className="grid lg:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className={cn(card, 'p-4 space-y-3')}>
               <p className="text-sm font-semibold text-zinc-900 dark:text-white">Why calls failed</p>
               {data.failures.length === 0 ? <p className="text-sm text-zinc-500">No failures. 🎉</p> : data.failures.map((f) => (

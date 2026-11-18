@@ -59,13 +59,13 @@ export function Proof() {
   return (
     <section id="roles" data-no-motion className="relative px-6 py-28 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
-        <div className="grid md:grid-cols-2 gap-8 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-end">
           <Reveal>
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white">Numbers we did <Accent>not</Accent> have to make up.</h2>
           </Reveal>
           <Reveal delay={0.1}><p className="text-zinc-400 md:max-w-md md:ms-auto">Counted from the product itself.</p></Reveal>
         </div>
-        <div className="mt-14 grid md:grid-cols-3 gap-10 border-t border-white/[0.06] pt-10">
+        <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-10 border-t border-white/[0.06] pt-10">
           <Reveal>
             <p className="text-xs text-zinc-400">languages</p>
             <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={13} /></p>
@@ -85,7 +85,7 @@ export function Proof() {
             <Gauge />
           </Reveal>
         </div>
-        <div className="mt-16 grid md:grid-cols-3 gap-10">
+        <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-10">
           {ROLES.map((r, i) => (
             <Reveal key={r.who} delay={i * 0.08}>
               <span className="block w-6 h-px bg-white/30 mb-6" />

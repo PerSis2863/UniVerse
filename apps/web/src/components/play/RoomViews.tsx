@@ -29,7 +29,7 @@ export function Lobby({ state, me, onStart, onGame, onLeave }: { state: RoomStat
   const share = async () => { try { await navigator.share({ title: `${info.name} on UniVerse Play`, text: `Join my ${info.name} room: code ${state.code}`, url: link }); } catch { /* closed */ } };
 
   return (
-    <div className="grid gap-5 lg:grid-cols-[1fr_20rem]">
+    <div className="grid grid-cols-1 gap-5 lg:grid-cols-[1fr_20rem]">
       <section className="panel p-5 sm:p-7">
         <p className="text-xs font-semibold uppercase tracking-widest text-pink-600 dark:text-pink-300">Room code</p>
         <div className="mt-3 flex flex-wrap gap-2" role="img" aria-label={`Room code ${state.code.split('').join(' ')}`}>

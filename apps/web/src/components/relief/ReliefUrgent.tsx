@@ -83,7 +83,7 @@ export function ReliefMatches() {
       {!data ? <div className="mt-4 h-48 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
         : !list.length ? <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">No offer fits an open need nearby right now.</p>
         : (
-          <ul className="mt-4 grid gap-4 lg:grid-cols-2">
+          <ul className="mt-4 grid grid-cols-1 gap-4 lg:grid-cols-2">
             {list.slice(0, 20).map(({ need, offers }) => {
               const Icon = KIND_ICON[need.kind];
               return (

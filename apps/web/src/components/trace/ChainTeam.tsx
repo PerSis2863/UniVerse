@@ -40,7 +40,7 @@ export function ChainTeam() {
   return (
     <section className="panel p-5" aria-label="Supply chain team">
       <CardHead title="Supply chain team" sub="Warehouses, drivers and shops who scan your products. Each sees only what their job needs: drivers and warehouses never see prices." />
-      <div className="mt-4 grid gap-2 sm:grid-cols-3">
+      <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-3">
         {HANDLER_ROLES.map((role) => {
           const I = ICON[role];
           return (

@@ -139,7 +139,7 @@ export function GreenApp() {
     <div className="space-y-6">
       <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #111113 100%)' }}>
         <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="relative grid lg:grid-cols-[1fr_auto] gap-6 items-end">
+        <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-end">
           <div>
             <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-300/30"><Leaf className="w-3.5 h-3.5" aria-hidden />Your impact</span>
             <p className="mt-4 font-mono text-6xl sm:text-7xl font-light text-emerald-300"><Rolling value={t?.kg ?? 0} digits={1} /><span className="ml-3 text-xl text-emerald-100/70">kg CO₂ saved</span></p>
@@ -159,7 +159,7 @@ export function GreenApp() {
       {data ? <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} /> : <div aria-hidden className="panel skeleton h-[399px] sm:h-[252px]" />}
 
       {/* Wide screens: the right column ends with the form; teammates' photos scroll inside it. */}
-      <div className="grid lg:grid-cols-[1.2fr_1fr] gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
         <form ref={formRef} onSubmit={(e) => void log(e)} className="panel p-5 relative overflow-hidden" aria-labelledby="log-h">
           <h2 id="log-h" className="font-bold text-zinc-900 dark:text-white">Log an action</h2>
           <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label="What you did">
@@ -247,7 +247,7 @@ export function GreenApp() {
       {data && t && <GreenYear year={data.year ?? {}} totals={t} />}
 
       {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="space-y-6">
           <section className="panel p-5" aria-labelledby="days-h">
             <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
@@ -359,7 +359,7 @@ function PassSection({ totals, easiest, onTry }: { totals: GreenMe['totals']; ea
     el.style.transform = `rotateX(${((e.clientY - r.top) / r.height - 0.5) * -8}deg) rotateY(${((e.clientX - r.left) / r.width - 0.5) * 10}deg)`;
   };
   return (
-    <section className="panel p-5 grid gap-6 sm:grid-cols-[minmax(0,340px)_1fr] items-center" aria-labelledby="pass-h">
+    <section className="panel p-5 grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,340px)_1fr] items-center" aria-labelledby="pass-h">
       <div style={{ perspective: 900 }}>
         <div
           onPointerMove={lean} onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}

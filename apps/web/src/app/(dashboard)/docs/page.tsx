@@ -100,7 +100,7 @@ export default function DocsPage() {
             })}
           </div>
           {creating && (
-            <motion.form key={creating} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} aria-label={`New ${KINDS[creating].one}`} className={`panel p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
+            <motion.form key={creating} initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} aria-label={`New ${KINDS[creating].one}`} className={`panel p-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Name</span>
                 <input autoFocus maxLength={120} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder={KINDS[creating].placeholder} className="input" />
               </label>
@@ -142,7 +142,7 @@ export default function DocsPage() {
               steps={['Make a document, spreadsheet or presentation for yourself, a group, or a whole class', 'Share it, or everyone in the class already has it', 'Work together and see each other’s cursors']}
               example={<ExampleRow title="Lab report: plant growth" meta="Edited 2 minutes ago · 3 writing" right="Open" />} />
           ) : (
-            <div className="grid sm:grid-cols-2 gap-3 stagger">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger">
               {(show === 'all' ? topLevel(data.docs) : listed).map((d) => {
                 const inside = show === 'all' ? kids.get(d.id) ?? [] : [];
                 const total = show === 'all' ? countBelow(d.id) : 0;

@@ -65,7 +65,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
     }
   };
 
-  if (isLoading) return <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>;
+  if (isLoading) return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>;
   if (error) return <p className="text-sm text-rose-500">Couldn&apos;t load projects right now. Please try again shortly.</p>;
   if (projects.length === 0) {
     return (
@@ -87,7 +87,7 @@ export function NgoProjectBoard({ filter, sort = 'newest', guide }: Props) {
 
   return (
     <>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {projects.map((p, i) => {
           const left = daysLeft(p.deadline);
           const urgent = left !== null && left >= 0 && left <= 14;

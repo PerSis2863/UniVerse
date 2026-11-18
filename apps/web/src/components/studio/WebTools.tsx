@@ -26,7 +26,7 @@ function SqlGen() {
   const sql = useMemo(() => csvToSql(parseTable(t), table), [t, table]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Field label="CSV or pasted table (first row: column names)"><textarea className={cn(area, 'min-h-[220px]')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
         <Field label="SQL"><textarea readOnly className={cn(area, 'min-h-[220px]')} value={sql} /></Field>
       </div>
@@ -42,7 +42,7 @@ function JsonTs() {
   const out = useMemo(() => { try { return { ts: jsonToTs(JSON.parse(t), root || 'Root') }; } catch (e) { return { err: (e as Error).message }; } }, [t, root]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         <Field label="JSON"><textarea className={cn(area, 'min-h-[240px]', 'err' in out && 'ring-2 ring-rose-500')} value={t} onChange={(e) => setT(e.target.value)} aria-invalid={'err' in out} /></Field>
         <Field label="TypeScript"><textarea readOnly className={cn(area, 'min-h-[240px]')} value={'ts' in out ? out.ts ?? '' : ''} /></Field>
       </div>
@@ -59,7 +59,7 @@ function MetaTags() {
   const tags = [`<title>${esc(m.title)}</title>`, `<meta name="description" content="${esc(m.desc)}" />`, `<meta property="og:title" content="${esc(m.title)}" />`, `<meta property="og:description" content="${esc(m.desc)}" />`, `<meta property="og:url" content="${esc(m.url)}" />`, `<meta property="og:image" content="${esc(m.image)}" />`, `<meta property="og:site_name" content="${esc(m.site)}" />`, '<meta property="og:type" content="website" />', '<meta name="twitter:card" content="summary_large_image" />'].join('\n');
   const host = (() => { try { return new URL(m.url).host; } catch { return m.url; } })();
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
         {(['title', 'desc', 'url', 'image', 'site'] as const).map((k) => <Field key={k} label={{ title: `Title (${m.title.length}/60)`, desc: `Description (${m.desc.length}/160)`, url: 'Page address', image: 'Picture address (1200 × 630)', site: 'Site name' }[k]}><input className={cn('input', (k === 'title' && m.title.length > 60) || (k === 'desc' && m.desc.length > 160) ? 'ring-2 ring-amber-500' : '')} value={m[k]} onChange={(e) => setM({ ...m, [k]: e.target.value })} /></Field>)}
       </div>

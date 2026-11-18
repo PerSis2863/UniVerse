@@ -153,7 +153,7 @@ function VerifyCredentialPage({ id }: { id: string }) {
               </div>
 
               {c && (
-                <div className="mt-6 grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <div className="min-w-0">
                     <p className="text-[11px] uppercase tracking-wider text-zinc-500">Awarded to</p>
                     <p className="text-xl sm:text-2xl font-black mt-0.5 break-words" style={{ color: 'var(--text-primary)' }}>{c.holderName}</p>

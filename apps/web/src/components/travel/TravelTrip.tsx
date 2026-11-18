@@ -49,8 +49,8 @@ export interface TripAnswer {
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
 // The parts that bring much code or data load only when opened.
-const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
-const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /> });
+const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
+const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
@@ -98,7 +98,7 @@ export function TravelTrip() {
       <Link href="/travel/saved" className="btn-primary mt-5 inline-flex">Your trips</Link>
     </div>
   );
-  if (!data || !t) return <div className="space-y-4" aria-busy="true"><div className="h-56 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/70 dark:bg-white/[0.06]" /><div className="h-72 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" /></div>;
+  if (!data || !t) return <div className="space-y-4" aria-busy="true"><div className="h-56 skeleton rounded-[var(--radius-card)]" /><div className="h-72 skeleton rounded-[var(--radius-card)]" /></div>;
 
   /** Change something and show it at once; the server's answer (and everyone else's) follows. */
   const change = async (next: Partial<TripAnswer> | null, call: () => Promise<unknown>, fail = 'Couldn’t save that.') => {
@@ -173,7 +173,8 @@ export function TravelTrip() {
         <input id="trip-name" key={t.name} defaultValue={t.name} maxLength={80} onBlur={(e) => { const v = e.target.value.trim(); if (v && v !== t.name) void setTrip({ name: v }); }} onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
           className="w-full rounded-lg bg-transparent text-3xl font-semibold tracking-tight text-white outline-none placeholder:text-white/60 focus:bg-black/30 focus:px-2 sm:text-4xl" translate="no" />
         <p className="mt-2 text-sm text-zinc-100">{[when ?? 'Dates not set', `${total} ${total === 1 ? 'day' : 'days'}`, stops.map((s) => nice(s.name)).join(' → ') || 'No places yet'].join(' · ')}</p>
-        <div className="mt-4 flex flex-wrap items-center gap-2">
+        {/* M287: one row on a phone, sideways, instead of three. */}
+        <div className="-mx-6 mt-4 flex items-center gap-2 overflow-x-auto px-6 py-0.5 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>*]:shrink-0 [&>button]:whitespace-nowrap">
           <span className="sr-only">Planning: {data.members.map((m) => m.name).join(', ')}</span>
           <span className="flex -space-x-2 rtl:space-x-reverse" aria-hidden>
             {data.members.slice(0, 6).map((m) => <span key={m.id} className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-indigo-500 text-xs font-semibold text-white ring-2 ring-black/40" title={m.name} aria-hidden>{m.name.slice(0, 1).toUpperCase()}</span>)}
@@ -185,10 +186,10 @@ export function TravelTrip() {
         </div>
       </section>
 
-      {/* When, who and how. */}
-      <section className="panel grid gap-4 p-5 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]" aria-label="Trip details">
+      {/* When, who and how: on the parts they change (the plan's budget, the money's currency) or until there's a start date, M288. */}
+      {(part === 'plan' || part === 'money' || !t.startDate) && <section className="panel grid grid-cols-2 gap-4 p-5 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto_minmax(0,1fr)]" aria-label="Trip details">
         <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Starts
-          <input type="date" value={t.startDate ?? ''} onChange={(e) => void setTrip({ startDate: e.target.value || null })} className="mt-1 block w-full min-w-[9.5rem] rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
+          <input type="date" value={t.startDate ?? ''} onChange={(e) => void setTrip({ startDate: e.target.value || null })} className="mt-1 block w-full min-w-[9rem] rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
         </label>
         <div>
           <span className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300" id="trip-people">Travellers</span>
@@ -198,22 +199,22 @@ export function TravelTrip() {
             <button type="button" className="btn-ghost btn-sm" aria-label="One traveller more" disabled={t.travellers >= 20} onClick={() => void setTrip({ travellers: t.travellers + 1 })}><Plus className="h-4 w-4" aria-hidden /></button>
           </div>
         </div>
-        <div>
+        <div className="col-span-2 sm:col-span-1">
           <span className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Style</span>
           <Segmented className="mt-1" label="Travel style" value={t.style} onChange={(v) => void setTrip({ style: v })} segments={STYLE_IDS.map((s) => ({ value: s, label: STYLES[s].label }))} />
         </div>
-        <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Currency
+        <label className="col-span-2 block text-xs font-semibold text-zinc-600 dark:text-zinc-300 sm:col-span-1">Currency
           <select value={t.currency} onChange={(e) => void setTrip({ currency: e.target.value })} className="mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white">
             {CURRENCIES.map((c) => <option key={c} value={c}>{c}</option>)}
           </select>
         </label>
-      </section>
+      </section>}
 
       <Segmented<Part> label="Part of the trip" large className="max-w-full overflow-x-auto" value={part} onChange={(v) => router.replace(`/travel/trip?id=${t.id}${v === 'plan' ? '' : `&part=${v}`}`, { scroll: false })}
         segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
 
       {part === 'share' && <TripShare tripId={t.id} name={t.name} />}
-      {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+      {part === 'ready' && <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <TripSafety stops={stops} items={data.items} />
         <TripFootprint tripId={t.id} stops={stops} travellers={t.travellers} onChange={() => void mutate()} />
         <TripHolidays stops={stops} dates={dates} />
@@ -231,7 +232,7 @@ export function TravelTrip() {
       {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}
 
       {part === 'plan' && <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* The route. */}
         <section className="panel p-5" aria-labelledby="trip-route">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -245,16 +246,17 @@ export function TravelTrip() {
                 <li key={s.id} data-key={s.id}>
                   <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.04]">
                     <span className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-500 text-sm font-semibold text-white" aria-hidden>{i + 1}</span>
-                    <div className="min-w-0 flex-1">
+                    {/* M287: on a phone the name and dates keep the row; the day and order buttons go under them. */}
+                    <div className="min-w-0 flex-1 basis-[calc(100%-3.5rem)] sm:basis-0">
                       <Link href={`/travel/guide?d=${encodeURIComponent(s.guide)}`} className="font-semibold text-zinc-900 hover:underline dark:text-white" translate="no">{nice(s.name)}</Link>
                       <p className="text-xs text-zinc-500 dark:text-zinc-400">{range(dates[i].from, dates[i].to) ?? `Days ${dates[i].offset + 1}–${dates[i].offset + s.days}`}</p>
                     </div>
-                    <div className="flex items-center gap-1" role="group" aria-label={`Days in ${nice(s.name)}`}>
+                    <div className="flex items-center gap-1 max-sm:ms-11" role="group" aria-label={`Days in ${nice(s.name)}`}>
                       <button type="button" className="btn-ghost btn-sm" aria-label={`One day fewer in ${nice(s.name)}`} disabled={s.days <= 1} onClick={() => void change({ stops: stops.map((x) => (x.id === s.id ? { ...x, days: s.days - 1 } : x)) }, () => api.patch(`/travel/trips/${t.id}/stops/${s.id}`, { days: s.days - 1 }))}><Minus className="h-4 w-4" aria-hidden /></button>
                       <span className="w-14 text-center text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{s.days} {s.days === 1 ? 'day' : 'days'}</span>
                       <button type="button" className="btn-ghost btn-sm" aria-label={`One day more in ${nice(s.name)}`} disabled={total >= 60} onClick={() => void change({ stops: stops.map((x) => (x.id === s.id ? { ...x, days: s.days + 1 } : x)) }, () => api.patch(`/travel/trips/${t.id}/stops/${s.id}`, { days: s.days + 1 }))}><Plus className="h-4 w-4" aria-hidden /></button>
                     </div>
-                    <div className="flex items-center">
+                    <div className="flex items-center max-sm:ms-auto">
                       <button type="button" className="btn-ghost btn-sm p-1.5" aria-label={`Move ${nice(s.name)} earlier`} disabled={i === 0} onClick={() => moveStop(i, -1)}><ArrowUp className="h-4 w-4" aria-hidden /></button>
                       <button type="button" className="btn-ghost btn-sm p-1.5" aria-label={`Move ${nice(s.name)} later`} disabled={i === stops.length - 1} onClick={() => moveStop(i, 1)}><ArrowDown className="h-4 w-4" aria-hidden /></button>
                       <button type="button" className="btn-ghost btn-sm p-1.5 text-red-600 dark:text-red-400" aria-label={`Take ${nice(s.name)} off the trip`} onClick={() => { if (confirm(`Take ${nice(s.name)} and its planned places off the trip?`)) void change({ stops: stops.filter((x) => x.id !== s.id) }, () => api.delete(`/travel/trips/${t.id}/stops/${s.id}`)); }}><Trash2 className="h-4 w-4" aria-hidden /></button>
@@ -300,7 +302,7 @@ export function TravelTrip() {
       )}
       {/* M207: there and back, where to stay, who else is there. */}
       {stop && (
-        <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
           <TripGettingThere stops={stops} start={dates[0]?.from ?? null} end={dates[dates.length - 1]?.to ?? null} />
           <TripStays key={`stay-${stop.id}`} stop={stop} from={dates[stops.indexOf(stop)]?.from ?? null} nights={nightsAt(stops)[stops.indexOf(stop)]} travellers={t.travellers} style={t.style} currency={t.currency} />
           <TripTravellers key={`board-${stop.id}`} stop={stop} from={dates[stops.indexOf(stop)]?.from ?? null} to={dates[stops.indexOf(stop)]?.to ?? null} />

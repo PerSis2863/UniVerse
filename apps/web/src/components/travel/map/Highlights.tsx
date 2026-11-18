@@ -33,7 +33,7 @@ export function Highlights({ title, stay, onSight, onArea, onNearby }: { title: 
   const [d1, d2] = data && stay ? districtsNear(data.guide, stay) : [];
   const { data: a1 } = useSWR<Answer>(d1 ? `/travel/guide?d=${encodeURIComponent(d1)}` : null, fetcher, { revalidateOnFocus: false });
   const { data: a2 } = useSWR<Answer>(d2 ? `/travel/guide?d=${encodeURIComponent(d2)}` : null, fetcher, { revalidateOnFocus: false });
-  if (isLoading) return <div className="mb-2 h-24 animate-pulse rounded-xl bg-zinc-100 dark:bg-white/[0.05]" aria-busy="true" />;
+  if (isLoading) return <div className="mb-2 h-24 skeleton rounded-xl" aria-busy="true" />;
   const g = data?.guide;
   const sights = sightsOf(g);
   const areas = (g?.places ?? []).filter((p) => p.text).slice(0, 10);

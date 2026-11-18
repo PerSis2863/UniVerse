@@ -290,7 +290,7 @@ export default function RegisterPage() {
             {selectedRole === 'STUDENT' && !classInvite && (
               <fieldset className="mb-6 -mt-2">
                 <legend className="text-zinc-400 text-sm mb-3 font-medium">Which describes you?</legend>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {([
                     ['STUDENT', 'I’m a student', 'At a university or school. You’ll add your details and your student card or enrolment certificate; an admin verifies it before your account opens.'],
                     ['INDEPENDENT', 'I’m independent', 'Freelancer, professional or lifelong learner, not enrolled anywhere. No documents needed: start straight away.'],

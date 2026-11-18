@@ -139,7 +139,7 @@ export default function TimetableManagementPage() {
           ) : <>
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {form && (
-            <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-3 gap-3">
+            <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-3 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New class</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
               <select aria-label="Course" className="input" value={form.courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })}>{data!.courses.map((c) => <option key={c.id} value={c.id}>{c.code} — {c.name}</option>)}</select>
               <select aria-label="Day of week" className="input" value={form.dayOfWeek} onChange={(e) => setForm({ ...form, dayOfWeek: Number(e.target.value) })}>{DAYS.map((d, i) => <option key={d} value={i}>{d}</option>)}</select>
@@ -174,7 +174,7 @@ export default function TimetableManagementPage() {
           ) : (
             <>
             <WeekTimeline slots={slots} clashes={clashes} />
-            <div className="grid md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
               {DAYS.map((day, d) => {
                 const daySlots = slots.filter((s) => s.dayOfWeek === d);
                 if (daySlots.length === 0) return null;
@@ -214,7 +214,7 @@ export default function TimetableManagementPage() {
                 {teachers.map((t, i) => {
                   const courses = [...t.courses.values()];
                   return (
-                    <li key={t.teacher.id ?? i} className="py-3 grid gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-center">
+                    <li key={t.teacher.id ?? i} className="py-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] md:items-center">
                       <PersonCell person={t.teacher} extra={[t.teacher.teacherProfile?.designation, t.teacher.teacherProfile?.department].filter(Boolean).join(' · ') || null} />
                       <div className="text-xs text-zinc-600 dark:text-zinc-400 md:text-end">
                         <p className="font-semibold text-zinc-900 dark:text-white">{t.classes} class{t.classes === 1 ? '' : 'es'} · {(t.minutes / 60).toFixed(1)} h / week</p>

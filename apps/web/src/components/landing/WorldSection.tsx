@@ -71,7 +71,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
       {/* M164 (the owner: "reduce the size of the globe… make it more functional"): a smaller planet beside the
           five apps as a list that steers it: point at an app and the planet turns to it, choose it and its row
           opens (what it does, its real number, a way in); a pick on the planet opens the same row. */}
-      <div className="relative max-w-5xl mx-auto mt-10 grid items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-12">
+      <div className="relative max-w-5xl mx-auto mt-10 grid grid-cols-1 items-center gap-8 md:grid-cols-[minmax(0,1fr)_minmax(0,1fr)] md:gap-12">
         <div className="relative">
           <Planet turnable places={places} arcs={arcs} focus={place ? { lat: place.lat, lon: place.lon } : null} selected={chosen === null ? [] : [chosen]} onPick={(i) => setChosen(chosen === i ? null : i)}
             label={`The ${ids.length} UniVerse apps on one planet: drag to turn it, pick an app to see what it does`} className="world-planet mx-auto h-[320px] w-full max-w-[480px] sm:h-[420px] md:h-[460px]" />
@@ -114,7 +114,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           })}
         </ul>
       </div>
-      <div className="relative max-w-5xl mx-auto mt-8 grid gap-4 sm:grid-cols-2">
+      <div className="relative max-w-5xl mx-auto mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Reveal>
           <div className="world-glass p-5 text-start h-full">
             <p className="font-semibold text-white">One wallet</p>

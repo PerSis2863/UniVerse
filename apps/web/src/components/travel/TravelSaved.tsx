@@ -30,7 +30,7 @@ export function TravelSaved() {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t remove it.')); } finally { setBusy(null); }
   };
 
-  if (!data) return <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />;
+  if (!data) return <div className="h-40 skeleton rounded-[var(--radius-card)]" aria-busy="true" />;
   if (!groups.length) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
       <Bookmark className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
@@ -47,7 +47,7 @@ export function TravelSaved() {
             <h2 id={`saved-${guide}`} className="text-lg font-semibold text-zinc-900 dark:text-white" translate="no">{nice(guide)} <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">· {list.length}</span></h2>
             <Link href={`/travel/guide?d=${encodeURIComponent(guide)}`} className="text-sm font-semibold text-indigo-600 dark:text-indigo-300">Open the guide</Link>
           </div>
-          <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
             {list.map((s) => (
               <li key={s.id} className="card flex h-full flex-col gap-2 p-4">
                 <div className="flex items-start justify-between gap-2">

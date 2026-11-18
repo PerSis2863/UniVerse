@@ -54,7 +54,7 @@ export function TripPacking({ tripId, stops, start, members, me }: { tripId: str
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="panel p-5" aria-labelledby="pack-h">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 id="pack-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Luggage className="h-5 w-5 text-indigo-500" aria-hidden />Packing list</h3>
@@ -66,7 +66,7 @@ export function TripPacking({ tripId, stops, start, members, me }: { tripId: str
           <label><span className="sr-only">Group</span><select value={grp} onChange={(e) => setGrp(e.target.value)} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white">{GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}</select></label>
           <button type="submit" disabled={!own.trim()} className="btn-primary inline-flex items-center gap-1.5"><Plus className="h-4 w-4" aria-hidden />Add</button>
         </form>
-        {!data ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
+        {!data ? <div className="mt-4 h-32 skeleton rounded-xl" aria-busy="true" />
           : !items.length ? <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">Empty so far. Take the suggestions for this trip, or add your own. Everyone planning it shares the list.</p>
           : (
             <div className="mt-4 space-y-5">
@@ -103,7 +103,7 @@ export function TripPacking({ tripId, stops, start, members, me }: { tripId: str
           {ideas.length > 1 && <button type="button" onClick={() => void add(ideas.map(({ item, grp: g }) => ({ item, grp: g })), `Added ${ideas.length} things.`)} className="btn-secondary btn-sm">Add all {ideas.length}</button>}
         </div>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">From the trip’s length, the weather there that month, what the places are for and the plugs there{home ? '' : ' (set your home country on a guide’s Know tab to check yours)'}.</p>
-        {!plugs ? <div className="mt-3 h-24 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
+        {!plugs ? <div className="mt-3 h-24 skeleton rounded-xl" aria-busy="true" />
           : !ideas.length ? <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Everything suggested is on the list.</p>
           : (
             <ul className="mt-3 space-y-1">

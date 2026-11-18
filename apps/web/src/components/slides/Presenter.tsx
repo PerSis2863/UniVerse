@@ -116,7 +116,7 @@ export function Presenter({ deck, docId, start, onClose }: { deck: DeckJSON; doc
       onTouchStart={(e) => { touch.current = e.touches[0]?.clientX ?? null; }} onTouchEnd={(e) => { const x = e.changedTouches[0]?.clientX; if (touch.current != null && x != null && Math.abs(x - touch.current) > 50) { if (x < touch.current) next(); else prev(); } touch.current = null; }}>
       <p className="sr-only" aria-live="polite">{label}</p>
       {presenter ? (
-        <div className="flex-1 min-h-0 grid grid-rows-[1fr_auto] md:grid-rows-1 md:grid-cols-[2fr_1fr] gap-4 p-4">
+        <div className="flex-1 min-h-0 grid grid-cols-1 grid-rows-[1fr_auto] md:grid-rows-1 md:grid-cols-[2fr_1fr] gap-4 p-4">
           <div onClick={next} className="min-h-0 flex cursor-pointer"><Stage deck={deck} at={cur?.i ?? 0} step={step} label={label} /></div>
           <div className="flex flex-col gap-3 min-h-0">
             <div className="flex items-center justify-between text-sm"><span className="font-semibold">{label}</span><span className="tabular-nums text-2xl font-semibold" aria-label={`Time: ${clock}`}>{clock}</span></div>

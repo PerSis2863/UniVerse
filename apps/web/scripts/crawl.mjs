@@ -11,7 +11,7 @@
 // accessibility check (axe-core, WCAG 2.2 AA, serious and critical only). --layout (the owner, 17 Nov: "check other
 // area where the ui is overlapping or doesnt fit properly … in mobile") adds: parts sticking out past the screen's edge
 // (not inside something that scrolls or clips), and buttons, links and fields covered by something else or overlapping
-// another (checked between the top bar and the phone's tab bar). --guest opens the website's public pages signed out.
+// another (checked between the top bar and the phone's tab bar), and text cut off by a box that clips (M289). --guest opens the website's public pages signed out.
 // Needs Playwright
 // (see scripts/browser-session.mjs). Exits 1 when any page has a problem.
 
@@ -108,6 +108,22 @@ for (const [role, pages] of Object.entries(byRole)) {
             // Crossing the screen's edge (a drawer waiting wholly off the screen isn't).
             if (((r.right > W + 2 && r.left < W) || (r.left < -2 && r.right > 0)) && shown(el) && !clipped(el) && getComputedStyle(el).position !== 'fixed') wide.push(el);
           }
+          // M289: text cut off by a card or box that clips (it ran past the edge instead of wrapping; a grid column
+          // grown to a line that won't break is the usual cause). Meant cuts are left alone: an ellipsis, inside
+          // something that scrolls, screen-reader-only text.
+          const cut = [];
+          for (const el of document.querySelectorAll('body *')) {
+            if (cut.length >= 4) break;
+            if (![...el.childNodes].some((n) => n.nodeType === 3 && n.textContent.trim().length > 1)) continue;
+            const r = el.getBoundingClientRect();
+            if (r.width < 4 || r.height < 4 || r.bottom < 0 || r.top > H * 3 || !shown(el) || getComputedStyle(el).textOverflow === 'ellipsis') continue;
+            for (let p = el.parentElement; p && p !== document.body; p = p.parentElement) {
+              const pcs = getComputedStyle(p), ox = pcs.overflowX, pr = p.getBoundingClientRect();
+              if (ox === 'auto' || ox === 'scroll' || pr.width <= 2 || pcs.textOverflow === 'ellipsis') break;
+              if (ox === 'hidden' || ox === 'clip') { if (r.right > pr.right + 6 && r.left < pr.right - 6 && pr.right <= W + 2) cut.push([el, Math.round(r.right - pr.right)]); break; }
+            }
+          }
+          for (const [el, px] of cut) out.push(`cut off ${px} px: ${name(el)}`);
           // Only the outermost of each (its children stick out with it).
           for (const el of wide.filter((e) => !wide.some((o) => o !== e && o.contains(e))).slice(0, 4)) { const r = el.getBoundingClientRect(); out.push(`sticks out ${Math.round(Math.max(r.right - W, -r.left))} px: ${name(el)}`); }
           const ctl = [...document.querySelectorAll('button, a[href], input:not([type=hidden]), select, textarea, [role=button], [role=tab], [role=radio]')].filter((el) => {

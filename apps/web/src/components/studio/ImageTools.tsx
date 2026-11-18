@@ -63,7 +63,7 @@ function Quote() {
   const [t, setT] = useState('Education is the most powerful weapon which you can use to change the world.'), [by, setBy] = useState('Nelson Mandela'), [look, setLook] = useState(0), [story, setStory] = useState(false);
   const [, a, b, ink] = LOOKS[look], W = 1080, H = story ? 1920 : 1080;
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1fr]">
       <div className="space-y-3">
         <Field label="Words"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
         <Field label="Who said it (optional)"><input className="input" value={by} onChange={(e) => setBy(e.target.value)} /></Field>
@@ -143,7 +143,7 @@ function CodeImage() {
   const ls = t.replace(/\t/g, '  ').split('\n').slice(0, 60), W = Math.min(2000, Math.max(900, Math.max(...ls.map((l) => l.length)) * 17 + 220)), H = ls.length * 34 + 240;
   const KW = /\b(const|let|var|function|return|if|else|for|while|import|from|export|class|new|async|await|def|print|public|static|void|int|true|false|null|None)\b/g;
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-3">
         <Field label="Code"><textarea className={cn(area, 'min-h-[220px]')} value={t} onChange={(e) => setT(e.target.value)} spellCheck={false} /></Field>
         <Field label="File name"><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>

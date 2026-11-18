@@ -34,7 +34,7 @@ function TrySection({ id, title, accent, children }: { id: string; title: string
 /** Three steps on a line that draws itself in. */
 function Steps({ steps, color }: { steps: readonly (readonly [typeof HandHeart, string, string])[]; color: string }) {
   return (
-    <ol className="relative mt-12 grid md:grid-cols-3 gap-4">
+    <ol className="relative mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
       <motion.span aria-hidden className="hidden md:block absolute top-10 start-[16%] end-[16%] h-px origin-left rtl:origin-right" style={{ background: `linear-gradient(90deg, transparent, ${color}, transparent)` }}
         initial={{ scaleX: 0 }} whileInView={{ scaleX: 1 }} viewport={{ once: true, margin: '-80px' }} transition={{ duration: 1.2, ease: EASE }} />
       {steps.map(([Icon, t, d], i) => (
@@ -51,7 +51,7 @@ function Steps({ steps, color }: { steps: readonly (readonly [typeof HandHeart, 
 /** Big figures with a few words each. */
 function Figures({ items, color }: { items: readonly (readonly [string, string])[]; color: string }) {
   return (
-    <dl className="mt-12 grid sm:grid-cols-3 gap-4">
+    <dl className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4">
       {items.map(([n, t], i) => (
         <Reveal key={t} delay={0.1 + i * 0.08} className={`${tile} p-6`}>
           <dt className="sr-only">{t}</dt>
@@ -104,7 +104,7 @@ export function GreenMore() {
       </TrySection>
       <Section id="green-habit">
         <Head title="Streaks, badges," accent="a weekly goal." />
-        <div className="mt-12 grid lg:grid-cols-3 gap-4">
+        <div className="mt-12 grid grid-cols-1 lg:grid-cols-3 gap-4">
           <Reveal delay={0.1} className={`${tile} p-6`}>
             <p className="flex items-center gap-2 text-sm text-zinc-400"><Flame className="w-4 h-4 text-orange-300" aria-hidden />Streak</p>
             <ol className="mt-5 flex justify-between gap-1.5" aria-label="7 days in a row">
