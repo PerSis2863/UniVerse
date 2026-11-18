@@ -4,6 +4,7 @@ import prisma from '@/lib/db';
 import { getStripe, syncSubscription } from '@/lib/billing';
 import { confirmFromGateway } from '@/server/payments/provider';
 import { traceFunding, traceSubscription } from '@/server/trace-billing';
+import { greenSubscription } from '@/server/green-business-plus';
 
 // Checking the signature needs no API key; a placeholder keeps this working if the key is missing.
 const stripeClient = () => getStripe() ?? new Stripe('sk_unset', { apiVersion: '2024-06-20' as unknown as Stripe.LatestApiVersion, httpClient: Stripe.createFetchHttpClient() });
@@ -35,7 +36,7 @@ export async function POST(req: Request) {
   ) {
     try {
       // A Trace brand's PRO (M201), or else a school's plan.
-      if (!(await traceSubscription(event.data.object as Stripe.Subscription))) await syncSubscription(event.data.object as Stripe.Subscription);
+      if (!(await traceSubscription(event.data.object as Stripe.Subscription)) && !(await greenSubscription(event.data.object as Stripe.Subscription))) await syncSubscription(event.data.object as Stripe.Subscription);
     } catch (err) {
       console.error('Error syncing subscription:', err);
       return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });
@@ -48,7 +49,7 @@ export async function POST(req: Request) {
     if (typeof session.subscription === 'string') {
       try {
         const sub = await stripeClient().subscriptions.retrieve(session.subscription);
-        if (!(await traceSubscription(sub))) await syncSubscription(sub);
+        if (!(await traceSubscription(sub)) && !(await greenSubscription(sub))) await syncSubscription(sub);
       } catch (err) {
         console.error('Error syncing subscription from checkout:', err);
         return NextResponse.json({ error: 'Failed to sync subscription' }, { status: 500 });

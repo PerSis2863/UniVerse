@@ -8007,6 +8007,182 @@ model GreenEventReport {
   @@map("green_event_reports")
 }
 
+/// M269: Green → Business, a company (or a consultancy that manages client companies) measuring its footprint.
+model GreenOrg {
+  id            String   @id @default(cuid())
+  name          String
+  kind          String   @default("company")
+  country       String?
+  industry      String?
+  employees     Int?
+  revenue       Float?
+  currency      String   @default("USD")
+  baseYear      Int?
+  targetYear    Int?
+  targetPct     Float?
+  plan          String   @default("{}")
+  consultancyId String?
+  auditCode     String?  @unique
+  surveyCode    String?  @unique
+  tier                 String  @default("FREE")
+  stripeCustomerId     String?
+  stripeSubscriptionId String?
+  screening            String  @default("{}")
+  carbonPrice          Float?
+  createdById   String
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @default(now()) @updatedAt
+
+  @@index([consultancyId])
+  @@map("green_orgs")
+}
+
+/// M269: who works on a company's footprint (owner, editor, viewer).
+model GreenOrgMember {
+  orgId     String
+  userId    String
+  role      String   @default("editor")
+  createdAt DateTime @default(now())
+
+  @@id([orgId, userId])
+  @@index([userId])
+  @@map("green_org_members")
+}
+
+/// M269: one line of a company's carbon ledger: a month, a category, a quantity and the factor used.
+model GreenEntry {
+  id           String   @id @default(cuid())
+  orgId        String
+  period       String
+  category     String
+  scope        Int
+  quantity     Float
+  factor       Float
+  factorSource String
+  kg           Float
+  note         String?
+  source       String   @default("manual")
+  refId        String?
+  quality      String?
+  site         String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @default(now()) @updatedAt
+
+  @@index([orgId, period])
+  @@index([refId])
+  @@map("green_entries")
+}
+
+/// M269: every change to a company's footprint, hash-chained so an auditor can tell nothing was rewritten.
+model GreenAudit {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String?
+  action    String
+  detail    String
+  prevHash  String
+  hash      String
+  createdAt DateTime @default(now())
+
+  @@index([orgId, createdAt])
+  @@map("green_audit")
+}
+
+/// M271: a supplier asked (by a link) for its own emissions; our share by spend goes into scope 3.
+model GreenSupplier {
+  id         String    @id @default(cuid())
+  orgId      String
+  name       String
+  contact    String?
+  spend      Float?
+  year       Int
+  code       String    @unique
+  status     String    @default("asked")
+  answer     String?
+  kg         Float?
+  answeredAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([orgId])
+  @@map("green_suppliers")
+}
+
+/// M272: one answer to a company's staff commute survey (scope 3, category 7).
+model GreenCommute {
+  id        String   @id @default(cuid())
+  orgId     String
+  userId    String?
+  mode      String
+  kmOneWay  Float
+  daysWeek  Float
+  kgYear    Float
+  year      Int
+  createdAt DateTime @default(now())
+
+  @@unique([orgId, userId, year])
+  @@index([orgId, year])
+  @@map("green_commutes")
+}
+
+/// M279: an energy certificate (REC, I-REC, GO), an offset or a removal: reported beside the footprint, never netted off it.
+model GreenCredit {
+  id        String   @id @default(cuid())
+  orgId     String
+  year      Int
+  kind      String
+  quantity  Float
+  registry  String?
+  project   String?
+  serial    String?
+  vintage   Int?
+  retired   Boolean  @default(false)
+  note      String?
+  createdAt DateTime @default(now())
+
+  @@index([orgId, year])
+  @@map("green_credits")
+}
+
+/// M278: an independent verifier's review of a year, and the statement they sign over the numbers it covered.
+model GreenVerification {
+  id            String    @id @default(cuid())
+  orgId         String
+  year          Int
+  verifierId    String
+  firm          String
+  status        String    @default("reviewing")
+  standard      String?
+  level         String?
+  scopes        String?
+  accreditation String?
+  opinion       String?
+  snapshot      String?
+  signature     String?
+  signedAt      DateTime?
+  createdAt     DateTime  @default(now())
+
+  @@index([orgId, year])
+  @@index([verifierId])
+  @@map("green_verifications")
+}
+
+/// M278: a verifier's question on a line (or the year), and the company's answer.
+model GreenQuery {
+  id             String    @id @default(cuid())
+  orgId          String
+  verificationId String
+  entryId        String?
+  question       String
+  answer         String?
+  status         String    @default("open")
+  createdAt      DateTime  @default(now())
+  answeredAt     DateTime?
+
+  @@index([verificationId])
+  @@map("green_queries")
+}
+
 /// M217: a person's emergency plan (JSON: src/lib/relief-plus.ts Plan) and go-bag ticks (JSON list of KIT ids).
 /// Theirs only: never shown to anyone else.
 model ReliefPlan {

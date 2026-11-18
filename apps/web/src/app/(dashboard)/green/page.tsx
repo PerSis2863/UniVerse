@@ -17,6 +17,7 @@ const VIEWS: Record<GreenView, React.ComponentType> = {
   tips: dynamic(() => import('@/components/green/GreenGoals').then((m) => m.GreenTips), { loading: wait }),
   events: dynamic(() => import('@/components/green/GreenEvents').then((m) => m.GreenEvents), { loading: wait }),
   places: dynamic(() => import('@/components/green/GreenPlaces'), { ssr: false, loading: wait }),
+  business: dynamic(() => import('@/components/green/business/GreenBusiness').then((m) => m.GreenBusiness), { loading: wait }),
 };
 
 function Green() {

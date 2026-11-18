@@ -57,10 +57,10 @@ export default function HubPage() {
           <section className="trace-hero relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white">
             <span aria-hidden className="passport-glow passport-glow-a" />
             <div className="relative">
-              <span className="passport-pill">UniVerse Impact</span>
-              <motion.h2 initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, ease: EASE }} className="mt-4 text-4xl sm:text-5xl font-black tracking-tight">
+              {/* M282: no label above the greeting (§8), and the site's motion layer sweeps it in (no second animation). */}
+              <h2 className="text-4xl sm:text-5xl font-black tracking-tight">
                 {hello}{user?.name ? `, ${user.name.split(' ')[0]}` : ''}.
-              </motion.h2>
+              </h2>
               <p className="mt-3 text-lg text-zinc-300 max-w-2xl">Pick where you want to make a difference today. Every app uses the same account, messages and files.</p>
               <dl className="mt-7 grid grid-cols-2 sm:grid-cols-5 gap-3">
                 {apps.map((a, i) => (

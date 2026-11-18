@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 import { courseColor } from '@/lib/course-color';
 import { useNow } from '@/lib/use-now';
 import { HomeBoard } from '@/components/home/HomeBoard';
+import { DashHead } from '@/components/home/DashHead';
 import { UpNextCard } from '@/components/home/UpNext';
 import { GoalCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
@@ -376,7 +377,8 @@ export default function StudentDashboard() {
           </div>
         )}
         {/* The account setup reminder sits below the top cards, so it never pushes them down. */}
-        <HomeBoard role="student" layout={home.layout} onSave={(l) => void home.saveLayout(l)} cards={cards} afterTop={<AccountSetupCard />} />
+        <HomeBoard role="student" layout={home.layout} onSave={(l) => void home.saveLayout(l)} cards={cards} afterTop={<AccountSetupCard />}
+          head={<DashHead name={user?.name} summary={s ? [s.upcoming ? `${s.upcoming} due soon` : 'Nothing due soon', s.attendance !== null ? `${s.attendance}% attendance` : null, s.averageGrade !== null ? `average ${s.averageGrade}%` : null].filter(Boolean).join(' · ') : null} />} />
       </div>
     </>
   );

@@ -1,5 +1,6 @@
 'use client';
 
+import { KpiCard } from '@/components/dashboard/KpiCard';
 import { CardMenu } from '@/components/ui/CardMenu';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { m as motion } from 'framer-motion';
@@ -156,17 +157,6 @@ export function CreateCard({ onNewCourse }: { onNewCourse: () => void }) {
   );
 }
 
-function Tile({ icon: Icon, label, value, sub, href, tone }: { icon: LucideIcon; label: string; value: string; sub: string; href: string; tone: string }) {
-  return (
-    <Link href={href} className={cn(card, 'p-4 md:p-5 block hover:border-indigo-500/30 transition-colors')}>
-      <span className={cn('w-9 h-9 rounded-xl flex items-center justify-center mb-3', tone)}><Icon className="w-4 h-4" /></span>
-      <span className="block text-2xl font-black text-zinc-900 dark:text-white tabular-nums">{value}</span>
-      <span className="block text-sm font-medium text-zinc-800 dark:text-zinc-200">{label}</span>
-      <span className="block text-xs text-zinc-600 dark:text-zinc-400 mt-0.5">{sub}</span>
-    </Link>
-  );
-}
-
 /** The school today: attendance, fees collected, open safety flags, who's using UniVerse, approvals. */
 export function LiveNumbersCard({ live }: { live: LiveNumbers | undefined }) {
   if (!live) return <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">{Array.from({ length: 5 }, (_, i) => <div key={i} className="h-36 rounded-3xl skeleton" />)}</div>;
@@ -178,12 +168,13 @@ export function LiveNumbersCard({ live }: { live: LiveNumbers | undefined }) {
         <span className="relative flex w-2 h-2"><span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping opacity-60 motion-reduce:hidden" /><span className="relative w-2 h-2 rounded-full bg-emerald-500" /></span>
         Today, live
       </h2>
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-        <Tile icon={UserCheck} tone="bg-emerald-500/10 text-emerald-700 dark:text-emerald-300" label="Attendance today" value={att.marked ? `${Math.round((att.present / att.marked) * 100)}%` : '—'} sub={att.marked ? `${att.present} of ${att.marked} present · ${att.absent} absent` : 'Not taken yet today'} href="/admin/attendance" />
-        <Tile icon={Wallet} tone="bg-sky-500/10 text-sky-700 dark:text-sky-300" label="Fees collected today" value={fee ? money(fee.today, fee.currency) : '—'} sub={fee ? `${money(fee.month, fee.currency)} this month${fees.length > 1 ? ` · ${fees.length - 1} more currenc${fees.length > 2 ? 'ies' : 'y'}` : ''}` : 'Nothing this month yet'} href="/admin/fees" />
-        <Tile icon={ShieldAlert} tone={safety.high ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300' : 'bg-amber-500/10 text-amber-700 dark:text-amber-300'} label="Safety flags open" value={String(safety.open)} sub={safety.high ? `${safety.high} serious` : safety.open ? 'To review' : 'Nothing to review'} href="/admin/safety" />
-        <Tile icon={Users} tone="bg-indigo-500/10 text-indigo-700 dark:text-indigo-300" label="Using UniVerse now" value={String(active.now)} sub={`${active.today} today`} href="/admin/users" />
-        <Tile icon={CheckCircle2} tone="bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300" label="Waiting for approval" value={String(pending)} sub={pending ? 'New accounts' : 'None waiting'} href="/admin/approvals" />
+      {/* M282: the same figure cards as the rest of the home (KpiCard), each a way into its page. */}
+      <div className="kpi-row grid grid-cols-2 lg:grid-cols-5 gap-4">
+        <KpiCard icon={UserCheck} title="Attendance today" value={att.marked ? `${Math.round((att.present / att.marked) * 100)}%` : '—'} sub={att.marked ? `${att.present.toLocaleString()} of ${att.marked.toLocaleString()} present · ${att.absent} absent` : 'Not taken yet today'} href="/admin/attendance" />
+        <KpiCard icon={Wallet} title="Fees collected today" value={fee ? money(fee.today, fee.currency) : '—'} sub={fee ? `${money(fee.month, fee.currency)} this month${fees.length > 1 ? ` · ${fees.length - 1} more currenc${fees.length > 2 ? 'ies' : 'y'}` : ''}` : 'Nothing this month yet'} href="/admin/fees" />
+        <KpiCard icon={ShieldAlert} title="Safety flags open" value={safety.open} warn={safety.high > 0} sub={safety.high ? `${safety.high} serious` : safety.open ? 'To review' : 'Nothing to review'} href="/admin/safety" />
+        <KpiCard icon={Users} title="Using UniVerse now" value={active.now} sub={`${active.today.toLocaleString()} today`} href="/admin/users" />
+        <KpiCard icon={CheckCircle2} title="Waiting for approval" value={pending} warn={pending > 0} sub={pending ? 'New accounts' : 'None waiting'} href="/admin/approvals" />
       </div>
     </section>
   );

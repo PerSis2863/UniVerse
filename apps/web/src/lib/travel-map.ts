@@ -132,3 +132,17 @@ export function streetPhotoOf(answer: unknown): StreetPhoto | null {
   }
   return null;
 }
+
+// M272 (the owner, 18 Nov: "make travel app more efficient"): what a map view asks the server for, snapped to a grid
+// so that panning a little asks nothing new (the answer for the grid square is reused): the middle to 0.02° (about
+// 2 km) with a radius from a few steps, the box outwards to 0.05° (about 5 km).
+type ViewBox = { lat: number; lon: number; s: number; w: number; n: number; e: number };
+const RADII = [1500, 3000, 6000, 10_000];
+export function nearKey(v: ViewBox, half: number) {
+  const r = RADII.find((x) => x >= half * 1000) ?? 10_000;
+  return `lat=${(Math.round(v.lat / 0.02) * 0.02).toFixed(2)}&lon=${(Math.round(v.lon / 0.02) * 0.02).toFixed(2)}&r=${r}`;
+}
+export function boxKey(v: ViewBox) {
+  const G = 0.05, down = (x: number) => (Math.floor(x / G) * G).toFixed(2), up = (x: number) => (Math.ceil(x / G) * G).toFixed(2);
+  return `s=${down(v.s)}&w=${down(v.w)}&n=${up(v.n)}&e=${up(v.e)}`;
+}

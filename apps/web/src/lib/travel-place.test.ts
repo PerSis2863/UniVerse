@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fromWikidata, isPlaceKey, osmKey, photosFromCommons, placeFromNominatim, storiesFromWikipedia } from './travel-place';
+import { factIds, factsFromWikidata, fromWikidata, funFactFrom, isPlaceKey, osmKey, photosFromCommons, placeFromNominatim, storiesFromWikipedia, whenText } from './travel-place';
 
 // M209: real places from OpenStreetMap, Wikidata, Commons and Wikipedia, read into the map's cards.
 describe('travel places', () => {
@@ -34,5 +34,32 @@ describe('travel places', () => {
   it('keeps Wikipedia’s nearby articles that have a place and words', () => {
     const s = storiesFromWikipedia({ query: { pages: [{ title: 'Belém Tower', coordinates: [{ lat: 38.6916, lon: -9.216 }], extract: 'A 16th-century fortification.', thumbnail: { source: 'https://upload.wikimedia.org/t.jpg' } }, { title: 'No place', extract: 'x' }] } });
     expect(s).toEqual([{ title: 'Belém Tower', lat: 38.6916, lon: -9.216, extract: 'A 16th-century fortification.', thumb: 'https://upload.wikimedia.org/t.jpg', url: 'https://en.wikipedia.org/wiki/Bel%C3%A9m_Tower' }]);
+  });
+});
+
+describe('facts about a place (M270)', () => {
+  const claim = (value: unknown) => [{ mainsnak: { datavalue: { value } } }];
+  const tower = {
+    claims: {
+      P571: claim({ time: '+1887-01-28T00:00:00Z', precision: 11 }), P1435: claim({ id: 'Q9259' }), P84: claim({ id: 'Q778243' }),
+      P2048: claim({ amount: '+330', unit: 'http://www.wikidata.org/entity/Q11573' }), P1174: [{ mainsnak: { datavalue: { value: { amount: '+5889000' } } } }, { mainsnak: { datavalue: { value: { amount: '+6207303' } } } }],
+      P138: claim({ id: 'Q20882' }),
+    },
+  };
+  it('reads when, heritage, designer, height, visitors and namesake from Wikidata', () => {
+    expect(factIds(tower)).toEqual(['Q9259', 'Q778243', 'Q20882']);
+    expect(factsFromWikidata(tower, { Q9259: 'World Heritage Site', Q778243: 'Stephen Sauvestre', Q20882: 'Gustave Eiffel' })).toEqual([
+      'Built or founded in 1887', 'A UNESCO World Heritage Site', 'Designed by Stephen Sauvestre', 'Named after Gustave Eiffel', '330 m tall', 'About 6.2 million visitors a year',
+    ]);
+    expect(whenText({ time: '-0447-00-00T00:00:00Z', precision: 9 })).toBe('447 BC');
+    expect(whenText({ time: '+1150-00-00T00:00:00Z', precision: 7 })).toBe('the 12th century');
+    expect(factsFromWikidata(undefined, {})).toEqual([]);
+  });
+  it('picks a surprising sentence the card doesn\'t already show', () => {
+    const shown = 'The Eiffel Tower is a wrought-iron lattice tower on the Champ de Mars in Paris.';
+    const article = `${shown} It is named after the engineer Gustave Eiffel. Locally nicknamed "La dame de fer", it was the tallest man-made structure in the world for 41 years. The tower has three levels for visitors.`;
+    expect(funFactFrom(article, shown)).toBe('Locally nicknamed "La dame de fer", it was the tallest man-made structure in the world for 41 years.');
+    expect(funFactFrom('A short one. Another plain sentence that says nothing much at all here.', null)).toBeNull();
+    expect(funFactFrom(undefined, null)).toBeNull();
   });
 });

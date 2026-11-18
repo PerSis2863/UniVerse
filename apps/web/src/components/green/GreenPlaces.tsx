@@ -11,6 +11,7 @@ import { km } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
 import { mapRequest } from '@/components/travel/map/map-style';
+import { useBareChrome } from '@/lib/chrome';
 
 // Green → Green places (M216): where to recycle, refill a bottle, hire a bike, charge an electric car, buy
 // second-hand or at a market, near you. OpenStreetMap's own places, read from the map's tiles as you move
@@ -34,6 +35,7 @@ const filterOf = (shown: Set<KindId>): ExpressionSpecification => ['in', ['get',
 const colour: ExpressionSpecification = ['match', ['get', 'subclass'], ...KINDS.flatMap((k) => k.sub.flatMap((s) => [s, k.color])), '#71717a'] as unknown as ExpressionSpecification;
 
 export default function GreenPlaces() {
+  useBareChrome(); // M271: on a phone the map takes the top bar's place
   const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
   const dark = useDarkMode();
   const [ready, setReady] = useState(false), [zoom, setZoom] = useState(HOME.zoom);
@@ -113,7 +115,7 @@ export default function GreenPlaces() {
 
   return (
     <div className="relative grid gap-4 lg:block">
-      <aside className="panel flex max-h-[calc(100dvh-14rem)] min-h-[20rem] flex-col p-4 lg:absolute lg:start-3 lg:top-3 lg:bottom-3 lg:z-10 lg:max-h-none lg:rounded-[1.375rem] lg:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] lg:w-[22rem]" aria-label="Green places">
+      <aside className="panel flex max-h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[20rem] flex-col p-4 lg:absolute lg:start-3 lg:top-3 lg:bottom-3 lg:z-10 lg:max-h-none lg:rounded-[1.375rem] lg:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] lg:w-[22rem]" aria-label="Green places">
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="What to show">
           {KINDS.map((k) => (
             <button key={k.id} type="button" aria-pressed={shown.has(k.id)} onClick={() => toggle(k.id)} className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition-colors', shown.has(k.id) ? 'bg-white text-zinc-900 ring-zinc-300 dark:bg-white/[0.08] dark:text-white dark:ring-white/20' : 'text-zinc-500 ring-zinc-200 dark:text-zinc-400 dark:ring-white/10')}>
@@ -146,7 +148,7 @@ export default function GreenPlaces() {
         </ol>
         <p className="mt-2 border-t border-zinc-200/70 pt-2 text-[11px] leading-snug text-zinc-500 dark:border-white/10 dark:text-zinc-400">Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a></p>
       </aside>
-      <div className="relative h-[calc(100dvh-14rem)] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
+      <div className="relative h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
         <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of green places" />
         {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
       </div>

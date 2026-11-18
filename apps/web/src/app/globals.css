@@ -849,6 +849,14 @@ html, body { overflow-x: clip; max-width: 100%; }
     height: calc(100dvh - var(--mobile-header-h) - var(--mobile-tabbar-h) - var(--safe-top) - var(--safe-bottom) - 0.75rem);
   }
 }
+/* M271: a page that is one big map (useBareChrome, src/lib/chrome.ts): on a phone the top bar steps aside and the map
+   takes its height (--bare-gain, added to the map's own height). */
+:root { --bare-gain: 0px; }
+@media (max-width: 1023px) {
+  html[data-bare] { --bare-gain: var(--mobile-header-h); }
+  html[data-bare] .mobile-header { display: none; }
+  html[data-bare] .mobile-main { padding-top: var(--safe-top); }
+}
 .above-tabbar { bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 0.75rem); }
 @media (min-width: 1024px) { .above-tabbar { bottom: 1.5rem; } }
 
@@ -2094,6 +2102,14 @@ html.reduce-motion .pp-node::after { opacity: 0; }
 .trace-hero { background: radial-gradient(70% 38% at 50% 116%, rgb(240 204 138 / 0.36), transparent 70%), radial-gradient(110% 50% at 50% 112%, rgb(120 100 70 / 0.32), transparent 72%), radial-gradient(80% 60% at 0% 0%, rgb(98 136 176 / 0.14), transparent 70%), linear-gradient(180deg, #10163b 0%, #0b0b0c 55%, #0b2038 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(240 204 138 / 0.45); }
 /* Light mode (M53): violet-black with the picture's band glowing up from below (pink into violet). */
 html:not(.dark) .trace-hero { background: radial-gradient(70% 55% at 10% 120%, rgb(236 116 206 / 0.5), transparent 70%), radial-gradient(80% 60% at 90% 118%, rgb(83 63 246 / 0.6), transparent 72%), radial-gradient(80% 60% at 100% 0%, rgb(169 157 255 / 0.14), transparent 70%), linear-gradient(180deg, #1b1733 0%, #17142b 50%, #261c50 100%); box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.07), 0 30px 60px -36px rgb(83 63 246 / 0.55); }
+/* M274: Green → Business's report prints alone (BizReport sets html[data-printing="report"] while printing). */
+@media print {
+  html[data-printing="report"] body * { visibility: hidden !important; }
+  html[data-printing="report"] .print-report, html[data-printing="report"] .print-report * { visibility: visible !important; }
+  html[data-printing="report"] .print-report { position: absolute; inset: 0 auto auto 0; width: 100%; color: #111; background: #fff; }
+  .print-report .print-hide { display: none !important; }
+  .print-report section { break-inside: avoid; }
+}
 @media print {
   body * { visibility: hidden !important; }
   .print-sheet, .print-sheet * { visibility: visible !important; }

@@ -79,7 +79,7 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
     r.food = await panel.locator('ol li button span.font-semibold').allInnerTexts().then((t) => t.slice(0, 3));
     await page.getByRole('button', { name: 'Sights', exact: true }).click();
     await page.waitForTimeout(800);
-    await panel.getByRole('button', { name: 'Walk from here' }).click();
+    await panel.getByRole('button', { name: 'Sightseeing walk' }).click();
     await panel.getByText(/stops · .* km on foot/).waitFor({ timeout: 30_000 });
     r.walk = (await panel.getByText(/stops · .* km on foot/).innerText()).trim();
     if (shots) await page.screenshot({ path: `${shots}/travel-walk-1280.png` });
