@@ -38,11 +38,20 @@ export async function eraseAccount(userId: string) {
     prisma.skillPassport.deleteMany({ where: { userId } }),
     prisma.studyCard.deleteMany({ where: { userId } }),
     prisma.studentSkill.deleteMany({ where: { userId } }),
+    // M302: the newer personal rows: portfolio work and its private links, office-hours bookings and waiting lists.
+    prisma.portfolioItem.deleteMany({ where: { userId } }),
+    prisma.portfolioShare.deleteMany({ where: { userId } }),
+    prisma.officeWaitlist.deleteMany({ where: { studentId: userId } }),
+    prisma.officeSlot.updateMany({ where: { studentId: userId }, data: { studentId: null, topic: null, bookedAt: null } }),
+    prisma.officeSlot.deleteMany({ where: { teacherId: userId } }),
+    prisma.greenBill.deleteMany({ where: { userId } }),
+    prisma.greenHome.deleteMany({ where: { userId } }),
+    prisma.greenSwap.deleteMany({ where: { userId } }),
     prisma.user.update({
       where: { id: userId },
       data: {
         name: 'Deleted user', email: anon, firebaseUid: null, googleId: null, avatar: null, phone: null,
-        dateOfBirth: null, emergencyContacts: [], emailNotifications: false, status: 'SUSPENDED',
+        dateOfBirth: null, emergencyContacts: [], emailNotifications: false, status: 'SUSPENDED', totpSecret: null, totpOn: false, totpStep: null,
       },
     }),
   ]);

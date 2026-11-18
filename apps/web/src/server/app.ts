@@ -45,6 +45,7 @@ import activity from './modules/activity';
 import blog from './modules/blog';
 import trace from './modules/trace';
 import impactApps from './modules/impact-apps';
+import schoolPlus from './modules/school-plus';
 
 // The platform API (formerly a NestJS app on Render), served at /api/core/*. Modules are
 // registered in the old AppModule's order. Not ported: the Clerk webhook (the app signs in with
@@ -54,7 +55,7 @@ for (const register of [
   auth, users, courses, attendance, grades, quizzes, announcements, files, notifications, knowledgeHub,
   messages, career, schedule, associations, rooms, tickets, timetable, internships, electives, skills,
   groups, impact, partners, documents, scholarships, consents, medical, safety, mentorship, collaborations,
-  calendar, health, dashboard, blackboard, audit, applications, owner, ownerChats, ownerDatabase, ownerInsights, ownerConsole, ownerLanguages, activity, blog, trace, impactApps,
+  calendar, health, dashboard, blackboard, audit, applications, owner, ownerChats, ownerDatabase, ownerInsights, ownerConsole, ownerLanguages, activity, blog, trace, impactApps, schoolPlus,
 ]) {
   register(api);
 }

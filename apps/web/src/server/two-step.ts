@@ -1,6 +1,6 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 
-// Two-step sign-in for the owner and admin accounts: after signing in, a 6-digit code is emailed
+// Two-step sign-in for the owner and admin accounts (and, M301, anyone with an authenticator app: src/server/totp.ts): after signing in, a 6-digit code is emailed
 // and must be typed before the account can do anything. Stateless: the code and the "pass" the
 // app then sends with every request (X-UV-Pass header) are HMACs of the account and the moment it
 // signed in (the Firebase token's auth_time), keyed by SESSION_SECRET. A new sign-in needs a new
@@ -30,8 +30,10 @@ export function authTimeOf(token: string | null | undefined): number | null {
   }
 }
 
-/** Whether this signed-in account must show a pass: admins and the owner, on a Firebase sign-in. */
-export const needsTwoStep = (role: string, token: string | null | undefined) => twoStepEnabled() && role === 'ADMIN' && authTimeOf(token) !== null;
+/** Whether this signed-in account must show a pass on a Firebase sign-in: admins and the owner (emailed code), and
+ *  anyone who turned on an authenticator app (M301, `app`: users.totpOn; needs only SESSION_SECRET). TWO_STEP_OFF stops both. */
+export const needsTwoStep = (role: string, token: string | null | undefined, app = false) =>
+  authTimeOf(token) !== null && ((twoStepEnabled() && role === 'ADMIN') || (app && !!secret() && !process.env.TWO_STEP_OFF?.trim()));
 
 export const passFor = (userId: string, authTime: number) => mac(`2fa-pass:${userId}:${authTime}`).toString('base64url');
 

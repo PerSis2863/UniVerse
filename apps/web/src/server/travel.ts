@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { LISTING_KINDS, photoOk, readGuide, type Guide } from '@/lib/travel-guide';
+import { LISTING_KINDS, photoOk, readGuide, type Guide, type Listing } from '@/lib/travel-guide';
 import { mergeTips, readTips, type Climate, type Tips } from '@/lib/travel-tips';
 import { BadRequestException, NotFoundException, ServiceUnavailableException } from './http';
 import COUNTRIES from '@/lib/travel-countries.json';
@@ -111,10 +111,10 @@ const MAX_LISTINGS = 60;
 
 type GuideRecord = Guide & { tips: Tips; climate?: Climate };
 
-/** A Wikivoyage article read and kept 14 days (following up to two redirects); null when there's none. */
+/** A Wikivoyage article read and kept 14 days (following up to two redirects); null when there’s none. `guide5`: M327 added listings’ photos and Wikidata items. */
 async function readArticle(asked: string): Promise<GuideRecord | null> {
   let title = asked;
-  return cached<GuideRecord>(`guide4:${asked.toLowerCase()}`, 14 * DAY, async () => {
+  return cached<GuideRecord>(`guide5:${asked.toLowerCase()}`, 14 * DAY, async () => {
     for (let hop = 0; hop < 2; hop++) {
       const r = await fetch(`https://en.wikivoyage.org/wiki/${encodeURIComponent(title.replace(/ /g, '_'))}?action=raw`, { headers: { 'User-Agent': UA }, signal: AbortSignal.timeout(8000) });
       if (r.status === 404) return null;
@@ -157,6 +157,24 @@ async function photoFor(title: string): Promise<string | null> {
   return found?.file ?? null;
 }
 
+/** M327: photos for a guide's listings that name a Wikidata item but no image (their item's main image, P18), for
+ *  the itinerary's cards: one request for 40 at most, kept a month. */
+async function listingPhotos(title: string, listings: Listing[]): Promise<Record<string, string>> {
+  const want = [...new Set(listings.filter((l) => !l.image && l.wikidata).map((l) => l.wikidata!))].slice(0, 40);
+  if (!want.length) return {};
+  const found = await cached<Record<string, string>>(`lphoto1:${title.toLowerCase()}`, 30 * DAY, async () => {
+    type E = { claims?: { P18?: { mainsnak: { datavalue?: { value: unknown } } }[] } };
+    const r = await fetchJson<{ entities?: Record<string, E> }>(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${want.join('|')}&props=claims&format=json`);
+    const out: Record<string, string> = {};
+    for (const [q, e] of Object.entries(r?.entities ?? {})) {
+      const v = e.claims?.P18?.[0]?.mainsnak.datavalue?.value;
+      if (typeof v === 'string' && v.length <= 200 && /\.(jpe?g|png|webp|tiff?)$/i.test(v)) out[q] = v;
+    }
+    return out;
+  }).catch(() => null);
+  return found ?? {};
+}
+
 /** GET /travel/guide?d=: a place's guide, its country's facts, "know before you go" and the credit. */
 export async function travelGuide(_u: SessionUser, q: Query) {
   const record = await readArticle(titleOf(first(q.d)));
@@ -167,9 +185,10 @@ export async function travelGuide(_u: SessionUser, q: Query) {
   const lacking = COUNTRY_TOPICS.some((t) => !own[t]?.length);
   const home = country && lacking && guide.title !== country.name ? await readArticle(country.name).catch(() => null) : null;
   const { tips, fromCountry } = mergeTips(own, home?.tips);
-  const photo = await photoFor(guide.title);
+  const [photo, photos] = await Promise.all([photoFor(guide.title), listingPhotos(guide.title, guide.sections.flatMap((x) => x.listings))]);
+  const sections = guide.sections.map((x) => ({ ...x, listings: x.listings.map((l) => (!l.image && l.wikidata && photos[l.wikidata] ? { ...l, image: photos[l.wikidata] } : l)) }));
   return {
-    guide: { ...guide, photo: photo ?? undefined }, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
+    guide: { ...guide, sections, photo: photo ?? undefined }, country, tips, climate: climate ?? null, fromCountry, tipsCountry: fromCountry.length && home ? { name: home.title, credit: credit(home.title) } : null,
     credit: credit(guide.title),
   };
 }

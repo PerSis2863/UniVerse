@@ -7,7 +7,7 @@ import { passkeyError, passkeysSupported, passkeyTwoStep } from '@/lib/passkey-c
 import { OtpInput, type OtpStatus } from '@/components/ui/OtpInput';
 
 /**
- * Second sign-in step for admins and the owner: their passkey when they have one on this device
+ * Second sign-in step for admins and the owner (and, M301, anyone with an authenticator app: its code, no email): their passkey when they have one on this device
  * (no email sent), otherwise a 6-digit code we email; either gives this device a pass for this
  * sign-in (see src/server/two-step.ts).
  */
@@ -19,6 +19,9 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
   const [error, setError] = useState('');
   // null while checking; true: offer the passkey first (the email only when asked).
   const [withPasskey, setWithPasskey] = useState<boolean | null>(null);
+  // M301: the code comes from an authenticator app (no email); email: an emailed code can be sent too.
+  const [app, setApp] = useState(false);
+  const [email, setEmail] = useState(true);
   const sent = useRef(false);
 
   const confirmWithPasskey = async () => {
@@ -50,10 +53,12 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
     if (sent.current) return;
     sent.current = true;
     void (async () => {
-      const { data } = await api.get<{ passkeys?: number }>('/auth/two-step').catch(() => ({ data: { passkeys: 0 } }));
+      const { data } = await api.get<{ passkeys?: number; app?: boolean; email?: boolean }>('/auth/two-step').catch(() => ({ data: { passkeys: 0, app: false, email: true } }));
       const passkey = !!data.passkeys && passkeysSupported();
+      setApp(!!data.app);
+      setEmail(data.email !== false);
       setWithPasskey(passkey);
-      if (!passkey) void send();
+      if (!passkey && !data.app) void send();
     })();
   }, []);
 
@@ -97,10 +102,10 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
           {busy === 'passkey' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />} Use your passkey
         </button>
         <div className="flex items-center justify-between text-sm">
-          <button type="button" onClick={() => { setError(''); setWithPasskey(false); void send(); }} disabled={!!busy} className="text-indigo-300 hover:text-indigo-200 disabled:opacity-50">Email me a code instead</button>
+          <button type="button" onClick={() => { setError(''); setWithPasskey(false); if (!app) void send(); }} disabled={!!busy} className="text-indigo-300 hover:text-indigo-200 disabled:opacity-50">{app ? 'Use my authenticator app instead' : 'Email me a code instead'}</button>
           <button type="button" onClick={onCancel} className="text-zinc-400 hover:text-white">Use another account</button>
         </div>
-        <p className="text-xs text-zinc-500">Admin and owner accounts need this extra step each time they sign in, so a stolen password alone can&apos;t get in.</p>
+        <p className="text-xs text-zinc-500">{app ? 'You turned on this extra step' : 'Admin and owner accounts need this extra step each time they sign in'}, so a stolen password alone can&apos;t get in.</p>
       </div>
     );
   }
@@ -115,7 +120,9 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
           {check === 'good' ? (
             <><h2 className="text-xl font-bold text-emerald-300">Verified</h2><p className="text-sm text-zinc-400">Signing you in…</p></>
           ) : (
-            <><h2 className="text-xl font-bold text-white">Check your email</h2><p className="text-sm text-zinc-400">{sentTo ? `We sent a 6-digit code to ${sentTo}.` : 'Sending you a 6-digit code…'}</p></>
+            app && !sentTo
+              ? <><h2 className="text-xl font-bold text-white">Open your authenticator app</h2><p className="text-sm text-zinc-400">Type the 6-digit code it shows for UniVerse.</p></>
+              : <><h2 className="text-xl font-bold text-white">Check your email</h2><p className="text-sm text-zinc-400">{sentTo ? `We sent a 6-digit code to ${sentTo}.` : 'Sending you a 6-digit code…'}</p></>
           )}
         </div>
       </div>
@@ -125,12 +132,14 @@ export function TwoStepPanel({ onDone, onCancel }: { onDone: () => void; onCance
         {busy === 'verify' ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Finish signing in'}
       </button>
       <div className="flex items-center justify-between text-sm">
-        <button type="button" onClick={() => void send()} disabled={!!busy} className="text-indigo-300 hover:text-indigo-200 disabled:opacity-50">
-          {busy === 'send' ? 'Sending…' : 'Send a new code'}
-        </button>
+        {email ? (
+          <button type="button" onClick={() => void send()} disabled={!!busy} className="text-indigo-300 hover:text-indigo-200 disabled:opacity-50">
+            {busy === 'send' ? 'Sending…' : app && !sentTo ? 'Email me a code instead' : 'Send a new code'}
+          </button>
+        ) : <span />}
         <button type="button" onClick={onCancel} className="text-zinc-400 hover:text-white">Use another account</button>
       </div>
-      <p className="text-xs text-zinc-500">Admin and owner accounts need this extra step each time they sign in, so a stolen password alone can&apos;t get in.</p>
+      <p className="text-xs text-zinc-500">{app ? 'You turned on this extra step' : 'Admin and owner accounts need this extra step each time they sign in'}, so a stolen password alone can&apos;t get in.</p>
     </form>
   );
 }

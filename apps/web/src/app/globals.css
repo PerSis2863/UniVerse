@@ -2338,20 +2338,6 @@ html:not(.dark) .live-card {
 .wcard-thumb::before, .wcard-thumb::after { display: none; }
 .wcard-thumb:hover { opacity: 0.9; }
 .wcard-thumb.is-on { opacity: 1; transform: translateY(-2px); box-shadow: 0 0 0 2px var(--background), 0 0 0 4px #4f8ef7; }
-/* M52 · The landing's planet section (src/components/landing/WorldSection.tsx): Midnight Abyss sinking
-   into Aqua Jade, like the owner's "Globynk" picture. M56 (the owner: "make it look seamless"): the
-   aqua horizon dissolves back into the page over the section's last quarter, and thins out toward the
-   sides, so there's no edge where it ends. M57: deep navy sinking into a
-   dark teal, the Aqua Jade a glow at the horizon instead of a pale blue fill. */
-.world { isolation: isolate; }
-.world::before { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none; background:
-  radial-gradient(44% 18% at 50% 74%, rgb(240 204 138 / 0.42), transparent 72%),
-  radial-gradient(70% 26% at 50% 76%, rgb(240 204 138 / 0.14), transparent 72%),
-  linear-gradient(180deg, transparent 0%, #0e0e10 16%, #111113 34%, #141414 52%, #151515 66%, #161616 74%, rgb(30 26 20 / 0.8) 82%, rgb(20 18 16 / 0.4) 91%, rgb(12 12 14 / 0.1) 96%, transparent 100%);
-  -webkit-mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%);
-  mask-image: radial-gradient(130% 100% at 50% 40%, #000 62%, transparent 100%); }
-/* Notes on the bright aqua: navy glass, dark enough that white text reads at 4.5:1 on the brightest part. */
-.world-glass { border-radius: 1.5rem; border: 1px solid rgb(255 255 255 / 0.18); background: rgb(16 28 58 / 0.58); -webkit-backdrop-filter: blur(14px) saturate(140%); backdrop-filter: blur(14px) saturate(140%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.12), 0 18px 40px -24px rgb(0 0 0 / 0.6); }
 /* M55 · The aqua horizon at the foot of the landing's first screen and the sign-in pages. M57: it fades
    out completely before the bottom edge (it was cut there, a hard line under the landing's first screen). */
 /* M124: a faint dot grid behind the landing's first screen in dark mode (the owner's Relay recording). */
@@ -2627,13 +2613,6 @@ html.dark :is(button, a, [role="tab"]):has(> .tab-pill) { color: #111113; }
    a quiet grey, its key word bright (white in dark mode, ink in light). No italic serif, no gradient. ═══ */
 :is(h1, h2, h3):has(.accent-word) { color: var(--text-muted); font-weight: 500; }
 .accent-word { color: var(--text-primary); }
-/* The landing's planet section: dark with the photos' warm light under the planet (it was navy into
-   Aqua Jade), and its notes solid near-black (no glass). */
-.world::before { background:
-  radial-gradient(44% 18% at 50% 74%, rgb(226 184 104 / 0.24), transparent 72%),
-  radial-gradient(70% 26% at 50% 76%, rgb(226 184 104 / 0.09), transparent 72%),
-  linear-gradient(180deg, transparent 0%, #0e0e10 18%, #111113 46%, #15130f 72%, rgb(21 19 15 / 0.6) 88%, transparent 100%); }
-.world-glass { background: rgb(21 21 23 / 0.94); -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.08), 0 18px 40px -24px rgb(0 0 0 / 0.7); }
 
 /* ═══ M94 · The last navy and aqua moved over (the owner: "please do the left on purpose part"). ═══ */
 /* Live cards (every home, the console, Play's constellation): near-black with the photos' warm light,
@@ -2663,6 +2642,8 @@ html.dark :is(a, button):has(> .comms-head) { color: #111113; }
    live dots keep pulsing (they show that something is live). */
 html[data-scrolling] :is(.passport-glow, .mkt-drift-a, .mkt-drift-b, .ins-ping, .ins-live, .ins-grain, .wcard-sway, .universe-node-pulse, .universe-u-beam, .universe-n-beam, .tank-wave, .play-ripple, .play-scene, .campus-turn, .campus-turn-back, .campus-breathe, .campus-wave, .scan-sweep, .scene-tilt, .scene-pan, .slow-turn, .twinkle, .ring-ride, .holo-pan),
 html[data-scrolling] .bar-glint::after, html[data-scrolling] .collab-hero::before, html[data-scrolling] .play-holo::after { animation-play-state: paused; }
+/* M326: while the wheel's glide runs (src/lib/smooth-scroll.ts), an embedded frame under the pointer doesn't catch the wheel. */
+html[data-scrolling] iframe { pointer-events: none; }
 /* M117 · UniVersity's hero picture (HeroScenes `Campus`, the landing and sign-in): its endless motion in
    CSS, which the browser runs off the main thread. As script (framer-motion repeats) the orbit, the
    tiles' counter-turn, the core's breath and its waves kept a phone's main thread ~66% busy while the
@@ -3009,9 +2990,6 @@ input:is([type="time"], [type="date"], [type="datetime-local"], [type="month"], 
 @keyframes swap-back { from { opacity: 0; transform: translateX(-22px); } }
 @media (prefers-reduced-motion: reduce) { .swap[data-dir] { animation-name: tl-fade; } }
 
-/* ═══ M164 · The landing's smaller planet: its stars and glow fade out before the canvas's edge, so no
-   square shows round it (a mask on the canvas alone; the zoom buttons beside it stay sharp). */
-.world-planet canvas { -webkit-mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); mask-image: radial-gradient(closest-side, #000 88%, transparent 100%); }
 
 /* ═══ M165 · Arrange any page with the mouse (src/lib/arrange-dom.ts): nothing is drawn until something
    is carried; the thing being carried lifts; a stack that was rearranged is a wrapping row. */
@@ -3143,3 +3121,15 @@ html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: 
 .cmd-ring::after { animation-delay: 1.2s; }
 html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .cmd-pop, .cmd-sheet { animation-name: tl-fade; } .cmd-ring::before, .cmd-ring::after { animation: none; opacity: 0.4; transform: scale(1.3); } }
+
+/* ═══ M328 · The landing's Earth rising out of clouds (tripist's): the window shows the globe's top two thirds; the
+   clouds' dense band covers its lower edge and they drift a little (paused while scrolling, still with Reduce
+   Motion). Notes on the page's own light: white cards, near-black in dark mode, where the clouds dim. */
+.world-earth .earth-window { aspect-ratio: 1 / 0.74; -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent 100%); mask-image: linear-gradient(180deg, #000 82%, transparent 100%); }
+.world-earth .earth-clouds { bottom: -31%; translate: -50% 0; animation: earth-drift 80s ease-in-out infinite alternate; }
+@keyframes earth-drift { from { transform: translate3d(-2.5%, 0, 0); } to { transform: translate3d(2.5%, 0, 0); } }
+.dark .world-earth .earth-clouds, html.dark .world-earth .earth-clouds { filter: brightness(0.3) saturate(0.6); }
+.world-earth .earth-card { border-radius: 1.25rem; background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--card-shadow); }
+html[data-scrolling] .world-earth .earth-clouds { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .world-earth .earth-clouds { animation: none; } }
+html.reduce-motion .world-earth .earth-clouds { animation: none; }

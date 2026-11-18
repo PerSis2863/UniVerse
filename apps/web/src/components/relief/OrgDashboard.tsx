@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { IncidentReports } from './IncidentReports';
+import type { Forecast } from '@/lib/supply-forecast';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -26,7 +28,7 @@ import { OrgFields, Sheet, ShiftCard, type ShiftView } from './ReliefOrgs';
 // count; every change is logged), its volunteer shifts and its members. Coordinators run it; the
 // server checks every change (src/server/relief-orgs.ts), the page only hides what isn't yours.
 
-interface Supply { id: string; name: string; kind: ReliefKind; unit: string; quantity: number; lowAt: number; low: boolean; updatedAt: string }
+interface Supply { id: string; name: string; kind: ReliefKind; unit: string; quantity: number; lowAt: number; low: boolean; updatedAt: string; forecast?: Forecast }
 interface Member { id: string; name: string; role: ReliefOrgRole; since: string; me: boolean }
 interface Text { id: string; channel: 'SMS' | 'WHATSAPP'; from: string; body: string; status: 'NEW' | 'POSTED' | 'CLOSED'; postId: string | null; createdAt: string }
 interface OrgData {
@@ -108,6 +110,7 @@ function Overview({ d, run, go, onChange }: { d: OrgData; run: boolean; go: (t: 
         <p className="mt-2 text-xs text-zinc-500">{d.org.lat === null ? 'No base set: set one to see the needs near you.' : `Base set${d.org.place ? ` in ${d.org.place}` : ''} (rounded to about 500 m).`} Started {new Date(d.org.createdAt).toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })}.</p>
       </section>
       {run && <Emergency d={d} />}
+      <IncidentReports orgId={d.org.id} />
       <LiveStatus d={d} run={run} onChange={onChange} />
       {run && d.org.code && <Invite org={d.org} onChange={onChange} />}
       <LeaveButton org={d.org} />
@@ -418,6 +421,7 @@ function SupplyRow({ s, orgId, run, onChange }: { s: Supply; orgId: string; run:
       <div className="min-w-0 flex-1 basis-40">
         <p className="font-semibold text-zinc-900 dark:text-white truncate" translate="no">{s.name}</p>
         <p className="text-xs text-zinc-500">{RELIEF_KIND_LABEL[s.kind] ?? s.kind}{s.lowAt > 0 ? ` · low at ${s.lowAt}` : ''}{s.low && <span className="ms-2 font-semibold text-amber-700 dark:text-amber-300">Running low</span>}</p>
+        {s.forecast && s.forecast.state !== 'unknown' && <p className={cn('text-xs', s.forecast.state === 'now' ? 'font-semibold text-rose-700 dark:text-rose-300' : s.forecast.state === 'soon' ? 'text-amber-700 dark:text-amber-300' : 'text-zinc-500')}>About {s.forecast.perDay} {s.unit} a day · {s.forecast.daysLeft === 0 ? 'runs out today' : `lasts ${s.forecast.daysLeft} ${s.forecast.daysLeft === 1 ? 'day' : 'days'}`}{s.forecast.state !== 'ok' ? ` · order ${s.forecast.state === 'now' ? 'now' : `by ${new Date(`${s.forecast.orderBy}T12:00:00`).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}`}` : ''}</p>}
       </div>
       <div className="flex items-center gap-1.5">
         <button type="button" disabled={busy || s.quantity === 0} onClick={() => void send({ change: -1 })} aria-label={`One fewer ${s.name}`} className="w-9 h-9 grid place-items-center rounded-full bg-zinc-100 dark:bg-white/[0.06] hover:bg-zinc-200 dark:hover:bg-white/10 disabled:opacity-40"><Minus className="w-4 h-4" aria-hidden /></button>

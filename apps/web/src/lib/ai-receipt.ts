@@ -29,6 +29,9 @@ export const AI_USE_KINDS = {
   interview: 'Interview practice',
   ta: 'Class TA (during a class)',
   'carbon-bill': 'Reading a bill (Green → Business)',
+  'home-bill': 'Reading an energy bill (Green)',
+  revision: 'Revision packs',
+  booking: 'Reading a hotel booking (Travel)',
 } as const;
 export type AiUseKind = keyof typeof AI_USE_KINDS;
 export const aiUseLabel = (k: string) => (k in AI_USE_KINDS ? AI_USE_KINDS[k as AiUseKind] : 'AI help');

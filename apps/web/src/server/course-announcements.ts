@@ -40,9 +40,9 @@ export async function sendAnnouncement(a: { id: string; title: string; body: str
 }
 
 /** Board POST { kind: 'announcement', title, body, publishAt? } (the teacher, already checked). */
-export async function postAnnouncement(course: { id: string; code: string }, user: SessionUser, title: string, body: string, rawPublishAt: unknown) {
+export async function postAnnouncement(course: { id: string; code: string }, user: SessionUser, title: string, body: string, rawPublishAt: unknown, needsAck = false) {
   const publishAt = publishTime(rawPublishAt);
-  const item = await prisma.announcement.create({ data: { title, body, courseId: course.id, authorId: user.id, target: 'COURSE', publishAt } });
+  const item = await prisma.announcement.create({ data: { title, body, courseId: course.id, authorId: user.id, target: 'COURSE', publishAt, needsAck } });
   if (!publishAt) await sendAnnouncement(item, course.code);
   return item;
 }
@@ -116,4 +116,51 @@ export async function announcementWhere(user: SessionUser) {
       { OR: [...visibleNow().OR, { authorId: user.id }] },
     ],
   };
+}
+
+// ── M299: who has seen it, a reminder to the rest, and "I've read it" ──
+
+const REMIND_EVERY = 12 * 3600_000;
+
+async function courseAnnouncement(courseId: string, id: string) {
+  const a = await prisma.announcement.findFirst({ where: { id, courseId }, select: { id: true, title: true, needsAck: true, remindedAt: true, publishAt: true, course: { select: { code: true } } } });
+  if (!a) throw new NotFoundException('That announcement isn’t there any more.');
+  return a;
+}
+
+/** GET (teachers): each enrolled student with when they saw it and, if it asks, confirmed it. */
+export async function announcementReaders(courseId: string, id: string) {
+  const a = await courseAnnouncement(courseId, id);
+  const [students, reads] = await Promise.all([
+    prisma.enrollment.findMany({ where: { courseId }, select: { student: { select: { id: true, name: true } } }, take: 1000 }),
+    prisma.announcementRead.findMany({ where: { announcementId: id }, select: { userId: true, readAt: true, ackAt: true } }),
+  ]);
+  const byUser = new Map(reads.map((r) => [r.userId, r]));
+  const people = students.map((e) => ({ id: e.student.id, name: e.student.name, seenAt: byUser.get(e.student.id)?.readAt ?? null, ackAt: byUser.get(e.student.id)?.ackAt ?? null })).sort((x, y) => x.name.localeCompare(y.name));
+  return { needsAck: a.needsAck, remindedAt: a.remindedAt, canRemind: !a.remindedAt || Date.now() - a.remindedAt.getTime() > REMIND_EVERY, people };
+}
+
+/** POST (teachers): an in-app reminder to the students who haven't seen it (or, if it asks, confirmed it). */
+export async function remindAnnouncement(courseId: string, id: string) {
+  const a = await courseAnnouncement(courseId, id);
+  if (a.publishAt && a.publishAt > new Date()) throw new BadRequestException('It isn’t out yet.');
+  if (a.remindedAt && Date.now() - a.remindedAt.getTime() <= REMIND_EVERY) throw new BadRequestException('You reminded them less than 12 hours ago.');
+  const { people } = await announcementReaders(courseId, id);
+  const rest = people.filter((p) => (a.needsAck ? !p.ackAt : !p.seenAt)).map((p) => p.id);
+  if (!rest.length) return { reminded: 0 };
+  const claimed = await prisma.announcement.updateMany({ where: { id, OR: [{ remindedAt: null }, { remindedAt: { lt: new Date(Date.now() - REMIND_EVERY) } }] }, data: { remindedAt: new Date() } });
+  if (!claimed.count) return { reminded: 0 };
+  await notifyMany(rest, { title: `${a.course?.code ?? 'Course'}: please read “${a.title}”`, body: a.needsAck ? 'Your teacher asks you to confirm you’ve read it.' : 'Your teacher posted something you haven’t seen yet.', link: `/student/blackboard?course=${courseId}`, type: 'reminder', courseId, email: false });
+  return { reminded: rest.length };
+}
+
+/** POST (an enrolled student): "I've read it" on an announcement that asks. */
+export async function acknowledgeAnnouncement(courseId: string, user: SessionUser, id: string) {
+  const enrolled = await prisma.enrollment.findUnique({ where: { studentId_courseId: { studentId: user.id, courseId } }, select: { id: true } });
+  if (!enrolled) throw new NotFoundException('That announcement isn’t there any more.');
+  const a = await courseAnnouncement(courseId, id);
+  if (!a.needsAck) throw new BadRequestException('This announcement doesn’t ask for a confirmation.');
+  const now = new Date();
+  await prisma.announcementRead.upsert({ where: { announcementId_userId: { announcementId: id, userId: user.id } }, create: { announcementId: id, userId: user.id, ackAt: now }, update: { ackAt: now } });
+  return { ackAt: now };
 }

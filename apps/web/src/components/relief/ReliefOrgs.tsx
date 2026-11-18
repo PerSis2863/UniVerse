@@ -14,7 +14,10 @@ import { fetcher } from '@/lib/fetcher';
 import { RELIEF_ORG_KINDS, RELIEF_ORG_KIND_LABEL, RELIEF_ORG_ROLE_LABEL, shiftState, type ReliefOrgKind, type ReliefOrgRole } from '@/lib/relief';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
-import { OrgDashboard } from './OrgDashboard';
+import dynamic from 'next/dynamic';
+
+// M306: one organisation's dashboard loads when it's opened (the list first).
+const OrgDashboard = dynamic(() => import('./OrgDashboard').then((m) => m.OrgDashboard), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
 // UniVerse Relief → Organisations (M106, src/server/relief-orgs.ts): the organisations I'm in, the
 // volunteer shifts that need people, and each organisation's own page (?org=<id>, OrgDashboard).

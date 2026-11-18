@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { readHistory, withScore } from '@/lib/early-warning-steps';
 import { notify } from './email';
 
 // Early warning: finds students who may be struggling in a course, from four signals —
@@ -63,6 +64,8 @@ export function assess(s: StudentSignals, now = Date.now()): { score: number; re
   return { score: Math.min(100, score), reasons };
 }
 
+/** A flag's past scores; flags from before M292 start from their last score. */
+const pastOf = (f: { history: string | null; score: number; computedAt: Date }) => { const h = readHistory(f.history); return h.length ? h : [{ at: f.computedAt.toISOString(), score: f.score }]; };
 const levelFor = (score: number) => (score >= AT_RISK ? 'AT_RISK' : score >= WATCH ? 'WATCH' : 'OK');
 
 /** Re-assesses every student in one course and updates its flags. Returns new at-risk students. */
@@ -85,7 +88,7 @@ export async function assessCourse(courseId: string, now = Date.now()) {
   const newlyAtRisk: { studentId: string; score: number }[] = [];
   // Few queries however big the class (D1 answers 50 a run): new flags in one insert, unchanged ones
   // just "last checked" in one update, and only the flags that changed one by one.
-  const created: { studentId: string; courseId: string; score: number; level: string; reasons: { code: string; text: string }[]; computedAt: Date }[] = [];
+  const created: { studentId: string; courseId: string; score: number; level: string; reasons: { code: string; text: string }[]; computedAt: Date; history: string }[] = [];
   const unchanged: string[] = [];
   const writes: Promise<unknown>[] = [];
 
@@ -105,7 +108,7 @@ export async function assessCourse(courseId: string, now = Date.now()) {
 
     if (!existing) {
       if (level === 'OK') continue;
-      created.push({ studentId: e.studentId, courseId, score, level, reasons, computedAt: new Date(now) });
+      created.push({ studentId: e.studentId, courseId, score, level, reasons, computedAt: new Date(now), history: JSON.stringify(withScore([], score, now)) });
       if (level === 'AT_RISK') newlyAtRisk.push({ studentId: e.studentId, score });
       continue;
     }
@@ -116,7 +119,7 @@ export async function assessCourse(courseId: string, now = Date.now()) {
       if (level === 'AT_RISK') newlyAtRisk.push({ studentId: e.studentId, score });
     }
     if (existing.score === score && existing.level === level && existing.status === status && JSON.stringify(existing.reasons) === JSON.stringify(reasons)) unchanged.push(existing.id);
-    else writes.push(prisma.studentRiskFlag.update({ where: { id: existing.id }, data: { score, level, reasons, status, computedAt: new Date(now) } }));
+    else writes.push(prisma.studentRiskFlag.update({ where: { id: existing.id }, data: { score, level, reasons, status, computedAt: new Date(now), ...(existing.score !== score ? { history: JSON.stringify(withScore(pastOf(existing), score, now)) } : {}) } }));
   }
   if (created.length) writes.push(prisma.studentRiskFlag.createMany({ data: created }));
   if (unchanged.length) writes.push(prisma.studentRiskFlag.updateMany({ where: { courseId, id: { in: unchanged } }, data: { computedAt: new Date(now) } }));

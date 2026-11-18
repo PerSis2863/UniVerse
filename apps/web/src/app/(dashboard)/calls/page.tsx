@@ -23,6 +23,7 @@ import { TabPill, TabPanel } from '@/components/ui/Glide';
 import { MeetingNotesSheet } from '@/components/call/MeetingNotes';
 import { CallRecordingSheet } from '@/components/call/CallRecordingSheet';
 import { OfficeHoursCard } from '@/components/call/OfficeHours';
+import { OfficeBooking } from '@/components/call/OfficeBooking';
 import { MeetHome } from '@/components/call/MeetHome';
 
 /** One call (src/server/calls.ts recentCalls, Stage 4 · 2.13). */
@@ -166,6 +167,7 @@ export default function CallsPage() {
           <aside className="space-y-5 min-w-0 lg:sticky lg:top-4">
             <Insights rows={data ?? []} />
             <OfficeHoursCard role={role} />
+            <OfficeBooking />
             <ScheduledCalls role={role} />
           </aside>
         </div>

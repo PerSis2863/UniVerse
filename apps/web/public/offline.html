@@ -9,8 +9,8 @@
 <link rel="icon" href="/icon-192x192.png">
 <!-- A plain static page (no app code), served for free by Cloudflare and shown by the service
      worker when a page that isn't saved on this device is opened without a connection. It shows the
-     copies the app keeps on the device (M46, src/lib/offline-reads.ts): today's classes, the courses
-     and the latest chats, only for the person signed in, read with textContent (never as HTML). -->
+     copies the app keeps on the device (M46, src/lib/offline-reads.ts): Relief's emergency plan (M305), today's
+     classes, the courses and the latest chats, only for the person signed in, read with textContent (never as HTML). -->
 <script>
   (function () { try { var t = localStorage.getItem('theme'); var d = !t || t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches); document.documentElement.classList.toggle('dark', d); document.querySelector('meta[name=theme-color]').content = d ? '#0b0b0c' : '#ececec'; } catch (e) {} })();
 </script>
@@ -56,6 +56,7 @@
     </div>
   </header>
 
+  <section id="plan" hidden aria-labelledby="plan-h"><h2 id="plan-h"><span>My emergency plan</span><small></small></h2><ul translate="no"></ul></section>
   <section id="today" hidden aria-labelledby="today-h"><h2 id="today-h"><span>Today</span><small></small></h2><ul></ul></section>
   <section id="chats" hidden aria-labelledby="chats-h"><h2 id="chats-h"><span>Messages</span><small></small></h2><ul translate="no"></ul></section>
   <section id="courses" hidden aria-labelledby="courses-h"><h2 id="courses-h"><span>Courses</span><small></small></h2><ul></ul></section>
@@ -81,7 +82,7 @@
       if (!db.objectStoreNames.contains('reads')) return db.close();
       var store = db.transaction('reads', 'readonly').objectStore('reads');
       var got = {};
-      ['/api/core/timetable/my', '/api/core/courses/my', '/api/chat/conversations'].forEach(function (key) {
+      ['/api/core/timetable/my', '/api/core/courses/my', '/api/chat/conversations', '/api/core/relief/plan'].forEach(function (key) {
         var r = store.get(key);
         r.onsuccess = function () { var v = r.result; if (v && v.uid === uid && Date.now() - v.savedAt < MAX_AGE) got[key] = v; };
       });
@@ -112,6 +113,17 @@
 
     function show(got) {
       var shown = false;
+      // M305: Relief's emergency plan (meeting points, contacts) first: no connection is when it's needed.
+      var rp = got['/api/core/relief/plan'];
+      var plan = rp && rp.data && rp.data.plan;
+      if (plan && (plan.meetNear || plan.meetFar || (plan.contacts && plan.contacts.length))) {
+        var pl = open('plan', rp);
+        if (plan.meetNear) row(pl, { title: 'Meet near home', sub: String(plan.meetNear) });
+        if (plan.meetFar) row(pl, { title: 'Meet farther away', sub: String(plan.meetFar) });
+        (plan.contacts || []).slice(0, 6).forEach(function (c) { if (c && c.name) row(pl, { title: String(c.name), sub: String(c.phone || '') }); });
+        if (plan.needs) row(pl, { title: 'Needs', sub: String(plan.needs) });
+        shown = true;
+      }
       var tt = got['/api/core/timetable/my'];
       if (tt && Array.isArray(tt.data)) {
         var dow = (new Date().getDay() + 6) % 7; // 0 = Monday, as timetable slots are stored

@@ -110,8 +110,8 @@ export class Router {
       if (viewAsBlocked(req, token)) throw new ForbiddenException({ message: 'This is a read-only view: changes and private messages are not available.', code: 'VIEW_AS_READ_ONLY', error: 'Forbidden' });
       if (user && guardianBlocked(req, user)) throw new ForbiddenException('Parent accounts can only use the parent app.');
       // Admins and the owner type an emailed code after signing in (src/server/two-step.ts).
-      if (user && !path.startsWith('auth/two-step') && needsTwoStep(user.role, token) && !hasPass(req, user.id, token)) {
-        throw new ForbiddenException({ message: 'Enter the code we emailed you to finish signing in.', code: 'TWO_STEP_REQUIRED', error: 'Forbidden' });
+      if (user && !path.startsWith('auth/two-step') && needsTwoStep(user.role, token, user.totpOn) && !hasPass(req, user.id, token)) {
+        throw new ForbiddenException({ message: user.totpOn ? 'Enter the code from your authenticator app to finish signing in.' : 'Enter the code we emailed you to finish signing in.', code: 'TWO_STEP_REQUIRED', error: 'Forbidden' });
       }
 
       const result = await route.handler({ user: user as User, params, query: parseQuery(new URL(req.url)), body: await readBody(req), req });

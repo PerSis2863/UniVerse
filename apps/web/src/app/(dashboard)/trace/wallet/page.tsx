@@ -9,6 +9,7 @@ import { AnimatePresence, animate, m as motion, useReducedMotion } from 'framer-
 import { ArrowDownLeft, ArrowUpRight, Banknote, Gift, Loader2, Megaphone, Recycle, RotateCcw, ScanLine, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import { TraceTabs } from '@/components/trace/TraceTabs';
+import { ShopGuide } from '@/components/trace/ShopGuide';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { cleanCode } from '@/lib/trace';
@@ -47,6 +48,7 @@ export default function WalletPage() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
           <TraceTabs />
+          <ShopGuide />
           <Wallet />
         </div>
       </div>

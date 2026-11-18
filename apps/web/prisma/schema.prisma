@@ -158,6 +158,10 @@ model User {
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   /// Stage 5 · A8: sign-ins signed out one by one (Settings → devices), JSON: [sign-in time in seconds, …] (src/server/auth.ts).
   revokedSessions    String?
+  /// M301: an authenticator app as the second sign-in step (src/server/totp.ts): the sealed secret, on, last step used
+  totpSecret         String?
+  totpOn             Boolean   @default(false)
+  totpStep           Int?
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
   // Campus network (upgrade 9): the campus this person belongs to (set from their email domain) and
   // whether people at partner campuses may find them in search.
@@ -863,6 +867,9 @@ model Announcement {
   publishAt DateTime?
   /// When the notice went out (a scheduled one: null until then).
   sentAt    DateTime?
+  /// M299: students are asked to confirm they've read it; the teacher's last reminder to the rest
+  needsAck   Boolean           @default(false)
+  remindedAt DateTime?
   pinnedAt  DateTime?
   reads     AnnouncementRead[]
 
@@ -879,6 +886,8 @@ model AnnouncementRead {
   userId         String
   user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   readAt         DateTime     @default(now())
+  /// M299: when the student confirmed it ("I've read it"), for announcements that ask
+  ackAt          DateTime?
 
   @@id([announcementId, userId])
   @@index([userId])
@@ -2650,6 +2659,8 @@ model GuardianLink {
   studentId  String
   student    User     @relation("GuardedBy", fields: [studentId], references: [id], onDelete: Cascade)
   relation   String? // Mother, Father, Guardian…, as the guardian put it
+  /// M297: absence alerts in the app: EACH, OFTEN (frequent or falling only) or NONE (src/lib/attendance-trend.ts)
+  alerts     String   @default("EACH")
   createdAt  DateTime @default(now())
 
   @@unique([guardianId, studentId])
@@ -3009,6 +3020,8 @@ model StudentRiskFlag {
   handledAt     DateTime?
   handledScore  Int? // score when it was last handled (reopens only if it gets clearly worse)
   followUpScore Int? // score at the 7-day follow-up of a support plan (upgrade 3)
+  /// M292: the score's history, JSON [{ at, score }] (src/lib/early-warning-steps.ts)
+  history       String?
   plans         SupportPlan[]
   computedAt    DateTime      @default(now())
   createdAt     DateTime      @default(now())
@@ -6918,6 +6931,9 @@ model TraceBrand {
   stripeSubscriptionId String?
 
   @@map("trace_brands")
+  /// M308: area alerts for copies: JSON { countries: string[], threshold, anywhere } and when each area was last told
+  watch            String?
+  watchSent        String?
 }
 
 model TraceBrandMember {
@@ -7332,6 +7348,10 @@ model ReliefPost {
   @@index([helperId])
   @@index([helperOrgId])
   @@map("relief_posts")
+  /// M316: the device outbox's id for a post made offline (a retried send makes no second post)
+  clientId    String?
+
+  @@unique([userId, clientId])
 }
 
 /// M106: an organisation in Relief (NGO, food bank, shelter, community group). Base rounded like posts.
@@ -7791,6 +7811,8 @@ model TravelTripStop {
   position Int              @default(0)
   /// M247: how they get here from the city before (src/lib/green.ts TRAVEL_MODES), or null for the likely way.
   mode     String?
+  /// M329: when each day starts (JSON: day index → minutes after midnight); 9:00 for the others.
+  starts   String?
   items    TravelTripItem[]
 
   @@index([tripId])
@@ -7816,6 +7838,10 @@ model TravelTripItem {
   note      String?
   address   String?
   url       String?
+  /// M327: a Wikimedia Commons file from the guide's listing, shown on the itinerary's card.
+  photo     String?
+  /// M327: when it was ticked off on the itinerary.
+  doneAt    DateTime?
   addedById String?
   createdAt DateTime       @default(now())
 
@@ -7887,6 +7913,8 @@ model TravelReview {
   hidden    Boolean              @default(false)
   createdAt DateTime             @default(now())
   updatedAt DateTime             @default(now()) @updatedAt
+  /// M322: the visitor's accessibility notes, JSON AccessNote (src/lib/travel-access.ts)
+  access    String?
   reports   TravelReviewReport[]
 
   @@unique([userId, place])
@@ -8192,4 +8220,247 @@ model ReliefPlan {
   updatedAt DateTime @default(now()) @updatedAt
 
   @@map("relief_plans")
+}
+
+/// M291: a printed exam in up to four versions (A–D). `versions` is JSON PaperVersion[] (src/lib/exam-paper.ts):
+/// each version's questions as printed, its answer key and rubrics. Teachers of the course only.
+model ExamPaper {
+  id           String    @id @default(cuid())
+  courseId     String
+  title        String
+  instructions String?
+  minutes      Int?
+  versions     String
+  createdById  String?
+  /// When the marks were last sent to the gradebook
+  postedAt     DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  marks        ExamMark[]
+
+  @@index([courseId])
+  @@map("exam_papers")
+}
+
+/// M291: one student's marks on a paper exam: their version and per question the answer or rubric points (JSON Marks).
+model ExamMark {
+  paperId   String
+  paper     ExamPaper @relation(fields: [paperId], references: [id], onDelete: Cascade)
+  studentId String
+  version   String
+  marks     String
+  score     Float     @default(0)
+  updatedAt DateTime  @updatedAt
+
+  @@id([paperId, studentId])
+  @@index([studentId])
+  @@map("exam_marks")
+}
+
+/// M293: one planned class of a course in the term lesson planner (src/lib/lesson-plan.ts): its day (YYYY-MM-DD) and
+/// timetable slot, topic, goals, homework, materials (JSON ids) and the calendar event students see (`eventId`).
+model LessonPlan {
+  id          String    @id @default(cuid())
+  courseId    String
+  day         String
+  slotId      String
+  startAt     DateTime?
+  endAt       DateTime?
+  topic       String
+  goals       String?
+  homework    String?
+  materialIds String    @default("[]")
+  done        Boolean   @default(false)
+  eventId     String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([courseId, day, slotId])
+  @@map("lesson_plans")
+}
+
+/// M294: a revision pack made from a course's own materials (src/lib/revision-pack.ts: `content` is JSON RevisionPack,
+/// `sources` the titles it was made from). Students see it once `published`.
+model RevisionPack {
+  id          String   @id @default(cuid())
+  courseId    String
+  title       String
+  content     String
+  sources     String   @default("[]")
+  usedAi      Boolean  @default(false)
+  published   Boolean  @default(false)
+  createdById String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([courseId])
+  @@map("revision_packs")
+}
+
+/// M295: a bookable office-hours time (src/server/office-slots.ts). `studentId` set: booked (claimed by a guarded update).
+model OfficeSlot {
+  id          String           @id @default(cuid())
+  teacherId   String
+  startAt     DateTime
+  durationMin Int              @default(15)
+  mode        String           @default("VIDEO")
+  location    String?
+  studentId   String?
+  topic       String?
+  bookedAt    DateTime?
+  createdAt   DateTime         @default(now())
+  waiting     OfficeWaitlist[]
+
+  @@index([teacherId, startAt])
+  @@index([studentId])
+  @@map("office_slots")
+}
+
+/// M295: a student waiting for a booked office-hours time, first come first served (by createdAt).
+model OfficeWaitlist {
+  slotId    String
+  slot      OfficeSlot @relation(fields: [slotId], references: [id], onDelete: Cascade)
+  studentId String
+  topic     String?
+  createdAt DateTime   @default(now())
+
+  @@id([slotId, studentId])
+  @@index([studentId])
+  @@map("office_waitlist")
+}
+
+/// M296: one piece of work on a student's portfolio (src/server/portfolio.ts): a graded hand-in (WORK, with its course
+/// and grade copied when added), a PROJECT or a LINK, with the student's own words (`body`).
+model PortfolioItem {
+  id           String   @id @default(cuid())
+  userId       String
+  kind         String   @default("PROJECT")
+  title        String
+  body         String?
+  url          String?
+  submissionId String?
+  course       String?
+  grade        String?
+  position     Int      @default(0)
+  createdAt    DateTime @default(now())
+
+  @@index([userId, position])
+  @@map("portfolio_items")
+}
+
+/// M296: a private link to a student's passport and portfolio that works until `expiresAt` (or until removed).
+model PortfolioShare {
+  token     String   @id
+  userId    String
+  label     String?
+  expiresAt DateTime
+  views     Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("portfolio_shares")
+}
+
+/// M309: a warranty claim (src/server/trace-claims.ts): `status` per src/lib/trace-claims.ts, `timeline` JSON [{ at, status, note, by }].
+model TraceClaim {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String
+  issue     String
+  photoUrl  String?
+  status    String   @default("OPEN")
+  timeline  String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId, status])
+  @@index([userId])
+  @@index([codeId])
+  @@map("trace_claims")
+}
+
+/// M317: a person's household for home energy (src/server/green-home.ts): how many live there, the electricity grid's country.
+model GreenHome {
+  userId    String   @id
+  people    Int      @default(1)
+  country   String?
+  updatedAt DateTime @updatedAt
+  /// M318: the neighbourhood, a 0.1° square (its south-west corner)
+  areaLat   Float?
+  areaLng   Float?
+  /// M319: the monthly carbon budget, kg CO₂e
+  budgetKg  Float?
+
+  @@index([areaLat, areaLng])
+
+  @@map("green_homes")
+}
+
+/// M317: one month's energy bill of one kind (ELECTRICITY, GAS, OIL, LPG), with its kg CO₂e (homeEnergyKg in src/lib/green.ts).
+model GreenBill {
+  id          String   @id @default(cuid())
+  userId      String
+  month       String
+  kind        String
+  amount      Float
+  unit        String
+  greenTariff Boolean  @default(false)
+  kg          Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, month, kind])
+  @@map("green_bills")
+}
+
+/// M318: a challenge for a neighbourhood (a 0.1° square): a kind of action, a goal in its units, a few weeks.
+model GreenAreaChallenge {
+  id        String   @id @default(cuid())
+  areaLat   Float
+  areaLng   Float
+  title     String
+  kind      String
+  goal      Float
+  startsAt  DateTime
+  endsAt    DateTime
+  createdBy String
+  createdAt DateTime @default(now())
+
+  @@index([areaLat, areaLng, endsAt])
+  @@map("green_area_challenges")
+}
+
+/// M320: a post on the swap and repair board (src/server/green-swaps.ts), in its 0.1° neighbourhood.
+model GreenSwap {
+  id        String            @id @default(cuid())
+  userId    String
+  kind      String
+  category  String            @default("other")
+  title     String
+  details   String?
+  areaLat   Float
+  areaLng   Float
+  status    String            @default("OPEN")
+  reports   Int               @default(0)
+  createdAt DateTime          @default(now())
+  doneAt    DateTime?
+  reported  GreenSwapReport[]
+
+  @@index([areaLat, areaLng, status])
+  @@index([userId])
+  @@map("green_swaps")
+}
+
+/// M320: one person's report of a swap post (once each; three hide it).
+model GreenSwapReport {
+  swapId    String
+  swap      GreenSwap @relation(fields: [swapId], references: [id], onDelete: Cascade)
+  userId    String
+  createdAt DateTime  @default(now())
+
+  @@id([swapId, userId])
+  @@map("green_swap_reports")
 }

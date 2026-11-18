@@ -23,7 +23,7 @@ export async function getSessionUser(request: Request): Promise<SessionUser | nu
     const user = await resolveUser(token);
     if (demoWriteBlocked(request, user, token) || guardianBlocked(request, user) || viewAsBlocked(request, token)) return null;
     // Admins and the owner must have typed the emailed sign-in code (src/server/two-step.ts).
-    if (needsTwoStep(user.role, token) && !hasPass(request, user.id, token)) return null;
+    if (needsTwoStep(user.role, token, user.totpOn) && !hasPass(request, user.id, token)) return null;
     return { id: user.id, name: user.name, email: user.email, role: user.role, owner: isOwner(user), organizationId: user.organizationId ?? null };
   } catch {
     return null;

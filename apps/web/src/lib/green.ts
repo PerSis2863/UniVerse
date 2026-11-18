@@ -97,3 +97,25 @@ export function easiestKind(rows: { kind: string; feeling: string | null }[]): G
   const best = (Object.entries(n) as [GreenKind, number][]).sort((a, b) => b[1] - a[1])[0];
   return best && best[1] >= 2 ? best[0] : null;
 }
+
+/**
+ * M317: home energy from bills, kg CO₂e per unit. Gas, oil and LPG: UK Government GHG Conversion Factors 2024
+ * (DESNZ, natural gas 0.183 kg/kWh, ~10.55 kWh a cubic metre; burning oil 2.54 kg/L; LPG 1.56 kg/L). Electricity:
+ * the country's grid (Ember / national 2023 figures, rounded), the world average otherwise; a renewable tariff 0.03.
+ */
+export const HOME_ENERGY = {
+  ELECTRICITY: { label: 'Electricity', units: ['kWh'] },
+  GAS: { label: 'Gas', units: ['kWh', 'm3'] },
+  OIL: { label: 'Heating oil', units: ['L'] },
+  LPG: { label: 'LPG', units: ['L'] },
+} as const;
+export type HomeEnergyKind = keyof typeof HOME_ENERGY;
+export const GRID_KG_PER_KWH: Record<string, number> = { WORLD: 0.48, IN: 0.71, CN: 0.58, US: 0.37, GB: 0.21, DE: 0.36, FR: 0.06, ES: 0.15, IT: 0.31, NL: 0.33, PL: 0.66, SE: 0.04, NO: 0.03, BR: 0.1, CA: 0.13, AU: 0.55, JP: 0.46, ZA: 0.71, NG: 0.4, MX: 0.42, ID: 0.68, TR: 0.42, AE: 0.4 };
+export const GREEN_TARIFF_KG_PER_KWH = 0.03;
+export function homeEnergyKg(kind: HomeEnergyKind, amount: number, unit: string, opts: { country?: string | null; greenTariff?: boolean } = {}): number {
+  const a = Math.max(0, amount);
+  const k = kind === 'ELECTRICITY' ? (opts.greenTariff ? GREEN_TARIFF_KG_PER_KWH : GRID_KG_PER_KWH[(opts.country ?? '').toUpperCase()] ?? GRID_KG_PER_KWH.WORLD)
+    : kind === 'GAS' ? (unit === 'm3' ? 0.183 * 10.55 : 0.183)
+    : kind === 'OIL' ? 2.54 : 1.56;
+  return Math.round(a * k * 10) / 10;
+}

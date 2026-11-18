@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
-import { CalendarDays, Map as MapIcon, MapPin, Pencil, Plus, Radio, Video } from 'lucide-react';
+import { CalendarDays, Map as MapIcon, MapPin, Pencil, Plus, Radio, Search, Video } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Topbar } from '@/components/layout/Topbar';
 import { SectionTabs, campusMapTabs } from '@/components/layout/SectionTabs';
@@ -13,6 +13,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { promptDialog } from '@/components/ui/Dialogs';
 import { CampusMapView, MapLegend, buildingStats } from '@/components/campus/CampusMapView';
 import { BuildingSheet, RoomChip } from '@/components/campus/BuildingSheet';
+import { RoomFinder } from '@/components/campus/RoomFinder';
 import { CampusUsage } from '@/components/campus/CampusUsage';
 import { floorName, type Building, type CampusMapData } from '@/components/campus/types';
 import { authedJson } from '@/lib/authed-fetch';
@@ -45,6 +46,7 @@ export default function CampusMapPage() {
   const [campus, setCampus] = useState<string | null | undefined>(undefined); // undefined: the server picks mine
   const [view, setView] = useState<View>('map');
   const [editing, setEditing] = useState(false);
+  const [finding, setFinding] = useState(false);
   const [open, setOpen] = useState<string | null>(null);
   const [focus, setFocus] = useState<string | null>(null);
   const key = clock ? `/api/campus/map?date=${clock.date}&min=${Math.floor(clock.min / 15) * 15}&dow=${clock.dow}${campus !== undefined ? `&campus=${campus ?? ''}` : ''}` : null;
@@ -88,7 +90,8 @@ export default function CampusMapPage() {
 
   return (
     <>
-      <Topbar title="Campus map" subtitle="What’s on now: free rooms, live classes, events, and where your next class is" />
+      <Topbar title="Campus map" subtitle="What’s on now: free rooms, live classes, events, and where your next class is"
+        rightNode={<button type="button" className="btn-secondary btn-sm" onClick={() => setFinding(true)}><Search className="w-4 h-4" aria-hidden />Find a free room</button>} />
       <SectionTabs tabs={campusMapTabs(role)} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full space-y-4">
@@ -205,6 +208,7 @@ export default function CampusMapPage() {
           )}
         </div>
       </div>
+      {finding && <RoomFinder onClose={() => { setFinding(false); void mutate(); }} />}
       {opened && data && <BuildingSheet building={opened} rooms={data.rooms} minute={minute} live={data.live} events={data.events} editing={editing} bookHref={bookHref} onClose={() => { setOpen(null); setFocus(null); }} onChanged={() => void mutate()} />}
     </>
   );

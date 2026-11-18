@@ -517,7 +517,7 @@ function ToolCard({ t, starred, onPick, onStar }: { t: Tool; starred: boolean; o
       <button type="button" onClick={() => onPick(t.id)} onPointerEnter={() => preload(t.id)} onFocus={() => preload(t.id)}
         className="w-full h-full text-start rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 transition-[transform,border-color,box-shadow] duration-200 ease-[var(--ease-out-soft)] hover:-translate-y-0.5 hover:border-indigo-400/60 hover:shadow-lg hover:shadow-indigo-900/10 active:scale-[0.98] active:duration-100 motion-reduce:transform-none">
         <span className={`w-11 h-11 rounded-2xl bg-gradient-to-br ${t.tint} text-white grid place-items-center transition-transform duration-300 ease-[var(--ease-out-soft)] group-hover:scale-[1.06] group-hover:-rotate-3 motion-reduce:transform-none`}><t.icon className="w-5 h-5" aria-hidden /></span>
-        <span className="mt-3 flex items-center gap-1.5 pe-8 font-bold text-zinc-900 dark:text-white">{t.name}{t.fresh && <span className="rounded-full bg-pink-500 px-1.5 py-px text-[11px] font-bold text-[#111113]">New</span>}</span>
+        <span className="mt-3 flex items-center gap-1.5 pe-8 font-bold text-zinc-900 dark:text-white">{t.name}{t.fresh && <span className="rounded-full bg-pink-600 px-1.5 py-px text-[11px] font-bold text-white">New</span>}</span>
         <span className="block mt-0.5 text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">{t.what}</span>
       </button>
       <span className={cn('absolute top-2.5 end-2.5 transition-opacity duration-200 [@media(hover:none)]:opacity-100', starred ? 'opacity-100' : 'opacity-0 group-hover:opacity-100 focus-within:opacity-100')}>

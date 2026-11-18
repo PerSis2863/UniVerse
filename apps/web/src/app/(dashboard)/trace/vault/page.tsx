@@ -1,6 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { useNow } from '@/lib/use-now';
+import { UnitClaim } from '@/components/trace/WarrantyClaims';
+import { CompareProducts } from '@/components/trace/CompareProducts';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -71,12 +74,14 @@ function Vault() {
             {data.map((it, i) => <Card key={it.id} it={it} i={i} onChange={() => void mutate()} />)}
           </ul>
         )}
+      <CompareProducts />
     </>
   );
 }
 
 function Card({ it, i, onChange }: { it: Item; i: number; onChange: () => void }) {
   const [busy, setBusy] = useState(false);
+  const now = useNow();
   const transfer = async () => {
     setBusy(true);
     try { await api.post(`/trace/vault/${it.id}/transfer`); onChange(); toast.success('Transfer code ready: give it to the buyer'); }
@@ -99,6 +104,7 @@ function Card({ it, i, onChange }: { it: Item; i: number; onChange: () => void }
         <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] px-3 py-2"><dt className="text-zinc-500">Code</dt><dd className="truncate text-zinc-800 dark:text-zinc-100"><Link href={`/t/${it.code}`} className="hover:underline">{formatCode(it.code)}</Link></dd></div>
         <div className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] px-3 py-2"><dt className="text-zinc-500">Warranty</dt><dd className="text-zinc-800 dark:text-zinc-100">{it.warrantyEnds ? `until ${new Date(it.warrantyEnds).toLocaleDateString()}` : 'not registered'}</dd></div>
       </dl>
+      <UnitClaim vaultId={it.id} code={it.code} product={it.product?.name ?? 'A product'} warrantyActive={!!it.warrantyEnds && new Date(it.warrantyEnds).getTime() > now} />
       <AnimatePresence mode="wait" initial={false}>
         {it.transfer ? (
           <motion.div key="t" initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">

@@ -91,6 +91,12 @@ export default function TimetableManagementPage() {
   const clashes = useMemo(() => clashesOf(plan), [plan]);
   const [form, setForm] = useState<{ courseId: string; dayOfWeek: number; startTime: string; endTime: string; roomId: string; type: string } | null>(null);
   const [busy, setBusy] = useState(false);
+  // M298: what the class being added would clash with, before it's saved.
+  const formClash = useMemo(() => {
+    if (!form || !plan || !form.courseId) return [];
+    const draft = { id: 'new', courseId: form.courseId, dayOfWeek: form.dayOfWeek, startTime: form.startTime, endTime: form.endTime, roomId: form.roomId || null, type: form.type };
+    return clashesOf({ ...plan, slots: [...plan.slots, draft] }).get('new') ?? [];
+  }, [form, plan]);
   const open = () => setForm({ courseId: data?.courses[0]?.id ?? '', dayOfWeek: 0, startTime: '09:00', endTime: '10:30', roomId: '', type: 'LECTURE' });
 
   const save = async () => {
@@ -147,7 +153,13 @@ export default function TimetableManagementPage() {
               <input aria-label="Start time" className="input" type="time" value={form.startTime} onChange={(e) => setForm({ ...form, startTime: e.target.value })} />
               <input aria-label="End time" className="input" type="time" value={form.endTime} onChange={(e) => setForm({ ...form, endTime: e.target.value })} />
               <select aria-label="Room" className="input" value={form.roomId} onChange={(e) => setForm({ ...form, roomId: e.target.value })}><option value="">No room</option>{data!.rooms.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
-              <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary sm:col-span-3">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add to timetable</button>
+              {formClash.length > 0 && (
+                <div role="status" className="sm:col-span-3 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-900 dark:text-amber-100">
+                  <p className="font-semibold">This time clashes</p>
+                  <ul className="mt-0.5 list-disc ps-5">{formClash.map((c) => <li key={c}>{c}</li>)}</ul>
+                </div>
+              )}
+              <button onClick={save} aria-busy={busy || undefined} disabled={busy} className="btn-primary sm:col-span-3">{busy && <Loader2 className="w-4 h-4 animate-spin" />} {formClash.length ? 'Add it anyway' : 'Add to timetable'}</button>
             </div>
           )}
 

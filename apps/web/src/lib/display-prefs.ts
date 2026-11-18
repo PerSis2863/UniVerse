@@ -21,6 +21,14 @@ export function setAppReduceMotion(on: boolean) {
   document.documentElement.classList.toggle('reduce-motion', on);
 }
 
+/** M326: scrolling with a mouse or trackpad glides to a stop (src/lib/smooth-scroll.ts); on unless turned off. */
+export const SMOOTH_EVENT = 'uv-smooth';
+export const smoothScrollOn = () => get('uv-smooth') !== '0';
+export function setSmoothScroll(on: boolean) {
+  set('uv-smooth', on ? null : '0');
+  window.dispatchEvent(new Event(SMOOTH_EVENT));
+}
+
 /**
  * Reading aids (Settings → Appearance), each a class on <html> that globals.css styles:
  * bold text, more contrast, a dyslexia-friendly font (OpenDyslexic, self-hosted), underlined links.

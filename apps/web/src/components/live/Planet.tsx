@@ -57,6 +57,8 @@ interface PlanetProps {
    *  / buttons to zoom; it turns to `focus` (smoothly, the short way); no net or sparks over the land;
    *  only `selected` places (and the one pointed at) carry a name; `onPick` hears a click on a place. */
   interactive?: boolean;
+  // shortcut: since M328 the landing shows EarthGlobe, so `turnable` (and its drag, zoom, focus and pick messages in
+  // planet.worker.ts and planet-paint.ts) has no user; take it out the next time the planet is touched.
   /** M131 (the landing's globe): turned by hand, zoomed, faced to `focus` and clicked (`onPick`) like
    *  `interactive`, but with the full look and drawn on a background thread. */
   turnable?: boolean;

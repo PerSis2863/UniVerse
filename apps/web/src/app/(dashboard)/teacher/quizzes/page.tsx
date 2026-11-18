@@ -14,6 +14,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import dynamic from 'next/dynamic';
 import { SectionTabs, TEACHER_MARKING_TABS } from '@/components/layout/SectionTabs';
 
+const PaperExams = dynamic(() => import('@/components/quizzes/PaperExams').then((m) => m.PaperExams), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 const QuestionBank = dynamic(() => import('@/components/quizzes/QuestionBank').then((m) => m.QuestionBank), { ssr: false, loading: () => <div className="h-40 rounded-2xl skeleton" /> });
 
 /** /quizzes/teacher/my-quizzes: one row per quiz, ready to show. */
@@ -29,7 +30,7 @@ export default function TeacherQuizzes() {
   const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', timeLimit: 30 });
   const [managing, setManaging] = useState<string | null>(null);
   // Quizzes, or the course question banks (Stage 5 · B4.1).
-  const [view, setView] = useState<'quizzes' | 'bank'>('quizzes');
+  const [view, setView] = useState<'quizzes' | 'bank' | 'papers'>('quizzes');
 
   const filteredQuizzes = quizzes.filter((q) => {
     const matchesSearch = q.title.toLowerCase().includes(searchTerm.toLowerCase()) || q.course.toLowerCase().includes(searchTerm.toLowerCase());
@@ -79,8 +80,10 @@ export default function TeacherQuizzes() {
       <Topbar title="Quizzes & Assessments" subtitle="Manage course evaluations" />
       <SectionTabs tabs={TEACHER_MARKING_TABS} />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto space-y-6">
-        <Segmented<'quizzes' | 'bank'> label="Show" value={view} onChange={setView} segments={[{ value: 'quizzes', label: 'Quizzes' }, { value: 'bank', label: 'Question bank' }]} className="max-w-xs" />
-        {view === 'bank' ? (
+        <Segmented<'quizzes' | 'bank' | 'papers'> label="Show" value={view} onChange={setView} segments={[{ value: 'quizzes', label: 'Quizzes' }, { value: 'bank', label: 'Question bank' }, { value: 'papers', label: 'Paper exams' }]} className="max-w-md" />
+        {view === 'papers' ? (
+          <PaperExams courses={courses} />
+        ) : view === 'bank' ? (
           <QuestionBank courses={courses} quizzes={quizzes} onAdded={() => void mutateQuizzes()} />
         ) : (
         <>

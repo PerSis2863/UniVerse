@@ -1,10 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CalendarDays, Loader2, MapPin, Plus, Users } from 'lucide-react';
+import { BedDouble, CalendarDays, Loader2, MapPin, Plus, Sparkles, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
@@ -14,6 +15,7 @@ import { Cover, startTrip } from './travel-ui';
 import { useNow } from '@/lib/use-now';
 import { flag, travelStats, type RouteStop } from '@/lib/travel-stats';
 
+const BookedPlan = dynamic(() => import('./trip-plan').then((m) => m.BookedPlan), { ssr: false });
 const TRIP_SIZES = '(min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw';
 
 // My trips in UniVerse Travel (M206): the trips I'm planning, alone or with friends, and a new one. An
@@ -26,6 +28,7 @@ export function TravelTrips({ join }: { join: string | null }) {
   const router = useRouter();
   const { data, mutate } = useSWR<{ trips: TripRow[] }>('/travel/trips', fetcher);
   const [busy, setBusy] = useState(false);
+  const [plan, setPlan] = useState(false);
   const accept = async () => {
     setBusy(true);
     try { const { data: { trip } } = await api.post<{ trip: { id: string } }>('/travel/trips/join', { code: join }); await mutate(); router.push(`/travel/trip?id=${trip.id}`); }
@@ -52,6 +55,16 @@ export function TravelTrips({ join }: { join: string | null }) {
           <button type="button" onClick={() => void startTrip(router)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden />New trip</button>
         </div>
       </div>
+      {/* M329: a hotel already booked (or just a city): every day planned around it. */}
+      <section className="panel flex flex-wrap items-center gap-4 p-5" aria-labelledby="plan-h">
+        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-300"><BedDouble className="h-5 w-5" aria-hidden /></span>
+        <div className="min-w-0 flex-1 basis-60">
+          <h3 id="plan-h" className="font-semibold text-zinc-900 dark:text-white">Booked a hotel? Get your days planned</h3>
+          <p className="text-sm text-zinc-600 dark:text-zinc-300">Type your hotel or paste the booking: a day-by-day plan around it, with times, walks, lunch and dinner. Or just choose a city.</p>
+        </div>
+        <button type="button" onClick={() => setPlan(true)} className="btn-primary inline-flex items-center gap-2"><Sparkles className="h-4 w-4" aria-hidden />Plan my days</button>
+      </section>
+      {plan && <BookedPlan onClose={() => setPlan(false)} />}
       {!data ? <div className="h-40 skeleton rounded-[var(--radius-card)]" aria-busy="true" /> : !data.trips.length ? (
         <div className="panel mx-auto max-w-xl p-8 text-center">
           <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />

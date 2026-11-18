@@ -76,8 +76,8 @@ function sessionIssuedAt(token: string): number | undefined {
   }
 }
 
-const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt, revokedSessions, organizationId FROM users WHERE';
-type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null; revokedSessions: string | null; organizationId: string | null };
+const USER_COLUMNS = 'SELECT id, name, email, role, status, signedOutAt, revokedSessions, organizationId, totpOn FROM users WHERE';
+type UserRow = { id: string; name: string; email: string; role: string; status: string; signedOutAt: string | null; revokedSessions: string | null; organizationId: string | null; totpOn: number | boolean | null };
 
 /** The signed-in caller, or null when the Next.js route should decide (see the top of the file). */
 async function callerOf(request: Request, db: D1Database): Promise<Caller | null> {
@@ -88,7 +88,7 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   if (isViewAsToken(token) && viewAsRefused(request.method, new URL(request.url).pathname)) return null;
   // Admins and the owner need the pass from the emailed sign-in code (src/server/two-step.ts);
   // without it the Next.js route answers (and asks for the code).
-  const gate = (c: Caller | null) => (c && needsTwoStep(c.role, token) && !hasPass(request, c.id, token) ? null : c);
+  const gate = (c: Caller | null) => (c && needsTwoStep(c.role, token, c.app) && !hasPass(request, c.id, token) ? null : c);
   const hit = callers.get(token);
   if (hit && hit.until > Date.now()) return gate(hit.caller);
 
@@ -121,7 +121,7 @@ async function callerOf(request: Request, db: D1Database): Promise<Caller | null
   // This device signed out on its own (Settings → devices; src/server/auth.ts): the Next.js route explains.
   const revoked: unknown = row.revokedSessions ? parseJson(row.revokedSessions) : null;
   if (authTime !== undefined && Array.isArray(revoked) && revoked.includes(authTime)) return null;
-  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo, session: authTime, org: row.organizationId };
+  const caller = { id: row.id, name: row.name, email: row.email, role: row.role, demo, session: authTime, org: row.organizationId, app: bool(row.totpOn) };
   if (callers.size >= 1000) callers.delete(callers.keys().next().value as string);
   callers.set(token, { caller, until: Math.min(Date.now() + 60_000, exp ? exp * 1000 : Infinity) });
   return gate(caller);

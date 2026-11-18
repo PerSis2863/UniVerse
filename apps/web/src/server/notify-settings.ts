@@ -32,13 +32,17 @@ export async function getSettings(user: SessionUser) {
     prisma.pushSubscription.count({ where: { userId: user.id } }),
   ]);
   const prefs = readPrefs(me?.notifyPrefs);
-  return { prefs, groups: NOTE_GROUPS.map(({ id, label, hint }) => ({ id, label, hint })), courses, devices, nextDigest: me?.digestAt ?? null };
+  // M304: what the next summary would hold now (unread, from the last week).
+  const waiting = await prisma.notification.groupBy({ by: ['type'], where: { userId: user.id, read: false, type: { not: 'digest' }, createdAt: { gt: new Date(Date.now() - 7 * 86_400_000) } }, _count: { _all: true } });
+  const preview: Partial<Record<NoteGroupId, number>> = {};
+  for (const w of waiting) { const g = GROUP_OF_TYPE(w.type); preview[g] = (preview[g] ?? 0) + w._count._all; }
+  return { prefs, groups: NOTE_GROUPS.map(({ id, label, hint }) => ({ id, label, hint })), courses, devices, nextDigest: me?.digestAt ?? null, preview: digestText(preview) };
 }
 
 export async function saveSettings(user: SessionUser, body: Record<string, unknown>) {
   const prefs = cleanPrefs(body.prefs);
   const tz = cleanTimeZone(body.tz);
-  const digestAt = wantsDigest(prefs) ? nextDigestAt(tz, prefs.digestHour) : null;
+  const digestAt = wantsDigest(prefs) ? nextDigestAt(tz, prefs.digestHour, Date.now(), prefs.digestDays) : null;
   await prisma.user.update({ where: { id: user.id }, data: { notifyPrefs: JSON.stringify({ ...prefs, tz }), digestAt } });
   return { prefs, nextDigest: digestAt };
 }
@@ -122,8 +126,11 @@ export async function sendDigests(now = new Date()) {
   });
   if (!due.length) return { due: 0, sent: 0 };
   const ids = due.map((u) => u.id);
-  const since = new Date(now.getTime() - 86_400_000);
-  const unread = await prisma.notification.groupBy({ by: ['userId', 'type'], where: { userId: { in: ids }, read: false, createdAt: { gt: since }, type: { not: 'digest' } }, _count: { _all: true } });
+  // M304: what came since the last summary: a day, or up to a week for people who chose fewer days.
+  const since = new Date(now.getTime() - 7 * 86_400_000);
+  const rows = await prisma.notification.groupBy({ by: ['userId', 'type'], where: { userId: { in: ids }, read: false, createdAt: { gt: since }, type: { not: 'digest' } }, _count: { _all: true }, _max: { createdAt: true } });
+  const windowOf = (u: (typeof due)[number]) => (readPrefs(u.notifyPrefs).digestDays.length === 7 ? 86_400_000 : 7 * 86_400_000);
+  const unread = rows.filter((r) => { const u = due.find((x) => x.id === r.userId); return !!u && !!r._max.createdAt && now.getTime() - r._max.createdAt.getTime() <= windowOf(u); });
   const counts = new Map<string, Partial<Record<NoteGroupId, number>>>();
   for (const r of unread) { const c = counts.get(r.userId) ?? {}; const g = GROUP_OF_TYPE(r.type); c[g] = (c[g] ?? 0) + r._count._all; counts.set(r.userId, c); }
   const tell = due.map((u) => ({ u, text: digestText(counts.get(u.id) ?? {}) })).filter((x): x is { u: (typeof due)[number]; text: { title: string; body: string } } => !!x.text);
@@ -136,7 +143,7 @@ export async function sendDigests(now = new Date()) {
     sent = await pushService.sendEach(items.slice(0, budget));
   }
   // Everyone done gets tomorrow's, in one statement (3 values a person: at most 75).
-  const next = due.map((u) => { const p = readPrefs(u.notifyPrefs); return [u.id, wantsDigest(p) ? dbDate(nextDigestAt(p.tz, p.digestHour, now.getTime() + 3_600_000)) : null] as const; });
+  const next = due.map((u) => { const p = readPrefs(u.notifyPrefs); return [u.id, wantsDigest(p) ? dbDate(nextDigestAt(p.tz, p.digestHour, now.getTime() + 3_600_000, p.digestDays)) : null] as const; });
   await prisma.$executeRawUnsafe(
     `UPDATE users SET "digestAt" = CASE "id" ${next.map(() => 'WHEN ? THEN ?').join(' ')} END WHERE "id" IN (${next.map(() => '?').join(',')})`,
     ...next.flatMap(([id, at]) => [id, at]), ...next.map(([id]) => id),

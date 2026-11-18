@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, Images, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -20,22 +20,10 @@ import { Cover, PlaceSearch } from './travel-ui';
 import { TripDays, type Move, type TripItem } from './trip-days';
 import { TripAdd } from './trip-add';
 import { TripGettingThere, TripStays, TripTravellers } from './trip-extras';
-import { TripMoney } from './trip-money';
-import { TripPacking } from './trip-packing';
-import { TripTodos } from './trip-todos';
-import { TripToday } from './trip-today';
 import { tripToday } from '@/lib/travel-today';
 import { useNow } from '@/lib/use-now';
 import { inboxFor } from '@/lib/apps';
 import { useAuthStore } from '@/store/auth';
-import { TripJournal } from './trip-journal';
-import { TripPolls } from './trip-polls';
-import { TripOffline } from './trip-offline';
-import { TripJetLag } from './trip-jetlag';
-import { TripDocs } from './trip-docs';
-import { TripHolidays } from './trip-holidays';
-import { TripFootprint } from './trip-footprint';
-import { TripShare } from './trip-share';
 import { readPack } from '@/lib/trip-offline-save';
 
 // A trip in UniVerse Travel's planner (M206, /travel/trip?id=…): its cities in order with their dates
@@ -49,17 +37,40 @@ export interface TripAnswer {
   code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
 }
 // The parts that bring much code or data load only when opened.
+// M306: the trip's other parts load when opened (the page opens on Plan): ~100 KB less on first load.
+const partLoading = () => <div className="h-72 skeleton rounded-[var(--radius-card)]" />;
+const TripMoney = dynamic(() => import('./trip-money').then((m) => m.TripMoney), { ssr: false, loading: partLoading });
+const TripPacking = dynamic(() => import('./trip-packing').then((m) => m.TripPacking), { ssr: false, loading: partLoading });
+const TripTodos = dynamic(() => import('./trip-todos').then((m) => m.TripTodos), { ssr: false, loading: partLoading });
+const TripToday = dynamic(() => import('./trip-today').then((m) => m.TripToday), { ssr: false, loading: partLoading });
+const TripJournal = dynamic(() => import('./trip-journal').then((m) => m.TripJournal), { ssr: false, loading: partLoading });
+const TripPolls = dynamic(() => import('./trip-polls').then((m) => m.TripPolls), { ssr: false, loading: partLoading });
+const TripOffline = dynamic(() => import('./trip-offline').then((m) => m.TripOffline), { ssr: false, loading: partLoading });
+const TripJetLag = dynamic(() => import('./trip-jetlag').then((m) => m.TripJetLag), { ssr: false, loading: partLoading });
+const TripDocs = dynamic(() => import('./trip-docs').then((m) => m.TripDocs), { ssr: false, loading: partLoading });
+const TripHolidays = dynamic(() => import('./trip-holidays').then((m) => m.TripHolidays), { ssr: false, loading: partLoading });
+const TripFootprint = dynamic(() => import('./trip-footprint').then((m) => m.TripFootprint), { ssr: false, loading: partLoading });
+const TripAlbum = dynamic(() => import('./trip-album').then((m) => m.TripAlbum), { ssr: false, loading: partLoading });
+const TripShare = dynamic(() => import('./trip-share').then((m) => m.TripShare), { ssr: false, loading: partLoading });
+const TripPlanSheet = dynamic(() => import('./trip-plan').then((m) => m.TripPlanSheet), { ssr: false });
 const TripSafety = dynamic(() => import('./trip-safety'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 const TripPhrases = dynamic(() => import('./trip-phrases'), { ssr: false, loading: () => <div className="h-72 skeleton rounded-[var(--radius-card)]" /> });
 
 /** The trip page's parts (?part=…): the plan, then what M215 and M239–M248 added beside it. */
 const PARTS = [
-  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen },
+  { value: 'plan', label: 'Plan', icon: Route }, { value: 'today', label: 'Today', icon: CalendarClock }, { value: 'polls', label: 'Votes', icon: Vote }, { value: 'journal', label: 'Journal', icon: NotebookPen }, { value: 'album', label: 'Album', icon: Images },
   { value: 'money', label: 'Money', icon: Wallet }, { value: 'packing', label: 'Checklist', icon: Luggage },
   { value: 'phrases', label: 'Phrases', icon: Languages }, { value: 'ready', label: 'Ready', icon: ShieldCheck }, { value: 'share', label: 'Share', icon: HeartHandshake },
 ] as const;
 type Part = (typeof PARTS)[number]['value'];
 /** Today's day number on the trip (in the first city's time), or null outside it. */
+/** M327: which of a city's days today is (0-based), or null. */
+function dayHere(from: string | null, days: number, now: number) {
+  if (!from || !now) return null;
+  const d = Math.floor((now - Date.parse(`${from}T00:00:00Z`)) / 86_400_000);
+  return d >= 0 && d < days ? d : null;
+}
+
 function todayIndex(start: string | null, stops: TripAnswer['stops'], now: number) {
   const t = tripToday(start, stops, [], new Date(now));
   return t.state === 'during' ? stopDates(start, stops)[t.stop].offset + t.day : null;
@@ -85,6 +96,7 @@ export function TravelTrip() {
   const now = useNow();
   const role = useAuthStore((s) => s.user?.role);
   const [adding, setAdding] = useState(false);
+  const [planning, setPlanning] = useState(false);
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
   const stop = stops.find((s) => s.id === chosen) ?? stops[0];
@@ -224,6 +236,7 @@ export function TravelTrip() {
       </div>}
       {part === 'polls' && <TripPolls tripId={t.id} owner={data.owner} ideas={{ place: [...data.items.filter((x) => x.day === null).map((x) => x.name), ...stops.map((s) => nice(s.name))], date: when ? [when] : [] }} />}
       {part === 'journal' && <TripJournal tripId={t.id} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
+      {part === 'album' && <TripAlbum tripId={t.id} name={t.name} stops={stops} start={t.startDate} today={todayIndex(t.startDate, stops, now)} />}
       {part === 'phrases' && <TripPhrases countries={stops.map((s) => s.cc).filter((c): c is string => !!c)} />}
       {part === 'today' && <TripToday tripId={t.id} start={t.startDate} stops={stops} items={data.items} onAdded={() => void mutate()} />}
 
@@ -292,12 +305,16 @@ export function TravelTrip() {
             <button type="button" onClick={() => setAdding((a) => !a)} aria-expanded={adding} className={cn('btn-sm inline-flex items-center gap-1.5', adding ? 'btn-secondary' : 'btn-primary')}>{adding ? <Check className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}{adding ? 'Done adding' : 'Add places'}</button>
           </div>
           {stops.length > 1 && <Segmented className="mt-3 max-w-full overflow-x-auto" label="City" value={stop.id} onChange={setChosen} segments={stops.map((s) => ({ value: s.id, label: nice(s.name) }))} />}
-          {adding && <TripAdd tripId={t.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} onAdded={() => void mutate()} />}
+          {adding && <div id="trip-add" className="scroll-mt-24"><TripAdd tripId={t.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} onAdded={() => void mutate()} /></div>}
           <div className="mt-4">
             <TripDays key={stop.id} stop={stop} items={data.items.filter((x) => x.stopId === stop.id)} from={dates[stops.indexOf(stop)]?.from ?? null} onMove={onMove}
+              today={dayHere(dates[stops.indexOf(stop)]?.from ?? null, stop.days, now)} onAdd={() => { setAdding(true); requestAnimationFrame(() => document.getElementById('trip-add')?.scrollIntoView({ block: 'start', behavior: 'smooth' })); }} onMagic={() => setPlanning(true)}
+              onStarts={(starts) => void change({ stops: stops.map((x) => (x.id === stop.id ? { ...x, starts: JSON.stringify(starts) } : x)) }, () => api.patch(`/travel/trips/${t.id}/stops/${stop.id}`, { starts }))}
+              onDone={(it, done) => void change({ items: data.items.map((x) => (x.id === it.id ? { ...x, doneAt: done ? new Date().toISOString() : null } : x)) }, () => api.patch(`/travel/trips/${t.id}/items/${it.id}`, { done }))}
               onTime={(it, minutes) => void change({ items: data.items.map((x) => (x.id === it.id ? { ...x, minutes } : x)) }, () => api.patch(`/travel/trips/${t.id}/items/${it.id}`, { minutes }))}
               onRemove={(it) => void change({ items: data.items.filter((x) => x.id !== it.id) }, () => api.delete(`/travel/trips/${t.id}/items/${it.id}`))} />
           </div>
+          {planning && <TripPlanSheet tripId={t.id} stop={stop} items={data.items} onClose={() => setPlanning(false)} onDone={() => void mutate()} />}
         </section>
       )}
       {/* M207: there and back, where to stay, who else is there. */}

@@ -8955,3 +8955,622 @@ teacher), Green, Relief, Trace and the hub on a phone and a computer, then a cra
 - **Checked:** the phone and computer crawls (213 pages each, `--layout`), the Travel checks, `pnpm check`. Browser only.
 - **Rules:** a grid with columns from a breakpoint up also gets `grid-cols-1`; after a layout change run
   `node scripts/crawl.mjs <url> --phone --layout` and read the "cut off" lines.
+
+## M290: a deep check of every app: errors, security, speed, motion, accessibility (18 Nov)
+
+The owner: "do deep analysis of all the apps in website and mobile… animations, security, performance, efficiency or
+errors or bugs". What was looked at, what was found, what was fixed:
+
+- **The live error log** (production `error_reports`, read-only): nothing new since 17 Nov. The last one ("undefined",
+  5 times on /travel from iPhones) was a photo failing to load, already no longer reported (`error-monitor.ts`, 17 Nov):
+  **[owner]** mark it resolved in the console. The many rows of 29–30 Oct are the sample world's made-up errors.
+- **Security:**
+  - **Fixed:** a spreadsheet cell's colour, fill, size and alignment went into the version preview's HTML as they were
+    (`src/lib/sheet/render.ts`), so a shared file could carry `url(…)` (blocked by the site's image rules, but still) or
+    `red;position:fixed;…` to restyle the preview. Now only real colours (`colour`, tested in `render.test.ts`), sizes
+    and alignments pass.
+  - **Looked at, sound:** raw SQL (166 places: every outside value a `?`; the interpolations are table names,
+    placeholders and constants); the 15 raw-HTML spots (escaped, or the site's own scripts); sign-in's `next` only goes
+    to this site's pages; the security headers (images only from listed sites); `pnpm audit` no known flaws; Green
+    Business (new today): every action checks the person's role in that company, its public links 15 random characters.
+- **Speed, measured on a phone slowed 4× (built site):** pages show their content in 1.5–2.8 s and settle; no API call
+  asked twice.
+  - **Fixed: Relief's live map kept the phone ~36% busy forever** (the canvas map asked for 60 frames a second to pulse
+    the requests). `WorldCanvas` (Relief, Trace's maps, Green's) now pulses at 30 a second woken by a timer, **rests
+    after 30 s with nobody touching anything** (4% busy) and wakes at a touch, a key or the mouse.
+    `scripts/checks/map-rest-ui.mjs` checks it.
+  - **Tried and taken back:** loading the arranging code (`arrange-dom`, ~10 KB a page) after the page: two arranging
+    checks failed with it (`arrange-ui`, `arrange-keep-ui`), so it stays loaded with the page. Every page is over the
+    bundle report's 200 KB target as on 4 Nov (M96): what's left is the framework, the shell and the arranging layer.
+- **Motion:** no loop on the page's thread (`repeat: Infinity` none); the 103 rows with their own framer-motion entrance
+  are skipped by the motion layer (no double play).
+- **Accessibility:** all 213 pages in dark mode on a phone with axe: two problems, both fixed (Studio's "New" badge
+  contrast; Trace Insights' heat table scrollable by keyboard).
+- **Left:** `arrange-cross-ui.mjs` is out of date since M219 (on a computer the menu is the top bar, so `#side-nav` has
+  no Messages entry): it fails with or without this change. The read-only demo admin's 403 on `PATCH /users/me` (tests
+  only). Local chunk-load blips under the crawl's load (the files exist and load).
+
+## M291: paper exams from the question bank (18 Nov)
+
+The owner: "please add all the 32 features you told me earlier" (the list of M290's reply; this is UniVersity 1). Quizzes
+already had pools, shuffling and exam mode on screen; what was missing was the printed exam.
+
+- **Quizzes → Paper exams** (`PaperExams.tsx`, `/exam-papers`, `src/server/exam-papers.ts`, logic `src/lib/exam-paper.ts`):
+  pick bank questions (by tag), add written questions with a rubric (up to 6 criteria) and a model answer, choose 1–4
+  versions. Version A keeps the order; B–D mix the questions (written ones stay last) and, if asked, the options.
+  Versions are made once and stored (`exam_papers.versions`), so a reprint is the same paper. Print a version or its
+  key (`html[data-printing="report"]` + `.print-report`, as Green Business's report).
+- **Marking:** per student their version, the letters or number they wrote (checked against that version's key) and
+  rubric points; the server works the score out again (`cleanMarks`, `paperScore`). **Send to the gradebook** replaces
+  the paper's own `grades` rows (course + title + those students) in groups of 15, so a class of 500 stays under 50 queries.
+- **Access:** the course's teachers only (`courseAccess().canManage`); students never get a paper or its key here.
+- Database update **0238** (`exam_papers`, `exam_marks`). Sample answers in `src/lib/sample/new-features.ts` (the file for
+  M291 onwards).
+- **Rule:** a paper's versions are frozen when it's made: change a bank question afterwards and the paper keeps the old text.
+
+## M292: early warnings with what to do and the score's trend (18 Nov)
+
+The owner's 32 features, UniVersity 2 ("early warnings for teachers: who's slipping and what to do"). Early warning
+already flagged students with reasons, a check-in message and a support plan (Stage 5); this adds the rest.
+
+- **What usually helps** (`src/lib/early-warning-steps.ts` `stepsFor`): plain rules per reason code (attendance,
+  grades, grade-drop, quizzes, inactive), at most five steps without repeats, each with why and a link to the tool
+  (office hours in Calls, the mastery map, the gradebook, quizzes for a second chance). Sent with each flag by
+  `GET /api/early-warning` (`steps`); shown in the flag's detail (`WhatToDo`).
+- **The score's history:** `student_risk_flags.history` (0239), JSON `[{ at, score }]`, one point a day, the latest 12,
+  written only when the score changes (`withScore`; flags from before start from their last score, `pastOf`).
+  `trendOf` compares now with about a week before (±10): a "Getting worse" or "Improving" chip on the row and a
+  `Spark` line in the detail (its values also as screen-reader text).
+- The board had no sample answer; it has one now (`sampleEarlyWarning`).
+
+## M293: the term lesson planner (18 Nov)
+
+The owner's 32 features, UniVersity 3 ("a term lesson planner linked to materials and the calendar").
+
+- **A course's Lesson plan tab** (`LessonPlanner.tsx`, `/lesson-plans`, `src/server/lesson-plans.ts`, dates in
+  `src/lib/lesson-plan.ts`): the term's classes come from the course's `timetable_slots` (`lessonDates`: from the
+  Monday of the chosen start, up to 26 weeks), worked out **in the browser**, so a class's `startAt`/`endAt` are the
+  teacher's own clock times. Each class: topic, goals, homework, up to 10 of the course's materials, Taught.
+- **Fill from the modules** (`spreadModules`): the modules' titles over the classes still empty, an equal share each.
+- **Put in the calendar:** the planned classes from today become course events (`batch` `lessons:<courseId>`, replaced
+  each time), titled "CODE: topic" with the goals and homework; enrolled students see them in their calendar
+  (`getMyEvents` already shows course events) and their open calendars refresh (`publish`).
+- Students read the coming classes (no editing); `lesson_plans` (0240) one row per planned class (`courseId, day, slotId`).
+- **Rule:** saving sends at most 60 lessons a request (the planner splits bigger saves); a lesson saved with no topic
+  is removed from the plan.
+
+## M294: revision packs from a course's own materials (18 Nov)
+
+The owner's 32 features, UniVersity 4. Class sessions already had study packs (one class each); this is the pack for
+a whole course or a part of it, before an exam.
+
+- **A course's Revision tab** (`RevisionPacks.tsx`, `/revision-packs`, `src/server/revision-packs.ts`, shape in
+  `src/lib/revision-pack.ts`): the teacher picks up to 20 of the course's sources (the text the AI tutor reads,
+  `course_sources`) and, if wanted, the recaps of recorded classes; **one AI request** (`spendAi`, `logAiUse` kind
+  `revision`, `MATH_RULE`) gives an overview, 3–10 topics (summary, key points, terms), 8–20 practice questions with
+  answers and an "I can…" checklist. The answer is untrusted: `cleanPack` keeps it to its shape and sizes.
+- **Without AI** (allowance spent, switch off, nothing with text): `outlinePack`, one topic per module with its items.
+- A pack starts as a draft; **Share with the class** publishes it and tells the students in the app (`notifyMany`,
+  `email: false`). Students see published packs only; answers open one by one; the checklist's ticks are kept on the
+  device (`localStorage` `uv-pack:<id>`, a per-viewer convenience). Printable (`.print-report`).
+- `revision_packs` (0241). **Rule:** sources are cut to 24,000 characters in all, shared fairly (`joinSources`).
+
+## M295: office hours you can book, with a waiting list (18 Nov)
+
+The owner's 32 features, UniVersity 5. Office hours were a live line only (open now, join the queue, Stage 4 · 4.7).
+
+- **Calls → Bookable office hours** (`OfficeBooking.tsx` under `OfficeHoursCard`, `/office-slots`,
+  `src/server/office-slots.ts`, routes in the new `src/server/modules/school-plus.ts` for UniVersity's additions):
+  a teacher opens a span (up to 10 hours, 90 days ahead) cut into meetings of 10–60 minutes with an optional break
+  (`slotTimes` from parent meetings, skipping their own times), by video (the office-hours room `o_<teacherId>`)
+  or in a place.
+- **Students** see their own teachers' times for 30 days: **Book** (claimed by `updateMany … studentId: null`, so two
+  can't take one; at least 15 minutes ahead; two coming bookings per teacher), or **Join the waiting list** of a
+  taken one (ten at most). **Cancel** gives the time to the first one waiting (`giveToNext`, claimed the same way) and
+  tells them; the teacher is told of bookings and cancellations; a teacher removing a time tells everyone on it. In-app
+  and push, never email (`notify`, `email: false`); times in messages are UTC (`when`).
+- `office_slots`, `office_waitlist` (0242). Test: `office-slots.test.ts` (a taken time refused, the waiting list moves up).
+
+## M296: portfolios with work and private share links (18 Nov)
+
+The owner's 32 features, UniVersity 6. The skills passport already had a public page (`/passport/<slug>`, `/p/<handle>`)
+with skills, credentials, evidence and impact; what was missing was the student's own work and a private way to share.
+
+- **My work** (`PortfolioEditor.tsx` on `/student/passport`, `/portfolio`, `src/server/portfolio.ts`): up to 24 pieces:
+  a graded hand-in (`assignment_submissions` with status RETURNED: its course code and, if ticked, the grade are copied
+  in when added; never the teacher's feedback), a project or a link, each with the student's words (2,000 characters),
+  moved up and down. Shown on the passport (`passportContent` → `work`, `PassportView`'s Work section).
+- **Links are checked** (`safeUrl`): only `https://` or the app's own `/api/files/…` (no `..`), so a page others open
+  never carries `javascript:` or `data:` links; they open with `rel="noopener noreferrer nofollow"`.
+- **Private links** (`portfolio_shares`, 24-character tokens): 7, 30, 90 or 180 days, a label only the student sees,
+  views counted, removable. `publicPassport(slug)` takes a token in place of the slug (`sharedOwner`), so the same page
+  and API serve it, public or not, until it expires. Ten links at most.
+- `portfolio_items`, `portfolio_shares` (0243). Test: `portfolio.test.ts`.
+
+## M297: attendance trends that alert parents in the app (18 Nov)
+
+The owner's 32 features, UniVersity 7. Before: guardian *contacts* got an email per absence (off without the owner's
+email switch) and parent *accounts* an in-app note for frequent absences (Q11).
+
+- **Week by week** (`src/lib/attendance-trend.ts` `weeklyRates`): the share of counted classes attended per week
+  (present or late; excused not counted), the last eight weeks, in `guardianView` (`attendanceWeeks`) and drawn as bars
+  in `ChildView` (also on the guardian link page), with screen-reader text per week.
+- **Falling** (`falling`): the last two weeks with classes average 15 points or more below up to four weeks before, at
+  least four classes each side. Shown in the parent app, and `frequentAbsenceAlerts` now alerts on it too ("Attendance
+  fell from 95 % to 60 %…"), under the same once-a-week limit (`enrollments.absenceAlertAt`).
+- **Each absence in the app** (`absenceInApp` in `attendance-plus.ts`): parents whose link says `EACH` hear the day it's
+  marked (at most 10 students a register save). **The parent's choice** per child: `guardian_links.alerts` (0244):
+  EACH (default), OFTEN (frequent or falling only), NONE; set in the parent app (`PATCH /api/parent/children/:linkId`).
+
+## M298: timetable clashes and a room finder (18 Nov)
+
+The owner's 32 features, UniVersity 8. Admin → Timetable already marked clashing classes (Q12, `clashesOf`).
+
+- **Before adding a class:** the New class form runs the same `clashesOf` with the draft class and lists what it would
+  clash with; the button reads "Add it anyway".
+- **Find a free room** (`RoomFinder.tsx`, a button on the campus map): a day, from–to and seats; it reads the campus map
+  for that day (`GET /api/campus/map`: each room's classes and bookings in minutes) and keeps rooms with nothing on for
+  the whole time and enough seats, the snuggest first (`freeRooms`, `src/lib/room-finder.ts`); **Book** reserves it.
+- **A real fix:** `RoomsService.bookRoom` only refused a booking at the exact same start time, so 11:00 for an hour went
+  through over a 10:00 two-hour booking, and over a class in the room. It now refuses any overlap with the day's
+  bookings and with that weekday's timetable classes in the room ("CS101 has a class in this room then").
+  `rooms.service.test.ts` covers it.
+- **A person's calendar** (`CalendarBoard`) says which of their weekly classes overlap (`weekClashes`), with who to tell.
+
+## M299: announcement read receipts, reminders and confirmations (18 Nov)
+
+The owner's 32 features, UniVersity 9. Course announcements were already translatable (`TranslatableAnnouncement`) and
+counted ("Seen by 28 of 32", B2); this makes the receipts useful.
+
+- **Who has read it** (`ReadersSheet` in `CourseBoard.tsx`; `GET /course-announcements/:courseId/:id/readers`, the
+  course's teachers and TAs): every enrolled student, seen (and confirmed) with when, or not yet.
+- **Remind the rest** (`remindAnnouncement`, teachers): an in-app note to those who haven't seen it (or, if it asks, haven't
+  confirmed), at most every 12 hours (`announcements.remindedAt`, claimed by `updateMany`).
+- **Ask students to confirm** (a tick when posting; `announcements.needsAck`): students get **I've read it**
+  (`acknowledgeAnnouncement`, enrolled students only; `announcement_reads.ackAt`). The board sends students their own
+  read row only.
+- Routes in `src/server/modules/school-plus.ts` (`teaching()` checks the course role). 0245. Test:
+  `course-announcements-ack.test.ts`. `owner-schema.json` regenerated for 0238–0245.
+
+## M300: a parent's weekly progress page (18 Nov)
+
+The owner's 32 features, UniVersity 10. The parent app showed the child overall (`ChildView`, "this week in numbers");
+this is the week itself.
+
+- **`WeekReport.tsx`** above `ChildView` in the parent app's Schoolwork, `GET /parent-week?studentId=&week=` (parent
+  accounts only, and only a child linked to them; `src/server/guardian-week.ts`): the grades that came back (scores,
+  never the teacher's written feedback), attendance day by day, what was handed in (assignments and quizzes), what was
+  missed (due that week, not handed in, already past), what's due the week after (done or not), and the week's course
+  announcements (titles). Four numbers on top; arrows go back up to 26 weeks (`.swap` with `data-dir`); printable.
+- Weeks are Monday to Sunday in UTC (`mondayOf`). Test: `guardian-week.test.ts`.
+- **Batch 1 checked:** `pnpm check` (types, lint, 1,851 unit tests, lean) passes. Not tried in a browser this round:
+  the new screens are checked by types, lint and unit tests only.
+
+## M301: an authenticator app as everyone's second sign-in step (18 Nov)
+
+The owner's 32 features, Platform 1. Two-step sign-in was for admins and the owner only (an emailed code, or a passkey).
+
+- **Settings → Privacy & Security → Authenticator app** (`AuthenticatorApp` in `SignInSecurity.tsx`; `/auth/app-code`,
+  `/start`, `/confirm`, `/off` in `src/server/modules/auth.ts`): a 20-byte secret shown once as a QR code (`otpauth://`)
+  and as a key, sealed with `secret-box` (`users.totpSecret`, context `totp:<id>`); the first right code turns it on
+  (`users.totpOn`) and returns this sign-in's pass, so the person isn't asked again at once; turning it off needs a
+  current code. Five wrong codes lock for 15 minutes (`takeTry`), as the emailed codes.
+- **Codes** (`src/server/totp.ts`): RFC 6238 (HMAC-SHA1, 30 s, 6 digits; tested with the RFC's own values), the step
+  either side for a phone's clock, and never the same step twice (`users.totpStep`).
+- **Who is asked** (`needsTwoStep(role, token, app)`): admins as before (when email works) and anyone with `totpOn`
+  (needs only `SESSION_SECRET`); `TWO_STEP_OFF` still stops both. Passed through in `getSessionUser`, the router and
+  the Worker's light paths (`fast-api.ts` reads `totpOn` with the caller). `TwoStepPanel` asks for the app's code
+  (email only for admins); emailed codes are now refused for non-admins (they cost emails).
+- 0246 (`users.totpSecret`, `totpOn`, `totpStep`). Tests: `totp.test.ts`.
+- **Rule:** never send `totpSecret` anywhere after setup; "Download my data" skips it.
+
+## M302: "Download my data" complete, a readable copy, deletion covering the new tables (18 Nov)
+
+The owner's 32 features, Platform 2. Download and deletion existed (GDPR / DPDPA); checking them found a real gap.
+
+- **The gap:** `exportUserData` (`src/server/export.ts`) followed only Prisma *relations* to `User` (userId, studentId,
+  senderId…). Most tables since Stage 5 name their person by a **plain column** (no relation), so **75 tables** were never
+  in the file: Trace scans, points, warranties, reviews, ownership; Relief posts, watches, plans, safe check-ins; Green
+  actions, goals, pledges, footprints; Travel trips, saved places, journals, documents, reviews; docs, task boards,
+  game scores, arrangements; and today's portfolio items, office-hours bookings and exam marks. They're found now by
+  their plain `OWN_LINKS` column (`NOT_THEIRS` keeps out `CommunityReport.senderId`, others' reports about you;
+  `PortfolioShare` and `totpSecret`/`totpStep` stay out). `export.test.ts` checks it reaches 200+ tables.
+- **Readable copy** (`src/lib/data-page.ts`, a button beside Download): the same JSON made into one HTML page in the
+  browser (a contents list, a table per kind of record), every value escaped (`data-page.test.ts`).
+- **Deletion** (`eraseAccount`): also deletes portfolio items and private links, office-hours waiting lists, frees the
+  person's bookings, removes their own office-hours times, and clears the authenticator secret.
+- **Rule:** a new table that holds a person's rows by a plain column is in the download automatically when the column
+  is one of `OWN_LINKS`; if it's personal, add it to `eraseAccount` too.
+- **Left as it was:** the export reads ~220 tables in one request (above the usual 50 queries); it worked at 146 and runs
+  rarely. If it ever fails on D1, split it into parts.
+
+## M303: search across all apps (18 Nov)
+
+The owner's 32 features, Platform 3. `/api/search` (the ⌘K palette) searched UniVersity only (courses, groups, docs,
+tasks, assignments, materials, events…).
+
+- **`src/server/search-apps.ts` `searchApps`** (added to the route's `Promise.all`, its own `.catch`): my trips (owner or
+  member) and saved places; my brand's products (`trace_brand_members`) and any brand's public page (`/b/<slug>`); open
+  Relief requests and offers from the last 30 days by title or place (only what the public map shows: never who, never
+  exact positions); Green events (not hidden) and my teams. Five of each.
+- **Pages by name** (`APP_PAGES`, `pagesFor`): every word typed must be in a page's title or words ("free room" → Find a
+  free room). Add a page there when an app gets one people will look for.
+- The palette shows them under Travel, Trace, Relief, Green and Pages (`RESULT_KIND` in `CommandPalette.tsx`).
+
+## M304: notification digest settings (18 Nov)
+
+The owner's 32 features, Platform 4. Q9 had push / summary / in-app per kind, muted courses and the summary's hour.
+
+- **Which days** (`NotifyPrefs.digestDays`, 0 = Monday; default every day): every day, weekdays, or once a week on a day
+  (`NotifyKinds.tsx`). `nextDigestAt(tz, hour, from, days)` skips other days (looks up to 9 days ahead). `sendDigests`
+  now reads unread notifications from the last 7 days and keeps, per person, those within their window (a day for daily
+  summaries, a week otherwise).
+- **Relief, Green, Trace apart:** the shared `impact` group became `relief`, `green` and `trace` (`NOTE_GROUPS`); a saved
+  choice for `impact` applies to all three (`cleanPrefs`). The notification centre has an icon and colour for each.
+- **Preview:** `GET /api/notifications/settings` returns `preview` (`digestText` of the person's unread notifications of
+  the last week), shown as "Waiting for it now".
+- Tests in `notify-prefs.test.ts`. **Rule:** a new app with its own notifications gets its own group (types + tags).
+
+## M305: more pages that work offline (18 Nov)
+
+The owner's 32 features, Platform 5. Offline already: visited pages' shells (service worker), courses saved as packs,
+work queued in the outbox, a trip saved for offline (M240), and the last answer of six reads (M46,
+`src/lib/offline-reads.ts`, kept in the device's IndexedDB, wiped at sign-out, never in the service worker's cache).
+
+- **Nine more reads kept** (`KEPT`): `/api/core/calendar/my`, `/api/assignments`, `/api/core/grades/student`,
+  `/api/notifications`, `/api/core/lesson-plans?courseId=…`, `/api/core/revision-packs?courseId=…`,
+  `/api/core/office-slots`, `/api/core/parent-week?studentId=…` and `/api/core/relief/plan`. Every GET through `api` or
+  `authedJson` uses them by itself (`withOfflineCopy`). `keptOffline(url)` is tested.
+- **The offline page** (`public/offline.html`, plain script, `textContent` only) shows **My emergency plan** first
+  (meeting points, contacts, needs) when it was saved: no connection is when it's needed.
+- **Rule:** keep only reads that belong to the person and are small; a URL with more query parts isn't matched.
+
+## M306: lighter pages, first round (18 Nov)
+
+The owner's 32 features, Platform 6. `node scripts/bundle-report.mjs` on the last build (M290's): the shared shell is
+139 KB (gzipped) on every page, the dashboard layout 32 KB more; **0 of 255 pages** within target (dashboards 200 KB);
+the heaviest: `/docs/open` 576 KB (the editor), `/travel/trip` 468 KB, `/console` 422 KB, `/relief/orgs` 406 KB.
+
+- **A trip** (`TravelTrip.tsx`): its parts were all imported up front although one shows at a time; the 12 besides Plan
+  (Today, Money, Packing, Checklist, Journal, Votes, Save for offline, jet lag, documents, holidays, footprint, Share) are
+  now `dynamic()` with a skeleton, as Safety and Phrases already were.
+- **Relief → Organisations** (`ReliefOrgs.tsx`): `OrgDashboard` loads when an organisation is opened.
+- **Left:** the shared shell and layout (the framework, the menus, the arranging layer M290 tried to defer and took
+  back), the document editor (ProseMirror and Yjs are the page). Sizes after this change: in the build at the end of
+  this round of features.
+
+## M307: a brand's scan funnel (18 Nov)
+
+The owner's 32 features, Trace 1 ("how many scans turn into sales").
+
+- **`GET /trace/funnel?days=30|90|365&product=`** (`src/server/trace-funnel.ts`, the brand's team only via `brandOf`): one
+  SQL over `trace_scans` joined to `trace_codes` (sold = the code claimed by a shop, `claimedAt`), `trace_owners`,
+  `trace_warranties`, `trace_reviews`, counting distinct units; and the same per product (top 8 by units scanned).
+- **The steps** (`src/lib/trace-funnel.ts` `funnelSteps`, `biggestDrop`, tested): each step's count, share of all and of
+  the step before; the biggest drop is marked once there are 20 units, with a plain hint (`HINT` in `ScanFunnel.tsx`).
+- **`ScanFunnel.tsx`** at the end of Trace → Insights; bars are `<Fill>`. Counts only: never who scanned.
+
+## M308: area alerts for copies (18 Nov)
+
+The owner's 32 features, Trace 2. Brands heard of each reported fake (M155, at most 5 an hour) but nothing about suspect
+checks, and nothing per place.
+
+- **The watch** (`trace_brands.watch`, JSON; `src/lib/trace-watch.ts` `cleanWatch`, tested): up to 40 countries, a
+  threshold (1, 3, 5, 10, 25 likely copies in 24 hours), and "anywhere they cluster" (the 0.5° cell, as the Radar).
+  `areaOf` names the area: a watched country first, else the cell.
+- **When it runs** (`copySeen` in `src/server/trace-watch.ts`): after the answer (`later()`), only for a scan whose verdict
+  is SUSPECT (`trace.ts`, using the network's position `geoLat/geoLng`, never the person's) and for each fake report
+  (`reportFake`). It counts the area's suspect checks and reports of the last 24 hours; at the threshold it claims the
+  area for the day (`trace_brands.watchSent`, kept two days, `prune`) and tells the brand's team in the app.
+- **Radar → Area alerts** (`AreaAlerts.tsx`, `GET/PUT /trace/watch`; only the brand's owner changes it). 0247.
+
+## M309: warranty claims from start to finish (18 Nov)
+
+The owner's 32 features, Trace 3. Warranties could be registered (Q-era Trace) and repairs logged (M145); nothing in
+between.
+
+- **The owner** (`UnitClaim` on each vault card; `POST /trace/vault/:id/claim`): only the unit's vault owner, with a
+  registered warranty still running, one open claim per unit; the issue (10–2,000 characters) and an optional app-file
+  photo (`/api/files/…` only).
+- **The brand** (`BrandClaims` on its Trace home; `GET /trace/claims?open=1`, `POST /trace/claims/:id/status`): the queue
+  with the owner's first name only (never their email), the product and the warranty's end; the next steps allowed
+  (`brandMoves` in `src/lib/trace-claims.ts`, tested): OPEN → REVIEWING / APPROVED / REFUSED; APPROVED → REPAIRED /
+  REPLACED / REFUNDED; any of those or REFUSED → CLOSED. A refusal needs a reason. The move is claimed with
+  `updateMany … status: <the one read>`, so two people can't move it at once. REPAIRED writes a `trace_repairs` row
+  ("Warranty repair: …", as the brand's).
+- Each step is in `trace_claims.timeline` and told to the other side in the app (`notify`, `email: false`); the owner can
+  withdraw until a decision. 0248. Test: `trace-claims.test.ts`.
+
+## M310: a setup guide for new shops (18 Nov)
+
+The owner's 32 features, Trace 4.
+
+- **`ShopGuide.tsx`** at the top of Trace → Wallet; `GET /trace/shop-guide` (`src/server/trace-shop.ts`): four counts
+  (the person's SHOP roles in brands' networks, their recorded SHOP stops, units they claimed at sale, their points)
+  and the tier (`tierFor`, sales in 90 days). Steps (`src/lib/shop-guide.ts`, tested): join, counter sign (ticked on the
+  device, `uv-shop-sign`), record a delivery, check a unit at the first sale, points; it hides once all are done. People
+  who aren't shops see one "Run a shop? Set it up" button.
+
+## M311: comparing products side by side (18 Nov)
+
+The owner's 32 features, Trace 5.
+
+- **`CompareProducts.tsx`** under the vault; `GET /trace/compare?ids=a,b` (`src/server/trace-compare.ts`): only products
+  the person owns (vault) or has checked (their scans) can be picked (no browsing a brand's catalogue); with two to four
+  ids, each one's facts from its product row and Digital Product Passport (`readDpp`: carbon, recycled, recyclable,
+  durability, repair score, made in) and its reviews (average, count).
+- **Best per fact** (`bestOf` in `src/lib/trace-compare.ts`, tested): lower is better for price and carbon, higher for the
+  rest; none when fewer than two have a value or all tie; prices only in one currency. Marked in green and for screen
+  readers ("best").
+
+## M312: delivery routes for volunteers (18 Nov)
+
+The owner's 32 features, Relief 1.
+
+- **`HelpRoute.tsx`** above "I'm helping" (shown with two or more taken, undelivered requests); all in the browser, no
+  new route: `orderStops` (`src/lib/relief-route.ts`, tested) takes the nearest next, then 2-opt untangles crossings;
+  `routeSummary` adds legs ×1.3 for streets and times at 4.5 / 14 / 25 km/h; `mapsLink` opens Google Maps directions
+  with the stops as waypoints (up to 10, Google's link limit).
+- Start: the first request, or "Start from where I am" (the device's position, used only on the device). Positions are the
+  posts' rounded ones (~500 m, `relief.ts`), so the page says to message each person for the exact address.
+
+## M313: supply forecasts for Relief organisations (18 Nov)
+
+The owner's 32 features, Relief 2. Supplies had a quantity, a "low at" level and a log of moves (M106).
+
+- **`forecastSupply`** (`src/lib/supply-forecast.ts`, tested): what went out (negative moves) in the last 28 days, the last
+  week counting twice, gives the daily use; then days left, the run-out day and the order-by day (`LEAD_DAYS` = 3
+  before). States: ok, soon (10 days or less), now (3 or less), unknown (nothing went out lately).
+- `GET /relief/orgs/:id` sends `forecast` with each supply (one more query: four weeks of outgoing moves, up to 3,000);
+  `OrgDashboard`'s supply rows show it under the name.
+
+## M314: an emergency's timeline and report (18 Nov)
+
+The owner's 32 features, Relief 3. Emergencies (M150) could be declared, ended and answered "I'm safe"; nothing stayed
+afterwards but the rows.
+
+- **`GET /relief/orgs/:id/incidents`** (the organisation's, newest first, with how many marked safe) and **`GET
+  /relief/incidents/:id/report`** (`src/server/relief-report.ts`): members of the incident's organisation only
+  (`orgRole`). The report reads, for the incident's window (start to end, or now): `relief_safe` (total and per hour,
+  up to a week), posts inside its radius (a box first, then `kmBetween`), the organisation's outgoing supply moves and
+  shifts. Numbers, needs by kind, supplies given out, and a timeline (declared, each need, each delivery, shifts,
+  ended; 80 at most). Test: `relief-report.test.ts`.
+- **`IncidentReports.tsx`** in an organisation's Overview (every member sees past emergencies; declaring stays the
+  coordinators'), the report in a sheet, printable (`.print-report`).
+
+## M315: Relief requests in the helper's language (18 Nov)
+
+The owner's 32 features, Relief 4. The screens (and so the request form) already follow the person's language (the
+UI catalog); what an asker *wrote* stayed in their language.
+
+- **`relief-post`** is a translatable kind (`KINDS` in `src/server/text-translate.ts`, `TextKind` in
+  `Translatable.tsx`): `readable()` lets anyone read the title and details of posts the live map shows (open or being
+  helped, from the last 30 days) and the reader's own and those they help (20 a request); translations are stored and
+  shared per language as for announcements (one AI call per post and language).
+- The post card (`ReliefApp.tsx`) shows title and details through `Translatable` (one "Translate" for both, the text
+  marked `translate="no"`); the form says "Write in your own language: helpers can translate it into theirs".
+- Not added: reading levels for posts (they're short).
+
+## M316: Relief requests saved on the phone with no signal (18 Nov)
+
+The owner's 32 features, Relief 5. The device outbox (`src/lib/outbox.ts`, upgrade 4) already sent quiz answers,
+hand-ins and messages made offline; Relief posts failed with "Could not post it".
+
+- **`PostForm`** (`ReliefApp.tsx`) gives each post a `clientId` (`newClientId`); if sending fails with no connection
+  (`!navigator.onLine` or `isOfflineError`), it's queued (`enqueue`, kind `relief`, `POST /api/core/relief/posts`) and the
+  person told it goes on the map by itself when there's signal (and to call the emergency number if it can't wait).
+  `OfflineBar` flushes the outbox when the connection returns, as for the other kinds.
+- **Never twice:** `createReliefPost` returns the post a `(userId, clientId)` already made (`relief_posts.clientId`,
+  unique with the user, 0249); `clientIdOf` checks the id's shape. Test: `relief-offline.test.ts`.
+- **Batch 3 (Trace 5, Relief 5, M307–M316) checked:** unit tests, lint, types after each item.
+
+## M317: home energy from bills (18 Nov)
+
+The owner's 32 features, Green 1. The footprint (M216) asked for "kWh a month" as a guess; Green → Business reads
+company bills (M270-era).
+
+- **Factors in `src/lib/green.ts`** (the rule): `HOME_ENERGY`, `GRID_KG_PER_KWH` (23 countries and the world, 2023,
+  rounded), `GREEN_TARIFF_KG_PER_KWH`, `homeEnergyKg` (gas by kWh or m³, oil and LPG by litre; UK DESNZ 2024).
+- **`/green/home`** (`src/server/green-home.ts`): the household (`green_homes`: people, grid country; changing the
+  country recomputes the electricity bills) and the bills (`green_bills`, one per month and kind, up to 240);
+  `byMonth`, `compareLatest` (`src/lib/home-energy.ts`, tested) give per month, per person, vs a year before and the
+  average. **Read a bill's photo** (`POST /green/home/read`): one AI request (`spendAi`, `featureOff('ai')`, logged as
+  `home-bill`), only fills the form.
+- **`HomeEnergy.tsx`** at the end of Green → Footprint's questions. Deleting an account removes the bills and home
+  (`eraseAccount`); "Download my data" has them by `userId`. 0250.
+
+## M318: neighbourhood challenges (18 Nov)
+
+The owner's 32 features, Green 2. Green had a weekly challenge for everyone and teams with codes; nothing for the
+people who live near each other.
+
+- **The neighbourhood** (`green_homes.areaLat/areaLng`, 0251; `areaOf` in `src/lib/green-area.ts`, tested): the 0.1°
+  square's south-west corner, as Green's map rounds positions; the device's position is used once and never stored.
+- **`/green/area`** (`src/server/green-area.ts`): with fewer than `MIN_NEIGHBOURS` (3) people in the square, only the
+  count; otherwise this month's and last month's confirmed kg CO₂ of everyone there (one SQL joining `green_actions` and
+  `green_homes`) and the area's challenges (`green_area_challenges`: kind, goal in its units, 7/14/30 days, three running
+  at most), each with its confirmed progress. Setting one tells the neighbours in the app (200 at most, `email: false`);
+  only whoever set it removes it. Test: `green-area.test.ts`.
+- **`Neighbourhood.tsx`** under the weekly challenge on Green's home; `pace()` says on or behind pace.
+
+## M319: a monthly carbon budget with a forecast (18 Nov)
+
+The owner's 32 features, Green 3.
+
+- **`monthPlan`** (`src/lib/carbon-budget.ts`, tested): a twelfth of each part of the latest footprint (`footprint()` from
+  M216's answers), home energy replaced by this month's bills (M317, the person's share by household size) when there
+  are any, less confirmed actions' CO₂ this month; so far = the month's share gone by; forecast = where it ends at this
+  rate. `budgetState`: under, close (within 10 %), over. `FAIR_SHARE_KG_MONTH` 208 (2.5 t a year, IGES 2019).
+- **`/green/budget`** (`src/server/green-budget.ts`; the budget in `green_homes.budgetKg`, 0252), **`CarbonBudget.tsx`**
+  at the top of Green → Goals; without a footprint it points to the Footprint tab.
+
+## M320: a swap and repair board (18 Nov)
+
+The owner's 32 features, Green 4.
+
+- **Green → Swap & repair** (a new tab, `GREEN_VIEWS` `swap`; `SwapBoard.tsx`; `/green/swaps`, `src/server/green-swaps.ts`):
+  kinds and categories in `src/lib/green-swap.ts`; posts belong to the poster's 0.1° neighbourhood (M318; without one the
+  tab shows the Neighbourhood card to choose it) and show there and in the eight squares around it, open ones for 30
+  days, ten open per person. First names only; **Message** opens a direct chat (`/api/chat/conversations`), never a
+  phone or address (the form says so). Done → "kept in use around here" for the month.
+- **Reports** (`green_swap_reports`, once per person, never your own): three hide a post (`HIDE_AT_REPORTS`). Deleting an
+  account removes the person's posts. 0253. Test: `green-swaps.test.ts`.
+
+## M321: a shared photo album per trip (18 Nov)
+
+The owner's 32 features, Travel 1. The journal (M242) already held each member's photos per day.
+
+- **The trip's Album part** (`trip-album.tsx`, `PARTS` `album`, loaded when opened): the journal entries with a photo,
+  grouped by day (`tripDayList`), filtered by person; tapping one opens a full view (arrow keys, Escape; the arrows flip
+  for right-to-left languages). **Add photos**: up to 20 at once, shrunk on the device (`shrinkImage`), uploaded, then
+  `POST /travel/trips/:id/journal/photos` (`addAlbumPhotos`: members only, app files only, a day of the trip, in groups
+  of 10) as journal entries; the others' pages update live. **Save all** zips the shown photos in the browser (`fflate`,
+  stored, no recompression). Test: `travel-album.test.ts`.
+- No new table: an album photo is a journal entry without text (it shows in the journal too).
+
+## M322: accessibility details for places (18 Nov)
+
+The owner's 32 features, Travel 2 (the last of the 32). Place cards already said "Wheelchair accessible" from
+OpenStreetMap's `wheelchair` tag.
+
+- **The map's data** (`accessFromTags` in `src/lib/travel-access.ts`, tested): `wheelchair`, `toilets:wheelchair`,
+  `hearing_loop`, `elevator`/`lift`, `wheelchair:description`, in `PlaceInfo.access` (`placeFromNominatim`); the card
+  shows them with "(OpenStreetMap)". Places already in `travel_cache` (30 days) get it when they're fetched again.
+- **Visitors' notes** (`travel_reviews.access`, 0254, JSON checked by `cleanAccess`): yes / no for step-free entrance,
+  accessible toilet, lift or ramp, quiet, places to sit, and a 300-character note, in the review form
+  (`Reviews.tsx`); `GET /travel/reviews` adds `access` (`accessSummary`: per thing, yes of those who answered; five notes).
+- **The 32 are done** (M291–M322). Next in this round: a check of the new screens in a browser, the page-weight numbers
+  for M306, then more new features (the owner: "also make more new features").
+
+## M323: the 32 features' screens in a browser, and fixes (18 Nov)
+
+The owner's 32 features, "a smoothness pass on every new screen". `pnpm local:build` (5.2 min; server code 53.7 of 64 MB),
+`pnpm local:serve`, then **`scripts/checks/new-screens-ui.mjs`** (new): 22 screens in sample mode (so each has data:
+`src/lib/sample/new-features.ts`) at 390 and 1280 px, light and dark: axe serious/critical, sideways scrolling, page and
+console errors.
+
+- **No page errors, nothing scrolling sideways.** Fixed what axe found: a course board's chosen tab (`text-indigo-600` on
+  the tab bar's #ececec, 4.37:1, on every course) now `text-indigo-700`; the revision pack's Shared/Draft badge; the shop
+  guide's finished steps (no `opacity-70`: a struck-through title instead); the funnel's table and Trace Insights'
+  recent reviews now keyboard-scrollable regions; Insights' Gold tier `text-amber-800`, 11 px. Seen in a screenshot: the
+  lesson plan's topic box squeezed on a phone (now its own line below the date).
+- **Left:** the campus map's building buttons (older): their `aria-label` doesn't include all their visible text
+  (`label-content-name-mismatch`).
+- **M306's numbers** (`bundle-report.mjs` on this build): `/travel/trip` 468 → 421 KB, `/relief/orgs` 406 → 323 KB;
+  `/relief/mine` 389 → 398 KB (the route planner and the outbox), `/green` 394 → 395 KB.
+
+## M324: a paper exam as an online quiz (18 Nov)
+
+The owner, during the 32: "also make more new features". The first of a few that tie the 32 together.
+
+- **`POST /exam-papers/:id/to-quiz`** (`paperToQuiz` in `src/server/exam-papers.ts`): from version A, a DRAFT quiz titled
+  "<paper> (online)" with the paper's instructions and minutes; questions still in the bank come over as stored there
+  (type, options, key, meta); others from the paper (choice → the right option's text, multi → JSON of the right texts,
+  number → its value, written → SHORT with the model answer and the rubric's total). Nine rows a statement. Test:
+  `exam-papers.test.ts`. The button sits beside Remove on a paper.
+
+## M325: office-hours bookings in the calendar (18 Nov)
+
+- **`useOfficeEvents`** in `CalendarBoard.tsx` reads `/office-slots` (M295) and adds the booked times as `OFFICE_HOURS`
+  events (`oh-<id>`, not movable: their `userId` is empty): a student's own ("Office hours with Dr Iyer"), a teacher's
+  booked ones ("Office hours: Ana"), with the topic as the description. No new route; the offline copy of
+  `/office-slots` (M305) means they show without a connection too.
+
+## M326: scrolling glides, like tripist.app (18 Nov)
+
+The owner: "take inspiration from this website… it takes time to scroll and it feels really good". tripist.app is a
+Framer site whose Smooth Scroll part runs Lenis with `duration = intensity / 10`, and it sets 25: each wheel turn moves
+a target and the page eases there over 2.5 s on Lenis's expo-out curve (`1.001 − 2^(−10t)`: half the way in a quarter
+of a second, then a long soft stop). No new library: **`src/lib/smooth-scroll.ts`** (about 80 lines), started with the
+other motion in `ScrollMotion.tsx`, on every page (the landing and the app: both scroll the document).
+
+- **Native everywhere else:** touch (phones keep their own momentum, as tripist), keys, the scroll bar, `#links`,
+  Shift / Ctrl / Alt / ⌘ + wheel (sideways, pinch zoom), a wheel something already took (`defaultPrevented`: maps,
+  games), canvases, frames, videos, fields, dialogs, `.maplibregl-map`, `data-scroll-native`, fixed bars and sheets, a
+  part that scrolls by itself until its end (or always, with `overscroll-behavior: contain`), a page locked with
+  `overflow: hidden` (viewers), the top and the end (the device's bounce). A key, the scroll bar or a new page moving
+  the page lets the glide go (it checks `scrollY` each frame). `scrollTo({ behavior: 'instant' })`, so the landing's
+  `scroll-behavior: smooth` doesn't fight it.
+- **Off** with Reduce Motion (the device's or the app's) and with **Settings → Appearance → Smooth scrolling** (on by
+  default; `uv-smooth` = '0' on the device; `SMOOTH_EVENT`).
+- While anything scrolls (`html[data-scrolling]`), frames don't catch the wheel (`pointer-events: none` on `iframe`).
+- Measured (dev server, 1280 px): one 400 px wheel turn on the landing 136 → 226 → 285 → 328 … 398 px every 150 ms;
+  the student home and Travel the same; End during a glide jumps to the end. Test: `smooth-scroll.test.ts`.
+- **For code that builds on it:** a part with its own wheel handling should `preventDefault` (or carry
+  `data-scroll-native`); never put `scroll-behavior: smooth` on `html` for the glide's sake.
+
+## M327: a trip's days in the itinerary look of the owner's picture (18 Nov)
+
+The owner sent tripist's itinerary screen: "please make it like this in the mobile as well as website". `trip-days.tsx`
+rewritten (the board of columns is gone):
+
+- **Day circles** (weekday over the day's number, the chosen one filled; a dot when a day has places; "Later" for the
+  places on no day), **Total travel today**, then the day as a **timeline**: a dashed tick-off ring per place
+  (`travel_trip_items.doneAt`, PATCH `{ done }`), its **photo** (`photo`, a Commons file from the guide listing's
+  `image=`, or its Wikidata item's main image P18: `listingPhotos` in `travel.ts`, one `wbgetentities` call per guide,
+  a month; guides re-read as `guide5:`), name (two lines), a kind chip (Sight amber, Shopping green, Food rose…), its
+  clock time and length, a ≡ handle. Between places: the walk or ride with its distance and **Directions** (Google
+  Maps, walking or transit). The stay (the city's first `sleep` place with a position) is the day's start and end
+  ("Leave 9:00 AM", "Back 6:40 PM") and the walk back.
+- **Round buttons** float at the bottom (sticky, above the assistant's button): ✨ (M329's planner), the day's options
+  (shortest round from the stay, spread the places over the days, when the day starts) and + (opens Add places and
+  scrolls to it). On a phone they step aside while a place is open. A computer gets the day at a glance beside it.
+- Tap a place for its note, hours, price, time there, day, order, map and remove. Drag a place up or down, or onto
+  another day's circle (`data-day`).
+- `src/lib/travel-plan.ts`: `hop` gives `metres`; `distance`, `clock`, `DAY_START`, `daySchedule`, `dayOrder`
+  (nearest next then 2-opt, as a round from the stay). Database update **0255** (`photo`, `doneAt`).
+- Checked in a browser (dev, 390 and 1280, light and dark): axe clean, nothing sideways, no page errors.
+- **Trap:** `.card` sits in the utilities layer, so `p-0` loses to its padding: use `p-0!`.
+
+## M329: an automatic, detailed itinerary, from the hotel you booked or just the city (18 Nov)
+
+The owner: "apply the way tripist make a itinerary based on where are visiting… or even not… if user had already booked
+the hotel… automated itinerary based on where are you staying and it should be a detailed one".
+
+- **`src/lib/travel-itinerary.ts`** (`makeItinerary`, runs in the browser, no AI, no Worker time): the city's guide
+  with its districts' (a big city keeps its sights in district guides; up to 8, four at a time), each place scored for
+  the chosen interests (8: famous, history, museums, parks and views, food, shopping, nightlife, children), how much the
+  guide says, a photo or Wikidata item, and nearness to the stay; the best ones split over the days **by direction from
+  the stay** (each day one part of town; its district named in the message), each day the **shortest round** from the
+  stay, then **lunch** near where you are at 12:30, a **coffee** mid-afternoon (Relaxed and Balanced), **dinner** near
+  the last place when the day runs past 16:30, a **bar** after it for Nightlife. Paces: Relaxed 3 places from 10:00,
+  Balanced 4 from 9:00, Packed 6 from 8:30 (`most`: the longest stay at one place). Lighter first and last days (half the
+  places; the first starts at 14:00, after check-in). Places already on the trip stay; unplanned ones are fitted in.
+  Closed or "temporarily" places are skipped; nothing is added twice. Test: `travel-itinerary.test.ts`.
+- **On a trip:** ✨ → `TripPlanSheet` (`trip-plan.tsx`): where you're staying (typed and found with `/travel/where`,
+  or one saved on a trip; kept as the city's stay), pace, interests, every day or only the empty ones, lighter first and
+  last days.
+- **On Trips:** "Booked a hotel? Get your days planned" → `BookedPlan`: the hotel typed (its town becomes the city), or
+  the booking confirmation **pasted and read** (`POST /travel/booking/read`, `src/server/travel-booking.ts`: one AI
+  request within the day's allowance and the owner's AI switch, nothing kept), or just a city; arrival date and nights →
+  a new trip with the stay and every day planned, then the trip opens.
+- **`POST /travel/trips/:id/plan`** (`planTravelStop`): up to 60 places a call (the page sends more in further calls),
+  5 a statement, the moves of places already there (only that city's), checked like any added place.
+- **When each day starts** is the city's own: `travel_trip_stops.starts` (JSON day → minutes, 5:00–15:00 on the half
+  hour, `readStarts`), set by the planner and by the day's options, shared with everyone on the trip. Database update
+  **0256**.
+- Tried in a browser: "Hotel Avenida Palace, Lisbon", 3 nights, History and Food → four days, each in one part of town,
+  with photos, times, walks, lunch and dinner.
+
+## M328: the landing's globe replaced by a real-looking Earth rising from clouds, like tripist's (18 Nov)
+
+The owner: "remove the globe we have currently and make the same one the tripist has". tripist.app shows a
+photo-real Earth half sunk in white clouds (a video). Ours is drawn live:
+
+- **`EarthGlobe.tsx` + `earth-scene.ts` + `earth.worker.ts`**: three.js on a background thread (OffscreenCanvas; on
+  the page where a browser has none): a sphere with the Earth's picture, the seas shining (a water map), a thin blue rim
+  of air and a haze at the edge, lit from the top left, turning slowly (3.2° a second), a drag turns it with a little
+  momentum, an app pointed at or chosen below turns it to that app's part of the world. It loads when 600 px from the
+  screen, draws only on screen and while someone is there (`useIdle`), 30 frames a second at most; still with Reduce
+  Motion.
+- **The pictures** (`public/geo/earth-2048.jpg` 287 KB, `earth-4096.jpg` 1.1 MB for big sharp screens,
+  `earth-water-1024.png`, `clouds.webp` 31 KB) come from **`scripts/assets/earth-pictures.py`**: Natural Earth's
+  public-domain 1:50m rasters (cross-blended hypsometric tints with shaded relief for the land, the ocean bottom's relief
+  turned deep blue for the sea) cut along the app's own `world-50m.json` coastline; the clouds are drawn by the script
+  (round puffs heaped along a band, lit from the top left, softened).
+- **`WorldSection.tsx`** on the page's own light (it was a forced dark section): the heading, the Earth in a window that
+  shows its top three quarters with the clouds over its foot (they drift slowly, paused while scrolling), the apps as
+  cards below it (pointing at one turns the Earth), the two notes, a Natural Earth credit. The old `.world` and
+  `.world-glass` styles are gone.
+- `Planet`'s `turnable` mode has no user now (a `shortcut:` note in `Planet.tsx`); the hub and Trace keep `Planet`.
+- Checked in a browser at 1280 and 390, light and dark: no errors, the canvas fades in once ready.

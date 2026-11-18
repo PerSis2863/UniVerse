@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { clientIdOf } from './offline';
 import type { SessionUser } from '@/lib/server-auth';
 import { RELIEF_KINDS, RELIEF_KIND_LABEL, SKILLS, SKILL_LABEL, URGENCIES, runsOrg, snap, textNumber, whoToAlert } from '@/lib/relief';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
@@ -76,6 +77,12 @@ export async function createReliefPost(u: SessionUser, b: Body) {
   const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
   if (lat === null || lng === null) throw new BadRequestException('Where is it? Use your location or tap the map.');
   const urgency = oneOf(URGENCIES, b.urgency) ? b.urgency : 'MEDIUM';
+  // M316: sent again from the device's outbox (no signal when it was made): the post it already made.
+  const clientId = clientIdOf(b.clientId);
+  if (clientId) {
+    const made = await prisma.reliefPost.findUnique({ where: { userId_clientId: { userId: u.id, clientId } } });
+    if (made) return made;
+  }
   const open = await prisma.reliefPost.count({ where: { userId: u.id, status: 'OPEN' } });
   if (open >= 20) throw new BadRequestException('You have 20 open posts. Close some that are done first.');
   // In an organisation's name (M106): its coordinators only.
@@ -84,7 +91,7 @@ export async function createReliefPost(u: SessionUser, b: Body) {
   // From a text request (M107): checked first, marked as put on the map after.
   const text = typeof b.textId === 'string' && b.textId ? await textToPost(u, b.textId, orgId) : null;
   const post = await prisma.reliefPost.create({
-    data: { userId: u.id, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120), skill: b.type === 'NEED' && oneOf(SKILLS, b.skill) ? b.skill : null },
+    data: { userId: u.id, clientId, orgId, type: b.type, kind: b.kind, title, details: short(b.details, 1000), people: Math.round(num(b.people, 1, 10_000) ?? 1), urgency: b.type === 'OFFER' ? 'LOW' : urgency, lat: snap(lat), lng: snap(lng), place: short(b.place, 120), skill: b.type === 'NEED' && oneOf(SKILLS, b.skill) ? b.skill : null },
   });
   if (text) await textPosted(u, text, post.id);
   if (post.type === 'NEED') await alertWatchers(post).catch((e) => console.error('relief alerts failed:', e));

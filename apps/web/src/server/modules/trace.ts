@@ -1,4 +1,9 @@
 import type { Router } from '../router';
+import { scanFunnel } from '../trace-funnel';
+import { getWatch, setWatch } from '../trace-watch';
+import { brandClaims, fileClaim, moveClaim, myClaims, withdrawClaim } from '../trace-claims';
+import { shopGuide } from '../trace-shop';
+import { compareProducts } from '../trace-compare';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { first } from '../body';
 import { audit } from '../audit';
@@ -55,6 +60,16 @@ export default function traceModule(router: Router) {
   r.get('vault', ({ user }) => vault(user));
   r.post('vault/receive', { status: 200 }, ({ user, body }) => receiveTransfer(user, body ?? {}));
   r.post<{ id: string }>('vault/:id/transfer', { status: 200 }, ({ user, params }) => startTransfer(user, params.id));
+  // M309: warranty claims, from the owner's vault to the brand's queue.
+  r.post<{ id: string }>('vault/:id/claim', ({ user, params, body }) => fileClaim(user, params.id, body ?? {}));
+  r.get('claims/mine', ({ user }) => myClaims(user));
+  // M310: a new shop's setup guide.
+  r.get('shop-guide', ({ user }) => shopGuide(user));
+  // M311: compare products I own or checked.
+  r.get('compare', ({ user, query }) => compareProducts(user, query));
+  r.get('claims', ({ user, query }) => brandClaims(user, query));
+  r.post<{ id: string }>('claims/:id/status', { status: 200 }, ({ user, params, body }) => moveClaim(user, params.id, body ?? {}));
+  r.post<{ id: string }>('claims/:id/withdraw', { status: 200 }, ({ user, params }) => withdrawClaim(user, params.id));
 
   // A brand
   r.get('brand', ({ user }) => brandInfo(user));
@@ -98,6 +113,11 @@ export default function traceModule(router: Router) {
   r.get('takebacks', ({ user }) => brandTakebacks(user));
   r.post<{ id: string }>('takebacks/:id/receive', { status: 200 }, ({ user, params }) => receiveTakeBack(user, params.id));
   r.get('insights', ({ user }) => insights(user));
+  // M307: the scan funnel (scanned → sold → owner → warranty → review).
+  r.get('funnel', ({ user, query }) => scanFunnel(user, query));
+  // M308: area alerts for copies.
+  r.get('watch', ({ user }) => getWatch(user));
+  r.put('watch', ({ user, body }) => setWatch(user, body));
   r.post<{ id: string }>('batches/:id/events', ({ user, params, body }) => addEvent(user, params.id, body ?? {}));
   r.post<{ id: string }>('batches/:id/carrier', { status: 200 }, ({ user, params, body }) => carrierLink(user, params.id, body ?? {}));
   r.post<{ code: string }>('codes/:code/flag', { status: 200 }, ({ user, params, body }) => flagCode(user, params.code, (body as { flagged?: unknown })?.flagged !== false));

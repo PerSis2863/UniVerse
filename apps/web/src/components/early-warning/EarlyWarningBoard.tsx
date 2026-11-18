@@ -10,6 +10,9 @@ import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { authedJson } from '@/lib/authed-fetch';
 import { cn } from '@/lib/utils';
+import Link from '@/components/ui/Link';
+import { trendOf, type Point, type Step } from '@/lib/early-warning-steps';
+import { Spark } from '@/components/instruments/parts';
 import { TabPanel, TabPill } from '@/components/ui/Glide';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { photoSrcSet } from '@/lib/image-sizes';
@@ -20,6 +23,9 @@ interface Flag {
   student: { id: string; name: string; email?: string; avatar: string | null; department: string | null; year?: number | null; lastSeenAt?: string | null };
   course: { id: string; code: string; name: string; teacher?: { id: string; name: string; email: string } | null };
   plan: SupportPlan | null;
+  /** M292: the score over time and the steps for its reasons. */
+  history?: Point[];
+  steps?: Step[];
 }
 interface SupportPlan {
   id: string; status: 'ACTIVE' | 'DONE'; plan: { intro: string; steps: { title: string; detail: string; minutes: number }[]; closing: string };
@@ -148,6 +154,7 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
                           <span className="font-semibold text-zinc-900 dark:text-white">{f.student.name}</span>
                           <span className={cn('text-[11px] font-semibold px-2 py-0.5 rounded-full border', LEVEL[f.level].cls)}>{LEVEL[f.level].label}</span>
                           {f.status !== 'OPEN' && <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">{STATUS_LABEL[f.status]}</span>}
+                          <TrendChip history={f.history ?? []} />
                         </span>
                         {f.student.email && <span className="block text-xs text-zinc-500 truncate">{f.student.email}{f.student.year ? ` · Year ${f.student.year}` : ''}{f.student.department ? ` · ${f.student.department}` : ''}</span>}
                         <span className="block text-xs text-zinc-500 truncate">{f.course.code} · {f.course.name}{f.course.teacher ? ` · ${f.course.teacher.name}` : ''} · {f.reasons[0]?.text ?? 'No current concerns'}</span>
@@ -165,6 +172,55 @@ export function EarlyWarningBoard({ inboxBase }: { inboxBase: string }) {
             </ul>
           )}
       </TabPanel>
+    </div>
+  );
+}
+
+const TREND = {
+  worse: { label: 'Getting worse', icon: TrendingUp, cls: 'bg-rose-500/10 text-rose-700 dark:text-rose-300' },
+  better: { label: 'Improving', icon: TrendingDown, cls: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' },
+} as const;
+
+/** M292: whether the concern score rose or fell over about a week. */
+function TrendChip({ history }: { history: Point[] }) {
+  const [now] = useState(() => Date.now());
+  const t = trendOf(history, now);
+  if (t === 'steady') return null;
+  const { label, icon: Icon, cls } = TREND[t];
+  return <span className={cn('inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-0.5 rounded-full', cls)}><Icon className="w-3 h-3" aria-hidden />{label}</span>;
+}
+
+/** M292: what usually helps for each reason, leading to the tool that does it, and the score's history. */
+function WhatToDo({ f }: { f: Flag }) {
+  const steps = f.steps ?? [];
+  const history = f.history ?? [];
+  if (!steps.length && history.length < 2) return null;
+  return (
+    <div className="mt-4">
+      {steps.length > 0 && (
+        <>
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">What usually helps</p>
+          <ol className="mt-2 space-y-2">
+            {steps.map((s, i) => (
+              <li key={s.id} className="flex gap-3 text-sm">
+                <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-[11px] font-semibold text-zinc-700 dark:bg-white/10 dark:text-zinc-200">{i + 1}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium text-zinc-900 dark:text-white">{s.title}</span>
+                  <span className="block text-zinc-600 dark:text-zinc-300">{s.why}</span>
+                </span>
+                {s.href && <Link href={s.href} className="btn-ghost btn-sm shrink-0 self-start">{s.label}</Link>}
+              </li>
+            ))}
+          </ol>
+        </>
+      )}
+      {history.length >= 2 && (
+        <div className="mt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Concern score since flagged</p>
+          <Spark values={history.map((p) => p.score)} height={48} className="mt-1" />
+          <p className="sr-only">{history.map((p) => `${new Date(p.at).toLocaleDateString()}: ${p.score}`).join(', ')}</p>
+        </div>
+      )}
     </div>
   );
 }
@@ -196,6 +252,7 @@ function FlagDetail({ f, inboxBase, onMessage, onUpdate, onChanged }: { f: Flag;
             {f.reasons.map((r, i) => <li key={i} className="text-sm text-zinc-700 dark:text-zinc-200 flex gap-2"><TrendingUp className="w-4 h-4 text-zinc-400 shrink-0 mt-0.5 rotate-180" /> {r.text}</li>)}
           </ul>
         ) : <p className="mt-2 text-sm text-emerald-600 dark:text-emerald-400">The latest check found no concerns — things look better.</p>}
+        <WhatToDo f={f} />
         <p className="mt-3 text-[11px] text-zinc-500">Last checked {new Date(f.computedAt).toLocaleString()}{f.handledByName ? ` · ${STATUS_LABEL[f.status].toLowerCase()} by ${f.handledByName}${f.handledAt ? ` on ${new Date(f.handledAt).toLocaleDateString()}` : ''}` : ''}</p>
         <label className="block mt-4">
           <span className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Private note</span>

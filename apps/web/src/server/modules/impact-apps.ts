@@ -1,4 +1,9 @@
 import type { Router } from '../router';
+import { addSwap, doneSwap, greenSwaps, removeSwap, reportSwap } from '../green-swaps';
+import { greenBudget, setGreenBudget } from '../green-budget';
+import { addAreaChallenge, greenArea, removeAreaChallenge, setGreenArea } from '../green-area';
+import { greenHome, readHomeBill, removeBill, saveBill, setGreenHome } from '../green-home';
+import { incidentReport, orgIncidents } from '../relief-report';
 import prisma from '@/lib/db';
 import { parseShownApps } from '@/lib/shown-apps-list';
 import { hubStats } from '../hub';
@@ -16,9 +21,10 @@ import { removeTravelPlace, saveTravelPlace, travelGuide, travelSaved, travelSea
 import { addTripPoll, removeTripPoll, tripPolls, updateTripPoll, voteTripPoll } from '../travel-trip-polls';
 import { addTravelDoc, removeTravelDoc, travelDocs, updateTravelDoc } from '../travel-docs';
 import { checkInSafe, sharedTrip, shareTrip, tripShare, unshareTrip } from '../travel-trip-share';
-import { addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
+import { addAlbumPhotos, addJournalEntry, removeJournalEntry, tripJournal, updateJournalEntry } from '../travel-trip-journal';
 import { addTripExpense, addTripPacking, addTripTodos, removeTripExpense, removeTripPacking, removeTripTodo, tripExpenses, tripPacking, tripTodos, updateTripPacking, updateTripTodo } from '../travel-trip-extras';
-import { addTravelItem, addTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
+import { readBooking } from '../travel-booking';
+import { addTravelItem, addTravelStop, planTravelStop, createTravelTrip, travelTripStays, deleteTravelTrip, joinTravelTrip, moveTravelItems, newTravelTripCode, orderTravelStops, setTripZone, copyTravelTrip, tripChat, removeTravelItem, removeTravelStop, removeTravelTripMember, travelTrip, travelTrips, updateTravelItem, updateTravelStop, updateTravelTrip } from '../travel-trips';
 import { blockTraveller, joinTravelBoard, leaveTravelBoard, messageTraveller, reportTraveller, travelBoard, unblockTravellers } from '../travel-board';
 import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel-places';
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
@@ -72,6 +78,9 @@ export default function impactAppsModule(router: Router) {
   relief.post('incidents', ({ user, body }) => declareIncident(user, body ?? {}));
   relief.post<{ id: string }>('incidents/:id/end', { status: 200 }, ({ user, params }) => endIncident(user, params.id));
   relief.post<{ id: string }>('incidents/:id/safe', { status: 200 }, ({ user, params, body }) => markSafe(user, params.id, body ?? {}));
+  // M314: an emergency's timeline and report, and an organisation's past emergencies.
+  relief.get<{ id: string }>('incidents/:id/report', ({ user, params }) => incidentReport(user, params.id));
+  relief.get<{ id: string }>('orgs/:id/incidents', ({ user, params }) => orgIncidents(user, params.id));
   relief.get('contacts', ({ user }) => reliefContacts(user));
   relief.get('sms', () => reliefSmsOn());
   relief.get<{ id: string }>('orgs/:id/aid', ({ user, params }) => orgAid(user, params.id));
@@ -137,6 +146,8 @@ export default function impactAppsModule(router: Router) {
   travel.get('trips/stays', ({ user }) => travelTripStays(user));
   travel.post('trips', ({ user, body }) => createTravelTrip(user, body ?? {}));
   travel.post('trips/join', ({ user, body }) => joinTravelTrip(user, body ?? {}));
+  travel.post<{ id: string }>('trips/:id/plan', ({ user, params, body }) => planTravelStop(user, params.id, body ?? {}));
+  travel.post('booking/read', ({ user, body }) => readBooking(user, body ?? {}));
   // M215: a trip's shared costs and packing list.
   travel.get<{ id: string }>('trips/:id/expenses', ({ user, params }) => tripExpenses(user, params.id));
   travel.post<{ id: string }>('trips/:id/expenses', ({ user, params, body }) => addTripExpense(user, params.id, body ?? {}));
@@ -153,6 +164,8 @@ export default function impactAppsModule(router: Router) {
   // M242 (src/server/travel-trip-journal.ts): the trip's journal.
   travel.get<{ id: string }>('trips/:id/journal', ({ user, params }) => tripJournal(user, params.id));
   travel.post<{ id: string }>('trips/:id/journal', ({ user, params, body }) => addJournalEntry(user, params.id, body ?? {}));
+  // M321: the trip's shared album (photos many at once).
+  travel.post<{ id: string }>('trips/:id/journal/photos', ({ user, params, body }) => addAlbumPhotos(user, params.id, body ?? {}));
   travel.patch<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params, body }) => updateJournalEntry(user, params.id, params.entryId, body ?? {}));
   travel.delete<{ id: string; entryId: string }>('trips/:id/journal/:entryId', ({ user, params }) => removeJournalEntry(user, params.id, params.entryId));
   // M243 (src/server/travel-trip-polls.ts): the trip's group polls.
@@ -218,6 +231,26 @@ export default function impactAppsModule(router: Router) {
   green.get('proofs', ({ user }) => greenProofs(user));
   // M216: footprint, goal and pledges, community events.
   green.get('footprints', ({ user }) => greenFootprints(user));
+  // M317: home energy from bills.
+  green.get('home', ({ user }) => greenHome(user));
+  green.put('home', ({ user, body }) => setGreenHome(user, body ?? {}));
+  green.post('home/bills', ({ user, body }) => saveBill(user, body ?? {}));
+  green.delete<{ id: string }>('home/bills/:id', ({ user, params }) => removeBill(user, params.id));
+  green.post('home/read', { status: 200 }, ({ user, body }) => readHomeBill(user, body ?? {}));
+  // M320: the swap and repair board.
+  green.get('swaps', ({ user, query }) => greenSwaps(user, query));
+  green.post('swaps', ({ user, body }) => addSwap(user, body ?? {}));
+  green.post<{ id: string }>('swaps/:id/done', { status: 200 }, ({ user, params }) => doneSwap(user, params.id));
+  green.post<{ id: string }>('swaps/:id/report', { status: 200 }, ({ user, params }) => reportSwap(user, params.id));
+  green.delete<{ id: string }>('swaps/:id', ({ user, params }) => removeSwap(user, params.id));
+  // M319: a monthly carbon budget.
+  green.get('budget', ({ user }) => greenBudget(user));
+  green.put('budget', ({ user, body }) => setGreenBudget(user, body ?? {}));
+  // M318: neighbourhood challenges.
+  green.get('area', ({ user }) => greenArea(user));
+  green.put('area', ({ user, body }) => setGreenArea(user, body ?? {}));
+  green.post('area/challenges', ({ user, body }) => addAreaChallenge(user, body ?? {}));
+  green.delete<{ id: string }>('area/challenges/:id', ({ user, params }) => removeAreaChallenge(user, params.id));
   green.post('footprints', ({ user, body }) => saveFootprint(user, body ?? {}));
   green.get('goals', ({ user }) => greenGoals(user));
   green.put('goals', ({ user, body }) => setGreenGoal(user, body ?? {}));

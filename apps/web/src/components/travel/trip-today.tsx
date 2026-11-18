@@ -210,7 +210,7 @@ function RainPlan({ tripId, stop, day, slots, onAdded }: { tripId: string; stop:
   const ideas = data ? indoorIdeas(data.guide.sections.flatMap((s) => s.listings), slots.map((s) => s.item)) : [];
   const add = async (l: Listing) => {
     try {
-      await api.post(`/travel/trips/${tripId}/items`, { stopId: stop.id, day, name: l.name, kind: l.kind, lat: l.lat, lon: l.lon, hours: l.hours, price: l.price, note: l.text?.slice(0, 600), address: l.address, url: l.url });
+      await api.post(`/travel/trips/${tripId}/items`, { stopId: stop.id, day, name: l.name, kind: l.kind, lat: l.lat, lon: l.lon, hours: l.hours, price: l.price, note: l.text?.slice(0, 600), address: l.address, url: l.url, photo: l.image });
       setAdded((a) => [...a, l.name]); toast.success(`${l.name} added to this day.`); onAdded();
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t add that place.')); }
   };

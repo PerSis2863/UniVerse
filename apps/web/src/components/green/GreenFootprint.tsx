@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { HomeEnergy } from './HomeEnergy';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { Car, Home, Plane, Save, ShoppingBag, Utensils } from 'lucide-react';
@@ -76,6 +77,7 @@ export function GreenFootprint() {
           <h3 className="mt-5 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ShoppingBag className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />New things you buy</h3>
           <Segmented className="mt-3" label="New things you buy" value={a.stuff} onChange={(v) => set('stuff', v)} segments={(Object.keys(STUFF) as FootprintAsk['stuff'][]).map((k) => ({ value: k, label: LABELS.stuff[k] }))} />
         </section>
+        <HomeEnergy />
       </div>
 
       <div className="space-y-6 xl:sticky xl:top-6 xl:self-start">

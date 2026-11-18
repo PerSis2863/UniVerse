@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M289 is the latest).
+  builds on it). The newest notes are at the end (M329 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -245,6 +245,27 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   `claude/youthful-fermi-sbdtcp` (built as M270–M272, renumbered): M285, the map's requests snapped to a grid (`nearKey`,
   `boxKey`); M284, on a phone a map page has no top bar (`useBareChrome`, `--bare-gain`; Travel's Map, Relief's Alerts,
   Green's Places); M283, a place's facts on Travel's map and directions you can find.
+- **The owner's 32 features (18 Nov: "please add all the 32 features you told me earlier"; then "if any features are
+  partially build then upgrade those and also make more new features"):** the list in M290's reply, built in batches on
+  `claude/youthful-fermi-sbdtcp` (not merged yet). **Batch 1, UniVersity (M291–M300):** M291 paper exams (versions A–D,
+  keys, rubric marking, to the gradebook; 0238), M292 early warnings' "what usually helps" and trend (0239), M293 the term
+  lesson planner (a course's Lesson plan tab, into the calendar; 0240), M294 revision packs (a course's Revision tab;
+  0241), M295 bookable office hours with a waiting list (Calls; 0242), M296 portfolio work and private share links
+  (0243), M297 attendance trends and parents' absence alerts (0244), M298 clash warnings, Find a free room, room bookings
+  refusing overlaps, M299 announcement readers, reminders and confirmations (0245), M300 a parent's week (the parent
+  app). Next: Platform (6), Trace (5), Relief (5), Green (4), Travel (2), then more of the owner's "new features".
+  UniVersity's new routes live in `src/server/modules/school-plus.ts`; sample answers in `src/lib/sample/new-features.ts`.
+- **The owner's tripist.app asks (18 Nov), on `claude/youthful-fermi-sbdtcp`, not merged yet:** M326 scrolling glides
+  like tripist's (a wheel or trackpad eases to a stop over ~2 s, `src/lib/smooth-scroll.ts`; Settings → Appearance →
+  Smooth scrolling; native on touch, lists, maps, dialogs); M327 a trip's days as tripist's itinerary (day circles, a
+  timeline with photos, walks and Directions, floating ✨ / options / + buttons; `trip-days.tsx`; 0255); M329 the
+  automatic itinerary (`src/lib/travel-itinerary.ts`: around the stay, one part of town a day, lunch, coffee, dinner; ✨
+  on a trip, Trips → "Booked a hotel? Get your days planned", a pasted booking read by AI; `POST /travel/trips/:id/plan`,
+  `POST /travel/booking/read`; 0256); M328 the landing's Earth rising out of clouds (`EarthGlobe.tsx`, three.js on a
+  background thread, Natural Earth's maps via `scripts/assets/earth-pictures.py`). **Next (asked, not started):** the
+  owner's dashboard picture for the pages with maps (map top right with search and sort over it, cards down the side, a
+  table under it, no empty space): Trace's tracking map, Relief's live map, Green's places, Travel's map.
+- **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M290 (18 Nov), a deep check: spreadsheet styles only real colours (`colour`, `sheet/render.ts`), canvas maps rest after 30 s untouched (`WorldCanvas`, `map-rest-ui.mjs`), Studio's badge and Trace Insights' table accessible.
 - **Merged 18 Nov (PR #138, the owner: "do a lot more like this and then merge it"):** M289 (18 Nov), nothing cut off on a phone (422 grids got `grid-cols-1`, `layout-rules.test.ts`; `crawl.mjs --layout` reports cut-off text; UniVersity's course buttons, transcript, setup card). M288 (18 Nov), a trip's page and Find where to go tidier on a phone (the trip's settings only on Plan and Money or until it has a date; a stop's dates on one line; Money's prices table fitting a phone). M287 (18 Nov), Travel more professional and smoother (a guide's opening in three lines with its actions on the picture, booking in one row, sticky tabs, `Prose` with Read more, `.swap` parts; photos to the cards' edges; Travel's pages `overflow-x-clip` so `sticky` works). M286 (18 Nov; built as M269), a picture for every Travel destination (436 photos, 12 banners) and 74 more places (448).
 - **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
   hidden `Activity`), the top bar's entries dragged into order (kept with the side menu's), no name both in the bar and in
@@ -291,7 +312,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M290** (M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M330** (M326–M329: tripist's smooth scroll, a trip's itinerary look, the automatic itinerary, the landing's Earth; M301–M325: the rest of the owner's 32 features and more; M291–M300: batch 1 of the owner's 32 features; M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
@@ -308,7 +329,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **Next database update number: `0238`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
+- **Next database update number: `0257`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
   requests behind a switch (M107), a small "Ask UniVerse" assistant (M30), the EU Digital Product

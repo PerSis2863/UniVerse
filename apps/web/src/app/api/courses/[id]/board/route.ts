@@ -26,7 +26,7 @@ export async function GET(req: Request, { params }: Ctx) {
     // Pinned first; students see scheduled ones only from their time; the teacher sees who has seen each.
     prisma.announcement.findMany({
       where: { courseId: id, ...(canGrade ? {} : visibleNow()) }, orderBy: [{ pinnedAt: 'desc' }, { createdAt: 'desc' }], take: 50,
-      select: { id: true, title: true, body: true, createdAt: true, publishAt: true, sentAt: true, pinnedAt: true, author: { select: { name: true } }, ...(canGrade ? { _count: { select: { reads: true } } } : {}) },
+      select: { id: true, title: true, body: true, createdAt: true, publishAt: true, sentAt: true, pinnedAt: true, needsAck: true, author: { select: { name: true } }, ...(canGrade ? { _count: { select: { reads: true } } } : { reads: { where: { userId: user.id }, select: { ackAt: true } } }) },
     }),
     prisma.material.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, type: true, fileUrl: true, size: true, createdAt: true } }),
     prisma.knowledgeHubResource.findMany({ where: { courseId: id }, orderBy: { createdAt: 'desc' }, select: { id: true, title: true, description: true, url: true, category: true, createdAt: true } }),
@@ -91,7 +91,7 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!body) return bad('Please write the announcement.');
       // Now (enrolled students get an in-app notice) or at publishAt (the 15-minute cron sends it).
       try {
-        return NextResponse.json(await postAnnouncement(access.course, user, title, body, b.publishAt), { status: 201 });
+        return NextResponse.json(await postAnnouncement(access.course, user, title, body, b.publishAt, b.needsAck === true), { status: 201 });
       } catch (e) {
         if (e instanceof HttpException) return bad(e.message, e.getStatus());
         throw e;

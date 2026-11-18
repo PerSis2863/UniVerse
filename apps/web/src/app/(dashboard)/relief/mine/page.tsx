@@ -1,6 +1,7 @@
 'use client';
 
 import { Suspense, useState } from 'react';
+import { HelpRoute } from '@/components/relief/HelpRoute';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { m as motion } from 'framer-motion';
@@ -43,7 +44,10 @@ export default function ReliefMinePage() {
           <Alerts />
           <section aria-labelledby="helping-h">
             <h2 id="helping-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><HandHeart className="w-5 h-5 text-orange-500" aria-hidden />I’m helping</h2>
-            <div className="mt-3">{list(data?.helping ?? [], 'You aren’t helping with anything yet. The live map shows the most urgent needs first.')}</div>
+            <div className="mt-3 space-y-3">
+              <HelpRoute posts={data?.helping ?? []} />
+              {list(data?.helping ?? [], 'You aren’t helping with anything yet. The live map shows the most urgent needs first.')}
+            </div>
           </section>
           <section aria-labelledby="mine-h">
             <h2 id="mine-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Inbox className="w-5 h-5 text-orange-500" aria-hidden />My posts</h2>
