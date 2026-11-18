@@ -1,6 +1,7 @@
 'use client';
 
 import { PlacesBoard } from './PlacesBoard';
+import { Translatable } from '@/components/shared/Translatable';
 import { SafetyCheck } from './SafetyCheck';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -470,11 +471,13 @@ export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now
       <div className="flex items-start gap-3">
         <span className="w-10 h-10 shrink-0 rounded-2xl grid place-items-center text-white" style={{ background: p.type === 'OFFER' ? OFFER : URGENCY_COLOR[p.urgency] }}><I className="w-5 h-5" aria-hidden /></span>
         <div className="min-w-0 flex-1">
-          <p className="font-bold text-zinc-900 dark:text-white">{p.title}</p>
+          <Translatable kind="relief-post" id={p.id} text={p.details ? `${p.title}\n\n${p.details}` : p.title} controlClassName="mt-1" render={(t, lang) => {
+            const [title, ...rest] = t.split('\n\n');
+            return <div lang={lang} translate="no"><p className="font-bold text-zinc-900 dark:text-white">{title}</p>{rest.length > 0 && <p className="mt-2 text-sm font-normal text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{rest.join('\n\n')}</p>}</div>;
+          }} />
           <p className="text-xs text-zinc-500">{p.type === 'OFFER' ? `Offered by ${p.org?.name ?? p.by?.name ?? 'someone'}` : `${URGENCY_LABEL[p.urgency]} need · asked by ${p.mine ? 'you' : p.org?.name ?? p.by?.name ?? 'someone'}`}</p>
         </div>
       </div>
-      {p.details && <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200 whitespace-pre-wrap">{p.details}</p>}
       <p className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
         <span className="inline-flex items-center gap-1"><Users className="w-3.5 h-3.5" aria-hidden />{p.people} {p.people === 1 ? 'person' : 'people'}</span>
         {p.skill && <span className="inline-flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-200">Needs: {SKILL_LABEL[p.skill].toLowerCase()}</span>}
@@ -540,6 +543,7 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
         {f.textId && <p className="mt-4 rounded-2xl bg-amber-500/10 p-3 text-xs text-amber-800 dark:text-amber-200">From a text message. Everyone can see the map: take out names, addresses and phone numbers, then set where it is.</p>}
         <label className="mt-4 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">In a few words</span><input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder={f.type === 'NEED' ? 'Food for a family of 5' : 'I can drive supplies on weekends'} /></label>
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Details (optional)</span><textarea rows={3} maxLength={1000} value={f.details} onChange={(e) => setF({ ...f, details: e.target.value })} className="input mt-1 resize-y" placeholder="What exactly, when, anything a helper should know. Don’t write your address: say it in a message." /></label>
+        <p className="mt-1 text-xs text-zinc-500">Write in your own language: helpers can translate it into theirs with one tap.</p>
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{f.type === 'NEED' ? 'How many people' : 'How many people it can help'}</span><input type="number" min={1} max={10000} value={f.people} onChange={(e) => setF({ ...f, people: e.target.value })} className="input mt-1" /></label>
           {f.type === 'NEED' && <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How urgent</span><select value={f.urgency} onChange={(e) => setF({ ...f, urgency: e.target.value as Urgency })} className="input mt-1">{URGENCIES.map((u) => <option key={u} value={u}>{URGENCY_LABEL[u]}</option>)}</select></label>}

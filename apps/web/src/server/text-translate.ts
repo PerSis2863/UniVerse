@@ -17,7 +17,7 @@ import { announcementWhere } from './course-announcements';
 // at a time ("material-part", id "<courseSourceId>.<n>"), and quiz questions (D9). Grading always uses the original. Only texts the reader may read are translated; each is
 // translated once per language and shared by everyone (an edited text is translated again).
 
-export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment', 'assignment', 'submission', 'feedback', 'material-part', 'quiz-question'] as const;
+export const KINDS = ['announcement', 'group-post', 'task-comment', 'doc-comment', 'board-comment', 'assignment', 'submission', 'feedback', 'material-part', 'quiz-question', 'relief-post'] as const;
 export type TextKind = (typeof KINDS)[number];
 const MAX_ITEMS = 30;
 const MAX_CHARS = 2000;
@@ -73,6 +73,12 @@ export async function readable(user: SessionUser, items: { kind: TextKind; id: s
     if (x.studentId !== user.id && !courses.get(x.assignment.courseId)?.canManage) continue;
     if (ids('submission').includes(x.id)) out.set(`submission:${x.id}`, x.text);
     if (ids('feedback').includes(x.id) && x.feedback) out.set(`feedback:${x.id}`, x.feedback);
+  }
+  // M315: a Relief request or offer, in the reader's language: the ones the live map shows anyone (open or being
+  // helped, from the last 30 days) and those the reader posted or helps with. Title and details, never who.
+  if (ids('relief-post').length) {
+    const posts = await prisma.reliefPost.findMany({ where: { id: { in: ids('relief-post').slice(0, 20) }, OR: [{ status: { in: ['OPEN', 'TAKEN'] }, createdAt: { gte: new Date(Date.now() - 30 * 86_400_000) } }, { userId: user.id }, { helperId: user.id }] }, select: { id: true, title: true, details: true } });
+    for (const p of posts) out.set(`relief-post:${p.id}`, p.details ? `${p.title}\n\n${p.details}` : p.title);
   }
   for (const src of sources) {
     if (!courses.get(src.courseId)) continue;

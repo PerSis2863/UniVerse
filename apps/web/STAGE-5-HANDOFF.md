@@ -9337,3 +9337,16 @@ afterwards but the rows.
   ended; 80 at most). Test: `relief-report.test.ts`.
 - **`IncidentReports.tsx`** in an organisation's Overview (every member sees past emergencies; declaring stays the
   coordinators'), the report in a sheet, printable (`.print-report`).
+
+## M315: Relief requests in the helper's language (18 Nov)
+
+The owner's 32 features, Relief 4. The screens (and so the request form) already follow the person's language (the
+UI catalog); what an asker *wrote* stayed in their language.
+
+- **`relief-post`** is a translatable kind (`KINDS` in `src/server/text-translate.ts`, `TextKind` in
+  `Translatable.tsx`): `readable()` lets anyone read the title and details of posts the live map shows (open or being
+  helped, from the last 30 days) and the reader's own and those they help (20 a request); translations are stored and
+  shared per language as for announcements (one AI call per post and language).
+- The post card (`ReliefApp.tsx`) shows title and details through `Translatable` (one "Translate" for both, the text
+  marked `translate="no"`); the form says "Write in your own language: helpers can translate it into theirs".
+- Not added: reading levels for posts (they're short).

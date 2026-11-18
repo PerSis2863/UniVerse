@@ -15,7 +15,7 @@ import { GlossedText, ReadingLevelControl, isLevelKind, useReadingLevel, type Le
 // answers and feedback, and course materials (D8). Into the app's language;
 // translated once per text and language for everyone, and kept on this page once fetched.
 
-export type TextKind = 'announcement' | 'group-post' | 'task-comment' | 'doc-comment' | 'board-comment' | 'assignment' | 'submission' | 'feedback' | 'material-part' | 'quiz-question';
+export type TextKind = 'announcement' | 'group-post' | 'task-comment' | 'doc-comment' | 'board-comment' | 'assignment' | 'submission' | 'feedback' | 'material-part' | 'quiz-question' | 'relief-post';
 interface Result { text: string; from: string; same: boolean }
 const cache = new Map<string, Result>();
 /** Whether a text has words to translate (not only emoji, numbers, links or punctuation), as the server decides. */
