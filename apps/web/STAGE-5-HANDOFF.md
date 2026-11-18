@@ -8804,7 +8804,7 @@ type it in… it should recommend the areas to visit, foods, shopping and many m
   the places panel; the highlights head the list when Sights is chosen (also over the world's destinations).
 - **Rule:** places of a kind need the map at street level: bring the map there (`closeIn`), never ask people to zoom.
 
-## M270: a place's facts on Travel's map, and directions you can find (18 Nov)
+## M283 (built as M270 on `claude/youthful-fermi-sbdtcp`, renumbered on merge: Green → Business used M269–M281): a place's facts on Travel's map, and directions you can find (18 Nov)
 
 The owner: "remove this [the 'Facts: OpenStreetMap contributors…' line] and… add facts of that specific place that i click on the
 map it could be historic or ancient or popular food place or anything, it could be fun fact also"; then, of "3 h · Walk from
@@ -8827,7 +8827,7 @@ here": "i dont understand… if i want directions from one place to another then
   fact couldn't be seen live from this cloud machine (Wikipedia refused it while the photo search ran): it's tested on
   an article's text.
 
-## M271: on a phone, a map page has no top bar (18 Nov)
+## M284: on a phone, a map page has no top bar (18 Nov)
 
 The owner, with a phone screenshot of Travel's map: "the upper line where the universe logo, notifications and search is not
 needed and the map can get that area… and also see this type of thing can be done where else".
@@ -8844,7 +8844,7 @@ needed and the map can get that area… and also see this type of thing can be d
   axe clean, no sideways scroll), `pnpm check`.
 - **Rule:** a new page that is one big map calls `useBareChrome()` and adds `var(--bare-gain)` to its height on phones.
 
-## M272: Travel's map asks the server less while you move it (18 Nov)
+## M285: Travel's map asks the server less while you move it (18 Nov)
 
 The owner: "make travel app more efficient… ultra smooth specially maps". Measured on the built site (Paris, dragging and
 zooming, CPU slowed 4×): almost all the work while moving is MapLibre drawing (already tuned in M259/M267: pixel ratio
@@ -8855,7 +8855,7 @@ reviews of the new view (the box was matched to ~100 m) and the stories again at
   steps, the box outwards to 0.05° (~5 km); a small pan reuses the answer (SWR's key doesn't change).
 - **Rule:** what a map view asks the server for is snapped to a grid; never a key from the exact view.
 
-## M269: a picture for every Travel destination, and 74 more places (18 Nov)
+## M286: a picture for every Travel destination, and 74 more places (18 Nov; built as M269)
 
 The owner (a screenshot of Explore with blank cards: Córdoba, Toledo, Ibiza, Bilbao, Málaga, Marseille…): "some of them
 are not showing photo here and also add more destinations there". 160 places had never been looked up by

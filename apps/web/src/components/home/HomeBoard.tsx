@@ -11,8 +11,11 @@ import { cn } from '@/lib/utils';
 // narrow column (one column on phones). "Edit home" moves cards up and down, hides them and brings
 // them back; it's saved for this person on every device.
 
-export function HomeBoard({ role, layout, onSave, cards, afterTop, first }: {
+export function HomeBoard({ role, layout, onSave, cards, afterTop, first, head, actions }: {
   role: HomeRole;
+  /** M282: the greeting row (DashHead), with the page's own buttons and Edit home on its right: one row, no stray ones. */
+  head?: ReactNode;
+  actions?: ReactNode;
   layout: HomeLayout;
   onSave: (l: HomeLayout) => void;
   /** Each card's content; null when it has nothing to show (it's left out). */
@@ -59,13 +62,17 @@ export function HomeBoard({ role, layout, onSave, cards, afterTop, first }: {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-end gap-2 -mb-2">
+      <div className={cn('flex flex-wrap items-end gap-3', head ? 'justify-between' : 'justify-end -mb-2')}>
+        {head}
+        <div className="flex flex-wrap items-center gap-2">
+        {actions}
         {editing && (
           <button type="button" onClick={() => onSave({ ...EMPTY_LAYOUT, goal: layout.goal })} className="btn-secondary btn-sm"><RotateCcw className="w-3.5 h-3.5" />Reset</button>
         )}
         <button type="button" aria-pressed={editing} onClick={() => setEditing((v) => !v)} className={editing ? 'btn-primary btn-sm' : 'btn-secondary btn-sm'}>
           <LayoutGrid className="w-3.5 h-3.5" />{editing ? 'Done' : 'Edit home'}
         </button>
+        </div>
       </div>
       <AnimatePresence initial={false}>
         {editing && (

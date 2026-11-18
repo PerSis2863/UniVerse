@@ -1,13 +1,13 @@
 'use client';
 
 import { usePathname, useSearchParams } from 'next/navigation';
-import { CalendarDays, Footprints, Gauge, Leaf, Lightbulb, MapPin, Target, Trophy } from 'lucide-react';
+import { Building2, CalendarDays, Footprints, Gauge, Leaf, Lightbulb, MapPin, Target, Trophy } from 'lucide-react';
 import { TabRow } from '@/components/ui/TabRow';
 
 // The tab row across UniVerse Green's pages (M216): my impact, the footprint calculator, journeys compared,
-// goals and pledges, tips, community events, green places near you, and teams.
+// goals and pledges, tips, community events, green places near you, and teams; M269: Business, a company's footprint.
 
-export const GREEN_VIEWS = ['footprint', 'trips', 'goals', 'tips', 'events', 'places'] as const;
+export const GREEN_VIEWS = ['footprint', 'trips', 'goals', 'tips', 'events', 'places', 'business'] as const;
 export type GreenView = (typeof GREEN_VIEWS)[number];
 
 export function GreenTabs() {
@@ -23,6 +23,7 @@ export function GreenTabs() {
       { href: tab('events'), label: 'Events', icon: CalendarDays, on: view === 'events' },
       { href: tab('places'), label: 'Green places', icon: MapPin, on: view === 'places' },
       { href: '/green/teams', label: 'Teams', icon: Trophy, on: path.startsWith('/green/teams') },
+      { href: tab('business'), label: 'Business', icon: Building2, on: view === 'business' },
     ]} />
   );
 }

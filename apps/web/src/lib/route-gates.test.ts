@@ -135,6 +135,8 @@ const PUBLIC_MODULE: Record<string, string> = {
   'trace POST carry/:key/reading': 'a sensor’s reading: the carrier key is the password',
   'trace GET public/:slug': 'a brand’s public page',
   'trace GET dpp/:gtin': 'a product’s EU Digital Product Passport (public by design)',
+  'impact-apps GET link/:code': 'Green → Business share links (M271–M274): the unguessable code a company gave a supplier, its staff or an auditor; the company’s name and footprint, never emails or phones',
+  'impact-apps POST link/:code': 'a supplier’s emissions or one anonymous commute answer, by the unguessable code in its link (M271–M272); capped per company and year',
   'impact-apps GET aid/:code': 'an aid box’s trip for donors (M151): the unguessable code in its link or QR code; towns and times, never people',
   'trace GET supplier': 'the supplier portal: the key in its link',
   'impact-apps GET shared/:code': 'a trip’s family link (M248): the unguessable code its travellers turned on; first names, cities, places, check-ins, never emails or phones',

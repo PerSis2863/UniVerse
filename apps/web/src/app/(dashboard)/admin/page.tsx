@@ -14,6 +14,9 @@ import { useLanguageStore } from '@/store/language';
 import useSWR from 'swr';
 import { fetcher, api } from '@/lib/fetcher';
 import { HomeBoard } from '@/components/home/HomeBoard';
+import { DashHead } from '@/components/home/DashHead';
+import { useAuthStore } from '@/store/auth';
+import { Megaphone } from 'lucide-react';
 import { LiveNumbersCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
 import { AdminLive } from '@/components/live/HomeLive';
@@ -62,11 +65,12 @@ export default function AdminDashboard() {
   const maxDeptStudents = Math.max(1, ...departments.map((d) => d.students || 0));
 
   const handleSendAnnouncement = () => router.push('/admin/announcements');
+  const user = useAuthStore((st) => st.user);
 
   if (!data) {
     return (
       <>
-        <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
+        <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} />
         <div className="flex-1 p-8">{error ? <LoadError onRetry={() => mutate()} message="Couldn’t load the dashboard." /> : <ContentSkeleton variant="dashboard" />}</div>
       </>
     );
@@ -74,16 +78,19 @@ export default function AdminDashboard() {
 
   return (
     <>
-      <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} action={{ label: t('admin.send_announcement'), onClick: handleSendAnnouncement }} />
+      <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} />
       <div className="flex-1 p-4 sm:p-8 space-y-8">
-        <HomeBoard role="admin" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />} cards={{
+        <HomeBoard role="admin" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />}
+          head={<DashHead name={user?.name} summary={adminSummary(home.data?.live)} />}
+          actions={<button type="button" onClick={handleSendAnnouncement} className="btn-primary btn-sm"><Megaphone className="w-3.5 h-3.5" aria-hidden />{t('admin.send_announcement')}</button>}
+          cards={{
           live: <LiveNumbersCard live={home.data?.live} />,
           kpis: (
             <div className="kpi-row grid grid-cols-2 xl:grid-cols-4 gap-4">
-              <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} color="indigo" />
-              <KpiCard title="Teachers" value={data?.totalTeachers || 0} icon={GraduationCap} color="amber" />
-              <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} color="cyan" />
-              <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} color="green" />
+              <KpiCard title={t('admin.total_students')} value={data?.totalStudents || 0} icon={Users} href="/admin/users" />
+              <KpiCard title="Teachers" value={data?.totalTeachers || 0} icon={GraduationCap} href="/admin/staff" />
+              <KpiCard title={t('admin.active_courses')} value={data?.totalCourses || 0} icon={BookOpen} href="/admin/courses" />
+              <KpiCard title={t('admin.revenue')} value={formatCurrency(data?.revenue || 0)} icon={DollarSign} href="/admin/finances" />
             </div>
           ),
           orbit: data ? <AdminLive departments={departments} students={data.totalStudents ?? 0} teachers={data.totalTeachers ?? 0} courses={data.totalCourses ?? 0} /> : null,
@@ -183,4 +190,15 @@ export default function AdminDashboard() {
       </div>
     </>
   );
+}
+
+/** M282: one line under the greeting: what needs the admin today. */
+function adminSummary(live: { attendance: { marked: number; present: number }; pending: number; safety: { open: number } } | undefined) {
+  if (!live) return null;
+  const parts = [
+    live.attendance.marked ? `${Math.round((live.attendance.present / live.attendance.marked) * 100)}% here today` : 'Attendance not taken yet',
+    live.pending ? `${live.pending} waiting for approval` : null,
+    live.safety.open ? `${live.safety.open} safety ${live.safety.open === 1 ? 'flag' : 'flags'} to review` : null,
+  ].filter(Boolean);
+  return parts.join(' · ');
 }

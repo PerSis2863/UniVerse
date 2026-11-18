@@ -24,6 +24,15 @@ import { travelPhotos, travelPlace, travelStories, travelWhere } from '../travel
 import { deleteTravelReview, reportTravelReview, saveTravelReview, travelReviews, travelReviewsNear } from '../travel-reviews';
 import { reliefAlerts, reliefHours, reliefPlan, saveReliefPlan } from '../relief-plus';
 import { addGreenPledge, checkGreenPledge, createGreenEvent, deleteGreenEvent, goingGreenEvent, greenEvents, greenFootprints, greenGoals, removeGreenPledge, reportGreenEvent, saveFootprint, setGreenGoal } from '../green-plus';
+import {
+  addBizCredit, answerQuery, askQuery, bizBenchmark, bizCheckout, bizCreditList, bizPortal, bizVerifications, closeQuery, inviteVerifier,
+  removeBizCredit, signVerification, withdrawVerification,
+} from '../green-business-plus';
+import {
+  addBizEntries, addBizEntry, addBizMember, addBizSupplier, answerCarbonLink, bizAudit, bizAuditLink, bizClients, bizEntries, bizList, bizMembers, bizOrg,
+  bizReport, bizStaff, bizSuppliers, bizSurveyLink, bizTrace, carbonLink, createBizOrg, deleteBizEntry, deleteBizOrg, pushBizTrace, readBill,
+  removeBizMember, removeBizSupplier, saveBizPlan, updateBizEntry, updateBizOrg,
+} from '../green-business';
 import { addGreenProof, confirmGreenAction, createGreenTeam, deleteGreenAction, greenMap, greenMe, greenProofs, greenTeams, joinGreenTeam, leaveGreenTeam, logGreenAction, setGreenFeeling } from '../green';
 
 // UniVerse Impact's hub and its newer apps (src/lib/apps.ts): /hub, UniVerse Relief (/relief/*),
@@ -224,4 +233,51 @@ export default function impactAppsModule(router: Router) {
   green.post('teams', ({ user, body }) => createGreenTeam(user, body ?? {}));
   green.post('teams/join', { status: 200 }, ({ user, body }) => joinGreenTeam(user, body ?? {}));
   green.post<{ id: string }>('teams/:id/leave', { status: 200 }, ({ user, params }) => leaveGreenTeam(user, params.id));
+  // M269–M275: Green → Business, a company's carbon footprint (src/server/green-business.ts).
+  type Biz = { id: string };
+  green.get('biz', ({ user }) => bizList(user));
+  green.post('biz', ({ user, body }) => createBizOrg(user, body ?? {}));
+  green.get<Biz>('biz/:id', ({ user, params, query }) => bizOrg(user, params.id, query));
+  green.put<Biz>('biz/:id', ({ user, params, body }) => updateBizOrg(user, params.id, body ?? {}));
+  green.delete<Biz>('biz/:id', ({ user, params }) => deleteBizOrg(user, params.id));
+  green.get<Biz>('biz/:id/entries', ({ user, params, query }) => bizEntries(user, params.id, query));
+  green.post<Biz>('biz/:id/entries', ({ user, params, body }) => addBizEntry(user, params.id, body ?? {}));
+  green.post<Biz>('biz/:id/entries/batch', ({ user, params, body }) => addBizEntries(user, params.id, body ?? {}));
+  green.put<Biz & { eid: string }>('biz/:id/entries/:eid', ({ user, params, body }) => updateBizEntry(user, params.id, params.eid, body ?? {}));
+  green.delete<Biz & { eid: string }>('biz/:id/entries/:eid', ({ user, params }) => deleteBizEntry(user, params.id, params.eid));
+  green.post<Biz>('biz/:id/read-bill', { status: 200 }, ({ user, params, body }) => readBill(user, params.id, body ?? {}));
+  green.get<Biz>('biz/:id/members', ({ user, params }) => bizMembers(user, params.id));
+  green.post<Biz>('biz/:id/members', ({ user, params, body }) => addBizMember(user, params.id, body ?? {}));
+  green.delete<Biz & { uid: string }>('biz/:id/members/:uid', ({ user, params }) => removeBizMember(user, params.id, params.uid));
+  green.get<Biz>('biz/:id/suppliers', ({ user, params, query }) => bizSuppliers(user, params.id, query));
+  green.post<Biz>('biz/:id/suppliers', ({ user, params, body }) => addBizSupplier(user, params.id, body ?? {}));
+  green.delete<Biz & { sid: string }>('biz/:id/suppliers/:sid', ({ user, params }) => removeBizSupplier(user, params.id, params.sid));
+  green.get<Biz>('biz/:id/staff', ({ user, params, query }) => bizStaff(user, params.id, query));
+  green.post<Biz>('biz/:id/survey', { status: 200 }, ({ user, params, body }) => bizSurveyLink(user, params.id, body ?? {}));
+  green.post<Biz>('biz/:id/audit-link', { status: 200 }, ({ user, params, body }) => bizAuditLink(user, params.id, body ?? {}));
+  green.get<Biz>('biz/:id/audit', ({ user, params }) => bizAudit(user, params.id));
+  green.put<Biz>('biz/:id/plan', ({ user, params, body }) => saveBizPlan(user, params.id, body ?? {}));
+  green.get<Biz>('biz/:id/report', ({ user, params, query }) => bizReport(user, params.id, query));
+  green.get<Biz>('biz/:id/trace', ({ user, params }) => bizTrace(user, params.id));
+  green.post<Biz>('biz/:id/trace', { status: 200 }, ({ user, params, body }) => pushBizTrace(user, params.id, body ?? {}));
+  green.get<Biz>('biz/:id/clients', ({ user, params, query }) => bizClients(user, params.id, query));
+  // M276–M281: plans, certificates and offsets, verification, the industry benchmark.
+  type V = Biz & { vid: string };
+  green.post<Biz>('biz/:id/billing', { status: 200 }, ({ user, params, body, req }) => bizCheckout(user, params.id, body ?? {}, new URL(req.url).origin));
+  green.post<Biz>('biz/:id/billing/portal', { status: 200 }, ({ user, params, req }) => bizPortal(user, params.id, new URL(req.url).origin));
+  green.get<Biz>('biz/:id/credits', ({ user, params, query }) => bizCreditList(user, params.id, query));
+  green.post<Biz>('biz/:id/credits', ({ user, params, body }) => addBizCredit(user, params.id, body ?? {}));
+  green.delete<Biz & { cid: string }>('biz/:id/credits/:cid', ({ user, params }) => removeBizCredit(user, params.id, params.cid));
+  green.get<Biz>('biz/:id/benchmark', ({ user, params, query }) => bizBenchmark(user, params.id, query));
+  green.get<Biz>('biz/:id/verifications', ({ user, params }) => bizVerifications(user, params.id));
+  green.post<Biz>('biz/:id/verifications', ({ user, params, body }) => inviteVerifier(user, params.id, body ?? {}));
+  green.post<V>('biz/:id/verifications/:vid/queries', ({ user, params, body }) => askQuery(user, params.id, params.vid, body ?? {}));
+  green.post<V & { qid: string }>('biz/:id/verifications/:vid/queries/:qid/answer', { status: 200 }, ({ user, params, body }) => answerQuery(user, params.id, params.vid, params.qid, body ?? {}));
+  green.post<V & { qid: string }>('biz/:id/verifications/:vid/queries/:qid/close', { status: 200 }, ({ user, params }) => closeQuery(user, params.id, params.vid, params.qid));
+  green.post<V>('biz/:id/verifications/:vid/sign', { status: 200 }, ({ user, params, body }) => signVerification(user, params.id, params.vid, body ?? {}));
+  green.post<V>('biz/:id/verifications/:vid/withdraw', { status: 200 }, ({ user, params }) => withdrawVerification(user, params.id, params.vid));
+  // The share links on /carbon/[code]: suppliers, staff and auditors, by an unguessable code; never emails or phones.
+  green.get<{ code: string }>('link/:code', { public: true }, ({ params }) => carbonLink(params.code));
+  green.post<{ code: string }>('link/:code', { public: true, status: 200 }, ({ params, body }) => answerCarbonLink(params.code, body ?? {}));
+  green.post<{ code: string }>('link/:code/me', { status: 200 }, ({ user, params, body }) => answerCarbonLink(params.code, body ?? {}, user));
 }
