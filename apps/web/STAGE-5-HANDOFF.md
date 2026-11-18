@@ -9313,3 +9313,13 @@ The owner's 32 features, Relief 1.
   with the stops as waypoints (up to 10, Google's link limit).
 - Start: the first request, or "Start from where I am" (the device's position, used only on the device). Positions are the
   posts' rounded ones (~500 m, `relief.ts`), so the page says to message each person for the exact address.
+
+## M313: supply forecasts for Relief organisations (18 Nov)
+
+The owner's 32 features, Relief 2. Supplies had a quantity, a "low at" level and a log of moves (M106).
+
+- **`forecastSupply`** (`src/lib/supply-forecast.ts`, tested): what went out (negative moves) in the last 28 days, the last
+  week counting twice, gives the daily use; then days left, the run-out day and the order-by day (`LEAD_DAYS` = 3
+  before). States: ok, soon (10 days or less), now (3 or less), unknown (nothing went out lately).
+- `GET /relief/orgs/:id` sends `forecast` with each supply (one more query: four weeks of outgoing moves, up to 3,000);
+  `OrgDashboard`'s supply rows show it under the name.

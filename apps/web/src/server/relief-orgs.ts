@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { forecastSupply } from '@/lib/supply-forecast';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { RELIEF_KINDS, RELIEF_ORG_KINDS, RELIEF_ORG_ROLES, STOCK, mayChangeRole, nextQuantity, runsOrg, snap, supplyLow, textNumber, type ReliefOrgRole } from '@/lib/relief';
@@ -140,12 +141,14 @@ export async function joinReliefOrg(u: SessionUser, b: Body) {
 export async function reliefOrg(u: SessionUser, orgId: string) {
   const role = await member(u, orgId);
   const now = Date.now(), since = new Date(now - 30 * DAY);
-  const [org, members, supplies, moves, shifts] = await Promise.all([
+  const [org, members, supplies, moves, shifts, used] = await Promise.all([
     prisma.reliefOrg.findUnique({ where: { id: orgId } }),
     prisma.reliefOrgMember.findMany({ where: { orgId }, orderBy: { createdAt: 'asc' }, take: MAX_MEMBERS }),
     prisma.reliefSupply.findMany({ where: { orgId }, orderBy: [{ kind: 'asc' }, { name: 'asc' }], take: MAX_SUPPLIES }),
     prisma.reliefSupplyMove.findMany({ where: { orgId }, orderBy: { createdAt: 'desc' }, take: 40 }),
     prisma.reliefShift.findMany({ where: { orgId, endsAt: { gt: new Date(now - 2 * DAY) } }, orderBy: { startsAt: 'asc' }, take: MAX_SHIFTS, select: SHIFT }),
+    // M313: what went out of each supply in four weeks, for its forecast.
+    prisma.reliefSupplyMove.findMany({ where: { orgId, change: { lt: 0 }, createdAt: { gte: new Date(now - 28 * DAY) } }, select: { supplyId: true, change: true, createdAt: true }, take: 3000 }),
   ]);
   if (!org) throw new NotFoundException('That organisation is gone.');
   const signups = shifts.length ? await prisma.reliefShiftSignup.findMany({ where: { shiftId: { in: shifts.map((s) => s.id) } }, select: { shiftId: true, userId: true } }) : [];
@@ -179,7 +182,7 @@ export async function reliefOrg(u: SessionUser, orgId: string) {
     textsOn: on,
     texts: run ? texts.map((t) => ({ id: t.id, channel: t.channel, from: t.fromNumber, body: t.body, status: t.status, postId: t.postId, createdAt: t.createdAt })) : null,
     members: members.map((m) => ({ id: m.userId, name: who(m.userId)?.name ?? 'Someone', role: m.role, since: m.createdAt, me: m.userId === u.id })),
-    supplies: supplies.map((s) => ({ id: s.id, name: s.name, kind: s.kind, unit: s.unit, quantity: s.quantity, lowAt: s.lowAt, low: supplyLow(s), updatedAt: s.updatedAt })),
+    supplies: supplies.map((s) => ({ id: s.id, name: s.name, kind: s.kind, unit: s.unit, quantity: s.quantity, lowAt: s.lowAt, low: supplyLow(s), updatedAt: s.updatedAt, forecast: forecastSupply(s.quantity, used.filter((m) => m.supplyId === s.id), now) })),
     moves: moves.map((m) => ({ id: m.id, supplyId: m.supplyId, change: m.change, note: m.note, at: m.createdAt, by: who(m.userId)?.name ?? null })),
     shifts: shifts.map((s) => ({ ...s, signedUp: signups.some((g) => g.shiftId === s.id && g.userId === u.id), people: signups.filter((g) => g.shiftId === s.id).map((g) => who(g.userId) ?? { id: g.userId, name: 'Someone' }) })),
     handling: handling.map(post),
