@@ -9302,3 +9302,14 @@ The owner's 32 features, Trace 5.
 - **Best per fact** (`bestOf` in `src/lib/trace-compare.ts`, tested): lower is better for price and carbon, higher for the
   rest; none when fewer than two have a value or all tie; prices only in one currency. Marked in green and for screen
   readers ("best").
+
+## M312: delivery routes for volunteers (18 Nov)
+
+The owner's 32 features, Relief 1.
+
+- **`HelpRoute.tsx`** above "I'm helping" (shown with two or more taken, undelivered requests); all in the browser, no
+  new route: `orderStops` (`src/lib/relief-route.ts`, tested) takes the nearest next, then 2-opt untangles crossings;
+  `routeSummary` adds legs ×1.3 for streets and times at 4.5 / 14 / 25 km/h; `mapsLink` opens Google Maps directions
+  with the stops as waypoints (up to 10, Google's link limit).
+- Start: the first request, or "Start from where I am" (the device's position, used only on the device). Positions are the
+  posts' rounded ones (~500 m, `relief.ts`), so the page says to message each person for the exact address.
