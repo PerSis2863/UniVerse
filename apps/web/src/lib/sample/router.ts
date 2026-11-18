@@ -1822,6 +1822,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Relief's emergency reports (M314).
   [/^\/relief\/orgs\/[^/]+\/incidents$/, () => ok(extra.sampleIncidents())],
   [/^\/relief\/incidents\/[^/]+\/report$/, () => ok(extra.sampleIncidentReport())],
+  // Green's home energy (M317).
+  [/^\/green\/home$/, () => ok(extra.sampleGreenHome())],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],

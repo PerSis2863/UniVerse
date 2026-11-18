@@ -178,3 +178,15 @@ export function sampleIncidentReport() {
     timeline: [{ at: at(0), kind: 'start', text: 'Declared: River flooding in the old town (Old town)' }, { at: at(1), kind: 'need', text: 'Need: Drinking water for 6 (6 people)' }, { at: at(3), kind: 'shift', text: 'Shift: Sandbags at the bridge (9 volunteers)' }, { at: at(5), kind: 'done', text: 'Delivered: Drinking water for 6' }, { at: at(48), kind: 'end', text: 'Ended' }],
   };
 }
+
+/** GET /green/home (M317): a year of a two-person flat's bills. */
+export function sampleGreenHome() {
+  const now = new Date();
+  const months = Array.from({ length: 12 }, (_, i) => { const d = new Date(now.getFullYear(), now.getMonth() - 11 + i, 15); return d.toISOString().slice(0, 7); });
+  const bills = months.flatMap((m, i) => [
+    { id: `sample-be-${i}`, month: m, kind: 'ELECTRICITY', amount: 240 + (i % 4) * 20, unit: 'kWh', greenTariff: false, kg: Math.round((240 + (i % 4) * 20) * 0.21 * 10) / 10 },
+    { id: `sample-bg-${i}`, month: m, kind: 'GAS', amount: [900, 700, 400, 200, 120, 100, 100, 150, 350, 600, 850, 1000][i], unit: 'kWh', greenTariff: false, kg: Math.round([900, 700, 400, 200, 120, 100, 100, 150, 350, 600, 850, 1000][i] * 0.183 * 10) / 10 },
+  ]).reverse();
+  const by = months.map((m) => { const kg = Math.round(bills.filter((b) => b.month === m).reduce((s, b) => s + b.kg, 0) * 10) / 10; return { month: m, kg, perPerson: Math.round((kg / 2) * 10) / 10 }; });
+  return { home: { people: 2, country: 'GB' }, bills, months: by, compare: { month: months[11], kg: by[11].kg, vsYearAgo: null, vsAverage: 35 }, kwhMonth: 270 };
+}

@@ -9363,3 +9363,18 @@ hand-ins and messages made offline; Relief posts failed with "Could not post it"
 - **Never twice:** `createReliefPost` returns the post a `(userId, clientId)` already made (`relief_posts.clientId`,
   unique with the user, 0249); `clientIdOf` checks the id's shape. Test: `relief-offline.test.ts`.
 - **Batch 3 (Trace 5, Relief 5, M307–M316) checked:** unit tests, lint, types after each item.
+
+## M317: home energy from bills (18 Nov)
+
+The owner's 32 features, Green 1. The footprint (M216) asked for "kWh a month" as a guess; Green → Business reads
+company bills (M270-era).
+
+- **Factors in `src/lib/green.ts`** (the rule): `HOME_ENERGY`, `GRID_KG_PER_KWH` (23 countries and the world, 2023,
+  rounded), `GREEN_TARIFF_KG_PER_KWH`, `homeEnergyKg` (gas by kWh or m³, oil and LPG by litre; UK DESNZ 2024).
+- **`/green/home`** (`src/server/green-home.ts`): the household (`green_homes`: people, grid country; changing the
+  country recomputes the electricity bills) and the bills (`green_bills`, one per month and kind, up to 240);
+  `byMonth`, `compareLatest` (`src/lib/home-energy.ts`, tested) give per month, per person, vs a year before and the
+  average. **Read a bill's photo** (`POST /green/home/read`): one AI request (`spendAi`, `featureOff('ai')`, logged as
+  `home-bill`), only fills the form.
+- **`HomeEnergy.tsx`** at the end of Green → Footprint's questions. Deleting an account removes the bills and home
+  (`eraseAccount`); "Download my data" has them by `userId`. 0250.

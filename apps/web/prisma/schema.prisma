@@ -8373,3 +8373,30 @@ model TraceClaim {
   @@index([codeId])
   @@map("trace_claims")
 }
+
+/// M317: a person's household for home energy (src/server/green-home.ts): how many live there, the electricity grid's country.
+model GreenHome {
+  userId    String   @id
+  people    Int      @default(1)
+  country   String?
+  updatedAt DateTime @updatedAt
+
+  @@map("green_homes")
+}
+
+/// M317: one month's energy bill of one kind (ELECTRICITY, GAS, OIL, LPG), with its kg CO₂e (homeEnergyKg in src/lib/green.ts).
+model GreenBill {
+  id          String   @id @default(cuid())
+  userId      String
+  month       String
+  kind        String
+  amount      Float
+  unit        String
+  greenTariff Boolean  @default(false)
+  kg          Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, month, kind])
+  @@map("green_bills")
+}

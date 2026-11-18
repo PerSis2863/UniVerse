@@ -29,6 +29,7 @@ export const AI_USE_KINDS = {
   interview: 'Interview practice',
   ta: 'Class TA (during a class)',
   'carbon-bill': 'Reading a bill (Green → Business)',
+  'home-bill': 'Reading an energy bill (Green)',
   revision: 'Revision packs',
 } as const;
 export type AiUseKind = keyof typeof AI_USE_KINDS;

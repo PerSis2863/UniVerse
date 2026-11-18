@@ -1,4 +1,5 @@
 import type { Router } from '../router';
+import { greenHome, readHomeBill, removeBill, saveBill, setGreenHome } from '../green-home';
 import { incidentReport, orgIncidents } from '../relief-report';
 import prisma from '@/lib/db';
 import { parseShownApps } from '@/lib/shown-apps-list';
@@ -222,6 +223,12 @@ export default function impactAppsModule(router: Router) {
   green.get('proofs', ({ user }) => greenProofs(user));
   // M216: footprint, goal and pledges, community events.
   green.get('footprints', ({ user }) => greenFootprints(user));
+  // M317: home energy from bills.
+  green.get('home', ({ user }) => greenHome(user));
+  green.put('home', ({ user, body }) => setGreenHome(user, body ?? {}));
+  green.post('home/bills', ({ user, body }) => saveBill(user, body ?? {}));
+  green.delete<{ id: string }>('home/bills/:id', ({ user, params }) => removeBill(user, params.id));
+  green.post('home/read', { status: 200 }, ({ user, body }) => readHomeBill(user, body ?? {}));
   green.post('footprints', ({ user, body }) => saveFootprint(user, body ?? {}));
   green.get('goals', ({ user }) => greenGoals(user));
   green.put('goals', ({ user, body }) => setGreenGoal(user, body ?? {}));
