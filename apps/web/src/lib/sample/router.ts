@@ -1815,6 +1815,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   // Warranty claims (M309).
   [/^\/trace\/claims\/mine$/, () => ok(extra.sampleClaims(true))],
   [/^\/trace\/claims$/, () => ok(extra.sampleClaims(false))],
+  // A shop's setup guide (M310).
+  [/^\/trace\/shop-guide$/, () => ok(extra.sampleShopGuide())],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],

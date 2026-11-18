@@ -9280,3 +9280,13 @@ between.
   ("Warranty repair: …", as the brand's).
 - Each step is in `trace_claims.timeline` and told to the other side in the app (`notify`, `email: false`); the owner can
   withdraw until a decision. 0248. Test: `trace-claims.test.ts`.
+
+## M310: a setup guide for new shops (18 Nov)
+
+The owner's 32 features, Trace 4.
+
+- **`ShopGuide.tsx`** at the top of Trace → Wallet; `GET /trace/shop-guide` (`src/server/trace-shop.ts`): four counts
+  (the person's SHOP roles in brands' networks, their recorded SHOP stops, units they claimed at sale, their points)
+  and the tier (`tierFor`, sales in 90 days). Steps (`src/lib/shop-guide.ts`, tested): join, counter sign (ticked on the
+  device, `uv-shop-sign`), record a delivery, check a unit at the first sale, points; it hides once all are done. People
+  who aren't shops see one "Run a shop? Set it up" button.
