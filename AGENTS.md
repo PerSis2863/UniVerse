@@ -284,6 +284,17 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
+- **The owner's ask of 18 Nov, first** ("upgrade everything in app and website and also add new features and upgrade the
+  existing features in the system"; asked which areas and kinds: "All of them" for both; told once that the pause
+  stands until 5 Dec, the owner chose to go on). Work it in rounds, one app a round, each round its own items, checked
+  in a browser at 390 and 1280, light and dark, and merged only when the owner says "merge":
+  1. **Live errors:** done 18 Nov: nothing open is real (24 reports are the console's sample records `smpe…`; the rest
+     were fixed in M221, M231 and the Travel image fix, or are bots on old chunks). Tell the owner to mark them resolved.
+  2. **Speed:** the student home on a phone (worst load task ~0.8 s at 4× CPU against ~0.5 s for the teacher's;
+     `scripts/checks/main-pages-smooth.mjs --only /student --phone-only`; profile with source maps before changing).
+  3. **Each app, upgrades and new features** (ask the owner for their wishes per app first, in one question with
+     options): UniVersity (the first real class: courses, grading, messages), the website and sign-up (the 10
+     returning people), Trace, Relief, Green (and Green → Business), Travel, Games.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
