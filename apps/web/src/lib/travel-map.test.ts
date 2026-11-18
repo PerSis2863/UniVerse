@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classesOf, kindOf, bubbleAt, ROUTER, routeOf, routeUrl, walkFrom, walkInGoogle, walkStay, withLegs, type MapPlace } from './travel-map';
+import { boxKey, nearKey, classesOf, kindOf, bubbleAt, ROUTER, routeOf, routeUrl, walkFrom, walkInGoogle, walkStay, withLegs, type MapPlace } from './travel-map';
 
 // M209: the map's kinds of place and "Walk from here".
 describe('travel map', () => {
@@ -69,5 +69,20 @@ describe('the walk time bubble (M233)', () => {
     const path: [number, number][] = [[0, 0], [1, 0], [1, 4], [2, 4]];
     expect(bubbleAt(path, [{ lat: 0, lon: 0 }, { lat: 0, lon: 1 }, { lat: 4, lon: 1 }, { lat: 4, lon: 2 }])).toEqual([1, 2]);
     expect(bubbleAt([[0, 0], [2, 2]], [{ lat: 0, lon: 0 }, { lat: 2, lon: 2 }])).toEqual([1, 1]);
+  });
+});
+
+describe('what a map view asks for (M272)', () => {
+  const v = { lat: 48.8566, lon: 2.3522, s: 48.84, w: 2.33, n: 48.87, e: 2.37 };
+  it('stays the same for a small pan, so the answer is reused', () => {
+    const moved = { lat: 48.8571, lon: 2.3531, s: 48.8405, w: 2.3309, n: 48.8705, e: 2.3709 };
+    expect(nearKey(moved, 2)).toBe(nearKey(v, 2));
+    expect(boxKey(moved)).toBe(boxKey(v));
+    expect(boxKey(v)).toBe('s=48.80&w=2.30&n=48.90&e=2.40');
+  });
+  it('picks a radius step that covers the view', () => {
+    expect(nearKey(v, 2)).toMatch(/r=3000$/);
+    expect(nearKey(v, 0.5)).toMatch(/r=1500$/);
+    expect(nearKey(v, 40)).toMatch(/r=10000$/);
   });
 });

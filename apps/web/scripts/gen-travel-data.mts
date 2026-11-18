@@ -18,11 +18,13 @@ const UA = 'UniVerseTravel/1.0 (https://github.com/PerSis2863/UniVerse; travel g
 const LIB = new URL('../src/lib/', import.meta.url);
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 async function get(url: string) {
-  for (let i = 0; i < 3; i++) {
+  for (let i = 0; i < 6; i++) {
     const r = await fetch(url, { headers: { 'User-Agent': UA, 'Api-User-Agent': UA } });
     if (r.status === 404) return null;
     if (r.ok) return r.text();
-    await pause(2000 * (i + 1));
+    // Told to slow down (429): wait as long as asked, else longer each time.
+    const after = Number(r.headers.get('retry-after'));
+    await pause(r.status === 429 ? (Number.isFinite(after) && after > 0 ? after * 1000 : 20_000 * (i + 1)) : 2000 * (i + 1));
   }
   throw new Error(`${url} failed`);
 }
@@ -92,7 +94,7 @@ async function places() {
 async function photos() {
   const file = new URL('travel-places.json', LIB);
   const all = JSON.parse(readFileSync(file, 'utf8')) as Record<string, Record<string, unknown>>;
-  const json = async <T,>(url: string) => { const t = await get(url); await pause(600); return t ? (JSON.parse(t) as T) : null; };
+  const json = async <T,>(url: string) => { const t = await get(url); await pause(1500); return t ? (JSON.parse(t) as T) : null; };
   type Summary = { wikibase_item?: string; originalimage?: { source: string } };
   const fileOf = (src?: string) => src && /\/commons\/(?:thumb\/)?[0-9a-f]\/[0-9a-f]{2}\/([^/?]+)/.exec(src)?.[1];
   const info = async (name: string) => (await json<{ original: { mediatype: string; width: number; height: number } }>(
@@ -116,6 +118,7 @@ async function photos() {
       if (o && photoOk(name, o.width, o.height, o.mediatype)) { photo = name; break; }
     }
     all[title].photo = photo ?? null;
+    save('travel-places.json', all); // as it goes: a stop later keeps what was found
     console.log(`${photo ? 'ok  ' : 'none'} ${title}: ${photo ?? tried.join(' | ')}`);
   }
   save('travel-places.json', all);

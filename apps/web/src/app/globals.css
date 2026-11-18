@@ -849,6 +849,14 @@ html, body { overflow-x: clip; max-width: 100%; }
     height: calc(100dvh - var(--mobile-header-h) - var(--mobile-tabbar-h) - var(--safe-top) - var(--safe-bottom) - 0.75rem);
   }
 }
+/* M271: a page that is one big map (useBareChrome, src/lib/chrome.ts): on a phone the top bar steps aside and the map
+   takes its height (--bare-gain, added to the map's own height). */
+:root { --bare-gain: 0px; }
+@media (max-width: 1023px) {
+  html[data-bare] { --bare-gain: var(--mobile-header-h); }
+  html[data-bare] .mobile-header { display: none; }
+  html[data-bare] .mobile-main { padding-top: var(--safe-top); }
+}
 .above-tabbar { bottom: calc(var(--mobile-tabbar-h) + var(--safe-bottom) + 0.75rem); }
 @media (min-width: 1024px) { .above-tabbar { bottom: 1.5rem; } }
 

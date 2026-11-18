@@ -8803,3 +8803,54 @@ type it in… it should recommend the areas to visit, foods, shopping and many m
 - **Merged into the redesigned map (M236–M267, 18 Nov):** the stay field and the trips' stays sit under the search in
   the places panel; the highlights head the list when Sights is chosen (also over the world's destinations).
 - **Rule:** places of a kind need the map at street level: bring the map there (`closeIn`), never ask people to zoom.
+
+## M283 (built as M270 on `claude/youthful-fermi-sbdtcp`, renumbered on merge: Green → Business used M269–M281): a place's facts on Travel's map, and directions you can find (18 Nov)
+
+The owner: "remove this [the 'Facts: OpenStreetMap contributors…' line] and… add facts of that specific place that i click on the
+map it could be historic or ancient or popular food place or anything, it could be fun fact also"; then, of "3 h · Walk from
+here": "i dont understand… if i want directions from one place to another then how".
+
+- **Facts** (`src/lib/travel-place.ts`, `PlaceInfo.known` and `funFact`): from the place's Wikidata item, when it was
+  built or founded (`whenText`: years, BC, centuries), a UNESCO or other heritage listing, its designer or maker, style,
+  namesake, height, visitors a year, awards, what it's known for; from OpenStreetMap, historic, heritage and architect.
+  The names they point to come in one `wbgetentities` call (`factIds`). **Did you know?** (`funFactFrom`): the most
+  surprising sentence of the article's first 5,000 characters (superlatives, "first", "nicknamed", "legend"…) that the
+  card doesn't already show. Kept 30 days as before (`place2:`); a card made while Wikipedia was busy (`partial`) is
+  made again after an hour. Tested.
+- **No credit line** under the card: Wikipedia is linked beside its text (its licence asks for that), the map credits
+  OpenStreetMap, Wikidata is CC0.
+- **Directions and the walk** (`TravelMap.tsx`): two plain buttons under the panel's title, **Directions** (opens From /
+  To, `DirectionsCard`) and **Sightseeing walk** (was "Walk from here"), with one line saying what each does and the
+  walk's length in it (1–4 hours). On a phone, a place's card takes the sheet over: the stay and the kinds step aside.
+- **Checked:** `scripts/checks/travel-facts-ui.mjs` (the Eiffel Tower: built 1887, 330 m, 7.1 million visitors, designed
+  by Stephen Sauvestre; no credit line; Directions opens From / To; axe clean at 1280 and 390), `pnpm check`. The fun
+  fact couldn't be seen live from this cloud machine (Wikipedia refused it while the photo search ran): it's tested on
+  an article's text.
+
+## M284: on a phone, a map page has no top bar (18 Nov)
+
+The owner, with a phone screenshot of Travel's map: "the upper line where the universe logo, notifications and search is not
+needed and the map can get that area… and also see this type of thing can be done where else".
+
+- `useBareChrome()` (`src/lib/chrome.ts`) on a page that is one big map sets `html[data-bare]`; on a phone (below 1024
+  px) the top bar (`.mobile-header`) is hidden, `.mobile-main` keeps only the safe area, and `--bare-gain` (the bar's
+  height) is added to the map's own height (`h-[calc(100dvh-12rem+var(--bare-gain))]`). It's removed when the page goes.
+  The page's own tabs and the bottom tab bar stay, so there's always a way on. Computers are unchanged (that bar is a
+  phone's only).
+- **Where:** Travel's Map, Relief's Alerts map, Green's Places map. Already full screen and left as they are: games (the
+  arena, with Leave), the whiteboard, calls, Studio's focus mode. Kept with the bar: pages where a map shares the page
+  with lists (Relief's and Trace's main maps), Messages (its bar carries Back).
+- **Checked:** `scripts/checks/bare-chrome-ui.mjs` (on a phone the bar is gone on the three maps and back on leaving;
+  axe clean, no sideways scroll), `pnpm check`.
+- **Rule:** a new page that is one big map calls `useBareChrome()` and adds `var(--bare-gain)` to its height on phones.
+
+## M285: Travel's map asks the server less while you move it (18 Nov)
+
+The owner: "make travel app more efficient… ultra smooth specially maps". Measured on the built site (Paris, dragging and
+zooming, CPU slowed 4×): almost all the work while moving is MapLibre drawing (already tuned in M259/M267: pixel ratio
+capped at 2, short label fades, tiles kept). What wasted Worker requests: every stop of the map asked for UniVerse's
+reviews of the new view (the box was matched to ~100 m) and the stories again at every zoom.
+
+- `nearKey` / `boxKey` (`src/lib/travel-map.ts`, tested): the middle snapped to 0.02° (~2 km) with a radius from four
+  steps, the box outwards to 0.05° (~5 km); a small pan reuses the answer (SWR's key doesn't change).
+- **Rule:** what a map view asks the server for is snapped to a grid; never a key from the exact view.
