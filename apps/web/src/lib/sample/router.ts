@@ -1812,6 +1812,9 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/trace\/funnel$/, ({ q }) => ok(extra.sampleFunnel(q))],
   // Trace's area alerts (M308).
   [/^\/trace\/watch$/, () => ok(extra.sampleWatch())],
+  // Warranty claims (M309).
+  [/^\/trace\/claims\/mine$/, () => ok(extra.sampleClaims(true))],
+  [/^\/trace\/claims$/, () => ok(extra.sampleClaims(false))],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],
@@ -2848,6 +2851,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/office-slots(\/[^/]+\/(book|wait|cancel))?$/, () => { notice(); return ok({ ok: true, opened: 0, place: 1, movedUp: false }); }],
   ['POST', /^\/portfolio\/(items|shares)$/, () => { notice(); return ok({ item: { id: 'sample-pf-new' }, token: 'sample', url: '/passport/sample' }); }],
   ['POST', /^\/course-announcements\/[^/]+\/[^/]+\/(remind|ack)$/, () => { notice(); return ok({ reminded: 0, ackAt: new Date().toISOString() }); }],
+  ['POST', /^\/trace\/(claims\/[^/]+\/(status|withdraw)|vault\/[^/]+\/claim)$/, () => { notice(); return ok({ ok: true, claim: { id: 'sample-claim' } }); }],
   ['POST', /^\/exam-papers(\/.*)?$/, () => { notice(); return ok({ paper: { id: 'sample-paper' }, score: 0, total: 0, posted: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],

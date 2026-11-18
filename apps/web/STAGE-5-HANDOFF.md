@@ -9263,3 +9263,20 @@ checks, and nothing per place.
   (`reportFake`). It counts the area's suspect checks and reports of the last 24 hours; at the threshold it claims the
   area for the day (`trace_brands.watchSent`, kept two days, `prune`) and tells the brand's team in the app.
 - **Radar → Area alerts** (`AreaAlerts.tsx`, `GET/PUT /trace/watch`; only the brand's owner changes it). 0247.
+
+## M309: warranty claims from start to finish (18 Nov)
+
+The owner's 32 features, Trace 3. Warranties could be registered (Q-era Trace) and repairs logged (M145); nothing in
+between.
+
+- **The owner** (`UnitClaim` on each vault card; `POST /trace/vault/:id/claim`): only the unit's vault owner, with a
+  registered warranty still running, one open claim per unit; the issue (10–2,000 characters) and an optional app-file
+  photo (`/api/files/…` only).
+- **The brand** (`BrandClaims` on its Trace home; `GET /trace/claims?open=1`, `POST /trace/claims/:id/status`): the queue
+  with the owner's first name only (never their email), the product and the warranty's end; the next steps allowed
+  (`brandMoves` in `src/lib/trace-claims.ts`, tested): OPEN → REVIEWING / APPROVED / REFUSED; APPROVED → REPAIRED /
+  REPLACED / REFUNDED; any of those or REFUSED → CLOSED. A refusal needs a reason. The move is claimed with
+  `updateMany … status: <the one read>`, so two people can't move it at once. REPAIRED writes a `trace_repairs` row
+  ("Warranty repair: …", as the brand's).
+- Each step is in `trace_claims.timeline` and told to the other side in the app (`notify`, `email: false`); the owner can
+  withdraw until a decision. 0248. Test: `trace-claims.test.ts`.

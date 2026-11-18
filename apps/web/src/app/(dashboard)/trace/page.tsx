@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { BrandClaims } from '@/components/trace/WarrantyClaims';
 import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { toast } from 'sonner';
@@ -282,6 +283,7 @@ function BrandConsole({ info, onChange }: { info: { brand: Brand; pro: boolean; 
       </section>
 
       {products.some((p) => p.takeBackHow) && <Takebacks />}
+      <BrandClaims />
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <section className="panel p-5" aria-labelledby="recent-h">

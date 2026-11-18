@@ -139,3 +139,10 @@ export function sampleFunnel(q: URLSearchParams) {
 
 /** GET /trace/watch (M308): a brand watching two countries. */
 export const sampleWatch = () => ({ watch: { countries: ['IN', 'NG'], threshold: 3, anywhere: true }, thresholds: [1, 3, 5, 10, 25], recent: [{ area: 'c:IN', at: new Date(Date.now() - 5 * 3600_000).toISOString() }] });
+
+/** GET /trace/claims and /trace/claims/mine (M309): one claim in review. */
+export function sampleClaims(mine: boolean) {
+  const at = (h: number) => new Date(Date.now() - h * 3600_000).toISOString();
+  const claim = { id: 'sample-claim', code: 'sample-code', issue: 'The zip came apart after three weeks of normal use.', photoUrl: null, status: 'REVIEWING', createdAt: at(30), product: 'Trail runner', timeline: [{ at: at(30), status: 'OPEN', note: null, by: 'owner' }, { at: at(4), status: 'REVIEWING', note: 'Thanks, we’re looking at the photos.', by: 'brand' }] };
+  return mine ? { claims: [claim] } : { claims: [{ ...claim, owner: 'Maya', warrantyEnds: new Date(Date.now() + 300 * 86_400_000).toISOString(), next: ['APPROVED', 'REFUSED'] }], open: 1 };
+}

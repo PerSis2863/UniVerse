@@ -8349,3 +8349,23 @@ model PortfolioShare {
   @@index([userId])
   @@map("portfolio_shares")
 }
+
+/// M309: a warranty claim (src/server/trace-claims.ts): `status` per src/lib/trace-claims.ts, `timeline` JSON [{ at, status, note, by }].
+model TraceClaim {
+  id        String   @id @default(cuid())
+  codeId    String
+  brandId   String
+  productId String
+  userId    String
+  issue     String
+  photoUrl  String?
+  status    String   @default("OPEN")
+  timeline  String   @default("[]")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([brandId, status])
+  @@index([userId])
+  @@index([codeId])
+  @@map("trace_claims")
+}
