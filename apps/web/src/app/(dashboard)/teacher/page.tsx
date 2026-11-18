@@ -14,6 +14,7 @@ import { m as motion } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { WhenVisible } from '@/components/ui/WhenVisible';
 import { HomeBoard } from '@/components/home/HomeBoard';
+import { DashHead } from '@/components/home/DashHead';
 import { UpNextCard } from '@/components/home/UpNext';
 import { AttentionCard, CreateCard } from '@/components/home/RoleCards';
 import { useHome } from '@/components/home/use-home';
@@ -78,20 +79,19 @@ export default function TeacherDashboard() {
 
   return (
     <>
-      <Topbar
-        title={t('teacher.title')}
-        subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`}
-        action={{ label: t('teacher.new_course'), onClick: () => setShowCourseModal(true) }}
-      />
+      <Topbar title={t('teacher.title')} subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
-        <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} first={<FirstClassCard onNewCourse={() => setShowCourseModal(true)} />} afterTop={<AccountSetupCard />} cards={{
+        <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} first={<FirstClassCard onNewCourse={() => setShowCourseModal(true)} />} afterTop={<AccountSetupCard />}
+          head={<DashHead name={user?.name} summary={[pendingGrades ? `${pendingGrades} to grade` : 'Nothing waiting to be graded', `${activeCourses} ${activeCourses === 1 ? 'course' : 'courses'}, ${totalStudents.toLocaleString()} students`].join(' · ')} />}
+          actions={<button type="button" onClick={() => setShowCourseModal(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" aria-hidden />{t('teacher.new_course')}</button>}
+          cards={{
           upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="No classes or calls coming up, and nothing waiting to be graded." />,
           kpis: (
             <div className="kpi-row grid grid-cols-2 xl:grid-cols-4 gap-4">
-              <KpiCard title={t('teacher.total_students')} value={totalStudents.toString()} icon={Users} color="indigo" />
-              <KpiCard title={t('teacher.active_courses')} value={activeCourses.toString()} icon={BookOpen} color="cyan" />
-              <KpiCard title={t('teacher.pending_grades')} value={pendingGrades.toString()} icon={FileText} color="amber" />
-              <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} color="green" />
+              <KpiCard title={t('teacher.total_students')} value={totalStudents} icon={Users} href="/teacher/students" />
+              <KpiCard title={t('teacher.active_courses')} value={activeCourses} icon={BookOpen} href="/teacher/courses" />
+              <KpiCard title={t('teacher.pending_grades')} value={pendingGrades} icon={FileText} warn={pendingGrades > 0} href="/teacher/grades" />
+              <KpiCard title={t('teacher.avg_class_score')} value={`${avgClassScore}%`} icon={BarChart3} href="/teacher/grades" />
             </div>
           ),
           brief: <DailyBrief />,
