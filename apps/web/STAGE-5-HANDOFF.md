@@ -9551,3 +9551,26 @@ the hotel… automated itinerary based on where are you staying and it should be
   **0256**.
 - Tried in a browser: "Hotel Avenida Palace, Lisbon", 3 nights, History and Food → four days, each in one part of town,
   with photos, times, walks, lunch and dinner.
+
+## M328: the landing's globe replaced by a real-looking Earth rising from clouds, like tripist's (18 Nov)
+
+The owner: "remove the globe we have currently and make the same one the tripist has". tripist.app shows a
+photo-real Earth half sunk in white clouds (a video). Ours is drawn live:
+
+- **`EarthGlobe.tsx` + `earth-scene.ts` + `earth.worker.ts`**: three.js on a background thread (OffscreenCanvas; on
+  the page where a browser has none): a sphere with the Earth's picture, the seas shining (a water map), a thin blue rim
+  of air and a haze at the edge, lit from the top left, turning slowly (3.2° a second), a drag turns it with a little
+  momentum, an app pointed at or chosen below turns it to that app's part of the world. It loads when 600 px from the
+  screen, draws only on screen and while someone is there (`useIdle`), 30 frames a second at most; still with Reduce
+  Motion.
+- **The pictures** (`public/geo/earth-2048.jpg` 287 KB, `earth-4096.jpg` 1.1 MB for big sharp screens,
+  `earth-water-1024.png`, `clouds.webp` 31 KB) come from **`scripts/assets/earth-pictures.py`**: Natural Earth's
+  public-domain 1:50m rasters (cross-blended hypsometric tints with shaded relief for the land, the ocean bottom's relief
+  turned deep blue for the sea) cut along the app's own `world-50m.json` coastline; the clouds are drawn by the script
+  (round puffs heaped along a band, lit from the top left, softened).
+- **`WorldSection.tsx`** on the page's own light (it was a forced dark section): the heading, the Earth in a window that
+  shows its top three quarters with the clouds over its foot (they drift slowly, paused while scrolling), the apps as
+  cards below it (pointing at one turns the Earth), the two notes, a Natural Earth credit. The old `.world` and
+  `.world-glass` styles are gone.
+- `Planet`'s `turnable` mode has no user now (a `shortcut:` note in `Planet.tsx`); the hub and Trace keep `Planet`.
+- Checked in a browser at 1280 and 390, light and dark: no errors, the canvas fades in once ready.
