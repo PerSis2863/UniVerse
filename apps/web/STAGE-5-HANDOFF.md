@@ -9196,3 +9196,17 @@ tasks, assignments, materials, events…).
 - **Pages by name** (`APP_PAGES`, `pagesFor`): every word typed must be in a page's title or words ("free room" → Find a
   free room). Add a page there when an app gets one people will look for.
 - The palette shows them under Travel, Trace, Relief, Green and Pages (`RESULT_KIND` in `CommandPalette.tsx`).
+
+## M304: notification digest settings (18 Nov)
+
+The owner's 32 features, Platform 4. Q9 had push / summary / in-app per kind, muted courses and the summary's hour.
+
+- **Which days** (`NotifyPrefs.digestDays`, 0 = Monday; default every day): every day, weekdays, or once a week on a day
+  (`NotifyKinds.tsx`). `nextDigestAt(tz, hour, from, days)` skips other days (looks up to 9 days ahead). `sendDigests`
+  now reads unread notifications from the last 7 days and keeps, per person, those within their window (a day for daily
+  summaries, a week otherwise).
+- **Relief, Green, Trace apart:** the shared `impact` group became `relief`, `green` and `trace` (`NOTE_GROUPS`); a saved
+  choice for `impact` applies to all three (`cleanPrefs`). The notification centre has an icon and colour for each.
+- **Preview:** `GET /api/notifications/settings` returns `preview` (`digestText` of the person's unread notifications of
+  the last week), shown as "Waiting for it now".
+- Tests in `notify-prefs.test.ts`. **Rule:** a new app with its own notifications gets its own group (types + tags).

@@ -40,3 +40,18 @@ describe('notification settings', () => {
     expect(pushDecision(cleanPrefs({ push: { other: 'off' } }), { tag: 'daily-brief' })).toBe('push'); // has its own switch
   });
 });
+
+describe('the summary’s days and the apps’ groups (M304)', () => {
+  it('keeps chosen days and carries the old shared group to each app', () => {
+    const p = cleanPrefs({ push: { impact: 'digest' }, digestDays: [4, 4, 9, 'x', 0] });
+    expect(p.digestDays).toEqual([0, 4]);
+    expect([p.push.relief, p.push.green, p.push.trace]).toEqual(['digest', 'digest', 'digest']);
+    expect(cleanPrefs({}).digestDays).toEqual([0, 1, 2, 3, 4, 5, 6]);
+  });
+
+  it('waits for a chosen day', () => {
+    const wed = Date.UTC(2026, 10, 18, 10); // Wednesday 10:00 UTC
+    expect(new Date(nextDigestAt('UTC', 18, wed, [0])).toISOString()).toBe('2026-11-23T18:00:00.000Z'); // the next Monday
+    expect(new Date(nextDigestAt('UTC', 18, wed)).toISOString()).toBe('2026-11-18T18:00:00.000Z');
+  });
+});

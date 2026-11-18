@@ -6,7 +6,7 @@ import { dayIn } from './study-days';
 // pushes wait for the summary); and the summary's time. Pure, so the push service, the settings
 // page and the notification centre agree.
 
-export type NoteGroupId = 'mentions' | 'messages' | 'grades' | 'calls' | 'tasks' | 'school' | 'impact' | 'other';
+export type NoteGroupId = 'mentions' | 'messages' | 'grades' | 'calls' | 'tasks' | 'school' | 'relief' | 'green' | 'trace' | 'other';
 export type PushMode = 'push' | 'digest' | 'off';
 
 export interface NoteGroup { id: NoteGroupId; label: string; hint: string; /** Notification `type`s in the group. */ types: string[]; /** Push tags (or their start) in the group. */ tags: string[] }
@@ -18,7 +18,10 @@ export const NOTE_GROUPS: NoteGroup[] = [
   { id: 'calls', label: 'Calls and meetings', hint: 'Scheduled calls starting, office hours and meetings. A call ringing for you always rings.', types: ['live', 'meeting', 'call'], tags: ['scheduled-', 'office-', 'meeting-', 'call-'] },
   { id: 'tasks', label: 'Tasks and reminders', hint: 'Reminders you set, tasks and deadlines.', types: ['reminder', 'task'], tags: ['remind-', 'task-', 'offline-work'] },
   { id: 'school', label: 'School', hint: 'Announcements, events, fees, forms, the library, staff news and job openings.', types: ['event', 'announcement', 'consent', 'library', 'registers', 'staff', 'admissions', 'application', 'guardian', 'warning', 'fees', 'job'], tags: ['consent-', 'fees-', 'pack-', 'cover-', 'campus-network', 'parent-week', 'safety-', 'job-'] },
-  { id: 'impact', label: 'Relief, Green and Trace', hint: 'Someone coming to help, a request delivered, urgent needs near you, recalls and alerts from your brand.', types: ['relief', 'green', 'trace'], tags: ['relief-', 'green-', 'trace-'] },
+  // M304: one group each (they were one, "Relief, Green and Trace"; a saved choice for it carries over to all three).
+  { id: 'relief', label: 'Relief', hint: 'Someone coming to help, a request delivered, urgent needs and emergencies near you.', types: ['relief'], tags: ['relief-'] },
+  { id: 'green', label: 'Green', hint: 'Streaks, team news, events and your company’s footprint.', types: ['green'], tags: ['green-'] },
+  { id: 'trace', label: 'Trace', hint: 'Recalls, fake-label reports and alerts from your brand.', types: ['trace'], tags: ['trace-'] },
   { id: 'other', label: 'Everything else', hint: 'Anything not in the groups above.', types: [], tags: [] },
 ];
 
@@ -39,13 +42,16 @@ export interface NotifyPrefs {
   /** The daily summary: on, and at which hour of my day (0–23). */
   digest: boolean;
   digestHour: number;
+  /** M304: the days it comes (0 = Monday … 6 = Sunday): every day, weekdays, or one day a week. */
+  digestDays: number[];
 }
 
 export const DEFAULT_PREFS: NotifyPrefs = {
-  push: { mentions: 'push', messages: 'push', grades: 'push', calls: 'push', tasks: 'push', school: 'push', impact: 'push', other: 'push' },
+  push: { mentions: 'push', messages: 'push', grades: 'push', calls: 'push', tasks: 'push', school: 'push', relief: 'push', green: 'push', trace: 'push', other: 'push' },
   muted: [],
   digest: true,
   digestHour: 18,
+  digestDays: [0, 1, 2, 3, 4, 5, 6],
 };
 
 const ID = /^[A-Za-z0-9_-]{4,40}$/;
@@ -56,10 +62,11 @@ export function cleanPrefs(raw: unknown): NotifyPrefs {
   const o = (v && typeof v === 'object' ? v : {}) as Record<string, unknown>;
   const push = { ...DEFAULT_PREFS.push };
   const given = (o.push && typeof o.push === 'object' ? o.push : {}) as Record<string, unknown>;
-  for (const g of NOTE_GROUPS) { const m = given[g.id]; if (m === 'push' || m === 'digest' || m === 'off') push[g.id] = m; }
+  for (const g of NOTE_GROUPS) { const m = given[g.id] ?? (['relief', 'green', 'trace'].includes(g.id) ? given.impact : undefined); if (m === 'push' || m === 'digest' || m === 'off') push[g.id] = m; }
   const muted = Array.isArray(o.muted) ? [...new Set(o.muted.filter((x): x is string => typeof x === 'string' && ID.test(x)))].slice(0, 60) : [];
   const hour = Math.round(Number(o.digestHour));
-  return { push, muted, digest: o.digest === undefined ? DEFAULT_PREFS.digest : o.digest === true, digestHour: hour >= 0 && hour <= 23 ? hour : DEFAULT_PREFS.digestHour };
+  const days = Array.isArray(o.digestDays) ? [...new Set(o.digestDays.filter((d): d is number => Number.isInteger(d) && d >= 0 && d <= 6))].sort() : [];
+  return { push, muted, digest: o.digest === undefined ? DEFAULT_PREFS.digest : o.digest === true, digestHour: hour >= 0 && hour <= 23 ? hour : DEFAULT_PREFS.digestHour, digestDays: days.length ? days : [...DEFAULT_PREFS.digestDays] };
 }
 
 /** Pushes with a switch of their own (the morning brief, a parent's weekly summary, this summary). */
@@ -81,7 +88,7 @@ export function digestText(counts: Partial<Record<NoteGroupId, number>>): { titl
   if (!total) return null;
   const names: Record<NoteGroupId, [string, string]> = {
     mentions: ['mention', 'mentions'], messages: ['message', 'messages'], grades: ['grade or feedback', 'grades and feedback'], calls: ['call or meeting', 'calls and meetings'],
-    tasks: ['reminder', 'reminders'], school: ['school update', 'school updates'], impact: ['Relief, Green or Trace update', 'Relief, Green and Trace updates'], other: ['other', 'others'],
+    tasks: ['reminder', 'reminders'], school: ['school update', 'school updates'], relief: ['Relief update', 'Relief updates'], green: ['Green update', 'Green updates'], trace: ['Trace update', 'Trace updates'], other: ['other', 'others'],
   };
   const parts = (Object.entries(counts) as [NoteGroupId, number][]).filter(([, n]) => n > 0).sort((a, b) => b[1] - a[1])
     .map(([g, n]) => `${n} ${names[g][n === 1 ? 0 : 1]}`);
@@ -89,9 +96,12 @@ export function digestText(counts: Partial<Record<NoteGroupId, number>>): { titl
 }
 
 /** The next time it's `hour`:00 in this time zone, more than a minute after `from`. */
-export function nextDigestAt(tz: string | undefined, hour: number, from = Date.now()): Date {
-  for (let add = 0; add < 3; add++) {
-    const at = localTime(dayIn(tz, new Date(from + add * 86_400_000)), `${String(hour).padStart(2, '0')}:00`, tz);
+export function nextDigestAt(tz: string | undefined, hour: number, from = Date.now(), days: number[] = DEFAULT_PREFS.digestDays): Date {
+  // M304: only on the chosen days (Monday = 0), so up to a week ahead.
+  for (let add = 0; add < 9; add++) {
+    const day = dayIn(tz, new Date(from + add * 86_400_000));
+    if (!days.includes((new Date(`${day}T12:00:00Z`).getUTCDay() + 6) % 7)) continue;
+    const at = localTime(day, `${String(hour).padStart(2, '0')}:00`, tz);
     if (at != null && at > from + 60_000) return new Date(at);
   }
   return new Date(from + 86_400_000);

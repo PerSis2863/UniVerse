@@ -11,7 +11,12 @@ import { cn } from '@/lib/utils';
 // Settings → Notifications (Stage 5 · Q9): for each kind, a push now, in the daily summary, or only
 // in the app; courses whose pushes wait for the summary; when the summary comes.
 
-interface Settings { prefs: NotifyPrefs; groups: { id: NoteGroupId; label: string; hint: string }[]; courses: { id: string; code: string; name: string }[]; devices: number; nextDigest: string | null }
+interface Settings { prefs: NotifyPrefs; groups: { id: NoteGroupId; label: string; hint: string }[]; courses: { id: string; code: string; name: string }[]; devices: number; nextDigest: string | null; preview?: { title: string; body: string } | null }
+
+// M304: which days the summary comes.
+const ALL_DAYS = [0, 1, 2, 3, 4, 5, 6];
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const daysChoice = (d: number[]) => (d.length === 7 ? 'all' : d.length === 5 && d.every((x) => x < 5) ? 'weekdays' : d.length === 1 ? String(d[0]) : 'custom');
 
 const MODES: { value: PushMode; label: string }[] = [{ value: 'push', label: 'Push' }, { value: 'digest', label: 'Summary' }, { value: 'off', label: 'In app' }];
 
@@ -72,18 +77,27 @@ export function NotifyKinds() {
       )}
 
       <section aria-labelledby="digest-title" className="space-y-2">
-        <h3 id="digest-title" className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Daily summary</h3>
+        <h3 id="digest-title" className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-400">Summary</h3>
         <div className="flex flex-wrap items-center gap-3">
           <label className="inline-flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
             <input type="checkbox" checked={prefs.digest} onChange={(e) => void save({ ...prefs, digest: e.target.checked })} className="w-4 h-4 accent-indigo-600" />
-            One push a day with what came in
+            One push with what came in
           </label>
           <label className="inline-flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">at
             <select value={prefs.digestHour} disabled={!prefs.digest} onChange={(e) => void save({ ...prefs, digestHour: Number(e.target.value) })} className="input py-1 w-auto text-sm disabled:opacity-50">
               {Array.from({ length: 24 }, (_, h) => <option key={h} value={h}>{`${String(h).padStart(2, '0')}:00`}</option>)}
             </select>
           </label>
+          <label className="inline-flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-200">
+            <select aria-label="Which days" value={daysChoice(prefs.digestDays ?? ALL_DAYS)} disabled={!prefs.digest} onChange={(e) => { const v = e.target.value; if (v === 'custom') return; void save({ ...prefs, digestDays: v === 'all' ? ALL_DAYS : v === 'weekdays' ? [0, 1, 2, 3, 4] : [Number(v)] }); }} className="input py-1 w-auto text-sm disabled:opacity-50">
+              <option value="all">every day</option>
+              <option value="weekdays">on weekdays</option>
+              {DAY_NAMES.map((d, i) => <option key={d} value={String(i)}>once a week, on {d}</option>)}
+              {daysChoice(prefs.digestDays ?? ALL_DAYS) === 'custom' && <option value="custom">on the days you chose</option>}
+            </select>
+          </label>
         </div>
+        {data.preview && <p className="text-xs text-zinc-700 dark:text-zinc-300">Waiting for it now: {data.preview.body}</p>}
         <p className="text-xs text-zinc-600 dark:text-zinc-400" aria-live="polite">
           {data.nextDigest ? `Next summary: ${new Date(data.nextDigest).toLocaleString(undefined, { weekday: 'short', hour: '2-digit', minute: '2-digit' })}.` : prefs.digest ? 'It starts once something is set to Summary or a course is muted.' : 'Off: what’s set to Summary stays in the app.'}
         </p>
