@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
-import { ArrowLeft, Check, FileText, Loader2, Plus, Printer, Send, Trash2, X } from 'lucide-react';
+import { ArrowLeft, Check, FileText, Laptop, Loader2, Plus, Printer, Send, Trash2, X } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Field } from '@/components/ui/Field';
@@ -196,6 +196,12 @@ function PaperView({ id, onBack }: { id: string; onBack: () => void }) {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t send the grades.')); }
     finally { setBusy(false); }
   };
+  const toQuiz = async () => {
+    setBusy(true);
+    try { await api.post(`/exam-papers/${id}/to-quiz`, {}); toast.success('Online quiz made as a draft', { description: 'Find it under Quizzes: check it, then publish it.' }); }
+    catch (e) { toast.error(errorMessage(e, 'Couldn’t make the quiz.')); }
+    finally { setBusy(false); }
+  };
   const remove = async () => {
     if (!(await confirmDialog({ title: 'Remove this paper?', message: 'Its marks go too. Grades already in the gradebook stay.', destructive: true }))) return;
     try { await api.delete(`/exam-papers/${id}`); onBack(); } catch (e) { toast.error(errorMessage(e, 'Couldn’t remove it.')); }
@@ -206,6 +212,7 @@ function PaperView({ id, onBack }: { id: string; onBack: () => void }) {
       <div className="flex flex-wrap items-center gap-2">
         <button type="button" className="btn-ghost btn-sm" onClick={onBack}><ArrowLeft className="w-4 h-4" aria-hidden />Papers</button>
         <h2 className="me-auto text-lg font-semibold text-zinc-900 dark:text-white" translate="no">{paper.title}</h2>
+        <button type="button" className="btn-ghost btn-sm" disabled={busy} onClick={() => void toQuiz()}><Laptop className="w-4 h-4" aria-hidden />Make an online quiz</button>
         <button type="button" className="btn-ghost btn-sm" onClick={() => void remove()}><Trash2 className="w-4 h-4" aria-hidden />Remove</button>
       </div>
       <Segmented<"print" | "mark"> label="Show" value={view} onChange={setView} segments={[{ value: 'print', label: 'Print' }, { value: 'mark', label: 'Mark' }]} />

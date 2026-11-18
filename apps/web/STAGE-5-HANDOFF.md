@@ -9458,3 +9458,13 @@ console errors.
   (`label-content-name-mismatch`).
 - **M306's numbers** (`bundle-report.mjs` on this build): `/travel/trip` 468 → 421 KB, `/relief/orgs` 406 → 323 KB;
   `/relief/mine` 389 → 398 KB (the route planner and the outbox), `/green` 394 → 395 KB.
+
+## M324: a paper exam as an online quiz (18 Nov)
+
+The owner, during the 32: "also make more new features". The first of a few that tie the 32 together.
+
+- **`POST /exam-papers/:id/to-quiz`** (`paperToQuiz` in `src/server/exam-papers.ts`): from version A, a DRAFT quiz titled
+  "<paper> (online)" with the paper's instructions and minutes; questions still in the bank come over as stored there
+  (type, options, key, meta); others from the paper (choice → the right option's text, multi → JSON of the right texts,
+  number → its value, written → SHORT with the model answer and the rubric's total). Nine rows a statement. Test:
+  `exam-papers.test.ts`. The button sits beside Remove on a paper.

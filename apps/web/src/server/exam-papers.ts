@@ -138,3 +138,29 @@ export async function removePaper(u: SessionUser, id: string) {
   await prisma.examPaper.delete({ where: { id } });
   return { ok: true };
 }
+
+/**
+ * M324: POST /exam-papers/:id/to-quiz: the same questions as an online quiz (a draft in the course), from version A.
+ * Bank questions come over as they are in the bank (their type, options, key); written ones as short answers with the
+ * model answer and the rubric's total as points. The teacher checks the draft, then publishes it.
+ */
+export async function paperToQuiz(u: SessionUser, id: string) {
+  const p = await paperFor(u, id);
+  const v = p.versions[0];
+  if (!v?.items.length) throw new BadRequestException('This paper has no questions.');
+  const bank = await prisma.bankQuestion.findMany({ where: { courseId: p.courseId, id: { in: v.items.map((i) => i.id).filter((x) => !/^w\d+$/.test(x)).slice(0, 90) } } });
+  const quiz = await prisma.quiz.create({ data: { courseId: p.courseId, title: `${p.title} (online)`.slice(0, 200), description: p.instructions, timeLimit: p.minutes, status: 'DRAFT' }, select: { id: true } });
+  const rows = v.items.map((item, order) => {
+    const b = bank.find((x) => x.id === item.id);
+    if (b) return { quizId: quiz.id, question: b.question, options: b.options as string[], correctAnswer: b.correctAnswer, points: b.points, order, type: b.type, meta: b.meta };
+    const letters = 'ABCDEFGHIJ';
+    const right = [...item.key].map((l) => item.options[letters.indexOf(l)]).filter(Boolean);
+    if (item.kind === 'choice') return { quizId: quiz.id, question: item.question, options: item.options, correctAnswer: right[0] ?? '', points: item.points, order, type: 'CHOICE', meta: null };
+    if (item.kind === 'multi') return { quizId: quiz.id, question: item.question, options: item.options, correctAnswer: JSON.stringify(right), points: item.points, order, type: 'MULTI', meta: null };
+    if (item.kind === 'number') return { quizId: quiz.id, question: item.question, options: [], correctAnswer: item.key, points: item.points, order, type: 'NUMBER', meta: null };
+    return { quizId: quiz.id, question: item.question, options: [], correctAnswer: item.key || '—', points: item.points, order, type: 'SHORT', meta: null };
+  });
+  // Nine rows a statement (D1 takes 100 values; a row has 8 here).
+  for (let i = 0; i < rows.length; i += 9) await prisma.quizQuestion.createMany({ data: rows.slice(i, i + 9) });
+  return { quiz };
+}

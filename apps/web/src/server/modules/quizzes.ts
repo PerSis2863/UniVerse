@@ -5,7 +5,7 @@ import { QuizzesService } from '../services/quizzes.service';
 import { CreateQuizDto, UpdateQuizDto, validate } from '../dto';
 import { recordStudy } from '../streaks';
 import { str } from '../body';
-import { createPaper, getPaper, listPapers, postPaper, removePaper, saveMarks } from '../exam-papers';
+import { createPaper, getPaper, listPapers, paperToQuiz, postPaper, removePaper, saveMarks } from '../exam-papers';
 
 const quizzes = new QuizzesService();
 
@@ -42,5 +42,7 @@ export default function quizzesModule(router: Router) {
   papers.get<{ id: string }>(':id', ({ user, params }) => getPaper(user, params.id));
   papers.post<{ id: string }>(':id/marks', ({ user, params, body }) => saveMarks(user, params.id, body));
   papers.post<{ id: string }>(':id/post', ({ user, params }) => postPaper(user, params.id));
+  // M324: the same questions as an online quiz (a draft).
+  papers.post<{ id: string }>(':id/to-quiz', ({ user, params }) => paperToQuiz(user, params.id));
   papers.delete<{ id: string }>(':id', ({ user, params }) => removePaper(user, params.id));
 }
