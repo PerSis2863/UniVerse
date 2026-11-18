@@ -40,7 +40,7 @@ import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } fro
 // kind of place you want in the accent with a list of those in view; tap any place for its real facts
 // (open or not at that hour, in its own time), its photo and story, and UniVerse's reviews with locals
 // apart from visitors; layers of photos people took there (Commons) and stories of places nearby
-// (Wikipedia); and "Walk from here", the notable sights nearby strung into a walk. Loaded only when
+// (Wikipedia); and the "Sightseeing walk" (once "Walk from here"), the notable sights nearby strung into a walk. Loaded only when
 // opened (src/components/travel/TravelExplore.tsx). M214 (the owner: "more good looking and accurate … a lot
 // of details and features … my cloudflare cpu limit should not rise"): hills in relief and 3D terrain, a
 // satellite view, the globe when zoomed out, a sky that follows the sun, public transport, street-level
@@ -744,6 +744,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
         </button>
         <div className="px-3 pb-2 sm:pt-3">
           <div className="flex items-center gap-2"><PlaceSearch className="min-w-0 flex-1" label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }} /><button type="button" onClick={() => directionsTo(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f87ff] text-white shadow-sm transition-transform duration-150 hover:bg-[#1a78e0] active:scale-95" aria-label="Directions"><Navigation className="h-[18px] w-[18px]" aria-hidden /></button></div>
+          {/* On a phone a place's card takes the sheet over (as in Apple Maps): the stay and the kinds step aside. */}
+          <div className={cn(picked && 'hidden sm:block')}>
           <form onSubmit={findStay} className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-100 px-2.5 py-1 dark:bg-white/[0.06]">
             <BedDouble className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
             <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
@@ -770,6 +772,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
               );
             })}
           </div>
+          </div>
         </div>
         <div className={cn('min-h-0 flex-1 flex-col border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} /> : dest ? (
@@ -788,16 +791,28 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                   <button type="button" onClick={endWalk} className={round} aria-label="End walk"><X className="h-5 w-5" aria-hidden /></button>
                 </div>
               ) : (
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h3 className="min-w-0 truncate font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
-                {found ? <button type="button" onClick={() => setFound(null)} className="btn-ghost btn-sm p-1" aria-label="Clear the search"><X className="h-4 w-4" aria-hidden /></button> : !dests && (
-                  <span className="flex items-center gap-1">
-                    <label className="sr-only" htmlFor="walk-for">How long a walk</label>
-                    <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-lg border border-zinc-200 bg-white px-1.5 py-1 text-xs font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
-                      {[60, 120, 180, 240].map((m) => <option key={m} value={m}>{m / 60} h</option>)}
-                    </select>
-                    <button type="button" onClick={startWalk} disabled={!ready} className="btn-primary btn-sm inline-flex items-center gap-1"><Footprints className="h-4 w-4" aria-hidden />Walk from here</button>
-                  </span>
+              <div className="mb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="min-w-0 truncate font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
+                  {found && <button type="button" onClick={() => setFound(null)} className="btn-ghost btn-sm p-1" aria-label="Clear the search"><X className="h-4 w-4" aria-hidden /></button>}
+                </div>
+                {/* M270 (the owner: "i dont understand… if i want directions from one place to another then how"): two plain
+                    choices, each saying what it does: directions between any two places, and a walk past the sights. */}
+                {!found && !dests && (
+                  <div className="mt-2 space-y-1.5">
+                    <div className="grid grid-cols-2 gap-2">
+                      <button type="button" onClick={() => directionsTo(null)} className="btn-primary btn-sm inline-flex items-center justify-center gap-1.5"><Navigation className="h-4 w-4" aria-hidden />Directions</button>
+                      <button type="button" onClick={startWalk} disabled={!ready} className="btn-secondary btn-sm inline-flex items-center justify-center gap-1.5"><Footprints className="h-4 w-4" aria-hidden />Sightseeing walk</button>
+                    </div>
+                    <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+                      <b className="font-semibold">Directions:</b> from any place to another, on foot, by bike or by car.{' '}
+                      <b className="font-semibold">Sightseeing walk:</b> the sights near the middle of the map in one walk of about{' '}
+                      <label className="sr-only" htmlFor="walk-for">How long the sightseeing walk is</label>
+                      <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-md border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
+                        {[60, 120, 180, 240].map((m) => <option key={m} value={m}>{m / 60} {m === 60 ? 'hour' : 'hours'}</option>)}
+                      </select>.
+                    </p>
+                  </div>
                 )}
               </div>
               )}

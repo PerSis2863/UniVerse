@@ -8803,3 +8803,26 @@ type it in… it should recommend the areas to visit, foods, shopping and many m
 - **Merged into the redesigned map (M236–M267, 18 Nov):** the stay field and the trips' stays sit under the search in
   the places panel; the highlights head the list when Sights is chosen (also over the world's destinations).
 - **Rule:** places of a kind need the map at street level: bring the map there (`closeIn`), never ask people to zoom.
+
+## M270: a place's facts on Travel's map, and directions you can find (18 Nov)
+
+The owner: "remove this [the 'Facts: OpenStreetMap contributors…' line] and… add facts of that specific place that i click on the
+map it could be historic or ancient or popular food place or anything, it could be fun fact also"; then, of "3 h · Walk from
+here": "i dont understand… if i want directions from one place to another then how".
+
+- **Facts** (`src/lib/travel-place.ts`, `PlaceInfo.known` and `funFact`): from the place's Wikidata item, when it was
+  built or founded (`whenText`: years, BC, centuries), a UNESCO or other heritage listing, its designer or maker, style,
+  namesake, height, visitors a year, awards, what it's known for; from OpenStreetMap, historic, heritage and architect.
+  The names they point to come in one `wbgetentities` call (`factIds`). **Did you know?** (`funFactFrom`): the most
+  surprising sentence of the article's first 5,000 characters (superlatives, "first", "nicknamed", "legend"…) that the
+  card doesn't already show. Kept 30 days as before (`place2:`); a card made while Wikipedia was busy (`partial`) is
+  made again after an hour. Tested.
+- **No credit line** under the card: Wikipedia is linked beside its text (its licence asks for that), the map credits
+  OpenStreetMap, Wikidata is CC0.
+- **Directions and the walk** (`TravelMap.tsx`): two plain buttons under the panel's title, **Directions** (opens From /
+  To, `DirectionsCard`) and **Sightseeing walk** (was "Walk from here"), with one line saying what each does and the
+  walk's length in it (1–4 hours). On a phone, a place's card takes the sheet over: the stay and the kinds step aside.
+- **Checked:** `scripts/checks/travel-facts-ui.mjs` (the Eiffel Tower: built 1887, 330 m, 7.1 million visitors, designed
+  by Stephen Sauvestre; no credit line; Directions opens From / To; axe clean at 1280 and 390), `pnpm check`. The fun
+  fact couldn't be seen live from this cloud machine (Wikipedia refused it while the photo search ran): it's tested on
+  an article's text.

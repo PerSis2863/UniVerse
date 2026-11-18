@@ -1,5 +1,5 @@
 import type { SessionUser } from '@/lib/server-auth';
-import { fromWikidata, photosFromCommons, placeFromNominatim, storiesFromWikipedia, type PlaceInfo } from '@/lib/travel-place';
+import { factIds, factsFromWikidata, funFactFrom, fromWikidata, photosFromCommons, placeFromNominatim, storiesFromWikipedia, type PlaceInfo } from '@/lib/travel-place';
 import { BadRequestException, NotFoundException } from './http';
 import { first, type Query } from './body';
 import { cached, fetchJson } from './travel';
@@ -10,7 +10,7 @@ import { cached, fetchJson } from './travel';
 // rarely, and only a place's id or a rounded position is sent. When a source is busy the map carries on
 // without that layer.
 
-const DAY = 86_400_000;
+const DAY = 86_400_000, HOUR = 3_600_000;
 const coord = (v: unknown, max: number) => { const n = Number(v); return Number.isFinite(n) && Math.abs(n) <= max ? n : null; };
 const radius = (v: unknown) => Math.max(200, Math.min(10_000, Math.round((Number(v) || 1500) / 100) * 100));
 
@@ -19,29 +19,46 @@ export async function travelPlace(_u: SessionUser, q: Query) {
   const osm = first(q.osm) ?? '', name = (first(q.name) ?? '').replace(/\s+/g, ' ').trim().slice(0, 120);
   const lat = coord(first(q.lat), 90), lon = coord(first(q.lon), 180);
   let key: string, ask: string;
-  if (/^[NWR]\d{1,12}$/.test(osm)) { key = `place:${osm}`; ask = `lookup?osm_ids=${osm}`; }
+  if (/^[NWR]\d{1,12}$/.test(osm)) { key = `place2:${osm}`; ask = `lookup?osm_ids=${osm}`; }
   else if (name && lat !== null && lon !== null) {
-    key = `place:${name.toLowerCase()}@${lat.toFixed(3)},${lon.toFixed(3)}`;
+    key = `place2:${name.toLowerCase()}@${lat.toFixed(3)},${lon.toFixed(3)}`;
     const d = 0.004; // about 400 m round the point
     ask = `search?q=${encodeURIComponent(name)}&viewbox=${lon - d},${lat + d},${lon + d},${lat - d}&bounded=1&limit=1`;
   } else throw new BadRequestException('Pick a place.');
-  const place = await cached<PlaceInfo>(key, 30 * DAY, async () => {
+  const make = async (): Promise<PlaceInfo | null> => {
     const rows = await fetchJson<Parameters<typeof placeFromNominatim>[0][]>(`https://nominatim.openstreetmap.org/${ask}&format=jsonv2&extratags=1&addressdetails=1&accept-language=en`);
     if (!rows?.[0]) return null;
     const p = placeFromNominatim(rows[0]);
     if (p.wikidata) {
       const e = await fetchJson<{ entities: Record<string, Parameters<typeof fromWikidata>[0]> }>(`https://www.wikidata.org/wiki/Special:EntityData/${p.wikidata}.json`).catch(() => null);
-      const w = fromWikidata(e ? Object.values(e.entities)[0] : undefined);
+      const item = e ? Object.values(e.entities)[0] : undefined;
+      const w = fromWikidata(item);
       Object.assign(p, { about: w.about, image: w.image, wiki: w.wiki ? `https://en.wikipedia.org/wiki/${encodeURIComponent(w.wiki.replace(/ /g, '_'))}` : null });
+      // M270: what's known about it, with the names of what it points to (an architect, a style, a listing).
+      const want = factIds(item);
+      const named = want.length ? await fetchJson<{ entities?: Record<string, { labels?: { en?: { value: string } } }> }>(`https://www.wikidata.org/w/api.php?action=wbgetentities&ids=${want.join('|')}&props=labels&languages=en&format=json`).catch(() => null) : null;
+      type Labels = { labels?: { en?: { value: string } } };
+      const names: Record<string, string> = {};
+      for (const [q, v] of Object.entries(named?.entities ?? {}) as [string, Labels][]) if (v.labels?.en?.value) names[q] = v.labels.en.value;
+      p.known = [...new Set([...factsFromWikidata(item, names), ...(p.known ?? [])])].slice(0, 8);
       if (w.wiki) {
-        const s = await fetchJson<{ extract?: string }>(`https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(w.wiki.replace(/ /g, '_'))}`).catch(() => null);
+        const t = encodeURIComponent(w.wiki.replace(/ /g, '_'));
+        const s = await fetchJson<{ extract?: string }>(`https://en.wikipedia.org/api/rest_v1/page/summary/${t}`).catch(() => null);
         if (s?.extract) p.about = s.extract.slice(0, 600);
+        // A fun fact from further in the article (its first few thousand characters, plain text).
+        const more = await fetchJson<{ query?: { pages?: { extract?: string }[] } }>(`https://en.wikipedia.org/w/api.php?action=query&prop=extracts&explaintext=1&exsectionformat=plain&exchars=5000&redirects=1&format=json&formatversion=2&titles=${t}`).catch(() => null);
+        p.funFact = funFactFrom(more?.query?.pages?.[0]?.extract, p.about);
+        if (!s || !more) p.partial = true; // Wikipedia busy: kept, but asked again within the hour
       }
     }
     return p;
-  });
+  };
+  let place = await cached<PlaceInfo>(key, 30 * DAY, make);
+  // M270: a card kept while a source was busy is made again once it's an hour old (not after 30 days).
+  if (place?.partial) place = (await cached<PlaceInfo>(key, HOUR, make).catch(() => null)) ?? place;
   if (!place) throw new NotFoundException('There are no details for this place yet.');
-  return { place, credit: 'Facts: OpenStreetMap contributors (ODbL), Wikidata, Wikipedia (CC BY-SA)' };
+  // M270: no credit line under the card (the owner): Wikipedia is linked beside its text, the map credits OpenStreetMap.
+  return { place };
 }
 
 /** GET /travel/photos?lat=&lon=&r=: photos people took near a spot (Commons), each with its author and licence. */

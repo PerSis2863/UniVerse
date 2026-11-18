@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { toast } from 'sonner';
-import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Loader2, MapPin, Navigation, Phone, UtensilsCrossed, X } from 'lucide-react';
+import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Landmark, Lightbulb, Loader2, MapPin, Navigation, Phone, UtensilsCrossed, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { commonsFileOf, commonsImage, commonsSrcSet } from '@/lib/travel-guide';
@@ -57,7 +57,7 @@ export function PlaceCard({ picked, at, onClose, onDirections }: { picked: Picke
 
 function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place' }>; at: Date; onDirections: Go }) {
   const key = p.key ? `/travel/place?osm=${p.key}` : `/travel/place?name=${encodeURIComponent(p.name)}&lat=${p.lat.toFixed(5)}&lon=${p.lon.toFixed(5)}`;
-  const { data, error, isLoading } = useSWR<{ place: PlaceInfo; credit: string }>(key, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
+  const { data, error, isLoading } = useSWR<{ place: PlaceInfo }>(key, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
   const [week, setWeek] = useState(false);
   const info = data?.place;
   const hours = useMemo(() => readHours(info?.hours), [info]);
@@ -88,6 +88,18 @@ function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place'
             </div>
           )}
           {info.about && <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-200">{info.about}{info.wiki && <> <a href={info.wiki} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-700 underline-offset-2 hover:underline dark:text-indigo-300">Wikipedia</a></>}</p>}
+          {/* M270: what's known about it, and something surprising from its story. */}
+          {(info.known?.length ?? 0) > 0 && (
+            <ul className="space-y-1" aria-label={`Facts about ${info.name}`}>
+              {info.known!.map((f) => <li key={f} className="flex items-start gap-2 text-sm text-zinc-700 dark:text-zinc-200"><Landmark className="mt-0.5 h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-400" aria-hidden />{f}</li>)}
+            </ul>
+          )}
+          {info.funFact && (
+            <div className="rounded-xl bg-amber-50 p-3 dark:bg-amber-400/10">
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-amber-800 dark:text-amber-200"><Lightbulb className="h-4 w-4" aria-hidden />Did you know?</p>
+              <p className="mt-1 text-sm leading-relaxed text-zinc-800 dark:text-zinc-100">{info.funFact}{info.wiki && <> <a href={info.wiki} target="_blank" rel="noopener noreferrer" className="font-semibold text-amber-800 underline-offset-2 hover:underline dark:text-amber-200">Wikipedia</a></>}</p>
+            </div>
+          )}
           {info.facts.length > 0 && <ul className="flex flex-wrap gap-1.5">{info.facts.map((f) => <li key={f} className="rounded-full bg-zinc-100 px-2.5 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200">{f}</li>)}</ul>}
           {info.address && <p className="flex items-start gap-1.5 text-sm text-zinc-600 dark:text-zinc-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{info.address}</p>}
         </>
@@ -101,7 +113,6 @@ function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place'
         <TripPicker items={[{ name, kind: listingKind(p.cls), lat: p.lat, lon: p.lon, hours: info?.hours, note: info?.about, address: info?.address, url: info?.website }]} city={info?.city ?? null} cc={info?.cc ?? null} />
       </div>
       <Reviews place={p.review ?? info?.key ?? p.key ?? `wp:${name}`} name={name} lat={p.lat} lon={p.lon} />
-      {data && <p className="text-xs text-zinc-500 dark:text-zinc-400">{data.credit}</p>}
     </>
   );
 }

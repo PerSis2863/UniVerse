@@ -810,7 +810,7 @@ export function sampleTravelBoard() {
 /** M209: the map's sample answers (written for the demo; the real ones come from OpenStreetMap, Wikidata,
  *  Commons and Wikipedia). GET /travel/place */
 export function sampleTravelPlace() {
-  return { place: { key: 'N398922337', name: 'Pastéis de Belém', kind: 'Pastry shop', lat: 38.6975, lon: -9.2033, cc: 'PT', city: 'Lisbon', address: 'Rua de Belém 84-92, Belém, Lisbon', phone: null, website: 'https://pasteisdebelem.pt', menu: null, hours: 'Mo-Su 08:00-21:00', cuisine: ['Regional'], facts: ['Wheelchair accessible', 'Since 1837'], wikidata: null, about: 'The bakery that has made Belém’s custard tarts since 1837.', image: null, wiki: null }, credit: 'Facts: OpenStreetMap contributors (ODbL), Wikidata, Wikipedia (CC BY-SA)' };
+  return { place: { key: 'N398922337', name: 'Pastéis de Belém', kind: 'Pastry shop', lat: 38.6975, lon: -9.2033, cc: 'PT', city: 'Lisbon', address: 'Rua de Belém 84-92, Belém, Lisbon', phone: null, website: 'https://pasteisdebelem.pt', menu: null, hours: 'Mo-Su 08:00-21:00', cuisine: ['Regional'], facts: ['Wheelchair accessible', 'Since 1837'], wikidata: null, about: 'The bakery that has made Belém’s custard tarts since 1837.', image: null, wiki: null, known: ['Opened in 1837', 'Known for pastel de nata'], funFact: 'The recipe came from the monks of the Jerónimos Monastery next door, and is said to be known by only a few bakers to this day.' } };
 }
 /** GET /travel/where */
 export const sampleTravelWhere = () => ({ lat: 38.7139, lon: -9.1394, box: [-9.23, 38.69, -9.09, 38.8], city: 'Lisbon', name: null });
