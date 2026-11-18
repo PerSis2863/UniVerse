@@ -8854,3 +8854,26 @@ reviews of the new view (the box was matched to ~100 m) and the stories again at
 - `nearKey` / `boxKey` (`src/lib/travel-map.ts`, tested): the middle snapped to 0.02° (~2 km) with a radius from four
   steps, the box outwards to 0.05° (~5 km); a small pan reuses the answer (SWR's key doesn't change).
 - **Rule:** what a map view asks the server for is snapped to a grid; never a key from the exact view.
+
+## M269: a picture for every Travel destination, and 74 more places (18 Nov)
+
+The owner (a screenshot of Explore with blank cards: Córdoba, Toledo, Ibiza, Bilbao, Málaga, Marseille…): "some of them
+are not showing photo here and also add more destinations there". 160 places had never been looked up by
+`gen-travel-data.mts --photos`, so they had no photo.
+
+- **74 more places** (rows after Samoa in `src/lib/travel-ideas.ts`: Assisi, Matera, Ronda, Annecy, Delft, Berat, Hoi
+  An's neighbours, Galle, Jaisalmer, Khiva, Etosha, Arches, Kauai, Ouro Preto, Salta, Kakadu…): 448 in all, each with
+  its position and climate in `travel-places.json`.
+- **Photos:** 436 places show a real Commons photo, 13 of them chosen by hand in the row's 7th column (the
+  pick read ahead was a satellite view, an airport, a ferry or haze: Oahu, Tahiti, Svalbard, Cardiff, Chiang Rai,
+  Corsica, Provence, Capri, Hue, Gyeongju, Bilbao, Rovinj, Mysore), and the last 12 show the guide's wide banner. None is
+  blank. Every new photo was looked at on a contact sheet before it went in.
+- **Renamed** to their Wikivoyage titles (the old names were disambiguation pages): Glacier National Park (Montana),
+  Lake District National Park, Sharm el-Sheikh, Big Island, Cebu City.
+- **The script** (`scripts/gen-travel-data.mts`): Wikimedia answers this machine with "too many requests", so `get()`
+  waits as asked (Retry-After, else 20 s more each try, 6 tries), pauses 1.5 s between calls and saves after each place;
+  it reads rows written with either kind of quote (`"Xi'an"`).
+- **Left out:** the weather for a few new places and better photos for the 12 banner places wait for a machine
+  Wikimedia doesn't slow down (run `--photos` again there).
+- **Rule:** a new place gets its row, then `npx tsx scripts/gen-travel-data.mts` and `--photos`; look at its photo and
+  set the 7th column when the pick is wrong.
