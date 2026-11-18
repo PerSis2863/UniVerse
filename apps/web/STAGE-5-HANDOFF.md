@@ -8768,3 +8768,38 @@ asked what, they chose all four: looks empty or plain, too busy, not smooth, har
   coasts, towns); putting Relief on the street map Travel, Green and Relief's alerts already use would show the
   neighbourhood around each need. This machine can't load street tiles to check it, so it was left for a session that
   can (the owner's "UniVerse" environment would need `tiles.openfreemap.org` allowed).
+
+## M268: Travel's map shows places for a city, its highlights, and what's around your stay (17 Nov; built as M232 on `claude/youthful-fermi-sbdtcp`, renumbered M268 when merged: another session used M232)
+
+The owner: "when i search paris then i click on… food or cafe or drinks… it should show places rather than saying i need
+to zoom in and also give recommendation about the historic areas and facts", then "if i had booked a hotel somewhere and i
+type it in… it should recommend the areas to visit, foods, shopping and many more".
+
+- **Kinds over a whole city** (`TravelMap.tsx`): places come from the map's own tiles, which carry shops, cafés and
+  sights only from street level (zoom 14). A kind picked over a city glides in to its middle (`closeIn`); zoomed out, the
+  list offers "Show the places in the middle of the map". A kind picked while the page's own place is still on its way
+  glides in once the map arrives (`arrived`); what the person did wins over that late flight (`asked`).
+- **Highlights** (`components/travel/map/Highlights.tsx`): with Sights picked, for the place searched or opened from its
+  guide, the guide's must-see places with their notes (tap: the place's card) and its **areas to explore** (tap: that
+  area's own guide and highlights). The guide is the one Travel keeps (`/travel/guide`, 14 days). `readGuide` now reads a
+  `{{Regionlist}}` whose regions aren't links but list their districts (Paris: 21 arrondissements, each with what's
+  there); the cache key moved to `guide4:` so kept guides are read again once.
+- **Your stay**: "Where are you staying?" under the search finds a hotel or address (`/travel/where` now also returns
+  its town and name, `where3:`), marks it "Your stay", and the panel shows what's around it from the town's guide,
+  nearest first with the walk (`src/lib/travel-stay.ts` `aroundStay`: must-see, things to do, food, cafés and drinks,
+  shopping; tested), plus buttons for the nearest restaurants, cafés, bars, shops, museums and parks from the map's own
+  data. Kept on the device only (`uv-travel-stay`), with a button to forget it. A big city's main guide may list little
+  food or shopping (Paris keeps them in its district guides): the map's own places cover those.
+- **Checked:** `scripts/checks/travel-stay-ui.mjs` (Paris: must-see and areas, Food lists places with no "zoom in", Le
+  Bristol found and marked, walks, 40 restaurants nearest it; axe clean at 1280 dark and 390 light, no sideways scroll),
+  the unit tests, `pnpm check`. Worker: one Nominatim lookup per typed stay (kept 90 days) and the guide's cached read.
+- **Its two left-outs, done (the owner: "please work on it"):** a big city's own food, drink and shopping picks:
+  a guide listing keeps the guide its name links to (`Listing.guide`; Paris's sights link to their arrondissement's), so
+  `districtsNear` finds the one or two district guides nearest the stay and `withDistricts` adds their listings (a
+  name listed twice kept once); around Le Bristol: the 8th's restaurants, bars and shops, 27 places with the walk.
+  Hotels saved on a trip (`kind: 'sleep'` items): `GET /travel/trips/stays` (members only, 20 newest, with the stop's
+  guide) is offered under the field ("From your trips"), one tap uses it (looked up by name and address when it has no
+  position). Checked by the same `travel-stay-ui.mjs`.
+- **Merged into the redesigned map (M236–M267, 18 Nov):** the stay field and the trips' stays sit under the search in
+  the places panel; the highlights head the list when Sights is chosen (also over the world's destinations).
+- **Rule:** places of a kind need the map at street level: bring the map there (`closeIn`), never ask people to zoom.

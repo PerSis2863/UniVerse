@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BookOpen, Box, Calendar, Camera, Clock3, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BedDouble, BookOpen, Box, Calendar, Camera, Clock3, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -27,6 +27,7 @@ import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, u
 import { Navigate, primeSpeech, type NavTrip } from './Navigate';
 import { directionsUrl, distance, duration, MODES, routesOf, type Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
+import { Highlights } from './Highlights';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
 import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
@@ -51,7 +52,7 @@ type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: n
 /** M233: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
 type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
 // M259: a first visit opens on the globe with the world's destinations (Lisbon before).
-const KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
+const STAY = 'uv-travel-stay', KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
 const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false, world: true, saved: true };
 type Show = typeof SHOW;
 /** The layers chosen last time on this device. */
@@ -68,6 +69,13 @@ const round = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full 
 const ctl = 'flex h-11 w-11 items-center justify-center text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-100 active:scale-95 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
 
 /** Where to open: ?at=lat,lon,zoom, else the last view on this device, else Lisbon. */
+type Stay = { lat: number; lon: number; name: string; city: string | null };
+type TripStay = { id: string; name: string; address: string | null; lat: number | null; lon: number | null; city: string; guide: string; trip: string };
+/** M268: the stay someone typed in, kept on this device (a convenience: nothing is saved anywhere else). */
+function savedStay(): Stay | null {
+  try { const v = JSON.parse(localStorage.getItem(STAY) ?? 'null'); return v && Number.isFinite(v.lat) && Number.isFinite(v.lon) && typeof v.name === 'string' ? v : null; } catch { return null; }
+}
+
 function startAt(at: string | null) {
   const m = at ? /^(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)(?:,(\d+(?:\.\d+)?))?$/.exec(at) : null;
   if (m) return { lat: Number(m[1]), lon: Number(m[2]), zoom: Number(m[3] ?? 15) };
@@ -105,6 +113,17 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const [cat, setCat] = useState<CategoryId>('see');
+  // M268: the guide of the place searched (or opened from its guide), for its highlights; the stay typed in or taken
+  // from a trip; what the person asked the map to do (a slow lookup for where the page opened doesn't override it).
+  const [stay, setStay] = useState<Stay | null>(savedStay);
+  const [guideOf, setGuideOf] = useState<string | null>(place ?? stay?.city ?? null);
+  const [stayText, setStayText] = useState('');
+  const [stayFocus, setStayFocus] = useState(false);
+  const { data: tripStays } = useSWR<{ stays: TripStay[] }>('/travel/trips/stays', fetcher, { revalidateOnFocus: false });
+  const stayMark = useRef<Marker | null>(null);
+  const asked = useRef(0);
+  const catNow = useRef<CategoryId>('see');
+  useEffect(() => { catNow.current = cat; }, [cat]);
   const [show, setShow] = useState<Show>(shownBefore);
   const [layers, setLayers] = useState(false); // the Layers panel
   const [filter, setFilter] = useState('');
@@ -454,8 +473,75 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   // A place asked for from a guide (?d=…): find where it is and go there.
   useEffect(() => {
     if (!place || !ready) return;
-    void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(place)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => {});
+    const n = asked.current;
+    void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(place)}`).then(({ data }) => {
+      const m = mapRef.current;
+      if (!m || asked.current !== n) return;
+      fly(m, data);
+      // A kind picked while it was on its way: once there, glide in to where those places are.
+      m.once('moveend', () => arrived());
+    }).catch(() => {});
   }, [place, ready]);
+
+  const arrived = useEffectEvent(() => { if (catNow.current !== 'see') closeIn(); });
+  // M268: the stay's marker.
+  useEffect(() => {
+    const m = mapRef.current;
+    stayMark.current?.remove(); stayMark.current = null;
+    if (!m || !ready || !stay) return;
+    let gone = false;
+    void import('maplibre-gl').then((ml) => {
+      if (gone) return;
+      const el = document.createElement('div');
+      el.className = 'rounded-full bg-indigo-700 px-2.5 py-1 text-xs font-bold text-white shadow-lg ring-2 ring-white';
+      el.textContent = 'Your stay';
+      el.setAttribute('aria-hidden', 'true');
+      stayMark.current = new ml.Marker({ element: el, anchor: 'bottom' }).setLngLat([stay.lon, stay.lat]).addTo(m);
+    });
+    return () => { gone = true; stayMark.current?.remove(); stayMark.current = null; };
+  }, [stay, ready]);
+
+  /** M268: places of a kind are in the map's data from street level: a kind picked over a whole city glides in to
+   *  its middle, where they are, instead of asking to zoom in. */
+  function closeIn() {
+    const m = mapRef.current;
+    if (m && m.getZoom() < 14) m.easeTo({ zoom: 14, pitch: show.d3 ? 55 : 0, duration: calm() ? 0 : 900, essential: true });
+  }
+  /** A searched place, or an area from its guide: find where it is and go there. */
+  function goTo(title: string) {
+    asked.current++;
+    void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(title)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => toast.error('That place isn’t on the map.'));
+  }
+  /** M268: a hotel (or any address) typed in: the map goes there and marks it, and the panel recommends what's
+   *  around it from its town's guide and its district's (Highlights). */
+  function findStay(e: React.FormEvent) {
+    e.preventDefault();
+    const q = stayText.trim();
+    if (q.length < 3) return;
+    asked.current++;
+    void api.get<{ lat: number; lon: number; city: string | null; name: string | null }>(`/travel/where?q=${encodeURIComponent(q)}`).then(({ data }) => {
+      setStayText('');
+      applyStay({ lat: data.lat, lon: data.lon, name: data.name ?? q, city: data.city });
+    }).catch(() => toast.error('We couldn’t find that. Try the hotel’s name with its town, or its address.'));
+  }
+  function applyStay(st: Stay) {
+    asked.current++;
+    setStay(st); setCat('see'); pick(null); endWalk(); setOpen(true); setStayFocus(false);
+    if (st.city) setGuideOf(st.city);
+    try { localStorage.setItem(STAY, JSON.stringify(st)); } catch { /* private mode */ }
+    if (mapRef.current) fly(mapRef.current, { lat: st.lat, lon: st.lon });
+  }
+  /** A stay saved on one of my trips: its place (looked up when it was saved without one) and its city's guide. */
+  function tripStay(t: TripStay) {
+    if (t.lat !== null && t.lon !== null) { applyStay({ lat: t.lat, lon: t.lon, name: t.name, city: t.guide }); return; }
+    void api.get<{ lat: number; lon: number }>(`/travel/where?q=${encodeURIComponent(`${t.name}, ${t.address ?? t.city}`)}`)
+      .then(({ data }) => applyStay({ lat: data.lat, lon: data.lon, name: t.name, city: t.guide }))
+      .catch(() => toast.error(`We couldn’t find ${t.name} on the map. Type its address instead.`));
+  }
+  function forgetStay() {
+    setStay(null);
+    try { localStorage.removeItem(STAY); } catch { /* private mode */ }
+  }
 
   /** M259: a destination tapped: its card, and a glide over to it (a city's streets come into view). */
   function openDest(d: Dest) {
@@ -482,6 +568,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     } catch { toast.error('Couldn’t search just now.'); } finally { setSeeking(false); }
   }
   function pick(p: Picked | null) {
+    if (p) asked.current++;
     setPicked(p);
     setDest(null);
     if (p) setOpen(true);
@@ -656,12 +743,26 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
         </button>
         <div className="px-3 pb-2 sm:pt-3">
-          <div className="flex items-center gap-2"><PlaceSearch className="min-w-0 flex-1" label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => void api.get<{ lat: number; lon: number; box: [number, number, number, number] | null }>(`/travel/where?q=${encodeURIComponent(t)}`).then(({ data }) => { if (mapRef.current) fly(mapRef.current, data); }).catch(() => toast.error('That place isn’t on the map.'))} /><button type="button" onClick={() => directionsTo(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f87ff] text-white shadow-sm transition-transform duration-150 hover:bg-[#1a78e0] active:scale-95" aria-label="Directions"><Navigation className="h-[18px] w-[18px]" aria-hidden /></button></div>
+          <div className="flex items-center gap-2"><PlaceSearch className="min-w-0 flex-1" label="Find a place on the map" placeholder="Search a city, island or park…" onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }} /><button type="button" onClick={() => directionsTo(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f87ff] text-white shadow-sm transition-transform duration-150 hover:bg-[#1a78e0] active:scale-95" aria-label="Directions"><Navigation className="h-[18px] w-[18px]" aria-hidden /></button></div>
+          <form onSubmit={findStay} className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-100 px-2.5 py-1 dark:bg-white/[0.06]">
+            <BedDouble className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+            <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
+            {stayText.trim().length >= 3 && <button type="submit" className="btn-primary btn-sm">Find</button>}
+            {stay && !stayText && <button type="button" onClick={forgetStay} className="btn-ghost btn-sm p-1" aria-label="Forget where I'm staying"><X className="h-4 w-4" aria-hidden /></button>}
+          </form>
+          {(stayFocus || !stay) && !stayText && (tripStays?.stays.length ?? 0) > 0 && (
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5 px-1" role="group" aria-label="Stays on your trips">
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">From your trips:</span>
+              {tripStays!.stays.slice(0, 4).map((t) => (
+                <button key={t.id} type="button" onClick={() => tripStay(t)} title={`${t.name}, ${t.city} (${t.trip})`} className="max-w-[12rem] truncate rounded-full bg-zinc-100 px-2.5 py-1 text-xs font-semibold text-zinc-800 hover:bg-zinc-200 dark:bg-white/[0.08] dark:text-zinc-100 dark:hover:bg-white/[0.14]"><span translate="no">{t.name}</span> · {t.city}</button>
+              ))}
+            </div>
+          )}
           <div className="-mx-3 mt-3 flex gap-1 overflow-x-auto px-3 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
             {CATEGORIES.map((c) => {
               const Icon = PINS[c.id].icon, on = cat === c.id;
               return (
-                <button key={c.id} type="button" aria-pressed={on} onClick={() => { setCat(c.id); setFilter(''); endWalk(); pick(null); }}
+                <button key={c.id} type="button" aria-pressed={on} onClick={() => { setCat(c.id); setFilter(''); endWalk(); pick(null); if (c.id !== 'see') closeIn(); }}
                   className="group flex w-[3.9rem] shrink-0 flex-col items-center gap-1 rounded-xl py-1 transition-transform duration-150 active:scale-95">
                   <span className={cn('flex h-11 w-11 items-center justify-center rounded-full text-white shadow-sm transition-[box-shadow] duration-200', on ? 'ring-[3px] ring-offset-2 ring-offset-[var(--card-bg)]' : 'opacity-90 group-hover:opacity-100')} style={{ background: PINS[c.id].color, ...(on ? { '--tw-ring-color': PINS[c.id].color } as React.CSSProperties : {}) }} aria-hidden><Icon className="h-5 w-5" /></span>
                   <span className={cn('max-w-full truncate text-[11.5px]', on ? 'font-semibold text-zinc-900 dark:text-white' : 'text-zinc-600 dark:text-zinc-300')}>{c.label}</span>
@@ -712,6 +813,10 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                 </form>
               )}
               <ol className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-2">
+                {!walk && !found && cat === 'see' && guideOf && (
+                  <li><Highlights title={guideOf} stay={stay && stay.city === guideOf ? stay : null} onSight={(h) => pick({ type: 'place', key: null, name: h.name, kind: 'Sight', cls: 'attraction', lat: h.lat, lon: h.lon })} onArea={(t) => { setGuideOf(t); goTo(t); }}
+                    onNearby={stay ? (k) => { asked.current++; setCat(k); setFilter(''); mapRef.current?.easeTo({ center: [stay.lon, stay.lat], zoom: Math.max(15, mapRef.current.getZoom()), duration: calm() ? 0 : 900, essential: true }); } : undefined} /></li>
+                )}
                 {walk ? walk.stops.map((s, i) => (
                   <li key={s.key}>
                     <p className="ps-9 text-xs text-zinc-500 dark:text-zinc-400"><Footprints className="me-1 inline h-3.5 w-3.5" aria-hidden />{s.walk} min walk</p>
@@ -759,8 +864,8 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
                 {!walk && !found && !dests && !shown.length && (
                   <li className="flex flex-col items-center px-4 py-8 text-center">
                     <span className="mb-3 flex h-12 w-12 items-center justify-center rounded-full text-white opacity-90" style={{ background: PINS[cat].color }} aria-hidden>{(() => { const Icon = PINS[cat].icon; return <Icon className="h-6 w-6" />; })()}</span>
-                    <span className="font-semibold text-zinc-900 dark:text-white">{list.length ? 'No match' : view && view.zoom < 12 ? 'Zoom in a little' : `No ${CATEGORIES.find((c) => c.id === cat)!.label.toLowerCase()} in view`}</span>
-                    <span className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{list.length ? `Nothing here matches “${filter.trim()}”.` : view && view.zoom < 12 ? 'Places show up once you’re closer in.' : 'Move the map, or pick another kind above.'}</span>
+                    <span className="font-semibold text-zinc-900 dark:text-white">{list.length ? 'No match' : view && view.zoom < 12 ? 'Places are at street level' : `No ${CATEGORIES.find((c) => c.id === cat)!.label.toLowerCase()} in view`}</span>
+                    <span className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{list.length ? `Nothing here matches “${filter.trim()}”.` : view && view.zoom < 12 ? <button type="button" onClick={closeIn} className="font-semibold text-indigo-600 hover:underline dark:text-indigo-400">Show the places in the middle of the map</button> : 'Move the map, or pick another kind above.'}</span>
                   </li>
                 )}
               </ol>

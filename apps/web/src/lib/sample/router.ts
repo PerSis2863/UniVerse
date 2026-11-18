@@ -1041,6 +1041,7 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/travel\/visa$/, ({ q }) => ok(impact.sampleTravelVisa(q.get('p')))],
   [/^\/travel\/saved$/, ({ db: d }) => ok(impact.sampleTravelSaved(d.me))],
   [/^\/travel\/trips$/, () => ok(impact.sampleTravelTrips())],
+  [/^\/travel\/trips\/stays$/, () => ok({ stays: [{ id: 'sample-stay', name: 'Memmo Alfama', address: 'Travessa das Merceeiras 27, Lisbon', lat: 38.7107, lon: -9.1306, city: 'Lisbon', guide: 'Lisbon', trip: 'Lisbon with friends' }] })],
   [/^\/travel\/docs$/, () => ok(impact.sampleTravelDocs())],
   [/^\/travel\/board$/, () => ok(impact.sampleTravelBoard())],
   [/^\/travel\/place$/, () => ok(impact.sampleTravelPlace())],

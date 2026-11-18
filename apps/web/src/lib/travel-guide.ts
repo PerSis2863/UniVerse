@@ -15,6 +15,8 @@ export interface Listing {
   phone?: string; hours?: string; price?: string; lat?: number; lon?: number; text?: string;
   /** The sub-heading it sits under ("Budget", "Fine dining"). */
   group?: string;
+  /** M268: the guide its name links to (a big city's sights link to their district's: "Paris/7th arrondissement"). */
+  guide?: string;
 }
 export interface GuideSection { part: GuidePart; title: string; text: string[]; listings: Listing[] }
 export interface Guide {
@@ -100,12 +102,13 @@ export function listingFrom(t: ReturnType<typeof templateParams>, group?: string
   const name = clean(t.named.name);
   if (!name || !KINDS.has(kind) && t.name !== 'listing') return null;
   const url = t.named.url?.trim();
+  const link = /^\s*\[\[([^|\]#]+)/.exec(t.named.name ?? '');
   return {
     kind: (KINDS.has(kind) ? kind : 'other') as ListingKind, name,
     alt: clean(t.named.alt), url: url && /^https?:\/\//.test(url) ? url : undefined,
     address: clean(t.named.address), directions: clean(t.named.directions), phone: clean(t.named.phone),
     hours: clean(t.named.hours), price: clean(t.named.price), lat: num(t.named.lat), lon: num(t.named.long ?? t.named.lon),
-    text: clean(t.named.content ?? t.named.description), group,
+    text: clean(t.named.content ?? t.named.description), group, guide: link?.[1].trim() || undefined,
   };
 }
 
@@ -139,6 +142,15 @@ export function readGuide(title: string, wiki: string): Guide {
           if (!nm) continue;
           const link = /\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/.exec(nm);
           if (link) g.places.push({ title: link[1].trim(), name: plain(link[2] ?? link[1]), text: clean(t.named[`region${n}description`]) });
+          else {
+            // M268: a group of districts ("Central Paris") whose guides are its items ([[Paris/1st arrondissement|1st arr.]]);
+            // the description has a part per item ('''1e''': …): an area each, else the group as one.
+            const items = [...(t.named[`region${n}items`] ?? '').matchAll(/\[\[([^|\]]+)(?:\|([^\]]+))?\]\]/g)];
+            const desc = t.named[`region${n}description`] ?? '';
+            const bits = desc.split(/'''[^'\n]{1,16}''':\s*/).map((x) => x.trim()).filter(Boolean);
+            if (items.length && bits.length === items.length) items.forEach((it, k) => g.places.push({ title: it[1].trim(), name: `${plain(it[2] ?? it[1])}, ${plain(nm)}`, text: clean(bits[k]) }));
+            else if (items.length) g.places.push({ title: items[0][1].trim(), name: plain(nm), text: clean(desc) });
+          }
         }
       }
       for (const line of body.split('\n')) {

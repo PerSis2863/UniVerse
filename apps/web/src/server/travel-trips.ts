@@ -71,6 +71,16 @@ export async function travelTrips(u: SessionUser) {
   return { trips };
 }
 
+/** M268: GET /travel/trips/stays: the hotels and other stays saved on my trips (newest trips first), with the city
+ *  each is in, so the map can recommend what's around one without it being typed in again. */
+export async function travelTripStays(u: SessionUser) {
+  const rows = await prisma.travelTripItem.findMany({
+    where: { kind: 'sleep', trip: { members: { some: { userId: u.id } } } }, orderBy: { createdAt: 'desc' }, take: 20,
+    select: { id: true, name: true, address: true, lat: true, lon: true, stop: { select: { name: true, guide: true } }, trip: { select: { name: true } } },
+  });
+  return { stays: rows.map((r) => ({ id: r.id, name: r.name, address: r.address, lat: r.lat, lon: r.lon, city: r.stop.name, guide: r.stop.guide, trip: r.trip.name })) };
+}
+
 /** POST /travel/trips { name?, stop?: { guide, name, cc, lat, lon, days }, startDate?, travellers?, style?, currency? } */
 export async function createTravelTrip(u: SessionUser, b: Body) {
   if ((await prisma.travelTripMember.count({ where: { userId: u.id } })) >= MAX_TRIPS) throw new BadRequestException(`You’re planning ${MAX_TRIPS} trips: delete an old one first.`);
