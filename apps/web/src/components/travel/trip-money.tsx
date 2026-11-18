@@ -73,7 +73,7 @@ export function TripMoney({ tripId, members, me, currency, budget, countries }: 
         <section className="panel p-5" aria-labelledby="costs-h">
           <h3 id="costs-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Wallet className="h-5 w-5 text-indigo-500" aria-hidden />Shared costs</h3>
           <AddCost key={members.length} tripId={tripId} members={members} me={me} currency={currency} countries={countries} onAdded={() => void mutate()} />
-          {!data ? <div className="mt-4 h-24 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
+          {!data ? <div className="mt-4 h-24 skeleton rounded-xl" aria-busy="true" />
             : !list.length ? <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">Nothing yet. Add what someone paid for the group: dinner, tickets, a room. Everyone planning the trip sees it.</p>
             : (
               <ul className="mt-4 divide-y divide-zinc-200/70 dark:divide-white/10" data-no-motion>

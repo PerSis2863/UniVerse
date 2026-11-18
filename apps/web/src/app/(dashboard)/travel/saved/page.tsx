@@ -24,7 +24,7 @@ export default function TravelSavedPage() {
   return (
     <>
       <Topbar title="Trips and saved" subtitle="Plan trips together, keep the places you love" />
-      <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
+      <div className="flex-1 overflow-x-clip p-4 sm:p-8">
         <div className="w-full"><Suspense><Tabs /></Suspense></div>
       </div>
     </>

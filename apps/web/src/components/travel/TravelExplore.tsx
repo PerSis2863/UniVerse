@@ -17,12 +17,12 @@ import { TravelTabs } from './TravelTabs';
 // (?view=find) ranks every place for your days, budget, month, interests and passport.
 
 const TravelFinder = dynamic(() => import('./TravelFinder').then((m) => m.TravelFinder), {
-  loading: () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
+  loading: () => <div className="h-96 skeleton rounded-[var(--radius-card)]" aria-busy="true" />,
 });
 // M209: the map (MapLibre and its styles load only when it's opened).
 const TravelMap = dynamic(() => import('./map/TravelMap'), {
   ssr: false,
-  loading: () => <div className="h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
+  loading: () => <div className="h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] skeleton rounded-[var(--radius-card)]" aria-busy="true" />,
 });
 const FIRST = 24;
 const HERE: [LucideIcon, string][] = [[Compass, 'A guide to every city, island and park'], [CloudSun, 'This week’s weather and the best months'], [Users, 'Trips planned with friends, day by day'], [MapPinned, 'Real places, opening hours and reviews']];
@@ -35,7 +35,7 @@ function MyTrips() {
   return (
     <div className="border-zinc-200/80 dark:border-white/10 lg:border-s lg:ps-8">
       <h3 className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><Route className="h-4 w-4 text-indigo-600 dark:text-indigo-300" aria-hidden />Your trips</h3>
-      {!data ? <div className="mt-3 h-24 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-hidden />
+      {!data ? <div className="mt-3 h-24 skeleton rounded-xl" aria-hidden />
         : !trips.length ? <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Plan the cities and days, the budget and how to get between them, alone or with friends.</p>
         : (
           <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/10">
@@ -81,11 +81,10 @@ export function TravelExplore() {
   return (
     <div className="space-y-8">
       {switcher}
-      {/* Not clipped (the search's results hang below it); its glow is, in its own box. M213: laid out like the
-          other apps' first card (Trace's console): the headline, the search and what's here; my trips beside it. */}
+      {/* Not clipped (the search's results hang below it). M213: laid out like the other apps' first card (Trace's
+          console): the headline, the search and what's here; my trips beside it. M287: no glow behind it. */}
       <section className="panel relative z-10 p-6 sm:p-10">
-        <span className="pointer-events-none absolute inset-0 overflow-hidden rounded-[inherit]" aria-hidden><span className="absolute -end-24 -top-24 h-72 w-72 rounded-full bg-indigo-400/15 blur-3xl" /></span>
-        <div className="relative grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
           <div>
             <h2 className="font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ fontSize: 'clamp(2rem, 3.6vw, 3rem)', lineHeight: 1.05 }}>Where to <em className="accent-word pe-1">next?</em></h2>
             <p className="mt-3 max-w-2xl text-zinc-600 dark:text-zinc-300" style={{ fontSize: '1.0625rem' }}>Any city, island or national park: what to see and do, where to eat and sleep, how to get around, and the weather this week.</p>
@@ -133,9 +132,8 @@ export function TravelExplore() {
                 <Cover photo={i.photo} banner={i.banner} sizes={CARD_SIZES} priority={n < 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
                 <span className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" aria-hidden />
                 <span className="absolute inset-x-0 bottom-0 p-4">
-                  <span className="block text-xs font-semibold uppercase tracking-wider text-indigo-200">{i.country}</span>
                   <span className="block text-xl font-semibold text-white" translate="no">{i.title}</span>
-                  <span className="mt-1 block text-sm text-zinc-200">{i.blurb}</span>
+                  <span className="mt-0.5 block text-sm text-zinc-200"><span className="font-semibold text-white">{i.country}</span> · {i.blurb}</span>
                 </span>
               </Link>
             </li>

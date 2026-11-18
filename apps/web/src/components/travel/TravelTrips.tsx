@@ -52,7 +52,7 @@ export function TravelTrips({ join }: { join: string | null }) {
           <button type="button" onClick={() => void startTrip(router)} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden />New trip</button>
         </div>
       </div>
-      {!data ? <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> : !data.trips.length ? (
+      {!data ? <div className="h-40 skeleton rounded-[var(--radius-card)]" aria-busy="true" /> : !data.trips.length ? (
         <div className="panel mx-auto max-w-xl p-8 text-center">
           <MapPin className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />
           <p className="mt-3 text-lg font-semibold text-zinc-900 dark:text-white">No trips yet</p>
@@ -62,8 +62,8 @@ export function TravelTrips({ join }: { join: string | null }) {
         <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.trips.map((t, n) => (
             <li key={t.id}>
-              <Link href={`/travel/trip?id=${t.id}`} className="group card block overflow-hidden">
-                <span className="relative block h-32 overflow-hidden">
+              <Link href={`/travel/trip?id=${t.id}`} className="group card block overflow-hidden p-0!">
+                <span className="relative block h-40 overflow-hidden">
                   <Cover {...tripCover({ name: t.name, cover: t.cover, places: t.cities })} sizes={TRIP_SIZES} priority={n < 3} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
                   <span className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" aria-hidden />
                   <span className="absolute inset-x-4 bottom-3 block truncate text-lg font-semibold text-white" translate="no">{t.name}</span>
@@ -102,7 +102,7 @@ function TravelStats({ trips }: { trips: TripRow[] }) {
     <section className="panel p-5" aria-labelledby="stats-h">
       <h2 id="stats-h" className="text-lg font-semibold text-zinc-900 dark:text-white">{st.done.trips ? 'Your travel so far' : 'Your trips to come'}</h2>
       <p className="mt-0.5 text-sm text-zinc-600 dark:text-zinc-300">{st.done.trips ? `${st.done.trips} ${st.done.trips === 1 ? 'trip' : 'trips'} done${st.coming.trips ? `, ${st.coming.trips} to come` : ''}.` : `${st.coming.trips} ${st.coming.trips === 1 ? 'trip' : 'trips'} being planned.`}</p>
-      <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <dl className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-5 [&>div:last-child]:col-span-2 sm:[&>div:last-child]:col-span-1">
         {tiles.map((x) => <div key={x.label} className="rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.04]"><dt className="text-xs text-zinc-600 dark:text-zinc-300">{x.label}</dt><dd className="text-2xl font-semibold tabular-nums text-zinc-900 dark:text-white">{x.value}</dd></div>)}
       </dl>
       {show.countries.length > 0 && <p className="mt-3 text-xl" role="img" aria-label={`Countries: ${show.countries.join(', ')}`}>{show.countries.map(flag).join(' ')}</p>}

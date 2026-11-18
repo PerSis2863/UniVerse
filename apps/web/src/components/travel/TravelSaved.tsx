@@ -30,7 +30,7 @@ export function TravelSaved() {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t remove it.')); } finally { setBusy(null); }
   };
 
-  if (!data) return <div className="h-40 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />;
+  if (!data) return <div className="h-40 skeleton rounded-[var(--radius-card)]" aria-busy="true" />;
   if (!groups.length) return (
     <div className="panel mx-auto max-w-xl p-8 text-center">
       <Bookmark className="mx-auto h-8 w-8 text-indigo-500" aria-hidden />

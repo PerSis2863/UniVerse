@@ -56,7 +56,7 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
     // A real place's card.
     const name = (await panel.locator('ol li button').first().locator('span.font-semibold').innerText()).trim();
     await panel.locator('ol li button').first().click();
-    await panel.getByRole('link', { name: 'Directions' }).waitFor({ timeout: 30_000 });
+    await panel.getByRole('button', { name: 'Directions' }).first().waitFor({ timeout: 30_000 });
     await panel.getByText(/Looking it up/).waitFor({ state: 'detached', timeout: 60_000 }).catch(() => {});
     r.place = { name, heading: await panel.getByRole('heading', { level: 3 }).first().innerText(), hours: await panel.getByText(/^(Open|Closed)/).first().innerText().catch(() => 'no hours known'), links: await panel.locator('a').evaluateAll((as) => as.map((a) => a.textContent.trim()).filter(Boolean)) };
     // A review as a local.
@@ -80,8 +80,8 @@ for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
     await page.getByRole('button', { name: 'Sights', exact: true }).click();
     await page.waitForTimeout(800);
     await panel.getByRole('button', { name: 'Sightseeing walk' }).click();
-    await panel.getByText(/stops · .* km on foot/).waitFor({ timeout: 30_000 });
-    r.walk = (await panel.getByText(/stops · .* km on foot/).innerText()).trim();
+    await panel.getByText(/stops · .* km on foot/).first().waitFor({ timeout: 30_000 });
+    r.walk = (await panel.getByText(/stops · .* km on foot/).first().innerText()).trim();
     if (shots) await page.screenshot({ path: `${shots}/travel-walk-1280.png` });
     const clock = panel.locator('label:has(input[type=range]) > span').first();
     const before = (await clock.innerText()).replace(/\s+/g, ' ');

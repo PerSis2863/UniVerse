@@ -123,7 +123,7 @@ function MatchCard({ m, rank, share, days, currency, onPlan }: { m: Match; rank:
   const { idea, weather } = m;
   const words = m.score >= 7 ? 'Great match' : m.score >= 4 ? 'Good match' : m.score >= 1 ? 'Worth a look' : 'Not a great fit';
   return (
-    <li data-key={idea.title} className="card flex flex-col overflow-hidden">
+    <li data-key={idea.title} className="card flex flex-col overflow-hidden p-0!">
       <Link href={`/travel/guide?d=${encodeURIComponent(idea.title)}`} className="group relative block h-36 shrink-0 overflow-hidden">
         <Cover photo={idea.photo} banner={idea.banner} sizes="(min-width: 1536px) 25vw, (min-width: 1280px) 33vw, (min-width: 640px) 50vw, 100vw" priority={rank <= 4} className="transition-transform duration-500 ease-[var(--ease-glide)] group-hover:scale-[1.04]" />
         <span className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" aria-hidden />

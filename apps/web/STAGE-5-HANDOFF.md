@@ -8877,3 +8877,33 @@ are not showing photo here and also add more destinations there". 160 places had
   Wikimedia doesn't slow down (run `--photos` again there).
 - **Rule:** a new place gets its row, then `npx tsx scripts/gen-travel-data.mts` and `--photos`; look at its photo and
   set the 7th column when the pick is wrong.
+
+## M287: Travel looks more professional and moves more smoothly (18 Nov)
+
+The owner: make Travel "more professional, modern and smoother overall" (M285 was the faster map; this is the rest).
+Screenshots of every Travel page at 1280 and 390, light and dark, then the fixes:
+
+- **The guide** (`TravelGuide.tsx`): the opening on the picture is three lines (it ran to 13 on a phone); when it's cut
+  short it's given in full in Good to know. **Plan a trip here** and **See on the map** sit on the picture (on a phone
+  "Plan a trip" and "Map"), and the booking links are one row ("Book"), sideways on a phone (they wrapped onto 4–5
+  rows). The weather is one row of seven on phones too; the country's facts two across. No crumb that repeats the
+  title (Kyoto › Kyoto). **Running text** (`Prose`): about 75 characters a line, the first paragraphs, the rest behind
+  "Read more (N paragraphs)" (a part's own text shows one paragraph, so its places come sooner). **The parts' tabs stay
+  in view** while you scroll (they never did: see the trap below). A part opens at once and slides in from the side of
+  the tab pressed (`.swap` with `data-dir`; it was framer-motion's `mode="wait"`, which made the new part wait for the
+  old to fade out).
+- **Explore**: no glow behind the first card; the country is in the line under a place's name, not a small label above it.
+- **Trips and Find where to go**: the photo reaches the card's edges (it sat inset in the card's padding). The numbers
+  on Trips: the fifth tile spans the row on a phone.
+- **A trip**: the buttons on its picture (Invite friends, Add to calendar, Trip chat, Copy trip) are one row on a phone,
+  sideways, instead of three; the start date and travellers side by side.
+- **Loading**: every Travel placeholder is the shimmering `.skeleton` (they were `animate-pulse` boxes).
+- **Checked:** `scripts/checks/travel-look-ui.mjs` (all of the above, axe clean at 1280 dark and 390 light, no sideways
+  scroll, a part in 60–80 ms); `travel-ui`, `travel-trip-ui`, `travel-find-ui`, `travel-map-ui` (two stale lines fixed:
+  Directions is a button since M283, and the walk's line shows twice) and `bare-chrome-ui` pass; `pnpm check`.
+  Browser only: nothing more for the Worker.
+- **Traps:** a page wrapper with `overflow-y-auto` that doesn't scroll itself (the window does) stops every `sticky`
+  inside it: Travel's four pages now use `overflow-x-clip`. `.card`'s padding beats Tailwind's `p-*` (the card rule
+  wins the cascade): a card whose photo must reach its edges needs `p-0!`.
+- **Rule:** a guide's long text goes through `Prose`; Travel's actions sit where the eye already is (on the picture),
+  booking links in one row.
