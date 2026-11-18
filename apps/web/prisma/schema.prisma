@@ -6931,6 +6931,9 @@ model TraceBrand {
   stripeSubscriptionId String?
 
   @@map("trace_brands")
+  /// M308: area alerts for copies: JSON { countries: string[], threshold, anywhere } and when each area was last told
+  watch            String?
+  watchSent        String?
 }
 
 model TraceBrandMember {

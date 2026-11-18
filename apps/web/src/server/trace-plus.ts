@@ -1,4 +1,5 @@
 import crypto from 'node:crypto';
+import { copySeen } from './trace-watch';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { forecast, isDiverted, journeyCarbon, tierFor, toBase32, trustScore } from '@/lib/trace';
@@ -6,7 +7,7 @@ import { BadRequestException, ForbiddenException, NotFoundException } from './ht
 import { oneOf, str, type Body } from './body';
 import { brandOf, cfPosition, idOf, num, ownBatch, short } from './trace';
 import { takeBackView } from './trace-takeback';
-import { notifyMany } from './email';
+import { later, notifyMany } from './email';
 
 // UniVerse Trace, the second wave (migration 0179). On the passport: recalls the brand issued for the
 // batch, a blocked (stolen) batch, an instant win on the first check, warranty registration, buyer
@@ -287,6 +288,10 @@ export async function reportFake(raw: string, user: SessionUser, body: Body, req
     ]);
     await notifyMany(team.map((m) => m.userId), { type: 'trace', title: `A copy of ${product?.name ?? 'your product'} was reported`, body: `Someone bought a likely copy at “${shop}”${saved.area ? ` (${saved.area})` : ''}. See where copies are sold on your Radar.`, link: '/trace/radar' });
   }
+  // M308: the brand's area alerts count reported fakes too.
+  const brandId = code.brandId;
+  if (brandId) later(() => copySeen(brandId, { country: saved.country, lat: saved.lat, lng: saved.lng }, null));
+
   return { ok: true };
 }
 

@@ -12,6 +12,8 @@ import { award, brandBalance } from './trace-wallet';
 import { applyCampaigns } from './trace-campaigns';
 import { divertedScan, passportExtras, shopTier } from './trace-plus';
 import { chainRole, staffView } from './trace-chain';
+import { copySeen } from './trace-watch';
+import { later } from './email';
 
 // UniVerse Trace: every product gets a passport (migrations 0177, 0178). Anyone can start a brand
 // for free (trace_brands; no school needed) and add its products and batches; every unit carries a
@@ -350,6 +352,9 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
         data: { codeId: id, brandId: batch.brandId, productId: batch.productId, category: batch.product.category, userId: user?.id ?? null, verdict, lat: here?.lat, lng: here?.lng, geoLat: geo?.lat, geoLng: geo?.lng, place, country: cf?.country ?? null, device: deviceOf(req), diverted: divertedScan(batch, cf?.country) },
       }),
     ]);
+    // M308: a likely copy: the brand's area alerts, after the answer.
+    const brandId = batch.brandId;
+    if (verdict === 'SUSPECT' && brandId) later(() => copySeen(brandId, { country: cf?.country ?? null, lat: geo?.lat ?? null, lng: geo?.lng ?? null }, batch.product.name));
   }
   const [events, brand, extras] = await Promise.all([
     // At most the newest 200 stops (a batch has a handful): staff record stops from public links (M173),

@@ -1,5 +1,6 @@
 import type { Router } from '../router';
 import { scanFunnel } from '../trace-funnel';
+import { getWatch, setWatch } from '../trace-watch';
 import { getSessionUser, type SessionUser } from '@/lib/server-auth';
 import { first } from '../body';
 import { audit } from '../audit';
@@ -101,6 +102,9 @@ export default function traceModule(router: Router) {
   r.get('insights', ({ user }) => insights(user));
   // M307: the scan funnel (scanned → sold → owner → warranty → review).
   r.get('funnel', ({ user, query }) => scanFunnel(user, query));
+  // M308: area alerts for copies.
+  r.get('watch', ({ user }) => getWatch(user));
+  r.put('watch', ({ user, body }) => setWatch(user, body));
   r.post<{ id: string }>('batches/:id/events', ({ user, params, body }) => addEvent(user, params.id, body ?? {}));
   r.post<{ id: string }>('batches/:id/carrier', { status: 200 }, ({ user, params, body }) => carrierLink(user, params.id, body ?? {}));
   r.post<{ code: string }>('codes/:code/flag', { status: 200 }, ({ user, params, body }) => flagCode(user, params.code, (body as { flagged?: unknown })?.flagged !== false));

@@ -136,3 +136,6 @@ export function sampleFunnel(q: URLSearchParams) {
     byProduct: products.map((p, i) => ({ productId: p.id, name: p.name, steps: funnelSteps({ scanned: c(900 - i * 250), sold: c(640 - i * 180), owned: c(220 - i * 70), warranted: c(180 - i * 60), reviewed: c(50 - i * 15) }) })),
   };
 }
+
+/** GET /trace/watch (M308): a brand watching two countries. */
+export const sampleWatch = () => ({ watch: { countries: ['IN', 'NG'], threshold: 3, anywhere: true }, thresholds: [1, 3, 5, 10, 25], recent: [{ area: 'c:IN', at: new Date(Date.now() - 5 * 3600_000).toISOString() }] });

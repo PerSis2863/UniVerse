@@ -9249,3 +9249,17 @@ The owner's 32 features, Trace 1 ("how many scans turn into sales").
 - **The steps** (`src/lib/trace-funnel.ts` `funnelSteps`, `biggestDrop`, tested): each step's count, share of all and of
   the step before; the biggest drop is marked once there are 20 units, with a plain hint (`HINT` in `ScanFunnel.tsx`).
 - **`ScanFunnel.tsx`** at the end of Trace → Insights; bars are `<Fill>`. Counts only: never who scanned.
+
+## M308: area alerts for copies (18 Nov)
+
+The owner's 32 features, Trace 2. Brands heard of each reported fake (M155, at most 5 an hour) but nothing about suspect
+checks, and nothing per place.
+
+- **The watch** (`trace_brands.watch`, JSON; `src/lib/trace-watch.ts` `cleanWatch`, tested): up to 40 countries, a
+  threshold (1, 3, 5, 10, 25 likely copies in 24 hours), and "anywhere they cluster" (the 0.5° cell, as the Radar).
+  `areaOf` names the area: a watched country first, else the cell.
+- **When it runs** (`copySeen` in `src/server/trace-watch.ts`): after the answer (`later()`), only for a scan whose verdict
+  is SUSPECT (`trace.ts`, using the network's position `geoLat/geoLng`, never the person's) and for each fake report
+  (`reportFake`). It counts the area's suspect checks and reports of the last 24 hours; at the threshold it claims the
+  area for the day (`trace_brands.watchSent`, kept two days, `prune`) and tells the brand's team in the app.
+- **Radar → Area alerts** (`AreaAlerts.tsx`, `GET/PUT /trace/watch`; only the brand's owner changes it). 0247.
