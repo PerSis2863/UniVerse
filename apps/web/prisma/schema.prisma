@@ -158,6 +158,10 @@ model User {
   signedOutAt        DateTime? // "sign out everywhere": sign-ins that started before this are refused
   /// Stage 5 · A8: sign-ins signed out one by one (Settings → devices), JSON: [sign-in time in seconds, …] (src/server/auth.ts).
   revokedSessions    String?
+  /// M301: an authenticator app as the second sign-in step (src/server/totp.ts): the sealed secret, on, last step used
+  totpSecret         String?
+  totpOn             Boolean   @default(false)
+  totpStep           Int?
   emergencyContacts  Json? // [{ name, relation, phone, email }] (max 5)
   // Campus network (upgrade 9): the campus this person belongs to (set from their email domain) and
   // whether people at partner campuses may find them in search.

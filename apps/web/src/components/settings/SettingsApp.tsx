@@ -53,6 +53,7 @@ const GuardianAccountsCard = dynamic(() => import('@/components/settings/Guardia
 const GuardianContactsCard = dynamic(() => import('@/components/settings/GuardianContactsCard').then((m) => m.GuardianContactsCard), { ssr: false, loading: sectionLoading });
 const RecentSignIns = dynamic(() => import('@/components/security/RecentSignIns').then((m) => m.RecentSignIns), { ssr: false, loading: sectionLoading });
 const Passkeys = dynamic(() => import('@/components/security/SignInSecurity').then((m) => m.Passkeys), { ssr: false, loading: sectionLoading });
+const AuthenticatorApp = dynamic(() => import('@/components/security/SignInSecurity').then((m) => m.AuthenticatorApp), { ssr: false, loading: sectionLoading });
 const SignedInDevices = dynamic(() => import('@/components/security/SignInSecurity').then((m) => m.SignedInDevices), { ssr: false, loading: sectionLoading });
 
 // Settings for every portal, like the Settings app on a phone: a searchable list of sections; on
@@ -264,6 +265,7 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
           <Setting id="recordings"><RecordingPrivacy /></Setting>
           <Setting id="password"><AccountSecurity /></Setting>
           <Setting id="passkeys"><Passkeys /></Setting>
+          <Setting id="app-code"><AuthenticatorApp /></Setting>
           <Setting id="devices"><SignedInDevices /></Setting>
           <Setting id="sign-ins"><RecentSignIns /></Setting>
         </Card>

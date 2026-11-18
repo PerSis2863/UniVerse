@@ -9145,3 +9145,21 @@ this is the week itself.
 - Weeks are Monday to Sunday in UTC (`mondayOf`). Test: `guardian-week.test.ts`.
 - **Batch 1 checked:** `pnpm check` (types, lint, 1,851 unit tests, lean) passes. Not tried in a browser this round:
   the new screens are checked by types, lint and unit tests only.
+
+## M301: an authenticator app as everyone's second sign-in step (18 Nov)
+
+The owner's 32 features, Platform 1. Two-step sign-in was for admins and the owner only (an emailed code, or a passkey).
+
+- **Settings → Privacy & Security → Authenticator app** (`AuthenticatorApp` in `SignInSecurity.tsx`; `/auth/app-code`,
+  `/start`, `/confirm`, `/off` in `src/server/modules/auth.ts`): a 20-byte secret shown once as a QR code (`otpauth://`)
+  and as a key, sealed with `secret-box` (`users.totpSecret`, context `totp:<id>`); the first right code turns it on
+  (`users.totpOn`) and returns this sign-in's pass, so the person isn't asked again at once; turning it off needs a
+  current code. Five wrong codes lock for 15 minutes (`takeTry`), as the emailed codes.
+- **Codes** (`src/server/totp.ts`): RFC 6238 (HMAC-SHA1, 30 s, 6 digits; tested with the RFC's own values), the step
+  either side for a phone's clock, and never the same step twice (`users.totpStep`).
+- **Who is asked** (`needsTwoStep(role, token, app)`): admins as before (when email works) and anyone with `totpOn`
+  (needs only `SESSION_SECRET`); `TWO_STEP_OFF` still stops both. Passed through in `getSessionUser`, the router and
+  the Worker's light paths (`fast-api.ts` reads `totpOn` with the caller). `TwoStepPanel` asks for the app's code
+  (email only for admins); emailed codes are now refused for non-admins (they cost emails).
+- 0246 (`users.totpSecret`, `totpOn`, `totpStep`). Tests: `totp.test.ts`.
+- **Rule:** never send `totpSecret` anywhere after setup; "Download my data" skips it.

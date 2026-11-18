@@ -1,6 +1,6 @@
 // Shared by the light API path (fast-api.ts, fast-chat.ts).
 
-export type Caller = { id: string; name: string; email: string; role: string; demo: boolean; /** When this sign-in happened (seconds), for the devices list. */ session?: number; /** Their school (organisation). */ org?: string | null };
+export type Caller = { id: string; name: string; email: string; role: string; demo: boolean; /** When this sign-in happened (seconds), for the devices list. */ session?: number; /** Their school (organisation). */ org?: string | null; /** M301: an authenticator app is their second sign-in step. */ app?: boolean };
 
 // Dates as Prisma stores them in D1 ("2026-09-30T21:42:19.500+00:00"), so comparisons line up.
 export const dbDate = (ms: number) => new Date(ms).toISOString().replace('Z', '+00:00');

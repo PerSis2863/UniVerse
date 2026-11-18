@@ -42,6 +42,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'recordings', section: 'privacy', label: 'Call recordings', keywords: 'recording privacy calls' },
   { id: 'password', section: 'privacy', label: 'Password and two-step sign-in', keywords: 'password 2fa two factor security' },
   { id: 'passkeys', section: 'privacy', label: 'Passkeys', keywords: 'fingerprint face id sign in without password' },
+  { id: 'app-code', section: 'privacy', label: 'Authenticator app', keywords: 'two-step two factor 2fa mfa totp code google microsoft authenticator' },
   { id: 'devices', section: 'privacy', label: 'Signed-in devices', keywords: 'sessions sign out everywhere phones computers' },
   { id: 'sign-ins', section: 'privacy', label: 'Recent sign-ins', keywords: 'login history activity security' },
   { id: 'family', section: 'family', label: 'Parents and guardians', keywords: 'family share progress parent', roles: ['STUDENT'] },

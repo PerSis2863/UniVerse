@@ -12,6 +12,15 @@ import { oneOf, str } from '../body';
 import { passkeyOptions, passkeysEnabled, registerPasskey, usePasskey } from '../passkeys';
 import { issueSessionToken } from '../session-token';
 import { clearTries, takeTry } from '../two-step-tries';
+import { matchStep, newSecret, otpauthUrl } from '../totp';
+import { canSeal, open as unseal, seal } from '../secret-box';
+import type { User } from '@prisma/client';
+
+/** The step of a right authenticator-app code for this account (not one used before), or null. */
+async function appCodeStep(user: User, code: unknown): Promise<number | null> {
+  const secret = await unseal(user.totpSecret, `totp:${user.id}`);
+  return secret ? matchStep(secret, code, user.totpStep) : null;
+}
 
 const maskEmail = (e: string) => e.replace(/^(.{2})[^@]*(@.*)$/, '$1•••$2');
 
@@ -38,11 +47,13 @@ export default function auth(router: Router) {
   r.get('two-step', async ({ user, req }) => {
     const token = extractBearer(req.headers.get('authorization'));
     // passkeys: how many this account has (the second step can use one instead of the email).
-    return { required: needsTwoStep(user.role, token), passed: hasPass(req, user.id, token), passkeys: passkeysEnabled() ? await prisma.passkey.count({ where: { userId: user.id } }) : 0 };
+    // M301: app: an authenticator app is set up (its code works); email: an emailed code can be sent (admins).
+    return { required: needsTwoStep(user.role, token, user.totpOn), passed: hasPass(req, user.id, token), passkeys: passkeysEnabled() ? await prisma.passkey.count({ where: { userId: user.id } }) : 0, app: user.totpOn, email: twoStepEnabled() && user.role === 'ADMIN' };
   });
   r.post('two-step/send', async ({ user, req }) => {
     const at = authTimeOf(extractBearer(req.headers.get('authorization')));
-    if (at === null || !twoStepEnabled()) throw new BadRequestException('Two-step sign-in is not needed for this account.');
+    // Emailed codes are for admins and the owner (M301: others use their authenticator app).
+    if (at === null || !twoStepEnabled() || user.role !== 'ADMIN') throw new BadRequestException('Use the code from your authenticator app.');
     const code = codeFor(user.id, at);
     const sent = await sendEmail(user.email, `UniVerse sign-in code: ${code}`,
       `<p>Your code to finish signing in to UniVerse is <b style="font-size:22px;letter-spacing:2px">${code}</b>.</p><p>It works for about 10 minutes. If you didn't just sign in, someone may know your password: change it now.</p>`,
@@ -54,9 +65,46 @@ export default function auth(router: Router) {
     const at = authTimeOf(extractBearer(req.headers.get('authorization')));
     if (at === null) throw new BadRequestException('Two-step sign-in is not needed for this account.');
     if (!(await takeTry(user.id))) throw new BadRequestException('Too many wrong codes. Try again in 15 minutes.');
-    if (!codeMatches(user.id, at, body?.code)) throw new BadRequestException('That code is wrong or too old. Check the latest email, or send a new code.');
+    // M301: a code from the authenticator app (each code once), else the emailed one.
+    const appStep = user.totpOn ? await appCodeStep(user, body?.code) : null;
+    if (appStep === null && !codeMatches(user.id, at, body?.code)) throw new BadRequestException(user.totpOn ? 'That code is wrong or too old. Type the code your authenticator app shows now.' : 'That code is wrong or too old. Check the latest email, or send a new code.');
+    if (appStep !== null) await prisma.user.update({ where: { id: user.id }, data: { totpStep: appStep } });
     await clearTries(user.id);
     return { pass: passFor(user.id, at) };
+  });
+
+  // An authenticator app as the second step (M301, src/server/totp.ts), for any account: set up (a secret shown once as a
+  // QR code), confirmed with its first code, turned off with a current code. Five wrong codes lock it for 15 minutes.
+  r.get('app-code', ({ user }) => ({ on: user.totpOn, available: canSeal() }));
+  r.post('app-code/start', async ({ user }) => {
+    if (!canSeal()) throw new BadRequestException('Authenticator apps aren’t available yet on this site.');
+    if (user.totpOn) throw new BadRequestException('Your authenticator app is already on. Turn it off first to set up another.');
+    const secret = newSecret();
+    await prisma.user.update({ where: { id: user.id }, data: { totpSecret: await seal(secret, `totp:${user.id}`), totpOn: false, totpStep: null } });
+    forgetUser(user.id);
+    return { secret, url: otpauthUrl(secret, user.email) };
+  });
+  r.post('app-code/confirm', async ({ user, body, req }) => {
+    if (!(await takeTry(user.id))) throw new BadRequestException('Too many wrong codes. Try again in 15 minutes.');
+    const step = await appCodeStep(user, body?.code);
+    if (step === null) throw new BadRequestException('That code doesn’t match. Type the code your app shows now.');
+    await prisma.user.update({ where: { id: user.id }, data: { totpOn: true, totpStep: step } });
+    forgetUser(user.id);
+    await clearTries(user.id);
+    audit(user, { action: 'security.app_code_on', summary: `${user.name} turned on an authenticator app for signing in`, targetType: 'user', targetId: user.id }, req);
+    // This sign-in just showed a right code: its pass, so it isn't asked again at once.
+    const at = authTimeOf(extractBearer(req.headers.get('authorization')));
+    return { on: true, pass: at === null ? null : passFor(user.id, at) };
+  });
+  r.post('app-code/off', async ({ user, body, req }) => {
+    if (!user.totpOn) return { on: false };
+    if (!(await takeTry(user.id))) throw new BadRequestException('Too many wrong codes. Try again in 15 minutes.');
+    if ((await appCodeStep(user, body?.code)) === null) throw new BadRequestException('Type the code your app shows now to turn it off.');
+    await prisma.user.update({ where: { id: user.id }, data: { totpOn: false, totpSecret: null, totpStep: null } });
+    forgetUser(user.id);
+    await clearTries(user.id);
+    audit(user, { action: 'security.app_code_off', summary: `${user.name} turned off their authenticator app`, targetType: 'user', targetId: user.id }, req);
+    return { on: false };
   });
 
   // Passkeys (src/server/passkeys.ts): the list, adding and removing (Settings → Privacy & Security),
