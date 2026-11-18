@@ -15,6 +15,7 @@ import { LoadError } from '@/components/ui/LoadError';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { confirmDialog, promptDialog } from '@/components/ui/Dialogs';
 import { ChildView, type ChildData } from '@/components/guardian/ChildView';
+import type { AlertChoice } from '@/lib/attendance-trend';
 import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
 import { ParentMeetings } from '@/components/guardian/ParentMeetings';
@@ -32,7 +33,7 @@ import { cn } from '@/lib/utils';
 // schoolwork (src/server/guardian-view.ts) and links children with the code they make in their
 // Settings. Parent accounts can't open anything else in UniVerse (src/server/auth.ts).
 
-type Child = ChildData & { linkId: string; studentId: string; relation: string | null };
+type Child = ChildData & { linkId: string; studentId: string; relation: string | null; alerts?: AlertChoice };
 type Note = { id: string; title: string; body: string; read: boolean; createdAt: string };
 
 const KEY = '/api/parent/children';
@@ -159,6 +160,7 @@ export default function ParentPage() {
                     <>
                       <ParentCopilot studentId={child.studentId} />
                       <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
+                      <AbsenceAlerts child={child} onSaved={() => void mutate()} />
                       <FamilyFees url={`/api/parent/fees?studentId=${encodeURIComponent(child.studentId)}`} who={child.firstName} />
                       <MyRegisters url={`/api/parent/registers?studentId=${encodeURIComponent(child.studentId)}`} title={`${child.firstName}’s bus, room and equipment`} className="mt-4" />
                       <div className="mt-6 flex justify-center">
@@ -295,5 +297,23 @@ function Account({ onClose }: { onClose: () => void }) {
         <button type="button" onClick={() => void deleteAccount()} className="btn-ghost w-full text-rose-600 dark:text-rose-400"><Trash2 className="w-4 h-4" /> Delete my account</button>
       </div>
     </Sheet>
+  );
+}
+
+/** M297: what this parent hears about the child's absences in the app. */
+function AbsenceAlerts({ child, onSaved }: { child: Child; onSaved: () => void }) {
+  const [value, setValue] = useState<AlertChoice>(child.alerts ?? 'EACH');
+  const save = async (v: AlertChoice) => {
+    const was = value;
+    setValue(v);
+    try { await authedJson(`/api/parent/children/${child.linkId}`, { method: 'PATCH', body: JSON.stringify({ alerts: v }) }); onSaved(); }
+    catch (e) { setValue(was); toast.error(e instanceof Error ? e.message : 'Couldn’t save that.'); }
+  };
+  return (
+    <section className="mt-4 rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.03] p-4 sm:p-6">
+      <h2 className="font-bold text-zinc-900 dark:text-white">Absence alerts</h2>
+      <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">What you hear in the app when {child.firstName} misses class.</p>
+      <Segmented<AlertChoice> className="mt-3" label="Absence alerts" value={value} onChange={(v) => void save(v)} segments={[{ value: 'EACH', label: 'Each absence' }, { value: 'OFTEN', label: 'Only if frequent' }, { value: 'NONE', label: 'None' }]} />
+    </section>
   );
 }

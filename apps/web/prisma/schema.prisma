@@ -2650,6 +2650,8 @@ model GuardianLink {
   studentId  String
   student    User     @relation("GuardedBy", fields: [studentId], references: [id], onDelete: Cascade)
   relation   String? // Mother, Father, Guardian…, as the guardian put it
+  /// M297: absence alerts in the app: EACH, OFTEN (frequent or falling only) or NONE (src/lib/attendance-trend.ts)
+  alerts     String   @default("EACH")
   createdAt  DateTime @default(now())
 
   @@unique([guardianId, studentId])

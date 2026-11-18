@@ -1,6 +1,7 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { cleanTimeZone, dayBounds } from '@/lib/home-time';
+import { falling, weeklyRates } from '@/lib/attendance-trend';
 import { attendedRate, cleanPosition, cleanSeating, isChronic, MARKS, nearCampus, suggestFromCall, type Mark } from '@/lib/attendance-rules';
 import { assertGradesCourse } from './access';
 import { alertAbsence } from './guardians';
@@ -90,6 +91,7 @@ export async function markMany(courseId: string, user: SessionUser, b: Record<st
     // frequent absences to the student's parents in the app.
     later(async () => {
       for (const s of newlyAbsent.slice(0, 5)) await alertAbsence(s, courseId, day);
+      await absenceInApp(courseId, newlyAbsent, day);
       await frequentAbsenceAlerts(courseId, newlyAbsent);
     });
   }
@@ -97,21 +99,41 @@ export async function markMany(courseId: string, user: SessionUser, b: Record<st
   return { marked: marks.length };
 }
 
+/** M297: parents who chose to hear about each absence are told in the app the day it's marked (at most 10 students a time). */
+async function absenceInApp(courseId: string, studentIds: string[], day: string) {
+  const ids = studentIds.slice(0, 10);
+  if (!ids.length) return;
+  const [links, course, students] = await Promise.all([
+    prisma.guardianLink.findMany({ where: { studentId: { in: ids }, alerts: 'EACH' }, select: { guardianId: true, studentId: true } }),
+    prisma.course.findUnique({ where: { id: courseId }, select: { code: true } }),
+    prisma.user.findMany({ where: { id: { in: ids } }, select: { id: true, name: true } }),
+  ]);
+  if (!links.length || !course) return;
+  const when = new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  for (const id of ids) {
+    const parents = links.filter((l) => l.studentId === id).map((l) => l.guardianId);
+    const first = students.find((s) => s.id === id)?.name.split(/\s+/)[0] ?? 'Your child';
+    if (parents.length) await notifyMany(parents, { type: 'warning', email: false, courseId, title: `${first} was marked absent from ${course.code}`, body: `On ${when}. If you think it’s a mistake, message the teacher from the parent app.`, link: '/parent' });
+  }
+}
+
 /** Parents of students now absent often in this course hear about it in the app, once a week. */
 async function frequentAbsenceAlerts(courseId: string, studentIds: string[]) {
   const ids = studentIds.slice(0, 40);
   const [rows, course, enrolments] = await Promise.all([
-    prisma.attendance.findMany({ where: { courseId, studentId: { in: ids } }, orderBy: { date: 'desc' }, take: ids.length * 12, select: { studentId: true, status: true } }),
+    prisma.attendance.findMany({ where: { courseId, studentId: { in: ids }, date: { gte: new Date(Date.now() - 56 * 86_400_000) } }, orderBy: { date: 'desc' }, take: ids.length * 40, select: { studentId: true, status: true, date: true } }),
     prisma.course.findUnique({ where: { id: courseId }, select: { code: true, name: true } }),
     prisma.enrollment.findMany({ where: { courseId, studentId: { in: ids } }, select: { id: true, studentId: true, absenceAlertAt: true, student: { select: { name: true } } } }),
   ]);
   const byStudent = new Map<string, Mark[]>();
   for (const r of rows) { const l = byStudent.get(r.studentId) ?? []; if (l.length < 12) l.push(r.status as Mark); byStudent.set(r.studentId, l); }
+  // M297: a falling attendance (the last two weeks well below the weeks before) is told too.
+  const fall = new Map(ids.map((id) => [id, falling(weeklyRates(rows.filter((r) => r.studentId === id), 8))]));
   const weekAgo = Date.now() - 7 * 86_400_000;
   // At most 8 a time (each is a notification for the parents): D1 allows 50 queries a request.
-  const due = enrolments.filter((e) => isChronic(byStudent.get(e.studentId) ?? []) && (!e.absenceAlertAt || e.absenceAlertAt.getTime() < weekAgo)).slice(0, 8);
+  const due = enrolments.filter((e) => (isChronic(byStudent.get(e.studentId) ?? []) || fall.get(e.studentId)) && (!e.absenceAlertAt || e.absenceAlertAt.getTime() < weekAgo)).slice(0, 8);
   if (!due.length || !course) return 0;
-  const links = await prisma.guardianLink.findMany({ where: { studentId: { in: due.map((d) => d.studentId) } }, select: { guardianId: true, studentId: true } });
+  const links = await prisma.guardianLink.findMany({ where: { studentId: { in: due.map((d) => d.studentId) }, alerts: { not: 'NONE' } }, select: { guardianId: true, studentId: true } });
   for (const d of due) {
     const parents = links.filter((l) => l.studentId === d.studentId).map((l) => l.guardianId);
     const r = attendedRate(byStudent.get(d.studentId) ?? []);
@@ -120,7 +142,7 @@ async function frequentAbsenceAlerts(courseId: string, studentIds: string[]) {
       await notifyMany(parents, {
         type: 'warning', email: false, courseId,
         title: `${first} has missed several ${course.code} classes`,
-        body: `${r.counted ? `${Math.round((r.rate ?? 0) * 100)} % attended lately` : 'Several absences'} in ${course.name}. You can message the teacher from the parent app.`,
+        body: `${fall.get(d.studentId) ? `Attendance fell from ${fall.get(d.studentId)!.from} % to ${fall.get(d.studentId)!.to} % over the last two weeks` : r.counted ? `${Math.round((r.rate ?? 0) * 100)} % attended lately` : 'Several absences'} in ${course.name}. You can message the teacher from the parent app.`,
         link: '/parent',
       });
     }

@@ -6,6 +6,7 @@ import { DeadlineList, type DeadlineItem } from '@/components/progress/DeadlineL
 import { ReportCardList, type PublishedCard } from '@/components/dashboard/MyReportCards';
 import { courseColor } from '@/lib/course-color';
 import { cn } from '@/lib/utils';
+import type { WeekRate } from '@/lib/attendance-trend';
 
 // One student's schoolwork as a parent sees it (src/server/guardian-view.ts): on the guardian link
 // page (/guardian/<token>) and in the parent app (/parent, Stage 5 · B16.1).
@@ -21,6 +22,9 @@ export interface ChildData {
   activity?: { daysActive: number; messages: number; calls: number; callMinutes: number; handedIn: number; quiet: { start: string; end: string; bySchool: boolean } | null };
   /** Report cards the school has published (Stage 5 · B15.3). */
   reportCards?: PublishedCard[];
+  /** M297: attendance week by week (oldest first) and whether it is falling. */
+  attendanceWeeks?: WeekRate[];
+  attendanceFalling?: { from: number; to: number } | null;
 }
 
 const panel = 'rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/80 dark:bg-white/[0.03] p-4 sm:p-6';
@@ -68,6 +72,8 @@ export function ChildView({ data, eyebrow, note }: { data: ChildData; eyebrow: s
           <Stat icon={Target} label="Coming up" value={String(data.deadlines.length)} sub="Next 3 weeks" />
         </div>
       </section>
+
+      {data.attendanceWeeks?.some((w) => w.rate !== null) && <AttendanceWeeks weeks={data.attendanceWeeks} fall={data.attendanceFalling ?? null} name={data.firstName} />}
 
       <section className={panel}>
         <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2 mb-4"><BookOpen className="w-4 h-4 text-indigo-500" /> Courses</h2>
@@ -150,5 +156,27 @@ export function ChildView({ data, eyebrow, note }: { data: ChildData; eyebrow: s
         This page only shows schoolwork. It never shows messages, contact details or anything private.
       </p>
     </div>
+  );
+}
+
+/** M297: the last eight weeks of attendance as bars, with a plain note when it is falling. */
+function AttendanceWeeks({ weeks, fall, name }: { weeks: WeekRate[]; fall: { from: number; to: number } | null; name: string }) {
+  return (
+    <section className={panel} aria-labelledby="att-weeks-title">
+      <h2 id="att-weeks-title" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><CalendarCheck className="w-4 h-4 text-indigo-500" aria-hidden /> Attendance week by week</h2>
+      {fall && <p className="mt-2 rounded-xl bg-amber-500/10 px-3 py-2 text-sm text-amber-800 dark:text-amber-200">{name}’s attendance fell from {fall.from}% to {fall.to}% over the last two weeks. The teachers can tell you more.</p>}
+      <ol className="mt-4 grid grid-cols-8 items-end gap-1.5" aria-label="Attendance per week, oldest first">
+        {weeks.map((w) => (
+          <li key={w.week} className="flex flex-col items-center gap-1">
+            <span className="flex h-20 w-full items-end overflow-hidden rounded-md bg-zinc-100 dark:bg-white/[0.06]">
+              {w.rate !== null && <span className={cn('block w-full rounded-md', w.rate >= 90 ? 'bg-emerald-500' : w.rate >= 75 ? 'bg-amber-400' : 'bg-rose-500')} style={{ height: `${Math.max(w.rate, 4)}%` }} />}
+            </span>
+            <span className="text-[11px] tabular-nums text-zinc-600 dark:text-zinc-300">{w.rate === null ? '—' : `${w.rate}%`}</span>
+            <span className="sr-only">Week of {format(new Date(`${w.week}T12:00:00`), 'd MMMM')}: {w.rate === null ? 'no classes' : `${w.rate}% of ${w.counted} classes`}</span>
+            <span aria-hidden className="text-[11px] text-zinc-500">{format(new Date(`${w.week}T12:00:00`), 'd/M')}</span>
+          </li>
+        ))}
+      </ol>
+    </section>
   );
 }

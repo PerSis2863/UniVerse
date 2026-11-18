@@ -9086,3 +9086,18 @@ with skills, credentials, evidence and impact; what was missing was the student'
   views counted, removable. `publicPassport(slug)` takes a token in place of the slug (`sharedOwner`), so the same page
   and API serve it, public or not, until it expires. Ten links at most.
 - `portfolio_items`, `portfolio_shares` (0243). Test: `portfolio.test.ts`.
+
+## M297: attendance trends that alert parents in the app (18 Nov)
+
+The owner's 32 features, UniVersity 7. Before: guardian *contacts* got an email per absence (off without the owner's
+email switch) and parent *accounts* an in-app note for frequent absences (Q11).
+
+- **Week by week** (`src/lib/attendance-trend.ts` `weeklyRates`): the share of counted classes attended per week
+  (present or late; excused not counted), the last eight weeks, in `guardianView` (`attendanceWeeks`) and drawn as bars
+  in `ChildView` (also on the guardian link page), with screen-reader text per week.
+- **Falling** (`falling`): the last two weeks with classes average 15 points or more below up to four weeks before, at
+  least four classes each side. Shown in the parent app, and `frequentAbsenceAlerts` now alerts on it too ("Attendance
+  fell from 95 % to 60 %…"), under the same once-a-week limit (`enrollments.absenceAlertAt`).
+- **Each absence in the app** (`absenceInApp` in `attendance-plus.ts`): parents whose link says `EACH` hear the day it's
+  marked (at most 10 students a register save). **The parent's choice** per child: `guardian_links.alerts` (0244):
+  EACH (default), OFTEN (frequent or falling only), NONE; set in the parent app (`PATCH /api/parent/children/:linkId`).

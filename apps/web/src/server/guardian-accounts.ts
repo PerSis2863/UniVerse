@@ -1,4 +1,5 @@
 import prisma from '@/lib/db';
+import { ALERT_CHOICES, type AlertChoice } from '@/lib/attendance-trend';
 import { notify } from './email';
 import { publish } from './realtime';
 import { guardianView } from './guardian-view';
@@ -116,12 +117,20 @@ export async function linkByCode(guardian: { id: string; name: string }, rawCode
 
 /** The guardian's children, each with the headline numbers. */
 export async function myChildren(guardianId: string) {
-  const links = await prisma.guardianLink.findMany({ where: { guardianId }, orderBy: { createdAt: 'asc' }, select: { id: true, relation: true, studentId: true } });
+  const links = await prisma.guardianLink.findMany({ where: { guardianId }, orderBy: { createdAt: 'asc' }, select: { id: true, relation: true, studentId: true, alerts: true } });
   const views = await Promise.all(links.map((l) => guardianView(l.studentId)));
   return links.flatMap((l, i) => {
     const v = views[i];
-    return v ? [{ linkId: l.id, studentId: l.studentId, relation: l.relation, ...v }] : [];
+    return v ? [{ linkId: l.id, studentId: l.studentId, relation: l.relation, alerts: l.alerts, ...v }] : [];
   });
+}
+
+/** M297: what this parent hears about the child's absences in the app (EACH, OFTEN or NONE). */
+export async function setAbsenceAlerts(guardianId: string, linkId: string, alerts: unknown) {
+  if (!(ALERT_CHOICES as readonly unknown[]).includes(alerts)) throw new GuardianAccountError('Choose each absence, only when it’s frequent, or none.', 400);
+  const n = await prisma.guardianLink.updateMany({ where: { id: linkId, guardianId }, data: { alerts: alerts as AlertChoice } });
+  if (!n.count) throw new GuardianAccountError('That child isn’t linked to your account.', 404);
+  return { alerts };
 }
 
 /** The guardian removes a child. */

@@ -3,6 +3,7 @@ import type { ReportCardData } from '@/lib/report-card';
 import { studentProgress } from './student-progress';
 import { weekActivity } from './safety';
 import { myCards } from './report-cards';
+import { falling, weeklyRates } from '@/lib/attendance-trend';
 
 // What a parent or guardian sees about one student: the guardian link page (/guardian/<token>) and
 // the parent app (Stage 5 · B16.1). Schoolwork only: first name, courses with grade and attendance,
@@ -10,7 +11,7 @@ import { myCards } from './report-cards';
 // details, messages or anything personal.
 
 export async function guardianView(studentId: string) {
-  const [user, progress, certificates, points, activity, cards] = await Promise.all([
+  const [user, progress, certificates, points, activity, cards, marks] = await Promise.all([
     prisma.user.findUnique({ where: { id: studentId }, select: { name: true, role: true, status: true } }),
     studentProgress(studentId, 21),
     prisma.impactCertificate.findMany({
@@ -29,6 +30,8 @@ export async function guardianView(studentId: string) {
     weekActivity(studentId),
     // Published report cards (Stage 5 · B15.3), without the student's email.
     myCards(studentId),
+    // M297: the last eight weeks of attendance, for the week-by-week trend.
+    prisma.attendance.findMany({ where: { studentId, date: { gte: new Date(Date.now() - 56 * 86_400_000) } }, select: { date: true, status: true }, take: 400 }),
   ]);
   // A deleted or suspended account, or one that's no longer a student, shows nothing.
   if (!user || user.role !== 'STUDENT' || user.status === 'SUSPENDED') return null;
@@ -42,6 +45,8 @@ export async function guardianView(studentId: string) {
     firstName: user.name.trim().split(/\s+/)[0] || 'Your student',
     average: progress.average,
     attendance: progress.attendance,
+    attendanceWeeks: weeklyRates(marks, 8),
+    attendanceFalling: falling(weeklyRates(marks, 8)),
     courses: progress.courses.map(({ id, code, name, color, emoji, grade, attendance }) => ({ id, code, name, color, emoji, grade, attendance })),
     deadlines: progress.deadlines,
     achievements,
