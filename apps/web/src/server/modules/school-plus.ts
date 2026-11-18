@@ -4,6 +4,8 @@ import { acknowledgeAnnouncement, announcementReaders, remindAnnouncement } from
 import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { ForbiddenException, NotFoundException } from '../http';
+import { guardianWeek } from '../guardian-week';
+import { str } from '../body';
 import { bookSlot, cancelBooking, officeSlots, openSlots, removeSlot, waitForSlot } from '../office-slots';
 
 /** The course's teachers (or, with `grade`, its teaching assistants too). */
@@ -39,4 +41,6 @@ export default function schoolPlusModule(router: Router) {
   ann.post<{ courseId: string; id: string }>(':courseId/:id/remind', async ({ user, params }) => { await teaching(user, params.courseId); return remindAnnouncement(params.courseId, params.id); });
   ann.post<{ courseId: string; id: string }>(':courseId/:id/ack', { roles: ['STUDENT'] }, ({ user, params }) => acknowledgeAnnouncement(params.courseId, user, params.id));
 
+  // A parent's week for one linked child (M300).
+  router.controller('parent-week', { roles: ['GUARDIAN'] }).get('', ({ user, query }) => guardianWeek(user, str(query.studentId) ?? '', str(query.week)));
 }

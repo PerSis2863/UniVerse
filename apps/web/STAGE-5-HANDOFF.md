@@ -9131,3 +9131,17 @@ counted ("Seen by 28 of 32", B2); this makes the receipts useful.
   read row only.
 - Routes in `src/server/modules/school-plus.ts` (`teaching()` checks the course role). 0245. Test:
   `course-announcements-ack.test.ts`. `owner-schema.json` regenerated for 0238–0245.
+
+## M300: a parent's weekly progress page (18 Nov)
+
+The owner's 32 features, UniVersity 10. The parent app showed the child overall (`ChildView`, "this week in numbers");
+this is the week itself.
+
+- **`WeekReport.tsx`** above `ChildView` in the parent app's Schoolwork, `GET /parent-week?studentId=&week=` (parent
+  accounts only, and only a child linked to them; `src/server/guardian-week.ts`): the grades that came back (scores,
+  never the teacher's written feedback), attendance day by day, what was handed in (assignments and quizzes), what was
+  missed (due that week, not handed in, already past), what's due the week after (done or not), and the week's course
+  announcements (titles). Four numbers on top; arrows go back up to 26 weeks (`.swap` with `data-dir`); printable.
+- Weeks are Monday to Sunday in UTC (`mondayOf`). Test: `guardian-week.test.ts`.
+- **Batch 1 checked:** `pnpm check` (types, lint, 1,851 unit tests, lean) passes. Not tried in a browser this round:
+  the new screens are checked by types, lint and unit tests only.

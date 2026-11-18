@@ -104,3 +104,22 @@ export function sampleReaders(d: SampleDb) {
   const people = (d.classmates as any[]).map((s, i) => ({ id: s.id, name: s.name, seenAt: i < 3 ? new Date(Date.now() - i * 3600_000).toISOString() : null, ackAt: i < 2 ? new Date(Date.now() - i * 3600_000).toISOString() : null }));
   return { needsAck: true, remindedAt: null, canRemind: true, people };
 }
+
+/** GET /parent-week (M300): a made-up week of schoolwork. */
+export function sampleParentWeek(q: URLSearchParams) {
+  const thisWeek = mondayOf(new Date().toISOString().slice(0, 10));
+  const week = mondayOf(q.get('week') || thisWeek);
+  const day = (n: number) => new Date(Date.parse(`${week}T12:00:00Z`) + n * 86_400_000).toISOString();
+  const prev = new Date(Date.parse(`${week}T00:00:00Z`) - 7 * 86_400_000).toISOString().slice(0, 10);
+  const next = week < thisWeek ? new Date(Date.parse(`${week}T00:00:00Z`) + 7 * 86_400_000).toISOString().slice(0, 10) : null;
+  return {
+    week, thisWeek, previous: prev, next,
+    summary: { grades: 2, attendance: 88, handedIn: 3, missed: 1 },
+    grades: [{ course: 'CS301', title: 'Threads lab', score: 17, maxScore: 20 }, { course: 'ENV210', title: 'Policy brief', score: 72, maxScore: 100 }],
+    attendance: [0, 1, 2, 3].map((n) => ({ course: n % 2 ? 'ENV210' : 'CS301', day: day(n).slice(0, 10), status: n === 2 ? 'ABSENT' : 'PRESENT' })),
+    handedIn: [{ course: 'CS301', title: 'Threads lab', at: day(1) }, { course: 'CS220', title: 'Quiz: trees', at: day(2) }, { course: 'ENV210', title: 'Reading notes', at: day(3) }],
+    missed: [{ course: 'CS220', title: 'Hash tables worksheet', kind: 'assignment', due: day(3) }],
+    nextWeek: [{ course: 'CS301', title: 'Midterm (paper)', kind: 'quiz', due: day(9), done: false }],
+    announcements: [{ course: 'CS301', title: 'Midterm next Tuesday' }],
+  };
+}

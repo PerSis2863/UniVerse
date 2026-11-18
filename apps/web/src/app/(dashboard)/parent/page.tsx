@@ -20,6 +20,7 @@ import { ParentMessages } from '@/components/guardian/ParentMessages';
 import { FORMS_KEY, ParentForms, type ParentFormsData } from '@/components/guardian/ParentForms';
 import { ParentMeetings } from '@/components/guardian/ParentMeetings';
 import { ParentCopilot } from '@/components/guardian/ParentCopilot';
+import { WeekReport } from '@/components/guardian/WeekReport';
 import { FamilyFees } from '@/components/fees/FamilyFees';
 import { MyRegisters } from '@/components/registers/MyRegisters';
 import { authedJson } from '@/lib/authed-fetch';
@@ -159,6 +160,7 @@ export default function ParentPage() {
                   ) : (
                     <>
                       <ParentCopilot studentId={child.studentId} />
+                      <WeekReport studentId={child.studentId} name={child.firstName} />
                       <ChildView data={child} eyebrow={child.relation ? `You’re linked as ${child.relation.toLowerCase()}` : 'Linked to your account'} note="Up to date as of now. Grades, attendance and deadlines come straight from the school." />
                       <AbsenceAlerts child={child} onSaved={() => void mutate()} />
                       <FamilyFees url={`/api/parent/fees?studentId=${encodeURIComponent(child.studentId)}`} who={child.firstName} />
