@@ -1,4 +1,6 @@
-import { NotFoundException, ConflictException } from '../http';
+import { BadRequestException, NotFoundException, ConflictException } from '../http';
+import { bookingMinutes, clockMinutes, weekdayOf } from '@/lib/campus-map';
+import { overlaps } from '@/lib/room-finder';
 import prisma from '@/lib/db';
 import { orgIn } from '../school-scope';
 
@@ -25,20 +27,19 @@ export class RoomsService {
     const userId = user.id;
     await this.findOne(user, data.roomId);
 
-    // Check if already booked
-    const existing = await prisma.roomReservation.findUnique({
-      where: {
-        roomId_date_time: {
-          roomId: data.roomId,
-          date: data.date,
-          time: data.time,
-        }
-      }
-    });
-
-    if (existing) {
+    // M298: refused when it overlaps another booking or a class in the room that day (not only the same start time).
+    const from = clockMinutes(data.time);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data.date) || from == null) throw new BadRequestException('Choose a date and a start time.');
+    const want = { from, to: from + bookingMinutes(data.duration) };
+    const [others, classes] = await Promise.all([
+      prisma.roomReservation.findMany({ where: { roomId: data.roomId, date: data.date }, select: { time: true, duration: true }, take: 200 }),
+      prisma.timetableSlot.findMany({ where: { roomId: data.roomId, dayOfWeek: weekdayOf(data.date) }, select: { startTime: true, endTime: true, course: { select: { code: true } } }, take: 100 }),
+    ]);
+    if (others.some((o) => { const f = clockMinutes(o.time); return f != null && overlaps(want, { from: f, to: f + bookingMinutes(o.duration) }); })) {
       throw new ConflictException('Room is already booked for this time slot');
     }
+    const lesson = classes.find((c) => { const f = clockMinutes(c.startTime), t = clockMinutes(c.endTime); return f != null && t != null && overlaps(want, { from: f, to: t }); });
+    if (lesson) throw new ConflictException(`${lesson.course.code} has a class in this room then`);
 
     return prisma.roomReservation.create({
       data: {

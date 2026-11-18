@@ -9101,3 +9101,18 @@ email switch) and parent *accounts* an in-app note for frequent absences (Q11).
 - **Each absence in the app** (`absenceInApp` in `attendance-plus.ts`): parents whose link says `EACH` hear the day it's
   marked (at most 10 students a register save). **The parent's choice** per child: `guardian_links.alerts` (0244):
   EACH (default), OFTEN (frequent or falling only), NONE; set in the parent app (`PATCH /api/parent/children/:linkId`).
+
+## M298: timetable clashes and a room finder (18 Nov)
+
+The owner's 32 features, UniVersity 8. Admin → Timetable already marked clashing classes (Q12, `clashesOf`).
+
+- **Before adding a class:** the New class form runs the same `clashesOf` with the draft class and lists what it would
+  clash with; the button reads "Add it anyway".
+- **Find a free room** (`RoomFinder.tsx`, a button on the campus map): a day, from–to and seats; it reads the campus map
+  for that day (`GET /api/campus/map`: each room's classes and bookings in minutes) and keeps rooms with nothing on for
+  the whole time and enough seats, the snuggest first (`freeRooms`, `src/lib/room-finder.ts`); **Book** reserves it.
+- **A real fix:** `RoomsService.bookRoom` only refused a booking at the exact same start time, so 11:00 for an hour went
+  through over a 10:00 two-hour booking, and over a class in the room. It now refuses any overlap with the day's
+  bookings and with that weekday's timetable classes in the room ("CS101 has a class in this room then").
+  `rooms.service.test.ts` covers it.
+- **A person's calendar** (`CalendarBoard`) says which of their weekly classes overlap (`weekClashes`), with who to tell.

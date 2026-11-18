@@ -14,9 +14,12 @@ import { useAuthStore } from '@/store/auth';
 import { TimeGrid, type GridEntry } from './TimeGrid';
 import { EventSheet, clockString, dayString, newDraft, type EventDraft, type EventKind } from './EventSheet';
 import { toEntries, type CalEvent, type Slot } from './entries';
+import { weekClashes } from '@/lib/room-finder';
 import type { ClassData } from '@/components/dashboard/ClassDetailModal';
 import { FileDrop } from '@/components/ui/FileDrop';
 import { useMyCourseColors } from '@/lib/my-course-colors';
+
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
 // The student's and teacher's calendar (Stage 5 · Q12): the timetable and events on TimeGrid, with
 // your own events made, dragged to a new time, changed and deleted; "New event" (also from the
@@ -124,8 +127,19 @@ export function CalendarBoard({ cal, label, teacher, courses, presets = [], onOp
     finally { setImporting(false); if (fileRef.current) fileRef.current.value = ''; }
   };
 
+  // M298: the person's own classes that overlap each week (two courses at the same time).
+  const clashes = weekClashes(cal.slots);
   return (
     <>
+      {clashes.length > 0 && (
+        <div role="status" className="mb-3 rounded-2xl bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+          <p className="font-semibold">{clashes.length === 1 ? 'Two of your classes overlap' : `${clashes.length} pairs of your classes overlap`}</p>
+          <ul className="mt-1 space-y-0.5">
+            {clashes.slice(0, 4).map(([a, b]) => <li key={`${a.id}-${b.id}`}>{DAY_NAMES[a.dayOfWeek]}: {a.course?.code ?? 'a class'} {a.startTime}–{a.endTime} and {b.course?.code ?? 'a class'} {b.startTime}–{b.endTime}</li>)}
+          </ul>
+          <p className="mt-1 text-amber-800/90 dark:text-amber-200/90">{teacher ? 'Ask the timetable office to move one.' : 'Tell your teachers or the timetable office so one can move.'}</p>
+        </div>
+      )}
       <TimeGrid
         label={label}
         entries={cal.entries}
