@@ -9183,3 +9183,16 @@ The owner's 32 features, Platform 2. Download and deletion existed (GDPR / DPDPA
   is one of `OWN_LINKS`; if it's personal, add it to `eraseAccount` too.
 - **Left as it was:** the export reads ~220 tables in one request (above the usual 50 queries); it worked at 146 and runs
   rarely. If it ever fails on D1, split it into parts.
+
+## M303: search across all apps (18 Nov)
+
+The owner's 32 features, Platform 3. `/api/search` (the ⌘K palette) searched UniVersity only (courses, groups, docs,
+tasks, assignments, materials, events…).
+
+- **`src/server/search-apps.ts` `searchApps`** (added to the route's `Promise.all`, its own `.catch`): my trips (owner or
+  member) and saved places; my brand's products (`trace_brand_members`) and any brand's public page (`/b/<slug>`); open
+  Relief requests and offers from the last 30 days by title or place (only what the public map shows: never who, never
+  exact positions); Green events (not hidden) and my teams. Five of each.
+- **Pages by name** (`APP_PAGES`, `pagesFor`): every word typed must be in a page's title or words ("free room" → Find a
+  free room). Add a page there when an app gets one people will look for.
+- The palette shows them under Travel, Trace, Relief, Green and Pages (`RESULT_KIND` in `CommandPalette.tsx`).

@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
-import { BookOpen, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow, Sparkles } from 'lucide-react';
+import { ArrowUpRight, BadgeCheck, BookOpen, LifeBuoy, Leaf, MapPin, Package, Plane, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow, Sparkles } from 'lucide-react';
 import { isSampleMode } from '@/lib/sample-mode';
 import { startSampleMode, stopSampleMode } from '@/components/SampleMode';
 import { cn } from '@/lib/utils';
@@ -41,6 +41,14 @@ const RESULT_KIND = {
   project: { group: 'NGO projects', icon: HeartHandshake },
   internship: { group: 'Internships', icon: Briefcase },
   resource: { group: 'Resources', icon: Library },
+  // M303: the other apps (src/server/search-apps.ts).
+  trip: { group: 'Travel', icon: Plane },
+  place: { group: 'Travel', icon: MapPin },
+  brand: { group: 'Trace', icon: BadgeCheck },
+  product: { group: 'Trace', icon: Package },
+  relief: { group: 'Relief', icon: LifeBuoy },
+  green: { group: 'Green', icon: Leaf },
+  page: { group: 'Pages', icon: ArrowUpRight },
 } satisfies Record<string, { group: string; icon: LucideIcon }>;
 
 const ROLE_BASE: Record<string, string> = { STUDENT: '/student', TEACHER: '/teacher', ADMIN: '/admin' };

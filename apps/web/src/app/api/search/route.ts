@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { searchApps, type AppHit } from '@/server/search-apps';
 import prisma from '@/lib/db';
 import { getSessionUser } from '@/lib/server-auth';
 import { schoolsOf, usersIn } from '@/server/school-scope';
@@ -18,7 +19,7 @@ export type SearchResult = {
   subtitle?: string;
   snippet?: string;
   href: string;
-} | FoundItem;
+} | FoundItem | AppHit;
 
 const LIMIT = 5;
 
@@ -38,7 +39,7 @@ export async function GET(req: Request) {
   const schools = admin ? await schoolsOf(user) : 'all';
   const ofSchool = schools !== 'all';
 
-  const [mine, courses, groups, projects, internships, resources] = await Promise.all([
+  const [mine, courses, groups, projects, internships, resources, apps] = await Promise.all([
     searchMine(user, q).catch((e) => (console.error('search:', e), [] as FoundItem[])),
     prisma.course.findMany({
       where: { ...text('name', 'code', 'department'), ...(admin ? (ofSchool ? { teacher: usersIn(schools) } : {}) : { status: 'PUBLISHED' as const }) },
@@ -67,11 +68,14 @@ export async function GET(req: Request) {
       select: { id: true, title: true, category: true },
       take: LIMIT,
     }),
+    // M303: the other apps (Travel, Trace, Relief, Green) and their pages by name.
+    searchApps(user, q).catch((e) => (console.error('search apps:', e), [] as AppHit[])),
   ]);
 
   const coursePage = (id: string) => (student ? `/student/courses/${id}` : admin ? '/admin/courses' : `/teacher/blackboard?course=${id}`);
   const results: SearchResult[] = [
     ...mine,
+    ...apps,
     ...courses.map((c) => ({ type: 'course' as const, id: c.id, title: c.name, subtitle: [c.code, c.department].filter(Boolean).join(' · '), href: coursePage(c.id) })),
     ...groups.map((g) => ({ type: 'group' as const, id: g.id, title: g.name, subtitle: g.category ?? 'Group', href: `/student/groups?q=${encodeURIComponent(g.name)}` })),
     ...projects.map((p) => ({
