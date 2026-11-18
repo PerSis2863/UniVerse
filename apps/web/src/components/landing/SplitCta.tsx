@@ -23,7 +23,7 @@ export function SplitCta({ app = 'campus' }: { app?: AppId }) {
   const [email, setEmail] = useState('');
   return (
     <section className="px-6 py-24">
-      <Reveal className="max-w-6xl mx-auto grid md:grid-cols-2 rounded-[2rem] overflow-hidden border border-white/[0.08]">
+      <Reveal className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 rounded-[2rem] overflow-hidden border border-white/[0.08]">
         <div className="on-dark relative p-8 sm:p-12 bg-[#0f0f11]">
           <div className="flex flex-wrap gap-2.5" aria-hidden>
             {c.parts.map((I, i) => (

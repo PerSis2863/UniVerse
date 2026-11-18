@@ -42,7 +42,7 @@ export function TripPolls({ tripId, ideas, owner }: { tripId: string; ideas: { p
   const act = async (call: () => Promise<unknown>) => { try { await call(); } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); } await mutate(); };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
       <NewPoll key={polls.length} url={key} ideas={ideas} onDone={() => void mutate()} />
       <div className="space-y-4">
         {!polls.length && data && <p className="panel p-6 text-center text-sm text-zinc-600 dark:text-zinc-300">No polls yet. Ask the group: which day trip, which dates, which stay.</p>}

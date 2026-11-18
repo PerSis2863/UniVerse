@@ -87,7 +87,7 @@ function ClockQuiz() {
   const fresh = () => { setT({ h: 1 + rnd(12), m: rnd(60 / step) * step }); setGuess(''); };
   const hh = String(t.h).padStart(2, '0'), mm = String(t.m).padStart(2, '0');
   return (
-    <div className="grid gap-4 sm:grid-cols-[220px_1fr] items-start">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[220px_1fr] items-start">
       <svg viewBox="0 0 200 200" className="w-full max-w-[220px]" role="img" aria-label={`A clock showing ${clockWords(t.h, t.m)}`}>
         <circle cx="100" cy="100" r="94" fill="#ffffff" stroke="#111113" strokeWidth="5" />
         {Array.from({ length: 60 }, (_, i) => { const a = (i * 6 * Math.PI) / 180, r1 = i % 5 ? 84 : 78; return <line key={i} x1={100 + r1 * Math.sin(a)} y1={100 - r1 * Math.cos(a)} x2={100 + 89 * Math.sin(a)} y2={100 - 89 * Math.cos(a)} stroke="#111113" strokeWidth={i % 5 ? 1 : 2.5} />; })}
@@ -135,7 +135,7 @@ function Venn() {
   const pos = (inn: boolean[]) => { const on = inn.slice(0, n).map((x, i) => (x ? i : -1)).filter((i) => i >= 0); if (!on.length) return [400 - 30, 30]; const cx = on.reduce((a, i) => a + C[i][0], 0) / on.length, cy = on.reduce((a, i) => a + C[i][1], 0) / on.length; if (on.length === 1) { const o = C.reduce((a, c) => [a[0] + c[0] / n, a[1] + c[1] / n], [0, 0]); return [cx + (cx - o[0]) * 0.6, cy + (cy - o[1]) * 0.6]; } return [cx, cy]; };
   const groups = new Map<string, string[]>(); v.items.forEach((it) => { const k = it.in.slice(0, n).join(); groups.set(k, [...(groups.get(k) ?? []), it.text]); });
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_300px]">
       <svg id="venn-sheet" viewBox="0 0 410 320" className="w-full rounded-xl bg-white ring-1 ring-black/10" role="img" aria-label="Venn diagram" fontFamily="system-ui">
         {C.slice(0, n).map((c, i) => <g key={i}><circle cx={c[0]} cy={c[1]} r={R} fill={`${fill[i]}22`} stroke={fill[i]} strokeWidth={2} /><text x={c[0] + (i === 2 ? 0 : i ? 40 : -40)} y={i === 2 ? c[1] + R + 16 : c[1] - R - 6} textAnchor="middle" fontWeight={700} fontSize={15} fill={fill[i]}>{v.names[i]}</text></g>)}
         {[...groups].map(([k, texts]) => { const [x, y] = pos(k.split(',').map((b) => b === 'true')); return <text key={k} x={x} y={y - (texts.length - 1) * 8} textAnchor="middle" fontSize={12} fill="#141320">{texts.map((t, j) => <tspan key={j} x={x} dy={j ? 16 : 0}>{t.slice(0, 18)}</tspan>)}</text>; })}
@@ -207,7 +207,7 @@ function Trig() {
   const [a, setA] = useState(35);
   const r = (a * Math.PI) / 180, c = Math.cos(r), s = Math.sin(r), P = [110 + 90 * c, 110 - 90 * s];
   return (
-    <div className="grid gap-4 sm:grid-cols-[240px_1fr] items-start">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[240px_1fr] items-start">
       <svg viewBox="0 0 220 220" className="w-full max-w-[240px] rounded-xl bg-white ring-1 ring-black/10 touch-none" role="img" aria-label={`Unit circle at ${a} degrees`}
         onPointerDown={(e) => e.currentTarget.setPointerCapture(e.pointerId)} onPointerMove={(e) => { if (!e.buttons) return; const b = e.currentTarget.getBoundingClientRect(), x = ((e.clientX - b.left) / b.width) * 220 - 110, y = 110 - ((e.clientY - b.top) / b.height) * 220; setA(Math.round(((Math.atan2(y, x) * 180) / Math.PI + 360) % 360)); }}>
         <line x1="10" x2="210" y1="110" y2="110" stroke="#c7cad6" /><line y1="10" y2="210" x1="110" x2="110" stroke="#c7cad6" />
@@ -233,7 +233,7 @@ function Triangle() {
   try { const k = Object.fromEntries(Object.entries(v).filter(([, x]) => x.trim() && +x > 0).map(([key, x]) => [key, +x])); r = solveTriangle(k); } catch (e) { err = (e as Error).message; }
   const pts = r ? (() => { const s = 200 / Math.max(r.a, r.b, r.c), Bx = r.c * s, Cx = r.b * Math.cos((r.A * Math.PI) / 180) * s, Cy = r.b * Math.sin((r.A * Math.PI) / 180) * s; return [[20, 190], [20 + Bx, 190], [20 + Cx, 190 - Cy]]; })() : null;
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_240px]">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_240px]">
       <div className="space-y-3">
         <div className="grid grid-cols-3 gap-2">{['a', 'b', 'c'].map((k) => <Field key={k} label={`Side ${k}`}><input className="input font-mono" inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>)}{['A', 'B', 'C'].map((k) => <Field key={k} label={`Angle ${k} (°)`}><input className="input font-mono" inputMode="decimal" value={v[k]} onChange={(e) => setV({ ...v, [k]: e.target.value })} /></Field>)}</div>
         <Btn onClick={() => setV({ a: '', b: '', c: '', A: '', B: '', C: '' })}>Clear</Btn>
@@ -253,7 +253,7 @@ function Matrices() {
   const go = (f: () => string) => { try { const A = parseM(a), B = parseM(b); if ([A, B].some((m) => m.some((r) => r.length !== m[0].length || r.some((v) => !Number.isFinite(v))))) throw new Error('Each row needs the same number of numbers.'); setOut(f()); setErr(''); } catch (e) { setErr((e as Error).message); setOut(''); } };
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2"><Field label="Matrix A (rows on lines)"><textarea className="input min-h-[110px] font-mono" value={a} onChange={(e) => setA(e.target.value)} /></Field><Field label="Matrix B"><textarea className="input min-h-[110px] font-mono" value={b} onChange={(e) => setB(e.target.value)} /></Field></div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><Field label="Matrix A (rows on lines)"><textarea className="input min-h-[110px] font-mono" value={a} onChange={(e) => setA(e.target.value)} /></Field><Field label="Matrix B"><textarea className="input min-h-[110px] font-mono" value={b} onChange={(e) => setB(e.target.value)} /></Field></div>
       <div className="flex flex-wrap gap-1.5">
         <Btn onClick={() => go(() => { const A = parseM(a), B = parseM(b); if (A.length !== B.length || A[0].length !== B[0].length) throw new Error('A and B must be the same size.'); return showM(A.map((r, i) => r.map((v, j) => v + B[i][j]))); })}>A + B</Btn>
         <Btn onClick={() => go(() => showM(matMul(parseM(a), parseM(b))))}>A × B</Btn>
@@ -305,7 +305,7 @@ function Physics() {
     <div className="space-y-3">
       <Field label="Formula"><select className="input" value={f} onChange={(e) => { setF(e.target.value); setFind(FORMULAS[e.target.value].vars[0][0]); }}>{Object.keys(FORMULAS).map((k) => <option key={k}>{k}</option>)}</select></Field>
       <p className="font-mono text-xl font-bold text-zinc-900 dark:text-white">{F.text}</p>
-      <div className="grid gap-2 sm:grid-cols-3">{F.vars.map(([k, l]) => (
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">{F.vars.map(([k, l]) => (
         <div key={k} className={cn('rounded-xl p-2 ring-1', k === find ? 'ring-pink-500 bg-pink-500/10' : 'ring-zinc-200 dark:ring-white/10')}>
           <label className="flex items-center gap-1.5 text-xs text-zinc-700 dark:text-zinc-200"><input type="radio" name="find" checked={k === find} onChange={() => setFind(k)} className="accent-pink-500" />Find {k} · {l}</label>
           {k === find ? <p className="mt-1 font-mono text-xl font-bold text-zinc-900 dark:text-white" role="status">{Number.isFinite(ans) ? nf(ans, 4) : '—'}</p> : <input className="input mt-1 font-mono" inputMode="decimal" aria-label={l} value={vals[k] ?? ''} onChange={(e) => setVals({ ...vals, [k]: e.target.value })} />}

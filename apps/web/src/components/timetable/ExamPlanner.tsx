@@ -191,7 +191,7 @@ export function ExamPlanner({ data }: { data: PlanData }) {
             {[...byDay.entries()].map(([day, list]) => (
               <li key={day} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] p-3">
                 <h3 className="font-semibold text-sm text-zinc-900 dark:text-white mb-2">{format(new Date(`${day}T12:00:00`), 'EEEE d MMMM')}</h3>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {list.map(({ s, exams }) => (
                     <div key={s}>
                       <p className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 mb-1 tabular-nums">{hhmm(sessions[s].start)}–{hhmm(sessions[s].end)}</p>

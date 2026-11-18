@@ -47,7 +47,7 @@ export default function GreenTeamsPage() {
       <div className="flex-1 p-4 sm:p-8 overflow-y-auto">
         <div className="w-full space-y-6">
           <Suspense><GreenTabs /></Suspense>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <form onSubmit={(e) => { e.preventDefault(); void run('create', () => api.post('/green/teams', { name }), 'Team started. Share its code to invite people.').then(() => setName('')); }} className="panel p-5">
               <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Plus className="w-4 h-4 text-emerald-500" aria-hidden />Start a team</h2>
               <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Team name</span><input required maxLength={60} value={name} onChange={(e) => setName(e.target.value)} className="input mt-1" placeholder="Class 10B, Marketing team, Riverside Cycling Club" /></label>
@@ -81,7 +81,7 @@ export default function GreenTeamsPage() {
             </section>
           ))}
 
-          <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6 items-start">
             <section className="panel p-5" aria-labelledby="lb-h">
               <div className="flex flex-wrap items-center justify-between gap-2"><h2 id="lb-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />Team league</h2><Segmented<'week' | 'month'> label="League over" value={span} onChange={setSpan} segments={[{ value: 'week', label: 'This week' }, { value: 'month', label: '30 days' }]} /></div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Only actions a teammate confirmed from a photo count, so nobody can top it by typing big numbers.</p>

@@ -35,7 +35,7 @@ export function SupportPanel({ plan }: { plan: PlanId }) {
   const input = 'w-full rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-zinc-950/50 px-4 py-3 text-sm text-zinc-900 dark:text-white placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/40';
 
   return (
-    <div className="grid lg:grid-cols-[1.4fr_1fr] gap-6">
+    <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-6">
       <div className="rounded-[2rem] border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-6 md:p-8">
         <div className="flex items-center justify-between gap-3 mb-5">
           <h3 className="text-lg font-black text-zinc-900 dark:text-white flex items-center gap-2"><LifeBuoy className="w-5 h-5 text-indigo-500" /> Contact support</h3>

@@ -8927,3 +8927,31 @@ Votes, Journal, Money, Checklist, Phrases, Ready, Share) and Find where to go at
   line, the prices table fitting a phone, Money axe clean); `travel-trip-ui`, `travel-find-ui`, `travel-money-ui`,
   `travel-ten-ui` pass; `pnpm check`. Browser only.
 - **Rule:** a form that repeats above every part of a page shows only where it changes something.
+
+## M289: nothing cut off on a phone: grids, UniVersity's pages and a crawl that finds it (18 Nov)
+
+The owner: "please do a lot more like this and then merge it". Screenshots of UniVersity's main pages (student and
+teacher), Green, Relief, Trace and the hub on a phone and a computer, then a crawl of all 213 pages.
+
+- **The cause, found once and fixed everywhere:** a grid given columns only from a breakpoint up (`grid sm:grid-cols-2`)
+  is one `auto` column on a phone, and that column grows to its longest line that won't break (a `truncate`, a
+  `whitespace-nowrap`), so a card's text ran past its edge and was cut off: "Finish setting up your account" on every
+  home, the empty-state cards (`FeatureGuide`) on ~15 pages, a teacher's course cards, the timetable's empty week. **422
+  grids in 209 files** got `grid-cols-1` (one column that shrinks to the screen). `src/lib/layout-rules.test.ts` fails a
+  new one.
+- **The crawl** (`scripts/crawl.mjs --layout`) now also reports **text cut off by a box that clips** (not an ellipsis,
+  not inside something that scrolls, not screen-reader text). On phones: 74 cut-off texts on 25 pages before, 1 after
+  (fixed too: the admin home's long revenue figure, `KpiCard` 22 px on a phone when the figure is longer than 7
+  characters). On a computer: none, no part sticking out.
+- **UniVersity:** the course page's buttons (All my grades, Message instructor; Invite students, Teaching team, Copy to a
+  new term, Gradebook, Quizzes) wrap instead of running off a phone; Grades: the transcript's title no longer squeezed
+  to a letter by its course picker, its table fits a phone (`px-2 sm:px-4`), and rows no longer slide in twice
+  (framer-motion on each row on top of the motion layer); "Finish setting up your account" is a solid card (it was glass).
+  `FeatureGuide`'s Example badge 11 px (was 10).
+- **Looked at and left:** the remaining "overlaps" in the crawl are buttons placed on cards on purpose (a course's colour,
+  a folder's +, a tool's star), a link wrapping onto two lines, and map chips scrolled partly out of their strip; the
+  read-only demo admin's `PATCH /users/me` 403 (the tour's "seen", tests only); `/api/calendar-link` 503 locally (no
+  `SESSION_SECRET`).
+- **Checked:** the phone and computer crawls (213 pages each, `--layout`), the Travel checks, `pnpm check`. Browser only.
+- **Rules:** a grid with columns from a breakpoint up also gets `grid-cols-1`; after a layout change run
+  `node scripts/crawl.mjs <url> --phone --layout` and read the "cut off" lines.

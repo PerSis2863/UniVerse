@@ -33,8 +33,8 @@ export default function SpacesPage() {
               steps={['Join a class or a study group', 'Open its space here', 'Start a call, a document or a task board for everyone in it']} />
           ) : (
             <>
-              {!!data?.courses.length && <section className="space-y-2"><h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Classes</h2><div className="grid sm:grid-cols-2 gap-3 stagger">{data.courses.map((c) => row(`/spaces/course/${c.id}`, `${c.code} · ${c.name}`, 'Class space', GraduationCap))}</div></section>}
-              {!!data?.groups.length && <section className="space-y-2"><h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Study groups</h2><div className="grid sm:grid-cols-2 gap-3 stagger">{data.groups.map((g) => row(`/spaces/group/${g.id}`, g.name, 'Group space', Users))}</div></section>}
+              {!!data?.courses.length && <section className="space-y-2"><h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Classes</h2><div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger">{data.courses.map((c) => row(`/spaces/course/${c.id}`, `${c.code} · ${c.name}`, 'Class space', GraduationCap))}</div></section>}
+              {!!data?.groups.length && <section className="space-y-2"><h2 className="text-sm font-semibold uppercase tracking-wider text-zinc-500">Study groups</h2><div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger">{data.groups.map((g) => row(`/spaces/group/${g.id}`, g.name, 'Group space', Users))}</div></section>}
             </>
           )}
         </div>

@@ -71,7 +71,7 @@ function MembersPreview({ filters, setFilters, onDownload, busy }: { filters: Fi
           Download {data ? `${data.total.toLocaleString()} ` : ''}as CSV
         </button>
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_auto_auto] mb-4">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto_auto] mb-4">
         <AdminSearch value={filters.q} onChange={(q) => setFilters({ ...filters, q })} placeholder="Search name, email or phone…" />
         <select className={select} value={filters.role} onChange={(e) => setFilters({ ...filters, role: e.target.value })} aria-label="Role">
           <option value="">All roles</option>
@@ -132,7 +132,7 @@ function Exports() {
   };
 
   return (
-    <div className="grid md:grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
       {EXPORTS.map((e, i) => (
         <motion.button
           key={e.type}

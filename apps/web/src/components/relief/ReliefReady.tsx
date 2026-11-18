@@ -92,7 +92,7 @@ export function ReliefReady() {
   });
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="space-y-6">
         <section className="panel p-5" aria-labelledby="plan-h">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -101,7 +101,7 @@ export function ReliefReady() {
           </div>
           <div className="text-sm text-zinc-600 dark:text-zinc-300">Agree it with the people you live with. Only you can see it.</div>
           {!data ? <div className="mt-4 h-40 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> : (
-            <form className="mt-4 grid gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); void savePlan(); }}>
+            <form className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2" onSubmit={(e) => { e.preventDefault(); void savePlan(); }}>
               <label className={label}>Where to meet near home<input maxLength={120} value={plan.meetNear} onChange={(e) => set('meetNear', e.target.value)} placeholder="The bakery on the corner" className={field} /></label>
               <label className={label}>If you can’t go home, meet at<input maxLength={120} value={plan.meetFar} onChange={(e) => set('meetFar', e.target.value)} placeholder="A relative’s house in another town" className={field} /></label>
               <label className={label}>People in the household<input type="number" min={1} max={20} value={plan.people} onChange={(e) => set('people', Math.min(20, Math.max(1, Number(e.target.value) || 1)))} className={field} /></label>
@@ -132,7 +132,7 @@ export function ReliefReady() {
             <span className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300" data-no-motion>{kit.length} of {KIT.length} ready</span>
           </div>
           <div className="mt-2 h-2 overflow-hidden rounded-full bg-zinc-200/80 dark:bg-white/10" aria-hidden><span className="block h-full origin-left rounded-full bg-orange-500 transition-transform duration-500 ease-[var(--ease-glide)] rtl:origin-right" style={{ transform: `scaleX(${kit.length / KIT.length})` }} /></div>
-          <div className="mt-4 grid gap-5 md:grid-cols-2">
+          <div className="mt-4 grid grid-cols-1 gap-5 md:grid-cols-2">
             {groups.map((gname) => (
               <div key={gname}>
                 <h4 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">{gname}</h4>
@@ -174,7 +174,7 @@ export function ReliefFirstAid() {
   const countries = useCountries();
   const first = numbersOf(countries, home)[0] ?? '112';
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="panel p-5" aria-labelledby="fa-h">
         <h3 id="fa-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><HeartPulse className="h-5 w-5 text-red-600" aria-hidden />First aid basics</h3>
         <div className="text-sm text-zinc-600 dark:text-zinc-300">Short steps, as the Red Cross and Red Crescent teach them. They don’t replace a course: take one, it’s a day well spent.</div>

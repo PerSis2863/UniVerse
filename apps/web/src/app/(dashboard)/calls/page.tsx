@@ -81,7 +81,7 @@ export default function CallsPage() {
       <Suspense fallback={null}><NoteFromLink /></Suspense>
       <CommsDeck />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
-        <div className="w-full grid lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_340px] gap-6 items-start">
           <div className="space-y-5 min-w-0">
           <MeetHome />
           <Favorites />

@@ -53,7 +53,7 @@ export function BizReportSection({ org, role, year, onChanged }: SectionProps) {
   return (
     <div className="space-y-6">
       {edit && (
-        <form onSubmit={(e) => void save(e)} className="panel p-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_8rem_12rem_12rem_auto] lg:items-end" aria-label="Details for the report">
+        <form onSubmit={(e) => void save(e)} className="panel p-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-[1fr_8rem_12rem_12rem_auto] lg:items-end" aria-label="Details for the report">
           <label className={label}>Industry<input maxLength={60} value={f.industry} onChange={(e) => setF({ ...f, industry: e.target.value })} className={field} /></label>
           <label className={label}>Staff<input type="number" min={0} value={f.employees} onChange={(e) => setF({ ...f, employees: e.target.value })} className={field} /></label>
           <label className={label}>Yearly revenue, {org.currency}<input type="number" min={0} value={f.revenue} onChange={(e) => setF({ ...f, revenue: e.target.value })} className={field} /></label>
@@ -69,7 +69,7 @@ export function BizReportSection({ org, role, year, onChanged }: SectionProps) {
             {S3_CATEGORIES.map((c) => {
               const v = screen[c.n] ?? { status: 'included' as Screen, reason: null };
               return (
-                <li key={c.n} className="grid gap-2 py-3 lg:grid-cols-[1fr_11rem_1fr] lg:items-center">
+                <li key={c.n} className="grid grid-cols-1 gap-2 py-3 lg:grid-cols-[1fr_11rem_1fr] lg:items-center">
                   <div><p className="text-sm font-medium text-zinc-900 dark:text-white">{c.n}. {c.name}</p><p className="text-xs text-zinc-600 dark:text-zinc-400">{c.hint}</p></div>
                   <label><span className="sr-only">{c.name}: status</span><select value={v.status} onChange={(e) => setScreen({ ...screen, [c.n]: { ...v, status: e.target.value as Screen } })} className={`${field} mt-0`}>{(Object.keys(SCREEN_TEXT) as Screen[]).map((s) => <option key={s} value={s}>{SCREEN_TEXT[s]}</option>)}</select></label>
                   <label><span className="sr-only">{c.name}: reason</span><input maxLength={300} value={v.reason ?? ''} onChange={(e) => setScreen({ ...screen, [c.n]: { ...v, reason: e.target.value } })} placeholder={v.status === 'included' ? 'How it’s counted (optional)' : 'Why'} className={`${field} mt-0`} /></label>
@@ -123,7 +123,7 @@ export function BizReport({ report: r }: { report: Report }) {
 
       <section aria-labelledby="r-ghg">
         <h3 id="r-ghg" className={h3}>GHG Protocol: emissions by scope</h3>
-        <div className="mt-3 grid gap-6 lg:grid-cols-2">
+        <div className="mt-3 grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div>
             {([1, 2, 3] as const).map((s) => <div key={s} className={row}><span className={th}>{SCOPE_TEXT[s].title}: {SCOPE_TEXT[s].what.toLowerCase()}</span><span className={td}>{tonnes(t.scope[s])} · {pct(t.scope[s], t.kg)}%</span></div>)}
             <div className={row}><span className={th}>Scope 2, location-based (the grid’s average)</span><span className={td}>{tonnes(r.scope2.location)}</span></div>

@@ -58,7 +58,7 @@ export function GreenEvents() {
       {!data ? <div className="h-64 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
         : !data.events.length ? <div className="panel p-8 text-center"><CalendarDays className="mx-auto h-8 w-8 text-emerald-600" aria-hidden /><p className="mt-3 font-semibold text-zinc-900 dark:text-white">{near ? 'Nothing coming up near you yet.' : 'Nothing coming up yet.'}</p><p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Organise the first: a litter pick in the park takes an hour.</p></div>
         : (
-          <ul className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-4 md:grid-cols-2 2xl:grid-cols-3">
             {data.events.map((e) => {
               const k = KINDS[e.kind] ?? KINDS.other, Icon = k.icon;
               return (
@@ -99,7 +99,7 @@ function NewEvent({ onDone }: { onDone: () => void }) {
     catch (e) { toast.error(errorMessage(e, 'Couldn’t put that up.')); } finally { setBusy(false); }
   };
   return (
-    <form className="panel grid gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => { e.preventDefault(); void save(); }} aria-label="Organise an event">
+    <form className="panel grid grid-cols-1 gap-3 p-5 sm:grid-cols-2 lg:grid-cols-4" onSubmit={(e) => { e.preventDefault(); void save(); }} aria-label="Organise an event">
       <label className={cn(label, 'sm:col-span-2')}>What<input required maxLength={80} value={v.title} onChange={set('title')} placeholder="Litter pick in Riverside Park" className={field} /></label>
       <label className={label}>Kind<select value={v.kind} onChange={set('kind')} className={field}>{Object.entries(KINDS).map(([id, k]) => <option key={id} value={id}>{k.label}</option>)}</select></label>
       <label className={label}>Date<input required type="date" value={v.date} onChange={set('date')} className={cn(field, 'min-w-[9.5rem]')} /></label>

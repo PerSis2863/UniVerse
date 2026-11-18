@@ -159,7 +159,7 @@ export function BulkImport() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Columns</p>
-                <ul className="grid sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
+                <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-1 text-sm">
                   {columns.map((c) => (
                     <li key={c.key} className="text-zinc-700 dark:text-zinc-200"><span className="font-semibold">{c.label}</span>{c.required ? <span className="text-rose-600 dark:text-rose-400"> (needed)</span> : ''}{c.hint ? <span className="text-zinc-500"> · {c.hint}</span> : ''}</li>
                   ))}
@@ -170,7 +170,7 @@ export function BulkImport() {
           ) : (
             <motion.div key="file" variants={fadeUp} initial="hidden" animate="show" exit={{ opacity: 0 }} className="space-y-4">
               <p className="text-sm text-zinc-700 dark:text-zinc-200"><FileSpreadsheet className="inline w-4 h-4 -mt-0.5 me-1 text-zinc-500" aria-hidden /><span className="font-semibold">{file.name}</span> · {file.rows.length} row{file.rows.length === 1 ? '' : 's'}</p>
-              <fieldset className="grid sm:grid-cols-2 gap-3">
+              <fieldset className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <legend className="text-xs font-semibold uppercase tracking-wide text-zinc-500 mb-1.5">Match the columns</legend>
                 {columns.map((c) => (
                   <label key={c.key} className="block">

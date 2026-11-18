@@ -83,7 +83,7 @@ export function LanguagesPanel() {
       <section className={cn(card, 'p-4 sm:p-6')} aria-labelledby="lang-h">
         <h2 id="lang-h" className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Languages className="w-4 h-4 text-zinc-400" aria-hidden /> Languages</h2>
         <p className="text-sm text-zinc-600 dark:text-zinc-400 mt-1">The app’s screens in other languages. Each is drafted once by the AI translator and saved; people see it when they choose the language in Settings. Arabic and Urdu read right to left.</p>
-        <ul className="mt-4 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+        <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
           {OTHER.map((l) => {
             const s = status(l.code);
             return (
@@ -170,7 +170,7 @@ function Review({ lang }: { lang: Language }) {
       </div>
       <ul className="mt-4 divide-y divide-zinc-100 dark:divide-white/[0.06]">
         {rows.map((r) => (
-          <li key={r.en} className="py-3 grid sm:grid-cols-2 gap-2 items-start">
+          <li key={r.en} className="py-3 grid grid-cols-1 sm:grid-cols-2 gap-2 items-start">
             <p className="text-sm text-zinc-800 dark:text-zinc-200 break-words" translate="no">{r.en}</p>
             <div className="flex gap-2">
               <label className="sr-only" htmlFor={`tr-${r.c}-${r.en}`}>Translation of “{r.en}”</label>

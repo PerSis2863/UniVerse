@@ -119,7 +119,7 @@ function ApplyForm({ slug, round, onSent }: { slug: string; round: Round; onSent
       <fieldset className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 space-y-4">
         <legend className="px-1 font-bold text-zinc-900 dark:text-white">The student</legend>
         <Field label="Full name *" error={errors.studentName}>{(p) => <input {...p} autoComplete="off" value={student.name} maxLength={120} onChange={(e) => { setStudent({ ...student, name: e.target.value }); setErrors((x) => ({ ...x, studentName: '' })); }} className="input" />}</Field>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Date of birth" error={errors.studentDob}>{(p) => <input {...p} type="date" value={student.dob} onChange={(e) => setStudent({ ...student, dob: e.target.value })} className="input" />}</Field>
           <Field label="Their own email (optional)" hint="They’ll sign up with it if admitted" error={errors.studentEmail}>{(p) => <input {...p} type="email" value={student.email} maxLength={254} onChange={(e) => setStudent({ ...student, email: e.target.value })} className="input" />}</Field>
         </div>
@@ -127,7 +127,7 @@ function ApplyForm({ slug, round, onSent }: { slug: string; round: Round; onSent
 
       <fieldset className="rounded-3xl tone-panel border border-zinc-200 dark:border-white/10 p-4 sm:p-5 space-y-4">
         <legend className="px-1 font-bold text-zinc-900 dark:text-white">You</legend>
-        <div className="grid sm:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <Field label="Your name *" error={errors.contactName}>{(p) => <input {...p} autoComplete="name" value={contact.name} maxLength={120} onChange={(e) => { setContact({ ...contact, name: e.target.value }); setErrors((x) => ({ ...x, contactName: '' })); }} className="input" />}</Field>
           <Field label="You are">{(p) => <select {...p} value={contact.relation} onChange={(e) => setContact({ ...contact, relation: e.target.value })} className="input"><option value="">Choose…</option>{RELATIONS.map((r) => <option key={r}>{r}</option>)}</select>}</Field>
           <Field label="Email *" error={errors.contactEmail}>{(p) => <input {...p} type="email" autoComplete="email" value={contact.email} maxLength={254} onChange={(e) => { setContact({ ...contact, email: e.target.value }); setErrors((x) => ({ ...x, contactEmail: '' })); }} className="input" />}</Field>

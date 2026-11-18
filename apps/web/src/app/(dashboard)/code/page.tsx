@@ -50,7 +50,7 @@ export default function CodeRoomsPage() {
             {!creating && !!data?.courses.length && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New code room</button>}
           </div>
           {creating && data && (
-            <form onSubmit={create} className={`panel p-5 grid sm:grid-cols-[1fr_1fr_10rem_auto] gap-2 items-end`}>
+            <form onSubmit={create} className={`panel p-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_10rem_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Course</span>
                 <select value={form.courseId || data.courses[0]?.id} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="input">
                   {data.courses.map((c) => <option key={c.id} value={c.id}>{c.code} · {c.name}</option>)}

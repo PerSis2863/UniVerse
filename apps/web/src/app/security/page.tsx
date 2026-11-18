@@ -22,7 +22,7 @@ export default function SecurityPage() {
       updated="29 September 2026"
     >
       <Section title="How we protect your data">
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           {MEASURES.map((m) => (
             <Card key={m.title}>
               <p className="font-semibold text-white">{m.title}</p>

@@ -69,7 +69,7 @@ export function TripMoney({ tripId, members, me, currency, budget, countries }: 
         </div>
       </section>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <section className="panel p-5" aria-labelledby="costs-h">
           <h3 id="costs-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Wallet className="h-5 w-5 text-indigo-500" aria-hidden />Shared costs</h3>
           <AddCost key={members.length} tripId={tripId} members={members} me={me} currency={currency} countries={countries} onAdded={() => void mutate()} />
@@ -137,7 +137,7 @@ function AddCost({ tripId, members, me, currency, countries, onAdded }: { tripId
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t add that.')); } finally { setBusy(false); }
   };
   return (
-    <form className="mt-4 grid gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]" onSubmit={(e) => { e.preventDefault(); void save(); }}>
+    <form className="mt-4 grid grid-cols-1 gap-3 rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.04] sm:grid-cols-2 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_7rem]" onSubmit={(e) => { e.preventDefault(); void save(); }}>
       <label className={label}>What for<input value={what} onChange={(e) => setWhat(e.target.value.slice(0, 80))} placeholder="Dinner, tickets, a taxi…" className={field} /></label>
       <label className={label}>How much<input value={amount} onChange={(e) => setAmount(e.target.value.slice(0, 16))} inputMode="decimal" placeholder="0.00" aria-invalid={amount !== '' && !cents} className={cn(field, 'tabular-nums')} /></label>
       <label className={label}>Currency

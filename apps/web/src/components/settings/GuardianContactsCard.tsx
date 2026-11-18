@@ -102,7 +102,7 @@ export function GuardianContactsCard() {
       )}
 
       {(data?.length ?? 0) < 3 && (
-        <form onSubmit={add} className="grid sm:grid-cols-[1fr_1fr_auto] gap-2">
+        <form onSubmit={add} className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2">
           <input aria-label="Their name (optional)" value={name} onChange={(e) => setName(e.target.value)} maxLength={80} placeholder="Name (optional)" className="input" />
           <input aria-label="Their email" required type="email" value={email} onChange={(e) => setEmail(e.target.value)} maxLength={200} placeholder="parent@example.com" className="input" />
           <button type="submit" className="btn-primary" disabled={busy} aria-busy={busy || undefined}>{busy && <Loader2 className="w-4 h-4 animate-spin" />} Add</button>

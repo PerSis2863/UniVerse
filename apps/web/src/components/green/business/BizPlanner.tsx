@@ -34,7 +34,7 @@ export function BizPlanner({ org, role, year, overview, onChanged }: SectionProp
     <div className="space-y-6">
       <section className="panel p-5" aria-labelledby="target-h">
         <h3 id="target-h" className={h3}><Flag className={icon} aria-hidden />Your target</h3>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           <label className={label}>Base year<input type="number" min={2000} max={2100} disabled={!edit} value={t.baseYear} onChange={(e) => setT({ ...t, baseYear: e.target.value })} className={field} /></label>
           <label className={label}>Target year<input type="number" min={2001} max={2100} disabled={!edit} value={t.targetYear} onChange={(e) => setT({ ...t, targetYear: e.target.value })} className={field} /></label>
           <label className={label}>Cut by, %<input type="number" min={0} max={100} disabled={!edit} value={t.targetPct} onChange={(e) => setT({ ...t, targetPct: e.target.value })} className={field} /></label>
@@ -53,7 +53,7 @@ export function BizPlanner({ org, role, year, overview, onChanged }: SectionProp
           {LEVERS.map((l) => {
             const v = levers[l.id] ?? { share: 0, cost: 0, saving: 0 }, cpt = costPerTonne(v, cuts[l.id]);
             return (
-              <li key={l.id} className="grid gap-3 rounded-2xl border border-[var(--hairline)] p-4 lg:grid-cols-[1fr_9rem_9rem_8rem] lg:items-end">
+              <li key={l.id} className="grid grid-cols-1 gap-3 rounded-2xl border border-[var(--hairline)] p-4 lg:grid-cols-[1fr_9rem_9rem_8rem] lg:items-end">
                 <div>
                   <div className="flex items-baseline justify-between gap-3"><span className="font-medium text-zinc-900 dark:text-white">{l.label}</span><span className="text-sm font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">−{tonnes(cuts[l.id])}</span></div>
                   <p className="text-xs text-zinc-600 dark:text-zinc-400">{l.what}</p>

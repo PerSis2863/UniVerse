@@ -171,7 +171,7 @@ export default function BoardsPage() {
               Couldn’t load your boards. <button onClick={() => mutate()} className="font-semibold underline">Try again</button>
             </div>
           ) : isLoading ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {[0, 1, 2].map((i) => <div key={i} className="h-60 rounded-3xl skeleton" />)}
             </div>
           ) : list.length === 0 ? (
@@ -184,7 +184,7 @@ export default function BoardsPage() {
               <button onClick={create} className="btn-primary mt-5"><Plus className="w-4 h-4" /> New board</button>
             </div>
           ) : (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {list.map((b) => (
                 <div key={b.id} className="group relative rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white dark:bg-[#151517]/80 overflow-hidden shadow-sm transition-[transform,box-shadow,border-color] duration-300 ease-out hover:-translate-y-1 hover:border-indigo-400/50 hover:shadow-[0_24px_60px_-28px_rgba(39,39,42,0.55)]">
                   <Link href={b.mine && b.title === GUIDE_TITLE ? guideHref(b.id) : `/boards/${b.id}`} className="block">

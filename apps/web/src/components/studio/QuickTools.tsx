@@ -60,7 +60,7 @@ function Words() {
   const s = useMemo(() => textStats(t), [t]);
   const mins = (m: number) => (m < 1 ? `${Math.max(0, Math.round(m * 60))} s` : `${Math.round(m)} min`);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_260px]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_260px]">
       <Field label="Your text"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} placeholder="Paste or type here" /></Field>
       <div className="space-y-2">
       <dl className="grid grid-cols-2 gap-2 content-start text-sm">
@@ -94,7 +94,7 @@ function Compare() {
   const changed = d.filter((x) => x.op !== ' ').length;
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field label="Before"><textarea className={area} value={a} onChange={(e) => setA(e.target.value)} /></Field>
         <Field label="After"><textarea className={area} value={b} onChange={(e) => setB(e.target.value)} /></Field>
       </div>
@@ -231,7 +231,7 @@ function Markdown() {
   const html = useMemo(() => markdownToHtml(t), [t]);
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
         <Field label="Markdown"><textarea className={cn(area, 'min-h-[260px]')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
         <div><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Preview</span>
           <iframe title="Preview" sandbox="" className="mt-1 w-full min-h-[260px] rounded-xl bg-white ring-1 ring-black/10" srcDoc={`<style>body{font:15px/1.6 system-ui,sans-serif;margin:16px;color:#141320}code,pre{background:#f1f3f5;border-radius:6px;padding:2px 4px}</style>${html}`} /></div>
@@ -264,7 +264,7 @@ function Qr() {
   const m = useMemo(() => { try { return t ? encodeQr(t) : null; } catch { return null; } }, [t]);
   const svg = m ? `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${m.length + 8} ${m.length + 8}" shape-rendering="crispEdges"><rect width="100%" height="100%" fill="#fff"/><path d="${qrPath(m)}" fill="#141320"/></svg>` : '';
   return (
-    <div className="grid gap-4 sm:grid-cols-[1fr_220px] items-start">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-[1fr_220px] items-start">
       <div className="space-y-3">
         <Field label="Link or text"><input className="input" value={t} onChange={(e) => setT(e.target.value)} maxLength={1000} /></Field>
         {!m && t && <p className="text-sm text-rose-600 dark:text-rose-300">Too long for a QR code: make it shorter.</p>}

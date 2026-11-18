@@ -43,11 +43,11 @@ export function GreenFootprint() {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_26rem]">
       <div className="space-y-6">
         <section className="panel p-5" aria-labelledby="fp-move">
           <h3 id="fp-move" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Car className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />Getting around</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
             <label className={label}>Car, km a week<input type="number" min={0} max={3000} inputMode="numeric" value={a.carKmWeek} onChange={n('carKmWeek', 3000)} className={field} /></label>
             <label className={label}>The car is<select value={a.car} onChange={(e) => set('car', e.target.value as FootprintAsk['car'])} className={field}>{(Object.keys(CAR) as FootprintAsk['car'][]).map((k) => <option key={k} value={k}>{LABELS.car[k]}</option>)}</select></label>
             <label className={label}>Bus and train, km a week<input type="number" min={0} max={3000} inputMode="numeric" value={a.transitKmWeek} onChange={n('transitKmWeek', 3000)} className={field} /></label>
@@ -55,14 +55,14 @@ export function GreenFootprint() {
         </section>
         <section className="panel p-5" aria-labelledby="fp-fly">
           <h3 id="fp-fly" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Plane className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />Flights a year (return trips)</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <label className={label}>Short, up to about 3 hours<input type="number" min={0} max={50} inputMode="numeric" value={a.shortFlights} onChange={n('shortFlights', 50)} className={field} /></label>
             <label className={label}>Long, to another continent<input type="number" min={0} max={30} inputMode="numeric" value={a.longFlights} onChange={n('longFlights', 30)} className={field} /></label>
           </div>
         </section>
         <section className="panel p-5" aria-labelledby="fp-home">
           <h3 id="fp-home" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Home className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />Home</h3>
-          <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <label className={label}>Home<select value={a.size} onChange={(e) => set('size', e.target.value as FootprintAsk['size'])} className={field}>{(Object.keys(SIZE) as FootprintAsk['size'][]).map((k) => <option key={k} value={k}>{LABELS.size[k]}</option>)}</select></label>
             <label className={label}>Heated by<select value={a.heat} onChange={(e) => set('heat', e.target.value as FootprintAsk['heat'])} className={field}>{(Object.keys(HEAT) as FootprintAsk['heat'][]).map((k) => <option key={k} value={k}>{LABELS.heat[k]}</option>)}</select></label>
             <label className={label}>People living there<input type="number" min={1} max={12} inputMode="numeric" value={a.people} onChange={(e) => set('people', Math.min(12, Math.max(1, Number(e.target.value) || 1)))} className={field} /></label>

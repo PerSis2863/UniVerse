@@ -110,7 +110,7 @@ export function HealthPanel() {
             <ChevronDown className={cn('ms-auto w-4 h-4 text-zinc-400 transition-transform', showPassed && 'rotate-180')} />
           </button>
           {showPassed && (
-            <ul className="mt-3 grid sm:grid-cols-2 gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">
+            <ul className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">
               {data.passed.map((p) => <li key={p} className="flex items-center gap-2"><CheckCircle2 className="w-3.5 h-3.5 text-emerald-500 shrink-0" /> {p}</li>)}
             </ul>
           )}

@@ -157,7 +157,7 @@ export function RecordEditor({ model, record, schema, onClose, onSaved }: { mode
           </div>
           <button onClick={onClose} aria-label="Close" className="text-zinc-400"><X className="w-5 h-5" /></button>
         </div>
-        <div className="flex-1 overflow-y-auto p-5 grid sm:grid-cols-2 gap-3">
+        <div className="flex-1 overflow-y-auto p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
           {fields.map((f) => {
             const readOnly = f.id || f.updatedAt;
             const label = (

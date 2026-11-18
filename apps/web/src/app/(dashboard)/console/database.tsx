@@ -57,7 +57,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className={cn(card, 'p-5 lg:col-span-2')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Records added per day · 14 days</h2>
           <div className="flex items-end gap-1 h-32" role="img" aria-label="Records added per day">
@@ -87,7 +87,7 @@ export function DatabasePanel({ onOpenTable }: { onOpenTable: (name: string) => 
       {(s.reads || s.writes || s.files) && (
         <div className={cn(card, 'p-5')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-3"><HardDrive className="w-4 h-4 text-zinc-400" /> Use this billing month</h2>
-          <div className="grid sm:grid-cols-3 gap-4 text-sm">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
             {([['Rows read', s.reads, false], ['Rows written', s.writes, false], ['Stored files', s.files, true]] as const).map(([label, m, isBytes]) => m && (
               <div key={label}>
                 <div className="flex justify-between text-xs"><span className="text-zinc-600 dark:text-zinc-300">{label}</span><span className="text-zinc-400">{m.used == null ? '—' : isBytes ? bytes(m.used) : num(m.used)} of {isBytes ? bytes(m.limit) : num(m.limit)}</span></div>

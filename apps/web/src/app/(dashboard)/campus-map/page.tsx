@@ -141,7 +141,7 @@ export default function CampusMapPage() {
                 </div>
               )}
 
-              <div className="grid md:grid-cols-2 gap-4 items-start">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-start">
                 <section aria-labelledby="free-title" className="panel p-4 space-y-3">
                   <h2 id="free-title" className="font-bold text-zinc-900 dark:text-white">Free now <span className="font-normal text-sm text-zinc-600 dark:text-zinc-400">{free.length} of {data.rooms.length} rooms</span></h2>
                   {!data.rooms.length ? <p className="text-sm text-zinc-700 dark:text-zinc-300">No rooms yet.</p> : !free.length ? <p className="text-sm text-zinc-700 dark:text-zinc-300">Every room is in use right now.</p> : (

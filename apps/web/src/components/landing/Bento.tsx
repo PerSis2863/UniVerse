@@ -93,7 +93,7 @@ export function Bento() {
     <section id="product" data-no-motion className="relative px-6 py-28 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight leading-[1.08] text-white max-w-2xl">Boring in the ways <Accent>that matter.</Accent></h2></Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
           <Reveal className="md:col-span-2"><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">One place, every role</h3>
             <p className="mt-2 text-sm text-zinc-400 max-w-md">Everyone gets their own menu.</p>
@@ -112,7 +112,7 @@ export function Bento() {
           <Reveal delay={0.1} className="md:col-span-2"><div className={`${card} h-full`}>
             <h3 className="text-xl font-semibold text-white">Safe by default</h3>
             <p className="mt-2 text-sm text-zinc-400">Careful with children’s data.</p>
-            <ul className="mt-6 grid sm:grid-cols-2 gap-3">
+            <ul className="mt-6 grid grid-cols-1 sm:grid-cols-2 gap-3">
               {SAFE.map(({ icon: I, t }) => (
                 <li key={t} className="flex items-center gap-3 rounded-2xl border border-white/[0.07] bg-white/[0.03] p-3.5 text-sm text-zinc-200">
                   <span className="w-9 h-9 shrink-0 rounded-xl bg-gradient-to-br from-indigo-500/25 to-fuchsia-500/25 flex items-center justify-center"><I className="w-4 h-4 text-fuchsia-200" /></span>{t}

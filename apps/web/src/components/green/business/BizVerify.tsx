@@ -40,7 +40,7 @@ export function BizVerify({ org, role, year }: SectionProps) {
           <h3 id="vf-h" className={h3}><ShieldCheck className={icon} aria-hidden />Independent verification</h3>
           <p className={`mt-2 max-w-3xl ${muted}`}>A footprint is “certified” when an independent, accredited verifier has checked it. Invite theirs here (they need a UniVerse account): they read every line and its evidence, ask questions you answer, and sign a statement over the numbers. Your report then carries it, and shows if anything changes after.</p>
           {role === 'owner' && (
-            <form onSubmit={(e) => void invite(e)} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_7rem_auto] sm:items-end">
+            <form onSubmit={(e) => void invite(e)} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_7rem_auto] sm:items-end">
               <label className={label}>Verifier’s UniVerse email<input type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={field} /></label>
               <label className={label}>Their firm<input required maxLength={100} value={f.firm} onChange={(e) => setF({ ...f, firm: e.target.value })} placeholder="e.g. an accredited verification body" className={field} /></label>
               <label className={label}>Year<input type="number" min={2000} max={2100} value={f.year} onChange={(e) => setF({ ...f, year: e.target.value })} className={field} /></label>
@@ -108,7 +108,7 @@ function Review({ orgId, role, v, onChanged }: { orgId: string; role: Role; v: V
       )}
 
       {v.mine && v.status === 'reviewing' && (
-        <div className="grid gap-4 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <form className="space-y-3 rounded-2xl border border-[var(--hairline)] p-4" onSubmit={(e) => { e.preventDefault(); void act('/queries', { entryId: ask.entryId || null, question: ask.question }, 'Asked.').then(() => setAsk({ entryId: '', question: '' })); }}>
             <p className="font-semibold text-zinc-900 dark:text-white">Ask a question</p>
             <label className={label}>About<select value={ask.entryId} onChange={(e) => setAsk({ ...ask, entryId: e.target.value })} className={field}><option value="">The whole year</option>{lines?.entries.map((e) => <option key={e.id} value={e.id}>{monthName(e.period)}: {catLabel(e.category)}, {kgText(e.kg)}</option>)}</select></label>
@@ -117,7 +117,7 @@ function Review({ orgId, role, v, onChanged }: { orgId: string; role: Role; v: V
           </form>
           <form className="space-y-3 rounded-2xl border border-[var(--hairline)] p-4" onSubmit={(e) => { e.preventDefault(); void act('/sign', sign, 'Signed.'); }}>
             <p className="flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><Signature className="h-4 w-4" aria-hidden />Sign your statement</p>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className={label}>Standard<select value={sign.standard} onChange={(e) => setSign({ ...sign, standard: e.target.value })} className={field}><option>ISO 14064-3</option><option>ISAE 3410</option><option>AA1000AS v3</option></select></label>
               <label className={label}>Assurance<select value={sign.level} onChange={(e) => setSign({ ...sign, level: e.target.value })} className={field}><option value="limited">Limited</option><option value="reasonable">Reasonable</option></select></label>
             </div>

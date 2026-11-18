@@ -120,7 +120,7 @@ export default function AdminKnowledgeHubPage() {
             </div>
           </div>
 
-          <div className="grid lg:grid-cols-[1fr_320px] gap-6 items-start">
+          <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-6 items-start">
             <section className={`${card} overflow-hidden`}>
               <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 flex justify-between">
                 <h2 className="font-semibold text-zinc-900 dark:text-white">Resources</h2>

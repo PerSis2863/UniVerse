@@ -214,7 +214,7 @@ export function TravelTrip() {
         segments={PARTS.map((p) => ({ value: p.value, label: p.label, icon: <p.icon className="h-4 w-4" aria-hidden /> }))} />
 
       {part === 'share' && <TripShare tripId={t.id} name={t.name} />}
-      {part === 'ready' && <div className="grid gap-6 xl:grid-cols-2">
+      {part === 'ready' && <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <TripSafety stops={stops} items={data.items} />
         <TripFootprint tripId={t.id} stops={stops} travellers={t.travellers} onChange={() => void mutate()} />
         <TripHolidays stops={stops} dates={dates} />
@@ -232,7 +232,7 @@ export function TravelTrip() {
       {part === 'packing' && <TripPacking tripId={t.id} stops={stops.map((s) => ({ guide: s.guide, cc: s.cc, days: s.days }))} start={t.startDate} members={data.members} me={data.me} />}
 
       {part === 'plan' && <>
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_22rem]">
         {/* The route. */}
         <section className="panel p-5" aria-labelledby="trip-route">
           <div className="flex flex-wrap items-center justify-between gap-2">
@@ -302,7 +302,7 @@ export function TravelTrip() {
       )}
       {/* M207: there and back, where to stay, who else is there. */}
       {stop && (
-        <div className="grid gap-6 lg:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2 2xl:grid-cols-3">
           <TripGettingThere stops={stops} start={dates[0]?.from ?? null} end={dates[dates.length - 1]?.to ?? null} />
           <TripStays key={`stay-${stop.id}`} stop={stop} from={dates[stops.indexOf(stop)]?.from ?? null} nights={nightsAt(stops)[stops.indexOf(stop)]} travellers={t.travellers} style={t.style} currency={t.currency} />
           <TripTravellers key={`board-${stop.id}`} stop={stop} from={dates[stops.indexOf(stop)]?.from ?? null} to={dates[stops.indexOf(stop)]?.to ?? null} />

@@ -40,7 +40,7 @@ export function TripJetLag({ tripId, stops, start, members, me, refresh }: { tri
   return (
     <section className="panel p-5 xl:col-span-2" aria-labelledby="jet-h">
       <h3 id="jet-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Plane className="h-5 w-5 text-indigo-500" aria-hidden />Jet lag and clocks</h3>
-      <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
         <label className="block text-xs font-semibold text-zinc-600 dark:text-zinc-300">Home time zone
           <input value={home} onChange={(e) => setHome(e.target.value.trim())} list="jet-zones" className="mt-1 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-white/10 dark:bg-white/[0.05] dark:text-white" />
           <datalist id="jet-zones">{(typeof Intl.supportedValuesOf === 'function' ? Intl.supportedValuesOf('timeZone') : []).map((z) => <option key={z} value={z} />)}</datalist>
@@ -66,7 +66,7 @@ export function TripJetLag({ tripId, stops, start, members, me, refresh }: { tri
           <p className="mt-4 text-sm text-zinc-700 dark:text-zinc-200">
             {plan.mild ? `The clock moves ${Math.abs(plan.shift)} h: little jet lag.` : `The clock moves ${Math.abs(plan.shift)} h ${plan.east ? 'forward (east)' : 'back (west)'}: about ${plan.adapt} days to settle.`}
           </p>
-          <ol className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+          <ol className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
             {plan.days.map((d) => (
               <li key={d.day} className="rounded-2xl bg-zinc-50 p-3 text-sm dark:bg-white/[0.04]">
                 <p className="font-semibold text-zinc-900 dark:text-white">{d.day < 0 ? `${-d.day} ${d.day === -1 ? 'day' : 'days'} before` : d.day === 0 ? 'Flight day' : `Day ${d.day} there`}{date ? <span className="font-normal text-zinc-500 dark:text-zinc-400"> · {new Date(`${addDays(date, d.day)}T12:00:00Z`).toLocaleDateString(undefined, { day: 'numeric', month: 'short', timeZone: 'UTC' })}</span> : null}</p>
@@ -82,7 +82,7 @@ export function TripJetLag({ tripId, stops, start, members, me, refresh }: { tri
       )}
 
       <h4 className="mt-6 flex items-center gap-2 font-semibold text-zinc-900 dark:text-white"><Clock3 className="h-4 w-4 text-indigo-500" aria-hidden />Clocks</h4>
-      <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+      <ul className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
         {cities.map((c) => <ClockCard key={c.zone} name={c.name} zone={c.zone} at={at} home={home} />)}
         {members.filter((m) => m.zone && isZone(m.zone)).map((m) => <ClockCard key={m.id} name={m.id === me ? 'You (home)' : `${m.name} (home)`} zone={m.zone!} at={at} home={home} person />)}
       </ul>

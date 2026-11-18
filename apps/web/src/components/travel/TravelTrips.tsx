@@ -59,7 +59,7 @@ export function TravelTrips({ join }: { join: string | null }) {
           <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Start one here, or press “Plan this trip” on a place in Find where to go.</p>
         </div>
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           {data.trips.map((t, n) => (
             <li key={t.id}>
               <Link href={`/travel/trip?id=${t.id}`} className="group card block overflow-hidden p-0!">

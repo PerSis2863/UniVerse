@@ -175,7 +175,7 @@ export function PersonPanel({ id, schema, onBack }: { id: string; schema: Schema
             {!u.owner && <button onClick={() => void purge()} className="btn-secondary !text-rose-600 dark:!text-rose-400 !border-rose-500/30"><Trash2 className="w-4 h-4" /> Delete permanently</button>}
           </div>
         </div>
-        <dl className="mt-5 grid sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+        <dl className="mt-5 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3 text-sm">
           {PROFILE_FIELDS.map((k) => (
             <div key={k} className="min-w-0">
               <dt className="text-xs text-zinc-500">{k}</dt>
@@ -256,7 +256,7 @@ function Conversations({ personId, personName, onClose }: { personId: string; pe
           <h2 className="font-bold text-zinc-900 dark:text-white">{personName}: messages & calls</h2>
           <button onClick={onClose} className="text-sm text-zinc-500">Close</button>
         </div>
-        <div className="flex-1 grid md:grid-cols-[260px_1fr] min-h-0">
+        <div className="flex-1 grid grid-cols-1 md:grid-cols-[260px_1fr] min-h-0">
           <ul className={cn('overflow-y-auto border-e border-zinc-100 dark:border-white/[0.06]', open && 'hidden md:block')}>
             {isLoading ? <li className="p-6"><Loader2 className="w-5 h-5 animate-spin text-zinc-400" /></li> : !convos?.length ? <li className="p-6 text-sm text-zinc-500">No conversations.</li> : convos.map((c) => (
               <li key={c.id}>

@@ -84,7 +84,7 @@ export function AccountSecurity() {
             )}
           </div>
           {info.providers.includes('password') && (pw ? (
-            <form onSubmit={changePassword} className="grid sm:grid-cols-2 gap-2">
+            <form onSubmit={changePassword} className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               <input type="password" autoComplete="current-password" placeholder="Current password" value={pw.current} onChange={(e) => setPw({ ...pw, current: e.target.value })} className={inputCls} required />
               <input type="password" autoComplete="new-password" placeholder="New password (8+ characters)" value={pw.next} onChange={(e) => setPw({ ...pw, next: e.target.value })} className={inputCls} required minLength={8} />
               <div className="sm:col-span-2 flex gap-2">

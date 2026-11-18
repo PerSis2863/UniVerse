@@ -135,7 +135,7 @@ function Overview({ data, go }: { data: BizOverview; go: (s: Section) => void })
           </div>
         </section>
       ) : (
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
           <section className="panel p-5" aria-labelledby="biz-top">
             <h3 id="biz-top" className={h3}>Where it comes from</h3>
             <ul className="mt-3 space-y-2.5">
@@ -204,7 +204,7 @@ export function NewOrg({ first, consultancyId, onDone, onCancel }: { first?: boo
         <h3 id="biz-new" className={h3}><Factory className={icon} aria-hidden />{consultancyId ? 'A new client' : first ? 'Measure your company’s carbon footprint' : 'A new company'}</h3>
         {first && <p className={`mt-2 max-w-3xl ${muted}`}>Scope 1, 2 and 3, the way the GHG Protocol counts it: your fuel and electricity, travel and freight, what you buy and what your suppliers report, how your staff get to work. Then a plan to cut it, and a report with every factor’s source and a log an auditor can check. Consultancies can run it for their clients.</p>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <label className={label}>Name<input required maxLength={80} value={f.name} onChange={set('name')} className={field} /></label>
         {!consultancyId && <label className={label}>This is<select value={f.kind} onChange={set('kind')} className={field}><option value="company">A company measuring itself</option><option value="consultancy">A consultancy with clients</option></select></label>}
         <label className={label}>Country (its grid electricity)<select value={f.country} onChange={set('country')} className={field}>{COUNTRIES.map((c) => <option key={c.code} value={c.code}>{c.name}</option>)}</select></label>

@@ -84,12 +84,12 @@ export function TravelExplore() {
       {/* Not clipped (the search's results hang below it). M213: laid out like the other apps' first card (Trace's
           console): the headline, the search and what's here; my trips beside it. M287: no glow behind it. */}
       <section className="panel relative z-10 p-6 sm:p-10">
-        <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-center">
           <div>
             <h2 className="font-semibold tracking-tight text-zinc-900 dark:text-white" style={{ fontSize: 'clamp(2rem, 3.6vw, 3rem)', lineHeight: 1.05 }}>Where to <em className="accent-word pe-1">next?</em></h2>
             <p className="mt-3 max-w-2xl text-zinc-600 dark:text-zinc-300" style={{ fontSize: '1.0625rem' }}>Any city, island or national park: what to see and do, where to eat and sleep, how to get around, and the weather this week.</p>
             <PlaceSearch className="mt-6 max-w-2xl" big label="Search a place" placeholder="Search a place: Kyoto, Lisbon, Bali…" onPick={open} />
-            <ul className="mt-6 grid gap-2 text-sm text-zinc-700 dark:text-zinc-200 sm:grid-cols-2">
+            <ul className="mt-6 grid grid-cols-1 gap-2 text-sm text-zinc-700 dark:text-zinc-200 sm:grid-cols-2">
               {HERE.map(([Icon, t]) => <li key={t} className="flex items-center gap-2"><Icon className="h-4 w-4 shrink-0 text-indigo-600 dark:text-indigo-300" aria-hidden />{t}</li>)}
             </ul>
           </div>
@@ -125,7 +125,7 @@ export function TravelExplore() {
             ))}
           </div>
         </div>
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+        <ul className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
           {cards.map((i, n) => (
             <li key={i.title}>
               <Link href={guideHref(i.title)} className="group relative block h-64 overflow-hidden rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10">

@@ -122,7 +122,7 @@ function BriefForm({ groupId, start, onMade, onCancel }: { groupId: string; star
       <Field label="Assignment brief" hint="A list (one deliverable per line) gives the most exact tasks." count={f.brief.length} max={4000}>
         {(p) => <textarea {...p} className="input min-h-[9rem]" maxLength={4000} placeholder={'- Research existing solutions\n- Design the screens\n- Build the prototype\n- Test with 5 users\n- Write the report and slides'} value={f.brief} onChange={(e) => setF({ ...f, brief: e.target.value })} />}
       </Field>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <Field label="Due date (optional)">{(p) => <input {...p} type="date" className="input" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />}</Field>
         <Field label="For which course? (optional)" hint={f.courseId ? 'Its teacher will see this project’s weekly reports.' : 'Leave empty to keep the reports within the group.'}>
           {(p) => (
@@ -197,7 +197,7 @@ function DraftPlan({ groupId, plan, slots, onRedo, onApplied }: { groupId: strin
         <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Times that fit everyone’s classes come first.</p>
         {slots.length ? (
           <>
-            <div role="radiogroup" aria-label="Meeting time" className="grid gap-2 sm:grid-cols-2">
+            <div role="radiogroup" aria-label="Meeting time" className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {slots.map((s, i) => (
                 <button key={`${s.dayOfWeek}-${s.startTime}`} type="button" role="radio" aria-checked={meet && i === slotIndex} onClick={() => { setSlotIndex(i); setMeet(true); }}
                   className={cn('text-start rounded-2xl border p-3 transition-colors', meet && i === slotIndex ? 'border-indigo-500 bg-indigo-500/5' : 'border-zinc-200/70 dark:border-white/[0.07] hover:bg-zinc-50 dark:hover:bg-white/[0.03]')}>

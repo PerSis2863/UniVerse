@@ -127,7 +127,7 @@ export function WalletCards({ cards, holder }: { cards: WalletCard[]; holder: st
 
   return (
     <div className="panel relative overflow-hidden p-5 sm:p-6">
-      <div className="grid items-center gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 items-center gap-6 md:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
         <div ref={stage} className="wcard-stage relative mx-auto w-full max-w-[400px] touch-pan-y pe-[72px] pt-[56px] pb-6"
           onPointerMove={move} onPointerLeave={leave} onPointerUp={leave} onPointerCancel={leave}>
           <motion.span aria-hidden className="wcard-shadow" style={{ x: shadowX, scaleX: shadowS }} />

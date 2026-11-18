@@ -66,7 +66,7 @@ export default function RoomBookingsPage() {
         <div className="w-full space-y-6">
           {error && <p className="text-sm text-rose-500">{(error as Error).message}</p>}
           {form && (
-            <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid sm:grid-cols-2 gap-3">
+            <div className="rounded-3xl border border-indigo-200/60 dark:border-indigo-400/20 bg-indigo-50/50 dark:bg-indigo-500/[0.05] p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="sm:col-span-2 flex justify-between"><p className="font-bold text-zinc-900 dark:text-white">New room</p><button onClick={() => setForm(null)} aria-label="Cancel"><X className="w-4 h-4 text-zinc-500" /></button></div>
               <input className="input" placeholder="Room name, e.g. B-204" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
               <input className="input" type="number" min={1} placeholder="Capacity" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />
@@ -88,7 +88,7 @@ export default function RoomBookingsPage() {
           ) : (
             <>
               <AdminSearch value={q} onChange={setQ} placeholder="Search rooms, dates, or who booked (name, email, role, phone)…" />
-              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                 {shownRooms.length === 0 && <p className="text-sm text-zinc-500 sm:col-span-2 lg:col-span-3">No rooms match your search.</p>}
                 {shownRooms.map((r) => {
                   const people = new Set(r.reservations.map((b) => b.user.id ?? b.user.email)).size;
@@ -104,7 +104,7 @@ export default function RoomBookingsPage() {
                   );
                 })}
               </div>
-              <div className="grid lg:grid-cols-[1fr_300px] gap-6 items-start">
+              <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-6 items-start">
                 <section className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-4 sm:p-5">
                   <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                     <h2 className="font-bold text-zinc-900 dark:text-white">Bookings <span className="text-xs font-medium text-zinc-500">({bookings.length})</span></h2>

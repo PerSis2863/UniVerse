@@ -53,7 +53,7 @@ export function TripAdd({ tripId, stop, items, onAdded }: { tripId: string; stop
       {!list.length && !(from === 'guide' && isLoading) && (
         <p className="mt-4 text-sm text-zinc-600 dark:text-zinc-300">{from === 'saved' ? 'Nothing saved here yet: open the guide and press Save, or add from the guide here.' : 'The guide lists none of these here.'}</p>
       )}
-      <ul className="mt-3 grid max-h-[28rem] gap-2 overflow-y-auto pe-1 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="mt-3 grid grid-cols-1 max-h-[28rem] gap-2 overflow-y-auto pe-1 sm:grid-cols-2 xl:grid-cols-3">
         {list.map((p) => {
           const added = have.has(p.name);
           return (

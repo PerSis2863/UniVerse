@@ -18,7 +18,7 @@ export function MapsSection() {
             <LiveMapShowcase className="w-full h-[min(62vh,520px)]" />
           </div>
         </Reveal>
-        <div className="mt-6 grid md:grid-cols-3 gap-4">
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
           {[
             [Globe2, 'Market map', 'Where it sells, and where copies appear.'],
             [Truck, 'Tracking map', 'Where each batch is, and when it arrives.'],
@@ -53,7 +53,7 @@ export function HowSection() {
     <section id="how" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Four steps. <Accent>No hardware.</Accent></h2></Reveal>
-        <ol className="mt-12 grid md:grid-cols-4 gap-4">
+        <ol className="mt-12 grid grid-cols-1 md:grid-cols-4 gap-4">
           {STEPS.map((s, i) => (
             <Reveal key={s.t} role="listitem" delay={0.08 + i * 0.07}>
               <div className="relative h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08]">
@@ -74,7 +74,7 @@ export function HowSection() {
 export function CampaignsSection() {
   return (
     <section id="campaigns" className="relative px-6 py-24 scroll-mt-24">
-      <div className="max-w-6xl mx-auto grid lg:grid-cols-2 gap-10 items-center">
+      <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-10 items-center">
         <div>
           <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-5xl font-bold tracking-tight text-white">Pay only for <Accent>proven</Accent> sales.</h2></Reveal>
           <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300">Pay shops only for real sales, in the city you pick.</p></Reveal>
@@ -117,7 +117,7 @@ export function PricingSection() {
     <section id="pricing" className="relative px-6 py-24 scroll-mt-24">
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white">Free to start. <Accent>Pay as it sells.</Accent></h2></Reveal>
-        <div className="mt-12 grid md:grid-cols-2 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
           <Reveal delay={0.1}>
             <div className="h-full rounded-3xl p-8 bg-white/[0.04] ring-1 ring-white/[0.08]">
               <p className="text-xs text-zinc-400">FREE</p>

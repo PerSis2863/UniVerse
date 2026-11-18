@@ -59,7 +59,7 @@ export function HealthNumbersPanel() {
   const { data: size } = useSWR<BuildSize | null>('/build-size.json', (u: string) => fetch(u, { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).catch(() => null), { revalidateOnFocus: false });
 
   if (error && !data) return <p className="text-sm text-rose-600 dark:text-rose-400">The numbers couldn’t load. Try again in a minute.</p>;
-  if (!data) return <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>;
+  if (!data) return <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-48 rounded-3xl skeleton" />)}</div>;
 
   const push = data.push;
   const sent = push.ok + push.failed + push.expired;
@@ -88,7 +88,7 @@ export function HealthNumbersPanel() {
       <p className="text-sm text-zinc-600 dark:text-zinc-400">
         The last 7 days. API numbers come from 1 request in 20 (and every server error){data.since ? `, recorded since ${formatDistanceToNow(new Date(data.since), { addSuffix: true })}` : ': nothing recorded yet'}.
       </p>
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Section icon={AlertTriangle} title="Failed most yesterday" hint="API routes that answered with a server error (5xx), yesterday (UTC).">
           {data.failedYesterday.length ? (
             <Rows items={data.failedYesterday.map((r) => ({ key: routeName(r), label: routeName(r), value: `${r.failedYesterday}×`, bad: true, note: `${r.failed} in 7 days` }))} />

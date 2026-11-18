@@ -155,7 +155,7 @@ function Emergency({ d }: { d: OrgData }) {
         </ul>
       )}
       {d.org.lat === null ? <p className="mt-3 text-sm text-zinc-700 dark:text-zinc-200">Set a base first (Edit, above): the area is drawn around it.</p> : mine.length < 3 && (
-        <form onSubmit={(e) => void declare(e)} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_auto_auto] sm:items-end">
+        <form onSubmit={(e) => void declare(e)} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1.4fr)_auto_auto] sm:items-end">
           <label className="text-sm text-zinc-700 dark:text-zinc-200">What is happening<input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder="e.g. River flooding in the old town" /></label>
           <label className="text-sm text-zinc-700 dark:text-zinc-200">Area name (optional)<input maxLength={120} value={f.place} onChange={(e) => setF({ ...f, place: e.target.value })} className="input mt-1" placeholder={d.org.place ?? 'Around our base'} /></label>
           <label className="text-sm text-zinc-700 dark:text-zinc-200">Within<select value={f.radiusKm} onChange={(e) => setF({ ...f, radiusKm: e.target.value })} className="input mt-1">{['5', '20', '50', '100'].map((r) => <option key={r} value={r}>{r} km</option>)}</select></label>
@@ -291,7 +291,7 @@ function Needs({ d, run, onChange }: { d: OrgData; run: boolean; onChange: () =>
   };
   const list = (rows: ReliefPost[], empty: string, extra?: (p: ReliefPost) => React.ReactNode) => rows.length === 0
     ? <p className="panel p-6 text-sm text-zinc-500 text-center">{empty}</p>
-    : <div className="grid md:grid-cols-2 gap-3">{rows.map((p) => <div key={p.id} className="panel p-4"><PostCard p={p} now={now} here={here} onChange={onChange} extra={extra?.(p)} /></div>)}</div>;
+    : <div className="grid grid-cols-1 md:grid-cols-2 gap-3">{rows.map((p) => <div key={p.id} className="panel p-4"><PostCard p={p} now={now} here={here} onChange={onChange} extra={extra?.(p)} /></div>)}</div>;
   return (
     <div className="space-y-8">
       {run && (d.textsOn || !!d.texts?.length) && <Texts d={d} onChange={onChange} />}
@@ -330,7 +330,7 @@ function Texts({ d, onChange }: { d: OrgData; onChange: () => void }) {
       <h2 id="texts-h" className="text-lg font-bold text-zinc-900 dark:text-white flex items-center gap-2"><MessageSquareText className="w-5 h-5 text-orange-500" aria-hidden />Text requests{waiting > 0 && <span className="rounded-full bg-orange-700 px-2 py-0.5 text-xs font-bold text-white">{waiting} new</span>}</h2>
       <p className="mt-1 text-sm text-zinc-500 max-w-[70ch]">{d.org.textNumber ? `People without the app text ${d.org.textNumber} (SMS or WhatsApp). Only coordinators see these. Put a request on the map, or call or text back from your phone.` : 'Text requests are on. Set your Twilio number under Overview → Edit, and point its messaging webhook to https://universeimpact.com/api/core/relief/texts/inbound.'}</p>
       {texts.length > 0 && (
-        <ul className="mt-3 grid md:grid-cols-2 gap-3">
+        <ul className="mt-3 grid grid-cols-1 md:grid-cols-2 gap-3">
           {texts.map((t) => (
             <li key={t.id} className={cn('panel p-4', t.status === 'NEW' && 'ring-1 ring-orange-500/40')}>
               <p className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-500">
@@ -477,7 +477,7 @@ function Shifts({ d, run, onChange }: { d: OrgData; run: boolean; onChange: () =
         {run && <button type="button" onClick={() => setAdding(true)} className="btn-primary btn-sm"><Plus className="w-4 h-4" aria-hidden />Add a shift</button>}
       </div>
       {d.shifts.length === 0 ? <p className="panel p-6 text-sm text-zinc-500 text-center">No shifts coming up.{run ? ' Add the hours you need help: sorting donations, the kitchen, deliveries…' : ''}</p> : (
-        <div className="grid md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {d.shifts.map((s) => <ShiftCard key={s.id} s={s} now={now} onChange={onChange} admin={run ? <button type="button" onClick={() => void cancel(s)} className="btn-secondary btn-sm"><Trash2 className="w-4 h-4" aria-hidden />Cancel shift</button> : undefined} />)}
         </div>
       )}

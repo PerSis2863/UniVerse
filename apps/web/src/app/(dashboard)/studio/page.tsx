@@ -582,7 +582,7 @@ function Hub({ recent, stars, onPick, onStar, onOpenSave, onMount, calm }: { rec
         <>
           <section aria-labelledby="make-h">
             <h2 id="make-h" className="mb-2 text-sm font-bold text-zinc-900 dark:text-white">Make something new</h2>
-            <ul className="grid gap-3 sm:grid-cols-3">
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {MAKE.map((m) => (
                 <li key={m.href}><Link href={m.href} className="group flex items-center gap-3 rounded-3xl bg-pink-500/10 dark:bg-pink-500/15 border border-pink-500/25 p-4 hover:border-pink-500/60 transition-[transform,border-color] duration-200 hover:-translate-y-0.5 active:scale-[0.98] motion-reduce:transform-none">
                   <m.icon className="w-6 h-6 shrink-0 text-pink-600 dark:text-pink-300 transition-transform duration-300 group-hover:scale-110" aria-hidden />

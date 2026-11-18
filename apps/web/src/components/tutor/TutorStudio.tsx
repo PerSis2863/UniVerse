@@ -66,7 +66,7 @@ export function TutorStudio() {
         {data.courses.length === 0 ? (
           <p className="text-sm text-zinc-500">You’re not enrolled in any courses yet.</p>
         ) : (
-          <ul className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {data.courses.map((c) => (
               <li key={c.id}>
                 <button onClick={() => { setCourseId(c.id); setTab('ask'); }} className="w-full text-start rounded-2xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/[0.03] p-4 hover:border-indigo-400/60 transition-colors">

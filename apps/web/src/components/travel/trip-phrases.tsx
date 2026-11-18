@@ -57,7 +57,7 @@ export default function TripPhrases({ countries }: { countries: string[] }) {
         </p>
       </section>
 
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         {(Object.keys(GROUPS) as (keyof typeof GROUPS)[]).map((g) => (
           <section key={g} className="panel p-5" aria-labelledby={`ph-${g}`}>
             <h3 id={`ph-${g}`} className="text-lg font-semibold text-zinc-900 dark:text-white">{GROUPS[g]}</h3>

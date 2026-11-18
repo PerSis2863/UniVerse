@@ -43,7 +43,7 @@ export function GreenJourney() {
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[24rem_minmax(0,1fr)]">
       <section className="panel space-y-4 p-5" aria-labelledby="jr-h">
         <h3 id="jr-h" className="text-lg font-semibold text-zinc-900 dark:text-white">The journey</h3>
         <div className="grid grid-cols-2 gap-3">

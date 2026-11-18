@@ -73,7 +73,7 @@ export default function StudentInformation() {
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2">
               <FileText className="w-5 h-5 text-indigo-400" /> Important resources
             </h3>
-            <div className={`${card} grid sm:grid-cols-2 divide-y sm:divide-y-0 divide-zinc-200 dark:divide-zinc-800`}>
+            <div className={`${card} grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 divide-zinc-200 dark:divide-zinc-800`}>
               {SHORTCUTS.map(({ href, title, text, icon: Icon }) => (
                 <Link key={href} href={href} className="flex items-start gap-3 p-4 hover:bg-zinc-100 dark:hover:bg-zinc-800/50 transition-colors rounded-xl">
                   <Icon className="w-5 h-5 text-indigo-400 mt-0.5 shrink-0" />

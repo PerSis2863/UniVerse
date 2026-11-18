@@ -39,7 +39,7 @@ export function TripShare({ tripId, name }: { tripId: string; name: string }) {
     } catch { /* closed the share sheet */ }
   };
   return (
-    <div className="grid gap-6 xl:grid-cols-2">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
       <section className="panel p-5" aria-labelledby="share-h">
         <h3 id="share-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><HeartHandshake className="h-5 w-5 text-indigo-500" aria-hidden />Share with family</h3>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">A page for people at home: the cities, each day’s plan, where you are today, your check-ins and the journal entries you left in. Read-only, no sign-in, first names only.</p>

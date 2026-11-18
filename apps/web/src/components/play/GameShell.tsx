@@ -108,7 +108,7 @@ function GameMenu({ game }: { game: GameId }) {
         <p className="relative mt-5 max-w-2xl text-sm text-zinc-600 dark:text-zinc-300"><span className="font-semibold text-zinc-900 dark:text-white">How to play: </span>{info.how}</p>
       </section>
 
-      <div className="grid gap-4 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <motion.button type="button" onClick={() => gate.guard(() => setMode('solo'))} initial={{ opacity: 0, y: calm ? 0 : 10 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth}
           className="sheen panel group flex flex-col items-start gap-3 p-5 text-start transition-transform duration-150 active:scale-[0.99]">
           <span className="grid h-10 w-10 place-items-center rounded-xl bg-pink-500 text-white shadow-[0_6px_20px_rgba(254,129,209,0.4)]"><User className="w-5 h-5" aria-hidden /></span>
@@ -130,7 +130,7 @@ function GameMenu({ game }: { game: GameId }) {
 
       <section>
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">More games</h2>
-        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+        <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-3">
           {GAME_IDS.filter((x) => x !== game).map((x) => (
             <Link key={x} href={`/play/game?g=${x}`} className="sheen panel flex items-center gap-3 p-3.5 transition-transform duration-150 active:scale-[0.99]">
               <GameIcon game={x} />

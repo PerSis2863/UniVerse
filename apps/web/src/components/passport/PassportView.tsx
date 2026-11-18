@@ -121,7 +121,7 @@ export function PassportView({ p, badgeActions, onHide, theme }: { p: PassportDa
           <h2 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><HeartHandshake className="w-5 h-5 text-indigo-500" /> Skills</h2>
           <p className="text-xs text-zinc-500 mt-0.5">Self-assessed level; endorsements come from classmates and teachers.</p>
           {p.skills.length === 0 ? <p className="mt-4 text-sm text-zinc-500">No skills added yet.</p> : (
-            <ul className="mt-4 grid sm:grid-cols-2 gap-2.5">
+            <ul className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               {p.skills.map((s) => (
                 <li key={s.name} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] p-3">
                   <div className="flex items-center gap-2">

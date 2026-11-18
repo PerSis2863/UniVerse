@@ -65,7 +65,7 @@ export default function TasksPage() {
             {!creating && <button type="button" className="btn-primary" onClick={() => setCreating(true)}><Plus className="w-4 h-4" /> New board</button>}
           </div>
           {creating && (
-            <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`panel p-5 grid sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
+            <motion.form initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} onSubmit={create} className={`panel p-5 grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2 items-end`}>
               <label className="text-sm space-y-1"><span className="text-zinc-600 dark:text-zinc-400">Name</span>
                 <input required autoFocus maxLength={80} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Science fair project" className="input" />
               </label>
@@ -114,7 +114,7 @@ export default function TasksPage() {
                     example={<ExampleRow title="Science fair project" meta="3 lists · 12 cards" right="Open" />}
                   />
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-3 stagger">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 stagger">
                     {data.boards.map((b) => (
                       <Link key={b.id} href={`/tasks/${b.id}`} className={`panel lift p-4 flex items-center gap-3 hover:border-indigo-400/50`}>
                         <span className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 text-white flex items-center justify-center shrink-0"><KanbanSquare className="w-5 h-5" /></span>

@@ -336,7 +336,7 @@ export default function AdminFinances() {
             ) : (
               <ul className="divide-y divide-zinc-200 dark:divide-zinc-800/50">
                 {shownTransactions.map((trx) => (
-                  <li key={trx.id} className="p-4 grid gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
+                  <li key={trx.id} className="p-4 grid grid-cols-1 gap-3 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto] md:items-center hover:bg-zinc-50 dark:hover:bg-zinc-800/30 transition-colors">
                     <PersonCell person={trx.user} />
                     <div className="min-w-0">
                       <p className="text-sm font-medium text-zinc-900 dark:text-white break-words">{trx.description}</p>

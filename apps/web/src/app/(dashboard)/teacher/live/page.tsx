@@ -96,7 +96,7 @@ function NewPoll({ courseId, onCreated }: { courseId: string; onCreated: () => v
     <form onSubmit={start} className={`panel p-5 space-y-3`}>
       <h2 className="font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Radio className="w-4 h-4 text-rose-500" /> New poll</h2>
       <input aria-label="Question" required maxLength={300} value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="Which sorting algorithm is stable?" className="input" />
-      <div className="grid sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {options.map((o, i) => (
           <div key={i} className="flex gap-1">
             <input aria-label={`Answer ${i + 1}`} maxLength={120} value={o} onChange={(e) => setOptions((l) => l.map((x, j) => (j === i ? e.target.value : x)))} placeholder={`Answer ${i + 1}`} className="input" />

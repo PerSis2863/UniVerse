@@ -87,7 +87,7 @@ export function NewCourseSheet({ onClose }: { onClose: () => void }) {
           <p className={`${LABEL} mb-2`}>Start from</p>
           <TemplateCards options={KINDS} value={kind} onChange={choose} label="Start from" className="sm:grid-cols-3" />
         </div>
-        <div className="grid gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)]">
           <label className={LABEL}>Name
             <input required maxLength={120} value={name} onChange={(e) => setName(e.target.value)} className="input mt-1" placeholder="e.g. Introduction to Machine Learning" />
           </label>

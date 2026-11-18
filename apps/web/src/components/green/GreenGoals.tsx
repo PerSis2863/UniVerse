@@ -48,7 +48,7 @@ export function GreenGoals() {
   const pct = data?.monthlyKg ? Math.min(1, data.monthKg / data.monthlyKg) : 0;
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[22rem_minmax(0,1fr)]">
       <section className="panel p-5" aria-labelledby="goal-h" data-no-motion>
         <h3 id="goal-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Target className="h-5 w-5 text-emerald-600 dark:text-emerald-400" aria-hidden />This month’s goal</h3>
         {!data ? <div className="mt-4 h-40 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> : (
@@ -130,7 +130,7 @@ export function GreenTips() {
         <h3 id="tips-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Lightbulb className="h-5 w-5 text-amber-500" aria-hidden />What saves the most</h3>
         <Segmented<(typeof TIP_AREAS)[number] | 'All'> label="Area" value={area} onChange={setArea} segments={['All' as const, ...TIP_AREAS].map((a) => ({ value: a, label: a }))} />
       </div>
-      <ol className="mt-4 grid gap-3 md:grid-cols-2">
+      <ol className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
         {list.map((t) => (
           <li key={t.id} className="flex flex-col rounded-2xl bg-zinc-50 p-4 dark:bg-white/[0.04]">
             <div className="flex items-start justify-between gap-3">

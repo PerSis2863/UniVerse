@@ -39,7 +39,7 @@ const RETENTION = [
 export default function PoliciesPage() {
   return (
     <LegalShell eyebrow="Legal" title="Corporate Policies" intro={<>Every policy that governs UniVerse, in one place.</>}>
-      <div className="grid sm:grid-cols-2 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {DOCS.map((d) => (
           <Link key={d.title} href={d.href} className="group rounded-2xl border border-white/10 bg-white/[0.03] p-5 hover:border-indigo-500/40 hover:bg-white/[0.05] transition-colors">
             <div className="flex items-start gap-3">

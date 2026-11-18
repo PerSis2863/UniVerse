@@ -64,7 +64,7 @@ function Matrix() {
   const moveTo = (k: string, t: Task) => setM(Object.fromEntries(QUADS.map((q) => [q.k, q.k === k ? [...(m[q.k] ?? []).filter((x) => x.id !== t.id), t] : (m[q.k] ?? []).filter((x) => x.id !== t.id)])));
   return (
     <div className="space-y-2">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {QUADS.map((q) => (
           <section key={q.k} aria-labelledby={`q-${q.k}`} className={cn('rounded-2xl ring-1 p-3 space-y-2', q.c)}>
             <h3 id={`q-${q.k}`} className="font-bold text-zinc-900 dark:text-white">{q.t} <span className="text-xs font-normal text-zinc-600 dark:text-zinc-300">· {q.s}</span></h3>
@@ -91,7 +91,7 @@ function Countdowns() {
         <Field label="When"><input type="datetime-local" className="input" value={at} onChange={(e) => setAt(e.target.value)} /></Field>
         <button type="submit" className="btn-primary btn-sm"><Plus className="w-4 h-4" aria-hidden />Add</button>
       </form>
-      <ul className="grid gap-3 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {sorted.map((c, i) => { const l = left(Date.parse(c.at), now); return (
           <motion.li key={c.id} layout transition={spring.smooth} className="relative rounded-2xl p-4 text-white" style={{ background: `linear-gradient(135deg, ${BRANCH[i % BRANCH.length]}, #111113)` }}>
             <p className="font-semibold pe-8" translate="no">{c.name}</p>
@@ -126,9 +126,9 @@ function Meeting() {
         <Btn onClick={() => save(`${n.title.replace(/\W+/g, '-').toLowerCase()}-${n.date}.md`, md, 'text/markdown')}><Download className="w-3.5 h-3.5" aria-hidden />Download</Btn>
         {all.length > 1 && <Btn onClick={() => ask(`Delete “${n.title}”?`, () => { setAll(all.filter((x) => x.id !== n.id)); setAt(0); })}><Trash2 className="w-3.5 h-3.5" aria-hidden />Delete</Btn>}
       </div>
-      <div className="grid gap-2 sm:grid-cols-[1fr_160px]"><Field label="Title"><input className="input" value={n.title} onChange={(e) => put({ title: e.target.value })} /></Field><Field label="Date"><input type="date" className="input" value={n.date} onChange={(e) => put({ date: e.target.value })} /></Field></div>
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_160px]"><Field label="Title"><input className="input" value={n.title} onChange={(e) => put({ title: e.target.value })} /></Field><Field label="Date"><input type="date" className="input" value={n.date} onChange={(e) => put({ date: e.target.value })} /></Field></div>
       <Field label="People there"><input className="input" value={n.people} onChange={(e) => put({ people: e.target.value })} placeholder="Names, split by commas" /></Field>
-      <div className="grid gap-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 lg:grid-cols-3">
         <Field label="Agenda"><textarea className="input min-h-[120px]" value={n.agenda} onChange={(e) => put({ agenda: e.target.value })} /></Field>
         <Field label="Notes"><textarea className="input min-h-[120px]" value={n.notes} onChange={(e) => put({ notes: e.target.value })} /></Field>
         <Field label="Decisions"><textarea className="input min-h-[120px]" value={n.decisions} onChange={(e) => put({ decisions: e.target.value })} /></Field>
@@ -191,7 +191,7 @@ function Goals() {
   return (
     <div className="space-y-3">
       <Btn onClick={() => setGoals([{ id: uid(), title: 'New goal', why: '', due: '', steps: [] }, ...goals])}><Plus className="w-3.5 h-3.5" aria-hidden />Add a goal</Btn>
-      <ul className="grid gap-3 lg:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-3 lg:grid-cols-2">
         {goals.map((g) => { const d = g.steps.filter((s) => s.done).length, pct = g.steps.length ? (d / g.steps.length) * 100 : 0; return (
           <motion.li key={g.id} layout transition={spring.smooth} className="rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10 p-4 space-y-2">
             <div className="flex gap-3">
@@ -250,7 +250,7 @@ function Swot() {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2"><Field label="About"><input className="input" value={s.title} onChange={(e) => setS({ ...s, title: e.target.value })} /></Field><CopyBtn text={md} label="Copy as Markdown" /><Btn onClick={() => printOnly('swot-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print</Btn></div>
-      <div id="swot-sheet" className="grid gap-3 sm:grid-cols-2">
+      <div id="swot-sheet" className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         {SWOT.map((q) => <section key={q.k} aria-labelledby={`sw-${q.k}`} className={cn('rounded-2xl ring-1 p-3 space-y-2', q.c)}><h3 id={`sw-${q.k}`} className="font-bold text-zinc-900 dark:text-white">{q.t}</h3><List label={q.t} items={(s[q.k] as Task[]) ?? []} onChange={(t) => setS({ ...s, [q.k]: t })} placeholder="Add a point…" /></section>)}
       </div>
     </div>
@@ -281,7 +281,7 @@ function ProsCons() {
   return (
     <div className="space-y-3">
       <Field label="The question"><input className="input font-bold" value={d.q} onChange={(e) => setD({ ...d, q: e.target.value })} /></Field>
-      <div className="grid gap-3 sm:grid-cols-2">{col('pros', 'For')}{col('cons', 'Against')}</div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">{col('pros', 'For')}{col('cons', 'Against')}</div>
       <div className="space-y-1">
         <div className="h-4 rounded-full bg-rose-400/70 overflow-hidden"><Fill value={share / 100} className="h-full bg-emerald-500" /></div>
         <p className="text-sm font-semibold text-zinc-900 dark:text-white" role="status">{p === c ? 'Evenly balanced: trust your gut, or add more points.' : p > c ? `Leaning towards yes (${Math.round(share)}% for).` : `Leaning towards no (${Math.round(100 - share)}% against).`}</p>
@@ -300,7 +300,7 @@ function Reading() {
   const shown = books.filter((b) => f === 'all' || b.status === f);
   return (
     <div className="space-y-3">
-      <form onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; setBooks([{ id: uid(), title: title.trim(), author: author.trim(), pages: Math.max(1, +pages || 200), read: 0, status: 'want', stars: 0 }, ...books]); setTitle(''); setAuthor(''); setPages(''); }} className="grid gap-2 sm:grid-cols-[1fr_1fr_90px_auto] items-end">
+      <form onSubmit={(e) => { e.preventDefault(); if (!title.trim()) return; setBooks([{ id: uid(), title: title.trim(), author: author.trim(), pages: Math.max(1, +pages || 200), read: 0, status: 'want', stars: 0 }, ...books]); setTitle(''); setAuthor(''); setPages(''); }} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_90px_auto] items-end">
         <Field label="Title"><input className="input" value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
         <Field label="Author"><input className="input" value={author} onChange={(e) => setAuthor(e.target.value)} /></Field>
         <Field label="Pages"><input className="input" inputMode="numeric" value={pages} onChange={(e) => setPages(e.target.value)} /></Field>

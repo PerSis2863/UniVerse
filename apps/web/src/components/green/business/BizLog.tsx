@@ -42,7 +42,7 @@ export function BizLog({ org, role, overview, onChanged, onPick }: SectionProps)
   return (
     <div className="space-y-6">
       <PlanPanel org={org} role={role} billing={overview.billing} lines={overview.counts.lines} />
-      <div className="grid gap-6 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
         <section className="panel p-5" aria-labelledby="ppl-h">
           <h3 id="ppl-h" className={h3}><Users className={icon} aria-hidden />People</h3>
           {people?.consultancy && <p className={`mt-1 ${muted}`}>Managed by <span translate="no">{people.consultancy}</span>: its team works on it too.</p>}
@@ -56,7 +56,7 @@ export function BizLog({ org, role, overview, onChanged, onPick }: SectionProps)
             ))}
           </ul>
           {owner && (
-            <form onSubmit={(e) => void invite(e)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
+            <form onSubmit={(e) => void invite(e)} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_8rem_auto] sm:items-end">
               <label className={label}>Their UniVerse email<input type="email" required value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={field} /></label>
               <label className={label}>Role<select value={f.role} onChange={(e) => setF({ ...f, role: e.target.value })} className={field}><option value="editor">Editor</option><option value="viewer">Viewer</option><option value="owner">Owner</option></select></label>
               <button type="submit" className="btn-primary inline-flex items-center gap-1.5"><UserPlus className="h-4 w-4" aria-hidden />Add</button>
@@ -115,7 +115,7 @@ function PlanPanel({ org, role, billing, lines }: { org: SectionProps['org']; ro
       ) : (
         <>
           <p className={`mt-2 ${muted}`}>You’re on <strong>{billing.tier === 'FREE' ? 'Free' : billing.tier === 'PRO' ? 'Pro' : 'Consultancy'}</strong>{billing.tier === 'FREE' ? ` (${lines} of ${billing.limits.lines} lines this year)` : ''}{billing.pro && billing.tier === 'FREE' ? ': your consultancy’s plan covers you' : ''}.</p>
-          <div className="mt-4 grid gap-4 md:grid-cols-3">
+          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-3">
             {plans.map((p) => (
               <div key={p.tier} className={`rounded-2xl border p-4 ${billing.tier === p.tier ? 'border-emerald-500/60 bg-emerald-500/[0.05]' : 'border-[var(--hairline)]'}`}>
                 <p className="font-semibold text-zinc-900 dark:text-white">{p.name}</p>

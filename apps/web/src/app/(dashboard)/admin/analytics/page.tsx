@@ -129,7 +129,7 @@ function PeoplePanel({ data }: { data: Analytics }) {
       ) : (
         <ul className="divide-y divide-zinc-100 dark:divide-white/[0.05]">
           {rows.map((r, i) => (
-            <li key={r.person.id} className="py-3 grid gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-center">
+            <li key={r.person.id} className="py-3 grid grid-cols-1 gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)] md:items-center">
               <div className="flex items-start gap-2 min-w-0">
                 {tab === 'students' && <span className="w-6 h-6 shrink-0 mt-1 rounded-full bg-indigo-500/10 text-indigo-500 text-[11px] font-black flex items-center justify-center">{i + 1}</span>}
                 <PersonCell className="flex-1" person={r.person} showActivity extra={r.facts || null} />
@@ -155,7 +155,7 @@ function AnalyticsDashboard() {
   if (error) return <div className="flex-1 p-8 text-sm text-rose-500">{(error as Error).message}</div>;
   if (isLoading || !data) {
     return (
-      <div className="flex-1 p-8 grid gap-4 md:grid-cols-4">
+      <div className="flex-1 p-8 grid grid-cols-1 gap-4 md:grid-cols-4">
         {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-32 rounded-3xl skeleton" />)}
       </div>
     );

@@ -38,14 +38,14 @@ export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climat
   const topics = TOPICS.filter((t) => tips[t.id]?.length);
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {country && <PowerCard country={country} />}
         {climate && <ClimateCard climate={climate} place={title} />}
       </div>
       {tips.stories?.length ? (
         <section aria-labelledby="know-stories" className="panel p-6">
           <h3 id="know-stories" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Landmark className="h-5 w-5 text-indigo-500" aria-hidden />Why {title} is famous</h3>
-          <ol className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ol className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {tips.stories.map((s, i) => (
               <li key={i} className="flex gap-3 rounded-xl bg-zinc-50 p-4 dark:bg-white/[0.04]">
                 <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-indigo-500/15 text-sm font-semibold text-indigo-700 tabular-nums dark:text-indigo-300" aria-hidden>{i + 1}</span>
@@ -58,7 +58,7 @@ export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climat
       {topics.length > 0 ? (
         <section aria-labelledby="know-tips">
           <h3 id="know-tips" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Sparkles className="h-5 w-5 text-indigo-500" aria-hidden />Good to know before you go</h3>
-          <ul className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3">
             {topics.map((t) => (
               <li key={t.id} className="card flex flex-col gap-2 p-4">
                 <p className="flex items-center justify-between gap-2">
@@ -170,7 +170,7 @@ function Neighbourhoods({ places, night }: { places: { title: string; name: stri
   return (
     <section aria-labelledby="know-areas">
       <h3 id="know-areas" className="mb-3 flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><BookOpen className="h-5 w-5 text-indigo-500" aria-hidden />Neighbourhoods at a glance</h3>
-      <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
         {places.map((p) => {
           const words = vibes(p.text), dark = night.find((s) => s.toLowerCase().includes(p.name.toLowerCase()));
           return (

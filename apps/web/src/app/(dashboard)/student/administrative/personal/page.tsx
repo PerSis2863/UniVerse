@@ -97,7 +97,7 @@ export default function PersonalDataPage() {
             <>
               <section className={card}>
                 <h2 className="font-bold text-zinc-900 dark:text-white mb-4">Your details</h2>
-                <div className="grid sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {Field({ icon: User, label: "Full name", value: data.name })}
                   {Field({ icon: Mail, label: "Email", value: data.email })}
                   {Field({ icon: Phone, label: "Phone", value: data.phone, edit: "phone" })}
@@ -117,7 +117,7 @@ export default function PersonalDataPage() {
                 </div>
 
                 {contactForm && (
-                  <div className="mb-4 p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-500/[0.06] border border-indigo-200/60 dark:border-indigo-400/20 grid sm:grid-cols-2 gap-3">
+                  <div className="mb-4 p-4 rounded-2xl bg-indigo-50/60 dark:bg-indigo-500/[0.06] border border-indigo-200/60 dark:border-indigo-400/20 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <input className="input" placeholder="Full name" value={contactForm.name} maxLength={80} onChange={(e) => setContactForm({ ...contactForm, name: e.target.value })} />
                     <input className="input" placeholder="Relationship, e.g. Mother" value={contactForm.relation} maxLength={40} onChange={(e) => setContactForm({ ...contactForm, relation: e.target.value })} />
                     <input className="input" type="tel" placeholder="Phone" value={contactForm.phone} maxLength={30} onChange={(e) => setContactForm({ ...contactForm, phone: e.target.value })} />
@@ -140,7 +140,7 @@ export default function PersonalDataPage() {
                     action={{ label: 'Add emergency contact', onClick: () => setContactForm({ ...blank }) }}
                   />
                 ) : (
-                  <div className="grid sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {data.emergencyContacts.map((c, i) => (
                       <div key={`${c.name}-${i}`} className="flex items-start gap-3 p-4 rounded-2xl bg-zinc-50 dark:bg-white/[0.03] border border-zinc-200/70 dark:border-white/[0.06]">
                         <div className="min-w-0 flex-1">

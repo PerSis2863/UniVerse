@@ -27,7 +27,7 @@ export function ReliefSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Help that reaches people <Accent>fast.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Every need and every offer on one live map.</p></Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
           {([
             [HandHeart, 'Ask or offer in a minute', 'Say what you need. Only your area shows.'],
             [MapPin, 'A live map of needs', 'Volunteers see the closest, most urgent first.'],
@@ -46,7 +46,7 @@ export function GreenSection() {
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Climate action you can <Accent>prove.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Small actions add up when you can see them.</p></Reveal>
-        <div className="mt-12 grid md:grid-cols-3 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
           {([
             [TreePine, 'Log it in seconds', 'Trees, bikes, recycling: each turned into CO₂ saved.'],
             [Trophy, 'Teams and a weekly challenge', 'Join with a code and beat the week together.'],
@@ -68,7 +68,7 @@ export function AppsGrid({ onPick }: { onPick?: (id: AppId) => void }) {
       <div className="max-w-6xl mx-auto">
         <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Apps that change <Accent>something.</Accent></h2></Reveal>
         <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl"><CountUp to={apps.length} /> apps, one sign-in. The ones marked Lab are new.</p></Reveal>
-        <div className="mt-12 grid md:grid-cols-2 gap-4">
+        <div className="mt-12 grid grid-cols-1 md:grid-cols-2 gap-4">
           {apps.map((a, i) => (
             <Reveal key={a.id} delay={0.08 + i * 0.06}>
               <button type="button" onClick={() => { onPick?.(a.id); window.scrollTo({ top: 0, behavior: 'smooth' }); }} className="group relative w-full h-full text-start overflow-hidden rounded-3xl p-7 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-white/20 transition-shadow">

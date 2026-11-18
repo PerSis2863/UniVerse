@@ -41,7 +41,7 @@ export function FeatureGuide({ icon: Icon, title, description, steps, example, a
       )}
     >
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-indigo-500/[0.07] via-transparent to-fuchsia-500/[0.07] pointer-events-none" />
-      <div className={cn('relative grid gap-8', example && 'lg:grid-cols-2 lg:items-center')}>
+      <div className={cn('relative grid grid-cols-1 gap-8', example && 'lg:grid-cols-2 lg:items-center')}>
         <div>
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center shadow-lg shadow-indigo-500/20 mb-4">
             <Icon className="w-6 h-6 text-white" />
@@ -81,7 +81,7 @@ export function FeatureGuide({ icon: Icon, title, description, steps, example, a
         </div>
         {example && (
           <div className="relative">
-            <span className="absolute -top-3 start-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 shadow">
+            <span className="absolute -top-3 start-4 z-10 inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-amber-400 text-amber-950 shadow">
               <Sparkles className="w-3 h-3" /> Example
             </span>
             <div aria-hidden className="pointer-events-none select-none rounded-2xl border border-zinc-200 dark:border-white/10 bg-white/80 dark:bg-[#151517]/80 p-4 opacity-90">

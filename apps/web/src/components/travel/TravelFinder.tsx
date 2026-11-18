@@ -106,7 +106,7 @@ export function TravelFinder({ onPlan }: { onPlan?: (m: Match, days: number, mon
 
       <section aria-labelledby="find-results">
         <h2 id="find-results" className="sr-only">Best places for you</h2>
-        <ol ref={list} className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite">
+        <ol ref={list} className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4" aria-live="polite">
           {ranked.slice(0, shown).map((m, n) => <MatchCard key={m.idea.title} m={m} rank={n + 1} share={Math.max(0.06, (m.score - bottom) / Math.max(1, top - bottom))} days={days} currency={cur} onPlan={onPlan ? () => onPlan(m, days, mon) : undefined} />)}
         </ol>
         {shown < ranked.length && <button type="button" onClick={() => setShown((s) => s + 12)} className="btn-secondary mt-4 inline-flex items-center gap-2">Show more places<ArrowRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>}

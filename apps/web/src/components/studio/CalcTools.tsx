@@ -33,7 +33,7 @@ function Regression() {
   const xs = pts.map((p) => p[0]), ys = pts.map((p) => p[1]), xl = Math.min(...xs, 0), xh = Math.max(...xs, 1), yl = Math.min(...ys, 0), yh = Math.max(...ys, 1);
   const X = (v: number) => 40 + ((v - xl) / (xh - xl || 1)) * (W - 60), Y = (v: number) => H - 30 - ((v - yl) / (yh - yl || 1)) * (H - 50);
   return (
-    <div className="grid gap-4 lg:grid-cols-[240px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_1fr]">
       <Field label="x and y, one pair a line"><textarea className={cn(area, 'min-h-[220px]')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
       <div className="space-y-3">
         <svg viewBox={`0 0 ${W} ${H}`} className="w-full rounded-xl bg-white ring-1 ring-black/10" role="img" aria-label={r ? `Best-fit line y = ${nf(r.slope, 3)}x + ${nf(r.intercept, 3)}` : 'Scatter chart'} fontFamily="system-ui">
@@ -119,7 +119,7 @@ function Recipe() {
   const pretty = (x: number) => { const w = Math.floor(x), f = x - w, F = [[0.25, '¼'], [0.33, '⅓'], [0.5, '½'], [0.67, '⅔'], [0.75, '¾']] as const, near = F.find(([v]) => Math.abs(f - v) < 0.04); return near ? `${w || ''}${near[1]}` : nf(x, 2); };
   const out = r.text.split('\n').map((l) => { const m = QTY.exec(l); return m ? `${pretty(val(m[1]) * scale)} ${m[2]}` : l; });
   return (
-    <div className="grid gap-4 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
       <div className="space-y-2">
         <div className="flex gap-2"><Field label="Recipe serves"><input type="number" min={1} className="input w-24" value={r.from} onChange={(e) => setR({ ...r, from: Math.max(1, +e.target.value || 1) })} /></Field><Field label="I need"><input type="number" min={1} className="input w-24" value={r.to} onChange={(e) => setR({ ...r, to: Math.max(1, +e.target.value || 1) })} /></Field></div>
         <Field label="Ingredients, one a line, amount first"><textarea className={cn(area, 'min-h-[220px] font-sans')} value={r.text} onChange={(e) => setR({ ...r, text: e.target.value })} /></Field>

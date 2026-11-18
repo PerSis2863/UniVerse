@@ -141,7 +141,7 @@ function SchoolPeople({ id, onPerson }: { id: string; onPerson: (id: string) => 
     </li>
   );
   return (
-    <div className="mt-3 grid sm:grid-cols-2 gap-4 rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-3">
+    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl bg-zinc-50 dark:bg-white/[0.03] p-3">
       <div>
         <h3 className="text-xs font-semibold uppercase text-zinc-600 dark:text-zinc-400 mb-1">Admins</h3>
         {data.admins.length ? <ul>{data.admins.map(row)}</ul> : <p className="text-sm text-zinc-500">No admin yet.</p>}
@@ -169,7 +169,7 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
         ['New this month', last?.started ?? 0, 'schools that started paying'],
         ['Cancelled last month', prev?.ended ?? 0, prev?.rate != null ? `${prev.rate} % of paying schools` : 'no paying schools then'],
       ]} />
-      <div className="grid lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <section className={cn(card, 'p-4 sm:p-6')}>
           <h2 className="font-semibold text-zinc-900 dark:text-white mb-3">Money received per month · 12 months</h2>
           <Bars values={growth.revenue.map((r) => r.total)} labels={labels} title={(i) => `${labels[i]}: ${money(growth.revenue[i].total)}`} />

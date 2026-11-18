@@ -58,7 +58,7 @@ export function StudentExcuses() {
         {!open && courses.length > 0 && <button type="button" onClick={() => setOpen(true)} className="btn-primary btn-sm">Ask to be excused</button>}
       </div>
       {open && (
-        <form onSubmit={send} className="grid sm:grid-cols-2 gap-3">
+        <form onSubmit={send} className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="text-sm font-medium text-zinc-800 dark:text-zinc-200">Class
             <select value={courseId} onChange={(e) => setForm({ ...form, courseId: e.target.value })} className="input mt-1">
               {courses.map((c) => <option key={c.id} value={c.id}>{c.code ? `${c.code} · ` : ''}{c.name}</option>)}

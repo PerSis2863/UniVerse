@@ -539,7 +539,7 @@ export function MarketMap() {
         ))}
       </dl>
 
-      <div className="grid xl:grid-cols-[1fr_320px] gap-4 items-start">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4 items-start">
         {/* The map */}
         <div className={cn('panel overflow-hidden p-0', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
           <WorldCanvas

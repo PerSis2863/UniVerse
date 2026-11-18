@@ -194,7 +194,7 @@ export function WeekPlanner({ data }: { data: PlanData }) {
               {plan.unplaced.map((u) => <p key={u.courseId}><b>{byId.get(u.courseId)?.code}</b>: {u.missing} class{u.missing === 1 ? '' : 'es'} left out, {REASON[u.reason]}.</p>)}
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5">
             {days.map((d) => {
               const list = plan.slots.map((s, i) => ({ s, i })).filter((x) => x.s.day === d).sort((a, b) => a.s.start - b.s.start);
               return (

@@ -258,7 +258,7 @@ export function QuestionKey({ q }: { q: StoredQuestion & { options: string[] } }
   if (type === 'CHOICE' || type === 'TRUE_FALSE' || type === 'MULTI') {
     const right = type === 'MULTI' ? metaOf(q).correct ?? [] : [q.correctAnswer];
     return (
-      <ul className="mt-2 grid sm:grid-cols-2 gap-1.5">
+      <ul className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-1.5">
         {q.options.map((o) => (
           <li key={o} className={cn('text-xs px-3 py-1.5 rounded-lg flex items-center gap-1.5', right.includes(o) ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 font-semibold' : 'bg-zinc-100 dark:bg-white/[0.04] text-zinc-600 dark:text-zinc-400')}>
             {right.includes(o) && <CheckCircle2 className="w-3.5 h-3.5" />} {o}

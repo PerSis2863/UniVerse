@@ -126,9 +126,9 @@ export function SchoolAnalytics() {
         {trendError ? (
           <p className="text-sm text-rose-500">{(trendError as Error).message}</p>
         ) : !trends ? (
-          <div className="grid gap-3 md:grid-cols-3">{TRENDS.map((t) => <div key={t} className="h-56 rounded-2xl skeleton" />)}</div>
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">{TRENDS.map((t) => <div key={t} className="h-56 rounded-2xl skeleton" />)}</div>
         ) : (
-          <div className="grid gap-3 md:grid-cols-3 stagger">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 stagger">
             {trends.results.map((r) => <TrendCard key={r.metric} r={r} onOpen={() => open(r.metric, { days: r.days })} />)}
           </div>
         )}

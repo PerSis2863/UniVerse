@@ -52,7 +52,7 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
       {!data ? <div className="h-32 rounded-xl skeleton" /> : places.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{need.size ? 'No place has that right now.' : 'No place has said how it is this week. Organisations post it from their page: Overview → Live status.'}</p>
       ) : (
-        <ul ref={list} className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <ul ref={list} className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {places.slice(0, 24).map((p) => {
             const fresh = now ? freshness(p.statusAt, now) : 'fresh';
             return (

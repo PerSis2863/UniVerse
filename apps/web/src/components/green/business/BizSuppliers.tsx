@@ -41,7 +41,7 @@ export function BizSuppliers({ org, role, year, onChanged }: SectionProps) {
         <h3 id="sup-h" className={h3}><Truck className={icon} aria-hidden />Ask your suppliers ({year})</h3>
         <p className={`mt-2 max-w-3xl ${muted}`}>What you buy is usually most of a footprint. Send each supplier its link: they type in their own emissions and revenue (no account needed), and your share, by what you spent with them, replaces a rough spend-based guess. If you also counted them by spend in the ledger, lower that line.</p>
         {edit && (
-          <form onSubmit={(e) => void add(e)} className="mt-4 grid gap-3 sm:grid-cols-[1fr_1fr_12rem_auto] sm:items-end">
+          <form onSubmit={(e) => void add(e)} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[1fr_1fr_12rem_auto] sm:items-end">
             <label className={label}>Supplier<input required maxLength={80} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} className={field} /></label>
             <label className={label}>Contact, for you (not on their page)<input maxLength={120} value={f.contact} onChange={(e) => setF({ ...f, contact: e.target.value })} className={field} /></label>
             <label className={label}>Spent with them in {year}, {org.currency}<input type="number" min={0} inputMode="decimal" value={f.spend} onChange={(e) => setF({ ...f, spend: e.target.value })} className={field} /></label>

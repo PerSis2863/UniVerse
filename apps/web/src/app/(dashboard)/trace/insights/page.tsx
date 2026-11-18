@@ -48,13 +48,13 @@ export default function InsightsPage() {
 function Body() {
   const { data, error } = useSWR<Insights>('/trace/insights', fetcher, { revalidateOnFocus: false });
   if (error) return <p className="panel p-6 text-sm text-zinc-500">{errorMessage(error, 'Start your brand to see its insights.')}</p>;
-  if (!data) return <div className="grid lg:grid-cols-3 gap-4">{Array.from({ length: 6 }, (_, i) => <div key={i} className="panel h-48 skeleton" />)}</div>;
+  if (!data) return <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">{Array.from({ length: 6 }, (_, i) => <div key={i} className="panel h-48 skeleton" />)}</div>;
   const next7 = Math.round(data.forecast.next.values.slice(0, 7).reduce((a, b) => a + b, 0));
   const last7 = data.forecast.series.slice(-7).reduce((a, b) => a + b, 0);
   const change = last7 ? Math.round(((next7 - last7) / last7) * 100) : 0;
   return (
     <>
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.section {...rise(0)} className="panel p-5 lg:col-span-2" aria-labelledby="fc-h">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <h2 id="fc-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><TrendingUp className="w-4 h-4 text-pink-500" aria-hidden />The next 14 days</h2>
@@ -76,7 +76,7 @@ function Body() {
         <Heat grid={data.heat} />
       </motion.section>
 
-      <div className="grid lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <motion.section {...rise(3)} className="panel p-5" aria-labelledby="rev-h">
           <h2 id="rev-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Star className="w-4 h-4 text-amber-400" aria-hidden />What owners say</h2>
           {data.reviews.count === 0 ? <p className="mt-2 text-sm text-zinc-500">No reviews yet. Owners can rate a product from its passport, once per unit.</p> : (
@@ -121,7 +121,7 @@ function Body() {
         </motion.section>
       </div>
 
-      <div className="grid lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <motion.section {...rise(5)} className="panel p-5 lg:col-span-2" aria-labelledby="co2-h">
           <h2 id="co2-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Leaf className="w-4 h-4 text-emerald-500" aria-hidden />Footprint of each shipment</h2>
           <p className="text-xs text-zinc-500">From the stops recorded on each batch and the product’s weight: about 0.12 kg CO₂ per tonne-km by road, 0.02 by sea. {data.carbon.kg ? `${data.carbon.kg.toLocaleString()} kg in all.` : ''}</p>

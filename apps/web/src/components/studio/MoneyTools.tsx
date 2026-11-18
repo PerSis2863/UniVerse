@@ -39,7 +39,7 @@ function Loan() {
         <Field label="Years"><input className="input w-24 font-mono" inputMode="decimal" value={v.years} onChange={(e) => setV({ ...v, years: e.target.value })} /></Field>
         <Cur v={v.cur} on={(cur) => setV({ ...v, cur })} />
       </div>
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] items-center">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto] items-center">
         <dl className="grid grid-cols-3 gap-2 text-sm"><Stat big k="Each month" v={m(l.emi)} /><Stat big k="Interest in all" v={m(l.interest)} /><Stat big k="Paid in all" v={m(l.total)} /></dl>
         <div className="justify-self-center text-indigo-700 dark:text-aqua-300"><Ring pct={l.total ? (l.interest / l.total) * 100 : 0} label="interest" size={96} /></div>
       </div>

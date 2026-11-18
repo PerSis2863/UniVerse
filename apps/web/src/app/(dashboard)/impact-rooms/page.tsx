@@ -32,7 +32,7 @@ export default function ImpactRoomsPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full">
           {error ? <p className="text-sm text-rose-500">{(error as Error).message}</p>
-            : !data ? <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
+            : !data ? <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-44 rounded-2xl skeleton" />)}</div>
             : data.rooms.length === 0 ? (
               <div className={`panel p-8 text-center`}>
                 <Globe2 className="w-8 h-8 mx-auto text-indigo-500" />
@@ -40,7 +40,7 @@ export default function ImpactRoomsPage() {
                 <p className="text-sm text-zinc-500 mt-1">Each active NGO project gets a room here.</p>
               </div>
             ) : (
-              <motion.ul variants={list} initial="hidden" animate="show" className="grid md:grid-cols-2 gap-4">
+              <motion.ul variants={list} initial="hidden" animate="show" className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {data.rooms.map((r) => (
                   <motion.li key={r.id} variants={fadeUp}>
                     <Link href={`/impact-rooms/${r.id}`} className={`panel p-4 flex flex-col gap-3 h-full hover:border-indigo-400/60 transition-colors`}>

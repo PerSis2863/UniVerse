@@ -54,7 +54,7 @@ export function TripPacking({ tripId, stops, start, members, me }: { tripId: str
   };
 
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <section className="panel p-5" aria-labelledby="pack-h">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h3 id="pack-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Luggage className="h-5 w-5 text-indigo-500" aria-hidden />Packing list</h3>

@@ -41,7 +41,7 @@ export default function CorporatePartnersPage() {
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="w-full">
           {l1 || l2 ? (
-            <div className="grid md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-40 rounded-3xl skeleton" />)}</div>
           ) : (e1 && !partners) || (e2 && !internships) ? (
             <LoadError onRetry={() => Promise.all([m1(), m2()])} message="Couldn’t load the companies." />
           ) : companies.length === 0 ? (
@@ -54,7 +54,7 @@ export default function CorporatePartnersPage() {
               action={{ label: 'Browse internships', href: '/student/internships' }}
             />
           ) : (
-            <div className="grid md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {companies.map((c, i) => (
                 <motion.div key={c.name} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }}
                   className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-5 flex flex-col gap-3">

@@ -71,7 +71,7 @@ function Graph() {
   const at = (e: React.PointerEvent<HTMLCanvasElement>) => { const r = e.currentTarget.getBoundingClientRect(); return view.cx + (e.clientX - r.left - r.width / 2) / view.scale; };
   return (
     <div className="space-y-3">
-      <div className="grid gap-2 sm:grid-cols-3">
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {fns.map((f, k) => (
           <label key={k} className="block">
             <span className="flex items-center gap-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-200"><span className="w-3 h-3 rounded-full" style={{ background: BRANCH[k % BRANCH.length] }} aria-hidden />y =</span>
@@ -104,7 +104,7 @@ function Stats() {
   const s = useMemo(() => stats(xs), [xs]);
   const bins = useMemo(() => histogram(xs, Math.min(12, Math.max(4, Math.round(Math.sqrt(xs.length))))), [xs]);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_1.2fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_1.2fr]">
       <Field label="Numbers (any separators)"><textarea className={area} value={t} onChange={(e) => setT(e.target.value)} /></Field>
       {s ? (
         <div className="space-y-3">
@@ -199,14 +199,14 @@ function Budget() {
         <Stat k="Money in" v={money(inc)} /><Stat k="Spent" v={money(spend)} /><Stat k="Left" v={<span className={cn(inc - spend < 0 && 'text-rose-600 dark:text-rose-300')}>{money(inc - spend)}</span>} />
         <div className="justify-self-center text-indigo-700 dark:text-aqua-300"><Ring pct={inc ? Math.max(0, Math.min(100, ((inc - spend) / inc) * 100)) : 0} label="kept" size={96} /></div>
       </dl>
-      <form onSubmit={(e) => { e.preventDefault(); const a = Number(amt); if (!what.trim() || !Number.isFinite(a) || a <= 0) return; setB({ ...b, rows: [{ id: uid(), what: what.trim(), cat, amount: a, out }, ...b.rows] }); setWhat(''); setAmt(''); }} className="grid gap-2 sm:grid-cols-[1fr_110px_130px_auto_auto] items-end">
+      <form onSubmit={(e) => { e.preventDefault(); const a = Number(amt); if (!what.trim() || !Number.isFinite(a) || a <= 0) return; setB({ ...b, rows: [{ id: uid(), what: what.trim(), cat, amount: a, out }, ...b.rows] }); setWhat(''); setAmt(''); }} className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_110px_130px_auto_auto] items-end">
         <Field label="What"><input className="input" value={what} onChange={(e) => setWhat(e.target.value)} /></Field>
         <Field label="Amount"><input className="input" inputMode="decimal" value={amt} onChange={(e) => setAmt(e.target.value)} /></Field>
         <Field label="Kind"><select className="input" value={cat} onChange={(e) => setCat(e.target.value)}>{CATS.map((c) => <option key={c}>{c}</option>)}</select></Field>
         <div className="flex gap-1"><Btn on={out} onClick={() => setOut(true)}>Out</Btn><Btn on={!out} onClick={() => setOut(false)}>In</Btn></div>
         <button type="submit" className="btn-primary btn-sm"><Plus className="w-4 h-4" aria-hidden />Add</button>
       </form>
-      <div className="grid gap-4 lg:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         <ul className="space-y-1">
           {b.rows.map((r) => (
             <motion.li key={r.id} layout="position" transition={spring.snappy} className="flex items-center gap-2 rounded-xl px-2 py-1.5 hover:bg-zinc-100 dark:hover:bg-white/[0.04]">
@@ -300,7 +300,7 @@ function Zones() {
         <Btn onClick={() => !zones.includes(pick) && setZones([...zones, pick])}><Plus className="w-3.5 h-3.5" aria-hidden />Add</Btn>
         <Field label={shift ? `${shift > 0 ? '+' : ''}${shift} hours from now` : 'Now'}><input type="range" min={-12} max={36} value={shift} onChange={(e) => setShift(+e.target.value)} className="w-56 accent-pink-500" /></Field>
       </div>
-      <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
         {zones.map((z) => { const h = hourIn(z, at), day = h >= 7 && h < 21; return (
           <li key={z} className={cn('relative rounded-2xl p-4 ring-1 transition-colors duration-300', day ? 'bg-amber-50 ring-amber-200 text-zinc-900' : 'bg-indigo-900 ring-indigo-700 text-white')}>
             <p className="text-sm font-semibold">{z.split('/').pop()?.replace(/_/g, ' ')}{z === here && <span className="ms-1 text-xs font-normal">(here)</span>}</p>

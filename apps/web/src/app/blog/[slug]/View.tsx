@@ -71,7 +71,7 @@ function BlogPost({ slug }: { slug: string }) {
       <div className="border-t border-white/10 pt-6 space-y-4">
         <Link href="/blog" className="inline-flex items-center gap-1.5 text-sm font-semibold text-zinc-300 hover:text-white"><ArrowLeft className="w-4 h-4" aria-hidden />All posts</Link>
         {post.more.length > 0 && (
-          <ul className="grid gap-3 sm:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {post.more.map((m) => (
               <li key={m.slug}>
                 <Link href={`/blog/${m.slug}`} className="block h-full rounded-2xl border border-white/10 bg-white/[0.03] p-4 hover:bg-white/[0.06] focus-visible:outline-2 focus-visible:outline-indigo-400">

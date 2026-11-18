@@ -31,7 +31,7 @@ export function BizClients({ org, role, year, onChanged, onPick }: SectionProps)
       </section>
       {adding && <NewOrg consultancyId={org.id} onDone={async () => { setAdding(false); await mutate(); onChanged(); }} onCancel={() => setAdding(false)} />}
       {!!list.length && (
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
           {list.map((c) => {
             const d = change(c.kg, c.before);
             return (

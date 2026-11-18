@@ -86,7 +86,7 @@ function Day({ tripId, stop, t, live, onAdded }: { tripId: string; stop: PlanSto
   const light = dayLight(stop, t.date), photoSpot = t.slots.map((x) => x.item).find((i) => outdoors(i))?.name;
   if (!t.slots.length) return <Empty text={`Nothing is planned for this day in ${nice(stop.name)} yet. Add places on the Plan.`} />;
   return (
-    <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
       <div className="space-y-6">
         {t.day === 0 && <Arrival stop={stop} />}
         {live && (current || next) && (

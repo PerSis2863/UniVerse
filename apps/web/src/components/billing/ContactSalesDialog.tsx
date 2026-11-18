@@ -38,7 +38,7 @@ export function ContactSalesDialog({ plan, onClose }: { plan: PlanId; onClose: (
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="text-zinc-400"><X className="w-5 h-5" /></button>
         </div>
-        <div className="grid sm:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
           <label className="block space-y-1.5 text-sm">
             <span className="font-medium text-zinc-700 dark:text-zinc-300">Number of students</span>
             <select className={input} value={size} onChange={(e) => setSize(e.target.value)}>

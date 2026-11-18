@@ -43,7 +43,7 @@ export function CampusItemList({ kind, guide }: {
 }) {
   const { data, error, isLoading } = useSWR<CampusItem[]>(`/api/campus-items?kind=${kind}`, authedJson);
 
-  if (isLoading) return <div className="grid sm:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-2xl skeleton" />)}</div>;
+  if (isLoading) return <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{[0, 1, 2, 3].map((i) => <div key={i} className="h-28 rounded-2xl skeleton" />)}</div>;
   if (error) return <p className="text-sm text-rose-500">{(error as Error).message}</p>;
   if (!data || data.length === 0) {
     return (
@@ -68,7 +68,7 @@ export function CampusItemList({ kind, guide }: {
       {Object.entries(groups).map(([group, items]) => (
         <section key={group}>
           <h3 className="text-xs font-bold uppercase tracking-widest text-zinc-500 mb-3">{group}</h3>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {items.map((it, i) => (
               <motion.div key={it.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(i, 8) * 0.04 }} className={`panel p-5 hover:border-indigo-500/30 transition-colors`}>
                 <div className="flex items-start justify-between gap-3">
@@ -171,7 +171,7 @@ export function CampusItemManager({ kind, label, categories, query = '', showPas
             <input className="input" placeholder="Category (optional)" value={form.category} maxLength={60} onChange={(e) => setForm({ ...form, category: e.target.value })} />
           )}
           <textarea className={`input min-h-[70px]`} placeholder={kind === 'MENU' ? 'One dish per line, e.g. Lentil curry (vegan)' : 'Description (optional)'} value={form.description} maxLength={1000} onChange={(e) => setForm({ ...form, description: e.target.value })} />
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {kind === 'EVENT' && <input aria-label="Date and time" className="input" type="datetime-local" value={form.startAt} onChange={(e) => setForm({ ...form, startAt: e.target.value })} />}
             {kind === 'EVENT' && <input className="input" type="number" min={1} placeholder="Seats (empty: no limit)" aria-label="Seats" value={form.capacity} onChange={(e) => setForm({ ...form, capacity: e.target.value })} />}
             {kind === 'EVENT' && (

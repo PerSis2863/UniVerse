@@ -101,7 +101,7 @@ export function AccountSetupCard() {
     <motion.section
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-3xl border border-indigo-200/70 dark:border-indigo-400/20 bg-white/70 dark:bg-white/[0.03] backdrop-blur-xl p-5 md:p-6"
+      className="relative overflow-hidden rounded-3xl border border-indigo-200/70 dark:border-indigo-400/20 bg-[var(--card-bg)] p-5 md:p-6"
     >
       <div aria-hidden className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-fuchsia-500/10 pointer-events-none" />
       <div className="relative flex items-start justify-between gap-4 mb-4">
@@ -117,7 +117,7 @@ export function AccountSetupCard() {
       <div className="relative h-1.5 rounded-full bg-zinc-200 dark:bg-white/[0.08] overflow-hidden mb-4">
         <Fill value={pct / 100} className="h-full rounded-full bg-gradient-to-r from-indigo-500 to-fuchsia-500" />
       </div>
-      <ul className="relative grid gap-2 sm:grid-cols-2">
+      <ul className="relative grid grid-cols-1 gap-2 sm:grid-cols-2">
         {steps.map((s) => (
           <li key={s.key} className={cn('p-3 rounded-2xl border', s.done ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-zinc-200 dark:border-white/[0.07] bg-white/50 dark:bg-white/[0.02]')}>
             <div className="flex items-start gap-3">

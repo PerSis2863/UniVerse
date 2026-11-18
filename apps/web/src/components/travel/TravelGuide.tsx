@@ -101,7 +101,7 @@ export function TravelGuide() {
       </section>
 
       {/* The country's facts and the week's weather. */}
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
         {c && (
           <section className="panel p-5" aria-label={`About ${c.name}`}>
             <p className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><span className="text-2xl" aria-hidden>{c.flag}</span>{c.name}{c.capital && <span className="text-sm font-normal text-zinc-500 dark:text-zinc-400">· capital {c.capital}</span>}</p>
@@ -174,7 +174,7 @@ export function TravelGuide() {
               {g.places.length > 0 && (
                 <section aria-labelledby="guide-places">
                   <h3 id="guide-places" className="mb-3 text-lg font-semibold text-zinc-900 dark:text-white">Places in {nice(g.title)}</h3>
-                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {g.places.map((p) => (
                       <li key={p.title}><Link href={guideHref(p.title)} className="card flex h-full items-start gap-3 p-4 transition-[transform] duration-200 hover:-translate-y-0.5">
                         <MapPin className="mt-0.5 h-5 w-5 shrink-0 text-indigo-500" aria-hidden />
@@ -195,7 +195,7 @@ export function TravelGuide() {
           {current.id === 'eat' && data.tips?.dishes?.length ? (
             <section aria-labelledby="guide-dishes" className="panel p-6">
               <h3 id="guide-dishes" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><ChefHat className="h-5 w-5 text-indigo-500" aria-hidden />What to try</h3>
-              <ul className="mt-3 grid gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
+              <ul className="mt-3 grid grid-cols-1 gap-2 md:grid-cols-2">{data.tips.dishes.map((s, i) => <li key={i} className="rounded-xl bg-orange-500/[0.07] px-4 py-3 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{s}</li>)}</ul>
             </section>
           ) : null}
           {current.id !== 'overview' && current.id !== 'know' && (
@@ -231,7 +231,7 @@ export function TravelGuide() {
                       </label>
                     )}
                   </div>
-                  <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                  <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     {shown.map((l, i) => <ListingCard key={`${l.name}-${i}`} guide={g.title} l={l} saved={saved.get(l.name)} near={nice(g.title)} />)}
                   </ul>
                 </>

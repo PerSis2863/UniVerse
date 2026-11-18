@@ -319,7 +319,7 @@ export function ReliefApp() {
         </div>
       </div>
 
-      <div className="cmd-relief grid items-start gap-3 xl:grid-cols-[400px_1fr]">
+      <div className="cmd-relief grid grid-cols-1 items-start gap-3 xl:grid-cols-[400px_1fr]">
         <section aria-label="Needs you" className="order-2 space-y-2.5 xl:order-1 xl:max-h-[min(78vh,880px)] xl:overflow-y-auto xl:pe-1">
           <div className="px-1 pb-1 pt-0.5">
             <h2 className="flex items-center gap-2 text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">Needs you{counts.URGENT > 0 && <span className="rounded-md bg-[var(--cmd-fill)] px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">{counts.URGENT}</span>}</h2>
@@ -443,7 +443,7 @@ export function ReliefApp() {
         // M48: how requests move from asked to helped, as a stream of light.
         <LiveCard title="Help, moving" sub="Needs on the map, people on the way, and help given in 30 days"
           ticker={(data?.recent ?? []).slice(0, 6).map((p) => `${p.type === 'OFFER' ? 'Offer' : 'Need'}: ${p.title}`)}>
-          <div className="grid items-center gap-4 lg:grid-cols-[1fr_240px]">
+          <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_240px]">
             <Funnel className="h-[200px]" label="Needs open, being helped, and helped in the last 30 days"
               stages={[{ label: 'Open needs', value: s.openNeeds }, { label: 'Being helped', value: s.inProgress }, { label: 'Helped', value: s.helped }]} />
             {/* M49: open needs on a radar, the most urgent in the middle. */}

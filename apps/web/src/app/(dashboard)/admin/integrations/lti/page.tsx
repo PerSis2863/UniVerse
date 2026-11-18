@@ -90,7 +90,7 @@ export default function LtiPage() {
           </div>
           <p className="text-xs text-zinc-500">{PRESETS[preset].hint}</p>
           {preset === 'moodle' && <label className="block"><span className="text-xs font-semibold text-zinc-500">Your Moodle address</span><input value={site} onChange={(e) => { setSite(e.target.value); applyPreset('moodle', e.target.value); }} placeholder="https://moodle.your-university.fr" className={input} /></label>}
-          <div className="grid sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {([['name', 'Name'], ['issuer', 'Issuer (platform ID)'], ['clientId', 'Client ID'], ['deploymentIds', 'Deployment ID(s)'], ['authLoginUrl', 'Authorisation URL'], ['jwksUrl', 'Public keyset URL']] as const).map(([k, l]) => (
               <label key={k} className="block"><span className="text-xs font-semibold text-zinc-500">{l}</span><input value={form[k]} onChange={(e) => setForm({ ...form, [k]: e.target.value })} className={input} /></label>
             ))}

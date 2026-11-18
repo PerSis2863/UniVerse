@@ -63,7 +63,7 @@ function SupplierForm({ code, data, onDone }: { code: string; data: Extract<Link
         <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300"><strong translate="no">{data.org}</strong> is measuring its carbon footprint and asks <strong translate="no">{data.supplier}</strong> for its own figures. They count their share by what they spent with you; they see only these numbers.</p>
         {data.answered && <p className="mt-2 flex items-center gap-1.5 text-sm font-semibold text-emerald-700 dark:text-emerald-300"><Check className="h-4 w-4" aria-hidden />Sent. You can correct it below.</p>}
       </div>
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <label className={label}>Scope 1, tonnes CO₂e (fuel you burn)<input required type="number" min={0} step="any" inputMode="decimal" value={f.scope1} onChange={set('scope1')} className={field} /></label>
         <label className={label}>Scope 2, tonnes CO₂e (electricity you buy)<input required type="number" min={0} step="any" inputMode="decimal" value={f.scope2} onChange={set('scope2')} className={field} /></label>
         <label className={label}>Scope 3, tonnes CO₂e (if you have it)<input type="number" min={0} step="any" inputMode="decimal" value={f.scope3} onChange={set('scope3')} className={field} /></label>

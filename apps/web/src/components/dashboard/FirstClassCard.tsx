@@ -39,7 +39,7 @@ export function FirstClassCard({ onNewCourse }: { onNewCourse: () => void }) {
         </div>
         <button type="button" onClick={hide} aria-label="Hide your first class steps" className="p-1.5 rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
       </div>
-      <ol className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+      <ol className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {steps.map((s, i) => (
           <li key={s.title} className={cn('rounded-xl border p-3.5 flex flex-col gap-2', s.done ? 'border-emerald-500/30 bg-emerald-500/[0.06]' : 'border-zinc-200 dark:border-white/10')}>
             <p className="flex items-center gap-2 text-sm font-semibold text-zinc-900 dark:text-white">

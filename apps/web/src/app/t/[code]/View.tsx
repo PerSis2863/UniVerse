@@ -352,7 +352,7 @@ function WarrantyCard({ code, warranty, suspect }: { code: string; warranty: Non
       ) : suspect ? (
         <p className="mt-2 text-sm text-zinc-300">The warranty can’t be registered while the label may be a copy.</p>
       ) : (
-        <form onSubmit={(e) => void save(e)} className="mt-3 grid gap-2 sm:grid-cols-[1fr_1fr_auto]">
+        <form onSubmit={(e) => void save(e)} className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-[1fr_1fr_auto]">
           <input required maxLength={80} value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} placeholder="Your name" aria-label="Your name" className="h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
           <input required type="email" maxLength={160} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="Email" aria-label="Email" className="h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
           <button type="submit" disabled={busy} className="btn-primary h-11 justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register'}</button>

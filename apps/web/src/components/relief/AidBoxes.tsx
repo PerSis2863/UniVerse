@@ -101,7 +101,7 @@ function PackForm({ orgId, place, onDone }: { orgId: string; place: string | nul
     <section className="panel p-5" aria-labelledby="pack-h">
       <h2 id="pack-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Package className="w-5 h-5 text-orange-500" aria-hidden />Pack a box</h2>
       <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400 max-w-[75ch]">Donors see what is in it, the towns it passes and when, never who packed, carried or received it.</p>
-      <form onSubmit={(e) => void pack(e)} className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,2fr)_6rem_minmax(0,1.3fr)_minmax(0,1.3fr)] sm:items-end">
+      <form onSubmit={(e) => void pack(e)} className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,2fr)_6rem_minmax(0,1.3fr)_minmax(0,1.3fr)] sm:items-end">
         <label className={L}>What is in it<input required maxLength={200} value={f.contents} onChange={(e) => setF({ ...f, contents: e.target.value })} className="input mt-1" placeholder="e.g. Hygiene kits for 20 families" /></label>
         <label className={L}>Boxes<input type="number" min={1} max={10000} value={f.boxes} onChange={(e) => setF({ ...f, boxes: e.target.value })} className="input mt-1" /></label>
         <label className={L}>From<input maxLength={120} value={f.fromPlace} onChange={(e) => setF({ ...f, fromPlace: e.target.value })} className="input mt-1" placeholder={place ?? 'Our base'} /></label>

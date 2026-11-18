@@ -52,7 +52,7 @@ export function DiningMenu() {
           </button>
         ))}
       </div>
-      <motion.div key={day} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="grid sm:grid-cols-3 gap-3">
+      <motion.div key={day} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={spring.smooth} className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {meals.map((m) => (
           <div key={m.id} className="rounded-2xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-4">
             <p className="text-xs font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-300">{m.category || 'Menu'}</p>

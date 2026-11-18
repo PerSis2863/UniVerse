@@ -146,7 +146,7 @@ export default function TeacherGradesPage() {
         {adding && (
           <div className={`panel p-5 space-y-3`}>
             <div className="flex items-center justify-between"><p className="font-semibold text-zinc-900 dark:text-white">Record a grade</p><button onClick={() => setAdding(null)} aria-label="Close" className="p-1 text-zinc-500"><X className="w-4 h-4" /></button></div>
-            <div className="grid sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <select aria-label="Student" className="input" value={adding.studentId} onChange={(e) => setAdding({ ...adding, studentId: e.target.value })}>
                 <option value="">Choose a student…</option>
                 {rows.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}

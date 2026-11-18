@@ -34,7 +34,7 @@ function Essay() {
       <Field label="Your answer in one sentence (thesis)"><textarea className="input min-h-[60px]" value={e.thesis} onChange={(x) => setE({ ...e, thesis: x.target.value })} placeholder="Homework should be limited, because…" /></Field>
       <Field label="Introduction: hook the reader, give background"><textarea className="input min-h-[60px]" value={e.intro} onChange={(x) => setE({ ...e, intro: x.target.value })} /></Field>
       {e.paras.map((p, i) => (
-        <fieldset key={p.id} className="rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10 p-3 grid gap-2 lg:grid-cols-3">
+        <fieldset key={p.id} className="rounded-2xl ring-1 ring-zinc-200 dark:ring-white/10 p-3 grid grid-cols-1 gap-2 lg:grid-cols-3">
           <legend className="px-1 text-xs font-semibold text-zinc-600 dark:text-zinc-300">Paragraph {i + 1} {e.paras.length > 1 && <button type="button" onClick={() => setE({ ...e, paras: e.paras.filter((x) => x.id !== p.id) })} className="ms-1 underline">remove</button>}</legend>
           <Field label="Point"><textarea className="input min-h-[70px]" value={p.point} onChange={(x) => put(p.id, { point: x.target.value })} /></Field>
           <Field label="Evidence (a quote, fact or example)"><textarea className="input min-h-[70px]" value={p.evidence} onChange={(x) => put(p.id, { evidence: x.target.value })} /></Field>
@@ -83,7 +83,7 @@ function Poem() {
   const groups = new Map<string, number[]>(); p.lines.forEach((l, i) => { const e = end(l.line); if (e) groups.set(e, [...(groups.get(e) ?? []), i]); });
   const letter = new Map<number, string>(); let k = 0; [...groups.values()].filter((g) => g.length > 1).forEach((g) => { const L = String.fromCharCode(65 + k++); g.forEach((i) => letter.set(i, L)); });
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       <Field label="Your poem"><textarea className={cn(area, 'min-h-[260px] font-sans text-base')} value={t} onChange={(e) => setT(e.target.value)} /></Field>
       <div className="space-y-2">
         <p className={cn('font-bold', p.haiku ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-900 dark:text-white')} role="status">{p.haiku ? 'A haiku: 5, 7, 5 syllables.' : `${p.lines.length} lines`}</p>
@@ -154,7 +154,7 @@ function Glossary() {
   const cards = list.map((x) => `${x.term} - ${x.def}`).join('\n');
   return (
     <div className="space-y-3">
-      <form onSubmit={(e) => { e.preventDefault(); if (term.trim() && def.trim()) { setList([...list, { id: uid(), term: term.trim(), def: def.trim() }]); setTerm(''); setDef(''); } }} className="grid gap-2 sm:grid-cols-[200px_1fr_auto] items-end">
+      <form onSubmit={(e) => { e.preventDefault(); if (term.trim() && def.trim()) { setList([...list, { id: uid(), term: term.trim(), def: def.trim() }]); setTerm(''); setDef(''); } }} className="grid grid-cols-1 gap-2 sm:grid-cols-[200px_1fr_auto] items-end">
         <Field label="Term"><input className="input" value={term} onChange={(e) => setTerm(e.target.value)} /></Field>
         <Field label="What it means"><input className="input" value={def} onChange={(e) => setDef(e.target.value)} /></Field>
         <button type="submit" className="btn-primary btn-sm"><Plus className="w-4 h-4" aria-hidden />Add</button>
@@ -178,7 +178,7 @@ function Cornell() {
     <div className="space-y-3">
       <div className="flex flex-wrap items-end gap-2"><Field label="Topic"><input className="input" value={n.topic} onChange={(e) => setN({ ...n, topic: e.target.value })} /></Field><Field label="Date"><input type="date" className="input" value={n.date} onChange={(e) => setN({ ...n, date: e.target.value })} /></Field><CopyBtn text={md} label="Copy" /><Btn onClick={() => printOnly('cornell-sheet')}><Printer className="w-3.5 h-3.5" aria-hidden />Print</Btn></div>
       <div id="cornell-sheet" className="rounded-2xl bg-white ring-1 ring-black/10 text-zinc-900 overflow-hidden">
-        <div className="grid sm:grid-cols-[1fr_2fr] divide-y sm:divide-y-0 sm:divide-x divide-zinc-300">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_2fr] divide-y sm:divide-y-0 sm:divide-x divide-zinc-300">
           <label className="block p-3"><span className="text-xs font-bold uppercase text-[#4b5068]">Questions and key words</span><textarea className="mt-1 w-full min-h-[260px] resize-y bg-transparent outline-none text-sm" value={n.cues} onChange={(e) => setN({ ...n, cues: e.target.value })} /></label>
           <label className="block p-3"><span className="text-xs font-bold uppercase text-[#4b5068]">Notes</span><textarea className="mt-1 w-full min-h-[260px] resize-y bg-transparent outline-none text-sm" value={n.notes} onChange={(e) => setN({ ...n, notes: e.target.value })} /></label>
         </div>

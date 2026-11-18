@@ -51,7 +51,7 @@ export function GuidePanel() {
         </div>
       </div>
       <p className="mt-3 text-xs text-zinc-500">“Make a fresh one” draws the latest version (packed edge to edge, everything up to date). An older copy stays in Whiteboards until you delete it.</p>
-      <ol className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-2">
+      <ol className="mt-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
         {GUIDE_AREAS.map((area, i) => {
           const [title, what] = area.split(': ');
           return (

@@ -11,7 +11,7 @@ export function ContentSkeleton({ variant = 'list', className }: { variant?: Var
       {variant === 'dashboard' && (
         <>
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">{[0, 1, 2, 3].map((i) => <Block key={i} className="h-28" />)}</div>
-          <div className="grid lg:grid-cols-3 gap-4"><Block className="lg:col-span-2 h-72" /><Block className="h-72" /></div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4"><Block className="lg:col-span-2 h-72" /><Block className="h-72" /></div>
         </>
       )}
       {variant === 'grid' && (

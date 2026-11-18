@@ -60,7 +60,7 @@ function Morse() {
     setPlaying(true);
   };
   return (
-    <div className="grid gap-3 lg:grid-cols-2">
+    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
       <Field label="Text"><textarea className={area} value={t} onChange={(e) => { setT(e.target.value); setM(toMorse(e.target.value)); }} /></Field>
       <Field label="Morse (. and -, a / between words)"><textarea className={cn(area, 'tracking-widest')} value={m} onChange={(e) => { setM(e.target.value); setT(fromMorse(e.target.value)); }} /></Field>
       <div className="flex flex-wrap items-center gap-3 lg:col-span-2">
@@ -102,7 +102,7 @@ function Roman() {
   const [n, setN] = useState('2026'), [r, setR] = useState('MMXXVI'), [err, setErr] = useState('');
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Field label="Number (1–3999)"><input className="input font-mono text-lg" inputMode="numeric" value={n} onChange={(e) => { setN(e.target.value); try { setR(toRoman(+e.target.value)); setErr(''); } catch (x) { setErr((x as Error).message); } }} /></Field>
         <Field label="Roman numerals"><input className="input font-mono text-lg uppercase" value={r} onChange={(e) => { setR(e.target.value); try { setN(String(fromRoman(e.target.value))); setErr(''); } catch (x) { setErr((x as Error).message); } }} /></Field>
       </div>
@@ -126,7 +126,7 @@ function Letters() {
   const tpl = LETTERS[kind], blanks = [...new Set([...tpl.matchAll(/\[([^\]]+)\]/g)].map((m) => m[1]))];
   const out = tpl.replace(/\[([^\]]+)\]/g, (m, k: string) => (k === 'Date' && !vals[k] ? new Date().toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' }) : vals[k]?.trim() || m));
   return (
-    <div className="grid gap-4 lg:grid-cols-[300px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[300px_1fr]">
       <div className="space-y-2">
         <Field label="Letter"><select className="input" value={kind} onChange={(e) => setKind(e.target.value)}>{Object.keys(LETTERS).map((k) => <option key={k}>{k}</option>)}</select></Field>
         {blanks.map((b) => <Field key={b} label={b}><input className="input" value={vals[b] ?? ''} placeholder={b === 'Date' ? 'Today' : ''} onChange={(e) => setVals({ ...vals, [b]: e.target.value })} /></Field>)}
@@ -207,7 +207,7 @@ function Journal() {
   const words = e.text.trim() ? e.text.trim().split(/\s+/).length : 0;
   const all = () => Object.entries(entries).sort((a, b) => a[0].localeCompare(b[0])).filter(([, x]) => x.text.trim()).map(([d, x]) => `${d}${x.mood ? ` (${x.mood})` : ''}\n${x.text}`).join('\n\n---\n\n');
   return (
-    <div className="grid gap-4 lg:grid-cols-[280px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[280px_1fr]">
       <div className="space-y-3">
         <div className="flex items-center justify-between">
           <button type="button" onClick={() => shift(-1)} aria-label="Previous month" className="btn-ghost btn-icon"><ChevronLeft className="w-4 h-4 rtl:rotate-180" aria-hidden /></button>
@@ -250,7 +250,7 @@ function WordPlay() {
       <Segments label="Game" value={mode} onChange={setMode} options={[['anagram', 'Anagram'], ['palindrome', 'Palindrome'], ['letters', 'Letters']] as const} />
       {mode === 'anagram' ? (
         <div className="space-y-2">
-          <div className="grid gap-2 sm:grid-cols-2"><Field label="First"><input className="input" value={a} onChange={(e) => setA(e.target.value)} /></Field><Field label="Second"><input className="input" value={b} onChange={(e) => setB(e.target.value)} /></Field></div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2"><Field label="First"><input className="input" value={a} onChange={(e) => setA(e.target.value)} /></Field><Field label="Second"><input className="input" value={b} onChange={(e) => setB(e.target.value)} /></Field></div>
           <p role="status" className={cn('text-lg font-bold', isAnagram(a, b) ? 'text-emerald-700 dark:text-emerald-300' : 'text-zinc-900 dark:text-white')}>{isAnagram(a, b) ? 'Yes, an anagram: the same letters.' : 'Not an anagram.'}</p>
         </div>
       ) : (

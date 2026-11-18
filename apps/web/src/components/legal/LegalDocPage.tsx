@@ -18,7 +18,7 @@ export function LegalDocPage({ doc }: { doc: LegalDocId }) {
     <LegalShell title={d.title} intro={d.blurb} updated={updated}>
       <nav aria-label="Contents" className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
         <p className="text-xs font-bold uppercase tracking-[0.2em] text-zinc-500">Contents</p>
-        <ol className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 text-sm">
+        <ol className="mt-3 grid grid-cols-1 gap-x-6 gap-y-1.5 sm:grid-cols-2 text-sm">
           {headings.map((h) => (
             <li key={h.id}><a href={`#${h.id}`} className="text-zinc-300 hover:text-white transition-colors">{h.title}</a></li>
           ))}

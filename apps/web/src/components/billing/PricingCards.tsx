@@ -43,7 +43,7 @@ export function PricingCards({ interval, onIntervalChange, onSelect, currentPlan
   return (
     <div className="flex flex-col items-center gap-10 w-full">
       <IntervalToggle interval={interval} onChange={onIntervalChange} dark={dark} />
-      <div className="grid w-full gap-6 lg:grid-cols-3 items-stretch">
+      <div className="grid grid-cols-1 w-full gap-6 lg:grid-cols-3 items-stretch">
         {PLAN_ORDER.map((id) => {
           const plan = PLANS[id];
           const price = plan.monthlyPrice[interval];

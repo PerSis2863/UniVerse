@@ -142,7 +142,7 @@ export function Arcade() {
     <div className="space-y-6">
       <section className="panel relative overflow-hidden p-5 sm:p-8">
         <div className="pointer-events-none absolute -start-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/25 blur-3xl" aria-hidden />
-        <div className="relative grid gap-6 lg:grid-cols-[1fr_22rem] lg:items-end">
+        <div className="relative grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem] lg:items-end">
           <div>
             <p className="inline-flex items-center gap-1.5 rounded-full bg-fuchsia-500/15 px-2.5 py-1 text-xs font-semibold text-fuchsia-800 dark:text-fuchsia-200"><Gamepad2 className="w-3.5 h-3.5" aria-hidden />UniVerse Play</p>
             <h1 className="mt-3 text-3xl font-semibold text-zinc-900 dark:text-white sm:text-4xl">Games that <em className="accent-word">teach</em> something.</h1>
@@ -167,7 +167,7 @@ export function Arcade() {
             <p className="text-sm text-zinc-500 dark:text-zinc-400">{kind === 'worlds' ? 'Run, jump, explore and survive in 3D: an obby, horror, space, a coral reef and, on computers, a battle royale.' : kind === 'big' ? 'Full-screen, longer rounds: fly, steer, type and explore.' : 'A minute each, perfect between classes.'}</p>
           </div>
           {/* A lone last card takes the whole row (M180: no empty half beside it). */}
-          <div className="grid gap-4 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:[&>*:last-child:nth-child(odd)]:col-span-2">
             {GAME_IDS.filter((g) => (kind === 'worlds' ? !!GAMES[g].world : !GAMES[g].world && !!GAMES[g].big === (kind === 'big'))).map((g, i) => {
           const info = GAMES[g], mine = me?.games[g];
           return (

@@ -115,7 +115,7 @@ export default function ApprovalsPage() {
             <InvitationsPanel onBack={() => setShowInvitations(false)} onInvite={() => setInviting(true)} />
           </div>
         ) : (
-        <div className="w-full grid lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
+        <div className="w-full grid grid-cols-1 lg:grid-cols-[minmax(0,380px)_1fr] gap-6 items-start">
           {/* List */}
           <section className={cn('space-y-4', selected && 'hidden lg:block')}>
             <button onClick={() => setInviting(true)} className="btn-primary w-full">
@@ -287,7 +287,7 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
       {!!a.checks?.length && (
         <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
           <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">Quick checks</h3>
-          <ul className="grid sm:grid-cols-2 gap-2">
+          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {a.checks.map((c, i) => (
               <li key={i} className="flex gap-2 text-sm">
                 {c.ok ? <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0 text-emerald-500" /> : <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0 text-amber-500" />}
@@ -301,7 +301,7 @@ function ApplicationDetail({ id, onBack, onDecided }: { id: string; onBack: () =
       {/* Details */}
       <div className="rounded-2xl border border-zinc-200 dark:border-white/[0.06] bg-white dark:bg-zinc-900/50 p-5">
         <h3 className="font-semibold text-zinc-900 dark:text-white mb-3">What they told us</h3>
-        <dl className="grid sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
+        <dl className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-3 text-sm">
           {rows.filter(([, v]) => v).map(([k, v]) => (
             <div key={k} className="min-w-0">
               <dt className="text-xs text-zinc-500">{k}</dt>
