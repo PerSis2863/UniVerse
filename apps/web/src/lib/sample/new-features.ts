@@ -2,6 +2,7 @@
 import { buildVersions, paperTotal, type SourceQuestion } from '@/lib/exam-paper';
 import type { SampleDb } from './data';
 import { stepsFor } from '@/lib/early-warning-steps';
+import { lessonDates, mondayOf } from '@/lib/lesson-plan';
 
 // Sample answers for the features of M291 onwards (made up), so "Explore with sample data" shows them filled.
 
@@ -39,4 +40,17 @@ export function sampleEarlyWarning(d: SampleDb) {
     flag(b, 35, 'WATCH', [{ code: 'quizzes', text: 'Didn’t hand in the quiz “Threads and locks”' }, { code: 'inactive', text: 'Hasn’t opened UniVerse in 15 days' }], [45, 40, 35]),
   ];
   return { flags, summary: { atRisk: 1, watch: 1, contacted: 0, resolved: 0 }, courses: [course] };
+}
+
+/** GET /lesson-plans?courseId= (M293): two weekly classes and the first lessons planned. */
+export function sampleLessonPlan(d: SampleDb) {
+  const canEdit = d.me.role === 'TEACHER' || d.me.role === 'ADMIN';
+  const slots = [{ id: 'sample-slot-mon', dayOfWeek: 0, startTime: '09:00', endTime: '10:30', type: 'LECTURE' }, { id: 'sample-slot-thu', dayOfWeek: 3, startTime: '14:00', endTime: '15:30', type: 'LAB' }];
+  const monday = mondayOf(new Date().toISOString().slice(0, 10));
+  const topics = ['Processes and the scheduler', 'Lab: writing a round-robin scheduler', 'Threads and shared memory', 'Lab: locks and races', 'Deadlock'];
+  const lessons = lessonDates(slots, monday, 3).slice(0, topics.length).map((l, i) => ({
+    day: l.day, slotId: l.slotId, topic: topics[i], goals: i === 0 ? 'Explain what a context switch costs.' : null, homework: i === 1 ? 'Finish the scheduler and time three workloads.' : null,
+    materialIds: i === 0 ? ['sample-m-1'] : [], done: i === 0, inCalendar: true,
+  }));
+  return { canEdit, slots, materials: [{ id: 'sample-m-1', title: 'Week 1 slides' }, { id: 'sample-m-2', title: 'Scheduler starter code' }], modules: ['Processes', 'Threads', 'Memory', 'File systems'], lessons };
 }

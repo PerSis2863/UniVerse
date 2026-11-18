@@ -9022,3 +9022,19 @@ already flagged students with reasons, a check-in message and a support plan (St
   `trendOf` compares now with about a week before (±10): a "Getting worse" or "Improving" chip on the row and a
   `Spark` line in the detail (its values also as screen-reader text).
 - The board had no sample answer; it has one now (`sampleEarlyWarning`).
+
+## M293: the term lesson planner (18 Nov)
+
+The owner's 32 features, UniVersity 3 ("a term lesson planner linked to materials and the calendar").
+
+- **A course's Lesson plan tab** (`LessonPlanner.tsx`, `/lesson-plans`, `src/server/lesson-plans.ts`, dates in
+  `src/lib/lesson-plan.ts`): the term's classes come from the course's `timetable_slots` (`lessonDates`: from the
+  Monday of the chosen start, up to 26 weeks), worked out **in the browser**, so a class's `startAt`/`endAt` are the
+  teacher's own clock times. Each class: topic, goals, homework, up to 10 of the course's materials, Taught.
+- **Fill from the modules** (`spreadModules`): the modules' titles over the classes still empty, an equal share each.
+- **Put in the calendar:** the planned classes from today become course events (`batch` `lessons:<courseId>`, replaced
+  each time), titled "CODE: topic" with the goals and homework; enrolled students see them in their calendar
+  (`getMyEvents` already shows course events) and their open calendars refresh (`publish`).
+- Students read the coming classes (no editing); `lesson_plans` (0240) one row per planned class (`courseId, day, slotId`).
+- **Rule:** saving sends at most 60 lessons a request (the planner splits bigger saves); a lesson saved with no topic
+  is removed from the plan.

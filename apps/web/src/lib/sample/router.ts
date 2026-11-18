@@ -1796,6 +1796,8 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/api\/admin\/report-cards$/, () => ok({ runs: [], school: 'Sample University' })],
   // Early warning with its steps and trend (M292).
   [/^\/api\/early-warning$/, ({ db: d }) => ok(extra.sampleEarlyWarning(d))],
+  // The term lesson planner (M293).
+  [/^\/lesson-plans$/, ({ db: d }) => ok(extra.sampleLessonPlan(d))],
   // Paper exams (M291).
   [/^\/exam-papers$/, () => ok(extra.samplePapers())],
   [/^\/exam-papers\/([^/]+)$/, ({ db: d }) => ok(extra.samplePaper(d))],
@@ -2827,6 +2829,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['POST', /^\/api\/tutoring\/sessions\/([^/]+)\/complete$/, ({ body }) => ok({ session: { id: 'sess_sample_1', status: 'COMPLETED', ...body }, tutorStats: { balanceCredits: 5, averageRating: 4.9, sessionsCompletedAsTutor: 4, badgeAwarded: true } })],
   ['POST', /^\/api\/student\/guardian-accounts$/, () => { notice(); return ok({ links: [], code: null }); }],
   ['POST', /^\/api\/admin\/report-cards$/, () => { notice(); return ok({ ok: true }); }],
+  ['POST', /^\/lesson-plans(\/calendar)?$/, () => { notice(); return ok({ saved: 0, removed: 0, sent: 0 }); }],
   ['POST', /^\/exam-papers(\/.*)?$/, () => { notice(); return ok({ paper: { id: 'sample-paper' }, score: 0, total: 0, posted: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/question-bank$/, () => { notice(); return ok({ questions: [], imported: 0, added: 0 }); }],
   ['POST', /^\/api\/courses\/([^/]+)\/staff$/, () => { notice(); return ok({ ok: true }); }],

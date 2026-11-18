@@ -4,6 +4,7 @@ import { num } from '../trace';
 import { dailyCounts } from '@/lib/daily-counts';
 import { CoursesService } from '../services/courses.service';
 import { audit } from '../audit';
+import { lessonPlan, lessonsToCalendar, saveLessons } from '../lesson-plans';
 import { first, str } from '../body';
 
 const courses = new CoursesService();
@@ -52,4 +53,11 @@ export default function coursesModule(router: Router) {
 
   r.post<{ id: string }>(':id/enroll', { roles: ['STUDENT'] }, ({ params, user }) => courses.enroll(params.id, user.id));
   r.post<{ id: string }>(':id/unenroll', ({ params, user }) => courses.unenroll(params.id, user.id));
+
+  // The term lesson planner (M293): read by the course's people, changed by its teachers.
+  const lessons = router.controller('lesson-plans');
+  lessons.get('', ({ user, query }) => lessonPlan(user, str(query.courseId) ?? ''));
+  lessons.post('', { roles: ['ADMIN', 'TEACHER'] }, ({ user, body }) => saveLessons(user, body));
+  lessons.post('calendar', { roles: ['ADMIN', 'TEACHER'] }, ({ user, body }) => lessonsToCalendar(user, body));
+
 }

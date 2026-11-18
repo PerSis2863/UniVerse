@@ -8230,3 +8230,26 @@ model ExamMark {
   @@index([studentId])
   @@map("exam_marks")
 }
+
+/// M293: one planned class of a course in the term lesson planner (src/lib/lesson-plan.ts): its day (YYYY-MM-DD) and
+/// timetable slot, topic, goals, homework, materials (JSON ids) and the calendar event students see (`eventId`).
+model LessonPlan {
+  id          String    @id @default(cuid())
+  courseId    String
+  day         String
+  slotId      String
+  startAt     DateTime?
+  endAt       DateTime?
+  topic       String
+  goals       String?
+  homework    String?
+  materialIds String    @default("[]")
+  done        Boolean   @default(false)
+  eventId     String?
+  createdById String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@unique([courseId, day, slotId])
+  @@map("lesson_plans")
+}
