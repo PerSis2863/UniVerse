@@ -22,7 +22,7 @@ const TravelFinder = dynamic(() => import('./TravelFinder').then((m) => m.Travel
 // M209: the map (MapLibre and its styles load only when it's opened).
 const TravelMap = dynamic(() => import('./map/TravelMap'), {
   ssr: false,
-  loading: () => <div className="h-[calc(100dvh-12rem)] min-h-[32rem] animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
+  loading: () => <div className="h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />,
 });
 const FIRST = 24;
 const HERE: [LucideIcon, string][] = [[Compass, 'A guide to every city, island and park'], [CloudSun, 'This week’s weather and the best months'], [Users, 'Trips planned with friends, day by day'], [MapPinned, 'Real places, opening hours and reviews']];

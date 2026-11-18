@@ -8826,3 +8826,20 @@ here": "i dont understand… if i want directions from one place to another then
   by Stephen Sauvestre; no credit line; Directions opens From / To; axe clean at 1280 and 390), `pnpm check`. The fun
   fact couldn't be seen live from this cloud machine (Wikipedia refused it while the photo search ran): it's tested on
   an article's text.
+
+## M271: on a phone, a map page has no top bar (18 Nov)
+
+The owner, with a phone screenshot of Travel's map: "the upper line where the universe logo, notifications and search is not
+needed and the map can get that area… and also see this type of thing can be done where else".
+
+- `useBareChrome()` (`src/lib/chrome.ts`) on a page that is one big map sets `html[data-bare]`; on a phone (below 1024
+  px) the top bar (`.mobile-header`) is hidden, `.mobile-main` keeps only the safe area, and `--bare-gain` (the bar's
+  height) is added to the map's own height (`h-[calc(100dvh-12rem+var(--bare-gain))]`). It's removed when the page goes.
+  The page's own tabs and the bottom tab bar stay, so there's always a way on. Computers are unchanged (that bar is a
+  phone's only).
+- **Where:** Travel's Map, Relief's Alerts map, Green's Places map. Already full screen and left as they are: games (the
+  arena, with Leave), the whiteboard, calls, Studio's focus mode. Kept with the bar: pages where a map shares the page
+  with lists (Relief's and Trace's main maps), Messages (its bar carries Back).
+- **Checked:** `scripts/checks/bare-chrome-ui.mjs` (on a phone the bar is gone on the three maps and back on leaving;
+  axe clean, no sideways scroll), `pnpm check`.
+- **Rule:** a new page that is one big map calls `useBareChrome()` and adds `var(--bare-gain)` to its height on phones.

@@ -45,3 +45,17 @@ export function setSectionRoot(path: string | null) {
 export function useSectionRoot() {
   return useSyncExternalStore(subscribeRoot, () => sectionRoot, () => null);
 }
+
+// M271 (the owner, 18 Nov: "when you go to map section then the upper line where the universe logo, notifications and
+// search is not needed and the map can get that area"): a page that is one big map asks for the bare chrome while it's
+// on screen: on a phone the top bar steps aside (globals.css `html[data-bare]`) and `--bare-gain` (its height) is added to
+// the map's. The page's own tabs and the tab bar stay, so there's always a way on.
+let bare = 0;
+export function useBareChrome(on = true) {
+  useEffect(() => {
+    if (!on) return;
+    const root = document.documentElement;
+    if (bare++ === 0) root.setAttribute('data-bare', '');
+    return () => { if (--bare === 0) root.removeAttribute('data-bare'); };
+  }, [on]);
+}

@@ -33,6 +33,7 @@ import { DestCard } from './DestCard';
 import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
+import { useBareChrome } from '@/lib/chrome';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
 // maps … something different that nobody has"): OpenFreeMap's vector map of OpenStreetMap (every street,
@@ -108,6 +109,7 @@ function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, nu
 }
 
 export default function TravelMap({ at, place, pin }: { at: string | null; place: string | null; pin?: boolean }) {
+  useBareChrome(); // M271: on a phone the map takes the top bar's place
   const box = useRef<HTMLDivElement>(null), pinBox = useRef<HTMLDivElement>(null), pins = useRef<PinImages>(new Map()), mapRef = useRef<MLMap | null>(null), photoMarks = useRef<Marker[]>([]), me = useRef<GeoJSON.FeatureCollection | null>(null);
   const dark = useDarkMode(), now = useNow();
   const [ready, setReady] = useState(false);
@@ -660,7 +662,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const panelTitle = picked ? null : walk ? `A ${Math.round(walk.total / 6) / 10} h walk` : found ? `“${found.q}” in this area` : dests ? 'Destinations in view' : `${CATEGORIES.find((c) => c.id === cat)!.label} here`;
   const moved = !!found && !!view && found.at !== `${view.lat.toFixed(3)},${view.lon.toFixed(3)},${view.zoom.toFixed(1)}`;
   return (
-    <div className={cn('overflow-hidden bg-zinc-200 dark:bg-zinc-900', full ? 'fixed inset-0 z-[70]' : 'relative h-[calc(100dvh-12rem)] min-h-[32rem] rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10 sm:-mx-8 sm:-mb-8 sm:h-[calc(100dvh-9.25rem)] sm:rounded-none sm:ring-0')}
+    <div className={cn('overflow-hidden bg-zinc-200 dark:bg-zinc-900', full ? 'fixed inset-0 z-[70]' : 'relative h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10 sm:-mx-8 sm:-mb-8 sm:h-[calc(100dvh-9.25rem+var(--bare-gain))] sm:rounded-none sm:ring-0')}
       data-no-arrange data-no-motion onKeyDown={(e) => { if (e.key === 'Escape' && full) setFull(false); }}>
       <PinSource ref={pinBox} />
       {/* Inline: MapLibre's own stylesheet makes its container position: relative. */}
