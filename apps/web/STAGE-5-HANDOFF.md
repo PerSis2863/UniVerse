@@ -9574,3 +9574,19 @@ photo-real Earth half sunk in white clouds (a video). Ours is drawn live:
   `.world-glass` styles are gone.
 - `Planet`'s `turnable` mode has no user now (a `shortcut:` note in `Planet.tsx`); the hub and Trace keep `Planet`.
 - Checked in a browser at 1280 and 390, light and dark: no errors, the canvas fades in once ready.
+
+## M332: the wheel's glide on Lenis's own clock (19 Nov)
+
+The owner: "it goes slow for 1 sec then it goes fast then again i scroll it happens same… i need the exact scroll and
+smoothness". tripist's Framer part (`SmoothScroll_Prod`) runs `new Lenis({ duration: intensity / 10 })` with intensity
+25 (read from its page module): M326's curve was right. Its clock wasn't: `t = now − start` with `start` taken in the
+wheel handler. Browsers hand wheel events to the page at the start of a frame, after the frame's timestamp is set, so
+`now < start` and the frame moved by `glideEase(0)` ≈ 0.1%. A trackpad or a spun wheel sends an event nearly every
+frame: the page stalled for the whole gesture and rushed when it ended. Headless tests miss it (their events arrive
+between frames). **`src/lib/smooth-scroll.ts`** now advances `elapsed` by the time since the previous frame (a frame's
+worth on the first), resets it to 0 on a turn, and rounds the target, all as Lenis's `Animate.advance` / `scrollTo`;
+`glideAt(from, to, elapsed)`. Compared with the real Lenis 1.3.4 injected into the landing (our glide off): one notch,
+a flick of four and a swipe match to a few pixels every 100 ms.
+
+- **For code that builds on it:** never time a frame-driven animation from an event's `performance.now()`; step it
+  with the rAF timestamps.
