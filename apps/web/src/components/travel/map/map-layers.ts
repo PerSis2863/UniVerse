@@ -68,7 +68,7 @@ export function addLayers(map: MLMap, dark: boolean) {
     map.addLayer({
       id: 'uv-buildings', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14,
       paint: {
-        'fill-extrusion-color': dark ? '#33373f' : '#d8dbe0', 'fill-extrusion-opacity': 0.92,
+        'fill-extrusion-color': dark ? '#272a31' : '#d8dbe0', 'fill-extrusion-opacity': 0.92,
         'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, ['coalesce', ['get', 'render_height'], 8]],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
       },
@@ -185,13 +185,14 @@ export function applyLook(map: MLMap, look: Look) {
   map.setTerrain(look.d3 ? { source: 'uv-dem', exaggeration: 1.3 } : null);
 }
 
-/** A sky that follows the sun there: blue by day, warm at golden hour, deep blue at night (seen when tilted). */
+/** A sky that follows the sun there: blue by day, warm at golden hour, deep blue at night (seen when tilted); in dark
+ *  mode always a night sky (M346, the owner: "any of the maps is not dark": a daytime blue glowed over the dark globe). */
 export function skyFor(map: MLMap, altitude: number, dark: boolean) {
   const night = altitude < -4, low = altitude < 10;
   map.setSky({
-    'sky-color': night ? '#0b1230' : low ? '#f2a65a' : dark ? '#3c6fb0' : '#7fb8f0',
-    'horizon-color': night ? '#1c2a5e' : low ? '#ffd7a8' : dark ? '#9cb8d8' : '#dfeeff',
-    'fog-color': night ? '#0e1528' : low ? '#f7cfa3' : dark ? '#222a33' : '#e7eef6',
+    'sky-color': night ? '#0b1230' : dark ? '#0d1626' : low ? '#f2a65a' : '#7fb8f0',
+    'horizon-color': night ? '#1c2a5e' : dark ? '#1a2638' : low ? '#ffd7a8' : '#dfeeff',
+    'fog-color': night ? '#0e1528' : dark ? '#111419' : low ? '#f7cfa3' : '#e7eef6',
     'sky-horizon-blend': 0.6, 'horizon-fog-blend': 0.5, 'fog-ground-blend': 0.4,
     'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 8, 1, 11, 0],
   });

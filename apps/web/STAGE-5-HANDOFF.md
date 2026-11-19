@@ -9893,3 +9893,26 @@ someone's video, co-hosts, spotlight, lower all hands, remove, end for everyone,
   (the room's own chat only: a chat call's messages go to that chat).
 - **Left out:** handing the host role to someone else (co-hosts cover it), phone dial-in and live streaming (paid),
   remote control (risky), touch-up and low-light filters (the effects pipeline would need a new pass).
+
+## M346 (19 Nov): dark maps, and a smoother landing near the Earth
+
+The owner, 19 Nov: "when i scroll towards here then it lags a lot… and the maps is not dark, any of the maps is not
+dark"; then "the whole main page is laggy".
+- **Maps:** every map already followed dark mode, but with Apple Maps' blue-slate land and bright navy sea, which read as
+  a light panel on the near-black page. Now a night map: the canvas maps (`WorldCanvas` `PAL.dark`: Trace, Relief, Green,
+  aid boxes) and the street maps (`map-style.ts` `DARK`: Travel, Green's places, Relief's alerts) have near-black land a
+  shade above the page, ink-blue water, dim roads, lighter labels; Travel's 3D buildings are darker, and its sky
+  (`skyFor`) is a night sky in dark mode whatever the hour (the daytime blue glowed over the dark globe).
+- **The landing's lag** was on the graphics chip, not the page's code (a 4×-slowed phone and a computer kept up in
+  `earth-scroll`-style checks). Four things, all lighter now: the app scene behind the page (`AppBackdrop`) rests while
+  the page scrolls on a background thread too (it was still handing a full-screen picture over 30 times a second
+  mid-scroll); the Earth (`EarthGlobe`) starts only once the scroll stops (`whenStill`: its picture goes to the chip in
+  one go), draws at most 1.5 pixels a point, and takes the 4096 picture only past 1,300 pixels across; dark mode's
+  clouds are their own dimmed picture (`/geo/clouds-dark.webp`, made by `scripts/assets/earth-pictures.py`) in place of
+  a filter on the drifting layer; the five 64 px blur glows on the landing's cards are radial gradients.
+- **Measured** (the built site, a phone at 4× slower CPU): slow frames near the Earth 12 → 7. The container has no real
+  graphics chip, so what the owner saw (the chip's work) can't be measured here; ask the owner how it feels.
+- **Rules for code that builds on it:** decorative canvases rest while `html[data-scrolling]`, on a thread too; no CSS
+  `filter` on anything that moves (bake it into the picture); no big `blur()` glows (a radial gradient); a WebGL scene's
+  first frame (textures, shaders) waits for the scroll to stop.
+- **Left out:** the mask fading the Earth's lower edge (cheap: redrawn only with the Earth's 30 frames, not the scroll).

@@ -33,13 +33,14 @@ const LIGHT = {
   street: '#6f6a62', streetMajor: '#57524b', district: '#9a9286', town: '#3f434b', city: '#1f2228', waterText: '#2f7fc0', halo: '#ffffff',
 };
 const DARK: typeof LIGHT = {
-  // Apple Maps' dark look: blue-slate ground, building blocks a shade lighter, deep green parks, blue water.
-  land: '#2f3340', urban: '#323644', park: '#1d5240', wood: '#1a4b3a', grass: '#22503f', sand: '#454437', ice: '#4a5263',
-  water: '#1f4a80', waterLine: '#1f4a80', building: '#3c4252', buildingEdge: '#4a5163', buildingTall: '#4a5163',
-  minor: '#4d5364', minorEdge: '#2c303c', major: '#5a6173', majorEdge: '#2c303c', fast: '#8a774b', fastEdge: '#5e5237',
-  path: '#4a5060', pathEdge: '#2c303c', square: '#383d4b', rail: '#5a6070', border: '#7a7596',
-  health: '#4a3a44', school: '#463f3a', works: '#363a47', sport: '#22503f',
-  street: '#bcc2ce', streetMajor: '#d5dae3', district: '#aab1be', town: '#dfe3ea', city: '#f4f6f9', waterText: '#8ab6e6', halo: '#272b36',
+  // M346 (the owner, 19 Nov: "any of the maps is not dark"): a night map like Google's and Apple's at night, near-black
+  // ground a shade above the page (#070808), blocks a step lighter, deep green parks, ink-blue water, dim gold motorways.
+  land: '#191b20', urban: '#1c1e24', park: '#15302a', wood: '#132b25', grass: '#173129', sand: '#2a2922', ice: '#2b2f37',
+  water: '#0f1d30', waterLine: '#0f1d30', building: '#25282f', buildingEdge: '#30343c', buildingTall: '#30343c',
+  minor: '#2d3139', minorEdge: '#141619', major: '#383c46', majorEdge: '#141619', fast: '#5e5034', fastEdge: '#3b3323',
+  path: '#2a2e36', pathEdge: '#141619', square: '#22252c', rail: '#3b3f49', border: '#5f5b78',
+  health: '#2f2329', school: '#2d2924', works: '#212329', sport: '#173129',
+  street: '#9ea5b1', streetMajor: '#c3c8d1', district: '#8d94a0', town: '#d3d7de', city: '#eef0f3', waterText: '#7097c8', halo: '#111317',
 };
 
 const name: ExpressionSpecification = ['coalesce', ['get', 'name_en'], ['get', 'name']];

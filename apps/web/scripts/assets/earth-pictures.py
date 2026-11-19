@@ -111,6 +111,10 @@ def clouds():
     img = Image.fromarray(np.dstack([np.clip(rgb, 0, 255), a * fade * 255]).astype(np.uint8), 'RGBA')
     img = img.filter(ImageFilter.GaussianBlur(3.5))  # soft edges: cloud, not foam
     img.save(f'{out}/clouds.webp', quality=82, method=6)
+    # M346: dark mode's clouds dimmed in the picture (a CSS filter on the drifting layer cost the graphics chip every frame).
+    rgb, alpha = img.convert('RGB'), img.getchannel('A')
+    dim = ImageEnhance.Brightness(ImageEnhance.Color(rgb).enhance(0.6)).enhance(0.3)
+    Image.merge('RGBA', (*dim.split(), alpha)).save(f'{out}/clouds-dark.webp', quality=82, method=6)
 
 
 if __name__ == '__main__':

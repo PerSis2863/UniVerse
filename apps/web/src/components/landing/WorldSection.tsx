@@ -70,7 +70,9 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           <EarthGlobe face={place} className="w-full"
             label={`The Earth, turning slowly${place ? `, facing ${short(ids[facing!])}` : ''}: drag to turn it, or choose an app below`} />
         </div>
-        <Photo src="/geo/clouds.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 w-[190%] max-w-none select-none" />
+        {/* M346: dark mode's own dimmed picture (a filter on the drifting layer cost every frame); the hidden one never loads. */}
+        <Photo src="/geo/clouds.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 w-[190%] max-w-none select-none dark:hidden" />
+        <Photo src="/geo/clouds-dark.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 hidden w-[190%] max-w-none select-none dark:block" />
       </div>
       <p className="relative z-[1] -mt-2 text-center text-sm text-zinc-600 dark:text-zinc-300">Drag to turn it. Choose an app to see its part of the world.</p>
       <ul aria-label="The apps" className="flip-keep relative z-[1] mx-auto mt-8 grid max-w-5xl grid-cols-1 gap-3 text-start md:grid-cols-2" onMouseLeave={() => setHover(null)}>

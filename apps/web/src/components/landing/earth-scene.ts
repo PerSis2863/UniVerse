@@ -100,7 +100,8 @@ export function earthScene(o: EarthInit) {
 export type EarthScene = ReturnType<typeof earthScene>;
 
 /** The Earth's picture for a globe `px` CSS pixels wide (the sharper one on big, sharp screens). */
-export const earthPicture = (px: number, dpr: number) => (px * dpr > 900 ? '/geo/earth-4096.jpg' : '/geo/earth-2048.jpg');
+// M346: the 4096 picture only for a globe over 1,300 pixels across (it's 32 MB on the graphics chip, 8 for the 2048).
+export const earthPicture = (px: number, dpr: number) => (px * dpr > 1300 ? '/geo/earth-4096.jpg' : '/geo/earth-2048.jpg');
 export const WATER_PICTURE = '/geo/earth-water-1024.png';
 /** A picture as an ImageBitmap (rows as stored). */
 export async function bitmap(url: string) {

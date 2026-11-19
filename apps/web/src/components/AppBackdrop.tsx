@@ -15,9 +15,10 @@ import { cn } from '@/lib/utils';
 //   · the website and sign-in: the app picked on their tabs (`app`), fading to the next on a switch;
 //   · in the app: the app the page belongs to (appFor), and on shared pages (the hub, Messages,
 //     Settings…) the app the person chose last (useChosenApp).
-// Smooth: drawn on a background thread where the browser can (backdrop.worker.ts), so it keeps moving
-// while the page scrolls and never takes time from taps or typing; on the page otherwise, where it
-// rests while the page scrolls (<html data-scrolling>, as the other decorative loops do, M97). In
+// Smooth: drawn on a background thread where the browser can (backdrop.worker.ts), so it never takes time
+// from taps or typing; on the page otherwise. It rests while the page scrolls (<html data-scrolling>, as the
+// other decorative loops do, M97; on a thread too since M346: a full-screen picture handed to the graphics
+// chip 30 times a second took frames from the scroll on the landing, the owner, 19 Nov). In
 // the app it starts moving once the page has loaded; one held frame for Reduce Motion; it rests while
 // the tab is hidden and while a game covers the screen (<html data-arena>, M118).
 
@@ -78,9 +79,9 @@ function Backdrop({ app, dark, soon, strength, className }: { app: AppId; dark: 
     const isDark = () => dark || html().classList.contains('dark');
     const dpr = () => window.devicePixelRatio || 1;
     const canWork = !onPage && typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' && typeof cv.transferControlToOffscreen === 'function';
-    /** Nobody needs it moving now (drawn on the page, a scroll counts too: the scroll comes first). */
+    /** Nobody needs it moving now (a scroll counts too: the scroll comes first). */
     // M225: and while the person has left the page alone for 30 s (src/lib/use-idle.ts); any input wakes it.
-    const resting = () => document.hidden || isIdle() || html().hasAttribute('data-arena') || (!canWork && html().hasAttribute('data-scrolling'));
+    const resting = () => document.hidden || isIdle() || html().hasAttribute('data-arena') || html().hasAttribute('data-scrolling');
 
     let d: Driver;
     if (canWork) {
