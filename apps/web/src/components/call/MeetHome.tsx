@@ -11,6 +11,7 @@ import { haptic } from '@/lib/haptics';
 import { inviteText, meetingPath } from '@/lib/meet';
 import { useAuthStore } from '@/store/auth';
 import { cn } from '@/lib/utils';
+import { QrCode } from '@/components/ui/QrCode';
 
 // M227 (the owner, 16 Nov: "replace the call and rename it as meet and call… redesign of call section also and add more
 // features of discord and zoom and all the other big major app"): the front door of Meet & call, like Zoom's home.
@@ -120,6 +121,8 @@ function NewMeeting({ who, personal = false, onClose }: { who?: string; personal
             <p className="mt-0.5 break-all font-mono text-sm text-zinc-900 dark:text-white select-all">{url}</p>
             <p className="mt-3 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Meeting code</p>
             <p className="mt-0.5 font-mono text-lg font-bold tracking-wide text-zinc-900 dark:text-white select-all">{code}</p>
+            {/* M344: scan to join from a phone. */}
+            <QrCode value={url} size={144} title="QR code of the meeting link" className="mt-3 rounded-2xl" />
           </div>
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => router.push(`${data.path}?kind=video`)} className="btn-primary justify-center"><Video className="w-4 h-4" aria-hidden />Start with video</button>

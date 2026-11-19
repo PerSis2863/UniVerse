@@ -1,3 +1,4 @@
+import { hideSpoilers } from '@/lib/spoilers';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { isOnline } from '@/lib/chat';
@@ -110,7 +111,7 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
     select: { userId: true }, take: 5000,
   });
   const skip = new Set(recent.map((r) => r.userId));
-  const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
+  const text = hideSpoilers(type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
   const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
   const fresh = members.filter((m) => !skip.has(m.userId));
   // Parents have their own app (Stage 5 · B16.2): their chats open there.

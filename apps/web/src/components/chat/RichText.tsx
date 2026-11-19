@@ -7,7 +7,7 @@ import type { Token, TokenKind } from '@/lib/highlight';
 
 // Messages in chat's limited Markdown (Stage 4 · 1.1), always drawn as React elements, never as
 // HTML, so nothing in a message can run or restyle the page:
-//   **bold** or *bold*, _italic_ or __italic__, ~strike~ or ~~strike~~, `code`
+//   **bold** or *bold*, _italic_ or __italic__, ~strike~ or ~~strike~~, `code`, ||spoiler|| (M344)
 //   ```lang … ``` code blocks (coloured by src/lib/highlight.ts, loaded only when needed)
 //   > quotes, - or * lists, 1. lists, links, @mentions and @here / @channel / @everyone, and a
 //   community's own :emoji: as pictures
@@ -72,8 +72,20 @@ export function parseBlocks(text: string): Block[] {
 }
 
 // Links (without trailing punctuation), @here-style and @Name mentions, then formatting.
-const INLINE = /(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|(@(?:here|channel|everyone)\b)|(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)|(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(\*[^*\n]+?\*)|(__[^_\n]+?__)|(_[^_\n]+?_)|(~~[^~\n]+?~~)|(~[^~\n]+?~)|(:[a-z0-9_]{2,32}:)/g;
+const INLINE = /(https?:\/\/[^\s<]*[^\s<.,:;"')\]!?])|(@(?:here|channel|everyone)\b)|(@[A-Za-z][\w.-]*(?:\s[A-Z][\w.-]*)?)|(`[^`\n]+`)|(\*\*[^*\n]+?\*\*)|(\*[^*\n]+?\*)|(__[^_\n]+?__)|(_[^_\n]+?_)|(~~[^~\n]+?~~)|(~[^~\n]+?~)|(:[a-z0-9_]{2,32}:)|(\|\|[^|\n]+?\|\|)/g;
 const WORD = /[\p{L}\p{N}]/u;
+
+/** M344 (Telegram's and Discord's spoilers): ||text|| stays covered until tapped. */
+function Spoiler({ children, mine }: { children: React.ReactNode; mine: boolean }) {
+  const [shown, setShown] = useState(false);
+  if (shown) return <span className={cn('rounded px-0.5', mine ? 'bg-white/15' : 'bg-zinc-200/70 dark:bg-white/10')}>{children}</span>;
+  return (
+    <button type="button" onClick={(e) => { e.stopPropagation(); setShown(true); }} aria-label="Hidden text: tap to show"
+      className={cn('inline rounded px-1 align-baseline cursor-pointer select-none text-transparent', mine ? 'bg-white/60' : 'bg-zinc-400 dark:bg-zinc-500')}>
+      <span aria-hidden>{children}</span>
+    </button>
+  );
+}
 
 /** One line or paragraph of text: links, mentions and formatting (formatting can be nested). */
 function Inline({ text, mine, depth = 0, emoji }: { text: string; mine: boolean; depth?: number; emoji?: Record<string, string> }) {
@@ -107,6 +119,7 @@ function Inline({ text, mine, depth = 0, emoji }: { text: string; mine: boolean;
     else if (m[8]) out.push(<em key={key}>{inner(t.slice(1, -1))}</em>);
     else if (m[9]) out.push(<s key={key}>{inner(t.slice(2, -2))}</s>);
     else if (m[10]) out.push(<s key={key}>{inner(t.slice(1, -1))}</s>);
+    else if (m[12]) out.push(<Spoiler key={key} mine={mine}>{inner(t.slice(2, -2))}</Spoiler>);
     else if (m[11]) out.push(<img key={key} src={emoji![t.slice(1, -1)]} alt={t} title={t} className="inline-block w-[1.35em] h-[1.35em] object-contain align-[-0.3em]" draggable={false} />);
     last = i + t.length;
   }

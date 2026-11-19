@@ -9850,3 +9850,29 @@ look, the launch focus).
   in my bubble is a white pill with ink text.
 - **For code that builds on it:** text on `bg-tint` in dark mode is ink, never white; on my bubble use solid white or the
   bubble's own text colour, not see-through white.
+
+## M344: Messages' gaps against the other apps: live location, spoilers, events, QR invites, read receipts (19 Nov)
+
+The owner: "Add all features that all messaging and video call and meeting apps has… just research all the things we
+need". An inventory of about 100 features (WhatsApp, Telegram, Signal, iMessage, Messenger, Slack, Discord, Teams, Zoom,
+Meet, FaceTime) against the code found nearly everything already in (replies, threads, reactions, editing with history,
+undo send, pins, stars, polls, stickers, disappearing and view-once, voice and video notes, stories, communities and
+channels, broadcasts, bots, translation, AI catch-up, folders, archive, chat lock, export, wallpapers, effects, silent send,
+slow mode, roles, custom emoji, huddles…). The gaps, built:
+
+- **Live location** (`LOCATION` with `metadata.live { until, updatedAt, stopped? }`, `liveMinutes` 15 / 60 / 480 when sent;
+  `POST /api/chat/messages/:id/live { lat, lng } | { stop: true }`, the sender only, at most a move every 10 s, 410 once
+  over). The chat window watches the position while it's open and my live locations are running (`useNow`, not
+  `Date.now()` while rendering). The location button opens `LocationSheet` (now or live). A web page can't move it in the
+  background: the sheet says so.
+- **Spoilers**: `||text||` in `RichText` (a covered button until tapped); `hideSpoilers` (`src/lib/spoilers.ts`) in list
+  previews (`plainText`) and notifications.
+- **Events with RSVP**: message type `EVENT` (`src/lib/chat-event.ts`: `newEvent`, `answer`, `eventIcs`), `POST
+  /api/chat/messages/:id/rsvp { answer }` (the same answer again takes it back), the + menu and `/event`; the bubble has a
+  date tile, the three answers, who said what, and Add to calendar (an .ics made in the browser).
+- **QR codes** (the existing `ui/QrCode`) under a community's invite link and a new meeting's / My room's link.
+- **Read receipts** (`users.readReceipts`, 0257; Settings → Privacy & security; `PATCH /users/me`, the fast path's
+  `usersMe`): the messages route sends a member's `lastReadAt` only when both they and I keep receipts on.
+- The jump-to-latest button moves above the hints bar (`hasHints`).
+- **Left out on purpose:** phone dial-in, live streaming to YouTube (paid services), remote control of a shared screen
+  (risky), GIF search (Tenor / Giphy need an account and key: [owner] if wanted).

@@ -19,8 +19,8 @@ import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
-import { ChatHints } from './ChatHints';
-import { ChecklistDialog, ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
+import { ChatHints, hasHints } from './ChatHints';
+import { ChecklistDialog, EventDialog, LocationSheet, ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText } from './chat-client';
@@ -35,6 +35,7 @@ import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { encryptForChat, myDevice } from './private-chat';
 import { encryptFile, fileEnvelope, kindOf } from '@/lib/e2e-file';
 import { shrinkImage } from '@/lib/shrink-image';
+import { useNow } from '@/lib/use-now';
 import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
 import { removeWithUndo } from '@/lib/undo';
 import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
@@ -136,7 +137,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [forwardMany, setForwardMany] = useState<ChatMessage[] | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
-  const [extra, setExtra] = useState<'poll' | 'checklist' | 'contact' | null>(null);
+  const [extra, setExtra] = useState<'poll' | 'checklist' | 'event' | 'location' | 'contact' | null>(null);
   // M340: the next text goes out when the other person's quiet hours end.
   const [quietSend, setQuietSend] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -392,20 +393,38 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     } catch (e) { toast.error((e as Error).message); throw e; }
   };
 
-  const onExtra = (kind: ComposerExtra) => {
-    if (kind !== 'location') return setExtra(kind);
+  const onExtra = (kind: ComposerExtra) => setExtra(kind);
+  // M344: the location sheet's choice: where I am now, or live for 15 min / 1 h / 8 h.
+  const shareLocation = (liveMinutes: number | null) => {
+    setExtra(null);
     if (!navigator.geolocation) return void toast.error('Location isn’t available in this browser.');
     const t = toast.loading('Getting your location…');
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        toast.dismiss(t);
-        if (!(await confirmDialog({ title: 'Send your current location?', message: `Everyone in this chat will see where you are (±${Math.round(pos.coords.accuracy)} m).`, confirmLabel: 'Send location' }))) return;
-        sendSpecial({ type: 'LOCATION', location: { lat: pos.coords.latitude, lng: pos.coords.longitude } }).catch(() => {});
-      },
+      (pos) => { toast.dismiss(t); sendSpecial({ type: 'LOCATION', location: { lat: pos.coords.latitude, lng: pos.coords.longitude, ...(liveMinutes ? { liveMinutes } : {}) } }).catch(() => {}); },
       () => { toast.dismiss(t); toast.error('Location permission was denied. Allow it in your browser settings to share where you are.'); },
       { enableHighAccuracy: true, timeout: 12_000 },
     );
   };
+  // M344: event answers, and stopping my live location.
+  const rsvp = async (m: ChatMessage, a: 'yes' | 'maybe' | 'no') => {
+    try { await chatJson(`/api/chat/messages/${m.id}/rsvp`, { method: 'POST', body: JSON.stringify({ answer: a }) }); mutate(); } catch (e) { toast.error((e as Error).message); }
+  };
+  const stopLive = async (m: ChatMessage) => {
+    try { await chatJson(`/api/chat/messages/${m.id}/live`, { method: 'POST', body: JSON.stringify({ stop: true }) }); mutate(); } catch (e) { toast.error((e as Error).message); }
+  };
+  // While this chat is open, my live locations follow me (WhatsApp keeps it going in the background; a web page can't).
+  const clock = useNow();
+  const myLive = messages.filter((m) => m.type === 'LOCATION' && m.senderId === me && m.metadata?.live && !m.metadata.live.stopped && Date.parse(m.metadata.live.until) > clock).map((m) => m.id).join(',');
+  useEffect(() => {
+    if (!myLive || !navigator.geolocation) return;
+    let last = 0;
+    const watch = navigator.geolocation.watchPosition((pos) => {
+      if (Date.now() - last < 15_000) return;
+      last = Date.now();
+      for (const id of myLive.split(',')) void chatJson(`/api/chat/messages/${id}/live`, { method: 'POST', body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }) }).catch(() => {});
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 10_000 });
+    return () => navigator.geolocation.clearWatch(watch);
+  }, [myLive]);
 
   // Search in this chat, then jump to a result (loading older history if needed).
   const runSearch = async (q: string) => {
@@ -673,6 +692,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       if (name === 'catchup') { void runCatchup(); return true; }
       if (name === 'poll') { onExtra('poll'); return true; }
       if (name === 'checklist') { onExtra('checklist'); return true; }
+      if (name === 'event') { onExtra('event'); return true; }
       // M340: quick tools.
       if (name === 'note') {
         if (!arg) { toast.error('Type what to save after /note'); return false; }
@@ -1012,6 +1032,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onReplayEffect={isScreenEffect(m.metadata?.effect) ? () => setPlaying({ key: `${m.id}:${Date.now()}`, effect: m.metadata!.effect! }) : undefined}
                       onVote={(o) => vote(m, o)}
                       onCheck={(i) => void check(m, i)}
+                      onRsvp={(a) => void rsvp(m, a)}
+                      onStopLive={() => void stopLive(m)}
                       onOpenContact={openContact}
                       onReact={(e) => react(m, e)}
                       onOpenImage={setLightbox}
@@ -1047,7 +1069,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {(showJump || unseen > 0 || !!win) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               onClick={() => { setUnseen(0); if (win) backToLatest(); else scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
-              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              className={cn('absolute end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg', hasHints(convo, messages[messages.length - 1], me) ? 'bottom-48' : 'bottom-28', ' flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
               <ArrowDown className="w-4 h-4" aria-hidden />
               {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}
             </motion.button>
@@ -1133,6 +1155,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
+      {extra === 'event' && <EventDialog onClose={() => setExtra(null)} onCreate={(event) => sendSpecial({ type: 'EVENT', event })} />}
+      {extra === 'location' && <LocationSheet onClose={() => setExtra(null)} onPick={shareLocation} />}
       {extra === 'checklist' && <ChecklistDialog onClose={() => setExtra(null)} onCreate={(checklist) => sendSpecial({ type: 'CHECKLIST', checklist })} />}
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 

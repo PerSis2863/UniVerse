@@ -15,6 +15,10 @@ import type { ChatMessage, ThreadResponse } from './chat-client';
 
 const at = (iso: string) => new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
+/** Whether the bar above the message box may show (M344: the jump-to-latest button moves up over it). */
+export const hasHints = (convo: ThreadResponse['conversation'], last: ChatMessage | undefined, me: string) =>
+  (!convo.isGroup && !convo.self && !!convo.quietUntil) || (!convo.private && !convo.isOfficial && !convo.self && !!last && last.senderId !== me && last.type === 'TEXT' && !last.metadata?.e2e);
+
 export function ChatHints({ convo, last, me, quietSend, onQuietSend, onReply }: {
   convo: ThreadResponse['conversation']; last: ChatMessage | undefined; me: string;
   quietSend: boolean; onQuietSend: (on: boolean) => void; onReply: (text: string) => void;

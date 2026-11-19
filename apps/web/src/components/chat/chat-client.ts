@@ -6,8 +6,9 @@ import { makePhotoSizes } from '@/lib/photo-sizes';
 import type { E2EPayload } from '@/lib/e2e';
 import type { MessageEffect } from '@/lib/message-effects';
 import type { CheckItem } from '@/lib/chat-checklist';
+import { hideSpoilers } from '@/lib/spoilers';
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'CHECKLIST' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'CHECKLIST' | 'EVENT' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
 export interface ChatMessage {
   id: string;
@@ -25,6 +26,8 @@ export interface ChatMessage {
     question?: string; options?: string[]; multiple?: boolean; // POLL
     title?: string; items?: CheckItem[]; // CHECKLIST (M340), ticked by anyone in the chat
     lat?: number; lng?: number; label?: string | null; // LOCATION
+    live?: { until: string; updatedAt: string; stopped?: boolean }; // LOCATION, live (M344)
+    startsAt?: string; endsAt?: string | null; place?: string | null; answers?: Record<string, { a: 'yes' | 'maybe' | 'no'; name: string }>; // EVENT (M344), with `title`
     effect?: MessageEffect; silent?: boolean; // TEXT (M17): played as it arrives (iMessage), sent without notifying (Telegram)
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
     moderated?: 'edited' | 'removed' | 'community'; team?: boolean; // changed or posted by UniVerse (owner console)
@@ -248,7 +251,7 @@ export function initials(name: string) {
 
 /** A message's text without its formatting marks (code fences, quotes, list marks, *bold*…), for previews. */
 export function plainText(body: string): string {
-  return body
+  return hideSpoilers(body)
     .replace(/^\s*```[\w+#.-]*\s*$/gm, '')
     .replace(/```/g, '')
     .replace(/^\s*>\s?/gm, '')
@@ -270,7 +273,8 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'CALL': return m.body.startsWith('Video') ? '📹 Video call' : '📞 Voice call';
     case 'POLL': return `📊 ${m.body}`;
     case 'CHECKLIST': return `☑️ ${m.body}`;
-    case 'LOCATION': return '📍 Location';
+    case 'EVENT': return `📅 ${m.body}`;
+    case 'LOCATION': return m.body === 'Live location' ? '📍 Live location' : '📍 Location';
     case 'CONTACT': return `👤 ${m.body}`;
     default: return plainText(m.body).split('\n').find((l) => l.trim()) ?? '';
   }
