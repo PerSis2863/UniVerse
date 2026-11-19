@@ -14,6 +14,9 @@ const MIME_BY_EXT: Record<string, string> = {
   '.txt': 'text/plain', '.csv': 'text/csv', '.zip': 'application/zip',
   '.webm': 'audio/webm', '.ogg': 'audio/ogg', '.m4a': 'audio/mp4', '.mp3': 'audio/mpeg', '.wav': 'audio/wav',
   '.mp4': 'video/mp4', '.mov': 'video/quicktime',
+  // M341: a private chat's photo, file or voice note, encrypted on the sender's device (src/lib/e2e-file.ts): scrambled
+  // bytes only the chat's devices can open, always served as a download.
+  '.enc': 'application/octet-stream',
 };
 
 /** The content type to store an upload with, or null when that kind of file isn't allowed. */

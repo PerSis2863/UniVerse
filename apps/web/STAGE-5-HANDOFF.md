@@ -9789,3 +9789,21 @@ message system for security of the website" (the encryption is M341).
 - **Quick tools** (`SLASH_COMMANDS`): `/note text` (saved to Notes to self), `/roll [sides]`, `/flip`, `/time`.
 - **For code that builds on it:** a new kind of chat message goes in `TYPES` (messages route), `MessageType` and the
   previews (`chat-client.ts`, `chat-reminders.ts`), and the bubble.
+
+## M341: encrypted photos, files, videos and voice notes in private chats (19 Nov)
+
+The owner: "encrypted message system for security of the website". Private chats (Stage 5 · B7.6, X25519 device keys,
+`src/lib/e2e.ts`) were text only. Now:
+
+- **Sending** (`ChatWindow` `send`, private branch): first `encryptForChat(…, '')` (throws if the other person has no
+  device yet, so nothing is uploaded for nobody); each file (photos shrunk first) is encrypted with a fresh AES-256-GCM
+  key (`encryptFile`), uploaded as `private.enc` (`application/octet-stream`, the new `.enc` in `MIME_BY_EXT`, served as
+  an attachment), and the message's encrypted text is an envelope (`fileEnvelope`: a `\u0001uvfile:` mark + JSON of url,
+  key, nonce, name, type, size, kind, a voice note's length and bars, the caption). Albums go as one message a photo.
+  Stickers stay out of private chats.
+- **Opening** (`PrivateText` → `PrivateAttachment`): `readEnvelope` accepts only this site's file addresses
+  (`isUploadedFileUrl`); photos, videos and voice notes are fetched and decrypted at once into a `blob:` address (freed on
+  unmount), other files on tap; AES-GCM refuses anything changed on the way. "End-to-end encrypted" under each.
+- The server sees who is in the chat, when, and the scrambled bytes' size; never the key, name or type.
+- **For code that builds on it:** a new kind of private content goes in the envelope, never in the message's plain
+  fields; forwarding, search, translation and AI stay off in private chats.

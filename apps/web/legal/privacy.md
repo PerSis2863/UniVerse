@@ -72,6 +72,7 @@ Certain data is considered "special category" (GDPR) or "sensitive personal data
 ### 2.6 Communications and Interaction Data
 
 - Contents of direct messages sent in private conversations and group chats, including photos, files, and voice notes.
+- **Private chats (end-to-end encrypted):** if you start a private chat, its messages, photos, files and voice notes are encrypted on your device for the devices of the people in it. We store only scrambled data and cannot read it; we do see who is in the chat and when messages are sent.
 - Call history (who called whom, when, and for how long). Calls are not recorded, except class calls that the class's teacher chooses to record (everyone in the call sees a REC badge); those recordings are added to the course's materials.
 - Class notes: when a teacher turns on "Class notes" in a class call (everyone in the call sees a Notes badge and a notice), each participant's browser turns their speech into text and the teacher's browser sends that text transcript to us when the class ends. Audio is never sent or stored. The transcript is used once to make a study pack for the course (summary, notes, key moments, flashcards and a quiz the teacher reviews), which enrolled students can see. The transcript is deleted after 90 days; the study pack stays with the course until the teacher deletes it.
 - Whiteboards you create or edit, including drawings and photos added to them.

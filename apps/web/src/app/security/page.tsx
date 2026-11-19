@@ -11,6 +11,7 @@ const MEASURES = [
   { title: 'Audit trail', text: 'Administrative actions are recorded in an audit log. You can see your own sign-in history in Settings.' },
   { title: 'Abuse protection', text: 'Rate limits, a strict Content Security Policy, and checks on uploaded file types protect against automated attacks and malicious files.' },
   { title: 'Payments', text: 'Card details go straight to Stripe (PCI DSS Level 1). UniVerse never receives or stores card numbers.' },
+  { title: 'End-to-end encrypted chats', text: 'Private chats are encrypted on your device for the devices of the people in them, photos, files and voice notes included. UniVerse stores only scrambled data and can’t read them; you can compare a safety code to check.' },
   { title: 'Connected accounts', text: 'If you connect Gmail, Outlook, Slack, Google Classroom or a calendar, the keys those services give us are encrypted on our servers, never sent to your browser, and deleted when you disconnect.' },
   { title: 'Places kept vague', text: 'Maps never pinpoint a person: Relief rounds places to about 500 m, Green and Trace’s maps to about 10 km, and Travel’s travellers board shows only a first name, a city and dates.' },
   { title: 'Codes that can’t be forged', text: 'Every Trace label carries a signature made with a secret only its batch knows, so codes can’t be guessed or copied unnoticed; points and carbon records are kept in hash-chained logs that show any change.' },

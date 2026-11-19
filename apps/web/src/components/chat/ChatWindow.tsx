@@ -33,6 +33,8 @@ import { useChatTranslations } from './useChatTranslations';
 import dynamic from 'next/dynamic';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { encryptForChat, myDevice } from './private-chat';
+import { encryptFile, fileEnvelope, kindOf } from '@/lib/e2e-file';
+import { shrinkImage } from '@/lib/shrink-image';
 import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
 import { removeWithUndo } from '@/lib/undo';
 import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
@@ -466,17 +468,40 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const tempId = `temp-${crypto.randomUUID()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
-    // A private chat (Stage 5 · B7.6): text only, encrypted here for every device in the chat.
+    // A private chat (Stage 5 · B7.6): encrypted here for every device in the chat. M341: photos, files, videos and
+    // voice notes too: each file is encrypted with its own key before it's uploaded (src/lib/e2e-file.ts), and the key
+    // goes inside the encrypted message, so the server stores only scrambled bytes.
     if (data?.conversation.private) {
-      if (sticker || album?.length || file || voice || !text) { toast.message('Private chats can send text for now. Photos, files and voice notes come later.'); return; }
+      if (sticker) { toast.message('Stickers aren’t sent in private chats.'); return; }
+      const files = album?.length ? album : file ? [file] : voice ? [new File([voice.blob], `voice.${voice.blob.type.includes('mp4') ? 'm4a' : 'webm'}`, { type: voice.blob.type.split(';')[0] || 'audio/webm' })] : [];
+      if (!text && !files.length) return;
       setReplyTo(null);
-      setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
+      setPending((p) => [...p, { ...base, type: 'TEXT', body: files.length ? `🔒 Sending ${files.length === 1 ? files[0].name : `${files.length} files`}…` : text!, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
       try {
-        const e2e = await encryptForChat(conversationId, me, text);
+        if (files.length) {
+          // Everyone's devices first (it throws if the other person has none yet), so nothing is uploaded for nobody.
+          await encryptForChat(conversationId, me, '');
+          setUploadProgress(0);
+          for (const [i, f] of files.entries()) {
+            const small = f.type.startsWith('image/') && f.type !== 'image/gif' ? await shrinkImage(f) : f;
+            const sealed = await encryptFile(await small.arrayBuffer());
+            const url = await uploadChatFile(new File([sealed.data], 'private.enc', { type: 'application/octet-stream' }), (pct) => setUploadProgress(Math.round(((i + pct / 100) / files.length) * 100)));
+            const mime = small.type || 'application/octet-stream';
+            const envelope = fileEnvelope({ url, k: sealed.k, iv: sealed.iv, name: small.name.slice(0, 200), mime, size: small.size, kind: voice ? 'audio' : videoNote ? 'video' : kindOf(mime),
+              ...(voice ? { durationSec: voice.durationSec, waveform: voice.waveform?.slice(0, 64) } : {}), ...(i === 0 && text ? { caption: text.slice(0, 2000) } : {}) });
+            const e2e = await encryptForChat(conversationId, me, envelope);
+            const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: '', e2e, replyToId: i === 0 ? replyToId : undefined, clientId: newClientId() }) });
+            appendSent(msg, i === files.length - 1 ? tempId : '');
+          }
+          setUploadProgress(null);
+          return;
+        }
+        const e2e = await encryptForChat(conversationId, me, text!);
         const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: '', e2e, replyToId, clientId: newClientId() }) });
         appendSent(msg, tempId);
       } catch (e) {
         setPending((p) => p.filter((x) => x.id !== tempId));
+        setUploadProgress(null);
         toast.error((e as Error).message || 'Message not sent.');
         throw e;
       }
@@ -1051,7 +1076,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           </div>
         )}
         {!picked && <SharedPhotos key={conversationId} chat={conversationId} onSend={send}
-          blocked={isPrivate ? 'Private chats take text only for now' : convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
+          blocked={convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
         {!picked && !editing && <ChatHints convo={convo} last={messages[messages.length - 1]} me={me} quietSend={quietSend} onQuietSend={setQuietSend} onReply={(text) => void send({ text })} />}
         {!picked && <Composer
           draftKey={conversationId}
