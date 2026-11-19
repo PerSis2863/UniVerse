@@ -48,7 +48,7 @@ export function DeferredShell({ role, showAssistant, signedIn }: { role?: string
   return (
     <>
       {(idle || wantPalette) && <CommandPalette role={role} />}
-      {idle && showAssistant && <AIStudyAssistant />}
+      {idle && <AIStudyAssistant button={showAssistant} />}
       {idle && signedIn && <WelcomeTour role={role} />}
       {idle && signedIn && <PushNotificationManager />}
       {idle && signedIn && <KeyboardHelp />}

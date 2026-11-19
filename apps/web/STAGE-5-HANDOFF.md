@@ -9758,3 +9758,13 @@ The owner: "make sure everything looks really smooth and design like apple ios a
 - **The iPhone feel**, checked and already in place: no tap flash, no zoom into fields (16 px), safe areas, no selection on
   long-press, swipe down to close sheets (`SheetGestures`), swipe back, the pill tab bar, segmented tabs, Settings as
   grouped rows with coloured icons. No new look (the launch focus).
+
+## M339: no round assistant button over the page on phones (19 Nov)
+
+The owner, of M338's note that the assistant's round button sat over the page on phones: "please do this part". iPhone
+apps don't float a button over content, and the tab bar's "+" (QuickCreate) already has **Ask AI**, which opens the same
+assistant through `universe:open-assistant`. So `AIStudyAssistant`'s closed button is `max-lg:hidden` (exactly where the
+tab bar shows), except for parents (`GUARDIAN`: their tab bar has no "+"). It used to be left out of Messages entirely
+(it covered the message box), which made "+" → Ask AI do nothing there: `DeferredShell` now always loads it, with
+`button={false}` in Messages. Computers keep the button (and its × to hide it). Checked in a browser: phone /student and
+/student/inbox (no button, "+" → Ask AI opens it), computer (button on the home, none in Messages).
