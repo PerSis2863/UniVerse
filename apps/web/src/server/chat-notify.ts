@@ -1,3 +1,4 @@
+import { hideSpoilers } from '@/lib/spoilers';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { isOnline } from '@/lib/chat';
@@ -48,7 +49,7 @@ export function afterSend(
   });
   if (type === 'TEXT' && body.includes('@')) later(() => notifyMentions(conversationId, from, body));
   // Watch words (owner console → Live chats) alert the owner.
-  if ((type === 'TEXT' || type === 'POLL') && body) {
+  if ((type === 'TEXT' || type === 'POLL' || type === 'CHECKLIST') && body) {
     later(async () => {
       const found = await watchWordsIn(body);
       if (found.length) await alertOwner(found, from, conversationId, body);
@@ -110,7 +111,7 @@ export async function notifyAway(conversationId: string, from: { id: string; nam
     select: { userId: true }, take: 5000,
   });
   const skip = new Set(recent.map((r) => r.userId));
-  const text = (type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
+  const text = hideSpoilers(type === 'TEXT' ? body : PREVIEW[type] ?? body).slice(0, 200);
   const title = convo.isGroup ? `New messages in ${convo.name ?? 'a group chat'}` : `New message from ${from.name}`;
   const fresh = members.filter((m) => !skip.has(m.userId));
   // Parents have their own app (Stage 5 · B16.2): their chats open there.

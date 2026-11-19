@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import { MAX_TIMES, REPEATS, repeatLabel, type Repeat } from '@/lib/meeting-repeat';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
@@ -145,6 +146,9 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
   const [kind, setKind] = useState<'video' | 'audio'>('video');
   // A meeting template (Stage 5 · B8.2): its settings and agenda are set up when the host joins.
   const [template, setTemplate] = useState('');
+  // M345: a series (every day, weekday, week, 2 weeks or month), up to 10 meetings.
+  const [repeat, setRepeat] = useState<Repeat | ''>('');
+  const [times, setTimes] = useState(4);
   const [saving, setSaving] = useState(false);
   const chosen = room || options[0]?.value || '';
 
@@ -154,8 +158,8 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
     const [kindOfRoom, roomId] = chosen.split(':');
     setSaving(true);
     try {
-      const c = await authedJson<Upcoming>('/api/calls/scheduled', { method: 'POST', body: JSON.stringify({ room: kindOfRoom, roomId, title, startAt: new Date(startAt).toISOString(), durationMin, kind, template: template || undefined }) });
-      toast.success(`Scheduled for ${when(new Date(c.startAt))}. Everyone gets a reminder 15 minutes before.`);
+      const c = await authedJson<Upcoming>('/api/calls/scheduled', { method: 'POST', body: JSON.stringify({ room: kindOfRoom, roomId, title, startAt: new Date(startAt).toISOString(), durationMin, kind, template: template || undefined, ...(repeat ? { repeat, times } : {}) }) });
+      toast.success(repeat ? `Scheduled ${times} meetings, ${repeatLabel(repeat).toLowerCase()}, from ${when(new Date(c.startAt))}. Everyone gets a reminder before each.` : `Scheduled for ${when(new Date(c.startAt))}. Everyone gets a reminder 15 minutes before.`);
       onDone(c);
     } catch (err) {
       toast.error((err as Error).message);
@@ -195,6 +199,23 @@ function ScheduleSheet({ onClose, onDone }: { onClose: () => void; onDone: (c: U
               {[15, 30, 45, 60, 90, 120, 180].map((m) => <option key={m} value={m}>{m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60} min` : ''}`}</option>)}
             </select>
           </label>
+        </div>
+        <div className="grid grid-cols-2 gap-3">
+          <label className="block space-y-1.5">
+            <span className="text-xs font-semibold text-zinc-500">Repeat</span>
+            <select value={repeat} onChange={(e) => setRepeat(e.target.value as Repeat | '')} className="input">
+              <option value="">Doesn’t repeat</option>
+              {REPEATS.map((r) => <option key={r} value={r}>{repeatLabel(r)}</option>)}
+            </select>
+          </label>
+          {repeat && (
+            <label className="block space-y-1.5">
+              <span className="text-xs font-semibold text-zinc-500">How many times</span>
+              <select value={times} onChange={(e) => setTimes(Number(e.target.value))} className="input">
+                {Array.from({ length: MAX_TIMES - 1 }, (_, i) => i + 2).map((n) => <option key={n} value={n}>{n} meetings</option>)}
+              </select>
+            </label>
+          )}
         </div>
         <div className="flex gap-2" role="radiogroup" aria-label="Call type">
           {(['video', 'audio'] as const).map((k) => (

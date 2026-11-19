@@ -44,7 +44,7 @@ function Trace() {
       </svg>
       {/* The label, tilting slowly, a beam passing over its code */}
       <div className={cn('absolute left-1/2 top-[150px] w-[260px] -translate-x-1/2 [transform-style:preserve-3d]', !calm && 'scene-tilt')}>
-        <div className="relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(79,142,247,0.55)]">
+        <div className="on-dark relative overflow-hidden rounded-[1.75rem] bg-[linear-gradient(135deg,#151517,#0f0f11)] p-5 ring-1 ring-white/15 shadow-[0_30px_80px_-20px_rgba(79,142,247,0.55)]">
           <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden><div className={cn('absolute inset-y-0 -start-[75%] w-[250%] bg-[linear-gradient(115deg,transparent_30%,rgba(79,142,247,0.18)_45%,rgba(167,139,250,0.16)_52%,transparent_65%)]', !calm && 'holo-pan')} /></div>
           <p className="text-[11px] text-zinc-400">Product passport</p>
           <p className="mt-1 text-xl font-bold text-white">Aurora olive oil</p>
@@ -58,8 +58,8 @@ function Trace() {
       </div>
       <AnimatePresence>
         {scanned && <motion.div key="g" {...pop} className="absolute end-2 top-[150px] flex items-center gap-2 rounded-2xl bg-emerald-400 px-3.5 py-2 text-sm font-bold text-emerald-950 shadow-[0_10px_40px_-8px_rgba(52,211,153,0.7)]"><ShieldCheck className="h-4 w-4" aria-hidden />Genuine</motion.div>}
-        {s >= 5 && <motion.div key="p" {...pop} className="absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
-        {s >= 7 && <motion.div key="r" {...pop} className="absolute bottom-24 end-0 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
+        {s >= 5 && <motion.div key="p" {...pop} className="on-dark absolute bottom-10 start-2 flex items-center gap-2 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-sm text-white ring-1 ring-pink-400/40"><Sparkles className="h-4 w-4 text-pink-300" aria-hidden />The shop earned <b>25 points</b></motion.div>}
+        {s >= 7 && <motion.div key="r" {...pop} className="on-dark absolute bottom-24 end-0 rounded-2xl bg-[#1d1d20] px-3.5 py-2 text-xs text-zinc-200 ring-1 ring-white/10">Made → shipped → shop · <b className="text-white">4 stops</b></motion.div>}
       </AnimatePresence>
     </div>
   );
@@ -159,7 +159,7 @@ function Green() {
         <svg aria-hidden className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 360 300">
           <path d={RING} transform="translate(0 0)" fill="none" stroke="rgba(110,231,183,0.18)" strokeWidth="1.5" strokeDasharray="2 6" />
         </svg>
-        <div className="absolute left-1/2 top-[25px] h-[250px] w-[250px] -translate-x-1/2 overflow-hidden rounded-full bg-[#0a2a1f] shadow-[0_0_80px_-10px_rgba(52,211,153,0.55),inset_0_0_40px_rgba(52,211,153,0.25)]">
+        <div className="on-dark absolute left-1/2 top-[25px] h-[250px] w-[250px] -translate-x-1/2 overflow-hidden rounded-full bg-[#0a2a1f] shadow-[0_0_80px_-10px_rgba(52,211,153,0.55),inset_0_0_40px_rgba(52,211,153,0.25)]">
           <div className={cn('flex h-full w-[200%]', !calm && 'scene-pan')}>
             {band}{band}
           </div>

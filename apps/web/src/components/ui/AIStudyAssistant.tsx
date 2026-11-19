@@ -47,7 +47,8 @@ function writeCache(q: string, a: string) {
   }
 }
 
-export function AIStudyAssistant() {
+/** `button`: false where the round button would cover the page's own box (Messages); it still opens from "+" → Ask AI. */
+export function AIStudyAssistant({ button = true }: { button?: boolean }) {
   const [isOpen, setIsOpen] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
   // Settings → Help & about opens the assistant.
@@ -59,6 +60,7 @@ export function AIStudyAssistant() {
   const [isHovered, setIsHovered] = useState(false);
   const { isChatbotEnabled } = useAiStore();
   const role = useAuthStore((st) => st.user?.role) as Role | undefined;
+  const guardian = useAuthStore((st) => st.user?.role === 'GUARDIAN');
   const [messages, setMessages] = useState<Message[]>([
     { id: '1', role: 'assistant', content: "Hi! Ask me how to do anything on UniVerse and I'll answer instantly, even offline. For study questions, Gemini AI helps out." }
   ]);
@@ -200,7 +202,10 @@ export function AIStudyAssistant() {
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.85, opacity: 0 }}
-            className="flex flex-col items-end gap-2"
+            // M339 (the owner, 19 Nov): on a phone or tablet the round button sat over the page (a figure, a form's field), as
+            // iPhone apps never do; there the tab bar's "+" → Ask AI opens this assistant (universe:open-assistant). Parents'
+            // tab bar has no "+", so they keep the button.
+            className={cn('flex flex-col items-end gap-2', !button ? 'hidden' : !guardian && 'max-lg:hidden')}
           >
             {/* Dismiss Button - only shows on hover or mobile */}
             <button 

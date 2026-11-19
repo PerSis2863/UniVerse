@@ -57,10 +57,11 @@ export function useCallChat({ chatId, room, sendRoom }: { chatId: string | null;
   return { lines, send, linked: !!chatId };
 }
 
-export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
+export function CallChatPanel({ open, onClose, lines, onSend, linked, title, locked = false }: {
   open: boolean; onClose: () => void; lines: Line[]; title: string;
   onSend: (m: { text?: string; file?: FileRef }) => Promise<void>;
   /** Uses the call's chat (messages stay there) rather than the call room's own. */ linked: boolean;
+  /** M345: the host turned the room's chat off (hosts still write). */ locked?: boolean;
 }) {
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
@@ -153,6 +154,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
                 </motion.div>
               )}
             </AnimatePresence>
+            {locked ? <p className="p-4 border-t border-white/[0.06] text-sm text-zinc-300 text-center">The host turned the chat off for now.</p> : (
             <form onSubmit={(e) => { e.preventDefault(); void submit(); }} className="p-3 pt-2 flex items-end gap-2 border-t border-white/[0.06]">
               <input ref={fileRef} type="file" className="hidden" onChange={(e) => void attach(e.target.files?.[0])} />
               <button type="button" onClick={() => fileRef.current?.click()} disabled={progress !== null} aria-label="Share a file" className="w-10 h-10 shrink-0 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center disabled:opacity-50"><Paperclip className="w-4 h-4" /></button>
@@ -162,6 +164,7 @@ export function CallChatPanel({ open, onClose, lines, onSend, linked, title }: {
               <motion.button type="submit" disabled={!text.trim() || busy} aria-label="Send"
                 className="w-10 h-10 shrink-0 rounded-full bg-gradient-to-br from-indigo-500 to-fuchsia-500 flex items-center justify-center disabled:opacity-40 active:scale-[0.9]"><SendHorizontal className="w-4 h-4" /></motion.button>
             </form>
+            )}
           </motion.aside>
         </>
       )}

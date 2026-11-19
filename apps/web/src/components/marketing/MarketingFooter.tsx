@@ -1,11 +1,14 @@
 import Link from '@/components/ui/Link';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { COMPANY, LEGAL_LINKS } from '@/lib/company';
+import { APPS, type AppId } from '@/lib/apps';
 import { CookieNotice } from './CookieNotice';
 
-const COLUMNS = [
+const COLUMNS: { title: string; links: { href: string; label: string; app?: AppId }[] }[] = [
   { title: 'Product', links: [{ href: '/#apps', label: 'All apps' }, { href: '/#how', label: 'How it works' }, { href: '/#faq', label: 'FAQ' }] },
-  { title: 'Apps', links: [{ href: '/?app=campus', label: 'UniVersity' }, { href: '/?app=trace', label: 'UniVerse Trace' }, { href: '/?app=relief', label: 'UniVerse Relief' }, { href: '/?app=green', label: 'UniVerse Green' }, { href: '/?app=play', label: 'UniVerse Play' }] },
+  // M337: from the one list of apps (Play became UniVersity's Games in M224; Travel was missing); an app the owner
+  // turned off is hidden by the head script's `[data-uv-app]` rule (shown-apps.ts).
+  { title: 'Apps', links: APPS.map((a) => ({ href: `/?app=${a.id}`, label: a.name, app: a.id })) },
   { title: 'Company', links: [{ href: '/blog', label: 'Blog' }, { href: '/trust', label: 'Status & trust' }, { href: '/contact#sales', label: 'Talk to sales' }] },
 ];
 
@@ -26,7 +29,7 @@ export function MarketingFooter() {
             <h4 className="text-xs font-bold uppercase tracking-widest text-zinc-400 mb-4">{col.title}</h4>
             <ul className="space-y-2.5">
               {col.links.map((l) => (
-                <li key={l.label}>
+                <li key={l.label} data-uv-app={l.app}>
                   <Link href={l.href} className="text-sm text-zinc-500 hover:text-white transition-colors">{l.label}</Link>
                 </li>
               ))}

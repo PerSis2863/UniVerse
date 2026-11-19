@@ -9604,3 +9604,292 @@ in `globals.css` (the page's `--ink`). Mouse clicks only (`pointerType`, or the 
 click has `detail` 0), the website only (`[data-app-shell]` on `DashboardShell` keeps it out of the app), off with
 Reduce Motion. Check: `scripts/checks/smooth-scroll-burst.mjs` (the glide on the landing and each app's home, the burst
 on the website and not in the app).
+
+## M334: sign in and sign up follow light mode (19 Nov)
+
+The owner (a picture of the sign-in page in light mode): "in white mode why this area is dark?". `AuthFrame` forced
+dark (`className="dark"`, `#0b0b0c`, the scene's `tone="dark"`) since before M220 made light the default. It now
+works as the landing does: `.flip-light` with `bg-[var(--background)] text-white`, the scene in the person's theme.
+
+- Under `.flip-light` only Tailwind's colour names swap (white, black, zinc); fixed codes don't. The form card
+  (`#111113` → `bg-zinc-950`), the demo cards (`#151517` → `bg-zinc-900`) and the phone sign-in's country select
+  (`var(--color-zinc-950)`, `var(--color-white)`) now use the names, whose dark values are the same codes, so dark mode
+  is unchanged.
+- Parts with their own light and dark colours sit in `.flip-keep` (the logo); white text on a solid blue keeps white
+  with `.on-dark` (sign-up's step chips). Dark pieces of the apps' pictures (`HeroScenesLab`: Trace's passport and its
+  two bubbles, Green's orb) carry `.on-dark`, so their text stays light in light mode; the landing shares them.
+- **For code that builds on it:** inside `.flip-light`, write colours as Tailwind names, never fixed codes, and mark a
+  dark piece `.on-dark`.
+
+## M335: smoother scrolling and maps (19 Nov)
+
+The owner: "near perfection but not 100%… upgrade the animations… specially the maps it doesn't feel that smooth".
+**Measured first:** `scripts/checks/smooth-frames.mjs` (the built site, `local:serve`) scrolls the landing and the
+student home with the wheel, drags, flings and wheel-zooms each map, and lists the slow frames with the code behind them
+(Chrome's long-animation-frame entries). The student home: every frame on time. The landing: framer-motion batches of
+~19 ms and React work of ~12 ms inside the glide. The glide (M332) is driven from the page's thread, as Lenis is, so any
+work there costs glide frames.
+
+- **The landing's `Reveal`** (bits.tsx, 59 uses): framer-motion's `whileInView` → `data-reveal` with its starting pose
+  in `--rv-from` / `--rv-o`, one shared IntersectionObserver marking `data-shown`, and the CSS `reveal-in` on
+  `--spring-glide` (globals.css, beside `window-tilt`). After: framer's batch 19 → 12 ms, React 12 → 8 ms; the page's
+  thread never over 15 ms while scrolling. **The typewriter** (`Statement`) writes into its span and skips ticks while
+  `html[data-scrolling]`.
+- **Maps:** `src/lib/map-smooth.ts`: `SMOOTH_MAP` (no re-fetch of aged tiles, 6 zooms of tiles kept, stale tile
+  requests dropped while zooming, labels fading in 150 ms) on Travel's, Green's and Relief's maps (Green and Relief had
+  none of it), and `smoothGestures(map)`: a fling up to 1800 px/s slowing at 1700 px/s² on `glideOut`, carrying about
+  half as far again as MapLibre's own. The card light (`startSheen`, scroll-motion.ts) no longer lights a card under
+  a map or a canvas (it repainted the whole map card's background on every move of a drag). Trace's canvas map: a
+  fling's drift time constant 260 → 380 ms; its worst frame on a drag 50 → 33 ms.
+- **What's left is the machine:** the remaining long frames in this container are the graphics process emulating
+  WebGL in software (the Earth, the app scene, MapLibre); the trace shows them on `CrGpuMain`, not the page.
+- **For code that builds on it:** on the website, an arrival on scroll is `Reveal` (CSS), never framer-motion's
+  `whileInView`; a new MapLibre map spreads `SMOOTH_MAP` into its options and calls `smoothGestures(map)`.
+
+## M336: the map like Google Maps and Apple Maps, and other maps' best ideas (19 Nov)
+
+The owner: "upgrade the map like how google maps and apple map looks so add all the options and features these maps
+has and check other maps also which has unique features and add them too and everything should be ultra smooth".
+Travel's map already had most of Google's and Apple's tools (directions with stops and avoid, turn-by-turn with voice,
+satellite, 3D, street photos, measure, what's here, Home / Work, the globe, the hour's sunlight). Added what was
+missing, every source free, no account, straight from its source to the browser (no Worker CPU beyond the weather,
+which the Worker already kept an hour):
+
+- **Apple Maps' weather in the corner** (`WeatherChip`, `MapExtras.tsx`): the temperature and sky now at the middle of
+  the map, the next four days on a tap. `GET /travel/weather` now also answers `now` (`weatherNow`: the forecast hour
+  nearest now; the cache key moved to `wx:` because its shape changed). °F for US English.
+- **The scale while zooming** (Apple): MapLibre's own `ScaleControl` placed in our own box (`ScaleBar`), shown on
+  `zoomstart`, faded 1.4 s after `zoomend` (moved by MapLibre, never a React render a frame).
+- **Layers → Weather and the world** (`map-extras.ts`, `addExtraLayers` / `applyExtras`, added on every style load
+  after `addLayers`): rain of the last hours (NASA GIBS IMERG, z ≤ 6) and yesterday's clouds from space (GIBS VIIRS,
+  z ≤ 9), like Zoom Earth; day and night on the globe at the hour picked (Google Earth; `nightArea`, `subsolar` in
+  `travel-local.ts`); sunrise, sunset and the sun's directions from the middle of the map (the photographers' apps;
+  `sunLines`); hiking and cycling routes (Waymarked Trails, like Komoot and Apple's topographic maps); disasters and
+  earthquakes (Google's crisis map: the existing `GET /relief/alerts`, a tap opens `AlertCard`).
+- **Walking distance along real streets**: the rings are now FOSSGIS's Valhalla isochrones (5, 10, 15 min, like
+  Mapbox's), asked half a second after the map stops, once per ~150 m spot (kept in a ref), circles until it answers.
+- **What's here** (right-click or hold): Google's Plus Code (`plusCode`, copy it), the spot's height (read from the
+  same Terrain Tiles as the 3D hills: `heightsAt` decodes the PNG on an `OffscreenCanvas`, tiles kept), and "Report a
+  problem with the map" (an OpenStreetMap note there).
+- **A route's climb** on foot or by bike (Komoot, Apple's cycling directions): `Profile` under the routes: metres up
+  and down, lowest to highest, a `Spark` of 60 heights.
+- **Apple's Flyover**: "Fly around" on a place's card tilts over it in 3D and circles it (`flyAround`: chained 90°
+  linear `easeTo`s); any touch, wheel or key on the map, or the pill, stops it; Reduce Motion only tilts.
+- Left out: live traffic, busy times and indoor maps (no free source); air quality (the free source, Open-Meteo, is
+  for non-commercial use only); contour lines (needs a new library).
+- The container couldn't reach the tile hosts, so the new layers were checked by their unit tests and in the
+  browser for their panels only; the URLs follow each service's documentation (GIBS: `default` for the newest time).
+- **For code that builds on it:** a new map overlay goes in `addExtraLayers` with `visibility: 'none'` and a key in
+  `Extras` / `SHOW`, its credit in the credits line; heights come from `heightsAt`, never a new elevation service.
+
+## M337: smoothness where it wasn't measured, policies for every app, and a security pass (19 Nov)
+
+The owner, in one session: "make the whole app in mobile and website animations ultra smooth", then "also make changes in
+the main menu, privacy policies, or security or anything else which are not updated after a lot of things added", then
+"perform the biggest security deployment".
+
+**Smoothness, measured first.** `scripts/checks/motion-frames.mjs` (new) measures what smooth-frames and main-pages-smooth
+didn't: tapping between pages, the notifications and the menu, on a 390 px phone at 4× slower CPU and on a computer.
+`main-pages-smooth.mjs --phone-only` on every app's home: none drops a frame while still or scrolling. The landing did:
+its slow phone scroll frames were the Earth's WebGL frames read back for the page (`GLES2::ReadPixels` on its worker),
+taking the graphics chip from the scroll. **`EarthGlobe` now rests while `html[data-scrolling]`** (as every decorative
+loop, M97): 6–9 slow frames, worst 233–383 ms → none, worst 33 ms. A tap's own work is ~12 ms at 4×; the rest of a page
+change is React drawing the new page and its first layout (Next's scroll check forces it in `dontForceLayout`), with the
+entrance on the compositor meanwhile. Left: `content-visibility` for long pages (would skip offscreen layout, but
+moves scroll heights as cards are met; not worth it yet). The container's software WebGL inflates map and Earth frames.
+
+**Policies and pages that had fallen behind** (legal text was from 29 Sep–5 Oct, before Trace, Relief, Green, Travel,
+Games, Green Business and connections): `legal/privacy.md` (2.8 Data in UniVerse's apps, connected accounts, voice typing,
+PostHog after "Accept all" (it still said no consent banner was needed), map and place services the browser contacts,
+partners, brands' and organisations' views, retention rows), `legal/terms.md` (the apps, ages, acceptable use per app,
+paid plans and partner bookings, 9A: Relief isn't an emergency service, Trace verdicts are indications, Green figures are
+estimates and Business reports drafts, Travel information can be out of date). **PDFs:** `node scripts/legal-pdf.mjs`
+makes both from the Markdown (the old ones were from 29 Sep). `TERMS_VERSION` was **not** bumped: asking everyone to
+accept again is the owner's call. Security, All policies (providers, retention) and Your Privacy Choices updated. The
+footer's apps come from `APPS` (Play was listed, Travel missing), each `data-uv-app` so the owner's shown-apps rule hides
+them; the legal row links Security and All policies.
+
+**Promises the code didn't keep:** account erasure (`eraseAccount`) didn't touch the newer apps: it now deletes connected
+accounts' keys, Relief watches, posts, check-ins and plans, Green actions and goals, game scores, Travel saved places,
+documents, journal, check-ins, board posts and blocks, solo trips (a trip friends joined stays), Trace ownership, and
+unlinks Trace scans (~45 queries; a test keeps it ≤ 45). "Download my data" no longer includes connected accounts'
+sealed keys (`SKIP_MODEL_FIELDS`). The CSP lacked M336's hosts (`gibs.earthdata.nasa.gov`, `tile.waymarkedtrails.org`,
+`valhalla1.openstreetmap.de`): rain, clouds, trails and walking rings would have been blocked on the live site.
+
+**Security pass.** Checked and sound: demo tokens only with `DEMO_LOGIN_ENABLED`, no secret fallbacks (SESSION_SECRET,
+secret-box), Stripe, Razorpay and Twilio signatures, cron tokens, sign-in redirects, every `dangerouslySetInnerHTML`
+escaped, uploaded files sandboxed, message listeners check their sender, admins' two-step, no whole-request writes,
+`pnpm audit` clean, the security headers. Fixed: link previews followed redirects unchecked (now by hand, each hop
+checked; more private ranges, ports, credentials: `privateHost`, test); typed codes (Relief organisation 6 characters,
+trips, Green teams, Trace transfers, invites and prizes, a child's account, classes, communities) now `CODE_STEP` in
+`cloudflare/worker.ts`, 10 a minute on the sign-in limiter; Travel's booking reading and both bill readers in `COSTLY`;
+a shopper's scan position kept to 0.01° (`roughPosition`; copy checks work at 150 km); download names encoded
+(`filename*`, a non-Latin name broke the header); `poweredByHeader: false`. The landing's faded feed rows were below
+4.5:1 (axe): they fade less; its "One planet" app cards showed their names white on white in light mode (the
+`.flip-light` swap): they keep their greys (`flip-keep`). Left: `script-src 'unsafe-inline'` (Next's own inline scripts change per page; nonces would
+end the cached pages, M120).
+
+**For code that builds on it:** a new outside host goes in `security-headers.ts` with the feature; a new table holding a
+person's places, notes or keys goes in `eraseAccount`; a route that redeems a typed code goes in `CODE_STEP`, an AI or
+sending route in `COSTLY`; a fetch of a person's link uses `privateHost` and manual redirects; after editing
+`legal/*.md`, run `node scripts/legal-pdf.mjs`.
+
+**[owner]:** check in Cloudflare (universe-web → Settings → Variables) that `DEMO_LOGIN_ENABLED` is not `true` on the
+live site and that `SESSION_SECRET` is set (32+ characters); turn on Bot Fight Mode; decide whether to ask everyone to
+accept the new Terms (bump `TERMS_VERSION`); have a lawyer read the new policy sections before relying on them.
+
+## M338: a check for errors and bugs, and the iPhone feel (19 Nov)
+
+The owner: "make sure everything looks really smooth and design like apple ios and check if any error or bugs are there".
+
+- **The live error log** (production `error_reports`, read-only): the open "undefined" on /travel (iPhone Safari, 5 times,
+  2 people) is a picture's failed `error` event, already ignored by `installErrorMonitor`; the rest are diagnosed, old or
+  bots. The owner can mark them resolved.
+- **Crawls of the built site** (`scripts/crawl.mjs`, 213 pages, each role): `--phone --layout`, then `--dark --axe` on a
+  computer. **A local database behind the code fails nearly every page** ("no such column totpOn"): run
+  `npx wrangler d1 migrations apply universe-db --local` before crawling. After that, left are only what this container
+  can't reach (Wikimedia, reCAPTCHA), 503s that need SESSION_SECRET (calendar links), and 403s by design (the demo admin is
+  read-only; Trace's brand pages invite a non-brand to start one). The layout check's "overlaps" on the Knowledge hub and
+  My courses are a button placed on a card on purpose (a folder's "+", a course's colour).
+- **Fixed:** the parent's week (M300, `GET /api/core/parent-week`) answered 403 to every parent: the parent-only gate
+  (`GUARDIAN_ALLOWED`, `src/server/auth.ts`) didn't list it. Added (the route itself checks the child is linked); test in
+  `guardian-accounts.test.ts`. **For code that builds on it:** a new route for parents goes under `/api/parent/…` or into
+  `GUARDIAN_ALLOWED` with a test line.
+- **The iPhone feel**, checked and already in place: no tap flash, no zoom into fields (16 px), safe areas, no selection on
+  long-press, swipe down to close sheets (`SheetGestures`), swipe back, the pill tab bar, segmented tabs, Settings as
+  grouped rows with coloured icons. No new look (the launch focus).
+
+## M339: no round assistant button over the page on phones (19 Nov)
+
+The owner, of M338's note that the assistant's round button sat over the page on phones: "please do this part". iPhone
+apps don't float a button over content, and the tab bar's "+" (QuickCreate) already has **Ask AI**, which opens the same
+assistant through `universe:open-assistant`. So `AIStudyAssistant`'s closed button is `max-lg:hidden` (exactly where the
+tab bar shows), except for parents (`GUARDIAN`: their tab bar has no "+"). It used to be left out of Messages entirely
+(it covered the message box), which made "+" → Ask AI do nothing there: `DeferredShell` now always loads it, with
+`button={false}` in Messages. Computers keep the button (and its × to hide it). Checked in a browser: phone /student and
+/student/inbox (no button, "+" → Ask AI opens it), computer (button on the home, none in Messages).
+
+## M340: Messages' quick replies, Notes to self, checklists, quiet-hours sending and quick tools (19 Nov)
+
+The owner, asked which new features Messages should get: "All of them and add more quick tools as well as encrypted
+message system for security of the website" (the encryption is M341).
+
+- **Quick replies** (`ChatHints.tsx`, `src/lib/quick-replies.ts`): up to three chips under the last message someone else
+  sent (TEXT only; not in private, official or self chats), picked by plain rules in the browser (a question first, then
+  thanks, sorry, greetings, plans…); gone once one is sent or the chat moves on.
+- **Notes to self**: a 1:1 conversation with only its owner (`name: 'Notes to self'`, `SELF_TITLE` in `src/lib/chat-self.ts`),
+  made by `POST /api/chat/conversations { self: true }` (found again after); the list marks it `self` and sorts it after
+  pinned chats; the header and list show a bookmark; no call buttons. Until it exists, the list offers it under Status.
+- **Checklists**: message type `CHECKLIST`, metadata `{ title, items: [{ text, done: { by, name, at } | null }] }`
+  (`newChecklist`, `toggleItem`); `POST /api/chat/messages/:id/check { item }` for any member (realtime refresh); the
+  composer's + menu and `/checklist`; the bubble has `role="checkbox"` rows and a `<Fill>` bar.
+- **Quiet hours**: the chat's header answer has `quietUntil` (a 1:1 chat's other person, `quietEnds` in
+  `src/server/quiet-hours.ts`, null when not in quiet hours); the bar's "Send then" makes the next text a scheduled message
+  for that moment (the chat's own send-later). It shows the moment in my time, not theirs.
+- **Quick tools** (`SLASH_COMMANDS`): `/note text` (saved to Notes to self), `/roll [sides]`, `/flip`, `/time`.
+- **For code that builds on it:** a new kind of chat message goes in `TYPES` (messages route), `MessageType` and the
+  previews (`chat-client.ts`, `chat-reminders.ts`), and the bubble.
+
+## M341: encrypted photos, files, videos and voice notes in private chats (19 Nov)
+
+The owner: "encrypted message system for security of the website". Private chats (Stage 5 · B7.6, X25519 device keys,
+`src/lib/e2e.ts`) were text only. Now:
+
+- **Sending** (`ChatWindow` `send`, private branch): first `encryptForChat(…, '')` (throws if the other person has no
+  device yet, so nothing is uploaded for nobody); each file (photos shrunk first) is encrypted with a fresh AES-256-GCM
+  key (`encryptFile`), uploaded as `private.enc` (`application/octet-stream`, the new `.enc` in `MIME_BY_EXT`, served as
+  an attachment), and the message's encrypted text is an envelope (`fileEnvelope`: a `\u0001uvfile:` mark + JSON of url,
+  key, nonce, name, type, size, kind, a voice note's length and bars, the caption). Albums go as one message a photo.
+  Stickers stay out of private chats.
+- **Opening** (`PrivateText` → `PrivateAttachment`): `readEnvelope` accepts only this site's file addresses
+  (`isUploadedFileUrl`); photos, videos and voice notes are fetched and decrypted at once into a `blob:` address (freed on
+  unmount), other files on tap; AES-GCM refuses anything changed on the way. "End-to-end encrypted" under each.
+- The server sees who is in the chat, when, and the scrambled bytes' size; never the key, name or type.
+- **For code that builds on it:** a new kind of private content goes in the envelope, never in the message's plain
+  fields; forwarding, search, translation and AI stay off in private chats.
+
+## M342: Meet & call, who joined, My room, reactions, the security code (19 Nov)
+
+The owner, asked which Meet & call features: "All of them and encrypted system in this also".
+
+- **Already there, checked:** the pre-join screen (camera preview, `MicMeter`, test sound, devices, backgrounds, 2G mode)
+  and meeting notes posted into the call's chat (`src/server/meeting-notes.ts` `deliver`).
+- **Who joined:** `endCall` (src/server/calls.ts) adds `people` (first names, up to 8) from `call_stats` rows with time
+  connected, plus the person ending it when answered; a group call's chat card says "With …".
+- **My room:** `personalRoomId(userId)` = `l_` + 16 bytes of HMAC-SHA256(SESSION_SECRET, `personal-room:<id>`): the same
+  call link every time, unguessable from the account id, refused without a 32+ character secret. `POST /api/calls/links
+  { personal: true }`; a row under the four tiles on Meet & call opens it (`NewMeeting personal`). The room's host is its
+  owner (the CallRoom's `creator`, set once).
+- **Reactions:** `FloatingReactions` is CSS now (`react-rise` 3 s on transform and opacity, a sway per reaction from its
+  id), bigger, with five `react-spark` copies for 👏 and 🎉; Reduce Motion only fades. The name chip is 11 px.
+- **Encryption, honestly:** calls of up to six connect directly (WebRTC: DTLS-SRTP, end to end); bigger calls with the SFU
+  set up go through Cloudflare Realtime (encrypted in transit, readable there). A lock in the call's bar opens a sheet:
+  direct calls list each person with a **security code** (`securityCode`: SHA-256 of both SDP fingerprints in a fixed
+  order, four groups of four digits, the same at both ends; a man in the middle swapping certificates changes it);
+  SFU calls say so plainly. True end-to-end encryption through the SFU (insertable streams with keys from the chat's
+  device keys) is **left out**: say it if the owner asks for it.
+- **Phones:** the call bar's seven buttons pushed Leave off a 390 px screen: Share screen is in More on phones
+  (`phoneOnly` items), the bar keeps six and Leave.
+- Tested on the built site with two people (fake camera): both codes 6860 3677 2818 7511, the clap with its sparks on the
+  other screen, `people` on the call's message, steady and personal room links.
+
+## M343: Messages and Meet & call polished on phones (19 Nov)
+
+The owner: "give a premium polish design to it which fit the website and app in mobile". Checked on the built site at
+390 and 1280 px, light and dark, with axe (serious and critical) and screenshots; the look stays the app's own (no new
+look, the launch focus).
+
+- **In a call on a phone** the bar's seven buttons pushed Leave past a 390 px screen: Share screen lives in More there
+  (M342), and the check measures Leave at 311–359 px.
+- **Meet & call:** the empty Favourites was a 192 px dashed card; with no favourites it's one slim row ("Call your closest
+  people in one tap"), the card size coming back once there are some.
+- **My sent bubbles in dark mode** used the dark accent (#6ea2f8, a shade for ink text) with white text, 2.6:1, on every
+  message: `html.dark` (no own accent; not Trace, Relief or Travel, which already ink their text) gives `.bubble-mine` the
+  dark mode's button blue #2563eb (5.2:1), Green #047857. A person's own accent is left as they chose.
+- Ticked checklist items keep their strike-through but no longer fade (they fell under 4.5:1); the call card's "Call back"
+  in my bubble is a white pill with ink text.
+- **For code that builds on it:** text on `bg-tint` in dark mode is ink, never white; on my bubble use solid white or the
+  bubble's own text colour, not see-through white.
+
+## M344: Messages' gaps against the other apps: live location, spoilers, events, QR invites, read receipts (19 Nov)
+
+The owner: "Add all features that all messaging and video call and meeting apps has… just research all the things we
+need". An inventory of about 100 features (WhatsApp, Telegram, Signal, iMessage, Messenger, Slack, Discord, Teams, Zoom,
+Meet, FaceTime) against the code found nearly everything already in (replies, threads, reactions, editing with history,
+undo send, pins, stars, polls, stickers, disappearing and view-once, voice and video notes, stories, communities and
+channels, broadcasts, bots, translation, AI catch-up, folders, archive, chat lock, export, wallpapers, effects, silent send,
+slow mode, roles, custom emoji, huddles…). The gaps, built:
+
+- **Live location** (`LOCATION` with `metadata.live { until, updatedAt, stopped? }`, `liveMinutes` 15 / 60 / 480 when sent;
+  `POST /api/chat/messages/:id/live { lat, lng } | { stop: true }`, the sender only, at most a move every 10 s, 410 once
+  over). The chat window watches the position while it's open and my live locations are running (`useNow`, not
+  `Date.now()` while rendering). The location button opens `LocationSheet` (now or live). A web page can't move it in the
+  background: the sheet says so.
+- **Spoilers**: `||text||` in `RichText` (a covered button until tapped); `hideSpoilers` (`src/lib/spoilers.ts`) in list
+  previews (`plainText`) and notifications.
+- **Events with RSVP**: message type `EVENT` (`src/lib/chat-event.ts`: `newEvent`, `answer`, `eventIcs`), `POST
+  /api/chat/messages/:id/rsvp { answer }` (the same answer again takes it back), the + menu and `/event`; the bubble has a
+  date tile, the three answers, who said what, and Add to calendar (an .ics made in the browser).
+- **QR codes** (the existing `ui/QrCode`) under a community's invite link and a new meeting's / My room's link.
+- **Read receipts** (`users.readReceipts`, 0257; Settings → Privacy & security; `PATCH /users/me`, the fast path's
+  `usersMe`): the messages route sends a member's `lastReadAt` only when both they and I keep receipts on.
+- The jump-to-latest button moves above the hints bar (`hasHints`).
+- **Left out on purpose:** phone dial-in, live streaming to YouTube (paid services), remote control of a shared screen
+  (risky), GIF search (Tenor / Giphy need an account and key: [owner] if wanted).
+
+## M345: recurring meetings, and "Join muted" and "Chat off" for hosts (19 Nov)
+
+Meet & call's gaps from M344's inventory. The host already had: the waiting room, mute everyone, ask to unmute, stop
+someone's video, co-hosts, spotlight, lower all hands, remove, end for everyone, polls, breakouts, webinar and Q&A.
+
+- **Recurring meetings** (`src/lib/meeting-repeat.ts`: `repeatDates` daily / weekdays / weekly / biweekly / monthly, at
+  most 10): `scheduleCall` (`src/server/scheduled-calls.ts`) takes `{ repeat, times }` and creates every date as its own
+  scheduled call (and class-calendar event), within the 6 months ahead; one notification names the series. Cancelling one
+  leaves the others (each is a row). About three queries a meeting, so ten stays under D1's 50 a request.
+- **Host switches** (CallRoom in `cloudflare/worker.ts`): `control` actions `entry-muted` and `chat-off` (`on`), stored in
+  the room's storage, broadcast as `room-setting`; `welcome` carries `settings`; a non-host joining while `entry-muted` is
+  sent `control mute` with `entry: true` (their toast says why); the room's chat drops non-host lines while `chat-off`.
+  `PeoplePanel` shows the two chips next to the waiting room's; `CallChatPanel locked` replaces the box with a note
+  (the room's own chat only: a chat call's messages go to that chat).
+- **Left out:** handing the host role to someone else (co-hosts cover it), phone dial-in and live streaming (paid),
+  remote control (risky), touch-up and low-light filters (the effects pipeline would need a new pass).

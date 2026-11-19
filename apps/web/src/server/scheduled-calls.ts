@@ -1,3 +1,4 @@
+import { REPEATS, repeatDates, repeatLabel, type Repeat } from '@/lib/meeting-repeat';
 import prisma from '@/lib/db';
 import { courseAccess, taughtBy } from '@/lib/course-access';
 import { getSystemUser } from '@/lib/chat';
@@ -132,22 +133,30 @@ export async function scheduleCall(user: SessionUser, body: Record<string, unkno
   const title = String(body.title ?? '').trim().slice(0, 120) || (roomKind === 'class' ? 'Class call' : `${kind === 'video' ? 'Video' : 'Voice'} call`);
 
   const template = isMeetingTemplate(body.template) ? body.template : null;
-  const created = await prisma.scheduledCall.create({
-    data: { title, kind, startAt, durationMin, template, createdById: user.id, courseId: 'courseId' in room ? room.courseId : null, groupId: 'groupId' in room ? room.groupId : null, conversationId: 'conversationId' in room ? room.conversationId : null },
-    select,
-  });
-  // Class calls go on the class calendar (students' calendars and calendar feeds show them).
-  if ('courseId' in room) {
-    const ev = await prisma.calendarEvent.create({
-      data: { userId: user.id, courseId: room.courseId, title: `📹 ${title}`, description: 'Class call on UniVerse. Join from Calls or the class.', startAt, endAt: new Date(startAt.getTime() + durationMin * 60_000), type: 'MEETING' },
-      select: { id: true },
+  // M345: a series (Zoom's recurring meetings): every date its own scheduled call, ten at most.
+  const repeat = REPEATS.includes(body.repeat as Repeat) ? (body.repeat as Repeat) : null;
+  const dates = (repeat ? repeatDates(startAt, repeat, Number(body.times) || 4) : [startAt]).filter((d) => d.getTime() <= Date.now() + MAX_AHEAD_MS);
+  let created!: Awaited<ReturnType<typeof makeOne>>;
+  async function makeOne(at: Date) {
+    const one = await prisma.scheduledCall.create({
+      data: { title, kind, startAt: at, durationMin, template, createdById: user.id, courseId: 'courseId' in room ? room.courseId : null, groupId: 'groupId' in room ? room.groupId : null, conversationId: 'conversationId' in room ? room.conversationId : null },
+      select,
     });
-    await prisma.scheduledCall.update({ where: { id: created.id }, data: { calendarEventId: ev.id } });
+    // Class calls go on the class calendar (students' calendars and calendar feeds show them).
+    if ('courseId' in room) {
+      const ev = await prisma.calendarEvent.create({
+        data: { userId: user.id, courseId: room.courseId, title: `📹 ${title}`, description: 'Class call on UniVerse. Join from Calls or the class.', startAt: at, endAt: new Date(at.getTime() + durationMin * 60_000), type: 'MEETING' },
+        select: { id: true },
+      });
+      await prisma.scheduledCall.update({ where: { id: one.id }, data: { calendarEventId: ev.id } });
+    }
+    return one;
   }
+  for (const [i, at] of dates.entries()) { const one = await makeOne(at); if (i === 0) created = one; }
   const members = (await membersOf(created.course ? { courseId: created.course.id } : created.group ? { groupId: created.group.id } : { conversationId: created.conversation?.id })).filter((u) => u !== user.id);
   if (members.length) {
     await prisma.notification.createMany({
-      data: members.map((userId) => ({ userId, title: `${user.name} scheduled a call`, body: `${title} · ${room.name}`, type: 'call', link: '/calls' })),
+      data: members.map((userId) => ({ userId, title: `${user.name} scheduled a call`, body: `${title} · ${room.name}${dates.length > 1 ? ` · ${repeatLabel(repeat!).toLowerCase()}, ${dates.length} times` : ''}`, type: 'call', link: '/calls' })),
     });
     publish(members, { type: 'refresh', keys: ['/api/calls/scheduled'] });
     publish(members, { type: 'notification' });

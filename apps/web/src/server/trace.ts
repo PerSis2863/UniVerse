@@ -48,6 +48,12 @@ export const position = (b: Body) => {
   const lat = num(b.lat, -90, 90), lng = num(b.lng, -180, 180);
   return lat !== null && lng !== null ? { lat, lng } : null;
 };
+/** M337: a shopper's scan is kept to about 1 km (0.01°): copy checks work at 150 km and campaign areas in whole
+ *  kilometres, so nothing needs where a person stood to the metre (staff stops keep their place). */
+export const roughPosition = (b: Body) => {
+  const p = position(b);
+  return p && { lat: Math.round(p.lat * 100) / 100, lng: Math.round(p.lng * 100) / 100 };
+};
 /** Cloudflare's estimate of where a request came from (city level), when it has one. */
 export function cfPosition(req: Request) {
   const cf = requestCf(req);
@@ -333,7 +339,7 @@ export async function scan(raw: string, b: Body, user: SessionUser | null, req: 
   const role = await chainRole(batch, user, b.key);
   if (role !== 'BUYER') return staffView(unit, role, req);
   const existing = await prisma.traceCode.upsert({ where: { id }, create: { id, batchId: batch.id, productId: batch.productId, brandId: batch.brandId, serial: parts.serial }, update: {} });
-  const here = position(b);
+  const here = roughPosition(b);
   const again = b.again === true;
   const { cf, geo } = cfPosition(req);
   let verdict = verdictFor(existing, here, { first: existing.firstCountry, now: cf?.country ?? null });

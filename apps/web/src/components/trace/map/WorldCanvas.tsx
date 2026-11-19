@@ -215,7 +215,7 @@ class MapEngine {
       this.rewrap();
     } else if (Math.abs(this.drift.vx) + Math.abs(this.drift.vy) > 0.02) {
       this.view = this.clamp({ ...this.view, x: this.view.x + this.drift.vx * dt, y: this.view.y + this.drift.vy * dt });
-      const f = Math.exp(-dt / 260);
+      const f = Math.exp(-dt / 380); // M335: a fling carries on a little longer before it rests, as the street maps
       this.drift.vx *= f; this.drift.vy *= f;
     } else moving = false;
     // Sharper outlines once the world is drawn big enough on screen (in real pixels) to show them.

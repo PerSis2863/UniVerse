@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { toast } from 'sonner';
-import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Landmark, Lightbulb, Loader2, MapPin, Navigation, Phone, UtensilsCrossed, X } from 'lucide-react';
+import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Landmark, Lightbulb, Loader2, MapPin, Navigation, Phone, Rotate3d, UtensilsCrossed, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { commonsFileOf, commonsImage, commonsSrcSet } from '@/lib/travel-guide';
@@ -42,20 +42,20 @@ const GoButton = ({ to, onGo, label = 'Directions' }: { to: { lat: number; lon: 
   <button type="button" onClick={() => onGo(to)} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Navigation className="h-4 w-4" aria-hidden />{label}</button>
 );
 
-export function PlaceCard({ picked, at, onClose, onDirections }: { picked: Picked; at: Date; onClose: () => void; onDirections: Go }) {
+export function PlaceCard({ picked, at, onClose, onDirections, onFlyover }: { picked: Picked; at: Date; onClose: () => void; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-end">
         <button type="button" onClick={onClose} className="btn-ghost btn-sm p-1.5" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="-mt-8 min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
-        {picked.type === 'place' ? <PlaceBody p={picked} at={at} onDirections={onDirections} /> : picked.type === 'story' ? <StoryBody s={picked.story} onGo={onDirections} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} onGo={onDirections} /> : <PhotoBody ph={picked.photo} onGo={onDirections} />}
+        {picked.type === 'place' ? <PlaceBody p={picked} at={at} onDirections={onDirections} onFlyover={onFlyover} /> : picked.type === 'story' ? <StoryBody s={picked.story} onGo={onDirections} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} onGo={onDirections} /> : <PhotoBody ph={picked.photo} onGo={onDirections} />}
       </div>
     </div>
   );
 }
 
-function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place' }>; at: Date; onDirections: Go }) {
+function PlaceBody({ p, at, onDirections, onFlyover }: { p: Extract<Picked, { type: 'place' }>; at: Date; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
   const key = p.key ? `/travel/place?osm=${p.key}` : `/travel/place?name=${encodeURIComponent(p.name)}&lat=${p.lat.toFixed(5)}&lon=${p.lon.toFixed(5)}`;
   const { data, error, isLoading } = useSWR<{ place: PlaceInfo }>(key, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
   const [week, setWeek] = useState(false);
@@ -109,6 +109,8 @@ function PlaceBody({ p, at, onDirections }: { p: Extract<Picked, { type: 'place'
       )}
       <div className="flex flex-wrap gap-1.5">
         <GoButton to={{ lat: p.lat, lon: p.lon, name: info?.name ?? p.name }} onGo={onDirections} />
+        {/* M336: Apple Maps' Flyover: tilt over the place in 3D and circle it. */}
+        {onFlyover && <button type="button" onClick={() => onFlyover(p)} className={link}><Rotate3d className="h-4 w-4" aria-hidden />Fly around</button>}
         {info?.phone && <a href={`tel:${info.phone.replace(/[^\d+]/g, '')}`} className={link}><Phone className="h-4 w-4" aria-hidden />Call</a>}
         {info?.website && <a href={info.website} target="_blank" rel="noopener noreferrer nofollow" className={link}><Globe className="h-4 w-4" aria-hidden />Website</a>}
         {info?.menu && <a href={info.menu} target="_blank" rel="noopener noreferrer nofollow" className={link}><UtensilsCrossed className="h-4 w-4" aria-hidden />Menu</a>}

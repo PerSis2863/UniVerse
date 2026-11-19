@@ -2690,6 +2690,11 @@ html[data-scrolling] iframe { pointer-events: none; }
 /* The small print inside my bubbles (time, "Voicemail", poll notes) was see-through white: on lime
    1.3:1. It takes the bubble's own text colour. */
 .bubble-mine [class*="text-white/"] { color: inherit; }
+/* M343: in dark mode the accent is a light shade meant for ink text (#6ea2f8), but my bubbles keep white text: 2.6:1.
+   They take the dark mode's button blue instead (white on it 5.2:1), Green its deep emerald; Trace, Relief and Travel
+   already turn the text ink on their accent. A person's own accent stays theirs. */
+html.dark:not([data-accent]):not([data-app="trace"]):not([data-app="relief"]):not([data-app="travel"]):not([data-app="green"]) .bubble-mine { background-color: #2563eb; }
+html.dark[data-app="green"]:not([data-accent]) .bubble-mine { background-color: #047857; }
 .bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
 .msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }
 
@@ -2832,6 +2837,14 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   }
 }
 @keyframes window-tilt { from { transform: translate3d(0, 48px, 0) rotateX(24deg) scale(0.88); } to { transform: none; } }
+/* M335: the landing's Reveal (bits.tsx): each part arrives once on the graphics chip, on the glide spring, when its
+   watcher marks it `data-shown` (it was framer-motion on the page's thread, which the wheel's glide shares). */
+[data-reveal] { opacity: var(--rv-o, 0); transform: var(--rv-from); }
+[data-reveal][data-shown] { animation: reveal-in 0.9s var(--spring-glide) var(--rv-delay, 0s) both; }
+[data-reveal="mask"][data-shown] { animation-duration: 0.8s; animation-timing-function: var(--ease-glide); }
+@keyframes reveal-in { from { opacity: var(--rv-o, 0); transform: var(--rv-from); } to { opacity: 1; transform: none; } }
+html.reduce-motion [data-reveal] { opacity: 1; transform: none; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { [data-reveal] { opacity: 1; transform: none; animation: none; } }
 
 /* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
    design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes
@@ -3137,3 +3150,21 @@ html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { 
 html[data-scrolling] .world-earth .earth-clouds { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .world-earth .earth-clouds { animation: none; } }
 html.reduce-motion .world-earth .earth-clouds { animation: none; }
+
+/* M342: call reactions rising (FaceTime's feel), on transform and opacity only (Reactions.tsx). */
+@keyframes react-rise {
+  0% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+  12% { transform: translate3d(var(--rx1, 8px), -36px, 0) scale(1.18); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate3d(var(--rx2, -6px), -340px, 0) scale(0.96); opacity: 0; }
+}
+@keyframes react-spark {
+  0% { transform: translate3d(-50%, -50%, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate3d(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)), 0) scale(0.9); opacity: 0; }
+}
+.react-rise { animation: react-rise 3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.react-spark { animation: react-spark 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .react-rise { animation: fade-out-late 3s linear both; } .react-spark { display: none; } }
+html.reduce-motion .react-rise { animation: fade-out-late 3s linear both; }
+html.reduce-motion .react-spark { display: none; }
+@keyframes fade-out-late { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }

@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import useSWR, { useSWRConfig } from 'swr';
 import { toast } from 'sonner';
-import { AlarmClock, Check, CheckCheck, Loader2, Plus, Search, Star, Trash2 } from 'lucide-react';
+import { AlarmClock, Check, CheckCheck, Loader2, MapPin, Plus, Radio, Search, Star, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { Avatar } from '@/components/ui/Avatar';
@@ -47,6 +47,98 @@ export function PollDialog({ onClose, onCreate }: { onClose: () => void; onCreat
         Allow multiple answers
         <input type="checkbox" checked={multiple} onChange={(e) => setMultiple(e.target.checked)} className="w-5 h-5 accent-indigo-600" />
       </label>
+    </Sheet>
+  );
+}
+
+// ─── Checklist (M340) ─────────────────────────────────────────────────────
+/** A shared checklist: a title and its items (one a line, or one a field); Enter adds the next item. */
+export function ChecklistDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (checklist: { title: string; items: string[] }) => Promise<void> }) {
+  const [title, setTitle] = useState('');
+  const [items, setItems] = useState(['', '']);
+  const [busy, setBusy] = useState(false);
+  const clean = items.map((o) => o.trim()).filter(Boolean);
+  const valid = title.trim() && clean.length > 0;
+  const create = async () => {
+    setBusy(true);
+    try { await onCreate({ title: title.trim(), items: clean }); onClose(); } catch { /* toast shown by caller */ } finally { setBusy(false); }
+  };
+  return (
+    <Sheet title="New checklist" onClose={onClose} footer={
+      <button onClick={create} aria-busy={busy || undefined} disabled={!valid || busy} className="btn-primary w-full">
+        {busy && <Loader2 className="w-4 h-4 animate-spin" />} Send checklist
+      </button>
+    }>
+      <label className="text-xs font-semibold text-zinc-500" htmlFor="checklist-title">Title</label>
+      <input id="checklist-title" autoFocus className={cn('input', 'mt-1.5')} placeholder="Trip prep, group project, shopping…" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <p className="block text-xs font-semibold text-zinc-500 mt-4">Items</p>
+      <div className="space-y-2 mt-1.5">
+        {items.map((o, i) => (
+          <div key={i} className="flex gap-2">
+            <input className="input" aria-label={`Item ${i + 1}`} placeholder={`Item ${i + 1}`} maxLength={160} value={o}
+              onChange={(e) => {
+                // A pasted list (one item a line) becomes one item each.
+                const lines = e.target.value.split('\n');
+                setItems(lines.length > 1 ? [...items.slice(0, i), ...lines, ...items.slice(i + 1)].slice(0, 30) : items.map((x, j) => (j === i ? e.target.value : x)));
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (items.length < 30) setItems([...items.slice(0, i + 1), '', ...items.slice(i + 1)]); } }} />
+            {items.length > 1 && <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label={`Remove item ${i + 1}`} className="p-2 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
+          </div>
+        ))}
+      </div>
+      {items.length < 30 && <button onClick={() => setItems([...items, ''])} className="mt-2 text-sm font-semibold text-indigo-500 inline-flex items-center gap-1"><Plus className="w-4 h-4" /> Add item</button>}
+      <p className="mt-4 text-xs text-zinc-500">Everyone in the chat can tick items; each tick shows who did it.</p>
+    </Sheet>
+  );
+}
+
+// ─── Event (M344) ─────────────────────────────────────────────────────────
+/** An event for the chat: a name, when and where; everyone answers Going, Maybe or Can't. */
+export function EventDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (event: { title: string; startsAt: string; endsAt: string | null; place: string }) => Promise<void> }) {
+  const [title, setTitle] = useState('');
+  const [start, setStart] = useState('');
+  const [end, setEnd] = useState('');
+  const [place, setPlace] = useState('');
+  const [busy, setBusy] = useState(false);
+  const valid = title.trim() && start;
+  const create = async () => {
+    setBusy(true);
+    try { await onCreate({ title: title.trim(), startsAt: new Date(start).toISOString(), endsAt: end ? new Date(end).toISOString() : null, place: place.trim() }); onClose(); } catch { /* toast shown by caller */ } finally { setBusy(false); }
+  };
+  return (
+    <Sheet title="New event" onClose={onClose} footer={
+      <button onClick={create} aria-busy={busy || undefined} disabled={!valid || busy} className="btn-primary w-full">{busy && <Loader2 className="w-4 h-4 animate-spin" />} Send event</button>
+    }>
+      <label className="text-xs font-semibold text-zinc-500" htmlFor="ev-title">What</label>
+      <input id="ev-title" autoFocus className={cn('input', 'mt-1.5')} placeholder="Study night, team lunch, match…" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-4">
+        <div><label className="text-xs font-semibold text-zinc-500" htmlFor="ev-start">Starts</label><input id="ev-start" type="datetime-local" className={cn('input', 'mt-1.5')} value={start} onChange={(e) => setStart(e.target.value)} /></div>
+        <div><label className="text-xs font-semibold text-zinc-500" htmlFor="ev-end">Ends (optional)</label><input id="ev-end" type="datetime-local" className={cn('input', 'mt-1.5')} value={end} min={start || undefined} onChange={(e) => setEnd(e.target.value)} /></div>
+      </div>
+      <label className="block text-xs font-semibold text-zinc-500 mt-4" htmlFor="ev-place">Where (optional)</label>
+      <input id="ev-place" className={cn('input', 'mt-1.5')} placeholder="Room 4, the café, a link…" maxLength={160} value={place} onChange={(e) => setPlace(e.target.value)} />
+    </Sheet>
+  );
+}
+
+// ─── Location (M344) ──────────────────────────────────────────────────────
+/** Where I am now, or live for a while (kept up to date while UniVerse is open on this device). */
+export function LocationSheet({ onClose, onPick }: { onClose: () => void; onPick: (liveMinutes: number | null) => void }) {
+  const row = 'w-full flex items-center gap-3 p-3 rounded-2xl text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]';
+  return (
+    <Sheet title="Share location" onClose={onClose}>
+      <button type="button" onClick={() => onPick(null)} className={row}>
+        <span className="w-10 h-10 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0"><MapPin className="w-5 h-5" aria-hidden /></span>
+        <span><span className="block font-semibold text-zinc-900 dark:text-white">Send my current location</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">Once, where you are now</span></span>
+      </button>
+      <p className="mt-3 mb-1 px-3 text-xs font-semibold text-zinc-500">Share live location</p>
+      {[[15, '15 minutes'], [60, '1 hour'], [480, '8 hours']].map(([m, label]) => (
+        <button key={m} type="button" onClick={() => onPick(m as number)} className={row}>
+          <span className="w-10 h-10 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0"><Radio className="w-5 h-5" aria-hidden /></span>
+          <span className="font-semibold text-zinc-900 dark:text-white">{label}</span>
+        </button>
+      ))}
+      <p className="mt-3 px-3 text-xs text-zinc-500 dark:text-zinc-400">Everyone in the chat sees it move while UniVerse is open on this device. You can stop sharing at any time.</p>
     </Sheet>
   );
 }

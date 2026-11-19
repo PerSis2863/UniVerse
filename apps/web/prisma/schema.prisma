@@ -168,6 +168,8 @@ model User {
   campusId           String?
   campus             Campus?   @relation(fields: [campusId], references: [id], onDelete: SetNull)
   networkVisible     Boolean   @default(false)
+  /// M344: whether others see when I've read their messages (off: I don't see theirs either).
+  readReceipts       Boolean   @default(true)
   organizationId     String?
   organization       Organization? @relation("OrgMembers", fields: [organizationId], references: [id], onDelete: SetNull)
 

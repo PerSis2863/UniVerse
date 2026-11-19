@@ -10,6 +10,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { confirmDialog } from '@/components/ui/Dialogs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
+import { QrCode } from '@/components/ui/QrCode';
 import { Avatar } from '@/components/ui/Avatar';
 import { chatJson, uploadChatFile } from './chat-client';
 import { Switch } from '@/components/ui/Switch';
@@ -266,6 +267,8 @@ function ManageCommunity({ community, onClose }: { community: Community; onClose
                 <input readOnly value={invite} aria-label="Invite link" className={cn('input', 'text-xs')} onFocus={(e) => e.target.select()} />
                 <button type="button" onClick={() => { void navigator.clipboard.writeText(invite).then(() => toast.success('Invite link copied')); }} className="btn-secondary shrink-0">Copy</button>
               </div>
+              {/* M344: or scan it with a phone's camera. */}
+              <QrCode value={invite} size={160} title="QR code of the invite link" className="rounded-2xl border border-zinc-200 dark:border-white/10" />
               <button type="button" onClick={async () => { await chatJson(`/api/chat/communities/${community.id}`, { method: 'PATCH', body: JSON.stringify({ newInvite: true }) }); await mutate(); toast.success('New link made; the old one stopped working'); }} className="text-xs font-semibold text-indigo-500">Make a new link</button>
             </section>
           )}

@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
+import { ArrowDown, Bookmark, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { FORWARDABLE, MessageBubble } from './MessageBubble';
@@ -19,7 +19,8 @@ import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
-import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
+import { ChatHints, hasHints } from './ChatHints';
+import { ChecklistDialog, EventDialog, LocationSheet, ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText } from './chat-client';
@@ -32,6 +33,9 @@ import { useChatTranslations } from './useChatTranslations';
 import dynamic from 'next/dynamic';
 import { ContentSkeleton } from '@/components/ui/ContentSkeleton';
 import { encryptForChat, myDevice } from './private-chat';
+import { encryptFile, fileEnvelope, kindOf } from '@/lib/e2e-file';
+import { shrinkImage } from '@/lib/shrink-image';
+import { useNow } from '@/lib/use-now';
 import { PrivateBanner, SafetyCode, StartPrivateChat } from './PrivateChat';
 import { removeWithUndo } from '@/lib/undo';
 import { isScreenEffect, type MessageEffect } from '@/lib/message-effects';
@@ -133,7 +137,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [forwardMany, setForwardMany] = useState<ChatMessage[] | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
-  const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
+  const [extra, setExtra] = useState<'poll' | 'checklist' | 'event' | 'location' | 'contact' | null>(null);
+  // M340: the next text goes out when the other person's quiet hours end.
+  const [quietSend, setQuietSend] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [results, setResults] = useState<{ id: string; body: string; createdAt: string; sender: { name: string } }[] | null>(null);
@@ -352,6 +358,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     });
   };
 
+  // M340: tick an item of a shared checklist (shown at once, then the server's answer).
+  const check = async (m: ChatMessage, item: number) => {
+    patchMsg(m.id, (x) => ({ ...x, metadata: x.metadata && { ...x.metadata, items: (x.metadata.items ?? []).map((it, i) => (i !== item ? it : { ...it, done: it.done ? null : { by: me, name: 'You', at: new Date().toISOString() } })) } }));
+    try { await chatJson(`/api/chat/messages/${m.id}/check`, { method: 'POST', body: JSON.stringify({ item }) }); mutate(); }
+    catch (e) { toast.error((e as Error).message); mutate(); }
+  };
   const vote = async (m: ChatMessage, option: number) => {
     const multiple = !!m.metadata?.multiple;
     patchMsg(m.id, (x) => {
@@ -381,20 +393,38 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     } catch (e) { toast.error((e as Error).message); throw e; }
   };
 
-  const onExtra = (kind: ComposerExtra) => {
-    if (kind !== 'location') return setExtra(kind);
+  const onExtra = (kind: ComposerExtra) => setExtra(kind);
+  // M344: the location sheet's choice: where I am now, or live for 15 min / 1 h / 8 h.
+  const shareLocation = (liveMinutes: number | null) => {
+    setExtra(null);
     if (!navigator.geolocation) return void toast.error('Location isn’t available in this browser.');
     const t = toast.loading('Getting your location…');
     navigator.geolocation.getCurrentPosition(
-      async (pos) => {
-        toast.dismiss(t);
-        if (!(await confirmDialog({ title: 'Send your current location?', message: `Everyone in this chat will see where you are (±${Math.round(pos.coords.accuracy)} m).`, confirmLabel: 'Send location' }))) return;
-        sendSpecial({ type: 'LOCATION', location: { lat: pos.coords.latitude, lng: pos.coords.longitude } }).catch(() => {});
-      },
+      (pos) => { toast.dismiss(t); sendSpecial({ type: 'LOCATION', location: { lat: pos.coords.latitude, lng: pos.coords.longitude, ...(liveMinutes ? { liveMinutes } : {}) } }).catch(() => {}); },
       () => { toast.dismiss(t); toast.error('Location permission was denied. Allow it in your browser settings to share where you are.'); },
       { enableHighAccuracy: true, timeout: 12_000 },
     );
   };
+  // M344: event answers, and stopping my live location.
+  const rsvp = async (m: ChatMessage, a: 'yes' | 'maybe' | 'no') => {
+    try { await chatJson(`/api/chat/messages/${m.id}/rsvp`, { method: 'POST', body: JSON.stringify({ answer: a }) }); mutate(); } catch (e) { toast.error((e as Error).message); }
+  };
+  const stopLive = async (m: ChatMessage) => {
+    try { await chatJson(`/api/chat/messages/${m.id}/live`, { method: 'POST', body: JSON.stringify({ stop: true }) }); mutate(); } catch (e) { toast.error((e as Error).message); }
+  };
+  // While this chat is open, my live locations follow me (WhatsApp keeps it going in the background; a web page can't).
+  const clock = useNow();
+  const myLive = messages.filter((m) => m.type === 'LOCATION' && m.senderId === me && m.metadata?.live && !m.metadata.live.stopped && Date.parse(m.metadata.live.until) > clock).map((m) => m.id).join(',');
+  useEffect(() => {
+    if (!myLive || !navigator.geolocation) return;
+    let last = 0;
+    const watch = navigator.geolocation.watchPosition((pos) => {
+      if (Date.now() - last < 15_000) return;
+      last = Date.now();
+      for (const id of myLive.split(',')) void chatJson(`/api/chat/messages/${id}/live`, { method: 'POST', body: JSON.stringify({ lat: pos.coords.latitude, lng: pos.coords.longitude }) }).catch(() => {});
+    }, () => {}, { enableHighAccuracy: true, maximumAge: 10_000 });
+    return () => navigator.geolocation.clearWatch(watch);
+  }, [myLive]);
 
   // Search in this chat, then jump to a result (loading older history if needed).
   const runSearch = async (q: string) => {
@@ -457,17 +487,40 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     const tempId = `temp-${crypto.randomUUID()}`;
     const base = { id: tempId, conversationId, senderId: me, createdAt: new Date().toISOString(), editedAt: null, deletedAt: null, reactions: {}, metadata: null, sender: { id: me, name: 'You', avatar: null }, pending: true, replyTo: replyTo ? { id: replyTo.id, body: replyTo.body, type: replyTo.type, sender: replyTo.sender } : null } as const;
     const replyToId = replyTo?.id;
-    // A private chat (Stage 5 · B7.6): text only, encrypted here for every device in the chat.
+    // A private chat (Stage 5 · B7.6): encrypted here for every device in the chat. M341: photos, files, videos and
+    // voice notes too: each file is encrypted with its own key before it's uploaded (src/lib/e2e-file.ts), and the key
+    // goes inside the encrypted message, so the server stores only scrambled bytes.
     if (data?.conversation.private) {
-      if (sticker || album?.length || file || voice || !text) { toast.message('Private chats can send text for now. Photos, files and voice notes come later.'); return; }
+      if (sticker) { toast.message('Stickers aren’t sent in private chats.'); return; }
+      const files = album?.length ? album : file ? [file] : voice ? [new File([voice.blob], `voice.${voice.blob.type.includes('mp4') ? 'm4a' : 'webm'}`, { type: voice.blob.type.split(';')[0] || 'audio/webm' })] : [];
+      if (!text && !files.length) return;
       setReplyTo(null);
-      setPending((p) => [...p, { ...base, type: 'TEXT', body: text, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
+      setPending((p) => [...p, { ...base, type: 'TEXT', body: files.length ? `🔒 Sending ${files.length === 1 ? files[0].name : `${files.length} files`}…` : text!, attachmentUrl: null, attachmentName: null, attachmentSize: null, attachmentMime: null } as ChatMessage]);
       try {
-        const e2e = await encryptForChat(conversationId, me, text);
+        if (files.length) {
+          // Everyone's devices first (it throws if the other person has none yet), so nothing is uploaded for nobody.
+          await encryptForChat(conversationId, me, '');
+          setUploadProgress(0);
+          for (const [i, f] of files.entries()) {
+            const small = f.type.startsWith('image/') && f.type !== 'image/gif' ? await shrinkImage(f) : f;
+            const sealed = await encryptFile(await small.arrayBuffer());
+            const url = await uploadChatFile(new File([sealed.data], 'private.enc', { type: 'application/octet-stream' }), (pct) => setUploadProgress(Math.round(((i + pct / 100) / files.length) * 100)));
+            const mime = small.type || 'application/octet-stream';
+            const envelope = fileEnvelope({ url, k: sealed.k, iv: sealed.iv, name: small.name.slice(0, 200), mime, size: small.size, kind: voice ? 'audio' : videoNote ? 'video' : kindOf(mime),
+              ...(voice ? { durationSec: voice.durationSec, waveform: voice.waveform?.slice(0, 64) } : {}), ...(i === 0 && text ? { caption: text.slice(0, 2000) } : {}) });
+            const e2e = await encryptForChat(conversationId, me, envelope);
+            const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: '', e2e, replyToId: i === 0 ? replyToId : undefined, clientId: newClientId() }) });
+            appendSent(msg, i === files.length - 1 ? tempId : '');
+          }
+          setUploadProgress(null);
+          return;
+        }
+        const e2e = await encryptForChat(conversationId, me, text!);
         const msg = await chatJson<ChatMessage>(key, { method: 'POST', body: JSON.stringify({ body: '', e2e, replyToId, clientId: newClientId() }) });
         appendSent(msg, tempId);
       } catch (e) {
         setPending((p) => p.filter((x) => x.id !== tempId));
+        setUploadProgress(null);
         toast.error((e as Error).message || 'Message not sent.');
         throw e;
       }
@@ -638,6 +691,27 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       }
       if (name === 'catchup') { void runCatchup(); return true; }
       if (name === 'poll') { onExtra('poll'); return true; }
+      if (name === 'checklist') { onExtra('checklist'); return true; }
+      if (name === 'event') { onExtra('event'); return true; }
+      // M340: quick tools.
+      if (name === 'note') {
+        if (!arg) { toast.error('Type what to save after /note'); return false; }
+        const self = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ self: true }) });
+        await chatJson(`/api/chat/conversations/${self.id}/messages`, { method: 'POST', body: JSON.stringify({ body: arg }) });
+        toast.success('Saved to Notes to self');
+        return true;
+      }
+      if (name === 'roll') {
+        const sides = Math.min(1000, Math.max(2, Number.parseInt(arg, 10) || 6));
+        await send({ text: `🎲 rolled ${1 + (crypto.getRandomValues(new Uint32Array(1))[0] % sides)} (1–${sides})` });
+        return true;
+      }
+      if (name === 'flip') { await send({ text: `🪙 ${crypto.getRandomValues(new Uint8Array(1))[0] & 1 ? 'Heads' : 'Tails'}` }); return true; }
+      if (name === 'time') {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await send({ text: `🕒 It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} here (${zone.replace(/_/g, ' ')})` });
+        return true;
+      }
       if (name === 'call' || name === 'video') { void call(name === 'video' ? 'video' : 'audio'); return true; }
       const app = apps?.commands.find((c) => c.name === name);
       if (app) {
@@ -754,6 +828,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
               ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#27272a' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
+              : convo.self ? <span className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0"><Bookmark className="w-[18px] h-[18px]" aria-hidden /></span>
               : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
@@ -775,7 +850,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="max-sm:hidden p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
             )
           )}
-          {!convo.isOfficial && !channel && (
+          {!convo.isOfficial && !channel && !convo.self && (
             <>
               <button onClick={() => call('audio')} aria-label="Voice call" title="Voice call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Phone className="w-5 h-5" /></button>
               <button onClick={() => call('video')} aria-label="Video call" title="Video call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Video className="w-5 h-5" /></button>
@@ -956,6 +1031,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onInfo={() => setInfoMsg(m)}
                       onReplayEffect={isScreenEffect(m.metadata?.effect) ? () => setPlaying({ key: `${m.id}:${Date.now()}`, effect: m.metadata!.effect! }) : undefined}
                       onVote={(o) => vote(m, o)}
+                      onCheck={(i) => void check(m, i)}
+                      onRsvp={(a) => void rsvp(m, a)}
+                      onStopLive={() => void stopLive(m)}
                       onOpenContact={openContact}
                       onReact={(e) => react(m, e)}
                       onOpenImage={setLightbox}
@@ -991,7 +1069,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           {(showJump || unseen > 0 || !!win) && (
             <motion.button initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }}
               onClick={() => { setUnseen(0); if (win) backToLatest(); else scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' }); }}
-              className={cn('absolute bottom-28 end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
+              className={cn('absolute end-6 md:end-10 z-20 h-10 rounded-full border shadow-lg', hasHints(convo, messages[messages.length - 1], me) ? 'bottom-48' : 'bottom-28', ' flex items-center justify-center gap-1.5', unseen > 0 ? 'px-3.5 bg-indigo-600 border-indigo-600 text-white text-sm font-semibold' : 'w-10 bg-white dark:bg-[#151517] border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
               <ArrowDown className="w-4 h-4" aria-hidden />
               {unseen > 0 ? <span>{unseen > 99 ? '99+' : unseen} new</span> : <span className="sr-only">Go to the newest message</span>}
             </motion.button>
@@ -1020,7 +1098,8 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           </div>
         )}
         {!picked && <SharedPhotos key={conversationId} chat={conversationId} onSend={send}
-          blocked={isPrivate ? 'Private chats take text only for now' : convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
+          blocked={convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
+        {!picked && !editing && <ChatHints convo={convo} last={messages[messages.length - 1]} me={me} quietSend={quietSend} onQuietSend={setQuietSend} onReply={(text) => void send({ text })} />}
         {!picked && <Composer
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}
@@ -1032,7 +1111,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           uploadProgress={uploadProgress}
           onCancelReply={() => setReplyTo(null)}
           onCancelEdit={() => setEditing(null)}
-          onSend={send}
+          onSend={quietSend && convo.quietUntil ? async (p) => { if (p.text && !p.file && !p.voice && !p.album && !p.videoNote && !p.sticker) { await schedule(p.text, convo.quietUntil!); setQuietSend(false); } else await send(p); } : send}
           onSaveEdit={saveEdit}
           onTyping={typing}
           onExtra={onExtra}
@@ -1076,6 +1155,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
+      {extra === 'event' && <EventDialog onClose={() => setExtra(null)} onCreate={(event) => sendSpecial({ type: 'EVENT', event })} />}
+      {extra === 'location' && <LocationSheet onClose={() => setExtra(null)} onPick={shareLocation} />}
+      {extra === 'checklist' && <ChecklistDialog onClose={() => setExtra(null)} onCreate={(checklist) => sendSpecial({ type: 'CHECKLIST', checklist })} />}
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 
       <AnimatePresence>

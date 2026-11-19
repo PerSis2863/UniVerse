@@ -715,7 +715,7 @@ export function sampleTravelSearch(q: string | null) {
 /** GET /travel/weather */
 export function sampleTravelWeather() {
   const skies = ['clearsky_day', 'partlycloudy_day', 'fair_day', 'rain', 'partlycloudy_day', 'clearsky_day', 'cloudy'];
-  return { days: skies.map((symbol, i) => ({ date: new Date(Date.now() + i * DAY).toISOString().slice(0, 10), min: 12 + (i % 3), max: 19 + (i % 4), symbol, rain: symbol === 'rain' ? 4.2 : 0 })), credit: 'Weather: MET Norway (CC BY 4.0)' };
+  return { days: skies.map((symbol, i) => ({ date: new Date(Date.now() + i * DAY).toISOString().slice(0, 10), min: 12 + (i % 3), max: 19 + (i % 4), symbol, rain: symbol === 'rain' ? 4.2 : 0 })), now: { at: new Date().toISOString(), temp: 18, symbol: 'partlycloudy_day' }, credit: 'Weather: MET Norway (CC BY 4.0)' };
 }
 /** GET /travel/visa (M205): a sample passport's rules (written for the demo). */
 export function sampleTravelVisa(p: string | null) {

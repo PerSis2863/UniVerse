@@ -15,7 +15,7 @@ export function PrivateBanner() {
   return (
     <div className="mx-auto my-3 max-w-md rounded-2xl bg-emerald-500/10 border border-emerald-500/20 px-4 py-3 text-xs text-emerald-900 dark:text-emerald-100 text-center space-y-1">
       <p className="font-semibold flex items-center justify-center gap-1.5"><Lock className="w-3.5 h-3.5" aria-hidden />Private chat · end-to-end encrypted</p>
-      <p>Only your devices and theirs can read these messages, not UniVerse. That also means no search, translation, AI or message previews here, text only for now, and messages sent before a device joined can’t be read on it.</p>
+      <p>Only your devices and theirs can read these messages, not UniVerse. Photos, files and voice notes are encrypted on your device too. That also means no search, translation, AI or message previews here, and messages sent before a device joined can’t be read on it.</p>
     </div>
   );
 }

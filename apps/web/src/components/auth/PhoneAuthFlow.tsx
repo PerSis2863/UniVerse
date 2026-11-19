@@ -198,12 +198,12 @@ export function PhoneAuthFlow({ isRegister, onSuccess, onCancel }: PhoneAuthFlow
                 border-color: #27272a; /* border-zinc-800 */
               }
               .phone-input-container .PhoneInputCountrySelect {
-                background-color: #111113;
-                color: white;
+                background-color: var(--color-zinc-950);
+                color: var(--color-white);
               }
               .phone-input-container .PhoneInputCountrySelect option {
-                background-color: #111113;
-                color: white;
+                background-color: var(--color-zinc-950);
+                color: var(--color-white);
               }
             `}</style>
           </div>

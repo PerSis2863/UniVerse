@@ -15,6 +15,10 @@ import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { validPayload } from '@/lib/e2e';
+import { newChecklist } from '@/lib/chat-checklist';
+import { newEvent } from '@/lib/chat-event';
+import { SELF_TITLE } from '@/lib/chat-self';
+import { quietEnds } from '@/server/quiet-hours';
 import { effectOf } from '@/lib/message-effects';
 import { travelChatBlocked } from '@/server/travel-board';
 
@@ -23,7 +27,7 @@ const PRIVATE_BODY = '🔒 Private message';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
-const TYPES = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'CALL', 'POLL', 'LOCATION', 'CONTACT']);
+const TYPES = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'CALL', 'POLL', 'CHECKLIST', 'EVENT', 'LOCATION', 'CONTACT']);
 const ATTACHMENT_TYPES = new Set(['IMAGE', 'FILE', 'AUDIO', 'VIDEO']);
 const sender = { select: { id: true, name: true, avatar: true } } as const;
 
@@ -164,6 +168,7 @@ async function getThread(req: Request, { params }: Ctx) {
     prefs?.translateTo ? storedTranslations(page.filter((m) => m.senderId !== user.id).map((m) => m.id), prefs.translateTo) : Promise.resolve({}),
   ]);
   const others = convo.participants.filter((p) => p.userId !== user.id);
+  const iShowReads = convo.participants.find((p) => p.userId === user.id)?.user.readReceipts !== false;
   // Threads started from messages on this page: how many replies, and when the last one came.
   const threads = page.length
     ? await prisma.message.groupBy({ by: ['threadId'], where: { threadId: { in: page.map((m) => m.id) }, deletedAt: null }, _count: { _all: true }, _max: { createdAt: true } })
@@ -189,7 +194,11 @@ async function getThread(req: Request, { params }: Ctx) {
         isGroup: convo.isGroup,
         private: convo.private,
         isOfficial: !convo.isGroup && others.some((p) => p.userId === system.id),
-        title: convo.isGroup ? convo.name || 'Group chat' : others[0]?.user.name || 'Unknown user',
+        // M340: Notes to self (no one else in it), and when a 1:1 chat's other person's quiet hours end (to suggest
+        // sending then; null when they aren't in them).
+        self: !convo.isGroup && !others.length,
+        quietUntil: !convo.isGroup && others.length === 1 && !convo.communityId ? await quietEnds(others[0].userId).catch(() => null) : null,
+        title: convo.isGroup ? convo.name || 'Group chat' : !others.length ? SELF_TITLE : others[0]?.user.name || 'Unknown user',
         avatarUrl: convo.isGroup ? convo.avatarUrl : others[0]?.user.avatar ?? null,
         myRole: me.role,
         disappearingSec: convo.disappearingSec,
@@ -212,7 +221,8 @@ async function getThread(req: Request, { params }: Ctx) {
           online: isOnline(p.user.lastSeenAt, p.user.presence),
           lastSeenAt: presenceOf(p.user).hidden ? null : p.user.lastSeenAt,
           status: presenceOf(p.user),
-          lastReadAt: p.lastReadAt,
+          // M344: read receipts off (theirs or mine) hide when they read; my own stays mine.
+          lastReadAt: p.userId === user.id || (p.user.readReceipts !== false && iShowReads) ? p.lastReadAt : null,
         })),
       },
       typing: others.filter((p) => p.typingUntil && p.typingUntil > now).map((p) => p.user.name.split(' ')[0]),
@@ -301,12 +311,28 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!question || options.length < 2 || options.length > 12) return NextResponse.json({ error: 'A poll needs a question and 2–12 different options.' }, { status: 400 });
       data.body = question;
       data.metadata = { question, options, multiple: !!b.poll?.multiple };
+    } else if (type === 'CHECKLIST') {
+      // M340: a shared checklist; ticked through POST /api/chat/messages/:id/check.
+      const list = newChecklist(b.checklist);
+      if ('error' in list) return NextResponse.json({ error: list.error }, { status: 400 });
+      data.body = list.title;
+      data.metadata = list;
+    } else if (type === 'EVENT') {
+      // M344: an event with RSVPs; answered through POST /api/chat/messages/:id/rsvp.
+      const ev = newEvent(b.event);
+      if ('error' in ev) return NextResponse.json({ error: ev.error }, { status: 400 });
+      data.body = ev.title;
+      data.metadata = ev;
     } else if (type === 'LOCATION') {
       const lat = Number(b.location?.lat), lng = Number(b.location?.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return NextResponse.json({ error: 'Invalid location.' }, { status: 400 });
       const label = typeof b.location?.label === 'string' ? b.location.label.trim().slice(0, 120) : '';
       data.body = label || 'Location';
-      data.metadata = { lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5, label: label || null };
+      // M344: live location (WhatsApp, Telegram): kept up to date by the sender's open app until it ends or they stop
+      // it (POST /api/chat/messages/:id/live).
+      const live = [15, 60, 480].includes(Number(b.location?.liveMinutes)) ? { until: new Date(Date.now() + Number(b.location.liveMinutes) * 60_000).toISOString(), updatedAt: new Date().toISOString() } : null;
+      data.metadata = { lat: Math.round(lat * 1e5) / 1e5, lng: Math.round(lng * 1e5) / 1e5, label: label || null, ...(live ? { live } : {}) };
+      if (live) data.body = 'Live location';
     } else if (type === 'CONTACT') {
       const contact = typeof b.contactId === 'string' ? await prisma.user.findUnique({ where: { id: b.contactId }, select: { id: true, name: true, role: true, avatar: true } }) : null;
       if (!contact) return NextResponse.json({ error: 'Contact not found.' }, { status: 404 });

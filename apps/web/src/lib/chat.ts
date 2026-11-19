@@ -17,7 +17,7 @@ export function isReactionEmoji(s: string) {
     && !/[\p{L}\p{N}]{2}/u.test(s);
 }
 
-export const userCard = { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, email: true, presence: true, statusText: true, statusEmoji: true, statusUntil: true } } as const;
+export const userCard = { select: { id: true, name: true, avatar: true, role: true, lastSeenAt: true, email: true, presence: true, statusText: true, statusEmoji: true, statusUntil: true, readReceipts: true } } as const;
 
 /** Active in the last minute, and not set to Invisible. */
 export function isOnline(lastSeenAt: Date | null | undefined, presence?: string | null) {

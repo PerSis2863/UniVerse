@@ -6,7 +6,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { spring } from '@/lib/motion';
 import { useChatLock, watchRelock } from '@/lib/chat-lock';
-import { Link2, Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
+import { Bookmark, Link2, Archive, ArchiveRestore, ArrowLeft, BadgeCheck, CheckCheck, Bell, BellOff, Loader2, Lock, MailOpen, MessageSquarePlus, MoreHorizontal, Pin, PinOff, Search, Star, Users, Plus, Pencil, FolderPlus, FolderMinus, Clock, Hash, MessagesSquare, UserRound, Share2, ImageIcon, type LucideIcon } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import dynamic from 'next/dynamic';
 import { cn } from '@/lib/utils';
@@ -188,6 +188,11 @@ export function MessagingHub() {
   // Something shared from another app (src/lib/share-in.ts): the chat picked next gets the text as
   // its draft and the photos waiting above its box.
   const [shared, setShared] = useState(() => pendingShare());
+  // M340: open Notes to self, making it the first time.
+  const openSelf = async () => {
+    try { const r = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ self: true }) }); await mutate(); select(r.id); }
+    catch (e) { toast.error((e as Error).message); }
+  };
   const select = useCallback((id: string | null) => {
     const pending = pendingShare();
     if (id && pending.text) { keepDraft(id, pending.text); clearShare(); }
@@ -437,6 +442,16 @@ export function MessagingHub() {
         ) : (
         <div className="flex-1 overflow-y-auto p-2">
           {view === 'chats' && !search && <div className="-mx-2 -mt-2 mb-1"><StatusBar /></div>}
+          {/* M340: Notes to self, made the first time it's opened (then it's a chat in the list, kept near the top). */}
+          {view === 'chats' && !search && data && !data.conversations.some((c) => c.self) && (
+            <button type="button" onClick={() => void openSelf()} className="w-full flex items-center gap-3 p-3 rounded-2xl text-start hover:bg-zinc-100 dark:hover:bg-white/[0.05] transition-colors">
+              <span className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0"><Bookmark className="w-5 h-5" aria-hidden /></span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-semibold text-zinc-900 dark:text-white">Notes to self</span>
+                <span className="block text-sm text-zinc-500 dark:text-zinc-400 truncate">Save links, files and ideas: only you see them</span>
+              </span>
+            </button>
+          )}
           {/* Shaped like the chats coming (a picture, a name and a line), not a spinner. */}
           {isLoading && (
             <div role="status" aria-label="Loading" className="space-y-1">
@@ -473,7 +488,7 @@ export function MessagingHub() {
                 <button key={c.id} role="listitem" type="button" onClick={(e) => openFrom(c.id, e)} aria-label={`${c.title}${c.unread ? `, ${c.unread} unread` : ''}${c.typing.length ? ', typing' : ''}`}
                   className={cn('group relative flex flex-col items-center gap-1.5 pt-3 pb-2 rounded-2xl transition-colors', c.id === activeId ? 'bg-indigo-500/10' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.04]')}>
                   {c.typing.length > 0 && <span className="pin-typing absolute top-0 end-2 z-10 px-1.5 py-1 rounded-full bg-white dark:bg-[#27272a] shadow-md text-emerald-500"><span className="typing-dots" aria-hidden><i /><i /><i /></span></span>}
-                  <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={52} />
+                  {c.self ? <span className="w-[52px] h-[52px] rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center"><Bookmark className="w-5 h-5" aria-hidden /></span> : <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={52} />}
                   {c.unread > 0 && <span key={c.unread} className="badge-bump absolute top-1.5 start-2 min-w-5 h-5 px-1.5 rounded-full bg-[#b5307d] text-white text-[11px] font-bold flex items-center justify-center ring-2 ring-white dark:ring-[#111113]">{c.unread > 99 ? '99+' : c.unread}</span>}
                   <span className="max-w-full px-1 truncate text-xs font-semibold text-zinc-800 dark:text-zinc-100" translate="no">{c.isGroup ? c.title : c.title.split(' ')[0]}</span>
                 </button>
@@ -500,7 +515,7 @@ export function MessagingHub() {
                 onPointerLeave={(e) => e.pointerType === 'touch' && press.current && clearTimeout(press.current)}
                 className={cn('relative isolate w-full flex items-center gap-3 p-3 rounded-2xl text-start transition-colors', active ? '' : 'hover:bg-zinc-100/80 dark:hover:bg-white/[0.045]')}
               >{active && <TabPill id="components-chat-messaginghub-1" variant="soft" />}
-                <span className="shrink-0"><Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} /></span>
+                <span className="shrink-0">{c.self ? <span className="w-12 h-12 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center"><Bookmark className="w-5 h-5" aria-hidden /></span> : <Avatar name={c.title} src={c.avatarUrl} online={c.online} size={48} />}</span>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="font-semibold text-zinc-900 dark:text-white truncate flex items-center gap-1">

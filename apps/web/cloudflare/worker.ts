@@ -44,12 +44,15 @@ interface Env {
 }
 
 // Endpoints that cost money or send email per call.
-const COSTLY = /^\/api\/(ai|core\/ask$|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|chat\/conversations\/[^/]+\/app$|parent\/chats\/[^/]+\/file$|admin\/chat-apps\/[^/]+\/test$|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest)(\/|$)/;
+const COSTLY = /^\/api\/(ai|core\/ask$|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|chat\/conversations\/[^/]+\/app$|parent\/chats\/[^/]+\/file$|admin\/chat-apps\/[^/]+\/test$|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest|core\/travel\/booking\/read|core\/green\/home\/read|core\/green\/biz\/[^/]+\/read-bill)(\/|$)/;
 
 // Sign-in steps someone could try over and over: the demo sign-in (per address) and the emailed
 // code / passkey second step and sign-up (per signed-in account). Passkey sign-in isn't here: it
 // can't be guessed, and a school's whole Wi-Fi shares one address.
 const AUTH_STEP = /^\/api\/core\/auth\/(login|register|two-step\/(send|verify|passkey))$/;
+// M337: typing a code that opens something (an organisation, a trip, a team, a child's account, a product passed on, a
+// prize): 10 tries a minute per person, as sign-in steps, so short codes can't be guessed in bulk.
+const CODE_STEP = /^\/api\/(core\/(relief\/orgs\/join|travel\/trips\/join|green\/teams\/join|trace\/vault\/receive|trace\/join\/[^/]+|trace\/wins\/[^/]+\/redeem)|parent\/children|classroom\/join|chat\/communities\/join)$/;
 
 const tooMany = () =>
   Response.json({ error: 'Too many requests. Please wait a minute and try again.' }, { status: 429, headers: { 'Retry-After': '60' } });
@@ -72,6 +75,7 @@ async function rateLimited(request: Request, url: URL, env: Env): Promise<boolea
   if (env.API_RATE_LIMITER) checks.push(env.API_RATE_LIMITER.limit({ key: who }));
   if (env.COSTLY_RATE_LIMITER && request.method !== 'GET' && COSTLY.test(url.pathname)) checks.push(env.COSTLY_RATE_LIMITER.limit({ key: who }));
   if (env.AUTH_RATE_LIMITER && request.method === 'POST' && AUTH_STEP.test(url.pathname)) checks.push(env.AUTH_RATE_LIMITER.limit({ key: url.pathname.endsWith('/login') ? `ip:${ip}` : who }));
+  if (env.AUTH_RATE_LIMITER && request.method === 'POST' && CODE_STEP.test(url.pathname)) checks.push(env.AUTH_RATE_LIMITER.limit({ key: `code:${who}` }));
   return (await Promise.all(checks)).some((r) => !r.success);
 }
 
@@ -1146,7 +1150,10 @@ export class CallRoom extends DurableObject<Env> {
       agenda: (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null,
       interp: (await this.ctx.storage.get<Interpreters>('interp')) ?? {},
       pulse: mod ? this.pulseCounts() : null,
+      // M345: the host's switches (Zoom's): everyone joins muted, chat off for everyone but hosts.
+      settings: { entryMuted: (await this.ctx.storage.get<boolean>('entry-muted')) === true, chatOff: (await this.ctx.storage.get<boolean>('chat-off')) === true },
     });
+    if (!mod && (await this.ctx.storage.get<boolean>('entry-muted')) === true) this.send(ws, { type: 'control', action: 'mute', by: 'The host', entry: true });
     for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
     this.pulseTell();
     if (w.on) this.audienceTell();
@@ -1973,6 +1980,8 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'chat') {
+      // M345: while the host has the chat off, only hosts and co-hosts write in it.
+      if (!me.host && !me.cohost && (await this.ctx.storage.get<boolean>('chat-off')) === true) { this.send(ws, { type: 'room-setting', chatOff: true }); return; }
       // The call's own chat: text (links stay links) and uploaded files, to everyone in the call.
       const text = typeof msg.text === 'string' ? msg.text.trim().slice(0, CHAT_MAX_CHARS) : '';
       const file = safeFile(msg.file);
@@ -2103,6 +2112,10 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.put('lobby', on);
       for (const m of this.mods()) this.send(m.ws, { type: 'lobby-setting', on, by });
       if (!on) await this.control(ws, me, 'admit-all', null, false);
+    } else if (action === 'entry-muted' || action === 'chat-off') {
+      // M345: the host's switches, for everyone in the call now and later.
+      await this.ctx.storage.put(action, on);
+      for (const p of all) this.send(p.ws, { type: 'room-setting', ...(action === 'entry-muted' ? { entryMuted: on } : { chatOff: on }), by });
     } else if (action === 'lower-hand' && them) {
       await this.setHand(them.peer, them.ws, false);
     } else if (action === 'lower-all') {

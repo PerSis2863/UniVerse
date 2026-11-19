@@ -103,6 +103,8 @@ const withPWA = withPWAInit({
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  // M337: no "x-powered-by: Next.js" on every answer: it only tells attackers what to aim at.
+  poweredByHeader: false,
   experimental: {
     // Reopening a page within 5 minutes shows the copy already in the browser instead of asking the
     // server again (pages hold no personal data; their data refreshes on its own). Faster and fewer

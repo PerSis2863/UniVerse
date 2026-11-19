@@ -8,7 +8,7 @@ import { AppBackdrop } from '@/components/AppBackdrop';
 import { useChosenApp } from '@/lib/chosen-app';
 import { AuthShowcase } from '@/components/landing/AuthShowcase';
 
-// Sign in and sign up, in the landing page's look (src/app/page.tsx): the dark page with the chosen
+// Sign in and sign up, in the landing page's look (src/app/page.tsx): the page in the person's theme with the chosen
 // app's own scene behind it (M129), the same headline and flow card on the left, the form in a card
 // on the right.
 // On a laptop screen the whole thing fits without scrolling: the left side never sets the page's
@@ -20,16 +20,17 @@ import { AuthShowcase } from '@/components/landing/AuthShowcase';
 export function AuthFrame({ children }: { children: React.ReactNode }) {
   const app = useChosenApp();
   return (
-    // Dark-only; the "dark" class makes dark: variants (logo text etc.) apply here in light mode too.
-    <div data-cursor-light className="dark relative min-h-[100dvh] flex overflow-x-clip" style={{ backgroundColor: '#0b0b0c', color: '#ffffff' }}>
+    // M334 (the owner, 19 Nov: "in white mode why this area is dark?"): the theme the person chose, as the landing does:
+    // drawn for a dark page, and `.flip-light` swaps its white and black in light mode.
+    <div data-cursor-light className="flip-light relative min-h-[100dvh] flex overflow-x-clip bg-[var(--background)] text-white">
       <ApiWarmup />
       <div aria-hidden className="horizon fixed inset-0 pointer-events-none z-0">
-        <AppBackdrop own app={app} tone="dark" strength={0.85} />
+        <AppBackdrop own app={app} strength={0.85} />
       </div>
 
       {/* ── Left: what UniVerse does (wide screens) ── */}
       <div className="hidden lg:flex relative z-10 w-[52%] flex-col p-12 short:py-8 sticky top-0 h-[100dvh] self-start overflow-hidden">
-        <Link href="/" className="inline-flex self-start">
+        <Link href="/" className="flip-keep inline-flex self-start">
           <UniverseLogo size="lg" animated={true} withGlow={true} showText={true} />
         </Link>
         <div className="hero-in my-auto py-10 short:py-4">
@@ -42,7 +43,7 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
       {/* ── Right: the form ── (min-w-0: without it the app tabs' full width set this column's
           width, and on phones the form ran off the screen's edge, cut off by overflow-x-clip) */}
       <div className="relative z-10 flex-1 min-w-0 flex flex-col p-6 pt-[max(1.5rem,env(safe-area-inset-top))] pb-[max(1.5rem,env(safe-area-inset-bottom))] lg:p-12 short:lg:py-8">
-        <div className="flex lg:hidden pt-2 pb-8">
+        <div className="flip-keep flex lg:hidden pt-2 pb-8">
           <UniverseLogo size="md" showText={true} animated={false} withGlow={false} />
         </div>
         {/* The form glides up into place as the page opens (.hero-in, CSS: from the first paint). */}
