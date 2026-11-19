@@ -21,7 +21,7 @@ export interface ChatMessage {
   attachmentMime: string | null;
   metadata: {
     kind?: 'audio' | 'video'; room?: string; url?: string; inApp?: boolean; durationSec?: number; // CALL (inApp: UniVerse's own call) / voice notes
-    endedAt?: string; answered?: boolean; declinedBy?: string; // CALL: how it went
+    endedAt?: string; answered?: boolean; declinedBy?: string; people?: string[]; // CALL: how it went (M342: who was in it)
     question?: string; options?: string[]; multiple?: boolean; // POLL
     title?: string; items?: CheckItem[]; // CHECKLIST (M340), ticked by anyone in the chat
     lat?: number; lng?: number; label?: string | null; // LOCATION

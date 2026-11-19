@@ -1,3 +1,4 @@
+import { createHmac } from 'node:crypto';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
@@ -68,7 +69,7 @@ async function roomFetch(callId: string, path: string, init?: RequestInit): Prom
   }
 }
 
-export interface CallMeta { kind?: string; inApp?: boolean; url?: string; endedAt?: string; durationSec?: number; answered?: boolean; declinedBy?: string }
+export interface CallMeta { kind?: string; inApp?: boolean; url?: string; endedAt?: string; durationSec?: number; answered?: boolean; declinedBy?: string; people?: string[] }
 
 /** A breakout room's id → its call and room number (1–20). */
 export function breakoutOf(callId: string) {
@@ -268,9 +269,8 @@ export async function callTicket(callId: string, user: SessionUser, wantKind?: u
 }
 
 /** A new call link (like a FaceTime link): anyone signed in with it may join; its creator hosts. */
-export async function createCallLink(user: SessionUser) {
-  const bytes = crypto.getRandomValues(new Uint8Array(12));
-  const id = `l_${btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')}`;
+export async function createCallLink(user: SessionUser, personal = false) {
+  const id = personal ? personalRoomId(user.id) : `l_${b64url(crypto.getRandomValues(new Uint8Array(12)))}`;
   await roomFetch(id, '/creator', { method: 'POST', body: JSON.stringify({ userId: user.id }) });
   return { id, path: `/call/${id}` };
 }
@@ -426,6 +426,16 @@ async function chatCall(callId: string, user: SessionUser) {
   return { meta: (msg?.metadata ?? {}) as CallMeta, conversationId: msg!.conversationId };
 }
 
+const b64url = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+
+/** M342: my personal room (Zoom's personal meeting room): the same call link every time, made from my account and the
+ *  site's secret (so nobody can work it out from my account id). Needs SESSION_SECRET of 32+ characters. */
+export function personalRoomId(userId: string) {
+  const secret = process.env.SESSION_SECRET ?? '';
+  if (secret.length < 32) throw new BadRequestException('Personal rooms aren’t available here yet.');
+  return `l_${b64url(new Uint8Array(createHmac('sha256', secret).update(`personal-room:${userId}`).digest()).slice(0, 16))}`;
+}
+
 /** Someone turned the call down: whoever is in it hears so; a one-to-one call shows "Declined". */
 export async function declineCall(callId: string, user: SessionUser) {
   const { meta, conversationId } = await chatCall(callId, user);
@@ -443,9 +453,14 @@ export async function endCall(callId: string, user: SessionUser, body: Record<st
   const durationSec = Math.max(0, Math.min(CALL_HOURS * 3600, Math.round(Number(body.durationSec) || 0)));
   const answered = body.answered === true || durationSec > 0;
   if (meta.endedAt && (meta.durationSec ?? 0) >= durationSec) return { ok: true };
+  // M342: the recap in the chat says who was in it (first names, as many as 8).
+  const joined = await prisma.callStat.findMany({ where: { callId, seconds: { gt: 0 } }, select: { userId: true }, take: 40 });
+  // The last one to leave ends it; their own figures can land a moment later, so they count too when it was answered.
+  const ids = [...new Set([...(answered ? [user.id] : []), ...joined.map((j) => j.userId)])].slice(0, 8);
+  const people = ids.length ? (await prisma.user.findMany({ where: { id: { in: ids } }, select: { name: true } })).map((u) => u.name.split(' ')[0]) : meta.people;
   await prisma.message.update({
     where: { id: callId },
-    data: { metadata: { ...meta, endedAt: new Date().toISOString(), durationSec, answered } as Prisma.InputJsonValue },
+    data: { metadata: { ...meta, endedAt: new Date().toISOString(), durationSec, answered, ...(people?.length ? { people } : {}) } as Prisma.InputJsonValue },
   });
   publishChat(conversationId);
   return { ok: true };

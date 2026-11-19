@@ -9807,3 +9807,28 @@ The owner: "encrypted message system for security of the website". Private chats
 - The server sees who is in the chat, when, and the scrambled bytes' size; never the key, name or type.
 - **For code that builds on it:** a new kind of private content goes in the envelope, never in the message's plain
   fields; forwarding, search, translation and AI stay off in private chats.
+
+## M342: Meet & call, who joined, My room, reactions, the security code (19 Nov)
+
+The owner, asked which Meet & call features: "All of them and encrypted system in this also".
+
+- **Already there, checked:** the pre-join screen (camera preview, `MicMeter`, test sound, devices, backgrounds, 2G mode)
+  and meeting notes posted into the call's chat (`src/server/meeting-notes.ts` `deliver`).
+- **Who joined:** `endCall` (src/server/calls.ts) adds `people` (first names, up to 8) from `call_stats` rows with time
+  connected, plus the person ending it when answered; a group call's chat card says "With …".
+- **My room:** `personalRoomId(userId)` = `l_` + 16 bytes of HMAC-SHA256(SESSION_SECRET, `personal-room:<id>`): the same
+  call link every time, unguessable from the account id, refused without a 32+ character secret. `POST /api/calls/links
+  { personal: true }`; a row under the four tiles on Meet & call opens it (`NewMeeting personal`). The room's host is its
+  owner (the CallRoom's `creator`, set once).
+- **Reactions:** `FloatingReactions` is CSS now (`react-rise` 3 s on transform and opacity, a sway per reaction from its
+  id), bigger, with five `react-spark` copies for 👏 and 🎉; Reduce Motion only fades. The name chip is 11 px.
+- **Encryption, honestly:** calls of up to six connect directly (WebRTC: DTLS-SRTP, end to end); bigger calls with the SFU
+  set up go through Cloudflare Realtime (encrypted in transit, readable there). A lock in the call's bar opens a sheet:
+  direct calls list each person with a **security code** (`securityCode`: SHA-256 of both SDP fingerprints in a fixed
+  order, four groups of four digits, the same at both ends; a man in the middle swapping certificates changes it);
+  SFU calls say so plainly. True end-to-end encryption through the SFU (insertable streams with keys from the chat's
+  device keys) is **left out**: say it if the owner asks for it.
+- **Phones:** the call bar's seven buttons pushed Leave off a 390 px screen: Share screen is in More on phones
+  (`phoneOnly` items), the bar keeps six and Leave.
+- Tested on the built site with two people (fake camera): both codes 6860 3677 2818 7511, the clap with its sparks on the
+  other screen, `people` on the call's message, steady and personal room links.

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { CalendarPlus, Captions, Check, Copy, Hand, Headphones, Keyboard, LayoutGrid, Link2, Loader2, LogIn, MessageSquareText, Mic, MonitorUp, PenTool, Phone, Radio, Share2, Shield, Smile, Sparkles, Users, Video, Vote } from 'lucide-react';
+import { CalendarPlus, Captions, Check, ChevronRight, DoorOpen, Copy, Hand, Headphones, Keyboard, LayoutGrid, Link2, Loader2, LogIn, MessageSquareText, Mic, MonitorUp, PenTool, Phone, Radio, Share2, Shield, Smile, Sparkles, Users, Video, Vote } from 'lucide-react';
 import { Sheet } from '@/components/ui/Sheet';
 import { authedJson } from '@/lib/authed-fetch';
 import { haptic } from '@/lib/haptics';
@@ -35,7 +35,7 @@ const IN_CALL: [typeof Video, string][] = [
 export function MeetHome() {
   const router = useRouter();
   const me = useAuthStore((s) => s.user?.name);
-  const [sheet, setSheet] = useState<'new' | 'join' | 'rooms' | null>(null);
+  const [sheet, setSheet] = useState<'new' | 'room' | 'join' | 'rooms' | null>(null);
   // The same lists the page and the Messages deck load (one request each, shared).
   const { data: calls } = useSWR<LiveRow[]>('/api/calls', authedJson, { revalidateOnFocus: false, dedupingInterval: 15_000 });
   const live = (Array.isArray(calls) ? calls : []).filter((c) => c.live);
@@ -61,6 +61,12 @@ export function MeetHome() {
           <span><span className="block text-[15px] font-bold">Voice rooms</span><span className="block text-xs text-white/85">Drop in, like a channel</span></span>
         </button>
       </div>
+      {/* M342: my personal room (Zoom's personal meeting room): one link that's always mine. */}
+      <button type="button" onClick={() => open('room')} className="w-full flex items-center gap-3 rounded-2xl bg-[var(--card-bg)] border border-[var(--card-border)] shadow-[var(--card-shadow)] px-4 py-3 text-start hover:bg-zinc-50 dark:hover:bg-white/[0.04] transition-colors">
+        <span className="grid place-items-center w-10 h-10 rounded-xl bg-gradient-to-br from-sky-500 to-indigo-600 text-white shrink-0"><DoorOpen className="w-5 h-5" aria-hidden /></span>
+        <span className="min-w-0 flex-1"><span className="block text-[15px] font-semibold text-zinc-900 dark:text-white">My room</span><span className="block text-xs text-zinc-600 dark:text-zinc-300">Your own link, the same every time: share it once</span></span>
+        <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0 rtl:rotate-180" aria-hidden />
+      </button>
 
       {live.length > 0 && (
         <div className="panel p-4" aria-label="Happening now" role="region">
@@ -85,6 +91,7 @@ export function MeetHome() {
       </details>
 
       {sheet === 'new' && <NewMeeting who={me} onClose={() => setSheet(null)} />}
+      {sheet === 'room' && <NewMeeting who={me} personal onClose={() => setSheet(null)} />}
       {sheet === 'join' && <JoinMeeting onClose={() => setSheet(null)} />}
       {sheet === 'rooms' && <VoiceRooms live={new Set(live.filter((c) => c.callId.startsWith('r_')).map((c) => c.callId.slice(2)))} onClose={() => setSheet(null)} />}
     </section>
@@ -93,17 +100,17 @@ export function MeetHome() {
 
 /** A new meeting: its link is made at once (POST /api/calls/links, the call link M17 added), then start it, copy the
  *  invitation or share it. */
-function NewMeeting({ who, onClose }: { who?: string; onClose: () => void }) {
+function NewMeeting({ who, personal = false, onClose }: { who?: string; personal?: boolean; onClose: () => void }) {
   const router = useRouter();
   const [copied, setCopied] = useState(false);
-  const { data, error } = useSWR<{ path: string }>('meet-new-link', () => authedJson<{ path: string }>('/api/calls/links', { method: 'POST' }), { revalidateOnFocus: false, revalidateIfStale: false, shouldRetryOnError: false });
+  const { data, error } = useSWR<{ path: string }>(personal ? 'meet-my-room' : 'meet-new-link', () => authedJson<{ path: string }>('/api/calls/links', { method: 'POST', body: JSON.stringify({ personal }) }), { revalidateOnFocus: false, revalidateIfStale: false, shouldRetryOnError: false });
   const url = data ? `${window.location.origin}${data.path}` : '';
   const code = data ? data.path.split('/').pop() ?? '' : '';
   const copy = async () => {
     try { await navigator.clipboard.writeText(inviteText(url, code, who)); setCopied(true); haptic('success'); toast.success('Invitation copied'); } catch { toast.error('Couldn’t copy: select the link instead'); }
   };
   return (
-    <Sheet title="New meeting" onClose={onClose}>
+    <Sheet title={personal ? 'My room' : 'New meeting'} onClose={onClose}>
       {error ? <p className="text-sm text-rose-600 dark:text-rose-400">{(error as Error).message}</p> : !data ? (
         <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden />Making your meeting link…</p>
       ) : (
@@ -122,7 +129,7 @@ function NewMeeting({ who, onClose }: { who?: string; onClose: () => void }) {
               ? <button type="button" onClick={() => void navigator.share({ title: 'A meeting on UniVerse', text: inviteText(url, code, who) }).catch(() => {})} className="btn-secondary justify-center"><Share2 className="w-4 h-4" aria-hidden />Share</button>
               : <button type="button" onClick={() => void navigator.clipboard.writeText(url).then(() => toast.success('Link copied'))} className="btn-secondary justify-center"><Link2 className="w-4 h-4" aria-hidden />Copy link</button>}
           </div>
-          <p className="text-xs text-zinc-600 dark:text-zinc-300">You host it: people with the link wait in the waiting room until you let them in, if you turn it on.</p>
+          <p className="text-xs text-zinc-600 dark:text-zinc-300">{personal ? 'Your room’s link never changes: put it in your email signature or profile. People can join while you’re in it; turn on the waiting room to let them in one by one.' : 'You host it: people with the link wait in the waiting room until you let them in, if you turn it on.'}</p>
         </div>
       )}
     </Sheet>

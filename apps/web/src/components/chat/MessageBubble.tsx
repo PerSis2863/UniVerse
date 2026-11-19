@@ -292,7 +292,8 @@ export function MessageBubble(p: Props) {
       : meta.answered && dur ? `${video ? 'Video' : 'Voice'} call · ${dur}`
       : meta.declinedBy ? (mine ? `Declined by ${meta.declinedBy.split(' ')[0]}` : 'You declined')
       : mine ? 'No answer' : `Missed ${video ? 'video' : 'voice'} call`;
-    const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : mine ? 'Outgoing' : 'Incoming';
+    // M342: who was in a call that happened (a group's call names everyone who joined).
+    const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : meta.answered && meta.people && meta.people.length > 2 ? `With ${meta.people.slice(0, 4).join(', ')}${meta.people.length > 4 ? ` and ${meta.people.length - 4} more` : ''}` : mine ? 'Outgoing' : 'Incoming';
     const Icon = live ? (video ? Video : Phone) : missed ? PhoneMissed : mine ? PhoneOutgoing : PhoneIncoming;
     content = (
       <div className="flex items-center gap-3 p-3 w-[17rem] max-w-full">

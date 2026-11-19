@@ -7,7 +7,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { BarChart3, Captions, CaptionsOff, Check, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus, FlipHorizontal2 } from 'lucide-react';
+import { BarChart3, Captions, CaptionsOff, Check, Lock, ChevronDown, Volume2, SlidersHorizontal, Sparkles, X, Circle, Link2, Loader2, Maximize2, Mic, MicOff, Minimize2, MonitorUp, NotebookPen, Pause, PhoneOff, PictureInPicture2, RefreshCcw, Signal, Square, Users, Video, VideoOff, Hand, Smile, MoreHorizontal, DoorOpen, MessageSquare, Wand2, Languages, Presentation, MessageCircleQuestion, UserPlus, ListVideo, SignalLow, PenTool, Activity, ListOrdered, Ear, Focus, FlipHorizontal2 } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { useCalls } from '@/store/calls';
 import { AUDIO_2G_BPS, AUDIO_BPS, useLowData } from '@/store/low-data';
@@ -23,6 +23,8 @@ import { isLanguage, languageName } from '@/lib/languages';
 import { useLanguageStore } from '@/store/language';
 import { LanguagePicker } from '@/components/chat/LanguagePicker';
 import { PeoplePanel, type ControlAction, type Person } from './PeoplePanel';
+import { Sheet } from '@/components/ui/Sheet';
+import { securityCode } from '@/lib/call-security';
 import { FloatingReactions, ReactionBar, type Floating, type Reaction } from './Reactions';
 import { CallChatPanel, useCallChat, type RoomLine } from './CallChat';
 import { BackgroundSheet } from './BackgroundSheet';
@@ -482,6 +484,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [camera, setCamera] = useState(true);
   const [sharing, setSharing] = useState(false);
   const [remotes, setRemotes] = useState<Record<string, Remote>>({});
+  // M342: the encryption sheet: each direct connection's security code, or that the call goes through the call server.
+  const [security, setSecurity] = useState<{ relayed: boolean; codes: { name: string; code: string | null }[] } | null>(null);
   const [seconds, setSeconds] = useState(0);
   const [fullscreen, setFullscreen] = useState(false);
   const [talked, setTalked] = useState(false); // someone has connected at least once
@@ -904,6 +908,14 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   useEffect(() => { applyTwoG(twoG); }, [twoG, applyTwoG]);
   /** Trying to use video in 2G mode: say why not, and offer to leave it. */
   const videoIn2G = () => toast('2G mode is on, so calls are voice only.', { icon: '📶', action: { label: 'Turn off 2G mode', onClick: () => useLowData.getState().setTwoG(false) } });
+
+  /** M342: what's encrypted how: direct connections (end to end, a code per person to compare) or the call server. */
+  const showSecurity = async () => {
+    haptic('tap');
+    if (sfuRef.current) { setSecurity({ relayed: true, codes: [] }); return; }
+    const codes = await Promise.all([...pcs.current.entries()].map(async ([peerId, pc]) => ({ name: remotes[peerId]?.peer.name ?? 'Someone', code: await securityCode(pc.localDescription?.sdp, pc.remoteDescription?.sdp).catch(() => null) })));
+    setSecurity({ relayed: false, codes });
+  };
 
   /** A reaction floating up the screen for three seconds. */
   const addFloat = useCallback((emoji: string, name: string) => {
@@ -2269,10 +2281,12 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const canBg = backgroundsSupported();
   /** Students in a class call (not guests) can ask the Whisper TA. */
   const canTa = isClassCall && !canModerate && !isGuest && phase === 'live';
-  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing' | 'mirror'; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
+  const moreItems: { key: 'cc' | 'cclang' | 'devices' | 'bg' | 'flip' | 'rec' | 'notes' | 'poll' | 'rooms' | 'pip' | 'webinar' | 'qa' | 'guests' | 'watch' | '2g' | 'board' | 'ta' | 'net' | 'agenda' | 'gestures' | 'spatial' | 'interp' | 'framing' | 'mirror' | 'share'; phoneOnly?: boolean; label: string; icon: typeof Mic; on?: boolean; tone?: string }[] = [
     ...(canTa ? [{ key: 'ta' as const, label: 'Ask the TA', icon: Sparkles, on: taOpen }] : []),
     ...(meHost && !isGuest && callId.startsWith('l_') && room === callId ? [{ key: 'guests' as const, label: 'Invite guests', icon: UserPlus }] : []),
     ...(webinar ? [{ key: 'qa' as const, label: qa.length ? `Q&A · ${qa.filter((q) => !q.answered).length}` : 'Q&A', icon: MessageCircleQuestion, on: qaOpen }] : []),
+    // M343: on a phone the bar keeps its six buttons and Leave in view; sharing the screen lives here instead.
+    ...(canShare && !audienceMe ? [{ key: 'share' as const, label: sharing ? 'Stop sharing' : 'Share screen', icon: MonitorUp, on: sharing, phoneOnly: true }] : []),
     { key: 'cc', label: cc ? 'Captions on' : 'Captions', icon: cc ? Captions : CaptionsOff, on: cc },
     ...(cc ? [{ key: 'cclang' as const, label: ccLang ? `Captions in ${languageName(ccLang)}` : 'Captions as spoken', icon: Languages }] : []),
     { key: 'devices', label: 'Devices & noise', icon: SlidersHorizontal },
@@ -2326,6 +2340,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
     else if (key === 'bg') setBgOpen(true);
     else if (key === 'net') { const open = !netOpen; netOpenRef.current = open; setNetOpen(open); if (open) setNet({ me: combine([...netRef.current.values()]), people: sfuRef.current ? {} : Object.fromEntries(netRef.current) }); }
     else if (key === 'flip') void flipCamera();
+    else if (key === 'share') toggleShare();
     else if (key === 'mirror') { setMirror(!mirror); setMirrorSelf(!mirror); toast(mirror ? 'You see yourself as others do' : 'You see yourself as in a mirror (others see you the right way round)', { icon: '🪞' }); }
     else if (key === 'rec') { if (recording) void stopRecording(); else void startRecording(); }
     else if (key === 'notes') toggleNotes();
@@ -2425,6 +2440,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           </AnimatePresence>
         </div>
         <div className="flex items-center gap-1">
+          {phase === 'live' && <button type="button" onClick={() => void showSecurity()} aria-label="Encryption and security code" title="Encryption" className="p-2.5 rounded-full hover:bg-white/10 text-emerald-300"><Lock className="w-4 h-4" aria-hidden /></button>}
           {sfuQuality && <span className={cn('p-2', QUALITY[sfuQuality].className)} title={QUALITY[sfuQuality].label} aria-label={QUALITY[sfuQuality].label}><Signal className="w-4 h-4" /></span>}
           {onMinimize && phase !== 'error' && phase !== 'ended' && <button type="button" onClick={onMinimize} aria-label="Minimise the call" title="Keep using UniVerse during the call" className="p-2.5 rounded-full hover:bg-white/10"><ChevronDown className="w-5 h-5" /></button>}
           {info && info.type !== 'chat' && <button type="button" onClick={copyInvite} aria-label="Copy call link" title="Copy call link" className="p-2.5 rounded-full hover:bg-white/10"><Link2 className="w-5 h-5" /></button>}
@@ -2722,7 +2738,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               {phase !== 'live' && <motion.button type="button" onClick={() => void openSettings()} aria-expanded={settingsOpen} aria-label="Microphone, camera and noise suppression" title="Microphone, camera and noise suppression" className={cn('active:scale-[0.9]', btn, 'shrink-0', settingsOpen ? 'bg-white text-zinc-900' : 'bg-white/10 hover:bg-white/20')}><SlidersHorizontal /></motion.button>}
               {phase === 'live' && (
                 <>
-                  {canShare && !audienceMe && <motion.button type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn('active:scale-[0.9]', btn, 'shrink-0', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
+                  {canShare && !audienceMe && <motion.button type="button" onClick={toggleShare} aria-pressed={sharing} aria-label={sharing ? 'Stop sharing' : 'Share screen'} title={sharing ? 'Stop sharing' : 'Share your screen'} className={cn('active:scale-[0.9]', btn, 'shrink-0 hidden sm:flex', sharing ? 'bg-gradient-to-br from-indigo-500 to-fuchsia-500' : 'bg-white/10 hover:bg-white/20')}><MonitorUp /></motion.button>}
                   <motion.button type="button" onClick={toggleHand} aria-pressed={!!myHand} aria-label={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'} title={myHand ? 'Lower your hand' : audienceMe ? 'Raise your hand to ask to speak' : 'Raise your hand'}
                     className={cn('active:scale-[0.9]', btn, 'shrink-0', !audienceMe && 'hidden sm:flex', myHand ? 'bg-amber-400 text-amber-950 hover:bg-amber-300' : 'bg-white/10 hover:bg-white/20')}><Hand /></motion.button>
                   <motion.button type="button" onClick={() => { haptic('tap'); setMoreOpen(false); setReactOpen((o) => !o); }} aria-expanded={reactOpen} aria-label="Reactions and raise hand" title="Reactions"
@@ -2752,6 +2768,27 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         </div>
       </motion.footer>
       <FloatingReactions items={floats} />
+      {security && (
+        <Sheet title={security.relayed ? 'Encrypted in transit' : 'End-to-end encrypted'} onClose={() => setSecurity(null)}>
+          {security.relayed ? (
+            <p className="text-sm text-zinc-700 dark:text-zinc-200">This call is big enough to go through UniVerse’s call server (Cloudflare), so everyone hears everyone smoothly. Sound and video are encrypted on the way there and on to each person, but the call server could read them in between. Calls of up to six people connect directly, end to end.</p>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-zinc-700 dark:text-zinc-200">Sound and video go straight between your device and each person’s, encrypted: UniVerse can’t hear or see them. To be sure nobody is in between, check you both see the same code.</p>
+              <ul className="space-y-2">
+                {security.codes.map((c, i) => (
+                  <li key={i} className="flex items-center justify-between gap-3 rounded-2xl bg-black/[0.04] dark:bg-white/[0.06] px-4 py-3">
+                    <span className="font-semibold text-zinc-900 dark:text-white truncate" translate="no">{c.name}</span>
+                    <span className="font-mono text-base tracking-wider text-zinc-900 dark:text-white tabular-nums">{c.code ?? 'Connecting…'}</span>
+                  </li>
+                ))}
+                {!security.codes.length && <li className="text-sm text-zinc-500">The codes appear when someone joins.</li>}
+              </ul>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300">Read it out loud, or compare it in your chat. A different code means the connection was changed on the way: leave the call.</p>
+            </div>
+          )}
+        </Sheet>
+      )}
       <BackgroundSheet open={bgOpen && (phase === 'live' || phase === 'prejoin' || phase === 'lobby')} onClose={() => setBgOpen(false)} value={bgChoice} onPick={(b) => void pickBackground(b)} busy={bgBusy} custom={bgCustom} onUpload={(f) => void uploadBackground(f)} />
       <ReactionBar open={reactOpen && phase === 'live'} onClose={() => setReactOpen(false)} onReact={react} hand={!!myHand} onHand={toggleHand} />
       <AnimatePresence>
@@ -2762,7 +2799,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
               <motion.div role="dialog" aria-label="More call options" initial={{ opacity: 0, y: 16, scale: 0.96 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: 16, scale: 0.96 }} transition={spring.smooth}
                 className="pointer-events-auto w-full max-w-sm rounded-3xl bg-[#151517]/95 backdrop-blur-2xl border border-white/10 shadow-2xl p-2 grid grid-cols-3 gap-1">
                 {moreItems.map((it, i) => (
-                  <motion.div key={it.key} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.02 }}>
+                  <motion.div key={it.key} className={cn(it.phoneOnly && 'sm:hidden')} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring.snappy, delay: i * 0.02 }}>
                     <button type="button" onClick={() => runMore(it.key)} aria-pressed={it.on}
                       className={cn('w-full h-full flex flex-col items-center gap-1.5 rounded-2xl px-2 py-3 text-xs font-medium text-center transition-colors active:scale-95', it.on ? 'bg-gradient-to-br from-indigo-500/40 to-fuchsia-500/40 text-white' : 'text-zinc-200 hover:bg-white/[0.08]')}>
                       <it.icon className={cn('w-5 h-5', it.tone)} />{it.label}

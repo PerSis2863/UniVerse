@@ -3145,3 +3145,21 @@ html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { 
 html[data-scrolling] .world-earth .earth-clouds { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .world-earth .earth-clouds { animation: none; } }
 html.reduce-motion .world-earth .earth-clouds { animation: none; }
+
+/* M342: call reactions rising (FaceTime's feel), on transform and opacity only (Reactions.tsx). */
+@keyframes react-rise {
+  0% { transform: translate3d(0, 0, 0) scale(0.6); opacity: 0; }
+  12% { transform: translate3d(var(--rx1, 8px), -36px, 0) scale(1.18); opacity: 1; }
+  70% { opacity: 1; }
+  100% { transform: translate3d(var(--rx2, -6px), -340px, 0) scale(0.96); opacity: 0; }
+}
+@keyframes react-spark {
+  0% { transform: translate3d(-50%, -50%, 0) scale(0.4); opacity: 1; }
+  100% { transform: translate3d(calc(-50% + var(--dx, 0px)), calc(-50% + var(--dy, 0px)), 0) scale(0.9); opacity: 0; }
+}
+.react-rise { animation: react-rise 3s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.react-spark { animation: react-spark 0.8s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .react-rise { animation: fade-out-late 3s linear both; } .react-spark { display: none; } }
+html.reduce-motion .react-rise { animation: fade-out-late 3s linear both; }
+html.reduce-motion .react-spark { display: none; }
+@keyframes fade-out-late { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
