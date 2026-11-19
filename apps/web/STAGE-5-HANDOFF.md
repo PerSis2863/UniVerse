@@ -9590,3 +9590,17 @@ a flick of four and a swipe match to a few pixels every 100 ms.
 
 - **For code that builds on it:** never time a frame-driven animation from an event's `performance.now()`; step it
   with the rAF timestamps.
+
+## M333: tripist's click burst on the website (19 Nov)
+
+The owner: "when you click using mouse only in the website it shows the animations like 4 small lines comes out of it…
+ultra smooth". tripist's Framer page has a click-effect part (`interactionMode: 'burst'`, `effectSize` 60,
+`strokeWidth` 2, `duration` 0.4, read from its page module and the part's code): four SVG lines at 45°, 80°, 115° and
+150° from 6 to 15 px out, each animated by GSAP to shrink into its outer end while moving 15 px further (power2.out),
+the stroke thinning to 0 over the last 40%. **`src/lib/click-burst.ts`** (started in `ScrollMotion`) draws the same with
+two spans per line and Web Animations on `transform` only (`burstTransform`: rotate, translateX, scaleX with the square
+caps counted; the inner span's `scaleY` for the thinning), so it never waits on the page's thread. Styles: `.click-burst`
+in `globals.css` (the page's `--ink`). Mouse clicks only (`pointerType`, or the press before it for Safari; a key's
+click has `detail` 0), the website only (`[data-app-shell]` on `DashboardShell` keeps it out of the app), off with
+Reduce Motion. Check: `scripts/checks/smooth-scroll-burst.mjs` (the glide on the landing and each app's home, the burst
+on the website and not in the app).
