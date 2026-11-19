@@ -10,7 +10,7 @@ import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
-import { useDarkMode } from '@/lib/use-dark';
+import { useDarkMode, useMapDark } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { boxKey, nearKey, bubbleAt, CATEGORIES, classesOf, kindOf, listingKind, routeOf, routeUrl, sameOnce, streetPhotoOf, walkFrom, walkInGoogle, withLegs, type CategoryId, type MapPlace } from '@/lib/travel-map';
 import { osmKey, type Photo, type Story } from '@/lib/travel-place';
@@ -111,7 +111,8 @@ function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, nu
 export default function TravelMap({ at, place, pin }: { at: string | null; place: string | null; pin?: boolean }) {
   useBareChrome(); // M271: on a phone the map takes the top bar's place
   const box = useRef<HTMLDivElement>(null), pinBox = useRef<HTMLDivElement>(null), pins = useRef<PinImages>(new Map()), mapRef = useRef<MLMap | null>(null), photoMarks = useRef<Marker[]>([]), me = useRef<GeoJSON.FeatureCollection | null>(null);
-  const dark = useDarkMode(), now = useNow();
+  // M331: the map in Apple Maps' dark colours (unless chosen to match the page); the cards over it follow the page.
+  const dark = useMapDark(), pageDark = useDarkMode(), now = useNow();
   const [ready, setReady] = useState(false);
   const [view, setView] = useState<View | null>(null);
   const [cat, setCat] = useState<CategoryId>('see');
@@ -953,7 +954,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
         <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
           <StatStrip className="pointer-events-auto">
             <StatCard label="Days" icon={Calendar} value={tripStats.days} unit={tripToday != null && tripToday >= 1 && tripToday <= tripStats.days ? `today is day ${tripToday}` : tripToday != null && tripToday < 1 ? `starts in ${1 - tripToday} d` : undefined} delay={0}
-              foot={<TickStrip max={30} parts={Array.from({ length: Math.min(30, tripStats.days) }, (_, i) => ({ n: 1, color: tripToday != null && i + 1 < tripToday ? (dark ? '#e4e4e7' : '#27272a') : i + 1 === tripToday ? '#0ea5e9' : dark ? '#52525b' : '#d4d4d8' }))} />} />
+              foot={<TickStrip max={30} parts={Array.from({ length: Math.min(30, tripStats.days) }, (_, i) => ({ n: 1, color: tripToday != null && i + 1 < tripToday ? (pageDark ? '#e4e4e7' : '#27272a') : i + 1 === tripToday ? '#0ea5e9' : pageDark ? '#52525b' : '#d4d4d8' }))} />} />
             <StatCard label="Cities" icon={MapPin} value={tripStats.cities} unit={tripStats.km ? `${tripStats.km.toLocaleString()} km between` : undefined} delay={50} />
             <StatCard label="Places" icon={Star} value={tripStats.places} unit={`${tripStats.planned} on a day`} delay={100}
               foot={<TickStrip parts={tripDays.map((d) => ({ n: tripStats.perDay.get(`Day ${d}`) ?? 0, color: DAY_COLORS[(d - 1) % DAY_COLORS.length] }))} />} />

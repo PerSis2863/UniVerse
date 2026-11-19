@@ -14,3 +14,18 @@ export function useDarkMode() {
     () => false,
   );
 }
+
+/** M331 (the owner, 18 Nov 2026: "change it to how the apple maps look like as it is dark colours"): maps are drawn in
+ *  Apple Maps' dark colours whatever the page's theme, unless Settings → Appearance → Maps says to match the page
+ *  (`uv-map-look` = 'page', MAP_LOOK_EVENT on change). */
+export const MAP_LOOK_EVENT = 'uv-map-look';
+const mapLookPage = () => { try { return localStorage.getItem('uv-map-look') === 'page'; } catch { return false; } };
+export function useMapDark() {
+  const page = useDarkMode();
+  const matchPage = useSyncExternalStore(
+    (onChange) => { window.addEventListener(MAP_LOOK_EVENT, onChange); window.addEventListener('storage', onChange); return () => { window.removeEventListener(MAP_LOOK_EVENT, onChange); window.removeEventListener('storage', onChange); }; },
+    mapLookPage,
+    () => false,
+  );
+  return matchPage ? page : true;
+}

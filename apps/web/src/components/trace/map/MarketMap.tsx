@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Factory, Globe2, Loader2, Lock, Maximize2, Megaphone, Minimize2, Minus, Pause, Play, Plus, Radio, Sparkles, Target, Wand2, X } from 'lucide-react';
+import { Factory, Globe2, Loader2, Lock, Maximize2, Megaphone, Minimize2, Minus, Pause, Play, Plus, Radio, Sparkles, Wand2, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
@@ -14,8 +14,8 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { BASE, arcPoints, glow, quad, toBase } from './engine';
+import { DeskCard, DeskChips, DeskGauge, DeskRow, DeskTable, MapDesk, MapSearch, TickRows } from '@/components/map-ui/Desk';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
-import { Fill } from '@/components/ui/Fill';
 
 // The live market map (UniVerse Trace; the owner, 24 Oct 2026: "make the live map in detail like
 // very detail with animations, transitions and it should be ultra smooth"). Where a brand's
@@ -37,6 +37,8 @@ interface MapData {
   cells: Cell[]; timeline: [number, number][]; events: [number, number, number, number][];
   sample: boolean; origins: { lat: number; lng: number; place: string | null }[]; market: Market;
 }
+/** M330: the places table's columns from `sm` up. */
+const PLACE_ROW = 'sm:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_5rem_6rem_6.5rem_8rem]';
 interface Place { key: string; place: string | null; country: string | null; scans: number; suspect: number; first: number; last: string; best: number; cells: number[]; products: Record<string, number> }
 interface LiveScan { id: string; lat: number; lng: number; verdict: string; productId: string; place: string | null; at: string; sample?: boolean }
 
@@ -75,6 +77,7 @@ export function MarketMap() {
   const [product, setProduct] = useState('');
   const [layers, setLayers] = useState({ scans: true, flows: true, copies: true, market: false });
   const [selected, setSelected] = useState<string | null>(null);
+  const [placeTab, setPlaceTab] = useState<'all' | 'copies' | 'clean'>('all');
   const [hover, setHover] = useState<{ kind: 'cell' | 'market'; i: number } | null>(null);
   const [replay, setReplay] = useState(false);
   const [playing, setPlaying] = useState(false);
@@ -481,13 +484,15 @@ export function MarketMap() {
   const hovered = hover && model ? (hover.kind === 'cell' ? model.cells[hover.i] : model.mk[hover.i]) : null;
   const market = data?.market, open = openOf(market);
   const top = model ? model.places.slice(0, 8) : [];
-  const topMax = top[0]?.scans ?? 1;
   const maxTime = data ? Math.max(1, ...data.timeline.map((x) => x[0])) : 1;
   const liveCount = feed.length;
 
   return (
     <div className="space-y-4">
-      {/* Toolbar */}
+      {/* M330 (the owner's dashboard picture): one screen, no gaps: the numbers and the top places down the side, the map
+          (with its replay) at the top, every place in a table under it. */}
+      <MapDesk className="cmd-trace" title="Market map"
+        tools={
       <div className="flex flex-wrap items-center gap-2">
         <div role="radiogroup" aria-label="Period" className="flex rounded-full bg-zinc-100 dark:bg-white/[0.06] p-1">
           {RANGES.map((r) => (
@@ -525,23 +530,90 @@ export function MarketMap() {
           {poll ? 'Live' : 'Paused'}{liveCount ? ` · ${liveCount} just now` : ''}
         </span>
       </div>
+        }
+        peek={model ? <><strong className="font-semibold tabular-nums">{fmt(model.total)}</strong> scans · <span className={cn(model.suspect > 0 && 'font-semibold text-amber-700 dark:text-amber-300')}>{fmt(model.suspect)} likely copies</span> · {model.total ? Math.round(((model.total - model.suspect) / model.total) * 1000) / 10 : 100}% genuine</> : 'Loading…'}
+        side={<>
+          <AnimatePresence mode="popLayout">
+            {cell && (
+              <motion.section key={cell.key} layout initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98, transition: { duration: 0.16 } }} transition={{ type: 'spring', stiffness: 360, damping: 32 }}
+                className="desk-card relative shrink-0 overflow-hidden p-4" aria-label={`About ${cell.place ?? 'this place'}`}>
+                <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 w-36 h-36 rounded-full bg-pink-500/15 blur-2xl" />
+                <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
+                <p className="text-2xl" aria-hidden>{flag(ccOf(cell.place, cell.country))}</p>
+                <h3 className="mt-1 font-bold text-zinc-900 dark:text-white pr-8">{cell.place ?? 'Unknown place'}</h3>
+                <p className="font-mono text-[11px] text-zinc-500">{cell.cells.length} {cell.cells.length === 1 ? 'area' : 'areas'} of about 11 km · {model!.cells[cell.best].lat.toFixed(1)}°, {model!.cells[cell.best].lng.toFixed(1)}°</p>
+                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+                  {[['Scans', cell.scans], ['First checks', cell.first], ['Copies', cell.suspect]].map(([k, v]) => (
+                    <div key={k} className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] py-2.5"><p className={cn('font-mono text-lg tabular-nums text-zinc-900 dark:text-white', k === 'Copies' && Number(v) > 0 && 'text-amber-600 dark:text-amber-400')}>{fmt(Number(v))}</p><p className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</p></div>
+                  ))}
+                </div>
+                <div className="mt-4">
+                  <div className="flex h-2 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.06]">
+                    <motion.span initial={{ width: 0 }} animate={{ width: `${(cell.first / cell.scans) * 100}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="bg-pink-500" />
+                    <motion.span initial={{ width: 0 }} animate={{ width: `${((cell.scans - cell.first - cell.suspect) / cell.scans) * 100}%` }} transition={{ duration: 0.6, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="bg-pink-300 dark:bg-pink-400/50" />
+                    <motion.span initial={{ width: 0 }} animate={{ width: `${(cell.suspect / cell.scans) * 100}%` }} transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="bg-amber-500" />
+                  </div>
+                  <p className="mt-1.5 text-[11px] text-zinc-500">first checks · checked again · likely copies</p>
+                </div>
+                {data && Object.keys(cell.products).length > 1 && (
+                  <ul className="mt-4 space-y-1.5">
+                    {Object.entries(cell.products).sort((a, b) => b[1] - a[1]).map(([id, n]) => (
+                      <li key={id} className="text-xs"><div className="flex justify-between gap-2"><span className="truncate text-zinc-700 dark:text-zinc-200">{data.products.find((p) => p.id === id)?.name ?? 'Product'}</span><span className="font-mono text-zinc-500">{n}</span></div>
+                        <div className="mt-1 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-pink-500" style={{ width: `${(n / cell.scans) * 100}%` }} /></div></li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-4 text-xs text-zinc-500">Last scan {formatDistanceToNow(new Date(cell.last), { addSuffix: true })}</p>
+                <Link href={`/trace/campaigns?place=${encodeURIComponent(city(cell.place))}&lat=${model!.cells[cell.best].lat}&lng=${model!.cells[cell.best].lng}`} className="btn-primary btn-sm mt-3 w-full justify-center"><Megaphone className="w-3.5 h-3.5" />Start a campaign here</Link>
+              </motion.section>
+            )}
+          </AnimatePresence>
 
-      {/* Numbers */}
-      <dl className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-        {[
-          ['Scans', model ? fmt(model.total) : '…'], ['Places', model ? fmt(model.places.length) : '…'], ['Countries', model ? String(model.countries) : '…'],
-          ['Likely copies', model ? fmt(model.suspect) : '…'], ['Genuine', model ? `${model.total ? Math.round(((model.total - model.suspect) / model.total) * 1000) / 10 : 100}%` : '…'],
-        ].map(([k, v], i) => (
-          <motion.div key={k} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04, duration: 0.35, ease: [0.22, 1, 0.36, 1] }} className={cn('panel px-4 py-3', i === 4 && 'col-span-2 sm:col-span-1')}>
-            <dt className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">{k}</dt>
-            <dd className={cn('mt-0.5 font-mono text-xl tabular-nums text-zinc-900 dark:text-white', k === 'Likely copies' && model?.suspect && 'text-amber-600 dark:text-amber-400')}>{v}</dd>
-          </motion.div>
-        ))}
-      </dl>
+          <DeskCard title="Scans" href="/trace/insights" hrefLabel="Insights">
+            <p className="text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">{model ? fmt(model.total) : '…'}<span className="ms-2 text-sm font-normal text-zinc-600 dark:text-zinc-300">{RANGES.find((r) => r.days === days)?.label}</span></p>
+            <div className="mt-3"><DeskChips items={[{ label: 'Places', n: model ? fmt(model.places.length) : '…' }, { label: 'Countries', n: model ? String(model.countries) : '…' }, { label: 'Likely copies', n: model ? fmt(model.suspect) : '…' }]} /></div>
+            <DeskGauge value={model ? (model.total ? Math.round(((model.total - model.suspect) / model.total) * 1000) / 10 : 100) / 100 : 1} note={<>{model ? `${model.total ? Math.round(((model.total - model.suspect) / model.total) * 1000) / 10 : 100}%` : '…'} genuine</>} />
+          </DeskCard>
+          <DeskCard title="Top places">
+            {!model ? <div className="h-40 skeleton rounded-xl" /> : top.length === 0 ? <p className="text-sm text-zinc-600 dark:text-zinc-300">No scans yet.</p>
+              : <TickRows<string> label="Top places by scans: press one to show it on the map" onPick={(k) => focus(k)} rows={top.slice(0, 6).map((g) => ({ id: g.key, label: city(g.place), n: g.scans, on: selected === g.key }))} />}
+          </DeskCard>
+          {open && open.opportunities.length > 0 && (
+            <section className="desk-card p-4" aria-labelledby="opp-h">
+              <h3 id="opp-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-fuchsia-500" aria-hidden />Where you’re missing</h3>
+              <p className="mt-1 text-xs text-zinc-500">Busy places in {open.category} where your share is smallest{open.sample ? ' (sample market)' : ''}.</p>
+              <ul className="mt-3 space-y-1">
+                {open.opportunities.map((o) => (
+                  <li key={`${o.lat},${o.lng}`}>
+                    <button type="button" onClick={() => { setLayers((l) => ({ ...l, market: true })); map.current?.flyTo([o.lng - 1.5, o.lat - 1, o.lng + 1.5, o.lat + 1], { maxZoom: 40 }); }} className="w-full flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
+                      <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100">{city(o.place)}</span>
+                      <span className="font-mono text-[11px] text-zinc-500">{fmt(o.total)} scans</span>
+                      <span className={cn('font-mono text-xs tabular-nums', o.share < 0.1 ? 'text-fuchsia-600 dark:text-fuchsia-300' : 'text-zinc-600 dark:text-zinc-300')}>{Math.round(o.share * 100)}%</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_320px] gap-4 items-start">
-        {/* The map */}
-        <div className={cn('panel overflow-hidden p-0', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
+          {market?.locked && (
+            <section className="desk-card relative overflow-hidden p-4">
+              <span aria-hidden className="pointer-events-none absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-fuchsia-500/15 blur-2xl" />
+              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Lock className="w-4 h-4 text-fuchsia-500" aria-hidden />Category market</h3>
+              <p className="mt-1 text-sm text-zinc-500">On PRO, the map also shows every brand’s scans in {market.category ?? 'your category'} (anonymised, live), your share in each city and where you’re missing.</p>
+              <button type="button" onClick={() => setLocked(true)} className="btn-secondary btn-sm mt-3">What it shows</button>
+            </section>
+          )}
+
+          {model && model.origins.length > 0 && (
+            <section className="desk-card p-4">
+              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Factory className="w-4 h-4 text-zinc-500" aria-hidden />Made in</h3>
+              <ul className="mt-2 space-y-1 text-sm">{model.origins.map((o) => <li key={`${o.lat},${o.lng}`} className="text-zinc-700 dark:text-zinc-200">{o.place ?? `${o.lat}, ${o.lng}`}</li>)}</ul>
+            </section>
+          )}
+        </>}
+        map={<>
+        <div className={cn('desk-card flex h-full flex-col overflow-hidden p-0', full && 'fixed inset-2 sm:inset-4 z-50 h-auto shadow-2xl')}>
           <WorldCanvas
             ref={map}
             label={`Map of where ${data?.brand.name ?? 'your brand'}’s products are scanned`}
@@ -551,10 +623,11 @@ export function MarketMap() {
             draw={draw}
             onPoint={onPoint}
             skipCities={model?.names}
-            className={cn('w-full rounded-t-[inherit]', full ? 'flex-1' : 'h-[58vh] min-h-[380px] max-h-[680px]')}
+            className="min-h-[20rem] w-full flex-1 rounded-t-[inherit]"
           >
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
-            {data?.sample && <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 shadow-sm"><Sparkles className="w-3 h-3 text-pink-500" aria-hidden />Sample data</span>}
+            <MapSearch className="absolute start-3 top-3 z-10 w-[min(16rem,calc(100%-4.5rem))]" placeholder="Search a city" onFound={(f) => map.current?.flyTo(f.box ?? [f.lon - 1.5, f.lat - 1, f.lon + 1.5, f.lat + 1], { maxZoom: 40 })} />
+            {data?.sample && <span className="absolute left-3 top-16 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 shadow-sm"><Sparkles className="w-3 h-3 text-pink-500" aria-hidden />Sample data</span>}
             {/* Controls */}
             <div className="absolute right-3 top-3 flex flex-col gap-1.5">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
@@ -564,7 +637,7 @@ export function MarketMap() {
               ))}
             </div>
             {/* Live feed */}
-            <ul className="absolute right-3 bottom-3 w-60 space-y-1.5 pointer-events-none" aria-label="Latest scans">
+            <ul className="absolute right-3 bottom-3 w-60 space-y-1.5 pointer-events-none max-sm:[&>li:nth-child(n+2)]:hidden" aria-label="Latest scans">
               <AnimatePresence initial={false}>
                 {feed.slice(0, 3).map((s) => (
                   <motion.li key={s.id} layout initial={{ opacity: 0, x: 24, scale: 0.96 }} animate={{ opacity: 1, x: 0, scale: 1 }} exit={{ opacity: 0, scale: 0.96, transition: { duration: 0.18 } }} transition={{ type: 'spring', stiffness: 380, damping: 32 }}
@@ -663,104 +736,27 @@ export function MarketMap() {
             </div>
           )}
         </div>
-
-        {/* Side panels */}
-        <div className="space-y-4">
-          <AnimatePresence mode="popLayout">
-            {cell && (
-              <motion.section key={cell.key} layout initial={{ opacity: 0, y: 12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98, transition: { duration: 0.16 } }} transition={{ type: 'spring', stiffness: 360, damping: 32 }}
-                className="panel p-5 relative overflow-hidden" aria-label={`About ${cell.place ?? 'this place'}`}>
-                <span aria-hidden className="pointer-events-none absolute -right-10 -top-10 w-36 h-36 rounded-full bg-pink-500/15 blur-2xl" />
-                <button type="button" onClick={() => setSelected(null)} aria-label="Close" className="absolute right-3 top-3 w-8 h-8 grid place-items-center rounded-full text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10"><X className="w-4 h-4" /></button>
-                <p className="text-2xl" aria-hidden>{flag(ccOf(cell.place, cell.country))}</p>
-                <h3 className="mt-1 font-bold text-zinc-900 dark:text-white pr-8">{cell.place ?? 'Unknown place'}</h3>
-                <p className="font-mono text-[11px] text-zinc-500">{cell.cells.length} {cell.cells.length === 1 ? 'area' : 'areas'} of about 11 km · {model!.cells[cell.best].lat.toFixed(1)}°, {model!.cells[cell.best].lng.toFixed(1)}°</p>
-                <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                  {[['Scans', cell.scans], ['First checks', cell.first], ['Copies', cell.suspect]].map(([k, v]) => (
-                    <div key={k} className="rounded-xl bg-zinc-50 dark:bg-white/[0.04] py-2.5"><p className={cn('font-mono text-lg tabular-nums text-zinc-900 dark:text-white', k === 'Copies' && Number(v) > 0 && 'text-amber-600 dark:text-amber-400')}>{fmt(Number(v))}</p><p className="text-[10px] uppercase tracking-wider text-zinc-500">{k}</p></div>
-                  ))}
-                </div>
-                <div className="mt-4">
-                  <div className="flex h-2 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.06]">
-                    <motion.span initial={{ width: 0 }} animate={{ width: `${(cell.first / cell.scans) * 100}%` }} transition={{ duration: 0.6, ease: [0.22, 1, 0.36, 1] }} className="bg-pink-500" />
-                    <motion.span initial={{ width: 0 }} animate={{ width: `${((cell.scans - cell.first - cell.suspect) / cell.scans) * 100}%` }} transition={{ duration: 0.6, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="bg-pink-300 dark:bg-pink-400/50" />
-                    <motion.span initial={{ width: 0 }} animate={{ width: `${(cell.suspect / cell.scans) * 100}%` }} transition={{ duration: 0.6, delay: 0.1, ease: [0.22, 1, 0.36, 1] }} className="bg-amber-500" />
-                  </div>
-                  <p className="mt-1.5 text-[11px] text-zinc-500">first checks · checked again · likely copies</p>
-                </div>
-                {data && Object.keys(cell.products).length > 1 && (
-                  <ul className="mt-4 space-y-1.5">
-                    {Object.entries(cell.products).sort((a, b) => b[1] - a[1]).map(([id, n]) => (
-                      <li key={id} className="text-xs"><div className="flex justify-between gap-2"><span className="truncate text-zinc-700 dark:text-zinc-200">{data.products.find((p) => p.id === id)?.name ?? 'Product'}</span><span className="font-mono text-zinc-500">{n}</span></div>
-                        <div className="mt-1 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-pink-500" style={{ width: `${(n / cell.scans) * 100}%` }} /></div></li>
-                    ))}
-                  </ul>
-                )}
-                <p className="mt-4 text-xs text-zinc-500">Last scan {formatDistanceToNow(new Date(cell.last), { addSuffix: true })}</p>
-                <Link href={`/trace/campaigns?place=${encodeURIComponent(city(cell.place))}&lat=${model!.cells[cell.best].lat}&lng=${model!.cells[cell.best].lng}`} className="btn-primary btn-sm mt-3 w-full justify-center"><Megaphone className="w-3.5 h-3.5" />Start a campaign here</Link>
-              </motion.section>
-            )}
-          </AnimatePresence>
-
-          <section className="panel p-5" aria-labelledby="top-h">
-            <h3 id="top-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Target className="w-4 h-4 text-pink-500" aria-hidden />Top places</h3>
-            {!model ? <div className="mt-3 h-40 skeleton rounded-xl" /> : top.length === 0 ? <p className="mt-2 text-sm text-zinc-500">No scans yet.</p> : (
-              <ol className="mt-3 space-y-1">
-                {top.map((g, n) => (
-                  <li key={g.key}>
-                    <button type="button" onClick={() => focus(g.key)}
-                      className={cn('group w-full rounded-xl px-2 py-1.5 text-left transition-colors hover:bg-zinc-50 dark:hover:bg-white/[0.04]', selected === g.key && 'bg-pink-500/[0.07]')}>
-                      <span className="flex items-center gap-2 text-sm">
-                        <span className="w-4 font-mono text-[11px] text-zinc-400">{n + 1}</span>
-                        <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100">{flag(ccOf(g.place, g.country))} {city(g.place)}</span>
-                        {g.suspect > 0 && <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400" title="Likely copies">{g.suspect} copies</span>}
-                        <span className="font-mono text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(g.scans)}</span>
-                      </span>
-                      <span className="mt-1 ml-6 block h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] overflow-hidden">
-                        <Fill value={g.scans / topMax} className="h-full rounded-full bg-gradient-to-r from-pink-500 to-fuchsia-500" delay={(n * 0.03) * 1000} />
-                      </span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            )}
-          </section>
-
-          {open && open.opportunities.length > 0 && (
-            <section className="panel p-5" aria-labelledby="opp-h">
-              <h3 id="opp-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-fuchsia-500" aria-hidden />Where you’re missing</h3>
-              <p className="mt-1 text-xs text-zinc-500">Busy places in {open.category} where your share is smallest{open.sample ? ' (sample market)' : ''}.</p>
-              <ul className="mt-3 space-y-1">
-                {open.opportunities.map((o) => (
-                  <li key={`${o.lat},${o.lng}`}>
-                    <button type="button" onClick={() => { setLayers((l) => ({ ...l, market: true })); map.current?.flyTo([o.lng - 1.5, o.lat - 1, o.lng + 1.5, o.lat + 1], { maxZoom: 40 }); }} className="w-full flex items-center gap-2 rounded-xl px-2 py-1.5 text-left text-sm hover:bg-zinc-50 dark:hover:bg-white/[0.04]">
-                      <span className="min-w-0 flex-1 truncate text-zinc-800 dark:text-zinc-100">{city(o.place)}</span>
-                      <span className="font-mono text-[11px] text-zinc-500">{fmt(o.total)} scans</span>
-                      <span className={cn('font-mono text-xs tabular-nums', o.share < 0.1 ? 'text-fuchsia-600 dark:text-fuchsia-300' : 'text-zinc-600 dark:text-zinc-300')}>{Math.round(o.share * 100)}%</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-          )}
-
-          {market?.locked && (
-            <section className="panel p-5 relative overflow-hidden">
-              <span aria-hidden className="pointer-events-none absolute -right-8 -bottom-8 w-32 h-32 rounded-full bg-fuchsia-500/15 blur-2xl" />
-              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Lock className="w-4 h-4 text-fuchsia-500" aria-hidden />Category market</h3>
-              <p className="mt-1 text-sm text-zinc-500">On PRO, the map also shows every brand’s scans in {market.category ?? 'your category'} (anonymised, live), your share in each city and where you’re missing.</p>
-              <button type="button" onClick={() => setLocked(true)} className="btn-secondary btn-sm mt-3">What it shows</button>
-            </section>
-          )}
-
-          {model && model.origins.length > 0 && (
-            <section className="panel p-5">
-              <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><Factory className="w-4 h-4 text-zinc-500" aria-hidden />Made in</h3>
-              <ul className="mt-2 space-y-1 text-sm">{model.origins.map((o) => <li key={`${o.lat},${o.lng}`} className="text-zinc-700 dark:text-zinc-200">{o.place ?? `${o.lat}, ${o.lng}`}</li>)}</ul>
-            </section>
-          )}
-        </div>
-      </div>
+        </>}
+        table={
+          <DeskTable<'all' | 'copies' | 'clean'> title="Places" value={placeTab} onChange={setPlaceTab}
+            tabs={[{ id: 'all', label: 'All', count: model?.places.length }, { id: 'copies', label: 'Likely copies', count: model?.places.filter((g) => g.suspect > 0).length }, { id: 'clean', label: 'Genuine', count: model?.places.filter((g) => !g.suspect).length }]}
+            head={['Place', 'Country', 'Scans', 'First checks', 'Copies', 'Last scan']} cols={PLACE_ROW}
+            empty={model && !model.places.length ? <p className="p-6 text-center text-sm text-zinc-600 dark:text-zinc-300">No scans in this period yet.</p> : null}>
+            {!model && Array.from({ length: 4 }, (_, i) => <div key={i} className="mx-4 my-3 h-10 rounded-xl skeleton" />)}
+            {(model?.places ?? []).filter((g) => placeTab === 'all' || (placeTab === 'copies' ? g.suspect > 0 : !g.suspect)).slice(0, 120).map((g) => (
+              <DeskRow key={g.key} cols={PLACE_ROW} chosen={selected === g.key}>
+                <button type="button" onClick={() => focus(g.key)} className="flex min-w-0 items-center gap-2 text-start">
+                  <span aria-hidden>{flag(ccOf(g.place, g.country))}</span><span className="truncate font-semibold text-zinc-900 dark:text-white">{city(g.place)}</span>
+                </button>
+                <span className="truncate text-zinc-700 dark:text-zinc-200">{g.country ?? '–'}</span>
+                <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{fmt(g.scans)}<span className="sm:hidden"> scans</span></span>
+                <span className="hidden tabular-nums text-zinc-700 dark:text-zinc-200 sm:block">{fmt(g.first)}</span>
+                <span className={cn('tabular-nums', g.suspect ? 'font-semibold text-amber-700 dark:text-amber-300' : 'text-zinc-700 dark:text-zinc-200')}>{g.suspect ? `${fmt(g.suspect)} ${g.suspect === 1 ? 'copy' : 'copies'}` : 'None'}</span>
+                <span className="hidden text-end text-zinc-600 dark:text-zinc-300 sm:block">{formatDistanceToNow(new Date(g.last), { addSuffix: true })}</span>
+              </DeskRow>
+            ))}
+          </DeskTable>
+        } />
     </div>
   );
 }

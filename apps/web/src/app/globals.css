@@ -3107,8 +3107,8 @@ html[data-focus] :is(.side-shell, .top-nav, .app-topbar, .ai-fab) { transition: 
 /* M262: the map command look (the owner's screen recording, 17 Nov; src/components/map-ui/Command.tsx). `--cmd` is the
    accent for rings, halos and tints, `--cmd-ink` the darker one for text and filled pills (4.5:1 with white). Each app
    keeps its own colour (M132): Relief's orange is the recording's. */
-.cmd-relief { --cmd: #f26322; --cmd-ink: #c2410c; --cmd-fill: #c2410c; }
-.cmd-trace { --cmd: #ec4899; --cmd-ink: #be185d; --cmd-fill: #be185d; }
+.cmd-relief { --cmd: #f26322; --cmd-ink: #c2410c; --cmd-fill: #c2410c; --cmd-soft: rgb(242 99 34 / 0.08); }
+.cmd-trace { --cmd: #ec4899; --cmd-ink: #be185d; --cmd-fill: #be185d; --cmd-soft: rgb(236 72 153 / 0.08); }
 .cmd-travel { --cmd: #0ea5e9; --cmd-ink: #0369a1; --cmd-fill: #0369a1; }
 .dark :is(.cmd-relief) { --cmd-ink: #fb923c; } .dark :is(.cmd-trace) { --cmd-ink: #f472b6; } .dark :is(.cmd-travel) { --cmd-ink: #38bdf8; }
 @keyframes cmd-pop { from { opacity: 0; transform: translateY(6px) scale(0.96); } }
@@ -3133,3 +3133,9 @@ html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { 
 html[data-scrolling] .world-earth .earth-clouds { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .world-earth .earth-clouds { animation: none; } }
 html.reduce-motion .world-earth .earth-clouds { animation: none; }
+
+/* ═══ M330 · The map desk (the owner's dashboard picture): cards, the map and its table on one screen, no gaps.
+   On a computer it fills the window under the page's top and tabs; its parts scroll inside themselves. */
+.desk-card { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 1.25rem; box-shadow: var(--card-shadow); }
+.desk-ticks { color: var(--text-primary, #17191e); background: repeating-linear-gradient(90deg, currentColor 0 2px, transparent 2px 5px); }
+@media (min-width: 1024px) { .map-desk { height: max(40rem, calc(100dvh - 11rem)); } }

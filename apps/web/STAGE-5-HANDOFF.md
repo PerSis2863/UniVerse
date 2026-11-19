@@ -9574,3 +9574,48 @@ photo-real Earth half sunk in white clouds (a video). Ours is drawn live:
   `.world-glass` styles are gone.
 - `Planet`'s `turnable` mode has no user now (a `shortcut:` note in `Planet.tsx`); the hub and Trace keep `Planet`.
 - Checked in a browser at 1280 and 390, light and dark: no errors, the canvas fades in once ready.
+
+## M330: the map pages as the owner's dashboard picture: no empty space; on a phone, the map alone (18–19 Nov)
+
+The owner sent a logistics dashboard ("Transcope"): "make design of ui like this so there are no extra spaces are left
+and specially the map position and design like that… where ever it will be needed or maps are there"; then "dont change
+for the relief map because i like its position but change others"; then "in mobile it should show map only… important
+information but it should not take a lot of space".
+
+- **`src/components/map-ui/Desk.tsx`**: `MapDesk` (computer: cards down the start side, the map top right, its table
+  under it, filling the window, `.map-desk` height in globals.css; phone: the map fills the screen with no top bar,
+  `useBareChrome`, one slim `peek` line under it that opens a `Sheet` with the page's `tools`, the table and the cards),
+  `DeskCard` (title, ↗), `TickRows` (a distribution as tick bars, pressable to filter), `DeskGauge` (0–100% with a
+  marker), `DeskChips`, `MapSearch` (`/travel/where`), `SortPill`, `DeskTable` (tabs as pills, rows scrolling inside, a
+  list a keyboard can scroll) and `DeskRow`.
+- **Trace → Tracking**: Deliveries (delivered of all, units per product, the gauge), Shipments by state (filter), Needs
+  you (warm batches, ones without a destination); the map with a search and "Sort by" (needs you first, soonest, newest);
+  the Shipments table (batch, product, route from → to, units, arrives, status). The chosen batch's card leads the side.
+  On a phone Journeys today and Fleet in motion stay for computers.
+- **Trace → Market map**: Scans (total, places, countries, copies, genuine gauge), Top places (tick bars), the PRO and
+  "made in" cards; the map with its replay and a search; the Places table (place, country, scans, first checks, copies,
+  last scan; All / Likely copies / Genuine). The period, product and layers sit above (in the sheet on a phone); the live
+  scan notes show one at a time on a phone.
+- **Green → Green places**: What to show (tick bars per kind, filter), Nearest of each kind, the credits; the map with a
+  search; Places in view (tabs per kind, Directions).
+- **Relief's live map is unchanged** (the owner likes its position). Its emergency banner no longer squeezes its words one
+  a line on a phone (`SafetyCheck`: the text takes the row, the buttons go under it).
+- Travel's map stays the full-screen Apple-style map (M236) it was asked to be.
+- **Checked:** axe on the three desks at 1280 light and 390 dark (the rows were `role=row` without cells: now a list),
+  nothing sideways, no page errors; phones show the map and the peek line above the tab bar.
+
+## M331: every map in Apple Maps' dark colours (19 Nov)
+
+The owner (with a picture of Trace's market map): "i dont like the map colour can you change it to how the apple maps
+look like as it is dark colours… and make sure everything is ultra smooth".
+
+- **`useMapDark()`** (`src/lib/use-dark.ts`): maps are dark whatever the page's theme, unless **Settings → Appearance →
+  Maps → Match the page** (`uv-map-look` = 'page', `MAP_LOOK_EVENT`). `WorldCanvas` (Trace, Relief, Green's action map)
+  draws with it (its frame's `dark` follows, so every page's marks adapt); the street maps (Travel, Green places, Relief
+  alerts) pick their style with it. Cards over a map still follow the page (Travel's trip ticks use `pageDark`).
+- **Colours** nearer Apple's dark mode: charcoal land `#2b2e35`, deep muted navy water `#1a2b44`, quiet borders, deep
+  green parks, grey streets with lighter main roads, muted amber motorways, soft white names (`PAL.dark` in
+  `WorldCanvas.tsx`, `DARK` in `map-style.ts`).
+- **Smoothness measured** while dragging and zooming (headless, software drawing): Relief's map 17 ms a frame, no slow
+  frames; Trace's market map a median of 33 ms with some slow ones (its glows; a real graphics chip does far better);
+  the street map can't be judged without a graphics chip.

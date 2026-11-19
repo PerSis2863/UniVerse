@@ -22,6 +22,7 @@ import { useLanguageStore } from '@/store/language';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { chime, setSounds, soundsOn } from '@/lib/sounds';
+import { MAP_LOOK_EVENT } from '@/lib/use-dark';
 import { ACCENTS, accent as savedAccent, setAccent, type Accent, menuPlace, setMenuPlace, type MenuPlace, appReduceMotion, cameraOffByDefault, captionsByDefault, hapticsOn, mirrorSelf, readingAid, readingLevel, selectHelp, setAppReduceMotion, setSmoothScroll, smoothScrollOn, setCameraOffByDefault, setCaptionsByDefault, setHaptics, setMirrorSelf, setReadingAid, setReadingLevel, setSelectHelp, setTextSize, setWeekStartsOn, textSize, weekStartsOn, type ReadingAid, type ReadingLevelPref, type TextSize } from '@/lib/display-prefs';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -469,6 +470,7 @@ function Appearance() {
   const [size, setSize] = useState<TextSize>(() => (typeof window === 'undefined' ? 'default' : textSize()));
   const [reduce, setReduce] = useState(() => typeof window !== 'undefined' && appReduceMotion());
   const [smooth, setSmooth] = useState(() => typeof window === 'undefined' || smoothScrollOn());
+  const [mapLook, setMapLook] = useState<'dark' | 'page'>(() => { try { return typeof window !== 'undefined' && localStorage.getItem('uv-map-look') === 'page' ? 'page' : 'dark'; } catch { return 'dark'; } });
   const [haptics, setHap] = useState(() => typeof window === 'undefined' || hapticsOn());
   const [sounds, setSnd] = useState(() => typeof window !== 'undefined' && soundsOn());
   const [aids, setAids] = useState<Record<ReadingAid, boolean>>(() => ({ bold: readingAid('bold'), contrast: readingAid('contrast'), dyslexic: readingAid('dyslexic'), underline: readingAid('underline') }));
@@ -500,6 +502,10 @@ function Appearance() {
       <div className="space-y-2" data-setting="menu-place"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Menu on a computer</p>
         <Choice id="menu" value={menu} onPick={(v) => { setMenu(v); setMenuPlace(v); }} options={[['auto', 'Automatic'], ['top', 'Across the top'], ['side', 'Down the side']]} />
         <p className="text-xs text-zinc-500 dark:text-zinc-400">Automatic puts it across the top in a browser (full screen too) and down the side in the installed app. Phones keep their own menu.</p>
+      </div>
+      <div className="space-y-2" data-setting="map-look"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Maps</p>
+        <Choice id="maps" value={mapLook} onPick={(v) => { setMapLook(v); try { if (v === 'page') localStorage.setItem('uv-map-look', 'page'); else localStorage.removeItem('uv-map-look'); } catch { /* private mode */ } window.dispatchEvent(new Event(MAP_LOOK_EVENT)); }} options={[['dark', 'Dark, like Apple Maps'], ['page', 'Match the page']]} />
+        <p className="text-xs text-zinc-500 dark:text-zinc-400">Every map in UniVerse: Trace, Relief, Green and Travel.</p>
       </div>
       <div className="space-y-2" data-setting="text-size"><p className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Text size</p>
         <Choice id="text" value={size} onPick={(v) => { setSize(v); setTextSize(v); }} options={[['default', 'Default'], ['large', 'Large'], ['larger', 'Larger'], ['largest', 'Largest']]} />

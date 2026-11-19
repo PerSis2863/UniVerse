@@ -5,13 +5,13 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import type { ExpressionSpecification, GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
 import { ExternalLink, LocateFixed } from 'lucide-react';
-import { useDarkMode } from '@/lib/use-dark';
+import { useMapDark } from '@/lib/use-dark';
 import { osmKey } from '@/lib/travel-place';
 import { km } from '@/lib/travel-plan';
-import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
 import { mapRequest } from '@/components/travel/map/map-style';
 import { useBareChrome } from '@/lib/chrome';
+import { DeskCard, DeskRow, DeskTable, MapDesk, MapSearch, TickRows } from '@/components/map-ui/Desk';
 
 // Green → Green places (M216): where to recycle, refill a bottle, hire a bike, charge an electric car, buy
 // second-hand or at a market, near you. OpenStreetMap's own places, read from the map's tiles as you move
@@ -26,6 +26,8 @@ const KINDS = [
   { id: 'market', label: 'Markets and farm shops', color: '#ea580c', sub: ['marketplace', 'farm'] },
 ] as const;
 type KindId = (typeof KINDS)[number]['id'];
+/** M330: the places table's columns from `sm` up. */
+const GREEN_ROW = 'sm:grid-cols-[minmax(0,2fr)_minmax(0,1.2fr)_5.5rem_8rem]';
 interface Spot { key: string; kind: KindId; name: string; lat: number; lon: number }
 const KEEP = 'uv-green-places', HOME = { lat: 38.7139, lon: -9.1394, zoom: 15 };
 const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -37,11 +39,12 @@ const colour: ExpressionSpecification = ['match', ['get', 'subclass'], ...KINDS.
 export default function GreenPlaces() {
   useBareChrome(); // M271: on a phone the map takes the top bar's place
   const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
-  const dark = useDarkMode();
+  const dark = useMapDark();
   const [ready, setReady] = useState(false), [zoom, setZoom] = useState(HOME.zoom);
   const [spots, setSpots] = useState<Spot[]>([]), [centre, setCentre] = useState(HOME);
   const [shown, setShown] = useState<Set<KindId>>(new Set(KINDS.map((k) => k.id)));
   const [picked, setPicked] = useState<Spot | null>(null);
+  const [tab, setTab] = useState<'all' | KindId>('all');
   const list = useMemo(() => spots.filter((s) => shown.has(s.kind)).map((s) => ({ s, d: km(centre, s) ?? 0 })).sort((a, b) => a.d - b.d).slice(0, 50), [spots, shown, centre]);
   const counts = useMemo(() => Object.fromEntries(KINDS.map((k) => [k.id, spots.filter((s) => s.kind === k.id).length])) as Record<KindId, number>, [spots]);
 
@@ -113,19 +116,20 @@ export default function GreenPlaces() {
   const toggle = (id: KindId) => setShown((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const osm = (key: string) => (/^[NWR]\d+$/.test(key) ? `https://www.openstreetmap.org/${{ N: 'node', W: 'way', R: 'relation' }[key[0] as 'N']}/${key.slice(1)}` : null);
 
+  // M330 (the owner's dashboard picture): one screen, no gaps: what to show (with counts) down the side, the map at the
+  // top with a search over it, the places in view in a table under it, nearest first.
+  const dist = (d: number) => (d < 1 ? `${Math.round(d * 100) * 10} m` : `${d.toFixed(1)} km`);
   return (
-    <div className="relative grid gap-4 lg:block">
-      <aside className="panel flex max-h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[20rem] flex-col p-4 lg:absolute lg:start-3 lg:top-3 lg:bottom-3 lg:z-10 lg:max-h-none lg:rounded-[1.375rem] lg:shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] lg:w-[22rem]" aria-label="Green places">
-        <div className="flex flex-wrap gap-1.5" role="group" aria-label="What to show">
-          {KINDS.map((k) => (
-            <button key={k.id} type="button" aria-pressed={shown.has(k.id)} onClick={() => toggle(k.id)} className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 transition-colors', shown.has(k.id) ? 'bg-white text-zinc-900 ring-zinc-300 dark:bg-white/[0.08] dark:text-white dark:ring-white/20' : 'text-zinc-500 ring-zinc-200 dark:text-zinc-400 dark:ring-white/10')}>
-              <span className="h-2.5 w-2.5 rounded-full" style={{ background: shown.has(k.id) ? k.color : '#a1a1aa' }} aria-hidden />{k.label}{counts[k.id] > 0 && <span className="tabular-nums text-zinc-500 dark:text-zinc-400">{counts[k.id]}</span>}
-            </button>
-          ))}
-        </div>
-        <button type="button" onClick={findMe} className="btn-secondary btn-sm mt-3 inline-flex items-center justify-center gap-1.5"><LocateFixed className="h-4 w-4" aria-hidden />Near me</button>
-        {picked && (
-          <div className="mt-3 rounded-2xl bg-emerald-500/[0.08] p-3" data-no-motion>
+    <MapDesk className="green-desk" title="Green places"
+      peek={list.length ? <><strong className="font-semibold tabular-nums">{list.length}</strong> places in view · nearest <span translate="no">{list[0].s.name}</span>, {dist(list[0].d)}</> : zoom < 13 ? 'Zoom in to a town' : 'No places of these kinds in view'}
+      side={<>
+        <DeskCard title="What to show">
+          <TickRows<KindId> label="Kinds of green places in view: press one to show or hide it" onPick={toggle}
+            rows={KINDS.map((k) => ({ id: k.id, label: k.label, n: counts[k.id] ?? 0, on: shown.has(k.id) }))} />
+          <button type="button" onClick={findMe} className="btn-secondary btn-sm mt-3 inline-flex items-center justify-center gap-1.5"><LocateFixed className="h-4 w-4" aria-hidden />Near me</button>
+        </DeskCard>
+        {picked && <section className="desk-card p-4" aria-label={picked.name}>
+          <div className="rounded-2xl bg-emerald-500/[0.08] p-3" data-no-motion>
             <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{picked.name}</p>
             <p className="text-xs text-zinc-600 dark:text-zinc-300">{KINDS.find((k) => k.id === picked.kind)!.label} · {(km(centre, picked) ?? 0) < 1 ? `${Math.round((km(centre, picked) ?? 0) * 100) * 10} m` : `${(km(centre, picked) ?? 0).toFixed(1)} km`} from the middle of the map</p>
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -133,25 +137,48 @@ export default function GreenPlaces() {
               {osm(picked.key) && <a href={osm(picked.key)!} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm inline-flex items-center gap-1"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Details on OpenStreetMap</a>}
             </div>
           </div>
-        )}
-        <ol className="mt-3 min-h-0 flex-1 space-y-1 overflow-y-auto pe-1" data-no-motion>
-          {list.map(({ s, d }) => (
-            <li key={s.key}>
-              <button type="button" onClick={() => pick(s)} className={cn('flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]', picked?.key === s.key && 'bg-zinc-100 dark:bg-white/[0.06]')}>
-                <span className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white dark:ring-zinc-900" style={{ background: KINDS.find((k) => k.id === s.kind)!.color }} aria-hidden />
-                <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{s.name}</span><span className="block text-xs text-zinc-500 dark:text-zinc-400">{KINDS.find((k) => k.id === s.kind)!.label}</span></span>
-                <span className="shrink-0 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{d < 1 ? `${Math.round(d * 100) * 10} m` : `${d.toFixed(1)} km`}</span>
+        </section>}
+        <section className="desk-card flex flex-col p-4 lg:flex-1" aria-labelledby="gp-near">
+          <h2 id="gp-near" className="mb-2 text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">Nearest of each</h2>
+          <ul className="space-y-0.5">
+            {KINDS.map((k) => { const n = list.find((x) => x.s.kind === k.id); return (
+              <li key={k.id}>
+                {n ? <button type="button" onClick={() => pick(n.s)} className="flex w-full items-center gap-2.5 rounded-lg px-1.5 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.05]">
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: k.color }} aria-hidden />
+                  <span className="min-w-0 flex-1"><span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{n.s.name}</span><span className="block truncate text-xs text-zinc-600 dark:text-zinc-300">{k.label}</span></span>
+                  <span className="shrink-0 text-xs tabular-nums text-zinc-600 dark:text-zinc-300">{dist(n.d)}</span>
+                </button> : <p className="flex items-center gap-2.5 px-1.5 py-1.5 text-xs text-zinc-500 dark:text-zinc-400"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-zinc-300 dark:bg-zinc-600" aria-hidden />No {k.label.toLowerCase()} in view</p>}
+              </li>
+            ); })}
+          </ul>
+        <p className="mt-auto pt-2 text-[11px] leading-snug text-zinc-500 dark:text-zinc-400">Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a></p>
+        </section>
+      </>}
+      map={
+        <div className="desk-card relative h-[60dvh] min-h-[22rem] overflow-hidden p-0 lg:h-full" data-no-arrange data-no-motion>
+          <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of green places" />
+          {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
+          <MapSearch className="absolute start-3 top-3 z-10 w-[min(18rem,calc(100%-1.5rem))]" placeholder="Search a town or street"
+            onFound={(f) => { const m = mapRef.current; if (!m) return; if (f.box) m.fitBounds([[f.box[0], f.box[1]], [f.box[2], f.box[3]]], { maxZoom: 16, duration: calm() ? 0 : 1200 }); else m.flyTo({ center: [f.lon, f.lat], zoom: 15, duration: calm() ? 0 : 1200 }); }} />
+        </div>
+      }
+      table={
+        <DeskTable<'all' | KindId> title="Places in view" value={tab} onChange={setTab}
+          tabs={[{ id: 'all', label: 'All', count: list.length }, ...KINDS.filter((k) => (counts[k.id] ?? 0) > 0).map((k) => ({ id: k.id, label: k.label, count: counts[k.id] }))]}
+          head={['Place', 'Kind', 'Distance', '']} cols={GREEN_ROW}
+          empty={!list.length ? <p className="p-6 text-center text-sm text-zinc-600 dark:text-zinc-300">{zoom < 13 ? 'Zoom in to a town or neighbourhood.' : 'None of the kinds you chose in view: move the map.'}</p> : null}>
+          {list.filter(({ s: x }) => tab === 'all' || x.kind === tab).slice(0, 150).map(({ s: x, d }) => { const k = KINDS.find((y) => y.id === x.kind)!; return (
+            <DeskRow key={x.key} cols={GREEN_ROW} chosen={picked?.key === x.key}>
+              <button type="button" onClick={() => pick(x)} className="flex min-w-0 items-center gap-2.5 text-start">
+                <span className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white dark:ring-zinc-900" style={{ background: k.color }} aria-hidden />
+                <span className="truncate font-semibold text-zinc-900 dark:text-white" translate="no">{x.name}</span>
               </button>
-            </li>
-          ))}
-          {!list.length && <li className="px-2 py-4 text-sm text-zinc-600 dark:text-zinc-300">{zoom < 13 ? 'Zoom in to a town or neighbourhood.' : 'None of the kinds you chose in view: move the map.'}</li>}
-        </ol>
-        <p className="mt-2 border-t border-zinc-200/70 pt-2 text-[11px] leading-snug text-zinc-500 dark:border-white/10 dark:text-zinc-400">Places © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a></p>
-      </aside>
-      <div className="relative h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
-        <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of green places" />
-        {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
-      </div>
-    </div>
+              <span className="truncate text-zinc-700 dark:text-zinc-200">{k.label}</span>
+              <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{dist(d)}</span>
+              <span className="flex justify-end"><a href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=%3B${x.lat}%2C${x.lon}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">Directions<span className="sr-only"> to {x.name}</span></a></span>
+            </DeskRow>
+          ); })}
+        </DeskTable>
+      } />
   );
 }

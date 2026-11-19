@@ -33,13 +33,14 @@ const LIGHT = {
   street: '#6f6a62', streetMajor: '#57524b', district: '#9a9286', town: '#3f434b', city: '#1f2228', waterText: '#2f7fc0', halo: '#ffffff',
 };
 const DARK: typeof LIGHT = {
-  // Apple Maps' dark look: blue-slate ground, building blocks a shade lighter, deep green parks, blue water.
-  land: '#2f3340', urban: '#323644', park: '#1d5240', wood: '#1a4b3a', grass: '#22503f', sand: '#454437', ice: '#4a5263',
-  water: '#1f4a80', waterLine: '#1f4a80', building: '#3c4252', buildingEdge: '#4a5163', buildingTall: '#4a5163',
-  minor: '#4d5364', minorEdge: '#2c303c', major: '#5a6173', majorEdge: '#2c303c', fast: '#8a774b', fastEdge: '#5e5237',
-  path: '#4a5060', pathEdge: '#2c303c', square: '#383d4b', rail: '#5a6070', border: '#7a7596',
-  health: '#4a3a44', school: '#463f3a', works: '#363a47', sport: '#22503f',
-  street: '#bcc2ce', streetMajor: '#d5dae3', district: '#aab1be', town: '#dfe3ea', city: '#f4f6f9', waterText: '#8ab6e6', halo: '#272b36',
+  // Apple Maps' dark look (M331, closer to it): charcoal ground, building blocks a shade lighter, deep muted green parks,
+  // deep navy water, grey streets with lighter main roads, muted amber motorways, soft white names.
+  land: '#2b2e35', urban: '#2f323a', park: '#1f3a2e', wood: '#1c372b', grass: '#223d31', sand: '#3b3a33', ice: '#3f4450',
+  water: '#1a2b44', waterLine: '#1a2b44', building: '#373b45', buildingEdge: '#434854', buildingTall: '#434854',
+  minor: '#41454f', minorEdge: '#25282e', major: '#535863', majorEdge: '#25282e', fast: '#7f6c45', fastEdge: '#56492f',
+  path: '#3f434c', pathEdge: '#25282e', square: '#33363e', rail: '#555a65', border: '#6e6a88',
+  health: '#433539', school: '#403a35', works: '#32353d', sport: '#223d31',
+  street: '#b6bcc7', streetMajor: '#d2d7df', district: '#a3a9b5', town: '#dde1e8', city: '#f4f6f9', waterText: '#7fa6d6', halo: '#23262c',
 };
 
 const name: ExpressionSpecification = ['coalesce', ['get', 'name_en'], ['get', 'name']];

@@ -8,7 +8,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
 import { Activity, CloudLightning, Droplets, ExternalLink, Flame, LocateFixed, Mountain, Sun, type LucideIcon } from 'lucide-react';
 import { fetcher } from '@/lib/fetcher';
-import { useDarkMode } from '@/lib/use-dark';
+import { useMapDark } from '@/lib/use-dark';
 import { ALERT_KINDS, distanceKm, type Alert, type AlertKind } from '@/lib/relief-plus';
 import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
@@ -28,7 +28,7 @@ export default function ReliefAlerts() {
   useBareChrome(); // M271: on a phone the map takes the top bar's place
   const { data } = useSWR<{ alerts: Alert[]; credit: string }>('/relief/alerts', fetcher, { revalidateOnFocus: false });
   const box = useRef<HTMLDivElement>(null), mapRef = useRef<MLMap | null>(null), applied = useRef<StyleSpecification | null>(null);
-  const dark = useDarkMode();
+  const dark = useMapDark();
   const [ready, setReady] = useState(false), [kinds, setKinds] = useState<Set<AlertKind>>(new Set(Object.keys(ALERT_KINDS) as AlertKind[]));
   const [here, setHere] = useState<{ lat: number; lng: number } | null>(null), [picked, setPicked] = useState<string | null>(null);
   const list = useMemo(() => {
