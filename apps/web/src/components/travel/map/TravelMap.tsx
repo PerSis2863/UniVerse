@@ -34,6 +34,7 @@ import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWor
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { useBareChrome } from '@/lib/chrome';
+import { SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
 // maps … something different that nobody has"): OpenFreeMap's vector map of OpenStreetMap (every street,
@@ -314,11 +315,11 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       applied.current = style;
       map = new ml.Map({
         container: box.current, style, center: [s.lon, s.lat], zoom: s.zoom, pitch: 0, maxPitch: 75,
-        transformRequest: mapRequest, attributionControl: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), fadeDuration: 150, maplibreLogo: false,
-        // M259: smoother on every device: no second fetch of tiles that only aged, more tiles kept while moving about.
-        refreshExpiredTiles: false, maxTileCacheZoomLevels: 6, cancelPendingTileRequestsWhileZooming: true,
+        transformRequest: mapRequest, attributionControl: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), maplibreLogo: false,
+        ...SMOOTH_MAP, // M259, M335: smoother on every device (src/lib/map-smooth.ts)
       });
       mapRef.current = map;
+      smoothGestures(map);
       const read = () => {
         const m = map!, c = m.getCenter(), b = m.getBounds();
         setView({ lat: c.lat, lon: c.lng, zoom: m.getZoom(), s: b.getSouth(), w: b.getWest(), n: b.getNorth(), e: b.getEast() });

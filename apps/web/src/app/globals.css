@@ -2832,6 +2832,14 @@ a.card, a.panel, button.card, button.panel, .card-hover, .lift { transition-dura
   }
 }
 @keyframes window-tilt { from { transform: translate3d(0, 48px, 0) rotateX(24deg) scale(0.88); } to { transform: none; } }
+/* M335: the landing's Reveal (bits.tsx): each part arrives once on the graphics chip, on the glide spring, when its
+   watcher marks it `data-shown` (it was framer-motion on the page's thread, which the wheel's glide shares). */
+[data-reveal] { opacity: var(--rv-o, 0); transform: var(--rv-from); }
+[data-reveal][data-shown] { animation: reveal-in 0.9s var(--spring-glide) var(--rv-delay, 0s) both; }
+[data-reveal="mask"][data-shown] { animation-duration: 0.8s; animation-timing-function: var(--ease-glide); }
+@keyframes reveal-in { from { opacity: var(--rv-o, 0); transform: var(--rv-from); } to { opacity: 1; transform: none; } }
+html.reduce-motion [data-reveal] { opacity: 1; transform: none; animation: none !important; }
+@media (prefers-reduced-motion: reduce) { [data-reveal] { opacity: 1; transform: none; animation: none; } }
 
 /* ═══ M134 · Inside the app, the Ballast reels' shapes and density (the owner, 9 Nov 2026: "make the
    design and ui of these video exactly the same"; inside the app, dark stays the default, the scenes

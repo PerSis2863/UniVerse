@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import { useInView } from 'framer-motion';
 import { UniverseLogo } from '@/components/ui/UniverseLogo';
 import { reducedMotion } from '@/lib/page-transition';
@@ -13,14 +13,16 @@ const LINES = ['One app for the whole school.', 'The register that fills itself.
 export function Statement() {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useInView(ref, { margin: '-120px' });
-  const [text, setText] = useState(LINES[0]);
+  const typed = useRef<HTMLSpanElement>(null);
   useEffect(() => {
     if (!seen || reducedMotion()) return;
     let line = 0, n = 0, wait = 0;
     let deleting = false;
-    // Types a line, waits, deletes it, types the next.
+    // Types a line, waits, deletes it, types the next. M335: written straight into the text (no React render 18
+    // times a second) and resting while the page scrolls (`html[data-scrolling]`), so the wheel's glide has the frame.
     const t = setInterval(() => {
       const full = LINES[line];
+      if ('scrolling' in document.documentElement.dataset) return;
       if (wait) { wait--; return; }
       if (!deleting) {
         n++;
@@ -29,7 +31,7 @@ export function Statement() {
         n -= 2;
         if (n <= 0) { n = 0; deleting = false; line = (line + 1) % LINES.length; wait = 4; }
       }
-      setText(LINES[line].slice(0, Math.max(0, n)));
+      if (typed.current) typed.current.textContent = LINES[line].slice(0, Math.max(0, n));
     }, 55);
     return () => clearInterval(t);
   }, [seen]);
@@ -42,7 +44,7 @@ export function Statement() {
         <div className="relative">
           <p className="relative min-h-[1.2em] text-4xl sm:text-6xl font-bold tracking-tight text-black">
             <span className="sr-only">{LINES.join(' ')}</span>
-            <span aria-hidden data-no-motion>{text}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
+            <span ref={typed} aria-hidden data-no-motion>{LINES[0]}</span><span aria-hidden className="inline-block w-[3px] h-[0.9em] -mb-[0.1em] ms-1 bg-[#24262e] animate-pulse" />
           </p>
           <div className="mt-12 inline-flex w-20 h-20 rounded-3xl bg-[#0f0f11] items-center justify-center shadow-[0_20px_50px_-15px_rgba(36,38,46,0.7)]">
             <UniverseLogo size="sm" animated />

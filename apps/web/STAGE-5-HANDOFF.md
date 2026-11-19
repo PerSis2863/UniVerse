@@ -9620,3 +9620,28 @@ works as the landing does: `.flip-light` with `bg-[var(--background)] text-white
   two bubbles, Green's orb) carry `.on-dark`, so their text stays light in light mode; the landing shares them.
 - **For code that builds on it:** inside `.flip-light`, write colours as Tailwind names, never fixed codes, and mark a
   dark piece `.on-dark`.
+
+## M335: smoother scrolling and maps (19 Nov)
+
+The owner: "near perfection but not 100%… upgrade the animations… specially the maps it doesn't feel that smooth".
+**Measured first:** `scripts/checks/smooth-frames.mjs` (the built site, `local:serve`) scrolls the landing and the
+student home with the wheel, drags, flings and wheel-zooms each map, and lists the slow frames with the code behind them
+(Chrome's long-animation-frame entries). The student home: every frame on time. The landing: framer-motion batches of
+~19 ms and React work of ~12 ms inside the glide. The glide (M332) is driven from the page's thread, as Lenis is, so any
+work there costs glide frames.
+
+- **The landing's `Reveal`** (bits.tsx, 59 uses): framer-motion's `whileInView` → `data-reveal` with its starting pose
+  in `--rv-from` / `--rv-o`, one shared IntersectionObserver marking `data-shown`, and the CSS `reveal-in` on
+  `--spring-glide` (globals.css, beside `window-tilt`). After: framer's batch 19 → 12 ms, React 12 → 8 ms; the page's
+  thread never over 15 ms while scrolling. **The typewriter** (`Statement`) writes into its span and skips ticks while
+  `html[data-scrolling]`.
+- **Maps:** `src/lib/map-smooth.ts`: `SMOOTH_MAP` (no re-fetch of aged tiles, 6 zooms of tiles kept, stale tile
+  requests dropped while zooming, labels fading in 150 ms) on Travel's, Green's and Relief's maps (Green and Relief had
+  none of it), and `smoothGestures(map)`: a fling up to 1800 px/s slowing at 1700 px/s² on `glideOut`, carrying about
+  half as far again as MapLibre's own. The card light (`startSheen`, scroll-motion.ts) no longer lights a card under
+  a map or a canvas (it repainted the whole map card's background on every move of a drag). Trace's canvas map: a
+  fling's drift time constant 260 → 380 ms; its worst frame on a drag 50 → 33 ms.
+- **What's left is the machine:** the remaining long frames in this container are the graphics process emulating
+  WebGL in software (the Earth, the app scene, MapLibre); the trace shows them on `CrGpuMain`, not the page.
+- **For code that builds on it:** on the website, an arrival on scroll is `Reveal` (CSS), never framer-motion's
+  `whileInView`; a new MapLibre map spreads `SMOOTH_MAP` into its options and calls `smoothGestures(map)`.

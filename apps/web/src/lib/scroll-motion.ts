@@ -206,7 +206,9 @@ function startSheen(): () => void {
   const move = (e: PointerEvent) => {
     if (e.pointerType !== 'mouse') return;
     x = e.clientX; y = e.clientY;
-    const card = cardOf(e.target as Element | null);
+    // M335: no light over a map or a canvas: it repainted the whole map card's background on every move of a drag.
+    const over = e.target as Element | null;
+    const card = over?.closest?.('canvas, .maplibregl-map') ? null : cardOf(over);
     if (card !== lit) {
       off();
       if (card && !card.closest(SKIP) && (card.classList.contains('sheen') || getComputedStyle(card).backgroundImage === 'none')) {
