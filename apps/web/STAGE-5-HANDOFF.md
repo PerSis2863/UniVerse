@@ -9604,3 +9604,19 @@ in `globals.css` (the page's `--ink`). Mouse clicks only (`pointerType`, or the 
 click has `detail` 0), the website only (`[data-app-shell]` on `DashboardShell` keeps it out of the app), off with
 Reduce Motion. Check: `scripts/checks/smooth-scroll-burst.mjs` (the glide on the landing and each app's home, the burst
 on the website and not in the app).
+
+## M334: sign in and sign up follow light mode (19 Nov)
+
+The owner (a picture of the sign-in page in light mode): "in white mode why this area is dark?". `AuthFrame` forced
+dark (`className="dark"`, `#0b0b0c`, the scene's `tone="dark"`) since before M220 made light the default. It now
+works as the landing does: `.flip-light` with `bg-[var(--background)] text-white`, the scene in the person's theme.
+
+- Under `.flip-light` only Tailwind's colour names swap (white, black, zinc); fixed codes don't. The form card
+  (`#111113` → `bg-zinc-950`), the demo cards (`#151517` → `bg-zinc-900`) and the phone sign-in's country select
+  (`var(--color-zinc-950)`, `var(--color-white)`) now use the names, whose dark values are the same codes, so dark mode
+  is unchanged.
+- Parts with their own light and dark colours sit in `.flip-keep` (the logo); white text on a solid blue keeps white
+  with `.on-dark` (sign-up's step chips). Dark pieces of the apps' pictures (`HeroScenesLab`: Trace's passport and its
+  two bubbles, Green's orb) carry `.on-dark`, so their text stays light in light mode; the landing shares them.
+- **For code that builds on it:** inside `.flip-light`, write colours as Tailwind names, never fixed codes, and mark a
+  dark piece `.on-dark`.
