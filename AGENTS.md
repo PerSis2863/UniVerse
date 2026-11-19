@@ -305,6 +305,17 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   writes the list into every page's head, `src/lib/shown-apps.ts`; anything that lists apps uses `useShownApps()`;
   0220); M204, Travel's **Know before you go** and **Eat** upgrades (plugs and voltage, when to go, tipping, water,
   scams, manners, dress, visas, neighbourhoods; what to try, price and diet chips, Book a table; `src/lib/travel-tips.ts`).
+- **The owner's ask of 18 Nov, first** ("upgrade everything in app and website and also add new features and upgrade the
+  existing features in the system"; asked which areas and kinds: "All of them" for both; told once that the pause
+  stands until 5 Dec, the owner chose to go on). Work it in rounds, one app a round, each round its own items, checked
+  in a browser at 390 and 1280, light and dark, and merged only when the owner says "merge":
+  1. **Live errors:** done 18 Nov: nothing open is real (24 reports are the console's sample records `smpe…`; the rest
+     were fixed in M221, M231 and the Travel image fix, or are bots on old chunks). Tell the owner to mark them resolved.
+  2. **Speed:** the student home on a phone (worst load task ~0.8 s at 4× CPU against ~0.5 s for the teacher's;
+     `scripts/checks/main-pages-smooth.mjs --only /student --phone-only`; profile with source maps before changing).
+  3. **Each app, upgrades and new features** (ask the owner for their wishes per app first, in one question with
+     options): UniVersity (the first real class: courses, grading, messages), the website and sign-up (the 10
+     returning people), Trace, Relief, Green (and Green → Business), Travel, Games.
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
@@ -312,7 +323,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M330** (M326–M329: tripist's smooth scroll, a trip's itinerary look, the automatic itinerary, the landing's Earth; M301–M325: the rest of the owner's 32 features and more; M291–M300: batch 1 of the owner's 32 features; M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M334** (M333: tripist's click burst, 19 Nov; M332: the wheel's glide on Lenis's clock, 19 Nov; M330–M331: map pages, on `claude/youthful-fermi-sbdtcp`; M326–M329: tripist's smooth scroll, a trip's itinerary look, the automatic itinerary, the landing's Earth; M301–M325: the rest of the owner's 32 features and more; M291–M300: batch 1 of the owner's 32 features; M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
