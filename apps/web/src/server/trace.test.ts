@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { claim, codeFor, createBatch, scan } from './trace';
+import { claim, codeFor, createBatch, roughPosition, scan } from './trace';
 
 vi.mock('@/lib/db', () => ({
   default: {
@@ -125,3 +125,11 @@ describe('trace batches', () => {
   });
 });
 
+
+// M337: where a shopper stood is kept to about 1 km, never to the metre.
+describe('roughPosition', () => {
+  it('rounds to two decimals and refuses nonsense', () => {
+    expect(roughPosition({ lat: 48.858372, lng: 2.294481 })).toEqual({ lat: 48.86, lng: 2.29 });
+    expect(roughPosition({ lat: 'x', lng: 2 })).toBeNull();
+  });
+});
