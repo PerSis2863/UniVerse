@@ -9645,3 +9645,39 @@ work there costs glide frames.
   WebGL in software (the Earth, the app scene, MapLibre); the trace shows them on `CrGpuMain`, not the page.
 - **For code that builds on it:** on the website, an arrival on scroll is `Reveal` (CSS), never framer-motion's
   `whileInView`; a new MapLibre map spreads `SMOOTH_MAP` into its options and calls `smoothGestures(map)`.
+
+## M336: the map like Google Maps and Apple Maps, and other maps' best ideas (19 Nov)
+
+The owner: "upgrade the map like how google maps and apple map looks so add all the options and features these maps
+has and check other maps also which has unique features and add them too and everything should be ultra smooth".
+Travel's map already had most of Google's and Apple's tools (directions with stops and avoid, turn-by-turn with voice,
+satellite, 3D, street photos, measure, what's here, Home / Work, the globe, the hour's sunlight). Added what was
+missing, every source free, no account, straight from its source to the browser (no Worker CPU beyond the weather,
+which the Worker already kept an hour):
+
+- **Apple Maps' weather in the corner** (`WeatherChip`, `MapExtras.tsx`): the temperature and sky now at the middle of
+  the map, the next four days on a tap. `GET /travel/weather` now also answers `now` (`weatherNow`: the forecast hour
+  nearest now; the cache key moved to `wx:` because its shape changed). °F for US English.
+- **The scale while zooming** (Apple): MapLibre's own `ScaleControl` placed in our own box (`ScaleBar`), shown on
+  `zoomstart`, faded 1.4 s after `zoomend` (moved by MapLibre, never a React render a frame).
+- **Layers → Weather and the world** (`map-extras.ts`, `addExtraLayers` / `applyExtras`, added on every style load
+  after `addLayers`): rain of the last hours (NASA GIBS IMERG, z ≤ 6) and yesterday's clouds from space (GIBS VIIRS,
+  z ≤ 9), like Zoom Earth; day and night on the globe at the hour picked (Google Earth; `nightArea`, `subsolar` in
+  `travel-local.ts`); sunrise, sunset and the sun's directions from the middle of the map (the photographers' apps;
+  `sunLines`); hiking and cycling routes (Waymarked Trails, like Komoot and Apple's topographic maps); disasters and
+  earthquakes (Google's crisis map: the existing `GET /relief/alerts`, a tap opens `AlertCard`).
+- **Walking distance along real streets**: the rings are now FOSSGIS's Valhalla isochrones (5, 10, 15 min, like
+  Mapbox's), asked half a second after the map stops, once per ~150 m spot (kept in a ref), circles until it answers.
+- **What's here** (right-click or hold): Google's Plus Code (`plusCode`, copy it), the spot's height (read from the
+  same Terrain Tiles as the 3D hills: `heightsAt` decodes the PNG on an `OffscreenCanvas`, tiles kept), and "Report a
+  problem with the map" (an OpenStreetMap note there).
+- **A route's climb** on foot or by bike (Komoot, Apple's cycling directions): `Profile` under the routes: metres up
+  and down, lowest to highest, a `Spark` of 60 heights.
+- **Apple's Flyover**: "Fly around" on a place's card tilts over it in 3D and circles it (`flyAround`: chained 90°
+  linear `easeTo`s); any touch, wheel or key on the map, or the pill, stops it; Reduce Motion only tilts.
+- Left out: live traffic, busy times and indoor maps (no free source); air quality (the free source, Open-Meteo, is
+  for non-commercial use only); contour lines (needs a new library).
+- The container couldn't reach the tile hosts, so the new layers were checked by their unit tests and in the
+  browser for their panels only; the URLs follow each service's documentation (GIBS: `default` for the newest time).
+- **For code that builds on it:** a new map overlay goes in `addExtraLayers` with `visibility: 'none'` and a key in
+  `Extras` / `SHOW`, its credit in the credits line; heights come from `heightsAt`, never a new elevation service.

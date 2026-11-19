@@ -203,21 +203,32 @@ export async function placeOf(asked: string): Promise<{ guide: string; name: str
 
 export interface WeatherDay { date: string; min: number; max: number; symbol: string | null; rain: number }
 
-/** GET /travel/weather?lat=&lon=: the next days' highs, lows, rain and sky (MET Norway), kept an hour. */
+/** GET /travel/weather?lat=&lon=: the next days' highs, lows, rain and sky, and (M336, the map's weather) the
+ *  temperature and sky now (MET Norway), kept an hour. */
 export async function travelWeather(_u: SessionUser, q: Query) {
   const lat = Number(first(q.lat)), lon = Number(first(q.lon));
   if (!Number.isFinite(lat) || !Number.isFinite(lon) || Math.abs(lat) > 90 || Math.abs(lon) > 180) throw new BadRequestException('Pick a place.');
-  const days = await cached<WeatherDay[]>(`weather:${lat.toFixed(1)},${lon.toFixed(1)}`, HOUR, async () => {
-    type T = { time: string; data: { instant: { details: { air_temperature: number } }; next_6_hours?: { summary: { symbol_code: string }; details: { precipitation_amount?: number } }; next_1_hours?: { details: { precipitation_amount?: number } } } };
-    const r = await fetchJson<{ properties: { timeseries: T[] } }>(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`);
-    return weatherDays(r?.properties.timeseries ?? [], lon);
+  const got = await cached<{ days: WeatherDay[]; now: WeatherNow | null }>(`wx:${lat.toFixed(1)},${lon.toFixed(1)}`, HOUR, async () => {
+    const r = await fetchJson<{ properties: { timeseries: MetPoint[] } }>(`https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=${lat.toFixed(2)}&lon=${lon.toFixed(2)}`);
+    const points = r?.properties.timeseries ?? [];
+    return { days: weatherDays(points, lon), now: weatherNow(points, Date.now()) };
   });
-  return { days: days ?? [], credit: 'Weather: MET Norway (CC BY 4.0)' };
+  return { days: got?.days ?? [], now: got?.now ?? null, credit: 'Weather: MET Norway (CC BY 4.0)' };
+}
+
+export interface WeatherNow { at: string; temp: number; symbol: string | null }
+type MetPoint = { time: string; data: { instant: { details: { air_temperature: number } }; next_6_hours?: { summary: { symbol_code: string }; details: { precipitation_amount?: number } }; next_1_hours?: { summary?: { symbol_code: string }; details: { precipitation_amount?: number } } } };
+/** The forecast's hour nearest to now: its temperature and sky. */
+export function weatherNow(points: MetPoint[], now: number): WeatherNow | null {
+  let best: MetPoint | null = null;
+  for (const p of points) if (!best || Math.abs(Date.parse(p.time) - now) < Math.abs(Date.parse(best.time) - now)) best = p;
+  if (!best || Math.abs(Date.parse(best.time) - now) > 3 * HOUR) return null;
+  return { at: best.time, temp: Math.round(best.data.instant.details.air_temperature), symbol: best.data.next_1_hours?.summary?.symbol_code ?? best.data.next_6_hours?.summary.symbol_code ?? null };
 }
 
 /** Hourly forecast points to days: the low and high, the rain, and the sky around midday, in the place's
  *  own time (from its longitude: the sun's time, near enough to its clocks for a day's forecast). */
-export function weatherDays(points: { time: string; data: { instant: { details: { air_temperature: number } }; next_6_hours?: { summary: { symbol_code: string }; details: { precipitation_amount?: number } }; next_1_hours?: { details: { precipitation_amount?: number } } } }[], lon = 0): WeatherDay[] {
+export function weatherDays(points: MetPoint[], lon = 0): WeatherDay[] {
   const by = new Map<string, WeatherDay & { noon: number }>();
   const shift = Math.round(lon / 15) * HOUR;
   for (const p of points) {

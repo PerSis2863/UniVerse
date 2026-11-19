@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowUpDown, Bike, Briefcase, Car, Clock, Copy, Footprints, Home, LocateFixed, MapPin, Navigation, Plus, Ruler, Share, TrainFront, Undo2, X } from 'lucide-react';
+import { ArrowUpDown, Bike, Briefcase, Car, Clock, Copy, Flag, Mountain, Footprints, Home, LocateFixed, MapPin, Navigation, Plus, Ruler, Share, TrainFront, Undo2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { addressOf, area, areaOf, AVOIDS, directionsUrl, distance, duration, googleDirections, keptOf, lengthOf, MODES, reverseUrl, routesOf, spotLink, withRecent, type Avoid, type Kept, type Mode, type Pt, type Route, type Spot } from '@/lib/map-tools';
 import { bubbleSpot } from '@/lib/navigation';
+import { plusCode, reportUrl } from '@/lib/map-extras';
+import { heightsAt } from './map-extras';
 import { cn } from '@/lib/utils';
 import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
 import { TurnIcon } from './TurnIcon';
+import { Profile } from './MapExtras';
 
 // M237: the Google Maps features on Travel's map (the logic in src/lib/map-tools.ts): directions, "what's here"
 // with sharing, and measuring a distance. M260: stops on the way, roads to leave out, leave at or arrive by, each
@@ -175,6 +178,8 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
             ); })}
           </ul>
         )}
+        {/* M336: the climb on foot or by bike (Komoot, Apple Maps' cycling directions). */}
+        {r && !loading && d.mode !== 'car' && <Profile path={r.path} />}
         {!loading && routes.length > 0 && d.mode === 'car' && <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Times at the usual pace of these roads: live traffic isn’t counted.</p>}
         {r && !loading && (
           <ol className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/10">
@@ -207,6 +212,14 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
     fetch(key, { signal: ctl.signal, headers: { Accept: 'application/json' } }).then((r) => r.json()).then((a) => setFound({ key, address: addressOf(a) })).catch((e) => { if ((e as Error).name !== 'AbortError') setFound({ key, address: null }); });
     return () => ctl.abort();
   }, [key]);
+  // M336: its height, from the terrain tiles the 3D hills use (Google Maps' terrain, Apple Maps' elevation).
+  const [height, setHeight] = useState<{ key: string; m: number | null } | null>(null);
+  useEffect(() => {
+    let gone = false;
+    void heightsAt([[p.lon, p.lat]]).then((h) => { if (!gone) setHeight({ key, m: h ? Math.round(h[0]) : null }); });
+    return () => { gone = true; };
+  }, [key, p.lat, p.lon]);
+  const metres = height?.key === key ? height.m : null, code = plusCode(p.lat, p.lon);
   const coords = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`, name = address?.split(', ').slice(0, 2).join(', ') || coords;
   const spot = { ...p, name };
   const share = async () => {
@@ -214,6 +227,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
     try { if (navigator.share) await navigator.share({ title: name, url }); else { await navigator.clipboard.writeText(url); toast.success('Link copied'); } } catch { /* closed */ }
   };
   const keep = (which: 'home' | 'work') => { writeKept({ ...readKept(), [which]: { ...p, name: address ?? name } }); toast.success(which === 'home' ? 'Saved as Home on this device' : 'Saved as Work on this device'); onClose(); };
+  const copyCode = async () => { try { await navigator.clipboard.writeText(code); toast.success('Plus Code copied'); } catch { toast.error('Couldn’t copy.'); } };
   const copy = async () => { try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); } catch { toast.error('Couldn’t copy.'); } };
   const item = 'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-start text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
   return (
@@ -222,7 +236,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
       style={{ left: Math.max(8, Math.min(x, 9999)), top: Math.max(8, y) }}>
       <div className="flex items-start gap-2 px-2.5 pb-1.5 pt-2">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#ea4335]" aria-hidden />
-        <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-zinc-900 dark:text-white">{address === undefined ? 'Finding the address…' : address ?? 'Dropped pin'}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{coords}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-zinc-900 dark:text-white">{address === undefined ? 'Finding the address…' : address ?? 'Dropped pin'}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{coords}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400"><span title="Plus Code: a short address for any spot, which Google Maps also reads">{code}</span>{metres !== null && <> · <Mountain className="inline h-3 w-3 align-[-1px]" aria-hidden /> {metres} m</>}</p></div>
         <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button>
       </div>
       <button type="button" className={item} onClick={() => onFrom(spot)}><span className="h-3 w-3 shrink-0 rounded-full border-[3px] border-[#1f87ff] bg-white" aria-hidden />Directions from here</button>
@@ -232,6 +246,8 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
       <button type="button" className={item} onClick={onMeasure}><Ruler className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Measure distance</button>
       <button type="button" className={item} onClick={() => void copy()}><Copy className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Copy coordinates</button>
       <button type="button" className={item} onClick={() => void share()}><Share className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Share this place</button>
+      <button type="button" className={item} onClick={() => void copyCode()}><Copy className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Copy the Plus Code</button>
+      <a className={item} href={reportUrl(p.lat, p.lon)} target="_blank" rel="noopener noreferrer"><Flag className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Report a problem with the map</a>
       <p className="px-2.5 pb-1 pt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">Address <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a> · © OpenStreetMap</p>
     </div>
   );

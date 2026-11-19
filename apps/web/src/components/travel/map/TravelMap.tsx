@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BedDouble, BookOpen, Box, Calendar, Camera, Clock3, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, Navigation, Plus, RotateCw, Ruler, ScanEye, Search, Share, Star, Sun, TrainFront, X } from 'lucide-react';
+import { BedDouble, BookOpen, Box, Calendar, Camera, Clock3, CloudRain, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, MoonStar, Mountain, Navigation, Plus, RotateCw, Ruler, Rotate3d, Satellite, ScanEye, Search, Share, Siren, Star, Sun, Sunrise, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -35,6 +35,10 @@ import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { useBareChrome } from '@/lib/chrome';
 import { SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
+import { nightArea, reachOf, reachUrl, sunLines } from '@/lib/map-extras';
+import { ALERT_KINDS, type Alert } from '@/lib/relief-plus';
+import { addExtraLayers, ALERT_LAYERS, applyExtras, flyAround, setExtra } from './map-extras';
+import { AlertCard, ScaleBar, WeatherChip } from './MapExtras';
 
 // UniVerse Travel's map (M209, the owner: "make the map detailed with all the information like the apple
 // maps … something different that nobody has"): OpenFreeMap's vector map of OpenStreetMap (every street,
@@ -55,7 +59,7 @@ type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: n
 type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
 // M259: a first visit opens on the globe with the world's destinations (Lisbon before).
 const STAY = 'uv-travel-stay', KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
-const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false, world: true, saved: true };
+const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false, world: true, saved: true, rain: false, clouds: false, night: false, sun: false, trails: false, alerts: false };
 type Show = typeof SHOW;
 /** The layers chosen last time on this device. */
 function shownBefore(): Show {
@@ -159,6 +163,13 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   const [found, setFound] = useState<{ q: string; at: string; places: Found[] } | null>(null);
   const [seeking, setSeeking] = useState(false);
   const applied = useRef<StyleSpecification | null>(null); // the design the map has
+  // M336: a disaster tapped on the map, Flyover going on, the walking reach along real streets (kept per spot).
+  const [disaster, setDisaster] = useState<{ a: Alert; x: number; y: number } | null>(null);
+  const [flying, setFlying] = useState(false);
+  const stopFly = useRef<(() => void) | null>(null);
+  const reach = useRef(new Map<string, GeoJSON.FeatureCollection | null>());
+  const { data: alertData } = useSWR<{ alerts: Alert[]; credit: string }>(show.alerts ? '/relief/alerts' : null, fetcher, { revalidateOnFocus: false });
+  const alertFc = useMemo(() => points((show.alerts ? alertData?.alerts ?? [] : []).map((a, i) => ({ lat: a.lat, lon: a.lng, props: { i, level: a.level, short: a.magnitude ? `M${a.magnitude}` : ALERT_KINDS[a.kind] } }))), [show.alerts, alertData]);
 
   // Data for what's in view (rounded, so small moves reuse the answer).
   const near = view && view.zoom >= 12 ? nearKey(view, (km({ lat: view.s, lon: view.w }, { lat: view.n, lon: view.e }) ?? 4) / 2) : null;
@@ -257,6 +268,10 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     drawWalk(m, walk);
     drawPicked(m, picked);
     applyLook(m, show);
+    addExtraLayers(m, dark, Date.now());
+    applyExtras(m, show);
+    setExtra(m, 'uv-night', show.night ? nightArea(when) : points([]));
+    setExtra(m, 'uv-alerts', alertFc);
     focusWalk(m, !!walk, true);
     if (me.current) setData(m, 'uv-me', me.current);
     setData(m, 'uv-route', routeFeatures(dir, routes));
@@ -279,6 +294,9 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     if (nav) return; // navigating: the map is only looked at
     const alt = dir && hits.find((f) => f.layer.id === 'uv-route-alt' || (f.layer.id === 'uv-route-time' && !f.properties.main));
     if (alt && dir) { setDir({ ...dir, chosen: Number(alt.properties.i) || 0 }); return; }
+    const hit = hits.find((f) => ALERT_LAYERS.includes(f.layer.id)), a = hit ? alertData?.alerts[Number(hit.properties.i)] : undefined;
+    if (a) { setDisaster({ a, x: Math.max(8, Math.min(x, m.getContainer().clientWidth - 264)), y: Math.max(8, Math.min(y, m.getContainer().clientHeight - 160)) }); return; }
+    setDisaster(null);
     if (show.street && hits.some((f) => f.layer.id === 'uv-street') && !hits.some((f) => f.layer.id === 'uv-stories' || f.layer.id === 'uv-reviews')) { void lookAround(lat, lon); return; }
     // M259: your own pins first (they sit on top), then a trip's city, then the world's destinations.
     const mine = hits.find((f) => f.layer.id === 'uv-found' || f.layer.id === 'uv-saved' || f.layer.id === 'uv-trip-item');
@@ -345,7 +363,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       map.on('touchstart', (e) => { clearTimeout(hold); if (e.originalEvent.touches.length === 1) hold = setTimeout(() => onHere(e.lngLat.lat, e.lngLat.lng, e.point.x, e.point.y), 550); });
       for (const ev of ['touchend', 'touchmove', 'movestart'] as const) map.on(ev, () => clearTimeout(hold));
       map.on('movestart', (e) => { if ((e as { originalEvent?: Event }).originalEvent) onMoved(); });
-      for (const id of ['uv-stories', 'uv-reviews', 'uv-street', 'uv-hit', ...WORLD_LAYERS]) {
+      for (const id of ['uv-stories', 'uv-reviews', 'uv-street', 'uv-hit', ...WORLD_LAYERS, ...ALERT_LAYERS]) {
         map.on('mouseenter', id, () => { map!.getCanvas().style.cursor = 'pointer'; });
         map.on('mouseleave', id, () => { map!.getCanvas().style.cursor = ''; });
       }
@@ -461,8 +479,16 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const m = mapRef.current;
     try { localStorage.setItem(LOOK, JSON.stringify(show)); } catch { /* private mode */ }
     // After the layers, the walk's focus again: the 3D switch would otherwise bring buildings over the walk (M233).
-    if (m && ready) { applyLook(m, show); focusWalk(m, walking); }
+    if (m && ready) { applyLook(m, show); applyExtras(m, show); focusWalk(m, walking); }
   }, [show, ready, walking]);
+  // M336: day and night at the hour chosen; the sun's directions from the middle of the map; disasters.
+  useEffect(() => { const m = mapRef.current; if (m && ready) setExtra(m, 'uv-night', show.night ? nightArea(when) : points([])); }, [show.night, when, ready]);
+  useEffect(() => {
+    const m = mapRef.current;
+    if (m && ready) setExtra(m, 'uv-sun', show.sun && view && view.zoom >= 9 ? sunLines(view.lat, view.lon, view.zoom, when, (d) => clockText(zoneAt(view.lat, view.lon), d)) : points([]));
+  }, [show.sun, view, when, ready]);
+  useEffect(() => { const m = mapRef.current; if (m && ready) setExtra(m, 'uv-alerts', alertFc); }, [alertFc, ready]);
+  useEffect(() => () => stopFly.current?.(), []);
   // 3D: tilt when turned on or off.
   useEffect(() => {
     const m = mapRef.current;
@@ -471,7 +497,22 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
   // How far you can walk from the middle of the map.
   useEffect(() => {
     const m = mapRef.current;
-    if (m && ready) setData(m, 'uv-rings', show.rings && view && view.zoom >= 12 ? rings(view.lat, view.lon) : points([]));
+    if (!m || !ready) return;
+    if (!show.rings || !view || view.zoom < 12) { setData(m, 'uv-rings', points([])); return; }
+    // M336: how far you really get along the streets in 5, 10 and 15 minutes (FOSSGIS's Valhalla), circles until
+    // it answers or if it can't; asked once per spot of about 150 m, half a second after the map stops.
+    const k = `${view.lat.toFixed(3)},${view.lon.toFixed(3)}`, kept = reach.current.get(k);
+    setData(m, 'uv-rings', kept ?? rings(view.lat, view.lon));
+    if (kept !== undefined) return;
+    const ctl = new AbortController(), t = setTimeout(() => {
+      fetch(reachUrl(view.lat, view.lon), { signal: ctl.signal }).then((r) => (r.ok ? r.json() : null)).then((a) => {
+        const fc = reachOf(a);
+        if (reach.current.size > 60) reach.current.clear();
+        reach.current.set(k, fc);
+        if (fc && mapRef.current) setData(mapRef.current, 'uv-rings', fc);
+      }).catch(() => {});
+    }, 500);
+    return () => { clearTimeout(t); ctl.abort(); };
   }, [show.rings, view, ready]);
   // A place asked for from a guide (?d=…): find where it is and go there.
   useEffect(() => {
@@ -588,6 +629,15 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       else m.flyTo({ center: [at2.lon, at2.lat], zoom: to, pitch: show.d3 ? 58 : 0, offset, speed: 0.9, curve: 1.3, maxDuration: 1600, essential: true, easing: ease });
     }
   }
+  /** M336: Apple Maps' Flyover over a place: 3D on, tilted, circling until the map is touched. */
+  const flyover = (p: { lat: number; lon: number }) => {
+    const m = mapRef.current;
+    if (!m) return;
+    stopFly.current?.();
+    if (!show.d3) setShow((x) => ({ ...x, d3: true }));
+    setFlying(true);
+    stopFly.current = flyAround(m, p.lat, p.lon, calm(), () => { setFlying(false); stopFly.current = null; });
+  };
   const findMe = () => navigator.geolocation?.getCurrentPosition((p) => {
     const m = mapRef.current;
     if (!m) return;
@@ -685,7 +735,17 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
           <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
         </div>
+        {/* M336: the weather where the map is, as Apple Maps shows it in its corner. */}
+        {view && <WeatherChip lat={view.lat} lon={view.lon} zoom={view.zoom} />}
       </div>
+      {/* M336: the scale while zooming (Apple Maps), beside the controls. */}
+      <div className="absolute end-[4.25rem] top-4 z-20"><ScaleBar mapRef={mapRef} ready={ready} /></div>
+      {flying && (
+        <button type="button" onClick={() => stopFly.current?.()} className="absolute start-1/2 top-16 z-30 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-zinc-900/90 px-4 py-2 text-sm font-semibold text-white shadow-lg sm:top-3 rtl:translate-x-1/2 dark:bg-white/90 dark:text-zinc-900">
+          <Rotate3d className="h-4 w-4" aria-hidden />Flyover · tap to stop
+        </button>
+      )}
+      {disaster && <AlertCard a={disaster.a} x={disaster.x} y={disaster.y} now={now} onClose={() => setDisaster(null)} />}
       {/* M259: a trip on the map (its days to pick from) and "Search this area" again once the map has moved. */}
       {(tripId || moved) && (
         <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex flex-col items-center gap-2 px-16 sm:top-3 sm:ps-[25rem]">
@@ -710,7 +770,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       )}
       {layers && (
         <div id="map-layers" role="dialog" aria-label="Map layers" onKeyDown={(e) => { if (e.key === 'Escape') setLayers(false); }}
-          className="absolute end-16 top-3 z-40 w-[min(18rem,calc(100%-5.5rem))] origin-top-right rounded-2xl bg-[var(--card-bg)] p-3 shadow-2xl ring-1 ring-black/5 animate-[layers-in_180ms_var(--ease-out-soft)] motion-reduce:animate-none dark:ring-white/10 rtl:origin-top-left">
+          className="absolute end-16 top-3 z-40 max-h-[calc(100%-1.5rem)] w-[min(18rem,calc(100%-5.5rem))] origin-top-right overflow-y-auto overscroll-contain rounded-2xl bg-[var(--card-bg)] p-3 shadow-2xl ring-1 ring-black/5 animate-[layers-in_180ms_var(--ease-out-soft)] motion-reduce:animate-none dark:ring-white/10 rtl:origin-top-left">
           <div className="mb-2 flex items-center justify-between"><h3 className="font-semibold text-zinc-900 dark:text-white">Layers</h3><button type="button" onClick={() => setLayers(false)} className="btn-ghost btn-sm p-1" aria-label="Close layers"><X className="h-4 w-4" aria-hidden /></button></div>
           <Segmented<'map' | 'sat'> label="Map" className="mb-3" value={show.satellite ? 'sat' : 'map'} onChange={(v) => setShow((x) => ({ ...x, satellite: v === 'sat' }))} segments={[{ value: 'map', label: 'Map' }, { value: 'sat', label: 'Satellite' }]} />
           {show.satellite && <p className="-mt-1 mb-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Pictures from the Sentinel-2 satellites: clear for cities, coasts and nature, soft close up.</p>}
@@ -726,7 +786,24 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
             ))}
           </ul>
           {show.street && <p className="mt-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Zoom in close: orange lines are streets someone photographed. Tap one to look around.</p>}
-          {show.rings && <p className="mt-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">Rings around the middle of the map: 5, 10 and 15 minutes on foot.</p>}
+          {show.rings && <p className="mt-2 px-2 text-xs text-zinc-500 dark:text-zinc-400">How far you get on foot from the middle of the map in 5, 10 and 15 minutes, along the real streets.</p>}
+          {/* M336: from other maps: Zoom Earth's rain and clouds, Google Earth's day and night, the photographers' sun
+              directions, Komoot's trails, Google's crisis map. */}
+          <h4 className="mt-3 border-t border-zinc-200/70 px-2 pb-1 pt-3 text-xs font-semibold text-zinc-500 dark:border-white/10 dark:text-zinc-400">Weather and the world</h4>
+          <ul className="space-y-0.5">
+            {([['rain', 'Rain (the last hours)', CloudRain], ['clouds', 'Clouds from space (yesterday)', Satellite], ['night', 'Day and night', MoonStar], ['sun', 'Sunrise and sunset directions', Sunrise], ['trails', 'Hiking and cycling routes', Mountain], ['alerts', 'Disasters and earthquakes', Siren]] as const).map(([k, label, Icon]) => (
+              <li key={k}>
+                <label className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2 text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.06]">
+                  <Icon className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
+                  <span className="flex-1">{label}</span>
+                  <input type="checkbox" checked={show[k]} onChange={() => toggle(k)} className="h-4 w-4 accent-indigo-600" />
+                </label>
+              </li>
+            ))}
+          </ul>
+          {show.rain && <p className="mt-1 px-2 text-xs text-zinc-500 dark:text-zinc-400">Rain and snow measured from space a few hours ago (NASA): best zoomed out.</p>}
+          {show.night && <p className="mt-1 px-2 text-xs text-zinc-500 dark:text-zinc-400">The night side of the Earth at the hour picked below the places.</p>}
+          {show.sun && <p className="mt-1 px-2 text-xs text-zinc-500 dark:text-zinc-400">From the middle of the map: where the sun rises, sets, and is at the hour picked.</p>}
           {/* M259: one of your trips drawn on the map: its cities in order, its places by day. */}
           <label className="mt-2 block border-t border-zinc-200/70 px-2 pt-3 dark:border-white/10">
             <span className="mb-1 flex items-center gap-2 text-sm text-zinc-800 dark:text-zinc-100"><Luggage className="h-4 w-4 text-zinc-500 dark:text-zinc-400" aria-hidden />A trip on the map</span>
@@ -778,7 +855,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           </div>
         </div>
         <div className={cn('min-h-0 flex-1 flex-col border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
-          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} /> : dest ? (
+          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} onFlyover={flyover} /> : dest ? (
             <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
               onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: window.innerWidth >= 640 ? [190, 0] : [0, -140], duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
           ) : dir ? <DirectionsCard d={dir} set={setDir} routes={routes} loading={routing} failed={noRoute} avoided={avoided} now={now} myPlace={myPlace} onStart={startNav} onClose={() => setDir(null)} /> : (
@@ -911,7 +988,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
           </label>
         </div>
       </aside>
-      {here && <HereCard p={here} zoom={view?.zoom ?? 16} x={Math.min(here.x, (box.current?.clientWidth ?? 400) - 264)} y={Math.min(here.y, (box.current?.clientHeight ?? 600) - 300)} onClose={() => setHere(null)}
+      {here && <HereCard p={here} zoom={view?.zoom ?? 16} x={Math.min(here.x, (box.current?.clientWidth ?? 400) - 264)} y={Math.min(here.y, (box.current?.clientHeight ?? 600) - 400)} onClose={() => setHere(null)}
         onFrom={(s) => directionsTo(dir?.to ?? null, s)} onTo={(s) => directionsTo(s, dir?.from ?? myPlace())} onMeasure={() => { setMeasure([{ lat: here.lat, lon: here.lon }]); setHere(null); }} />}
       {measure && <MeasureBar pts={measure} onUndo={() => setMeasure(measure.slice(0, -1))} onClear={() => setMeasure([])} onDone={() => setMeasure(null)} />}
       </>)}
@@ -969,7 +1046,7 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
       <div className={cn('absolute z-10 max-w-[calc(100%-5rem)]', nav ? 'bottom-[6.5rem] end-2 sm:bottom-1 sm:end-1' : 'start-2 top-2 sm:bottom-1 sm:end-1 sm:start-auto sm:top-auto')}>
         {credits ? (
           <p className="relative rounded-lg bg-white/90 px-2 py-1 pe-7 text-[11px] leading-snug text-zinc-600 shadow-sm dark:bg-black/70 dark:text-zinc-300">
-            Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{show.world && <> · Destinations <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" className="underline">GeoNames</a> (CC BY 4.0), photos Wikimedia Commons</>}{found && <> · Search <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a></>}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}
+            Map <a href="https://openfreemap.org" target="_blank" rel="noopener noreferrer" className="underline">OpenFreeMap</a> · © <a href="https://www.openmaptiles.org/" target="_blank" rel="noopener noreferrer" className="underline">OpenMapTiles</a> · © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer" className="underline">OpenStreetMap contributors</a> · Relief <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md" target="_blank" rel="noopener noreferrer" className="underline">Terrain Tiles</a>{show.satellite && <> · <a href="https://s2maps.eu" target="_blank" rel="noopener noreferrer" className="underline">Sentinel-2 cloudless 2016 by EOX</a> (CC BY 4.0, modified Copernicus data)</>}{show.street && <> · Street photos <a href="https://panoramax.fr" target="_blank" rel="noopener noreferrer" className="underline">Panoramax</a> (CC BY-SA 4.0)</>}{show.photos && photos?.credit ? ` · ${photos.credit}` : ''}{show.world && <> · Destinations <a href="https://www.geonames.org" target="_blank" rel="noopener noreferrer" className="underline">GeoNames</a> (CC BY 4.0), photos Wikimedia Commons</>}{found && <> · Search <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a></>}{walk?.path && <> · Walking route <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM)</>}{show.rings && <> · Walking reach <a href="https://valhalla1.openstreetmap.de" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (Valhalla)</>}{(show.rain || show.clouds) && <> · Rain and clouds <a href="https://www.earthdata.nasa.gov/gibs" target="_blank" rel="noopener noreferrer" className="underline">NASA GIBS</a></>}{show.trails && <> · Trails <a href="https://waymarkedtrails.org" target="_blank" rel="noopener noreferrer" className="underline">Waymarked Trails</a> (CC BY-SA)</>}{show.alerts && alertData && <> · {alertData.credit}</>}
             <button type="button" onClick={() => setCredits(false)} className="absolute end-1 top-1 rounded p-0.5 hover:bg-black/5 dark:hover:bg-white/10" aria-label="Hide the map credits"><X className="h-3.5 w-3.5" aria-hidden /></button>
           </p>
         ) : (

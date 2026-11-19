@@ -62,3 +62,12 @@ export function sunPosition(lat: number, lon: number, at: Date): { azimuth: numb
   const az = Math.atan2(Math.sin(H), Math.cos(H) * Math.sin(phi) - Math.tan(dec) * Math.cos(phi));
   return { azimuth: ((az / RAD + 180) % 360 + 360) % 360, altitude: Math.asin(Math.sin(phi) * Math.sin(dec) + Math.cos(phi) * Math.cos(dec) * Math.cos(H)) / RAD };
 }
+
+/** M336: the point on Earth with the sun straight overhead at a moment (for drawing day and night). */
+export function subsolar(at: Date): { lat: number; lon: number } {
+  const d = toDays(at.getTime()), M = RAD * (357.5291 + 0.98560028 * d);
+  const L = M + RAD * (1.9148 * Math.sin(M) + 0.02 * Math.sin(2 * M) + 0.0003 * Math.sin(3 * M)) + RAD * 102.9372 + Math.PI;
+  const dec = Math.asin(Math.sin(L) * Math.sin(OBLIQUITY)), ra = Math.atan2(Math.sin(L) * Math.cos(OBLIQUITY), Math.cos(L));
+  const lon = (ra - RAD * (280.16 + 360.9856235 * d)) / RAD;
+  return { lat: dec / RAD, lon: ((((lon + 180) % 360) + 360) % 360) - 180 };
+}
