@@ -119,7 +119,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
   them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
   (11); 5 (cheap phones) was left out by the owner.
-- **On `main`** (live): everything through **M289** (M286–M289 merged 18 Nov, PR #138; M269–M285, PR #137; M268 merged 18 Nov, PR #136; M267, PR #135; M234–M266 merged 17 Nov, PR #134; M222–M233 below; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M289**, plus **M337–M345** (merged 19 Nov, PR #141: policies and security, Messages and Meet & call upgrades) (M286–M289 merged 18 Nov, PR #138; M269–M285, PR #137; M268 merged 18 Nov, PR #136; M267, PR #135; M234–M266 merged 17 Nov, PR #134; M222–M233 below; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -340,11 +340,6 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   "Relief emergency texts" (at most 100 an emergency, 300 a day); for STORMFALL's in-game graphics, rebuild it in Unity (M101 note); turn on Bot Fight Mode (Cloudflare → Security → Bots); check `STRIPE_WEBHOOK_SECRET`
   is set; keep the branch `claude/stormfall-unity` (it holds STORMFALL's files); to show live planes,
   ask the OpenSky Network first, then switch "Live air traffic" on (console → Server).
-- **On `claude/funny-galileo-y4mz9r`, not merged yet:** M337 (19 Nov): `motion-frames.mjs`; the landing's Earth rests
-  while scrolling; Privacy Policy, Terms (PDFs by `scripts/legal-pdf.mjs`), Security, All policies, Privacy choices and the
-  footer up to date; `eraseAccount` and "Download my data" cover the newer apps; M336's map hosts in the CSP; link
-  previews checked per redirect, `CODE_STEP` limits typed codes, scans kept to 1 km, `poweredByHeader: false`. M338: the
-  parent's week reachable by parents (`GUARDIAN_ALLOWED`).
 - **Next database update number: `0258`** (0209 was never used) (files in `apps/web/prisma/migrations/`).
 - **The owner's seven ideas** (25 Oct: "work on all 7 of them"). Done: one Impact Wallet across all
   apps (M24), proof for Green actions (M25), organisation accounts for Relief (M106) with SMS/WhatsApp
