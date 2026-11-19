@@ -12,6 +12,9 @@ import type { EarthScene, Facing } from './earth-scene';
 // 30 frames a second at most. A drag turns it; `face` turns it to a place (the app chosen beside it).
 
 type Port = { post: (m: object) => void; stop: () => void };
+// M337: it rests while the page scrolls (<html data-scrolling>, as every decorative loop does, M97): reading a WebGL frame
+// back for the page took the graphics chip from the scroll on a phone (the landing's only slow scroll frames).
+const live = (on: boolean) => on && document.visibilityState === 'visible' && !document.documentElement.hasAttribute('data-scrolling');
 
 export function EarthGlobe({ face, label, className }: { face: Facing | null; label: string; className?: string }) {
   const box = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null), port = useRef<Port | null>(null);
@@ -30,11 +33,13 @@ export function EarthGlobe({ face, label, className }: { face: Facing | null; la
     return () => { far.disconnect(); on.disconnect(); };
   }, []);
   const runRef = useRef(false);
-  useEffect(() => { runRef.current = seen && !idle; port.current?.post({ t: 'run', run: runRef.current && document.visibilityState === 'visible' }); }, [seen, idle]);
+  useEffect(() => { runRef.current = seen && !idle; port.current?.post({ t: 'run', run: live(runRef.current) }); }, [seen, idle]);
   useEffect(() => {
-    const vis = () => port.current?.post({ t: 'run', run: runRef.current && document.visibilityState === 'visible' });
+    const vis = () => port.current?.post({ t: 'run', run: live(runRef.current) });
     document.addEventListener('visibilitychange', vis);
-    return () => document.removeEventListener('visibilitychange', vis);
+    const scrolling = new MutationObserver(vis);
+    scrolling.observe(document.documentElement, { attributes: true, attributeFilter: ['data-scrolling'] });
+    return () => { document.removeEventListener('visibilitychange', vis); scrolling.disconnect(); };
   }, []);
 
   useEffect(() => {
@@ -83,7 +88,7 @@ export function EarthGlobe({ face, label, className }: { face: Facing | null; la
         };
       }
       port.current.post({ t: 'face', face: faceRef.current });
-      port.current.post({ t: 'run', run: runRef.current && document.visibilityState === 'visible' });
+      port.current.post({ t: 'run', run: live(runRef.current) });
     });
     const ro = new ResizeObserver(() => port.current?.post({ t: 'size', ...dims() }));
     ro.observe(c);

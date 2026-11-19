@@ -1,8 +1,8 @@
 # UniVerse Impact - Global Privacy Policy
 
-**Last Updated: October 5, 2026**
+**Last Updated: November 19, 2026**
 
-Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact," "we," "our," or "us"), is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform").
+Universe Impact, located at Rue de la Patouillerie, 44700 Orvault (Nantes), France ("UniVerse Impact," "we," "our," or "us"), is deeply committed to protecting your privacy and ensuring the security of your personal data globally. This Privacy Policy outlines our practices regarding the collection, use, sharing, and safeguarding of personal information processed through the UniVerse Impact platform at universeimpact.com (the "Platform"). The Platform is one account for several apps: **UniVersity** (schools and universities, including its Games section), **UniVerse Trace** (product passports), **UniVerse Relief** (help in emergencies), **UniVerse Green** (climate action, including Green Business) and **UniVerse Travel** (trips and travel guides). Section 2.8 describes the data each app adds.
 
 This policy has been designed to comply with global privacy frameworks, including but not limited to:
 
@@ -29,7 +29,8 @@ We collect and process the following categories of personal data globally:
 
 - Full name, Email address, Phone number (if phone authentication is utilized).
 - Profile avatar or photograph (provided directly or via Google/Apple Single Sign-On).
-- Account Role (Student, Teacher, Administrator, NGO Representative, Industry Mentor).
+- Account Role (Student, Teacher, Administrator, Parent or Guardian, NGO Representative, Industry Mentor, or a member of a brand, organisation or company on one of the apps).
+- Date of birth, if you or your Institution give it: used to protect people under 18 (for example quiet hours, age-rated games, and keeping under-18s off Travel's travellers board).
 - Account status, timestamps of login events, and administrative audit logs.
 - Sign-in details: the device and browser used, IP address, and approximate location (city and country) derived from the IP address, shown to you in your sign-in history for security.
 - Staff applications: if you apply for a Teacher or NGO Representative account, your institution, job title, a link to a staff page or profile, and any proof document you upload (such as a staff ID card or appointment letter). These are reviewed only by administrators.
@@ -66,7 +67,7 @@ Certain data is considered "special category" (GDPR) or "sensitive personal data
 - Records of payments generated for tuition, exams, library, and activity fees (including amount, type, and transaction status).
 - Invoice history and generated receipts.
 
-*Note:* UniVerse Impact does not collect, process, or store full credit card numbers. All payment processing is handled exclusively by our PCI-DSS compliant partner, Stripe.
+*Note:* UniVerse Impact does not collect, process, or store full credit card numbers. All payment processing is handled exclusively by our PCI-DSS compliant partners: Stripe, and Razorpay where a school in India uses it. This also covers brands' and companies' plans and campaigns in Trace and Green Business.
 
 ### 2.6 Communications and Interaction Data
 
@@ -77,13 +78,28 @@ Certain data is considered "special category" (GDPR) or "sensitive personal data
 - Public or semi-public group posts, knowledge hub articles, and announcements.
 - Notes, feedback, and scheduling data from mentorship sessions and collaborative projects.
 - Content you enter into AI features, such as questions to the study assistant and documents you ask us to summarize.
+- **Voice typing and live captions:** these use your browser's own speech recognition. We receive only the resulting text, never the audio; some browsers (for example Google Chrome) send the audio to their maker's servers to turn it into text, under that company's privacy policy.
+- **Connected accounts (optional):** if you connect Gmail, Outlook, Slack, Google Classroom or a Google or Outlook calendar, we keep the access keys that service gives us (encrypted, never sent to your browser) and the name of the connected account. What the connection shows (your newest mail, Slack direct messages, calendar events, Classroom classes) is read live from that service each time and is not stored by us, except classes and work you choose to import. You can disconnect at any time in Settings → Connected accounts; the keys are deleted.
 
 ### 2.7 Technical and Usage Data
 
 - IP address, browser type, operating system, and device information.
 - Pages visited, feature utilization metrics, and interaction timestamps.
 - Push notification subscription tokens.
-- Diagnostic error logs and system performance monitoring data.
+- Diagnostic error logs and system performance monitoring data. When something breaks, an error report (the error, the page, your browser and your account identifier) is kept so it can be fixed.
+- If you choose **Accept all** in the cookie notice: an anonymous count of which pages are visited (see section 10).
+- How you arranged a page (moved or resized cards), kept on your device, or in your account if you turn on "Use my arrangement on my other devices".
+
+### 2.8 Data in UniVerse's Apps
+
+Each app keeps only what it needs, and only when you use it:
+
+- **UniVerse Trace.** When you scan a product's code: the code, the time, the kind of device (Android, iPhone, Windows or Mac), an approximate location (the city) worked out from your connection, and, only if you allow it in your browser, your device's location, used to tell a genuine product from a likely copy. Maps of scans never show a place more precisely than about 10 km. If you choose: points in your wallet, warranties, ownership records, reviews, repairs, take-back drop-offs, and reports of fake labels. For people working for a brand, warehouse, carrier or shop: the stops they record (place and time) and their team membership. For brands: business details, products, batches, campaigns and payments.
+- **UniVerse Relief.** Requests and offers of help with a description and a place rounded to about 500 metres (shown on the map for up to 30 days); the skills you list; the area you watch for nearby alerts (never shown to anyone); your phone number, only if you add it for emergency texts; "I'm safe" check-ins, shared only with the people you already talk with; your hours and shifts as a volunteer; organisations' members and supplies; aid boxes you follow; and, for organisations that take requests by text message, the sender's number and message.
+- **UniVerse Green.** Climate actions you log, with an optional proof photo and a place rounded to about 10 km; teams, goals, pledges, journeys, events and your footprint answers. **Green Business:** a company's activity data (energy, travel, purchases, bills it uploads), its suppliers' and staff's answers sent by link, its reduction plans and reports, and a tamper-evident log of changes.
+- **UniVerse Travel.** Places you save; trips you plan alone or with friends (cities, dates, bookings you add, budget and shared costs, packing lists, polls, a trip chat, and journal notes and photos); reminders about your travel documents (only a label, an expiry date and a note: we never store copies of passports or visas); trip check-ins and the family link you choose to share; reviews of places; and, only if you join it, the travellers board (adults only: your first name, a city, your dates and a note). Directions and live navigation use your device's location in your browser; it is sent to the routing service to find the way (section 5.3) and not stored by us. A booking confirmation you paste to plan your days is read once by AI and not saved.
+- **Games (UniVersity).** Your scores and leaderboard places, game rooms you join, and in-room chat. Voice in a game room works like a call (section 5.3) and is not recorded. Age-rated games check your date of birth or ask for it.
+- **Your Impact Wallet.** Points and rewards earned across the apps.
 
 ## 3. Purposes and Legal Bases for Processing
 
@@ -97,6 +113,10 @@ We process your personal data relying on the following legal bases across global
 | Financial Data | Processing mandated institutional fees and maintaining financial records. | Contract & Legal Obligation (GDPR Art 6.1b, 6.1c) / Lawful Purpose (DPDPA) |
 | BeeSafe Reports | Ensuring campus physical security and routing rapid incident response. | Legitimate & Vital Interests (GDPR Art 6.1f, 6.1d) / Public Interest (DPDPA) |
 | AI Matching & AI Features | Generating tailored project/internship recommendations and answering requests made to AI features. | Legitimate Interests (GDPR Art 6.1f) / Business Purpose (CCPA) |
+| Location (Trace scans, Relief, Green, Travel) | Telling genuine products from copies, routing help to where it's needed, mapping climate action, directions. | Consent through your browser's permission, which you can withdraw at any time (GDPR Art 6.1a) / Legitimate Interests for rounded places (Art 6.1f); Vital Interests in emergencies (Art 6.1d) |
+| Connected accounts | Showing your mail, messages, calendars and classes in UniVerse. | Contract Performance at your request (GDPR Art 6.1b) / Consent (DPDPA) |
+| Green Business and brand accounts | Providing the carbon accounting and product passport services the company signed up for. | Contract Performance (GDPR Art 6.1b) |
+| Page counts (optional) | Knowing which pages are used, to improve them. | Consent ("Accept all", GDPR Art 6.1a; ePrivacy) – Revocable at any time |
 | Technical Data | Monitoring system health, preventing fraud, and optimizing the platform infrastructure. | Legitimate Interests (GDPR Art 6.1f) / Security Purpose (CCPA) |
 | Marketing Comms. | Sending promotional emails regarding new features or partner opportunities. | Consent (GDPR Art 6.1a, DPDPA) / Opt-in Right (CCPA) – Revocable at any time |
 
@@ -116,6 +136,8 @@ We process your data strictly to:
 10. Detect abuse, mitigate fraud, and investigate security threats via comprehensive audit logging.
 11. **Early warning for students who may be struggling.** Once a day, simple published rules look at attendance, grades, quizzes not handed in and how recently you used the Platform in each course, and list students who may benefit from support, together with the reasons. The list is visible only to the teacher of the course and to your Institution's administrators. It is not an automated decision: no grade, status or access changes because of it, and a person decides whether to contact you. It uses no AI and no special-category data. The legal basis is your Institution's legitimate interest (or public task) in supporting student success; you may object at any time by contacting your Institution or us, and you can request to see any entry about you (it is included in "Download my data").
 12. **Translation of chat messages** when you or another member of a chat asks for it (see section 5.3).
+13. **Alerts and reminders:** nearby requests for help and emergencies (Relief), travel-document and trip reminders and a morning briefing (Travel), and reminders to come back to your courses. You choose most of these in Settings, and emergency notices go only to the people they concern.
+14. **Spotting likely copies (Trace):** simple published rules flag a label scanned far from its first scan or too often. This says something about a product's label, not about you, and changes nothing in your account.
 
 We unequivocally do not sell your personal data to third parties, nor do we utilize your personal data for third-party cross-context behavioral advertising (as defined under CCPA).
 
@@ -133,6 +155,12 @@ In a campus network, partner campuses see only counts (for example how many stud
 
 When you actively submit an application for an NGO project, internship, startup showcase, or summit through the Platform, your relevant profile information (name, skills, career profile, contact details) is shared directly with the respective external organization.
 
+**Brands (Trace).** When you scan a product, its brand sees when and in which city it was scanned, on what kind of device (Android, iPhone, Windows or Mac), and whether the label looks genuine, on maps never more precise than about 10 km; it never sees who scanned. If you register a warranty, ownership, review, repair or take-back, or report a fake label, the brand receives that record.
+
+**Organisations (Relief).** Requests and offers you send to an organisation, the shifts you sign up for and the supplies you record are visible to that organisation's members. Coordinators of a declared emergency see how many people checked in as safe, not who.
+
+**Travel partners.** Booking buttons take you to partners such as Booking.com, Hostelworld, GetYourGuide, Omio, 12Go, Direct Ferries, Rome2Rio or OpenTable. We don't send them your details; what you do on their sites is under their own terms and privacy policies.
+
 ### 5.3 Authorized Third-Party Subprocessors
 
 We utilize industry-leading technology partners bound by strict Data Processing Agreements (DPAs):
@@ -142,6 +170,11 @@ We utilize industry-leading technology partners bound by strict Data Processing 
 - **Cloudflare, Inc.:** Hosting and serverless computing (Workers), database (D1), file storage (R2), and real-time features. For voice and video calls, Cloudflare passes the connection details between participants; call audio and video then go directly between participants' devices and are not recorded or stored. On networks that block direct connections, they may be relayed (encrypted) through Cloudflare's servers.
 - **Stripe, Inc.:** PCI-compliant payment processing.
 - **Resend, Inc.:** Delivery of notification and account emails.
+- **Razorpay Software Pvt. Ltd.:** Payments in India, where a school uses it.
+- **Twilio Inc.:** Text messages (SMS) for Relief: requests sent to an organisation's number, and emergency texts to helpers who added their number. Only when switched on.
+- **PostHog Inc. (EU hosting):** An anonymous count of which pages are visited, only after you choose "Accept all" (section 10).
+- **Services you choose to connect:** Google (Gmail, Google Classroom, Google Calendar), Microsoft (Outlook, Outlook Calendar) and Slack receive our requests on your behalf, under their own privacy policies.
+- **Map, place and weather services:** Travel's, Relief's and Green's maps are drawn by your browser from free public services, which receive your connection's IP address and the area of the map you look at, never your account: OpenFreeMap (maps), OpenStreetMap's Nominatim (place search) and the FOSSGIS routing services (directions and walking times: the start, stops and end of the route), Wikimedia Commons (photos), NASA GIBS (rain and clouds), Waymarked Trails (hiking and cycling routes), EOX (satellite pictures), Amazon Web Services' open terrain tiles (heights and hills), Panoramax (street photos) and Nager.Date (public holidays). Our servers also read public information without any personal data: Wikivoyage, Wikipedia and Wikidata (guides and facts), MET Norway (weather), and the US Geological Survey and GDACS (earthquakes and disasters).
 - **Polygon public blockchain:** A fingerprint (hash) of each Impact Credential is recorded on this public network so anyone can verify it. No names or other personal details are written to the blockchain.
 
 ### 5.4 Legal Authorities
@@ -154,7 +187,7 @@ Authorized UniVerse Impact personnel and your Institution's administrators can a
 
 ### 5.6 Content You Share
 
-When you share a whiteboard, document, or post, the people you share it with can see it. If you turn on link sharing for a whiteboard, any User who has the link can view (or, if you choose, edit) it. You can turn link sharing off at any time.
+When you share a whiteboard, document, or post, the people you share it with can see it. Some things are public by design or when you choose: a product's passport page and a brand's public page (Trace), an aid box's journey (Relief, with helpers' first names only if they agree), a company's carbon log opened to its auditor by link (Green Business), your portfolio's private links, and a trip's family link (Travel). Anyone holding such a link can open it until you or the owner turn it off. If you turn on link sharing for a whiteboard, any User who has the link can view (or, if you choose, edit) it. You can turn link sharing off at any time.
 
 ## 6. Blockchain and Impact Credentials
 
@@ -187,6 +220,10 @@ We retain your personal data only for as long as necessary to fulfill the purpos
 | Staff Application Documents | Until the application is decided, and for up to 12 months afterwards. |
 | Credential Hashes | Indefinite (necessary for blockchain integrity; public display is suppressed upon request). |
 | Technical / Log Data (including sign-in history) | 90 days. |
+| Error reports | 90 days after the error was last seen. |
+| Relief requests and offers on the map | Shown for up to 30 days; kept until you delete them or your account. |
+| App records (Trace, Relief, Green, Travel, Games) | Until you delete them or your account; scans you made stay in brands' counts with nothing linking them to you. |
+| Connected account keys | Until you disconnect or delete your account. |
 | Class notes transcripts (text only) | 90 days (the study pack made from them stays with the course until the teacher deletes it). |
 
 ## 9. Your Global Data Protection Rights
@@ -210,11 +247,12 @@ To exercise any of these rights, please submit a written request to privacy@univ
 
 The Platform relies minimally on client-side storage to function securely:
 
+- **Optional page counts:** only if you choose "Accept all", we count which pages are visited with PostHog (hosted in the EU), using a random number kept on your device, never your name, with any identifiers or links in the address blanked. It never runs when your browser sends Global Privacy Control, and you can change your choice at any time at universeimpact.com/privacy-choices.
 - **Essential Cookies:** Required for session management, Firebase authentication token handling, and Cross-Site Request Forgery (CSRF) protection. These cannot be disabled.
 - **Local Storage:** Utilized to cache authentication tokens, user interface preferences (e.g., dark mode), and temporary state to improve performance.
 - **Push Tokens:** Stored only if you explicitly grant the browser permission to receive push notifications.
 
-We do not utilize tracking cookies, advertising pixels, or third-party behavioral analytics trackers. Because only strictly necessary storage is used, no cookie consent banner is required. See also universeimpact.com/privacy-choices.
+We do not use advertising cookies, advertising pixels or social media trackers. Because the page counts are optional, we ask first in a cookie notice. See also universeimpact.com/privacy-choices.
 
 ## 11. Data Security
 
@@ -222,7 +260,9 @@ We implement robust technical and organizational security measures globally to p
 
 - **Encryption:** HTTPS/TLS encryption for all data in transit; encryption at rest for the database (Cloudflare D1) and stored files (Cloudflare R2).
 - **Authentication:** Industry-standard OAuth 2.0 and JWT-based identity management via Firebase.
-- **Access Control:** Strict Role-Based Access Controls (RBAC) ensuring data is only visible to appropriately credentialed roles.
+- **Access Control:** Strict Role-Based Access Controls (RBAC) ensuring data is only visible to appropriately credentialed roles, checked on every request.
+- **Location:** places are rounded before they are shown on any map (about 500 m for Relief, about 10 km for Green and Trace), so no person or home can be found from them.
+- **Connected accounts:** the keys from services you connect are encrypted and never sent to a browser.
 - **Breach Notification:** In the event of a personal data breach posing a risk to your rights and freedoms, we will notify you and the competent supervisory authorities globally in accordance with statutory timelines (e.g., within 72 hours under GDPR, as promptly as possible under DPDPA/CCPA).
 
 ## 12. International Data Transfers
@@ -237,7 +277,7 @@ Any transfer of personal data across international borders is safeguarded by:
 
 ## 13. Children's Privacy
 
-The Platform is not directed at children under the age of 16 (or under 18 in specific jurisdictions like India where the age of digital consent is higher). We do not knowingly collect personal data from anyone under the age of digital consent without documented, verified parental or guardian consent. If we become aware that a child under the applicable age has provided personal data without such consent, we will take immediate steps to delete the information.
+Where a school uses UniVersity for younger pupils, the school provides their accounts and is responsible for obtaining any consent their parents or guardians must give; for under-18s we turn on protections such as quiet hours, age-rated games and no travellers board. Otherwise, the Platform is not directed at children under the age of 16 (or under 18 in specific jurisdictions like India where the age of digital consent is higher). We do not knowingly collect personal data from anyone under the age of digital consent without documented, verified parental or guardian consent. If we become aware that a child under the applicable age has provided personal data without such consent, we will take immediate steps to delete the information.
 
 ## 14. Changes to This Privacy Policy
 
