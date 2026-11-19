@@ -537,6 +537,8 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
   const [hostHere, setHostHere] = useState(false);
   const [lobby, setLobby] = useState<{ id: string; name: string }[]>([]);
   const [lobbyOn, setLobbyOn] = useState(false);
+  // M345: the host's switches.
+  const [roomSettings, setRoomSettings] = useState({ entryMuted: false, chatOff: false });
   // Office hours (4.7): my place in the line while I wait; for the teacher, how long the line is.
   const [line, setLine] = useState<{ pos: number; waiting: number; etaMin: number } | null>(null);
   const queued = useRef(false);
@@ -1333,6 +1335,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           if (queued.current) { queued.current = false; setLine(null); turnAlert(t.title); }
           setLobby(Array.isArray(msg.lobby) ? msg.lobby.map((w: { peerId: string; name: string }) => ({ id: w.peerId, name: w.name })) : []);
           setLobbyOn(msg.lobbyOn === true);
+          if (msg.settings) setRoomSettings({ entryMuted: msg.settings.entryMuted === true, chatOff: msg.settings.chatOff === true });
           if (Array.isArray(msg.chat)) setRoomChat(msg.chat);
           setBo(msg.bo ?? null);
           pollId.current = msg.poll?.id ?? null;
@@ -1477,7 +1480,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           // From the host: muted at once; unmuting is only asked for; camera off.
           if (msg.action === 'mute' && !stateRef.current.muted) {
             actions.current?.setMicOff(true);
-            toast(`${msg.by} muted ${msg.all ? 'everyone' : 'you'}`, { icon: '🔇' });
+            toast(msg.entry ? 'You joined muted: the host has everyone start muted' : `${msg.by} muted ${msg.all ? 'everyone' : 'you'}`, { icon: '🔇' });
           } else if (msg.action === 'ask-unmute' && stateRef.current.muted) {
             toast(`${msg.by} asks you to unmute`, { icon: '🎙️', duration: 12_000, action: { label: 'Unmute', onClick: () => actions.current?.setMicOff(false) } });
           } else if (msg.action === 'stop-video' && stateRef.current.camera) {
@@ -1508,6 +1511,9 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
           setLobby((l) => l.filter((x) => x.id !== msg.peerId));
         } else if (msg.type === 'lobby-setting') {
           setLobbyOn(msg.on === true);
+        } else if (msg.type === 'room-setting') {
+          setRoomSettings((cur) => ({ entryMuted: typeof msg.entryMuted === 'boolean' ? msg.entryMuted : cur.entryMuted, chatOff: typeof msg.chatOff === 'boolean' ? msg.chatOff : cur.chatOff }));
+          if (typeof msg.chatOff === 'boolean' && msg.by) toast(msg.chatOff ? `${msg.by} turned the chat off` : `${msg.by} turned the chat on`, { icon: '💬' });
         } else if (msg.type === 'denied') {
           finish('The host didn’t let you in');
         } else if (msg.type === 'rec-blocked') {
@@ -2812,7 +2818,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
         )}
       </AnimatePresence>
       <AnimatePresence>{boardOpen && callBoard && phase === 'live' && <CallBoardPanel key="board" boardId={callBoard} onClose={() => setBoardOpen(false)} />}</AnimatePresence>
-      <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} />
+      <CallChatPanel open={chatOpen && phase === 'live'} onClose={() => openPanel(null)} lines={chat.lines} onSend={chat.send} linked={chat.linked} title={info?.title ?? 'the chat'} locked={roomSettings.chatOff && !chat.linked && !canModerate} />
       {canTa && <WhisperPanel open={taOpen} onClose={() => openPanel(null)} callId={callId} heard={heardNow} />}
       <ConnectionPanel open={netOpen && phase === 'live'} onClose={() => { netOpenRef.current = false; setNetOpen(false); }} me={net.me} server={!!info?.sfu}
         people={list.filter((r) => net.people[r.peer.peerId]).map((r) => ({ id: r.peer.peerId, name: r.peer.name, reading: net.people[r.peer.peerId] ?? null }))}
@@ -2862,7 +2868,7 @@ export function CallView({ callId, myName, wantKind, onLeave, held = false, held
       <WebinarQA open={qaOpen && phase === 'live' && !!webinar} onClose={() => setQaOpen(false)} items={qa} canModerate={canModerate}
         onAsk={(text, anon) => send({ type: 'qa-ask', text, anon })} onVote={(id, up) => send({ type: 'qa-vote', id, up })}
         onAnswer={(id, on) => control('qa-answer', id, on)} onHide={(id) => control('qa-hide', id)} />
-      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} lobby={lobby} lobbyOn={lobbyOn} />
+      <PeoplePanel open={peopleOpen && phase === 'live'} onClose={() => setPeopleOpen(false)} people={people} canModerate={canModerate} isHost={meHost} spotlight={spotlight} onControl={control} onLowerMyHand={toggleHand} settings={roomSettings} lobby={lobby} lobbyOn={lobbyOn} />
       {/* Microphone, camera and noise suppression */}
       <AnimatePresence>
         {settingsOpen && (

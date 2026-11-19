@@ -9876,3 +9876,20 @@ slow mode, roles, custom emoji, huddles…). The gaps, built:
 - The jump-to-latest button moves above the hints bar (`hasHints`).
 - **Left out on purpose:** phone dial-in, live streaming to YouTube (paid services), remote control of a shared screen
   (risky), GIF search (Tenor / Giphy need an account and key: [owner] if wanted).
+
+## M345: recurring meetings, and "Join muted" and "Chat off" for hosts (19 Nov)
+
+Meet & call's gaps from M344's inventory. The host already had: the waiting room, mute everyone, ask to unmute, stop
+someone's video, co-hosts, spotlight, lower all hands, remove, end for everyone, polls, breakouts, webinar and Q&A.
+
+- **Recurring meetings** (`src/lib/meeting-repeat.ts`: `repeatDates` daily / weekdays / weekly / biweekly / monthly, at
+  most 10): `scheduleCall` (`src/server/scheduled-calls.ts`) takes `{ repeat, times }` and creates every date as its own
+  scheduled call (and class-calendar event), within the 6 months ahead; one notification names the series. Cancelling one
+  leaves the others (each is a row). About three queries a meeting, so ten stays under D1's 50 a request.
+- **Host switches** (CallRoom in `cloudflare/worker.ts`): `control` actions `entry-muted` and `chat-off` (`on`), stored in
+  the room's storage, broadcast as `room-setting`; `welcome` carries `settings`; a non-host joining while `entry-muted` is
+  sent `control mute` with `entry: true` (their toast says why); the room's chat drops non-host lines while `chat-off`.
+  `PeoplePanel` shows the two chips next to the waiting room's; `CallChatPanel locked` replaces the box with a note
+  (the room's own chat only: a chat call's messages go to that chat).
+- **Left out:** handing the host role to someone else (co-hosts cover it), phone dial-in and live streaming (paid),
+  remote control (risky), touch-up and low-light filters (the effects pipeline would need a new pass).

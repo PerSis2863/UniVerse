@@ -1150,7 +1150,10 @@ export class CallRoom extends DurableObject<Env> {
       agenda: (await this.ctx.storage.get<CallAgenda>('agenda')) ?? null,
       interp: (await this.ctx.storage.get<Interpreters>('interp')) ?? {},
       pulse: mod ? this.pulseCounts() : null,
+      // M345: the host's switches (Zoom's): everyone joins muted, chat off for everyone but hosts.
+      settings: { entryMuted: (await this.ctx.storage.get<boolean>('entry-muted')) === true, chatOff: (await this.ctx.storage.get<boolean>('chat-off')) === true },
     });
+    if (!mod && (await this.ctx.storage.get<boolean>('entry-muted')) === true) this.send(ws, { type: 'control', action: 'mute', by: 'The host', entry: true });
     for (const { ws: other, peer } of current) if (this.canSee(peer, me, w)) this.send(other, { type: 'joined', peer: publicPeer(me) });
     this.pulseTell();
     if (w.on) this.audienceTell();
@@ -1977,6 +1980,8 @@ export class CallRoom extends DurableObject<Env> {
       return;
     }
     if (msg.type === 'chat') {
+      // M345: while the host has the chat off, only hosts and co-hosts write in it.
+      if (!me.host && !me.cohost && (await this.ctx.storage.get<boolean>('chat-off')) === true) { this.send(ws, { type: 'room-setting', chatOff: true }); return; }
       // The call's own chat: text (links stay links) and uploaded files, to everyone in the call.
       const text = typeof msg.text === 'string' ? msg.text.trim().slice(0, CHAT_MAX_CHARS) : '';
       const file = safeFile(msg.file);
@@ -2107,6 +2112,10 @@ export class CallRoom extends DurableObject<Env> {
       await this.ctx.storage.put('lobby', on);
       for (const m of this.mods()) this.send(m.ws, { type: 'lobby-setting', on, by });
       if (!on) await this.control(ws, me, 'admit-all', null, false);
+    } else if (action === 'entry-muted' || action === 'chat-off') {
+      // M345: the host's switches, for everyone in the call now and later.
+      await this.ctx.storage.put(action, on);
+      for (const p of all) this.send(p.ws, { type: 'room-setting', ...(action === 'entry-muted' ? { entryMuted: on } : { chatOff: on }), by });
     } else if (action === 'lower-hand' && them) {
       await this.setHand(them.peer, them.ws, false);
     } else if (action === 'lower-all') {
