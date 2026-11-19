@@ -2690,6 +2690,11 @@ html[data-scrolling] iframe { pointer-events: none; }
 /* The small print inside my bubbles (time, "Voicemail", poll notes) was see-through white: on lime
    1.3:1. It takes the bubble's own text colour. */
 .bubble-mine [class*="text-white/"] { color: inherit; }
+/* M343: in dark mode the accent is a light shade meant for ink text (#6ea2f8), but my bubbles keep white text: 2.6:1.
+   They take the dark mode's button blue instead (white on it 5.2:1), Green its deep emerald; Trace, Relief and Travel
+   already turn the text ink on their accent. A person's own accent stays theirs. */
+html.dark:not([data-accent]):not([data-app="trace"]):not([data-app="relief"]):not([data-app="travel"]):not([data-app="green"]) .bubble-mine { background-color: #2563eb; }
+html.dark[data-app="green"]:not([data-accent]) .bubble-mine { background-color: #047857; }
 .bubble-theirs, .dark .bubble-theirs { background-color: var(--msg-theirs, #ffffff); box-shadow: inset 0 0 0 1px var(--msg-theirs-line, rgba(0, 0, 0, 0.07)); }
 .msg-keys kbd { display: inline-block; min-width: 1.5rem; padding: 0.1rem 0.4rem; border-radius: 0.4rem; border: 1px solid var(--hairline); font: 600 11px/1.4 ui-monospace, SFMono-Regular, Menlo, monospace; text-align: center; color: var(--text-secondary); }
 

@@ -309,7 +309,7 @@ export function MessageBubble(p: Props) {
             {mine ? 'Rejoin' : 'Join'}
           </a>
         ) : p.onCallBack ? (
-          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
+          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white text-zinc-900 hover:bg-white/90' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
             Call back
           </button>
         ) : null}
@@ -365,7 +365,7 @@ export function MessageBubble(p: Props) {
                   {it.done && <Check className="w-3 h-3" strokeWidth={3} />}
                 </span>
                 <span className="flex-1 min-w-0">
-                  <span translate="no" className={cn('block text-sm break-words', it.done && 'line-through opacity-70')}>{it.text}</span>
+                  <span translate="no" className={cn('block text-sm break-words', it.done && 'line-through', it.done && !mine && 'text-zinc-500 dark:text-zinc-400')}>{it.text}</span>
                   {it.done && <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{it.done.name}</span>}
                 </span>
               </button>

@@ -9832,3 +9832,21 @@ The owner, asked which Meet & call features: "All of them and encrypted system i
   (`phoneOnly` items), the bar keeps six and Leave.
 - Tested on the built site with two people (fake camera): both codes 6860 3677 2818 7511, the clap with its sparks on the
   other screen, `people` on the call's message, steady and personal room links.
+
+## M343: Messages and Meet & call polished on phones (19 Nov)
+
+The owner: "give a premium polish design to it which fit the website and app in mobile". Checked on the built site at
+390 and 1280 px, light and dark, with axe (serious and critical) and screenshots; the look stays the app's own (no new
+look, the launch focus).
+
+- **In a call on a phone** the bar's seven buttons pushed Leave past a 390 px screen: Share screen lives in More there
+  (M342), and the check measures Leave at 311–359 px.
+- **Meet & call:** the empty Favourites was a 192 px dashed card; with no favourites it's one slim row ("Call your closest
+  people in one tap"), the card size coming back once there are some.
+- **My sent bubbles in dark mode** used the dark accent (#6ea2f8, a shade for ink text) with white text, 2.6:1, on every
+  message: `html.dark` (no own accent; not Trace, Relief or Travel, which already ink their text) gives `.bubble-mine` the
+  dark mode's button blue #2563eb (5.2:1), Green #047857. A person's own accent is left as they chose.
+- Ticked checklist items keep their strike-through but no longer fade (they fell under 4.5:1); the call card's "Call back"
+  in my bubble is a white pill with ink text.
+- **For code that builds on it:** text on `bg-tint` in dark mode is ink, never white; on my bubble use solid white or the
+  bubble's own text colour, not see-through white.
