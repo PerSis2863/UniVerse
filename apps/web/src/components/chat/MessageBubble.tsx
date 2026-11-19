@@ -142,6 +142,8 @@ interface Props {
   onSelect?: () => void;
   onInfo: () => void;
   onVote: (option: number) => void;
+  /** M340: tick or untick an item of a CHECKLIST message. */
+  onCheck?: (item: number) => void;
   onOpenContact: (userId: string) => void;
   onReact: (emoji: string) => void;
   onOpenImage: (url: string) => void;
@@ -341,6 +343,35 @@ export function MessageBubble(p: Props) {
           })}
         </div>
         <p className={cn('text-[11px] mt-2', mine ? 'text-white/70' : 'text-zinc-500')}>{m.poll?.voters ?? 0} {m.poll?.voters === 1 ? 'person' : 'people'} voted</p>
+      </div>
+    );
+  } else if (m.type === 'CHECKLIST') {
+    // M340: a shared checklist; anyone in the chat ticks an item, and it says who did.
+    const items = m.metadata?.items ?? [];
+    const done = items.filter((i) => i.done).length;
+    content = (
+      <div className="p-3 w-72 max-w-full">
+        <p className="font-bold flex items-start gap-2"><ListChecks className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> <span translate="no">{m.metadata?.title ?? m.body}</span></p>
+        <div className={cn('mt-2 mb-2.5 h-1 rounded-full overflow-hidden', mine ? 'bg-white/20' : 'bg-zinc-200 dark:bg-white/10')}>
+          <Fill value={items.length ? done / items.length : 0} className={cn('h-full rounded-full', mine ? 'bg-white' : 'bg-emerald-500')} />
+        </div>
+        <ul className="space-y-0.5">
+          {items.map((it, i) => (
+            <li key={i}>
+              <button type="button" role="checkbox" aria-checked={!!it.done} onClick={() => { haptic('tap'); p.onCheck?.(i); }} disabled={m.pending || !p.onCheck}
+                className={cn('w-full flex items-start gap-2.5 rounded-lg px-1.5 py-1.5 text-start transition-colors', mine ? 'hover:bg-white/10' : 'hover:bg-zinc-50 dark:hover:bg-white/5')}>
+                <span className={cn('mt-0.5 w-[18px] h-[18px] rounded-md border-2 flex items-center justify-center shrink-0 transition-colors', it.done ? (mine ? 'bg-white border-white text-indigo-600' : 'bg-emerald-500 border-emerald-500 text-white') : mine ? 'border-white/60' : 'border-zinc-300 dark:border-zinc-600')}>
+                  {it.done && <Check className="w-3 h-3" strokeWidth={3} />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span translate="no" className={cn('block text-sm break-words', it.done && 'line-through opacity-70')}>{it.text}</span>
+                  {it.done && <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{it.done.name}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className={cn('text-[11px] mt-2', mine ? 'text-white/70' : 'text-zinc-500')}>{done} of {items.length} done</p>
       </div>
     );
   } else if (m.type === 'LOCATION' && m.metadata?.lat != null && m.metadata?.lng != null) {

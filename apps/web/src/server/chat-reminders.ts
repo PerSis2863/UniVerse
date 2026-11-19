@@ -19,6 +19,7 @@ const preview = (m: { type: string; body: string; attachmentName: string | null 
     case 'AUDIO': return '🎤 Voice message';
     case 'FILE': return `📎 ${m.attachmentName || 'File'}`;
     case 'POLL': return `📊 ${m.body}`;
+    case 'CHECKLIST': return `☑️ ${m.body}`;
     case 'LOCATION': return '📍 Location';
     default: return m.body.replace(/[*_~`>#]/g, '').split('\n').find((l) => l.trim())?.trim() ?? '';
   }

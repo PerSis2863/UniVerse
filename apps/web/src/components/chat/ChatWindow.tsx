@@ -10,7 +10,7 @@ import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'reac
 import useSWR from 'swr';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
+import { ArrowDown, Bookmark, ArrowLeft, CheckCheck, BadgeCheck, BellOff, Hash, Headphones, Megaphone, Sparkles, ChevronDown, ChevronUp, FileText, Info, Loader2, LogOut, Pencil, Phone, Search, Star, Timer, Upload, UserPlus, Video, X, Pin, PinOff, Link2, Languages, WifiOff, Lock, Check, Copy, CornerUpRight, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { authedJson } from '@/lib/authed-fetch';
 import { FORWARDABLE, MessageBubble } from './MessageBubble';
@@ -19,7 +19,8 @@ import { ImageViewer } from './ImageViewer';
 import { LockSwitch, LockedChat, useChatLocked } from './ChatLock';
 import { huddleMayBeLive, useHuddlePeers, useStartHuddle } from './Huddle';
 import { Composer, type ComposerExtra, type SendPayload } from './Composer';
-import { ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
+import { ChatHints } from './ChatHints';
+import { ChecklistDialog, ContactPicker, ForwardDialog, MessageInfo, PollDialog, RemindSheet } from './ChatDialogs';
 import { ChatExport } from './ChatExport';
 import { ScheduledBar, ScheduleSheet } from './ScheduledMessages';
 import { type ChatMessage, type ScheduledItem, type ThreadResponse, chatJson, scheduleLabel, statusLine, dayLabel, disappearingLabel, DISAPPEARING_OPTIONS, formatBytes, getWallpaper, lastSeenLabel, messageTypeFor, setWallpaper, uploadChatFile, WALLPAPERS, previewText } from './chat-client';
@@ -133,7 +134,9 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
   const [forwardMany, setForwardMany] = useState<ChatMessage[] | null>(null);
   const [remindFor, setRemindFor] = useState<ChatMessage | null>(null);
   const [infoMsg, setInfoMsg] = useState<ChatMessage | null>(null);
-  const [extra, setExtra] = useState<'poll' | 'contact' | null>(null);
+  const [extra, setExtra] = useState<'poll' | 'checklist' | 'contact' | null>(null);
+  // M340: the next text goes out when the other person's quiet hours end.
+  const [quietSend, setQuietSend] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQ, setSearchQ] = useState('');
   const [results, setResults] = useState<{ id: string; body: string; createdAt: string; sender: { name: string } }[] | null>(null);
@@ -352,6 +355,12 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
     });
   };
 
+  // M340: tick an item of a shared checklist (shown at once, then the server's answer).
+  const check = async (m: ChatMessage, item: number) => {
+    patchMsg(m.id, (x) => ({ ...x, metadata: x.metadata && { ...x.metadata, items: (x.metadata.items ?? []).map((it, i) => (i !== item ? it : { ...it, done: it.done ? null : { by: me, name: 'You', at: new Date().toISOString() } })) } }));
+    try { await chatJson(`/api/chat/messages/${m.id}/check`, { method: 'POST', body: JSON.stringify({ item }) }); mutate(); }
+    catch (e) { toast.error((e as Error).message); mutate(); }
+  };
   const vote = async (m: ChatMessage, option: number) => {
     const multiple = !!m.metadata?.multiple;
     patchMsg(m.id, (x) => {
@@ -638,6 +647,26 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       }
       if (name === 'catchup') { void runCatchup(); return true; }
       if (name === 'poll') { onExtra('poll'); return true; }
+      if (name === 'checklist') { onExtra('checklist'); return true; }
+      // M340: quick tools.
+      if (name === 'note') {
+        if (!arg) { toast.error('Type what to save after /note'); return false; }
+        const self = await chatJson<{ id: string }>('/api/chat/conversations', { method: 'POST', body: JSON.stringify({ self: true }) });
+        await chatJson(`/api/chat/conversations/${self.id}/messages`, { method: 'POST', body: JSON.stringify({ body: arg }) });
+        toast.success('Saved to Notes to self');
+        return true;
+      }
+      if (name === 'roll') {
+        const sides = Math.min(1000, Math.max(2, Number.parseInt(arg, 10) || 6));
+        await send({ text: `🎲 rolled ${1 + (crypto.getRandomValues(new Uint32Array(1))[0] % sides)} (1–${sides})` });
+        return true;
+      }
+      if (name === 'flip') { await send({ text: `🪙 ${crypto.getRandomValues(new Uint8Array(1))[0] & 1 ? 'Heads' : 'Tails'}` }); return true; }
+      if (name === 'time') {
+        const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+        await send({ text: `🕒 It's ${new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} here (${zone.replace(/_/g, ' ')})` });
+        return true;
+      }
       if (name === 'call' || name === 'video') { void call(name === 'video' ? 'video' : 'audio'); return true; }
       const app = apps?.commands.find((c) => c.name === name);
       if (app) {
@@ -754,6 +783,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           <button onClick={() => setInfoOpen((v) => !v)} className="flex items-center gap-3 min-w-0 flex-1 text-start">
             {channel
               ? <span className="w-10 h-10 rounded-2xl flex items-center justify-center text-white shrink-0" style={{ background: channel.color ?? '#27272a' }}>{channel.kind === 'ANNOUNCE' ? <Megaphone className="w-5 h-5" /> : <Hash className="w-5 h-5" />}</span>
+              : convo.self ? <span className="w-10 h-10 rounded-full bg-gradient-to-br from-sky-500 to-indigo-600 text-white flex items-center justify-center shrink-0"><Bookmark className="w-[18px] h-[18px]" aria-hidden /></span>
               : <Avatar name={convo.title} src={convo.avatarUrl} online={!convo.isGroup && other?.online} size={40} />}
             <div className="min-w-0">
               <p className="font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1">
@@ -775,7 +805,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
               <button onClick={() => void startHuddle()} aria-label="Start a huddle" title="Huddle: a drop-in voice room in this chat, nobody is rung" className="max-sm:hidden p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Headphones className="w-5 h-5" /></button>
             )
           )}
-          {!convo.isOfficial && !channel && (
+          {!convo.isOfficial && !channel && !convo.self && (
             <>
               <button onClick={() => call('audio')} aria-label="Voice call" title="Voice call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Phone className="w-5 h-5" /></button>
               <button onClick={() => call('video')} aria-label="Video call" title="Video call" className="p-2.5 rounded-full text-zinc-600 dark:text-zinc-300 hover:text-indigo-500 hover:bg-zinc-100 dark:hover:bg-white/10"><Video className="w-5 h-5" /></button>
@@ -956,6 +986,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
                       onInfo={() => setInfoMsg(m)}
                       onReplayEffect={isScreenEffect(m.metadata?.effect) ? () => setPlaying({ key: `${m.id}:${Date.now()}`, effect: m.metadata!.effect! }) : undefined}
                       onVote={(o) => vote(m, o)}
+                      onCheck={(i) => void check(m, i)}
                       onOpenContact={openContact}
                       onReact={(e) => react(m, e)}
                       onOpenImage={setLightbox}
@@ -1021,6 +1052,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
         )}
         {!picked && <SharedPhotos key={conversationId} chat={conversationId} onSend={send}
           blocked={isPrivate ? 'Private chats take text only for now' : convo.isOfficial ? 'This chat can’t take photos' : undefined} />}
+        {!picked && !editing && <ChatHints convo={convo} last={messages[messages.length - 1]} me={me} quietSend={quietSend} onQuietSend={setQuietSend} onReply={(text) => void send({ text })} />}
         {!picked && <Composer
           draftKey={conversationId}
           serverDraft={{ text: convo.draft, at: convo.draftAt }}
@@ -1032,7 +1064,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
           uploadProgress={uploadProgress}
           onCancelReply={() => setReplyTo(null)}
           onCancelEdit={() => setEditing(null)}
-          onSend={send}
+          onSend={quietSend && convo.quietUntil ? async (p) => { if (p.text && !p.file && !p.voice && !p.album && !p.videoNote && !p.sticker) { await schedule(p.text, convo.quietUntil!); setQuietSend(false); } else await send(p); } : send}
           onSaveEdit={saveEdit}
           onTyping={typing}
           onExtra={onExtra}
@@ -1076,6 +1108,7 @@ export function ChatWindow({ conversationId, onBack, onChanged, onOpenChat, jump
       {remindFor && <RemindSheet message={remindFor} onClose={() => setRemindFor(null)} />}
       {infoMsg && <MessageInfo message={infoMsg} members={convo.members} me={me} onClose={() => setInfoMsg(null)} />}
       {extra === 'poll' && <PollDialog onClose={() => setExtra(null)} onCreate={(poll) => sendSpecial({ type: 'POLL', poll })} />}
+      {extra === 'checklist' && <ChecklistDialog onClose={() => setExtra(null)} onCreate={(checklist) => sendSpecial({ type: 'CHECKLIST', checklist })} />}
       {extra === 'contact' && <ContactPicker onClose={() => setExtra(null)} onPick={(contactId) => sendSpecial({ type: 'CONTACT', contactId })} />}
 
       <AnimatePresence>

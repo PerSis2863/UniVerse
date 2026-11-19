@@ -9768,3 +9768,24 @@ tab bar shows), except for parents (`GUARDIAN`: their tab bar has no "+"). It us
 (it covered the message box), which made "+" → Ask AI do nothing there: `DeferredShell` now always loads it, with
 `button={false}` in Messages. Computers keep the button (and its × to hide it). Checked in a browser: phone /student and
 /student/inbox (no button, "+" → Ask AI opens it), computer (button on the home, none in Messages).
+
+## M340: Messages' quick replies, Notes to self, checklists, quiet-hours sending and quick tools (19 Nov)
+
+The owner, asked which new features Messages should get: "All of them and add more quick tools as well as encrypted
+message system for security of the website" (the encryption is M341).
+
+- **Quick replies** (`ChatHints.tsx`, `src/lib/quick-replies.ts`): up to three chips under the last message someone else
+  sent (TEXT only; not in private, official or self chats), picked by plain rules in the browser (a question first, then
+  thanks, sorry, greetings, plans…); gone once one is sent or the chat moves on.
+- **Notes to self**: a 1:1 conversation with only its owner (`name: 'Notes to self'`, `SELF_TITLE` in `src/lib/chat-self.ts`),
+  made by `POST /api/chat/conversations { self: true }` (found again after); the list marks it `self` and sorts it after
+  pinned chats; the header and list show a bookmark; no call buttons. Until it exists, the list offers it under Status.
+- **Checklists**: message type `CHECKLIST`, metadata `{ title, items: [{ text, done: { by, name, at } | null }] }`
+  (`newChecklist`, `toggleItem`); `POST /api/chat/messages/:id/check { item }` for any member (realtime refresh); the
+  composer's + menu and `/checklist`; the bubble has `role="checkbox"` rows and a `<Fill>` bar.
+- **Quiet hours**: the chat's header answer has `quietUntil` (a 1:1 chat's other person, `quietEnds` in
+  `src/server/quiet-hours.ts`, null when not in quiet hours); the bar's "Send then" makes the next text a scheduled message
+  for that moment (the chat's own send-later). It shows the moment in my time, not theirs.
+- **Quick tools** (`SLASH_COMMANDS`): `/note text` (saved to Notes to self), `/roll [sides]`, `/flip`, `/time`.
+- **For code that builds on it:** a new kind of chat message goes in `TYPES` (messages route), `MessageType` and the
+  previews (`chat-client.ts`, `chat-reminders.ts`), and the bubble.

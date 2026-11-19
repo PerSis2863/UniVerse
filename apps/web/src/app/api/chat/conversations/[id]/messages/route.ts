@@ -15,6 +15,9 @@ import { listScheduled } from '@/server/scheduled-messages';
 import { recordServerError } from '@/server/errors';
 import { chatMuted, featureOff } from '@/server/moderation';
 import { validPayload } from '@/lib/e2e';
+import { newChecklist } from '@/lib/chat-checklist';
+import { SELF_TITLE } from '@/lib/chat-self';
+import { quietEnds } from '@/server/quiet-hours';
 import { effectOf } from '@/lib/message-effects';
 import { travelChatBlocked } from '@/server/travel-board';
 
@@ -23,7 +26,7 @@ const PRIVATE_BODY = '🔒 Private message';
 
 type Ctx = { params: Promise<{ id: string }> };
 const PAGE = 50;
-const TYPES = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'CALL', 'POLL', 'LOCATION', 'CONTACT']);
+const TYPES = new Set(['TEXT', 'IMAGE', 'FILE', 'AUDIO', 'VIDEO', 'CALL', 'POLL', 'CHECKLIST', 'LOCATION', 'CONTACT']);
 const ATTACHMENT_TYPES = new Set(['IMAGE', 'FILE', 'AUDIO', 'VIDEO']);
 const sender = { select: { id: true, name: true, avatar: true } } as const;
 
@@ -189,7 +192,11 @@ async function getThread(req: Request, { params }: Ctx) {
         isGroup: convo.isGroup,
         private: convo.private,
         isOfficial: !convo.isGroup && others.some((p) => p.userId === system.id),
-        title: convo.isGroup ? convo.name || 'Group chat' : others[0]?.user.name || 'Unknown user',
+        // M340: Notes to self (no one else in it), and when a 1:1 chat's other person's quiet hours end (to suggest
+        // sending then; null when they aren't in them).
+        self: !convo.isGroup && !others.length,
+        quietUntil: !convo.isGroup && others.length === 1 && !convo.communityId ? await quietEnds(others[0].userId).catch(() => null) : null,
+        title: convo.isGroup ? convo.name || 'Group chat' : !others.length ? SELF_TITLE : others[0]?.user.name || 'Unknown user',
         avatarUrl: convo.isGroup ? convo.avatarUrl : others[0]?.user.avatar ?? null,
         myRole: me.role,
         disappearingSec: convo.disappearingSec,
@@ -301,6 +308,12 @@ export async function POST(req: Request, { params }: Ctx) {
       if (!question || options.length < 2 || options.length > 12) return NextResponse.json({ error: 'A poll needs a question and 2–12 different options.' }, { status: 400 });
       data.body = question;
       data.metadata = { question, options, multiple: !!b.poll?.multiple };
+    } else if (type === 'CHECKLIST') {
+      // M340: a shared checklist; ticked through POST /api/chat/messages/:id/check.
+      const list = newChecklist(b.checklist);
+      if ('error' in list) return NextResponse.json({ error: list.error }, { status: 400 });
+      data.body = list.title;
+      data.metadata = list;
     } else if (type === 'LOCATION') {
       const lat = Number(b.location?.lat), lng = Number(b.location?.lng);
       if (!Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) return NextResponse.json({ error: 'Invalid location.' }, { status: 400 });

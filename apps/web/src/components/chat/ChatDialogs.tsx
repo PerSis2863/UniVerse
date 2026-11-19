@@ -51,6 +51,47 @@ export function PollDialog({ onClose, onCreate }: { onClose: () => void; onCreat
   );
 }
 
+// ─── Checklist (M340) ─────────────────────────────────────────────────────
+/** A shared checklist: a title and its items (one a line, or one a field); Enter adds the next item. */
+export function ChecklistDialog({ onClose, onCreate }: { onClose: () => void; onCreate: (checklist: { title: string; items: string[] }) => Promise<void> }) {
+  const [title, setTitle] = useState('');
+  const [items, setItems] = useState(['', '']);
+  const [busy, setBusy] = useState(false);
+  const clean = items.map((o) => o.trim()).filter(Boolean);
+  const valid = title.trim() && clean.length > 0;
+  const create = async () => {
+    setBusy(true);
+    try { await onCreate({ title: title.trim(), items: clean }); onClose(); } catch { /* toast shown by caller */ } finally { setBusy(false); }
+  };
+  return (
+    <Sheet title="New checklist" onClose={onClose} footer={
+      <button onClick={create} aria-busy={busy || undefined} disabled={!valid || busy} className="btn-primary w-full">
+        {busy && <Loader2 className="w-4 h-4 animate-spin" />} Send checklist
+      </button>
+    }>
+      <label className="text-xs font-semibold text-zinc-500" htmlFor="checklist-title">Title</label>
+      <input id="checklist-title" autoFocus className={cn('input', 'mt-1.5')} placeholder="Trip prep, group project, shopping…" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} />
+      <p className="block text-xs font-semibold text-zinc-500 mt-4">Items</p>
+      <div className="space-y-2 mt-1.5">
+        {items.map((o, i) => (
+          <div key={i} className="flex gap-2">
+            <input className="input" aria-label={`Item ${i + 1}`} placeholder={`Item ${i + 1}`} maxLength={160} value={o}
+              onChange={(e) => {
+                // A pasted list (one item a line) becomes one item each.
+                const lines = e.target.value.split('\n');
+                setItems(lines.length > 1 ? [...items.slice(0, i), ...lines, ...items.slice(i + 1)].slice(0, 30) : items.map((x, j) => (j === i ? e.target.value : x)));
+              }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (items.length < 30) setItems([...items.slice(0, i + 1), '', ...items.slice(i + 1)]); } }} />
+            {items.length > 1 && <button onClick={() => setItems(items.filter((_, j) => j !== i))} aria-label={`Remove item ${i + 1}`} className="p-2 text-zinc-400 hover:text-rose-500"><Trash2 className="w-4 h-4" /></button>}
+          </div>
+        ))}
+      </div>
+      {items.length < 30 && <button onClick={() => setItems([...items, ''])} className="mt-2 text-sm font-semibold text-indigo-500 inline-flex items-center gap-1"><Plus className="w-4 h-4" /> Add item</button>}
+      <p className="mt-4 text-xs text-zinc-500">Everyone in the chat can tick items; each tick shows who did it.</p>
+    </Sheet>
+  );
+}
+
 // ─── Contact picker ──────────────────────────────────────────────────────
 export function ContactPicker({ onClose, onPick }: { onClose: () => void; onPick: (userId: string) => Promise<void> }) {
   const [q, setQ] = useState('');

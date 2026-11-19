@@ -48,7 +48,7 @@ export function afterSend(
   });
   if (type === 'TEXT' && body.includes('@')) later(() => notifyMentions(conversationId, from, body));
   // Watch words (owner console → Live chats) alert the owner.
-  if ((type === 'TEXT' || type === 'POLL') && body) {
+  if ((type === 'TEXT' || type === 'POLL' || type === 'CHECKLIST') && body) {
     later(async () => {
       const found = await watchWordsIn(body);
       if (found.length) await alertOwner(found, from, conversationId, body);
