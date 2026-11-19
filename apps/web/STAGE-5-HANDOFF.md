@@ -9681,3 +9681,58 @@ which the Worker already kept an hour):
   browser for their panels only; the URLs follow each service's documentation (GIBS: `default` for the newest time).
 - **For code that builds on it:** a new map overlay goes in `addExtraLayers` with `visibility: 'none'` and a key in
   `Extras` / `SHOW`, its credit in the credits line; heights come from `heightsAt`, never a new elevation service.
+
+## M337: smoothness where it wasn't measured, policies for every app, and a security pass (19 Nov)
+
+The owner, in one session: "make the whole app in mobile and website animations ultra smooth", then "also make changes in
+the main menu, privacy policies, or security or anything else which are not updated after a lot of things added", then
+"perform the biggest security deployment".
+
+**Smoothness, measured first.** `scripts/checks/motion-frames.mjs` (new) measures what smooth-frames and main-pages-smooth
+didn't: tapping between pages, the notifications and the menu, on a 390 px phone at 4× slower CPU and on a computer.
+`main-pages-smooth.mjs --phone-only` on every app's home: none drops a frame while still or scrolling. The landing did:
+its slow phone scroll frames were the Earth's WebGL frames read back for the page (`GLES2::ReadPixels` on its worker),
+taking the graphics chip from the scroll. **`EarthGlobe` now rests while `html[data-scrolling]`** (as every decorative
+loop, M97): 6–9 slow frames, worst 233–383 ms → none, worst 33 ms. A tap's own work is ~12 ms at 4×; the rest of a page
+change is React drawing the new page and its first layout (Next's scroll check forces it in `dontForceLayout`), with the
+entrance on the compositor meanwhile. Left: `content-visibility` for long pages (would skip offscreen layout, but
+moves scroll heights as cards are met; not worth it yet). The container's software WebGL inflates map and Earth frames.
+
+**Policies and pages that had fallen behind** (legal text was from 29 Sep–5 Oct, before Trace, Relief, Green, Travel,
+Games, Green Business and connections): `legal/privacy.md` (2.8 Data in UniVerse's apps, connected accounts, voice typing,
+PostHog after "Accept all" (it still said no consent banner was needed), map and place services the browser contacts,
+partners, brands' and organisations' views, retention rows), `legal/terms.md` (the apps, ages, acceptable use per app,
+paid plans and partner bookings, 9A: Relief isn't an emergency service, Trace verdicts are indications, Green figures are
+estimates and Business reports drafts, Travel information can be out of date). **PDFs:** `node scripts/legal-pdf.mjs`
+makes both from the Markdown (the old ones were from 29 Sep). `TERMS_VERSION` was **not** bumped: asking everyone to
+accept again is the owner's call. Security, All policies (providers, retention) and Your Privacy Choices updated. The
+footer's apps come from `APPS` (Play was listed, Travel missing), each `data-uv-app` so the owner's shown-apps rule hides
+them; the legal row links Security and All policies.
+
+**Promises the code didn't keep:** account erasure (`eraseAccount`) didn't touch the newer apps: it now deletes connected
+accounts' keys, Relief watches, posts, check-ins and plans, Green actions and goals, game scores, Travel saved places,
+documents, journal, check-ins, board posts and blocks, solo trips (a trip friends joined stays), Trace ownership, and
+unlinks Trace scans (~45 queries; a test keeps it ≤ 45). "Download my data" no longer includes connected accounts'
+sealed keys (`SKIP_MODEL_FIELDS`). The CSP lacked M336's hosts (`gibs.earthdata.nasa.gov`, `tile.waymarkedtrails.org`,
+`valhalla1.openstreetmap.de`): rain, clouds, trails and walking rings would have been blocked on the live site.
+
+**Security pass.** Checked and sound: demo tokens only with `DEMO_LOGIN_ENABLED`, no secret fallbacks (SESSION_SECRET,
+secret-box), Stripe, Razorpay and Twilio signatures, cron tokens, sign-in redirects, every `dangerouslySetInnerHTML`
+escaped, uploaded files sandboxed, message listeners check their sender, admins' two-step, no whole-request writes,
+`pnpm audit` clean, the security headers. Fixed: link previews followed redirects unchecked (now by hand, each hop
+checked; more private ranges, ports, credentials: `privateHost`, test); typed codes (Relief organisation 6 characters,
+trips, Green teams, Trace transfers, invites and prizes, a child's account, classes, communities) now `CODE_STEP` in
+`cloudflare/worker.ts`, 10 a minute on the sign-in limiter; Travel's booking reading and both bill readers in `COSTLY`;
+a shopper's scan position kept to 0.01° (`roughPosition`; copy checks work at 150 km); download names encoded
+(`filename*`, a non-Latin name broke the header); `poweredByHeader: false`. The landing's faded feed rows were below
+4.5:1 (axe): they fade less. Left: `script-src 'unsafe-inline'` (Next's own inline scripts change per page; nonces would
+end the cached pages, M120).
+
+**For code that builds on it:** a new outside host goes in `security-headers.ts` with the feature; a new table holding a
+person's places, notes or keys goes in `eraseAccount`; a route that redeems a typed code goes in `CODE_STEP`, an AI or
+sending route in `COSTLY`; a fetch of a person's link uses `privateHost` and manual redirects; after editing
+`legal/*.md`, run `node scripts/legal-pdf.mjs`.
+
+**[owner]:** check in Cloudflare (universe-web → Settings → Variables) that `DEMO_LOGIN_ENABLED` is not `true` on the
+live site and that `SESSION_SECRET` is set (32+ characters); turn on Bot Fight Mode; decide whether to ask everyone to
+accept the new Terms (bump `TERMS_VERSION`); have a lawyer read the new policy sections before relying on them.
