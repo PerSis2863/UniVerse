@@ -9737,3 +9737,24 @@ sending route in `COSTLY`; a fetch of a person's link uses `privateHost` and man
 **[owner]:** check in Cloudflare (universe-web → Settings → Variables) that `DEMO_LOGIN_ENABLED` is not `true` on the
 live site and that `SESSION_SECRET` is set (32+ characters); turn on Bot Fight Mode; decide whether to ask everyone to
 accept the new Terms (bump `TERMS_VERSION`); have a lawyer read the new policy sections before relying on them.
+
+## M338: a check for errors and bugs, and the iPhone feel (19 Nov)
+
+The owner: "make sure everything looks really smooth and design like apple ios and check if any error or bugs are there".
+
+- **The live error log** (production `error_reports`, read-only): the open "undefined" on /travel (iPhone Safari, 5 times,
+  2 people) is a picture's failed `error` event, already ignored by `installErrorMonitor`; the rest are diagnosed, old or
+  bots. The owner can mark them resolved.
+- **Crawls of the built site** (`scripts/crawl.mjs`, 213 pages, each role): `--phone --layout`, then `--dark --axe` on a
+  computer. **A local database behind the code fails nearly every page** ("no such column totpOn"): run
+  `npx wrangler d1 migrations apply universe-db --local` before crawling. After that, left are only what this container
+  can't reach (Wikimedia, reCAPTCHA), 503s that need SESSION_SECRET (calendar links), and 403s by design (the demo admin is
+  read-only; Trace's brand pages invite a non-brand to start one). The layout check's "overlaps" on the Knowledge hub and
+  My courses are a button placed on a card on purpose (a folder's "+", a course's colour).
+- **Fixed:** the parent's week (M300, `GET /api/core/parent-week`) answered 403 to every parent: the parent-only gate
+  (`GUARDIAN_ALLOWED`, `src/server/auth.ts`) didn't list it. Added (the route itself checks the child is linked); test in
+  `guardian-accounts.test.ts`. **For code that builds on it:** a new route for parents goes under `/api/parent/…` or into
+  `GUARDIAN_ALLOWED` with a test line.
+- **The iPhone feel**, checked and already in place: no tap flash, no zoom into fields (16 px), safe areas, no selection on
+  long-press, swipe down to close sheets (`SheetGestures`), swipe back, the pill tab bar, segmented tabs, Settings as
+  grouped rows with coloured icons. No new look (the launch focus).
