@@ -9725,7 +9725,8 @@ trips, Green teams, Trace transfers, invites and prizes, a child's account, clas
 `cloudflare/worker.ts`, 10 a minute on the sign-in limiter; Travel's booking reading and both bill readers in `COSTLY`;
 a shopper's scan position kept to 0.01° (`roughPosition`; copy checks work at 150 km); download names encoded
 (`filename*`, a non-Latin name broke the header); `poweredByHeader: false`. The landing's faded feed rows were below
-4.5:1 (axe): they fade less. Left: `script-src 'unsafe-inline'` (Next's own inline scripts change per page; nonces would
+4.5:1 (axe): they fade less; its "One planet" app cards showed their names white on white in light mode (the
+`.flip-light` swap): they keep their greys (`flip-keep`). Left: `script-src 'unsafe-inline'` (Next's own inline scripts change per page; nonces would
 end the cached pages, M120).
 
 **For code that builds on it:** a new outside host goes in `security-headers.ts` with the feature; a new table holding a
