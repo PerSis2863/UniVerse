@@ -194,3 +194,26 @@ export function footprint(madeKg: number | null, trip: { km: number; kg: number 
 /** A car's CO₂ a km (the Green app's figure for a km cycled instead of driven). */
 const CAR_KG_PER_KM = GREEN_FACTORS.CYCLE.kg;
 export type Footprint = NonNullable<ReturnType<typeof footprint>>;
+
+// ——— Ways to ship (M359) ———
+export type ShipMode = 'road' | 'rail' | 'sea' | 'air';
+export interface ShipWay { mode: ShipMode; days: number; kg: number; cost: 1 | 2 | 3 | 4; fastest: boolean; greenest: boolean; cheapest: boolean }
+/** kg CO₂ per tonne-km (road and sea as in `journeyCarbon`; rail and air from the UK government's 2024 freight factors,
+ *  rounded), how much longer than the straight line the way runs, door-to-door days (loading, customs and the last
+ *  stretch by road included) and the usual price level per tonne-km, cheapest 1 to dearest 4. */
+const SHIP: Record<ShipMode, { f: number; wind: number; days: (km: number) => number; cost: 1 | 2 | 3 | 4 }> = {
+  road: { f: 0.12, wind: 1.25, days: (km) => 1 + km / 700, cost: 3 },
+  rail: { f: 0.03, wind: 1.2, days: (km) => 2 + km / 500, cost: 2 },
+  sea: { f: 0.02, wind: 1.4, days: (km) => 7 + km / 650, cost: 1 },
+  air: { f: 0.6, wind: 1.05, days: (km) => 2 + km / 9000, cost: 4 },
+};
+/** Every sensible way to ship `weightKg` over `km` (straight line), quickest first: road and rail up to 6,000 km (a
+ *  continent), sea from 500 km (if both ends reach a port), air from 300 km. Estimates: a carrier quotes the real ones. */
+export function shipWays(km: number, weightKg: number): ShipWay[] {
+  const t = Math.max(0, weightKg) / 1000;
+  const ways = (Object.keys(SHIP) as ShipMode[]).filter((m) => (m === 'road' || m === 'rail' ? km <= 6000 && (m === 'road' || km >= 150) : m === 'sea' ? km >= 500 : km >= 300) && km > 0)
+    .map((m) => ({ mode: m, days: Math.max(1, Math.round(SHIP[m].days(km * SHIP[m].wind) * 2) / 2), kg: Math.round(km * SHIP[m].wind * t * SHIP[m].f * 10) / 10, cost: SHIP[m].cost }));
+  const quick = Math.min(...ways.map((w) => w.days)), clean = Math.min(...ways.map((w) => w.kg)), cheap = Math.min(...ways.map((w) => w.cost));
+  const many = ways.length > 1;
+  return ways.map((w) => ({ ...w, fastest: many && w.days === quick, greenest: many && w.kg === clean, cheapest: many && w.cost === cheap })).sort((a, b) => a.days - b.days || a.kg - b.kg);
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { CODE_LEN, MAX_BATCH, cleanCode, decodeSerial, encodeSerial, forecast, formatCode, isDiverted, journeyCarbon, splitCode, tierFor, toBase32, trustScore, verdictFor, footprint } from './trace';
+import { CODE_LEN, MAX_BATCH, cleanCode, decodeSerial, encodeSerial, forecast, formatCode, isDiverted, journeyCarbon, shipWays, splitCode, tierFor, toBase32, trustScore, verdictFor, footprint } from './trace';
 
 describe('trace codes', () => {
   it('round-trips serial numbers', () => {
@@ -117,5 +117,19 @@ describe('footprint (M144)', () => {
     expect(footprint(1.4, { km: 0, kg: 0 }, [1, 2])?.vsTypical).toBeNull();
     expect(footprint(null, { km: 500, kg: 0.06 }, [1, 2, 3])).toMatchObject({ madeKg: 0, typicalKg: null, vsTypical: null });
     expect(footprint(null, { km: 0, kg: 0 }, [1, 2, 3])).toBeNull();
+  });
+});
+
+describe('ways to ship (M359)', () => {
+  it('compares road, rail, sea and air by time, CO2 and cost', () => {
+    const w = shipWays(1500, 2000); // two tonnes, Valencia to Hamburg-ish
+    expect(w.map((x) => x.mode)).toEqual(['air', 'road', 'rail', 'sea']);
+    expect(w.find((x) => x.fastest)?.mode).toBe('air');
+    expect(w.find((x) => x.greenest)?.mode).toBe('sea');
+    expect(w.find((x) => x.cheapest)?.mode).toBe('sea');
+    expect(w.find((x) => x.mode === 'road')!.kg).toBe(450); // 1500 × 1.25 × 2 t × 0.12
+    expect(shipWays(9000, 100).map((x) => x.mode)).toEqual(['air', 'sea']); // across an ocean
+    expect(shipWays(80, 100).map((x) => x.mode)).toEqual(['road']);
+    expect(shipWays(80, 100)[0].fastest).toBe(false); // nothing to compare with
   });
 });

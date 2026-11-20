@@ -156,7 +156,7 @@ export async function tracking(u: SessionUser) {
   const brand = await brandOf(u);
   const batches = await prisma.traceBatch.findMany({
     where: { brandId: brand.id }, orderBy: { createdAt: 'desc' }, take: 60,
-    select: { id: true, label: true, status: true, quantity: true, destPlace: true, destLat: true, destLng: true, carrierKey: true, createdAt: true, product: { select: { id: true, name: true, sample: true, maxTempC: true } }, events: { orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, lat: true, lng: true, createdAt: true } } },
+    select: { id: true, label: true, status: true, quantity: true, destPlace: true, destLat: true, destLng: true, carrierKey: true, createdAt: true, product: { select: { id: true, name: true, sample: true, maxTempC: true, weightKg: true } }, events: { orderBy: { createdAt: 'asc' }, select: { stage: true, place: true, lat: true, lng: true, createdAt: true } } },
   });
   const moving = batches.filter((b) => b.status === 'IN_TRANSIT').map((b) => b.id);
   const pings = moving.length ? await prisma.tracePing.findMany({ where: { batchId: { in: moving }, createdAt: { gt: new Date(Date.now() - STALE_MS) } }, orderBy: { createdAt: 'asc' }, take: 3000 }) : [];
@@ -189,6 +189,7 @@ export async function tracking(u: SessionUser) {
       const left = here && dest ? distanceM(here, dest) : null;
       return {
         id: b.id, label: b.label, status: b.status, quantity: b.quantity, product: b.product.name, productId: b.product.id, sample: b.product.sample, simulated,
+        weightKg: Math.round(b.product.weightKg * b.quantity * 10) / 10, // M359: for Ways to ship
         stops, dest, trail, position: here ? { lat: here.lat, lng: here.lng } : null,
         heading: trail.length >= 2 ? bearing(trail[trail.length - 2], trail[trail.length - 1]) : null,
         speedKmh: last?.speed ?? null, lastPingAt: last?.at ?? null, carrierPath: b.carrierKey ? `/carry/${b.carrierKey}` : null,
