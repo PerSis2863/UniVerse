@@ -30,6 +30,7 @@ import { Journey } from '@/components/live/Journey';
 import { duration } from '@/lib/map-tools';
 import { reach, reachLink } from '@/lib/relief-route';
 import { ReachWays } from '@/components/map-ui/ReachWays';
+import { NeedsByKind } from './NeedsByKind';
 import { useActivePoll } from '@/lib/realtime-client';
 import { Fill } from '@/components/ui/Fill';
 import { Callout, CountChips, InkPill, MapButtons, placeCallout, ProposalSheet, QueueCard, StatCard, StatStrip, TickStrip, undoToast } from '@/components/map-ui/Command';
@@ -437,6 +438,9 @@ export function ReliefApp() {
             } catch (e) { toast.error(errorMessage(e, 'Could not do that.')); return false; }
           }} />
       )}
+
+      {/* M371: what's needed most, in place of the old "Help, moving" box (M366) */}
+      <NeedsByKind posts={all} icons={KIND_ICON} chosen={kinds} onPick={(k) => { setKinds((v) => { const n = new Set(v); if (n.has(k)) n.delete(k); else n.add(k); return n; }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
 
       {/* M148: shelters, food banks and groups that said how they are */}
       <PlacesBoard here={here} onShow={(p) => { map.current?.flyTo([p.lng - 0.06, p.lat - 0.04, p.lng + 0.06, p.lat + 0.04], { maxZoom: 150 }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />

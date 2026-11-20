@@ -10266,3 +10266,12 @@ other up there where message and collaborate are so it stay together and make li
   installed app and the side menu keep it. TopNav reads `useSearchParams`, so it sits in a `Suspense` in DashboardShell
   (it never renders on the server: `useTopNav` is false there).
 - Checked at 1440 (each app: the bar's sections, the right one marked, no page row) and 390 (the row stays): axe clean.
+
+## M371 (20 Nov): Relief's "What's needed most" in place of the "Help, moving" box
+
+The owner, 20 Nov (a picture of the old LiveCard on the live site, where M366 isn't merged yet): "remove this and add
+something professinonal and it should be ultra smooth". The map's own cards already carry the totals (open, being
+helped, urgent, helped in 30 days), so the space now holds `NeedsByKind.tsx`: open needs by kind, most first, each with
+its count, people waiting, urgent count and a bar (`Fill`: slides on the graphics chip; orange when any are urgent); a
+press toggles that kind's filter on the map and scrolls up to it. Plain card (`CardHead`), no canvas, no loops.
+Checked at 1280 and 390, light and dark: axe clean, nothing sideways.
