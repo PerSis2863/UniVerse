@@ -12,7 +12,8 @@ import type { QuickMode } from '@/lib/transit-options';
 const ICON: Record<QuickMode, typeof Car> = { foot: Footprints, bike: Bike, transit: TrainFront, car: Car };
 const chip = 'inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold tabular-nums';
 
-export function ReachWays({ from, to, hot = 'bg-orange-700 hover:bg-orange-800', label = 'Getting there', note }: { from: Pt; to: Pt; hot?: string; label?: string; note?: React.ReactNode }) {
+/** `linkFor`: where a chip goes (Relief's places search by name and town: their saved spot is rounded about 500 m). */
+export function ReachWays({ from, to, hot = 'bg-orange-700 hover:bg-orange-800', label = 'Getting there', note, linkFor }: { from: Pt; to: Pt; hot?: string; label?: string; note?: React.ReactNode; linkFor?: (mode: QuickMode) => string }) {
   const { ways, best } = reach(from, to);
   if (!ways.length) return null;
   return (
@@ -23,7 +24,7 @@ export function ReachWays({ from, to, hot = 'bg-orange-700 hover:bg-orange-800',
           const I = ICON[w.mode], top = w === best;
           return (
             <li key={w.mode}>
-              <a href={reachLink(from, to, w.mode)} target="_blank" rel="noopener noreferrer" aria-label={`${duration(w.minutes)} ${w.words}: directions in Google Maps`}
+              <a href={linkFor ? linkFor(w.mode) : reachLink(from, to, w.mode)} target="_blank" rel="noopener noreferrer" aria-label={`${duration(w.minutes)} ${w.words}: directions in Google Maps`}
                 className={top ? `${chip} ${hot} text-white` : `${chip} bg-zinc-100 text-zinc-800 hover:bg-zinc-200 dark:bg-white/[0.07] dark:text-zinc-100 dark:hover:bg-white/[0.11]`}>
                 <I className="h-3.5 w-3.5" aria-hidden />{w.mode === 'transit' ? '~' : ''}{duration(w.minutes)}
               </a>

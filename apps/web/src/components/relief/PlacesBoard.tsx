@@ -1,6 +1,6 @@
 'use client';
 
-import { walkMinutes } from '@/lib/relief-plus';
+import { ReachWays } from '@/components/map-ui/ReachWays';
 import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
@@ -60,7 +60,7 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-[14px] text-zinc-900 dark:text-white truncate" translate="no">{p.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km${km(here, p) < 6 ? ` · ${walkMinutes(km(here, p))} min on foot` : ''}` : null].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km` : null].filter(Boolean).join(' · ')}</p>
                   </div>
                   {p.openNow !== null && <StatusBadge tone={p.openNow ? 'green' : 'red'}>{p.openNow ? 'Open' : 'Closed'}</StatusBadge>}
                 </div>
@@ -76,6 +76,8 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                   ))}
                 </div>
                 {p.statusNote && <p className="text-[13px] text-zinc-600 dark:text-zinc-300" translate="no">{p.statusNote}</p>}
+                {/* M364: every way there from where you are, each opening directions to the place by its name and town. */}
+                {here && <ReachWays from={here} to={p} linkFor={(mode) => `https://www.google.com/maps/dir/?api=1&origin=${here.lat.toFixed(4)},${here.lng.toFixed(4)}&destination=${encodeURIComponent([p.name, p.place].filter(Boolean).join(', '))}&travelmode=${mode === 'car' ? 'driving' : mode === 'bike' ? 'bicycling' : mode === 'transit' ? 'transit' : 'walking'}`} />}
                 <div className="mt-auto flex items-center gap-2 pt-1">
                   <span className="text-xs text-zinc-500 dark:text-zinc-400 me-auto">{fresh === 'old' ? 'Not updated today' : `Updated ${formatDistanceToNow(new Date(p.statusAt), { addSuffix: true })}`}</span>
                   {onShow && <button type="button" onClick={() => onShow(p)} className="btn-ghost btn-sm"><MapPin className="w-3.5 h-3.5" aria-hidden />On the map</button>}

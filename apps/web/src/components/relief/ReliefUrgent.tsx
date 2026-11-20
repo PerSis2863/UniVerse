@@ -10,6 +10,8 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { useNow } from '@/lib/use-now';
 import { RELIEF_KIND_LABEL, URGENCY_COLOR, URGENCY_LABEL } from '@/lib/relief';
 import { distanceKm, matches, triage, walkMinutes } from '@/lib/relief-plus';
+import { reach } from '@/lib/relief-route';
+import { duration } from '@/lib/map-tools';
 import { cn } from '@/lib/utils';
 import { KIND_ICON, PostActions, type ReliefPost } from './ReliefApp';
 
@@ -60,7 +62,7 @@ export function ReliefUrgent() {
                   <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-white" style={{ background: URGENCY_COLOR[p.urgency] }} aria-hidden><Icon className="h-5 w-5" /></span>
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{p.title}</p>
-                    <p className="text-xs text-zinc-600 dark:text-zinc-300">{[RELIEF_KIND_LABEL[p.kind], URGENCY_LABEL[p.urgency], now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : null, here ? `${dist(distanceKm(here, p))} away` : p.place].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-zinc-600 dark:text-zinc-300">{[RELIEF_KIND_LABEL[p.kind], URGENCY_LABEL[p.urgency], now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : null, here ? `${dist(distanceKm(here, p))} away${reach(here, p).best ? ` · ${duration(reach(here, p).best!.minutes)} ${reach(here, p).best!.words}` : ''}` : p.place].filter(Boolean).join(' · ')}</p>
                     {why.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1">{why.map((w) => <span key={w} className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-semibold text-red-700 dark:text-red-300">{w}</span>)}</div>}
                   </div>
                   <div className="w-full sm:w-auto"><PostActions p={p} onChange={() => void mutate()} small /></div>
