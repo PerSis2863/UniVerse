@@ -10205,3 +10205,25 @@ Trace and the console use them.)
 - Found while checking: the motion layer revealed a block only once 12% of it was on screen, so a very tall card (Places
   to go with many places) stayed a blank gap at the bottom of a phone. `scroll-motion.ts` now plays a block once 12% **or
   100 px** of it shows (thresholds 0–0.12).
+
+## M367 (20 Nov): prices in detail, and ways to pay less (students, under-26s, 60+, children, families, disabled)
+
+The owner, 20 Nov: "add more features related to prices where it should show details… if you are student you get a
+discount or an old age so you get discount if it exist in real life and also do this things in other sectors like food
+or visit or shopping".
+- `src/lib/travel-discounts.ts` (tested): ~35 real, long-running schemes by country (or everywhere), kind (getting
+  around, sights, food, shopping) and who qualifies (student, under 26, 60 or over, with children, family or group,
+  disabled, everyone): Railcards, SNCF Avantage, BahnCard, Tarjeta Dorada, Swiss Half Fare, Interrail, Amtrak, JR and
+  Indian Railways children, ISIC; France's and Italy's museums for the young, free British and Smithsonian museums, the
+  Prado, US park passes, city passes; CROUS and Mensa, set lunches, student apps, kids-eat-free; EU tax-free shopping,
+  none in Great Britain, US sales tax at the till, student tech prices. Worded as usually offered (amounts change),
+  each with its official page where there is one; the screens say to check it and carry ID. **Add only schemes you're
+  sure exist**, with the official link.
+- `PayLess.tsx`: "I am…" chips (kept on the device, `uv-discount-who`, read with `useSyncExternalStore`), the kinds as a
+  segmented control, cards with who each is for. On a guide's **Know before you go** (its country) and a trip's **Plan**
+  under the budget (its countries, `compact`: five, then "Show all").
+- A trip's ways between cities: **Price details** under them: each way for everyone and each, a car per four people,
+  how it's estimated, and the getting-around discounts of the two countries.
+- Travel map: a place's card shows **Pay less** (up to two schemes for its kind in its country: sights, food, shopping).
+- Checked at 390 and 1280, light and dark on a trip (Paris → Lyon → Barcelona): axe clean. The guide's tab and the map
+  card need lookups this container can't reach (Wikivoyage, the place lookup): not seen in a browser.

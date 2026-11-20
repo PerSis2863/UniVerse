@@ -15,6 +15,7 @@ import type { Photo, PlaceInfo, Story } from '@/lib/travel-place';
 import { cn } from '@/lib/utils';
 import { duration, type Spot } from '@/lib/map-tools';
 import { quickWays, type QuickMode } from '@/lib/transit-options';
+import { discountsFor, type Sector } from '@/lib/travel-discounts';
 import { Reviews } from './Reviews';
 import { TripPicker } from './TripPicker';
 
@@ -130,6 +131,7 @@ function PlaceBody({ p, at, from, onDirections, onFlyover }: { p: Extract<Picked
             <p className="text-xs text-zinc-700 dark:text-zinc-200">{[info.access.toilet !== null && (info.access.toilet ? 'Accessible toilet' : 'No accessible toilet'), info.access.lift !== null && (info.access.lift ? 'Lift' : 'No lift'), info.access.hearingLoop !== null && (info.access.hearingLoop ? 'Hearing loop' : 'No hearing loop')].filter(Boolean).join(' · ')}{info.access.description ? <> · <span translate="no">{info.access.description}</span></> : null}<span className="text-zinc-500"> (OpenStreetMap)</span></p>
           )}
           {info.address && <p className="flex items-start gap-1.5 text-sm text-zinc-600 dark:text-zinc-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{info.address}</p>}
+          <PlaceDeals cc={info.cc} kind={listingKind(p.cls)} />
         </>
       )}
       <div className="flex flex-wrap gap-1.5">
@@ -144,6 +146,22 @@ function PlaceBody({ p, at, from, onDirections, onFlyover }: { p: Extract<Picked
       </div>
       <Reviews place={p.review ?? info?.key ?? p.key ?? `wp:${name}`} name={name} lat={p.lat} lon={p.lon} />
     </>
+  );
+}
+
+/** M367: ways to pay less at this kind of place in its country (a museum's reduced tickets, the set lunch, tax-free
+ *  shopping), at most two, from src/lib/travel-discounts.ts. */
+function PlaceDeals({ cc, kind }: { cc: string | null; kind: string }) {
+  const sector: Sector | null = kind === 'see' ? 'sights' : kind === 'eat' || kind === 'drink' ? 'food' : kind === 'buy' ? 'shopping' : null;
+  const deals = sector && cc ? discountsFor([cc], [], sector).filter((d) => !d.where.includes('*') || d.id === 'sights-id').slice(0, 2) : [];
+  if (!deals.length) return null;
+  return (
+    <div className="rounded-xl bg-indigo-500/[0.07] p-3">
+      <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">Pay less</p>
+      <ul className="mt-1 space-y-1.5">
+        {deals.map((d) => <li key={d.id} className="text-sm leading-snug text-zinc-700 dark:text-zinc-200"><span className="font-semibold text-zinc-900 dark:text-white">{d.title}</span>: {d.text}{d.url && <> <a href={d.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-300">Official page</a></>}</li>)}
+      </ul>
+    </div>
   );
 }
 

@@ -6,6 +6,7 @@ import { duration } from '@/lib/map-tools';
 import { betweenLinks, ferryLikely } from '@/lib/travel-book';
 import type { FootLeg } from '@/lib/travel-footprint';
 import { cn } from '@/lib/utils';
+import { discountsFor } from '@/lib/travel-discounts';
 
 // M357 (the owner, 20 Nov: "all of them and add more options like this in the system"): Directions' compare-the-ways
 // (M356) inside a trip. Between two cities every way that works there (train, coach, flight, drive, ferry), quickest
@@ -24,7 +25,8 @@ const fits = (partner: string, mode: TravelMode) =>
   partner === 'Rome2Rio' || (partner === 'Google Maps' ? mode !== 'plane' && mode !== 'car' : partner === 'Google Flights' ? mode === 'plane' : partner === 'Direct Ferries' ? mode === 'ferry' : mode === 'train' || mode === 'bus');
 
 /** M365: `price` is what a way costs for everyone travelling, as the trip's currency (rough: booked ahead). */
-export function TripLeg({ leg, from, to, date, onPick, price }: { leg: FootLeg; from: { name: string; cc: string | null }; to: { name: string; cc: string | null }; date: string | null; onPick: (mode: TravelMode) => void; price?: (mode: TravelMode) => { text: string; value: number } }) {
+export function TripLeg({ leg, from, to, date, onPick, price, travellers = 1 }: { leg: FootLeg; from: { name: string; cc: string | null }; to: { name: string; cc: string | null }; date: string | null; onPick: (mode: TravelMode) => void; price?: (mode: TravelMode) => { text: string; value: number; each: string }; travellers?: number }) {
+  const deals = discountsFor([from.cc, to.cc], [], 'transport').filter((d) => d.id !== 'book-ahead');
   const prices = price ? new Map(leg.ways.map((w) => [w.mode, price(w.mode)])) : null;
   const cheapest = prices && leg.ways.length > 1 ? leg.ways.reduce((a, w) => (prices.get(w.mode)!.value < prices.get(a.mode)!.value ? w : a)).mode : null;
   const links = betweenLinks(from, to, { date, flight: leg.modes.includes('plane'), sea: ferryLikely(from.cc, to.cc) }).filter((l) => fits(l.partner, leg.mode));
@@ -57,6 +59,24 @@ export function TripLeg({ leg, from, to, date, onPick, price }: { leg: FootLeg; 
         })}
       </div>
       {leg.mode !== leg.best && leg.kg - leg.bestKg > 0.5 && <p className="mt-1.5 text-xs text-emerald-800 dark:text-emerald-300">By {TRAVEL_FACTORS[leg.best].label.toLowerCase()}: {kgText(leg.kg - leg.bestKg)} less CO₂.</p>}
+      {/* M367: how the prices are worked out, and the discounts on this route (src/lib/travel-discounts.ts). */}
+      {prices && (
+        <details className="group mt-2 rounded-xl bg-zinc-50 px-3 py-2 text-xs text-zinc-700 dark:bg-white/[0.04] dark:text-zinc-200">
+          <summary className="cursor-pointer font-semibold text-indigo-700 dark:text-indigo-300">Price details{deals.length ? ` and ${deals.length} ${deals.length === 1 ? 'discount' : 'discounts'}` : ''}</summary>
+          <ul className="mt-2 space-y-1">
+            {leg.ways.map((w) => {
+              const p = prices.get(w.mode)!, each = travellers > 1 && w.mode !== 'car' ? ` · about ${p.each} each` : '';
+              return <li key={w.mode} className="tabular-nums"><span className="font-semibold">{NAME[w.mode]}</span>: ≈ {p.text}{w.mode === 'car' ? ` (fuel and tolls, ${travellers > 4 ? `${Math.ceil(travellers / 4)} cars` : 'one car'})` : ` for ${travellers === 1 ? 'one traveller' : `${travellers} travellers`}${each}`}</li>;
+            })}
+          </ul>
+          <p className="mt-2 leading-relaxed text-zinc-600 dark:text-zinc-300">Rough averages for tickets booked a few weeks ahead, from the distance and how dear the two countries are. On the day, trains and flights often cost more; coaches stay cheap. The links below show today’s real fares.</p>
+          {!!deals.length && (
+            <ul className="mt-2 space-y-1.5 border-t border-zinc-200/70 pt-2 dark:border-white/10">
+              {deals.map((d) => <li key={d.id}><span className="font-semibold">{d.title}</span>: {d.text}{d.url && <> <a href={d.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-300">Official page</a></>}</li>)}
+            </ul>
+          )}
+        </details>
+      )}
       {!!links.length && <div className="mt-2 flex flex-wrap gap-1.5">
         {links.map((w) => (
           <a key={w.partner} href={w.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title={`Opens ${w.partner}`}>{w.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {w.partner}</span><ExternalLink className="h-3 w-3 text-zinc-400" aria-hidden /></a>
