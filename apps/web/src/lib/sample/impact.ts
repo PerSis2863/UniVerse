@@ -516,7 +516,7 @@ export function sampleTraceTracking() {
     const prev = trail[trail.length - 2];
     const kmLeft = dest ? Math.round(Math.hypot((dest.lat - here.lat) * 111, (dest.lng - here.lng) * 111 * Math.cos((here.lat * Math.PI) / 180)) * 10) / 10 : null;
     return {
-      id: b.id, label: b.label, status: b.status, quantity: b.quantity, product: p.name, productId: p.id, sample: true, simulated: !!dest,
+      id: b.id, label: b.label, status: b.status, quantity: b.quantity, product: p.name, productId: p.id, sample: true, simulated: !!dest, weightKg: b.quantity * 0.6,
       stops, dest, trail, position: { lat: here.lat, lng: here.lng },
       heading: prev && last ? (Math.atan2(last.lng - prev.lng, last.lat - prev.lat) * 180) / Math.PI : null,
       speedKmh: last?.speed ?? null, lastPingAt: last?.at ?? null, carrierPath: dest ? '/carry/SAMPLE' : null,

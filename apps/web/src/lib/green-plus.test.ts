@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { FOOTPRINT_DEFAULT, equivalents, footprint, journey, logFor, longestStreak, readFootprint, yearGrid } from './green-plus';
+import { FOOTPRINT_DEFAULT, bestBalance, equivalents, footprint, journey, wayMinutes, logFor, longestStreak, readFootprint, yearGrid } from './green-plus';
 
 // M216: Green's calculators add up and stay within sensible bounds.
 describe('footprint', () => {
@@ -39,5 +39,16 @@ describe('a year', () => {
     expect(g[0].length).toBe(7);
     expect(longestStreak(['2026-01-01', '2026-01-02', '2026-01-02', '2026-01-03', '2026-02-01'])).toBe(3);
     expect(equivalents(22)[0]).toMatchObject({ id: 'trees', value: 1 });
+  });
+});
+
+describe('a journey’s time (M358)', () => {
+  it('times each way and picks the sensible one', () => {
+    expect(wayMinutes('train', 460)).toBeLessThan(wayMinutes('plane', 460));
+    expect(wayMinutes('plane', 2000)).toBeLessThan(wayMinutes('train', 2000));
+    expect(journey(5).some((w) => w.id === 'plane')).toBe(false);
+    expect(journey(300).some((w) => w.id === 'bus')).toBe(false);
+    expect(bestBalance(journey(460))).toBe('train'); // the coach is cleaner but far slower
+    expect(bestBalance(journey(4))).toBe('bike');
   });
 });

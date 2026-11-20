@@ -16,6 +16,7 @@ import { STAGES, STAGE_LABEL, STAGE_SHORT, type Stage } from '@/lib/trace';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
+import { ShipWays } from './ShipWays';
 import { toBase } from './engine';
 import { Callout, CountChips, InkPill, MapButtons, placeCallout, QueueCard, RoutePill, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { drawIcons, IconSource, route, tag, unit, zone, type Icons } from '@/components/map-ui/marks';
@@ -39,7 +40,7 @@ interface Ship {
   stops: Stop[]; dest: { lat: number; lng: number; place: string | null } | null;
   trail: { lat: number; lng: number; at: string; speed: number | null }[];
   position: { lat: number; lng: number } | null; heading: number | null; speedKmh: number | null; lastPingAt: string | null;
-  carrierPath: string | null; kmLeft: number | null; etaMinutes: number | null;
+  carrierPath: string | null; kmLeft: number | null; etaMinutes: number | null; weightKg?: number;
   tempC?: number | null; maxTempC?: number | null; breaches?: number; tempAt?: string | null; sensor?: string | null; temps?: number[];
 }
 
@@ -542,6 +543,7 @@ function ShipCard({ s, index, open, onOpen, onFind, onPick, onChange, onHover }:
                   </li>
                 )}
               </ol>
+              {s.status !== 'DELIVERED' && s.stops[0] && s.dest && <ShipWays from={s.stops[0]} to={s.dest} weightKg={s.weightKg ?? s.quantity} />}
 
               <div className="mt-4 flex flex-wrap gap-2">
                 {s.position && s.status === 'IN_TRANSIT' && <button type="button" onClick={onFind} className="btn-secondary btn-sm"><Crosshair className="w-3.5 h-3.5" />Find it</button>}

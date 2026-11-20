@@ -431,6 +431,14 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   // The kind of place chosen.
   // M237: the directions and the measurement on the map; a new route framed (clear of the panel on a computer).
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-route', routeFeatures(dir, routes)); }, [dir, routes, ready]);
+  // M356: public transport has no route of ours (only its options): the map frames both ends instead.
+  const transitEnds = dir?.mode === 'transit' && dir.from && dir.to ? [dir.from.lon, dir.from.lat, dir.to.lon, dir.to.lat].map((n) => n.toFixed(5)).join(',') : '';
+  useEffect(() => {
+    const m = mapRef.current;
+    if (!m || !ready || !transitEnds) return;
+    const [x1, y1, x2, y2] = transitEnds.split(',').map(Number);
+    m.fitBounds([[Math.min(x1, x2), Math.min(y1, y2)], [Math.max(x1, x2), Math.max(y1, y2)]], { padding: clearOfPanel(m), maxZoom: 15, duration: calm() ? 0 : 900, essential: true });
+  }, [transitEnds, ready]);
   useEffect(() => { const m = mapRef.current; if (m && ready) setData(m, 'uv-measure', measureFeatures(measure)); }, [measure, ready]);
   useEffect(() => {
     const m = mapRef.current, r = routes[0];
@@ -799,7 +807,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const closeAll = () => { setSection(null); setDir(null); pick(null); setDest(null); endWalk(); setFound(null); setOpen(false); };
   /** M260: Start: the map becomes the navigation (full screen, the panel and the map's buttons out of the way). */
   const startNav = (r: Route) => {
-    if (!dir?.to) return;
+    if (!dir?.to || dir.mode === 'transit') return;
     primeSpeech();
     fullBefore.current = full;
     setFull(true); setLayers(false); setHere(null); setMeasure(null); setOpen(false);

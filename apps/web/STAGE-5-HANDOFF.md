@@ -10067,3 +10067,77 @@ The owner, 20 Nov, of M351's left-outs ("slow openings… not every button check
   menu, always there, slides in: measured gliding from −320 px to 0 in ~0.4 s) and Quick create on Messages (its panel
   has its own animation; the sweep caught it mid-way). The sweep now counts a part that slides in as moving.
 - **Left out:** closing (most parts still go at once).
+
+## M356 (20 Nov): public transport in Directions
+
+The owner, 20 Nov (Directions from Paris to Lyon): "why there are no public transport here?"; then "i need both and it
+should show all the transport and options just like google and apple maps does".
+- **Why no timetables of our own:** the routers we use (FOSSGIS / OSRM) know roads and paths only. Timetables come from
+  paid services (an account and a charge per search: the owner's decision, **[owner]**, asked) or Transitous, whose
+  rules allow only open-source, non-commercial apps under ~720 searches a day (transitous.org/api): UniVerse has paid
+  plans and no open-source licence, so it isn't used.
+- **What's there now:** a fourth way of travel, **Public transport**, beside car, walk and bike (`DirMode` in
+  `MapTools.tsx`: no router request for it; `startNav` refuses it). It shows `TransitWays.tsx`: every way to get there,
+  quickest first (`waysBetween` in `src/lib/transit-options.ts`, tested): bus, tram or metro close by; train and coach
+  between towns; a flight once it's far; the drive to compare; each with a time and CO₂ estimated from the distance
+  (`TRAVEL_FACTORS`, the same as the trip footprint) and where to see or book it (Rome2Rio, Google Flights; the drive
+  switches to the car route). Then **Exact departures, lines and changes**: Google Maps, Apple Maps and Citymapper with
+  the trip filled in (their documented links, `transitApps`), and Rome2Rio to compare with prices. The map frames both
+  ends. The old "Public transport in Google Maps" link at the very bottom of the turns is gone (the tab replaces it).
+- Checked in a browser (Paris → Lyon, place lookups stubbed: this container can't reach them): train ~2 h 20, flight
+  ~3 h, drive ~6 h, coach ~7 h 25, with CO₂; the three apps' links; 1280 dark and 390 light, axe clean.
+
+## M357 (20 Nov): every way between a trip's cities
+
+The owner, 20 Nov: "can you make more changes in the system like this" (like M356's compare-the-ways); asked which,
+"all of them and add more options like this in the system, i need more".
+- A trip's **Plan → Route**: between two cities `TripLeg` (`src/components/travel/trip-legs.tsx`) lists every way that
+  works there (train, coach, flight, drive; flight and ferry over sea; only the flight past 2,000 km), quickest first,
+  with the door-to-door time and the CO₂ for all the travellers, **Fastest** and **Greenest** marked. A press picks it:
+  the same choice as Ready → Footprint (the stop's `mode`; the train logs a Green action once a leg, same PATCH). The
+  booking links under it follow the way picked (Google Flights for a flight, Omio / 12Go / Google Maps for trains and
+  coaches, Direct Ferries for a ferry; Rome2Rio always). Above the stops, `TripLegTotals`: time on the move, the CO₂
+  and what the greenest ways would save.
+- **One source:** `legMinutes` and each leg's `ways` in `src/lib/travel-footprint.ts` (tested), the same estimates as
+  Directions' public transport (M356). The old "X km · about N h" line and `leg()` in the trip page are gone.
+- Checked at 390 and 1280, light and dark (Paris → Lyon → Barcelona): axe clean, nothing sideways.
+
+## M358 (20 Nov): Green's Journeys by time too
+
+The same ask. Green → Journeys showed each way's CO₂ only; now each has its **door-to-door time** (`wayMinutes` in
+`src/lib/green-plus.ts`, tested), **Quickest** and **Best balance** (the cleanest way taking at most a third, or 45 min,
+longer than the quickest: `bestBalance`) marked beside Cleanest, and a **Cleanest / Quickest** order that slides the
+list (`morph`). No local bus past 80 km and no plane under 150 km. On a phone a row's kg and "I went this way" sit on
+their own line under the name. Checked at 390 and 1280, light and dark: axe clean.
+
+## M359 (20 Nov): Trace's ways to ship
+
+The same ask ("all of them… i need more"). A shipment's card on **Trace → Tracking**, opened, shows **Ways to ship this**
+(`src/components/trace/map/ShipWays.tsx`) when it isn't delivered and has where it left and where it's going: road, rail,
+sea and air, quickest first, each with door-to-door days, the CO₂ for its weight and the usual price level ($ to $$$$,
+read aloud as words), **Fastest**, **Greenest** and **Cheapest** marked, and what the greenest way saves against road.
+- `shipWays(km, weightKg)` in `src/lib/trace.ts` (tested): road and sea per tonne-km as `journeyCarbon`, rail and air
+  from the UK government's 2024 freight factors (rounded); road and rail up to 6,000 km (rail from 150 km), sea from
+  500 km, air from 300 km. Estimates: the card says a carrier quotes the real days and price, and that sea needs ports.
+- `GET /trace/map/tracking` now gives each shipment's `weightKg` (the product's weight × units); its sample answer too.
+- Checked at 390 and 1280, light and dark (the sample Madrid → Budapest batch): axe clean.
+## M360 (20 Nov; committed as M359, a number the other session used the same day): Green's home (My impact) redesigned as a dashboard, with more on every part
+
+The owner: "redesign the green app because it doesnt look professional and the inside ui looks bad… more detailing";
+then "just you work on green… dont clash with the files". Built on the other agent's latest (`claude/funny-galileo-y4mz9r`,
+M358); this branch's unmerged M330–M331 were reverted first (the merged M346/M350/M354 map work replaced them).
+
+- **`GreenApp.tsx`** (only Green's files): the dark gradient banner is gone. A title row with the community total and
+  "Log an action"; four `KpiCard`s (CO₂ saved in all with what it equals, **this month against last** with the change,
+  the streak, the **share confirmed** by a teammate); logging beside the week's challenge ("Log for it") and the Green
+  Pass (stacks in the column); the note, photo and map option folded under one "optional" row; **one-tap "again"** for
+  the last three different actions; **Progress** by the last 30 days or **6 months**, with the 30 days' total, best day,
+  days active and per active day; **Where it came from** by kind (press one to log it again); **What you did** with
+  filters (All, Confirmed, Waiting, No proof), **log again** per row and a **CSV download**; **badges with what each
+  needs**; the neighbourhood and teammates' proofs side by side; the year and the map as before.
+- `src/lib/green-stats.ts` (`monthKg`, `change`, `months`, `actionsCsv`), from the `year` map `/green/me` already sends:
+  no new route, no database change. Test: `green-stats.test.ts`.
+- Removed from the page: the LiveCard with tracks and heartbeat and the tank (the breakdown and the chart replace them).
+- Checked: axe clean at 1280 light and 390 dark, nothing sideways, no page errors.
+- **Next for Green** (the owner's "upgrade all the existing features"): Footprint, Journeys, Goals, Tips, Events, Green
+  places, Swap & repair, Teams and Business in the same look, each with more to do.

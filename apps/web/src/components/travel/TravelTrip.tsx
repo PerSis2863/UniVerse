@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import useSWR from 'swr';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { toast } from 'sonner';
-import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, Images, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plane, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
+import { ArrowDown, ArrowLeft, ArrowUp, CalendarClock, CalendarPlus, Check, Copy, CopyPlus, HeartHandshake, Images, LogOut, Languages, MessagesSquare, Luggage, MapPin, Minus, NotebookPen, Plus, Route, Share2, ShieldCheck, Trash2, Users, Vote, Wallet, WifiOff } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
@@ -13,8 +13,10 @@ import { fetcher } from '@/lib/fetcher';
 import { useLiveInterval } from '@/lib/realtime-client';
 import { CURRENCIES, STYLES, STYLE_IDS, money, type Style } from '@/lib/travel-find';
 import { tripCover } from '@/lib/travel-ideas';
-import { betweenLinks, ferryLikely } from '@/lib/travel-book';
-import { bestOrder, leg, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
+import { tripFootprint } from '@/lib/travel-footprint';
+import type { TravelMode } from '@/lib/green';
+import { TripLeg, TripLegTotals, kgText } from './trip-legs';
+import { bestOrder, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { Cover, PlaceSearch } from './travel-ui';
 import { TripDays, type Move, type TripItem } from './trip-days';
@@ -34,7 +36,7 @@ import { readPack } from '@/lib/trip-offline-save';
 interface Member { id: string; name: string; avatar: string | null; owner: boolean; zone?: string | null }
 export interface TripAnswer {
   trip: { id: string; name: string; startDate: string | null; travellers: number; style: Style; currency: string; updatedAt: string };
-  code: string; owner: boolean; ownerId: string; me: string; stops: PlanStop[]; items: TripItem[]; members: Member[];
+  code: string; owner: boolean; ownerId: string; me: string; stops: (PlanStop & { mode?: string | null })[]; items: TripItem[]; members: Member[];
 }
 // The parts that bring much code or data load only when opened.
 // M306: the trip's other parts load when opened (the page opens on Plan): ~100 KB less on first load.
@@ -120,6 +122,12 @@ export function TravelTrip() {
     } catch (e) { toast.error(errorMessage(e, fail)); }
     await mutate();
   };
+  const foot = tripFootprint(stops, t.travellers);
+  /** M357: how they'll get to a stop from the one before (the same choice as Ready → Footprint; the train logs a Green action). */
+  const pickWay = (stopId: string, mode: TravelMode) => change({ stops: stops.map((x) => (x.id === stopId ? { ...x, mode } : x)) }, async () => {
+    const { data: r } = await api.patch<{ green: { kg: number } | null }>(`/travel/trips/${t.id}/stops/${stopId}`, { mode, green: mode === 'train' });
+    if (r.green) toast.success(`Logged in Green: about ${kgText(r.green.kg)} of CO₂ saved by taking the train.`);
+  });
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
   const total = tripDays(stops), cover = tripCover({ name: t.name, cover: stops[0]?.guide, places: stops.map((x) => x.guide) });
   const when = range(dates[0]?.from ?? null, dates[dates.length - 1]?.to ?? null);
@@ -252,9 +260,10 @@ export function TravelTrip() {
             <h3 id="trip-route" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Route className="h-5 w-5 text-indigo-500" aria-hidden />Route</h3>
             {stops.length >= 3 && <button type="button" onClick={reorder} className="btn-secondary btn-sm">Shortest order</button>}
           </div>
+          {!!foot.legs.length && <TripLegTotals minutes={foot.minutes} total={foot.total} greenest={foot.greenest} legs={foot.legs.length} />}
           <ol className="mt-4">
             {stops.map((s, i) => {
-              const next = stops[i + 1], l = next ? leg(s, next) : null;
+              const next = stops[i + 1], fl = next ? foot.legs.find((x) => x.stopId === next.id) : undefined;
               return (
                 <li key={s.id} data-key={s.id}>
                   <div className="flex flex-wrap items-center gap-3 rounded-2xl bg-zinc-50 p-3 dark:bg-white/[0.04]">
@@ -275,17 +284,8 @@ export function TravelTrip() {
                       <button type="button" className="btn-ghost btn-sm p-1.5 text-red-600 dark:text-red-400" aria-label={`Take ${nice(s.name)} off the trip`} onClick={() => { if (confirm(`Take ${nice(s.name)} and its planned places off the trip?`)) void change({ stops: stops.filter((x) => x.id !== s.id) }, () => api.delete(`/travel/trips/${t.id}/stops/${s.id}`)); }}><Trash2 className="h-4 w-4" aria-hidden /></button>
                     </div>
                   </div>
-                  {next && (
-                    <div className="ms-4 border-s-2 border-dashed border-indigo-300/70 py-2 ps-6 dark:border-indigo-400/30">
-                      <p className="flex items-center gap-1.5 text-sm text-zinc-600 dark:text-zinc-300">{l?.flight ? <Plane className="h-4 w-4 text-indigo-500" aria-hidden /> : <Route className="h-4 w-4 text-indigo-500" aria-hidden />}
-                        {l ? `${l.km.toLocaleString()} km · about ${l.hours} h ${l.flight ? 'flying, plus the airports' : 'by train, bus or car'}` : 'How to get there'}</p>
-                      <div className="mt-1.5 flex flex-wrap gap-1.5">
-                        {betweenLinks(s, next, { date: dates[i + 1].from, flight: !l || l.km > 250, sea: ferryLikely(s.cc, next.cc) }).map((w) => (
-                          <a key={w.partner} href={w.url} target="_blank" rel="noopener noreferrer sponsored" className="btn-secondary btn-sm inline-flex items-center gap-1" title={`Opens ${w.partner}`}>{w.label}<span className="text-xs text-zinc-500 dark:text-zinc-400">· {w.partner}</span></a>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  {next && (fl ? <TripLeg leg={fl} from={s} to={next} date={dates[i + 1].from} onPick={(mode) => void pickWay(next.id, mode)} />
+                    : <p className="ms-4 border-s-2 border-dashed border-indigo-300/70 py-2 ps-5 text-xs text-zinc-500 dark:border-indigo-400/30 dark:text-zinc-400">How to get there shows once both places are on the map.</p>)}
                 </li>
               );
             })}
