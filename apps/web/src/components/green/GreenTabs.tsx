@@ -2,7 +2,7 @@
 
 import { usePathname, useSearchParams } from 'next/navigation';
 import { Building2, CalendarDays, Footprints, Gauge, Leaf, Lightbulb, MapPin, Recycle, Target, Trophy } from 'lucide-react';
-import { TabRow } from '@/components/ui/TabRow';
+import { TabRow, type RowTab } from '@/components/ui/TabRow';
 
 // The tab row across UniVerse Green's pages (M216): my impact, the footprint calculator, journeys compared,
 // goals and pledges, tips, community events, green places near you, and teams; M269: Business, a company's footprint.
@@ -10,11 +10,11 @@ import { TabRow } from '@/components/ui/TabRow';
 export const GREEN_VIEWS = ['footprint', 'trips', 'goals', 'tips', 'events', 'places', 'swap', 'business'] as const;
 export type GreenView = (typeof GREEN_VIEWS)[number];
 
-export function GreenTabs() {
-  const path = usePathname(), sp = useSearchParams(), view = path === '/green' ? sp.get('view') : null;
+/** Green's sections (M370: the same list fills the top bar on a computer). */
+export function greenSections(path: string, sp: URLSearchParams): RowTab[] {
+  const view = path === '/green' ? sp.get('view') : null;
   const tab = (v: GreenView | null) => (v ? `/green?view=${v}` : '/green');
-  return (
-    <TabRow label="Green" glide="green-tab" tabs={[
+  return [
       { href: tab(null), label: 'My impact', icon: Leaf, on: path === '/green' && !(GREEN_VIEWS as readonly string[]).includes(view ?? '') },
       { href: tab('footprint'), label: 'Footprint', icon: Gauge, on: view === 'footprint' },
       { href: tab('trips'), label: 'Journeys', icon: Footprints, on: view === 'trips' },
@@ -25,6 +25,9 @@ export function GreenTabs() {
       { href: tab('swap'), label: 'Swap & repair', icon: Recycle, on: view === 'swap' },
       { href: '/green/teams', label: 'Teams', icon: Trophy, on: path.startsWith('/green/teams') },
       { href: tab('business'), label: 'Business', icon: Building2, on: view === 'business' },
-    ]} />
-  );
+    ];
+}
+
+export function GreenTabs() {
+  return <TabRow label="Green" glide="green-tab" tabs={greenSections(usePathname(), new URLSearchParams(useSearchParams().toString()))} />;
 }

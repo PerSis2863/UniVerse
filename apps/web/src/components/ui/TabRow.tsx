@@ -12,7 +12,8 @@ export interface RowTab { href: string; label: string; icon: LucideIcon; on: boo
 
 export function TabRow({ label, glide, tabs }: { label: string; glide: string; tabs: RowTab[] }) {
   return (
-    <nav aria-label={label} className="-mx-1 overflow-x-auto scrollbar-none">
+    // M370: on a computer whose menu is the bar across the top, these sections are in that bar (TopNav), so not here.
+    <nav aria-label={label} className="-mx-1 overflow-x-auto scrollbar-none topnav:hidden">
       <ul className="flex gap-1 px-1 min-w-max">
         {tabs.map((t) => (
           <li key={t.href} className="relative">

@@ -10251,3 +10251,18 @@ the greeting only), on the student's, teacher's and admin's homes. What it said 
 the average in the student's number cards, the teacher's to-grade, courses and students in theirs, the admin's
 attendance, approvals and safety flags in "The school today"; the student's "N due soon / Nothing due soon" moved
 beside **Up next**'s title (`UpNextCard`'s `note`). Checked at 1280 and 390.
+
+## M370 (20 Nov): each app's sections in the top bar
+
+The owner, 20 Nov (a picture of Relief's bar and its row of tabs): "please add live map, most urgent, matches, alert and
+other up there where message and collaborate are so it stay together and make like this for other apps also".
+- On a computer whose menu is the bar across the top (`topnav`), in Relief, Trace, Green and Travel the bar carries the
+  app's sections first (Live map, Most urgent, Matches, Alerts…; Console, Market map, Tracking…; My impact, Footprint,
+  Journeys…; Explore, Find where to go, Map, Trips, Saved), then Messages, Collaborate, Settings; what doesn't fit goes
+  under More. The chosen one is marked (`NavItem.on`, so `?view=` sections work), they can be dragged into order like
+  the bar's other entries, and the app's old entries (`APP_NAV`) give way to them.
+- **One list:** `reliefSections`, `greenSections`, `traceSections`, `travelSections` in each `*Tabs.tsx` feed both the
+  page's row and the bar (`sectionsOf` in `TopNav.tsx`). The page's row (`TabRow`) is `topnav:hidden`; phones, the
+  installed app and the side menu keep it. TopNav reads `useSearchParams`, so it sits in a `Suspense` in DashboardShell
+  (it never renders on the server: `useTopNav` is false there).
+- Checked at 1440 (each app: the bar's sections, the right one marked, no page row) and 390 (the row stays): axe clean.

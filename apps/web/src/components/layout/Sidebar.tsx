@@ -34,6 +34,8 @@ export type NavItem = {
   action?: string;
   /** Other pages that count as this entry (tabs of the same section). */
   also?: string[];
+  /** M370: chosen, decided by its owner (an app's section in the top bar, which may hang on `?view=`). */
+  on?: boolean;
 };
 
 /**
