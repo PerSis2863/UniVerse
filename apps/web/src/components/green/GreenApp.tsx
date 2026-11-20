@@ -7,7 +7,7 @@ import Image from 'next/image';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Leaf, Loader2, Lock, MapPin, Recycle, ShieldCheck, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
+import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Globe2, Leaf, Loader2, Lock, MapPin, Minus, Plus, Recycle, ShieldCheck, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Rolling } from '@/components/ui/Rolling';
 import { api, errorMessage } from '@/lib/api';
@@ -28,6 +28,7 @@ import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { GreenYear } from './GreenYear';
 import { glow, toBase } from '@/components/trace/map/engine';
+import { MapButtons } from '@/components/map-ui/Command';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
 import { Fill } from '@/components/ui/Fill';
 
@@ -468,6 +469,7 @@ export function GreenMap() {
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
       <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={false} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
+        <MapButtons className="absolute end-3 top-3 z-10" items={[{ label: 'Zoom in', icon: Plus, onClick: () => mapRef.current?.zoomBy(1.8) }, { label: 'Zoom out', icon: Minus, onClick: () => mapRef.current?.zoomBy(1 / 1.8) }, { label: 'See everything', icon: Globe2, onClick: () => mapRef.current?.home() }]} />
         <AnimatePresence>
           {hover && hc && (
             <motion.div key={hover.i} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, transition: { duration: 0.1 } }} transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}

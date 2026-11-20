@@ -30,7 +30,7 @@ import { PlaceCard, type Picked } from './PlaceCard';
 import { Highlights } from './Highlights';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
-import { FindNearby, MapRail, PANEL_REM, PanelHead, panelBg, RAIL_REM, RailShow, SavedPlaces, SECTIONS, SectionRow, TripsList, type Section } from './MapSidebar';
+import { FindNearby, useWide, MapRail, PANEL_REM, PanelHead, panelBg, RAIL_REM, RailShow, SavedPlaces, SECTIONS, SectionRow, TripsList, type Section } from './MapSidebar';
 import { areaSearchUrl, placeSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
@@ -160,6 +160,8 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   // M349: Apple's sidebar: the section open beside the menu column (none: only the column), the column shown, and
   // Search's "Find Nearby" tiles shown (they fold away once a kind is chosen).
   const [section, setSection] = useState<Section | null>(null);
+  const [lastSec, setLastSec] = useState<Section>('search'); // M350: what the panel shows while it slides away
+  const wide = useWide();
   const [rail, setRail] = useState(true);
   const [nearby, setNearby] = useState(true);
   const [credits, setCredits] = useState(false); // the full map credits shown
@@ -735,12 +737,12 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   };
   const directionsTo = (to: Spot | null, from: Spot | null = myPlace()) => { pick(null); endWalk(); setHere(null); setMeasure(null); setOpen(true); setDir({ from, to, mode: dir?.mode ?? 'foot', chosen: 0, via: [], avoid: dir?.avoid ?? '' }); };
   // M349: the sidebar's section (a phone's sheet always shows one: Search unless another was chosen).
-  const sec: Section = section ?? 'search';
+  const sec: Section = section ?? lastSec;
   const active: Section | null = dir ? 'directions' : section;
   const panelOn = !!(section || picked || dest || dir || walk || found);
   const openSection = (x: Section) => {
     if (x === 'directions') { directionsTo(null); return; }
-    pick(null); setDest(null); setDir(null); endWalk(); setFound(null); setSection(x); setOpen(true);
+    pick(null); setDest(null); setDir(null); endWalk(); setFound(null); setSection(x); setLastSec(x); setOpen(true);
     if (x === 'search') setNearby(true);
     if (x === 'saved' && !show.saved) setShow((v) => ({ ...v, saved: true }));
   };
@@ -816,12 +818,12 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       {(tripId || moved) && (
         <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex flex-col items-center gap-2 px-16 sm:top-3 sm:ps-[calc(var(--side)+1rem)]">
           {moved && found && (
-            <button type="button" disabled={seeking} onClick={() => void searchArea(found.q)} className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0b55c4] shadow-lg ring-1 ring-black/5 transition-transform duration-150 active:scale-95 dark:bg-[#1f232b] dark:text-[#8cc0ff] dark:ring-white/10">
+            <button type="button" disabled={seeking} onClick={() => void searchArea(found.q)} className="cmd-pop pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0b55c4] shadow-lg ring-1 ring-black/5 transition-transform duration-150 active:scale-95 dark:bg-[#1f232b] dark:text-[#8cc0ff] dark:ring-white/10">
               {seeking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RotateCw className="h-4 w-4" aria-hidden />}Search this area
             </button>
           )}
           {tripId && (
-            <div className="pointer-events-auto flex max-w-full items-center gap-2 rounded-2xl bg-white/95 py-1.5 pe-1.5 ps-3 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10">
+            <div className="cmd-pop pointer-events-auto flex max-w-full items-center gap-2 rounded-2xl bg-white/95 py-1.5 pe-1.5 ps-3 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10">
               <Luggage className="h-4 w-4 shrink-0 text-sky-600 dark:text-sky-400" aria-hidden />
               <Link href={`/travel/trip?id=${tripId}`} className="max-w-[10rem] truncate text-sm font-semibold text-zinc-900 hover:underline dark:text-white" translate="no">{tripData?.trip.name ?? 'Your trip'}</Link>
               {tripDays.length > 0 && (
@@ -885,14 +887,15 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
           column (Search, Guides, Directions, Saved, Trips) and the chosen section's panel beside it, a big title and a
           round close; a place's card, a destination, directions or a walk take the panel over. A phone: the sheet at the
           foot with the sections as a row (M236's grab handle). */}
-      {rail ? <MapRail active={active} onPick={openSection} onHide={() => setRail(false)} /> : <RailShow onShow={() => setRail(true)} />}
-      <aside aria-label="Places" data-map-side className={cn('absolute inset-x-2 bottom-2 z-30 flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-0 sm:start-[var(--rail)] sm:top-0 sm:max-h-none sm:w-[23.5rem] sm:rounded-none sm:border-e sm:border-black/[0.06] sm:shadow-none sm:ring-0 sm:dark:border-white/[0.06]', panelBg, !panelOn && 'sm:hidden')}>
+      <MapRail shown={rail} active={active} onPick={openSection} onHide={() => setRail(false)} />
+      {!rail && <RailShow onShow={() => setRail(true)} />}
+      <aside aria-label="Places" data-map-side inert={wide && !panelOn ? true : undefined} className={cn('map-panel absolute inset-x-2 bottom-2 z-[29] flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-0 sm:start-[var(--rail)] sm:top-0 sm:max-h-none sm:w-[23.5rem] sm:rounded-none sm:border-e sm:border-black/[0.06] sm:shadow-none sm:ring-0 sm:dark:border-white/[0.06]', panelBg, !panelOn && 'sm:pointer-events-none sm:-translate-x-full sm:opacity-0 rtl:sm:translate-x-full')}>
         <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-2 pt-2.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
           <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
         </button>
         <div className="px-3 pb-2 sm:px-4 sm:pt-4">
           <SectionRow active={dir ? 'directions' : sec} onPick={openSection} />
-          {!picked && !dest && !dir && <div className="hidden sm:block"><PanelHead title={SECTIONS.find((x) => x.id === sec)!.label} onClose={closeAll} /></div>}
+          {!picked && !dest && !dir && <div key={sec} className="map-panel-in hidden sm:block"><PanelHead title={SECTIONS.find((x) => x.id === sec)!.label} onClose={closeAll} /></div>}
           {sec === 'search' && !picked && !dest && !dir && (<>
           <PlaceSearch className="min-w-0" big label="Find a place on the map" placeholder="Search a place, hotel or address…" near={view} onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }}
             onPlace={(p) => pick({ type: 'place', key: p.key, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.sub, lat: p.lat, lon: p.lon })} />
@@ -926,7 +929,8 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
           </div>
           </>)}
         </div>
-        <div className={cn('min-h-0 flex-1 flex-col overflow-y-auto border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10 sm:border-t-0 sm:px-4 sm:pt-1', open ? 'flex' : 'hidden sm:flex')}>
+        <div key={`${picked ? `p${picked.type === 'place' ? `${picked.name}@${picked.lat}` : picked.type}` : dest ? `d${dest.name}` : dir ? 'dir' : walk ? 'walk' : found ? `f${found.q}` : sec}${wide || open ? '' : '-'}`}
+          className={cn('map-panel-in min-h-0 flex-1 flex-col overflow-y-auto border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10 sm:border-t-0 sm:px-4 sm:pt-1', open ? 'flex' : 'hidden sm:flex')}>
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} onFlyover={flyover} /> : dest ? (
             <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
               onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: aside(m), duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />

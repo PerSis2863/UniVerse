@@ -3167,3 +3167,15 @@ html.reduce-motion .world-earth .earth-clouds { animation: none; }
 html.reduce-motion .react-rise { animation: fade-out-late 3s linear both; }
 html.reduce-motion .react-spark { display: none; }
 @keyframes fade-out-late { 0%, 70% { opacity: 1; } 100% { opacity: 0; } }
+
+/* M350 (the owner, 20 Nov: "when i click any button like search… it should show smooth transition of opening another
+   section"): Travel's map sidebar as Apple Maps': the panel slides out from behind the menu column and back, and a
+   section's content glides in when it changes (transform and opacity only; only fades with Reduce Motion). */
+@keyframes map-panel-in { from { opacity: 0; transform: translateY(10px); } }
+.map-panel-in { animation: map-panel-in 260ms var(--ease-glide) backwards; }
+/* Tailwind's translate-* classes set `translate`, not `transform`: both glide. */
+.map-panel { transition: translate 360ms var(--ease-glide), transform 360ms var(--ease-glide), opacity 240ms var(--ease-out-soft); }
+@media (prefers-reduced-motion: reduce) { .map-panel-in { animation-name: tl-fade; } .map-panel { transition-property: opacity; } }
+html.reduce-motion .map-panel-in { animation-name: tl-fade; }
+html.reduce-motion .map-panel { transition-property: opacity; }
+

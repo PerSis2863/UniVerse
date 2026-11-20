@@ -9970,3 +9970,23 @@ the current features in the maps"; "add whatever you can in this sections"; "no 
   tan, ice pale) fading by zoom 8; continent names. The canvas maps (Trace, Relief, Green's world) keep M346's look.
 - Checked at 1280 (dark, light) and 390 (dark), every section axe-clean; the map's tiles and photos can't load in this
   container, so the colours are checked by the numbers, not by eye on a real city.
+
+## M350 (20 Nov): every map in Apple's look, and smooth openings
+
+The owner, 20 Nov: "upgrade all the maps in the project like apple map which is really smooth and when i click any
+button like search button in map then it should show smooth transition of opening another section"; then "also make
+every other button when i click and when it try to open something then it should show smooth animations".
+- **Travel's map:** the section panel slides out from behind the menu column and back (`.map-panel`, `globals.css`:
+  Tailwind's `translate-*` classes set the `translate` property, so the transition names `translate` as well as
+  `transform`; measured gliding from -100% to 0 in ~0.4 s); while closed it is `inert` on a computer (`useWide`) and
+  shows the section it was on (`lastSec`). Every change of what the panel shows (a section, a place, directions, a walk,
+  a search, the phone sheet pulled up) glides in (`.map-panel-in`, keyed). The menu column slides away and back; the
+  search list, the measuring bar, the trip bar, "Search this area", the weather's days and the button that brings the
+  column back pop in (`cmd-pop`). Reduce Motion leaves fades.
+- **The other maps** (Trace's market and tracking, Relief's live map and alerts, Green's world and places): Apple's button
+  group (`MapButtons` in `map-ui/Command.tsx`: one rounded column, hairlines, white / `#1c1e21`, Apple's blue for a
+  button that's on; actions by `onPick(id)` or `onClick`), zoom and "where I am" on the street maps; the flat world maps
+  in Apple's dark world colours (`WorldCanvas` `PAL.dark`: sea `#22387f`, land `#2f5a55`); Relief's alerts map flat (no
+  globe). Their zoom already eased (`goTo`).
+- Checked at 1280 dark and 390 light on Travel, Relief (live, alerts), Green (world, places) and Trace's market: axe
+  clean, no sideways scroll, no page errors.

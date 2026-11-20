@@ -6,7 +6,8 @@ import useSWR from 'swr';
 import type { GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Activity, CloudLightning, Droplets, ExternalLink, Flame, LocateFixed, Mountain, Sun, type LucideIcon } from 'lucide-react';
+import { Activity, CloudLightning, Droplets, ExternalLink, Flame, LocateFixed, Minus, Mountain, Navigation, Plus, Sun, type LucideIcon } from 'lucide-react';
+import { MapButtons } from '@/components/map-ui/Command';
 import { fetcher } from '@/lib/fetcher';
 import { useDarkMode } from '@/lib/use-dark';
 import { ALERT_KINDS, distanceKm, type Alert, type AlertKind } from '@/lib/relief-plus';
@@ -39,7 +40,7 @@ export default function ReliefAlerts() {
 
   const draw = useEffectEvent((m: MLMap) => (m.getSource('alerts') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: list.map((a) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [a.lng, a.lat] }, properties: { id: a.id, color: LEVEL[a.level].color, r: a.level === 'red' ? 11 : a.level === 'orange' ? 8 : 5, sel: a.id === picked ? 1 : 0 } })) }));
   const onStyle = useEffectEvent((m: MLMap) => {
-    m.setProjection({ type: 'globe' });
+    m.setProjection({ type: 'mercator' }); // M350: flat, as Apple Maps (the owner: "no need of globe")
     if (!m.getSource('alerts')) m.addSource('alerts', { type: 'geojson', data: { type: 'FeatureCollection', features: [] } });
     m.addLayer({ id: 'alerts-glow', type: 'circle', source: 'alerts', paint: { 'circle-radius': ['*', ['get', 'r'], 2.2], 'circle-color': ['get', 'color'], 'circle-opacity': 0.18, 'circle-blur': 0.6 } });
     m.addLayer({ id: 'alerts', type: 'circle', source: 'alerts', paint: { 'circle-radius': ['get', 'r'], 'circle-color': ['get', 'color'], 'circle-stroke-color': ['case', ['==', ['get', 'sel'], 1], dark ? '#ffffff' : '#111214', dark ? '#0b0c0e' : '#ffffff'], 'circle-stroke-width': ['case', ['==', ['get', 'sel'], 1], 3, 1.5] } });
@@ -109,6 +110,7 @@ export default function ReliefAlerts() {
       </aside>
       <div className="relative h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
         <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of disaster alerts" />
+        <MapButtons className="absolute end-3 top-3 z-10" items={[{ label: 'Zoom in', icon: Plus, onClick: () => mapRef.current?.zoomIn() }, { label: 'Zoom out', icon: Minus, onClick: () => mapRef.current?.zoomOut() }, { label: 'Where I am', icon: Navigation, onClick: findMe }]} />
         {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
         <div className="pointer-events-none absolute bottom-3 end-3 flex gap-2 rounded-xl bg-[var(--card-bg)] px-3 py-1.5 text-xs font-semibold text-zinc-700 shadow ring-1 ring-black/5 dark:text-zinc-200 dark:ring-white/10" aria-hidden>
           {(['red', 'orange', 'green'] as const).map((l) => <span key={l} className="inline-flex items-center gap-1"><span className="h-2.5 w-2.5 rounded-full" style={{ background: LEVEL[l].color }} />{LEVEL[l].label}</span>)}

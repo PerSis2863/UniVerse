@@ -278,7 +278,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
 export function MeasureBar({ pts, onUndo, onClear, onDone }: { pts: Pt[]; onUndo: () => void; onClear: () => void; onDone: () => void }) {
   const km = lengthOf(pts), a = areaOf(pts);
   return (
-    <div role="status" className="absolute start-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--card-bg)] py-1.5 pe-1.5 ps-4 shadow-xl ring-1 ring-black/5 dark:ring-white/10 rtl:translate-x-1/2">
+    <div role="status" className="cmd-pop absolute start-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--card-bg)] py-1.5 pe-1.5 ps-4 shadow-xl ring-1 ring-black/5 dark:ring-white/10 rtl:translate-x-1/2">
       <Ruler className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
       <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{pts.length < 2 ? 'Click the map to measure' : `${distance(km)}${pts.length > 2 ? ` · ${area(a)} inside` : ''}`}</span>
       <button type="button" className={round} onClick={onUndo} disabled={!pts.length} aria-label="Undo the last point"><Undo2 className="h-4 w-4" aria-hidden /></button>

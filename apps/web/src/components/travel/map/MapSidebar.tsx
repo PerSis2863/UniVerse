@@ -1,5 +1,6 @@
 'use client';
 
+import { useSyncExternalStore } from 'react';
 import { ArrowUpRight, Bookmark, CornerUpRight, LayoutGrid, Luggage, Map as MapIcon, PanelLeftClose, PanelLeftOpen, Search, X, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
@@ -21,14 +22,18 @@ export const SECTIONS: { id: Section; label: string; icon: LucideIcon }[] = [
   { id: 'trips', label: 'Trips', icon: Luggage },
 ];
 export const RAIL_REM = 12.5, PANEL_REM = 23.5;
+/** A computer's width (the menu column and its panel; a phone has the sheet). */
+export function useWide() {
+  return useSyncExternalStore((cb) => { const q = matchMedia('(min-width: 640px)'); q.addEventListener('change', cb); return () => q.removeEventListener('change', cb); }, () => matchMedia('(min-width: 640px)').matches, () => true);
+}
 export const sideBg = 'bg-[#f2f2f7] dark:bg-[#141618]';
 export const panelBg = 'bg-white dark:bg-[#1c1e21]';
 export const tile = 'bg-[#f2f2f7] hover:bg-[#e8e8ed] dark:bg-[#26292d] dark:hover:bg-[#2e3136]';
 
 /** The menu column (a computer). */
-export function MapRail({ active, onPick, onHide }: { active: Section | null; onPick: (s: Section) => void; onHide: () => void }) {
+export function MapRail({ shown, active, onPick, onHide }: { shown: boolean; active: Section | null; onPick: (s: Section) => void; onHide: () => void }) {
   return (
-    <nav aria-label="Map" data-map-side className={cn('absolute inset-y-0 start-0 z-30 hidden flex-col border-e border-black/[0.06] px-2.5 pb-3 pt-4 sm:flex dark:border-white/[0.06]', sideBg)} style={{ width: `${RAIL_REM}rem` }}>
+    <nav aria-label="Map" data-map-side inert={shown ? undefined : true} className={cn('map-panel absolute inset-y-0 start-0 z-30 hidden flex-col border-e border-black/[0.06] px-2.5 pb-3 pt-4 sm:flex dark:border-white/[0.06]', sideBg, !shown && 'pointer-events-none -translate-x-full opacity-0 rtl:translate-x-full')} style={{ width: `${RAIL_REM}rem` }}>
       <div className="mb-4 flex items-center justify-between ps-1.5">
         <span className="flex items-center gap-1.5 text-[19px] font-semibold tracking-tight text-zinc-900 dark:text-white">
           <MapIcon className="h-5 w-5" aria-hidden />Maps
@@ -42,8 +47,8 @@ export function MapRail({ active, onPick, onHide }: { active: Section | null; on
           return (
             <li key={id}>
               <button type="button" aria-current={on ? 'true' : undefined} onClick={() => onPick(id)}
-                className={cn('flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start text-[16px] font-medium transition-colors', on ? 'bg-white shadow-sm dark:bg-white/[0.09]' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.05]', 'text-zinc-900 dark:text-white')}>
-                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px]', on ? 'bg-[#0a84ff] text-white' : 'bg-zinc-200 text-zinc-800 dark:bg-white/[0.1] dark:text-white')} aria-hidden><Icon className="h-[17px] w-[17px]" /></span>
+                className={cn('flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start text-[16px] font-medium transition-[background-color,box-shadow] duration-200', on ? 'bg-white shadow-sm dark:bg-white/[0.09]' : 'hover:bg-black/[0.04] dark:hover:bg-white/[0.05]', 'text-zinc-900 dark:text-white')}>
+                <span className={cn('flex h-8 w-8 shrink-0 items-center justify-center rounded-[9px] transition-colors duration-200', on ? 'bg-[#0a84ff] text-white' : 'bg-zinc-200 text-zinc-800 dark:bg-white/[0.1] dark:text-white')} aria-hidden><Icon className="h-[17px] w-[17px]" /></span>
                 {label}
               </button>
             </li>
@@ -60,7 +65,7 @@ export function MapRail({ active, onPick, onHide }: { active: Section | null; on
 /** The button that brings the hidden menu column back (a computer). */
 export function RailShow({ onShow }: { onShow: () => void }) {
   return (
-    <button type="button" onClick={onShow} className={cn('absolute start-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-xl text-zinc-800 shadow-lg ring-1 ring-black/5 sm:flex dark:text-white dark:ring-white/10', panelBg)} aria-label="Show the sidebar">
+    <button type="button" onClick={onShow} className={cn('cmd-pop absolute start-3 top-3 z-30 hidden h-10 w-10 items-center justify-center rounded-xl text-zinc-800 shadow-lg ring-1 ring-black/5 sm:flex dark:text-white dark:ring-white/10', panelBg)} aria-label="Show the sidebar">
       <PanelLeftOpen className="h-5 w-5" aria-hidden />
     </button>
   );

@@ -147,7 +147,7 @@ export function PlaceSearch({ onPick, onPlace, near, label, placeholder, big, cl
         className={cn('w-full border border-zinc-200 bg-white text-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white', big ? 'rounded-2xl py-3.5 ps-12 pe-12 text-base' : 'rounded-xl py-2.5 ps-9 pe-9 text-sm')} />
       {(isLoading || placesLoading) && <Loader2 className={cn('absolute top-1/2 -translate-y-1/2 animate-spin text-zinc-400', big ? 'end-4 h-5 w-5' : 'end-3 h-4 w-4')} aria-hidden />}
       {results.length > 0 && (
-        <ul id={listId} role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111214]">
+        <ul id={listId} role="listbox" className="cmd-pop absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111214]">
           {results.map((r, i) => (
             <li key={r.kind === 'guide' ? r.g.title : `${r.p.key ?? r.p.name}@${r.p.lat}`} id={`${listId}-${i}`} role="option" aria-selected={i === active} onClick={() => choose(r)} onMouseEnter={() => setActive(i)}
               className={cn('flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-start', i === active && 'bg-zinc-100 dark:bg-white/[0.07]')}>

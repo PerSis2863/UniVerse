@@ -14,6 +14,7 @@ import { useActivePoll } from '@/lib/realtime-client';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
 import { BASE, arcPoints, glow, quad, toBase } from './engine';
+import { MapButtons } from '@/components/map-ui/Command';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 import { Fill } from '@/components/ui/Fill';
 
@@ -556,13 +557,7 @@ export function MarketMap() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
             {data?.sample && <span className="absolute left-3 top-3 inline-flex items-center gap-1.5 rounded-full bg-white/90 dark:bg-[#111113]/85 backdrop-blur px-3 py-1 text-[11px] font-semibold text-zinc-700 dark:text-zinc-200 shadow-sm"><Sparkles className="w-3 h-3 text-pink-500" aria-hidden />Sample data</span>}
             {/* Controls */}
-            <div className="absolute right-3 top-3 flex flex-col gap-1.5">
-              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, label]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={label} title={label} className="w-9 h-9 grid place-items-center rounded-xl bg-white/90 dark:bg-[#111113]/85 backdrop-blur text-zinc-700 dark:text-zinc-200 shadow-sm border border-zinc-200/70 dark:border-white/10 hover:text-pink-600 dark:hover:text-pink-300 active:scale-95 transition">
-                  <Icon className="w-4 h-4" aria-hidden />
-                </button>
-              ))}
-            </div>
+            <MapButtons className="absolute end-3 top-3 z-10" onPick={control} items={([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, icon, label]) => ({ id, label, icon }))} />
             {/* Live feed */}
             <ul className="absolute right-3 bottom-3 w-60 space-y-1.5 pointer-events-none" aria-label="Latest scans">
               <AnimatePresence initial={false}>

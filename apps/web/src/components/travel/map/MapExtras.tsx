@@ -37,7 +37,7 @@ export function WeatherChip({ lat, lon, zoom }: { lat: number; lon: number; zoom
         <span className="text-xs font-semibold tabular-nums leading-none">{deg(now.temp, f)}</span>
       </button>
       {open && (
-        <ul className="border-t border-zinc-200/70 px-1 pb-1.5 pt-1 dark:border-white/10">
+        <ul className="map-panel-in border-t border-zinc-200/70 px-1 pb-1.5 pt-1 dark:border-white/10">
           {data!.days.slice(0, 4).map((d) => { const D = sky(d.symbol).icon; return (
             <li key={d.date} className="flex flex-col items-center py-1 text-[11px] leading-tight text-zinc-600 dark:text-zinc-300" title={`${sky(d.symbol).words}${d.rain ? `, ${d.rain} mm of rain` : ''}`}>
               <span className="font-semibold text-zinc-800 dark:text-zinc-100">{new Date(`${d.date}T12:00:00Z`).toLocaleDateString([], { weekday: 'short' })}</span>
