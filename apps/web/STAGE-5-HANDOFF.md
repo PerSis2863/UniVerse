@@ -10177,3 +10177,21 @@ The same ask ("more places on the map"). A place picked on **Green → Green pla
 and back: about … kg" (`TRAVEL_FACTORS.car`, roads 1.25× the line). It replaces the old single walking "Directions" link
 to OpenStreetMap. Checked: the page loads with no errors; a place can't be opened in this container (the places come
 from map tiles it can't download), the chips are the same component checked on Relief.
+
+## M364 (20 Nov): Relief's places to go and most urgent, by every way
+
+The owner, 20 Nov: "see what else you can do". **Places to go** (shelters, food banks, groups), once Near me found
+you, shows `ReachWays` on each card: on foot, by bike, by bus or train, by car, the quickest in orange; each chip opens
+Google Maps' directions to the place **by its name and town** (`linkFor`: the saved spot is rounded about 500 m, so a
+point would mislead), as its Directions button already did. It replaces the old "N min on foot" note. **Most urgent**
+adds the quickest way after the distance ("352.9 km away · 2 h 10 min by bus or train"). Checked in sample mode at 1280
+and 390, light and dark, from a London test position: axe clean, no page errors.
+
+## M365 (20 Nov): a trip's ways priced too
+
+The same ask. Each way between two of a trip's cities (M357) now shows a rough price for everyone travelling in the
+trip's currency (≈ €69 the train, ≈ €36 the coach…), the **Cheapest** marked beside Fastest and Greenest.
+`legCostUsd(km, mode, level, people)` and `legLevel(ccA, ccB)` in `src/lib/travel-plan.ts` (tested): a base plus a rate
+a km scaled by how dear the two countries are; a car one per four people (fuel and tolls); a flight never under 60%.
+The budget's **Between places** now prices each leg by the way picked (no pick: the likely way, as before), so choosing
+the coach lowers it. Checked at 390 and 1280, light and dark: axe clean.

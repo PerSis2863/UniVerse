@@ -1,6 +1,6 @@
 'use client';
 
-import { Bus, Car, Clock, ExternalLink, Leaf, Plane, Ship, TrainFront } from 'lucide-react';
+import { Bus, Car, Clock, Coins, ExternalLink, Leaf, Plane, Ship, TrainFront } from 'lucide-react';
 import { TRAVEL_FACTORS, type TravelMode } from '@/lib/green';
 import { duration } from '@/lib/map-tools';
 import { betweenLinks, ferryLikely } from '@/lib/travel-book';
@@ -11,6 +11,7 @@ import { cn } from '@/lib/utils';
 // (M356) inside a trip. Between two cities every way that works there (train, coach, flight, drive, ferry), quickest
 // first, with its door-to-door time and the CO₂ for everyone travelling, the fastest and the greenest marked; a press
 // picks it (the same choice as Ready → Footprint, the train logged in Green) and the booking links follow the choice.
+// M365: each way's rough price for everyone too, the cheapest marked; the budget's "Between places" uses the way picked.
 
 const ICON: Record<TravelMode, typeof Plane> = { plane: Plane, train: TrainFront, bus: Bus, car: Car, ferry: Ship };
 const COLOR: Record<TravelMode, string> = { train: '#7c3aed', bus: '#15803d', plane: '#ea580c', car: '#52525b', ferry: '#0284c7' };
@@ -22,7 +23,10 @@ const nice = (t: string) => t.split('/').pop()!.replace(/\s*\([^)]*\)/, '');
 const fits = (partner: string, mode: TravelMode) =>
   partner === 'Rome2Rio' || (partner === 'Google Maps' ? mode !== 'plane' && mode !== 'car' : partner === 'Google Flights' ? mode === 'plane' : partner === 'Direct Ferries' ? mode === 'ferry' : mode === 'train' || mode === 'bus');
 
-export function TripLeg({ leg, from, to, date, onPick }: { leg: FootLeg; from: { name: string; cc: string | null }; to: { name: string; cc: string | null }; date: string | null; onPick: (mode: TravelMode) => void }) {
+/** M365: `price` is what a way costs for everyone travelling, as the trip's currency (rough: booked ahead). */
+export function TripLeg({ leg, from, to, date, onPick, price }: { leg: FootLeg; from: { name: string; cc: string | null }; to: { name: string; cc: string | null }; date: string | null; onPick: (mode: TravelMode) => void; price?: (mode: TravelMode) => { text: string; value: number } }) {
+  const prices = price ? new Map(leg.ways.map((w) => [w.mode, price(w.mode)])) : null;
+  const cheapest = prices && leg.ways.length > 1 ? leg.ways.reduce((a, w) => (prices.get(w.mode)!.value < prices.get(a.mode)!.value ? w : a)).mode : null;
   const links = betweenLinks(from, to, { date, flight: leg.modes.includes('plane'), sea: ferryLikely(from.cc, to.cc) }).filter((l) => fits(l.partner, leg.mode));
   return (
     <div className="ms-4 border-s-2 border-dashed border-indigo-300/70 py-2 ps-5 dark:border-indigo-400/30">
@@ -41,9 +45,11 @@ export function TripLeg({ leg, from, to, date, onPick }: { leg: FootLeg; from: {
                   <span className="whitespace-nowrap text-sm tabular-nums text-zinc-700 dark:text-zinc-200">{duration(w.minutes)}</span>
                 </span>
                 <span className="flex flex-wrap items-center gap-x-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  {prices && <span className="tabular-nums">≈ {prices.get(w.mode)!.text}</span>}
                   <span className="tabular-nums">{kgText(w.kg)} CO₂</span>
                   {w.fastest && <span className="inline-flex items-center gap-0.5 font-semibold text-indigo-700 dark:text-indigo-300"><Clock className="h-3 w-3" aria-hidden />Fastest</span>}
                   {w.greenest && <span className="inline-flex items-center gap-0.5 font-semibold text-emerald-700 dark:text-emerald-300"><Leaf className="h-3 w-3" aria-hidden />Greenest</span>}
+                  {w.mode === cheapest && <span className="inline-flex items-center gap-0.5 font-semibold text-amber-800 dark:text-amber-300"><Coins className="h-3 w-3" aria-hidden />Cheapest</span>}
                 </span>
               </span>
             </button>
