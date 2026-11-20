@@ -3145,7 +3145,6 @@ html[data-scrolling] .cmd-ring::before, html[data-scrolling] .cmd-ring::after { 
 .world-earth .earth-window { aspect-ratio: 1 / 0.74; -webkit-mask-image: linear-gradient(180deg, #000 82%, transparent 100%); mask-image: linear-gradient(180deg, #000 82%, transparent 100%); }
 .world-earth .earth-clouds { bottom: -31%; translate: -50% 0; animation: earth-drift 80s ease-in-out infinite alternate; }
 @keyframes earth-drift { from { transform: translate3d(-2.5%, 0, 0); } to { transform: translate3d(2.5%, 0, 0); } }
-.dark .world-earth .earth-clouds, html.dark .world-earth .earth-clouds { filter: brightness(0.3) saturate(0.6); }
 .world-earth .earth-card { border-radius: 1.25rem; background: var(--card-bg); border: 1px solid var(--card-border); box-shadow: var(--card-shadow); }
 html[data-scrolling] .world-earth .earth-clouds { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .world-earth .earth-clouds { animation: none; } }

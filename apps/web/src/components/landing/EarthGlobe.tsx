@@ -14,7 +14,16 @@ import type { EarthScene, Facing } from './earth-scene';
 type Port = { post: (m: object) => void; stop: () => void };
 // M337: it rests while the page scrolls (<html data-scrolling>, as every decorative loop does, M97): reading a WebGL frame
 // back for the page took the graphics chip from the scroll on a phone (the landing's only slow scroll frames).
-const live = (on: boolean) => on && document.visibilityState === 'visible' && !document.documentElement.hasAttribute('data-scrolling');
+const scrolling = () => document.documentElement.hasAttribute('data-scrolling');
+const live = (on: boolean) => on && document.visibilityState === 'visible' && !scrolling();
+/** M346 (the owner, 19 Nov: "when i scroll towards here then it lags a lot"): `go` once the page stops scrolling. Making
+ *  the globe hands its picture to the graphics chip in one go, which held up the scroll's frames when it came mid-scroll. */
+function whenStill(go: () => void) {
+  if (!scrolling()) { go(); return () => {}; }
+  const o = new MutationObserver(() => { if (!scrolling()) { o.disconnect(); go(); } });
+  o.observe(document.documentElement, { attributes: true, attributeFilter: ['data-scrolling'] });
+  return () => o.disconnect();
+}
 
 export function EarthGlobe({ face, label, className }: { face: Facing | null; label: string; className?: string }) {
   const box = useRef<HTMLDivElement>(null), cv = useRef<HTMLCanvasElement>(null), port = useRef<Port | null>(null);
@@ -45,10 +54,11 @@ export function EarthGlobe({ face, label, className }: { face: Facing | null; la
   useEffect(() => {
     const c = cv.current, el = box.current;
     if (!near || !c || !el) return;
-    let stopped = false;
-    const dims = () => { const r = c.getBoundingClientRect(); return { w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)), dpr: Math.min(2, window.devicePixelRatio || 1) }; };
+    let stopped = false, unwait = () => {};
+    // At most 1.5 pixels a point (M346): a soft, turning picture looks the same, with half the pixels of 2x to draw.
+    const dims = () => { const r = c.getBoundingClientRect(); return { w: Math.max(1, Math.round(r.width)), h: Math.max(1, Math.round(r.height)), dpr: Math.min(1.5, window.devicePixelRatio || 1) }; };
     const d = dims(), still = reducedMotion();
-    void import('./earth-scene').then(({ earthPicture, WATER_PICTURE, bitmap, earthScene }) => {
+    void import('./earth-scene').then(({ earthPicture, WATER_PICTURE, bitmap, earthScene }) => { unwait = whenStill(() => {
       if (stopped) return;
       const map = new URL(earthPicture(d.w, d.dpr), location.href).href, water = new URL(WATER_PICTURE, location.href).href;
       if (typeof Worker !== 'undefined' && typeof OffscreenCanvas !== 'undefined' && typeof c.transferControlToOffscreen === 'function') {
@@ -89,10 +99,10 @@ export function EarthGlobe({ face, label, className }: { face: Facing | null; la
       }
       port.current.post({ t: 'face', face: faceRef.current });
       port.current.post({ t: 'run', run: live(runRef.current) });
-    });
+    }); });
     const ro = new ResizeObserver(() => port.current?.post({ t: 'size', ...dims() }));
     ro.observe(c);
-    return () => { stopped = true; ro.disconnect(); port.current?.stop(); port.current = null; };
+    return () => { stopped = true; unwait(); ro.disconnect(); port.current?.stop(); port.current = null; };
   }, [near]);
 
   // A drag turns it (a mouse, a pen or a finger held on it); a page scroll on a phone still scrolls (touch-action).
