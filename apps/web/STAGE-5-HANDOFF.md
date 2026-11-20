@@ -10109,3 +10109,15 @@ The same ask. Green → Journeys showed each way's CO₂ only; now each has its 
 longer than the quickest: `bestBalance`) marked beside Cleanest, and a **Cleanest / Quickest** order that slides the
 list (`morph`). No local bus past 80 km and no plane under 150 km. On a phone a row's kg and "I went this way" sit on
 their own line under the name. Checked at 390 and 1280, light and dark: axe clean.
+
+## M359 (20 Nov): Trace's ways to ship
+
+The same ask ("all of them… i need more"). A shipment's card on **Trace → Tracking**, opened, shows **Ways to ship this**
+(`src/components/trace/map/ShipWays.tsx`) when it isn't delivered and has where it left and where it's going: road, rail,
+sea and air, quickest first, each with door-to-door days, the CO₂ for its weight and the usual price level ($ to $$$$,
+read aloud as words), **Fastest**, **Greenest** and **Cheapest** marked, and what the greenest way saves against road.
+- `shipWays(km, weightKg)` in `src/lib/trace.ts` (tested): road and sea per tonne-km as `journeyCarbon`, rail and air
+  from the UK government's 2024 freight factors (rounded); road and rail up to 6,000 km (rail from 150 km), sea from
+  500 km, air from 300 km. Estimates: the card says a carrier quotes the real days and price, and that sea needs ports.
+- `GET /trace/map/tracking` now gives each shipment's `weightKg` (the product's weight × units); its sample answer too.
+- Checked at 390 and 1280, light and dark (the sample Madrid → Budapest batch): axe clean.
