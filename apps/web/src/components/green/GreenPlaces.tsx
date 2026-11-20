@@ -4,7 +4,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import type { ExpressionSpecification, GeoJSONSource, Map as MLMap, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { ExternalLink, LocateFixed } from 'lucide-react';
+import { ExternalLink, LocateFixed, Minus, Navigation, Plus } from 'lucide-react';
+import { MapButtons } from '@/components/map-ui/Command';
 import { useDarkMode } from '@/lib/use-dark';
 import { osmKey } from '@/lib/travel-place';
 import { km } from '@/lib/travel-plan';
@@ -12,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { STYLE } from '@/components/travel/map/map-layers';
 import { mapRequest } from '@/components/travel/map/map-style';
 import { useBareChrome } from '@/lib/chrome';
-import { SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
+import { mapPixelRatio, SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
 
 // Green → Green places (M216): where to recycle, refill a bottle, hire a bike, charge an electric car, buy
 // second-hand or at a market, near you. OpenStreetMap's own places, read from the map's tiles as you move
@@ -90,7 +91,7 @@ export default function GreenPlaces() {
       if (gone || !box.current) return;
       const { s, style } = first();
       applied.current = style;
-      map = new ml.Map({ container: box.current, style: applied.current, center: [s.lon, s.lat], zoom: s.zoom, transformRequest: mapRequest, attributionControl: false, maplibreLogo: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), ...SMOOTH_MAP });
+      map = new ml.Map({ container: box.current, style: applied.current, center: [s.lon, s.lat], zoom: s.zoom, transformRequest: mapRequest, attributionControl: false, maplibreLogo: false, pixelRatio: mapPixelRatio(), ...SMOOTH_MAP });
       mapRef.current = map;
       smoothGestures(map);
       map.on('style.load', () => onStyle(map!));
@@ -152,6 +153,7 @@ export default function GreenPlaces() {
       </aside>
       <div className="relative h-[calc(100dvh-14rem+var(--bare-gain))] min-h-[24rem] overflow-hidden lg:h-[calc(100dvh-10rem)] rounded-[var(--radius-card)] bg-zinc-200 ring-1 ring-black/5 dark:bg-zinc-900 dark:ring-white/10" data-no-arrange data-no-motion>
         <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map of green places" />
+        <MapButtons className="absolute end-3 top-3 z-10" items={[{ label: 'Zoom in', icon: Plus, onClick: () => mapRef.current?.zoomIn() }, { label: 'Zoom out', icon: Minus, onClick: () => mapRef.current?.zoomOut() }, { label: 'Where I am', icon: Navigation, onClick: findMe }]} />
         {!ready && <div className="absolute inset-0 animate-pulse bg-zinc-200/80 dark:bg-white/[0.04]" aria-busy="true" />}
       </div>
     </div>

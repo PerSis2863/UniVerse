@@ -34,11 +34,11 @@ export interface MapHandle {
 }
 
 const PAL = {
-  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light. Dark (M346, the owner: "any of the
-  // maps is not dark"): a night map, near-black land and a deep ink-blue sea, the same as Travel's street map
-  // (travel/map/map-style.ts). Neutral greys before (M94).
+  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light. Dark: M350 (the owner, 20 Nov: "upgrade
+  // all the maps in the project like apple map", with Apple Maps' dark world view): a deep royal-blue sea and green
+  // land, as Travel's street map zoomed out (travel/map/map-style.ts). M346's near-black before; neutral greys (M94).
   light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
-  dark: { sea: '#0f1c2e', deep: '#0b1524', land: '#1d2027', edge: '#30343d', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
+  dark: { sea: '#22387f', deep: '#1c3070', land: '#2f5a55', edge: '#4b7a72', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 /** M290: how long the page's pulses keep moving with nobody touching anything. */

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatFigure, parseFigure } from './scroll-motion';
+import { formatFigure, parseFigure, pressOrigin } from './scroll-motion';
 
 describe('count-up figures keep the page’s own format', () => {
   it('reads numbers as the page wrote them', () => {
@@ -22,5 +22,14 @@ describe('count-up figures keep the page’s own format', () => {
     expect(formatFigure(p, 48.33)).toBe('48.3%');
     const r = parseFigure('₹12,345')!;
     expect(formatFigure(r, 12345)).toBe('₹12,345');
+  });
+});
+
+describe('what a press opens grows from the press (M351)', () => {
+  const r = { left: 100, top: 200, width: 240, height: 160 };
+  it('inside the part: there', () => expect(pressOrigin(r, 130, 210)).toBe('30px 10px'));
+  it('outside it (the button above a menu): its nearest edge', () => {
+    expect(pressOrigin(r, 400, 180)).toBe('240px 0px');
+    expect(pressOrigin(r, 50, 500)).toBe('0px 160px');
   });
 });

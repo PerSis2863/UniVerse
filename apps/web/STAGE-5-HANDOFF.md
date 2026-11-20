@@ -9970,3 +9970,100 @@ the current features in the maps"; "add whatever you can in this sections"; "no 
   tan, ice pale) fading by zoom 8; continent names. The canvas maps (Trace, Relief, Green's world) keep M346's look.
 - Checked at 1280 (dark, light) and 390 (dark), every section axe-clean; the map's tiles and photos can't load in this
   container, so the colours are checked by the numbers, not by eye on a real city.
+
+## M350 (20 Nov): every map in Apple's look, and smooth openings
+
+The owner, 20 Nov: "upgrade all the maps in the project like apple map which is really smooth and when i click any
+button like search button in map then it should show smooth transition of opening another section"; then "also make
+every other button when i click and when it try to open something then it should show smooth animations".
+- **Travel's map:** the section panel slides out from behind the menu column and back (`.map-panel`, `globals.css`:
+  Tailwind's `translate-*` classes set the `translate` property, so the transition names `translate` as well as
+  `transform`; measured gliding from -100% to 0 in ~0.4 s); while closed it is `inert` on a computer (`useWide`) and
+  shows the section it was on (`lastSec`). Every change of what the panel shows (a section, a place, directions, a walk,
+  a search, the phone sheet pulled up) glides in (`.map-panel-in`, keyed). The menu column slides away and back; the
+  search list, the measuring bar, the trip bar, "Search this area", the weather's days and the button that brings the
+  column back pop in (`cmd-pop`). Reduce Motion leaves fades.
+- **The other maps** (Trace's market and tracking, Relief's live map and alerts, Green's world and places): Apple's button
+  group (`MapButtons` in `map-ui/Command.tsx`: one rounded column, hairlines, white / `#1c1e21`, Apple's blue for a
+  button that's on; actions by `onPick(id)` or `onClick`), zoom and "where I am" on the street maps; the flat world maps
+  in Apple's dark world colours (`WorldCanvas` `PAL.dark`: sea `#22387f`, land `#2f5a55`); Relief's alerts map flat (no
+  globe). Their zoom already eased (`goTo`).
+- Checked at 1280 dark and 390 light on Travel, Relief (live, alerts), Green (world, places) and Trace's market: axe
+  clean, no sideways scroll, no page errors.
+
+## M351 (20 Nov): whatever a press opens eases in, everywhere
+
+The owner, 20 Nov: "make every other button when i click and when it try to open something then it should show smooth
+animations"; then, of M350's "only the maps": "please do this every where in the project". The shared sheets and
+dialogs already animated; the gaps were hand-made menus, drop-downs, pop-ups and sections on single screens (86 files).
+So the motion layer does it (`scroll-motion.ts`, `opened`): within 0.8 s of a press (pointer, or Enter / Space), new
+parts that appear on screen ease in, at most 6: a floating one (absolute / fixed: a menu, a drop-down) grows from the
+press (`pressOrigin`, tested) 0.96 → 1 while it fades in; one in the page's flow (a section, a tab's content) fades in
+rising 8 px. The transform is added (`composite: 'add'`), so a part's own centring stays. Skipped: anything already
+moving (`moving`: its own CSS animation, framer-motion's inline styles, WAAPI), lists redrawn (over 12 new rows or
+moved rows: morph() handles them), toasts, loading views, the page's frame, `[data-no-motion]`, a new page (its own
+entrance), Reduce Motion. Checked: the top bar's UniVersity, Learn and More menus now open this way; the Language menu
+keeps its own animation, not two.
+- **Rule:** a new pop-up needs nothing to animate; give it its own CSS animation only for a different entrance (the
+  layer then leaves it alone). Exits are each component's own (closing still removes most at once).
+
+## M352 (20 Nov): rounder, iOS-smooth corners everywhere
+
+The owner, 20 Nov: "make sure every area or sections and design is round and corners smooth like how apple ios does".
+One block at the end of `globals.css`: every step of Tailwind's roundness one notch larger (`--radius-sm` 6 px … `--radius-3xl`
+28 px; plain `rounded` 6 px) and cards from 12 px (M134's Ballast reels) to 18 px (`--radius-card`); where the browser
+draws continuous corners (`@supports (corner-shape: squircle)`: Chrome now; Safari and Firefox keep the rounder plain
+corners) the steps grow more (a squircle at the same radius looks tighter: cards 24 px, `rounded-xl` 22 px) and every
+rounded part takes `corner-shape: squircle` (`[class*="rounded-"]`, the button, field, menu-row and segmented classes);
+circles and pills (`…-full`) and `rounded-none` stay as they are. Radii only: nothing moves or resizes (checked: no
+sideways scroll at 390 and 1280 on the student home, Settings and Trace).
+- **Rule:** use Tailwind's `rounded-*` steps or `--radius-card` (they follow this block); a hard-coded radius won't.
+
+## M353 (20 Nov): Travel's map faster to open and smoother to move; Recents, 3D, follow me, share a view
+
+The owner, 20 Nov: "please add more features in the map and make it ultra smooth… map doesnt load fast and it isnt
+smooth if i go from one place to another in fast way"; then "everything should look professional and ultra smooth".
+- **Faster to open:** any Travel page fetches the map's code, its helper thread and the map service's description while
+  the browser is idle (`warmMap` in `src/lib/map-smooth.ts`, from `TravelTabs`; the service worker keeps the
+  description), and the map's code and its pins are prepared at the same time, not one after the other.
+- **Lighter to draw:** hills are shaded only up to zoom 12, from zoom-11 heights (`uv-hillshade` `maxzoom`; at street
+  level their own downloads were half of every screen's); a big screen draws at 1.5x, not 2x (`mapPixelRatio`, also
+  Green's places and Relief's alerts).
+- **Smooth when moving fast:** the page hears where the map is 220 ms after it stops, and not at all between quick moves
+  (each update redrew the panel and could ask for photos, reviews and the weather: work that landed on the next swipe's
+  first frames). Measured: during 8 quick drags no slow frame had any of our code in it (what's left is this container
+  drawing without a graphics chip).
+- **New:** **Recents** in Search (the places opened lately, this device only, Clear; `withRecentPlace` / `recentOf` in
+  `map-tools.ts`, tested, storage read through `recentOf`); a **3D** button (tilts the map, buildings and hills stand
+  up; again, flat); **Where I am follows you** (the arrow filled; moving the map or pressing again stops it; the watch
+  ends with the page); **Share this map view** (a link that opens here with "what's here"); **Escape** closes the open
+  panel ("/" stays the app's own search: the map's first try clashed with it). On a phone the button column keeps
+  Apple's three (layers, where I am, 3D) clear of the sheet; measure, share and full screen are a computer's.
+- Checked: 390 light and dark, 1280 light, axe clean, no page errors; each feature tried in a browser (a made-up
+  position for following).
+
+## M354 (20 Nov): on a phone the map comes first
+
+The owner, 20 Nov (a phone screenshot of Travel's map): "for user the map is not accessible and cant even see properly".
+The sheet at the foot covered about half the screen before anyone touched it (sections, search, stay, kinds of place).
+Now, as Apple Maps on an iPhone, it starts closed: only its handle and a "Search Maps" bar (86 px of 844); tapping the
+bar opens it (on Search), as do a place, a section or the handle; the handle also opens or closes with a swipe up or
+down (`swipe` / `swiped` refs: more than 24 px; the click that follows a swipe is ignored). The stay box's hint is
+shorter ("Where are you staying?"). Also checked: the map's style is valid in light and dark (MapLibre's own
+validator, run once, not committed), so a blank map in this container's screenshots is only its blocked tiles.
+- Checked at 390 light and dark: closed, opened, swiped down; axe clean, no page errors.
+
+## M355 (20 Nov): slow openings ease in too, and every opener on the main pages checked
+
+The owner, 20 Nov, of M351's left-outs ("slow openings… not every button checked"): "please work on this and then merge it".
+- **Slow and big openings** (`scroll-motion.ts`): a press now remembers where it was (the part of the page its button
+  sits in: card, section, row, dialog; what it controls by `aria-controls`; what it opened). For 4 s after it, parts that
+  appear later (their data arrived) still ease in when they float (a menu, a pop-up) or sit inside one of those
+  (`linked`); before 0.8 s anything does, as before. A big opening (over 300 changes, which the layer skipped as "a page
+  building") has its top parts eased in (`openedBig`), unless a new page just came in.
+- **The sweep** (`scripts/checks/opens-smooth.mjs`, on the built site): the main pages of every app (13 as a student, 5
+  as a teacher) on a phone and a computer, each button that opens something pressed (aria-haspopup, aria-expanded,
+  aria-controls, "More …"). 150 presses: 131 moved in, none appeared still; the other 19 were the phone's More (the side
+  menu, always there, slides in: measured gliding from −320 px to 0 in ~0.4 s) and Quick create on Messages (its panel
+  has its own animation; the sweep caught it mid-way). The sweep now counts a part that slides in as moving.
+- **Left out:** closing (most parts still go at once).

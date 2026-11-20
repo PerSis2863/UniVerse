@@ -44,8 +44,10 @@ export function addLayers(map: MLMap, dark: boolean) {
   // M214: relief under the roads, satellite under the names, transit, street-level coverage.
   const firstLine = layers.find((l) => (l as { 'source-layer'?: string })['source-layer'] === 'transportation')?.id ?? label;
   if (!map.getSource('uv-dem')) map.addSource('uv-dem', { type: 'raster-dem', tiles: [DEM], tileSize: 256, maxzoom: 14, encoding: 'terrarium', attribution: 'Elevation: Terrain Tiles (AWS Open Data)' });
-  if (!map.getSource('uv-dem-shade')) map.addSource('uv-dem-shade', { type: 'raster-dem', tiles: [DEM], tileSize: 256, maxzoom: 14, encoding: 'terrarium', attribution: 'Elevation: Terrain Tiles (AWS Open Data)' });
-  map.addLayer({ id: 'uv-hillshade', type: 'hillshade', source: 'uv-dem-shade', paint: { 'hillshade-exaggeration': dark ? 0.45 : 0.35, 'hillshade-shadow-color': dark ? '#000000' : '#5b6472', 'hillshade-highlight-color': dark ? '#3d434c' : '#ffffff', 'hillshade-accent-color': dark ? '#11151a' : '#8d96a3' } }, firstLine);
+  if (!map.getSource('uv-dem-shade')) map.addSource('uv-dem-shade', { type: 'raster-dem', tiles: [DEM], tileSize: 256, maxzoom: 11, encoding: 'terrarium', attribution: 'Elevation: Terrain Tiles (AWS Open Data)' });
+  // M353: hills shaded only up to zoom 12 (a town's streets are flat to the eye; at street level the hills' own
+  // downloads were half of every screen's), from zoom-11 heights stretched.
+  map.addLayer({ id: 'uv-hillshade', type: 'hillshade', source: 'uv-dem-shade', maxzoom: 12, paint: { 'hillshade-exaggeration': dark ? 0.45 : 0.35, 'hillshade-shadow-color': dark ? '#000000' : '#5b6472', 'hillshade-highlight-color': dark ? '#3d434c' : '#ffffff', 'hillshade-accent-color': dark ? '#11151a' : '#8d96a3' } }, firstLine);
   if (!map.getSource('uv-sat')) map.addSource('uv-sat', { type: 'raster', tiles: [SATELLITE], tileSize: 256, maxzoom: 14, attribution: 'Sentinel-2 cloudless 2016 by EOX (CC BY 4.0, modified Copernicus data)' });
   // Satellite over the style's areas (land, water, flat buildings), under its roads and names.
   const lastArea = layers.reduce((i, l, k) => (l.type === 'fill' || l.type === 'background' ? k : i), -1);
