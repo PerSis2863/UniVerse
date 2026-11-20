@@ -9941,3 +9941,32 @@ Directions it becomes the start, the destination or a stop. `photon.komoot.io` i
 (`security-headers.ts`) and named on `/policies` with the other map services. Checked in a browser (Photon's answer
 stubbed: this container can't reach it).
 - **Rules:** Nominatim stays for single searches (its rules forbid search-as-you-type); typing goes to Photon.
+
+## M349 (20 Nov): Travel's map in Apple Maps' layout and colours
+
+The owner, 20 Nov, with four pictures of Apple Maps on the web (dark): "make the map ui like this exactly and keep all
+the current features in the maps"; "add whatever you can in this sections"; "no need of globe in this".
+- **Sidebar** (`MapSidebar.tsx`): on a computer a menu column (`MapRail`, 12.5rem: Maps · Travel, hide button, Search,
+  Guides, Directions, Saved, Trips, a "Planning a trip?" card) and beside it the chosen section's panel (23.5rem, a
+  26 px title and a round close, `PanelHead`); a place's card, a destination, directions, a walk or a search's results
+  take the panel over; with nothing open only the column shows. On a phone the M236 sheet stays, with the sections as a
+  row (`SectionRow`). **Search:** the big search box (guides and real places, M348), where you're staying, Apple's
+  **Find Nearby** tiles two to a row (fold away once a kind is chosen, "‹ Find Nearby" brings them back), the places of
+  that kind in view, search this area. **Guides:** the area's guide (its highlights and parts of town, "Full guide"),
+  the sightseeing walk, and the 12 hand-picked places nearest the map. **Saved:** your saved places (their hearts shown
+  on the map). **Trips:** your trips, one drawn on the map with its days. `TravelMap` keeps `section`, `rail`,
+  `nearby`; `sideCover(m)` measures the sidebar (`[data-map-side]`) so fly-tos and fitted views centre in what's left
+  (`aside(m)`), and `--side` places the strips beside it.
+- **Find Nearby kinds** (`CATEGORIES`, `PINS`): Fast food, Bakeries, Supermarkets, Petrol, Parking and Health added.
+- **Directions** (`DirectionsCard`): title with Share (the route in Google Maps) and close; car, walk and bike as three
+  big buttons; From, To and Add Stop in one grey card with blue + circles; Now / Leave at / Arrive by and Avoid as pills.
+- **Controls:** a group top right (layers, where I am, measure, full screen), a compass with N and a red tick that turns
+  with the map, the zoom at the foot (clear of the assistant button), Apple's blue `#0a84ff` (white text sits on
+  `#0071e3`, link text `#0066cc` / `#4da3ff`: contrast).
+- **Map** (`map-style.ts` `DARK`, read off the owner's picture): slate-blue towns `#304456`, green farmland `#306757`,
+  teal woods, bright blue water `#203880`, pale blue-grey roads, white names; road numbers on coloured signs drawn in the
+  browser (`addShields` in `map-layers.ts`: motorways and trunks red, E-roads green, main roads yellow, others blue);
+  flat at every zoom (`mercator`, no globe); zoomed out the world in Natural Earth's colours (forests green, deserts
+  tan, ice pale) fading by zoom 8; continent names. The canvas maps (Trace, Relief, Green's world) keep M346's look.
+- Checked at 1280 (dark, light) and 390 (dark), every section axe-clean; the map's tiles and photos can't load in this
+  container, so the colours are checked by the numbers, not by eye on a real city.

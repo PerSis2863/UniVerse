@@ -33,14 +33,14 @@ const LIGHT = {
   street: '#6f6a62', streetMajor: '#57524b', district: '#9a9286', town: '#3f434b', city: '#1f2228', waterText: '#2f7fc0', halo: '#ffffff',
 };
 const DARK: typeof LIGHT = {
-  // M346 (the owner, 19 Nov: "any of the maps is not dark"): a night map like Google's and Apple's at night, near-black
-  // ground a shade above the page (#070808), blocks a step lighter, deep green parks, ink-blue water, dim gold motorways.
-  land: '#191b20', urban: '#1c1e24', park: '#15302a', wood: '#132b25', grass: '#173129', sand: '#2a2922', ice: '#2b2f37',
-  water: '#0f1d30', waterLine: '#0f1d30', building: '#25282f', buildingEdge: '#30343c', buildingTall: '#30343c',
-  minor: '#2d3139', minorEdge: '#141619', major: '#383c46', majorEdge: '#141619', fast: '#5e5034', fastEdge: '#3b3323',
-  path: '#2a2e36', pathEdge: '#141619', square: '#22252c', rail: '#3b3f49', border: '#5f5b78',
-  health: '#2f2329', school: '#2d2924', works: '#212329', sport: '#173129',
-  street: '#9ea5b1', streetMajor: '#c3c8d1', district: '#8d94a0', town: '#d3d7de', city: '#eef0f3', waterText: '#7097c8', halo: '#111317',
+  // M349 (the owner, 20 Nov: "make the map ui like this exactly", Apple Maps' dark map): slate-blue towns, green
+  // farmland, teal woods, bright blue water, pale blue-grey roads, white names; colours read off the owner's picture.
+  land: '#304456', urban: '#2f4357', park: '#2f655a', wood: '#0b5e5b', grass: '#306757', sand: '#4d4a3c', ice: '#4a5a6e',
+  water: '#203880', waterLine: '#203880', building: '#3b5068', buildingEdge: '#46607a', buildingTall: '#3f566f',
+  minor: '#5d7290', minorEdge: '#2a3a4c', major: '#849cba', majorEdge: '#2a3a4c', fast: '#a3b6d0', fastEdge: '#2f4258',
+  path: '#4d6380', pathEdge: '#2a3a4c', square: '#37506a', rail: '#6b7d96', border: '#9aa7c7',
+  health: '#4a4258', school: '#3d4a5e', works: '#304c73', sport: '#2f655a',
+  street: '#c9d4e2', streetMajor: '#e3eaf3', district: '#a9b8cc', town: '#eef3f8', city: '#ffffff', waterText: '#8fb4ff', halo: '#24344a',
 };
 
 const name: ExpressionSpecification = ['coalesce', ['get', 'name_en'], ['get', 'name']];
@@ -69,12 +69,15 @@ export function mapStyle(dark: boolean): StyleSpecification {
   const fast = road('road-fast', cls('motorway', 'trunk'), c.fast, c.fastEdge, grow(5, 0.6, 10, 2, 14, 6, 16, 12, 18, 28), grow(5, 1, 10, 3, 14, 8, 16, 14.5, 18, 31), 5);
   const layers: LayerSpecification[] = [
     { id: 'background', type: 'background', paint: { 'background-color': c.land } },
-    { id: 'relief', type: 'raster', source: 'relief', maxzoom: 7, paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, dark ? 0.35 : 0.5, 6, 0.08], 'raster-saturation': -0.6, ...(dark ? { 'raster-brightness-max': 0.45 } : {}) } },
+    // M349: the world zoomed out in its own colours as Apple Maps shows it (forests green, deserts tan, ice pale), from
+    // Natural Earth's relief, fading to the street map's own colours as you zoom in.
+    { id: 'relief', type: 'raster', source: 'relief', maxzoom: 9, paint: { 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 8, 0], 'raster-fade-duration': 0,
+      ...(dark ? { 'raster-saturation': 0.15, 'raster-brightness-min': 0.06, 'raster-brightness-max': 0.6, 'raster-hue-rotate': 18, 'raster-contrast': 0.1 } : { 'raster-saturation': -0.15 }) } },
     { id: 'urban', type: 'fill', ...SRC, 'source-layer': 'landuse', filter: cls('residential', 'commercial', 'retail', 'suburb', 'neighbourhood', 'quarter'), paint: { 'fill-color': c.urban, 'fill-opacity': ['interpolate', ['linear'], ['zoom'], 8, 0.5, 13, 1] } },
     { id: 'health', type: 'fill', ...SRC, 'source-layer': 'landuse', minzoom: 12, filter: cls('hospital'), paint: { 'fill-color': c.health } },
     { id: 'school', type: 'fill', ...SRC, 'source-layer': 'landuse', minzoom: 12, filter: cls('school', 'university', 'college', 'kindergarten'), paint: { 'fill-color': c.school } },
     { id: 'works', type: 'fill', ...SRC, 'source-layer': 'landuse', minzoom: 12, filter: cls('railway', 'industrial', 'military'), paint: { 'fill-color': c.works } },
-    { id: 'grass', type: 'fill', ...SRC, 'source-layer': 'landcover', filter: cls('grass', 'farmland', 'scrub', 'wetland'), paint: { 'fill-color': c.grass, 'fill-opacity': 0.6 } },
+    { id: 'grass', type: 'fill', ...SRC, 'source-layer': 'landcover', filter: cls('grass', 'farmland', 'scrub', 'wetland'), paint: { 'fill-color': c.grass, 'fill-opacity': dark ? 1 : 0.6 } },
     { id: 'wood', type: 'fill', ...SRC, 'source-layer': 'landcover', filter: cls('wood', 'forest'), paint: { 'fill-color': c.wood, 'fill-opacity': 0.85 } },
     { id: 'sand', type: 'fill', ...SRC, 'source-layer': 'landcover', filter: cls('sand', 'beach'), paint: { 'fill-color': c.sand } },
     { id: 'ice', type: 'fill', ...SRC, 'source-layer': 'landcover', filter: cls('ice', 'glacier'), paint: { 'fill-color': c.ice, 'fill-opacity': 0.8 } },
@@ -112,7 +115,10 @@ export function mapStyle(dark: boolean): StyleSpecification {
       layout: { 'text-field': name, 'text-font': BOLD, 'text-size': ['interpolate', ['linear'], ['zoom'], 6, 11, 12, 15], 'text-max-width': 8 }, paint: { 'text-color': c.town, 'text-halo-color': c.halo, 'text-halo-width': 1.6 } },
     { id: 'city-names', type: 'symbol', ...SRC, 'source-layer': 'place', minzoom: 3, maxzoom: 15, filter: cls('city'),
       layout: { 'text-field': name, 'text-font': BOLD, 'text-size': ['interpolate', ['linear'], ['zoom'], 3, 11, 8, 15, 12, 19], 'text-max-width': 8, 'symbol-sort-key': ['get', 'rank'] }, paint: { 'text-color': c.city, 'text-halo-color': c.halo, 'text-halo-width': 1.8 } },
-    { id: 'country-names', type: 'symbol', ...SRC, 'source-layer': 'place', maxzoom: 7, filter: cls('country'),
+    { id: 'continent-names', type: 'symbol', ...SRC, 'source-layer': 'place', maxzoom: 3.5, filter: cls('continent'),
+      layout: { 'text-field': name, 'text-font': BOLD, 'text-size': 13, 'text-transform': 'uppercase', 'text-letter-spacing': 0.06, 'text-max-width': 6 },
+      paint: { 'text-color': c.district, 'text-halo-color': c.halo, 'text-halo-width': 1.2 } },
+    { id: 'country-names', type: 'symbol', ...SRC, 'source-layer': 'place', minzoom: 2.5, maxzoom: 7, filter: cls('country'),
       layout: { 'text-field': name, 'text-font': BOLD, 'text-size': ['interpolate', ['linear'], ['zoom'], 1, 10, 6, 15], 'text-transform': 'uppercase', 'text-letter-spacing': 0.1, 'text-max-width': 7 },
       paint: { 'text-color': c.district, 'text-halo-color': c.halo, 'text-halo-width': 1.4 } },
   ];

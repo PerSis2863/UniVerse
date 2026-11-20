@@ -9,7 +9,6 @@ import { bubbleSpot } from '@/lib/navigation';
 import { plusCode, reportUrl } from '@/lib/map-extras';
 import { heightsAt } from './map-extras';
 import { cn } from '@/lib/utils';
-import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
 import { TurnIcon } from './TurnIcon';
 import { Profile } from './MapExtras';
@@ -94,14 +93,15 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
     return (
       <div>
         <div className="flex items-center gap-2">
-          <span className={cn('flex h-3 w-3 shrink-0 rounded-full', which === 'from' ? 'border-[3px] border-[#1f87ff] bg-white' : 'bg-[#ea4335]')} aria-hidden />
+          {v ? <span className={cn('ms-1.5 me-1.5 flex h-3 w-3 shrink-0 rounded-full', which === 'from' ? 'border-[3px] border-[#0a84ff] bg-white' : 'bg-[#ea4335]')} aria-hidden />
+            : <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white" aria-hidden><Plus className="h-4 w-4" /></span>}
           {v ? (
-            <button type="button" onClick={() => set({ ...d, [which]: null })} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl bg-zinc-100 px-3 py-2 text-start text-sm dark:bg-white/[0.06]" aria-label={`${which === 'from' ? 'From' : 'To'} ${v.name}: change`}>
+            <button type="button" onClick={() => set({ ...d, [which]: null })} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-1 py-2 text-start text-[15px] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]" aria-label={`${which === 'from' ? 'From' : 'To'} ${v.name}: change`}>
               <span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span><X className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
             </button>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'Choose a starting point…' : 'Choose where to go…'} near={near} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))}
+              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'From' : 'To'} near={near} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))}
                 onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ [which]: s }, s); }} />
               <button type="button" className={round} aria-label="Use where I am" onClick={() => { const me = myPlace(); if (me) choose({ [which]: me }); }}><LocateFixed className="h-4 w-4" aria-hidden /></button>
             </div>
@@ -112,49 +112,68 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
     );
   };
   const fastest = routes.length ? Math.min(...routes.map((x) => x.minutes)) : 0;
+  const share = async () => {
+    if (!d.from || !d.to) return;
+    const url = googleDirections(d.from, d.to, d.mode), title = `Directions to ${d.to.name}`;
+    try { if (navigator.share) await navigator.share({ title, url }); else { await navigator.clipboard.writeText(url); toast.success('Link to the directions copied'); } } catch { /* closed the share sheet */ }
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-[17px] font-semibold text-zinc-900 dark:text-white">Directions</h3>
-        <button type="button" onClick={onClose} className={round} aria-label="Close directions"><X className="h-5 w-5" aria-hidden /></button>
+      {/* M349 (the owner's Apple Maps picture): a big title with Share and close; the ways of travel as three big
+          buttons; From, To and Add Stop in one card; Now and Avoid as pills. */}
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="min-w-0 flex-1 text-[26px] font-bold tracking-tight text-zinc-900 dark:text-white">Directions</h3>
+        {d.from && d.to && <button type="button" onClick={() => void share()} className={round} aria-label="Share these directions"><Share className="h-[18px] w-[18px]" aria-hidden /></button>}
+        <button type="button" onClick={onClose} className={cn(round, 'bg-zinc-200/80 dark:bg-white/[0.14]')} aria-label="Close directions"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1 space-y-2">
-            {field('from')}
+        <div role="group" aria-label="Way of travel" className="grid grid-cols-3 gap-2">
+          {(['car', 'foot', 'bike'] as const).map((id) => MODES.find((x) => x.id === id)!).map((m) => { const Icon = ICON[m.id], on = d.mode === m.id; return (
+            <button key={m.id} type="button" aria-pressed={on} aria-label={m.label} title={m.label} onClick={() => set({ ...d, mode: m.id, chosen: 0 })}
+              className={cn('flex h-11 items-center justify-center rounded-xl transition-colors', on ? 'bg-[#0a84ff] text-white' : 'bg-[#f2f2f7] text-zinc-700 hover:bg-[#e8e8ed] dark:bg-[#26292d] dark:text-zinc-200 dark:hover:bg-[#2e3136]')}>
+              <Icon className="h-5 w-5" aria-hidden />
+            </button>
+          ); })}
+        </div>
+        <div className="mt-3 flex items-center gap-1 rounded-2xl bg-[#f2f2f7] px-3 py-1.5 dark:bg-[#26292d]">
+          <div className="min-w-0 flex-1 divide-y divide-zinc-300/60 dark:divide-white/10">
+            <div className="py-1.5">{field('from')}</div>
             {/* M260: stops on the way (up to three), each removable. */}
             {d.via.map((v, i) => (
-              <div key={`${v.name}${i}`} className="flex items-center gap-2">
-                <span className="flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl bg-zinc-100 px-3 py-2 text-sm dark:bg-white/[0.06]"><span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span>
+              <div key={`${v.name}${i}`} className="flex items-center gap-2 py-1.5">
+                <span className="ms-1.5 me-1.5 flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-2 text-[15px]"><span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span>
                   <button type="button" onClick={() => set({ ...d, via: d.via.filter((_, j) => j !== i), chosen: 0 })} className="rounded-full p-0.5 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-white/10" aria-label={`Remove the stop ${v.name}`}><X className="h-4 w-4" aria-hidden /></button></span>
               </div>
             ))}
             {adding && (
-              <div className="flex items-center gap-2">
-                <span className="flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
+              <div className="flex items-center gap-2 py-1.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white" aria-hidden><Plus className="h-4 w-4" /></span>
                 <PlaceSearch className="min-w-0 flex-1" label="A stop on the way" placeholder="Add a stop…" near={near} onPick={(t) => void find(t).then((s) => { if (s) { choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); } })}
                   onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); }} />
                 <button type="button" className={round} onClick={() => setAdding(false)} aria-label="Don’t add a stop"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             )}
-            {field('to')}
+            <div className="py-1.5">{field('to')}</div>
+            {!adding && d.via.length < 3 && (
+              <button type="button" onClick={() => setAdding(true)} className="flex w-full items-center gap-2 py-2.5 text-start text-[15px] text-zinc-500 dark:text-zinc-400">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-white dark:bg-zinc-500" aria-hidden><Plus className="h-4 w-4" /></span>Add Stop
+              </button>
+            )}
           </div>
           <button type="button" className={round} aria-label="Swap start and destination" onClick={() => set({ ...d, from: d.to, to: d.from, via: [...d.via].reverse(), chosen: 0 })}><ArrowUpDown className="h-4 w-4" aria-hidden /></button>
         </div>
-        {!adding && d.via.length < 3 && <button type="button" onClick={() => setAdding(true)} className="ms-5 mt-1.5 flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-[#0b55c4] hover:bg-[#1f87ff]/10 dark:text-[#8cc0ff]"><Plus className="h-3.5 w-3.5" aria-hidden />Add a stop</button>}
-        <Segmented<Mode> label="Way of travel" className="mt-3" value={d.mode} onChange={(mode) => set({ ...d, mode, chosen: 0 })} segments={MODES.map((m) => ({ value: m.id, label: m.label }))} />
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-          <label className="inline-flex items-center gap-1.5"><span className="sr-only">When</span>
-            <select value={when.kind} onChange={(e) => setWhen({ kind: e.target.value as When['kind'], time: when.time || hm(new Date(now + 1_800_000)) })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100">
-              <option value="now">Leave now</option><option value="leave">Leave at</option><option value="arrive">Arrive by</option>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <label className="inline-flex items-center"><span className="sr-only">When</span>
+            <select value={when.kind} onChange={(e) => setWhen({ kind: e.target.value as When['kind'], time: when.time || hm(new Date(now + 1_800_000)) })} className="rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white">
+              <option value="now">Now</option><option value="leave">Leave at</option><option value="arrive">Arrive by</option>
             </select>
           </label>
-          {when.kind !== 'now' && <label className="inline-flex items-center"><span className="sr-only">{when.kind === 'leave' ? 'Leaving time' : 'Arrival time'}</span><input type="time" value={when.time} onChange={(e) => setWhen({ ...when, time: e.target.value })} className="min-w-[6.5rem] rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100" /></label>}
+          {when.kind !== 'now' && <label className="inline-flex items-center"><span className="sr-only">{when.kind === 'leave' ? 'Leaving time' : 'Arrival time'}</span><input type="time" value={when.time} onChange={(e) => setWhen({ ...when, time: e.target.value })} className="min-w-[6.5rem] rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white" /></label>}
           {d.mode === 'car' && (
-            <label className="inline-flex items-center gap-1.5">Avoid
-              <select value={d.avoid} onChange={(e) => set({ ...d, avoid: e.target.value as Avoid, chosen: 0 })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100">
-                {AVOIDS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+            <label className="inline-flex items-center"><span className="sr-only">Avoid</span>
+              <select value={d.avoid} onChange={(e) => set({ ...d, avoid: e.target.value as Avoid, chosen: 0 })} className="rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white">
+                {AVOIDS.map((x) => <option key={x.id} value={x.id}>{x.id ? `Avoid ${x.label.toLowerCase()}` : 'Avoid…'}</option>)}
               </select>
             </label>
           )}

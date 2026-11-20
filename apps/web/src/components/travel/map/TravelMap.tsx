@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BedDouble, BookOpen, Box, Calendar, Camera, Clock3, CloudRain, Compass, Footprints, Globe2, Heart, Info, Layers, Loader2, LocateFixed, Luggage, MapPin, Maximize2, Minimize2, Minus, MoonStar, Mountain, Navigation, Plus, RotateCw, Ruler, Rotate3d, Satellite, ScanEye, Search, Share, Siren, Star, Sun, Sunrise, TrainFront, X } from 'lucide-react';
+import { BedDouble, BookOpen, Box, Calendar, Camera, ChevronLeft, Map as MapIcon, Clock3, CloudRain, Footprints, Globe2, Heart, Info, Loader2, Luggage, MapPin, Maximize2, Minimize2, Minus, MoonStar, Mountain, Navigation, Plus, RotateCw, Ruler, Rotate3d, Satellite, ScanEye, Search, Share, Siren, Star, Sun, Sunrise, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -30,6 +30,7 @@ import { PlaceCard, type Picked } from './PlaceCard';
 import { Highlights } from './Highlights';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
+import { FindNearby, MapRail, PANEL_REM, PanelHead, panelBg, RAIL_REM, RailShow, SavedPlaces, SECTIONS, SectionRow, TripsList, type Section } from './MapSidebar';
 import { areaSearchUrl, placeSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
@@ -49,7 +50,7 @@ import { AlertCard, ScaleBar, WeatherChip } from './MapExtras';
 // (Wikipedia); and the "Sightseeing walk" (once "Walk from here"), the notable sights nearby strung into a walk. Loaded only when
 // opened (src/components/travel/TravelExplore.tsx). M214 (the owner: "more good looking and accurate … a lot
 // of details and features … my cloudflare cpu limit should not rise"): hills in relief and 3D terrain, a
-// satellite view, the globe when zoomed out, a sky that follows the sun, public transport, street-level
+// satellite view, a flat world when zoomed out (M349), a sky that follows the sun, public transport, street-level
 // photos ("look around"), walking-distance rings, where I am with how sure the phone is, a Layers panel
 // (remembered on the device) and a filter for the places in view. Every tile and picture goes straight
 // from its free source to the browser; the Worker does nothing more.
@@ -70,7 +71,7 @@ const fold = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').t
 const calm = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const metres = (d: number) => (d < 1 ? `${Math.round(d * 100) * 10} m` : `${d.toFixed(1)} km`);
 // M233: the map's buttons grouped in rounded capsules, as Apple Maps does (zoom in one, the rest in another).
-const group = 'flex overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 dark:bg-[#1f232b]/95 dark:ring-white/10';
+const group = 'flex overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 dark:bg-[#1c1e21] dark:ring-white/10';
 const round = 'flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-200 active:scale-95 dark:bg-white/[0.08] dark:text-white dark:hover:bg-white/[0.14]';
 const ctl = 'flex h-11 w-11 items-center justify-center text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-100 active:scale-95 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
 
@@ -106,7 +107,17 @@ function drawWalk(m: MLMap, w: Walk | null) {
   ] });
 }
 /** Room around what's framed, clear of the panel (beside it on a computer, the sheet under it on a phone). */
-const clearOfPanel = (m: MLMap) => (m.getContainer().clientWidth >= 640 ? { top: 90, bottom: 60, left: 420, right: 80 } : { top: 110, bottom: 300, left: 40, right: 70 });
+/** M349: how much of the map the sidebar covers from the start on a computer (0 on a phone: the sheet is at the foot). */
+function sideCover(m: MLMap) {
+  const r = m.getContainer().getBoundingClientRect();
+  if (r.width < 640) return 0;
+  let x = 0;
+  m.getContainer().parentElement?.querySelectorAll<HTMLElement>('[data-map-side]').forEach((e) => { const b = e.getBoundingClientRect(); if (b.width && b.height) x = Math.max(x, b.right - r.left); });
+  return x;
+}
+/** Where to put a place so it's in the middle of the map the sidebar leaves (a phone: above the sheet). */
+const aside = (m: MLMap, dy = 0): [number, number] => (m.getContainer().clientWidth >= 640 ? [sideCover(m) / 2, dy] : [0, -140]);
+const clearOfPanel = (m: MLMap) => (m.getContainer().clientWidth >= 640 ? { top: 90, bottom: 60, left: sideCover(m) + 40, right: 80 } : { top: 110, bottom: 300, left: 40, right: 70 });
 const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, number, number] | null }) {
   if (to.box && Math.abs(to.box[2] - to.box[0]) > 0.01) m.fitBounds([[to.box[0], to.box[1]], [to.box[2], to.box[3]]], { padding: 40, maxZoom: 15, duration: calm() ? 0 : 1800 });
@@ -146,6 +157,11 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const walking = !!walk;
   const [shift, setShift] = useState(0); // half hours from now
   const [open, setOpen] = useState(false); // the panel on a phone
+  // M349: Apple's sidebar: the section open beside the menu column (none: only the column), the column shown, and
+  // Search's "Find Nearby" tiles shown (they fold away once a kind is chosen).
+  const [section, setSection] = useState<Section | null>(null);
+  const [rail, setRail] = useState(true);
+  const [nearby, setNearby] = useState(true);
   const [credits, setCredits] = useState(false); // the full map credits shown
   const [full, setFull] = useState(false); // M236: the map over the whole window
   // M237: Google Maps' tools: directions, "what's here" (right-click or press and hold), measuring.
@@ -182,8 +198,8 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const box4 = view && view.zoom >= 11 ? boxKey(view) : null;
   const { data: reviewed } = useSWR<{ places: { place: string; name: string; lat: number; lon: number; average: number; count: number }[] }>(show.reviews && box4 ? `/travel/reviews/near?${box4}` : null, fetcher, { revalidateOnFocus: false, keepPreviousData: true });
 
-  const { data: savedData } = useSWR<{ saved: Saved[] }>(show.saved ? '/travel/saved' : null, fetcher, { revalidateOnFocus: false });
-  const { data: tripList } = useSWR<{ trips: { id: string; name: string; cities: string[] }[] }>(layers || tripId ? '/travel/trips' : null, fetcher, { revalidateOnFocus: false });
+  const { data: savedData } = useSWR<{ saved: Saved[] }>(show.saved || section === 'saved' ? '/travel/saved' : null, fetcher, { revalidateOnFocus: false });
+  const { data: tripList } = useSWR<{ trips: { id: string; name: string; cities: string[] }[] }>(layers || tripId || section === 'trips' ? '/travel/trips' : null, fetcher, { revalidateOnFocus: false });
   const { data: tripData } = useSWR<{ trip: { name: string; startDate: string | null }; stops: TripMap['stops']; items: TripMap['items'] }>(tripId ? `/travel/trips/${tripId}` : null, fetcher, { revalidateOnFocus: false });
   const tripMap = useMemo<TripMap | null>(() => (tripData ? { stops: tripData.stops, items: tripData.items, startDate: tripData.trip.startDate } : null), [tripData]);
   // M264: the trip's day number today (1 = its first day), so the way travelled is solid and today's city stands out.
@@ -239,6 +255,13 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     return IDEAS.flatMap((i) => (i.lat != null && i.lon != null && i.lat >= view.s && i.lat <= view.n && inLon(i.lon) ? [{ i, d: km(view, { lat: i.lat, lon: i.lon }) ?? 0 }] : []))
       .filter((x) => x.d < far).sort((a, z) => a.d - z.d).slice(0, 40).map((x) => x.i);
   }, [show.world, view]);
+  // M349: Guides' "Places to go nearby": the hand-picked places nearest the middle of the map (to a tenth of a degree).
+  const nearAt = view ? `${view.lat.toFixed(1)},${view.lon.toFixed(1)}` : '';
+  const nearIdeas = useMemo(() => {
+    if (!nearAt) return [];
+    const [lat, lon] = nearAt.split(',').map(Number);
+    return IDEAS.flatMap((i) => (i.lat != null && i.lon != null ? [{ i, d: km({ lat, lon }, { lat: i.lat, lon: i.lon }) ?? 0 }] : [])).sort((a, z) => a.d - z.d).slice(0, 12).map((x) => x.i);
+  }, [nearAt]);
   const storyList = useMemo(() => (show.stories ? stories?.stories ?? [] : []), [show.stories, stories]);
   const reviewFc = useMemo(() => points((show.reviews ? reviewed?.places ?? [] : []).map((r) => ({ lat: r.lat, lon: r.lon, props: { place: r.place, name: r.name, label: `${r.average}★` } }))), [show.reviews, reviewed]);
   const when = useMemo(() => new Date((now || 0) + shift * 1_800_000), [now, shift]);
@@ -350,7 +373,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       map.on('style.load', () => onStyle(map!));
       map.on('moveend', read);
       map.on('load', read);
-      map.on('rotate', () => { if (compass.current) compass.current.style.transform = `rotate(${-map!.getBearing() - 45}deg)`; });
+      map.on('rotate', () => { if (compass.current) compass.current.style.transform = `rotate(${-map!.getBearing()}deg)`; });
       watchPhotos(map);
       map.on('idle', () => readList(map!));
       // M236: the first 'idle' could pass before the list was listening for it (the list stayed empty until the map
@@ -389,7 +412,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     const m = mapRef.current, r = routes[0];
     if (!m || !r) return;
     const xs = r.path.map((c) => c[0]), ys = r.path.map((c) => c[1]), wide = m.getContainer().clientWidth >= 640;
-    m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: wide ? { top: 60, bottom: m.getContainer().clientWidth >= 1024 ? 170 : 60, left: 420, right: 80 } : { top: 70, bottom: 300, left: 40, right: 70 }, duration: calm() ? 0 : 900, maxZoom: 17 });
+    m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: wide ? { top: 60, bottom: m.getContainer().clientWidth >= 1024 ? 170 : 60, left: sideCover(m) + 40, right: 80 } : { top: 70, bottom: 300, left: 40, right: 70 }, duration: calm() ? 0 : 900, maxZoom: 17 });
   }, [routes]);
   // M347: a place sent from a guide (mapLink): its card at its position; without one, found by its name in its city,
   // then by its address (named as the guide names it), else said plainly. Once, when the map is ready.
@@ -618,7 +641,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     const m = mapRef.current;
     if (!m) return;
     drawPicked(m, null);
-    const to = Math.max(m.getZoom(), d.idea ? 8.5 : 10), offset: [number, number] = window.innerWidth >= 640 ? [190, 0] : [0, -140];
+    const to = Math.max(m.getZoom(), d.idea ? 8.5 : 10), offset = aside(m);
     if (calm()) m.jumpTo({ center: [d.lon, d.lat], zoom: to });
     else m.flyTo({ center: [d.lon, d.lat], zoom: to, offset, speed: 1.1, curve: 1.42, maxDuration: 2600, essential: true, easing: ease });
   }
@@ -648,7 +671,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       // M214 (the owner: "auto zoom when i click on the specific restaurant … smooth"): glide in to it (close,
       // tilted in 3D), leaving room for the card; a short ease when already close.
       const at2 = p.type === 'place' ? p : p.type === 'story' ? p.story : p.photo, z = m.getZoom(), to = Math.max(z, 17);
-      const offset: [number, number] = window.innerWidth >= 640 ? [190, 40] : [0, -140];
+      const offset = aside(m, 40);
       if (calm()) m.jumpTo({ center: [at2.lon, at2.lat], zoom: to });
       else if (to - z < 0.5) m.easeTo({ center: [at2.lon, at2.lat], offset, duration: 650, easing: (t) => 1 - Math.pow(1 - t, 3) });
       else m.flyTo({ center: [at2.lon, at2.lat], zoom: to, pitch: show.d3 ? 58 : 0, offset, speed: 0.9, curve: 1.3, maxDuration: 1600, essential: true, easing: ease });
@@ -711,6 +734,17 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     return c ? { lat: c.lat, lon: c.lng, name: 'Middle of the map' } : null;
   };
   const directionsTo = (to: Spot | null, from: Spot | null = myPlace()) => { pick(null); endWalk(); setHere(null); setMeasure(null); setOpen(true); setDir({ from, to, mode: dir?.mode ?? 'foot', chosen: 0, via: [], avoid: dir?.avoid ?? '' }); };
+  // M349: the sidebar's section (a phone's sheet always shows one: Search unless another was chosen).
+  const sec: Section = section ?? 'search';
+  const active: Section | null = dir ? 'directions' : section;
+  const panelOn = !!(section || picked || dest || dir || walk || found);
+  const openSection = (x: Section) => {
+    if (x === 'directions') { directionsTo(null); return; }
+    pick(null); setDest(null); setDir(null); endWalk(); setFound(null); setSection(x); setOpen(true);
+    if (x === 'search') setNearby(true);
+    if (x === 'saved' && !show.saved) setShow((v) => ({ ...v, saved: true }));
+  };
+  const closeAll = () => { setSection(null); setDir(null); pick(null); setDest(null); endWalk(); setFound(null); setOpen(false); };
   /** M260: Start: the map becomes the navigation (full screen, the panel and the map's buttons out of the way). */
   const startNav = (r: Route) => {
     if (!dir?.to) return;
@@ -739,29 +773,36 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const moved = !!found && !!view && found.at !== `${view.lat.toFixed(3)},${view.lon.toFixed(3)},${view.zoom.toFixed(1)}`;
   return (
     <div className={cn('overflow-hidden bg-zinc-200 dark:bg-zinc-900', full ? 'fixed inset-0 z-[70]' : 'relative h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] rounded-[var(--radius-card)] ring-1 ring-black/5 dark:ring-white/10 sm:-mx-8 sm:-mb-8 sm:h-[calc(100dvh-9.25rem+var(--bare-gain))] sm:rounded-none sm:ring-0')}
-      data-no-arrange data-no-motion onKeyDown={(e) => { if (e.key === 'Escape' && full) setFull(false); }}>
+      data-no-arrange data-no-motion onKeyDown={(e) => { if (e.key === 'Escape' && full) setFull(false); }}
+      style={{ '--rail': `${rail ? RAIL_REM : 0}rem`, '--side': `${(rail ? RAIL_REM : 0) + (panelOn ? PANEL_REM : 0)}rem` } as React.CSSProperties}>
       <PinSource ref={pinBox} />
       {/* Inline: MapLibre's own stylesheet makes its container position: relative. */}
       <div ref={box} style={{ position: 'absolute', inset: 0 }} role="region" aria-label="Map" />
       {!ready && <div className="absolute inset-0 skeleton" aria-busy="true" />}
 
       {!nav && (<>
-      {/* Controls. */}
-      {/* A row under the kinds of place on a phone (pinch to zoom there), a column on the right on a computer. */}
+      {/* M349 (the owner's Apple Maps pictures): a group at the top (the map's layers, where I am, measure, full screen),
+          the compass under it (N and a red tick, turning with the map), the zoom at the foot (a computer). */}
       <div className="absolute end-3 top-3 z-20 flex flex-col items-end gap-2">
-        <div className={cn(group, 'hidden flex-col divide-y divide-zinc-200 sm:flex dark:divide-white/10')}>
-          <button type="button" className={ctl} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={ctl} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
-        </div>
-        <button type="button" className={cn(group, ctl)} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
         <div className={cn(group, 'flex-col divide-y divide-zinc-200 dark:divide-white/10')}>
-          <button type="button" className={ctl} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}><Compass ref={compass} className="h-5 w-5" style={{ transform: 'rotate(-45deg)' }} aria-hidden /></button>
-          <button type="button" className={cn(ctl, measure && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Measure distance" aria-pressed={!!measure} onClick={() => { setHere(null); setMeasure((x) => (x ? null : [])); }}><Ruler className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><LocateFixed className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={cn(ctl, layers && 'bg-indigo-700 text-white hover:bg-indigo-700 dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><Layers className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={cn(ctl, layers && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><MapIcon className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><Navigation className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={cn(ctl, measure && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="Measure distance" aria-pressed={!!measure} onClick={() => { setHere(null); setMeasure((x) => (x ? null : [])); }}><Ruler className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={ctl} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
         </div>
+        <button type="button" className={cn(group, 'h-11 w-11 items-center justify-center rounded-full text-zinc-900 dark:text-white')} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}>
+          <svg ref={compass} viewBox="0 0 40 40" className="h-10 w-10" aria-hidden>
+            {Array.from({ length: 12 }, (_, i) => <line key={i} x1="20" y1="3.5" x2="20" y2={i % 3 ? 5.5 : 6.5} stroke="currentColor" strokeOpacity={0.55} strokeWidth="1.2" transform={`rotate(${i * 30} 20 20)`} />)}
+            <path d="M20 2.5 L23 8 H17 Z" fill="#ff3b30" />
+            <text x="20" y="25" textAnchor="middle" fontSize="13" fontWeight="700" fill="currentColor">N</text>
+          </svg>
+        </button>
         {/* M336: the weather where the map is, as Apple Maps shows it in its corner. */}
         {view && <WeatherChip lat={view.lat} lon={view.lon} zoom={view.zoom} />}
+      </div>
+      <div className={cn(group, 'absolute bottom-28 end-3 z-20 hidden flex-col divide-y divide-zinc-200 sm:flex dark:divide-white/10')}>
+        <button type="button" className={ctl} aria-label="Zoom in" onClick={() => mapRef.current?.zoomIn()}><Plus className="h-5 w-5" aria-hidden /></button>
+        <button type="button" className={ctl} aria-label="Zoom out" onClick={() => mapRef.current?.zoomOut()}><Minus className="h-5 w-5" aria-hidden /></button>
       </div>
       {/* M336: the scale while zooming (Apple Maps), beside the controls. */}
       <div className="absolute end-[4.25rem] top-4 z-20"><ScaleBar mapRef={mapRef} ready={ready} /></div>
@@ -773,7 +814,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       {disaster && <AlertCard a={disaster.a} x={disaster.x} y={disaster.y} now={now} onClose={() => setDisaster(null)} />}
       {/* M259: a trip on the map (its days to pick from) and "Search this area" again once the map has moved. */}
       {(tripId || moved) && (
-        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex flex-col items-center gap-2 px-16 sm:top-3 sm:ps-[25rem]">
+        <div className="pointer-events-none absolute inset-x-0 top-14 z-20 flex flex-col items-center gap-2 px-16 sm:top-3 sm:ps-[calc(var(--side)+1rem)]">
           {moved && found && (
             <button type="button" disabled={seeking} onClick={() => void searchArea(found.q)} className="pointer-events-auto inline-flex items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-[#0b55c4] shadow-lg ring-1 ring-black/5 transition-transform duration-150 active:scale-95 dark:bg-[#1f232b] dark:text-[#8cc0ff] dark:ring-white/10">
               {seeking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <RotateCw className="h-4 w-4" aria-hidden />}Search this area
@@ -840,18 +881,21 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
         </div>
       )}
 
-      {/* M236: one panel as Apple Maps' sidebar: search on top, the kinds of place as round icons, the places (or a
-          place, or a walk), the hour and the sun as a quiet footer. On a phone it is a sheet at the bottom with a grab
-          handle (as Apple Maps on an iPhone): the search and kinds always, the rest when pulled up. */}
-      <aside aria-label="Places" className="absolute inset-x-2 bottom-2 z-30 flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] bg-[var(--card-bg)] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-3 sm:start-3 sm:top-3 sm:max-h-none sm:w-[23rem]">
+      {/* M349 (the owner, 20 Nov, with Apple Maps' pictures): Apple's sidebar (MapSidebar.tsx). A computer: the menu
+          column (Search, Guides, Directions, Saved, Trips) and the chosen section's panel beside it, a big title and a
+          round close; a place's card, a destination, directions or a walk take the panel over. A phone: the sheet at the
+          foot with the sections as a row (M236's grab handle). */}
+      {rail ? <MapRail active={active} onPick={openSection} onHide={() => setRail(false)} /> : <RailShow onShow={() => setRail(true)} />}
+      <aside aria-label="Places" data-map-side className={cn('absolute inset-x-2 bottom-2 z-30 flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-0 sm:start-[var(--rail)] sm:top-0 sm:max-h-none sm:w-[23.5rem] sm:rounded-none sm:border-e sm:border-black/[0.06] sm:shadow-none sm:ring-0 sm:dark:border-white/[0.06]', panelBg, !panelOn && 'sm:hidden')}>
         <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-2 pt-2.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
           <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
         </button>
-        <div className="px-3 pb-2 sm:pt-3">
-          <div className="flex items-center gap-2"><PlaceSearch className="min-w-0 flex-1" label="Find a place on the map" placeholder="Search a place, hotel or address…" near={view} onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }}
-            onPlace={(p) => pick({ type: 'place', key: p.key, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.sub, lat: p.lat, lon: p.lon })} /><button type="button" onClick={() => directionsTo(null)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#1f87ff] text-white shadow-sm transition-transform duration-150 hover:bg-[#1a78e0] active:scale-95" aria-label="Directions"><Navigation className="h-[18px] w-[18px]" aria-hidden /></button></div>
-          {/* On a phone a place's card takes the sheet over (as in Apple Maps): the stay and the kinds step aside. */}
-          <div className={cn(picked && 'hidden sm:block')}>
+        <div className="px-3 pb-2 sm:px-4 sm:pt-4">
+          <SectionRow active={dir ? 'directions' : sec} onPick={openSection} />
+          {!picked && !dest && !dir && <div className="hidden sm:block"><PanelHead title={SECTIONS.find((x) => x.id === sec)!.label} onClose={closeAll} /></div>}
+          {sec === 'search' && !picked && !dest && !dir && (<>
+          <PlaceSearch className="min-w-0" big label="Find a place on the map" placeholder="Search a place, hotel or address…" near={view} onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }}
+            onPlace={(p) => pick({ type: 'place', key: p.key, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.sub, lat: p.lat, lon: p.lon })} />
           <form onSubmit={findStay} className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-100 px-2.5 py-1 dark:bg-white/[0.06]">
             <BedDouble className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
             <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
@@ -866,6 +910,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
               ))}
             </div>
           )}
+          <div className="sm:hidden">
           <div className="-mx-3 mt-3 flex gap-1 overflow-x-auto px-3 pb-1 [scrollbar-width:none]" role="group" aria-label="Kind of place">
             {CATEGORIES.map((c) => {
               const Icon = PINS[c.id].icon, on = cat === c.id;
@@ -879,13 +924,55 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
             })}
           </div>
           </div>
+          </>)}
         </div>
-        <div className={cn('min-h-0 flex-1 flex-col border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10', open ? 'flex' : 'hidden sm:flex')}>
+        <div className={cn('min-h-0 flex-1 flex-col overflow-y-auto border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10 sm:border-t-0 sm:px-4 sm:pt-1', open ? 'flex' : 'hidden sm:flex')}>
           {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} onFlyover={flyover} /> : dest ? (
             <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
-              onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: window.innerWidth >= 640 ? [190, 0] : [0, -140], duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
-          ) : dir ? <DirectionsCard d={dir} set={setDir} near={view} routes={routes} loading={routing} failed={noRoute} avoided={avoided} now={now} myPlace={myPlace} onStart={startNav} onClose={() => setDir(null)} /> : (
+              onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: aside(m), duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
+          ) : dir ? <DirectionsCard d={dir} set={setDir} near={view} routes={routes} loading={routing} failed={noRoute} avoided={avoided} now={now} myPlace={myPlace} onStart={startNav} onClose={() => setDir(null)} />
+          : sec === 'guides' && !walk && !found ? (
+            <div className="space-y-5 pb-3">
+              {guideOf ? (
+                <section>
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <h3 className="min-w-0 truncate text-[19px] font-bold text-zinc-900 dark:text-white" translate="no">{guideOf.replace(/\//g, ' · ')}</h3>
+                    <Link href={`/travel/guide?d=${encodeURIComponent(guideOf)}`} className="shrink-0 text-sm font-semibold text-[#0066cc] dark:text-[#4da3ff]">Full guide</Link>
+                  </div>
+                  <Highlights title={guideOf} stay={stay && stay.city === guideOf ? stay : null} onSight={(h) => pick({ type: 'place', key: null, name: h.name, kind: 'Sight', cls: 'attraction', lat: h.lat, lon: h.lon })} onArea={(t) => { setGuideOf(t); goTo(t); }}
+                    onNearby={stay ? (k) => { asked.current++; setCat(k); setFilter(''); mapRef.current?.easeTo({ center: [stay.lon, stay.lat], zoom: Math.max(15, mapRef.current.getZoom()), duration: calm() ? 0 : 900, essential: true }); } : undefined} />
+                </section>
+              ) : <p className="rounded-2xl bg-[#f2f2f7] p-4 text-sm text-zinc-700 dark:bg-[#26292d] dark:text-zinc-200">Search a city, or tap a town on the map, to see its guide here: what to see, its parts of town, and what’s near your stay.</p>}
+              <section>
+                <h3 className="mb-1 text-[19px] font-bold text-zinc-900 dark:text-white">Sightseeing walk</h3>
+                <p className="text-sm leading-relaxed text-zinc-600 dark:text-zinc-300">The sights near the middle of the map in one walk of about{' '}
+                  <label className="sr-only" htmlFor="walk-for">How long the sightseeing walk is</label>
+                  <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-md border border-zinc-200 bg-white px-1 py-0.5 text-sm font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
+                    {[60, 120, 180, 240].map((m) => <option key={m} value={m}>{m / 60} {m === 60 ? 'hour' : 'hours'}</option>)}
+                  </select>, in the best order, with the time at each.</p>
+                <button type="button" onClick={() => { setSection('search'); startWalk(); }} disabled={!ready} className="btn-primary btn-sm mt-2 inline-flex items-center gap-1.5"><Footprints className="h-4 w-4" aria-hidden />Start the walk</button>
+              </section>
+              <section>
+                <h3 className="mb-1 text-[19px] font-bold text-zinc-900 dark:text-white">Places to go nearby</h3>
+                <ul className="space-y-0.5">
+                  {nearIdeas.map((d) => {
+                    const thumb = worldIn ? thumbOf(d.title) : null;
+                    return (
+                      <li key={d.title}>
+                        <button type="button" onClick={() => openDest({ name: d.title.replace(/ \(.*\)$/, ''), cc: d.cc, lat: d.lat!, lon: d.lon!, pop: 0, idea: d })} className="flex w-full items-center gap-3 rounded-xl px-2 py-2 text-start transition-colors hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                          <span className="h-11 w-11 shrink-0 overflow-hidden rounded-xl bg-gradient-to-br from-sky-300 to-sky-600" aria-hidden>{thumb && <Pic src={thumb} shown={44} loading="lazy" className="h-full w-full object-cover" />}</span>
+                          <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-zinc-900 dark:text-white" translate="no">{d.title.replace(/ \(.*\)$/, '')}</span><span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{d.country} · {d.blurb}</span></span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </section>
+            </div>
+          ) : sec === 'saved' && !walk && !found ? <div className="pb-3"><SavedPlaces list={savedData?.saved} onPick={(x) => pick({ type: 'place', key: null, name: x.name, kind: 'One of your saved places', lat: x.lat!, lon: x.lon! })} /></div>
+          : sec === 'trips' && !walk && !found ? <div className="pb-3"><TripsList list={tripList?.trips} shown={tripId} onShow={(id) => { setTripId(id); setTripDay(null); }} /></div> : (
             <>
+              {!walk && !found && !dests && nearby && <div className="mb-3 hidden sm:block"><FindNearby cat={cat} onPick={(c) => { setCat(c); setFilter(''); endWalk(); setNearby(false); if (c !== 'see') closeIn(); }} /></div>}
               {walk ? (
                 // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.
                 <div className="mb-3 flex items-center gap-2">
@@ -902,24 +989,8 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
                   <h3 className="min-w-0 truncate font-semibold text-zinc-900 dark:text-white">{panelTitle}</h3>
                   {found && <button type="button" onClick={() => setFound(null)} className="btn-ghost btn-sm p-1" aria-label="Clear the search"><X className="h-4 w-4" aria-hidden /></button>}
                 </div>
-                {/* M270 (the owner: "i dont understand… if i want directions from one place to another then how"): two plain
-                    choices, each saying what it does: directions between any two places, and a walk past the sights. */}
-                {!found && !dests && (
-                  <div className="mt-2 space-y-1.5">
-                    <div className="grid grid-cols-2 gap-2">
-                      <button type="button" onClick={() => directionsTo(null)} className="btn-primary btn-sm inline-flex items-center justify-center gap-1.5"><Navigation className="h-4 w-4" aria-hidden />Directions</button>
-                      <button type="button" onClick={startWalk} disabled={!ready} className="btn-secondary btn-sm inline-flex items-center justify-center gap-1.5"><Footprints className="h-4 w-4" aria-hidden />Sightseeing walk</button>
-                    </div>
-                    <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-                      <b className="font-semibold">Directions:</b> from any place to another, on foot, by bike or by car.{' '}
-                      <b className="font-semibold">Sightseeing walk:</b> the sights near the middle of the map in one walk of about{' '}
-                      <label className="sr-only" htmlFor="walk-for">How long the sightseeing walk is</label>
-                      <select id="walk-for" value={walkFor} onChange={(e) => setWalkFor(Number(e.target.value))} className="rounded-md border border-zinc-200 bg-white px-1 py-0.5 text-xs font-semibold text-zinc-700 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-200">
-                        {[60, 120, 180, 240].map((m) => <option key={m} value={m}>{m / 60} {m === 60 ? 'hour' : 'hours'}</option>)}
-                      </select>.
-                    </p>
-                  </div>
-                )}
+                {/* M349: back to Apple's "Find Nearby" tiles once a kind is chosen (a computer). */}
+                {!found && !dests && !nearby && <button type="button" onClick={() => setNearby(true)} className="mt-0.5 hidden items-center gap-0.5 text-sm font-semibold text-[#0066cc] sm:inline-flex dark:text-[#4da3ff]"><ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden />Find Nearby</button>}
               </div>
               )}
               {/* M259: filter the places in view as you type; Search (or Enter) asks OpenStreetMap for anything by that name in view. */}
@@ -933,11 +1004,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
                   {filter.trim().length >= 2 && <button type="submit" disabled={seeking} className="btn-secondary btn-sm inline-flex shrink-0 items-center gap-1">{seeking ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Search className="h-4 w-4" aria-hidden />}Search</button>}
                 </form>
               )}
-              <ol className="-mx-1 min-h-0 flex-1 overflow-y-auto px-1 pb-2">
-                {!walk && !found && cat === 'see' && guideOf && (
-                  <li><Highlights title={guideOf} stay={stay && stay.city === guideOf ? stay : null} onSight={(h) => pick({ type: 'place', key: null, name: h.name, kind: 'Sight', cls: 'attraction', lat: h.lat, lon: h.lon })} onArea={(t) => { setGuideOf(t); goTo(t); }}
-                    onNearby={stay ? (k) => { asked.current++; setCat(k); setFilter(''); mapRef.current?.easeTo({ center: [stay.lon, stay.lat], zoom: Math.max(15, mapRef.current.getZoom()), duration: calm() ? 0 : 900, essential: true }); } : undefined} /></li>
-                )}
+              <ol className="-mx-1 px-1 pb-2">
                 {walk ? walk.stops.map((s, i) => (
                   <li key={s.key}>
                     <p className="ps-9 text-xs text-zinc-500 dark:text-zinc-400"><Footprints className="me-1 inline h-3.5 w-3.5" aria-hidden />{s.walk} min walk</p>
@@ -1047,14 +1114,14 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
         ] : null;
         if (!cards) return null;
         return (
-          <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
+          <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[calc(var(--side)+0.75rem)] z-20 hidden lg:block">
             <StatStrip className="pointer-events-auto">{cards.map((c, i) => <StatCard key={c.label} label={c.label} icon={c.icon} value={c.value} unit={c.unit} tone={'tone' in c ? c.tone : undefined} delay={i * 50} />)}</StatStrip>
           </div>
         );
       })()}
       {/* M264: a trip's numbers along the map's foot (a computer: the phone's sheet has the bottom). */}
       {!nav && tripId && tripStats && !picked && !dir && !walk && (
-        <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[24.5rem] z-20 hidden lg:block">
+        <div className="cmd-travel pointer-events-none absolute bottom-3 end-16 start-[calc(var(--side)+0.75rem)] z-20 hidden lg:block">
           <StatStrip className="pointer-events-auto">
             <StatCard label="Days" icon={Calendar} value={tripStats.days} unit={tripToday != null && tripToday >= 1 && tripToday <= tripStats.days ? `today is day ${tripToday}` : tripToday != null && tripToday < 1 ? `starts in ${1 - tripToday} d` : undefined} delay={0}
               foot={<TickStrip max={30} parts={Array.from({ length: Math.min(30, tripStats.days) }, (_, i) => ({ n: 1, color: tripToday != null && i + 1 < tripToday ? (dark ? '#e4e4e7' : '#27272a') : i + 1 === tripToday ? '#0ea5e9' : dark ? '#52525b' : '#d4d4d8' }))} />} />
