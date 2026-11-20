@@ -9916,3 +9916,14 @@ dark"; then "the whole main page is laggy".
   `filter` on anything that moves (bake it into the picture); no big `blur()` glows (a radial gradient); a WebGL scene's
   first frame (textures, shaders) waits for the scroll to stop.
 - **Left out:** the mask fading the Earth's lower edge (cheap: redrawn only with the Earth's 30 frames, not the scroll).
+
+## M347 (20 Nov): a place's Map button opens UniVerse's own map
+
+The owner, 20 Nov (a Kyoto guide's place): "when i click on maps it open in another window and it open something else…
+show in my own map". `mapLink` (`src/lib/travel-book.ts`) sent guide places, saved places and a trip day's places to
+OpenStreetMap's site in a new tab, whose search for "name, address, city" often landed elsewhere. Now it is
+`/travel?view=map&n=<name>` with `at=lat,lon,17` when the place has a position, else `addr` and `near` (its city), plus
+`d` (its guide, for the highlights), opened in the same window (`Link`). `TravelMap`'s `find` (from `TravelExplore`)
+opens it once the map is ready: at its position with its card ("From the guide"); without one, Nominatim
+(`placeSearchUrl`, `map-world.ts`, from the browser, one search a step) by its name in its city, then by its address,
+else a toast to search for it. Checked in a browser (the search's answer stubbed: this container can't reach it).

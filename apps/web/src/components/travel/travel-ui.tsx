@@ -11,6 +11,7 @@ import { api, errorMessage } from '@/lib/api';
 import type { useRouter } from 'next/navigation';
 import { commonsImage, commonsSrcSet, type Listing } from '@/lib/travel-guide';
 import { Photo } from '@/components/ui/Photo';
+import Link from '@/components/ui/Link';
 import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
 
@@ -98,7 +99,7 @@ export function ListingCard({ guide, l, saved, near }: { guide: string; l: Listi
       </dl>
       <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
         <SaveButton guide={guide} l={l} saved={saved} />
-        <a href={mapLink(l.name, { lat: l.lat, lon: l.lon, address: l.address, near })} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</a>
+        <Link href={mapLink(l.name, { lat: l.lat, lon: l.lon, address: l.address, near, guide })} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</Link>
         {l.url && <a href={l.url} target="_blank" rel="noopener noreferrer nofollow" className="btn-ghost btn-sm inline-flex items-center gap-1.5"><ExternalLink className="h-4 w-4" aria-hidden />Website</a>}
         {l.phone && <a href={`tel:${l.phone.replace(/[^\d+]/g, '')}`} className="btn-ghost btn-sm inline-flex items-center gap-1.5"><Phone className="h-4 w-4" aria-hidden />Call</a>}
         {l.kind === 'eat' && <a href={tableLink(l.name, near)} target="_blank" rel="noopener noreferrer sponsored" className="btn-ghost btn-sm inline-flex items-center gap-1.5" title="Opens OpenTable"><CalendarCheck className="h-4 w-4" aria-hidden />Book a table</a>}

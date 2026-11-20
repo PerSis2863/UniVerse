@@ -30,7 +30,7 @@ import { PlaceCard, type Picked } from './PlaceCard';
 import { Highlights } from './Highlights';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
-import { areaSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
+import { areaSearchUrl, placeSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { useBareChrome } from '@/lib/chrome';
@@ -113,7 +113,11 @@ function fly(m: MLMap, to: { lat: number; lon: number; box?: [number, number, nu
   else m.flyTo({ center: [to.lon, to.lat], zoom: 15, duration: calm() ? 0 : 1800, essential: true });
 }
 
-export default function TravelMap({ at, place, pin }: { at: string | null; place: string | null; pin?: boolean }) {
+/** M347: a place sent from a guide, a saved place or a trip's day (mapLink): its name, and its address and city when
+ *  it has no position. */
+export interface Find { name: string; addr: string | null; near: string | null }
+
+export default function TravelMap({ at, place, pin, find }: { at: string | null; place: string | null; pin?: boolean; find?: Find | null }) {
   useBareChrome(); // M271: on a phone the map takes the top bar's place
   const box = useRef<HTMLDivElement>(null), pinBox = useRef<HTMLDivElement>(null), pins = useRef<PinImages>(new Map()), mapRef = useRef<MLMap | null>(null), photoMarks = useRef<Marker[]>([]), me = useRef<GeoJSON.FeatureCollection | null>(null);
   const dark = useDarkMode(), now = useNow();
@@ -387,6 +391,27 @@ export default function TravelMap({ at, place, pin }: { at: string | null; place
     const xs = r.path.map((c) => c[0]), ys = r.path.map((c) => c[1]), wide = m.getContainer().clientWidth >= 640;
     m.fitBounds([[Math.min(...xs), Math.min(...ys)], [Math.max(...xs), Math.max(...ys)]], { padding: wide ? { top: 60, bottom: m.getContainer().clientWidth >= 1024 ? 170 : 60, left: 420, right: 80 } : { top: 70, bottom: 300, left: 40, right: 70 }, duration: calm() ? 0 : 900, maxZoom: 17 });
   }, [routes]);
+  // M347: a place sent from a guide (mapLink): its card at its position; without one, found by its name in its city,
+  // then by its address (named as the guide names it), else said plainly. Once, when the map is ready.
+  const sent = useRef('');
+  const openSent = useEffectEvent((f: Find) => {
+    const ll = at && /^-?\d/.test(at) ? startAt(at) : null;
+    if (ll) { requestAnimationFrame(() => pick({ type: 'place', key: null, name: f.name, kind: 'From the guide', lat: ll.lat, lon: ll.lon })); return; }
+    const tries = [[f.name, f.near], ...(f.addr ? [[f.addr, f.near]] : [])].map((t) => t.filter(Boolean).join(', '));
+    void (async () => {
+      for (const [i, q] of tries.entries()) {
+        const hit = foundOf(await fetch(placeSearchUrl(q)).then((r) => (r.ok ? r.json() : null)).catch(() => null))[0];
+        if (hit) { pick({ type: 'place', key: i === 0 ? hit.key : null, name: f.name, kind: i === 0 ? kindOf(hit.cls, hit.sub) : 'From the guide', lat: hit.lat, lon: hit.lon }); return; }
+      }
+      toast(`Couldn’t find “${f.name}” on the map. Search for it in the box.`);
+    })();
+  });
+  useEffect(() => {
+    const key = find ? `${find.name}|${at}|${find.addr}` : '';
+    if (!mapRef.current || !ready || !find || sent.current === key) return;
+    sent.current = key;
+    openSent(find);
+  }, [ready, find, at]);
   // A shared spot (…&pin=1): its "what's here" card, once the map is ready.
   useEffect(() => {
     const m = mapRef.current;

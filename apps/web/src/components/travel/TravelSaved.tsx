@@ -57,7 +57,7 @@ export function TravelSaved() {
                 {s.note && <p className="line-clamp-3 text-sm text-zinc-600 dark:text-zinc-300">{s.note}</p>}
                 {s.address && <p className="text-xs text-zinc-500 dark:text-zinc-400">{s.address}</p>}
                 <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
-                  <a href={mapLink(s.name, { lat: s.lat ?? undefined, lon: s.lon ?? undefined, address: s.address ?? undefined, near: nice(guide) })} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</a>
+                  <Link href={mapLink(s.name, { lat: s.lat ?? undefined, lon: s.lon ?? undefined, address: s.address ?? undefined, near: nice(guide), guide })} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</Link>
                   {s.url && <a href={s.url} target="_blank" rel="noopener noreferrer nofollow" className="btn-ghost btn-sm inline-flex items-center gap-1.5"><ExternalLink className="h-4 w-4" aria-hidden />Website</a>}
                   <button type="button" onClick={() => void remove(s)} disabled={busy === s.id} className="btn-ghost btn-sm ms-auto inline-flex items-center gap-1.5 text-red-600 dark:text-red-400"><Trash2 className="h-4 w-4" aria-hidden />Remove</button>
                 </div>

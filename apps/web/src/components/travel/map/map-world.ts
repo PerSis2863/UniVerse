@@ -257,6 +257,8 @@ export function areaSearchUrl(q: string, b: { s: number; w: number; n: number; e
   const p = new URLSearchParams({ q, format: 'jsonv2', limit: '40', bounded: '1', viewbox: [b.w, b.n, b.e, b.s].map((x) => x.toFixed(4)).join(','), 'accept-language': 'en' });
   return `https://nominatim.openstreetmap.org/search?${p}`;
 }
+/** M347: one place by its name or address (a guide's place without a position), from the browser, one search a step. */
+export const placeSearchUrl = (q: string) => `https://nominatim.openstreetmap.org/search?${new URLSearchParams({ q, format: 'jsonv2', limit: '1', 'accept-language': 'en' })}`;
 export interface Found { key: string | null; name: string; cls: string; sub: string; lat: number; lon: number; address: string }
 /** Nominatim's answer as places on the map (only those with a name and a position). */
 export function foundOf(answer: unknown): Found[] {
