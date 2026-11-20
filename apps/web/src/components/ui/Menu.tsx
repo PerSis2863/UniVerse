@@ -2,9 +2,9 @@
 
 import { useEffect, useId, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { AnimatePresence, m as motion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { Check } from 'lucide-react';
-import { spring } from '@/lib/motion';
+import { pop } from '@/lib/motion';
 import { haptic } from '@/lib/haptics';
 import { useMedia } from '@/lib/use-media';
 import { Sheet } from './Sheet';
@@ -29,6 +29,7 @@ export function Popover({ label, button, children, disabled, className, title, w
   const btn = useRef<HTMLButtonElement>(null);
   const panel = useRef<HTMLDivElement>(null);
   const id = useId();
+  const calm = useReducedMotion();
   const close = () => setOpen(false);
   useLayoutEffect(() => {
     if (!open || !btn.current) return;
@@ -41,6 +42,9 @@ export function Popover({ label, button, children, disabled, className, title, w
       const below = r.bottom + 6 + h <= window.innerHeight - 8 || r.top < h + 12;
       p.style.left = `${Math.max(8, Math.min(r.left, window.innerWidth - w - 8))}px`;
       p.style.top = `${below ? r.bottom + 6 : Math.max(8, r.top - h - 6)}px`;
+      // M372: it grows out of its button (Spotlight's spring, `pop`): the origin on the button's side.
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - w - 8));
+      p.style.setProperty('--pop-origin', `${Math.round(r.left + r.width / 2 - left)}px ${below ? 'top' : 'bottom'}`);
     };
     place();
     window.addEventListener('resize', place);
@@ -76,7 +80,7 @@ export function Popover({ label, button, children, disabled, className, title, w
           {open && (
             // Placed by `place` above (a plain box, so nothing re-renders it back).
             <div key="panel" ref={panel} id={id} data-popover style={{ position: 'fixed', top: -9999, left: -9999 }} className="z-[70]">
-              <motion.div initial={{ opacity: 0, y: -4, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -4, scale: 0.98 }} transition={spring.snappy}
+              <motion.div initial={calm ? { opacity: 0 } : pop.from} animate={calm ? { opacity: 1 } : pop.to} exit={calm ? { opacity: 0 } : pop.out} transition={calm ? { duration: 0.15 } : pop.spring} style={{ transformOrigin: 'var(--pop-origin, top left)' }}
                 className={cn('rounded-xl bg-white dark:bg-[#151517] border border-zinc-200 dark:border-white/10 shadow-2xl text-sm text-zinc-800 dark:text-zinc-100 max-h-[80vh] overflow-y-auto', panelClass ?? (wide ? 'w-80' : 'min-w-52 max-w-72'))}>
                 {children(close)}
               </motion.div>

@@ -1,4 +1,4 @@
-import { EASE_GLIDE, pageJustEntered, reducedMotion } from './page-transition';
+import { springGlide, EASE_GLIDE, pageJustEntered, reducedMotion } from './page-transition';
 
 // Scroll motion on every page (S4, like the "Relay" site the owner sent): blocks below the fold
 // rise into place as they scroll into view, big numbers count up, thin progress bars fill and line
@@ -380,7 +380,8 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
     press.roots.push(el);
     if (float) {
       // Two animations: the scale adds to the part's own transform (a centring one stays), the fade sets the origin.
-      el.animate([{ transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: EASE_GLIDE, composite: 'add' });
+      // M372: Spotlight's opening (from 94% and a touch above, on a firm spring; `pop` in motion.ts).
+      el.animate([{ transform: 'translateY(-6px) scale(0.94)' }, { transform: 'translateY(0) scale(1)' }], { duration: 300, easing: springGlide(), composite: 'add' });
       el.animate([{ opacity: 0, transformOrigin: pressOrigin(r, press.x, press.y) }, { opacity: 1, transformOrigin: pressOrigin(r, press.x, press.y) }], { duration: 180, easing: 'ease-out' });
     } else {
       el.animate([{ transform: 'translate3d(0, 8px, 0)' }, { transform: 'translate3d(0, 0, 0)' }], { duration: 260, easing: EASE_GLIDE, composite: 'add' });
