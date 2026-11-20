@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { transitApps, waysBetween } from './transit-options';
+import { quickWays, transitApps, waysBetween } from './transit-options';
 
 const paris = { lat: 48.8566, lon: 2.3522 }, lyon = { lat: 45.764, lon: 4.8357 }, louvre = { lat: 48.8606, lon: 2.3376 }, tokyo = { lat: 35.6762, lon: 139.6503 };
 
@@ -26,5 +26,15 @@ describe('public transport options (M356)', () => {
     expect(g.url).toContain('travelmode=transit');
     expect(a.url).toContain('dirflg=r');
     expect(new URL(c.url).searchParams.get('endname')).toBe('Lyon');
+  });
+});
+
+describe('a place card’s times (M360)', () => {
+  it('walks and cycles close by, drives and takes transport further', () => {
+    const louvre = { lat: 48.8606, lon: 2.3376 }, eiffel = { lat: 48.8584, lon: 2.2945 };
+    expect(quickWays(louvre, eiffel).map((w) => w.mode)).toEqual(['foot', 'bike', 'transit', 'car']);
+    expect(quickWays(louvre, eiffel)[0].minutes).toBeGreaterThan(35); // ~3.2 km on foot
+    expect(quickWays(louvre, { lat: 45.76, lon: 4.84 }).map((w) => w.mode)).toEqual(['transit', 'car']); // Lyon
+    expect(quickWays(louvre, louvre)).toEqual([]);
   });
 });

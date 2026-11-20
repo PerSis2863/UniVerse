@@ -23,7 +23,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
 import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showClasses, skyFor, sunlight, STYLE } from './map-layers';
 import { mapRequest } from './map-style';
-import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
+import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type DirMode, type Directions, type Spot } from './MapTools';
 import { Navigate, primeSpeech, type NavTrip } from './Navigate';
 import { directionsUrl, distance, duration, MODES, recentOf, routesOf, withRecentPlace, type RecentPlace, type Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
@@ -150,6 +150,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const [layers, setLayers] = useState(false); // the Layers panel
   const [filter, setFilter] = useState('');
   const [picked, setPicked] = useState<Picked | null>(null);
+  const [pickedFrom, setPickedFrom] = useState<Spot | null>(null); // M360: where a place card's times count from
   const [list, setList] = useState<MapPlace[]>([]);
   const [walk, setWalk] = useState<Walk | null>(null);
   const [walkFor, setWalkFor] = useState(180);
@@ -695,6 +696,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     if (p) asked.current++;
     if (p?.type === 'place') keepRecent(withRecentPlace(recent, { name: p.name, kind: p.kind, lat: p.lat, lon: p.lon, key: p.key }));
     setPicked(p);
+    if (p?.type === 'place') setPickedFrom(myPlace());
     setDest(null);
     if (p) setOpen(true);
     const m = mapRef.current;
@@ -793,7 +795,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     const c = mapRef.current?.getCenter();
     return c ? { lat: c.lat, lon: c.lng, name: 'Middle of the map' } : null;
   };
-  const directionsTo = (to: Spot | null, from: Spot | null = myPlace()) => { pick(null); endWalk(); setHere(null); setMeasure(null); setOpen(true); setDir({ from, to, mode: dir?.mode ?? 'foot', chosen: 0, via: [], avoid: dir?.avoid ?? '' }); };
+  const directionsTo = (to: Spot | null, from: Spot | null = myPlace(), mode?: DirMode) => { pick(null); endWalk(); setHere(null); setMeasure(null); setOpen(true); setDir({ from, to, mode: mode ?? dir?.mode ?? 'foot', chosen: 0, via: [], avoid: dir?.avoid ?? '' }); };
   // M349: the sidebar's section (a phone's sheet always shows one: Search unless another was chosen).
   const sec: Section = section ?? lastSec;
   const active: Section | null = dir ? 'directions' : section;
@@ -1000,7 +1002,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
         </div>
         <div key={`${picked ? `p${picked.type === 'place' ? `${picked.name}@${picked.lat}` : picked.type}` : dest ? `d${dest.name}` : dir ? 'dir' : walk ? 'walk' : found ? `f${found.q}` : sec}${wide || open ? '' : '-'}`}
           className={cn('map-panel-in min-h-0 flex-1 flex-col overflow-y-auto border-t border-zinc-200/70 px-3 pt-3 dark:border-white/10 sm:border-t-0 sm:px-4 sm:pt-1', open ? 'flex' : 'hidden sm:flex')}>
-          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} onClose={() => pick(null)} onDirections={(to) => directionsTo(to)} onFlyover={flyover} /> : dest ? (
+          {picked ? <PlaceCard key={JSON.stringify(picked).slice(0, 200)} picked={picked} at={when} from={pickedFrom} onClose={() => pick(null)} onDirections={(to, mode) => directionsTo(to, mode ? pickedFrom : undefined, mode)} onFlyover={flyover} /> : dest ? (
             <DestCard key={`${dest.name}@${dest.lat}`} d={dest} at={when} onClose={() => setDest(null)} onDirections={() => directionsTo({ lat: dest.lat, lon: dest.lon, name: dest.name })}
               onZoom={() => { const m = mapRef.current; if (m) m.flyTo({ center: [dest.lon, dest.lat], zoom: 14.5, offset: aside(m), duration: calm() ? 0 : 2200, essential: true, easing: ease }); }} />
           ) : dir ? <DirectionsCard d={dir} set={setDir} near={view} routes={routes} loading={routing} failed={noRoute} avoided={avoided} now={now} myPlace={myPlace} onStart={startNav} onClose={() => setDir(null)} />

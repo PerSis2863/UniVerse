@@ -10121,3 +10121,17 @@ read aloud as words), **Fastest**, **Greenest** and **Cheapest** marked, and wha
   500 km, air from 300 km. Estimates: the card says a carrier quotes the real days and price, and that sea needs ports.
 - `GET /trace/map/tracking` now gives each shipment's `weightKg` (the product's weight × units); its sample answer too.
 - Checked at 390 and 1280, light and dark (the sample Madrid → Budapest batch): axe clean.
+
+## M360 (20 Nov): a place card's times by every way
+
+The same ask. Like Apple Maps' place card, a place opened on Travel's map shows a row of times to get there: **Walk**,
+**Cycle**, **Transit** and **Drive** (each only where it makes sense: walking up to 12 km, cycling up to 40 km, transit
+from 0.8 km, the drive from 0.5 km), counted from you (your location dot) or else the middle of the map, kept from the
+moment the place was opened (`pickedFrom` in `TravelMap.tsx`; `myPlace()` reads refs, so never while rendering). A press
+opens Directions that way from the same start (`directionsTo(to, from, mode)`; Transit opens M356's Ways to get there).
+- `quickWays(a, b)` in `src/lib/transit-options.ts` (tested): estimates from the distance, transit's the quickest of
+  `waysBetween` (city transport, train, coach); Directions then draws the real route.
+- **Left out:** an "Open now" filter for the places in view: their hours come from one lookup per place
+  (`/travel/place`), so 40 at once would cost 40 server lookups; the card keeps showing Open / Closed for its place.
+- Checked at 390 and 1280, light and dark (a stubbed search result 3 km from the map's middle): 45 min walk, 15 min
+  cycle, ~25 min transit, 6 min drive; Transit opens Ways to get there; axe clean.
