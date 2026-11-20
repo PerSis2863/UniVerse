@@ -30,6 +30,9 @@ import { LiveCard } from '@/components/live/LiveCard';
 import { Funnel } from '@/components/live/Funnel';
 import { Radar } from '@/components/live/Radar';
 import { Journey } from '@/components/live/Journey';
+import { duration } from '@/lib/map-tools';
+import { reach, reachLink } from '@/lib/relief-route';
+import { ReachWays } from '@/components/map-ui/ReachWays';
 import { useActivePoll } from '@/lib/realtime-client';
 import { Fill } from '@/components/ui/Fill';
 import { Callout, CountChips, InkPill, MapButtons, placeCallout, ProposalSheet, QueueCard, StatCard, StatStrip, TickStrip, undoToast } from '@/components/map-ui/Command';
@@ -330,7 +333,7 @@ export function ReliefApp() {
           {!data && Array.from({ length: 3 }, (_, i) => <div key={i} className="h-40 rounded-2xl skeleton" />)}
           {data && ordered.length === 0 && <div className="panel p-6 text-center text-sm text-zinc-500"><HandHeart className="w-6 h-6 mx-auto text-orange-400" aria-hidden /><p className="mt-2">Nothing here right now. Be the first: ask for help or offer it, and it shows on the map at once. Helpers nearby make the map useful, so invite your neighbours.</p><InviteButton app="relief" text="I’m on UniVerse Relief: neighbours asking for and offering help on one map. Join so we can help each other:" label="Invite neighbours" className="mt-4 flex-wrap justify-center" /></div>}
           {ordered.slice(0, 60).map((p, i) => {
-            const by = p.mine ? 'you' : p.org?.name ?? p.by?.name ?? 'someone', far = here ? distanceM(here, p) / 1000 : null;
+            const by = p.mine ? 'you' : p.org?.name ?? p.by?.name ?? 'someone', far = here ? distanceM(here, p) / 1000 : null, go = here ? reach(here, p).best : null;
             return (
               <div key={p.id} className="cmd-pop" style={{ animationDelay: `${Math.min(i, 8) * 40}ms` }}>
                 <QueueCard icon={KIND_ICON[p.kind]} source={p.type === 'OFFER' ? `Offer · ${RELIEF_KIND_LABEL[p.kind]}` : RELIEF_KIND_LABEL[p.kind]} ago={now ? formatDistanceToNow(new Date(p.createdAt), { addSuffix: true }) : undefined}
@@ -338,11 +341,11 @@ export function ReliefApp() {
                   hot={urgentOf(p)} chosen={selected === p.id} title={p.title} onOpen={() => focus(p)}
                   facts={[
                     { k: 'People', v: p.people, sub: p.type === 'OFFER' ? 'can be helped' : 'waiting' },
-                    far != null ? { k: 'Distance', v: `${far < 10 ? far.toFixed(1) : Math.round(far)} km`, sub: p.place ?? 'nearby' } : { k: 'Where', v: <span translate="no">{p.place ?? 'On the map'}</span>, sub: 'about 500 m' },
+                    far != null ? { k: 'Distance', v: `${far < 10 ? far.toFixed(1) : Math.round(far)} km`, sub: go ? `${duration(go.minutes)} ${go.words}` : p.place ?? 'nearby' } : { k: 'Where', v: <span translate="no">{p.place ?? 'On the map'}</span>, sub: 'about 500 m' },
                     p.status === 'TAKEN' ? { k: 'Helper', v: p.helping ? 'You' : p.helperOrg?.name ?? p.helper?.name ?? 'Someone', sub: 'on the way' } : { k: p.skill ? 'Needs' : 'Asked by', v: p.skill ? SKILL_LABEL[p.skill] : by, sub: p.skill ? 'a skill' : p.org ? 'organisation' : 'person' },
                   ]}
                   note={p.details} noteIcon={MessageSquare}
-                  links={<><button type="button" onClick={() => focus(p)} className="font-medium hover:underline">Show on map</button></>}
+                  links={<><button type="button" onClick={() => focus(p)} className="font-medium hover:underline">Show on map</button>{here && go && p.type === 'NEED' && (p.status === 'OPEN' || p.helping) && <a href={reachLink(here, p, go.mode)} target="_blank" rel="noopener noreferrer" className="font-medium hover:underline">Directions</a>}</>}
                   approve={p.type === 'NEED' && p.status === 'OPEN' && !p.mine ? { label: 'I can help', onClick: () => setOffering(p) } : null} />
               </div>
             );
@@ -419,7 +422,7 @@ export function ReliefApp() {
             { k: 'Messages', now: '–', next: `With ${offering.org?.name ?? offering.by?.name ?? 'them'}` },
           ]}
           steps={[
-            ...(here ? [{ who: 'Distance', what: `${(distanceM(here, offering) / 1000).toFixed(1)} km from you`, before: 'Checked from where you are', after: 'Checked from where you are', when: 'ready' as const }] : []),
+            ...(here ? [{ who: 'Distance', what: `${(distanceM(here, offering) / 1000).toFixed(1)} km from you${reach(here, offering).best ? `: about ${duration(reach(here, offering).best!.minutes)} ${reach(here, offering).best!.words}` : ''}`, before: 'Checked from where you are', after: 'Checked from where you are', when: 'ready' as const }] : []),
             { who: 'Relief', what: 'Put you down as the helper', before: 'Runs when you confirm', after: 'Done: others see it’s taken', when: 'now' as const },
             { who: 'Notifications', what: `Tell ${offering.org?.name ?? offering.by?.name ?? 'the person who asked'} you’re coming`, before: 'Runs when you confirm', after: 'Sent just now', when: 'now' as const },
             { who: 'You', what: 'Mark it delivered when it’s done', before: 'After you’ve helped', after: 'After you’ve helped', when: 'later' as const },
@@ -484,6 +487,7 @@ export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now
         {p.status === 'TAKEN' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{p.helperOrg ? `${p.helperOrg.name} is helping` : p.helping ? 'You’re helping' : `${p.helper?.name ?? 'Someone'} is helping`}</span>}
         {p.status === 'DONE' && <span className="text-emerald-600 dark:text-emerald-400 font-semibold">Delivered</span>}
       </p>
+      {here && p.type === 'NEED' && (p.status === 'OPEN' || p.helping) && !p.mine && <ReachWays from={here} to={p} />}
       {p.type === 'NEED' && (
         // M50: where this request is, as a journey.
         <Journey className="mt-3" label="Where this request is" steps={[
