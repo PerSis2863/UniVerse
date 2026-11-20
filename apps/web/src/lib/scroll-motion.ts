@@ -317,10 +317,56 @@ function arrive(records: MutationRecord[]) {
       parts.push(...(big ? (Array.from(el.children) as HTMLElement[]) : [el]).filter((p) => !p.matches(FRAME)));
     }
   }
-  if (!parts.length) return;
   // Reads first (one layout), then the writes.
   const shown = parts.filter((el) => { const r = el.getBoundingClientRect(); return r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el); }).slice(0, 8);
   shown.forEach((el, i) => el.animate([{ opacity: 0, transform: 'translate3d(0, 10px, 0)' }, { opacity: 1, transform: 'none' }], { duration: 280, delay: i * 40, easing: EASE_GLIDE, fill: 'backwards' }));
+  opened(added, removed, new Set(parts));
+}
+
+/** M351 (the owner, 20 Nov: "every button when i click… when it try to open something… smooth animations", "every
+ *  where in the project"): what a press opens eases in, everywhere, unless it already moves on its own (its own CSS
+ *  animation, framer-motion, WAAPI: `moving`), so nothing plays twice: a floating part (a menu, a drop-down, a pop-up)
+ *  grows from where it was pressed, 0.96 to full size while it fades in; a part in the page's flow (a section that
+ *  opens, a tab's content) fades in rising 8 px. Only within 0.8 s of the press, only what's on screen, at most 6. */
+let press = { t: -1e9, x: 0, y: 0 };
+function pressed(e: Event) {
+  if (e instanceof KeyboardEvent) {
+    if (e.key !== 'Enter' && e.key !== ' ') return;
+    const r = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
+    press = { t: performance.now(), x: r ? r.left + r.width / 2 : innerWidth / 2, y: r ? r.top + r.height / 2 : innerHeight / 2 };
+  } else if (e instanceof PointerEvent) press = { t: performance.now(), x: e.clientX, y: e.clientY };
+}
+/** Where a floating part grows from: the press, inside the part (its nearest edge when the press was outside). */
+export function pressOrigin(r: { left: number; top: number; width: number; height: number }, x: number, y: number) {
+  const ox = Math.min(r.width, Math.max(0, x - r.left)), oy = Math.min(r.height, Math.max(0, y - r.top));
+  return `${Math.round(ox)}px ${Math.round(oy)}px`;
+}
+/** Toasts, the page's frame and loading views have their own motion. */
+const OPENED_SKIP = `${LOADING}, ${FRAME}, [data-sonner-toaster], [data-sonner-toast], .backdrop-in`;
+function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Set<HTMLElement>) {
+  if (performance.now() - press.t > 800) return;
+  const out: HTMLElement[] = [];
+  for (const [, els] of added) {
+    // A list redrawn (a filter, a sort) is not something opened: morph() and the rows' own motion handle it.
+    if (els.length > 12 || els.some((el) => removed.has(el))) continue;
+    for (const el of els) if (!done.has(el) && !el.matches(OPENED_SKIP) && !el.closest('[data-no-motion]')) out.push(el);
+  }
+  if (!out.length) return;
+  const fold = window.innerHeight;
+  // Reads first (one layout), then the writes.
+  const shown = out.map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el) && !out.some((o) => o !== el && o.contains(el))).slice(0, 6)
+    .map((x) => ({ ...x, float: ['absolute', 'fixed'].includes(getComputedStyle(x.el).position) }));
+  for (const { el, r, float } of shown) {
+    if (float) {
+      // Two animations: the scale adds to the part's own transform (a centring one stays), the fade sets the origin.
+      el.animate([{ transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: EASE_GLIDE, composite: 'add' });
+      el.animate([{ opacity: 0, transformOrigin: pressOrigin(r, press.x, press.y) }, { opacity: 1, transformOrigin: pressOrigin(r, press.x, press.y) }], { duration: 180, easing: 'ease-out' });
+    } else {
+      el.animate([{ transform: 'translate3d(0, 8px, 0)' }, { transform: 'translate3d(0, 0, 0)' }], { duration: 260, easing: EASE_GLIDE, composite: 'add' });
+      el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
+    }
+  }
 }
 
 export function startScrollMotion(): () => void {
@@ -350,6 +396,8 @@ export function startScrollMotion(): () => void {
     if (!frame) frame = requestAnimationFrame(() => { frame = 0; const r = pending.splice(0); if (pageJustEntered()) return; rollChanged(r); arrive(r); });
   });
   mo.observe(document.body, { childList: true, subtree: true, characterData: true });
+  document.addEventListener('pointerdown', pressed, { capture: true, passive: true });
+  document.addEventListener('keydown', pressed, { capture: true, passive: true });
   scan(document);
   // M96: <html data-scrolling> while anything scrolls (and 180 ms after), so decorative loops (drifting
   // glows, bar glints, pings) rest meanwhile and the phone only moves the page (globals.css).
@@ -359,5 +407,5 @@ export function startScrollMotion(): () => void {
   const onScroll = () => { if (idle) clearTimeout(idle); else root.dataset.scrolling = ''; idle = setTimeout(settle, 180); };
   document.addEventListener('scroll', onScroll, { capture: true, passive: true });
   stopScrolling = () => { document.removeEventListener('scroll', onScroll, { capture: true }); if (idle) clearTimeout(idle); settle(); };
-  return () => { mo?.disconnect(); mo = null; cancelAnimationFrame(frame); frame = 0; pending.length = 0; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; stopScrolling?.(); stopScrolling = null; };
+  return () => { document.removeEventListener('pointerdown', pressed, { capture: true }); document.removeEventListener('keydown', pressed, { capture: true }); mo?.disconnect(); mo = null; cancelAnimationFrame(frame); frame = 0; pending.length = 0; io?.disconnect(); io = null; stopSheen?.(); stopSheen = null; stopScrolling?.(); stopScrolling = null; };
 }

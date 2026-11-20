@@ -9990,3 +9990,19 @@ every other button when i click and when it try to open something then it should
   globe). Their zoom already eased (`goTo`).
 - Checked at 1280 dark and 390 light on Travel, Relief (live, alerts), Green (world, places) and Trace's market: axe
   clean, no sideways scroll, no page errors.
+
+## M351 (20 Nov): whatever a press opens eases in, everywhere
+
+The owner, 20 Nov: "make every other button when i click and when it try to open something then it should show smooth
+animations"; then, of M350's "only the maps": "please do this every where in the project". The shared sheets and
+dialogs already animated; the gaps were hand-made menus, drop-downs, pop-ups and sections on single screens (86 files).
+So the motion layer does it (`scroll-motion.ts`, `opened`): within 0.8 s of a press (pointer, or Enter / Space), new
+parts that appear on screen ease in, at most 6: a floating one (absolute / fixed: a menu, a drop-down) grows from the
+press (`pressOrigin`, tested) 0.96 → 1 while it fades in; one in the page's flow (a section, a tab's content) fades in
+rising 8 px. The transform is added (`composite: 'add'`), so a part's own centring stays. Skipped: anything already
+moving (`moving`: its own CSS animation, framer-motion's inline styles, WAAPI), lists redrawn (over 12 new rows or
+moved rows: morph() handles them), toasts, loading views, the page's frame, `[data-no-motion]`, a new page (its own
+entrance), Reduce Motion. Checked: the top bar's UniVersity, Learn and More menus now open this way; the Language menu
+keeps its own animation, not two.
+- **Rule:** a new pop-up needs nothing to animate; give it its own CSS animation only for a different entrance (the
+  layer then leaves it alone). Exits are each component's own (closing still removes most at once).
