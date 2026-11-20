@@ -1,6 +1,6 @@
 'use client';
 
-import { BedDouble, BookOpen, Coffee, Cross, GraduationCap, Heart, Landmark, MapPin, Palette, Search, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
+import { BedDouble, BookOpen, Coffee, Croissant, Cross, Fuel, Pizza, ShoppingBasket, SquareParking, GraduationCap, Heart, Landmark, MapPin, Palette, Search, ShoppingBag, Star, TrainFront, Trees, Utensils, Wine, type LucideIcon } from 'lucide-react';
 import type { Map as MLMap } from 'maplibre-gl';
 import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
 
@@ -19,6 +19,11 @@ export const PINS: Record<CategoryId | 'story' | 'review' | 'health' | 'learn' |
   shop: { icon: ShoppingBag, color: '#b45309' },
   stay: { icon: BedDouble, color: '#4f46e5' },
   go: { icon: TrainFront, color: '#0369a1' },
+  fast: { icon: Pizza, color: '#f97316' },
+  bakery: { icon: Croissant, color: '#d97706' },
+  grocery: { icon: ShoppingBasket, color: '#ca8a04' },
+  fuel: { icon: Fuel, color: '#2563eb' },
+  parking: { icon: SquareParking, color: '#1d4ed8' },
   story: { icon: BookOpen, color: '#d97706' },
   review: { icon: Star, color: '#047857' },
   // M236: the map's other places, each in its kind's colour as Apple Maps shows them (not grey dots).

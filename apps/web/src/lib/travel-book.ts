@@ -29,10 +29,18 @@ export function bookingLinks(place: string, { checkin, checkout, adults = 2, fro
   ];
 }
 
-/** A map for one place: OpenStreetMap at its position, otherwise a search for its name and address. */
-export function mapLink(name: string, { lat, lon, address, near }: { lat?: number; lon?: number; address?: string; near?: string }) {
-  if (lat !== undefined && lon !== undefined) return `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=17/${lat}/${lon}`;
-  return `https://www.openstreetmap.org/search?query=${encodeURIComponent([name, address, near].filter(Boolean).join(', '))}`;
+/** One place on UniVerse's own map (M347, the owner, 20 Nov: "it shows in my own map rather than going somewhere
+ *  else"; it was OpenStreetMap's site, whose search often landed elsewhere): at its position with its card, otherwise
+ *  found there by its name, then its address, in its city (TravelMap's `find`). `guide`: its guide, for the highlights. */
+export function mapLink(name: string, { lat, lon, address, near, guide }: { lat?: number; lon?: number; address?: string; near?: string; guide?: string }) {
+  const p = new URLSearchParams({ view: 'map', n: name.slice(0, 120) });
+  if (lat !== undefined && lon !== undefined && Number.isFinite(lat) && Number.isFinite(lon)) p.set('at', `${lat.toFixed(5)},${lon.toFixed(5)},17`);
+  else {
+    if (address) p.set('addr', address.slice(0, 160));
+    if (near) p.set('near', near.slice(0, 80));
+  }
+  if (guide) p.set('d', guide);
+  return `/travel?${p}`;
 }
 
 /** M204: a table at a restaurant (OpenTable's search for it near the place). */

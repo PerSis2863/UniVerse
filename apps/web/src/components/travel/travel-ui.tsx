@@ -11,8 +11,10 @@ import { api, errorMessage } from '@/lib/api';
 import type { useRouter } from 'next/navigation';
 import { commonsImage, commonsSrcSet, type Listing } from '@/lib/travel-guide';
 import { Photo } from '@/components/ui/Photo';
+import Link from '@/components/ui/Link';
 import { mapLink, tableLink } from '@/lib/travel-book';
 import { cn } from '@/lib/utils';
+import { photonOf, photonUrl, type NearPlace } from '@/lib/map-tools';
 
 // Shared parts of UniVerse Travel's screens (M202): a place's photo, a listing's card, the save button,
 // the weather's sky.
@@ -98,7 +100,7 @@ export function ListingCard({ guide, l, saved, near }: { guide: string; l: Listi
       </dl>
       <div className="mt-auto flex flex-wrap gap-1.5 pt-1">
         <SaveButton guide={guide} l={l} saved={saved} />
-        <a href={mapLink(l.name, { lat: l.lat, lon: l.lon, address: l.address, near })} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</a>
+        <Link href={mapLink(l.name, { lat: l.lat, lon: l.lon, address: l.address, near, guide })} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><MapPin className="h-4 w-4" aria-hidden />Map</Link>
         {l.url && <a href={l.url} target="_blank" rel="noopener noreferrer nofollow" className="btn-ghost btn-sm inline-flex items-center gap-1.5"><ExternalLink className="h-4 w-4" aria-hidden />Website</a>}
         {l.phone && <a href={`tel:${l.phone.replace(/[^\d+]/g, '')}`} className="btn-ghost btn-sm inline-flex items-center gap-1.5"><Phone className="h-4 w-4" aria-hidden />Call</a>}
         {l.kind === 'eat' && <a href={tableLink(l.name, near)} target="_blank" rel="noopener noreferrer sponsored" className="btn-ghost btn-sm inline-flex items-center gap-1.5" title="Opens OpenTable"><CalendarCheck className="h-4 w-4" aria-hidden />Book a table</a>}
@@ -111,15 +113,26 @@ interface Found { title: string; about: string | null; thumb: string | null }
 
 /** Find any place with a guide as you type (Wikivoyage's titles): arrows, Enter, Escape (Explore, and
  *  "Add a place" on a trip, M206). */
-export function PlaceSearch({ onPick, label, placeholder, big, className }: { onPick: (title: string) => void; label: string; placeholder: string; big?: boolean; className?: string }) {
+const askPhoton = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null)).then(photonOf);
+
+/** Places with a guide as you type; with `onPlace` (the map's boxes, M348) also real places, hotels, restaurants, shops
+ *  and addresses, nearest to `near` (the map's middle). */
+export function PlaceSearch({ onPick, onPlace, near, label, placeholder, big, className }: { onPick: (title: string) => void; onPlace?: (p: NearPlace) => void; near?: { lat: number; lon: number } | null; label: string; placeholder: string; big?: boolean; className?: string }) {
   const [q, setQ] = useState('');
   const [term, setTerm] = useState('');
   const [active, setActive] = useState(-1);
   const listId = useId();
   useEffect(() => { const t = setTimeout(() => setTerm(q.trim()), 220); return () => clearTimeout(t); }, [q]);
   const { data: found, isLoading } = useSWR<{ results: Found[] }>(term.length >= 2 ? `/travel/search?q=${encodeURIComponent(term)}` : null, fetcher, { keepPreviousData: true });
-  const results = term.length >= 2 && q.trim() ? found?.results ?? [] : [];
-  const pick = (title: string) => { setQ(''); setTerm(''); setActive(-1); onPick(title); };
+  // Near to about a kilometre, so moving the map a little doesn't ask again.
+  const nearKey = near ? { lat: Math.round(near.lat * 100) / 100, lon: Math.round(near.lon * 100) / 100 } : null;
+  const { data: places, isLoading: placesLoading } = useSWR<NearPlace[]>(onPlace && term.length >= 3 ? photonUrl(term, nearKey) : null, askPhoton, { keepPreviousData: true, revalidateOnFocus: false, shouldRetryOnError: false });
+  const typed = term.length >= 2 && !!q.trim();
+  const guides = typed ? (found?.results ?? []).slice(0, onPlace ? 4 : 8) : [];
+  const spots = typed && onPlace ? (places ?? []).filter((p) => !guides.some((g) => g.title.split('/').pop()?.toLowerCase() === p.name.toLowerCase())) : [];
+  const results: ({ kind: 'guide'; g: Found } | { kind: 'place'; p: NearPlace })[] = [...guides.map((g) => ({ kind: 'guide' as const, g })), ...spots.map((p) => ({ kind: 'place' as const, p }))];
+  const clear = () => { setQ(''); setTerm(''); setActive(-1); };
+  const choose = (r: (typeof results)[number]) => { clear(); if (r.kind === 'guide') onPick(r.g.title); else onPlace?.(r.p); };
   return (
     <div className={cn('relative', className)}>
       <Search className={cn('pointer-events-none absolute top-1/2 -translate-y-1/2 text-zinc-400', big ? 'start-4 h-5 w-5' : 'start-3 h-4 w-4')} aria-hidden />
@@ -128,22 +141,22 @@ export function PlaceSearch({ onPick, label, placeholder, big, className }: { on
         onKeyDown={(e) => {
           if (e.key === 'ArrowDown') { e.preventDefault(); setActive((a) => Math.min(results.length - 1, a + 1)); }
           else if (e.key === 'ArrowUp') { e.preventDefault(); setActive((a) => Math.max(-1, a - 1)); }
-          else if (e.key === 'Enter' && (active >= 0 || results[0])) { e.preventDefault(); pick((results[active] ?? results[0]).title); }
+          else if (e.key === 'Enter' && (active >= 0 || results[0])) { e.preventDefault(); choose(results[active] ?? results[0]); }
           else if (e.key === 'Escape') setQ('');
         }}
         className={cn('w-full border border-zinc-200 bg-white text-zinc-900 outline-none transition-shadow focus:ring-2 focus:ring-indigo-400/60 dark:border-white/10 dark:bg-white/[0.06] dark:text-white', big ? 'rounded-2xl py-3.5 ps-12 pe-12 text-base' : 'rounded-xl py-2.5 ps-9 pe-9 text-sm')} />
-      {isLoading && <Loader2 className={cn('absolute top-1/2 -translate-y-1/2 animate-spin text-zinc-400', big ? 'end-4 h-5 w-5' : 'end-3 h-4 w-4')} aria-hidden />}
+      {(isLoading || placesLoading) && <Loader2 className={cn('absolute top-1/2 -translate-y-1/2 animate-spin text-zinc-400', big ? 'end-4 h-5 w-5' : 'end-3 h-4 w-4')} aria-hidden />}
       {results.length > 0 && (
         <ul id={listId} role="listbox" className="absolute inset-x-0 top-full z-30 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-xl dark:border-white/10 dark:bg-[#111214]">
           {results.map((r, i) => (
-            <li key={r.title} id={`${listId}-${i}`} role="option" aria-selected={i === active} onClick={() => pick(r.title)} onMouseEnter={() => setActive(i)}
+            <li key={r.kind === 'guide' ? r.g.title : `${r.p.key ?? r.p.name}@${r.p.lat}`} id={`${listId}-${i}`} role="option" aria-selected={i === active} onClick={() => choose(r)} onMouseEnter={() => setActive(i)}
               className={cn('flex w-full cursor-pointer items-center gap-3 px-4 py-2.5 text-start', i === active && 'bg-zinc-100 dark:bg-white/[0.07]')}>
-              <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-xl bg-indigo-500/15">
-                {r.thumb ? <Image src={r.thumb} alt="" fill unoptimized sizes="40px" className="object-cover" /> : <MapPin className="absolute inset-0 m-auto h-5 w-5 text-indigo-500" aria-hidden />}
+              <span className={cn('relative h-10 w-10 shrink-0 overflow-hidden rounded-xl', r.kind === 'guide' ? 'bg-indigo-500/15' : 'bg-zinc-100 dark:bg-white/[0.08]')}>
+                {r.kind === 'guide' && r.g.thumb ? <Image src={r.g.thumb} alt="" fill unoptimized sizes="40px" className="object-cover" /> : <MapPin className={cn('absolute inset-0 m-auto h-5 w-5', r.kind === 'guide' ? 'text-indigo-500' : 'text-zinc-500 dark:text-zinc-300')} aria-hidden />}
               </span>
               <span className="min-w-0">
-                <span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{r.title.replace(/\//g, ' · ')}</span>
-                {r.about && <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{r.about}</span>}
+                <span className="block truncate font-semibold text-zinc-900 dark:text-white" translate="no">{r.kind === 'guide' ? r.g.title.replace(/\//g, ' · ') : r.p.name}</span>
+                {(r.kind === 'guide' ? r.g.about : r.p.address) && <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400" translate={r.kind === 'place' ? 'no' : undefined}>{r.kind === 'guide' ? r.g.about : r.p.address}</span>}
               </span>
             </li>
           ))}

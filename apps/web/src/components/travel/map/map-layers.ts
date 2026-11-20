@@ -68,7 +68,7 @@ export function addLayers(map: MLMap, dark: boolean) {
     map.addLayer({
       id: 'uv-buildings', type: 'fill-extrusion', source: 'openmaptiles', 'source-layer': 'building', minzoom: 14,
       paint: {
-        'fill-extrusion-color': dark ? '#272a31' : '#d8dbe0', 'fill-extrusion-opacity': 0.92,
+        'fill-extrusion-color': dark ? '#3a4f66' : '#d8dbe0', 'fill-extrusion-opacity': 0.92,
         'fill-extrusion-height': ['interpolate', ['linear'], ['zoom'], 14, 0, 15, ['coalesce', ['get', 'render_height'], 8]],
         'fill-extrusion-base': ['coalesce', ['get', 'render_min_height'], 0],
       },
@@ -144,10 +144,11 @@ export function addLayers(map: MLMap, dark: boolean) {
     layout: { 'text-field': ['get', 'label'], 'text-font': bold, 'text-size': 16, 'icon-image': 'uv-bubble', 'icon-text-fit': 'both', 'icon-text-fit-padding': [4, 9, 4, 9], 'icon-allow-overlap': true, 'text-allow-overlap': true, 'text-anchor': 'bottom', 'text-offset': [0, -0.7] },
     paint: { 'text-color': '#ffffff' } });
   map.addLayer({ id: 'uv-me-dot', type: 'circle', source: 'uv-me', filter: ['==', ['geometry-type'], 'Point'], paint: { 'circle-radius': 7, 'circle-color': '#3b82f6', 'circle-stroke-color': '#ffffff', 'circle-stroke-width': 3 } });
+  addShields(map, bold, map.getLayer('district-names') ? 'district-names' : label);
   // M259: the world's destinations, a trip, saved places and what "Search this area" found, under the routes.
   addWorldLayers(map, dark, font, bold);
-  // The globe when zoomed out (flat close in, as MapLibre does by itself).
-  map.setProjection({ type: 'globe' });
+  // M349 (the owner, 20 Nov: "no need of globe in this"): a flat map at every zoom, as Apple Maps' world view.
+  map.setProjection({ type: 'mercator' });
 }
 
 /** Show places of these classes with this kind's pin (none: nothing). */
@@ -257,4 +258,31 @@ export function navGradient(done: number, dark: boolean, edge: boolean): Express
   const ahead = edge ? ROUTE_EDGE : ROUTE, behind = edge ? (dark ? 'rgba(70,78,92,0.9)' : 'rgba(120,128,142,0.75)') : dark ? 'rgba(120,130,146,0.85)' : 'rgba(170,178,190,0.9)';
   const at = Math.min(0.99999, Math.max(0.00001, done));
   return ['step', ['line-progress'], behind, at, ahead];
+}
+
+/** M349 (the owner's Apple Maps pictures): road numbers on small coloured signs, as Apple Maps draws them: motorways and
+ *  national roads red, European routes green, main roads yellow, the rest blue. The signs are drawn here (rounded,
+ *  stretched to the number), so nothing is downloaded. */
+const SHIELDS = { red: ['#d0363a', '#ffffff'], green: ['#16855a', '#ffffff'], yellow: ['#f0c02c', '#2b2200'], blue: ['#2a63d4', '#ffffff'] } as const;
+function shieldImage(fill: string) {
+  const px = 2, size = 18 * px, c = document.createElement('canvas');
+  c.width = size; c.height = size;
+  const g = c.getContext('2d')!;
+  g.fillStyle = '#ffffff'; g.beginPath(); g.roundRect(0, 0, size, size, 5 * px); g.fill(); // a thin white edge
+  g.fillStyle = fill; g.beginPath(); g.roundRect(1.5 * px, 1.5 * px, size - 3 * px, size - 3 * px, 4 * px); g.fill();
+  return { data: g.getImageData(0, 0, size, size), opts: { pixelRatio: px, stretchX: [[6 * px, 12 * px]] as [number, number][], stretchY: [[6 * px, 12 * px]] as [number, number][], content: [4 * px, 3 * px, 14 * px, 15 * px] as [number, number, number, number] } };
+}
+function addShields(map: MLMap, bold: string[], before?: string) {
+  for (const [k, [fill]] of Object.entries(SHIELDS)) if (!map.hasImage(`uv-shield-${k}`)) { const { data, opts } = shieldImage(fill); map.addImage(`uv-shield-${k}`, data, opts); }
+  if (map.getLayer('uv-shields') || !map.getSource('openmaptiles')) return;
+  const ref: ExpressionSpecification = ['get', 'ref'];
+  const kind: ExpressionSpecification = ['case',
+    ['==', ['slice', ref, 0, 1], 'E'], 'green',
+    ['in', ['get', 'class'], ['literal', ['motorway', 'trunk']]], 'red',
+    ['==', ['get', 'class'], 'primary'], 'yellow', 'blue'];
+  map.addLayer({ id: 'uv-shields', type: 'symbol', source: 'openmaptiles', 'source-layer': 'transportation_name', minzoom: 7,
+    filter: ['all', ['has', 'ref'], ['<=', ['get', 'ref_length'], 7], ['in', ['get', 'class'], ['literal', ['motorway', 'trunk', 'primary', 'secondary']]]],
+    layout: { 'symbol-placement': 'line', 'symbol-spacing': 420, 'text-field': ref, 'text-font': bold, 'text-size': 10.5, 'text-rotation-alignment': 'viewport', 'icon-rotation-alignment': 'viewport',
+      'icon-image': ['concat', 'uv-shield-', kind], 'icon-text-fit': 'both', 'icon-text-fit-padding': [1, 3, 1, 3], 'symbol-sort-key': ['match', ['get', 'class'], 'motorway', 0, 'trunk', 1, 'primary', 2, 3] },
+    paint: { 'text-color': ['match', kind, 'yellow', SHIELDS.yellow[1], '#ffffff'] } }, before);
 }

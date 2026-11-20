@@ -67,7 +67,10 @@ describe('Travel guides', () => {
     expect(train.url).toBe('https://www.rome2rio.com/s/Delhi/Kyoto%20Central');
     // Dates the wrong way round aren't sent.
     expect(new URL(bookingLinks('Rome', { checkin: '2027-05-09', checkout: '2027-05-01' })[0].url).searchParams.get('checkin')).toBeNull();
-    expect(mapLink('Golden Hall', { lat: 35, lon: 135 })).toContain('mlat=35&mlon=135');
+    // M347: our own map, at the place or found by its name and address in its city.
+    expect(mapLink('Golden Hall', { lat: 35, lon: 135 })).toBe('/travel?view=map&n=Golden+Hall&at=35.00000%2C135.00000%2C17');
+    const found = new URL(mapLink('Agency Office', { address: '3 Kyotogyoen', near: 'Kyoto', guide: 'Kyoto' }), 'https://x').searchParams;
+    expect([found.get('n'), found.get('addr'), found.get('near'), found.get('d'), found.get('at')]).toEqual(['Agency Office', '3 Kyotogyoen', 'Kyoto', 'Kyoto', null]);
   });
   it('reads a group of districts as an area each (M268: Paris)', () => {
     const wiki = `==Districts==
