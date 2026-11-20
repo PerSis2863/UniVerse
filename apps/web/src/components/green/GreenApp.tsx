@@ -7,9 +7,8 @@ import Image from 'next/image';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { Award, Bike, Bus, Camera, Clock, Flame, Footprints, Globe2, Leaf, Loader2, Lock, MapPin, Minus, Plus, Recycle, ShieldCheck, Sparkles, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
+import { Award, Bike, Bus, Camera, Clock, Download, Flame, RotateCcw, TrendingUp, Footprints, Globe2, Leaf, Loader2, Lock, MapPin, Minus, Plus, Recycle, ShieldCheck, Sun, Trash2, TreePine, Trophy, Utensils } from 'lucide-react';
 import Link from '@/components/ui/Link';
-import { Rolling } from '@/components/ui/Rolling';
 import { api, errorMessage } from '@/lib/api';
 import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
@@ -19,14 +18,13 @@ import { fetcher } from '@/lib/fetcher';
 import { fmt } from '@/lib/instruments';
 import { GREEN_FACTORS, GREEN_KINDS, PASS_TIERS, co2For, greenPass, type Feeling, type GreenKind } from '@/lib/green';
 import { useAuthStore } from '@/store/auth';
-import { LiveCard } from '@/components/live/LiveCard';
-import { Tracks } from '@/components/live/Tracks';
-import { Heartbeat } from '@/components/live/Heartbeat';
-import { Tank } from '@/components/live/Tank';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { GreenYear } from './GreenYear';
+import { KpiCard } from '@/components/dashboard/KpiCard';
+import { Segmented } from '@/components/ui/Segmented';
+import { actionsCsv, change, monthKg, months } from '@/lib/green-stats';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { MapButtons } from '@/components/map-ui/Command';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
@@ -77,6 +75,9 @@ export function GreenApp() {
   const [allRecent, setAllRecent] = useState(false);
   const [ask, setAsk] = useState<{ id: string; step: 'feel' | 'why' | 'share' } | null>(null);
   const [why, setWhy] = useState('');
+  const [more, setMore] = useState(false);
+  const [range, setRange] = useState<'days' | 'months'>('days');
+  const [filter, setFilter] = useState<'all' | 'done' | 'wait' | 'none'>('all');
   const formRef = useRef<HTMLFormElement>(null);
   const f = GREEN_FACTORS[kind];
   const preview = co2For(kind, Number(amount) || 0);
@@ -137,33 +138,48 @@ export function GreenApp() {
   const daysLeft = c && now ? Math.max(0, Math.ceil((Date.parse(c.ends) - now) / 86_400_000)) : null;
   const maxDay = Math.max(1, ...(data?.perDay.map((d) => d.kg) ?? [1]));
 
+  // M359 (the owner, 20 Nov: "redesign the green app… it doesnt look professional… more detailing"): a dashboard.
+  // Four figures on top (saved in all, this month against last, the streak, how much is confirmed), logging beside the
+  // week's challenge and the Green Pass, progress by day and month with what it came from, then everything I logged
+  // (filtered, repeated, downloaded), the badges with what's left for each, my neighbourhood and teammates' proofs.
+  const year = data?.year ?? {};
+  const thisMonth = now ? monthKg(year, now) : 0, lastMonth = now ? monthKg(year, now, -1) : 0;
+  const series = now ? months(year, now, 6) : [];
+  const topMonth = Math.max(1, ...series.map((m) => m.kg));
+  const confirmed = t && t.kg ? Math.round(((data?.verified.kg ?? 0) / t.kg) * 100) : 0;
+  const days30 = data?.perDay ?? [], month30 = Math.round(days30.reduce((n, d) => n + d.kg, 0) * 10) / 10, active = days30.filter((d) => d.kg > 0).length;
+  const best = days30.reduce<{ day: string; kg: number } | null>((b, d) => (d.kg > (b?.kg ?? 0) ? d : b), null);
+  // One tap to log again what I log most (the last three different ones).
+  const quick = (data?.recent ?? []).filter((a, i, all) => all.findIndex((b) => b.kind === a.kind) === i).slice(0, 3);
+  const kinds = GREEN_KINDS.filter((k) => t?.kgByKind[k]).sort((a, b) => (t!.kgByKind[b] ?? 0) - (t!.kgByKind[a] ?? 0));
+  const shown = (data?.recent ?? []).filter((a) => filter === 'all' || (filter === 'done' ? !!a.verifiedAt : filter === 'wait' ? !a.verifiedAt && !!a.photoUrl : !a.photoUrl));
+  const again = (a: GreenMe['recent'][number]) => { setKind(a.kind); setAmount(String(a.amount)); setNote(a.note ?? ''); formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }); };
+  const download = () => {
+    const csv = actionsCsv((data?.recent ?? []).map((a) => ({ ...a, units: GREEN_FACTORS[a.kind]?.units ?? '' })));
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })), el = document.createElement('a');
+    el.href = url; el.download = 'green-actions.csv'; el.click(); URL.revokeObjectURL(url);
+  };
+
   return (
-    <div className="space-y-6">
-      <section className="relative overflow-hidden rounded-[32px] p-7 sm:p-10 text-white" style={{ background: 'radial-gradient(120% 90% at 0% 0%, #0f3b2e 0%, #0b2620 55%, #111113 100%)' }}>
-        <span aria-hidden className="pointer-events-none absolute -right-24 -top-24 w-80 h-80 rounded-full bg-emerald-400/20 blur-3xl" />
-        <div className="relative grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-6 items-end">
-          <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-emerald-400/15 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-emerald-200 ring-1 ring-emerald-300/30"><Leaf className="w-3.5 h-3.5" aria-hidden />Your impact</span>
-            <p className="mt-4 font-mono text-6xl sm:text-7xl font-light text-emerald-300"><Rolling value={t?.kg ?? 0} digits={1} /><span className="ml-3 text-xl text-emerald-100/70">kg CO₂ saved</span></p>
-            <p className="mt-3 text-emerald-50/80">{t ? `That’s like ${fmt(Math.round(t.kg / 22))} trees growing for a year, or ${fmt(Math.round(t.kg / 0.2))} km not driven.` : '…'}</p>
-          </div>
-          <dl className="grid grid-cols-3 gap-3 text-center">
-            {[[Flame, t?.streak ?? 0, 'day streak'], [Award, data?.badges.filter((b) => b.earned).length ?? 0, 'badges'], [Sparkles, t?.actions ?? 0, 'actions']].map(([Icon, v, k]) => {
-              const I = Icon as typeof Flame;
-              return <div key={k as string} className="rounded-2xl bg-white/[0.07] ring-1 ring-white/10 px-4 py-3"><I className="w-5 h-5 mx-auto text-emerald-300" aria-hidden /><dd className="mt-1 font-mono text-2xl tabular-nums">{String(v)}</dd><dt className="text-[11px] text-emerald-100/70">{k as string}</dt></div>;
-            })}
-          </dl>
+    <div className="space-y-5">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">My impact</h1>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{data ? `Everyone on Green has saved ${fmt(data.community.kg)} kg of CO₂ in ${fmt(data.community.actions)} actions, ${fmt(data.community.people)} people so far.` : ' '}</p>
         </div>
-        {/* Kept in place while loading so the page doesn't jump when the numbers arrive. */}
-        <p className="relative mt-6 text-xs text-emerald-100/60">{data ? `Everyone on UniVerse Green: ${fmt(data.community.kg)} kg CO₂ saved by ${fmt(data.community.people)} people in ${fmt(data.community.actions)} actions.` : '\u00a0'}</p>
-      </section>
+        <button type="button" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden />Log an action</button>
+      </div>
 
-      {data ? <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} /> : <div aria-hidden className="panel skeleton h-[399px] sm:h-[252px]" />}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <KpiCard title="CO₂ saved in all" icon={Leaf} value={t ? `${fmt(t.kg)} kg` : '…'} sub={t ? `Like ${fmt(Math.round(t.kg / 22))} trees for a year, or ${fmt(Math.round(t.kg / 0.2))} km not driven` : undefined} />
+        <KpiCard title="This month" icon={TrendingUp} value={`${fmt(thisMonth)} kg`} change={change(thisMonth, lastMonth) ?? undefined} sub={lastMonth ? `${fmt(lastMonth)} kg last month` : 'Nothing last month to compare with'} />
+        <KpiCard title="Streak" icon={Flame} value={`${t?.streak ?? 0} ${t?.streak === 1 ? 'day' : 'days'}`} sub={t?.streak ? 'Log something today to keep it' : 'Log an action to start one'} />
+        <KpiCard title="Confirmed" icon={ShieldCheck} value={`${confirmed}%`} sub={data ? `${fmt(data.verified.actions)} of ${fmt(t?.actions ?? 0)} actions checked by a teammate` : undefined} />
+      </div>
 
-      {/* Wide screens: the right column ends with the form; teammates' photos scroll inside it. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
-        <form ref={formRef} onSubmit={(e) => void log(e)} className="panel p-5 relative overflow-hidden" aria-labelledby="log-h">
-          <h2 id="log-h" className="font-bold text-zinc-900 dark:text-white">Log an action</h2>
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)]">
+        <form ref={formRef} onSubmit={(e) => void log(e)} className="panel relative flex flex-col overflow-hidden p-5" aria-labelledby="log-h">
+          <div className="flex items-baseline justify-between gap-2"><h2 id="log-h" className="text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">Log an action</h2><span className="text-xs text-zinc-600 dark:text-zinc-300">CO₂ worked out from the factor shown</span></div>
           <div className="mt-3 grid grid-cols-4 gap-2" role="radiogroup" aria-label="What you did">
             {GREEN_KINDS.map((k) => { const I = GREEN_ICON[k]; return (
               <button key={k} type="button" role="radio" aria-checked={kind === k} onClick={() => setKind(k)} className={cn('flex flex-col items-center gap-1 rounded-2xl border py-3 text-[11px] font-semibold transition active:scale-95', kind === k ? 'border-emerald-500/60 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200 shadow-[0_6px_20px_-10px_#10b981]' : 'border-zinc-200 dark:border-white/10 text-zinc-600 dark:text-zinc-300')}>
@@ -176,13 +192,18 @@ export function GreenApp() {
             <div className="text-right pb-1"><p className="font-mono text-2xl tabular-nums text-emerald-600 dark:text-emerald-400">−{preview} kg</p><p className="text-[10px] text-zinc-500">CO₂</p></div>
           </div>
           <p className="mt-1 text-[11px] text-zinc-500">{f.how}.</p>
-          <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Note (optional)</span><input maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} className="input mt-1" placeholder="To work and back" /></label>
+          <details className="group mt-3 rounded-2xl ring-1 ring-zinc-200 open:pb-3 dark:ring-white/10" open={more} onToggle={(e) => setMore((e.currentTarget as HTMLDetailsElement).open)}>
+          <summary className="cursor-pointer list-none px-3 py-2.5 text-sm font-semibold text-zinc-800 dark:text-zinc-100">Note, photo proof and the map <span className="font-normal text-zinc-600 dark:text-zinc-300">(optional)</span></summary>
+          <div className="px-3">
+          <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Note</span><input maxLength={300} value={note} onChange={(e) => setNote(e.target.value)} className="input mt-1" placeholder="To work and back" /></label>
           <label className="mt-3 flex items-center gap-3 rounded-2xl border border-dashed border-zinc-300 dark:border-white/15 px-3 py-2.5 cursor-pointer hover:border-emerald-500/60 transition-colors">
             <Camera className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden />
             <span className="min-w-0 flex-1 text-xs text-zinc-600 dark:text-zinc-300"><span className="block font-semibold text-zinc-800 dark:text-zinc-100">{photo ? photo.name : 'Add a photo as proof'}</span>A teammate confirms it, then it counts for the challenge and the leaderboards.</span>
             <input type="file" accept="image/*" className="sr-only" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
           </label>
           <label className="mt-3 flex items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300"><input type="checkbox" checked={share} onChange={(e) => setShare(e.target.checked)} className="w-4 h-4 accent-emerald-500" /><MapPin className="w-3.5 h-3.5" aria-hidden />Put it on the shared map (about 11 km away from where I am)</label>
+          </div>
+          </details>
           <button type="submit" disabled={saving} className="mt-4 w-full h-11 rounded-2xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold inline-flex items-center justify-center gap-2 active:scale-[0.98] transition">{saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Leaf className="w-4 h-4" />}Log it</button>
           <AnimatePresence>
             {ask && (
@@ -203,104 +224,143 @@ export function GreenApp() {
               </motion.div>
             )}
           </AnimatePresence>
+          {quick.length > 0 && (
+            <div className="mt-auto pt-4">
+              <p className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Again, in one tap</p>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                {quick.map((a) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
+                  <button key={a.id} type="button" onClick={() => again(a)} className="btn-secondary btn-sm inline-flex items-center gap-1.5"><I className="h-4 w-4 text-emerald-700 dark:text-emerald-300" aria-hidden />{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} {GREEN_FACTORS[a.kind]?.label.split(' ')[0].toLowerCase()}</button>
+                ); })}
+              </div>
+            </div>
+          )}
           <AnimatePresence>{burst > 0 && <Burst key={burst} />}</AnimatePresence>
         </form>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-5">
           {c && (
             <section className="panel p-5" aria-labelledby="ch-h">
-              <div className="flex items-start gap-3">
-                <h2 id="ch-h" className="font-bold text-zinc-900 dark:text-white flex flex-1 items-center gap-2"><Trophy className="w-4 h-4 text-amber-500" aria-hidden />This week’s challenge</h2>
-                {/* M50: how full the week's goal is, as a level. */}
-                <Tank pct={c.goal ? (c.mine / c.goal) * 100 : 0} tone="green" label="Your share of the goal" />
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h2 id="ch-h" className="flex items-center gap-2 text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white"><Trophy className="h-4 w-4 text-amber-500" aria-hidden />This week’s challenge</h2>
+                  <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{c.title}{daysLeft !== null ? ` · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left` : ''}</p>
+                </div>
+                <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-sm font-semibold tabular-nums text-emerald-800 dark:text-emerald-200">{c.goal ? Math.min(100, Math.round((c.mine / c.goal) * 100)) : 0}%</span>
               </div>
-              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{c.title}{daysLeft !== null ? ` · ${daysLeft} ${daysLeft === 1 ? 'day' : 'days'} left` : ''}</p>
               {[['You', c.mine], ...(c.team !== null ? [['Your teams', c.team] as const] : [])].map(([who, v]) => (
                 <div key={who as string} className="mt-3">
-                  <div className="flex justify-between text-xs text-zinc-500"><span>{who as string}</span><span className="font-mono">{v as number} / {c.goal} {c.unit}</span></div>
-                  <div className="mt-1 h-2.5 rounded-full bg-zinc-100 dark:bg-white/[0.07] overflow-hidden"><Fill value={(Math.min(100, ((v as number) / c.goal) * 100)) / 100} className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-300" /></div>
+                  <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-300"><span>{who as string}</span><span className="tabular-nums">{v as number} / {c.goal} {c.unit}</span></div>
+                  <div className="mt-1 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.07]"><Fill value={Math.min(1, (v as number) / Math.max(1, c.goal))} className="h-full rounded-full bg-emerald-500" /></div>
                 </div>
               ))}
-              <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} more wait for a teammate to confirm.` : ''}</p>
-              {c.team === null && <Link href="/green/teams" className="btn-secondary btn-sm mt-4 inline-flex">Join or start a team</Link>}
+              <div className="mt-3 flex flex-wrap items-center gap-2">
+                <p className="me-auto text-xs text-zinc-600 dark:text-zinc-300">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} wait for a teammate.` : ''}</p>
+                <button type="button" onClick={() => tryAgain(c.kind)} className="btn-secondary btn-sm">Log for it</button>
+                {c.team === null && <Link href="/green/teams" className="btn-ghost btn-sm">Join a team</Link>}
+              </div>
             </section>
           )}
-          <Neighbourhood />
-          <TeamProofs onDone={() => void mutate()} />
+          {data ? <PassSection totals={data.totals} easiest={data.easiest} onTry={tryAgain} /> : <div aria-hidden className="panel skeleton h-60" />}
         </div>
       </div>
 
-      {t && t.actions > 0 && (
-        // M48: what you did, by kind, around you; the community's total underneath.
-        <LiveCard title="Your climate actions" sub="What each kind of action saved, and how often you did it"
-          stats={[{ label: 'Actions', value: fmt(t.actions) }, { label: 'CO₂ saved', value: `${fmt(t.kg)} kg` }, { label: 'Everyone', value: `${fmt(data!.community.kg)} kg` }]}
-          ticker={data!.recent.slice(0, 6).map((a) => `${GREEN_FACTORS[a.kind]?.label ?? a.kind}: −${fmt(a.co2Kg)} kg CO₂${a.place ? ` · ${a.place}` : ''}`)}>
-          <Tracks label="Your climate actions by kind"
-            tracks={GREEN_KINDS.filter((k) => t.byKind[k]).sort((a, b) => (t.kgByKind[b] ?? 0) - (t.kgByKind[a] ?? 0)).map((k) => ({
-              key: k, label: GREEN_FACTORS[k].label, value: `−${fmt(t.kgByKind[k] ?? 0)} kg`,
-              parts: [{ n: t.kgByKind[k] ?? 0, tone: 'pink' as const, label: 'CO₂ saved' }],
-              detail: `${fmt(t.byKind[k] ?? 0)} ${t.byKind[k] === 1 ? 'action' : 'actions'} · ${t.kg ? Math.round(((t.kgByKind[k] ?? 0) / t.kg) * 100) : 0}% of the CO₂ you saved`,
-            }))} />
-          {/* M49: CO₂ saved per day, as a heartbeat. */}
-          <div className="mt-3 h-[90px]"><Heartbeat values={data!.perDay.map((d) => d.kg)} label="CO₂ saved per day, last 30 days" /></div>
-        </LiveCard>
-      )}
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <section className="panel flex flex-col p-5" aria-labelledby="days-h">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h2 id="days-h" className="text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">Progress</h2>
+            <Segmented<'days' | 'months'> label="Show" value={range} onChange={setRange} segments={[{ value: 'days', label: 'Last 30 days' }, { value: 'months', label: '6 months' }]} />
+          </div>
+          {range === 'days' ? (
+            <div className="mt-5 flex h-40 items-end gap-1" role="img" aria-label={`CO₂ saved each day for 30 days: ${fmt((data?.perDay ?? []).reduce((n, d) => n + d.kg, 0))} kg in all`}>
+              {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
+                <span key={i} className="flex-1 rounded-t bg-emerald-500/85" style={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} title={`${d.day}: ${d.kg} kg`} />
+              ))}
+            </div>
+          ) : (
+            <ol className="mt-5 grid h-40 grid-cols-6 items-end gap-3" aria-label="CO₂ saved each month">
+              {series.map((m) => (
+                <li key={m.label} className="flex h-full flex-col items-center justify-end gap-1.5">
+                  <span className="text-xs font-semibold tabular-nums text-zinc-800 dark:text-zinc-100">{fmt(m.kg)}</span>
+                  <span className="w-full rounded-t bg-emerald-500/85" style={{ height: `${Math.max(2, (m.kg / topMonth) * 78)}%` }} aria-hidden />
+                  <span className="text-xs text-zinc-600 dark:text-zinc-300">{m.label}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">kg of CO₂ saved, by the factors in Green’s methods (DEFRA, EPA, Our World in Data).</p>
+          <dl className="mt-auto grid grid-cols-2 gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-4 dark:border-white/[0.06]">
+            {[['30 days', `${fmt(month30)} kg`], ['Best day', best ? `${fmt(best.kg)} kg` : '–'], ['Days active', `${active} of 30`], ['Per active day', active ? `${fmt(Math.round((month30 / active) * 10) / 10)} kg` : '–']].map(([k, v]) => (
+              <div key={k}><dt className="text-xs text-zinc-600 dark:text-zinc-300">{k}</dt><dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>
+            ))}
+          </dl>
+        </section>
+
+        <section className="panel p-5" aria-labelledby="kinds-h">
+          <h2 id="kinds-h" className="text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">Where it came from</h2>
+          {!kinds.length ? <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">Your actions by kind show here once you log one.</p> : (
+            <ul className="mt-4 space-y-3">
+              {kinds.map((k) => { const I = GREEN_ICON[k], kg = t!.kgByKind[k] ?? 0; return (
+                <li key={k}>
+                  <button type="button" onClick={() => tryAgain(k)} className="w-full text-start" title="Log this again">
+                    <span className="flex items-center gap-2.5 text-sm"><I className="h-4 w-4 text-emerald-600 dark:text-emerald-400" aria-hidden /><span className="flex-1 truncate text-zinc-800 dark:text-zinc-100">{GREEN_FACTORS[k].label}</span><span className="tabular-nums text-zinc-600 dark:text-zinc-300">{fmt(t!.byKind[k] ?? 0)} {GREEN_FACTORS[k].units}</span><span className="w-20 text-end font-semibold tabular-nums text-zinc-900 dark:text-white">{kg.toFixed(1)} kg</span></span>
+                    <span className="mt-1.5 ms-6.5 block h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.07]"><Fill value={kg / (t!.kg || 1)} className="h-full rounded-full bg-emerald-500" /></span>
+                  </button>
+                </li>
+              ); })}
+            </ul>
+          )}
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+        <section className="panel flex flex-col p-0" aria-labelledby="recent-h">
+          <header className="flex flex-wrap items-center gap-2 px-5 pb-3 pt-5">
+            <h2 id="recent-h" className="me-auto text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">What you did</h2>
+            <Segmented<'all' | 'done' | 'wait' | 'none'> label="Show actions" className="max-w-full overflow-x-auto" value={filter} onChange={setFilter} segments={[{ value: 'all', label: 'All' }, { value: 'done', label: 'Confirmed' }, { value: 'wait', label: 'Waiting' }, { value: 'none', label: 'No proof' }]} />
+            <button type="button" onClick={download} disabled={!data?.recent.length} className="btn-ghost btn-sm inline-flex items-center gap-1.5"><Download className="h-4 w-4" aria-hidden />CSV</button>
+          </header>
+          {!data ? <div className="mx-5 mb-5 h-40 skeleton rounded-xl" /> : shown.length === 0 ? <p className="px-5 pb-5 text-sm text-zinc-600 dark:text-zinc-300">{data.recent.length ? 'Nothing with this filter.' : 'Nothing yet. Your first action shows here.'}</p> : (
+            <ul className="max-h-[26rem] divide-y divide-zinc-100 overflow-y-auto border-t border-zinc-100 dark:divide-white/[0.06] dark:border-white/[0.06]">
+              {shown.map((a, i) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
+                <li key={a.id} className={cn('group flex items-center gap-3 px-5 py-2.5 text-sm', i >= RECENT && !allRecent && 'max-lg:hidden')}>
+                  <span className="grid h-8 w-8 shrink-0 place-items-center rounded-xl bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"><I className="h-4 w-4" aria-hidden /></span>
+                  <span className="min-w-0 flex-1"><span className="block truncate text-zinc-900 dark:text-white">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block truncate text-xs text-zinc-600 dark:text-zinc-300">{[a.note, a.feeling && `felt ${FELT[a.feeling].toLowerCase()}`, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
+                  {a.verifiedAt ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-semibold text-emerald-800 dark:text-emerald-200"><ShieldCheck className="h-3.5 w-3.5" aria-hidden />Confirmed</span>
+                    : a.photoUrl ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-white/[0.06] dark:text-zinc-200"><Clock className="h-3.5 w-3.5" aria-hidden />Waiting</span>
+                    : <label className="inline-flex cursor-pointer items-center gap-1 rounded-full border border-zinc-200 px-2 py-0.5 text-xs font-semibold text-zinc-700 hover:border-emerald-500/60 dark:border-white/10 dark:text-zinc-200"><Camera className="h-3.5 w-3.5" aria-hidden />Add proof<input type="file" accept="image/*" className="sr-only" onChange={(e) => void addPhoto(a.id, e.target.files?.[0])} /></label>}
+                  <span className="w-16 text-end font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">−{a.co2Kg} kg</span>
+                  <button type="button" onClick={() => again(a)} aria-label={`Log ${GREEN_FACTORS[a.kind]?.label.toLowerCase()} again`} title="Log it again" className="grid h-7 w-7 place-items-center rounded-full text-zinc-500 hover:bg-emerald-500/10 hover:text-emerald-700"><RotateCcw className="h-3.5 w-3.5" aria-hidden /></button>
+                  <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="grid h-7 w-7 place-items-center rounded-full text-zinc-500 hover:bg-rose-500/10 hover:text-rose-600"><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>
+                </li>
+              ); })}
+            </ul>
+          )}
+          {data && shown.length > RECENT && <button type="button" onClick={() => setAllRecent((v) => !v)} className="btn-secondary btn-sm mx-5 mb-4 mt-2 lg:hidden">{allRecent ? 'Show less' : `Show all ${shown.length}`}</button>}
+        </section>
+
+        <section className="panel p-5" aria-labelledby="badges-h">
+          <div className="flex items-baseline justify-between gap-2">
+            <h2 id="badges-h" className="text-[17px] font-semibold tracking-tight text-zinc-900 dark:text-white">Badges</h2>
+            <span className="text-sm tabular-nums text-zinc-600 dark:text-zinc-300">{data?.badges.filter((b) => b.earned).length ?? 0} of {data?.badges.length ?? 0}</span>
+          </div>
+          <ul className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {(data?.badges ?? []).map((b) => (
+              <li key={b.id} className={cn('flex items-start gap-2.5 rounded-xl p-2.5 ring-1', b.earned ? 'bg-emerald-500/[0.07] ring-emerald-500/25' : 'ring-zinc-200 dark:ring-white/10')}>
+                {b.earned ? <Award className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : <Lock className="mt-0.5 h-5 w-5 shrink-0 text-zinc-400" aria-hidden />}
+                <span className="min-w-0"><span className="block text-sm font-semibold text-zinc-900 dark:text-white">{b.label}<span className="sr-only">{b.earned ? ', earned' : ', not yet'}</span></span><span className="block text-xs text-zinc-600 dark:text-zinc-300">{b.text}</span></span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+
+      <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
+        <Neighbourhood />
+        <TeamProofs onDone={() => void mutate()} />
+      </div>
 
       {/* M216: the year at a glance, what it means, a picture of it. */}
       {data && t && <GreenYear year={data.year ?? {}} totals={t} />}
-
-      {/* Wide screens: "What you did" is exactly as tall as the 30 days and badges beside it and scrolls inside. */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-6">
-          <section className="panel p-5" aria-labelledby="days-h">
-            <h2 id="days-h" className="font-bold text-zinc-900 dark:text-white">The last 30 days</h2>
-            <div className="mt-4 flex items-end gap-1 h-32" aria-hidden>
-              {(data?.perDay ?? Array.from({ length: 30 }, () => ({ day: '', kg: 0 }))).map((d, i) => (
-                <motion.span key={i} className="flex-1 rounded-t bg-gradient-to-t from-emerald-600 to-emerald-300" initial={{ height: 0 }} animate={{ height: `${Math.max(2, (d.kg / maxDay) * 100)}%` }} transition={{ duration: 0.6, delay: i * 0.012 }} title={`${d.day}: ${d.kg} kg`} />
-              ))}
-            </div>
-            <ul className="mt-5 space-y-2">
-              {GREEN_KINDS.filter((k) => t?.kgByKind[k]).sort((a, b) => (t!.kgByKind[b] ?? 0) - (t!.kgByKind[a] ?? 0)).map((k) => { const I = GREEN_ICON[k]; const kg = t!.kgByKind[k] ?? 0; return (
-                <li key={k} className="text-sm"><div className="flex items-center gap-2"><I className="w-4 h-4 text-emerald-600 dark:text-emerald-400" aria-hidden /><span className="flex-1 text-zinc-700 dark:text-zinc-200">{GREEN_FACTORS[k].label}</span><span className="font-mono text-xs text-zinc-500">{fmt(t!.byKind[k] ?? 0)} {GREEN_FACTORS[k].units}</span><span className="font-mono text-xs w-16 text-right text-emerald-600 dark:text-emerald-400">{kg.toFixed(1)} kg</span></div>
-                  <div className="mt-1 ml-6 h-1 rounded-full bg-zinc-100 dark:bg-white/[0.06]"><div className="h-full rounded-full bg-emerald-500" style={{ width: `${(kg / (t!.kg || 1)) * 100}%` }} /></div></li>
-              ); })}
-            </ul>
-          </section>
-          <section className="panel p-5" aria-labelledby="badges-h">
-            <h2 id="badges-h" className="font-bold text-zinc-900 dark:text-white">Badges</h2>
-            <ul className="mt-3 grid grid-cols-4 gap-2">
-              {(data?.badges ?? []).map((b, i) => (
-                <motion.li key={b.id} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.04 }} title={b.text} className={cn('rounded-2xl p-2.5 text-center', b.earned ? 'bg-emerald-500/10 ring-1 ring-emerald-500/30' : 'bg-zinc-100 dark:bg-white/[0.04] opacity-60')}>
-                  {b.earned ? <Award className="w-6 h-6 mx-auto text-emerald-500 drop-shadow-[0_0_8px_rgba(16,185,129,0.6)]" aria-hidden /> : <Lock className="w-6 h-6 mx-auto text-zinc-400" aria-hidden />}
-                  <p className="mt-1 text-[10px] font-semibold text-zinc-700 dark:text-zinc-200 leading-tight">{b.label}</p>
-                  <span className="sr-only">{b.earned ? 'earned' : 'not yet'}: {b.text}</span>
-                </motion.li>
-              ))}
-            </ul>
-          </section>
-        </div>
-        <section className="panel p-5 relative lg:min-h-[360px]" aria-labelledby="recent-h">
-          <div className="lg:absolute lg:inset-5 flex flex-col">
-            <h2 id="recent-h" className="font-bold text-zinc-900 dark:text-white">What you did</h2>
-            {!data ? <div className="mt-3 h-40 skeleton rounded-xl" /> : data.recent.length === 0 ? <p className="mt-3 text-sm text-zinc-500">Nothing yet. Your first action shows here.</p> : (
-              <ul className="mt-3 divide-y divide-zinc-100 dark:divide-white/[0.06] lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
-                {data.recent.map((a, i) => { const I = GREEN_ICON[a.kind] ?? Leaf; return (
-                  <li key={a.id} className={cn('py-2.5 flex items-center gap-3 text-sm group', i >= RECENT && !allRecent && 'max-lg:hidden')}>
-                    <span className="w-8 h-8 rounded-xl grid place-items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"><I className="w-4 h-4" aria-hidden /></span>
-                    <span className="min-w-0 flex-1"><span className="block truncate text-zinc-800 dark:text-zinc-100">{fmt(a.amount)} {GREEN_FACTORS[a.kind]?.units} · {GREEN_FACTORS[a.kind]?.label.toLowerCase()}</span><span className="block text-[11px] text-zinc-500 truncate">{[a.note, a.feeling && `felt ${FELT[a.feeling].toLowerCase()}`, formatDistanceToNow(new Date(a.createdAt), { addSuffix: true })].filter(Boolean).join(' · ')}</span></span>
-                    {a.verifiedAt ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"><ShieldCheck className="w-3.5 h-3.5" aria-hidden />Confirmed</span>
-                      : a.photoUrl ? <span className="inline-flex items-center gap-1 rounded-full bg-zinc-100 dark:bg-white/[0.06] px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300"><Clock className="w-3.5 h-3.5" aria-hidden />Waiting</span>
-                      : <label className="inline-flex items-center gap-1 rounded-full border border-zinc-200 dark:border-white/10 px-2 py-0.5 text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 cursor-pointer hover:border-emerald-500/60"><Camera className="w-3.5 h-3.5" aria-hidden />Add proof<input type="file" accept="image/*" className="sr-only" onChange={(e) => void addPhoto(a.id, e.target.files?.[0])} /></label>}
-                    <span className="font-mono text-xs text-emerald-600 dark:text-emerald-400">−{a.co2Kg} kg</span>
-                    <button type="button" onClick={() => void remove(a.id)} aria-label="Delete this action" className="w-7 h-7 grid place-items-center rounded-full text-zinc-400 hover:text-rose-600 hover:bg-rose-500/10 pointer-fine:opacity-0 pointer-fine:group-hover:opacity-100 focus:opacity-100 transition"><Trash2 className="w-3.5 h-3.5" /></button>
-                  </li>
-                ); })}
-              </ul>
-            )}
-            {data && data.recent.length > RECENT && <button type="button" onClick={() => setAllRecent((v) => !v)} className="btn-secondary btn-sm mt-3 lg:hidden">{allRecent ? 'Show less' : `Show all ${data.recent.length}`}</button>}
-          </div>
-        </section>
-      </div>
 
       <GreenMap />
     </div>
@@ -362,7 +422,7 @@ function PassSection({ totals, easiest, onTry }: { totals: GreenMe['totals']; ea
     el.style.transform = `rotateX(${((e.clientY - r.top) / r.height - 0.5) * -8}deg) rotateY(${((e.clientX - r.left) / r.width - 0.5) * 10}deg)`;
   };
   return (
-    <section className="panel p-5 grid grid-cols-1 gap-6 sm:grid-cols-[minmax(0,340px)_1fr] items-center" aria-labelledby="pass-h">
+    <section className="panel p-5 grid grid-cols-1 gap-5 sm:grid-cols-[minmax(0,340px)_1fr] lg:grid-cols-1 2xl:grid-cols-[minmax(0,300px)_1fr] items-center" aria-labelledby="pass-h">
       <div style={{ perspective: 900 }}>
         <div
           onPointerMove={lean} onPointerLeave={(e) => { e.currentTarget.style.transform = ''; }}

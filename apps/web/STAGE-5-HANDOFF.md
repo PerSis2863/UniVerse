@@ -10109,3 +10109,24 @@ The same ask. Green → Journeys showed each way's CO₂ only; now each has its 
 longer than the quickest: `bestBalance`) marked beside Cleanest, and a **Cleanest / Quickest** order that slides the
 list (`morph`). No local bus past 80 km and no plane under 150 km. On a phone a row's kg and "I went this way" sit on
 their own line under the name. Checked at 390 and 1280, light and dark: axe clean.
+
+## M359 (20 Nov): Green's home (My impact) redesigned as a dashboard, with more on every part
+
+The owner: "redesign the green app because it doesnt look professional and the inside ui looks bad… more detailing";
+then "just you work on green… dont clash with the files". Built on the other agent's latest (`claude/funny-galileo-y4mz9r`,
+M358); this branch's unmerged M330–M331 were reverted first (the merged M346/M350/M354 map work replaced them).
+
+- **`GreenApp.tsx`** (only Green's files): the dark gradient banner is gone. A title row with the community total and
+  "Log an action"; four `KpiCard`s (CO₂ saved in all with what it equals, **this month against last** with the change,
+  the streak, the **share confirmed** by a teammate); logging beside the week's challenge ("Log for it") and the Green
+  Pass (stacks in the column); the note, photo and map option folded under one "optional" row; **one-tap "again"** for
+  the last three different actions; **Progress** by the last 30 days or **6 months**, with the 30 days' total, best day,
+  days active and per active day; **Where it came from** by kind (press one to log it again); **What you did** with
+  filters (All, Confirmed, Waiting, No proof), **log again** per row and a **CSV download**; **badges with what each
+  needs**; the neighbourhood and teammates' proofs side by side; the year and the map as before.
+- `src/lib/green-stats.ts` (`monthKg`, `change`, `months`, `actionsCsv`), from the `year` map `/green/me` already sends:
+  no new route, no database change. Test: `green-stats.test.ts`.
+- Removed from the page: the LiveCard with tracks and heartbeat and the tank (the breakdown and the chart replace them).
+- Checked: axe clean at 1280 light and 390 dark, nothing sideways, no page errors.
+- **Next for Green** (the owner's "upgrade all the existing features"): Footprint, Journeys, Goals, Tips, Events, Green
+  places, Swap & repair, Teams and Business in the same look, each with more to do.
