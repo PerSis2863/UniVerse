@@ -10086,3 +10086,26 @@ should show all the transport and options just like google and apple maps does".
   ends. The old "Public transport in Google Maps" link at the very bottom of the turns is gone (the tab replaces it).
 - Checked in a browser (Paris → Lyon, place lookups stubbed: this container can't reach them): train ~2 h 20, flight
   ~3 h, drive ~6 h, coach ~7 h 25, with CO₂; the three apps' links; 1280 dark and 390 light, axe clean.
+
+## M357 (20 Nov): every way between a trip's cities
+
+The owner, 20 Nov: "can you make more changes in the system like this" (like M356's compare-the-ways); asked which,
+"all of them and add more options like this in the system, i need more".
+- A trip's **Plan → Route**: between two cities `TripLeg` (`src/components/travel/trip-legs.tsx`) lists every way that
+  works there (train, coach, flight, drive; flight and ferry over sea; only the flight past 2,000 km), quickest first,
+  with the door-to-door time and the CO₂ for all the travellers, **Fastest** and **Greenest** marked. A press picks it:
+  the same choice as Ready → Footprint (the stop's `mode`; the train logs a Green action once a leg, same PATCH). The
+  booking links under it follow the way picked (Google Flights for a flight, Omio / 12Go / Google Maps for trains and
+  coaches, Direct Ferries for a ferry; Rome2Rio always). Above the stops, `TripLegTotals`: time on the move, the CO₂
+  and what the greenest ways would save.
+- **One source:** `legMinutes` and each leg's `ways` in `src/lib/travel-footprint.ts` (tested), the same estimates as
+  Directions' public transport (M356). The old "X km · about N h" line and `leg()` in the trip page are gone.
+- Checked at 390 and 1280, light and dark (Paris → Lyon → Barcelona): axe clean, nothing sideways.
+
+## M358 (20 Nov): Green's Journeys by time too
+
+The same ask. Green → Journeys showed each way's CO₂ only; now each has its **door-to-door time** (`wayMinutes` in
+`src/lib/green-plus.ts`, tested), **Quickest** and **Best balance** (the cleanest way taking at most a third, or 45 min,
+longer than the quickest: `bestBalance`) marked beside Cleanest, and a **Cleanest / Quickest** order that slides the
+list (`morph`). No local bus past 80 km and no plane under 150 km. On a phone a row's kg and "I went this way" sit on
+their own line under the name. Checked at 390 and 1280, light and dark: axe clean.
