@@ -10041,3 +10041,14 @@ smooth if i go from one place to another in fast way"; then "everything should l
   Apple's three (layers, where I am, 3D) clear of the sheet; measure, share and full screen are a computer's.
 - Checked: 390 light and dark, 1280 light, axe clean, no page errors; each feature tried in a browser (a made-up
   position for following).
+
+## M354 (20 Nov): on a phone the map comes first
+
+The owner, 20 Nov (a phone screenshot of Travel's map): "for user the map is not accessible and cant even see properly".
+The sheet at the foot covered about half the screen before anyone touched it (sections, search, stay, kinds of place).
+Now, as Apple Maps on an iPhone, it starts closed: only its handle and a "Search Maps" bar (86 px of 844); tapping the
+bar opens it (on Search), as do a place, a section or the handle; the handle also opens or closes with a swipe up or
+down (`swipe` / `swiped` refs: more than 24 px; the click that follows a swipe is ignored). The stay box's hint is
+shorter ("Where are you staying?"). Also checked: the map's style is valid in light and dark (MapLibre's own
+validator, run once, not committed), so a blank map in this container's screenshots is only its blocked tiles.
+- Checked at 390 light and dark: closed, opened, swiped down; axe clean, no page errors.

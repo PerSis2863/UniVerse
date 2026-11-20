@@ -157,6 +157,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const walking = !!walk;
   const [shift, setShift] = useState(0); // half hours from now
   const [open, setOpen] = useState(false); // the panel on a phone
+  const swipe = useRef<number | null>(null), swiped = useRef(false); // M354: the sheet's handle swiped up or down
   // M349: Apple's sidebar: the section open beside the menu column (none: only the column), the column shown, and
   // Search's "Find Nearby" tiles shown (they fold away once a kind is chosen).
   const [section, setSection] = useState<Section | null>(null);
@@ -942,18 +943,25 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       <MapRail shown={rail} active={active} onPick={openSection} onHide={() => setRail(false)} />
       {!rail && <RailShow onShow={() => setRail(true)} />}
       <aside aria-label="Places" data-map-side inert={wide && !panelOn ? true : undefined} className={cn('map-panel absolute inset-x-2 bottom-2 z-[29] flex max-h-[62%] flex-col overflow-hidden rounded-[1.375rem] shadow-[0_12px_40px_-12px_rgba(0,0,0,0.35)] ring-1 ring-black/[0.06] dark:ring-white/10 sm:inset-x-auto sm:bottom-0 sm:start-[var(--rail)] sm:top-0 sm:max-h-none sm:w-[23.5rem] sm:rounded-none sm:border-e sm:border-black/[0.06] sm:shadow-none sm:ring-0 sm:dark:border-white/[0.06]', panelBg, !panelOn && 'sm:pointer-events-none sm:-translate-x-full sm:opacity-0 rtl:sm:translate-x-full')}>
-        <button type="button" onClick={() => setOpen((o) => !o)} className="flex w-full justify-center pb-2 pt-2.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
+        {/* M354 (the owner, 20 Nov: "for user the map is not accessible and cant even see properly"): on a phone the map
+            comes first, as Apple Maps on an iPhone: closed, the sheet is only its handle and the search bar; tapping the
+            bar, a place or a section opens it, and the handle opens or closes it with a tap or a swipe up or down. */}
+        <button type="button" onPointerDown={(e) => { swipe.current = e.clientY; }} onPointerUp={(e) => { const dy = e.clientY - (swipe.current ?? e.clientY); swipe.current = null; if (Math.abs(dy) > 24) { swiped.current = true; setOpen(dy < 0); } }}
+          onClick={() => { if (swiped.current) { swiped.current = false; return; } setOpen((o) => !o); }} className="flex w-full touch-none justify-center pb-2 pt-2.5 sm:hidden" aria-expanded={open} aria-label={open ? 'Show less' : 'Show more'}>
           <span className="h-1.5 w-10 rounded-full bg-zinc-300 dark:bg-white/25" aria-hidden />
         </button>
         <div className="px-3 pb-2 sm:px-4 sm:pt-4">
-          <SectionRow active={dir ? 'directions' : sec} onPick={openSection} />
+          {(wide || open) && <SectionRow active={dir ? 'directions' : sec} onPick={openSection} />}
           {!picked && !dest && !dir && <div key={sec} className="map-panel-in hidden sm:block"><PanelHead title={SECTIONS.find((x) => x.id === sec)!.label} onClose={closeAll} /></div>}
-          {sec === 'search' && !picked && !dest && !dir && (<>
-          <PlaceSearch className="min-w-0" big label="Find a place on the map" placeholder="Search a place, hotel or address…" near={view} onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }}
-            onPlace={(p) => pick({ type: 'place', key: p.key, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.sub, lat: p.lat, lon: p.lon })} />
+          {(sec === 'search' || (!wide && !open)) && !picked && !dest && !dir && (<>
+          <div onFocusCapture={() => { if (!wide && !open) { setSection('search'); setLastSec('search'); setOpen(true); } }}>
+            <PlaceSearch className="min-w-0" big label="Find a place on the map" placeholder="Search Maps" near={view} onPick={(t) => { setGuideOf(t); setCat('see'); goTo(t); }}
+              onPlace={(p) => pick({ type: 'place', key: p.key, name: p.name, kind: kindOf(p.cls, p.sub), cls: p.sub, lat: p.lat, lon: p.lon })} />
+          </div>
+          {(wide || open) && (<>
           <form onSubmit={findStay} className="mt-2 flex items-center gap-2 rounded-xl bg-zinc-100 px-2.5 py-1 dark:bg-white/[0.06]">
             <BedDouble className="h-4 w-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />
-            <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying? Your hotel or its address'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
+            <input value={stayText} onFocus={() => setStayFocus(true)} onChange={(e) => setStayText(e.target.value.slice(0, 120))} placeholder={stay ? `Staying at ${stay.name}` : 'Where are you staying?'} aria-label="Where you're staying: your hotel's name or address" className="min-w-0 flex-1 bg-transparent py-1 text-sm text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400" />
             {stayText.trim().length >= 3 && <button type="submit" className="btn-primary btn-sm">Find</button>}
             {stay && !stayText && <button type="button" onClick={forgetStay} className="btn-ghost btn-sm p-1" aria-label="Forget where I'm staying"><X className="h-4 w-4" aria-hidden /></button>}
           </form>
@@ -979,6 +987,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
             })}
           </div>
           </div>
+          </>)}
           </>)}
         </div>
         <div key={`${picked ? `p${picked.type === 'place' ? `${picked.name}@${picked.lat}` : picked.type}` : dest ? `d${dest.name}` : dir ? 'dir' : walk ? 'walk' : found ? `f${found.q}` : sec}${wide || open ? '' : '-'}`}
