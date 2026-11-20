@@ -10275,3 +10275,22 @@ helped, urgent, helped in 30 days), so the space now holds `NeedsByKind.tsx`: op
 its count, people waiting, urgent count and a bar (`Fill`: slides on the graphics chip; orange when any are urgent); a
 press toggles that kind's filter on the map and scrolls up to it. Plain card (`CardHead`), no canvas, no loops.
 Checked at 1280 and 390, light and dark: axe clean, nothing sideways.
+
+## M372 (20 Nov): Spotlight's opening for every menu and pop-up
+
+The owner, 20 Nov: "the way spot light is ultra smooth and ui is also look good so make every button like that or
+where ever you can add". `pop` in `src/lib/motion.ts` holds the search window's motion (M368): from 94% and 6 px up on
+a firm spring (stiffness 520, damping 38, mass 0.8; ~0.2 s), one `transform` string the compositor runs; out faster
+(0.13 s, ease-in, to 97%). **`Popover`** (Menu.tsx: the top bar's groups and More, every card's "···" menu, every
+drop-down built on it) opens that way, **growing out of its button** (`--pop-origin` set where it's placed: the
+button's middle, top or bottom); Reduce Motion: a fade. The motion layer's openings (`opened` in scroll-motion.ts: what
+appears floating after a press) use the same from-94% start on `springGlide()`. Bottom sheets keep their slide (iOS's).
+
+## M373 (20 Nov): Relief's live map plainer, fewer colours
+
+The owner, 20 Nov (a picture of the live map page): "all things here looks ai so please make it simple and
+professional dont use alot of colours there". One ink colour where colour said nothing: What's needed most's bars and
+chosen row, the places' beds bar (now `Fill`) and their "Open" and "yes" badges (grey; amber and red stay for running
+low, out and closed), the open-needs tick strip (urgent ones dark, the rest light) and the Urgent figure. In the shared
+`QueueCard` (map-ui) the kind's icon is grey and only the **chosen** card wears the app's colour (an urgent one has a
+plain darker hairline; its due label still says so). Checked at 1440 and 390, light and dark: axe clean.

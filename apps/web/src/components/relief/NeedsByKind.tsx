@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 // M371 (the owner, 20 Nov, a picture of the old "Help, moving" box: "remove this and add something professinonal and it
 // should be ultra smooth"): in its place, what's needed most. Open needs by kind, most first, each with its people
 // waiting and how many are urgent, a bar that slides (`Fill`, the graphics chip runs it) and a press that shows only
-// that kind on the map. The map's own cards already carry the totals (open, being helped, urgent, helped in 30 days).
+// that kind on the map. M373: one ink colour (the owner: "dont use alot of colours"). The map's own cards already carry the totals (open, being helped, urgent, helped in 30 days).
 
 type Post = { type: string; status: string; kind: ReliefKind; urgency: string; people: number };
 
@@ -30,7 +30,7 @@ export function NeedsByKind({ posts, icons, chosen, onPick }: { posts: Post[]; i
           return (
             <li key={r.k}>
               <button type="button" aria-pressed={on} onClick={() => onPick(r.k)}
-                className={cn('w-full rounded-xl px-2.5 py-2 text-start transition-colors duration-150', on ? 'bg-orange-500/10' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>
+                className={cn('w-full rounded-xl px-2.5 py-2 text-start transition-colors duration-150', on ? 'bg-zinc-100 ring-1 ring-zinc-300 dark:bg-white/[0.08] dark:ring-white/20' : 'hover:bg-zinc-100 dark:hover:bg-white/[0.05]')}>
                 <span className="flex items-center gap-2.5">
                   <span className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-white/[0.07] dark:text-zinc-200" aria-hidden><I className="h-4 w-4" /></span>
                   <span className="min-w-0 flex-1">
@@ -38,7 +38,7 @@ export function NeedsByKind({ posts, icons, chosen, onPick }: { posts: Post[]; i
                       <span className="text-sm font-semibold text-zinc-900 dark:text-white">{RELIEF_KIND_LABEL[r.k]}</span>
                       <span className="text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{r.n}</span>
                     </span>
-                    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.08]" aria-hidden><Fill value={r.n / most} className={r.urgent ? 'bg-orange-600' : 'bg-zinc-700 dark:bg-zinc-300'} /></span>
+                    <span className="mt-1.5 block h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/[0.08]" aria-hidden><Fill value={r.n / most} className="bg-zinc-800 dark:bg-zinc-200" /></span>
                     <span className="mt-1 block text-xs text-zinc-500 dark:text-zinc-400">{r.people} {r.people === 1 ? 'person' : 'people'} waiting{r.urgent ? ` · ${r.urgent} urgent` : ''}</span>
                   </span>
                 </span>

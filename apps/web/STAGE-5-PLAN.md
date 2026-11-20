@@ -1771,3 +1771,5 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M369 | No summary line under the homes' greeting (the owner, 20 Nov) | **Done** | The line under "Good afternoon" is gone on every home; "due soon" sits beside Up next, the rest was already in the number cards. |
 | M370 | Each app's sections in the top bar (the owner, 20 Nov) | **Done** | On a computer, Relief, Trace, Green and Travel's sections sit in the top bar with Messages and Collaborate; phones keep their row of tabs. |
 | M371 | Relief's "What's needed most" (the owner, 20 Nov: "add something professinonal") | **Done** | Open needs by kind with people waiting, urgent counts and smooth bars; a press filters the map. Replaces the old animated box. |
+| M372 | Spotlight's opening for every menu and pop-up (the owner, 20 Nov) | **Done** | Every drop-down and "···" menu grows out of its button on Spotlight's spring and closes quicker; other pop-ups opened by a press start the same way. |
+| M373 | Relief's live map plainer (the owner, 20 Nov: "dont use alot of colours") | **Done** | One ink colour for bars, badges and counts; colour only for warnings and the chosen card. |

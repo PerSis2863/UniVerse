@@ -127,10 +127,11 @@ export function QueueCard({ icon: Icon, source, ago, due, title, facts, note, no
 }) {
   return (
     <article className={cn('rounded-2xl bg-white p-4 shadow-[0_6px_22px_-14px_rgba(0,0,0,0.35)] ring-1 transition-[box-shadow] duration-200 dark:bg-[#1b1d22]',
-      hot || chosen ? 'ring-[1.5px] ring-[var(--cmd)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--cmd)_14%,transparent),0_10px_30px_-16px_rgba(0,0,0,0.4)]' : 'ring-black/[0.06] dark:ring-white/10')}>
+      // M373 (the owner: "dont use alot of colours"): only the chosen card wears the app's colour; urgency is its label.
+      chosen ? 'ring-[1.5px] ring-[var(--cmd)] shadow-[0_0_0_4px_color-mix(in_srgb,var(--cmd)_14%,transparent),0_10px_30px_-16px_rgba(0,0,0,0.4)]' : hot ? 'ring-zinc-300 dark:ring-white/20' : 'ring-black/[0.06] dark:ring-white/10')}>
       <button type="button" onClick={onOpen} className="block w-full text-start">
         <span className="flex items-center gap-2 text-[13px]">
-          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[color-mix(in_srgb,var(--cmd)_14%,transparent)] text-[var(--cmd-ink)]"><Icon className="h-4 w-4" aria-hidden /></span>
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-zinc-100 text-zinc-700 dark:bg-white/[0.08] dark:text-zinc-200"><Icon className="h-4 w-4" aria-hidden /></span>
           <span className="truncate font-semibold text-zinc-900 dark:text-white">{source}</span>
           {ago && <span className="shrink-0 text-zinc-500 dark:text-zinc-400">{ago}</span>}
           {due && <span className="ms-auto inline-flex shrink-0 items-center gap-1 font-semibold text-[var(--cmd-ink)]"><Clock className="h-3.5 w-3.5" aria-hidden />{due}</span>}

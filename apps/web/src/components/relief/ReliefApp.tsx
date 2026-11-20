@@ -396,10 +396,10 @@ export function ReliefApp() {
             {s && !(sel || orgSel) && (
               <StatStrip className="pointer-events-auto absolute inset-x-3 bottom-3 z-10">
                 <StatCard label="Open needs" icon={HandHeart} value={live.openNeeds} unit={`${live.peopleWaiting} waiting`} delay={0}
-                  foot={<TickStrip parts={URGENCIES.slice().reverse().map((u) => ({ n: all.filter((p) => p.type === 'NEED' && p.status === 'OPEN' && p.urgency === u).length, color: u === 'CRITICAL' || u === 'HIGH' ? ACCENT : dark ? '#a1a1aa' : '#27272a' }))} />} />
+                  foot={<TickStrip parts={URGENCIES.slice().reverse().map((u) => ({ n: all.filter((p) => p.type === 'NEED' && p.status === 'OPEN' && p.urgency === u).length, color: u === 'CRITICAL' || u === 'HIGH' ? (dark ? '#f4f4f5' : '#18181b') : dark ? '#52525b' : '#d4d4d8' }))} />} />
                 <StatCard label="Being helped" icon={Users} value={live.inProgress} unit="on the way" delay={50}
                   foot={<div className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={live.inProgress / Math.max(1, live.openNeeds + live.inProgress)} className="bg-zinc-900 dark:bg-white" /></div>} />
-                <StatCard label="Urgent" icon={AlertTriangle} tone="accent" value={counts.URGENT} unit="need someone now" delay={100}
+                <StatCard label="Urgent" icon={AlertTriangle} value={counts.URGENT} unit="need someone now" delay={100}
                   foot={<p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{live.offers} {live.offers === 1 ? 'offer' : 'offers'} on the map</p>} />
                 <StatCard label="Helped · 30 days" icon={BadgeCheck} value={s.helped} unit={s.avgMinutes == null ? undefined : `answered in ${s.avgMinutes < 120 ? `${s.avgMinutes} min` : `${Math.round(s.avgMinutes / 60)} h`}`} delay={150}
                   foot={counts.URGENT > 0 ? <InkPill onClick={() => setType('URGENT')}>{counts.URGENT} need you</InkPill> : <p className="text-xs text-zinc-500 dark:text-zinc-400">No one urgent is waiting</p>} />
