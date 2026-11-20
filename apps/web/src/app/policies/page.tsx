@@ -27,7 +27,7 @@ const PROVIDERS = [
   ['Twilio Inc.', 'Relief text messages (SMS), only when switched on', 'United States'],
   ['PostHog Inc.', 'Anonymous page counts, only after “Accept all”', 'European Union'],
   ['Google, Microsoft, Slack', 'Accounts you choose to connect (Gmail, Classroom, Outlook, calendars, Slack)', 'United States / global'],
-  ['Public map, place and weather services', 'Maps, directions, photos, guides and weather (OpenFreeMap, OpenStreetMap, FOSSGIS, Wikimedia, NASA, MET Norway and others in the Privacy Policy); they see your IP address and the map area, never your account', 'Europe / United States'],
+  ['Public map, place and weather services', 'Maps, directions, photos, guides and weather (OpenFreeMap, OpenStreetMap, Photon by komoot, FOSSGIS, Wikimedia, NASA, MET Norway and others in the Privacy Policy); they see your IP address and the map area, never your account', 'Europe / United States'],
 ];
 
 const RETENTION = [

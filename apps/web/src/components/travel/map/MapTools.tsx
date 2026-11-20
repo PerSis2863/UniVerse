@@ -68,8 +68,8 @@ function timing(w: When, minutes: number, now: number) {
 
 /** The directions card: from, to (and stops on the way), the way of travel, the routes (the quickest first, the others
  *  with how much longer), when to leave, the turns of the chosen route and Start. */
-export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, myPlace, onStart, onClose }: {
-  d: Directions; set: (d: Directions) => void; routes: Route[]; loading: boolean; failed: boolean; avoided: boolean; now: number; myPlace: () => Spot | null; onStart: (r: Route) => void; onClose: () => void;
+export function DirectionsCard({ d, set, near, routes, loading, failed, avoided, now, myPlace, onStart, onClose }: {
+  near?: { lat: number; lon: number } | null; d: Directions; set: (d: Directions) => void; routes: Route[]; loading: boolean; failed: boolean; avoided: boolean; now: number; myPlace: () => Spot | null; onStart: (r: Route) => void; onClose: () => void;
 }) {
   const r = routes[d.chosen] ?? routes[0];
   const [kept, setKept] = useState<Kept>(readKept);
@@ -101,7 +101,8 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
             </button>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'Choose a starting point…' : 'Choose where to go…'} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))} />
+              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'Choose a starting point…' : 'Choose where to go…'} near={near} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))}
+                onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ [which]: s }, s); }} />
               <button type="button" className={round} aria-label="Use where I am" onClick={() => { const me = myPlace(); if (me) choose({ [which]: me }); }}><LocateFixed className="h-4 w-4" aria-hidden /></button>
             </div>
           )}
@@ -132,7 +133,8 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
             {adding && (
               <div className="flex items-center gap-2">
                 <span className="flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
-                <PlaceSearch className="min-w-0 flex-1" label="A stop on the way" placeholder="Add a stop…" onPick={(t) => void find(t).then((s) => { if (s) { choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); } })} />
+                <PlaceSearch className="min-w-0 flex-1" label="A stop on the way" placeholder="Add a stop…" near={near} onPick={(t) => void find(t).then((s) => { if (s) { choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); } })}
+                  onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); }} />
                 <button type="button" className={round} onClick={() => setAdding(false)} aria-label="Don’t add a stop"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             )}

@@ -9927,3 +9927,17 @@ OpenStreetMap's site in a new tab, whose search for "name, address, city" often 
 opens it once the map is ready: at its position with its card ("From the guide"); without one, Nominatim
 (`placeSearchUrl`, `map-world.ts`, from the browser, one search a step) by its name in its city, then by its address,
 else a toast to search for it. Checked in a browser (the search's answer stubbed: this container can't reach it).
+
+## M348 (20 Nov): hotels, restaurants and addresses in the map's search boxes
+
+The owner, 20 Nov: "when i type a specific hotel name in brussel it is brxxl 5 hotel so it shows nothing". The map's
+top box and the Directions boxes used `PlaceSearch`, which only asks `/travel/search` (places with a guide: cities,
+islands, parks). With `onPlace` (and `near`, the map's middle) it now also lists real places from **Photon**
+(photon.komoot.io, komoot's search of OpenStreetMap made for typing as you go; `photonUrl` / `photonOf` in
+`src/lib/map-tools.ts`, tested): up to 6, nearest to the map, with their street and town, under at most 4 guides.
+Asked from the browser after the 220 ms typing pause, from 3 letters, the map's middle rounded to about 1 km so panning
+doesn't ask again; no Worker CPU. Picking one on the top box opens its card (`pick`, its OSM key gives its facts); in
+Directions it becomes the start, the destination or a stop. `photon.komoot.io` is in `connect-src`
+(`security-headers.ts`) and named on `/policies` with the other map services. Checked in a browser (Photon's answer
+stubbed: this container can't reach it).
+- **Rules:** Nominatim stays for single searches (its rules forbid search-as-you-type); typing goes to Photon.
