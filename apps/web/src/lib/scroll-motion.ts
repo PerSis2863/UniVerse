@@ -327,14 +327,30 @@ function arrive(records: MutationRecord[]) {
  *  where in the project"): what a press opens eases in, everywhere, unless it already moves on its own (its own CSS
  *  animation, framer-motion, WAAPI: `moving`), so nothing plays twice: a floating part (a menu, a drop-down, a pop-up)
  *  grows from where it was pressed, 0.96 to full size while it fades in; a part in the page's flow (a section that
- *  opens, a tab's content) fades in rising 8 px. Only within 0.8 s of the press, only what's on screen, at most 6. */
-let press = { t: -1e9, x: 0, y: 0 };
+ *  opens, a tab's content) fades in rising 8 px. Only what's on screen, at most 6 at once.
+ *  M355 (the owner, 20 Nov: "slow openings… please work on this"): anything within 0.8 s of the press; and up to 4 s
+ *  after it (what waited for its data), a floating part, or a part inside what the press opened, what its button
+ *  controls (aria-controls) or the part of the page the button sits in (its card, section, dialog, row). */
+type Press = { t: number; x: number; y: number; near: Element | null; controls: Element | null; roots: HTMLElement[] };
+let press: Press = { t: -1e9, x: 0, y: 0, near: null, controls: null, roots: [] };
+const NEAR = '[role="dialog"], [role="tabpanel"], [role="region"], section, article, li, form, aside, .card, .panel';
 function pressed(e: Event) {
+  let x: number, y: number;
+  const from = (e instanceof KeyboardEvent ? document.activeElement : e.target) as Element | null;
   if (e instanceof KeyboardEvent) {
     if (e.key !== 'Enter' && e.key !== ' ') return;
-    const r = (document.activeElement as HTMLElement | null)?.getBoundingClientRect();
-    press = { t: performance.now(), x: r ? r.left + r.width / 2 : innerWidth / 2, y: r ? r.top + r.height / 2 : innerHeight / 2 };
-  } else if (e instanceof PointerEvent) press = { t: performance.now(), x: e.clientX, y: e.clientY };
+    const r = (from as HTMLElement | null)?.getBoundingClientRect();
+    x = r ? r.left + r.width / 2 : innerWidth / 2; y = r ? r.top + r.height / 2 : innerHeight / 2;
+  } else if (e instanceof PointerEvent) { x = e.clientX; y = e.clientY; } else return;
+  const button = from?.closest?.('button, a, summary, [role="button"], [role="tab"], [aria-expanded]') ?? null;
+  const id = button?.getAttribute('aria-controls');
+  press = { t: performance.now(), x, y, near: button?.closest(NEAR) ?? null, controls: id ? document.getElementById(id) : null, roots: [] };
+}
+/** Whether a part that appeared a while after the press (its data arrived) still belongs to it. */
+function linked(el: HTMLElement, float: boolean) {
+  if (float) return true;
+  const inside = (c: Element | null) => !!c && c.isConnected && c !== el && c.contains(el);
+  return inside(press.controls) || inside(press.near) || press.roots.some(inside);
 }
 /** Where a floating part grows from: the press, inside the part (its nearest edge when the press was outside). */
 export function pressOrigin(r: { left: number; top: number; width: number; height: number }, x: number, y: number) {
@@ -344,7 +360,8 @@ export function pressOrigin(r: { left: number; top: number; width: number; heigh
 /** Toasts, the page's frame and loading views have their own motion. */
 const OPENED_SKIP = `${LOADING}, ${FRAME}, [data-sonner-toaster], [data-sonner-toast], .backdrop-in`;
 function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Set<HTMLElement>) {
-  if (performance.now() - press.t > 800) return;
+  const since = performance.now() - press.t;
+  if (since > 4000) return;
   const out: HTMLElement[] = [];
   for (const [, els] of added) {
     // A list redrawn (a filter, a sort) is not something opened: morph() and the rows' own motion handle it.
@@ -354,10 +371,12 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
   if (!out.length) return;
   const fold = window.innerHeight;
   // Reads first (one layout), then the writes.
-  const shown = out.map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el) && !out.some((o) => o !== el && o.contains(el))).slice(0, 6)
-    .map((x) => ({ ...x, float: ['absolute', 'fixed'].includes(getComputedStyle(x.el).position) }));
+  const shown = out.slice(0, 40).map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .filter(({ el, r }) => r.height > 0 && r.top < fold && r.bottom > 0 && !moving(el) && !out.some((o) => o !== el && o.contains(el)))
+    .map((x) => ({ ...x, float: ['absolute', 'fixed'].includes(getComputedStyle(x.el).position) }))
+    .filter((x) => since <= 800 || linked(x.el, x.float)).slice(0, 6);
   for (const { el, r, float } of shown) {
+    press.roots.push(el);
     if (float) {
       // Two animations: the scale adds to the part's own transform (a centring one stays), the fade sets the origin.
       el.animate([{ transform: 'scale(0.96)' }, { transform: 'scale(1)' }], { duration: 220, easing: EASE_GLIDE, composite: 'add' });
@@ -367,6 +386,23 @@ function opened(added: Map<Element, HTMLElement[]>, removed: Set<Node>, done: Se
       el.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 220, easing: 'ease-out' });
     }
   }
+}
+
+/** M355: a big arrival after a press: only its top parts (those not inside another part that arrived) are looked at. */
+function openedBig(records: MutationRecord[]) {
+  const all = new Set<Node>(), removed = new Set<Node>();
+  for (const rec of records) { for (const n of rec.addedNodes) all.add(n); for (const n of rec.removedNodes) removed.add(n); }
+  const added = new Map<Element, HTMLElement[]>();
+  for (const n of all) {
+    if (!(n instanceof HTMLElement) || !n.parentElement) continue;
+    let top = true;
+    for (let p: Node | null = n.parentNode, up = 0; p && up < 40; p = p.parentNode, up++) if (all.has(p)) { top = false; break; }
+    if (!top) continue;
+    const list = added.get(n.parentElement) ?? [];
+    list.push(n); added.set(n.parentElement, list);
+    if (added.size > 30) break;
+  }
+  opened(added, removed, new Set());
 }
 
 export function startScrollMotion(): () => void {
@@ -388,7 +424,9 @@ export function startScrollMotion(): () => void {
     // A whole page building at once (hundreds of changes) is no row arriving: the page's own entrance
     // moves it. Small arrivals are looked at just before the next frame is drawn, when the browser lays
     // the page out anyway, not in the middle of React's work (0.4 s of a slow phone's start, M211).
-    if (reducedMotion() || records.length > 300) return;
+    if (reducedMotion()) return;
+    // M355: a big opening (a panel of hundreds of parts after a press) is no page building: its top parts ease in.
+    if (records.length > 300) { if (performance.now() - press.t < 4000) requestAnimationFrame(() => { if (!pageJustEntered()) openedBig(records); }); return; }
     if (pending.length + records.length > 300) { pending.length = 0; return; } // many small batches add up to a page
     pending.push(...records);
     // M231: a page that just came in is moved by its own entrance (PendingPage): looking through the old and new

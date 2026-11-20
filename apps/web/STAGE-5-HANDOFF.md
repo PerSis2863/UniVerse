@@ -10052,3 +10052,18 @@ down (`swipe` / `swiped` refs: more than 24 px; the click that follows a swipe i
 shorter ("Where are you staying?"). Also checked: the map's style is valid in light and dark (MapLibre's own
 validator, run once, not committed), so a blank map in this container's screenshots is only its blocked tiles.
 - Checked at 390 light and dark: closed, opened, swiped down; axe clean, no page errors.
+
+## M355 (20 Nov): slow openings ease in too, and every opener on the main pages checked
+
+The owner, 20 Nov, of M351's left-outs ("slow openings… not every button checked"): "please work on this and then merge it".
+- **Slow and big openings** (`scroll-motion.ts`): a press now remembers where it was (the part of the page its button
+  sits in: card, section, row, dialog; what it controls by `aria-controls`; what it opened). For 4 s after it, parts that
+  appear later (their data arrived) still ease in when they float (a menu, a pop-up) or sit inside one of those
+  (`linked`); before 0.8 s anything does, as before. A big opening (over 300 changes, which the layer skipped as "a page
+  building") has its top parts eased in (`openedBig`), unless a new page just came in.
+- **The sweep** (`scripts/checks/opens-smooth.mjs`, on the built site): the main pages of every app (13 as a student, 5
+  as a teacher) on a phone and a computer, each button that opens something pressed (aria-haspopup, aria-expanded,
+  aria-controls, "More …"). 150 presses: 131 moved in, none appeared still; the other 19 were the phone's More (the side
+  menu, always there, slides in: measured gliding from −320 px to 0 in ~0.4 s) and Quick create on Messages (its panel
+  has its own animation; the sweep caught it mid-way). The sweep now counts a part that slides in as moving.
+- **Left out:** closing (most parts still go at once).
