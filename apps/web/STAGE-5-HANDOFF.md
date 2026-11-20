@@ -10227,3 +10227,18 @@ or visit or shopping".
 - Travel map: a place's card shows **Pay less** (up to two schemes for its kind in its country: sights, food, shopping).
 - Checked at 390 and 1280, light and dark on a trip (Paris → Lyon → Barcelona): axe clean. The guide's tab and the map
   card need lookups this container can't reach (Wikivoyage, the place lookup): not seen in a browser.
+
+## M368 (20 Nov): the search window like macOS Spotlight
+
+The owner, 20 Nov (a picture of Spotlight in macOS Tahoe): "make search bar like this how apple has with its animation
+and transition when it gets exit and spawn which is ultra smooth research it". `CommandPalette.tsx`:
+- **Opening:** no dark veil (a faint one, darker on phones); the panel fades in from 94% at the top on a quick spring
+  (one `transform` string, the compositor runs it; measured: opacity 0 → 1 in ~0.2 s), and its results **grow down out
+  of the field** (`Grow`: a ResizeObserver height with Apple's curve, 0.32 s; remade on every opening so it starts
+  closed; this is the one allowed height animation, a section opening). **Closing:** faster (0.14 s, ease-in, to 97%).
+  Reduce Motion: fades only (`useReducedMotion`; the app's MotionConfig is "never", so this one checks itself).
+- **Filter chips** under the field from the groups found (All, Courses, Pages, People…); Tab / Shift-Tab move along
+  them; a chip shows only its group.
+- A bigger field (22–26 px), no focus box on it (the caret in the dialog's one field is the focus); the chosen row a
+  soft grey pill that glides (`layoutId`), with "Open ↵" on it; Cancel only on phones; the footer adds tab and esc.
+- Checked at 1280 and 390, light and dark: axe clean; chips, Tab and Escape work.
