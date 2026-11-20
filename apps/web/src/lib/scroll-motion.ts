@@ -115,13 +115,14 @@ function observer() {
   io ??= new IntersectionObserver(
     (entries) => {
       for (const e of entries) {
-        if (!e.isIntersecting) continue;
+        // M366: a tall card (a long list) plays once 100 px of it shows, not 12% of it: else it stays a blank gap.
+        if (!e.isIntersecting || (e.intersectionRatio < 0.12 && e.intersectionRect.height < 100)) continue;
         io!.unobserve(e.target);
         const kind = kinds.get(e.target);
         if (kind) play(e.target, kind);
       }
     },
-    { rootMargin: '0px 0px -8% 0px', threshold: 0.12 },
+    { rootMargin: '0px 0px -8% 0px', threshold: [0, 0.02, 0.04, 0.08, 0.12] },
   );
   return io;
 }

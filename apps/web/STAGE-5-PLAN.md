@@ -1765,3 +1765,4 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M363 | Green's places: every way there and the car's CO₂ (same ask) | **Done** | A green place shows walk, bike, transit and car times from you, and that walking or cycling there costs no CO₂ against the car's. |
 | M364 | Relief's places to go and most urgent, by every way (the owner, 20 Nov: "see what else you can do") | **Done** | Shelters and food banks show walk, bike, transit and car times from you, each opening directions by name; Most urgent shows the quickest way. |
 | M365 | A trip's ways priced too (same ask) | **Done** | Each way between a trip's cities shows a rough price for everyone, the cheapest marked; the budget follows the way picked. |
+| M366 | Relief's black "Help, moving" box removed (the owner, 20 Nov) | **Done** | The radar and funnel box above Places to go is gone; tall cards appear as soon as 100 px shows. |

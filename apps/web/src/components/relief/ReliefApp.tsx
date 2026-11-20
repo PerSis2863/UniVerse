@@ -26,9 +26,6 @@ import { cn } from '@/lib/utils';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { groupNear, type Group } from '@/components/trace/map/cluster';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from '@/components/trace/map/WorldCanvas';
-import { LiveCard } from '@/components/live/LiveCard';
-import { Funnel } from '@/components/live/Funnel';
-import { Radar } from '@/components/live/Radar';
 import { Journey } from '@/components/live/Journey';
 import { duration } from '@/lib/map-tools';
 import { reach, reachLink } from '@/lib/relief-route';
@@ -439,20 +436,6 @@ export function ReliefApp() {
               return true;
             } catch (e) { toast.error(errorMessage(e, 'Could not do that.')); return false; }
           }} />
-      )}
-
-      {s && (
-        // M48: how requests move from asked to helped, as a stream of light.
-        <LiveCard title="Help, moving" sub="Needs on the map, people on the way, and help given in 30 days"
-          ticker={(data?.recent ?? []).slice(0, 6).map((p) => `${p.type === 'OFFER' ? 'Offer' : 'Need'}: ${p.title}`)}>
-          <div className="grid grid-cols-1 items-center gap-4 lg:grid-cols-[1fr_240px]">
-            <Funnel className="h-[200px]" label="Needs open, being helped, and helped in the last 30 days"
-              stages={[{ label: 'Open needs', value: s.openNeeds }, { label: 'Being helped', value: s.inProgress }, { label: 'Helped', value: s.helped }]} />
-            {/* M49: open needs on a radar, the most urgent in the middle. */}
-            <Radar className="mx-auto h-[200px] w-full max-w-[240px]" label="Open needs by how urgent they are"
-              blips={(data?.posts ?? []).filter((p) => p.type === 'NEED' && p.status === 'OPEN').map((p) => ({ id: p.id, label: RELIEF_KIND_LABEL[p.kind] ?? p.kind, ring: p.urgency === 'CRITICAL' ? 0 : p.urgency === 'HIGH' ? 1 : 2, tone: p.urgency === 'CRITICAL' || p.urgency === 'HIGH' ? 'pink' : 'blue' }))} />
-          </div>
-        </LiveCard>
       )}
 
       {/* M148: shelters, food banks and groups that said how they are */}

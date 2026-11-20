@@ -10195,3 +10195,13 @@ trip's currency (≈ €69 the train, ≈ €36 the coach…), the **Cheapest** 
 a km scaled by how dear the two countries are; a car one per four people (fuel and tolls); a flight never under 60%.
 The budget's **Between places** now prices each leg by the way picked (no pick: the likely way, as before), so choosing
 the coach lowers it. Checked at 390 and 1280, light and dark: axe clean.
+
+## M366 (20 Nov): Relief's black "Help, moving" box gone; tall cards show as soon as they're in view
+
+The owner, 20 Nov (a screenshot of the radar above Places to go): "please remove this animation from here because i dont
+need that black box anymore". The live map page's `LiveCard` "Help, moving" (the funnel and the radar of open needs,
+M48–M49) is removed from `ReliefApp.tsx`; Places to go follows the needs list. (`LiveCard`, `Funnel` and `Radar` stay:
+Trace and the console use them.)
+- Found while checking: the motion layer revealed a block only once 12% of it was on screen, so a very tall card (Places
+  to go with many places) stayed a blank gap at the bottom of a phone. `scroll-motion.ts` now plays a block once 12% **or
+  100 px** of it shows (thresholds 0–0.12).
