@@ -1,7 +1,6 @@
 'use client';
 
 import { forwardRef, useEffect, useImperativeHandle, useRef, type ReactNode } from 'react';
-import { useMapDark } from '@/lib/use-dark';
 import { BASE, clampView, easeInOut, fitView, fromBase, graticule, loadPlaces, loadWorld, placeZoom, toBase, zoomAbout, type Country, type Detail, type Place, type View } from './engine';
 import { CITIES } from './cities';
 
@@ -38,8 +37,7 @@ const PAL = {
   // M233 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
   // the same colours as Travel's street map (travel/map/map-style.ts). Neutral greys before (M94).
   light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
-  // M331: closer to Apple Maps' dark mode (charcoal land, deep muted navy water, quiet borders, soft white names).
-  dark: { sea: '#1a2b44', deep: '#14233a', land: '#2b2e35', edge: '#454a55', grat: 'rgba(235,235,245,0.04)', name: 'rgba(235,235,245,0.42)', city: 'rgba(235,235,245,0.66)' },
+  dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 /** M290: how long the page's pulses keep moving with nobody touching anything. */
@@ -566,9 +564,7 @@ class MapEngine {
   }
 }
 
-export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark: pageDark, live, draw, onPoint, skipCities, look, places, interactive = true, className, children }, ref) {
-  // M331: Apple Maps' dark colours unless the person chose maps that match the page (the frame's `dark` follows).
-  const mapDark = useMapDark(), dark = pageDark || mapDark;
+export const WorldCanvas = forwardRef<MapHandle, Props>(function WorldCanvas({ label, homeBox, dark, live, draw, onPoint, skipCities, look, places, interactive = true, className, children }, ref) {
   const wrap = useRef<HTMLDivElement>(null);
   const canvas = useRef<HTMLCanvasElement>(null);
   const engine = useRef<MapEngine | null>(null);

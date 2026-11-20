@@ -5,7 +5,7 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { toast } from 'sonner';
-import { Check, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, PackageCheck, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
+import { AlertTriangle, Check, Clock, Copy, Crosshair, Flag, Gauge, Globe2, Link2, Loader2, MapPin, Maximize2, Minimize2, Minus, Navigation, Package, PackageCheck, Plus, Route, Sparkles, Thermometer, Timer, Truck, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { QrCode } from '@/components/ui/QrCode';
 import { api, errorMessage } from '@/lib/api';
@@ -17,8 +17,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { toBase } from './engine';
-import { Callout, placeCallout, RoutePill } from '@/components/map-ui/Command';
-import { DeskCard, DeskChips, DeskGauge, DeskRow, DeskTable, MapDesk, MapSearch, SortPill, TickRows } from '@/components/map-ui/Desk';
+import { Callout, CountChips, InkPill, placeCallout, QueueCard, RoutePill, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { drawIcons, IconSource, route, tag, unit, zone, type Icons } from '@/components/map-ui/marks';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 import { LiveCard } from '@/components/live/LiveCard';
@@ -53,14 +52,11 @@ const STATUS: Record<string, { label: string; cls: string }> = {
   IN_TRANSIT: { label: 'On the move', cls: 'bg-pink-500/12 text-pink-700 dark:text-pink-200' },
   DELIVERED: { label: 'Delivered', cls: 'bg-emerald-500/12 text-emerald-700 dark:text-emerald-300' },
   MADE: { label: 'Not shipped yet', cls: 'bg-zinc-500/10 text-zinc-600 dark:text-zinc-300' },
-  SHIPPED: { label: 'Shipped', cls: 'bg-zinc-500/10 text-zinc-700 dark:text-zinc-200' },
 };
 const reduced = () => typeof window !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const lerpAngle = (a: number, b: number, t: number) => a + ((((b - a) % 360) + 540) % 360 - 180) * t;
 const city = (p: string | null | undefined) => (p ?? '').split(',')[0] || 'Unknown';
 const pathKm = (pts: { lat: number; lng: number }[]) => pts.slice(1).reduce((a, p, i) => a + distanceM(pts[i], p), 0) / 1000;
-/** M330: the shipments table's columns from `sm` up. */
-const SHIP_ROW = 'sm:grid-cols-[minmax(0,1.3fr)_minmax(0,1.2fr)_minmax(0,1.4fr)_4.5rem_5.5rem_7rem]';
 const duration = (min: number) => (min >= 60 ? `${Math.floor(min / 60)} h ${min % 60 ? `${min % 60} min` : ''}` : `${min} min`);
 
 /** How far along its whole journey a shipment is, 0 to 1. */
@@ -78,7 +74,6 @@ export function TrackingMap() {
   const { data, error, mutate } = useSWR<{ now: string; shipments: Ship[] }>('/trace/map/tracking', fetcher, { refreshInterval: poll, keepPreviousData: true });
   const [selected, setSelected] = useState<string | null>(null);
   const [filter, setFilter] = useState<'all' | 'moving' | 'done' | 'risk'>('all');
-  const [sort, setSort] = useState<'risk' | 'eta' | 'new'>('risk');
   const [full, setFull] = useState(false);
   const [picking, setPicking] = useState<string | null>(null);
   const [hover, setHover] = useState<string | null>(null);
@@ -249,67 +244,62 @@ export function TrackingMap() {
   const etas = ships.filter((s) => s.status === 'IN_TRANSIT' && s.etaMinutes != null).map((s) => s.etaMinutes!), nextEta = etas.length ? Math.min(...etas) : null;
   // M263: what needs the brand: a shipment too warm, one on the move with nowhere to go.
   const needs = [...ships.filter(atRisk).map((s) => ({ s, why: 'warm' as const })), ...ships.filter((s) => s.status === 'IN_TRANSIT' && !s.dest).map((s) => ({ s, why: 'dest' as const }))].slice(0, 6);
-  // M330: the table's order (what needs the brand first, the soonest arrival, the newest).
-  const sorted = [...shown].sort((a, b) => sort === 'eta' ? (a.etaMinutes ?? 1e9) - (b.etaMinutes ?? 1e9)
-    : sort === 'new' ? Date.parse(b.stops[0]?.at ?? '0') - Date.parse(a.stops[0]?.at ?? '0')
-      : Number(atRisk(b)) - Number(atRisk(a)) || Number(b.status === 'IN_TRANSIT') - Number(a.status === 'IN_TRANSIT'));
   const homeBox = ships.length ? boxOf(ships.flatMap((s) => [...s.stops, ...(s.dest ? [s.dest] : [])])) : WORLD;
 
   return (
     <div className="space-y-4">
-      {/* M330 (the owner's dashboard picture): one screen, no gaps: today's deliveries, shipments by state (they filter the
-          map) and what needs you down the side; the map at the top with a search and a sort over it; every shipment in a
-          table under it. */}
-      <MapDesk className="cmd-trace" title="Shipments"
-        peek={<><strong className="font-semibold tabular-nums">{moving}</strong> on the move · {delivered} delivered{risky ? <> · <span className="font-semibold text-pink-800 dark:text-pink-200">{risky} at risk</span></> : null}</>}
-        side={<>
-          {sel && <ShipCard s={sel} index={0} open onOpen={() => select(null)} onFind={() => findIt(sel)} onPick={() => { setPicking(sel.id); toast('Click the map where this batch is going.'); }} onChange={() => void mutate()} onHover={() => undefined} />}
-          <DeskCard title="Deliveries" href="/trace/insights" hrefLabel="Insights">
-            <p className="text-3xl font-semibold tabular-nums tracking-tight text-zinc-900 dark:text-white">{delivered}<span className="ms-1.5 text-lg font-normal text-zinc-500 dark:text-zinc-400">/ {ships.length}</span><span className="ms-2 text-sm font-normal text-zinc-600 dark:text-zinc-300">delivered</span></p>
-            <div className="mt-3"><DeskChips items={Object.entries(ships.reduce<Record<string, number>>((m, x) => { m[x.product] = (m[x.product] ?? 0) + x.quantity; return m; }, {})).sort((a, b) => b[1] - a[1]).slice(0, 4).map(([name, n]) => ({ label: name, n: n.toLocaleString(), icon: Package }))} /></div>
-            <DeskGauge value={delivered / Math.max(1, ships.length)} note={<>{moving} on the move{nextEta != null ? ` · next arrival in ${duration(nextEta)}` : ''}</>} />
-          </DeskCard>
-          <DeskCard title="Shipments by state">
-            <TickRows<'moving' | 'risk' | 'done' | 'made'> label="Shipments by state: press one to show only those" onPick={(id) => { if (id !== 'made') setFilter((f) => (f === id ? 'all' : id)); }}
-              rows={[
-                { id: 'moving', label: 'On the move', icon: Truck, n: moving - risky, on: filter === 'moving' },
-                { id: 'risk', label: 'At risk', icon: Thermometer, n: risky, on: filter === 'risk' },
-                { id: 'done', label: 'Delivered', icon: PackageCheck, n: delivered, on: filter === 'done' },
-                { id: 'made', label: 'Not shipped', icon: Package, n: ships.length - moving - delivered },
-              ]} />
-          </DeskCard>
-          <DeskCard title="Needs you" grow>
-            {needs.length ? (
-              <ul className="space-y-2">
-                {needs.map(({ s: x, why }) => (
-                  <li key={x.id} className="flex items-center gap-3 rounded-xl bg-zinc-50 p-2.5 ring-1 ring-zinc-200/70 dark:bg-white/[0.03] dark:ring-white/10">
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-[var(--cmd-fill)] text-white">{why === 'warm' ? <Thermometer className="h-4 w-4" aria-hidden /> : <Flag className="h-4 w-4" aria-hidden />}</span>
-                    <button type="button" onClick={() => select(x.id)} className="min-w-0 flex-1 text-start">
-                      <span className="block truncate text-sm font-semibold text-zinc-900 dark:text-white" translate="no">{x.label}</span>
-                      <span className="block truncate text-xs text-zinc-600 dark:text-zinc-300">{why === 'warm' ? (warmNow(x) ? `Too warm now: ${x.tempC} °C` : `Ran warm ${x.breaches ?? 0} time${x.breaches === 1 ? '' : 's'}`) : 'Needs a destination'}</span>
-                    </button>
-                    {why === 'dest' && <button type="button" onClick={() => { setPicking(x.id); toast('Click the map where this batch is going.'); }} className="btn-primary btn-sm shrink-0">Set</button>}
-                  </li>
-                ))}
-              </ul>
-            ) : <p className="text-sm text-zinc-600 dark:text-zinc-300">Nothing needs you: every batch on the move is cool and has a destination.</p>}
-            <p className="mt-auto flex items-center gap-2 pt-3 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
-              <span className="relative flex h-2.5 w-2.5" aria-hidden><span className={cn('absolute inset-0 rounded-full bg-pink-500', poll && moving && 'animate-ping opacity-60')} /><span className="relative h-2.5 w-2.5 rounded-full bg-pink-500" /></span>
-              {poll ? 'Live · updates every 5 s' : 'Paused'}
-            </p>
-          </DeskCard>
-        </>}
-        map={<>
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="ms-auto inline-flex items-center gap-2 text-xs font-semibold text-zinc-600 dark:text-zinc-300">
+          <span className="relative flex w-2.5 h-2.5" aria-hidden><span className={cn('absolute inset-0 rounded-full bg-pink-500', poll && moving && 'animate-ping opacity-60')} /><span className="relative w-2.5 h-2.5 rounded-full bg-pink-500" /></span>
+          {poll ? 'Live · updates every 5 s' : 'Paused'}
+        </span>
+      </div>
+
+      <div className="cmd-trace grid grid-cols-1 xl:grid-cols-[380px_1fr] gap-3 items-start">
+        {/* Needs you, then every shipment (M263) */}
+        <section aria-label="Shipments" className="space-y-2.5 xl:max-h-[calc(100vh-200px)] xl:overflow-y-auto xl:pe-1 order-2 xl:order-1">
+          {needs.length > 0 && (
+            <div className="space-y-2.5">
+              <h2 className="flex items-center gap-2 px-1 text-xl font-semibold tracking-tight text-zinc-900 dark:text-white">Needs you<span className="rounded-md bg-[var(--cmd-fill)] px-1.5 py-0.5 text-xs font-bold tabular-nums text-white">{needs.length}</span></h2>
+              {needs.map(({ s, why }, i) => (
+                <div key={s.id} className="cmd-pop" style={{ animationDelay: `${Math.min(i, 6) * 40}ms` }}>
+                  <QueueCard icon={why === 'warm' ? Thermometer : Flag} source={why === 'warm' ? 'Cold chain' : 'Tracking'} ago={s.lastPingAt ? `seen ${formatDistanceToNowStrict(new Date(s.lastPingAt), { addSuffix: true })}` : undefined}
+                    due={why === 'warm' ? `${s.breaches ?? 0} warm reading${s.breaches === 1 ? '' : 's'}` : undefined} hot={why === 'warm'} chosen={selected === s.id}
+                    title={why === 'warm' ? (warmNow(s) ? `${s.label} is too warm: ${s.tempC} °C` : `${s.label} ran warm on the way`) : `Say where ${s.label} is going`}
+                    facts={[
+                      { k: 'Product', v: <span translate="no">{s.product}</span>, sub: `${s.quantity.toLocaleString()} units` },
+                      why === 'warm' ? { k: 'Keep at', v: `${s.maxTempC ?? '–'} °C`, sub: 'or colder' } : { k: 'Left', v: city(s.stops[0]?.place), sub: s.stops[0] ? new Date(s.stops[0].at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }) : '' },
+                      { k: 'Speed', v: s.speedKmh != null ? `${Math.round(s.speedKmh)} km/h` : '–', sub: s.kmLeft != null ? `${Math.round(s.kmLeft)} km left` : 'no destination' },
+                    ]}
+                    note={why === 'warm' ? 'Check the cargo at its next stop; buyers who scan a unit see the reading on its passport.' : 'Without a destination the map can’t show the road ahead or when it arrives.'} noteIcon={why === 'warm' ? AlertTriangle : Navigation}
+                    links={<button type="button" onClick={() => select(s.id)} className="font-medium hover:underline">Show on map</button>}
+                    approve={why === 'warm' ? { label: 'Show it', onClick: () => select(s.id) } : { label: 'Set destination', onClick: () => { setPicking(s.id); toast('Click the map where this batch is going.'); } }}
+                    onOpen={() => select(s.id)} />
+                </div>
+              ))}
+              <h2 className="px-1 pt-2 text-sm font-semibold text-zinc-600 dark:text-zinc-300">Every shipment</h2>
+            </div>
+          )}
+          {!data && Array.from({ length: 3 }, (_, i) => <div key={i} className="panel h-28 skeleton" />)}
+          {data && shown.length === 0 && (
+            <div className="panel p-6 text-center text-sm text-zinc-500">
+              <Package className="w-6 h-6 mx-auto text-zinc-400" aria-hidden />
+              <p className="mt-2">{ships.length ? 'Nothing here with this filter.' : 'No batches yet. Make one on the Console, record where it goes, and it shows up here.'}</p>
+            </div>
+          )}
+          {shown.map((s, i) => (
+            <ShipCard key={s.id} s={s} index={i} open={s.id === selected} onOpen={() => select(s.id === selected ? null : s.id)} onFind={() => findIt(s)} onPick={() => { setPicking(s.id); toast('Click the map where this batch is going.'); }} onChange={() => void mutate()} onHover={(h) => setHover(h ? s.id : null)} />
+          ))}
+        </section>
+
         {/* Map */}
-        <div ref={mapBox} className={cn('desk-card relative h-full scroll-mt-20 overflow-hidden p-0', full && 'fixed inset-2 sm:inset-4 z-50 flex h-auto flex-col shadow-2xl')}>
+        <div ref={mapBox} className={cn('panel relative scroll-mt-20 overflow-hidden p-0 order-1 xl:order-2 xl:sticky xl:top-4', full && 'fixed inset-2 sm:inset-4 z-50 flex flex-col shadow-2xl')}>
           <IconSource ref={iconBox} icons={{ truck: Truck }} />
           <WorldCanvas ref={map} label="Map of your shipments and where they are now" homeBox={homeBox} dark={dark} live={!calm && ships.length > 0} draw={draw} onPoint={onPoint}
-            className={cn('w-full', full ? 'flex-1' : 'h-full min-h-[22rem]', picking && '[&_[role=application]]:cursor-crosshair')}>
+            className={cn('w-full', full ? 'flex-1' : 'h-[72vh] min-h-[500px] max-h-[860px]', picking && '[&_[role=application]]:cursor-crosshair')}>
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
-            <div className="absolute start-3 top-3 z-10 flex max-w-[calc(100%-4.5rem)] flex-wrap gap-2">
-              <MapSearch className="w-[min(16rem,100%)]" placeholder="Search a town or warehouse" onFound={(f) => map.current?.flyTo(f.box ?? [f.lon - 0.3, f.lat - 0.2, f.lon + 0.3, f.lat + 0.2], { maxZoom: 60 })} />
-              <SortPill<'risk' | 'eta' | 'new'> value={sort} onChange={setSort} options={[{ id: 'risk', label: 'Needs you first' }, { id: 'eta', label: 'Soonest arrival' }, { id: 'new', label: 'Newest' }]} />
-            </div>
+            <CountChips<'all' | 'moving' | 'done' | 'risk'> label="Show" className="absolute start-3 top-3 z-10 max-w-[calc(100%-4.5rem)]" value={filter} onChange={setFilter}
+              items={[{ id: 'all', label: 'All', count: ships.length }, { id: 'moving', label: 'On the move', count: moving, dot: dark ? '#e4e4e7' : '#18181b' }, { id: 'done', label: 'Delivered', count: delivered, dot: '#10b981' }, { id: 'risk', label: 'At risk', count: risky, dot: ACCENT }]} />
             <div className="absolute end-3 top-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 divide-y divide-zinc-200 dark:bg-[#1b1d22]/95 dark:ring-white/10 dark:divide-white/10">
               {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, lbl]) => (
                 <button key={id} type="button" onClick={() => control(id)} aria-label={lbl} title={lbl} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><Icon className="h-[18px] w-[18px]" aria-hidden /></button>
@@ -331,7 +321,7 @@ export function TrackingMap() {
             )}
             <AnimatePresence>
               {picking && (
-                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-16 z-20 flex items-center gap-2 rounded-full bg-indigo-600 text-white px-4 py-2 text-xs font-semibold shadow-lg">
+                <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute left-1/2 -translate-x-1/2 top-3 flex items-center gap-2 rounded-full bg-indigo-600 text-white px-4 py-2 text-xs font-semibold shadow-lg">
                   <Crosshair className="w-3.5 h-3.5" aria-hidden />Click where it’s going
                   <button type="button" onClick={() => setPicking(null)} aria-label="Cancel" className="ml-1 w-5 h-5 grid place-items-center rounded-full hover:bg-white/15"><X className="w-3 h-3" /></button>
                 </motion.div>
@@ -340,7 +330,7 @@ export function TrackingMap() {
             <AnimatePresence>
               {dest && (
                 <motion.form onSubmit={(e) => void saveDest(e)} initial={{ opacity: 0, y: -8, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8 }} transition={{ type: 'spring', stiffness: 400, damping: 32 }}
-                  className="absolute left-1/2 -translate-x-1/2 top-16 z-20 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#111113] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
+                  className="absolute left-1/2 -translate-x-1/2 top-3 w-[min(92%,360px)] rounded-2xl bg-white dark:bg-[#111113] p-3 shadow-xl border border-zinc-200 dark:border-white/10">
                   <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-200">What is this place called?
                     <input autoFocus value={dest.place} maxLength={160} onChange={(e) => setDest({ ...dest, place: e.target.value })} className="input mt-1" placeholder="Milan distribution centre" />
                   </label>
@@ -357,37 +347,24 @@ export function TrackingMap() {
                 </motion.div>
               )}
             </AnimatePresence>
+            {ships.length > 0 && !sel && !dest && (
+              <StatStrip className="pointer-events-auto absolute inset-x-3 bottom-3 z-10">
+                <StatCard label="On the move" icon={Truck} value={moving} unit={`of ${ships.length}`} delay={0}
+                  foot={<TickStrip parts={[{ n: moving - risky, color: dark ? '#e4e4e7' : '#27272a' }, { n: risky, color: ACCENT }, { n: ships.length - moving, color: dark ? '#52525b' : '#d4d4d8' }]} />} />
+                <StatCard label="Delivered" icon={PackageCheck} value={delivered} unit={ships.length ? `${Math.round((delivered / ships.length) * 100)}%` : undefined} delay={50}
+                  foot={<div className="h-1.5 overflow-hidden rounded-full bg-zinc-100 dark:bg-white/10"><Fill value={delivered / Math.max(1, ships.length)} className="bg-zinc-900 dark:bg-white" /></div>} />
+                <StatCard label="At risk" icon={AlertTriangle} tone="accent" value={risky} unit="ran warm" delay={100}
+                  foot={<p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{ships.filter((x) => x.tempC != null).length} with a thermometer</p>} />
+                <StatCard label="Next arrival" icon={Clock} value={nextEta != null ? duration(nextEta) : '–'} delay={150}
+                  foot={needs.length ? <InkPill onClick={() => setFilter(risky ? 'risk' : 'moving')}>{needs.length} need you</InkPill> : <p className="text-xs text-zinc-500 dark:text-zinc-400">Nothing needs you</p>} />
+              </StatStrip>
+            )}
           </WorldCanvas>
         </div>
-        </>}
-        table={
-          <DeskTable<'all' | 'moving' | 'done' | 'risk'> title="Shipments" value={filter} onChange={setFilter}
-            tabs={[{ id: 'all', label: 'All', count: ships.length }, { id: 'moving', label: 'On the move', count: moving }, { id: 'done', label: 'Delivered', count: delivered }, { id: 'risk', label: 'At risk', count: risky }]}
-            head={['Batch', 'Product', 'Route', 'Units', 'Arrives', 'Status']} cols={SHIP_ROW}
-            empty={data && !shown.length ? <p className="p-6 text-center text-sm text-zinc-600 dark:text-zinc-300">{ships.length ? 'Nothing here with this filter.' : 'No batches yet. Make one on the Console, record where it goes, and it shows up here.'}</p> : null}>
-            {!data && Array.from({ length: 4 }, (_, i) => <div key={i} className="mx-4 my-3 h-10 rounded-xl skeleton" />)}
-            {sorted.map((x) => (
-              <DeskRow key={x.id} cols={SHIP_ROW} chosen={x.id === selected}>
-                <button type="button" onClick={() => select(x.id === selected ? null : x.id)} className="flex min-w-0 items-center gap-2.5 text-start" onMouseEnter={() => setHover(x.id)} onMouseLeave={() => setHover(null)}>
-                  {x.status === 'DELIVERED' ? <PackageCheck className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden /> : <Truck className={cn('h-5 w-5 shrink-0', atRisk(x) ? 'text-[var(--cmd-ink)]' : 'text-zinc-700 dark:text-zinc-200')} aria-hidden />}
-                  <span className="truncate font-semibold text-zinc-900 dark:text-white" translate="no">{x.label}</span>
-                </button>
-                <span className="truncate text-zinc-700 dark:text-zinc-200" translate="no">{x.product}</span>
-                <span className="col-span-2 min-w-0 text-xs sm:col-span-1">
-                  <span className="flex items-center gap-1.5 truncate text-zinc-700 dark:text-zinc-200"><span className="h-1.5 w-1.5 shrink-0 rounded-full border border-zinc-500" aria-hidden /><span className="truncate" translate="no">{city(x.stops[0]?.place)}</span></span>
-                  <span className="flex items-center gap-1.5 truncate text-zinc-700 dark:text-zinc-200"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-zinc-700 dark:bg-zinc-300" aria-hidden /><span className="truncate" translate="no">{x.dest ? city(x.dest.place) : 'No destination yet'}</span></span>
-                </span>
-                <span className="hidden tabular-nums text-zinc-700 dark:text-zinc-200 sm:block">{x.quantity.toLocaleString()}</span>
-                <span className="tabular-nums text-zinc-700 dark:text-zinc-200">{x.status === 'IN_TRANSIT' ? (x.etaMinutes != null ? duration(x.etaMinutes) : '–') : x.status === 'DELIVERED' ? 'Arrived' : '–'}</span>
-                <span className="flex justify-end"><span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', atRisk(x) ? 'bg-pink-500/12 text-pink-800 dark:text-pink-200' : STATUS[x.status]?.cls ?? STATUS.MADE.cls)}>{atRisk(x) ? 'At risk' : STATUS[x.status]?.label ?? x.status}</span></span>
-              </DeskRow>
-            ))}
-          </DeskTable>
-        } />
-      {/* M330: on a phone the page is the map alone (the owner, 19 Nov); these follow it on a computer. */}
-      {ships.length > 0 && <div className="hidden space-y-4 lg:block"><JourneysToday ships={ships} />
-        {/* The city at the bottom (M66, the owner: "put this at bottom section of the tracking"). */}
-        <FleetInMotion ships={ships} /></div>}
+      </div>
+      {ships.length > 0 && <JourneysToday ships={ships} />}
+      {/* The city at the bottom (M66, the owner: "put this at bottom section of the tracking"). */}
+      {ships.length > 0 && <FleetInMotion ships={ships} />}
     </div>
   );
 }

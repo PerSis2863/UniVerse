@@ -7,7 +7,7 @@ point to it). Two more files hold the history; open them only when a task needs 
 the part you need:
 
 - `apps/web/STAGE-5-HANDOFF.md`: a note per finished piece of work (traps, rules for code that
-  builds on it). The newest notes are at the end (M331 is the latest).
+  builds on it). The newest notes are at the end (M329 is the latest).
 - `apps/web/STAGE-5-PLAN.md`: the work queue (section 4) and the **Progress** table at the end.
 
 The app is all in `apps/web`. It is **Next.js 16**, which differs from older versions: check
@@ -119,7 +119,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   the calendar), M201 (Trace payments, 0218). Connections and payments are **off until the owner sets
   them up** (see [owner] below). Left from the list: store apps (9) and the 3D backgrounds and new games
   (11); 5 (cheap phones) was left out by the owner.
-- **On `main`** (live): everything through **M329** (M290–M329 merged 19 Nov, PR #139; M286–M289 merged 18 Nov, PR #138; M269–M285, PR #137; M268 merged 18 Nov, PR #136; M267, PR #135; M234–M266 merged 17 Nov, PR #134; M222–M233 below; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
+- **On `main`** (live): everything through **M289** (M286–M289 merged 18 Nov, PR #138; M269–M285, PR #137; M268 merged 18 Nov, PR #136; M267, PR #135; M234–M266 merged 17 Nov, PR #134; M222–M233 below; M214–M221 merged 16 Nov, PR #129; M205–M213 merged 16 Nov, PR #128; M202–M204, PR #126; M179–M180 and M183–M195 merged 15 Nov, PR #125; M173 and M177–M178, PR #124; M168–M176 merged 13 Nov, PR #123; M160–M167 merged 13 Nov, PR #122: page fixes, the landing globe, arranging any page; M129–M130 merged 9 Nov, PR #117; M131–M133, PR #118;
   M134–M143, PR #119; M144–M157 merged 10 Nov, PR #120; M158–M159 merged 12 Nov:
   admin actions and campus info kept to the admin's own school, stray posts to pages refused, every
   transition named, the build libraries' advisories 6 → 1).
@@ -255,18 +255,16 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   refusing overlaps, M299 announcement readers, reminders and confirmations (0245), M300 a parent's week (the parent
   app). Next: Platform (6), Trace (5), Relief (5), Green (4), Travel (2), then more of the owner's "new features".
   UniVersity's new routes live in `src/server/modules/school-plus.ts`; sample answers in `src/lib/sample/new-features.ts`.
-- **On `claude/youthful-fermi-sbdtcp`, not merged yet (19 Nov):** M330 the map desks after the owner's dashboard picture
-  (`src/components/map-ui/Desk.tsx`: Trace's tracking and market maps, Green's places; on a phone the map alone with a
-  slim line opening the details; Relief's map left as it was, at the owner's word); M331 every map in Apple Maps' dark
-  colours (`useMapDark`, Settings → Appearance → Maps).
-- **The owner's tripist.app asks (18 Nov), merged 19 Nov (PR #139):** M326 scrolling glides
+- **The owner's tripist.app asks (18 Nov), on `claude/youthful-fermi-sbdtcp`, not merged yet:** M326 scrolling glides
   like tripist's (a wheel or trackpad eases to a stop over ~2 s, `src/lib/smooth-scroll.ts`; Settings → Appearance →
   Smooth scrolling; native on touch, lists, maps, dialogs); M327 a trip's days as tripist's itinerary (day circles, a
   timeline with photos, walks and Directions, floating ✨ / options / + buttons; `trip-days.tsx`; 0255); M329 the
   automatic itinerary (`src/lib/travel-itinerary.ts`: around the stay, one part of town a day, lunch, coffee, dinner; ✨
   on a trip, Trips → "Booked a hotel? Get your days planned", a pasted booking read by AI; `POST /travel/trips/:id/plan`,
   `POST /travel/booking/read`; 0256); M328 the landing's Earth rising out of clouds (`EarthGlobe.tsx`, three.js on a
-  background thread, Natural Earth's maps via `scripts/assets/earth-pictures.py`).
+  background thread, Natural Earth's maps via `scripts/assets/earth-pictures.py`). **Next (asked, not started):** the
+  owner's dashboard picture for the pages with maps (map top right with search and sort over it, cards down the side, a
+  table under it, no empty space): Trace's tracking map, Relief's live map, Green's places, Travel's map.
 - **On the branch `claude/youthful-fermi-sbdtcp`, not merged yet:** M290 (18 Nov), a deep check: spreadsheet styles only real colours (`colour`, `sheet/render.ts`), canvas maps rest after 30 s untouched (`WorldCanvas`, `map-rest-ui.mjs`), Studio's badge and Trace Insights' table accessible.
 - **Merged 18 Nov (PR #138, the owner: "do a lot more like this and then merge it"):** M289 (18 Nov), nothing cut off on a phone (422 grids got `grid-cols-1`, `layout-rules.test.ts`; `crawl.mjs --layout` reports cut-off text; UniVersity's course buttons, transcript, setup card). M288 (18 Nov), a trip's page and Find where to go tidier on a phone (the trip's settings only on Plan and Money or until it has a date; a stop's dates on one line; Money's prices table fitting a phone). M287 (18 Nov), Travel more professional and smoother (a guide's opening in three lines with its actions on the picture, booking in one row, sticky tabs, `Prose` with Read more, `.swap` parts; photos to the cards' edges; Travel's pages `overflow-x-clip` so `sticky` works). M286 (18 Nov; built as M269), a picture for every Travel destination (436 photos, 12 banners) and 74 more places (448).
 - **Merged 16 Nov (PR #129):** M221 (16 Nov), the landing's `_retryCache` crash fixed (a Suspense boundary inside each
@@ -314,7 +312,7 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   main thread, a lighter version on weak phones; realistic movement was M133); a modern ocean game in place of Reef Rescue; Skyline Obby's surroundings after the owner's two pictures
   (floating jungle rock towers, waterfalls into mist, arches, a lagoon); an original zombie-survival shooter in the
   style of the link the owner sent (not a copy of it; brief in the handoff's M123 hand-over, item 4). (The sweep of the site for problems was M157.)
-- **Work numbers:** the next item is **M332** (M330–M331: the map desks and the dark Apple-style maps; M326–M329: tripist's smooth scroll, a trip's itinerary look, the automatic itinerary, the landing's Earth; M301–M325: the rest of the owner's 32 features and more; M291–M300: batch 1 of the owner's 32 features; M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
+- **Work numbers:** the next item is **M330** (M326–M329: tripist's smooth scroll, a trip's itinerary look, the automatic itinerary, the landing's Earth; M301–M325: the rest of the owner's 32 features and more; M291–M300: batch 1 of the owner's 32 features; M286: Travel's pictures, built as M269 on `claude/youthful-fermi-sbdtcp`; M283–M285: Travel's map items built as M270–M272 on another branch; M282: every home's greeting row and one figure card, 18 Nov; M269–M281: Green → Business; another session's merge of 17 Nov, PR #133, also used M232–M236 for its section-tabs and deep-check items: those notes sit in the handoff beside this branch's; M208 stays kept for Travel's "extras", which nothing asked for yet: ask the owner first). Never reuse a number: take the next one after the
   newest note in the handoff file (another session may have used one on its branch; look there too).
 - **[owner] (16 Nov):** connections (M182, M200): register an app with Google (Google Cloud), Microsoft
   (Azure) and Slack, set `GOOGLE_CLIENT_ID`/`_SECRET`, `MICROSOFT_CLIENT_ID`/`_SECRET`, `SLACK_CLIENT_ID`/`_SECRET`
