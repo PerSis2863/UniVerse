@@ -10155,3 +10155,25 @@ opens Directions that way from the same start (`directionsTo(to, from, mode)`; T
   (`/travel/place`), so 40 at once would cost 40 server lookups; the card keeps showing Open / Closed for its place.
 - Checked at 390 and 1280, light and dark (a stubbed search result 3 km from the map's middle): 45 min walk, 15 min
   cycle, ~25 min transit, 6 min drive; Transit opens Ways to get there; axe clean.
+
+## M362 (20 Nov): Relief, the quickest way to reach a need
+
+The owner, 20 Nov: "Next I can add the same idea to Relief (the quickest way for a helper to reach someone who needs
+help) and to more places on the map. please do this also".
+- Once a helper taps **Near me** on Relief's live map: each card in **Needs you** shows under the distance the quickest
+  way there ("10 min by car"), with **Directions** (Google Maps, that way); the need's own card shows **Getting there**:
+  on foot, by bike, by bus or train, by car, each with its time, the quickest in Relief's orange, each opening Google
+  Maps' directions that way; the "I can help" plan says "5.3 km from you: about 10 min by car". Shown only for open needs
+  or ones you're helping (not for someone else's).
+- `reach` and `reachLink` in `src/lib/relief-route.ts` (tested) on Travel's `quickWays` (M360/M361); the chips are
+  `src/components/map-ui/ReachWays.tsx` (shared: `hot` colour, `label`, `note`). Needs sit about 500 m from where they
+  are, so the times are close, not exact.
+- Checked in sample mode at 1280 and 390, light and dark (a test position in London): axe clean.
+
+## M363 (20 Nov): Green's places, every way there and the car's CO₂
+
+The same ask ("more places on the map"). A place picked on **Green → Green places** shows `ReachWays` from you (once
+**Near me** found you) or the middle of the map, the quickest in emerald, and "On foot or by bike: no CO₂. By car there
+and back: about … kg" (`TRAVEL_FACTORS.car`, roads 1.25× the line). It replaces the old single walking "Directions" link
+to OpenStreetMap. Checked: the page loads with no errors; a place can't be opened in this container (the places come
+from map tiles it can't download), the chips are the same component checked on Relief.
