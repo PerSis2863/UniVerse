@@ -32,3 +32,18 @@ export const transitApps = (a: Pt & { name: string }, b: Pt & { name: string }) 
   { name: 'Apple Maps', url: `https://maps.apple.com/?saddr=${ll(a)}&daddr=${ll(b)}&dirflg=r` },
   { name: 'Citymapper', url: `https://citymapper.com/directions?startcoord=${ll(a)}&endcoord=${ll(b)}&startname=${encodeURIComponent(a.name)}&endname=${encodeURIComponent(b.name)}` },
 ];
+
+export type QuickMode = 'foot' | 'bike' | 'transit' | 'car';
+/** M360: a place card's row of times (Apple Maps shows the drive): walking and cycling while they make sense, public
+ *  transport's quickest way (as above), the drive; minutes estimated from the distance, streets longer than the line. */
+export function quickWays(a: Pt, b: Pt): { mode: QuickMode; minutes: number }[] {
+  const d = haversine(a, b), out: { mode: QuickMode; minutes: number }[] = [];
+  if (d < 0.05) return out;
+  const r = (m: number) => Math.max(1, m < 10 ? Math.round(m) : Math.round(m / 5) * 5);
+  if (d <= 12) out.push({ mode: 'foot', minutes: r(per(d * 1.3, 4.8)) });
+  if (d <= 40) out.push({ mode: 'bike', minutes: r(per(d * 1.25, 15)) });
+  const pt = waysBetween(a, b).filter((w) => w.kind !== 'car' && w.kind !== 'flight');
+  if (d >= 0.8 && pt.length) out.push({ mode: 'transit', minutes: Math.min(...pt.map((w) => w.minutes)) });
+  if (d >= 0.5 && d <= 3000) out.push({ mode: 'car', minutes: r(per(d * 1.25, d < 30 ? 35 : 80)) });
+  return out;
+}

@@ -1760,3 +1760,4 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M358 | Green's Journeys by time too (same ask) | **Done** | Each way shows its door-to-door time; Quickest and Best balance beside Cleanest; sort by cleanest or quickest. |
 | M359 | Trace's ways to ship (same ask) | **Done** | An open shipment compares road, rail, sea and air: days, CO₂ for its weight, price level; fastest, greenest and cheapest marked. |
 | M360 | Green's home redesigned as a dashboard (20 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | Four figures (this month against last, the share confirmed), logging beside the challenge, progress by 30 days or 6 months, where it came from, activity with filters, log again and CSV, badges with what they need. |
+| M361 | A place card's times by every way (same ask) | **Done** | A place on Travel's map shows walk, cycle, transit and drive times from you (or the map's middle); a tap opens Directions that way. |

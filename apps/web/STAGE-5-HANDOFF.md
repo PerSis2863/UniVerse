@@ -10141,3 +10141,17 @@ M358); this branch's unmerged M330–M331 were reverted first (the merged M346/M
 - Checked: axe clean at 1280 light and 390 dark, nothing sideways, no page errors.
 - **Next for Green** (the owner's "upgrade all the existing features"): Footprint, Journeys, Goals, Tips, Events, Green
   places, Swap & repair, Teams and Business in the same look, each with more to do.
+
+## M361 (20 Nov; committed as M360, a number the other session had used the same day): a place card's times by every way
+
+The same ask. Like Apple Maps' place card, a place opened on Travel's map shows a row of times to get there: **Walk**,
+**Cycle**, **Transit** and **Drive** (each only where it makes sense: walking up to 12 km, cycling up to 40 km, transit
+from 0.8 km, the drive from 0.5 km), counted from you (your location dot) or else the middle of the map, kept from the
+moment the place was opened (`pickedFrom` in `TravelMap.tsx`; `myPlace()` reads refs, so never while rendering). A press
+opens Directions that way from the same start (`directionsTo(to, from, mode)`; Transit opens M356's Ways to get there).
+- `quickWays(a, b)` in `src/lib/transit-options.ts` (tested): estimates from the distance, transit's the quickest of
+  `waysBetween` (city transport, train, coach); Directions then draws the real route.
+- **Left out:** an "Open now" filter for the places in view: their hours come from one lookup per place
+  (`/travel/place`), so 40 at once would cost 40 server lookups; the card keeps showing Open / Closed for its place.
+- Checked at 390 and 1280, light and dark (a stubbed search result 3 km from the map's middle): 45 min walk, 15 min
+  cycle, ~25 min transit, 6 min drive; Transit opens Ways to get there; axe clean.
