@@ -10018,3 +10018,26 @@ rounded part takes `corner-shape: squircle` (`[class*="rounded-"]`, the button, 
 circles and pills (`…-full`) and `rounded-none` stay as they are. Radii only: nothing moves or resizes (checked: no
 sideways scroll at 390 and 1280 on the student home, Settings and Trace).
 - **Rule:** use Tailwind's `rounded-*` steps or `--radius-card` (they follow this block); a hard-coded radius won't.
+
+## M353 (20 Nov): Travel's map faster to open and smoother to move; Recents, 3D, follow me, share a view
+
+The owner, 20 Nov: "please add more features in the map and make it ultra smooth… map doesnt load fast and it isnt
+smooth if i go from one place to another in fast way"; then "everything should look professional and ultra smooth".
+- **Faster to open:** any Travel page fetches the map's code, its helper thread and the map service's description while
+  the browser is idle (`warmMap` in `src/lib/map-smooth.ts`, from `TravelTabs`; the service worker keeps the
+  description), and the map's code and its pins are prepared at the same time, not one after the other.
+- **Lighter to draw:** hills are shaded only up to zoom 12, from zoom-11 heights (`uv-hillshade` `maxzoom`; at street
+  level their own downloads were half of every screen's); a big screen draws at 1.5x, not 2x (`mapPixelRatio`, also
+  Green's places and Relief's alerts).
+- **Smooth when moving fast:** the page hears where the map is 220 ms after it stops, and not at all between quick moves
+  (each update redrew the panel and could ask for photos, reviews and the weather: work that landed on the next swipe's
+  first frames). Measured: during 8 quick drags no slow frame had any of our code in it (what's left is this container
+  drawing without a graphics chip).
+- **New:** **Recents** in Search (the places opened lately, this device only, Clear; `withRecentPlace` / `recentOf` in
+  `map-tools.ts`, tested, storage read through `recentOf`); a **3D** button (tilts the map, buildings and hills stand
+  up; again, flat); **Where I am follows you** (the arrow filled; moving the map or pressing again stops it; the watch
+  ends with the page); **Share this map view** (a link that opens here with "what's here"); **Escape** closes the open
+  panel ("/" stays the app's own search: the map's first try clashed with it). On a phone the button column keeps
+  Apple's three (layers, where I am, 3D) clear of the sheet; measure, share and full screen are a computer's.
+- Checked: 390 light and dark, 1280 light, axe clean, no page errors; each feature tried in a browser (a made-up
+  position for following).

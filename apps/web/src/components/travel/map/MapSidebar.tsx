@@ -1,10 +1,11 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
-import { ArrowUpRight, Bookmark, CornerUpRight, LayoutGrid, Luggage, Map as MapIcon, PanelLeftClose, PanelLeftOpen, Search, X, type LucideIcon } from 'lucide-react';
+import { ArrowUpRight, Bookmark, Clock, CornerUpRight, LayoutGrid, Luggage, Map as MapIcon, PanelLeftClose, PanelLeftOpen, Search, X, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { CATEGORIES, type CategoryId } from '@/lib/travel-map';
 import { cn } from '@/lib/utils';
+import type { RecentPlace } from '@/lib/map-tools';
 import type { Saved } from '../travel-ui';
 import { PINS } from './pins';
 
@@ -157,3 +158,27 @@ export function TripsList({ list, shown, onShow }: { list: { id: string; name: s
     </>
   );
 }
+
+/** M353: Recents, as Apple Maps keeps them: the places looked at lately (on this device only), with Clear. */
+export function Recents({ list, onPick, onClear }: { list: RecentPlace[]; onPick: (r: RecentPlace) => void; onClear: () => void }) {
+  if (!list.length) return null;
+  return (
+    <section aria-labelledby="map-recents" className="mb-4">
+      <div className="mb-1 flex items-center justify-between">
+        <h3 id="map-recents" className="text-[19px] font-bold text-zinc-900 dark:text-white">Recents</h3>
+        <button type="button" onClick={onClear} className="text-sm font-semibold text-[#0066cc] dark:text-[#4da3ff]">Clear</button>
+      </div>
+      <ul className="space-y-0.5">
+        {list.slice(0, 5).map((r) => (
+          <li key={r.key ?? `${r.name}@${r.lat}`}>
+            <button type="button" onClick={() => onPick(r)} className="flex w-full items-center gap-3 rounded-xl px-2 py-1.5 text-start hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-zinc-700 dark:bg-white/[0.1] dark:text-zinc-200" aria-hidden><Clock className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1"><span className="block truncate text-[15px] font-semibold text-zinc-900 dark:text-white" translate="no">{r.name}</span><span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{r.kind}</span></span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </section>
+  );
+}
+

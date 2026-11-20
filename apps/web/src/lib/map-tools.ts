@@ -159,3 +159,19 @@ export function photonOf(answer: unknown): NearPlace[] {
   }
   return out;
 }
+
+/** M353: the places looked at lately on Travel's map ("Recents", as Apple Maps keeps them), on this device only. */
+export type RecentPlace = { name: string; kind: string; lat: number; lon: number; key: string | null };
+/** The list with this place first (once: by its map key, else its name and position), at most `max`. */
+export function withRecentPlace(list: RecentPlace[], p: RecentPlace, max = 8): RecentPlace[] {
+  const same = (a: RecentPlace) => (p.key ? a.key === p.key : a.name === p.name && Math.abs(a.lat - p.lat) < 1e-4 && Math.abs(a.lon - p.lon) < 1e-4);
+  return [p, ...list.filter((a) => !same(a))].slice(0, max);
+}
+/** What was kept, checked (it's the device's storage: anything could be there). */
+export function recentOf(v: unknown): RecentPlace[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x: Record<string, unknown> | null) => {
+    if (!x || typeof x.name !== 'string' || !Number.isFinite(Number(x.lat)) || !Number.isFinite(Number(x.lon))) return [];
+    return [{ name: x.name.slice(0, 120), kind: typeof x.kind === 'string' ? x.kind.slice(0, 60) : 'Place', lat: Number(x.lat), lon: Number(x.lon), key: typeof x.key === 'string' && /^[NWR]\d+$/.test(x.key) ? x.key : null }];
+  }).slice(0, 8);
+}

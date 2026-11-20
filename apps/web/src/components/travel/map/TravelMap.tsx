@@ -5,7 +5,7 @@ import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import type { Map as MLMap, Marker, StyleSpecification } from 'maplibre-gl';
 import { toast } from 'sonner';
-import { BedDouble, BookOpen, Box, Calendar, Camera, ChevronLeft, Map as MapIcon, Clock3, CloudRain, Footprints, Globe2, Heart, Info, Loader2, Luggage, MapPin, Maximize2, Minimize2, Minus, MoonStar, Mountain, Navigation, Plus, RotateCw, Ruler, Rotate3d, Satellite, ScanEye, Search, Share, Siren, Star, Sun, Sunrise, TrainFront, X } from 'lucide-react';
+import { BedDouble, BookOpen, Box, Calendar, Camera, ChevronLeft, Map as MapIcon, Share2, Clock3, CloudRain, Footprints, Globe2, Heart, Info, Loader2, Luggage, MapPin, Maximize2, Minimize2, Minus, MoonStar, Mountain, Navigation, Plus, RotateCw, Ruler, Rotate3d, Satellite, ScanEye, Search, Share, Siren, Star, Sun, Sunrise, TrainFront, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { Photo as Pic } from '@/components/ui/Photo';
 import { api } from '@/lib/api';
@@ -25,17 +25,17 @@ import { addLayers, applyLook, focusWalk, meArea, points, rings, setData, showCl
 import { mapRequest } from './map-style';
 import { DirectionsCard, HereCard, MeasureBar, measureFeatures, routeFeatures, useRoutes, type Directions, type Spot } from './MapTools';
 import { Navigate, primeSpeech, type NavTrip } from './Navigate';
-import { directionsUrl, distance, duration, MODES, routesOf, type Route } from '@/lib/map-tools';
+import { directionsUrl, distance, duration, MODES, recentOf, routesOf, withRecentPlace, type RecentPlace, type Route } from '@/lib/map-tools';
 import { PlaceCard, type Picked } from './PlaceCard';
 import { Highlights } from './Highlights';
 import { addPins, drawPins, labelColor, PINS, PinSource, type PinImages } from './pins';
 import { DestCard } from './DestCard';
-import { FindNearby, useWide, MapRail, PANEL_REM, PanelHead, panelBg, RAIL_REM, RailShow, SavedPlaces, SECTIONS, SectionRow, TripsList, type Section } from './MapSidebar';
+import { FindNearby, Recents, useWide, MapRail, PANEL_REM, PanelHead, panelBg, RAIL_REM, RailShow, SavedPlaces, SECTIONS, SectionRow, TripsList, type Section } from './MapSidebar';
 import { areaSearchUrl, placeSearchUrl, DAY_COLORS, roadLegs, destOf, foundOf, loadWorld, setWorld, showWorld, thumbOf, tripBox, tripDaysOn, tripFeatures, watchPhotos, WORLD_LAYERS, WORLD_ZOOM, type Dest, type Found, type TripMap } from './map-world';
 import { TripPicker } from './TripPicker';
 import { Callout, CountChips, placeCallout, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { useBareChrome } from '@/lib/chrome';
-import { SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
+import { mapPixelRatio, SMOOTH_MAP, smoothGestures } from '@/lib/map-smooth';
 import { nightArea, reachOf, reachUrl, sunLines } from '@/lib/map-extras';
 import { ALERT_KINDS, type Alert } from '@/lib/relief-plus';
 import { addExtraLayers, ALERT_LAYERS, applyExtras, flyAround, setExtra } from './map-extras';
@@ -59,7 +59,7 @@ type View = { lat: number; lon: number; zoom: number; s: number; w: number; n: n
 /** M233: a walk keeps where it starts and, once the walking router answers, its path along the streets. */
 type Walk = ReturnType<typeof walkFrom> & { start: { lat: number; lon: number }; path: [number, number][] | null; routing: boolean };
 // M259: a first visit opens on the globe with the world's destinations (Lisbon before).
-const STAY = 'uv-travel-stay', KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
+const RECENT = 'uv-map-recent', STAY = 'uv-travel-stay', KEEP = 'uv-travel-map', LOOK = 'uv-travel-map-look', HOME = { lat: 30, lon: 12, zoom: 1.6 };
 const SHOW = { photos: false, stories: true, reviews: true, d3: false, satellite: false, transit: false, street: false, rings: false, world: true, saved: true, rain: false, clouds: false, night: false, sun: false, trails: false, alerts: false };
 type Show = typeof SHOW;
 /** The layers chosen last time on this device. */
@@ -164,6 +164,10 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   const wide = useWide();
   const [rail, setRail] = useState(true);
   const [nearby, setNearby] = useState(true);
+  // M353: Recents (this device only), following where I am, and its watch.
+  const [recent, setRecent] = useState<RecentPlace[]>(() => { try { return recentOf(JSON.parse(localStorage.getItem(RECENT) ?? '[]')); } catch { return []; } });
+  const [follow, setFollow] = useState(false);
+  const watchId = useRef<number | null>(null);
   const [credits, setCredits] = useState(false); // the full map credits shown
   const [full, setFull] = useState(false); // M236: the map over the whole window
   // M237: Google Maps' tools: directions, "what's here" (right-click or press and hold), measuring.
@@ -314,7 +318,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   });
   const onPick = useEffectEvent((p: Picked) => pick(p));
   const onHere = useEffectEvent((lat: number, lon: number, x: number, y: number) => { if (!measure) setHere({ lat, lon, x, y }); });
-  const onMoved = useEffectEvent(() => setHere(null));
+  const onMoved = useEffectEvent(() => { setHere(null); if (watchId.current != null) stopFollow(); });
   const firstView = useEffectEvent(() => ({ start: startAt(at), style: STYLE[dark ? 'dark' : 'light'] }));
   const onClick = useEffectEvent((m: MLMap, x: number, y: number, lat: number, lon: number) => {
     setHere(null);
@@ -350,19 +354,32 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     }
   });
 
+  // M353: Escape closes the open panel, as Apple Maps' (not while typing in a field; "/" stays the app's own search).
+  const onKeyNav = useEffectEvent((e: KeyboardEvent) => {
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    if (e.key === 'Escape' && !layers && !here && (section || picked || dir || dest || walk || found)) closeAll();
+  });
+  useEffect(() => {
+    const k = (e: KeyboardEvent) => onKeyNav(e), watching = watchId;
+    window.addEventListener('keydown', k);
+    return () => { window.removeEventListener('keydown', k); if (watching.current != null) navigator.geolocation?.clearWatch(watching.current); };
+  }, []);
+
   // The map, made once (MapLibre loads only now; its worker comes from this site).
   useEffect(() => {
     let gone = false, map: MLMap | null = null;
     void (async () => {
-      const ml = await import('maplibre-gl');
+      // M353: the map's code and the pins (drawn before the first style asks for them) at the same time, not one after the other.
+      const [ml, drawn] = await Promise.all([import('maplibre-gl'), drawPins(pinBox.current)]);
       ml.setWorkerUrl('/maplibre/maplibre-gl-worker.mjs');
-      pins.current = await drawPins(pinBox.current); // the pins, drawn before the first style asks for them
+      pins.current = drawn;
       if (gone || !box.current) return;
       const { start: s, style } = firstView();
       applied.current = style;
       map = new ml.Map({
         container: box.current, style, center: [s.lon, s.lat], zoom: s.zoom, pitch: 0, maxPitch: 75,
-        transformRequest: mapRequest, attributionControl: false, pixelRatio: Math.min(2, window.devicePixelRatio || 1), maplibreLogo: false,
+        transformRequest: mapRequest, attributionControl: false, pixelRatio: mapPixelRatio(), maplibreLogo: false,
         ...SMOOTH_MAP, // M259, M335: smoother on every device (src/lib/map-smooth.ts)
       });
       mapRef.current = map;
@@ -373,7 +390,11 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
         try { localStorage.setItem(KEEP, JSON.stringify({ lat: c.lat, lon: c.lng, zoom: m.getZoom() })); } catch { /* private mode */ }
       };
       map.on('style.load', () => onStyle(map!));
-      map.on('moveend', read);
+      // M353: the page hears where the map is a moment after it stops, and not at all between quick moves (each
+      // update redraws the panel and may ask for nearby photos, reviews and the weather: work that landed on the
+      // next swipe's first frames).
+      let settle: ReturnType<typeof setTimeout> | undefined;
+      map.on('moveend', () => { clearTimeout(settle); settle = setTimeout(() => { if (!gone && map && !map.isMoving()) read(); }, 220); });
       map.on('load', read);
       map.on('rotate', () => { if (compass.current) compass.current.style.transform = `rotate(${-map!.getBearing()}deg)`; });
       watchPhotos(map);
@@ -663,6 +684,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
   }
   function pick(p: Picked | null) {
     if (p) asked.current++;
+    if (p?.type === 'place') keepRecent(withRecentPlace(recent, { name: p.name, kind: p.kind, lat: p.lat, lon: p.lon, key: p.key }));
     setPicked(p);
     setDest(null);
     if (p) setOpen(true);
@@ -688,15 +710,42 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
     setFlying(true);
     stopFly.current = flyAround(m, p.lat, p.lon, calm(), () => { setFlying(false); stopFly.current = null; });
   };
-  const findMe = () => navigator.geolocation?.getCurrentPosition((p) => {
+  const keepRecent = (list: RecentPlace[]) => { setRecent(list); try { localStorage.setItem(RECENT, JSON.stringify(list)); } catch { /* private mode */ } };
+  /** M353: "Where I am" as Apple Maps': the map follows you (the arrow filled) until you move it or press again. */
+  const stopFollow = () => { if (watchId.current != null) navigator.geolocation?.clearWatch(watchId.current); watchId.current = null; setFollow(false); };
+  const startFollow = () => {
+    if (!navigator.geolocation) { toast.error('This browser can’t share where you are.'); return; }
+    let first = true;
+    watchId.current = navigator.geolocation.watchPosition((p) => {
+      const m = mapRef.current;
+      if (!m) return;
+      me.current = meArea(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
+      setData(m, 'uv-me', me.current);
+      const center: [number, number] = [p.coords.longitude, p.coords.latitude];
+      if (first) {
+        first = false;
+        m.flyTo({ center, zoom: Math.max(m.getZoom(), 15.5), duration: calm() ? 0 : 1300, essential: true });
+        if (p.coords.accuracy > 200) toast(`Your position is only sure to about ${Math.round(p.coords.accuracy / 100) / 10} km.`);
+      } else m.easeTo({ center, duration: calm() ? 0 : 700, essential: true });
+    }, () => { toast.error('Your browser didn’t share where you are.'); stopFollow(); }, { enableHighAccuracy: true, timeout: 15_000, maximumAge: 5_000 });
+    setFollow(true);
+  };
+  /** M353: a link to exactly this view of the map (it opens with "what's here" at its middle). */
+  const shareView = async () => {
     const m = mapRef.current;
     if (!m) return;
-    // A blue dot, and a circle as wide as the phone is unsure (shown only on this screen, never sent).
-    me.current = meArea(p.coords.latitude, p.coords.longitude, p.coords.accuracy);
-    setData(m, 'uv-me', me.current);
-    m.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 16, duration: calm() ? 0 : 1500, essential: true });
-    if (p.coords.accuracy > 200) toast(`Your position is only sure to about ${Math.round(p.coords.accuracy / 100) / 10} km.`);
-  }, () => toast.error('Your browser didn’t share where you are.'), { enableHighAccuracy: true, timeout: 10_000 });
+    const c = m.getCenter(), url = `${location.origin}/travel?view=map&at=${c.lat.toFixed(5)},${c.lng.toFixed(5)},${m.getZoom().toFixed(1)}&pin=1`;
+    try {
+      if (navigator.share) await navigator.share({ title: 'A place on the map', url });
+      else { await navigator.clipboard.writeText(url); toast.success('Link to this map copied'); }
+    } catch { /* closed the share sheet */ }
+  };
+  /** M353: Apple Maps' 3D button: buildings and hills stand up and the map tilts; again, flat. */
+  const toggle3d = () => {
+    const on = !show.d3;
+    setShow((v) => ({ ...v, d3: on }));
+    mapRef.current?.easeTo({ pitch: on ? 60 : 0, duration: calm() ? 0 : 800, essential: true });
+  };
   /** "Look around": the nearest street-level photo to where the map was tapped (Panoramax, from the browser). */
   async function lookAround(lat: number, lon: number) {
     try {
@@ -788,9 +837,12 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
       <div className="absolute end-3 top-3 z-20 flex flex-col items-end gap-2">
         <div className={cn(group, 'flex-col divide-y divide-zinc-200 dark:divide-white/10')}>
           <button type="button" className={cn(ctl, layers && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="Layers" aria-expanded={layers} aria-controls="map-layers" onClick={() => setLayers((o) => !o)}><MapIcon className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={ctl} aria-label="Where I am" onClick={findMe}><Navigation className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={cn(ctl, measure && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="Measure distance" aria-pressed={!!measure} onClick={() => { setHere(null); setMeasure((x) => (x ? null : [])); }}><Ruler className="h-5 w-5" aria-hidden /></button>
-          <button type="button" className={ctl} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
+          <button type="button" className={cn(ctl, follow && 'text-[#0a84ff] dark:text-[#4da3ff]')} aria-label={follow ? 'Stop following where I am' : 'Where I am'} aria-pressed={follow} onClick={() => (follow ? stopFollow() : startFollow())}><Navigation className={cn('h-5 w-5', follow && 'fill-current')} aria-hidden /></button>
+          <button type="button" className={cn(ctl, 'text-[13px] font-bold tracking-tight', show.d3 && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="3D view" aria-pressed={show.d3} onClick={toggle3d}>3D</button>
+          {/* M353: a phone keeps Apple's three (layers, where I am, 3D) above its sheet; the rest are a computer's. */}
+          <button type="button" className={cn(ctl, 'hidden sm:flex', measure && 'bg-[#0a84ff] text-white hover:bg-[#0a84ff] dark:text-white')} aria-label="Measure distance" aria-pressed={!!measure} onClick={() => { setHere(null); setMeasure((x) => (x ? null : [])); }}><Ruler className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label="Share this map view" onClick={() => void shareView()}><Share2 className="h-5 w-5" aria-hidden /></button>
+          <button type="button" className={cn(ctl, 'hidden sm:flex')} aria-label={full ? 'Leave full screen' : 'Full screen'} aria-pressed={full} onClick={() => setFull((f) => !f)}>{full ? <Minimize2 className="h-5 w-5" aria-hidden /> : <Maximize2 className="h-5 w-5" aria-hidden />}</button>
         </div>
         <button type="button" className={cn(group, 'h-11 w-11 items-center justify-center rounded-full text-zinc-900 dark:text-white')} aria-label="Face north" onClick={() => mapRef.current?.resetNorthPitch({ duration: calm() ? 0 : 500 })}>
           <svg ref={compass} viewBox="0 0 40 40" className="h-10 w-10" aria-hidden>
@@ -976,6 +1028,7 @@ export default function TravelMap({ at, place, pin, find }: { at: string | null;
           ) : sec === 'saved' && !walk && !found ? <div className="pb-3"><SavedPlaces list={savedData?.saved} onPick={(x) => pick({ type: 'place', key: null, name: x.name, kind: 'One of your saved places', lat: x.lat!, lon: x.lon! })} /></div>
           : sec === 'trips' && !walk && !found ? <div className="pb-3"><TripsList list={tripList?.trips} shown={tripId} onShow={(id) => { setTripId(id); setTripDay(null); }} /></div> : (
             <>
+              {!walk && !found && !dests && nearby && <Recents list={recent} onPick={(x) => pick({ type: 'place', key: x.key, name: x.name, kind: x.kind, lat: x.lat, lon: x.lon })} onClear={() => keepRecent([])} />}
               {!walk && !found && !dests && nearby && <div className="mb-3 hidden sm:block"><FindNearby cat={cat} onPick={(c) => { setCat(c); setFilter(''); endWalk(); setNearby(false); if (c !== 'see') closeIn(); }} /></div>}
               {walk ? (
                 // M233: the walk's card heads like Apple Maps' directions: Share, the walk, close.

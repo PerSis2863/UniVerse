@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressOf, photonOf, photonUrl, areaOf, area, directionsUrl, distance, duration, haversine, lengthOf, routesOf, stepText } from './map-tools';
+import { addressOf, photonOf, photonUrl, recentOf, withRecentPlace, areaOf, area, directionsUrl, distance, duration, haversine, lengthOf, routesOf, stepText } from './map-tools';
 
 describe('map tools (M237)', () => {
   it('asks the router of the chosen way of travel', () => {
@@ -52,5 +52,20 @@ describe('real places in the search boxes (M348: a hotel in Brussels)', () => {
       { key: null, name: 'Rue Neuve 1', cls: '', sub: '', lat: 50.85, lon: 4.35, address: 'Brussels' },
     ]);
     expect(photonOf(null)).toEqual([]);
+  });
+});
+
+describe('Recents on the map (M353)', () => {
+  const a = { name: 'Louvre', kind: 'Museum', lat: 48.86, lon: 2.337, key: 'W1' }, b = { name: 'Café', kind: 'Café', lat: 48.85, lon: 2.35, key: null };
+  it('puts the latest first, once, and keeps eight', () => {
+    expect(withRecentPlace([a, b], { ...a, kind: 'Gallery' }).map((x) => x.kind)).toEqual(['Gallery', 'Café']);
+    expect(withRecentPlace([a], b)).toEqual([b, a]);
+    expect(withRecentPlace([b], { ...b })).toEqual([b]);
+    const many = Array.from({ length: 10 }, (_, i) => ({ ...b, name: `P${i}`, lat: i }));
+    expect(many.reduce((l, p) => withRecentPlace(l, p), [] as typeof many)).toHaveLength(8);
+  });
+  it('reads only well-formed places from storage', () => {
+    expect(recentOf([a, { name: 'x' }, null, { name: 'y', lat: 1, lon: 2, key: 'evil' }, 'z'])).toEqual([a, { name: 'y', kind: 'Place', lat: 1, lon: 2, key: null }]);
+    expect(recentOf('nope')).toEqual([]);
   });
 });
