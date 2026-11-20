@@ -82,7 +82,7 @@ export default function TeacherDashboard() {
       <Topbar title={t('teacher.title')} subtitle={`${greeting}, ${user?.name?.split(' ')[0] ?? 'Professor'}! 👋`} />
       <div className="flex-1 p-4 sm:p-8 space-y-8 overflow-y-auto">
         <HomeBoard role="teacher" layout={home.layout} onSave={(l) => void home.saveLayout(l)} first={<FirstClassCard onNewCourse={() => setShowCourseModal(true)} />} afterTop={<AccountSetupCard />}
-          head={<DashHead name={user?.name} summary={[pendingGrades ? `${pendingGrades} to grade` : 'Nothing waiting to be graded', `${activeCourses} ${activeCourses === 1 ? 'course' : 'courses'}, ${totalStudents.toLocaleString()} students`].join(' · ')} />}
+          head={<DashHead name={user?.name} />}
           actions={<button type="button" onClick={() => setShowCourseModal(true)} className="btn-primary btn-sm"><Plus className="w-3.5 h-3.5" aria-hidden />{t('teacher.new_course')}</button>}
           cards={{
           upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="No classes or calls coming up, and nothing waiting to be graded." />,

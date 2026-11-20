@@ -81,7 +81,7 @@ export default function AdminDashboard() {
       <Topbar title={t('admin.title')} subtitle={t('admin.subtitle')} />
       <div className="flex-1 p-4 sm:p-8 space-y-8">
         <HomeBoard role="admin" layout={home.layout} onSave={(l) => void home.saveLayout(l)} afterTop={<AccountSetupCard />}
-          head={<DashHead name={user?.name} summary={adminSummary(home.data?.live)} />}
+          head={<DashHead name={user?.name} />}
           actions={<button type="button" onClick={handleSendAnnouncement} className="btn-primary btn-sm"><Megaphone className="w-3.5 h-3.5" aria-hidden />{t('admin.send_announcement')}</button>}
           cards={{
           live: <LiveNumbersCard live={home.data?.live} />,
@@ -193,12 +193,3 @@ export default function AdminDashboard() {
 }
 
 /** M282: one line under the greeting: what needs the admin today. */
-function adminSummary(live: { attendance: { marked: number; present: number }; pending: number; safety: { open: number } } | undefined) {
-  if (!live) return null;
-  const parts = [
-    live.attendance.marked ? `${Math.round((live.attendance.present / live.attendance.marked) * 100)}% here today` : 'Attendance not taken yet',
-    live.pending ? `${live.pending} waiting for approval` : null,
-    live.safety.open ? `${live.safety.open} safety ${live.safety.open === 1 ? 'flag' : 'flags'} to review` : null,
-  ].filter(Boolean);
-  return parts.join(' · ');
-}

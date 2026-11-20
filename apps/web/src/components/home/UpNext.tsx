@@ -46,7 +46,8 @@ function ActionButton({ row, big }: { row: UpNextRow; big?: boolean }) {
   );
 }
 
-export function UpNextCard({ items, loading, empty }: { items: UpNextItem[] | undefined; loading?: boolean; empty?: React.ReactNode }) {
+/** `note`: a line beside the title (M369: the student's "N due soon", moved here from the greeting). */
+export function UpNextCard({ items, loading, empty, note }: { items: UpNextItem[] | undefined; loading?: boolean; empty?: React.ReactNode; note?: string }) {
   const now = useNow();
   const rows = now ? upNext(items ?? [], now) : [];
   const [first, ...rest] = rows;
@@ -60,6 +61,7 @@ export function UpNextCard({ items, loading, empty }: { items: UpNextItem[] | un
             <span className="w-8 h-8 rounded-xl bg-gradient-to-br from-indigo-500/15 to-emerald-500/15 border border-indigo-500/20 flex items-center justify-center"><ClipboardCheck className="w-4 h-4 text-indigo-600 dark:text-indigo-300" /></span>
             Up next
           </h2>
+          {note && <span className="me-auto text-[13px] font-medium text-zinc-600 dark:text-zinc-300">{note}</span>}
           <CardMenu title="Up next" />
         </div>
         {loading && !items ? <div className="h-20 rounded-2xl skeleton" /> : !first ? (

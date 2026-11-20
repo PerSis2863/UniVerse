@@ -10242,3 +10242,12 @@ and transition when it gets exit and spawn which is ultra smooth research it". `
 - A bigger field (22–26 px), no focus box on it (the caret in the dialog's one field is the focus); the chosen row a
   soft grey pill that glides (`layoutId`), with "Open ↵" on it; Cancel only on phones; the footer adds tab and esc.
 - Checked at 1280 and 390, light and dark: axe clean; chips, Tab and Escape work.
+
+## M369 (20 Nov): no summary line under the homes' greeting
+
+The owner, 20 Nov (a picture of "Nothing due soon · 100% attendance · average 88%" under "Good afternoon, Alice"):
+"remove nothing due and others from here and add somewhere else". `DashHead` has no `summary` any more (the date and
+the greeting only), on the student's, teacher's and admin's homes. What it said lives elsewhere already: attendance and
+the average in the student's number cards, the teacher's to-grade, courses and students in theirs, the admin's
+attendance, approvals and safety flags in "The school today"; the student's "N due soon / Nothing due soon" moved
+beside **Up next**'s title (`UpNextCard`'s `note`). Checked at 1280 and 390.
