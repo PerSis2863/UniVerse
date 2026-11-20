@@ -11,6 +11,7 @@ import { heightsAt } from './map-extras';
 import { cn } from '@/lib/utils';
 import { PlaceSearch } from '../travel-ui';
 import { TurnIcon } from './TurnIcon';
+import { TransitWays } from './TransitWays';
 import { Profile } from './MapExtras';
 
 // M237: the Google Maps features on Travel's map (the logic in src/lib/map-tools.ts): directions, "what's here"
@@ -19,7 +20,9 @@ import { Profile } from './MapExtras';
 // navigation, Navigate.tsx).
 
 export type { Spot };
-export type Directions = { from: Spot | null; to: Spot | null; mode: Mode; chosen: number; via: Spot[]; avoid: Avoid };
+/** M356: public transport is a fourth way of travel: no route of our own (see transit-options.ts), its options instead. */
+export type DirMode = Mode | 'transit';
+export type Directions = { from: Spot | null; to: Spot | null; mode: DirMode; chosen: number; via: Spot[]; avoid: Avoid };
 const ICON: Record<Mode, typeof Footprints> = { foot: Footprints, bike: Bike, car: Car };
 const round = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-200 active:scale-95 dark:bg-white/[0.08] dark:text-zinc-100 dark:hover:bg-white/[0.14]';
 const KEPT = 'uv-map-kept';
@@ -40,7 +43,7 @@ async function find(t: string): Promise<Spot | null> {
  *  can't leave out the road asked (`avoided` false), the fastest route is shown and the card says so. */
 export function useRoutes(d: Directions | null) {
   const [state, setState] = useState<{ key: string; routes: Route[]; failed: boolean; avoided: boolean } | null>(null);
-  const key = d?.from && d.to ? directionsUrl(d.mode, d.from, d.to, { via: d.via, avoid: d.avoid }) : ''; // the question is the key
+  const key = d?.from && d.to && d.mode !== 'transit' ? directionsUrl(d.mode, d.from, d.to, { via: d.via, avoid: d.avoid }) : ''; // the question is the key
   const plain = d?.from && d.to && d.avoid && d.mode === 'car' ? directionsUrl(d.mode, d.from, d.to, { via: d.via }) : '';
   useEffect(() => {
     if (!key) return;
@@ -127,8 +130,8 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
         <button type="button" onClick={onClose} className={cn(round, 'bg-zinc-200/80 dark:bg-white/[0.14]')} aria-label="Close directions"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        <div role="group" aria-label="Way of travel" className="grid grid-cols-3 gap-2">
-          {(['car', 'foot', 'bike'] as const).map((id) => MODES.find((x) => x.id === id)!).map((m) => { const Icon = ICON[m.id], on = d.mode === m.id; return (
+        <div role="group" aria-label="Way of travel" className="grid grid-cols-4 gap-2">
+          {([...(['car', 'foot', 'bike'] as const).map((id) => MODES.find((x) => x.id === id)!), { id: 'transit' as const, label: 'Public transport' }]).map((m) => { const Icon = m.id === 'transit' ? TrainFront : ICON[m.id], on = d.mode === m.id; return (
             <button key={m.id} type="button" aria-pressed={on} aria-label={m.label} title={m.label} onClick={() => set({ ...d, mode: m.id, chosen: 0 })}
               className={cn('flex h-11 items-center justify-center rounded-xl transition-colors', on ? 'bg-[#0a84ff] text-white' : 'bg-[#f2f2f7] text-zinc-700 hover:bg-[#e8e8ed] dark:bg-[#26292d] dark:text-zinc-200 dark:hover:bg-[#2e3136]')}>
               <Icon className="h-5 w-5" aria-hidden />
@@ -163,7 +166,7 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
           </div>
           <button type="button" className={round} aria-label="Swap start and destination" onClick={() => set({ ...d, from: d.to, to: d.from, via: [...d.via].reverse(), chosen: 0 })}><ArrowUpDown className="h-4 w-4" aria-hidden /></button>
         </div>
-        <div className="mt-3 flex flex-wrap items-center gap-2">
+        <div className={cn('mt-3 flex flex-wrap items-center gap-2', d.mode === 'transit' && 'hidden')}>
           <label className="inline-flex items-center"><span className="sr-only">When</span>
             <select value={when.kind} onChange={(e) => setWhen({ kind: e.target.value as When['kind'], time: when.time || hm(new Date(now + 1_800_000)) })} className="rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white">
               <option value="now">Now</option><option value="leave">Leave at</option><option value="arrive">Arrive by</option>
@@ -178,14 +181,15 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
             </label>
           )}
         </div>
+        {d.mode === 'transit' && d.from && d.to && <TransitWays from={d.from} to={d.to} onDrive={() => set({ ...d, mode: 'car', chosen: 0 })} />}
         <div className="mt-3" aria-live="polite">
           {d.from && d.to && loading && <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">Finding the way…</p>}
-          {d.from && d.to && !loading && failed && <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-300">No {MODES.find((m) => m.id === d.mode)!.label.toLowerCase()} route found between these places.</p>}
+          {d.from && d.to && !loading && failed && <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-300">No {MODES.find((m) => m.id === d.mode)?.label.toLowerCase() ?? ''} route found between these places.</p>}
           {!loading && !avoided && routes.length > 0 && <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">This route can’t leave out {AVOIDS.find((a) => a.id === d.avoid)?.label.toLowerCase()}: showing the fastest.</p>}
         </div>
         {!loading && routes.length > 0 && (
           <ul className="space-y-1.5">
-            {routes.map((x, i) => { const Icon = ICON[d.mode], on = i === d.chosen, more = x.minutes - fastest; return (
+            {routes.map((x, i) => { const Icon = d.mode === 'transit' ? TrainFront : ICON[d.mode], on = i === d.chosen, more = x.minutes - fastest; return (
               <li key={i} className={cn('flex items-center gap-2 rounded-xl ps-3 pe-2 ring-1 transition-colors', on ? 'bg-[#1f87ff]/[0.08] ring-[#1f87ff]/40' : 'ring-zinc-200 hover:bg-zinc-50 dark:ring-white/10 dark:hover:bg-white/[0.04]')}>
                 <button type="button" aria-pressed={on} onClick={() => set({ ...d, chosen: i })} className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-start">
                   <Icon className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
@@ -212,9 +216,6 @@ export function DirectionsCard({ d, set, near, routes, loading, failed, avoided,
               </li>
             ))}
           </ol>
-        )}
-        {d.from && d.to && (
-          <a href={googleDirections(d.from, d.to, 'transit')} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm mt-3 inline-flex items-center gap-1.5"><TrainFront className="h-4 w-4" aria-hidden />Public transport in Google Maps</a>
         )}
       </div>
       <p className="border-t border-zinc-200/70 pt-1.5 text-[11px] text-zinc-500 dark:border-white/10 dark:text-zinc-400">Routes <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM, © OpenStreetMap)</p>

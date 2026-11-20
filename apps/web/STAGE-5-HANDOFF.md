@@ -10067,3 +10067,22 @@ The owner, 20 Nov, of M351's left-outs ("slow openings… not every button check
   menu, always there, slides in: measured gliding from −320 px to 0 in ~0.4 s) and Quick create on Messages (its panel
   has its own animation; the sweep caught it mid-way). The sweep now counts a part that slides in as moving.
 - **Left out:** closing (most parts still go at once).
+
+## M356 (20 Nov): public transport in Directions
+
+The owner, 20 Nov (Directions from Paris to Lyon): "why there are no public transport here?"; then "i need both and it
+should show all the transport and options just like google and apple maps does".
+- **Why no timetables of our own:** the routers we use (FOSSGIS / OSRM) know roads and paths only. Timetables come from
+  paid services (an account and a charge per search: the owner's decision, **[owner]**, asked) or Transitous, whose
+  rules allow only open-source, non-commercial apps under ~720 searches a day (transitous.org/api): UniVerse has paid
+  plans and no open-source licence, so it isn't used.
+- **What's there now:** a fourth way of travel, **Public transport**, beside car, walk and bike (`DirMode` in
+  `MapTools.tsx`: no router request for it; `startNav` refuses it). It shows `TransitWays.tsx`: every way to get there,
+  quickest first (`waysBetween` in `src/lib/transit-options.ts`, tested): bus, tram or metro close by; train and coach
+  between towns; a flight once it's far; the drive to compare; each with a time and CO₂ estimated from the distance
+  (`TRAVEL_FACTORS`, the same as the trip footprint) and where to see or book it (Rome2Rio, Google Flights; the drive
+  switches to the car route). Then **Exact departures, lines and changes**: Google Maps, Apple Maps and Citymapper with
+  the trip filled in (their documented links, `transitApps`), and Rome2Rio to compare with prices. The map frames both
+  ends. The old "Public transport in Google Maps" link at the very bottom of the turns is gone (the tab replaces it).
+- Checked in a browser (Paris → Lyon, place lookups stubbed: this container can't reach them): train ~2 h 20, flight
+  ~3 h, drive ~6 h, coach ~7 h 25, with CO₂; the three apps' links; 1280 dark and 390 light, axe clean.
