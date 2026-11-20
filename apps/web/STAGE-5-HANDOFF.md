@@ -10006,3 +10006,15 @@ entrance), Reduce Motion. Checked: the top bar's UniVersity, Learn and More menu
 keeps its own animation, not two.
 - **Rule:** a new pop-up needs nothing to animate; give it its own CSS animation only for a different entrance (the
   layer then leaves it alone). Exits are each component's own (closing still removes most at once).
+
+## M352 (20 Nov): rounder, iOS-smooth corners everywhere
+
+The owner, 20 Nov: "make sure every area or sections and design is round and corners smooth like how apple ios does".
+One block at the end of `globals.css`: every step of Tailwind's roundness one notch larger (`--radius-sm` 6 px … `--radius-3xl`
+28 px; plain `rounded` 6 px) and cards from 12 px (M134's Ballast reels) to 18 px (`--radius-card`); where the browser
+draws continuous corners (`@supports (corner-shape: squircle)`: Chrome now; Safari and Firefox keep the rounder plain
+corners) the steps grow more (a squircle at the same radius looks tighter: cards 24 px, `rounded-xl` 22 px) and every
+rounded part takes `corner-shape: squircle` (`[class*="rounded-"]`, the button, field, menu-row and segmented classes);
+circles and pills (`…-full`) and `rounded-none` stay as they are. Radii only: nothing moves or resizes (checked: no
+sideways scroll at 390 and 1280 on the student home, Settings and Trace).
+- **Rule:** use Tailwind's `rounded-*` steps or `--radius-card` (they follow this block); a hard-coded radius won't.
