@@ -7,6 +7,7 @@ import { ensureWelcome, getSystemUser, isOnline, touchPresence, userCard, visibl
 import { publishChat } from '@/server/realtime';
 import { oneOf } from '@/server/body';
 import { APPS, type AppId } from '@/lib/apps';
+import { SELF_TITLE } from '@/lib/chat-self';
 
 const APP_IDS = APPS.map((a) => a.id);
 /** The app a new chat belongs to (M179): the one it was started in; UniVersity's are stored as null, like
@@ -63,13 +64,16 @@ export async function GET(req: Request) {
       const mine = c.participants.find((p) => p.userId === user.id);
       const last = c.messages[0] ?? null;
       const other = others[0]?.user;
+      // M340: Notes to self, a chat with only its owner in it.
+      const self = !c.isGroup && !others.length;
       return {
         id: c.id,
         isGroup: c.isGroup,
+        self,
         private: c.private,
         isOfficial: !c.isGroup && others.some((p) => p.userId === system.id),
         app: (c.app ?? 'campus') as AppId,
-        title: c.isGroup ? c.name || 'Group chat' : other?.name || 'Unknown user',
+        title: c.isGroup ? c.name || 'Group chat' : self ? SELF_TITLE : other?.name || 'Unknown user',
         avatarUrl: c.isGroup ? c.avatarUrl : other?.avatar ?? null,
         otherUserId: c.isGroup ? null : other?.id ?? null,
         online: !c.isGroup && isOnline(other?.lastSeenAt, other?.presence),
@@ -93,10 +97,10 @@ export async function GET(req: Request) {
         activityAt: last?.createdAt ?? c.updatedAt,
       };
     })
-    // Pinned chats first (most recently pinned on top), then by latest activity.
+    // Pinned chats first (most recently pinned on top), then Notes to self (M340), then by latest activity.
     .sort((a, b) => (a.pinnedAt || b.pinnedAt)
       ? new Date(b.pinnedAt ?? 0).getTime() - new Date(a.pinnedAt ?? 0).getTime()
-      : new Date(b.activityAt).getTime() - new Date(a.activityAt).getTime());
+      : a.self !== b.self ? (a.self ? -1 : 1) : new Date(b.activityAt).getTime() - new Date(a.activityAt).getTime());
 
   return NextResponse.json({ conversations: list, me: user.id }, { headers: { 'Cache-Control': 'no-store' } });
 }
@@ -109,6 +113,15 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => ({}));
   const system = await getSystemUser();
   const app = appOf(body.app);
+
+  // M340: Notes to self: the one chat with only me in it, made the first time it's opened.
+  if (body.self === true) {
+    const found = await prisma.conversation.findFirst({ where: { isGroup: false, communityId: null, private: false, createdById: user.id, name: SELF_TITLE, participants: { every: { userId: user.id } } }, select: { id: true } });
+    if (found) return NextResponse.json({ id: found.id });
+    const made = await prisma.conversation.create({ data: { isGroup: false, name: SELF_TITLE, createdById: user.id, app: stored(app), participants: { create: [{ userId: user.id, role: 'ADMIN' }] } }, select: { id: true } });
+    publishChat(made.id);
+    return NextResponse.json({ id: made.id }, { status: 201 });
+  }
 
   if (typeof body.userId === 'string') {
     if (body.userId === user.id || body.userId === system.id) return NextResponse.json({ error: 'You can’t start a chat with this account.' }, { status: 400 });

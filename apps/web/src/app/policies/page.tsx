@@ -23,6 +23,11 @@ const PROVIDERS = [
   ['Stripe, Inc.', 'Payments', 'United States / Ireland'],
   ['Resend, Inc.', 'Notification and account emails', 'United States'],
   ['Polygon public blockchain', 'Verification fingerprints of credentials (no personal data)', 'Public network'],
+  ['Razorpay Software Pvt. Ltd.', 'Payments in India, where a school uses it', 'India'],
+  ['Twilio Inc.', 'Relief text messages (SMS), only when switched on', 'United States'],
+  ['PostHog Inc.', 'Anonymous page counts, only after “Accept all”', 'European Union'],
+  ['Google, Microsoft, Slack', 'Accounts you choose to connect (Gmail, Classroom, Outlook, calendars, Slack)', 'United States / global'],
+  ['Public map, place and weather services', 'Maps, directions, photos, guides and weather (OpenFreeMap, OpenStreetMap, Photon by komoot, FOSSGIS, Wikimedia, NASA, MET Norway and others in the Privacy Policy); they see your IP address and the map area, never your account', 'Europe / United States'],
 ];
 
 const RETENTION = [
@@ -34,6 +39,10 @@ const RETENTION = [
   ['Staff application documents', 'Until the decision, plus 12 months (deleted automatically)'],
   ['Medical information', 'Until you remove it, withdraw consent, or delete your account'],
   ['Messages', 'Until deleted by the participants or the account is deleted'],
+  ['Error reports', '90 days after the error was last seen (deleted automatically)'],
+  ['Relief requests and offers', 'On the map for up to 30 days; kept until you delete them or your account'],
+  ['Trace, Relief, Green, Travel and Games records', 'Until you delete them or your account (scans stay in brands’ counts, linked to no one)'],
+  ['Connected account keys', 'Until you disconnect or delete your account'],
 ];
 
 export default function PoliciesPage() {

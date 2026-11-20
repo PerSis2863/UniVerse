@@ -78,9 +78,10 @@ export function Favorites() {
           </motion.div>
         ))}
         {(data?.length ?? 0) < 12 && (
-          <button type="button" onClick={() => setAdding(true)} className="shrink-0 snap-start w-36 h-48 rounded-3xl border-2 border-dashed border-zinc-300 dark:border-white/15 text-zinc-500 dark:text-zinc-400 hover:text-indigo-500 hover:border-indigo-400/60 flex flex-col items-center justify-center gap-2 transition-colors">
-            <span className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center"><Plus className="w-5 h-5" /></span>
-            <span className="text-sm font-semibold">Add a favourite</span>
+          // M343: with no favourites yet, one slim row instead of a tall empty card (it filled a phone's screen).
+          <button type="button" onClick={() => setAdding(true)} className={cn('shrink-0 snap-start rounded-3xl border-2 border-dashed border-zinc-300 dark:border-white/15 text-zinc-500 dark:text-zinc-400 hover:text-indigo-500 hover:border-indigo-400/60 flex flex-col items-center justify-center gap-2 transition-colors', data?.length ? 'w-36 h-48' : 'w-full h-auto flex-row justify-start gap-3 px-4 py-3 rounded-2xl text-start')}>
+            <span className="w-12 h-12 rounded-full bg-zinc-100 dark:bg-white/[0.06] flex items-center justify-center shrink-0"><Plus className="w-5 h-5" /></span>
+            <span className="text-sm font-semibold">Add a favourite{!data?.length && <span className="block text-xs font-normal text-zinc-500 dark:text-zinc-400">Call your closest people in one tap</span>}</span>
           </button>
         )}
       </div>

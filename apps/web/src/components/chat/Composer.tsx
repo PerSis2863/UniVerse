@@ -4,7 +4,7 @@ import { DictateButton } from '@/components/ui/DictateButton';
 import { joinDictation } from '@/lib/dictation';
 import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
-import { BarChart3, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X, Wand2, PartyPopper, BellOff } from 'lucide-react';
+import { BarChart3, CalendarDays, ListChecks, CircleDot, Sticker, Bold, CalendarClock, Camera, Code, FileCode2, FileText, Flame, ImageIcon, Italic, List, ListOrdered, Quote, Sparkles, Strikethrough, Type, Languages, Loader2, MapPin, MessageSquareText, Mic, Paperclip, Pencil, Send, Smile, Trash2, UserRound, X, Wand2, PartyPopper, BellOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useMedia } from '@/lib/use-media';
 import { type ChatMessage, chatJson } from './chat-client';
@@ -40,7 +40,7 @@ export interface SendPayload {
   silent?: boolean;
 }
 
-export type ComposerExtra = 'poll' | 'location' | 'contact';
+export type ComposerExtra = 'poll' | 'checklist' | 'event' | 'location' | 'contact';
 
 type Format = 'bold' | 'italic' | 'strike' | 'code' | 'block' | 'quote' | 'ul' | 'ol';
 const FORMATS: { kind: Format; label: string; icon: typeof Bold; keys?: string }[] = [
@@ -62,6 +62,12 @@ export const SLASH_COMMANDS: { name: string; hint: string; example?: string }[] 
   { name: 'catchup', hint: 'Summarise what you missed (only you see it)' },
   { name: 'remind', hint: 'Remind me later', example: '/remind 30m hand in the essay' },
   { name: 'poll', hint: 'Start a poll' },
+  { name: 'checklist', hint: 'Send a checklist everyone can tick' },
+  { name: 'event', hint: 'Plan an event: everyone answers Going, Maybe or Can’t' },
+  { name: 'note', hint: 'Save something to your Notes to self', example: '/note book the lab for Friday' },
+  { name: 'roll', hint: 'Roll a die (or /roll 20 for a 20-sided one)' },
+  { name: 'flip', hint: 'Flip a coin' },
+  { name: 'time', hint: 'Share the time where you are' },
   { name: 'call', hint: 'Start a voice call' },
   { name: 'video', hint: 'Start a video call' },
   { name: 'shrug', hint: 'Send ¯\\_(ツ)_/¯' },
@@ -574,6 +580,12 @@ export function Composer({ disabled, replyTo, editing, uploadProgress, onCancelR
                   </button>
                   <button onClick={() => { setAttach(false); onExtra('poll'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-amber-500/15 text-amber-500 flex items-center justify-center"><BarChart3 className="w-4 h-4" /></span> Poll
+                  </button>
+                  <button onClick={() => { setAttach(false); onExtra('checklist'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center"><ListChecks className="w-4 h-4" /></span> Checklist
+                  </button>
+                  <button onClick={() => { setAttach(false); onExtra('event'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
+                    <span className="w-8 h-8 rounded-full bg-rose-500/15 text-rose-500 flex items-center justify-center"><CalendarDays className="w-4 h-4" /></span> Event
                   </button>
                   <button onClick={() => { setAttach(false); onExtra('location'); }} className="w-full flex items-center gap-3 p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-white/[0.06] text-zinc-700 dark:text-zinc-200">
                     <span className="w-8 h-8 rounded-full bg-emerald-500/15 text-emerald-500 flex items-center justify-center"><MapPin className="w-4 h-4" /></span> Location

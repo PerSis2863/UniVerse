@@ -291,7 +291,7 @@ const listOf = (v: unknown): string[] => { const x = parseJson(v); return Array.
 async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   if (OWNER_EMAILS().includes(me.email.trim().toLowerCase())) return null;
   const [userRes, studentRes, teacherRes, appRes, rolesRes] = await db.batch<Record<string, string | number | null>>([
-    db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, termsVersion, termsAcceptedAt, onboardedAt, tourDoneAt, tourStep, coverUrl, pronouns, bio, links, availability, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
+    db.prepare('SELECT id, name, email, role, status, avatar, phone, googleId, emailNotifications, readReceipts, termsVersion, termsAcceptedAt, onboardedAt, tourDoneAt, tourStep, coverUrl, pronouns, bio, links, availability, createdAt, updatedAt FROM users WHERE id = ?').bind(me.id),
     db.prepare('SELECT id, userId, studentId, department, year, gpa, createdAt, updatedAt, exchangeCampusId, exchangeFrom, exchangeUntil FROM student_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, userId, employeeId, department, designation, createdAt, updatedAt FROM teacher_profiles WHERE userId = ?').bind(me.id),
     db.prepare('SELECT id, status, source, requestedRole, adminNote, submittedAt, reviewedAt FROM role_applications WHERE userId = ? ORDER BY createdAt DESC LIMIT 1').bind(me.id),
@@ -305,6 +305,7 @@ async function usersMe(me: Caller, db: D1Database): Promise<Response | null> {
   return json({
     ...dates(u, ['termsAcceptedAt', 'onboardedAt', 'tourDoneAt', 'createdAt', 'updatedAt']),
     emailNotifications: bool(u.emailNotifications),
+    readReceipts: bool(u.readReceipts),
     studentProfile: dates(studentRes.results[0], ['createdAt', 'updatedAt', 'exchangeFrom', 'exchangeUntil']),
     teacherProfile: dates(teacherRes.results[0], ['createdAt', 'updatedAt']),
     application: dates(appRes.results[0], ['submittedAt', 'reviewedAt']),

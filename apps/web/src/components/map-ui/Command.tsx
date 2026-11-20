@@ -263,3 +263,19 @@ export function ProposalSheet({ app, open, onClose, icon: Icon, source, ago, tit
 export function undoToast(text: string, onUndo: () => void) {
   toast(text, { duration: 8000, action: { label: 'Undo', onClick: onUndo } });
 }
+
+/** M350 (the owner, 20 Nov: every map like Apple Maps): a map's buttons as Apple Maps groups them, one rounded column with
+ *  hairlines between, white (near-black in dark mode); `on` marks a button that's switched on in Apple's blue. */
+export function MapButtons<Id extends string = string>({ items, onPick, className }: { items: { id?: Id; label: string; icon: LucideIcon; onClick?: () => void; on?: boolean }[]; onPick?: (id: Id) => void; className?: string }) {
+  return (
+    <div role="group" aria-label="Map controls" className={cn('flex flex-col divide-y divide-zinc-200 overflow-hidden rounded-2xl bg-white shadow-lg ring-1 ring-black/5 dark:divide-white/10 dark:bg-[#1c1e21] dark:ring-white/10', className)}>
+      {items.map(({ id, label, icon: Icon, onClick, on }) => (
+        <button key={label} type="button" aria-label={label} title={label} aria-pressed={on} onClick={() => (onClick ? onClick() : id && onPick?.(id))}
+          className={cn('grid h-11 w-11 place-items-center transition-colors duration-150', on ? 'bg-[#0a84ff] text-white' : 'text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]')}>
+          <Icon className="h-5 w-5" aria-hidden />
+        </button>
+      ))}
+    </div>
+  );
+}
+

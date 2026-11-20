@@ -5,8 +5,10 @@ import { shrinkImage } from '@/lib/shrink-image';
 import { makePhotoSizes } from '@/lib/photo-sizes';
 import type { E2EPayload } from '@/lib/e2e';
 import type { MessageEffect } from '@/lib/message-effects';
+import type { CheckItem } from '@/lib/chat-checklist';
+import { hideSpoilers } from '@/lib/spoilers';
 
-export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
+export type MessageType = 'TEXT' | 'IMAGE' | 'FILE' | 'AUDIO' | 'VIDEO' | 'CALL' | 'POLL' | 'CHECKLIST' | 'EVENT' | 'LOCATION' | 'CONTACT' | 'SYSTEM' | 'DELETED';
 
 export interface ChatMessage {
   id: string;
@@ -20,9 +22,12 @@ export interface ChatMessage {
   attachmentMime: string | null;
   metadata: {
     kind?: 'audio' | 'video'; room?: string; url?: string; inApp?: boolean; durationSec?: number; // CALL (inApp: UniVerse's own call) / voice notes
-    endedAt?: string; answered?: boolean; declinedBy?: string; // CALL: how it went
+    endedAt?: string; answered?: boolean; declinedBy?: string; people?: string[]; // CALL: how it went (M342: who was in it)
     question?: string; options?: string[]; multiple?: boolean; // POLL
+    title?: string; items?: CheckItem[]; // CHECKLIST (M340), ticked by anyone in the chat
     lat?: number; lng?: number; label?: string | null; // LOCATION
+    live?: { until: string; updatedAt: string; stopped?: boolean }; // LOCATION, live (M344)
+    startsAt?: string; endsAt?: string | null; place?: string | null; answers?: Record<string, { a: 'yes' | 'maybe' | 'no'; name: string }>; // EVENT (M344), with `title`
     effect?: MessageEffect; silent?: boolean; // TEXT (M17): played as it arrives (iMessage), sent without notifying (Telegram)
     userId?: string; name?: string; role?: string; avatar?: string | null; // CONTACT
     moderated?: 'edited' | 'removed' | 'community'; team?: boolean; // changed or posted by UniVerse (owner console)
@@ -61,6 +66,8 @@ export interface ChatMessage {
 export interface ConversationSummary {
   id: string;
   isGroup: boolean;
+  /** M340: Notes to self, a chat with only me in it. */
+  self?: boolean;
   /** An end-to-end encrypted private chat (Stage 5 · B7.6). */
   private?: boolean;
   isOfficial: boolean;
@@ -123,6 +130,8 @@ export interface ThreadResponse {
     translateTo?: string | null;
     /** A channel in a community (Discord-style); null for chats and groups. */
     channel?: ChannelInfo | null;
+    /** M340: Notes to self (only me in it); when a 1:1 chat's other person's quiet hours end (null: not in them). */
+    self?: boolean; quietUntil?: string | null;
     /** What I was writing here (on any device), and when. */
     draft?: string | null;
     draftAt?: string | null;
@@ -242,7 +251,7 @@ export function initials(name: string) {
 
 /** A message's text without its formatting marks (code fences, quotes, list marks, *bold*…), for previews. */
 export function plainText(body: string): string {
-  return body
+  return hideSpoilers(body)
     .replace(/^\s*```[\w+#.-]*\s*$/gm, '')
     .replace(/```/g, '')
     .replace(/^\s*>\s?/gm, '')
@@ -263,7 +272,9 @@ export function previewText(m: { type: string; body: string; attachmentName?: st
     case 'FILE': return `📎 ${m.attachmentName || 'File'}`;
     case 'CALL': return m.body.startsWith('Video') ? '📹 Video call' : '📞 Voice call';
     case 'POLL': return `📊 ${m.body}`;
-    case 'LOCATION': return '📍 Location';
+    case 'CHECKLIST': return `☑️ ${m.body}`;
+    case 'EVENT': return `📅 ${m.body}`;
+    case 'LOCATION': return m.body === 'Live location' ? '📍 Live location' : '📍 Location';
     case 'CONTACT': return `👤 ${m.body}`;
     default: return plainText(m.body).split('\n').find((l) => l.trim()) ?? '';
   }

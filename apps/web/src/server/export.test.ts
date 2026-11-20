@@ -13,6 +13,8 @@ describe('download my data', () => {
     expect(wheres).toContain('{"studentId":"u1"}');
     expect(findMany.mock.calls.length).toBeGreaterThan(200);
     expect(findMany.mock.calls.some((c) => 'totpSecret' in c[0].select)).toBe(false);
+    // M337: connected accounts' keys never leave the server.
+    expect(findMany.mock.calls.some((c) => 'access' in c[0].select && 'service' in c[0].select)).toBe(false);
     expect(wheres.filter((w) => w === '{"senderId":"u1"}').length).toBeGreaterThan(0); // chat messages they sent
   });
 });

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { addressOf, areaOf, area, directionsUrl, distance, duration, haversine, lengthOf, routesOf, stepText } from './map-tools';
+import { addressOf, photonOf, photonUrl, recentOf, withRecentPlace, areaOf, area, directionsUrl, distance, duration, haversine, lengthOf, routesOf, stepText } from './map-tools';
 
 describe('map tools (M237)', () => {
   it('asks the router of the chosen way of travel', () => {
@@ -32,5 +32,40 @@ describe('map tools (M237)', () => {
   it('reads an address', () => {
     expect(addressOf({ display_name: '2, Kaivokatu, Kluuvi, Helsinki, Finland' })).toBe('2, Kaivokatu, Kluuvi, Helsinki');
     expect(addressOf({})).toBeNull();
+  });
+});
+
+describe('real places in the search boxes (M348: a hotel in Brussels)', () => {
+  it('asks near the map and reads the answer as places', () => {
+    const u = new URL(photonUrl('brxxl 5', { lat: 50.8503, lon: 4.3517 }));
+    expect([u.host, u.searchParams.get('q'), u.searchParams.get('lat'), u.searchParams.get('lon')]).toEqual(['photon.komoot.io', 'brxxl 5', '50.8503', '4.3517']);
+    expect(new URL(photonUrl('x')).searchParams.has('lat')).toBe(false);
+    const got = photonOf({ features: [
+      { geometry: { coordinates: [4.3476, 50.8476] }, properties: { osm_type: 'N', osm_id: 42, osm_key: 'tourism', osm_value: 'hotel', name: 'Brxxl 5 City Centre', street: 'Rue de Woeringen', housenumber: '5', city: 'Brussels', country: 'Belgium' } },
+      { geometry: { coordinates: [4.3476, 50.8476] }, properties: { osm_type: 'N', osm_id: 42, name: 'Brxxl 5 City Centre' } }, // the same again
+      { geometry: { coordinates: [4.35, 50.85] }, properties: { street: 'Rue Neuve', housenumber: '1', city: 'Brussels' } }, // an address
+      { geometry: { coordinates: ['x', 50] }, properties: { name: 'Nowhere' } },
+      { properties: { name: 'No position' } },
+    ] });
+    expect(got).toEqual([
+      { key: 'N42', name: 'Brxxl 5 City Centre', cls: 'tourism', sub: 'hotel', lat: 50.8476, lon: 4.3476, address: 'Rue de Woeringen 5, Brussels, Belgium' },
+      { key: null, name: 'Rue Neuve 1', cls: '', sub: '', lat: 50.85, lon: 4.35, address: 'Brussels' },
+    ]);
+    expect(photonOf(null)).toEqual([]);
+  });
+});
+
+describe('Recents on the map (M353)', () => {
+  const a = { name: 'Louvre', kind: 'Museum', lat: 48.86, lon: 2.337, key: 'W1' }, b = { name: 'Café', kind: 'Café', lat: 48.85, lon: 2.35, key: null };
+  it('puts the latest first, once, and keeps eight', () => {
+    expect(withRecentPlace([a, b], { ...a, kind: 'Gallery' }).map((x) => x.kind)).toEqual(['Gallery', 'Café']);
+    expect(withRecentPlace([a], b)).toEqual([b, a]);
+    expect(withRecentPlace([b], { ...b })).toEqual([b]);
+    const many = Array.from({ length: 10 }, (_, i) => ({ ...b, name: `P${i}`, lat: i }));
+    expect(many.reduce((l, p) => withRecentPlace(l, p), [] as typeof many)).toHaveLength(8);
+  });
+  it('reads only well-formed places from storage', () => {
+    expect(recentOf([a, { name: 'x' }, null, { name: 'y', lat: 1, lon: 2, key: 'evil' }, 'z'])).toEqual([a, { name: 'y', kind: 'Place', lat: 1, lon: 2, key: null }]);
+    expect(recentOf('nope')).toEqual([]);
   });
 });

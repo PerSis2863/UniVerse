@@ -22,7 +22,8 @@ import { totalLabel, type TotalKey } from '@/lib/site-totals';
 // details"): drag to turn it, pinch or the buttons to zoom; click an app on it (or its button below the
 // heading, for keyboards and screen readers) and the planet turns to face it, it wears a bright ring and
 // a card says what the app does, with a way to start or to see it on this page. Still drawn on a
-// background thread (Planet `turnable`). M164: smaller, beside the apps as a list that steers it.
+// background thread (Planet `turnable`). M164: smaller, beside the apps as a list that steers it. M337: the cards are
+// written for a light page, so they keep their greys (`flip-keep`): the website's light swap had made the names white on white.
 // M328 (the owner, 18 Nov 2026: "remove the globe we have currently and make the same one the tripist has"): a
 // real-looking Earth rising out of a bank of clouds on the page's own light (EarthGlobe), turning slowly; drag it,
 // or choose an app below it and it turns to that app's part of the world.
@@ -69,10 +70,12 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           <EarthGlobe face={place} className="w-full"
             label={`The Earth, turning slowly${place ? `, facing ${short(ids[facing!])}` : ''}: drag to turn it, or choose an app below`} />
         </div>
-        <Photo src="/geo/clouds.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 w-[190%] max-w-none select-none" />
+        {/* M346: dark mode's own dimmed picture (a filter on the drifting layer cost every frame); the hidden one never loads. */}
+        <Photo src="/geo/clouds.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 w-[190%] max-w-none select-none dark:hidden" />
+        <Photo src="/geo/clouds-dark.webp" shown="190vw" alt="" aria-hidden="true" loading="lazy" draggable={false} className="earth-clouds pointer-events-none absolute start-1/2 hidden w-[190%] max-w-none select-none dark:block" />
       </div>
       <p className="relative z-[1] -mt-2 text-center text-sm text-zinc-600 dark:text-zinc-300">Drag to turn it. Choose an app to see its part of the world.</p>
-      <ul aria-label="The apps" className="relative z-[1] mx-auto mt-8 grid max-w-5xl grid-cols-1 gap-3 text-start md:grid-cols-2" onMouseLeave={() => setHover(null)}>
+      <ul aria-label="The apps" className="flip-keep relative z-[1] mx-auto mt-8 grid max-w-5xl grid-cols-1 gap-3 text-start md:grid-cols-2" onMouseLeave={() => setHover(null)}>
         {ids.map((a, i) => {
           const open = chosen === i, info = appById(a), total = TOTAL[a] && totals?.[TOTAL[a]![0]];
           return (
@@ -106,7 +109,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
           );
         })}
       </ul>
-      <div className="relative z-[1] max-w-5xl mx-auto mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="flip-keep relative z-[1] max-w-5xl mx-auto mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
         <Reveal>
           <div className="earth-card p-5 text-start h-full">
             <p className="font-semibold text-zinc-900 dark:text-white">One wallet</p>

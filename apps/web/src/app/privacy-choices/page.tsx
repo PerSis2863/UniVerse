@@ -13,6 +13,11 @@ const CHOICES = [
   { title: 'Medical information', where: 'Student Life → Medical', text: 'Adding medical details is optional. You can change or clear them whenever you want.' },
   { title: 'Whiteboard sharing', where: 'Any whiteboard → Share', text: 'Choose exactly who can view or edit each board, and turn link sharing on or off.' },
   { title: 'AI features', where: 'Settings → AI Features', text: 'Turn the AI study assistant off. Nothing is sent to our AI provider unless you use an AI feature.' },
+  { title: 'Your location', where: 'Your browser’s site settings', text: 'Trace scans, Relief, Green and Travel’s directions ask your browser first. Say no, or take it back later: everything still works, with a place you type or none.' },
+  { title: 'Relief alerts and texts', where: 'Relief → My requests & tasks', text: 'Choose the area you watch for nearby requests, whether to be emailed too, and whether to add a phone number for emergency texts. Remove any of them at any time.' },
+  { title: 'Connected accounts', where: 'Settings → Connected accounts', text: 'Connect or disconnect Gmail, Outlook, Slack, Google Classroom and calendars. Disconnecting deletes the keys we kept.' },
+  { title: 'Travellers board', where: 'Travel → a trip’s city', text: 'Off unless you join. Shows only your first name, the city, your dates and a note, to other adults on the board; leave or block people at any time.' },
+  { title: 'Page arrangement', where: 'Settings → Appearance', text: 'How you moved cards stays on this device unless you turn on “Use my arrangement on my other devices”.' },
 ];
 
 export default function PrivacyChoicesPage() {

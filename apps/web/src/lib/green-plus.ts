@@ -57,12 +57,29 @@ export const MODES = [
   { id: 'bike', label: 'Bike or on foot', kg: 0, shared: false },
 ] as const;
 export type ModeId = (typeof MODES)[number]['id'];
-/** Each way of going for a journey, cleanest first; the plane's factor falls a little on long flights. */
-export function journey(km: number, people = 1): { id: ModeId; label: string; kg: number }[] {
-  return MODES.filter((m) => m.id !== 'bike' || km <= 40).map((m) => {
+/** M358: door-to-door minutes for `km` by road or rail (getting to the stop, station or airport and waiting included;
+ *  the same estimates as Travel's Directions, M356). A plane only makes sense from 150 km. */
+export function wayMinutes(mode: ModeId, km: number) {
+  const h = mode === 'car' || mode === 'ev' ? km / (km < 30 ? 35 : 80)
+    : mode === 'train' ? (km > 250 ? 25 : 35) / 60 + km / (km > 250 ? 205 : 76)
+    : mode === 'coach' ? 25 / 60 + km / 70
+    : mode === 'bus' ? 10 / 60 + km / 18
+    : mode === 'plane' ? 2.5 + km / 1.2 / 750
+    : km / 15;
+  return Math.max(5, Math.round((h * 60) / 5) * 5);
+}
+/** Each way of going for a journey, cleanest first; the plane's factor falls a little on long flights. M358: with its
+ *  time, no local bus past 80 km and no plane under 150 km (nobody goes that way). */
+export function journey(km: number, people = 1): { id: ModeId; label: string; kg: number; minutes: number }[] {
+  return MODES.filter((m) => (m.id !== 'bike' || km <= 40) && (m.id !== 'bus' || km <= 80) && (m.id !== 'plane' || km >= 150)).map((m) => {
     const f = m.id === 'plane' ? (km > 1500 ? 0.15 : 0.18) : m.kg;
-    return { id: m.id, label: m.label, kg: Math.round(km * f / (m.shared ? Math.max(1, people) : 1) * 10) / 10 };
+    return { id: m.id, label: m.label, kg: Math.round(km * f / (m.shared ? Math.max(1, people) : 1) * 10) / 10, minutes: wayMinutes(m.id, km) };
   }).sort((a, b) => a.kg - b.kg);
+}
+/** M358: the way most people would pick: the cleanest one taking at most a third longer (and 45 min) than the quickest. */
+export function bestBalance(ways: { id: ModeId; kg: number; minutes: number }[]) {
+  const quick = Math.min(...ways.map((w) => w.minutes));
+  return ways.filter((w) => w.minutes <= Math.max(quick * 1.34, quick + 45)).sort((a, b) => a.kg - b.kg || a.minutes - b.minutes)[0]?.id ?? null;
 }
 /** What to log for a journey made a cleaner way than by car (the kinds Green already counts). */
 export function logFor(mode: ModeId, km: number): { kind: GreenKind; amount: number } | null {

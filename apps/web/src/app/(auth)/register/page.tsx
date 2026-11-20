@@ -231,18 +231,18 @@ export default function RegisterPage() {
 
       {/* Step indicator */}
       {campus && <div className="flex items-center gap-3 mb-6">
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step === 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step === 'role' ? 'on-dark bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
           {step !== 'role' ? <Check className="w-3 h-3" /> : <span>1</span>}
           Choose Role
         </div>
         <div className="flex-1 h-px bg-zinc-800" />
-        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step !== 'role' ? 'bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
+        <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors ${step !== 'role' ? 'on-dark bg-indigo-600 text-white' : 'bg-zinc-800 text-zinc-400'}`}>
           <span>2</span>
           {finishing ? 'Your details' : 'Create Account'}
         </div>
       </div>}
 
-      <div className="rounded-3xl border border-white/[0.08] bg-[#111113] shadow-[0_40px_120px_-40px_rgba(39,39,42,0.55)] p-6 sm:p-8">
+      <div className="rounded-3xl border border-white/[0.08] bg-zinc-950 shadow-[0_40px_120px_-40px_rgba(39,39,42,0.55)] p-6 sm:p-8">
         {error && !showPhoneFlow && (
           <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-red-400 text-sm">{error}</div>
         )}

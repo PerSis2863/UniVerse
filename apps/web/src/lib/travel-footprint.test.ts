@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { legKg, modesFor, tripFootprint } from './travel-footprint';
+import { legKg, legMinutes, modesFor, tripFootprint } from './travel-footprint';
 
 const stop = (id: string, cc: string, lat: number, lon: number, mode: string | null = null) => ({ id, guide: id, name: id, cc, lat, lon, days: 2, position: 0, mode });
 
@@ -17,5 +17,15 @@ describe('trip footprint (M247)', () => {
     expect(f.legs.map((l) => [l.mode, l.chosen, l.best])).toEqual([['plane', true, 'bus'], ['train', false, 'bus']]);
     expect(f.total).toBeGreaterThan(f.greenest);
     expect(f.perPerson).toBeCloseTo(f.total / 2, 0);
+  });
+  it('compares every way of a leg by time and CO₂ (M357)', () => {
+    expect(legMinutes(460, 'train')).toBeLessThan(legMinutes(460, 'plane')); // Paris–Lyon: the fast train beats flying door to door
+    expect(legMinutes(2000, 'plane')).toBeLessThan(legMinutes(2000, 'train'));
+    const f = tripFootprint([stop('Paris', 'FR', 48.86, 2.35), stop('Lyon', 'FR', 45.76, 4.84)], 1);
+    const w = f.legs[0].ways;
+    expect(w.map((x) => x.mode)).toEqual(['train', 'plane', 'car', 'bus']);
+    expect(w.find((x) => x.fastest)?.mode).toBe('train');
+    expect(w.find((x) => x.greenest)?.mode).toBe(f.legs[0].best);
+    expect(f.minutes).toBe(f.legs[0].minutes);
   });
 });

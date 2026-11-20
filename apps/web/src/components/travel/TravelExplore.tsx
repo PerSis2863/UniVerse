@@ -74,8 +74,12 @@ export function TravelExplore() {
   const open = (title: string) => router.push(guideHref(title));
   const recent = (saved?.saved ?? []).slice(0, 6);
 
+  // M347: a place sent to the map by its Map button (mapLink).
+  const n = sp.get('n'), addr = sp.get('addr'), near = sp.get('near');
+  const find = useMemo(() => (n ? { name: n, addr, near } : null), [n, addr, near]);
+
   const switcher = <TravelTabs />;
-  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} pin={sp.get('pin') === '1'} /></div>;
+  if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} pin={sp.get('pin') === '1'} find={find} /></div>;
   if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (

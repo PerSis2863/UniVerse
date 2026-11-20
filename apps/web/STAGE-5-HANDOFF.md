@@ -9574,3 +9574,538 @@ photo-real Earth half sunk in white clouds (a video). Ours is drawn live:
   `.world-glass` styles are gone.
 - `Planet`'s `turnable` mode has no user now (a `shortcut:` note in `Planet.tsx`); the hub and Trace keep `Planet`.
 - Checked in a browser at 1280 and 390, light and dark: no errors, the canvas fades in once ready.
+
+## M332: the wheel's glide on Lenis's own clock (19 Nov)
+
+The owner: "it goes slow for 1 sec then it goes fast then again i scroll it happens same… i need the exact scroll and
+smoothness". tripist's Framer part (`SmoothScroll_Prod`) runs `new Lenis({ duration: intensity / 10 })` with intensity
+25 (read from its page module): M326's curve was right. Its clock wasn't: `t = now − start` with `start` taken in the
+wheel handler. Browsers hand wheel events to the page at the start of a frame, after the frame's timestamp is set, so
+`now < start` and the frame moved by `glideEase(0)` ≈ 0.1%. A trackpad or a spun wheel sends an event nearly every
+frame: the page stalled for the whole gesture and rushed when it ended. Headless tests miss it (their events arrive
+between frames). **`src/lib/smooth-scroll.ts`** now advances `elapsed` by the time since the previous frame (a frame's
+worth on the first), resets it to 0 on a turn, and rounds the target, all as Lenis's `Animate.advance` / `scrollTo`;
+`glideAt(from, to, elapsed)`. Compared with the real Lenis 1.3.4 injected into the landing (our glide off): one notch,
+a flick of four and a swipe match to a few pixels every 100 ms.
+
+- **For code that builds on it:** never time a frame-driven animation from an event's `performance.now()`; step it
+  with the rAF timestamps.
+
+## M333: tripist's click burst on the website (19 Nov)
+
+The owner: "when you click using mouse only in the website it shows the animations like 4 small lines comes out of it…
+ultra smooth". tripist's Framer page has a click-effect part (`interactionMode: 'burst'`, `effectSize` 60,
+`strokeWidth` 2, `duration` 0.4, read from its page module and the part's code): four SVG lines at 45°, 80°, 115° and
+150° from 6 to 15 px out, each animated by GSAP to shrink into its outer end while moving 15 px further (power2.out),
+the stroke thinning to 0 over the last 40%. **`src/lib/click-burst.ts`** (started in `ScrollMotion`) draws the same with
+two spans per line and Web Animations on `transform` only (`burstTransform`: rotate, translateX, scaleX with the square
+caps counted; the inner span's `scaleY` for the thinning), so it never waits on the page's thread. Styles: `.click-burst`
+in `globals.css` (the page's `--ink`). Mouse clicks only (`pointerType`, or the press before it for Safari; a key's
+click has `detail` 0), the website only (`[data-app-shell]` on `DashboardShell` keeps it out of the app), off with
+Reduce Motion. Check: `scripts/checks/smooth-scroll-burst.mjs` (the glide on the landing and each app's home, the burst
+on the website and not in the app).
+
+## M334: sign in and sign up follow light mode (19 Nov)
+
+The owner (a picture of the sign-in page in light mode): "in white mode why this area is dark?". `AuthFrame` forced
+dark (`className="dark"`, `#0b0b0c`, the scene's `tone="dark"`) since before M220 made light the default. It now
+works as the landing does: `.flip-light` with `bg-[var(--background)] text-white`, the scene in the person's theme.
+
+- Under `.flip-light` only Tailwind's colour names swap (white, black, zinc); fixed codes don't. The form card
+  (`#111113` → `bg-zinc-950`), the demo cards (`#151517` → `bg-zinc-900`) and the phone sign-in's country select
+  (`var(--color-zinc-950)`, `var(--color-white)`) now use the names, whose dark values are the same codes, so dark mode
+  is unchanged.
+- Parts with their own light and dark colours sit in `.flip-keep` (the logo); white text on a solid blue keeps white
+  with `.on-dark` (sign-up's step chips). Dark pieces of the apps' pictures (`HeroScenesLab`: Trace's passport and its
+  two bubbles, Green's orb) carry `.on-dark`, so their text stays light in light mode; the landing shares them.
+- **For code that builds on it:** inside `.flip-light`, write colours as Tailwind names, never fixed codes, and mark a
+  dark piece `.on-dark`.
+
+## M335: smoother scrolling and maps (19 Nov)
+
+The owner: "near perfection but not 100%… upgrade the animations… specially the maps it doesn't feel that smooth".
+**Measured first:** `scripts/checks/smooth-frames.mjs` (the built site, `local:serve`) scrolls the landing and the
+student home with the wheel, drags, flings and wheel-zooms each map, and lists the slow frames with the code behind them
+(Chrome's long-animation-frame entries). The student home: every frame on time. The landing: framer-motion batches of
+~19 ms and React work of ~12 ms inside the glide. The glide (M332) is driven from the page's thread, as Lenis is, so any
+work there costs glide frames.
+
+- **The landing's `Reveal`** (bits.tsx, 59 uses): framer-motion's `whileInView` → `data-reveal` with its starting pose
+  in `--rv-from` / `--rv-o`, one shared IntersectionObserver marking `data-shown`, and the CSS `reveal-in` on
+  `--spring-glide` (globals.css, beside `window-tilt`). After: framer's batch 19 → 12 ms, React 12 → 8 ms; the page's
+  thread never over 15 ms while scrolling. **The typewriter** (`Statement`) writes into its span and skips ticks while
+  `html[data-scrolling]`.
+- **Maps:** `src/lib/map-smooth.ts`: `SMOOTH_MAP` (no re-fetch of aged tiles, 6 zooms of tiles kept, stale tile
+  requests dropped while zooming, labels fading in 150 ms) on Travel's, Green's and Relief's maps (Green and Relief had
+  none of it), and `smoothGestures(map)`: a fling up to 1800 px/s slowing at 1700 px/s² on `glideOut`, carrying about
+  half as far again as MapLibre's own. The card light (`startSheen`, scroll-motion.ts) no longer lights a card under
+  a map or a canvas (it repainted the whole map card's background on every move of a drag). Trace's canvas map: a
+  fling's drift time constant 260 → 380 ms; its worst frame on a drag 50 → 33 ms.
+- **What's left is the machine:** the remaining long frames in this container are the graphics process emulating
+  WebGL in software (the Earth, the app scene, MapLibre); the trace shows them on `CrGpuMain`, not the page.
+- **For code that builds on it:** on the website, an arrival on scroll is `Reveal` (CSS), never framer-motion's
+  `whileInView`; a new MapLibre map spreads `SMOOTH_MAP` into its options and calls `smoothGestures(map)`.
+
+## M336: the map like Google Maps and Apple Maps, and other maps' best ideas (19 Nov)
+
+The owner: "upgrade the map like how google maps and apple map looks so add all the options and features these maps
+has and check other maps also which has unique features and add them too and everything should be ultra smooth".
+Travel's map already had most of Google's and Apple's tools (directions with stops and avoid, turn-by-turn with voice,
+satellite, 3D, street photos, measure, what's here, Home / Work, the globe, the hour's sunlight). Added what was
+missing, every source free, no account, straight from its source to the browser (no Worker CPU beyond the weather,
+which the Worker already kept an hour):
+
+- **Apple Maps' weather in the corner** (`WeatherChip`, `MapExtras.tsx`): the temperature and sky now at the middle of
+  the map, the next four days on a tap. `GET /travel/weather` now also answers `now` (`weatherNow`: the forecast hour
+  nearest now; the cache key moved to `wx:` because its shape changed). °F for US English.
+- **The scale while zooming** (Apple): MapLibre's own `ScaleControl` placed in our own box (`ScaleBar`), shown on
+  `zoomstart`, faded 1.4 s after `zoomend` (moved by MapLibre, never a React render a frame).
+- **Layers → Weather and the world** (`map-extras.ts`, `addExtraLayers` / `applyExtras`, added on every style load
+  after `addLayers`): rain of the last hours (NASA GIBS IMERG, z ≤ 6) and yesterday's clouds from space (GIBS VIIRS,
+  z ≤ 9), like Zoom Earth; day and night on the globe at the hour picked (Google Earth; `nightArea`, `subsolar` in
+  `travel-local.ts`); sunrise, sunset and the sun's directions from the middle of the map (the photographers' apps;
+  `sunLines`); hiking and cycling routes (Waymarked Trails, like Komoot and Apple's topographic maps); disasters and
+  earthquakes (Google's crisis map: the existing `GET /relief/alerts`, a tap opens `AlertCard`).
+- **Walking distance along real streets**: the rings are now FOSSGIS's Valhalla isochrones (5, 10, 15 min, like
+  Mapbox's), asked half a second after the map stops, once per ~150 m spot (kept in a ref), circles until it answers.
+- **What's here** (right-click or hold): Google's Plus Code (`plusCode`, copy it), the spot's height (read from the
+  same Terrain Tiles as the 3D hills: `heightsAt` decodes the PNG on an `OffscreenCanvas`, tiles kept), and "Report a
+  problem with the map" (an OpenStreetMap note there).
+- **A route's climb** on foot or by bike (Komoot, Apple's cycling directions): `Profile` under the routes: metres up
+  and down, lowest to highest, a `Spark` of 60 heights.
+- **Apple's Flyover**: "Fly around" on a place's card tilts over it in 3D and circles it (`flyAround`: chained 90°
+  linear `easeTo`s); any touch, wheel or key on the map, or the pill, stops it; Reduce Motion only tilts.
+- Left out: live traffic, busy times and indoor maps (no free source); air quality (the free source, Open-Meteo, is
+  for non-commercial use only); contour lines (needs a new library).
+- The container couldn't reach the tile hosts, so the new layers were checked by their unit tests and in the
+  browser for their panels only; the URLs follow each service's documentation (GIBS: `default` for the newest time).
+- **For code that builds on it:** a new map overlay goes in `addExtraLayers` with `visibility: 'none'` and a key in
+  `Extras` / `SHOW`, its credit in the credits line; heights come from `heightsAt`, never a new elevation service.
+
+## M337: smoothness where it wasn't measured, policies for every app, and a security pass (19 Nov)
+
+The owner, in one session: "make the whole app in mobile and website animations ultra smooth", then "also make changes in
+the main menu, privacy policies, or security or anything else which are not updated after a lot of things added", then
+"perform the biggest security deployment".
+
+**Smoothness, measured first.** `scripts/checks/motion-frames.mjs` (new) measures what smooth-frames and main-pages-smooth
+didn't: tapping between pages, the notifications and the menu, on a 390 px phone at 4× slower CPU and on a computer.
+`main-pages-smooth.mjs --phone-only` on every app's home: none drops a frame while still or scrolling. The landing did:
+its slow phone scroll frames were the Earth's WebGL frames read back for the page (`GLES2::ReadPixels` on its worker),
+taking the graphics chip from the scroll. **`EarthGlobe` now rests while `html[data-scrolling]`** (as every decorative
+loop, M97): 6–9 slow frames, worst 233–383 ms → none, worst 33 ms. A tap's own work is ~12 ms at 4×; the rest of a page
+change is React drawing the new page and its first layout (Next's scroll check forces it in `dontForceLayout`), with the
+entrance on the compositor meanwhile. Left: `content-visibility` for long pages (would skip offscreen layout, but
+moves scroll heights as cards are met; not worth it yet). The container's software WebGL inflates map and Earth frames.
+
+**Policies and pages that had fallen behind** (legal text was from 29 Sep–5 Oct, before Trace, Relief, Green, Travel,
+Games, Green Business and connections): `legal/privacy.md` (2.8 Data in UniVerse's apps, connected accounts, voice typing,
+PostHog after "Accept all" (it still said no consent banner was needed), map and place services the browser contacts,
+partners, brands' and organisations' views, retention rows), `legal/terms.md` (the apps, ages, acceptable use per app,
+paid plans and partner bookings, 9A: Relief isn't an emergency service, Trace verdicts are indications, Green figures are
+estimates and Business reports drafts, Travel information can be out of date). **PDFs:** `node scripts/legal-pdf.mjs`
+makes both from the Markdown (the old ones were from 29 Sep). `TERMS_VERSION` was **not** bumped: asking everyone to
+accept again is the owner's call. Security, All policies (providers, retention) and Your Privacy Choices updated. The
+footer's apps come from `APPS` (Play was listed, Travel missing), each `data-uv-app` so the owner's shown-apps rule hides
+them; the legal row links Security and All policies.
+
+**Promises the code didn't keep:** account erasure (`eraseAccount`) didn't touch the newer apps: it now deletes connected
+accounts' keys, Relief watches, posts, check-ins and plans, Green actions and goals, game scores, Travel saved places,
+documents, journal, check-ins, board posts and blocks, solo trips (a trip friends joined stays), Trace ownership, and
+unlinks Trace scans (~45 queries; a test keeps it ≤ 45). "Download my data" no longer includes connected accounts'
+sealed keys (`SKIP_MODEL_FIELDS`). The CSP lacked M336's hosts (`gibs.earthdata.nasa.gov`, `tile.waymarkedtrails.org`,
+`valhalla1.openstreetmap.de`): rain, clouds, trails and walking rings would have been blocked on the live site.
+
+**Security pass.** Checked and sound: demo tokens only with `DEMO_LOGIN_ENABLED`, no secret fallbacks (SESSION_SECRET,
+secret-box), Stripe, Razorpay and Twilio signatures, cron tokens, sign-in redirects, every `dangerouslySetInnerHTML`
+escaped, uploaded files sandboxed, message listeners check their sender, admins' two-step, no whole-request writes,
+`pnpm audit` clean, the security headers. Fixed: link previews followed redirects unchecked (now by hand, each hop
+checked; more private ranges, ports, credentials: `privateHost`, test); typed codes (Relief organisation 6 characters,
+trips, Green teams, Trace transfers, invites and prizes, a child's account, classes, communities) now `CODE_STEP` in
+`cloudflare/worker.ts`, 10 a minute on the sign-in limiter; Travel's booking reading and both bill readers in `COSTLY`;
+a shopper's scan position kept to 0.01° (`roughPosition`; copy checks work at 150 km); download names encoded
+(`filename*`, a non-Latin name broke the header); `poweredByHeader: false`. The landing's faded feed rows were below
+4.5:1 (axe): they fade less; its "One planet" app cards showed their names white on white in light mode (the
+`.flip-light` swap): they keep their greys (`flip-keep`). Left: `script-src 'unsafe-inline'` (Next's own inline scripts change per page; nonces would
+end the cached pages, M120).
+
+**For code that builds on it:** a new outside host goes in `security-headers.ts` with the feature; a new table holding a
+person's places, notes or keys goes in `eraseAccount`; a route that redeems a typed code goes in `CODE_STEP`, an AI or
+sending route in `COSTLY`; a fetch of a person's link uses `privateHost` and manual redirects; after editing
+`legal/*.md`, run `node scripts/legal-pdf.mjs`.
+
+**[owner]:** check in Cloudflare (universe-web → Settings → Variables) that `DEMO_LOGIN_ENABLED` is not `true` on the
+live site and that `SESSION_SECRET` is set (32+ characters); turn on Bot Fight Mode; decide whether to ask everyone to
+accept the new Terms (bump `TERMS_VERSION`); have a lawyer read the new policy sections before relying on them.
+
+## M338: a check for errors and bugs, and the iPhone feel (19 Nov)
+
+The owner: "make sure everything looks really smooth and design like apple ios and check if any error or bugs are there".
+
+- **The live error log** (production `error_reports`, read-only): the open "undefined" on /travel (iPhone Safari, 5 times,
+  2 people) is a picture's failed `error` event, already ignored by `installErrorMonitor`; the rest are diagnosed, old or
+  bots. The owner can mark them resolved.
+- **Crawls of the built site** (`scripts/crawl.mjs`, 213 pages, each role): `--phone --layout`, then `--dark --axe` on a
+  computer. **A local database behind the code fails nearly every page** ("no such column totpOn"): run
+  `npx wrangler d1 migrations apply universe-db --local` before crawling. After that, left are only what this container
+  can't reach (Wikimedia, reCAPTCHA), 503s that need SESSION_SECRET (calendar links), and 403s by design (the demo admin is
+  read-only; Trace's brand pages invite a non-brand to start one). The layout check's "overlaps" on the Knowledge hub and
+  My courses are a button placed on a card on purpose (a folder's "+", a course's colour).
+- **Fixed:** the parent's week (M300, `GET /api/core/parent-week`) answered 403 to every parent: the parent-only gate
+  (`GUARDIAN_ALLOWED`, `src/server/auth.ts`) didn't list it. Added (the route itself checks the child is linked); test in
+  `guardian-accounts.test.ts`. **For code that builds on it:** a new route for parents goes under `/api/parent/…` or into
+  `GUARDIAN_ALLOWED` with a test line.
+- **The iPhone feel**, checked and already in place: no tap flash, no zoom into fields (16 px), safe areas, no selection on
+  long-press, swipe down to close sheets (`SheetGestures`), swipe back, the pill tab bar, segmented tabs, Settings as
+  grouped rows with coloured icons. No new look (the launch focus).
+
+## M339: no round assistant button over the page on phones (19 Nov)
+
+The owner, of M338's note that the assistant's round button sat over the page on phones: "please do this part". iPhone
+apps don't float a button over content, and the tab bar's "+" (QuickCreate) already has **Ask AI**, which opens the same
+assistant through `universe:open-assistant`. So `AIStudyAssistant`'s closed button is `max-lg:hidden` (exactly where the
+tab bar shows), except for parents (`GUARDIAN`: their tab bar has no "+"). It used to be left out of Messages entirely
+(it covered the message box), which made "+" → Ask AI do nothing there: `DeferredShell` now always loads it, with
+`button={false}` in Messages. Computers keep the button (and its × to hide it). Checked in a browser: phone /student and
+/student/inbox (no button, "+" → Ask AI opens it), computer (button on the home, none in Messages).
+
+## M340: Messages' quick replies, Notes to self, checklists, quiet-hours sending and quick tools (19 Nov)
+
+The owner, asked which new features Messages should get: "All of them and add more quick tools as well as encrypted
+message system for security of the website" (the encryption is M341).
+
+- **Quick replies** (`ChatHints.tsx`, `src/lib/quick-replies.ts`): up to three chips under the last message someone else
+  sent (TEXT only; not in private, official or self chats), picked by plain rules in the browser (a question first, then
+  thanks, sorry, greetings, plans…); gone once one is sent or the chat moves on.
+- **Notes to self**: a 1:1 conversation with only its owner (`name: 'Notes to self'`, `SELF_TITLE` in `src/lib/chat-self.ts`),
+  made by `POST /api/chat/conversations { self: true }` (found again after); the list marks it `self` and sorts it after
+  pinned chats; the header and list show a bookmark; no call buttons. Until it exists, the list offers it under Status.
+- **Checklists**: message type `CHECKLIST`, metadata `{ title, items: [{ text, done: { by, name, at } | null }] }`
+  (`newChecklist`, `toggleItem`); `POST /api/chat/messages/:id/check { item }` for any member (realtime refresh); the
+  composer's + menu and `/checklist`; the bubble has `role="checkbox"` rows and a `<Fill>` bar.
+- **Quiet hours**: the chat's header answer has `quietUntil` (a 1:1 chat's other person, `quietEnds` in
+  `src/server/quiet-hours.ts`, null when not in quiet hours); the bar's "Send then" makes the next text a scheduled message
+  for that moment (the chat's own send-later). It shows the moment in my time, not theirs.
+- **Quick tools** (`SLASH_COMMANDS`): `/note text` (saved to Notes to self), `/roll [sides]`, `/flip`, `/time`.
+- **For code that builds on it:** a new kind of chat message goes in `TYPES` (messages route), `MessageType` and the
+  previews (`chat-client.ts`, `chat-reminders.ts`), and the bubble.
+
+## M341: encrypted photos, files, videos and voice notes in private chats (19 Nov)
+
+The owner: "encrypted message system for security of the website". Private chats (Stage 5 · B7.6, X25519 device keys,
+`src/lib/e2e.ts`) were text only. Now:
+
+- **Sending** (`ChatWindow` `send`, private branch): first `encryptForChat(…, '')` (throws if the other person has no
+  device yet, so nothing is uploaded for nobody); each file (photos shrunk first) is encrypted with a fresh AES-256-GCM
+  key (`encryptFile`), uploaded as `private.enc` (`application/octet-stream`, the new `.enc` in `MIME_BY_EXT`, served as
+  an attachment), and the message's encrypted text is an envelope (`fileEnvelope`: a `\u0001uvfile:` mark + JSON of url,
+  key, nonce, name, type, size, kind, a voice note's length and bars, the caption). Albums go as one message a photo.
+  Stickers stay out of private chats.
+- **Opening** (`PrivateText` → `PrivateAttachment`): `readEnvelope` accepts only this site's file addresses
+  (`isUploadedFileUrl`); photos, videos and voice notes are fetched and decrypted at once into a `blob:` address (freed on
+  unmount), other files on tap; AES-GCM refuses anything changed on the way. "End-to-end encrypted" under each.
+- The server sees who is in the chat, when, and the scrambled bytes' size; never the key, name or type.
+- **For code that builds on it:** a new kind of private content goes in the envelope, never in the message's plain
+  fields; forwarding, search, translation and AI stay off in private chats.
+
+## M342: Meet & call, who joined, My room, reactions, the security code (19 Nov)
+
+The owner, asked which Meet & call features: "All of them and encrypted system in this also".
+
+- **Already there, checked:** the pre-join screen (camera preview, `MicMeter`, test sound, devices, backgrounds, 2G mode)
+  and meeting notes posted into the call's chat (`src/server/meeting-notes.ts` `deliver`).
+- **Who joined:** `endCall` (src/server/calls.ts) adds `people` (first names, up to 8) from `call_stats` rows with time
+  connected, plus the person ending it when answered; a group call's chat card says "With …".
+- **My room:** `personalRoomId(userId)` = `l_` + 16 bytes of HMAC-SHA256(SESSION_SECRET, `personal-room:<id>`): the same
+  call link every time, unguessable from the account id, refused without a 32+ character secret. `POST /api/calls/links
+  { personal: true }`; a row under the four tiles on Meet & call opens it (`NewMeeting personal`). The room's host is its
+  owner (the CallRoom's `creator`, set once).
+- **Reactions:** `FloatingReactions` is CSS now (`react-rise` 3 s on transform and opacity, a sway per reaction from its
+  id), bigger, with five `react-spark` copies for 👏 and 🎉; Reduce Motion only fades. The name chip is 11 px.
+- **Encryption, honestly:** calls of up to six connect directly (WebRTC: DTLS-SRTP, end to end); bigger calls with the SFU
+  set up go through Cloudflare Realtime (encrypted in transit, readable there). A lock in the call's bar opens a sheet:
+  direct calls list each person with a **security code** (`securityCode`: SHA-256 of both SDP fingerprints in a fixed
+  order, four groups of four digits, the same at both ends; a man in the middle swapping certificates changes it);
+  SFU calls say so plainly. True end-to-end encryption through the SFU (insertable streams with keys from the chat's
+  device keys) is **left out**: say it if the owner asks for it.
+- **Phones:** the call bar's seven buttons pushed Leave off a 390 px screen: Share screen is in More on phones
+  (`phoneOnly` items), the bar keeps six and Leave.
+- Tested on the built site with two people (fake camera): both codes 6860 3677 2818 7511, the clap with its sparks on the
+  other screen, `people` on the call's message, steady and personal room links.
+
+## M343: Messages and Meet & call polished on phones (19 Nov)
+
+The owner: "give a premium polish design to it which fit the website and app in mobile". Checked on the built site at
+390 and 1280 px, light and dark, with axe (serious and critical) and screenshots; the look stays the app's own (no new
+look, the launch focus).
+
+- **In a call on a phone** the bar's seven buttons pushed Leave past a 390 px screen: Share screen lives in More there
+  (M342), and the check measures Leave at 311–359 px.
+- **Meet & call:** the empty Favourites was a 192 px dashed card; with no favourites it's one slim row ("Call your closest
+  people in one tap"), the card size coming back once there are some.
+- **My sent bubbles in dark mode** used the dark accent (#6ea2f8, a shade for ink text) with white text, 2.6:1, on every
+  message: `html.dark` (no own accent; not Trace, Relief or Travel, which already ink their text) gives `.bubble-mine` the
+  dark mode's button blue #2563eb (5.2:1), Green #047857. A person's own accent is left as they chose.
+- Ticked checklist items keep their strike-through but no longer fade (they fell under 4.5:1); the call card's "Call back"
+  in my bubble is a white pill with ink text.
+- **For code that builds on it:** text on `bg-tint` in dark mode is ink, never white; on my bubble use solid white or the
+  bubble's own text colour, not see-through white.
+
+## M344: Messages' gaps against the other apps: live location, spoilers, events, QR invites, read receipts (19 Nov)
+
+The owner: "Add all features that all messaging and video call and meeting apps has… just research all the things we
+need". An inventory of about 100 features (WhatsApp, Telegram, Signal, iMessage, Messenger, Slack, Discord, Teams, Zoom,
+Meet, FaceTime) against the code found nearly everything already in (replies, threads, reactions, editing with history,
+undo send, pins, stars, polls, stickers, disappearing and view-once, voice and video notes, stories, communities and
+channels, broadcasts, bots, translation, AI catch-up, folders, archive, chat lock, export, wallpapers, effects, silent send,
+slow mode, roles, custom emoji, huddles…). The gaps, built:
+
+- **Live location** (`LOCATION` with `metadata.live { until, updatedAt, stopped? }`, `liveMinutes` 15 / 60 / 480 when sent;
+  `POST /api/chat/messages/:id/live { lat, lng } | { stop: true }`, the sender only, at most a move every 10 s, 410 once
+  over). The chat window watches the position while it's open and my live locations are running (`useNow`, not
+  `Date.now()` while rendering). The location button opens `LocationSheet` (now or live). A web page can't move it in the
+  background: the sheet says so.
+- **Spoilers**: `||text||` in `RichText` (a covered button until tapped); `hideSpoilers` (`src/lib/spoilers.ts`) in list
+  previews (`plainText`) and notifications.
+- **Events with RSVP**: message type `EVENT` (`src/lib/chat-event.ts`: `newEvent`, `answer`, `eventIcs`), `POST
+  /api/chat/messages/:id/rsvp { answer }` (the same answer again takes it back), the + menu and `/event`; the bubble has a
+  date tile, the three answers, who said what, and Add to calendar (an .ics made in the browser).
+- **QR codes** (the existing `ui/QrCode`) under a community's invite link and a new meeting's / My room's link.
+- **Read receipts** (`users.readReceipts`, 0257; Settings → Privacy & security; `PATCH /users/me`, the fast path's
+  `usersMe`): the messages route sends a member's `lastReadAt` only when both they and I keep receipts on.
+- The jump-to-latest button moves above the hints bar (`hasHints`).
+- **Left out on purpose:** phone dial-in, live streaming to YouTube (paid services), remote control of a shared screen
+  (risky), GIF search (Tenor / Giphy need an account and key: [owner] if wanted).
+
+## M345: recurring meetings, and "Join muted" and "Chat off" for hosts (19 Nov)
+
+Meet & call's gaps from M344's inventory. The host already had: the waiting room, mute everyone, ask to unmute, stop
+someone's video, co-hosts, spotlight, lower all hands, remove, end for everyone, polls, breakouts, webinar and Q&A.
+
+- **Recurring meetings** (`src/lib/meeting-repeat.ts`: `repeatDates` daily / weekdays / weekly / biweekly / monthly, at
+  most 10): `scheduleCall` (`src/server/scheduled-calls.ts`) takes `{ repeat, times }` and creates every date as its own
+  scheduled call (and class-calendar event), within the 6 months ahead; one notification names the series. Cancelling one
+  leaves the others (each is a row). About three queries a meeting, so ten stays under D1's 50 a request.
+- **Host switches** (CallRoom in `cloudflare/worker.ts`): `control` actions `entry-muted` and `chat-off` (`on`), stored in
+  the room's storage, broadcast as `room-setting`; `welcome` carries `settings`; a non-host joining while `entry-muted` is
+  sent `control mute` with `entry: true` (their toast says why); the room's chat drops non-host lines while `chat-off`.
+  `PeoplePanel` shows the two chips next to the waiting room's; `CallChatPanel locked` replaces the box with a note
+  (the room's own chat only: a chat call's messages go to that chat).
+- **Left out:** handing the host role to someone else (co-hosts cover it), phone dial-in and live streaming (paid),
+  remote control (risky), touch-up and low-light filters (the effects pipeline would need a new pass).
+
+## M346 (19 Nov): dark maps, and a smoother landing near the Earth
+
+The owner, 19 Nov: "when i scroll towards here then it lags a lot… and the maps is not dark, any of the maps is not
+dark"; then "the whole main page is laggy".
+- **Maps:** every map already followed dark mode, but with Apple Maps' blue-slate land and bright navy sea, which read as
+  a light panel on the near-black page. Now a night map: the canvas maps (`WorldCanvas` `PAL.dark`: Trace, Relief, Green,
+  aid boxes) and the street maps (`map-style.ts` `DARK`: Travel, Green's places, Relief's alerts) have near-black land a
+  shade above the page, ink-blue water, dim roads, lighter labels; Travel's 3D buildings are darker, and its sky
+  (`skyFor`) is a night sky in dark mode whatever the hour (the daytime blue glowed over the dark globe).
+- **The landing's lag** was on the graphics chip, not the page's code (a 4×-slowed phone and a computer kept up in
+  `earth-scroll`-style checks). Four things, all lighter now: the app scene behind the page (`AppBackdrop`) rests while
+  the page scrolls on a background thread too (it was still handing a full-screen picture over 30 times a second
+  mid-scroll); the Earth (`EarthGlobe`) starts only once the scroll stops (`whenStill`: its picture goes to the chip in
+  one go), draws at most 1.5 pixels a point, and takes the 4096 picture only past 1,300 pixels across; dark mode's
+  clouds are their own dimmed picture (`/geo/clouds-dark.webp`, made by `scripts/assets/earth-pictures.py`) in place of
+  a filter on the drifting layer; the five 64 px blur glows on the landing's cards are radial gradients.
+- **Measured** (the built site, a phone at 4× slower CPU): slow frames near the Earth 12 → 7. The container has no real
+  graphics chip, so what the owner saw (the chip's work) can't be measured here; ask the owner how it feels.
+- **Rules for code that builds on it:** decorative canvases rest while `html[data-scrolling]`, on a thread too; no CSS
+  `filter` on anything that moves (bake it into the picture); no big `blur()` glows (a radial gradient); a WebGL scene's
+  first frame (textures, shaders) waits for the scroll to stop.
+- **Left out:** the mask fading the Earth's lower edge (cheap: redrawn only with the Earth's 30 frames, not the scroll).
+
+## M347 (20 Nov): a place's Map button opens UniVerse's own map
+
+The owner, 20 Nov (a Kyoto guide's place): "when i click on maps it open in another window and it open something else…
+show in my own map". `mapLink` (`src/lib/travel-book.ts`) sent guide places, saved places and a trip day's places to
+OpenStreetMap's site in a new tab, whose search for "name, address, city" often landed elsewhere. Now it is
+`/travel?view=map&n=<name>` with `at=lat,lon,17` when the place has a position, else `addr` and `near` (its city), plus
+`d` (its guide, for the highlights), opened in the same window (`Link`). `TravelMap`'s `find` (from `TravelExplore`)
+opens it once the map is ready: at its position with its card ("From the guide"); without one, Nominatim
+(`placeSearchUrl`, `map-world.ts`, from the browser, one search a step) by its name in its city, then by its address,
+else a toast to search for it. Checked in a browser (the search's answer stubbed: this container can't reach it).
+
+## M348 (20 Nov): hotels, restaurants and addresses in the map's search boxes
+
+The owner, 20 Nov: "when i type a specific hotel name in brussel it is brxxl 5 hotel so it shows nothing". The map's
+top box and the Directions boxes used `PlaceSearch`, which only asks `/travel/search` (places with a guide: cities,
+islands, parks). With `onPlace` (and `near`, the map's middle) it now also lists real places from **Photon**
+(photon.komoot.io, komoot's search of OpenStreetMap made for typing as you go; `photonUrl` / `photonOf` in
+`src/lib/map-tools.ts`, tested): up to 6, nearest to the map, with their street and town, under at most 4 guides.
+Asked from the browser after the 220 ms typing pause, from 3 letters, the map's middle rounded to about 1 km so panning
+doesn't ask again; no Worker CPU. Picking one on the top box opens its card (`pick`, its OSM key gives its facts); in
+Directions it becomes the start, the destination or a stop. `photon.komoot.io` is in `connect-src`
+(`security-headers.ts`) and named on `/policies` with the other map services. Checked in a browser (Photon's answer
+stubbed: this container can't reach it).
+- **Rules:** Nominatim stays for single searches (its rules forbid search-as-you-type); typing goes to Photon.
+
+## M349 (20 Nov): Travel's map in Apple Maps' layout and colours
+
+The owner, 20 Nov, with four pictures of Apple Maps on the web (dark): "make the map ui like this exactly and keep all
+the current features in the maps"; "add whatever you can in this sections"; "no need of globe in this".
+- **Sidebar** (`MapSidebar.tsx`): on a computer a menu column (`MapRail`, 12.5rem: Maps · Travel, hide button, Search,
+  Guides, Directions, Saved, Trips, a "Planning a trip?" card) and beside it the chosen section's panel (23.5rem, a
+  26 px title and a round close, `PanelHead`); a place's card, a destination, directions, a walk or a search's results
+  take the panel over; with nothing open only the column shows. On a phone the M236 sheet stays, with the sections as a
+  row (`SectionRow`). **Search:** the big search box (guides and real places, M348), where you're staying, Apple's
+  **Find Nearby** tiles two to a row (fold away once a kind is chosen, "‹ Find Nearby" brings them back), the places of
+  that kind in view, search this area. **Guides:** the area's guide (its highlights and parts of town, "Full guide"),
+  the sightseeing walk, and the 12 hand-picked places nearest the map. **Saved:** your saved places (their hearts shown
+  on the map). **Trips:** your trips, one drawn on the map with its days. `TravelMap` keeps `section`, `rail`,
+  `nearby`; `sideCover(m)` measures the sidebar (`[data-map-side]`) so fly-tos and fitted views centre in what's left
+  (`aside(m)`), and `--side` places the strips beside it.
+- **Find Nearby kinds** (`CATEGORIES`, `PINS`): Fast food, Bakeries, Supermarkets, Petrol, Parking and Health added.
+- **Directions** (`DirectionsCard`): title with Share (the route in Google Maps) and close; car, walk and bike as three
+  big buttons; From, To and Add Stop in one grey card with blue + circles; Now / Leave at / Arrive by and Avoid as pills.
+- **Controls:** a group top right (layers, where I am, measure, full screen), a compass with N and a red tick that turns
+  with the map, the zoom at the foot (clear of the assistant button), Apple's blue `#0a84ff` (white text sits on
+  `#0071e3`, link text `#0066cc` / `#4da3ff`: contrast).
+- **Map** (`map-style.ts` `DARK`, read off the owner's picture): slate-blue towns `#304456`, green farmland `#306757`,
+  teal woods, bright blue water `#203880`, pale blue-grey roads, white names; road numbers on coloured signs drawn in the
+  browser (`addShields` in `map-layers.ts`: motorways and trunks red, E-roads green, main roads yellow, others blue);
+  flat at every zoom (`mercator`, no globe); zoomed out the world in Natural Earth's colours (forests green, deserts
+  tan, ice pale) fading by zoom 8; continent names. The canvas maps (Trace, Relief, Green's world) keep M346's look.
+- Checked at 1280 (dark, light) and 390 (dark), every section axe-clean; the map's tiles and photos can't load in this
+  container, so the colours are checked by the numbers, not by eye on a real city.
+
+## M350 (20 Nov): every map in Apple's look, and smooth openings
+
+The owner, 20 Nov: "upgrade all the maps in the project like apple map which is really smooth and when i click any
+button like search button in map then it should show smooth transition of opening another section"; then "also make
+every other button when i click and when it try to open something then it should show smooth animations".
+- **Travel's map:** the section panel slides out from behind the menu column and back (`.map-panel`, `globals.css`:
+  Tailwind's `translate-*` classes set the `translate` property, so the transition names `translate` as well as
+  `transform`; measured gliding from -100% to 0 in ~0.4 s); while closed it is `inert` on a computer (`useWide`) and
+  shows the section it was on (`lastSec`). Every change of what the panel shows (a section, a place, directions, a walk,
+  a search, the phone sheet pulled up) glides in (`.map-panel-in`, keyed). The menu column slides away and back; the
+  search list, the measuring bar, the trip bar, "Search this area", the weather's days and the button that brings the
+  column back pop in (`cmd-pop`). Reduce Motion leaves fades.
+- **The other maps** (Trace's market and tracking, Relief's live map and alerts, Green's world and places): Apple's button
+  group (`MapButtons` in `map-ui/Command.tsx`: one rounded column, hairlines, white / `#1c1e21`, Apple's blue for a
+  button that's on; actions by `onPick(id)` or `onClick`), zoom and "where I am" on the street maps; the flat world maps
+  in Apple's dark world colours (`WorldCanvas` `PAL.dark`: sea `#22387f`, land `#2f5a55`); Relief's alerts map flat (no
+  globe). Their zoom already eased (`goTo`).
+- Checked at 1280 dark and 390 light on Travel, Relief (live, alerts), Green (world, places) and Trace's market: axe
+  clean, no sideways scroll, no page errors.
+
+## M351 (20 Nov): whatever a press opens eases in, everywhere
+
+The owner, 20 Nov: "make every other button when i click and when it try to open something then it should show smooth
+animations"; then, of M350's "only the maps": "please do this every where in the project". The shared sheets and
+dialogs already animated; the gaps were hand-made menus, drop-downs, pop-ups and sections on single screens (86 files).
+So the motion layer does it (`scroll-motion.ts`, `opened`): within 0.8 s of a press (pointer, or Enter / Space), new
+parts that appear on screen ease in, at most 6: a floating one (absolute / fixed: a menu, a drop-down) grows from the
+press (`pressOrigin`, tested) 0.96 → 1 while it fades in; one in the page's flow (a section, a tab's content) fades in
+rising 8 px. The transform is added (`composite: 'add'`), so a part's own centring stays. Skipped: anything already
+moving (`moving`: its own CSS animation, framer-motion's inline styles, WAAPI), lists redrawn (over 12 new rows or
+moved rows: morph() handles them), toasts, loading views, the page's frame, `[data-no-motion]`, a new page (its own
+entrance), Reduce Motion. Checked: the top bar's UniVersity, Learn and More menus now open this way; the Language menu
+keeps its own animation, not two.
+- **Rule:** a new pop-up needs nothing to animate; give it its own CSS animation only for a different entrance (the
+  layer then leaves it alone). Exits are each component's own (closing still removes most at once).
+
+## M352 (20 Nov): rounder, iOS-smooth corners everywhere
+
+The owner, 20 Nov: "make sure every area or sections and design is round and corners smooth like how apple ios does".
+One block at the end of `globals.css`: every step of Tailwind's roundness one notch larger (`--radius-sm` 6 px … `--radius-3xl`
+28 px; plain `rounded` 6 px) and cards from 12 px (M134's Ballast reels) to 18 px (`--radius-card`); where the browser
+draws continuous corners (`@supports (corner-shape: squircle)`: Chrome now; Safari and Firefox keep the rounder plain
+corners) the steps grow more (a squircle at the same radius looks tighter: cards 24 px, `rounded-xl` 22 px) and every
+rounded part takes `corner-shape: squircle` (`[class*="rounded-"]`, the button, field, menu-row and segmented classes);
+circles and pills (`…-full`) and `rounded-none` stay as they are. Radii only: nothing moves or resizes (checked: no
+sideways scroll at 390 and 1280 on the student home, Settings and Trace).
+- **Rule:** use Tailwind's `rounded-*` steps or `--radius-card` (they follow this block); a hard-coded radius won't.
+
+## M353 (20 Nov): Travel's map faster to open and smoother to move; Recents, 3D, follow me, share a view
+
+The owner, 20 Nov: "please add more features in the map and make it ultra smooth… map doesnt load fast and it isnt
+smooth if i go from one place to another in fast way"; then "everything should look professional and ultra smooth".
+- **Faster to open:** any Travel page fetches the map's code, its helper thread and the map service's description while
+  the browser is idle (`warmMap` in `src/lib/map-smooth.ts`, from `TravelTabs`; the service worker keeps the
+  description), and the map's code and its pins are prepared at the same time, not one after the other.
+- **Lighter to draw:** hills are shaded only up to zoom 12, from zoom-11 heights (`uv-hillshade` `maxzoom`; at street
+  level their own downloads were half of every screen's); a big screen draws at 1.5x, not 2x (`mapPixelRatio`, also
+  Green's places and Relief's alerts).
+- **Smooth when moving fast:** the page hears where the map is 220 ms after it stops, and not at all between quick moves
+  (each update redrew the panel and could ask for photos, reviews and the weather: work that landed on the next swipe's
+  first frames). Measured: during 8 quick drags no slow frame had any of our code in it (what's left is this container
+  drawing without a graphics chip).
+- **New:** **Recents** in Search (the places opened lately, this device only, Clear; `withRecentPlace` / `recentOf` in
+  `map-tools.ts`, tested, storage read through `recentOf`); a **3D** button (tilts the map, buildings and hills stand
+  up; again, flat); **Where I am follows you** (the arrow filled; moving the map or pressing again stops it; the watch
+  ends with the page); **Share this map view** (a link that opens here with "what's here"); **Escape** closes the open
+  panel ("/" stays the app's own search: the map's first try clashed with it). On a phone the button column keeps
+  Apple's three (layers, where I am, 3D) clear of the sheet; measure, share and full screen are a computer's.
+- Checked: 390 light and dark, 1280 light, axe clean, no page errors; each feature tried in a browser (a made-up
+  position for following).
+
+## M354 (20 Nov): on a phone the map comes first
+
+The owner, 20 Nov (a phone screenshot of Travel's map): "for user the map is not accessible and cant even see properly".
+The sheet at the foot covered about half the screen before anyone touched it (sections, search, stay, kinds of place).
+Now, as Apple Maps on an iPhone, it starts closed: only its handle and a "Search Maps" bar (86 px of 844); tapping the
+bar opens it (on Search), as do a place, a section or the handle; the handle also opens or closes with a swipe up or
+down (`swipe` / `swiped` refs: more than 24 px; the click that follows a swipe is ignored). The stay box's hint is
+shorter ("Where are you staying?"). Also checked: the map's style is valid in light and dark (MapLibre's own
+validator, run once, not committed), so a blank map in this container's screenshots is only its blocked tiles.
+- Checked at 390 light and dark: closed, opened, swiped down; axe clean, no page errors.
+
+## M355 (20 Nov): slow openings ease in too, and every opener on the main pages checked
+
+The owner, 20 Nov, of M351's left-outs ("slow openings… not every button checked"): "please work on this and then merge it".
+- **Slow and big openings** (`scroll-motion.ts`): a press now remembers where it was (the part of the page its button
+  sits in: card, section, row, dialog; what it controls by `aria-controls`; what it opened). For 4 s after it, parts that
+  appear later (their data arrived) still ease in when they float (a menu, a pop-up) or sit inside one of those
+  (`linked`); before 0.8 s anything does, as before. A big opening (over 300 changes, which the layer skipped as "a page
+  building") has its top parts eased in (`openedBig`), unless a new page just came in.
+- **The sweep** (`scripts/checks/opens-smooth.mjs`, on the built site): the main pages of every app (13 as a student, 5
+  as a teacher) on a phone and a computer, each button that opens something pressed (aria-haspopup, aria-expanded,
+  aria-controls, "More …"). 150 presses: 131 moved in, none appeared still; the other 19 were the phone's More (the side
+  menu, always there, slides in: measured gliding from −320 px to 0 in ~0.4 s) and Quick create on Messages (its panel
+  has its own animation; the sweep caught it mid-way). The sweep now counts a part that slides in as moving.
+- **Left out:** closing (most parts still go at once).
+
+## M356 (20 Nov): public transport in Directions
+
+The owner, 20 Nov (Directions from Paris to Lyon): "why there are no public transport here?"; then "i need both and it
+should show all the transport and options just like google and apple maps does".
+- **Why no timetables of our own:** the routers we use (FOSSGIS / OSRM) know roads and paths only. Timetables come from
+  paid services (an account and a charge per search: the owner's decision, **[owner]**, asked) or Transitous, whose
+  rules allow only open-source, non-commercial apps under ~720 searches a day (transitous.org/api): UniVerse has paid
+  plans and no open-source licence, so it isn't used.
+- **What's there now:** a fourth way of travel, **Public transport**, beside car, walk and bike (`DirMode` in
+  `MapTools.tsx`: no router request for it; `startNav` refuses it). It shows `TransitWays.tsx`: every way to get there,
+  quickest first (`waysBetween` in `src/lib/transit-options.ts`, tested): bus, tram or metro close by; train and coach
+  between towns; a flight once it's far; the drive to compare; each with a time and CO₂ estimated from the distance
+  (`TRAVEL_FACTORS`, the same as the trip footprint) and where to see or book it (Rome2Rio, Google Flights; the drive
+  switches to the car route). Then **Exact departures, lines and changes**: Google Maps, Apple Maps and Citymapper with
+  the trip filled in (their documented links, `transitApps`), and Rome2Rio to compare with prices. The map frames both
+  ends. The old "Public transport in Google Maps" link at the very bottom of the turns is gone (the tab replaces it).
+- Checked in a browser (Paris → Lyon, place lookups stubbed: this container can't reach them): train ~2 h 20, flight
+  ~3 h, drive ~6 h, coach ~7 h 25, with CO₂; the three apps' links; 1280 dark and 390 light, axe clean.
+
+## M357 (20 Nov): every way between a trip's cities
+
+The owner, 20 Nov: "can you make more changes in the system like this" (like M356's compare-the-ways); asked which,
+"all of them and add more options like this in the system, i need more".
+- A trip's **Plan → Route**: between two cities `TripLeg` (`src/components/travel/trip-legs.tsx`) lists every way that
+  works there (train, coach, flight, drive; flight and ferry over sea; only the flight past 2,000 km), quickest first,
+  with the door-to-door time and the CO₂ for all the travellers, **Fastest** and **Greenest** marked. A press picks it:
+  the same choice as Ready → Footprint (the stop's `mode`; the train logs a Green action once a leg, same PATCH). The
+  booking links under it follow the way picked (Google Flights for a flight, Omio / 12Go / Google Maps for trains and
+  coaches, Direct Ferries for a ferry; Rome2Rio always). Above the stops, `TripLegTotals`: time on the move, the CO₂
+  and what the greenest ways would save.
+- **One source:** `legMinutes` and each leg's `ways` in `src/lib/travel-footprint.ts` (tested), the same estimates as
+  Directions' public transport (M356). The old "X km · about N h" line and `leg()` in the trip page are gone.
+- Checked at 390 and 1280, light and dark (Paris → Lyon → Barcelona): axe clean, nothing sideways.
+
+## M358 (20 Nov): Green's Journeys by time too
+
+The same ask. Green → Journeys showed each way's CO₂ only; now each has its **door-to-door time** (`wayMinutes` in
+`src/lib/green-plus.ts`, tested), **Quickest** and **Best balance** (the cleanest way taking at most a third, or 45 min,
+longer than the quickest: `bestBalance`) marked beside Cleanest, and a **Cleanest / Quickest** order that slides the
+list (`morph`). No local bus past 80 km and no plane under 150 km. On a phone a row's kg and "I went this way" sit on
+their own line under the name. Checked at 390 and 1280, light and dark: axe clean.

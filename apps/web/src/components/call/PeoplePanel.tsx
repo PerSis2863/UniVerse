@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { ArrowDownToLine, Crown, DoorOpen, Hand, Mic, MicOff, MoreHorizontal, Pin, PinOff, Presentation, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
+import { ArrowDownToLine, Crown, DoorOpen, Hand, MessageSquareOff, Mic, MicOff, MoreHorizontal, Pin, PinOff, Presentation, Shield, ShieldOff, UserMinus, Video, VideoOff, X } from 'lucide-react';
 import { haptic } from '@/lib/haptics';
 import { spring } from '@/lib/motion';
 import { cn } from '@/lib/utils';
@@ -22,7 +22,7 @@ export interface Person {
   /** In a webinar: on stage (may talk), or watching (Stage 4 · 2.10). Undefined when it isn't one. */ stage?: boolean;
 }
 
-export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby' | 'stage' | 'webinar' | 'qa-answer' | 'qa-hide' | 'office-next' | 'end-all';
+export type ControlAction = 'mute' | 'ask-unmute' | 'stop-video' | 'mute-all' | 'spotlight' | 'cohost' | 'remove' | 'lower-hand' | 'lower-all' | 'admit' | 'admit-all' | 'deny' | 'lobby' | 'stage' | 'webinar' | 'qa-answer' | 'qa-hide' | 'office-next' | 'end-all' | 'entry-muted' | 'chat-off';
 
 const talkClock = (ms: number) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : `${Math.floor(s / 60)}m ${String(s % 60).padStart(2, '0')}s`; };
 
@@ -30,10 +30,12 @@ const initials = (name: string) => name.split(/\s+/).map((n) => n[0]).join('').s
 
 const chip = 'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold transition-colors';
 
-export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotlight, onControl, onLowerMyHand, lobby, lobbyOn }: {
+export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotlight, onControl, onLowerMyHand, lobby, lobbyOn, settings }: {
   open: boolean; onClose: () => void; people: Person[]; onLowerMyHand: () => void;
   /** Waiting to be let in (the host and co-hosts see this), and whether the waiting room is on. */
   lobby: { id: string; name: string }[]; lobbyOn: boolean;
+  /** M345: the host's switches (everyone joins muted, chat off). */
+  settings?: { entryMuted: boolean; chatOff: boolean };
   /** The host or a co-host. */ canModerate: boolean;
   /** The call's own host (only they make co-hosts). */ isHost: boolean;
   spotlight: string | null;
@@ -111,6 +113,14 @@ export function PeoplePanel({ open, onClose, people, canModerate, isHost, spotli
                     className={cn(chip, lobbyOn ? 'bg-indigo-500/30 text-indigo-100 hover:bg-indigo-500/40' : 'bg-white/10 hover:bg-white/20')}>
                     <DoorOpen className="w-3.5 h-3.5" />Waiting room {lobbyOn ? 'on' : 'off'}
                   </button>
+                )}
+                {canModerate && settings && (
+                  <>
+                    <button type="button" onClick={() => act('entry-muted', null, !settings.entryMuted)} aria-pressed={settings.entryMuted} title="Everyone who joins from now on starts muted"
+                      className={cn(chip, settings.entryMuted ? 'bg-indigo-500/30 text-indigo-100 hover:bg-indigo-500/40' : 'bg-white/10 hover:bg-white/20')}><MicOff className="w-3.5 h-3.5" />Join muted {settings.entryMuted ? 'on' : 'off'}</button>
+                    <button type="button" onClick={() => act('chat-off', null, !settings.chatOff)} aria-pressed={settings.chatOff} title="Only hosts can write in the call's chat"
+                      className={cn(chip, settings.chatOff ? 'bg-indigo-500/30 text-indigo-100 hover:bg-indigo-500/40' : 'bg-white/10 hover:bg-white/20')}><MessageSquareOff className="w-3.5 h-3.5" />Chat {settings.chatOff ? 'off' : 'on'}</button>
+                  </>
                 )}
                 {canModerate && people.some((p) => !p.me && !p.muted && !p.host && !p.cohost) && (
                   <button type="button" onClick={() => act('mute-all')} className={cn(chip, 'bg-white/10 hover:bg-white/20')}><MicOff className="w-3.5 h-3.5" />Mute everyone</button>

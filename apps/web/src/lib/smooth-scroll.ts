@@ -4,7 +4,11 @@
 // to scroll and it feels really good"). That site's smooth-scroll part runs Lenis with a duration of intensity / 10
 // and sets 25: each turn of the wheel moves a target, and the page eases from where it is to the target over 2.5 s
 // on an expo-out curve (half the way in a quarter of a second, then a long soft stop), so a run of turns keeps
-// gliding. Native everywhere else: touch (phones keep their own momentum), keys, the scroll bar, links to
+// gliding. M332 (the owner, 19 Nov: "it goes slow for 1 sec then it goes fast… i need the exact scroll"): the curve was
+// Lenis's, its clock wasn't. Lenis moves each frame by the time since the last frame; this restarted its clock at each
+// wheel event, which the browser handles after the frame's time is taken, so every frame that had an event counted as
+// no time at all. A trackpad or a fast wheel sends one nearly every frame: the page stalled through the swipe, then
+// rushed when the events stopped. Now its clock is Lenis's (`glideAt`), and the target is rounded as Lenis does. Native everywhere else: touch (phones keep their own momentum), keys, the scroll bar, links to
 // #sections, pinch zoom, Shift / Ctrl / Alt / ⌘ + wheel, anything that already took the wheel (maps, canvases,
 // games), a part that scrolls by itself (a list, a chat, a textarea, the side menu) until it reaches its end, fixed
 // bars and sheets, a page locked under a viewer, and `data-scroll-native`. Off with Reduce Motion (the device's or
@@ -15,11 +19,15 @@ import { SMOOTH_EVENT, smoothScrollOn } from './display-prefs';
 export const GLIDE_MS = 2500;
 /** Lenis's default curve. */
 export const glideEase = (t: number) => Math.min(1, 1.001 - 2 ** (-10 * t));
+/** Lenis's `Animate.advance` with a duration: where a glide from `from` to `to` is after `elapsed` ms. */
+export const glideAt = (from: number, to: number, elapsed: number) => { const t = Math.min(1, Math.max(0, elapsed / GLIDE_MS)); return t >= 1 ? to : from + (to - from) * glideEase(t); };
 /** A wheel's delta in pixels: lines are 100/6 px (as Lenis), pages a screen. */
 export const wheelPx = (delta: number, mode: number, page: number) => (mode === 1 ? delta * (100 / 6) : mode === 2 ? delta * page : delta);
 
 type Seen = { at: number; scrolls: boolean; contain: boolean; fixed: boolean };
 const seen = new WeakMap<Element, Seen>();
+/** Pixels a part may spare before it counts as scrolling by itself. */
+const ROOM = 8;
 const NATIVE = '[data-scroll-native],[aria-modal="true"],dialog,canvas,iframe,video,select,textarea,.maplibregl-map';
 
 function look(el: Element, now: number): Seen {
@@ -38,8 +46,9 @@ function takenBelow(target: EventTarget | null, dy: number, now: number) {
     if (n.matches(NATIVE)) return true;
     const s = look(n, now);
     if (s.fixed) return true;
-    if (s.scrolls && n.scrollHeight > n.clientHeight + 1) {
-      const can = dy > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - 1 : n.scrollTop > 0;
+    // M332: a part with a few pixels to spare (a page's `overflow-y-auto` wrapper over by a shadow) isn't a list of its own.
+    if (s.scrolls && n.scrollHeight > n.clientHeight + ROOM) {
+      const can = dy > 0 ? n.scrollTop + n.clientHeight < n.scrollHeight - ROOM : n.scrollTop > ROOM;
       if (can || s.contain) return true;
     }
   }
@@ -53,7 +62,7 @@ export function startSmoothScroll(): () => void {
   if (typeof window === 'undefined') return () => {};
   const still = matchMedia('(prefers-reduced-motion: reduce)');
   let on = smoothScrollOn();
-  let raf = 0, from = 0, pos = 0, target = 0, start = 0;
+  let raf = 0, from = 0, pos = 0, target = 0, elapsed = 0, last = 0;
   const root = () => document.scrollingElement ?? document.documentElement;
   const maxY = () => Math.max(0, root().scrollHeight - window.innerHeight);
   const stop = () => { if (raf) cancelAnimationFrame(raf); raf = 0; };
@@ -61,10 +70,12 @@ export function startSmoothScroll(): () => void {
   const frame = (now: number) => {
     // Keys, the scroll bar, a link or a new page moved it: let go.
     if (Math.abs(window.scrollY - pos) > 1.5) return stop();
-    const t = Math.min(1, Math.max(0, now - start) / GLIDE_MS);
-    pos = Math.min(maxY(), Math.max(0, from + (target - from) * glideEase(t)));
+    // As Lenis: the clock moves by the time since the last frame (a frame's worth on the first), whenever a turn came.
+    elapsed += last ? now - last : 1000 / 60;
+    last = now;
+    pos = Math.min(maxY(), Math.max(0, glideAt(from, target, elapsed)));
     window.scrollTo({ top: pos, behavior: 'instant' });
-    if (t >= 1 || Math.abs(target - pos) < 0.5) { raf = 0; return; }
+    if (elapsed >= GLIDE_MS || Math.abs(target - pos) < 0.5) { raf = 0; return; }
     raf = requestAnimationFrame(frame);
   };
 
@@ -72,16 +83,15 @@ export function startSmoothScroll(): () => void {
     if (!on || e.defaultPrevented || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) return;
     if (!e.deltaY || Math.abs(e.deltaX) > Math.abs(e.deltaY)) return;
     if (still.matches || document.documentElement.classList.contains('reduce-motion')) return;
-    const now = performance.now();
-    if (takenBelow(e.target, e.deltaY, now)) return;
+    if (takenBelow(e.target, e.deltaY, performance.now())) return;
     const max = maxY();
     if (max <= 0 || locked()) return;
     if (!raf || Math.abs(window.scrollY - pos) > 1.5) { stop(); pos = target = window.scrollY; }
-    const next = Math.min(max, Math.max(0, target + wheelPx(e.deltaY, e.deltaMode, window.innerHeight)));
+    const next = Math.min(max, Math.max(0, Math.round(target + wheelPx(e.deltaY, e.deltaMode, window.innerHeight))));
     if (next === target && !raf) return; // at the top or the end: the device's own bounce
     e.preventDefault();
-    from = pos; target = next; start = now;
-    if (!raf) raf = requestAnimationFrame(frame);
+    from = pos; target = next; elapsed = 0;
+    if (!raf) { last = 0; raf = requestAnimationFrame(frame); }
   };
   const onPref = () => { on = smoothScrollOn(); if (!on) stop(); };
 

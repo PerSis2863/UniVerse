@@ -1,6 +1,8 @@
 'use client';
 
+import { useEffect } from 'react';
 import { usePathname, useSearchParams } from 'next/navigation';
+import { warmMap } from '@/lib/map-smooth';
 import { Bookmark, Compass, Map as MapIcon, Route, Sparkles } from 'lucide-react';
 import { TabRow } from '@/components/ui/TabRow';
 
@@ -10,6 +12,12 @@ import { TabRow } from '@/components/ui/TabRow';
 export function TravelTabs() {
   const path = usePathname(), sp = useSearchParams();
   const view = path === '/travel' ? sp.get('view') : null, saved = path === '/travel/saved' && sp.get('tab') === 'saved';
+  // M353: the map's code fetched while the page sits idle, so opening the Map is quick.
+  useEffect(() => {
+    const w = window as Window & { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (w.requestIdleCallback) { const id = w.requestIdleCallback(warmMap, { timeout: 4000 }); return () => w.cancelIdleCallback?.(id); }
+    const t = setTimeout(warmMap, 2500); return () => clearTimeout(t);
+  }, []);
   return (
     <TabRow label="Travel" glide="travel-tab" tabs={[
       { href: '/travel', label: 'Explore', icon: Compass, on: (path === '/travel' && view !== 'find' && view !== 'map') || path.startsWith('/travel/guide') },

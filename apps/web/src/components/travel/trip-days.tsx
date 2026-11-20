@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowDown, ArrowUp, BedDouble, Check, Clock, Coffee, Footprints, Landmark, MapPin, Menu, Mountain, Navigation, Plus, ShoppingBag, SlidersHorizontal, Sparkles, Ticket, TramFront, Utensils, Wand2, X, type LucideIcon } from 'lucide-react';
 import { Photo } from '@/components/ui/Photo';
+import Link from '@/components/ui/Link';
 import { mapLink } from '@/lib/travel-book';
 import { googleDirections } from '@/lib/map-tools';
 import { commonsImage } from '@/lib/travel-guide';
@@ -329,7 +330,7 @@ function Stop({ it, at, days, near, open, dragging, first, last, onOpen, onDragS
             <span className="ms-auto flex items-center">
               <button type="button" disabled={first} onClick={() => onStep(-1)} className="btn-ghost btn-sm p-1.5" aria-label={`Move ${it.name} earlier`}><ArrowUp className="h-4 w-4" aria-hidden /></button>
               <button type="button" disabled={last} onClick={() => onStep(1)} className="btn-ghost btn-sm p-1.5" aria-label={`Move ${it.name} later`}><ArrowDown className="h-4 w-4" aria-hidden /></button>
-              <a href={mapLink(it.name, { lat: it.lat ?? undefined, lon: it.lon ?? undefined, address: it.address ?? undefined, near })} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm p-1.5" aria-label={`${it.name} on the map`}><MapPin className="h-4 w-4" aria-hidden /></a>
+              <Link href={mapLink(it.name, { lat: it.lat ?? undefined, lon: it.lon ?? undefined, address: it.address ?? undefined, near })} className="btn-ghost btn-sm p-1.5" aria-label={`${it.name} on the map`}><MapPin className="h-4 w-4" aria-hidden /></Link>
               <button type="button" onClick={onRemove} className="btn-ghost btn-sm p-1.5 text-red-600 dark:text-red-400" aria-label={`Remove ${it.name}`}><X className="h-4 w-4" aria-hidden /></button>
             </span>
           </div>

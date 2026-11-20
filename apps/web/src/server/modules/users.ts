@@ -24,7 +24,7 @@ const USER_STATUSES: UserStatus[] = ['PENDING', 'ACTIVE', 'SUSPENDED'];
 
 const safeSelect = {
   id: true, name: true, email: true, role: true, status: true,
-  avatar: true, phone: true, googleId: true, emailNotifications: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, tourDoneAt: true, createdAt: true, updatedAt: true,
+  avatar: true, phone: true, googleId: true, emailNotifications: true, readReceipts: true, termsVersion: true, termsAcceptedAt: true, onboardedAt: true, tourDoneAt: true, createdAt: true, updatedAt: true,
   tourStep: true, coverUrl: true, pronouns: true, bio: true, links: true, availability: true,
   studentProfile: true, teacherProfile: true,
 };
@@ -277,6 +277,7 @@ export default function users(router: Router) {
       else data.avatar = a;
     }
     if (typeof body?.emailNotifications === 'boolean') data.emailNotifications = body.emailNotifications;
+    if (typeof body?.readReceipts === 'boolean') data.readReceipts = body.readReceipts; // M344
     if (body?.tourDone === true) data.tourDoneAt = new Date();
     // Stage 5 · Q18: the guided tour's step (it resumes there), and the profile others see.
     const step = Number(body?.tourStep);

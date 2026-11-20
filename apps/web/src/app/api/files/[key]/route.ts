@@ -15,7 +15,9 @@ export async function GET(req: Request, { params }: Ctx) {
     'Content-Type': file.mime,
     'Content-Length': String(file.size),
     'Cache-Control': 'private, max-age=31536000, immutable',
-    'Content-Disposition': `${safeInline ? 'inline' : 'attachment'}; filename="${file.name.replace(/"/g, '')}"`,
+    // M337: a plain-letters name for old browsers and the real one encoded (RFC 6266): a name with accents, other
+    // scripts or a line break no longer breaks the download (header values must be plain Latin-1 text).
+    'Content-Disposition': `${safeInline ? 'inline' : 'attachment'}; filename="${file.name.replace(/[^\w .()-]/g, '_')}"; filename*=UTF-8''${encodeURIComponent(file.name.replace(/[\r\n]/g, ' ')).replace(/['()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`)}`,
     'X-Content-Type-Options': 'nosniff',
   };
   const csp = fileCsp(file.mime);

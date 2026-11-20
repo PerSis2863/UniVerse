@@ -17,7 +17,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { useNow, useTick } from '@/lib/use-now';
 import { cn } from '@/lib/utils';
 import { toBase } from './engine';
-import { Callout, CountChips, InkPill, placeCallout, QueueCard, RoutePill, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
+import { Callout, CountChips, InkPill, MapButtons, placeCallout, QueueCard, RoutePill, StatCard, StatStrip, TickStrip } from '@/components/map-ui/Command';
 import { drawIcons, IconSource, route, tag, unit, zone, type Icons } from '@/components/map-ui/marks';
 import { WorldCanvas, type Box, type Frame, type MapHandle } from './WorldCanvas';
 import { LiveCard } from '@/components/live/LiveCard';
@@ -300,11 +300,7 @@ export function TrackingMap() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-pink-500" aria-label="Loading the map" /></div>}
             <CountChips<'all' | 'moving' | 'done' | 'risk'> label="Show" className="absolute start-3 top-3 z-10 max-w-[calc(100%-4.5rem)]" value={filter} onChange={setFilter}
               items={[{ id: 'all', label: 'All', count: ships.length }, { id: 'moving', label: 'On the move', count: moving, dot: dark ? '#e4e4e7' : '#18181b' }, { id: 'done', label: 'Delivered', count: delivered, dot: '#10b981' }, { id: 'risk', label: 'At risk', count: risky, dot: ACCENT }]} />
-            <div className="absolute end-3 top-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 divide-y divide-zinc-200 dark:bg-[#1b1d22]/95 dark:ring-white/10 dark:divide-white/10">
-              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, Icon, lbl]) => (
-                <button key={id} type="button" onClick={() => control(id)} aria-label={lbl} title={lbl} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><Icon className="h-[18px] w-[18px]" aria-hidden /></button>
-              ))}
-            </div>
+            <MapButtons className="absolute end-3 top-3 z-10" onPick={control} items={([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See every shipment'], ['full', full ? Minimize2 : Maximize2, full ? 'Leave full screen' : 'Full screen']] as const).map(([id, icon, label]) => ({ id, label, icon }))} />
             {sel && sel.status === 'IN_TRANSIT' && (
               <Callout ref={pinned} key={sel.id} className="hidden lg:block">
                 <div className="flex items-center gap-3">

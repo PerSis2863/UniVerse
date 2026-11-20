@@ -178,7 +178,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
   };
 
   return (
-    <div ref={shellRef} className="shell-in flex min-h-[100dvh]">
+    <div ref={shellRef} data-app-shell className="shell-in flex min-h-[100dvh]">
       {bootCover && <div aria-hidden className="boot-cover" onAnimationEnd={(e) => { if (e.target === e.currentTarget) setBootCover(false); }}><AppSkeleton /></div>}
       <a href="#main" className="skip-link">Skip to content</a>
       {!top && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}

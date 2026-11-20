@@ -14,6 +14,13 @@ export const CATEGORIES = [
   { id: 'shop', label: 'Shops', classes: ['shop', 'clothing_store', 'grocery', 'gift', 'jewelry', 'books', 'music', 'art'] },
   { id: 'stay', label: 'Hotels', classes: ['lodging', 'campsite'] },
   { id: 'go', label: 'Transport', classes: ['railway', 'bus', 'harbor', 'ferry_terminal', 'aerialway'] },
+  // M349: Apple Maps' "Find Nearby" kinds (the owner: "add whatever you can in this sections").
+  { id: 'fast', label: 'Fast food', classes: ['fast_food'] },
+  { id: 'bakery', label: 'Bakeries', classes: ['bakery'] },
+  { id: 'grocery', label: 'Supermarkets', classes: ['grocery'] },
+  { id: 'fuel', label: 'Petrol', classes: ['fuel'] },
+  { id: 'parking', label: 'Parking', classes: ['parking'] },
+  { id: 'health', label: 'Health', classes: ['hospital', 'pharmacy', 'doctors', 'dentist', 'clinic'] },
 ] as const;
 export type CategoryId = (typeof CATEGORIES)[number]['id'];
 export const classesOf = (id: CategoryId) => CATEGORIES.find((c) => c.id === id)!.classes as readonly string[];

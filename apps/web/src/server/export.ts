@@ -15,12 +15,14 @@ const OWN_LINKS = new Set(['userId', 'studentId', 'ownerId', 'senderId', 'author
 const SKIP_MODELS = new Set(['OwnerChange', 'StoredFile', 'AuditLog', 'ErrorReport', 'PortfolioShare']);
 // Internal or security-sensitive columns people don't need (and that shouldn't sit in a download).
 const SKIP_FIELDS = new Set(['firebaseUid', 'passwordHash', 'pushSubscription', 'fingerprint', 'data', 'totpSecret', 'totpStep']);
+// M337: a connected account's keys (Gmail, Outlook, Slack…) stay on the server, even sealed (connections.ts).
+const SKIP_MODEL_FIELDS = new Set(['OAuthConnection.access', 'OAuthConnection.refresh']);
 const MAX_PER_TABLE = 5000;
 // Columns named like "theirs" that aren't: a report someone else made about a message they sent.
 const NOT_THEIRS = new Set(['CommunityReport.senderId']);
 
 const delegate = (m: Model) => (prisma as unknown as Record<string, { findMany: (a: unknown) => Promise<unknown[]> }>)[m.delegate];
-const select = (m: Model) => Object.fromEntries(m.fields.filter((f) => f.kind !== 'object' && f.type !== 'Bytes' && !SKIP_FIELDS.has(f.name)).map((f) => [f.name, true]));
+const select = (m: Model) => Object.fromEntries(m.fields.filter((f) => f.kind !== 'object' && f.type !== 'Bytes' && !SKIP_FIELDS.has(f.name) && !SKIP_MODEL_FIELDS.has(`${m.name}.${f.name}`)).map((f) => [f.name, true]));
 const title = (s: string) => s.replace(/([a-z])([A-Z])/g, '$1 $2');
 
 export async function exportUserData(userId: string) {

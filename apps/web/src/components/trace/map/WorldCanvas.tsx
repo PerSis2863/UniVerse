@@ -34,10 +34,11 @@ export interface MapHandle {
 }
 
 const PAL = {
-  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light; navy sea, slate land in dark,
-  // the same colours as Travel's street map (travel/map/map-style.ts). Neutral greys before (M94).
+  // M233 (the owner: every map like Apple Maps): blue sea, cream land in light. Dark: M350 (the owner, 20 Nov: "upgrade
+  // all the maps in the project like apple map", with Apple Maps' dark world view): a deep royal-blue sea and green
+  // land, as Travel's street map zoomed out (travel/map/map-style.ts). M346's near-black before; neutral greys (M94).
   light: { sea: '#a8d4f4', deep: '#94c6ec', land: '#f5f2ec', edge: '#d3c9ba', grat: 'rgba(39,39,42,0.07)', name: 'rgba(39,39,42,0.42)', city: 'rgba(39,39,42,0.6)' },
-  dark: { sea: '#1b3961', deep: '#142c4d', land: '#262a33', edge: '#3d4250', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
+  dark: { sea: '#22387f', deep: '#1c3070', land: '#2f5a55', edge: '#4b7a72', grat: 'rgba(228,228,231,0.05)', name: 'rgba(228,228,231,0.36)', city: 'rgba(228,228,231,0.55)' },
 };
 const K_MAX = 180; // about street-block level (0.1° ≈ 50 px)
 /** M290: how long the page's pulses keep moving with nobody touching anything. */
@@ -215,7 +216,7 @@ class MapEngine {
       this.rewrap();
     } else if (Math.abs(this.drift.vx) + Math.abs(this.drift.vy) > 0.02) {
       this.view = this.clamp({ ...this.view, x: this.view.x + this.drift.vx * dt, y: this.view.y + this.drift.vy * dt });
-      const f = Math.exp(-dt / 260);
+      const f = Math.exp(-dt / 380); // M335: a fling carries on a little longer before it rests, as the street maps
       this.drift.vx *= f; this.drift.vy *= f;
     } else moving = false;
     // Sharper outlines once the world is drawn big enough on screen (in real pixels) to show them.

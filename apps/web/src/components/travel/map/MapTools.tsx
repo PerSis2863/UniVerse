@@ -2,14 +2,17 @@
 
 import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
-import { ArrowUpDown, Bike, Briefcase, Car, Clock, Copy, Footprints, Home, LocateFixed, MapPin, Navigation, Plus, Ruler, Share, TrainFront, Undo2, X } from 'lucide-react';
+import { ArrowUpDown, Bike, Briefcase, Car, Clock, Copy, Flag, Mountain, Footprints, Home, LocateFixed, MapPin, Navigation, Plus, Ruler, Share, TrainFront, Undo2, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { addressOf, area, areaOf, AVOIDS, directionsUrl, distance, duration, googleDirections, keptOf, lengthOf, MODES, reverseUrl, routesOf, spotLink, withRecent, type Avoid, type Kept, type Mode, type Pt, type Route, type Spot } from '@/lib/map-tools';
 import { bubbleSpot } from '@/lib/navigation';
+import { plusCode, reportUrl } from '@/lib/map-extras';
+import { heightsAt } from './map-extras';
 import { cn } from '@/lib/utils';
-import { Segmented } from '@/components/ui/Segmented';
 import { PlaceSearch } from '../travel-ui';
 import { TurnIcon } from './TurnIcon';
+import { TransitWays } from './TransitWays';
+import { Profile } from './MapExtras';
 
 // M237: the Google Maps features on Travel's map (the logic in src/lib/map-tools.ts): directions, "what's here"
 // with sharing, and measuring a distance. M260: stops on the way, roads to leave out, leave at or arrive by, each
@@ -17,7 +20,9 @@ import { TurnIcon } from './TurnIcon';
 // navigation, Navigate.tsx).
 
 export type { Spot };
-export type Directions = { from: Spot | null; to: Spot | null; mode: Mode; chosen: number; via: Spot[]; avoid: Avoid };
+/** M356: public transport is a fourth way of travel: no route of our own (see transit-options.ts), its options instead. */
+export type DirMode = Mode | 'transit';
+export type Directions = { from: Spot | null; to: Spot | null; mode: DirMode; chosen: number; via: Spot[]; avoid: Avoid };
 const ICON: Record<Mode, typeof Footprints> = { foot: Footprints, bike: Bike, car: Car };
 const round = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-zinc-100 text-zinc-800 transition-[transform,background-color] duration-150 hover:bg-zinc-200 active:scale-95 dark:bg-white/[0.08] dark:text-zinc-100 dark:hover:bg-white/[0.14]';
 const KEPT = 'uv-map-kept';
@@ -38,7 +43,7 @@ async function find(t: string): Promise<Spot | null> {
  *  can't leave out the road asked (`avoided` false), the fastest route is shown and the card says so. */
 export function useRoutes(d: Directions | null) {
   const [state, setState] = useState<{ key: string; routes: Route[]; failed: boolean; avoided: boolean } | null>(null);
-  const key = d?.from && d.to ? directionsUrl(d.mode, d.from, d.to, { via: d.via, avoid: d.avoid }) : ''; // the question is the key
+  const key = d?.from && d.to && d.mode !== 'transit' ? directionsUrl(d.mode, d.from, d.to, { via: d.via, avoid: d.avoid }) : ''; // the question is the key
   const plain = d?.from && d.to && d.avoid && d.mode === 'car' ? directionsUrl(d.mode, d.from, d.to, { via: d.via }) : '';
   useEffect(() => {
     if (!key) return;
@@ -65,8 +70,8 @@ function timing(w: When, minutes: number, now: number) {
 
 /** The directions card: from, to (and stops on the way), the way of travel, the routes (the quickest first, the others
  *  with how much longer), when to leave, the turns of the chosen route and Start. */
-export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, myPlace, onStart, onClose }: {
-  d: Directions; set: (d: Directions) => void; routes: Route[]; loading: boolean; failed: boolean; avoided: boolean; now: number; myPlace: () => Spot | null; onStart: (r: Route) => void; onClose: () => void;
+export function DirectionsCard({ d, set, near, routes, loading, failed, avoided, now, myPlace, onStart, onClose }: {
+  near?: { lat: number; lon: number } | null; d: Directions; set: (d: Directions) => void; routes: Route[]; loading: boolean; failed: boolean; avoided: boolean; now: number; myPlace: () => Spot | null; onStart: (r: Route) => void; onClose: () => void;
 }) {
   const r = routes[d.chosen] ?? routes[0];
   const [kept, setKept] = useState<Kept>(readKept);
@@ -91,14 +96,16 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
     return (
       <div>
         <div className="flex items-center gap-2">
-          <span className={cn('flex h-3 w-3 shrink-0 rounded-full', which === 'from' ? 'border-[3px] border-[#1f87ff] bg-white' : 'bg-[#ea4335]')} aria-hidden />
+          {v ? <span className={cn('ms-1.5 me-1.5 flex h-3 w-3 shrink-0 rounded-full', which === 'from' ? 'border-[3px] border-[#0a84ff] bg-white' : 'bg-[#ea4335]')} aria-hidden />
+            : <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#0a84ff] text-white" aria-hidden><Plus className="h-4 w-4" /></span>}
           {v ? (
-            <button type="button" onClick={() => set({ ...d, [which]: null })} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl bg-zinc-100 px-3 py-2 text-start text-sm dark:bg-white/[0.06]" aria-label={`${which === 'from' ? 'From' : 'To'} ${v.name}: change`}>
+            <button type="button" onClick={() => set({ ...d, [which]: null })} className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl px-1 py-2 text-start text-[15px] hover:bg-black/[0.04] dark:hover:bg-white/[0.05]" aria-label={`${which === 'from' ? 'From' : 'To'} ${v.name}: change`}>
               <span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span><X className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
             </button>
           ) : (
             <div className="flex min-w-0 flex-1 items-center gap-1">
-              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'Choose a starting point…' : 'Choose where to go…'} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))} />
+              <PlaceSearch className="min-w-0 flex-1" label={which === 'from' ? 'Starting point' : 'Destination'} placeholder={which === 'from' ? 'From' : 'To'} near={near} onPick={(t) => void find(t).then((s) => s && choose({ [which]: s }, s))}
+                onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ [which]: s }, s); }} />
               <button type="button" className={round} aria-label="Use where I am" onClick={() => { const me = myPlace(); if (me) choose({ [which]: me }); }}><LocateFixed className="h-4 w-4" aria-hidden /></button>
             </div>
           )}
@@ -108,60 +115,81 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
     );
   };
   const fastest = routes.length ? Math.min(...routes.map((x) => x.minutes)) : 0;
+  const share = async () => {
+    if (!d.from || !d.to) return;
+    const url = googleDirections(d.from, d.to, d.mode), title = `Directions to ${d.to.name}`;
+    try { if (navigator.share) await navigator.share({ title, url }); else { await navigator.clipboard.writeText(url); toast.success('Link to the directions copied'); } } catch { /* closed the share sheet */ }
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-[17px] font-semibold text-zinc-900 dark:text-white">Directions</h3>
-        <button type="button" onClick={onClose} className={round} aria-label="Close directions"><X className="h-5 w-5" aria-hidden /></button>
+      {/* M349 (the owner's Apple Maps picture): a big title with Share and close; the ways of travel as three big
+          buttons; From, To and Add Stop in one card; Now and Avoid as pills. */}
+      <div className="mb-3 flex items-center gap-2">
+        <h3 className="min-w-0 flex-1 text-[26px] font-bold tracking-tight text-zinc-900 dark:text-white">Directions</h3>
+        {d.from && d.to && <button type="button" onClick={() => void share()} className={round} aria-label="Share these directions"><Share className="h-[18px] w-[18px]" aria-hidden /></button>}
+        <button type="button" onClick={onClose} className={cn(round, 'bg-zinc-200/80 dark:bg-white/[0.14]')} aria-label="Close directions"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto pb-2">
-        <div className="flex items-center gap-2">
-          <div className="min-w-0 flex-1 space-y-2">
-            {field('from')}
+        <div role="group" aria-label="Way of travel" className="grid grid-cols-4 gap-2">
+          {([...(['car', 'foot', 'bike'] as const).map((id) => MODES.find((x) => x.id === id)!), { id: 'transit' as const, label: 'Public transport' }]).map((m) => { const Icon = m.id === 'transit' ? TrainFront : ICON[m.id], on = d.mode === m.id; return (
+            <button key={m.id} type="button" aria-pressed={on} aria-label={m.label} title={m.label} onClick={() => set({ ...d, mode: m.id, chosen: 0 })}
+              className={cn('flex h-11 items-center justify-center rounded-xl transition-colors', on ? 'bg-[#0a84ff] text-white' : 'bg-[#f2f2f7] text-zinc-700 hover:bg-[#e8e8ed] dark:bg-[#26292d] dark:text-zinc-200 dark:hover:bg-[#2e3136]')}>
+              <Icon className="h-5 w-5" aria-hidden />
+            </button>
+          ); })}
+        </div>
+        <div className="mt-3 flex items-center gap-1 rounded-2xl bg-[#f2f2f7] px-3 py-1.5 dark:bg-[#26292d]">
+          <div className="min-w-0 flex-1 divide-y divide-zinc-300/60 dark:divide-white/10">
+            <div className="py-1.5">{field('from')}</div>
             {/* M260: stops on the way (up to three), each removable. */}
             {d.via.map((v, i) => (
-              <div key={`${v.name}${i}`} className="flex items-center gap-2">
-                <span className="flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
-                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 rounded-xl bg-zinc-100 px-3 py-2 text-sm dark:bg-white/[0.06]"><span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span>
+              <div key={`${v.name}${i}`} className="flex items-center gap-2 py-1.5">
+                <span className="ms-1.5 me-1.5 flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-2 px-1 py-2 text-[15px]"><span className="truncate font-medium text-zinc-900 dark:text-white" translate="no">{v.name}</span>
                   <button type="button" onClick={() => set({ ...d, via: d.via.filter((_, j) => j !== i), chosen: 0 })} className="rounded-full p-0.5 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-white/10" aria-label={`Remove the stop ${v.name}`}><X className="h-4 w-4" aria-hidden /></button></span>
               </div>
             ))}
             {adding && (
-              <div className="flex items-center gap-2">
-                <span className="flex h-3 w-3 shrink-0 rounded-full bg-amber-500" aria-hidden />
-                <PlaceSearch className="min-w-0 flex-1" label="A stop on the way" placeholder="Add a stop…" onPick={(t) => void find(t).then((s) => { if (s) { choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); } })} />
+              <div className="flex items-center gap-2 py-1.5">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-amber-500 text-white" aria-hidden><Plus className="h-4 w-4" /></span>
+                <PlaceSearch className="min-w-0 flex-1" label="A stop on the way" placeholder="Add a stop…" near={near} onPick={(t) => void find(t).then((s) => { if (s) { choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); } })}
+                  onPlace={(p) => { const s = { lat: p.lat, lon: p.lon, name: p.name }; choose({ via: [...d.via, s].slice(0, 3) }, s); setAdding(false); }} />
                 <button type="button" className={round} onClick={() => setAdding(false)} aria-label="Don’t add a stop"><X className="h-4 w-4" aria-hidden /></button>
               </div>
             )}
-            {field('to')}
+            <div className="py-1.5">{field('to')}</div>
+            {!adding && d.via.length < 3 && (
+              <button type="button" onClick={() => setAdding(true)} className="flex w-full items-center gap-2 py-2.5 text-start text-[15px] text-zinc-500 dark:text-zinc-400">
+                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-400 text-white dark:bg-zinc-500" aria-hidden><Plus className="h-4 w-4" /></span>Add Stop
+              </button>
+            )}
           </div>
           <button type="button" className={round} aria-label="Swap start and destination" onClick={() => set({ ...d, from: d.to, to: d.from, via: [...d.via].reverse(), chosen: 0 })}><ArrowUpDown className="h-4 w-4" aria-hidden /></button>
         </div>
-        {!adding && d.via.length < 3 && <button type="button" onClick={() => setAdding(true)} className="ms-5 mt-1.5 flex items-center gap-1 rounded-lg px-1.5 py-1 text-xs font-semibold text-[#0b55c4] hover:bg-[#1f87ff]/10 dark:text-[#8cc0ff]"><Plus className="h-3.5 w-3.5" aria-hidden />Add a stop</button>}
-        <Segmented<Mode> label="Way of travel" className="mt-3" value={d.mode} onChange={(mode) => set({ ...d, mode, chosen: 0 })} segments={MODES.map((m) => ({ value: m.id, label: m.label }))} />
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-zinc-600 dark:text-zinc-300">
-          <label className="inline-flex items-center gap-1.5"><span className="sr-only">When</span>
-            <select value={when.kind} onChange={(e) => setWhen({ kind: e.target.value as When['kind'], time: when.time || hm(new Date(now + 1_800_000)) })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100">
-              <option value="now">Leave now</option><option value="leave">Leave at</option><option value="arrive">Arrive by</option>
+        <div className={cn('mt-3 flex flex-wrap items-center gap-2', d.mode === 'transit' && 'hidden')}>
+          <label className="inline-flex items-center"><span className="sr-only">When</span>
+            <select value={when.kind} onChange={(e) => setWhen({ kind: e.target.value as When['kind'], time: when.time || hm(new Date(now + 1_800_000)) })} className="rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white">
+              <option value="now">Now</option><option value="leave">Leave at</option><option value="arrive">Arrive by</option>
             </select>
           </label>
-          {when.kind !== 'now' && <label className="inline-flex items-center"><span className="sr-only">{when.kind === 'leave' ? 'Leaving time' : 'Arrival time'}</span><input type="time" value={when.time} onChange={(e) => setWhen({ ...when, time: e.target.value })} className="min-w-[6.5rem] rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100" /></label>}
+          {when.kind !== 'now' && <label className="inline-flex items-center"><span className="sr-only">{when.kind === 'leave' ? 'Leaving time' : 'Arrival time'}</span><input type="time" value={when.time} onChange={(e) => setWhen({ ...when, time: e.target.value })} className="min-w-[6.5rem] rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white" /></label>}
           {d.mode === 'car' && (
-            <label className="inline-flex items-center gap-1.5">Avoid
-              <select value={d.avoid} onChange={(e) => set({ ...d, avoid: e.target.value as Avoid, chosen: 0 })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-800 dark:border-white/10 dark:bg-white/[0.05] dark:text-zinc-100">
-                {AVOIDS.map((a) => <option key={a.id} value={a.id}>{a.label}</option>)}
+            <label className="inline-flex items-center"><span className="sr-only">Avoid</span>
+              <select value={d.avoid} onChange={(e) => set({ ...d, avoid: e.target.value as Avoid, chosen: 0 })} className="rounded-full border border-zinc-300 bg-transparent px-3 py-1.5 text-sm font-medium text-zinc-900 dark:border-white/20 dark:text-white">
+                {AVOIDS.map((x) => <option key={x.id} value={x.id}>{x.id ? `Avoid ${x.label.toLowerCase()}` : 'Avoid…'}</option>)}
               </select>
             </label>
           )}
         </div>
+        {d.mode === 'transit' && d.from && d.to && <TransitWays from={d.from} to={d.to} onDrive={() => set({ ...d, mode: 'car', chosen: 0 })} />}
         <div className="mt-3" aria-live="polite">
           {d.from && d.to && loading && <p className="py-4 text-center text-sm text-zinc-500 dark:text-zinc-400">Finding the way…</p>}
-          {d.from && d.to && !loading && failed && <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-300">No {MODES.find((m) => m.id === d.mode)!.label.toLowerCase()} route found between these places.</p>}
+          {d.from && d.to && !loading && failed && <p className="py-4 text-center text-sm text-zinc-600 dark:text-zinc-300">No {MODES.find((m) => m.id === d.mode)?.label.toLowerCase() ?? ''} route found between these places.</p>}
           {!loading && !avoided && routes.length > 0 && <p className="mb-2 rounded-lg bg-amber-50 px-2.5 py-1.5 text-xs text-amber-900 dark:bg-amber-400/10 dark:text-amber-200">This route can’t leave out {AVOIDS.find((a) => a.id === d.avoid)?.label.toLowerCase()}: showing the fastest.</p>}
         </div>
         {!loading && routes.length > 0 && (
           <ul className="space-y-1.5">
-            {routes.map((x, i) => { const Icon = ICON[d.mode], on = i === d.chosen, more = x.minutes - fastest; return (
+            {routes.map((x, i) => { const Icon = d.mode === 'transit' ? TrainFront : ICON[d.mode], on = i === d.chosen, more = x.minutes - fastest; return (
               <li key={i} className={cn('flex items-center gap-2 rounded-xl ps-3 pe-2 ring-1 transition-colors', on ? 'bg-[#1f87ff]/[0.08] ring-[#1f87ff]/40' : 'ring-zinc-200 hover:bg-zinc-50 dark:ring-white/10 dark:hover:bg-white/[0.04]')}>
                 <button type="button" aria-pressed={on} onClick={() => set({ ...d, chosen: i })} className="flex min-w-0 flex-1 items-center gap-3 py-2.5 text-start">
                   <Icon className="h-5 w-5 shrink-0 text-zinc-600 dark:text-zinc-300" aria-hidden />
@@ -175,6 +203,8 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
             ); })}
           </ul>
         )}
+        {/* M336: the climb on foot or by bike (Komoot, Apple Maps' cycling directions). */}
+        {r && !loading && d.mode !== 'car' && <Profile path={r.path} />}
         {!loading && routes.length > 0 && d.mode === 'car' && <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Times at the usual pace of these roads: live traffic isn’t counted.</p>}
         {r && !loading && (
           <ol className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/10">
@@ -186,9 +216,6 @@ export function DirectionsCard({ d, set, routes, loading, failed, avoided, now, 
               </li>
             ))}
           </ol>
-        )}
-        {d.from && d.to && (
-          <a href={googleDirections(d.from, d.to, 'transit')} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm mt-3 inline-flex items-center gap-1.5"><TrainFront className="h-4 w-4" aria-hidden />Public transport in Google Maps</a>
         )}
       </div>
       <p className="border-t border-zinc-200/70 pt-1.5 text-[11px] text-zinc-500 dark:border-white/10 dark:text-zinc-400">Routes <a href="https://routing.openstreetmap.de/about.html" target="_blank" rel="noopener noreferrer" className="underline">FOSSGIS</a> (OSRM, © OpenStreetMap)</p>
@@ -207,6 +234,14 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
     fetch(key, { signal: ctl.signal, headers: { Accept: 'application/json' } }).then((r) => r.json()).then((a) => setFound({ key, address: addressOf(a) })).catch((e) => { if ((e as Error).name !== 'AbortError') setFound({ key, address: null }); });
     return () => ctl.abort();
   }, [key]);
+  // M336: its height, from the terrain tiles the 3D hills use (Google Maps' terrain, Apple Maps' elevation).
+  const [height, setHeight] = useState<{ key: string; m: number | null } | null>(null);
+  useEffect(() => {
+    let gone = false;
+    void heightsAt([[p.lon, p.lat]]).then((h) => { if (!gone) setHeight({ key, m: h ? Math.round(h[0]) : null }); });
+    return () => { gone = true; };
+  }, [key, p.lat, p.lon]);
+  const metres = height?.key === key ? height.m : null, code = plusCode(p.lat, p.lon);
   const coords = `${p.lat.toFixed(5)}, ${p.lon.toFixed(5)}`, name = address?.split(', ').slice(0, 2).join(', ') || coords;
   const spot = { ...p, name };
   const share = async () => {
@@ -214,6 +249,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
     try { if (navigator.share) await navigator.share({ title: name, url }); else { await navigator.clipboard.writeText(url); toast.success('Link copied'); } } catch { /* closed */ }
   };
   const keep = (which: 'home' | 'work') => { writeKept({ ...readKept(), [which]: { ...p, name: address ?? name } }); toast.success(which === 'home' ? 'Saved as Home on this device' : 'Saved as Work on this device'); onClose(); };
+  const copyCode = async () => { try { await navigator.clipboard.writeText(code); toast.success('Plus Code copied'); } catch { toast.error('Couldn’t copy.'); } };
   const copy = async () => { try { await navigator.clipboard.writeText(coords); toast.success('Coordinates copied'); } catch { toast.error('Couldn’t copy.'); } };
   const item = 'flex w-full items-center gap-3 rounded-lg px-2.5 py-2 text-start text-sm text-zinc-800 hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]';
   return (
@@ -222,7 +258,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
       style={{ left: Math.max(8, Math.min(x, 9999)), top: Math.max(8, y) }}>
       <div className="flex items-start gap-2 px-2.5 pb-1.5 pt-2">
         <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#ea4335]" aria-hidden />
-        <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-zinc-900 dark:text-white">{address === undefined ? 'Finding the address…' : address ?? 'Dropped pin'}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{coords}</p></div>
+        <div className="min-w-0 flex-1"><p className="text-sm font-semibold text-zinc-900 dark:text-white">{address === undefined ? 'Finding the address…' : address ?? 'Dropped pin'}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400">{coords}</p><p className="text-xs tabular-nums text-zinc-500 dark:text-zinc-400"><span title="Plus Code: a short address for any spot, which Google Maps also reads">{code}</span>{metres !== null && <> · <Mountain className="inline h-3 w-3 align-[-1px]" aria-hidden /> {metres} m</>}</p></div>
         <button type="button" onClick={onClose} className="rounded-full p-1 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close"><X className="h-4 w-4" aria-hidden /></button>
       </div>
       <button type="button" className={item} onClick={() => onFrom(spot)}><span className="h-3 w-3 shrink-0 rounded-full border-[3px] border-[#1f87ff] bg-white" aria-hidden />Directions from here</button>
@@ -232,6 +268,8 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
       <button type="button" className={item} onClick={onMeasure}><Ruler className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Measure distance</button>
       <button type="button" className={item} onClick={() => void copy()}><Copy className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Copy coordinates</button>
       <button type="button" className={item} onClick={() => void share()}><Share className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Share this place</button>
+      <button type="button" className={item} onClick={() => void copyCode()}><Copy className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Copy the Plus Code</button>
+      <a className={item} href={reportUrl(p.lat, p.lon)} target="_blank" rel="noopener noreferrer"><Flag className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />Report a problem with the map</a>
       <p className="px-2.5 pb-1 pt-0.5 text-[11px] text-zinc-500 dark:text-zinc-400">Address <a href="https://nominatim.org" target="_blank" rel="noopener noreferrer" className="underline">Nominatim</a> · © OpenStreetMap</p>
     </div>
   );
@@ -241,7 +279,7 @@ export function HereCard({ p, zoom, x, y, onFrom, onTo, onMeasure, onClose }: {
 export function MeasureBar({ pts, onUndo, onClear, onDone }: { pts: Pt[]; onUndo: () => void; onClear: () => void; onDone: () => void }) {
   const km = lengthOf(pts), a = areaOf(pts);
   return (
-    <div role="status" className="absolute start-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--card-bg)] py-1.5 pe-1.5 ps-4 shadow-xl ring-1 ring-black/5 dark:ring-white/10 rtl:translate-x-1/2">
+    <div role="status" className="cmd-pop absolute start-1/2 top-3 z-30 flex -translate-x-1/2 items-center gap-2 rounded-full bg-[var(--card-bg)] py-1.5 pe-1.5 ps-4 shadow-xl ring-1 ring-black/5 dark:ring-white/10 rtl:translate-x-1/2">
       <Ruler className="h-4 w-4 shrink-0 text-zinc-500" aria-hidden />
       <span className="whitespace-nowrap text-sm font-semibold tabular-nums text-zinc-900 dark:text-white">{pts.length < 2 ? 'Click the map to measure' : `${distance(km)}${pts.length > 2 ? ` · ${area(a)} inside` : ''}`}</span>
       <button type="button" className={round} onClick={onUndo} disabled={!pts.length} aria-label="Undo the last point"><Undo2 className="h-4 w-4" aria-hidden /></button>

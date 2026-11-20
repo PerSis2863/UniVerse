@@ -13,22 +13,27 @@ export type Reaction = (typeof REACTIONS)[number];
 
 export interface Floating { id: number; emoji: string; name: string; x: number }
 
-/** The emoji rising up the screen. Each lives about three seconds. */
+/** The emoji rising up the screen. Each lives about three seconds. M342 (FaceTime's feel): bigger, on one smooth CSS
+ *  curve the graphics chip runs (`react-rise` in globals.css, not framer-motion's x / y on the page's thread), each with
+ *  its own little sway; 👏 and 🎉 throw a few small copies out as they appear (`react-spark`). */
+const BURST = new Set(['👏', '🎉']);
 export function FloatingReactions({ items }: { items: Floating[] }) {
   return (
     <div className="pointer-events-none absolute inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+6rem)] top-1/3 z-20 overflow-hidden" aria-hidden>
-      <AnimatePresence>
-        {items.map((f) => (
-          <motion.div key={f.id} className="absolute bottom-0 flex flex-col items-center" style={{ left: `${f.x}%` }}
-            initial={{ y: 0, opacity: 0, scale: 0.6 }}
-            animate={{ y: -320, opacity: [0, 1, 1, 0], scale: [0.6, 1.15, 1, 0.95], x: [0, 12, -10, 6] }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 3, ease: 'easeOut', times: [0, 0.15, 0.75, 1] }}>
-            <span className="text-4xl drop-shadow-lg">{f.emoji}</span>
-            <span className="mt-0.5 text-[10px] font-semibold bg-black/50 backdrop-blur rounded-full px-1.5 py-0.5 text-white max-w-[7rem] truncate">{f.name}</span>
-          </motion.div>
-        ))}
-      </AnimatePresence>
+      {items.map((f) => {
+        const sway = ((f.id * 37) % 21) - 10; // the same for this reaction on every render
+        return (
+          <div key={f.id} className="react-rise absolute bottom-0 flex flex-col items-center" style={{ left: `${f.x}%`, '--rx1': `${sway}px`, '--rx2': `${-sway * 0.7}px` } as React.CSSProperties}>
+            <span className="relative text-5xl drop-shadow-[0_6px_12px_rgb(0_0_0/0.35)]">
+              {f.emoji}
+              {BURST.has(f.emoji) && [0, 1, 2, 3, 4].map((i) => (
+                <span key={i} className="react-spark absolute start-1/2 top-1/2 text-xl" style={{ '--dx': `${Math.round(Math.cos((i / 5) * 2 * Math.PI) * 46)}px`, '--dy': `${Math.round(Math.sin((i / 5) * 2 * Math.PI) * 46)}px`, animationDelay: `${i * 18}ms` } as React.CSSProperties}>{f.emoji}</span>
+              ))}
+            </span>
+            <span className="mt-1 text-[11px] font-semibold bg-black/55 rounded-full px-2 py-0.5 text-white max-w-[8rem] truncate">{f.name}</span>
+          </div>
+        );
+      })}
     </div>
   );
 }

@@ -127,3 +127,51 @@ export function keptOf(v: unknown): Kept {
   const o = (v ?? {}) as { home?: unknown; work?: unknown; recent?: unknown };
   return { home: spot(o.home), work: spot(o.work), recent: (Array.isArray(o.recent) ? o.recent : []).map(spot).filter((x): x is Spot => !!x).slice(0, 6) };
 }
+
+/** M348 (the owner, 20 Nov: "when i type a specific hotel name in brussel… it shows nothing"): the map's search boxes
+ *  only knew places with a guide (cities, islands, parks). Photon (komoot's search of OpenStreetMap, made for typing
+ *  as you go) adds real places, hotels, restaurants, shops and addresses, nearest to where the map is looking. Called
+ *  from the browser, after a pause in typing. */
+export type NearPlace = { key: string | null; name: string; cls: string; sub: string; lat: number; lon: number; address: string };
+export const photonUrl = (q: string, near?: Pt | null) => {
+  const p = new URLSearchParams({ q: q.slice(0, 80), limit: '6', lang: 'en' });
+  if (near && Number.isFinite(near.lat) && Number.isFinite(near.lon)) { p.set('lat', near.lat.toFixed(4)); p.set('lon', near.lon.toFixed(4)); }
+  return `https://photon.komoot.io/api/?${p}`;
+};
+/** Photon's answer as places: a name, its kind, where, and the street and town shown under it. */
+export function photonOf(answer: unknown): NearPlace[] {
+  const list = (answer as { features?: unknown } | null)?.features;
+  if (!Array.isArray(list)) return [];
+  const out: NearPlace[] = [], seen = new Set<string>();
+  for (const f of list as { geometry?: { coordinates?: unknown }; properties?: Record<string, unknown> }[]) {
+    const pr = f.properties ?? {}, c = f.geometry?.coordinates;
+    const lon = Array.isArray(c) ? Number(c[0]) : NaN, lat = Array.isArray(c) ? Number(c[1]) : NaN;
+    const s = (k: string) => (typeof pr[k] === 'string' ? (pr[k] as string).trim() : '');
+    const street = [s('street'), s('housenumber')].filter(Boolean).join(' ');
+    const name = s('name') || street;
+    if (!name || !Number.isFinite(lat) || !Number.isFinite(lon)) continue;
+    const type = s('osm_type'), id = Number(pr.osm_id);
+    const key = /^[NWR]$/.test(type) && Number.isSafeInteger(id) && id > 0 ? `${type}${id}` : null;
+    if (seen.has(key ?? `${name}@${lat.toFixed(4)}`)) continue;
+    seen.add(key ?? `${name}@${lat.toFixed(4)}`);
+    const address = [name === street ? '' : street, s('city') || s('town') || s('village') || s('county'), s('country')].filter(Boolean).join(', ');
+    out.push({ key, name: name.slice(0, 120), cls: s('osm_key'), sub: s('osm_value'), lat, lon, address: address.slice(0, 160) });
+  }
+  return out;
+}
+
+/** M353: the places looked at lately on Travel's map ("Recents", as Apple Maps keeps them), on this device only. */
+export type RecentPlace = { name: string; kind: string; lat: number; lon: number; key: string | null };
+/** The list with this place first (once: by its map key, else its name and position), at most `max`. */
+export function withRecentPlace(list: RecentPlace[], p: RecentPlace, max = 8): RecentPlace[] {
+  const same = (a: RecentPlace) => (p.key ? a.key === p.key : a.name === p.name && Math.abs(a.lat - p.lat) < 1e-4 && Math.abs(a.lon - p.lon) < 1e-4);
+  return [p, ...list.filter((a) => !same(a))].slice(0, max);
+}
+/** What was kept, checked (it's the device's storage: anything could be there). */
+export function recentOf(v: unknown): RecentPlace[] {
+  if (!Array.isArray(v)) return [];
+  return v.flatMap((x: Record<string, unknown> | null) => {
+    if (!x || typeof x.name !== 'string' || !Number.isFinite(Number(x.lat)) || !Number.isFinite(Number(x.lon))) return [];
+    return [{ name: x.name.slice(0, 120), kind: typeof x.kind === 'string' ? x.kind.slice(0, 60) : 'Place', lat: Number(x.lat), lon: Number(x.lon), key: typeof x.key === 'string' && /^[NWR]\d+$/.test(x.key) ? x.key : null }];
+  }).slice(0, 8);
+}

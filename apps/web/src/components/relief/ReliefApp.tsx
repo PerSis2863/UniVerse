@@ -32,7 +32,7 @@ import { Radar } from '@/components/live/Radar';
 import { Journey } from '@/components/live/Journey';
 import { useActivePoll } from '@/lib/realtime-client';
 import { Fill } from '@/components/ui/Fill';
-import { Callout, CountChips, InkPill, placeCallout, ProposalSheet, QueueCard, StatCard, StatStrip, TickStrip, undoToast } from '@/components/map-ui/Command';
+import { Callout, CountChips, InkPill, MapButtons, placeCallout, ProposalSheet, QueueCard, StatCard, StatStrip, TickStrip, undoToast } from '@/components/map-ui/Command';
 import { count, drawIcons, IconSource, route, unit, zone, type Icons } from '@/components/map-ui/marks';
 
 // UniVerse Relief (src/lib/apps.ts): every open need and offer of help on one live map (the same map
@@ -355,12 +355,9 @@ export function ReliefApp() {
             {!data && <div className="absolute inset-0 grid place-items-center"><Loader2 className="w-6 h-6 animate-spin text-orange-500" aria-label="Loading" /></div>}
             <CountChips<'ALL' | 'NEED' | 'OFFER' | 'URGENT'> label="Show" className="absolute start-3 top-3 z-10 max-w-[calc(100%-4.5rem)]" value={type} onChange={setType}
               items={[{ id: 'ALL', label: 'All', count: counts.ALL }, { id: 'NEED', label: 'Needs', count: counts.NEED, dot: dark ? '#e4e4e7' : '#18181b' }, { id: 'OFFER', label: 'Offers', count: counts.OFFER, dot: OFFER }, { id: 'URGENT', label: 'Urgent', count: counts.URGENT, dot: ACCENT }]} />
-            <div className="absolute end-3 top-3 z-10 flex flex-col overflow-hidden rounded-2xl bg-white/95 shadow-lg ring-1 ring-black/5 divide-y divide-zinc-200 dark:bg-[#1b1d22]/95 dark:ring-white/10 dark:divide-white/10">
-              {([['in', Plus, 'Zoom in'], ['out', Minus, 'Zoom out'], ['home', Globe2, 'See everything']] as const).map(([id, Icon, lbl]) => (
-                <button key={id} type="button" aria-label={lbl} title={lbl} onClick={() => (id === 'home' ? map.current?.home() : map.current?.zoomBy(id === 'in' ? 1.8 : 1 / 1.8))} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><Icon className="h-[18px] w-[18px]" aria-hidden /></button>
-              ))}
-              <button type="button" aria-label="Near me" title="Near me" onClick={locate} className="grid h-10 w-10 place-items-center text-zinc-800 transition-colors hover:bg-zinc-100 dark:text-zinc-100 dark:hover:bg-white/[0.08]"><LocateFixed className="h-[18px] w-[18px]" aria-hidden /></button>
-            </div>
+            <MapButtons className="absolute end-3 top-3 z-10" items={[
+              { label: 'Zoom in', icon: Plus, onClick: () => map.current?.zoomBy(1.8) }, { label: 'Zoom out', icon: Minus, onClick: () => map.current?.zoomBy(1 / 1.8) },
+              { label: 'See everything', icon: Globe2, onClick: () => map.current?.home() }, { label: 'Near me', icon: LocateFixed, onClick: locate }]} />
             {sel && !picking && (
               <Callout ref={pinned} key={sel.id} className="hidden lg:block">
                 <div className="flex items-center gap-3">

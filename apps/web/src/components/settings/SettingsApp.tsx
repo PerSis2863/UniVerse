@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { AnimatePresence, m as motion } from 'framer-motion';
 import { toast } from 'sonner';
 import { useArrange } from '@/store/arrange';
-import { Accessibility, Bell, Mouse, Move, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
+import { Accessibility, Bell, CheckCheck, Mouse, Move, Building2, Camera, Check, ChevronLeft, ChevronRight, Globe, HardDrive, HelpCircle, ImagePlus, Link2, Loader2, LogOut, Moon, Palette, Plus, Search, Shield, ShieldCheck, Sparkles, Sun, SunMoon, Trash2, User, Users, Vibrate, Volume2, X, Bold, Contrast, Type, Underline, Captions, VideoOff, FlipHorizontal2, type LucideIcon, TextSelect } from 'lucide-react';
 import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { Switch } from '@/components/ui/Switch';
@@ -74,7 +74,7 @@ const SECTIONS: Section[] = [
   { id: 'appearance', label: 'Appearance', icon: Palette, tile: '#5856d6', keywords: 'theme dark light mode text size bigger font motion animation arrange arrangement drag move resize layout sync devices vibration haptics reading level simpler grade dyslexia' },
   { id: 'language', label: 'Language & data', icon: Globe, tile: '#007aff', keywords: 'language translate english french hindi spanish low data saver 2g weak connection voice only calls' },
   { id: 'notifications', label: 'Notifications', icon: Bell, tile: '#ff3b30', keywords: 'push email alerts notify mute course daily summary digest' },
-  { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security' },
+  { id: 'privacy', label: 'Privacy & security', icon: Shield, tile: '#0a84ff', keywords: 'password two-step 2fa sign in devices visibility network privacy security read receipts seen blue ticks' },
   { id: 'family', label: 'Parent or guardian', icon: Users, tile: '#34c759', keywords: 'parent guardian family share progress', roles: ['STUDENT'] },
   { id: 'connections', label: 'Connected accounts', icon: Link2, tile: '#5ac8fa', keywords: 'connect gmail outlook slack google calendar microsoft classroom import linkedin telegram whatsapp discord accounts sync' },
   { id: 'consents', label: 'My consents', icon: ShieldCheck, tile: '#30b0c7', keywords: 'consent permissions agree' },
@@ -257,6 +257,7 @@ function SectionBody({ id, role, title }: { id: string; role: Role; title: strin
     case 'privacy':
       return (
         <Card title={title} subtitle="Who can see you, how you sign in, and your devices">
+          <ReadReceipts />
           <Link href="/privacy-choices" target="_blank" data-setting="privacy-choices" className="flex items-center justify-between gap-3 p-4 rounded-2xl bg-[var(--fill)] hover:opacity-90">
             <span><span className="block text-sm font-medium text-zinc-900 dark:text-white">Your privacy choices</span><span className="block text-xs text-zinc-500 mt-0.5">What you control, and how to download or delete your data.</span></span>
             <ChevronRight className="w-4 h-4 text-zinc-400 shrink-0" />
@@ -585,6 +586,22 @@ function Notifications({ role }: { role: Role }) {
       <Setting id="quiet-hours"><QuietHoursSetting /></Setting>
       {(role === 'TEACHER' || role === 'ADMIN') && <Setting id="parent-hours"><ParentHoursSetting /></Setting>}
     </Card>
+  );
+}
+
+/** M344 (WhatsApp's and Signal's): whether people see when I've read their messages. Off works both ways. */
+function ReadReceipts() {
+  const [on, setOn] = useState<boolean | null>(null);
+  useEffect(() => { api.get('/users/me').then((r) => setOn(r.data?.readReceipts ?? true)).catch(() => setOn(true)); }, []);
+  const toggle = async (next: boolean) => {
+    setOn(next);
+    try { await api.patch('/users/me', { readReceipts: next }); toast.success(next ? 'Read receipts on' : 'Read receipts off'); }
+    catch { setOn(!next); toast.error('Couldn’t save that.'); }
+  };
+  return (
+    <Row setting="read-receipts" icon={CheckCheck} title="Read receipts" desc="People see when you’ve read their messages. Turned off, you won’t see when they’ve read yours either (groups too).">
+      {on === null ? <Loader2 className="w-4 h-4 animate-spin text-zinc-400" /> : <Switch checked={on} label="Read receipts" onChange={(v) => void toggle(v)} />}
+    </Row>
   );
 }
 

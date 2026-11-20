@@ -26,6 +26,7 @@ import { authedJson } from '@/lib/authed-fetch';
 import { appLink, firstLink, youtubeId } from '@/lib/app-links';
 import { AppLinkCard, YouTubeCard } from './LinkCards';
 import { PrivateText } from './PrivateText';
+import { eventIcs } from '@/lib/chat-event';
 import { EFFECTS } from '@/lib/message-effects';
 import { Fill } from '@/components/ui/Fill';
 
@@ -142,6 +143,11 @@ interface Props {
   onSelect?: () => void;
   onInfo: () => void;
   onVote: (option: number) => void;
+  /** M340: tick or untick an item of a CHECKLIST message. */
+  onCheck?: (item: number) => void;
+  /** M344: answer an EVENT; stop my live LOCATION. */
+  onRsvp?: (answer: 'yes' | 'maybe' | 'no') => void;
+  onStopLive?: () => void;
   onOpenContact: (userId: string) => void;
   onReact: (emoji: string) => void;
   onOpenImage: (url: string) => void;
@@ -290,7 +296,8 @@ export function MessageBubble(p: Props) {
       : meta.answered && dur ? `${video ? 'Video' : 'Voice'} call · ${dur}`
       : meta.declinedBy ? (mine ? `Declined by ${meta.declinedBy.split(' ')[0]}` : 'You declined')
       : mine ? 'No answer' : `Missed ${video ? 'video' : 'voice'} call`;
-    const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : mine ? 'Outgoing' : 'Incoming';
+    // M342: who was in a call that happened (a group's call names everyone who joined).
+    const sub = live ? (mine ? 'You started a call' : `${m.sender.name.split(' ')[0]} is calling`) : meta.answered && meta.people && meta.people.length > 2 ? `With ${meta.people.slice(0, 4).join(', ')}${meta.people.length > 4 ? ` and ${meta.people.length - 4} more` : ''}` : mine ? 'Outgoing' : 'Incoming';
     const Icon = live ? (video ? Video : Phone) : missed ? PhoneMissed : mine ? PhoneOutgoing : PhoneIncoming;
     content = (
       <div className="flex items-center gap-3 p-3 w-[17rem] max-w-full">
@@ -306,7 +313,7 @@ export function MessageBubble(p: Props) {
             {mine ? 'Rejoin' : 'Join'}
           </a>
         ) : p.onCallBack ? (
-          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
+          <button type="button" onClick={() => p.onCallBack?.(video ? 'video' : 'audio')} className={cn('shrink-0 whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-bold transition-transform active:scale-95', mine ? 'bg-white text-zinc-900 hover:bg-white/90' : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20')}>
             Call back
           </button>
         ) : null}
@@ -343,8 +350,83 @@ export function MessageBubble(p: Props) {
         <p className={cn('text-[11px] mt-2', mine ? 'text-white/70' : 'text-zinc-500')}>{m.poll?.voters ?? 0} {m.poll?.voters === 1 ? 'person' : 'people'} voted</p>
       </div>
     );
+  } else if (m.type === 'CHECKLIST') {
+    // M340: a shared checklist; anyone in the chat ticks an item, and it says who did.
+    const items = m.metadata?.items ?? [];
+    const done = items.filter((i) => i.done).length;
+    content = (
+      <div className="p-3 w-72 max-w-full">
+        <p className="font-bold flex items-start gap-2"><ListChecks className="w-4 h-4 mt-0.5 shrink-0" aria-hidden /> <span translate="no">{m.metadata?.title ?? m.body}</span></p>
+        <div className={cn('mt-2 mb-2.5 h-1 rounded-full overflow-hidden', mine ? 'bg-white/20' : 'bg-zinc-200 dark:bg-white/10')}>
+          <Fill value={items.length ? done / items.length : 0} className={cn('h-full rounded-full', mine ? 'bg-white' : 'bg-emerald-500')} />
+        </div>
+        <ul className="space-y-0.5">
+          {items.map((it, i) => (
+            <li key={i}>
+              <button type="button" role="checkbox" aria-checked={!!it.done} onClick={() => { haptic('tap'); p.onCheck?.(i); }} disabled={m.pending || !p.onCheck}
+                className={cn('w-full flex items-start gap-2.5 rounded-lg px-1.5 py-1.5 text-start transition-colors', mine ? 'hover:bg-white/10' : 'hover:bg-zinc-50 dark:hover:bg-white/5')}>
+                <span className={cn('mt-0.5 w-[18px] h-[18px] rounded-md border-2 flex items-center justify-center shrink-0 transition-colors', it.done ? (mine ? 'bg-white border-white text-indigo-600' : 'bg-emerald-500 border-emerald-500 text-white') : mine ? 'border-white/60' : 'border-zinc-300 dark:border-zinc-600')}>
+                  {it.done && <Check className="w-3 h-3" strokeWidth={3} />}
+                </span>
+                <span className="flex-1 min-w-0">
+                  <span translate="no" className={cn('block text-sm break-words', it.done && 'line-through', it.done && !mine && 'text-zinc-500 dark:text-zinc-400')}>{it.text}</span>
+                  {it.done && <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{it.done.name}</span>}
+                </span>
+              </button>
+            </li>
+          ))}
+        </ul>
+        <p className={cn('text-[11px] mt-2', mine ? 'text-white/70' : 'text-zinc-500')}>{done} of {items.length} done</p>
+      </div>
+    );
+  } else if (m.type === 'EVENT' && m.metadata?.startsAt) {
+    // M344: an event in the chat (WhatsApp's): when and where, everyone's answer, and a calendar file.
+    const ev = m.metadata as { title?: string; startsAt: string; endsAt?: string | null; place?: string | null; answers?: Record<string, { a: 'yes' | 'maybe' | 'no'; name: string }> };
+    const all = Object.entries(ev.answers ?? {});
+    const minePick = ev.answers?.[p.me]?.a;
+    const when = new Date(ev.startsAt);
+    const past = Date.parse(ev.endsAt ?? ev.startsAt) < now;
+    const ics = () => {
+      const blob = new Blob([eventIcs({ title: ev.title ?? m.body, startsAt: ev.startsAt, endsAt: ev.endsAt ?? null, place: ev.place ?? null, answers: {} }, m.id)], { type: 'text/calendar' });
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${(ev.title ?? 'event').replace(/[^\w -]/g, '').slice(0, 40) || 'event'}.ics`; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    };
+    const labels = { yes: 'Going', maybe: 'Maybe', no: 'Can’t go' } as const;
+    content = (
+      <div className="p-3 w-72 max-w-full">
+        <div className="flex items-start gap-3">
+          <span className={cn('w-12 shrink-0 rounded-xl overflow-hidden text-center', mine ? 'bg-white text-zinc-900' : 'bg-zinc-100 dark:bg-white/10')}>
+            <span className="block text-[11px] font-bold uppercase bg-rose-500 text-white py-0.5">{when.toLocaleDateString([], { month: 'short' })}</span>
+            <span className="block text-lg font-bold leading-8">{when.getDate()}</span>
+          </span>
+          <span className="min-w-0">
+            <span className="block font-bold break-words" translate="no">{ev.title ?? m.body}</span>
+            <span className={cn('block text-xs mt-0.5', mine ? 'text-white/80' : 'text-zinc-500')}>{when.toLocaleDateString([], { weekday: 'long' })}, {when.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}{ev.endsAt ? `–${new Date(ev.endsAt).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })}` : ''}</span>
+            {ev.place && <span className={cn('block text-xs break-words', mine ? 'text-white/80' : 'text-zinc-500')} translate="no">{ev.place}</span>}
+          </span>
+        </div>
+        {!past && (
+          <div className="mt-3 grid grid-cols-3 gap-1.5" role="group" aria-label="Your answer">
+            {(['yes', 'maybe', 'no'] as const).map((a) => (
+              <button key={a} type="button" aria-pressed={minePick === a} onClick={() => { haptic('tap'); p.onRsvp?.(a); }} disabled={m.pending || !p.onRsvp}
+                className={cn('rounded-full py-1.5 text-xs font-semibold transition-colors', minePick === a ? (mine ? 'bg-white text-zinc-900' : 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900') : mine ? 'bg-black/15 hover:bg-black/25' : 'bg-zinc-100 dark:bg-white/10 hover:bg-zinc-200 dark:hover:bg-white/15')}>
+                {labels[a]}
+              </button>
+            ))}
+          </div>
+        )}
+        <p className={cn('text-xs mt-2.5', mine ? 'text-white/80' : 'text-zinc-500')}>
+          {past ? 'This event has passed. ' : ''}{(['yes', 'maybe', 'no'] as const).map((a) => { const who = all.filter(([, x]) => x.a === a).map(([, x]) => x.name); return who.length ? `${labels[a]}: ${who.slice(0, 4).join(', ')}${who.length > 4 ? ` +${who.length - 4}` : ''}` : null; }).filter(Boolean).join(' · ') || 'No answers yet'}
+        </p>
+        <button type="button" onClick={ics} className={cn('mt-2 text-xs font-semibold underline underline-offset-2', mine ? 'text-white' : 'text-indigo-600 dark:text-indigo-300')}>Add to calendar</button>
+      </div>
+    );
   } else if (m.type === 'LOCATION' && m.metadata?.lat != null && m.metadata?.lng != null) {
     const { lat, lng } = m.metadata as { lat: number; lng: number };
+    // M344: a live location shows when it ends and when it last moved (it moves while the sender's app is open).
+    const live = m.metadata.live;
+    const liveOn = !!live && !live.stopped && Date.parse(live.until) > now;
+    const ago = live ? Math.max(0, Math.round((now - Date.parse(live.updatedAt)) / 60_000)) : 0;
+    const liveLine = !live ? null : liveOn ? `Live until ${new Date(live.until).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })} · moved ${ago ? `${ago} min ago` : 'just now'}` : 'Live location ended';
     const d = 0.004;
     content = (
       <div className="p-1 w-72 max-w-full">
@@ -357,10 +439,11 @@ export function MessageBubble(p: Props) {
         <a href={`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-2.5 py-2">
           <MapPin className="w-4 h-4 shrink-0" />
           <span className="min-w-0 flex-1">
-            <span className="block font-semibold truncate">{m.metadata.label || 'Shared location'}</span>
-            <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>Open in Maps</span>
+            <span className="block font-semibold truncate">{m.metadata.live ? 'Live location' : m.metadata.label || 'Shared location'}</span>
+            <span className={cn('block text-[11px]', mine ? 'text-white/70' : 'text-zinc-500')}>{liveLine ?? 'Open in Maps'}</span>
           </span>
         </a>
+        {liveOn && mine && p.onStopLive && <button type="button" onClick={p.onStopLive} className="mx-2.5 mb-2 w-[calc(100%-1.25rem)] rounded-full bg-white text-rose-600 text-sm font-semibold py-1.5">Stop sharing</button>}
       </div>
     );
   } else if (m.type === 'CONTACT' && m.metadata?.userId) {
