@@ -10382,3 +10382,35 @@ symmetric spectrum comes back real), `fftshift` / `ifftshift`, `nextpow2`, `filt
 `cov`, `corrcoef`, `prctile` / `quantile` (MATLAB's (k − 0.5)/n positions), `iqr`, `zscore`, `skewness`,
 `kurtosis`, `range`, `histcounts`, `erf` / `erfc`, `normpdf` / `normcdf` / `norminv`, `exppdf`, `unifpdf`, and
 `spline` with not-a-knot ends (reproduces a cubic; three points give the parabola). Tests in `lab.test.ts`.
+
+## M379 (21 Nov): UniVerse Lab: 3D plots and images
+
+`src/lib/lab/plot3d.ts` (imported by `plot.ts`; the two import each other, which works because neither touches the
+other's values while loading; load `interp.ts` first, as the worker and tests do, or `signal.ts` finds BUILTINS unset)
+and `src/lib/lab/colormap.ts`. Axes gained `grids` (`Grid`: surf / mesh with full r×c x, y, z; image / filled with column
+and row centres), `zlabel`, `zlim`, `view`, `colorbar`, `clim`, `zrange` (contour's colour scale), `revY` (images: row 1
+at the top; `axis ij` / `axis xy`) and `tight` (images and contours sit exactly on their data). Series gained `z`
+(plot3, scatter3), `level` (a contour line coloured from the map when drawn, so `colormap hot` afterwards recolours it),
+`cv` (a colour per point: `scatter(x, y, s, c, 'filled')`) and `filled`. The colour map belongs to the figure
+(`Figure.cmap`, n×3 from 0 to 1), as in MATLAB. Commands: surf / surfc / surface, mesh / meshc / meshz / waterfall
+(a 4th argument is colour data; 'EdgeColor','none', 'FaceAlpha'), plot3, scatter3, contour / contour3 (n levels, a
+vector of levels, [v v], 'LineColor', 'LineWidth', a spec), contourf, imagesc (with [low high]), image (indexes the map),
+pcolor, colorbar, colormap (name, n, or a matrix; returns the map), lab, viridis, plasma, turbo, jet, hot, cool, gray,
+bone, copper, spring, summer, autumn, winter as functions (`jet(64)`; parula opens our own "lab" map: not MATLAB's
+colours), caxis / clim, view (az, el; view(2), view(3)), shading (faceted / flat / interp: interp is drawn flat), peaks,
+rotate3d (does nothing), zlabel, zlim, axis with six limits. `colormap`, `colorbar`, `shading`, `view`, `rotate3d`,
+`caxis` work as command words (`colormap hot`).
+
+Drawing: 3D uses MATLAB's own viewing transform (az from −y, el up), x and y spread over −1…1 and z over −0.8…0.8, the
+three back walls with grid lines, faces sorted far to near (painter's order; at most ~90×90 faces a surface, bigger ones
+sampled), lines and points over the faces; ticks on the front floor edges and on the left vertical edge. A 3D axes takes
+its whole subplot cell (no wide left margin). Images and filled contours are a PNG inside the SVG (`png()` writes
+uncompressed "stored" zlib blocks, no library): images one pixel a value, drawn pixelated; filled contours upsampled
+to ~200 px, bilinear, then banded by level, with dark lines on top. Contour lines: marching squares per cell, saddles
+decided by the cell's middle, a shared edge's crossing always worked out from its lower index (so pieces join exactly),
+zero-length scraps dropped, pieces joined into lines. LaTeX: `view={az}{el}`, `\addplot3[surf, shader=…]` with a scan
+line per column, `matrix plot*` with `point meta=explicit` for images, `colormap={uvmap}{rgb255=…}` from the figure's
+map, `point meta min/max`, `colorbar`, `y dir=reverse`. Sizes: a 60×60 filled contour is ~250 KB of SVG per theme.
+Example script `surface.m` (new visitors only: saved script lists are kept). Not built: lighting, transparency sorting
+between surfaces and lines, interpolated (smooth) shading, quiver, streamlines, isosurfaces, RGB images (the engine
+has no 3D arrays yet), contour labels (clabel).

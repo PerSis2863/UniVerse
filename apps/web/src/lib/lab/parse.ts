@@ -140,7 +140,7 @@ export interface FnDef { name: string; params: string[]; outs: string[]; body: S
 export interface Program { body: Stmt[]; fns: Map<string, FnDef> }
 
 /** Commands written without brackets ("hold on", "clc", "format long", "close all"). */
-const COMMANDS = new Set(['legend', 'hold', 'clc', 'clear', 'close', 'format', 'grid', 'axis', 'figure', 'disp', 'who', 'whos', 'more', 'pkg', 'clf', 'help', 'doc', 'tic', 'toc', 'box']);
+const COMMANDS = new Set(['legend', 'hold', 'clc', 'clear', 'close', 'format', 'grid', 'axis', 'figure', 'disp', 'who', 'whos', 'more', 'pkg', 'clf', 'help', 'doc', 'tic', 'toc', 'box', 'colormap', 'colorbar', 'shading', 'view', 'rotate3d', 'caxis']);
 
 export function parse(src: string): Program {
   const toks = lex(src);

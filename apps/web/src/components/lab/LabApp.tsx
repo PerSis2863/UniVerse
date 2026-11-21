@@ -22,6 +22,7 @@ const EXAMPLES: Script[] = [
   { name: 'matrices.m', code: "% Solve A x = b\nA = [4 -2 1; -2 4 -2; 1 -2 4];\nb = [11; -16; 17];\nx = A \\ b\ncheck = A * x - b\nd = det(A)\n" },
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
+  { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;

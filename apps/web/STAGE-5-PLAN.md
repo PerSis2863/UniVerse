@@ -1778,3 +1778,4 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M376 | UniVerse Lab, part 3: the Lab app and its window | **Done** | The seventh app: a command window, script editor, variables and figures (PNG, SVG, LaTeX), running in a background worker; on the landing, hub and menus. |
 | M377 | UniVerse Lab: complex numbers (the owner, 21 Nov: "build all of them") | **Done** | 3i, sqrt(-1), complex arithmetic and solving, complex roots and eigenvalues, printed as MATLAB does. |
 | M378 | UniVerse Lab: signals and statistics | **Done** | fft / ifft of any length, filter, conv2, xcorr, freqz, windows, moving statistics; covariance, correlation, percentiles, normal distribution, splines. |
+| M379 | UniVerse Lab: 3D plots and images | **Done** | surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor; colour maps (our own default, plus viridis, turbo, jet, hot, gray…), colour bars, view, shading, peaks; all in LaTeX too. |
