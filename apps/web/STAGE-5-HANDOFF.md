@@ -10294,3 +10294,30 @@ chosen row, the places' beds bar (now `Fill`) and their "Open" and "yes" badges 
 low, out and closed), the open-needs tick strip (urgent ones dark, the rest light) and the Urgent figure. In the shared
 `QueueCard` (map-ui) the kind's icon is grey and only the **chosen** card wears the app's colour (an urgent one has a
 plain darker hairline; its due label still says so). Checked at 1440 and 390, light and dark: axe clean.
+
+## M374 (21 Nov): UniVerse Lab, part 1: our own engine for the MATLAB / Octave language
+
+The owner, 21 Nov: a link to matlab2tikz ("can we make this into an app… like how matlabs is"), then GNU Octave
+("build this in the matlab app as it is open sources"), then "we build our own octave no need to just copy it" and "i
+need you to build your own matlab and octave together in one app which can be downloaded in the computer". Told once
+that new apps are paused until 5 Dec; the owner chose to go on. **Plan, in stages:** (1) the engine (this item); (2)
+figures and Export to LaTeX (our own version of what matlab2tikz does); (3) the Lab window as a new app (command
+window, variables, script editor, figures); (4) the computer app (Windows, Mac, Linux) built by GitHub Actions on the
+public repo, unsigned at first (signing costs money: **[owner]**), with a download page. Name: **UniVerse Lab** (not
+MATLAB's name or look; no code from MATLAB or GNU Octave, which is GPL: we only follow the language's documented
+behaviour).
+- `src/lib/lab/` (pure TypeScript, no browser APIs, so the web app and the computer app share it):
+  `parse.ts` (the reader: MATLAB's whitespace rules inside [ ], ' as transpose or text by context, comments % # and
+  %{ %}, `...` continuation, command syntax like `hold on`, functions in the script), `values.ts` (column-major
+  matrices, logical, text, cells, structs, handles; "format short / long" printing), `interp.ts` (implicit expansion,
+  indexing with `end`, `:` and masks, growth on assignment and `x(i) = []`, multiple outputs, closures for `@(x)`,
+  `A\b` by pivoted elimination or least squares, `+= ++`, if / for / while / do-until / switch / try), `builtins.ts`
+  (~230 names: making matrices, maths, reductions, find / sort / unique, linear algebra with det, inv, lu, rank, norm,
+  eig for symmetric matrices, polyfit / polyval / roots (real roots), interp1, trapz, integral, fzero, fminbnd, ode45
+  (Dormand–Prince), text and sprintf / fprintf, cells and structs, arrayfun / cellfun, eval, tic / toc, clc / clear /
+  who / whos / format).
+- **Not yet:** complex numbers (said plainly when met), N-D arrays past 2-D, struct arrays, classes, file I/O, input.
+- Errors are plain and specific ("Can’t multiply a 1x2 by a 1x2 matrix: the inner sizes must match (use .* …)",
+  "Did you mean “sin”?"). Long runs ask `host.stopped()` every 20,000 statements (the Stop button).
+- Tests: `src/lib/lab/lab.test.ts` (precedence, matrices, solving, expansion, indexing, control flow, handles,
+  printing, polyfit and ode45, error messages).
