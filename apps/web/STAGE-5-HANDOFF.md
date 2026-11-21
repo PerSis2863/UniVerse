@@ -10321,3 +10321,15 @@ behaviour).
   "Did you mean “sin”?"). Long runs ask `host.stopped()` every 20,000 statements (the Stop button).
 - Tests: `src/lib/lab/lab.test.ts` (precedence, matrices, solving, expansion, indexing, control flow, handles,
   printing, polyfit and ode45, error messages).
+
+## M375 (21 Nov): UniVerse Lab, part 2: figures and Export to LaTeX
+
+`src/lib/lab/plot.ts` (pure; the window gives the interpreter a `Graphics` as `host.graphics`): `plot` (y, x-y,
+several pairs, matrix columns, specs like 'r--o', 'LineWidth' / 'Color' / 'DisplayName' / 'MarkerSize'), `scatter`,
+`bar` (grouped), `stairs`, `stem`, `area`, `histogram` / `hist`, `fplot`, `semilogx` / `semilogy` / `loglog`, `hold`,
+`grid`, `title` / `xlabel` / `ylabel` (with a little TeX: x^2, x_1, \theta), `legend`, `axis` / `xlim` / `ylim`,
+`subplot`, `figure`, `clf`, `close`. `renderSvg(fig, w, h, dark)` draws it (our own palette, not MATLAB's: blue,
+orange, green, purple, red, teal, amber, pink; y rounds out to tidy ticks, x tight for lines; NaN breaks a line).
+`toTikz(fig)` writes pgfplots code (our own matlab2tikz: colours defined, `\addplot` per series with marks, dashes,
+bars, stairs, stems, areas, log axes, legend; subplots as a `groupplot`). ode45 now fills each step with a cubic
+Hermite curve (smooth plots). Checked by eye: a 2×2 figure in light and dark. Tests: `plot.test.ts`.

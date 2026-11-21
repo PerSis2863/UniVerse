@@ -627,8 +627,13 @@ function dopri(f: (t: number, y: number[]) => number[], t0: number, tf: number, 
     const y4 = y.map((yi, i) => yi + h * b4.reduce((acc, b, j) => acc + b * k[j][i], 0));
     const err = Math.sqrt(y5.reduce((s, v, i) => s + ((v - y4[i]) / (atol + rtol * Math.max(Math.abs(v), Math.abs(y[i])))) ** 2, 0) / y.length);
     if (err <= 1 || Math.abs(h) < 1e-12) {
-      // Four points inside each step too (MATLAB's ode45 "Refine"), so plots look smooth.
-      for (const s of [0.25, 0.5, 0.75]) { ts.push(t + s * h); ys.push(y.map((yi, i) => yi + s * (y5[i] - yi))); }
+      // Three points inside each step too (as ode45's "Refine"), from a cubic Hermite curve through both ends and their
+      // slopes (k1 here, k7 at the end: the same method's last stage), so plots look smooth.
+      const f0 = k[0], f1 = k[6];
+      for (const s of [0.25, 0.5, 0.75]) {
+        const h00 = 2 * s ** 3 - 3 * s ** 2 + 1, h10 = s ** 3 - 2 * s ** 2 + s, h01 = -2 * s ** 3 + 3 * s ** 2, h11 = s ** 3 - s ** 2;
+        ts.push(t + s * h); ys.push(y.map((yi, i) => h00 * yi + h10 * h * f0[i] + h01 * y5[i] + h11 * h * f1[i]));
+      }
       t += h; y = y5; ts.push(t); ys.push([...y]);
     }
     h *= Math.min(5, Math.max(0.2, 0.9 * (err || 1e-10) ** -0.2));
