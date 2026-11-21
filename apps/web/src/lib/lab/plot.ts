@@ -98,7 +98,8 @@ function seriesFrom(args: Value[], lab: Lab, kind: Kind): Series[] {
   while (i < args.length && args[i].k !== 'str') {
     const first = toMat(args[i]);
     const second = args[i + 1] && args[i + 1].k !== 'str' ? toMat(args[i + 1]) : null;
-    const [X, Y] = second ? [first, second] : [mat(first.r === 1 || first.c === 1 ? 1 : first.r, first.r === 1 || first.c === 1 ? first.d.length : 1, Array.from({ length: first.r === 1 || first.c === 1 ? first.d.length : first.r }, (_, k) => k + 1)), first];
+    // plot(z) with complex z draws its real against its imaginary parts (M377).
+    const [X, Y] = !second && first.im ? [mat(first.r, first.c, first.d), mat(first.r, first.c, first.im)] : second ? [first, second] : [mat(first.r === 1 || first.c === 1 ? 1 : first.r, first.r === 1 || first.c === 1 ? first.d.length : 1, Array.from({ length: first.r === 1 || first.c === 1 ? first.d.length : first.r }, (_, k) => k + 1)), first];
     i += second ? 2 : 1;
     const spec: Value[] = [];
     while (i < args.length && args[i].k === 'str' && !(args[i + 1] && args[i + 1].k !== 'str' && isPairName(args[i]))) { spec.push(args[i]); i++; if (spec.length) break; }

@@ -64,3 +64,26 @@ describe('UniVerse Lab: the language (M374)', () => {
     expect(() => run('if 1\n x = 2;')).toThrow(/needs an “end”/);
   });
 });
+
+describe('UniVerse Lab: complex numbers (M377)', () => {
+  it('reads, computes and prints complex numbers', () => {
+    expect(run('z = 3 + 4i').out).toBe('z = 3 + 4i\n');
+    expect(run('a = abs(3 + 4i);').v('a')).toBe('5');
+    expect(run('s = sqrt(-4)').out).toBe('s = 0 + 2i\n');
+    expect(run('p = (1 + 2i) * (3 - 1i)').out).toBe('p = 5 + 5i\n');
+    expect(run("w = [1+1i 2-1i]'; c = w(2)").out).toBe('c = 2 + 1i\n');
+    expect(run('e = exp(1i*pi); r = round(real(e)); ok = abs(imag(e)) < 1e-12;').v('r')).toBe('-1');
+  });
+  it('finds complex roots and eigenvalues', () => {
+    expect(run('r = roots([1 0 1])').out).toBe('r =\n\n  0 + 1i\n  0 - 1i\n\n');
+    expect(run('r = roots([1 -3 2]);').v('r')).toBe('2x1 double');
+    const ev = run('e = eig([0 -1; 1 0]); a = abs(e);');
+    expect(ev.v('a')).toBe('2x1 double');
+    expect(run('x = [2 1i; -1i 3] \\ [1; 1]; ok = norm(abs([2 1i; -1i 3] * x - [1; 1])) < 1e-12;').v('ok')).toBe('1');
+  });
+});
+describe('UniVerse Lab: powers of negatives (M377)', () => {
+  it('gives the complex principal root', () => {
+    expect(run('k = (-8)^(1/3)').out).toBe('k = 1.0000 + 1.7321i\n');
+  });
+});

@@ -4,7 +4,8 @@ import type { Expr } from './parse';
 // UniVerse Lab's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
 // linear indexing and reshape behave the same), text, cell arrays, structs and function handles.
 
-export interface Mat { k: 'mat'; r: number; c: number; d: Float64Array; logical?: boolean }
+/** `im`: the imaginary parts of a complex matrix (M377), the same length as `d`; absent for real ones. */
+export interface Mat { k: 'mat'; r: number; c: number; d: Float64Array; logical?: boolean; im?: Float64Array }
 export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 export interface Struct { k: 'struct'; f: Map<string, Value> }
@@ -13,6 +14,15 @@ export type Value = Mat | Str | Cell | Struct | Fn;
 
 export const mat = (r: number, c: number, d?: ArrayLike<number>, logical?: boolean): Mat => ({ k: 'mat', r, c, d: d ? Float64Array.from(d) : new Float64Array(r * c), ...(logical ? { logical } : {}) });
 export const num = (v: number): Mat => mat(1, 1, [v]);
+/** A complex matrix; back to a real one when every imaginary part is 0 (as MATLAB shows it). */
+export const cmat = (r: number, c: number, re: ArrayLike<number>, im: ArrayLike<number>): Mat => {
+  const m = mat(r, c, re);
+  for (let k = 0; k < m.d.length; k++) if (im[k] !== 0) { m.im = Float64Array.from(im); break; }
+  return m;
+};
+export const isComplex = (v: Value): boolean => v.k === 'mat' && !!v.im;
+/** The imaginary parts (zeros for a real matrix). */
+export const imOf = (m: Mat) => m.im ?? new Float64Array(m.d.length);
 export const bool = (v: boolean): Mat => mat(1, 1, [v ? 1 : 0], true);
 export const str = (v: string): Str => ({ k: 'str', v });
 export const empty = (): Mat => mat(0, 0);
@@ -33,6 +43,7 @@ export function scalar(v: Value, what = 'This'): number {
   return m.d[0];
 }
 export const truthy = (v: Value): boolean => {
+  if (v.k === 'mat' && v.im) { const im = v.im; return v.d.length > 0 && v.d.every((x, k) => x !== 0 || im[k] !== 0); }
   if (v.k === 'str') return v.v.length > 0 && [...v.v].every((ch) => ch.charCodeAt(0) !== 0);
   const m = toMat(v);
   return m.d.length > 0 && m.d.every((x) => x !== 0 && !Number.isNaN(x));
@@ -54,6 +65,11 @@ export function kind(v: Value): string {
 
 export interface Fmt { long: boolean }
 
+/** A complex number as "3 + 4i" (whole parts) or "0.5000 - 1.2500i". */
+export const fmtC = (re: number, im: number, f: Fmt) => {
+  const whole = Number.isInteger(re) && Number.isInteger(im);
+  return `${fmtNum(re, f, whole)} ${im < 0 || Object.is(im, -0) ? '-' : '+'} ${fmtNum(Math.abs(im), f, whole)}i`;
+};
 export const fmtNum = (x: number, f: Fmt, int: boolean) => {
   if (Number.isNaN(x)) return 'NaN';
   if (!Number.isFinite(x)) return x > 0 ? 'Inf' : '-Inf';
@@ -65,7 +81,7 @@ export const fmtNum = (x: number, f: Fmt, int: boolean) => {
 
 /** How a value is shown after "x = …". */
 export function show(name: string, v: Value, f: Fmt): string {
-  if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
+  if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${v.im ? fmtC(v.d[0], v.im[0], f) : fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
   const body = render(v, f);
   if (v.k === 'str' && !v.v.includes('\n')) return `${name} = ${v.v}\n`;
   if (v.k === 'fn') return `${name} =\n\n${body}\n\n`;
@@ -85,6 +101,11 @@ export function render(v: Value, f: Fmt): string {
     }
     case 'mat': {
       if (!v.d.length) return `[](${v.r}x${v.c})`;
+      if (v.im) {
+        const cells = [...v.d].map((x, k) => fmtC(x, v.im![k], f));
+        const w = Math.max(...cells.map((s) => s.length));
+        return Array.from({ length: v.r }, (_, i) => `  ${Array.from({ length: v.c }, (_, j) => cells[i + j * v.r].padStart(w)).join('   ')}`).join('\n');
+      }
       if (v.logical || v.d.every((x) => Number.isInteger(x) || !Number.isFinite(x))) {
         const cells = [...v.d].map((x) => fmtNum(x, f, true));
         const w = Math.max(...cells.map((s) => s.length));
@@ -110,6 +131,7 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
     case 'struct': return `1x1 struct`;
     case 'cell': return `${v.r}x${v.c} cell`;
     case 'mat':
+      if (v.im) return v.r * v.c === 1 ? fmtC(v.d[0], v.im[0], f) : `${v.r}x${v.c} complex double`;
       if (v.r * v.c === 1) return fmtNum(v.d[0], f, v.logical || Number.isInteger(v.d[0]));
       if (v.r * v.c <= 10 && v.r <= 1) return `[${[...v.d].map((x) => fmtNum(x, f, v.logical || Number.isInteger(x))).join(' ')}]`;
       return `${v.r}x${v.c} ${kind(v)}`;

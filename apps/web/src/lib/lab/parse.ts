@@ -4,7 +4,7 @@
 // so the website's Lab and the computer app share it.
 
 export type Tok =
-  | { t: 'num'; v: string; n: number; at: number }
+  | { t: 'num'; v: string; n: number; at: number; imag?: boolean }
   | { t: 'str'; v: string; dq: boolean; at: number }
   | { t: 'id'; v: string; at: number }
   | { t: 'kw'; v: string; at: number }
@@ -67,10 +67,11 @@ export function lex(src: string): Tok[] {
     if (/[0-9]/.test(c) || (c === '.' && /[0-9]/.test(src[i + 1] ?? ''))) {
       // "1.*2" is 1 .* 2: a dot before an operator isn't the number's.
       const m = /^(0[xX][0-9a-fA-F]+|(\d+(\.(?![*/\\^'])\d*)?|\.\d+)([eEdD][+-]?\d+)?)/.exec(src.slice(i))!;
-      out.push({ t: 'num', v: m[0], n: Number(m[0].replace(/[dD]/, 'e')), at: i });
       i += m[0].length;
-      // 3i / 2j: imaginary numbers aren't supported yet; say so plainly.
-      if (/[ij]/.test(src[i] ?? '') && !/\w/.test(src[i + 1] ?? '')) throw new LabError('Complex numbers (like 3i) aren’t supported yet in UniVerse Lab.', i);
+      // 3i / 2.5j: an imaginary number (M377).
+      const imag = /[ij]/.test(src[i] ?? '') && !/\w/.test(src[i + 1] ?? '');
+      out.push({ t: 'num', v: m[0], n: Number(m[0].replace(/[dD]/, 'e')), at: i - m[0].length, ...(imag ? { imag } : {}) });
+      if (imag) i++;
       continue;
     }
     if (/[A-Za-z_]/.test(c)) {
@@ -107,7 +108,7 @@ export function lex(src: string): Tok[] {
 // ——— The tree ———
 
 export type Expr =
-  | { k: 'num'; v: number }
+  | { k: 'num'; v: number; imag?: boolean }
   | { k: 'str'; v: string; dq: boolean }
   | { k: 'id'; name: string; at: number }
   | { k: 'colon' } // a bare ":" inside an index
@@ -364,7 +365,7 @@ export function parse(src: string): Program {
   function primary(): Expr {
     const t = take();
     switch (t.t) {
-      case 'num': return { k: 'num', v: t.n };
+      case 'num': return t.imag ? { k: 'num', v: t.n, imag: true } : { k: 'num', v: t.n };
       case 'str': return { k: 'str', v: t.v, dq: t.dq };
       case 'id': return { k: 'id', name: t.v, at: t.at };
       case 'kw': if (t.v === 'end') return { k: 'end' }; break;

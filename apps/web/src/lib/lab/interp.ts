@@ -1,5 +1,6 @@
 import { LabError, parse, type Expr, type FnDef, type Stmt } from './parse';
-import { bool, empty, inline, isScalar, kind, mat, num, numel, scalar, show, sizeOf, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
+import { cbinop } from './complex';
+import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, scalar, show, sizeOf, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
 import { BUILTINS } from './builtins';
 
 // UniVerse Lab's interpreter (M374): runs the tree from parse.ts. Our own code, written from the MATLAB / Octave
@@ -181,7 +182,7 @@ export class Lab {
 
   evalMulti(e: Expr, f: Frame, nout: number): Value[] {
     switch (e.k) {
-      case 'num': return [num(e.v)];
+      case 'num': return [e.imag ? cmat(1, 1, [0], [e.v]) : num(e.v)];
       case 'str': return [str(e.v)];
       case 'id': {
         const v = f.vars.get(e.name);
@@ -201,10 +202,10 @@ export class Lab {
       case 'un': {
         const a = this.ev(e.a, f);
         if (e.op === '+') return [toMat(a)];
-        if (e.op === '-') return [map1(toMat(a), (x) => -x)];
+        if (e.op === '-') { const m = toMat(a); return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
         return [{ ...map1(toMat(a), (x) => (x === 0 ? 1 : 0)), logical: true }];
       }
-      case 'post': return [transpose(this.ev(e.a, f))];
+      case 'post': { const v = transpose(this.ev(e.a, f)); return [e.op === "'" && v.k === 'mat' && v.im ? { ...v, im: v.im.map((x) => -x) } : v]; }
       case 'range': {
         const a = scalar(this.ev(e.from, f), 'The start of a range'), s = e.step ? scalar(this.ev(e.step, f), 'The step of a range') : 1, b = scalar(this.ev(e.to, f), 'The end of a range');
         return [range(a, s, b)];
@@ -325,13 +326,14 @@ export class Lab {
   binop(op: string, a: Value, b: Value): Value {
     if ((op === '==' || op === '~=') && a.k === 'str' && b.k === 'str' && a.v.length !== b.v.length && a.v.length !== 1 && b.v.length !== 1) throw new LabError('To compare texts of different lengths use strcmp(a, b).');
     const A = toMat(a, 'The left side'), B = toMat(b, 'The right side');
+    if (A.im || B.im) return cbinop(op, A, B, solve);
     switch (op) {
       case '+': return zip(A, B, (x, y) => x + y);
       case '-': return zip(A, B, (x, y) => x - y);
       case '.*': return zip(A, B, (x, y) => x * y);
       case './': return zip(A, B, (x, y) => x / y);
       case '.\\': return zip(A, B, (x, y) => y / x);
-      case '.^': return zip(A, B, Math.pow);
+      case '.^': { const out = zip(A, B, Math.pow); return out.d.some(Number.isNaN) && A.d.some((x) => x < 0) ? cbinop('.^', A, B, solve) : out; }
       case '*': return isScalar(A) || isScalar(B) ? zip(A, B, (x, y) => x * y) : matmul(A, B);
       case '/': return isScalar(B) ? zip(A, B, (x, y) => x / y) : transpose(solve(transpose(B) as Mat, transpose(A) as Mat)) as Mat;
       case '\\': return isScalar(A) ? zip(A, B, (x, y) => y / x) : solve(A, B);
@@ -375,12 +377,12 @@ export function transpose(v: Value): Value {
   if (v.k === 'cell') { const d: Value[] = []; for (let i = 0; i < v.r; i++) for (let j = 0; j < v.c; j++) d.push(v.d[i + j * v.r]); return { k: 'cell', r: v.c, c: v.r, d }; }
   if (v.k === 'str') return v.v.length <= 1 ? v : mat(v.v.length, 1, [...v.v].map((ch) => ch.charCodeAt(0)));
   const m = toMat(v);
-  const d = new Float64Array(m.d.length);
-  for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) d[j + i * m.c] = m.d[i + j * m.r];
-  return { ...mat(m.c, m.r, d), ...(m.logical ? { logical: true } : {}) };
+  const d = new Float64Array(m.d.length), im = m.im ? new Float64Array(m.d.length) : null;
+  for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) { d[j + i * m.c] = m.d[i + j * m.r]; if (im) im[j + i * m.c] = m.im![i + j * m.r]; }
+  return { ...mat(m.c, m.r, d), ...(m.logical ? { logical: true } : {}), ...(im ? { im } : {}) };
 }
 function mpower(a: Mat, b: Mat): Mat {
-  if (isScalar(a) && isScalar(b)) return num(a.d[0] ** b.d[0]);
+  if (isScalar(a) && isScalar(b)) { const v = a.d[0] ** b.d[0]; return Number.isNaN(v) && a.d[0] < 0 ? cbinop('^', a, b, solve) : num(v); }
   if (a.r !== a.c || !isScalar(b)) throw new LabError('“^” needs a square matrix and a whole-number power; use .^ for each element.');
   let p = b.d[0];
   if (!Number.isInteger(p)) throw new LabError('A matrix power must be a whole number here.');
@@ -463,6 +465,11 @@ export function inv(A: Mat): Mat {
 
 /** Rows of values side by side, then the rows on top of each other ([a b; c d]). Text joins as text. */
 export function concat(rows: Value[][]): Value {
+  if (rows.some((r) => r.some(isComplex))) {
+    const re = concat(rows.map((r) => r.map((v) => (v.k === 'mat' ? { ...v, im: undefined } : v)))) as Mat;
+    const im = concat(rows.map((r) => r.map((v) => (v.k === 'mat' ? mat(v.r, v.c, imOf(v)) : v)))) as Mat;
+    return cmat(re.r, re.c, re.d, im.d);
+  }
   type Piece = Value | { cell: Value[] } | null;
   const joined = rows.map((r): Piece => {
     const parts = r.filter((v) => numel(v) > 0 || v.k === 'cell');
@@ -503,6 +510,7 @@ export function concat(rows: Value[][]): Value {
 const positions = (idx: Idx, n: number) => (idx === 'all' ? Array.from({ length: n }, (_, i) => i) : idx);
 
 export function getIndex(v: Value, idx: Idx[]): Value {
+  if (v.k === 'mat' && v.im) { const re = getIndex({ ...v, im: undefined }, idx) as Mat, im = getIndex(mat(v.r, v.c, v.im), idx) as Mat; return cmat(re.r, re.c, re.d, im.d); }
   if (v.k === 'struct' || v.k === 'fn') {
     if (idx.every((x) => x === 'all' || (x.length === 1 && x[0] === 0))) return v;
     throw new LabError(`Index past the end: this ${kind(v)} has 1 element.`);
@@ -538,6 +546,12 @@ function getCell(v: Value, idx: Idx[]): Value[] {
 
 /** x(idx) = v: grows the matrix when needed (filled with 0), [] deletes, a scalar fills every position. */
 function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolean): Value {
+  if ((base && isComplex(base)) || isComplex(v)) {
+    const B = base ? toMat(base) : undefined, V = toMat(v);
+    if (!V.d.length) { const re = setIndex(B && { ...B, im: undefined }, idx, V, false) as Mat, im = setIndex(B && mat(B.r, B.c, imOf(B)), idx, V, false) as Mat; return cmat(re.r, re.c, re.d, im.d); }
+    const re = setIndex(B && { ...B, im: undefined }, idx, mat(V.r, V.c, V.d), false) as Mat, im = setIndex(B && mat(B.r, B.c, imOf(B)), idx, mat(V.r, V.c, imOf(V)), false) as Mat;
+    return cmat(re.r, re.c, re.d, im.d);
+  }
   if (base?.k === 'cell' || (v.k === 'cell' && (!base || numel(base) === 0))) {
     const b: Cell = base?.k === 'cell' ? base : { k: 'cell', r: 0, c: 0, d: [] };
     if (v.k !== 'cell') throw new LabError('Use { } to put a value inside a cell: c{2} = 5.');

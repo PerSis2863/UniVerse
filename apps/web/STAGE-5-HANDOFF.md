@@ -10355,3 +10355,19 @@ hidden until it's ticked there.
   a figure; axe clean.
 - **Next:** the computer app (Windows, Mac, Linux) and a download page; then simulation (structures, heat, fluids,
   circuits and vibration: the owner chose all four, 21 Nov, after asking for Ansys, which is closed, paid software).
+
+## M377 (21 Nov): UniVerse Lab: complex numbers
+
+The owner, 21 Nov ("have you build all the features…": told honestly no, with the list; then "build all of them"). The
+order agreed in the reply: complex numbers; signals and statistics; 3D plots and images; files; the computer app;
+then simulation (structures, heat, circuits and vibration, fluids); later optimisation, control, symbolic maths and
+block diagrams. Each its own item.
+- `Mat.im` holds the imaginary parts (absent for real matrices; `cmat` drops it when every part is 0). `3i`, `2.5j`,
+  `i` and `j` (variables still win), `complex(a, b)`. `src/lib/lab/complex.ts`: element-wise operators with implicit
+  expansion, matrix product, solve (as a real 2n system), powers, `exp` / `log` / `sqrt`, and `eigvals` (Hessenberg
+  then shifted QR, complex pairs from 2×2 blocks). `'` conjugates, `.'` doesn't. Indexing, growth, deletion and
+  [ ] carry both parts. sqrt / log of negatives and `(-8)^(1/3)` give complex answers as in MATLAB.
+- `eig` of any real matrix (eigenvectors still only for symmetric ones), `roots` from the companion matrix (complex
+  roots now), `abs` / `angle` / `real` / `imag` / `conj` / `isreal` / `iscomplex`, `sum` and `mean` of complex.
+  Every other built-in refuses a complex input with a plain message (`M()` in builtins.ts) rather than dropping the
+  imaginary part. `plot(z)` draws real against imaginary. Printing: `3 + 4i`, `1.0000 + 1.7321i`.

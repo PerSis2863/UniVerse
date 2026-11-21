@@ -1,5 +1,6 @@
 import { LabError, parse } from './parse';
-import { bool, empty, fmtNum, inline, isScalar, kind, mat, num, numel, render, row, scalar, sizeOf, str, toMat, truthy, type Cell, type Mat, type Struct, type Value } from './values';
+import { cexp, clog, cmap, csqrt, eigvals } from './complex';
+import { cmat, imOf, bool, empty, fmtNum, inline, isScalar, kind, mat, num, numel, render, row, scalar, sizeOf, str, toMat, truthy, type Cell, type Mat, type Struct, type Value } from './values';
 import type { Lab } from './interp';
 import { concat, eye, inv, map1, matmul, range, solve, textOf, transpose, zip } from './interp';
 
@@ -11,7 +12,13 @@ export type Builtin = (args: Value[], nout: number, lab: Lab, frame?: unknown) =
 export const BUILTINS: Record<string, Builtin> = {};
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 
-const M = (v: Value, what?: string) => toMat(v, what);
+/** The value as a real matrix: these functions work on real numbers (the complex-aware ones use toMat). */
+const M = (v: Value, what?: string) => {
+  const m = toMat(v, what);
+  if (m.im) throw new LabError(`${what ?? 'This function'} works on real numbers; use real(), imag() or abs() for complex ones.`);
+  return m;
+};
+const MC = (v: Value) => toMat(v);
 const S = (v: Value | undefined, what: string, dflt?: number) => (v === undefined ? (dflt ?? (() => { throw new LabError(`${what} is missing.`); })()) : scalar(v, what));
 const need = (args: Value[], n: number, name: string) => { if (args.length < n) throw new LabError(`${name} needs ${n} input${n === 1 ? '' : 's'}.`); };
 /** Sizes like zeros(3), zeros(2, 3), zeros([2 3]). */
@@ -86,7 +93,7 @@ def('ismatrix', () => [bool(true)]);
 def('issquare', (a) => { const [r, c] = sizeOf(a[0]); return [bool(r === c)]; });
 def('class', (a) => [str(kind(a[0]))]);
 def('isnumeric', (a) => [bool(a[0].k === 'mat' && !a[0].logical)]);
-def('isreal', (a) => [bool(a[0].k === 'mat')]);
+def('isreal', (a) => [bool(a[0].k === 'mat' && !a[0].im)]);
 def('isfloat', (a) => [bool(a[0].k === 'mat' && !a[0].logical)]);
 def('islogical', (a) => [bool(a[0].k === 'mat' && !!a[0].logical)]);
 def('ischar', (a) => [bool(a[0].k === 'str')]);
@@ -115,8 +122,20 @@ def('flintmax', () => [num(2 ** 53)]);
 
 // ——— Element-wise maths ———
 const each = (names: string, fn: (x: number) => number) => def(names, (a) => { need(a, 1, names.split(' ')[0]); return [map1(M(a[0]), fn)]; });
-each('abs', Math.abs); each('sqrt', (x) => { if (x < 0) throw new LabError('sqrt of a negative number needs complex numbers, which UniVerse Lab doesn’t support yet.'); return Math.sqrt(x); });
-each('exp', Math.exp); each('log', (x) => { if (x < 0) throw new LabError('log of a negative number needs complex numbers, which UniVerse Lab doesn’t support yet.'); return Math.log(x); });
+// M377: these take complex numbers too; sqrt and log of a negative give complex answers, as in MATLAB.
+def('abs', (a) => { const m = MC(a[0]); return [m.im ? mat(m.r, m.c, m.d.map((x, k) => Math.hypot(x, m.im![k]))) : map1(m, Math.abs)]; });
+def('sqrt', (a) => { const m = MC(a[0]); return [m.im || m.d.some((x) => x < 0) ? cmap(m, csqrt) : map1(m, Math.sqrt)]; });
+def('log', (a) => { const m = MC(a[0]); return [m.im || m.d.some((x) => x < 0) ? cmap(m, clog) : map1(m, Math.log)]; });
+def('exp', (a) => { const m = MC(a[0]); return [m.im ? cmap(m, cexp) : map1(m, Math.exp)]; });
+def('real', (a) => { const m = MC(a[0]); return [mat(m.r, m.c, m.d)]; });
+def('imag', (a) => { const m = MC(a[0]); return [mat(m.r, m.c, imOf(m))]; });
+def('conj', (a) => { const m = MC(a[0]); return [m.im ? cmat(m.r, m.c, m.d, m.im.map((x) => -x)) : m]; });
+def('angle arg', (a) => { const m = MC(a[0]); const im = imOf(m); return [mat(m.r, m.c, m.d.map((x, k) => Math.atan2(im[k], x)))]; });
+def('complex', (a) => { const re = M(a[0]), im = a[1] ? M(a[1]) : mat(re.r, re.c); const R = zip(re, im, (x) => x), I = zip(re, im, (_x, y) => y); return [{ ...R, im: I.d }]; });
+def('i j', () => [cmat(1, 1, [0], [1])]);
+def('iscomplex', (a) => [bool(a[0].k === 'mat' && !!a[0].im)]);
+const realOrNot = (names: string, fn: (x: number) => number) => def(names, (a) => { need(a, 1, names.split(' ')[0]); return [map1(M(a[0], names.split(' ')[0]), fn)]; });
+realOrNot('log2', Math.log2); realOrNot('log10', Math.log10); realOrNot('log1p', Math.log1p); realOrNot('expm1', Math.expm1);
 each('log2', Math.log2); each('log10', Math.log10); each('log1p', Math.log1p); each('expm1', Math.expm1);
 each('sin', Math.sin); each('cos', Math.cos); each('tan', Math.tan); each('sec', (x) => 1 / Math.cos(x)); each('csc', (x) => 1 / Math.sin(x)); each('cot', (x) => 1 / Math.tan(x));
 each('asin', Math.asin); each('acos', Math.acos); each('atan', Math.atan); each('sinh', Math.sinh); each('cosh', Math.cosh); each('tanh', Math.tanh);
@@ -147,6 +166,13 @@ def('or', (a) => [{ ...zip(M(a[0]), M(a[1]), (x, y) => +(x !== 0 || y !== 0)), l
 def('xor', (a) => [{ ...zip(M(a[0]), M(a[1]), (x, y) => +((x !== 0) !== (y !== 0))), logical: true }]);
 
 // ——— Reductions: down each column of a matrix, or along a vector ———
+/** A reduction that is linear (sum, mean): on a complex matrix, done on the real and imaginary parts. */
+function linear(a: Value[], fn: (v: number[]) => number, empty = 0): Mat {
+  const m = MC(a[0]);
+  if (!m.im) return reduce(a, fn, empty);
+  const re = reduce([mat(m.r, m.c, m.d), ...a.slice(1)], fn, empty), im = reduce([mat(m.r, m.c, m.im), ...a.slice(1)], fn, empty);
+  return cmat(re.r, re.c, re.d, im.d);
+}
 function reduce(a: Value[], fn: (v: number[]) => number, empty = 0): Mat {
   const m = M(a[0]);
   const dim = a[1] && a[1].k !== 'str' ? S(a[1], 'The dimension') : m.r === 1 ? 2 : 1;
@@ -155,9 +181,9 @@ function reduce(a: Value[], fn: (v: number[]) => number, empty = 0): Mat {
   if (dim === 2) return mat(m.r, 1, Array.from({ length: m.r }, (_, i) => fn(Array.from({ length: m.c }, (_, j) => m.d[i + j * m.r]))));
   return m;
 }
-def('sum', (a) => [reduce(a, (v) => v.reduce((s, x) => s + x, 0))]);
+def('sum', (a) => [linear(a, (v) => v.reduce((s, x) => s + x, 0))]);
 def('prod', (a) => [reduce(a, (v) => v.reduce((s, x) => s * x, 1), 1)]);
-def('mean', (a) => [reduce(a, (v) => v.reduce((s, x) => s + x, 0) / v.length, NaN)]);
+def('mean', (a) => [linear(a, (v) => v.reduce((s, x) => s + x, 0) / v.length, NaN)]);
 def('median', (a) => [reduce(a, (v) => { const s = [...v].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; }, NaN)]);
 def('mode', (a) => [reduce(a, (v) => { const c = new Map<number, number>(); for (const x of v) c.set(x, (c.get(x) ?? 0) + 1); let best = NaN, n = 0; for (const [x, k] of [...c].sort((p, q) => p[0] - q[0])) if (k > n) { best = x; n = k; } return best; }, NaN)]);
 const variance = (v: number[], w = 0) => { const n = v.length, mu = v.reduce((s, x) => s + x, 0) / n; return v.reduce((s, x) => s + (x - mu) ** 2, 0) / (w === 1 || n === 1 ? n : n - 1); };
@@ -266,7 +292,15 @@ def('lu', (a, nout) => { const { L, U, P } = lu(M(a[0])); return nout > 2 ? [L, 
 def('eig', (a, nout) => {
   const m = M(a[0]);
   if (m.r !== m.c) throw new LabError('eig needs a square matrix.');
-  for (let i = 0; i < m.r; i++) for (let j = 0; j < i; j++) if (Math.abs(m.d[i + j * m.r] - m.d[j + i * m.r]) > 1e-10 * (1 + Math.abs(m.d[i + j * m.r]))) throw new LabError('eig works on symmetric matrices for now (others can have complex eigenvalues, which UniVerse Lab doesn’t support yet).');
+  let symmetric = true;
+  for (let i = 0; i < m.r && symmetric; i++) for (let j = 0; j < i; j++) if (Math.abs(m.d[i + j * m.r] - m.d[j + i * m.r]) > 1e-10 * (1 + Math.abs(m.d[i + j * m.r]))) { symmetric = false; break; }
+  if (!symmetric) {
+    // M377: any real matrix: its eigenvalues, complex pairs included (eigenvectors only for symmetric ones for now).
+    if (nout > 1) throw new LabError('Eigenvectors are only available for symmetric matrices for now; [V, D] = eig(A) works when A equals A\'.');
+    const { re, im } = eigvals(m);
+    const order = re.map((_, k) => k).sort((x, y) => Math.hypot(re[x], im[x]) - Math.hypot(re[y], im[y]) || re[x] - re[y] || im[x] - im[y]);
+    return [cmat(re.length, 1, order.map((k) => re[k]), order.map((k) => im[k]))];
+  }
   const { values, vectors } = jacobi(m);
   return nout > 1 ? [vectors, diagOf(values)] : [mat(values.length, 1, values)];
 });
@@ -283,15 +317,19 @@ def('polyval', (a) => { const p = M(a[0]).d; return [map1(M(a[1]), (x) => p.redu
 def('polyder', (a) => { const p = M(a[0]).d, n = p.length - 1; return [row(n < 1 ? [0] : Array.from({ length: n }, (_, i) => p[i] * (n - i)))]; });
 def('polyint', (a) => { const p = M(a[0]).d, n = p.length, k = S(a[1], 'k', 0); return [row([...Array.from({ length: n }, (_, i) => p[i] / (n - i)), k])]; });
 def('conv', (a) => { const x = M(a[0]).d, y = M(a[1]).d; const out = new Array(x.length + y.length - 1).fill(0); x.forEach((p, i) => y.forEach((q, j) => { out[i + j] += p * q; })); return [row(out)]; });
-def('roots', (a, _n, lab) => {
-  // Real roots only (eigenvalues of the companion matrix need complex numbers): found by Newton from many starts.
+def('roots', (a) => {
+  // M377: the eigenvalues of the companion matrix (complex roots included), as MATLAB finds them.
   const p = [...M(a[0]).d]; while (p.length && p[0] === 0) p.shift();
-  const n = p.length - 1; if (n < 1) return [empty()];
-  const f = (x: number) => p.reduce((s, c) => s * x + c, 0), df = (x: number) => p.slice(0, -1).reduce((s, c, i) => s * x + c * (n - i), 0);
-  const found: number[] = [], bound = 1 + Math.max(...p.slice(1).map((c) => Math.abs(c / p[0])));
-  for (let s = -bound; s <= bound; s += bound / 50) { let x = s; for (let k = 0; k < 100; k++) { const d = df(x); if (d === 0) break; const nx = x - f(x) / d; if (Math.abs(nx - x) < 1e-14) { x = nx; break; } x = nx; } if (Math.abs(f(x)) < 1e-9 * (1 + Math.abs(x) ** n) && !found.some((r) => Math.abs(r - x) < 1e-7)) found.push(x); }
-  if (found.length < n) lab.host.out(`warning: roots shows only the ${found.length} real root${found.length === 1 ? '' : 's'}; the rest are complex.\n`);
-  return [mat(found.length, 1, found.sort((x, y) => y - x).map((x) => +x.toPrecision(12)))];
+  let zeros = 0; while (p.length > 1 && p[p.length - 1] === 0) { p.pop(); zeros++; }
+  const n = p.length - 1;
+  if (n < 1) return [zeros ? mat(zeros, 1) : empty()];
+  const C = mat(n, n);
+  for (let j = 0; j < n; j++) C.d[0 + j * n] = -p[j + 1] / p[0];
+  for (let i = 1; i < n; i++) C.d[i + (i - 1) * n] = 1;
+  const { re, im } = eigvals(C);
+  const tidy = (x: number) => (Math.abs(x) < 1e-12 ? 0 : +x.toPrecision(13));
+  const order = re.map((_, k) => k).sort((x, y) => re[y] - re[x] || im[y] - im[x]);
+  return [cmat(n + zeros, 1, [...order.map((k) => tidy(re[k])), ...Array(zeros).fill(0)], [...order.map((k) => tidy(im[k])), ...Array(zeros).fill(0)])];
 });
 def('interp1', (a) => {
   const x = M(a[0]).d, y = M(a[1]).d, q = M(a[2]), how = a[3]?.k === 'str' ? a[3].v : 'linear';
