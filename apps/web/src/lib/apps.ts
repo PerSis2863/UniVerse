@@ -5,7 +5,7 @@
 // in, and the switcher at its top (and the hub, /hub) moves between them. Shared tools (Messages,
 // Collaborate, Calls, Settings) belong to every app.
 
-export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'travel';
+export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'travel' | 'lab';
 
 export interface ImpactApp {
   id: AppId;
@@ -49,6 +49,13 @@ export const APPS: ImpactApp[] = [
     id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
     impact: 'Guides, day-by-day plans and greener trips.',
     paths: ['/travel', '/journey'],
+  },
+  {
+    // M376 (the owner, 21 Nov: "build your own matlab and octave together in one app which can be downloaded in the
+    // computer"): our own engine for the MATLAB / Octave language (src/lib/lab), figures, LaTeX export; a computer app too.
+    id: 'lab', name: 'UniVerse Lab', tagline: 'Maths, matrices, plots and simulation', color: '#8b5cf6',
+    impact: 'Run MATLAB-style code in the browser or on your computer.',
+    paths: ['/lab'],
   },
 ];
 

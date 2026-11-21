@@ -1,10 +1,10 @@
-import { GraduationCap, HandHeart, LayoutGrid, Leaf, Plane, ScanLine, type LucideIcon } from 'lucide-react';
+import { GraduationCap, HandHeart, LayoutGrid, Leaf, Plane, ScanLine, Sigma, type LucideIcon } from 'lucide-react';
 import { APPS, type AppId } from '@/lib/apps';
 
 // An app's tile (src/lib/apps.ts): its icon on a rounded square in the app's colour, with a soft
 // glow. `hub` is UniVerse Impact itself.
 
-const ICONS: Record<AppId | 'hub', LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane, hub: LayoutGrid };
+const ICONS: Record<AppId | 'hub', LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane, lab: Sigma, hub: LayoutGrid };
 
 export function AppIcon({ id, size = 40, className }: { id: AppId | 'hub'; size?: number; className?: string }) {
   const color = APPS.find((a) => a.id === id)?.color ?? '#27272a';

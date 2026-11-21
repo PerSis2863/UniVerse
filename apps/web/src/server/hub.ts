@@ -8,6 +8,9 @@ type Row = Record<string, unknown>;
 const N = (v: unknown) => Number(v ?? 0) || 0;
 const one = async (sql: string, ...args: unknown[]) => N((await prisma.$queryRawUnsafe<Row[]>(sql, ...args).catch(() => [] as Row[]))[0]?.n);
 
+/** UniVerse Lab's built-in functions (src/lib/lab/builtins.ts and plot.ts), a round figure kept here so the hub doesn't load the engine. */
+const LAB_FUNCTIONS = 250;
+
 export async function hubStats(u: SessionUser) {
   const [courses, enrolled, scans, points, helped, helpedMine, kg, kgMine, people, saved, savedMine] = await Promise.all([
     one(`SELECT COUNT(*) AS n FROM courses`),
@@ -29,6 +32,8 @@ export async function hubStats(u: SessionUser) {
       relief: { value: helped, label: 'people helped', mine: helpedMine ? { value: helpedMine, label: 'people helped' } : null },
       green: { value: Math.round(kg), label: 'kg CO₂ saved', mine: kgMine ? { value: Math.round(kgMine), label: 'kg CO₂ saved' } : null },
       travel: { value: saved, label: 'places saved', mine: savedMine ? { value: savedMine, label: 'places saved' } : null },
+      // M376: the Lab runs in the browser (nothing kept on the server yet): what it offers.
+      lab: { value: LAB_FUNCTIONS, label: 'functions built in', mine: null },
     },
     total: { people },
   };

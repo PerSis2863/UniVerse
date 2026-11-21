@@ -62,7 +62,7 @@ describe('the apps the website shows, before the first paint', () => {
     expect(page('/', 'campus', ['campus', 'travel']).css).toBe('[data-uv-app]:not([data-uv-app="campus"]):not([data-uv-app="travel"]){display:none!important}');
     expect(page('/login', null, ['green', 'travel']).app).toBe('green');
     expect(page('/trace/brand', null, ['relief']).app).toBe('trace'); // its own page: the app sends people on
-    expect(page('/', 'trace', ['campus', 'trace', 'relief', 'green', 'travel'])).toEqual({ app: 'trace', css: null });
+    expect(page('/', 'trace', ['campus', 'trace', 'relief', 'green', 'travel', 'lab'])).toEqual({ app: 'trace', css: null });
     expect(page('/', 'trace', ['nonsense'])).toEqual({ app: 'trace', css: null });
   });
 });

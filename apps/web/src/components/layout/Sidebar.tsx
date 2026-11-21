@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { Sigma, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -266,7 +266,7 @@ const sharedNav = (role: string): NavItem[] => [
 ];
 
 /** Each app's icon in the hub's menu. */
-const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane };
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane, lab: Sigma };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
@@ -292,6 +292,9 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   green: [
     { href: '/green', label: 'My impact', icon: Leaf },
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
+  ],
+  lab: [
+    { href: '/lab', label: 'Lab', icon: Sigma },
   ],
 };
 

@@ -10333,3 +10333,25 @@ orange, green, purple, red, teal, amber, pink; y rounds out to tidy ticks, x tig
 `toTikz(fig)` writes pgfplots code (our own matlab2tikz: colours defined, `\addplot` per series with marks, dashes,
 bars, stairs, stems, areas, log axes, legend; subplots as a `groupplot`). ode45 now fills each step with a cubic
 Hermite curve (smooth plots). Checked by eye: a 2×2 figure in light and dark. Tests: `plot.test.ts`.
+
+## M376 (21 Nov): UniVerse Lab, part 3: the Lab app and its window
+
+`lab` is the seventh app (`APPS`, violet #8b5cf6, `/lab`): its icon (Σ), menu (`APP_NAV.lab`), phone tabs, hub card
+(`GET /hub`: "functions built in", a round 250 kept in `hub.ts` so the server never loads the engine; the sample
+answer too), the owner console's launch board (nothing to count: the Lab keeps nothing on the server yet), the
+landing's hero, FAQ, sign-in side, call to action and world section, and its scene (graph paper with curves
+drifting, `backdrop.ts`). **If the owner chose which apps the website shows** (console → Server, M203), Lab stays
+hidden until it's ticked there.
+- `components/lab/LabApp.tsx`: **Variables** (name, value, size; a name goes into the command), the **script editor**
+  (tabs, New, Delete, a name field, Tab indents, Ctrl/⌘+Enter runs; scripts kept on this device, `uv-lab-scripts`;
+  four examples: a first plot, solving A x = b, a damped spring with ode45, a line fit), the **command window**
+  (history with ↑ ↓, Shift+Enter for a new line, errors in red with the script's line, `clc` clears) and the
+  **figure** (tabs for several figures, PNG at 2×, SVG, LaTeX copied). Computers: three columns; phones: a
+  segmented control (Command, Editor, Variables, Figure). Plain look, one accent.
+- `components/lab/lab.worker.ts`: the engine runs in a background worker: the page never freezes; **Stop** ends the
+  worker and starts a new one (the variables are lost, said so). Output comes back in batches (50 ms), figures as SVG
+  in both themes plus their LaTeX, drawn at the panel's real size (ResizeObserver asks again when it changes).
+- Checked at 1440 and 390, light and dark: a command, a solve, a misspelt name ("Did you mean “sin”"), a script with
+  a figure; axe clean.
+- **Next:** the computer app (Windows, Mac, Linux) and a download page; then simulation (structures, heat, fluids,
+  circuits and vibration: the owner chose all four, 21 Nov, after asking for Ansys, which is closed, paid software).

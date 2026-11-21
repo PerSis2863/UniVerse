@@ -238,6 +238,29 @@ function Travel() {
   );
 }
 
+/** M376: the Lab: a few lines of MATLAB-style code and the plot they make. */
+const CURVE = Array.from({ length: 81 }, (_, i) => { const t = (i / 80) * 20; return `${i ? 'L' : 'M'}${(20 + t * 18).toFixed(1)},${(100 - 70 * Math.exp(-0.15 * t) * Math.cos(t)).toFixed(1)}`; }).join(' ');
+function Lab() {
+  const calm = useCalm();
+  return (
+    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A short script that solves a damped spring with ode45 and plots it, and the plot it draws">
+      <pre className="mx-5 mt-5 rounded-2xl bg-black/40 p-4 font-mono text-[12.5px] leading-relaxed text-violet-100 ring-1 ring-white/[0.07]">
+        <span className="text-zinc-400">% a damped spring</span>{'\n'}
+        f = @(t, y) [y(2); -y(1) - 0.3*y(2)];{'\n'}
+        [t, y] = ode45(f, [0 20], [1; 0]);{'\n'}
+        plot(t, y(:, 1)); grid on{'\n'}
+        title(<span className="text-amber-200">&apos;Position&apos;</span>)
+      </pre>
+      <svg viewBox="0 0 400 200" className="mx-auto mt-4 block w-[92%]" aria-hidden>
+        <rect x="20" y="20" width="360" height="160" fill="none" stroke="rgba(255,255,255,0.18)" />
+        {[60, 100, 140].map((y) => <line key={y} x1="20" x2="380" y1={y} y2={y} stroke="rgba(255,255,255,0.07)" />)}
+        <motion.path d={CURVE} fill="none" stroke="#a78bfa" strokeWidth="2" initial={calm ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.6, ease: EASE }} />
+      </svg>
+    </div>
+  );
+}
+
+export const LabScene = still(Lab);
 export const TraceScene = still(Trace);
 export const ReliefScene = still(Relief);
 export const GreenScene = still(Green);

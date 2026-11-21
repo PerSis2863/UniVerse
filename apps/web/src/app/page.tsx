@@ -35,6 +35,7 @@ const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').th
 const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
 const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
 const TravelScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
+const LabScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.LabScene), { loading: scene });
 const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
 const MapsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.MapsSection));
 const HowSection = dynamic(() => import('@/components/landing/Business').then((m) => m.HowSection));
@@ -78,6 +79,10 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   relief: [
     { q: 'Who can use Relief?', a: 'Anyone. Requests show an area, never an address.' },
   ],
+  lab: [
+    { q: 'Is it MATLAB?', a: 'No. UniVerse Lab is our own engine that understands the same kind of code (matrices, plot, ode45 and more), so most student scripts run as they are.' },
+    { q: 'Can I use the figures in a report?', a: 'Yes: save any figure as a picture, or as LaTeX code for papers and theses.' },
+  ],
   travel: [
     { q: 'Where do the guides come from?', a: 'From Wikivoyage, written by travellers: every place with its address, hours and prices.' },
     { q: 'Can I book through UniVerse?', a: 'Stays, flights and tours open on our partners’ sites with your place and dates filled in.' },
@@ -100,6 +105,7 @@ const HERO: Record<AppId, Hero> = {
   trace: { words: ['Every', 'product', 'gets', 'a'], accent: 'passport.', text: 'Scan the code. See if it’s real.', note: 'free to start', card: <TraceScene />, extra: <Link href="/t/demo" className={SMALL}>Scan a sample</Link> },
   relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
   travel: { words: ['Plan', 'trips'], accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', note: 'free · plan with friends', card: <TravelScene /> },
+  lab: { words: ['Maths,', 'matrices', 'and'], accent: 'plots.', text: 'Run MATLAB-style code in your browser, or download the Lab for your computer.', note: 'free · no install needed', card: <LabScene /> },
   green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
 

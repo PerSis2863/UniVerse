@@ -34,6 +34,7 @@ export function sampleHub(me: { id: string }) {
       relief: { value: 3_904, label: 'people helped', mine: { value: 23, label: 'people helped' } },
       green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
       travel: { value: 3_912, label: 'places saved', mine: { value: 12, label: 'places saved' } },
+      lab: { value: 250, label: 'functions built in', mine: null },
     },
     total: { people: 12_480 },
   };

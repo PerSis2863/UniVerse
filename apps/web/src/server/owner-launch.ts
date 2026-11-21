@@ -31,6 +31,8 @@ export async function ownerLaunch() {
     apps: {
       campus: launchSummary(apps.campus, now), trace: launchSummary(apps.trace, now),
       relief: launchSummary(apps.relief, now), green: launchSummary(apps.green, now), play: launchSummary(apps.play, now), travel: launchSummary(apps.travel, now),
+      // M376: the Lab runs in the browser and keeps nothing on the server yet, so nothing to count.
+      lab: launchSummary([], now),
     },
     signUps: Number(joined[0]?.n ?? 0),
     total: launchTotal([...apps.campus, ...apps.trace, ...apps.relief, ...apps.green, ...apps.play]),

@@ -37,6 +37,7 @@ const DETAILS: Record<AppId, string[]> = {
   trace: ['Signed codes, and a warning when a label looks copied', 'Live maps of scans, recalls and warranties', 'EU Digital Product Passports'],
   relief: ['Alerts for helpers nearby, never showing where they are', 'A notification when someone answers', 'Organisations with members, supplies and volunteer shifts'],
   green: ['Streaks, badges and a weekly challenge', 'Teams that act together', 'A map of what was done'],
+  lab: ['MATLAB-style code with matrices and ode45', 'Figures you can save as LaTeX', 'A computer app to download'],
   travel: ['Guides to see, eat and sleep anywhere', 'Day-by-day plans with friends', 'Stays, flights and tours to book'],
 };
 const short = (id: AppId) => appById(id).name.replace('UniVerse ', '');

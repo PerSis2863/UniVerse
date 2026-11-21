@@ -42,12 +42,12 @@ const ink = (c: Rgb, dark: boolean) => (dark ? mix(c, WHITE, 0.3) : mix(c, INK, 
 const wrap = (x: number, m: number) => ((x % m) + m) % m;
 
 /** Each app's colour (src/lib/apps.ts) and a second one that sits well beside it. */
-const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], travel: [253, 186, 116] };
+const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], travel: [253, 186, 116], lab: [56, 189, 248] };
 /** Green's fireflies. */
 const FIREFLY: Rgb = [253, 230, 168];
 /** M132: UniVersity wears the site's own accent (blue, lighter on the dark page since M212), as its buttons do. */
 const CAMPUS = { dark: { base: [110, 162, 248] as Rgb, alt: [56, 189, 248] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
-const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, travel: 67 };
+const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, travel: 67, lab: 79 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */
 function rng(seed: number) {
@@ -500,7 +500,33 @@ const travel: Make = (v, rnd, hue) => {
   };
 };
 
-const SCENES: Record<AppId, Make> = { campus, trace, relief, green, travel };
+/** M376: Lab: faint graph paper with a few curves drifting along it, like plots being drawn. */
+const lab: Make = (v, rnd, hue) => {
+  const curves = Array.from({ length: v.phone ? 2 : 4 }, () => ({ y: 0.2 + rnd() * 0.6, amp: 0.04 + rnd() * 0.08, k: 2 + rnd() * 5, sp: 0.03 + rnd() * 0.05, ph: rnd() * TAU, alt: rnd() < 0.4, damp: rnd() < 0.5 }));
+  return {
+    soft(c, t, a) { wash(c, v, t, a, hue, [0.25, 0.2, 0.75, 0.8]); },
+    sharp(c, t, a) {
+      const step = v.phone ? 36 : 44, line = rgb(ink(hue.base, v.dark));
+      c.strokeStyle = line; c.lineWidth = 0.6; c.globalAlpha = a * (v.dark ? 0.06 : 0.08);
+      c.beginPath();
+      for (let x = 0; x <= v.w; x += step) { c.moveTo(x, 0); c.lineTo(x, v.h); }
+      for (let y = 0; y <= v.h; y += step) { c.moveTo(0, y); c.lineTo(v.w, y); }
+      c.stroke();
+      for (const cv of curves) {
+        c.strokeStyle = rgb(ink(cv.alt ? hue.alt : hue.base, v.dark)); c.lineWidth = 1.4; c.globalAlpha = a * 0.28;
+        c.beginPath();
+        for (let i = 0; i <= 120; i++) {
+          const u = i / 120, x = u * v.w, env = cv.damp ? Math.exp(-1.6 * u) : 1;
+          const y = (cv.y + cv.amp * env * Math.sin(cv.k * TAU * u - t * cv.sp * TAU + cv.ph)) * v.h;
+          if (i) c.lineTo(x, y); else c.moveTo(x, y);
+        }
+        c.stroke();
+      }
+    },
+  };
+};
+
+const SCENES: Record<AppId, Make> = { campus, trace, relief, green, travel, lab };
 
 export type Backdrop = ReturnType<typeof makeBackdrop>;
 
