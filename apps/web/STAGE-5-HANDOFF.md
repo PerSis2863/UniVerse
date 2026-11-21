@@ -10141,3 +10141,30 @@ M358); this branch's unmerged M330–M331 were reverted first (the merged M346/M
 - Checked: axe clean at 1280 light and 390 dark, nothing sideways, no page errors.
 - **Next for Green** (the owner's "upgrade all the existing features"): Footprint, Journeys, Goals, Tips, Events, Green
   places, Swap & repair, Teams and Business in the same look, each with more to do.
+
+## M361: Relief's own AI, trained by UniVerse (21 Nov)
+
+The owner (21 Nov): "can we make my own ai in this project?", then "can you make option 3?" (an AI trained from
+nothing), then "do both A and B". A, this item: a small model that does one job, trained from nothing. B (a tiny talking
+model) is paused: the owner then sent a big "all-rounder AI platform" plan and asked about DeepSeek, so B waits for their choice.
+
+- **`src/lib/relief-model.ts`**: reads a request for help and says how urgent it is (Low, Medium, High, Critical) and what
+  kind it is (the seven Relief kinds), with how sure it is. A linear model over hashed features (each word, each pair
+  of words, each group of three letters, so typos still match; FNV-1a into 2,048 buckets); one byte per weight with a
+  scale per answer (`relief-model.gen.ts`, about 30 KB). Runs in the browser or the Worker in well under a millisecond;
+  no outside service, nothing sent anywhere.
+- **Trained by `scripts/ai/train-relief.mts`** (`npx tsx`, a few seconds) from `scripts/ai/relief-examples.ts`: 96
+  hand-written messages (English, SMS style, some romanised Hindi) and building blocks joined into ~9,000 more (with
+  typos). Every third hand-written one is kept aside as the test: **urgency 88%, kind 91% right** on those 32 unseen
+  messages; the old word rules (`KIND_WORDS` and the urgency regex, removed) got 44% and 63%. Only 32 test messages: treat
+  the numbers as a rough guide. `--extra real.tsv` (URGENCY, KIND, text) adds real examples; never commit such a file.
+- **Where it's used:** `guessNeed` (moved from `src/lib/relief.ts` to `relief-model.ts`, so the two files don't import each
+  other) guesses a text message's urgency and kind with it (M107's coordinator form); the ask form (`PostForm` in
+  `ReliefApp.tsx`) shows "UniVerse's own AI reads this as High · Water" with **Use this**, only when it is at least 60%
+  sure on both and differs from what is chosen. It never changes anything by itself.
+- Test: `relief-model.test.ts` (weights' size, stable features, three clear cases); `relief-texts.test.ts` now expects
+  "Family of 5, no food since yesterday" as **High** (the old rules said Medium).
+- **Rules for code that builds on it:** change `features()` or `COLUMNS` only together with a retrain (the weights
+  follow them); the labels follow the four definitions at the top of `relief-examples.ts`. Retrain after adding examples.
+- Left out on purpose: learning from real posts automatically (needs real data and the owner's say), other languages
+  beyond a few Hindi words, a sorter for "Most urgent" (it still trusts the asker's choice).
