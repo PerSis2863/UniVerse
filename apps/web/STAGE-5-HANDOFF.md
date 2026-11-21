@@ -10371,3 +10371,14 @@ block diagrams. Each its own item.
   roots now), `abs` / `angle` / `real` / `imag` / `conj` / `isreal` / `iscomplex`, `sum` and `mean` of complex.
   Every other built-in refuses a complex input with a plain message (`M()` in builtins.ts) rather than dropping the
   imaginary part. `plot(z)` draws real against imaginary. Printing: `3 + 4i`, `1.0000 + 1.7321i`.
+
+## M378 (21 Nov): UniVerse Lab: signals and statistics
+
+`src/lib/lab/signal.ts` (loaded by `interp.ts` with `import './signal'`, registering into BUILTINS): `fft` / `ifft`
+of any length (radix-2; Bluestein's chirp-z otherwise; along a vector or down columns; padded or cut to n; ifft of a
+symmetric spectrum comes back real), `fftshift` / `ifftshift`, `nextpow2`, `filter` (direct form II transposed),
+`deconv`, `conv2` (full / same / valid), `xcorr` with lags, `freqz`, windows (`hann`, `hamming`, `blackman`,
+`rectwin`), `movmean` / `movsum` / `movmax` / `movmin` / `movmedian` (MATLAB's window rule, shrinking at the ends);
+`cov`, `corrcoef`, `prctile` / `quantile` (MATLAB's (k − 0.5)/n positions), `iqr`, `zscore`, `skewness`,
+`kurtosis`, `range`, `histcounts`, `erf` / `erfc`, `normpdf` / `normcdf` / `norminv`, `exppdf`, `unifpdf`, and
+`spline` with not-a-knot ends (reproduces a cubic; three points give the parabola). Tests in `lab.test.ts`.

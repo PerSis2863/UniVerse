@@ -87,3 +87,24 @@ describe('UniVerse Lab: powers of negatives (M377)', () => {
     expect(run('k = (-8)^(1/3)').out).toBe('k = 1.0000 + 1.7321i\n');
   });
 });
+
+describe('UniVerse Lab: signals and statistics (M378)', () => {
+  it('transforms any length and back', () => {
+    expect(run('X = fft([1 2 3 4]);').v('X')).toBe('1x4 complex double');
+    expect(run('X = fft([1 2 3 4]); a = real(X(1)); b = round(abs(X(2)) * 1e9) / 1e9;').v('b')).toBe('2.828427125000000');
+    expect(run('x = [3 1 4 1 5]; y = ifft(fft(x)); ok = max(abs(y - x)) < 1e-12;').v('ok')).toBe('1');
+    expect(run('X = fft([1 0 0], 4); n = numel(X);').v('n')).toBe('4');
+  });
+  it('filters, convolves and correlates', () => {
+    expect(run('y = filter(1, [1 -0.5], [1 0 0 0]);').v('y')).toBe('[1 0.500000000000000 0.250000000000000 0.125000000000000]');
+    expect(run('[q, r] = deconv([1 5 6], [1 2]);').v('q')).toBe('[1 3]');
+    expect(run('m = movmean([1 2 3 4 5], 3);').v('m')).toBe('[1.500000000000000 2 3 4 4.500000000000000]');
+  });
+  it('describes data', () => {
+    expect(run('c = corrcoef([1 2 3 4], [2 4 6 8]); r = round(c(1, 2) * 1e12) / 1e12;').v('r')).toBe('1');
+    expect(run('p = prctile([1 2 3 4], 50);').v('p')).toBe('2.500000000000000');
+    expect(run('v = round(normcdf(1.96) * 1e4) / 1e4;').v('v')).toBe('0.975000000000000');
+    expect(run('z = round(norminv(0.975) * 1e4) / 1e4;').v('z')).toBe('1.960000000000000');
+    expect(run('s = round(spline(0:3, [0 1 8 27], 1.5) * 1e6) / 1e6;').v('s')).toBe('3.375000000000000');
+  });
+});

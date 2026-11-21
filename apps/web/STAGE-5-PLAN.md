@@ -1777,3 +1777,4 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M375 | UniVerse Lab, part 2: figures and Export to LaTeX | **Done** | plot, scatter, bar, histogram, subplot, legends, log axes and more, drawn sharp in light and dark; any figure as LaTeX pgfplots code. |
 | M376 | UniVerse Lab, part 3: the Lab app and its window | **Done** | The seventh app: a command window, script editor, variables and figures (PNG, SVG, LaTeX), running in a background worker; on the landing, hub and menus. |
 | M377 | UniVerse Lab: complex numbers (the owner, 21 Nov: "build all of them") | **Done** | 3i, sqrt(-1), complex arithmetic and solving, complex roots and eigenvalues, printed as MATLAB does. |
+| M378 | UniVerse Lab: signals and statistics | **Done** | fft / ifft of any length, filter, conv2, xcorr, freqz, windows, moving statistics; covariance, correlation, percentiles, normal distribution, splines. |

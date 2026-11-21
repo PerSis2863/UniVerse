@@ -2,6 +2,8 @@ import { LabError, parse, type Expr, type FnDef, type Stmt } from './parse';
 import { cbinop } from './complex';
 import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, scalar, show, sizeOf, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
 import { BUILTINS } from './builtins';
+// The functions in other files add themselves to BUILTINS when loaded (M378).
+import './signal';
 
 // UniVerse Lab's interpreter (M374): runs the tree from parse.ts. Our own code, written from the MATLAB / Octave
 // language's documented behaviour: implicit expansion, column-major indexing, growth on assignment, `end` in indexes,
