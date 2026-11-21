@@ -1,12 +1,13 @@
 'use client';
 
-import { walkMinutes } from '@/lib/relief-plus';
+import { ReachWays } from '@/components/map-ui/ReachWays';
 import { useMemo, useRef, useState } from 'react';
 import useSWR from 'swr';
 import { formatDistanceToNow } from 'date-fns';
 import { BatteryCharging, BedDouble, Droplets, MapPin, Navigation, Utensils, type LucideIcon } from 'lucide-react';
 import { CardHead } from '@/components/ui/CardMenu';
 import { StatusBadge, type Tone } from '@/components/ui/StatusBadge';
+import { Fill } from '@/components/ui/Fill';
 import { fetcher } from '@/lib/fetcher';
 import { useActivePoll } from '@/lib/realtime-client';
 import { RELIEF_ORG_KIND_LABEL, STOCK_LABEL, freshness, rankPlaces, type Place, type Stock } from '@/lib/relief';
@@ -19,7 +20,8 @@ import { morph } from '@/lib/view-transition';
 // food and phone charging at a glance; old word greyed. Positions are the organisations' bases, rounded
 // to about 500 m when saved.
 
-const TONE: Record<Stock, Tone> = { YES: 'green', LOW: 'amber', NO: 'red' };
+// M373 (the owner: "dont use alot of colours"): plain grey when all is well, colour only for running low or out.
+const TONE: Record<Stock, Tone> = { YES: 'grey', LOW: 'amber', NO: 'red' };
 type Need = 'beds' | 'water' | 'food' | 'power';
 const NEEDS: { id: Need; label: string; icon: LucideIcon }[] = [
   { id: 'beds', label: 'A bed', icon: BedDouble },
@@ -60,14 +62,14 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                 <div className="flex items-start gap-2">
                   <div className="min-w-0 flex-1">
                     <p className="font-semibold text-[14px] text-zinc-900 dark:text-white truncate" translate="no">{p.name}</p>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km${km(here, p) < 6 ? ` · ${walkMinutes(km(here, p))} min on foot` : ''}` : null].filter(Boolean).join(' · ')}</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">{[RELIEF_ORG_KIND_LABEL[p.kind as keyof typeof RELIEF_ORG_KIND_LABEL] ?? p.kind, p.place, here ? `${km(here, p).toFixed(1)} km` : null].filter(Boolean).join(' · ')}</p>
                   </div>
-                  {p.openNow !== null && <StatusBadge tone={p.openNow ? 'green' : 'red'}>{p.openNow ? 'Open' : 'Closed'}</StatusBadge>}
+                  {p.openNow !== null && <StatusBadge tone={p.openNow ? 'grey' : 'red'}>{p.openNow ? 'Open' : 'Closed'}</StatusBadge>}
                 </div>
                 {p.bedsTotal ? (
                   <div>
                     <p className="text-[13px] text-zinc-700 dark:text-zinc-200"><b className="tabular-nums text-zinc-900 dark:text-white">{p.bedsFree ?? 0}</b> of {p.bedsTotal} beds free</p>
-                    <span className="mt-1.5 block h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.07]"><span className="block h-full rounded-full bg-emerald-500" style={{ width: `${Math.min(100, ((p.bedsFree ?? 0) / p.bedsTotal) * 100)}%` }} /></span>
+                    <span className="mt-1.5 block h-1.5 rounded-full overflow-hidden bg-zinc-100 dark:bg-white/[0.07]"><Fill value={Math.min(1, (p.bedsFree ?? 0) / p.bedsTotal)} className="bg-zinc-800 dark:bg-zinc-200" /></span>
                   </div>
                 ) : null}
                 <div className="flex flex-wrap gap-1.5">
@@ -76,6 +78,8 @@ export function PlacesBoard({ here, onShow }: { here: { lat: number; lng: number
                   ))}
                 </div>
                 {p.statusNote && <p className="text-[13px] text-zinc-600 dark:text-zinc-300" translate="no">{p.statusNote}</p>}
+                {/* M364: every way there from where you are, each opening directions to the place by its name and town. */}
+                {here && <ReachWays from={here} to={p} linkFor={(mode) => `https://www.google.com/maps/dir/?api=1&origin=${here.lat.toFixed(4)},${here.lng.toFixed(4)}&destination=${encodeURIComponent([p.name, p.place].filter(Boolean).join(', '))}&travelmode=${mode === 'car' ? 'driving' : mode === 'bike' ? 'bicycling' : mode === 'transit' ? 'transit' : 'walking'}`} />}
                 <div className="mt-auto flex items-center gap-2 pt-1">
                   <span className="text-xs text-zinc-500 dark:text-zinc-400 me-auto">{fresh === 'old' ? 'Not updated today' : `Updated ${formatDistanceToNow(new Date(p.statusAt), { addSuffix: true })}`}</span>
                   {onShow && <button type="button" onClick={() => onShow(p)} className="btn-ghost btn-sm"><MapPin className="w-3.5 h-3.5" aria-hidden />On the map</button>}

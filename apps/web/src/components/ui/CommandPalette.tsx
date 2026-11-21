@@ -3,7 +3,7 @@ import { currentAppNow } from '@/lib/current-app';
 import { lowDataOn, twoGOn, useLowData } from '@/store/low-data';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, m as motion } from 'framer-motion';
+import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 import useSWR from 'swr';
 import { ArrowUpRight, BadgeCheck, BookOpen, LifeBuoy, Leaf, MapPin, Package, Plane, Briefcase, CalendarDays, CalendarPlus, ChevronRight, ClipboardList, Command, Compass, CornerDownLeft, FilePlus2, FileSearch, FileSpreadsheet, FileText, FlaskConical, HeartHandshake, KanbanSquare, Library, Loader2, MessageSquarePlus, Moon, Paperclip, Presentation, Search, SquareCheck, Sun, User, Users, Video, type LucideIcon, Gauge, SignalLow, Sparkles } from 'lucide-react';
@@ -17,7 +17,6 @@ import { useLanguageStore } from '@/store/language';
 import { authedJson } from '@/lib/authed-fetch';
 import { fetcher } from '@/lib/fetcher';
 import { applyTheme } from '@/lib/theme';
-import { spring } from '@/lib/motion';
 
 type Item = { id: string; label: string; hint?: string; icon: LucideIcon; group: string; keywords?: string; run: () => void | Promise<void>; /** Kept in Recent with its address (search results). */ href?: string };
 type Person = { id: string; name: string; role: string; online?: boolean };
@@ -87,6 +86,8 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const [query, setQuery] = useState('');
   const [debounced, setDebounced] = useState('');
   const [index, setIndex] = useState(0);
+  const [chip, setChip] = useState<string | null>(null); // M368: Spotlight's filter chips (a group)
+  const calm = useReducedMotion();
   const [recents, setRecents] = useState<string[]>(() => { try { return JSON.parse(localStorage.getItem(RECENTS_KEY) ?? '[]'); } catch { return []; } });
   const [recentFound, setRecentFound] = useState<RecentFound[]>(() => { try { const v = JSON.parse(localStorage.getItem(RECENT_FOUND_KEY) ?? '[]'); return Array.isArray(v) ? v.filter((x) => x && typeof x.href === 'string' && x.href.startsWith('/') && x.type in RESULT_KIND).slice(0, 6) : []; } catch { return []; } });
   const inputRef = useRef<HTMLInputElement>(null);
@@ -121,7 +122,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   const [wasOpen, setWasOpen] = useState(open);
   if (wasOpen !== open) {
     setWasOpen(open);
-    if (open) { setQuery(''); setDebounced(''); setIndex(0); }
+    if (open) { setQuery(''); setDebounced(''); setIndex(0); setChip(null); }
   }
   useEffect(() => {
     if (!open) return;
@@ -253,10 +254,15 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
 
   // A new search starts at the top.
   const [indexedFor, setIndexedFor] = useState(debounced);
-  if (indexedFor !== debounced) { setIndexedFor(debounced); setIndex(0); }
+  if (indexedFor !== debounced) { setIndexedFor(debounced); setIndex(0); setChip(null); }
   useEffect(() => {
     listRef.current?.querySelector<HTMLElement>(`[data-idx="${index}"]`)?.scrollIntoView({ block: 'nearest' });
   }, [index]);
+
+  // M368: the groups present become chips under the field, like Spotlight's; a chip keeps to its group.
+  const groups = useMemo(() => [...new Set(results.map((r) => r.group))], [results]);
+  const shown = useMemo(() => (chip && groups.includes(chip) ? results.filter((r) => r.group === chip) : results), [results, chip, groups]);
+  const pickChip = (g: string | null) => { setChip(g); setIndex(0); };
 
   const choose = async (item: Item | undefined) => {
     if (!item) return;
@@ -274,82 +280,123 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
   };
 
   const onKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'ArrowDown') { e.preventDefault(); setIndex((i) => Math.min(i + 1, results.length - 1)); }
+    if (e.key === 'ArrowDown') { e.preventDefault(); setIndex((i) => Math.min(i + 1, shown.length - 1)); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setIndex((i) => Math.max(i - 1, 0)); }
-    else if (e.key === 'Enter') { e.preventDefault(); choose(results[index]); }
+    else if (e.key === 'Enter') { e.preventDefault(); choose(shown[index]); }
+    else if (e.key === 'Tab' && groups.length > 1) { e.preventDefault(); const at = chip ? groups.indexOf(chip) : -1, next = at + (e.shiftKey ? -1 : 1); pickChip(next < 0 || next >= groups.length ? null : groups[next]); }
   };
 
   let lastGroup = '';
 
+  // M368 (the owner, 20 Nov, a picture of macOS Spotlight: "make search bar like this how apple has with its animation
+  // and transition when it gets exit and spawn which is ultra smooth"): Spotlight's way. No dark veil over the page; the
+  // panel appears from slightly smaller at the top (one transform the compositor runs) and leaves faster than it came;
+  // its results grow down out of the field (`Grow`), filter chips by kind under it (Tab moves along them), the chosen row
+  // a soft grey pill that glides, with ↵ on it.
   return (
     <AnimatePresence>
       {open && (
         <div className="fixed inset-0 z-[200]" role="dialog" aria-modal="true" aria-label="Search">
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}
-            className="absolute inset-0 bg-black/25" onClick={() => setOpen(false)} />
-          <motion.div
-            initial={{ opacity: 0, y: -12, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: -8, scale: 0.98 }}
-            transition={spring.snappy}
-            className="absolute left-1/2 -translate-x-1/2 top-[max(1rem,env(safe-area-inset-top))] sm:top-[12%] w-full max-w-xl px-3"
-          >
-            {/* Spotlight: a frosted panel with a big search field; the chosen result is filled with the tint. */}
-            <div className="ios-alert rounded-[26px] overflow-hidden">
-              <div className="flex items-center gap-3 px-4 py-3.5" style={{ boxShadow: 'inset 0 -0.5px 0 var(--separator)' }}>
-                {busy ? <Loader2 className="w-5 h-5 text-zinc-400 animate-spin shrink-0" /> : <Search className="w-5 h-5 text-zinc-400 shrink-0" />}
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0, transition: { duration: 0.12 } }} transition={{ duration: 0.2 }}
+            className="absolute inset-0 bg-black/10 sm:bg-black/[0.04] dark:sm:bg-black/20" onClick={() => setOpen(false)} />
+          <div className="absolute left-1/2 -translate-x-1/2 top-[max(0.75rem,env(safe-area-inset-top))] sm:top-[14%] w-full max-w-[42rem] px-3">
+            <motion.div
+              initial={calm ? { opacity: 0 } : { opacity: 0, transform: 'translateY(-6px) scale(0.94)' }}
+              animate={calm ? { opacity: 1 } : { opacity: 1, transform: 'translateY(0px) scale(1)' }}
+              exit={calm ? { opacity: 0, transition: { duration: 0.1 } } : { opacity: 0, transform: 'translateY(-4px) scale(0.97)', transition: { duration: 0.14, ease: [0.4, 0, 1, 1] } }}
+              transition={{ type: 'spring', stiffness: 520, damping: 38, mass: 0.8 }}
+              style={{ transformOrigin: '50% 0%' }}
+              className="ios-alert rounded-[28px] overflow-hidden shadow-[0_24px_70px_-20px_rgba(0,0,0,0.45)]"
+            >
+              <div className="flex items-center gap-3 px-5 py-4">
+                {busy ? <Loader2 className="w-6 h-6 text-zinc-400 animate-spin shrink-0" aria-hidden /> : <Search className="w-6 h-6 text-zinc-500 dark:text-zinc-400 shrink-0" aria-hidden />}
                 <input
                   ref={inputRef}
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   onKeyDown={onKeyDown}
-                  placeholder="Search documents, tasks, courses, people…"
+                  placeholder="Spotlight search: pages, courses, people…"
                   aria-controls="palette-list"
-                  className="flex-1 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none text-[20px] font-normal tracking-tight"
+                  aria-label="Search"
+                  className="flex-1 min-w-0 bg-transparent text-zinc-900 dark:text-white placeholder:text-zinc-400 outline-none border-0 focus-visible:shadow-none! focus-visible:border-transparent! text-[22px] sm:text-[26px] font-normal tracking-tight selection:bg-[#0a84ff]/35"
                 />
-                <button onClick={() => setOpen(false)} className="text-[15px] font-medium text-tint-text">Cancel</button>
+                <button type="button" onClick={() => setOpen(false)} className="sm:hidden text-[15px] font-medium text-tint-text">Cancel</button>
               </div>
-
-              <div id="palette-list" ref={listRef} role="listbox" aria-label="Results" className="max-h-[calc(100dvh-9rem)] sm:max-h-[min(60dvh,460px)] overflow-y-auto overscroll-contain p-2">
-                {results.length === 0 ? (
-                  <p className="py-10 text-center text-sm text-zinc-500">
-                    {debounced.length >= 2 && busy ? 'Searching…' : <>No results for &ldquo;{query}&rdquo;</>}
-                  </p>
-                ) : results.map((item, i) => {
-                  const header = item.group !== lastGroup ? (lastGroup = item.group) : null;
-                  const selected = i === index;
-                  return (
-                    <div key={`${item.group}-${item.id}`}>
-                      {header && <p className="px-3 pt-2.5 pb-1 text-[12px] font-semibold text-zinc-500">{header}</p>}
-                      <button
-                        data-idx={i}
-                        role="option"
-                        aria-selected={selected}
-                        onClick={() => choose(item)}
-                        onMouseMove={() => setIndex(i)}
-                        className={cn('relative w-full flex items-center gap-3 px-3 py-2 rounded-xl text-start', selected ? 'text-white' : 'text-zinc-800 dark:text-zinc-200')}
-                      >
-                        {selected && <motion.span layoutId="palette-sel" transition={spring.snappy} className="absolute inset-0 rounded-xl bg-tint dark:bg-indigo-600" />}
-                        <span className={cn('relative w-8 h-8 rounded-[9px] flex items-center justify-center shrink-0', selected ? 'bg-white/20 text-white' : 'bg-[var(--fill)] text-tint-text')}>
-                          <item.icon className="w-4 h-4" />
-                        </span>
-                        <span className="relative flex-1 min-w-0">
-                          <span className="block text-sm font-semibold truncate">{item.label}</span>
-                          {item.hint && <span className={cn('block text-xs', item.hint.includes('«') ? 'line-clamp-2' : 'truncate', selected ? 'text-white' : 'text-zinc-600 dark:text-zinc-400')}>{item.hint.includes('«') ? <Snippet text={item.hint} selected={selected} /> : item.hint}</span>}
-                        </span>
-                        {selected ? <CornerDownLeft className="relative w-4 h-4 text-white/80" /> : <ChevronRight className="relative w-4 h-4 text-zinc-300 dark:text-zinc-600" />}
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              <div className="hidden sm:flex px-4 py-2.5 items-center justify-between text-[11px] text-zinc-400" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
-                <span><kbd className="font-mono">↑↓</kbd> move · <kbd className="font-mono">↵</kbd> open · search anything on the platform</span>
-                <span className="flex items-center gap-1"><Command className="w-3 h-3" />K</span>
-              </div>
-            </div>
-          </motion.div>
+              <Grow calm={!!calm}>
+                <div className="mx-5 h-px bg-[var(--separator)]" aria-hidden />
+                {groups.length > 1 && (
+                  <div className="flex gap-2 overflow-x-auto px-4 pt-3 pb-1 [scrollbar-width:none]" role="group" aria-label="Show only">
+                    {[null, ...groups].map((g) => {
+                      const on = chip === g;
+                      return <button key={g ?? 'all'} type="button" aria-pressed={on} onClick={() => { pickChip(g); inputRef.current?.focus(); }}
+                        className={cn('shrink-0 rounded-[10px] px-3 py-1.5 text-[13px] font-medium transition-[background-color,color] duration-150', on ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900' : 'bg-black/[0.06] text-zinc-700 hover:bg-black/[0.1] dark:bg-white/[0.1] dark:text-zinc-200 dark:hover:bg-white/[0.16]')}>{g ?? 'All'}</button>;
+                    })}
+                  </div>
+                )}
+                <div id="palette-list" ref={listRef} role="listbox" aria-label="Results" className="max-h-[calc(100dvh-12rem)] sm:max-h-[min(58dvh,480px)] overflow-y-auto overscroll-contain p-2">
+                  {shown.length === 0 ? (
+                    <p className="py-10 text-center text-sm text-zinc-500">
+                      {debounced.length >= 2 && busy ? 'Searching…' : <>No results for &ldquo;{query}&rdquo;</>}
+                    </p>
+                  ) : shown.map((item, i) => {
+                    const header = !chip && item.group !== lastGroup ? (lastGroup = item.group) : null;
+                    const selected = i === index;
+                    return (
+                      <div key={`${item.group}-${item.id}`}>
+                        {header && <p className="px-3 pt-2.5 pb-1 text-[12px] font-semibold text-zinc-500 dark:text-zinc-400">{header}</p>}
+                        <button
+                          type="button"
+                          data-idx={i}
+                          role="option"
+                          aria-selected={selected}
+                          onClick={() => choose(item)}
+                          onMouseMove={() => setIndex(i)}
+                          className="relative w-full flex items-center gap-3 px-3 py-2 rounded-[14px] text-start text-zinc-900 dark:text-white"
+                        >
+                          {selected && <motion.span layoutId="palette-sel" transition={calm ? { duration: 0 } : { type: 'spring', stiffness: 700, damping: 45 }} className="absolute inset-0 rounded-[14px] bg-black/[0.07] dark:bg-white/[0.12]" />}
+                          <span className="relative w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 bg-[var(--fill)] text-tint-text">
+                            <item.icon className="w-[18px] h-[18px]" aria-hidden />
+                          </span>
+                          <span className="relative flex-1 min-w-0">
+                            <span className="block text-[15px] font-medium truncate">{item.label}</span>
+                            {item.hint && <span className={cn('block text-[13px] text-zinc-500 dark:text-zinc-400', item.hint.includes('«') ? 'line-clamp-2' : 'truncate')}>{item.hint.includes('«') ? <Snippet text={item.hint} selected={false} /> : item.hint}</span>}
+                          </span>
+                          {selected
+                            ? <span className="relative hidden sm:inline-flex items-center gap-1.5 text-[12px] text-zinc-500 dark:text-zinc-400">Open<kbd className="rounded-md bg-black/[0.08] px-1.5 py-0.5 font-sans text-[11px] font-semibold text-zinc-700 dark:bg-white/[0.14] dark:text-zinc-100"><CornerDownLeft className="inline h-3 w-3" aria-hidden /></kbd></span>
+                            : <ChevronRight className="relative w-4 h-4 text-zinc-300 dark:text-zinc-600 sm:hidden" aria-hidden />}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div className="hidden sm:flex px-5 py-2.5 items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400" style={{ boxShadow: 'inset 0 0.5px 0 var(--separator)' }}>
+                  <span><kbd className="font-mono">↑↓</kbd> move · <kbd className="font-mono">↵</kbd> open · <kbd className="font-mono">tab</kbd> next kind · <kbd className="font-mono">esc</kbd> close</span>
+                  <span className="flex items-center gap-1"><Command className="w-3 h-3" aria-hidden />K</span>
+                </div>
+              </Grow>
+            </motion.div>
+          </div>
         </div>
       )}
     </AnimatePresence>
+  );
+}
+
+/** M368: the results grow down out of the search field when the panel opens and whenever they change size, like
+ *  Spotlight's (opening and closing a section is the one place height animates, AGENTS §8). Made anew on each opening,
+ *  so it starts closed. */
+function Grow({ calm, children }: { calm: boolean; children: React.ReactNode }) {
+  const [h, setH] = useState(0);
+  const ro = useRef<ResizeObserver | null>(null);
+  const measure = useCallback((el: HTMLDivElement | null) => {
+    ro.current?.disconnect();
+    if (!el) return;
+    ro.current = new ResizeObserver(([e]) => setH(Math.ceil(e.contentRect.height)));
+    ro.current.observe(el);
+  }, []);
+  return (
+    <div style={{ height: h, transition: calm ? undefined : 'height 320ms cubic-bezier(0.32, 0.72, 0, 1)' }} className="overflow-hidden">
+      <div ref={measure}>{children}</div>
+    </div>
   );
 }

@@ -6,6 +6,9 @@ import type { ExpressionSpecification, GeoJSONSource, Map as MLMap, StyleSpecifi
 import { toast } from 'sonner';
 import { ExternalLink, LocateFixed, Minus, Navigation, Plus } from 'lucide-react';
 import { MapButtons } from '@/components/map-ui/Command';
+import { ReachWays } from '@/components/map-ui/ReachWays';
+import { TRAVEL_FACTORS } from '@/lib/green';
+import { quickWays } from '@/lib/transit-options';
 import { useDarkMode } from '@/lib/use-dark';
 import { osmKey } from '@/lib/travel-place';
 import { km } from '@/lib/travel-plan';
@@ -107,12 +110,18 @@ export default function GreenPlaces() {
   useEffect(() => { const m = mapRef.current; if (m && ready) for (const id of ['gp', 'gp-name']) if (m.getLayer(id)) m.setFilter(id, filterOf(shown)); }, [shown, ready]);
   useEffect(() => { const m = mapRef.current; if (m && ready) (m.getSource('gp-sel') as GeoJSONSource | undefined)?.setData({ type: 'FeatureCollection', features: picked ? [{ type: 'Feature', geometry: { type: 'Point', coordinates: [picked.lon, picked.lat] }, properties: {} }] : [] }); }, [picked, ready]);
 
+  // M363: the picked place's times from you (once Near me found you) or the middle of the map, and the car's CO₂.
+  const [me, setMe] = useState<{ lat: number; lng: number } | null>(null);
+  const start = me ?? { lat: centre.lat, lng: centre.lon }, away = picked ? km({ lat: start.lat, lon: start.lng }, picked) ?? 0 : 0;
+  const drives = !!picked && quickWays({ lat: start.lat, lon: start.lng }, picked).some((w) => w.mode === 'car');
+  const driveKg = Math.round(away * 1.25 * TRAVEL_FACTORS.car.kg * 2 * 100) / 100; // there and back
+
   function pick(s: Spot) {
     setPicked(s);
     const m = mapRef.current;
     if (m) m.flyTo({ center: [s.lon, s.lat], zoom: Math.max(m.getZoom(), 16.5), duration: calm() ? 0 : 1100, essential: true, easing: (t) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2) });
   }
-  const findMe = () => navigator.geolocation?.getCurrentPosition((p) => mapRef.current?.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 15.5, duration: calm() ? 0 : 1400, essential: true }), () => toast.error('Your browser didn’t share where you are.'), { timeout: 10_000 });
+  const findMe = () => navigator.geolocation?.getCurrentPosition((p) => { setMe({ lat: p.coords.latitude, lng: p.coords.longitude }); mapRef.current?.flyTo({ center: [p.coords.longitude, p.coords.latitude], zoom: 15.5, duration: calm() ? 0 : 1400, essential: true }); }, () => toast.error('Your browser didn’t share where you are.'), { timeout: 10_000 });
   const toggle = (id: KindId) => setShown((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
   const osm = (key: string) => (/^[NWR]\d+$/.test(key) ? `https://www.openstreetmap.org/${{ N: 'node', W: 'way', R: 'relation' }[key[0] as 'N']}/${key.slice(1)}` : null);
 
@@ -130,9 +139,10 @@ export default function GreenPlaces() {
         {picked && (
           <div className="mt-3 rounded-2xl bg-emerald-500/[0.08] p-3" data-no-motion>
             <p className="font-semibold text-zinc-900 dark:text-white" translate="no">{picked.name}</p>
-            <p className="text-xs text-zinc-600 dark:text-zinc-300">{KINDS.find((k) => k.id === picked.kind)!.label} · {(km(centre, picked) ?? 0) < 1 ? `${Math.round((km(centre, picked) ?? 0) * 100) * 10} m` : `${(km(centre, picked) ?? 0).toFixed(1)} km`} from the middle of the map</p>
+            <p className="text-xs text-zinc-600 dark:text-zinc-300">{KINDS.find((k) => k.id === picked.kind)!.label} · {away < 1 ? `${Math.round(away * 100) * 10} m` : `${away.toFixed(1)} km`} from {me ? 'you' : 'the middle of the map'}</p>
+            <ReachWays from={start} to={{ lat: picked.lat, lng: picked.lon }} hot="bg-emerald-700 hover:bg-emerald-800"
+              note={drives ? <>On foot or by bike: no CO₂. By car there and back: about {driveKg < 1 ? `${Math.round(driveKg * 1000)} g` : `${driveKg.toFixed(1)} kg`}.</> : undefined} />
             <div className="mt-2 flex flex-wrap gap-1.5">
-              <a href={`https://www.openstreetmap.org/directions?engine=fossgis_osrm_foot&route=%3B${picked.lat}%2C${picked.lon}`} target="_blank" rel="noopener noreferrer" className="btn-secondary btn-sm">Directions</a>
               {osm(picked.key) && <a href={osm(picked.key)!} target="_blank" rel="noopener noreferrer" className="btn-ghost btn-sm inline-flex items-center gap-1"><ExternalLink className="h-3.5 w-3.5" aria-hidden />Details on OpenStreetMap</a>}
             </div>
           </div>

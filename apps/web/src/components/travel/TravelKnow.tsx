@@ -1,5 +1,6 @@
 'use client';
 
+import { PayLess } from './PayLess';
 import { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Car, Droplets, HandCoins, Landmark, Moon, Plane, Plug, Shirt, ShieldAlert, Sparkles, Stamp, Sun, TramFront, Users, type LucideIcon } from 'lucide-react';
 import useSWR from 'swr';
@@ -42,6 +43,7 @@ export function KnowTab({ title, tips, fromCountry, tipsCountry, country, climat
         {country && <PowerCard country={country} />}
         {climate && <ClimateCard climate={climate} place={title} />}
       </div>
+      {country && <PayLess countries={[country.code]} place={country.name} />}
       {tips.stories?.length ? (
         <section aria-labelledby="know-stories" className="panel p-6">
           <h3 id="know-stories" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Landmark className="h-5 w-5 text-indigo-500" aria-hidden />Why {title} is famous</h3>

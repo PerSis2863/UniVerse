@@ -1,6 +1,6 @@
 'use client';
 import { ArrangeMode, PageShortcuts } from '@/components/ArrangeMode';
-import { Fragment, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { Fragment, useEffect, useLayoutEffect, useRef, useState, Suspense } from 'react';
 import { SampleModeBar } from '@/components/SampleMode';
 import { useSampleMode } from '@/lib/sample-mode';
 import { Sidebar } from './Sidebar';
@@ -184,7 +184,7 @@ export function DashboardShell({ children }: DashboardShellProps) {
       {!top && <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
       <div className="flex-1 side-main lg:ms-[calc(var(--side-w)+var(--side-gap))] topnav:ms-0 flex flex-col min-w-0">
-        {top && <TopNav />}
+        {top && <Suspense fallback={null}><TopNav /></Suspense>}
         {/* Mobile navigation bar (iOS): clear at the top, frosted once content scrolls under it; the
             brand gives way to the page's title when its large title has scrolled away. */}
         <header className="mobile-header nav-edge lg:hidden fixed top-0 inset-x-0 z-[35] flex items-center justify-between">

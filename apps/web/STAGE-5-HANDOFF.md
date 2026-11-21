@@ -10155,3 +10155,142 @@ opens Directions that way from the same start (`directionsTo(to, from, mode)`; T
   (`/travel/place`), so 40 at once would cost 40 server lookups; the card keeps showing Open / Closed for its place.
 - Checked at 390 and 1280, light and dark (a stubbed search result 3 km from the map's middle): 45 min walk, 15 min
   cycle, ~25 min transit, 6 min drive; Transit opens Ways to get there; axe clean.
+
+## M362 (20 Nov): Relief, the quickest way to reach a need
+
+The owner, 20 Nov: "Next I can add the same idea to Relief (the quickest way for a helper to reach someone who needs
+help) and to more places on the map. please do this also".
+- Once a helper taps **Near me** on Relief's live map: each card in **Needs you** shows under the distance the quickest
+  way there ("10 min by car"), with **Directions** (Google Maps, that way); the need's own card shows **Getting there**:
+  on foot, by bike, by bus or train, by car, each with its time, the quickest in Relief's orange, each opening Google
+  Maps' directions that way; the "I can help" plan says "5.3 km from you: about 10 min by car". Shown only for open needs
+  or ones you're helping (not for someone else's).
+- `reach` and `reachLink` in `src/lib/relief-route.ts` (tested) on Travel's `quickWays` (M360/M361); the chips are
+  `src/components/map-ui/ReachWays.tsx` (shared: `hot` colour, `label`, `note`). Needs sit about 500 m from where they
+  are, so the times are close, not exact.
+- Checked in sample mode at 1280 and 390, light and dark (a test position in London): axe clean.
+
+## M363 (20 Nov): Green's places, every way there and the car's CO₂
+
+The same ask ("more places on the map"). A place picked on **Green → Green places** shows `ReachWays` from you (once
+**Near me** found you) or the middle of the map, the quickest in emerald, and "On foot or by bike: no CO₂. By car there
+and back: about … kg" (`TRAVEL_FACTORS.car`, roads 1.25× the line). It replaces the old single walking "Directions" link
+to OpenStreetMap. Checked: the page loads with no errors; a place can't be opened in this container (the places come
+from map tiles it can't download), the chips are the same component checked on Relief.
+
+## M364 (20 Nov): Relief's places to go and most urgent, by every way
+
+The owner, 20 Nov: "see what else you can do". **Places to go** (shelters, food banks, groups), once Near me found
+you, shows `ReachWays` on each card: on foot, by bike, by bus or train, by car, the quickest in orange; each chip opens
+Google Maps' directions to the place **by its name and town** (`linkFor`: the saved spot is rounded about 500 m, so a
+point would mislead), as its Directions button already did. It replaces the old "N min on foot" note. **Most urgent**
+adds the quickest way after the distance ("352.9 km away · 2 h 10 min by bus or train"). Checked in sample mode at 1280
+and 390, light and dark, from a London test position: axe clean, no page errors.
+
+## M365 (20 Nov): a trip's ways priced too
+
+The same ask. Each way between two of a trip's cities (M357) now shows a rough price for everyone travelling in the
+trip's currency (≈ €69 the train, ≈ €36 the coach…), the **Cheapest** marked beside Fastest and Greenest.
+`legCostUsd(km, mode, level, people)` and `legLevel(ccA, ccB)` in `src/lib/travel-plan.ts` (tested): a base plus a rate
+a km scaled by how dear the two countries are; a car one per four people (fuel and tolls); a flight never under 60%.
+The budget's **Between places** now prices each leg by the way picked (no pick: the likely way, as before), so choosing
+the coach lowers it. Checked at 390 and 1280, light and dark: axe clean.
+
+## M366 (20 Nov): Relief's black "Help, moving" box gone; tall cards show as soon as they're in view
+
+The owner, 20 Nov (a screenshot of the radar above Places to go): "please remove this animation from here because i dont
+need that black box anymore". The live map page's `LiveCard` "Help, moving" (the funnel and the radar of open needs,
+M48–M49) is removed from `ReliefApp.tsx`; Places to go follows the needs list. (`LiveCard`, `Funnel` and `Radar` stay:
+Trace and the console use them.)
+- Found while checking: the motion layer revealed a block only once 12% of it was on screen, so a very tall card (Places
+  to go with many places) stayed a blank gap at the bottom of a phone. `scroll-motion.ts` now plays a block once 12% **or
+  100 px** of it shows (thresholds 0–0.12).
+
+## M367 (20 Nov): prices in detail, and ways to pay less (students, under-26s, 60+, children, families, disabled)
+
+The owner, 20 Nov: "add more features related to prices where it should show details… if you are student you get a
+discount or an old age so you get discount if it exist in real life and also do this things in other sectors like food
+or visit or shopping".
+- `src/lib/travel-discounts.ts` (tested): ~35 real, long-running schemes by country (or everywhere), kind (getting
+  around, sights, food, shopping) and who qualifies (student, under 26, 60 or over, with children, family or group,
+  disabled, everyone): Railcards, SNCF Avantage, BahnCard, Tarjeta Dorada, Swiss Half Fare, Interrail, Amtrak, JR and
+  Indian Railways children, ISIC; France's and Italy's museums for the young, free British and Smithsonian museums, the
+  Prado, US park passes, city passes; CROUS and Mensa, set lunches, student apps, kids-eat-free; EU tax-free shopping,
+  none in Great Britain, US sales tax at the till, student tech prices. Worded as usually offered (amounts change),
+  each with its official page where there is one; the screens say to check it and carry ID. **Add only schemes you're
+  sure exist**, with the official link.
+- `PayLess.tsx`: "I am…" chips (kept on the device, `uv-discount-who`, read with `useSyncExternalStore`), the kinds as a
+  segmented control, cards with who each is for. On a guide's **Know before you go** (its country) and a trip's **Plan**
+  under the budget (its countries, `compact`: five, then "Show all").
+- A trip's ways between cities: **Price details** under them: each way for everyone and each, a car per four people,
+  how it's estimated, and the getting-around discounts of the two countries.
+- Travel map: a place's card shows **Pay less** (up to two schemes for its kind in its country: sights, food, shopping).
+- Checked at 390 and 1280, light and dark on a trip (Paris → Lyon → Barcelona): axe clean. The guide's tab and the map
+  card need lookups this container can't reach (Wikivoyage, the place lookup): not seen in a browser.
+
+## M368 (20 Nov): the search window like macOS Spotlight
+
+The owner, 20 Nov (a picture of Spotlight in macOS Tahoe): "make search bar like this how apple has with its animation
+and transition when it gets exit and spawn which is ultra smooth research it". `CommandPalette.tsx`:
+- **Opening:** no dark veil (a faint one, darker on phones); the panel fades in from 94% at the top on a quick spring
+  (one `transform` string, the compositor runs it; measured: opacity 0 → 1 in ~0.2 s), and its results **grow down out
+  of the field** (`Grow`: a ResizeObserver height with Apple's curve, 0.32 s; remade on every opening so it starts
+  closed; this is the one allowed height animation, a section opening). **Closing:** faster (0.14 s, ease-in, to 97%).
+  Reduce Motion: fades only (`useReducedMotion`; the app's MotionConfig is "never", so this one checks itself).
+- **Filter chips** under the field from the groups found (All, Courses, Pages, People…); Tab / Shift-Tab move along
+  them; a chip shows only its group.
+- A bigger field (22–26 px), no focus box on it (the caret in the dialog's one field is the focus); the chosen row a
+  soft grey pill that glides (`layoutId`), with "Open ↵" on it; Cancel only on phones; the footer adds tab and esc.
+- Checked at 1280 and 390, light and dark: axe clean; chips, Tab and Escape work.
+
+## M369 (20 Nov): no summary line under the homes' greeting
+
+The owner, 20 Nov (a picture of "Nothing due soon · 100% attendance · average 88%" under "Good afternoon, Alice"):
+"remove nothing due and others from here and add somewhere else". `DashHead` has no `summary` any more (the date and
+the greeting only), on the student's, teacher's and admin's homes. What it said lives elsewhere already: attendance and
+the average in the student's number cards, the teacher's to-grade, courses and students in theirs, the admin's
+attendance, approvals and safety flags in "The school today"; the student's "N due soon / Nothing due soon" moved
+beside **Up next**'s title (`UpNextCard`'s `note`). Checked at 1280 and 390.
+
+## M370 (20 Nov): each app's sections in the top bar
+
+The owner, 20 Nov (a picture of Relief's bar and its row of tabs): "please add live map, most urgent, matches, alert and
+other up there where message and collaborate are so it stay together and make like this for other apps also".
+- On a computer whose menu is the bar across the top (`topnav`), in Relief, Trace, Green and Travel the bar carries the
+  app's sections first (Live map, Most urgent, Matches, Alerts…; Console, Market map, Tracking…; My impact, Footprint,
+  Journeys…; Explore, Find where to go, Map, Trips, Saved), then Messages, Collaborate, Settings; what doesn't fit goes
+  under More. The chosen one is marked (`NavItem.on`, so `?view=` sections work), they can be dragged into order like
+  the bar's other entries, and the app's old entries (`APP_NAV`) give way to them.
+- **One list:** `reliefSections`, `greenSections`, `traceSections`, `travelSections` in each `*Tabs.tsx` feed both the
+  page's row and the bar (`sectionsOf` in `TopNav.tsx`). The page's row (`TabRow`) is `topnav:hidden`; phones, the
+  installed app and the side menu keep it. TopNav reads `useSearchParams`, so it sits in a `Suspense` in DashboardShell
+  (it never renders on the server: `useTopNav` is false there).
+- Checked at 1440 (each app: the bar's sections, the right one marked, no page row) and 390 (the row stays): axe clean.
+
+## M371 (20 Nov): Relief's "What's needed most" in place of the "Help, moving" box
+
+The owner, 20 Nov (a picture of the old LiveCard on the live site, where M366 isn't merged yet): "remove this and add
+something professinonal and it should be ultra smooth". The map's own cards already carry the totals (open, being
+helped, urgent, helped in 30 days), so the space now holds `NeedsByKind.tsx`: open needs by kind, most first, each with
+its count, people waiting, urgent count and a bar (`Fill`: slides on the graphics chip; orange when any are urgent); a
+press toggles that kind's filter on the map and scrolls up to it. Plain card (`CardHead`), no canvas, no loops.
+Checked at 1280 and 390, light and dark: axe clean, nothing sideways.
+
+## M372 (20 Nov): Spotlight's opening for every menu and pop-up
+
+The owner, 20 Nov: "the way spot light is ultra smooth and ui is also look good so make every button like that or
+where ever you can add". `pop` in `src/lib/motion.ts` holds the search window's motion (M368): from 94% and 6 px up on
+a firm spring (stiffness 520, damping 38, mass 0.8; ~0.2 s), one `transform` string the compositor runs; out faster
+(0.13 s, ease-in, to 97%). **`Popover`** (Menu.tsx: the top bar's groups and More, every card's "···" menu, every
+drop-down built on it) opens that way, **growing out of its button** (`--pop-origin` set where it's placed: the
+button's middle, top or bottom); Reduce Motion: a fade. The motion layer's openings (`opened` in scroll-motion.ts: what
+appears floating after a press) use the same from-94% start on `springGlide()`. Bottom sheets keep their slide (iOS's).
+
+## M373 (20 Nov): Relief's live map plainer, fewer colours
+
+The owner, 20 Nov (a picture of the live map page): "all things here looks ai so please make it simple and
+professional dont use alot of colours there". One ink colour where colour said nothing: What's needed most's bars and
+chosen row, the places' beds bar (now `Fill`) and their "Open" and "yes" badges (grey; amber and red stay for running
+low, out and closed), the open-needs tick strip (urgent ones dark, the rest light) and the Urgent figure. In the shared
+`QueueCard` (map-ui) the kind's icon is grey and only the **chosen** card wears the app's colour (an urgent one has a
+plain darker hairline; its due label still says so). Checked at 1440 and 390, light and dark: axe clean.

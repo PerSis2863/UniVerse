@@ -1,6 +1,5 @@
 'use client';
 
-import type { ReactNode } from 'react';
 import { useNow } from '@/lib/use-now';
 import { useLanguageStore } from '@/store/language';
 
@@ -9,7 +8,7 @@ import { useLanguageStore } from '@/store/language';
 // no titles): a quiet line, the greeting a little larger. The time comes from useNow, so it's never read while
 // rendering on the server; there the day line keeps its height empty.
 
-export function DashHead({ name, summary }: { name?: string | null; summary?: ReactNode }) {
+export function DashHead({ name }: { name?: string | null }) {
   const now = useNow();
   const { t } = useLanguageStore();
   const d = now ? new Date(now) : null, h = d?.getHours() ?? 12;
@@ -22,7 +21,6 @@ export function DashHead({ name, summary }: { name?: string | null; summary?: Re
       <p className="mt-0.5 text-[22px] font-semibold leading-tight tracking-[-0.015em] text-zinc-900 sm:text-2xl dark:text-white">
         {greeting}{first ? <>, <span translate="no">{first}</span></> : null}
       </p>
-      {summary && <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{summary}</p>}
     </div>
   );
 }

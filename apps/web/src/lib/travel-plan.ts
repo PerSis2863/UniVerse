@@ -238,6 +238,21 @@ export interface Budget {
   unpriced: number; guessed: boolean;
 }
 
+// ——— A leg's price by each way (M365) ———
+export type LegMode = 'plane' | 'train' | 'bus' | 'car' | 'ferry';
+/** US dollars a traveller (a car: per car of up to four, fuel and tolls): a base plus a rate a km, scaled by how dear
+ *  the two countries are. Rough averages of booked-ahead fares; the partners' links show the real ones. */
+const WAY_COST: Record<LegMode, { base: number; perKm: number; floor?: number; perCar?: boolean }> = {
+  plane: { base: 50, perKm: 0.07, floor: 0.6 }, train: { base: 6, perKm: 0.1 }, bus: { base: 4, perKm: 0.05 },
+  ferry: { base: 20, perKm: 0.15 }, car: { base: 0, perKm: 0.15, perCar: true },
+};
+/** How dear two countries are for getting between them (1 is the world's middle). */
+export const legLevel = (a: string | null, b: string | null) => Math.min(1.6, Math.max(0.2, (priceLevel(a ?? 'US').level + priceLevel(b ?? a ?? 'US').level) / 2)) ** 0.8;
+export function legCostUsd(km: number, mode: LegMode, level: number, people: number) {
+  const c = WAY_COST[mode], each = (c.base + km * c.perKm) * Math.max(c.floor ?? 0, level);
+  return c.perCar ? each * Math.ceil(Math.max(1, people) / 4) : each * Math.max(1, people);
+}
+
 /** Stay + food + getting around + between cities + tickets, for everyone: estimates from the country's
  *  price level and the trip's style, a sleep place's own price where it has one, the listed prices of
  *  the places to see and do. */
@@ -258,10 +273,11 @@ export function tripBudget(trip: PlanTrip, stops: PlanStop[], items: PlanItem[])
       const p = readPrice(it.price, localCur);
       if (p) tickets += toUsd(p.amount, p.currency) * people; else unpriced++;
     }
-    const next = stops[i + 1], l = next && leg(s, next);
+    const next = stops[i + 1] as (PlanStop & { mode?: string | null }) | undefined, l = next && leg(s, next);
     if (l) {
-      const f = Math.min(1.6, Math.max(0.2, (priceLevel(cc).level + priceLevel(next.cc ?? cc).level) / 2)) ** 0.8;
-      between += (l.flight ? (50 + l.km * 0.07) * Math.max(0.6, f) : (6 + l.km * 0.08) * f) * people;
+      const f = legLevel(cc, next.cc), way = WAY_COST[next.mode as LegMode] ? (next.mode as LegMode) : null;
+      // M365: the way picked for the leg (Plan → Route) prices it; otherwise the likely way, as before.
+      between += way ? legCostUsd(l.km, way, f, people) : (l.flight ? (50 + l.km * 0.07) * Math.max(0.6, f) : (6 + l.km * 0.08) * f) * people;
     }
   });
   const usd = { stay, food, local, between, tickets };

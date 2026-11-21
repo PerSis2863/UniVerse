@@ -20,6 +20,16 @@ export const spring = {
   bouncy: s(0.42, 0.3),
 };
 
+/** M372 (the owner, 20 Nov: "the way spot light is ultra smooth… make every button like that"): Spotlight's opening,
+ *  measured on the search window (M368): from 94% and 6 px up to its place on a quick, firm spring (~0.2 s), as one
+ *  transform string the compositor runs; closing quicker, easing in. Used by menus and pop-ups (Popover). */
+export const pop = {
+  from: { opacity: 0, transform: 'translateY(-6px) scale(0.94)' },
+  to: { opacity: 1, transform: 'translateY(0px) scale(1)' },
+  out: { opacity: 0, transform: 'translateY(-4px) scale(0.97)', transition: { duration: 0.13, ease: [0.4, 0, 1, 1] as const } },
+  spring: { type: 'spring', stiffness: 520, damping: 38, mass: 0.8 } as Transition,
+};
+
 export const ease = {
   ios: [0.32, 0.72, 0, 1] as const,
   out: [0.22, 1, 0.36, 1] as const,

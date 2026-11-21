@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestOrder, hop, leg, minutesFor, nightsAt, planDays, readPrice, stopDates, tripBudget, tripIcs, type PlanItem, type PlanStop } from './travel-plan';
+import { bestOrder, hop, leg, minutesFor, nightsAt, planDays, readPrice, stopDates, tripBudget, tripIcs, type PlanItem, type PlanStop, legCostUsd } from './travel-plan';
 
 // M206: the trip planner's sums.
 const stop = (id: string, name: string, lat: number, lon: number, days = 2, cc = 'PT'): PlanStop => ({ id, guide: name, name, cc, lat, lon, days, position: 0 });
@@ -100,5 +100,15 @@ describe('getting between places (M206, M207)', () => {
     expect(asia.some((l) => l.partner === 'Direct Ferries')).toBe(true);
     expect(ferryLikely('FR', 'DE')).toBe(false);
     expect(hostelLink('Kyoto/Central')).toBe('https://www.hostelworld.com/hostels/Kyoto/');
+  });
+});
+
+describe('a leg priced by each way (M365)', () => {
+  it('prices the coach under the train and one car for up to four', () => {
+    expect(legCostUsd(400, 'bus', 1, 2)).toBeLessThan(legCostUsd(400, 'train', 1, 2));
+    expect(legCostUsd(400, 'train', 1, 2)).toBeCloseTo(92, 0); // (6 + 400 × 0.1) × 2
+    expect(legCostUsd(400, 'car', 1, 4)).toBe(legCostUsd(400, 'car', 1, 1)); // one car
+    expect(legCostUsd(400, 'car', 1, 5)).toBe(2 * legCostUsd(400, 'car', 1, 1));
+    expect(legCostUsd(400, 'plane', 0.3, 1)).toBeCloseTo((50 + 28) * 0.6, 5); // never under 60% for a flight
   });
 });
