@@ -1,9 +1,9 @@
 import { LabError } from './parse';
 import { mat, numel, scalar, toMat, type Mat, type Value } from './values';
 import { BUILTINS, type Builtin } from './builtins';
-import { textOf } from './interp';
+import { textOf, type Lab } from './interp';
 import { add, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, points, style, tex, ticks, vec, type Axes, type Box, type Grid, type Ink, type Series } from './plot';
-import { hexAt, MAP_NAMES, mapOf, png, rgbAt } from './colormap';
+import { hex, hexAt, MAP_NAMES, mapOf, png, rgbAt } from './colormap';
 
 // UniVerse Lab's 3D plots and images (M379): surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor,
 // colour maps and colour bars, view and shading. Surfaces are drawn as SVG faces sorted far to near (each face whole,
@@ -120,24 +120,83 @@ export function draw3d(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
   for (const t of zt) { const v = nz(t); gl.push(seg(S(xb, -1, v), S(xb, 1, v)), seg(S(-1, yb, v), S(1, yb, v))); }
   out.push(`<path d="${gl.join(' ')}" fill="none" stroke="${c.line}" stroke-width="0.6"/>`);
 
-  // Surfaces: every face, far ones first (at most ~90 × 90 faces a surface; bigger ones are sampled).
+  // Surfaces: every face, far ones first (at most ~90 × 90 faces a surface; bigger ones are sampled). Smooth shading
+  // splits each face into up to 4 × 4 smaller ones with blended colours; lights shade each face by its slope.
   const faces: { d: number; s: string }[] = [];
+  const eye = [ce * sa, -ce * ca, se];
+  const [ka, kd, ks, shine] = ax.material;
+  const lit = ax.lighting !== 'none' && ax.lights.length > 0;
+  const shade = (rgb: [number, number, number], n: number[]): [number, number, number] => {
+    const len = Math.hypot(n[0], n[1], n[2]) || 1;
+    let nn = n.map((v) => v / len);
+    if (nn[0] * eye[0] + nn[1] * eye[1] + nn[2] * eye[2] < 0) nn = nn.map((v) => -v); // both sides lit, as MATLAB does
+    let diff = 0, spec = 0;
+    for (const L of ax.lights) {
+      const nl = nn[0] * L[0] + nn[1] * L[1] + nn[2] * L[2];
+      if (nl <= 0) continue;
+      diff += nl;
+      const r = nn.map((v, i) => 2 * nl * v - L[i]);
+      spec += Math.max(0, r[0] * eye[0] + r[1] * eye[1] + r[2] * eye[2]) ** shine;
+    }
+    const k = ka + kd * diff;
+    return rgb.map((v) => Math.max(0, Math.min(255, Math.round(v * k + 255 * ks * spec * 0.3)))) as [number, number, number];
+  };
   for (const g of surfs) {
     const pick = (n: number) => { const step = Math.max(1, Math.ceil((n - 1) / 90)); const idx: number[] = []; for (let k = 0; k < n - 1; k += step) idx.push(k); idx.push(n - 1); return idx; };
     const ri = pick(g.r), cj = pick(g.c);
+    const sub = g.smooth && g.kind === 'surf' ? Math.max(1, Math.min(4, Math.floor(Math.sqrt(14000 / Math.max(1, (ri.length - 1) * (cj.length - 1)))))) : 1;
     const zv = (k: number) => { const z = g.z[k]; return ax.zlim && (z < ax.zlim[0] || z > ax.zlim[1]) ? NaN : z; };
-    const P = new Map<number, number[]>();
-    const at = (k: number) => { let p = P.get(k); if (!p) { p = S(nx(g.x[k]), ny(g.y[k]), nz(zv(k))); P.set(k, p); } return p; };
     const cv = g.cdata ?? g.z;
+    const alpha = g.alpha < 1 ? ` fill-opacity="${g.alpha}"` : '';
+    // Smooth lighting blends normals between corners (as Gouraud lighting does): one normal per corner from its neighbours.
+    const vn = new Map<string, number[]>();
+    const P = (q: number, a: number) => { const k = cj[a] * g.r + ri[q]; return [nx(g.x[k]), ny(g.y[k]), nz(zv(k))]; };
+    const normalAt = (q: number, a: number) => {
+      const key = `${q},${a}`;
+      let n = vn.get(key);
+      if (!n) {
+        const du = P(q, Math.min(cj.length - 1, a + 1)).map((v, i) => v - P(q, Math.max(0, a - 1))[i]);
+        const dw = P(Math.min(ri.length - 1, q + 1), a).map((v, i) => v - P(Math.max(0, q - 1), a)[i]);
+        n = [du[1] * dw[2] - du[2] * dw[1], du[2] * dw[0] - du[0] * dw[2], du[0] * dw[1] - du[1] * dw[0]];
+        const l = Math.hypot(n[0], n[1], n[2]) || 1;
+        n = n.map((v) => v / l);
+        vn.set(key, n);
+      }
+      return n;
+    };
     for (let a = 0; a < cj.length - 1; a++) for (let q = 0; q < ri.length - 1; q++) {
-      const ks = [cj[a] * g.r + ri[q], cj[a + 1] * g.r + ri[q], cj[a + 1] * g.r + ri[q + 1], cj[a] * g.r + ri[q + 1]];
-      if (ks.some((k) => !Number.isFinite(zv(k)) || !Number.isFinite(g.x[k]) || !Number.isFinite(g.y[k]))) continue;
-      const ps = ks.map(at);
-      const d = (ps[0][2] + ps[1][2] + ps[2][2] + ps[3][2]) / 4;
-      const col = hexAt(cmap, cl0, cl1, (cv[ks[0]] + cv[ks[1]] + cv[ks[2]] + cv[ks[3]]) / 4);
-      const path = `M${ps.map(pt).join(' L')} Z`;
-      const alpha = g.alpha < 1 ? ` fill-opacity="${g.alpha}"` : '';
-      faces.push({ d, s: g.kind === 'mesh' ? `<path d="${path}" fill="${c.bg}" stroke="${col}"/>` : g.edges ? `<path d="${path}" fill="${col}"${alpha} stroke="#18181b" stroke-opacity="0.35"/>` : `<path d="${path}" fill="${col}"${alpha} stroke="${col}"/>` });
+      const ks4 = [cj[a] * g.r + ri[q], cj[a + 1] * g.r + ri[q], cj[a + 1] * g.r + ri[q + 1], cj[a] * g.r + ri[q + 1]];
+      if (ks4.some((k) => !Number.isFinite(zv(k)) || !Number.isFinite(g.x[k]) || !Number.isFinite(g.y[k]))) continue;
+      const N = ks4.map((k) => [nx(g.x[k]), ny(g.y[k]), nz(zv(k))]), V = ks4.map((k) => cv[k]);
+      // A point and a colour value inside the face, u along the columns and w along the rows.
+      const B = (u: number, w: number) => [0, 1, 2].map((i) => (1 - u) * (1 - w) * N[0][i] + u * (1 - w) * N[1][i] + u * w * N[2][i] + (1 - u) * w * N[3][i]);
+      const Cv = (u: number, w: number) => (1 - u) * (1 - w) * V[0] + u * (1 - w) * V[1] + u * w * V[2] + (1 - u) * w * V[3];
+      for (let su = 0; su < sub; su++) for (let sw = 0; sw < sub; sw++) {
+        const u0 = su / sub, u1 = (su + 1) / sub, w0 = sw / sub, w1 = (sw + 1) / sub;
+        const P3 = [B(u0, w0), B(u1, w0), B(u1, w1), B(u0, w1)];
+        const ps = P3.map((p) => S(p[0], p[1], p[2]));
+        const d = (ps[0][2] + ps[1][2] + ps[2][2] + ps[3][2]) / 4;
+        let rgb = rgbAt(cmap, cl0, cl1, Cv((u0 + u1) / 2, (w0 + w1) / 2));
+        if (!rgb) continue;
+        if (lit && g.kind === 'surf') {
+          let n: number[];
+          if (g.smooth) {
+            const cn = [normalAt(q, a), normalAt(q, a + 1), normalAt(q + 1, a + 1), normalAt(q + 1, a)];
+            // Corners' normals may point to opposite sides of a fold: turn them all towards the first before blending.
+            const ref = cn[0];
+            const aligned = cn.map((v) => (v[0] * ref[0] + v[1] * ref[1] + v[2] * ref[2] < 0 ? v.map((x) => -x) : v));
+            const u = (u0 + u1) / 2, w = (w0 + w1) / 2;
+            n = [0, 1, 2].map((i) => (1 - u) * (1 - w) * aligned[0][i] + u * (1 - w) * aligned[1][i] + u * w * aligned[2][i] + (1 - u) * w * aligned[3][i]);
+          } else {
+            const d1 = P3[2].map((v, i) => v - P3[0][i]), d2 = P3[3].map((v, i) => v - P3[1][i]);
+            n = [d1[1] * d2[2] - d1[2] * d2[1], d1[2] * d2[0] - d1[0] * d2[2], d1[0] * d2[1] - d1[1] * d2[0]];
+          }
+          rgb = shade(rgb, n);
+        }
+        const col = hex(rgb);
+        const path = `M${ps.map(pt).join(' L')} Z`;
+        faces.push({ d, s: g.kind === 'mesh' ? `<path d="${path}" fill="${c.bg}" stroke="${col}"/>` : g.edges ? `<path d="${path}" fill="${col}"${alpha} stroke="#18181b" stroke-opacity="0.35"/>` : `<path d="${path}" fill="${col}"${alpha} stroke="${col}"/>` });
+      }
     }
   }
   faces.sort((p, q) => p.d - q.d);
@@ -322,20 +381,33 @@ function contours(a: Value[], what: string) {
   const lines: Series[] = line === 'none' ? [] : levels.map((L) => {
     const x: number[] = [], y: number[] = [];
     for (const line of isolines(g, L)) { if (x.length) { x.push(NaN); y.push(NaN); } for (let k = 0; k < line.length; k += 2) { x.push(line[k]); y.push(line[k + 1]); } }
-    return { kind: 'line', x, y, color: line ?? st.color ?? '#18181b', level: line || st.color ? undefined : L, dash: st.dash && st.dash !== 'none' ? st.dash : '', marker: null, width, label: null, size: 6 } as Series;
+    return { kind: 'line', x, y, color: line ?? st.color ?? '#18181b', level: line || st.color ? undefined : L, value: L, dash: st.dash && st.dash !== 'none' ? st.dash : '', marker: null, width, label: null, size: 6 } as Series;
   }).filter((s) => s.x.length);
   return { g, levels, lines, range: r };
 }
 
-def('contour contour3', (a, _n, lab) => {
+/** 'ShowText', 'on' after the data writes each line's level on it. */
+const showText = (a: Value[]) => a.some((v, i) => v.k === 'str' && /^showtext$/i.test(v.v) && a[i + 1]?.k === 'str' && /^on$/i.test(textOf(a[i + 1])));
+/** MATLAB's contour matrix: for each line a column [level; points] then its points as [x; y] columns. */
+function contourMatrix(lines: Series[]) {
+  const cols: number[][] = [];
+  for (const s of lines) for (const run of runs(s)) { cols.push([s.value ?? 0, run.length]); for (const [x, y] of run) cols.push([x, y]); }
+  const C = mat(2, cols.length);
+  cols.forEach((c, j) => { C.d[2 * j] = c[0]; C.d[2 * j + 1] = c[1]; });
+  return C;
+}
+const runs = (s: Series) => { const out: [number, number][][] = []; let cur: [number, number][] = []; s.x.forEach((x, i) => { if (!Number.isFinite(x) || !Number.isFinite(s.y[i])) { if (cur.length) out.push(cur); cur = []; } else cur.push([x, s.y[i]]); }); if (cur.length) out.push(cur); return out; };
+
+def('contour contour3', (a, nout, lab) => {
   const { g, lines, range } = contours(a, 'contour');
   add(lab, lines);
   const ax = gfx(lab).axes();
   ax.zrange = range;
   ax.tight = [Math.min(...finite(g.x)), Math.max(...finite(g.x)), Math.min(...finite(g.y)), Math.max(...finite(g.y))];
-  return [];
+  if (showText(a)) ax.clabel = true;
+  return nout > 0 ? [contourMatrix(lines), mat(1, 1, [1])] : [];
 });
-def('contourf', (a, _n, lab) => {
+def('contourf', (a, nout, lab) => {
   const { g, levels, lines, range } = contours(a, 'contourf');
   const xs = Array.from({ length: g.c }, (_, j) => g.x[j * g.r]), ys = Array.from({ length: g.r }, (_, i) => g.y[i]);
   const black = lines.map((s) => (s.level !== undefined ? { ...s, level: undefined, color: '#18181b', width: 0.6 } : s));
@@ -343,8 +415,87 @@ def('contourf', (a, _n, lab) => {
   const ax = gfx(lab).axes();
   ax.zrange = range;
   ax.tight = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
-  return [];
+  if (showText(a)) ax.clabel = true;
+  return nout > 0 ? [contourMatrix(black), mat(1, 1, [1])] : [];
 });
+/** clabel(C, h) (or clabel(C), clabel(h)): write each contour line's level on it. */
+def('clabel', (_a, _n, lab) => { gfx(lab).axes().clabel = true; gfx(lab).changed(); return []; });
+
+/** The levels written on contour lines: once per line long enough, along it, with a halo so the line doesn't cross it. */
+export function contourLabels(ax: Axes, X: (v: number) => number, Y: (v: number) => number, c: Ink): string {
+  const out: string[] = [];
+  for (const s of ax.series) {
+    if (s.value === undefined) continue;
+    for (const run of runs(s)) {
+      const pts = run.map(([x, y]) => [X(x), Y(y)]);
+      const seg = pts.slice(1).map((p, i) => Math.hypot(p[0] - pts[i][0], p[1] - pts[i][1]));
+      const total = seg.reduce((p, q) => p + q, 0);
+      if (total < 60) continue;
+      let k = 0, walked = 0;
+      while (k < seg.length - 1 && walked + seg[k] < total / 2) walked += seg[k++];
+      const [p, q] = [pts[k], pts[k + 1]];
+      const t = seg[k] ? (total / 2 - walked) / seg[k] : 0;
+      let ang = (Math.atan2(q[1] - p[1], q[0] - p[0]) * 180) / Math.PI;
+      if (ang > 90) ang -= 180; else if (ang < -90) ang += 180;
+      const x = p[0] + t * (q[0] - p[0]), y = p[1] + t * (q[1] - p[1]);
+      out.push(`<text transform="translate(${x.toFixed(1)} ${y.toFixed(1)}) rotate(${ang.toFixed(1)})" dy="3.5" text-anchor="middle" font-size="10" fill="${c.ink}" stroke="${c.bg}" stroke-width="3" paint-order="stroke">${label(+s.value.toPrecision(3))}</text>`);
+    }
+  }
+  return out.join('');
+}
+/** The same labels as pgfplots nodes, at the middle point of each line. */
+export function labelTikz(ax: Axes): string[] {
+  const out: string[] = [];
+  for (const s of ax.series) {
+    if (s.value === undefined) continue;
+    for (const run of runs(s)) if (run.length >= 6) { const [x, y] = run[run.length >> 1]; out.push(`\\node[font=\\scriptsize, fill=white, inner sep=1pt] at (axis cs:${+x.toPrecision(6)},${+y.toPrecision(6)}) {${+s.value.toPrecision(3)}};`); }
+  }
+  return out;
+}
+
+// Arrows: quiver and quiver3, scaled as MATLAB does so the longest fits the spacing of the points.
+function arrows(lab: Lab, a: Value[], three: boolean) {
+  const nums = leading(a), want = three ? 6 : 4;
+  let X: number[], Y: number[], Z: number[] = [], U: number[], V: number[], W: number[] = [], m: number, n: number;
+  const take = (k: number) => [...nums[k].d];
+  if (nums.length >= want) {
+    U = take(three ? 3 : 2); V = take(three ? 4 : 3); if (three) W = take(5);
+    const grid = (k: number, other: Mat) => { const v = nums[k]; if (v.d.length === U.length) return [...v.d]; const Um = nums[three ? 3 : 2]; return Array.from({ length: U.length }, (_, idx) => (k === 0 ? v.d[Math.floor(idx / Um.r)] : v.d[idx % Um.r]) ?? other.d[0]); };
+    X = grid(0, nums[0]); Y = grid(1, nums[1]); if (three) Z = take(2);
+    const Um = nums[three ? 3 : 2]; [m, n] = Um.r === 1 || Um.c === 1 ? [Math.sqrt(U.length), Math.sqrt(U.length)] : [Um.r, Um.c];
+  } else if (!three && nums.length >= 2) {
+    const Um = nums[0]; U = take(0); V = take(1);
+    X = U.map((_, idx) => Math.floor(idx / Um.r) + 1); Y = U.map((_, idx) => (idx % Um.r) + 1);
+    [m, n] = Um.r === 1 || Um.c === 1 ? [1, U.length] : [Um.r, Um.c];
+  } else throw new LabError(three ? 'quiver3 needs x, y, z and the arrows u, v, w.' : 'quiver needs the arrows u and v, or x, y, u and v.');
+  if ([V, X, Y, ...(three ? [Z, W] : [])].some((v) => v.length !== U.length)) throw new LabError('The positions and the arrows must have the same number of values.');
+  const s = nums.length > want || (!three && nums.length === 3 && nums.length < want) ? scalar(nums[nums.length - 1]) : 1;
+  if (s !== 0) {
+    const span = (v: number[]) => { const r = minmax(v); return r ? r[1] - r[0] : 0; };
+    const dx = span(X) / n, dy = span(Y) / m, dz = three ? span(Z) / Math.max(m, n) : 0;
+    const del = dx * dx + dy * dy + dz * dz;
+    if (del > 0) {
+      const most = Math.max(...U.map((u, i) => Math.sqrt((u * u + V[i] * V[i] + (three ? W[i] * W[i] : 0)) / del)).filter(Number.isFinite));
+      const k = most > 0 ? (s * 0.9) / most : 1;
+      U = U.map((u) => u * k); V = V.map((v) => v * k); if (three) W = W.map((w) => w * k);
+    }
+  }
+  const al = 0.33, be = 0.33, x: number[] = [], y: number[] = [], z: number[] = [];
+  U.forEach((u, i) => {
+    const v = V[i], w = three ? W[i] : 0;
+    if (![X[i], Y[i], u, v, w].every(Number.isFinite)) return;
+    const tx = X[i] + u, ty = Y[i] + v, tz = (three ? Z[i] : 0) + w;
+    x.push(X[i], tx, NaN, tx - al * (u + be * v), tx, tx - al * (u - be * v), NaN);
+    y.push(Y[i], ty, NaN, ty - al * (v - be * u), ty, ty - al * (v + be * u), NaN);
+    if (three) z.push(Z[i], tz, NaN, tz - al * w, tz, tz - al * w, NaN);
+  });
+  const ax = gfx(lab).axes();
+  const out: Series = { kind: 'line', x, y, ...(three ? { z } : {}), color: PALETTE[(ax.hold ? ax.series.length : 0) % PALETTE.length], dash: '', marker: null, width: 1, label: null, size: 6 };
+  Object.assign(out, style(a.slice(nums.length), {}));
+  add(lab, [out]);
+}
+def('quiver', (a, _n, lab) => { arrows(lab, a, false); return []; });
+def('quiver3', (a, _n, lab) => { arrows(lab, a, true); return []; });
 
 /** imagesc(C), imagesc(x, y, C): x and y may be [first last]. */
 function imageArgs(a: Value[], what: string) {
@@ -406,11 +557,47 @@ def('view', (a, nout, lab) => {
 def('shading', (a, _n, lab) => {
   const mode = a[0] ? textOf(a[0]).toLowerCase() : 'faceted';
   if (!['faceted', 'flat', 'interp'].includes(mode)) throw new LabError('shading is faceted, flat or interp.');
-  for (const g of gfx(lab).axes().grids) g.edges = mode === 'faceted';
+  for (const g of gfx(lab).axes().grids) { g.edges = mode === 'faceted'; g.smooth = mode === 'interp'; }
   gfx(lab).changed();
   return [];
 });
 def('rotate3d', () => []);
+
+// Lights (camlight, light, lightangle), lighting and material: each face shaded by its slope against the lights.
+const toDir = (azDeg: number, elDeg: number) => { const a = (azDeg * Math.PI) / 180, e = (elDeg * Math.PI) / 180; return [Math.cos(e) * Math.sin(a), -Math.cos(e) * Math.cos(a), Math.sin(e)]; };
+const viewOf = (ax: Axes) => ax.view ?? [-37.5, 30];
+const addLight = (lab: Lab, dir: number[], nout: number) => { const ax = gfx(lab).axes(); const n = Math.hypot(dir[0], dir[1], dir[2]) || 1; ax.lights.push(dir.map((v) => v / n)); if (ax.lighting === 'none') ax.lighting = 'flat'; gfx(lab).changed(); return nout > 0 ? [mat(1, 1, [ax.lights.length])] : []; };
+def('camlight', (a, nout, lab) => {
+  const [az, el] = viewOf(gfx(lab).axes());
+  const w = a[0]?.k === 'str' ? a[0].v.toLowerCase() : null;
+  if (w === 'headlight') return addLight(lab, toDir(az, el), nout);
+  if (w === 'left') return addLight(lab, toDir(az - 30, el + 30), nout);
+  if (a.length >= 2 && a[0].k !== 'str') return addLight(lab, toDir(az + scalar(a[0]), el + scalar(a[1])), nout);
+  return addLight(lab, toDir(az + 30, el + 30), nout);
+});
+def('light', (a, nout, lab) => {
+  const i = a.findIndex((v) => v.k === 'str' && /^position$/i.test(v.v));
+  return addLight(lab, i >= 0 && a[i + 1] ? vec(a[i + 1]) : [1, 0, 1], nout);
+});
+def('lightangle', (a, nout, lab) => addLight(lab, toDir(a[0] ? scalar(a[0]) : 0, a[1] ? scalar(a[1]) : 30), nout));
+def('lighting', (a, _n, lab) => {
+  const mode = a[0] ? textOf(a[0]).toLowerCase() : 'flat';
+  if (!['flat', 'gouraud', 'phong', 'none'].includes(mode)) throw new LabError('lighting is flat, gouraud or none.');
+  const ax = gfx(lab).axes();
+  ax.lighting = mode === 'none' ? 'none' : mode === 'flat' ? 'flat' : 'gouraud';
+  // Gouraud and phong blend across faces: drawn here as smooth shading.
+  if (ax.lighting === 'gouraud') for (const g of ax.grids) { g.smooth = true; g.edges = false; }
+  gfx(lab).changed();
+  return [];
+});
+const MATERIALS: Record<string, [number, number, number, number]> = { default: [0.3, 0.6, 0.9, 10], shiny: [0.3, 0.6, 0.9, 20], dull: [0.3, 0.8, 0, 10], metal: [0.3, 0.3, 1, 25] };
+def('material', (a, _n, lab) => {
+  const ax = gfx(lab).axes();
+  if (a[0]?.k === 'str') { const m = MATERIALS[a[0].v.toLowerCase()]; if (!m) throw new LabError('material is shiny, dull, metal or default, or [ka kd ks n].'); ax.material = m; }
+  else if (a[0]) { const v = vec(a[0]); ax.material = [v[0] ?? 0.3, v[1] ?? 0.6, v[2] ?? 0.9, v[3] ?? 10]; }
+  gfx(lab).changed();
+  return [];
+});
 /** peaks: the classic test surface, made of Gaussian bumps. */
 def('peaks', (a, nout) => {
   let xs: number[], ys: number[];
@@ -427,3 +614,26 @@ def('peaks', (a, nout) => {
   return nout >= 3 ? [X, Y, Z] : [Z];
 });
 
+
+// Shapes: sphere, cylinder, ellipsoid give X, Y, Z (with no outputs, they draw the surface).
+function shape(lab: Lab, nout: number, r: number, c: number, f: (i: number, j: number) => [number, number, number]) {
+  const X = mat(r, c), Y = mat(r, c), Z = mat(r, c);
+  for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) { const [x, y, z] = f(i, j); const k = j * r + i; X.d[k] = x; Y.d[k] = y; Z.d[k] = z; }
+  if (nout > 0) return [X, Y, Z];
+  add(lab, [], [{ kind: 'surf', r, c, x: [...X.d], y: [...Y.d], z: [...Z.d], edges: true, alpha: 1 }]);
+  return [];
+}
+def('sphere', (a, nout, lab) => {
+  const n = a[0] ? Math.max(3, Math.round(scalar(a[0]))) : 20;
+  return shape(lab, nout, n + 1, n + 1, (i, j) => { const phi = -Math.PI / 2 + (Math.PI * i) / n, th = -Math.PI + (2 * Math.PI * j) / n; return [Math.cos(phi) * Math.cos(th), Math.cos(phi) * Math.sin(th), Math.sin(phi)]; });
+});
+def('ellipsoid', (a, nout, lab) => {
+  if (a.length < 6) throw new LabError('ellipsoid needs the centre and the three radii: ellipsoid(xc, yc, zc, xr, yr, zr).');
+  const [xc, yc, zc, xr, yr, zr] = a.slice(0, 6).map((v) => scalar(v)), n = a[6] ? Math.max(3, Math.round(scalar(a[6]))) : 20;
+  return shape(lab, nout, n + 1, n + 1, (i, j) => { const phi = -Math.PI / 2 + (Math.PI * i) / n, th = -Math.PI + (2 * Math.PI * j) / n; return [xc + xr * Math.cos(phi) * Math.cos(th), yc + yr * Math.cos(phi) * Math.sin(th), zc + zr * Math.sin(phi)]; });
+});
+def('cylinder', (a, nout, lab) => {
+  // cylinder(r, n): r is the radius along the height (one value, or a profile from bottom to top).
+  const r = a[0] ? vec(a[0]) : [1, 1], prof = r.length === 1 ? [r[0], r[0]] : r, n = a[1] ? Math.max(3, Math.round(scalar(a[1]))) : 20;
+  return shape(lab, nout, prof.length, n + 1, (i, j) => { const th = (2 * Math.PI * j) / n; return [prof[i] * Math.cos(th), prof[i] * Math.sin(th), i / (prof.length - 1)]; });
+});

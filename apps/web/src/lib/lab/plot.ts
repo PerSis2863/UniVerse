@@ -3,7 +3,7 @@ import { mat, numel, scalar, toMat, type Value } from './values';
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { hexAt, mapOf } from './colormap';
-import { colorbarSvg, crange, draw3d, gridTikz, imageSvg, is3d } from './plot3d';
+import { colorbarSvg, contourLabels, crange, draw3d, gridTikz, imageSvg, is3d, labelTikz } from './plot3d';
 
 // UniVerse Lab's figures (M375): plot, scatter, bar, stairs, stem, area, histogram, fplot, log axes, subplot, hold,
 // titles, labels, legends, grids and limits, drawn as SVG (sharp at any size, light or dark), and written out as
@@ -11,12 +11,12 @@ import { colorbarSvg, crange, draw3d, gridTikz, imageSvg, is3d } from './plot3d'
 
 export type Kind = 'line' | 'scatter' | 'bar' | 'stairs' | 'stem' | 'area';
 /** A line or points; `z` makes it 3D (plot3, scatter3), `level` colours it from the colour map (contour lines), `cv`
- * colours each point (scatter with a colour per point). */
-export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; cv?: number[]; filled?: boolean; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
+ * colours each point (scatter with a colour per point); `value` is a contour line's level, for its labels (clabel). */
+export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
 /** A surface or mesh (x, y, z all r×c, column by column), or an image / filled contour (x: c column centres, y: r row
  * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour). */
-export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number }
-export interface Axes { series: Series[]; grids: Grid[]; title: string; xlabel: string; ylabel: string; zlabel: string; legend: string[] | null; grid: boolean; hold: boolean; xlim: [number, number] | null; ylim: [number, number] | null; zlim: [number, number] | null; equal: boolean; logx: boolean; logy: boolean; next: number; view: [number, number] | null; colorbar: boolean; clim: [number, number] | null; zrange: [number, number] | null; revY: boolean; tight: [number, number, number, number] | null }
+export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean }
+export interface Axes { series: Series[]; grids: Grid[]; title: string; xlabel: string; ylabel: string; zlabel: string; legend: string[] | null; grid: boolean; hold: boolean; xlim: [number, number] | null; ylim: [number, number] | null; zlim: [number, number] | null; equal: boolean; logx: boolean; logy: boolean; next: number; view: [number, number] | null; colorbar: boolean; clim: [number, number] | null; zrange: [number, number] | null; revY: boolean; tight: [number, number, number, number] | null; lights: number[][]; lighting: 'flat' | 'gouraud' | 'none'; material: [number, number, number, number]; clabel: boolean }
 export interface Figure { id: number; rows: number; cols: number; axes: Map<number, Axes>; current: number; name: string; cmap: number[][] }
 
 /** Our palette for lines one after another (each readable on white and on near-black). */
@@ -43,7 +43,7 @@ export class Graphics {
   }
   changed() { this.onChange?.(); }
 }
-export const blankAxes = (): Axes => ({ series: [], grids: [], title: '', xlabel: '', ylabel: '', zlabel: '', legend: null, grid: false, hold: false, xlim: null, ylim: null, zlim: null, equal: false, logx: false, logy: false, next: 0, view: null, colorbar: false, clim: null, zrange: null, revY: false, tight: null });
+export const blankAxes = (): Axes => ({ series: [], grids: [], title: '', xlabel: '', ylabel: '', zlabel: '', legend: null, grid: false, hold: false, xlim: null, ylim: null, zlim: null, equal: false, logx: false, logy: false, next: 0, view: null, colorbar: false, clim: null, zrange: null, revY: false, tight: null, lights: [], lighting: 'flat', material: [0.3, 0.6, 0.9, 10], clabel: false });
 
 export const gfx = (lab: Lab): Graphics => {
   const g = lab.host.graphics;
@@ -338,6 +338,7 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
     }
     if (s.marker) s.x.forEach((x, i) => { const y = s.y[i]; if (!Number.isFinite(x) || !Number.isFinite(y) || (ax.logx && x <= 0) || (ax.logy && y <= 0)) return; const col = s.cv ? hexAt(cmap, c0, c1, s.cv[i]) : s.color; out.push(markerSvg(s.marker!, X(x), Y(y), s.size / 2 + 0.5, col, s.filled)); });
   });
+  if (ax.clabel) out.push(contourLabels(ax, X, Y, c));
   out.push('</g>');
   out.push(`<rect x="${bx}" y="${by}" width="${w}" height="${h}" fill="none" stroke="${c.soft}" stroke-width="1"/>`);
   for (const t of xt) if (t >= x0 - 1e-12 && t <= x1 + 1e-12) out.push(`<line x1="${X(t)}" y1="${by + h}" x2="${X(t)}" y2="${by + h - 5}" stroke="${c.soft}"/><text x="${X(t)}" y="${by + h + 16}" fill="${c.soft}" font-size="11" text-anchor="middle">${ax.logx ? `10${tex(`^{${Math.round(Math.log10(t))}}`)}` : label(t)}</text>`);
@@ -428,6 +429,7 @@ export function toTikz(f: Figure): string {
       const pts = s.x.map((x, i) => (Number.isFinite(x) && Number.isFinite(s.y[i]) && (!z || Number.isFinite(z[i])) ? `(${p(x)},${p(s.y[i])}${z ? `,${p(z[i])}` : ''})${s.cv ? ` [${p(s.cv[i])}]` : ''}` : '\n')).join(' ').replace(/ ?\n ?/g, '\n').replace(/\n+/g, '\n\n').trim();
       return `\\addplot${z ? '3' : ''}[${o.join(', ')}] coordinates {\n${pts}\n};`;
     })];
+    if (ax?.clabel) plots.push(...labelTikz(ax));
     const legend = names?.length ? [`\\legend{${names.map((n) => texLabel(n)).join(', ')}}`] : [];
     if (many) body.push(`\\nextgroupplot[${opts.join(', ')}]`, ...plots, ...legend);
     else body.push(`\\begin{axis}[\n  width=0.9\\textwidth, height=0.6\\textwidth,\n  ${opts.join(',\n  ')}\n]`, ...plots, ...legend, '\\end{axis}');

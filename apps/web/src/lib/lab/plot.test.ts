@@ -85,3 +85,49 @@ describe('UniVerse Lab: 3D plots and images (M379)', () => {
     expect(mapOf('nope')).toBeNull();
   });
 });
+
+describe('UniVerse Lab: lights, smooth shading, arrows and contour labels (M380)', () => {
+  it('lights a surface and blends it smoothly', () => {
+    const plain = run('surf(peaks(10))'), litG = run('surf(peaks(10)); shading interp; camlight; lighting gouraud; material shiny');
+    const faces = (g: ReturnType<typeof run>) => (renderSvg(g.current!, 600, 400).match(/<path d="M[^"]+ Z" fill="#/g) ?? []).length;
+    const ax = litG.current!.axes.get(1)!;
+    expect([ax.lights.length, ax.lighting, ax.material[3], ax.grids[0].smooth]).toEqual([1, 'gouraud', 20, true]);
+    expect(faces(litG)).toBeGreaterThan(faces(plain) * 4);
+  });
+  it('draws arrows scaled to the spacing', () => {
+    const g = run('[x, y] = meshgrid(-1:0.5:1); quiver(x, y, -y, x)');
+    const s = g.current!.axes.get(1)!.series[0];
+    expect(s.x).toHaveLength(25 * 7);
+    const longest = Math.max(...Array.from({ length: 25 }, (_, i) => Math.hypot(s.x[i * 7 + 1] - s.x[i * 7], s.y[i * 7 + 1] - s.y[i * 7])));
+    expect(longest).toBeCloseTo(0.9 * Math.hypot(2 / 5, 2 / 5), 5);
+    expect(run('quiver3([0 1], [0 0], [0 0], [1 1], [0 0], [1 1], 0)').current!.axes.get(1)!.series[0].z).toHaveLength(14);
+  });
+  it('returns the contour matrix and writes the levels on the lines', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run('[X, Y] = meshgrid(-2:0.1:2); [C, h] = contour(X, Y, X.^2 + Y.^2, [1 1]); clabel(C, h)');
+    const C = lab.vars.get('C') as { r: number; d: Float64Array };
+    expect([C.r, C.d[0]]).toEqual([2, 1]);
+    const svg = renderSvg((lab.host.graphics as Graphics).current!, 600, 400);
+    expect(svg).toMatch(/paint-order="stroke">1<\/text>/);
+    expect(toTikz((lab.host.graphics as Graphics).current!)).toContain('\\node[font=\\scriptsize');
+  });
+});
+
+describe('UniVerse Lab: gradient and shapes (M380)', () => {
+  const val = (code: string, name: string) => { const lab = new Lab({ out: () => {}, graphics: new Graphics() }); lab.run(code); return lab.vars.get(name) as { r: number; c: number; d: Float64Array }; };
+  it('takes gradients, the Laplacian, divergence and curl', () => {
+    expect([...val('g = gradient([1 4 9 16], 1);', 'g').d]).toEqual([3, 4, 6, 7]);
+    const [x2] = [val('[X, Y] = meshgrid(0:4); [fx, fy] = gradient(X.^2 + 3*Y);', 'fy')];
+    expect([...x2.d].every((v) => v === 3)).toBe(true);
+    expect(val('[X, Y] = meshgrid(0:4); L = del2(X.^2 + Y.^2);', 'L').d[12]).toBeCloseTo(1, 10);
+    expect(val('[X, Y] = meshgrid(0:4); d = divergence(X, Y, X, Y);', 'd').d[12]).toBeCloseTo(2, 10);
+    expect(val('[X, Y] = meshgrid(0:4); c = curl(X, Y, -Y, X);', 'c').d[12]).toBeCloseTo(2, 10);
+  });
+  it('makes spheres, ellipsoids and cylinders', () => {
+    const X = val('[X, Y, Z] = sphere(10);', 'X');
+    expect([X.r, X.c]).toEqual([11, 11]);
+    const Z = val('[X, Y, Z] = ellipsoid(0, 0, 1, 1, 1, 2, 8);', 'Z');
+    expect(Math.max(...Z.d)).toBeCloseTo(3, 10);
+    expect(val('[X, Y, Z] = cylinder([1 2 1]);', 'Z').r).toBe(3);
+  });
+});

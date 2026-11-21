@@ -227,3 +227,59 @@ def('spline', (a) => {
     return (M2[k] * l ** 3 + M2[k + 1] * r ** 3) / (6 * hk) + (y[k] / hk - (M2[k] * hk) / 6) * l + (y[k + 1] / hk - (M2[k + 1] * hk) / 6) * r;
   }))];
 });
+
+// ——— Derivatives on a grid (M380): gradient, del2, divergence, curl ———
+
+/** Central differences inside, one-sided at the two ends, along rows (dir 'x': across columns) or down columns. */
+function diffAlong(m: Mat, h: number[] | number, dir: 'x' | 'y'): Mat {
+  const o = mat(m.r, m.c);
+  const n = dir === 'x' ? m.c : m.r;
+  const at = (i: number, j: number) => m.d[j * m.r + i];
+  const coord = (k: number) => (Array.isArray(h) ? h[k] : k * h);
+  for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) {
+    const k = dir === 'x' ? j : i;
+    const v = (q: number) => (dir === 'x' ? at(i, q) : at(q, j));
+    o.d[j * m.r + i] = n < 2 ? 0 : k === 0 ? (v(1) - v(0)) / (coord(1) - coord(0)) : k === n - 1 ? (v(n - 1) - v(n - 2)) / (coord(n - 1) - coord(n - 2)) : (v(k + 1) - v(k - 1)) / (coord(k + 1) - coord(k - 1));
+  }
+  return o;
+}
+const spacing = (v: Value | undefined): number[] | number => { if (!v) return 1; const m = toMat(v); return m.d.length === 1 ? m.d[0] : [...m.d]; };
+def('gradient', (a, nout) => {
+  const F = R(a[0], 'The values');
+  const hx = spacing(a[1]), hy = a[2] ? spacing(a[2]) : hx;
+  if (isVec(F)) return [diffAlong(F, hx, F.r === 1 ? 'x' : 'y')];
+  const fx = diffAlong(F, hx, 'x');
+  return nout > 1 ? [fx, diffAlong(F, hy, 'y')] : [fx];
+});
+def('del2', (a) => {
+  // MATLAB's scaling: (d²F/dx² + d²F/dy²) / 4, second differences inside, extrapolated in a straight line at the edges.
+  const F = R(a[0], 'The values'), h = S(a[1], 1);
+  const o = mat(F.r, F.c);
+  const add = (dir: 'x' | 'y') => {
+    const n = dir === 'x' ? F.c : F.r;
+    if (n < 3) return;
+    for (let i = 0; i < F.r; i++) for (let j = 0; j < F.c; j++) {
+      const at = (k: number) => (dir === 'x' ? F.d[k * F.r + i] : F.d[j * F.r + k]);
+      const d2 = (k: number) => (at(k + 1) - 2 * at(k) + at(k - 1)) / (h * h);
+      const k = dir === 'x' ? j : i;
+      o.d[j * F.r + i] += (k === 0 ? 2 * d2(1) - d2(2) : k === n - 1 ? 2 * d2(n - 2) - d2(n - 3) : d2(k)) / 4;
+    }
+  };
+  add('x'); add('y');
+  return [o];
+});
+def('divergence', (a) => {
+  // divergence(X, Y, U, V) or divergence(U, V).
+  const [X, Y, U, V] = a.length >= 4 ? a.map((v) => R(v)) : [null, null, R(a[0]), R(a[1])];
+  const hx = X ? [...X.d.filter((_, k) => k % X.r === 0)] : 1, hy = Y ? [...Y.d.subarray(0, Y.r)] : 1;
+  const du = diffAlong(U, hx, 'x'), dv = diffAlong(V, hy, 'y');
+  return [mat(U.r, U.c, du.d.map((v, k) => v + dv.d[k]))];
+});
+def('curl', (a, nout) => {
+  // 2D: curl(X, Y, U, V) or curl(U, V): the turning dV/dx − dU/dy, and the angular speed (half of it).
+  const [X, Y, U, V] = a.length >= 4 ? a.map((v) => R(v)) : [null, null, R(a[0]), R(a[1])];
+  const hx = X ? [...X.d.filter((_, k) => k % X.r === 0)] : 1, hy = Y ? [...Y.d.subarray(0, Y.r)] : 1;
+  const dv = diffAlong(V, hx, 'x'), du = diffAlong(U, hy, 'y');
+  const z = mat(U.r, U.c, dv.d.map((v, k) => v - du.d[k]));
+  return nout > 1 ? [z, mat(U.r, U.c, z.d.map((v) => v / 2))] : [z];
+});

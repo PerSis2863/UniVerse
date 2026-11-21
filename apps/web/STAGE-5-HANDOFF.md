@@ -10414,3 +10414,26 @@ map, `point meta min/max`, `colorbar`, `y dir=reverse`. Sizes: a 60×60 filled c
 Example script `surface.m` (new visitors only: saved script lists are kept). Not built: lighting, transparency sorting
 between surfaces and lines, interpolated (smooth) shading, quiver, streamlines, isosurfaces, RGB images (the engine
 has no 3D arrays yet), contour labels (clabel).
+
+## M380 (21 Nov): UniVerse Lab: lights, smooth shading, arrows, contour labels
+
+The owner asked for M379's left-outs and "all the other features… which are missing" (next: more plot kinds, N-D arrays
+with full-colour images, files, the computer app, simulations, toolboxes). In `plot3d.ts`: Axes gained `lights` (unit
+directions in the normalised box), `lighting` ('flat' / 'gouraud' / 'none'), `material` [ka kd ks n] and `clabel`;
+Grid gained `smooth`; Series gained `value` (a contour line's level, kept even when contourf blackens it). Lighting:
+Phong's model on each face (ambient + diffuse per light + a white highlight at 0.3 × ks), both sides lit (the normal
+turned to face the eye); flat lighting uses the face's own normal, smooth (shading interp or lighting gouraud) blends
+corner normals (from neighbours, turned to agree before blending) across each face. Smooth shading splits each face
+into up to 4 × 4 smaller ones (about 14,000 faces at most a surface) with blended colours: SVG has no Gouraud fill.
+camlight (right / left / headlight / (daz, del)) sets its direction from the view at the time it's called (MATLAB
+places lights in the scene too, so view() afterwards turns the scene under the light); light('Position', p);
+lightangle(az, el); lighting none / flat / gouraud / phong (phong = gouraud); material shiny / dull / metal / default /
+[ka kd ks n]. camlight, light and lightangle return a number only when asked for one. quiver / quiver3: MATLAB's
+autoscale (the longest arrow 0.9 of the points' spacing; a last number scales, 0 turns it off), heads with α = β = 0.33,
+one Series with NaN breaks. contour / contourf return MATLAB's contour matrix C and a handle 1 when asked; clabel(…)
+and 'ShowText', 'on' write each line's level once at its middle (lines shorter than 60 px skipped), turned along the
+line and kept upright, with a halo in the background colour; pgfplots gets `\node … at (axis cs:x,y)`. In
+`signal.ts`: gradient (central inside, one-sided at the ends; spacing a number or coordinates), del2 (MATLAB's /4,
+straight-line ends), divergence and curl (2D). Shapes: sphere, ellipsoid, cylinder (a radius profile), drawing
+themselves when no outputs are asked. Not built: 3D meshgrid and full-colour images (they need N-D arrays, next),
+per-vertex colour across a whole face in LaTeX (pgfplots draws its own shading), streamline, coneplot.
