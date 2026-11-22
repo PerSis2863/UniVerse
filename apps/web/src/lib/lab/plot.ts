@@ -4,20 +4,27 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { hexAt, mapOf } from './colormap';
 import { colorbarSvg, contourLabels, crange, draw3d, gridTikz, imageSvg, is3d, labelTikz } from './plot3d';
+import { drawPie, drawPolar, pieTikz } from './plot2d';
 
 // UniVerse Lab's figures (M375): plot, scatter, bar, stairs, stem, area, histogram, fplot, log axes, subplot, hold,
 // titles, labels, legends, grids and limits, drawn as SVG (sharp at any size, light or dark), and written out as
 // LaTeX pgfplots code (our own version of what matlab2tikz does for MATLAB figures). Our own colours, not MATLAB's.
 
-export type Kind = 'line' | 'scatter' | 'bar' | 'stairs' | 'stem' | 'area';
+export type Kind = 'line' | 'scatter' | 'bar' | 'barh' | 'stairs' | 'stem' | 'area' | 'fill';
 /** A line or points; `z` makes it 3D (plot3, scatter3), `level` colours it from the colour map (contour lines), `cv`
  * colours each point (scatter with a colour per point); `value` is a contour line's level, for its labels (clabel). */
-export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
+export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; err?: [number[], number[]]; base?: number[]; edge?: string; fa?: number; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
 /** A surface or mesh (x, y, z all r×c, column by column), or an image / filled contour (x: c column centres, y: r row
  * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour). */
 export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean }
-export interface Axes { series: Series[]; grids: Grid[]; title: string; xlabel: string; ylabel: string; zlabel: string; legend: string[] | null; grid: boolean; hold: boolean; xlim: [number, number] | null; ylim: [number, number] | null; zlim: [number, number] | null; equal: boolean; logx: boolean; logy: boolean; next: number; view: [number, number] | null; colorbar: boolean; clim: [number, number] | null; zrange: [number, number] | null; revY: boolean; tight: [number, number, number, number] | null; lights: number[][]; lighting: 'flat' | 'gouraud' | 'none'; material: [number, number, number, number]; clabel: boolean }
-export interface Figure { id: number; rows: number; cols: number; axes: Map<number, Axes>; current: number; name: string; cmap: number[][] }
+/** Text placed on the axes (text). */
+export interface Note { x: number; y: number; z?: number; s: string; color: string | null; size: number; align: 'start' | 'middle' | 'end' }
+/** A line across the whole axes at x = v or y = v (xline, yline). */
+export interface Ref { axis: 'x' | 'y'; v: number; color: string; dash: Series['dash']; label: string }
+export interface Axes { series: Series[]; grids: Grid[]; title: string; xlabel: string; ylabel: string; zlabel: string; legend: string[] | null; grid: boolean; hold: boolean; xlim: [number, number] | null; ylim: [number, number] | null; zlim: [number, number] | null; equal: boolean; logx: boolean; logy: boolean; next: number; view: [number, number] | null; colorbar: boolean; clim: [number, number] | null; zrange: [number, number] | null; revY: boolean; tight: [number, number, number, number] | null; lights: number[][]; lighting: 'flat' | 'gouraud' | 'none'; material: [number, number, number, number]; clabel: boolean;
+  texts: Note[]; refs: Ref[]; pie: { v: number[]; labels: string[]; explode: boolean[] } | null; polar: boolean; twin: Axes | null; side: 'left' | 'right';
+  xticks: number[] | null; yticks: number[] | null; xtl: string[] | null; ytl: string[] | null; visible: boolean }
+export interface Figure { id: number; rows: number; cols: number; axes: Map<number, Axes>; current: number; name: string; cmap: number[][]; title: string }
 
 /** Our palette for lines one after another (each readable on white and on near-black). */
 export const PALETTE = ['#2563eb', '#ea580c', '#16a34a', '#9333ea', '#dc2626', '#0891b2', '#ca8a04', '#db2777'];
@@ -31,11 +38,16 @@ export class Graphics {
   onChange: (() => void) | null = null;
   figure(id?: number) {
     let f = id !== undefined ? this.figures.find((x) => x.id === id) : undefined;
-    if (!f) { f = { id: id ?? (Math.max(0, ...this.figures.map((x) => x.id)) + 1), rows: 1, cols: 1, axes: new Map(), current: 1, name: '', cmap: mapOf('lab')! }; this.figures.push(f); }
+    if (!f) { f = { id: id ?? (Math.max(0, ...this.figures.map((x) => x.id)) + 1), rows: 1, cols: 1, axes: new Map(), current: 1, name: '', cmap: mapOf('lab')!, title: '' }; this.figures.push(f); }
     this.current = f;
     return f;
   }
   axes(): Axes {
+    const a = this.main();
+    return a.side === 'right' && a.twin ? a.twin : a;
+  }
+  /** The axes itself, whichever side of yyaxis is chosen (titles, x labels and limits belong to it). */
+  main(): Axes {
     const f = this.current ?? this.figure();
     let a = f.axes.get(f.current);
     if (!a) { a = blankAxes(); f.axes.set(f.current, a); }
@@ -43,7 +55,7 @@ export class Graphics {
   }
   changed() { this.onChange?.(); }
 }
-export const blankAxes = (): Axes => ({ series: [], grids: [], title: '', xlabel: '', ylabel: '', zlabel: '', legend: null, grid: false, hold: false, xlim: null, ylim: null, zlim: null, equal: false, logx: false, logy: false, next: 0, view: null, colorbar: false, clim: null, zrange: null, revY: false, tight: null, lights: [], lighting: 'flat', material: [0.3, 0.6, 0.9, 10], clabel: false });
+export const blankAxes = (): Axes => ({ series: [], grids: [], title: '', xlabel: '', ylabel: '', zlabel: '', legend: null, grid: false, hold: false, xlim: null, ylim: null, zlim: null, equal: false, logx: false, logy: false, next: 0, view: null, colorbar: false, clim: null, zrange: null, revY: false, tight: null, lights: [], lighting: 'flat', material: [0.3, 0.6, 0.9, 10], clabel: false, texts: [], refs: [], pie: null, polar: false, twin: null, side: 'left', xticks: null, yticks: null, xtl: null, ytl: null, visible: true });
 
 export const gfx = (lab: Lab): Graphics => {
   const g = lab.host.graphics;
@@ -92,17 +104,18 @@ export function colour(v: Value): string {
 /** Adds series to the current axes (replacing them unless "hold on"). */
 export function add(lab: Lab, list: Series[], grids: Grid[] = []) {
   const g = gfx(lab), a = g.axes();
-  if (!a.hold) { const keep = { hold: a.hold }; Object.assign(a, blankAxes(), keep); }
+  // A new plot starts the axes afresh, keeping hold and the two sides of yyaxis.
+  if (!a.hold) { const keep = { hold: a.hold, twin: a.twin, side: a.side, next: a.next }; Object.assign(a, blankAxes(), keep); }
   for (const s of list) a.series.push(s);
   for (const s of grids) a.grids.push(s);
   g.changed();
 }
-export const nextColour = (lab: Lab) => { const a = gfx(lab).axes(); const n = a.hold ? a.series.length : 0; return PALETTE[n % PALETTE.length]; };
+export const nextColour = (lab: Lab) => { const a = gfx(lab).axes(); const n = (a.hold ? a.series.length : 0) + a.next; return PALETTE[n % PALETTE.length]; };
 
 function seriesFrom(args: Value[], lab: Lab, kind: Kind): Series[] {
   // plot(y), plot(x, y), plot(x, y, spec, x2, y2, spec2, …), with a matrix y giving one line per column.
   const out: Series[] = [];
-  let i = 0, n = gfx(lab).axes().hold ? gfx(lab).axes().series.length : 0;
+  let i = 0, n = (gfx(lab).axes().hold ? gfx(lab).axes().series.length : 0) + gfx(lab).axes().next;
   while (i < args.length && args[i].k !== 'str') {
     const first = toMat(args[i]);
     const second = args[i + 1] && args[i + 1].k !== 'str' ? toMat(args[i + 1]) : null;
@@ -137,7 +150,22 @@ export function points(s: Series[], a: Value[]) {
   if (nums[1]) { const c = vec(nums[1]); if (c.length === 3 && s[0]?.x.length !== 3) s.forEach((x) => { x.color = colour(nums[1]); }); else if (c.length === s[0]?.x.length) s.forEach((x) => { x.cv = c; }); }
   if (a.some((v) => v.k === 'str' && /^filled$/i.test(v.v))) s.forEach((x) => { x.filled = true; });
 }
-def('bar', (a, _n, lab) => { add(lab, seriesFrom(a, lab, 'bar').map((s) => ({ ...s, dash: 'none' as const, marker: null }))); return []; });
+/** bar / barh: a matrix gives a group per row; 'stacked' piles them (negative parts below zero, as MATLAB does). */
+for (const kind of ['bar', 'barh'] as const) {
+  def(kind, (a, _n, lab) => {
+    const stacked = a.some((v) => v.k === 'str' && /^stacked$/i.test(v.v));
+    const args = a.filter((v) => !(v.k === 'str' && /^(stacked|grouped|hist|histc)$/i.test(v.v)));
+    // A lone number after the data is the bars' width (taken as given: drawn at 0.8).
+    const clean = args.filter((v, i) => !(i > 0 && v.k === 'mat' && numel(v) === 1 && args[i - 1].k === 'mat' && numel(args[i - 1]) > 1));
+    const list = seriesFrom(clean, lab, kind).map((s) => ({ ...s, dash: 'none' as const, marker: null }));
+    if (stacked && list.length > 1) {
+      const up = list[0].y.map(() => 0), down = list[0].y.map(() => 0);
+      for (const s of list) s.base = s.y.map((v, i) => { const b = v >= 0 ? up[i] : down[i]; if (v >= 0) up[i] += v; else down[i] += v; return b; });
+    }
+    add(lab, list);
+    return [];
+  });
+}
 def('stairs', (a, _n, lab) => { add(lab, seriesFrom(a, lab, 'stairs')); return []; });
 def('stem', (a, _n, lab) => { add(lab, seriesFrom(a, lab, 'stem')); return []; });
 def('area', (a, _n, lab) => { add(lab, seriesFrom(a, lab, 'area')); return []; });
@@ -168,7 +196,7 @@ def('fplot ezplot', (a, _n, lab) => {
 const onOff = (a: Value[], dflt: boolean) => (a[0]?.k === 'str' ? !/^off$/i.test(a[0].v) : dflt);
 def('hold', (a, _n, lab) => { const ax = gfx(lab).axes(); ax.hold = a[0]?.k === 'str' ? !/^off$/i.test(a[0].v) : !ax.hold; return []; });
 def('grid', (a, _n, lab) => { const ax = gfx(lab).axes(); ax.grid = a.length ? onOff(a, true) : !ax.grid; gfx(lab).changed(); return []; });
-const text = (key: 'title' | 'xlabel' | 'ylabel' | 'zlabel') => (a: Value[], _n: number, lab: Lab) => { gfx(lab).axes()[key] = a[0] ? textOf(a[0]) : ''; gfx(lab).changed(); return []; };
+const text = (key: 'title' | 'xlabel' | 'ylabel' | 'zlabel') => (a: Value[], _n: number, lab: Lab) => { (key === 'ylabel' ? gfx(lab).axes() : gfx(lab).main())[key] = a[0] ? textOf(a[0]) : ''; gfx(lab).changed(); return []; };
 BUILTINS.title = text('title'); BUILTINS.xlabel = text('xlabel'); BUILTINS.ylabel = text('ylabel'); BUILTINS.zlabel = text('zlabel');
 def('legend', (a, _n, lab) => {
   const ax = gfx(lab).axes();
@@ -195,6 +223,7 @@ def('axis', (a, _n, lab) => {
       const w = v.v.toLowerCase();
       if (w === 'equal' || w === 'square' || w === 'image') ax.equal = true;
       else if (w === 'ij') ax.revY = true;
+      else if (w === 'off' || w === 'on') ax.visible = w === 'on';
       else if (w === 'xy') ax.revY = false;
       else if (w === 'tight' || w === 'auto' || w === 'normal') { ax.xlim = null; ax.ylim = null; ax.zlim = null; ax.equal = false; }
     } else { const d = vec(v); if (d.length >= 4) { ax.xlim = [d[0], d[1]]; ax.ylim = [d[2], d[3]]; } if (d.length >= 6) ax.zlim = [d[4], d[5]]; }
@@ -253,25 +282,42 @@ const DASH: Record<string, string> = { '': '', '--': '6 4', ':': '1.5 3', '-.': 
 export function renderSvg(f: Figure, width: number, height: number, dark = false): string {
   const ink = dark ? '#e4e4e7' : '#18181b', soft = dark ? '#a1a1aa' : '#52525b', line = dark ? '#3f3f46' : '#d4d4d8', bg = dark ? '#18181b' : '#ffffff';
   const parts: string[] = [`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" font-family="Inter, system-ui, sans-serif"><rect width="${width}" height="${height}" fill="${bg}"/>`];
-  const cw = width / f.cols, ch = height / f.rows;
+  const head = f.title ? 30 : 0;
+  if (f.title) parts.push(`<text x="${width / 2}" y="21" fill="${ink}" font-size="15" font-weight="600" text-anchor="middle">${esc(tex(f.title))}</text>`);
+  const cw = width / f.cols, ch = (height - head) / f.rows;
   for (let p = 1; p <= f.rows * f.cols; p++) {
     const ax = f.axes.get(p);
     if (!ax) continue;
-    const col = (p - 1) % f.cols, rowi = Math.floor((p - 1) / f.cols);
-    // 3D axes keep their tick labels inside the turned box, so they take the whole cell.
-    const three = is3d(ax), top = ax.title ? 34 : 16;
-    const box: Box = three ? { x: col * cw + 12, y: rowi * ch + top, w: cw - 24 - (ax.colorbar ? 56 : 0), h: ch - top - 8 } : { x: col * cw + 58, y: rowi * ch + top, w: cw - 58 - 18 - (ax.colorbar ? 64 : 0), h: ch - top - (ax.xlabel ? 52 : 34) };
+    const col = (p - 1) % f.cols, rowi = Math.floor((p - 1) / f.cols), y0 = head + rowi * ch;
+    // 3D axes, pies and polar plots keep their labels inside, so they take the whole cell.
+    const three = is3d(ax), round = !!ax.pie || ax.polar, top = ax.title ? 34 : 16, right = ax.twin ? 52 : 0;
+    const box: Box = three || round ? { x: col * cw + 12, y: y0 + top, w: cw - 24 - (ax.colorbar ? 56 : 0), h: ch - top - 8 } : { x: col * cw + 58, y: y0 + top, w: cw - 58 - 18 - right - (ax.colorbar ? 64 : 0), h: ch - top - (ax.xlabel ? 52 : 34) };
     if (box.w < 40 || box.h < 40) continue;
     const c: Ink = { ink, soft, line, bg };
-    parts.push(three ? draw3d(ax, box, c, f.cmap) : drawAxes(ax, box, c, f.cmap));
+    if (ax.pie) parts.push(drawPie(ax, box, c));
+    else if (ax.polar) parts.push(drawPolar(ax, box, c));
+    else if (three) parts.push(draw3d(ax, box, c, f.cmap));
+    else if (ax.twin) {
+      // yyaxis: both sides share x; the right side's numbers and name sit on the right.
+      const a = extent(ax).x, b = extent(ax.twin).x, xr: [number, number] = ax.xlim ?? [Math.min(a[0], b[0]), Math.max(a[1], b[1])];
+      parts.push(drawAxes(ax, box, c, f.cmap, { xr }), drawAxes(ax.twin, box, c, f.cmap, { xr, right: true }));
+    } else parts.push(drawAxes(ax, box, c, f.cmap));
   }
   parts.push('</svg>');
   return parts.join('');
 }
 
-function extent(ax: Axes): { x: [number, number]; y: [number, number] } {
+export function extent(ax: Axes): { x: [number, number]; y: [number, number] } {
   const fin = (v: number, log: boolean) => Number.isFinite(v) && (!log || v > 0);
-  const xs = ax.series.flatMap((s) => s.x.filter((v) => fin(v, ax.logx))), ys = ax.series.flatMap((s) => s.y.filter((v) => fin(v, ax.logy)));
+  const rx: number[] = [], ry: number[] = [];
+  for (const s of ax.series) {
+    const tops = s.y.map((v, i) => v + (s.base?.[i] ?? 0));
+    // Horizontal bars: positions go up the y axis, lengths along x.
+    if (s.kind === 'barh') { ry.push(...s.x); rx.push(0, ...tops, ...(s.base ?? [])); continue; }
+    rx.push(...s.x); ry.push(...tops, ...(s.base ?? []));
+    if (s.err) s.y.forEach((v, i) => ry.push(v - s.err![0][i], v + s.err![1][i]));
+  }
+  const xs = rx.filter((v) => fin(v, ax.logx)), ys = ry.filter((v) => fin(v, ax.logy));
   if (ax.series.some((s) => s.kind === 'bar' || s.kind === 'area' || s.kind === 'stem')) ys.push(0);
   const span = (v: number[], log: boolean): [number, number] => {
     if (!v.length) return [0, 1];
@@ -287,6 +333,8 @@ function extent(ax: Axes): { x: [number, number]; y: [number, number] } {
   // Bars need half a bar of room at each end.
   const bars = ax.series.filter((s) => s.kind === 'bar');
   if (bars.length && !ax.xlim) { const gap = barWidth(bars[0].x); x = [x[0] - gap / 2, x[1] + gap / 2]; }
+  const hbars = ax.series.filter((s) => s.kind === 'barh');
+  if (hbars.length && !ax.ylim) { const gap = barWidth(hbars[0].x); y = [y[0] - gap / 2, y[1] + gap / 2]; if (!ax.xlim) x = outward(x[0], x[1]); return { x, y }; }
   // y rounds out to the next tidy numbers (as MATLAB's automatic limits do); x stays tight to the data for lines,
   // with a little room for scatter points.
   if (!ax.ylim && !ax.logy) y = outward(y[0], y[1]);
@@ -299,8 +347,9 @@ export function outward(lo: number, hi: number): [number, number] {
 }
 const barWidth = (x: number[]) => (x.length > 1 ? Math.min(...x.slice(1).map((v, i) => v - x[i]).filter((d) => d > 0)) : 1);
 
-function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
-  const { x: [x0, x1], y: [y0, y1] } = extent(ax);
+function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][], o: { xr?: [number, number]; right?: boolean } = {}): string {
+  const e = extent(ax);
+  const [x0, x1] = o.xr ?? e.x, [y0, y1] = e.y;
   let { w, h } = b; const { x: bx, y: by } = b;
   if (ax.equal) { const sx = w / (x1 - x0), sy = h / (y1 - y0), s = Math.min(sx, sy); w = (x1 - x0) * s; h = (y1 - y0) * s; }
   const lx = (v: number) => (ax.logx ? Math.log10(v) : v), ly = (v: number) => (ax.logy ? Math.log10(v) : v);
@@ -308,27 +357,51 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
   const Y = (v: number) => (ax.revY ? by + ((ly(v) - ly(y0)) / (ly(y1) - ly(y0) || 1)) * h : by + h - ((ly(v) - ly(y0)) / (ly(y1) - ly(y0) || 1)) * h);
   const [c0, c1] = crange(ax);
   const out: string[] = [];
-  const xt = ax.logx ? decades(x0, x1) : ticks(x0, x1), yt = ax.logy ? decades(y0, y1) : ticks(y0, y1);
-  const id = `c${Math.round(bx)}_${Math.round(by)}`;
+  const xt = ax.xticks ?? (ax.logx ? decades(x0, x1) : ticks(x0, x1)), yt = ax.yticks ?? (ax.logy ? decades(y0, y1) : ticks(y0, y1));
+  const show = ax.visible, main = !o.right;
+  const id = `c${Math.round(bx)}_${Math.round(by)}${o.right ? 'r' : ''}`;
   out.push(`<defs><clipPath id="${id}"><rect x="${bx}" y="${by}" width="${w}" height="${h}"/></clipPath></defs>`);
-  if (ax.grid) {
-    for (const t of xt) if (t >= x0 && t <= x1) out.push(`<line x1="${X(t)}" y1="${by}" x2="${X(t)}" y2="${by + h}" stroke="${c.line}" stroke-width="0.8"/>`);
+  if (ax.grid && show) {
+    if (main) for (const t of xt) if (t >= x0 && t <= x1) out.push(`<line x1="${X(t)}" y1="${by}" x2="${X(t)}" y2="${by + h}" stroke="${c.line}" stroke-width="0.8"/>`);
     for (const t of yt) if (t >= y0 && t <= y1) out.push(`<line x1="${bx}" y1="${Y(t)}" x2="${bx + w}" y2="${Y(t)}" stroke="${c.line}" stroke-width="0.8"/>`);
   }
   out.push(`<g clip-path="url(#${id})">`);
   for (const g of ax.grids) out.push(imageSvg(g, X, Y, cmap, c0, c1));
-  const bars = ax.series.filter((s) => s.kind === 'bar');
+  // Grouped bars sit side by side; stacked bars (with a base) share their place.
+  const grouped = (k: Kind) => ax.series.filter((s) => s.kind === k && !s.base);
   ax.series.forEach((s0) => {
     const s = s0.level !== undefined ? { ...s0, color: hexAt(cmap, c0, c1, s0.level) } : s0;
-    const pts = s.x.map((x, i) => [x, s.y[i]] as const).filter(([x, y]) => Number.isFinite(x) && Number.isFinite(y) && (!ax.logx || x > 0) && (!ax.logy || y > 0));
+    const ok = (x: number, y: number) => Number.isFinite(x) && Number.isFinite(y) && (!ax.logx || x > 0) && (!ax.logy || y > 0);
+    const pts = s.x.map((x, i) => [x, s.y[i]] as const).filter(([x, y]) => ok(x, y));
     const dash = DASH[s.dash] ? ` stroke-dasharray="${DASH[s.dash]}"` : '';
-    if (s.kind === 'bar') {
-      const k = bars.indexOf(s), n = bars.length, full = barWidth(s.x) * 0.8, bw = full / n;
-      for (const [x, y] of pts) { const left = X(x - full / 2 + k * bw), right = X(x - full / 2 + (k + 1) * bw), top = Y(Math.max(0, y)), bot = Y(Math.min(0, y)); out.push(`<rect x="${left}" y="${top}" width="${Math.max(0.5, right - left)}" height="${Math.max(0, bot - top)}" fill="${s.color}" fill-opacity="0.85"/>`); }
+    if (s.kind === 'bar' || s.kind === 'barh') {
+      const g = grouped(s.kind), k = Math.max(0, g.indexOf(s0)), n = s.base ? 1 : g.length || 1, full = barWidth(s.x) * 0.8, bw = full / n;
+      s.x.forEach((p, i) => {
+        const len = s.y[i], from = s.base?.[i] ?? 0;
+        if (!Number.isFinite(p) || !Number.isFinite(len)) return;
+        const a = p - full / 2 + k * bw, z = a + bw, lo = Math.min(from, from + len), hi = Math.max(from, from + len);
+        const r = s.kind === 'bar' ? { x: X(a), y: Y(hi), w: X(z) - X(a), h: Y(lo) - Y(hi) } : { x: X(lo), y: Y(z), w: X(hi) - X(lo), h: Y(a) - Y(z) };
+        out.push(`<rect x="${r.x}" y="${Math.min(r.y, r.y + r.h)}" width="${Math.max(0.5, Math.abs(r.w))}" height="${Math.max(0, Math.abs(r.h))}" fill="${s.color}" fill-opacity="0.85"/>`);
+      });
+      return;
+    }
+    if (s.kind === 'fill') {
+      // Each NaN-separated run is one shape.
+      const shapes: string[] = []; let cur = '';
+      s.x.forEach((x, i) => { if (!ok(x, s.y[i])) { if (cur) shapes.push(`${cur} Z`); cur = ''; return; } cur += `${cur ? ' L' : 'M'}${X(x).toFixed(2)},${Y(s.y[i]).toFixed(2)}`; });
+      if (cur) shapes.push(`${cur} Z`);
+      const edge = s.edge ?? c.ink;
+      out.push(`<path d="${shapes.join(' ')}" fill="${s.color}" fill-opacity="${s.fa ?? 1}" stroke="${edge}" stroke-width="${edge === 'none' ? 0 : s.width}" stroke-linejoin="round"${dash}/>`);
       return;
     }
     if (s.kind === 'area' && pts.length) out.push(`<path d="M${X(pts[0][0])},${Y(0)} ${pts.map(([x, y]) => `L${X(x)},${Y(y)}`).join(' ')} L${X(pts[pts.length - 1][0])},${Y(0)} Z" fill="${s.color}" fill-opacity="0.25"/>`);
     if (s.kind === 'stem') for (const [x, y] of pts) out.push(`<line x1="${X(x)}" y1="${Y(0)}" x2="${X(x)}" y2="${Y(y)}" stroke="${s.color}" stroke-width="${s.width}"/>`);
+    if (s.err) s.x.forEach((x, i) => {
+      const y = s.y[i], lo = y - s.err![0][i], hi = y + s.err![1][i];
+      if (!ok(x, y) || !Number.isFinite(lo) || !Number.isFinite(hi)) return;
+      const px = X(x);
+      out.push(`<path d="M${px},${Y(lo)} V${Y(hi)} M${px - 4},${Y(lo)} H${px + 4} M${px - 4},${Y(hi)} H${px + 4}" stroke="${s.color}" stroke-width="1" fill="none"/>`);
+    });
     if (s.dash !== 'none' && s.kind !== 'stem' && pts.length > 1) {
       // A NaN breaks the line, as in MATLAB.
       const runs: string[] = []; let cur = '';
@@ -336,22 +409,34 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][]): string {
       if (cur) runs.push(cur);
       out.push(`<path d="${runs.join(' ')}" fill="none" stroke="${s.color}" stroke-width="${s.width}" stroke-linejoin="round" stroke-linecap="round"${dash}/>`);
     }
-    if (s.marker) s.x.forEach((x, i) => { const y = s.y[i]; if (!Number.isFinite(x) || !Number.isFinite(y) || (ax.logx && x <= 0) || (ax.logy && y <= 0)) return; const col = s.cv ? hexAt(cmap, c0, c1, s.cv[i]) : s.color; out.push(markerSvg(s.marker!, X(x), Y(y), s.size / 2 + 0.5, col, s.filled)); });
+    if (s.marker) s.x.forEach((x, i) => { const y = s.y[i]; if (!ok(x, y)) return; const col = s.cv ? hexAt(cmap, c0, c1, s.cv[i]) : s.color; out.push(markerSvg(s.marker!, X(x), Y(y), s.size / 2 + 0.5, col, s.filled)); });
   });
   if (ax.clabel) out.push(contourLabels(ax, X, Y, c));
+  for (const r of ax.refs) {
+    const d = DASH[r.dash] ? ` stroke-dasharray="${DASH[r.dash]}"` : '';
+    if (r.axis === 'x') out.push(`<line x1="${X(r.v)}" y1="${by}" x2="${X(r.v)}" y2="${by + h}" stroke="${r.color}" stroke-width="1.2"${d}/>${r.label ? `<text transform="translate(${X(r.v) - 4} ${by + 6}) rotate(-90)" text-anchor="end" font-size="11" fill="${r.color}">${esc(tex(r.label))}</text>` : ''}`);
+    else out.push(`<line x1="${bx}" y1="${Y(r.v)}" x2="${bx + w}" y2="${Y(r.v)}" stroke="${r.color}" stroke-width="1.2"${d}/>${r.label ? `<text x="${bx + w - 6}" y="${Y(r.v) - 5}" text-anchor="end" font-size="11" fill="${r.color}">${esc(tex(r.label))}</text>` : ''}`);
+  }
   out.push('</g>');
-  out.push(`<rect x="${bx}" y="${by}" width="${w}" height="${h}" fill="none" stroke="${c.soft}" stroke-width="1"/>`);
-  for (const t of xt) if (t >= x0 - 1e-12 && t <= x1 + 1e-12) out.push(`<line x1="${X(t)}" y1="${by + h}" x2="${X(t)}" y2="${by + h - 5}" stroke="${c.soft}"/><text x="${X(t)}" y="${by + h + 16}" fill="${c.soft}" font-size="11" text-anchor="middle">${ax.logx ? `10${tex(`^{${Math.round(Math.log10(t))}}`)}` : label(t)}</text>`);
-  for (const t of yt) if (t >= y0 - 1e-12 && t <= y1 + 1e-12) out.push(`<line x1="${bx}" y1="${Y(t)}" x2="${bx + 5}" y2="${Y(t)}" stroke="${c.soft}"/><text x="${bx - 7}" y="${Y(t) + 4}" fill="${c.soft}" font-size="11" text-anchor="end">${ax.logy ? `10${tex(`^{${Math.round(Math.log10(t))}}`)}` : label(t)}</text>`);
+  for (const t of ax.texts) out.push(`<text x="${X(t.x)}" y="${Y(t.y) + t.size * 0.35}" fill="${t.color ?? c.ink}" font-size="${t.size}" text-anchor="${t.align}">${esc(tex(t.s))}</text>`);
+  const tickText = (t: number, i: number, log: boolean, names: string[] | null) => esc(names ? (names[i] ?? '') : log ? `10${tex(`^{${Math.round(Math.log10(t))}}`)}` : label(t));
+  if (show) {
+    if (main) {
+      out.push(`<rect x="${bx}" y="${by}" width="${w}" height="${h}" fill="none" stroke="${c.soft}" stroke-width="1"/>`);
+      xt.forEach((t, i) => { if (t >= x0 - 1e-12 && t <= x1 + 1e-12) out.push(`<line x1="${X(t)}" y1="${by + h}" x2="${X(t)}" y2="${by + h - 5}" stroke="${c.soft}"/><text x="${X(t)}" y="${by + h + 16}" fill="${c.soft}" font-size="11" text-anchor="middle">${tickText(t, i, ax.logx, ax.xtl)}</text>`); });
+    }
+    const edge = o.right ? bx + w : bx, inward = o.right ? -5 : 5;
+    yt.forEach((t, i) => { if (t >= y0 - 1e-12 && t <= y1 + 1e-12) out.push(`<line x1="${edge}" y1="${Y(t)}" x2="${edge + inward}" y2="${Y(t)}" stroke="${c.soft}"/><text x="${o.right ? edge + 7 : edge - 7}" y="${Y(t) + 4}" fill="${c.soft}" font-size="11" text-anchor="${o.right ? 'start' : 'end'}">${tickText(t, i, ax.logy, ax.ytl)}</text>`); });
+    if (main && ax.xlabel) out.push(`<text x="${bx + w / 2}" y="${by + h + 38}" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.xlabel))}</text>`);
+    if (ax.ylabel) out.push(`<text transform="translate(${o.right ? edge + 46 : edge - 44} ${by + h / 2}) rotate(${o.right ? 90 : -90})" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.ylabel))}</text>`);
+  }
   if (ax.title) out.push(`<text x="${bx + w / 2}" y="${by - 12}" fill="${c.ink}" font-size="14" font-weight="600" text-anchor="middle">${esc(tex(ax.title))}</text>`);
-  if (ax.xlabel) out.push(`<text x="${bx + w / 2}" y="${by + h + 38}" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.xlabel))}</text>`);
-  if (ax.ylabel) out.push(`<text transform="translate(${bx - 44} ${by + h / 2}) rotate(-90)" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.ylabel))}</text>`);
-  if (ax.colorbar) out.push(colorbarSvg({ x: bx + w + 14, y: by, w: 14, h }, cmap, c0, c1, c));
+  if (ax.colorbar && main) out.push(colorbarSvg({ x: bx + w + 14, y: by, w: 14, h }, cmap, c0, c1, c));
   const names = ax.legend ?? (ax.series.some((s) => s.label) ? ax.series.map((s, i) => s.label ?? `data${i + 1}`) : null);
-  if (names?.length) {
+  if (names?.length && main) {
     const lw = Math.max(...names.map((n) => n.length)) * 6.6 + 40, lh = names.length * 18 + 8;
-    out.push(`<g transform="translate(${bx + w - lw - 8} ${by + 8})"><rect width="${lw}" height="${lh}" rx="6" fill="${c.ink === '#18181b' ? '#ffffff' : '#18181b'}" fill-opacity="0.92" stroke="${c.line}"/>`);
-    names.forEach((n, i) => { const s = ax.series[i]; if (!s) return; const yy = 14 + i * 18; out.push(s.kind === 'bar' || s.kind === 'area' ? `<rect x="8" y="${yy - 6}" width="18" height="10" fill="${s.color}"/>` : `<line x1="8" y1="${yy - 1}" x2="26" y2="${yy - 1}" stroke="${s.color}" stroke-width="${s.dash === 'none' ? 0 : s.width}"${DASH[s.dash] ? ` stroke-dasharray="${DASH[s.dash]}"` : ''}/>${s.marker ? markerSvg(s.marker, 17, yy - 1, 3.5, s.color) : ''}`, `<text x="32" y="${yy + 3}" fill="${c.ink}" font-size="11">${esc(tex(n))}</text>`); });
+    out.push(`<g transform="translate(${bx + w - lw - 8} ${by + 8})"><rect width="${lw}" height="${lh}" rx="6" fill="${c.bg}" fill-opacity="0.92" stroke="${c.line}"/>`);
+    names.forEach((n, i) => { const s = ax.series[i]; if (!s) return; const yy = 14 + i * 18; out.push(s.kind === 'bar' || s.kind === 'barh' || s.kind === 'area' || s.kind === 'fill' ? `<rect x="8" y="${yy - 6}" width="18" height="10" fill="${s.color}"/>` : `<line x1="8" y1="${yy - 1}" x2="26" y2="${yy - 1}" stroke="${s.color}" stroke-width="${s.dash === 'none' ? 0 : s.width}"${DASH[s.dash] ? ` stroke-dasharray="${DASH[s.dash]}"` : ''}/>${s.marker ? markerSvg(s.marker, 17, yy - 1, 3.5, s.color) : ''}`, `<text x="32" y="${yy + 3}" fill="${c.ink}" font-size="11">${esc(tex(n))}</text>`); });
     out.push('</g>');
   }
   return out.join('');
@@ -381,63 +466,107 @@ const texLabel = (s: string) => (/\$/.test(s) ? s : /[\\^_]/.test(s) ? `$${s}$` 
 const MARK: Record<string, string> = { o: 'o', '.': '*', '+': '+', '*': 'asterisk', x: 'x', s: 'square', d: 'diamond', '^': 'triangle', v: 'triangle', p: 'pentagon' };
 const PGF_DASH: Record<string, string> = { '--': 'dashed', ':': 'dotted', '-.': 'dashdotted' };
 
+/** One axes' pgfplots options and plots (shared by both sides of yyaxis). */
+function axisTikz(ax: Axes, f: Figure, name: (hex: string) => string) {
+  const opts: string[] = [];
+  if (ax.title) opts.push(`title={${texLabel(ax.title)}}`);
+  if (ax.xlabel) opts.push(`xlabel={${texLabel(ax.xlabel)}}`);
+  if (ax.ylabel) opts.push(`ylabel={${texLabel(ax.ylabel)}}`);
+  if (ax.grid) opts.push('grid=major');
+  if (ax.logx) opts.push('xmode=log');
+  if (ax.logy) opts.push('ymode=log');
+  if (ax.equal) opts.push('axis equal');
+  if (!ax.visible) opts.push('hide axis');
+  if (ax.xlim) opts.push(`xmin=${ax.xlim[0]}, xmax=${ax.xlim[1]}`);
+  if (ax.ylim) opts.push(`ymin=${ax.ylim[0]}, ymax=${ax.ylim[1]}`);
+  const list = (v: number[]) => v.map((t) => +t.toPrecision(6)).join(',');
+  if (ax.xticks) opts.push(`xtick={${list(ax.xticks)}}`);
+  if (ax.yticks) opts.push(`ytick={${list(ax.yticks)}}`);
+  if (ax.xtl) opts.push(`xticklabels={${ax.xtl.map((t) => `{${texLabel(t)}}`).join(',')}}`);
+  if (ax.ytl) opts.push(`yticklabels={${ax.ytl.map((t) => `{${texLabel(t)}}`).join(',')}}`);
+  const three = is3d(ax), [c0, c1] = crange(ax);
+  if (three) { const [az, el] = ax.view ?? [-37.5, 30]; opts.push(`view={${az}}{${el}}`); if (ax.zlabel) opts.push(`zlabel={${texLabel(ax.zlabel)}}`); if (ax.zlim) opts.push(`zmin=${ax.zlim[0]}, zmax=${ax.zlim[1]}`); }
+  if (ax.revY) opts.push('y dir=reverse');
+  if (ax.tight) opts.push('enlargelimits=false', 'axis on top');
+  if (ax.grids.length || ax.series.some((s) => s.cv || s.level !== undefined)) {
+    opts.push(`colormap={uvmap}{${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => { const row = f.cmap[Math.round((k / 8) * (f.cmap.length - 1))]; return `rgb255=(${row.map((v) => Math.round(v * 255)).join(',')})`; }).join(' ')}}`, `point meta min=${+c0.toPrecision(6)}, point meta max=${+c1.toPrecision(6)}`);
+    if (ax.colorbar) opts.push('colorbar');
+  }
+  for (const k of ['bar', 'barh'] as const) {
+    const bars = ax.series.filter((s) => s.kind === k);
+    if (!bars.length) continue;
+    const stacked = bars.some((s) => s.base);
+    opts.push(`${k === 'bar' ? 'ybar' : 'xbar'}${stacked ? ' stacked' : ''}`, `bar width=${(barWidth(bars[0].x) * 0.8 / (stacked ? 1 : bars.length)).toPrecision(3)}`);
+  }
+  const names = ax.legend ?? (ax.series.some((s) => s.label) ? ax.series.map((s, i) => s.label ?? `data${i + 1}`) : null);
+  if (names?.length) opts.push('legend pos=north east', `legend style={font=\\small}`);
+  const p = (v: number) => +v.toPrecision(6);
+  const plots = [...ax.grids.map((g) => gridTikz(g, three)), ...ax.series.map((s0) => {
+    const s = s0.level !== undefined ? { ...s0, color: hexAt(f.cmap, c0, c1, s0.level) } : s0;
+    const o = [`color=${name(s.color)}`];
+    if (s.kind === 'bar' || s.kind === 'barh') o.push(`fill=${name(s.color)}`);
+    if (s.kind === 'area') o.push(`fill=${name(s.color)}, fill opacity=0.25`);
+    if (s.kind === 'fill') { o[0] = s.edge === 'none' ? 'draw=none' : `draw=${name(s.edge ?? '#18181b')}`; o.push(`fill=${name(s.color)}`); if ((s.fa ?? 1) < 1) o.push(`fill opacity=${s.fa}`); }
+    if (s.kind === 'stairs') o.push('const plot');
+    if (s.kind === 'stem') o.push('ycomb');
+    if (s.dash === 'none' && s.kind !== 'bar' && s.kind !== 'barh') o.push('only marks');
+    else if (PGF_DASH[s.dash]) o.push(PGF_DASH[s.dash]);
+    o.push(s.marker ? `mark=${MARK[s.marker] ?? '*'}` : 'mark=none');
+    if (s.width !== 1.5 && s.kind !== 'bar' && s.kind !== 'barh') o.push(`line width=${(s.width * 0.5).toPrecision(2)}pt`);
+    if (s.cv) o.push('scatter, scatter src=explicit');
+    if (s.filled) o.push(`fill=${name(s.color)}`);
+    if (s.err) o.push('error bars/.cd, y dir=both, y explicit');
+    const z = s.z ?? (three ? s.x.map(() => 0) : null);
+    const pts = s.x.map((x, i) => {
+      const y = s.y[i];
+      if (!Number.isFinite(x) || !Number.isFinite(y) || (z && !Number.isFinite(z[i]))) return '\n';
+      // xbar wants (length, position).
+      const at = s.kind === 'barh' ? `(${p(y)},${p(x)})` : ax.polar ? `(${p((x * 180) / Math.PI)},${p(y)})` : `(${p(x)},${p(y)}${z ? `,${p(z[i])}` : ''})`;
+      const err = s.err ? (s.err[0][i] === s.err[1][i] ? ` +- (0,${p(s.err[1][i])})` : ` += (0,${p(s.err[1][i])}) -= (0,${p(s.err[0][i])})`) : '';
+      return `${at}${err}${s.cv ? ` [${p(s.cv[i])}]` : ''}`;
+    }).join(' ').replace(/ ?\n ?/g, '\n').replace(/\n+/g, '\n\n').trim();
+    return `\\addplot${z ? '3' : ''}[${o.join(', ')}] coordinates {\n${pts}\n}${s.kind === 'fill' ? ' -- cycle' : ''};`;
+  })];
+  if (ax.clabel) plots.push(...labelTikz(ax));
+  for (const t of ax.texts) plots.push(`\\node[${t.align === 'start' ? 'anchor=west' : t.align === 'end' ? 'anchor=east' : 'anchor=center'}${t.color ? `, text=${name(t.color)}` : ''}] at (axis cs:${p(t.x)},${p(t.y)}${t.z !== undefined ? `,${p(t.z)}` : ''}) {${texLabel(t.s)}};`);
+  for (const r of ax.refs) {
+    const style = [name(r.color), ...(PGF_DASH[r.dash] ? [PGF_DASH[r.dash]] : [])].join(', ');
+    plots.push(r.axis === 'x' ? `\\draw[${style}] ({axis cs:${p(r.v)},0}|-{rel axis cs:0,0}) -- ({axis cs:${p(r.v)},0}|-{rel axis cs:0,1});` : `\\draw[${style}] ({rel axis cs:0,0}|-{axis cs:0,${p(r.v)}}) -- ({rel axis cs:1,0}|-{axis cs:0,${p(r.v)}});`);
+  }
+  const legend = names?.length ? [`\\legend{${names.map((n) => texLabel(n)).join(', ')}}`] : [];
+  return { opts, plots, legend };
+}
+
 /** The figure as a LaTeX tikzpicture with pgfplots (\usepackage{pgfplots}; subplots need \usepgfplotslibrary{groupplots}). */
 export function toTikz(f: Figure): string {
   const colours = new Map<string, string>();
   const name = (hex: string) => { if (!colours.has(hex)) colours.set(hex, `uvcolor${colours.size + 1}`); return colours.get(hex)!; };
   const many = f.rows * f.cols > 1;
   const body: string[] = [];
+  let polar = false;
   for (let p = 1; p <= f.rows * f.cols; p++) {
     const ax = f.axes.get(p);
-    if (!ax && !many) continue;
-    const opts: string[] = [];
-    if (ax?.title) opts.push(`title={${texLabel(ax.title)}}`);
-    if (ax?.xlabel) opts.push(`xlabel={${texLabel(ax.xlabel)}}`);
-    if (ax?.ylabel) opts.push(`ylabel={${texLabel(ax.ylabel)}}`);
-    if (ax?.grid) opts.push('grid=major');
-    if (ax?.logx) opts.push('xmode=log');
-    if (ax?.logy) opts.push('ymode=log');
-    if (ax?.equal) opts.push('axis equal');
-    if (ax?.xlim) opts.push(`xmin=${ax.xlim[0]}, xmax=${ax.xlim[1]}`);
-    if (ax?.ylim) opts.push(`ymin=${ax.ylim[0]}, ymax=${ax.ylim[1]}`);
-    const three = !!ax && is3d(ax), [c0, c1] = ax ? crange(ax) : [0, 1];
-    if (ax && three) { const [az, el] = ax.view ?? [-37.5, 30]; opts.push(`view={${az}}{${el}}`); if (ax.zlabel) opts.push(`zlabel={${texLabel(ax.zlabel)}}`); if (ax.zlim) opts.push(`zmin=${ax.zlim[0]}, zmax=${ax.zlim[1]}`); }
-    if (ax?.revY) opts.push('y dir=reverse');
-    if (ax?.tight) opts.push('enlargelimits=false', 'axis on top');
-    if (ax && (ax.grids.length || ax.series.some((s) => s.cv || s.level !== undefined))) {
-      opts.push(`colormap={uvmap}{${[0, 1, 2, 3, 4, 5, 6, 7, 8].map((k) => { const row = f.cmap[Math.round((k / 8) * (f.cmap.length - 1))]; return `rgb255=(${row.map((v) => Math.round(v * 255)).join(',')})`; }).join(' ')}}`, `point meta min=${+c0.toPrecision(6)}, point meta max=${+c1.toPrecision(6)}`);
-      if (ax.colorbar) opts.push('colorbar');
+    if (!ax) { if (many) body.push('\\nextgroupplot'); continue; }
+    if (ax.pie) { body.push(many ? '\\nextgroupplot[hide axis]' : '', ...pieTikz(ax, name, many)); continue; }
+    const { opts, plots, legend } = axisTikz(ax, f, name);
+    if (ax.polar) polar = true;
+    if (many) { body.push(`\\nextgroupplot[${opts.join(', ')}]`, ...plots, ...legend); continue; }
+    const env = ax.polar ? 'polaraxis' : 'axis';
+    const xr = ax.twin ? (() => { const a = extent(ax).x, b = extent(ax.twin).x; return ax.xlim ?? [Math.min(a[0], b[0]), Math.max(a[1], b[1])]; })() : null;
+    const shared = xr ? [`xmin=${+xr[0].toPrecision(6)}, xmax=${+xr[1].toPrecision(6)}`, 'axis y line*=left'] : [];
+    body.push(`\\begin{${env}}[\n  width=0.9\\textwidth, height=0.6\\textwidth,\n  ${[...opts, ...shared].join(',\n  ')}\n]`, ...plots, ...legend, `\\end{${env}}`);
+    if (ax.twin && xr) {
+      // yyaxis: the right side as a second axis over the same x range.
+      const t = axisTikz(ax.twin, f, name);
+      body.push(`\\begin{axis}[\n  width=0.9\\textwidth, height=0.6\\textwidth,\n  ${[...t.opts, `xmin=${+xr[0].toPrecision(6)}, xmax=${+xr[1].toPrecision(6)}`, 'axis y line*=right', 'axis x line=none'].join(',\n  ')}\n]`, ...t.plots, '\\end{axis}');
     }
-    if (ax?.series.some((s) => s.kind === 'bar')) opts.push('ybar', `bar width=${(barWidth(ax.series.find((s) => s.kind === 'bar')!.x) * 0.8 / ax.series.filter((s) => s.kind === 'bar').length).toPrecision(3)}`);
-    const names = ax?.legend ?? (ax?.series.some((s) => s.label) ? ax.series.map((s, i) => s.label ?? `data${i + 1}`) : null);
-    if (names?.length) opts.push('legend pos=north east', `legend style={font=\\small}`);
-    const plots = [...(ax?.grids ?? []).map((g) => gridTikz(g, three)), ...(ax?.series ?? []).map((s0) => {
-      const s = s0.level !== undefined ? { ...s0, color: hexAt(f.cmap, c0, c1, s0.level) } : s0;
-      const o = [`color=${name(s.color)}`];
-      if (s.kind === 'bar') o.push(`fill=${name(s.color)}`);
-      if (s.kind === 'area') o.push(`fill=${name(s.color)}, fill opacity=0.25`);
-      if (s.kind === 'stairs') o.push('const plot');
-      if (s.kind === 'stem') o.push('ycomb');
-      if (s.dash === 'none' && s.kind !== 'bar') o.push('only marks');
-      else if (PGF_DASH[s.dash]) o.push(PGF_DASH[s.dash]);
-      o.push(s.marker ? `mark=${MARK[s.marker] ?? '*'}` : 'mark=none');
-      if (s.width !== 1.5 && s.kind !== 'bar') o.push(`line width=${(s.width * 0.5).toPrecision(2)}pt`);
-      if (s.cv) o.push('scatter, scatter src=explicit');
-      if (s.filled) o.push(`fill=${name(s.color)}`);
-      const z = s.z ?? (three ? s.x.map(() => 0) : null);
-      const p = (v: number) => +v.toPrecision(6);
-      const pts = s.x.map((x, i) => (Number.isFinite(x) && Number.isFinite(s.y[i]) && (!z || Number.isFinite(z[i])) ? `(${p(x)},${p(s.y[i])}${z ? `,${p(z[i])}` : ''})${s.cv ? ` [${p(s.cv[i])}]` : ''}` : '\n')).join(' ').replace(/ ?\n ?/g, '\n').replace(/\n+/g, '\n\n').trim();
-      return `\\addplot${z ? '3' : ''}[${o.join(', ')}] coordinates {\n${pts}\n};`;
-    })];
-    if (ax?.clabel) plots.push(...labelTikz(ax));
-    const legend = names?.length ? [`\\legend{${names.map((n) => texLabel(n)).join(', ')}}`] : [];
-    if (many) body.push(`\\nextgroupplot[${opts.join(', ')}]`, ...plots, ...legend);
-    else body.push(`\\begin{axis}[\n  width=0.9\\textwidth, height=0.6\\textwidth,\n  ${opts.join(',\n  ')}\n]`, ...plots, ...legend, '\\end{axis}');
   }
   const defs = [...colours].map(([hex, n]) => `\\definecolor{${n}}{HTML}{${hex.slice(1).toUpperCase()}}`);
-  const head = ['% Made with UniVerse Lab. Needs \\usepackage{pgfplots} and \\pgfplotsset{compat=1.18}' + (many ? ', plus \\usepgfplotslibrary{groupplots}.' : '.'), ...defs, '\\begin{tikzpicture}'];
+  const libs = [many ? '\\usepgfplotslibrary{groupplots}' : '', polar ? '\\usepgfplotslibrary{polar}' : ''].filter(Boolean);
+  const head = ['% Made with UniVerse Lab. Needs \\usepackage{pgfplots} and \\pgfplotsset{compat=1.18}' + (libs.length ? `, plus ${libs.join(' and ')}.` : '.'), ...defs, '\\begin{tikzpicture}'];
   const group = many ? [`\\begin{groupplot}[group style={group size=${f.cols} by ${f.rows}, horizontal sep=2cm, vertical sep=2cm}, width=${(0.9 / f.cols).toFixed(2)}\\textwidth]`, ...body, '\\end{groupplot}'] : body;
-  return [...head, ...group, '\\end{tikzpicture}', ''].join('\n');
+  const title = f.title ? [`\\node[above, font=\\bfseries] at (current bounding box.north) {${texLabel(f.title)}};`] : [];
+  return [...head, ...group.filter((l) => l !== ''), ...title, '\\end{tikzpicture}', ''].join('\n');
 }
 
 export { BUILTINS };

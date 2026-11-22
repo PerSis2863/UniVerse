@@ -10437,3 +10437,29 @@ line and kept upright, with a halo in the background colour; pgfplots gets `\nod
 straight-line ends), divergence and curl (2D). Shapes: sphere, ellipsoid, cylinder (a radius profile), drawing
 themselves when no outputs are asked. Not built: 3D meshgrid and full-colour images (they need N-D arrays, next),
 per-vertex colour across a whole face in LaTeX (pgfplots draws its own shading), streamline, coneplot.
+
+## M381 (22 Nov): UniVerse Lab: more plot kinds
+
+`src/lib/lab/plot2d.ts` (imported by `plot.ts`, which loads it before its own body runs: a command defined in both
+would end up as plot.ts's, so bars stayed in plot.ts). Kinds: `barh` (Series x = positions, y = lengths; drawn and
+measured sideways) and `fill` (each NaN-separated run a shape; `edge`, `fa` = face alpha). Series gained `err`
+([below, above], errorbar's whiskers with 4 px caps) and `base` (stacked bars: positives and negatives pile
+separately; a series with a base is never grouped). Axes gained `texts`, `refs` (xline / yline across the whole
+axes, with a label), `pie`, `polar`, `twin` and `side` (yyaxis: `Graphics.axes()` returns the twin while the right
+side is chosen; `Graphics.main()` the axes itself, which takes title and xlabel; a new plot keeps hold, twin, side
+and `next`, the colour offset: the right side starts with the second colour), `xticks` / `yticks`, `xtl` / `ytl`
+(tick names), `visible` (axis off). Figure gained `title` (sgtitle, 30 px above the subplots). `drawAxes(ax, box, c,
+cmap, { xr, right })`: yyaxis draws the left side, then the right side over the same x range with only its own y
+numbers and name on the right. Pie (`drawPie`): from the top, counter-clockwise as MATLAB's, a sum under 1 draws a
+part pie, explode pulls a slice out by a tenth, our palette, labels or percentages outside. Polar (`drawPolar`):
+rings at tidy radii, spokes every 30°, radii written along 80°; rlim. boxplot: MATLAB's quartiles ((i − ½)/n
+positions), whiskers to the furthest point within 1.5 × IQR, outliers as red +, built from fill / line / scatter
+series, so it draws and exports with no code of its own; groups by columns, by a group vector, 'Labels'. line, patch,
+rectangle ('Position', 'Curvature', 'FaceColor', 'EdgeColor'), text, xline, yline add to the axes without clearing
+(as in MATLAB); fill clears unless hold. fsurf / fmesh / fcontour / fimplicit call the function once with whole
+matrices, point by point if that fails; fimplicit is the zero contour in one colour; fplot3 takes 300 points.
+LaTeX: `axisTikz` holds one axes (reused for yyaxis's second axis with `axis y line*=right`), `xbar` / `ybar
+stacked`, fills `-- cycle`, error bars (`+-` or `+=`/`-=`), text as `\node`, reference lines from `rel axis cs`,
+`polaraxis` (needs `\usepgfplotslibrary{polar}`, said in the header), pies as plain TikZ wedges (only when the pie
+is the figure's one plot), `hide axis`, xtick / xticklabels, sgtitle as a node above. `yyaxis` and `cla` are command
+words. Not built: legends for the right side of yyaxis, 3D text placement, histogram2, area stacking.

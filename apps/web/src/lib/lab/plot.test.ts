@@ -131,3 +131,35 @@ describe('UniVerse Lab: gradient and shapes (M380)', () => {
     expect(val('[X, Y, Z] = cylinder([1 2 1]);', 'Z').r).toBe(3);
   });
 });
+
+describe('UniVerse Lab: more plot kinds (M381)', () => {
+  it('stacks bars and lays them sideways', () => {
+    const ax = run("bar([1 -2; 3 4], 'stacked')").current!.axes.get(1)!;
+    expect(ax.series.map((s) => s.base)).toEqual([[0, 0], [0, 3]]);
+    expect(run('barh([5 3])').current!.axes.get(1)!.series[0].kind).toBe('barh');
+  });
+  it('keeps text, reference lines, ticks, two y axes and a figure title', () => {
+    const g = run("plot(1:3); text(2, 2, 'mid'); xline(2, 'r--', 'here'); yline([1 3]); xticks([1 3]); xticklabels({'a', 'b'}); yyaxis right; plot(1:3, [10 20 30]); ylabel('right'); title('both'); sgtitle('Figure')");
+    const ax = g.current!.axes.get(1)!;
+    expect([ax.texts[0].s, ax.refs.length, ax.refs[0].label, ax.refs[0].dash, ax.xtl, ax.title, ax.twin?.ylabel, ax.twin?.series.length]).toEqual(['mid', 3, 'here', '--', ['a', 'b'], 'both', 'right', 1]);
+    expect(g.current!.title).toBe('Figure');
+    const tex = toTikz(g.current!);
+    expect(tex).toContain('axis y line*=right');
+    expect(tex).toContain('xticklabels={{a},{b}}');
+  });
+  it('draws pies, polar plots, box plots, filled shapes and errors', () => {
+    expect(renderSvg(run("pie([1 1 2], {'a','b','c'})").current!, 500, 400)).toContain('>c</text>');
+    expect(toTikz(run('polarplot([0 pi/2], [1 2])').current!)).toContain('\\begin{polaraxis}');
+    const box = run('boxplot([1 2 3 4 5 100])').current!.axes.get(1)!;
+    expect(box.series.find((s) => s.marker === '+')?.y).toEqual([100]);
+    const f = run("fill([0 1 0], [0 0 1], 'r', 'FaceAlpha', 0.5)").current!.axes.get(1)!.series[0];
+    expect([f.kind, f.color, f.fa]).toEqual(['fill', '#dc2626', 0.5]);
+    expect(toTikz(run('errorbar([1 2], [3 4], [0.5 0.5])').current!)).toContain('(1,3) +- (0,0.5)');
+  });
+  it('plots straight from a formula', () => {
+    expect(run('fsurf(@(x, y) x.^2 - y.^2)').current!.axes.get(1)!.grids[0].r).toBe(35);
+    const imp = run('fimplicit(@(x, y) x.^2 + y.^2 - 4)').current!.axes.get(1)!.series[0];
+    expect(Math.hypot(imp.x[0], imp.y[0])).toBeCloseTo(2, 1);
+    expect(run('fplot3(@(t) cos(t), @(t) sin(t), @(t) t, [0 6])').current!.axes.get(1)!.series[0].z).toHaveLength(300);
+  });
+});
