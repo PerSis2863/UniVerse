@@ -13,7 +13,7 @@ import { HELP, linkFor, type HelpEntry, type Role } from '@/lib/help/knowledge';
 import { searchHelp, suggestions, tokens } from '@/lib/help/search';
 import { GhidraReply, type GhidraPlan, type Settled } from '@/components/ui/GhidraReply';
 import { api } from '@/lib/api';
-import { localPlan, type AskTurn } from '@/lib/ask';
+import { localPlan, looksMultiStep, type AskTurn } from '@/lib/ask';
 import { askOnDevice } from '@/lib/ghidra-device';
 import { ReportAnswer } from '@/components/ui/ReportAnswer';
 import { guard, guardReply } from '@/lib/ghidra-guard';
@@ -139,7 +139,8 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
 
     // 0. Ghidra's actions (M364): your own things, or something to do, when online.
     const wish = localPlan(text).action;
-    if ((wish === 'my_due' || wish === 'my_green' || (wish !== 'answer' && !asksHow(text))) && (typeof navigator === 'undefined' || navigator.onLine)) {
+    const several = looksMultiStep(text) && !asksHow(text); // M373: several parts go to Ghidra's planner
+    if ((several || wish === 'my_due' || wish === 'my_green' || wish === 'my_trips' || wish === 'my_courses' || (wish !== 'answer' && !asksHow(text))) && (typeof navigator === 'undefined' || navigator.onLine)) {
       setIsTyping(true);
       const history: AskTurn[] = messages.slice(1).slice(-6).filter((m) => m.content).map((m) => ({ who: m.role === 'user' ? 'me' : 'ghidra', text: m.content.slice(0, 400) }));
       try {

@@ -10422,3 +10422,27 @@ DeepSeek's in China: safer for students' data). A 1.5 B on-device R1 copy (~1 GB
   remote Cloudflare: `next.config.ts` passes `remoteBindings: false` and `scripts/local/serve.mjs` runs `wrangler dev
   --local`, or both local servers stop asking to sign in to Cloudflare (`CLOUDFLARE_API_TOKEN`). Locally Ghidra uses Gemini.
 - Tests: `src/server/ghidra-think.test.ts`.
+
+## M373: Ghidra's chaining steps, with LangGraph (22 Nov)
+
+The owner (22 Nov): "https://github.com/langchain-ai/langgraph please add this i my ai", then "continue with chaining
+steps using langgraph". LangGraph (MIT) 1.7.2 with @langchain/core 1.3.5 (the newest two weeks old); tried first inside
+Cloudflare's runtime (workerd): it loads and runs, and its pause/resume works once AsyncLocalStorage is set up
+(nodejs_compat). It adds about 3 MB to the server code (54 → ~57 of 64 MB, past the 55 MB warning): make the server code
+smaller within months (the M110 note says how).
+
+- **`src/server/ghidra-chain.ts`**: a LangGraph graph: **planner** (AI splits the request into at most 4 requests that
+  each make sense alone, never adding any; without AI, `splitSteps` splits on "and then", "then", "after that", "also",
+  ";", never a plain "and") → one **specialist** per step, side by side (LangGraph's `Send`), each `askOne` in ask.ts
+  (Ghidra's one-request skill: guardrails, the daily allowance, only the asker's own data) → the plan in order
+  (`{ action: 'chain', say, steps }`, a new `AskPlan` kind only the server makes). One step only → Ghidra answers alone.
+  The user and history travel in LangGraph's `configurable`; the graph is compiled once.
+- **When:** `looksMultiStep` (in `src/lib/ask.ts`, shared with the browser) must match first, so ordinary requests cost
+  no extra AI; `POST /ask` and the corner (which now also sends several-part requests, and my trips / my courses, to Ghidra).
+- **The screen** (`GhidraReply`): the plan as numbered steps (a list's first three lines shown); **Do all N** runs each
+  step in order through its app's own route (`act()`), marks it ✓ or !, stops at the first that fails (the rest not done),
+  and moves the page only at the end, to the last step's place. Nothing is done before the tap.
+- **Next on this graph:** specialists per app (the agents of the owner's list) and the supervisor; a D1 checkpointer
+  would let a plan pause on the server (LangGraph's `interrupt`) instead of in the browser.
+- Tests: `src/server/ghidra-chain.test.ts` (the cue, the split, the graph running two specialists in order, one request
+  left alone).

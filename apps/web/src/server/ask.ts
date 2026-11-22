@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
-import { ASK_PAGES, cleanPlan, localPlan, type AskPlan, type AskTurn, type ShowItem } from '@/lib/ask';
+import { ASK_PAGES, cleanPlan, localPlan, looksMultiStep, type AskPlan, type AskTurn, type ShowItem } from '@/lib/ask';
 import { taughtBy } from '@/lib/course-access';
 import { GREEN_FACTORS, GREEN_KINDS, streak } from '@/lib/green';
 import { RELIEF_KINDS } from '@/lib/relief';
@@ -11,6 +11,7 @@ import { BadRequestException } from './http';
 import { featureOff } from './moderation';
 import { geminiJson } from './gemini';
 import { isHard, thinkHardText } from './ghidra-think';
+import { askChain } from './ghidra-chain';
 import { short } from './trace';
 import type { Body } from './body';
 
@@ -167,9 +168,9 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
   }
 }
 
-export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { ai: boolean; note?: string }> {
-  const text = short(b.text, 400);
-  if (!text) throw new BadRequestException('Type what you’d like to do.');
+/** One request, one reply: the answer, a list of the person's own things, or one action to confirm. The chain's
+ *  specialists (src/server/ghidra-chain.ts, M373) use it for each step, so every step has the same checks. */
+export async function askOne(u: SessionUser, text: string, history: AskTurn[]): Promise<AskPlan & { ai: boolean; note?: string }> {
   // M370: someone in crisis or in danger gets the safe, human answer first, whatever AI would say (src/lib/ghidra-guard.ts).
   const g = guard(text);
   if (g) return { action: 'answer', say: guardReply(g), ai: false };
@@ -177,7 +178,6 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) return local();
   const spend = await spendAi(u);
   if (!spend.ok) return local(spend.message);
-  const history = cleanHistory(b.history);
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
   const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   if (!out) return local();
@@ -188,6 +188,20 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
     if (deep) return { action: 'answer', say: deep.slice(0, 6000), ai: true };
   }
   return { ...plan, ai: true };
+}
+
+export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { ai: boolean; note?: string }> {
+  const text = short(b.text, 400);
+  if (!text) throw new BadRequestException('Type what you’d like to do.');
+  const g = guard(text);
+  if (g) return { action: 'answer', say: guardReply(g), ai: false };
+  const history = cleanHistory(b.history);
+  // M373: a request with several parts ("… and then …") becomes a short plan of steps, approved together.
+  if (looksMultiStep(text)) {
+    const chain = await askChain(u, text, history);
+    if (chain) return chain;
+  }
+  return askOne(u, text, history);
 }
 
 /** M370: POST /ghidra/report { question, answer, reason? }: someone reports one of Ghidra's answers (wrong, unsafe, unkind)

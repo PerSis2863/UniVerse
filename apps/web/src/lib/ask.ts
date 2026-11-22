@@ -46,7 +46,14 @@ export type AskPlan =
    *  courses they teach (never from AI), and the draft route checks access again. */
   | { action: 'quiz_draft'; topic: string; count: number; course: string | null; courseId?: string; courseName?: string; say: string }
   | { action: 'show'; say: string; items: ShowItem[] }
+  /** M373: several steps from one request (src/server/ghidra-chain.ts), each one of the replies above, approved together.
+   *  Only the server makes it: cleanPlan never accepts one from AI. */
+  | { action: 'chain'; say: string; steps: AskPlan[] }
   | { action: 'answer'; say: string };
+
+/** M373: whether a request may have several parts ("… and then …"): only then does Ghidra's planner run
+ *  (src/server/ghidra-chain.ts), so ordinary requests cost nothing extra. Never a plain "and": "bread and milk" is one thing. */
+export const looksMultiStep = (text: string) => /\b(and then|then|after that|afterwards|and also|also)\b|;/i.test(text);
 
 /** One line of a 'show' answer: what, a detail (a date, a course, a number), and where to open it. */
 export interface ShowItem { title: string; sub: string; href: string | null }
