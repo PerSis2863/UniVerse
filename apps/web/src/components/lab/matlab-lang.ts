@@ -2,7 +2,7 @@ import { StreamLanguage, HighlightStyle, syntaxHighlighting, indentService } fro
 import { tags as t } from '@lezer/highlight';
 import type { CompletionContext, CompletionResult } from '@codemirror/autocomplete';
 
-// M389: UniVerse Lab's code colouring and suggestions for MATLAB / Octave, our own tokenizer (the same rules as
+// M389: Hyperion's code colouring and suggestions for MATLAB / Octave, our own tokenizer (the same rules as
 // src/lib/lab/parse.ts: a quote after a value is a transpose, anywhere else it starts text).
 
 const KEYWORDS = new Set(['if', 'elseif', 'else', 'end', 'endif', 'endfor', 'endwhile', 'endfunction', 'endswitch', 'end_try_catch', 'for', 'parfor', 'while', 'do', 'until', 'break', 'continue', 'return', 'function', 'switch', 'case', 'otherwise', 'try', 'catch', 'global', 'persistent']);

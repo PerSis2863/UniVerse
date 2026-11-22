@@ -6,7 +6,7 @@ import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';
 
-describe('UniVerse Lab: help (M391)', () => {
+describe('Hyperion: help (M391)', () => {
   it('has a line of help for every function', () => {
     expect(Object.keys(BUILTINS).filter((n) => !HELP.has(n))).toEqual([]);
   });

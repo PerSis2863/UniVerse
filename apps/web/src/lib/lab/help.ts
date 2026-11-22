@@ -1,4 +1,4 @@
-// UniVerse Lab's help (M391): a line for every function, grouped as a person looks for them. `help name` and `doc
+// Hyperion's help (M391): a line for every function, grouped as a person looks for them. `help name` and `doc
 // name` print it, the editor shows it beside suggestions and on hover, the function browser lists it. Written for
 // this Lab (what our own functions do), in plain words.
 
@@ -385,8 +385,8 @@ isfile | isfile(file) | True when the file exists.
 type | type file | Shows a file's text.
 copyfile | copyfile(from, to) | Copies a file.
 movefile | movefile(from, to) | Renames a file.
-pwd | pwd | The Lab's folder.
-cd | cd | The Lab's folder.
+pwd | pwd | Hyperion's folder.
+cd | cd | Hyperion's folder.
 
 # Plots
 plot | plot(x, y, 'r--o', 'LineWidth', 2) | Lines (and markers).
@@ -492,7 +492,8 @@ colorbar | colorbar | The colour scale beside the plot.
 colormap | colormap(name), colormap(M) | The colours for values (lab, viridis, turbo, jet, hot, gray…).
 caxis | caxis([lo hi]) | The colour scale's limits.
 clim | clim([lo hi]) | The colour scale's limits.
-parula | parula(n) | Opens the Lab's own map.
+hyperion | hyperion(n) | Hyperion's own colour map (the default).
+parula | parula(n) | Opens Hyperion's own map.
 viridis | viridis(n) | Viridis colour map.
 plasma | plasma(n) | Plasma colour map.
 turbo | turbo(n) | Turbo colour map.
@@ -541,8 +542,8 @@ whos | whos | The variables with sizes and types.
 format | format long, format short | How numbers are shown.
 more | more off | (Nothing to page here.)
 beep | beep | (Silent here.)
-ver | ver | The Lab's version.
-version | version | The Lab's version.
+ver | ver | Hyperion's version.
+version | version | Hyperion's version.
 pkg | pkg load | (Every package is already loaded.)
 nargin | nargin | How many inputs the function was given.
 nargout | nargout | How many outputs were asked for.

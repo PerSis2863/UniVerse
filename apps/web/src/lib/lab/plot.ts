@@ -6,7 +6,7 @@ import { hexAt, mapOf } from './colormap';
 import { colorbarSvg, contourLabels, crange, draw3d, gridTikz, imageSvg, is3d, labelTikz } from './plot3d';
 import { drawPie, drawPolar, pieTikz } from './plot2d';
 
-// UniVerse Lab's figures (M375): plot, scatter, bar, stairs, stem, area, histogram, fplot, log axes, subplot, hold,
+// Hyperion's figures (M375): plot, scatter, bar, stairs, stem, area, histogram, fplot, log axes, subplot, hold,
 // titles, labels, legends, grids and limits, drawn as SVG (sharp at any size, light or dark), and written out as
 // LaTeX pgfplots code (our own version of what matlab2tikz does for MATLAB figures). Our own colours, not MATLAB's.
 
@@ -39,7 +39,7 @@ export class Graphics {
   onChange: (() => void) | null = null;
   figure(id?: number) {
     let f = id !== undefined ? this.figures.find((x) => x.id === id) : undefined;
-    if (!f) { f = { id: id ?? (Math.max(0, ...this.figures.map((x) => x.id)) + 1), rows: 1, cols: 1, axes: new Map(), current: 1, name: '', cmap: mapOf('lab')!, title: '' }; this.figures.push(f); }
+    if (!f) { f = { id: id ?? (Math.max(0, ...this.figures.map((x) => x.id)) + 1), rows: 1, cols: 1, axes: new Map(), current: 1, name: '', cmap: mapOf('hyperion')!, title: '' }; this.figures.push(f); }
     this.current = f;
     return f;
   }
@@ -566,7 +566,7 @@ export function toTikz(f: Figure): string {
   }
   const defs = [...colours].map(([hex, n]) => `\\definecolor{${n}}{HTML}{${hex.slice(1).toUpperCase()}}`);
   const libs = [many ? '\\usepgfplotslibrary{groupplots}' : '', polar ? '\\usepgfplotslibrary{polar}' : ''].filter(Boolean);
-  const head = ['% Made with UniVerse Lab. Needs \\usepackage{pgfplots} and \\pgfplotsset{compat=1.18}' + (libs.length ? `, plus ${libs.join(' and ')}.` : '.'), ...defs, '\\begin{tikzpicture}'];
+  const head = ['% Made with Hyperion. Needs \\usepackage{pgfplots} and \\pgfplotsset{compat=1.18}' + (libs.length ? `, plus ${libs.join(' and ')}.` : '.'), ...defs, '\\begin{tikzpicture}'];
   const group = many ? [`\\begin{groupplot}[group style={group size=${f.cols} by ${f.rows}, horizontal sep=2cm, vertical sep=2cm}, width=${(0.9 / f.cols).toFixed(2)}\\textwidth]`, ...body, '\\end{groupplot}'] : body;
   const title = f.title ? [`\\node[above, font=\\bfseries] at (current bounding box.north) {${texLabel(f.title)}};`] : [];
   return [...head, ...group.filter((l) => l !== ''), ...title, '\\end{tikzpicture}', ''].join('\n');

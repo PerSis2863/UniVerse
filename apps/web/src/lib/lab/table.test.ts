@@ -8,7 +8,7 @@ const nums = (v: unknown) => [...(v as Mat).d];
 const texts = (v: unknown) => (v as Cell).d.map((x) => (x as { v: string }).v);
 const make = "T = table({'Ada'; 'Alan'; 'Grace'; 'Linus'}, [36; 41; 85; 54], [165; 178; 160; 180], 'VariableNames', {'Name', 'Age', 'Height'});";
 
-describe('UniVerse Lab: table rows and columns (M385)', () => {
+describe('Hyperion: table rows and columns (M385)', () => {
   it('picks rows and columns by number, name and condition', () => {
     const { lab, v } = setup();
     lab.run(`${make} A = T(1:2, :); B = T(T.Age > 50, {'Name', 'Age'}); C = T(end, 'Height'); s = size(T); ages = T{:, 'Age'}; both = T{2:3, {'Age', 'Height'}};`);

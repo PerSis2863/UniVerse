@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { controlsOf, setControl } from './controls';
 
-describe('UniVerse Lab: live controls (M384)', () => {
+describe('Hyperion: live controls (M384)', () => {
   const code = "f = 2.5;   % slider 0 10\nk = 3; % slider 0:0.5:8\nn=4 % slider(1, 20, 1)\ndamped = true; % toggle\nshape = 'sine'; % menu square, triangle\nplain = 7;\n";
   it('finds sliders, toggles and menus in comments', () => {
     const c = controlsOf(code);

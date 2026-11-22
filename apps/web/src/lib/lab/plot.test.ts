@@ -6,7 +6,7 @@ import { mapOf, png } from './colormap';
 
 const run = (code: string) => { const graphics = new Graphics(); const lab = new Lab({ out: () => {}, graphics }); lab.run(code); return graphics; };
 
-describe('UniVerse Lab: figures and LaTeX (M375)', () => {
+describe('Hyperion: figures and LaTeX (M375)', () => {
   it('makes series from plot’s forms and line specs', () => {
     const g = run("x = 0:0.5:2; plot(x, x.^2, 'r--o', x, x, 'k:'); hold on; plot(x, 2*x, 'LineWidth', 3, 'DisplayName', 'twice'); title('Growth'); xlabel('t'); grid on; legend show");
     const ax = g.current!.axes.get(1)!;
@@ -38,7 +38,7 @@ describe('UniVerse Lab: figures and LaTeX (M375)', () => {
   });
 });
 
-describe('UniVerse Lab: 3D plots and images (M379)', () => {
+describe('Hyperion: 3D plots and images (M379)', () => {
   it('draws a surface in 3D, far faces first, and writes \\addplot3', () => {
     const g = run("[X, Y, Z] = peaks(20); surf(X, Y, Z); xlabel('x'); zlabel('height'); colorbar; view(30, 40)");
     const ax = g.current!.axes.get(1)!;
@@ -86,7 +86,7 @@ describe('UniVerse Lab: 3D plots and images (M379)', () => {
   });
 });
 
-describe('UniVerse Lab: lights, smooth shading, arrows and contour labels (M380)', () => {
+describe('Hyperion: lights, smooth shading, arrows and contour labels (M380)', () => {
   it('lights a surface and blends it smoothly', () => {
     const plain = run('surf(peaks(10))'), litG = run('surf(peaks(10)); shading interp; camlight; lighting gouraud; material shiny');
     const faces = (g: ReturnType<typeof run>) => (renderSvg(g.current!, 600, 400).match(/<path d="M[^"]+ Z" fill="#/g) ?? []).length;
@@ -113,7 +113,7 @@ describe('UniVerse Lab: lights, smooth shading, arrows and contour labels (M380)
   });
 });
 
-describe('UniVerse Lab: gradient and shapes (M380)', () => {
+describe('Hyperion: gradient and shapes (M380)', () => {
   const val = (code: string, name: string) => { const lab = new Lab({ out: () => {}, graphics: new Graphics() }); lab.run(code); return lab.vars.get(name) as { r: number; c: number; d: Float64Array }; };
   it('takes gradients, the Laplacian, divergence and curl', () => {
     expect([...val('g = gradient([1 4 9 16], 1);', 'g').d]).toEqual([3, 4, 6, 7]);
@@ -132,7 +132,7 @@ describe('UniVerse Lab: gradient and shapes (M380)', () => {
   });
 });
 
-describe('UniVerse Lab: more plot kinds (M381)', () => {
+describe('Hyperion: more plot kinds (M381)', () => {
   it('stacks bars and lays them sideways', () => {
     const ax = run("bar([1 -2; 3 4], 'stacked')").current!.axes.get(1)!;
     expect(ax.series.map((s) => s.base)).toEqual([[0, 0], [0, 3]]);

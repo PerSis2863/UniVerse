@@ -1,7 +1,7 @@
 import { LabError } from './parse';
 import { cmat, imOf, mat, type Mat } from './values';
 
-// UniVerse Lab's complex numbers (M377): a complex matrix keeps its imaginary parts beside the real ones (`im`).
+// Hyperion's complex numbers (M377): a complex matrix keeps its imaginary parts beside the real ones (`im`).
 // Here: element-wise operators with implicit expansion, matrix product and solve, powers, and the maths functions
 // that need them (sqrt and log of negatives give complex answers, as in MATLAB). Our own code.
 

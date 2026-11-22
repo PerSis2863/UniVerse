@@ -53,9 +53,9 @@ export const APPS: ImpactApp[] = [
   {
     // M376 (the owner, 21 Nov: "build your own matlab and octave together in one app which can be downloaded in the
     // computer"): our own engine for the MATLAB / Octave language (src/lib/lab), figures, LaTeX export; a computer app too.
-    id: 'lab', name: 'UniVerse Lab', tagline: 'Maths, matrices, plots and simulation', color: '#8b5cf6',
+    id: 'lab', name: 'Hyperion', tagline: 'Maths, matrices, plots and simulation', color: '#8b5cf6',
     impact: 'Run MATLAB-style code in the browser or on your computer.',
-    paths: ['/lab'],
+    paths: ['/hyperion'],
   },
 ];
 

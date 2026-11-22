@@ -1,7 +1,7 @@
 import { LabError } from './parse';
 import { mat, str, type Cell, type Mat, type Struct, type Value } from './values';
 
-// UniVerse Lab's tables (M383, rows and columns M385): a struct whose fields are columns of one height, marked as a
+// Hyperion's tables (M383, rows and columns M385): a struct whose fields are columns of one height, marked as a
 // table. A column is numbers (a column vector, or a matrix with several columns), a cell column of text, or logical.
 // These helpers are pure so the interpreter can index tables (T(rows, cols), T{rows, cols}) without importing builtins.
 

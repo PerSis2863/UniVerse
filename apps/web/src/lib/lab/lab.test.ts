@@ -4,7 +4,7 @@ import { inline } from './values';
 
 const run = (code: string) => { let out = ''; const lab = new Lab({ out: (t) => { out += t; } }); lab.run(code); return { out, lab, v: (n: string) => inline(lab.vars.get(n)!, { long: true }) }; };
 
-describe('UniVerse Lab: the language (M374)', () => {
+describe('Hyperion: the language (M374)', () => {
   it('does arithmetic with MATLAB’s precedence', () => {
     expect(run('x = -2^2 + 3*4/2;').v('x')).toBe('2');
     expect(run('x = 2^-1;').v('x')).toBe('0.500000000000000');
@@ -65,7 +65,7 @@ describe('UniVerse Lab: the language (M374)', () => {
   });
 });
 
-describe('UniVerse Lab: complex numbers (M377)', () => {
+describe('Hyperion: complex numbers (M377)', () => {
   it('reads, computes and prints complex numbers', () => {
     expect(run('z = 3 + 4i').out).toBe('z = 3 + 4i\n');
     expect(run('a = abs(3 + 4i);').v('a')).toBe('5');
@@ -82,13 +82,13 @@ describe('UniVerse Lab: complex numbers (M377)', () => {
     expect(run('x = [2 1i; -1i 3] \\ [1; 1]; ok = norm(abs([2 1i; -1i 3] * x - [1; 1])) < 1e-12;').v('ok')).toBe('1');
   });
 });
-describe('UniVerse Lab: powers of negatives (M377)', () => {
+describe('Hyperion: powers of negatives (M377)', () => {
   it('gives the complex principal root', () => {
     expect(run('k = (-8)^(1/3)').out).toBe('k = 1.0000 + 1.7321i\n');
   });
 });
 
-describe('UniVerse Lab: signals and statistics (M378)', () => {
+describe('Hyperion: signals and statistics (M378)', () => {
   it('transforms any length and back', () => {
     expect(run('X = fft([1 2 3 4]);').v('X')).toBe('1x4 complex double');
     expect(run('X = fft([1 2 3 4]); a = real(X(1)); b = round(abs(X(2)) * 1e9) / 1e9;').v('b')).toBe('2.828427125000000');

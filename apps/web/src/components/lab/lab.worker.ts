@@ -10,7 +10,7 @@ import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
 
-// M376: UniVerse Lab's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
+// M376: Hyperion's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 

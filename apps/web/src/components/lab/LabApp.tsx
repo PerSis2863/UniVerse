@@ -16,7 +16,7 @@ import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
 import { builtinNames } from './matlab-lang';
 
-// M376: UniVerse Lab's window: the command window, a script editor, the variables and the figures, like a desktop
+// M376: Hyperion's window: the command window, a script editor, the variables and the figures, like a desktop
 // maths program. The engine (src/lib/lab) runs in a background worker (lab.worker.ts): the page never freezes and
 // Stop ends a run. Scripts are kept on this device, and so are files (M383: uploaded, or written by code; IndexedDB).
 // Phones get the same parts as tabs.
@@ -44,7 +44,7 @@ export function LabApp() {
   const [scripts, setScripts] = useState<Script[] | null>(null);
   const list = scripts ?? (kept ? read() : EXAMPLES);
   const [open, setOpen] = useState(0);
-  const [log, setLog] = useState<Line[]>([{ k: 'out', t: 'UniVerse Lab: type a command and press Enter, or run a script. Try  x = magic(4)  or  plot(1:10)\n' }]);
+  const [log, setLog] = useState<Line[]>([{ k: 'out', t: 'Hyperion: type a command and press Enter, or run a script. Try  x = magic(4)  or  plot(1:10)\n' }]);
   const [vars, setVars] = useState<VarRow[]>([]);
   const [figs, setFigs] = useState<FigOut[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
@@ -152,7 +152,7 @@ export function LabApp() {
   /** The variable viewer: open a variable (or a part of it), go further in, page through. */
   const inspect = (q: Inspect | null) => { looking.current = q; if (!q) { setShown(null); return; } worker.current?.postMessage({ inspect: q } satisfies ToLab); };
   const removeFile = (name: string) => {
-    if (!confirm(`Delete ${name} from your Lab files?`)) return;
+    if (!confirm(`Delete ${name} from your Hyperion files?`)) return;
     fileData.current.delete(name); void forget(name);
     worker.current?.postMessage({ remove: name } satisfies ToLab);
     listFiles();
@@ -366,7 +366,7 @@ export function LabApp() {
         </div>
       ) : (
         <>
-          <Segmented<Tab> label="Lab part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
+          <Segmented<Tab> label="Hyperion part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
           <div key={tab} className="swap min-h-0 flex-1" data-dir={tabDir}>{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
         </>
       )}

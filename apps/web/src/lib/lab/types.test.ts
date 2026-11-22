@@ -6,7 +6,7 @@ import type { Mat } from './values';
 const setup = () => { let out = ''; const lab = new Lab({ out: (t) => { out += t; }, files: new FileStore() }); return { lab, out: () => out, v: (n: string) => lab.vars.get(n) as Mat }; };
 const nums = (m: Mat) => [...m.d];
 
-describe('UniVerse Lab: number types (M386)', () => {
+describe('Hyperion: number types (M386)', () => {
   it('rounds and saturates as MATLAB does', () => {
     const { lab, v } = setup();
     lab.run("a = uint8(250) + 10; b = uint8([1.5 2.5 -3]); c = int8(-200); d = uint8(7) / 2; e = -int16(5); f = class(a); g = int32(5) * 2.6; h = single(1/3); m = intmax('uint16'); s = sum(uint8([200 100]));");
@@ -37,7 +37,7 @@ describe('UniVerse Lab: number types (M386)', () => {
   });
 });
 
-describe('UniVerse Lab: more than three dimensions (M386)', () => {
+describe('Hyperion: more than three dimensions (M386)', () => {
   it('makes, sizes, indexes and prints them', () => {
     const { lab, v, out } = setup();
     lab.run('A = zeros(2, 3, 4, 5); s = size(A); n = ndims(A); A(2, 3, 4, 5) = 7; x = A(2, 3, 4, 5); B = reshape(1:24, 2, 2, 3, 2); y = B(1, 2, 3, 2); C = B(:, :, 2, :); sc = size(C); D = squeeze(C); sd = size(D); E = B + 1; se = size(E); P = permute(B, [4 3 2 1]); sp = size(P); p1 = P(2, 3, 2, 1); F = cat(4, ones(2), zeros(2)); sf = size(F);');

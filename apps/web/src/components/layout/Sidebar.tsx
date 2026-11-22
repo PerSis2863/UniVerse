@@ -294,7 +294,7 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
   lab: [
-    { href: '/lab', label: 'Lab', icon: Sigma },
+    { href: '/hyperion', label: 'Hyperion', icon: Sigma },
   ],
 };
 

@@ -1,7 +1,7 @@
 import { unzlibSync } from 'fflate';
 import { LabError } from './parse';
 
-// UniVerse Lab's HDF5 reader (M388), for MATLAB 7.3 .mat files (an HDF5 file after a 512-byte MATLAB header). Our
+// Hyperion's HDF5 reader (M388), for MATLAB 7.3 .mat files (an HDF5 file after a 512-byte MATLAB header). Our
 // own, from the HDF5 file format specification: superblocks 0–3, object headers 1 and 2 (with continuations),
 // groups as symbol tables (v1 B-trees, local heaps) or link messages, datasets compact, contiguous or chunked (v1
 // B-tree index; deflate, shuffle and Fletcher-32 filters), attributes, fixed-point, floating-point, string,
@@ -75,7 +75,7 @@ export class H5File {
       if (flags & 0x10) q += 4;
       const w = 1 << (flags & 3), size = this.len(q, w);
       blocks.push([q + w, size, true]);
-    } else throw new LabError('That HDF5 file has an object header the Lab can’t read.');
+    } else throw new LabError('That HDF5 file has an object header Hyperion can’t read.');
     for (let k = 0; k < blocks.length; k++) {
       const [start, size, v2] = blocks[k];
       const creation = v2 && (this.b[this.at(addr) + 5] & 0x04) !== 0;
@@ -138,7 +138,7 @@ export class H5File {
     }
     // Link info: links kept in a fractal heap (groups of more than 8 in the newest layout) instead of in the header.
     const info = msgs.find((m) => m.type === 0x02);
-    if (info && this.addr(info.data.byteOffset - this.b.byteOffset + 2 + (info.data[1] & 1 ? 8 : 0)) !== UNDEF) throw new LabError('That HDF5 file keeps a big group in a form the Lab can’t read yet (dense link storage): save it from MATLAB with save -v7.3, or as -v7.');
+    if (info && this.addr(info.data.byteOffset - this.b.byteOffset + 2 + (info.data[1] & 1 ? 8 : 0)) !== UNDEF) throw new LabError('That HDF5 file keeps a big group in a form Hyperion can’t read yet (dense link storage): save it from MATLAB with save -v7.3, or as -v7.');
     return out;
   }
 
@@ -245,7 +245,7 @@ export class H5File {
       if (cls === 0) { const sz = layout[2] | (layout[3] << 8); return layout.subarray(4, 4 + sz); }
       if (cls === 1) { const a = this.addr(lp + 2); return a === UNDEF ? new Uint8Array(total) : this.b.subarray(this.at(a), this.at(a) + total); }
       if (cls === 2) {
-        if (v === 4) throw new LabError('That HDF5 file stores chunks in a newer index the Lab can’t read yet (save it from MATLAB with -v7.3 defaults, or as -v7).');
+        if (v === 4) throw new LabError('That HDF5 file stores chunks in a newer index Hyperion can’t read yet (save it from MATLAB with -v7.3 defaults, or as -v7).');
         const rank = layout[2] - 1, tree = this.addr(lp + 3), chunk = Array.from({ length: rank }, (_, i) => new DataView(layout.buffer, layout.byteOffset + 3 + this.so + i * 4, 4).getUint32(0, true));
         return this.chunked(tree, dims, chunk, size, filters);
       }
@@ -286,7 +286,7 @@ export class H5File {
           if (id === 1) { try { raw = unzlibSync(raw); } catch { throw new LabError('A compressed chunk of that HDF5 file couldn’t be opened.'); } }
           else if (id === 2) { const es = filters[f].values[0] ?? size, cnt = raw.length / es, o = new Uint8Array(raw.length); for (let e = 0; e < cnt; e++) for (let b2 = 0; b2 < es; b2++) o[e * es + b2] = raw[b2 * cnt + e]; raw = o; }
           else if (id === 3) raw = raw.subarray(0, raw.length - 4);
-          else throw new LabError(`That HDF5 file uses a compression (filter ${id}) the Lab can’t undo.`);
+          else throw new LabError(`That HDF5 file uses a compression (filter ${id}) Hyperion can’t undo.`);
         }
         // Copy the chunk into place, element by element (edge chunks reach past the array: those parts are dropped).
         for (let e = 0; e < cn; e++) {

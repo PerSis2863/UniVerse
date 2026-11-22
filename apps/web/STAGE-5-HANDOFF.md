@@ -10672,3 +10672,16 @@ one. The editor's suggestions show the help (`describe` in LabApp) and `hoverToo
 rests on a name (`.cm-lab-help`). `FunctionBrowser.tsx`: a Sheet with a search box (words match the name or the
 help), section chips, up to 300 rows; choosing one puts its first form (`firstForm`: commas inside brackets don't
 split) in the command window. The Functions button sits in the command window's header.
+
+## M392 (22 Nov): UniVerse Lab is now Hyperion
+
+The owner, 22 Nov: "the app name should be Hyperion". Every name people see: `APPS` (name 'Hyperion', path
+`/hyperion`: the page moved to `src/app/(dashboard)/hyperion`, page routes regenerated), the side menu and phone tabs,
+the top bar, the landing (FAQ, hero text, the sign-up panel's "Open Hyperion."), the engine's messages ("Hyperion
+can't read…", `ver`, `version`, `help`), the LaTeX header ("% Made with Hyperion"), the .mat header ("Platform:
+Hyperion"), `pwd` (/hyperion). The colour map is `hyperion` (`lab`, `parula`, `default` open it; `hyperion(n)` has
+a help line). Unchanged on purpose: the internal app id `lab` (`AppId`, `html[data-app="lab"]`, stored rows), the code's
+folders (`src/lib/lab`, `src/components/lab`), the device storage keys (`uv-lab-scripts`, IndexedDB `uv-lab`), so
+nothing people kept is lost. Not live yet, so the old /lab address needs no redirect. In notes and code comments from
+here on, the app is Hyperion; older notes say UniVerse Lab. A stale `.next/dev/types` after moving a page breaks
+`pnpm typecheck`: delete that folder (it is the development server's, not committed).

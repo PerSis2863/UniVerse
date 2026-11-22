@@ -1,6 +1,6 @@
 import { LabError } from './parse';
 
-// UniVerse Lab's reader for old Excel files (.xls, Excel 97–2003; M387): our own, from Microsoft's published formats.
+// Hyperion's reader for old Excel files (.xls, Excel 97–2003; M387): our own, from Microsoft's published formats.
 // The file is a compound document (a small file system: [MS-CFB]); its "Workbook" stream holds BIFF8 records
 // ([MS-XLS]): shared strings, sheet positions, then each sheet's cells (numbers, text, formulas' saved results).
 

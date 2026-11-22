@@ -8,7 +8,7 @@ import { cn } from '@/lib/utils';
 import type { Step, View } from '@/lib/lab/inspect';
 import type { Inspect } from './lab.worker';
 
-// M390: the Lab's variable viewer: every number of a matrix in a grid (a window of a big one, a page of a 3D one),
+// M390: Hyperion's variable viewer: every number of a matrix in a grid (a window of a big one, a page of a 3D one),
 // edited in place (the change is run as code, so it shows in the command window), the fields of a struct, the items
 // of a cell and the rows of a table, each opened in turn; a few figures about the numbers; plot it, copy it.
 

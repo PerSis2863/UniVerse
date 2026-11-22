@@ -7,11 +7,11 @@ import { HELP, SECTIONS, helpFor, lookFor } from './help';
 BUILTINS.help = BUILTINS.doc = (a, _n, lab) => {
   const name = a[0] ? textOf(a[0]) : '';
   if (!name) {
-    lab.host.out(`UniVerse Lab: ${HELP.size} functions in ${SECTIONS.length} sections.\n\n${SECTIONS.map((s) => `  ${s}: ${[...HELP.values()].filter((e) => e.section === s).slice(0, 6).map((e) => e.name).join(', ')}…`).join('\n')}\n\nType help name for one (help plot), lookfor word to search (lookfor fourier), or open Help ▸ Functions.\n`);
+    lab.host.out(`Hyperion: ${HELP.size} functions in ${SECTIONS.length} sections.\n\n${SECTIONS.map((s) => `  ${s}: ${[...HELP.values()].filter((e) => e.section === s).slice(0, 6).map((e) => e.name).join(', ')}…`).join('\n')}\n\nType help name for one (help plot), lookfor word to search (lookfor fourier), or open Help ▸ Functions.\n`);
     return [];
   }
   const text = helpFor(name);
-  lab.host.out(text ?? (BUILTINS[name] ? `${name} is a function of UniVerse Lab (no help written yet).\n` : `No function called “${name}”. Try lookfor ${name}.\n`));
+  lab.host.out(text ?? (BUILTINS[name] ? `${name} is a function of Hyperion (no help written yet).\n` : `No function called “${name}”. Try lookfor ${name}.\n`));
   return [];
 };
 BUILTINS.lookfor = (a, _n, lab) => {

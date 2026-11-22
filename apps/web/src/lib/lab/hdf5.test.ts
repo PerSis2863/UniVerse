@@ -8,7 +8,7 @@ import type { Cell, Mat, Struct } from './values';
 const fixture = (n: string) => new Uint8Array(readFileSync(join(__dirname, 'fixtures', n)));
 const nums = (v: unknown) => [...(v as Mat).d];
 
-describe('UniVerse Lab: MATLAB 7.3 files (M388)', () => {
+describe('Hyperion: MATLAB 7.3 files (M388)', () => {
   it('reads numbers, types, text, logicals, complex, 3D, empty, cells, structs and sparse', () => {
     const vars = new Map(readMat(fixture('v73.mat')));
     const A = vars.get('A') as Mat;

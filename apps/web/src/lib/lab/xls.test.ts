@@ -9,7 +9,7 @@ import type { Mat, Struct } from './values';
 
 const fixture = (n: string) => new Uint8Array(readFileSync(join(__dirname, 'fixtures', n)));
 
-describe('UniVerse Lab: old Excel files and JPEG (M387)', () => {
+describe('Hyperion: old Excel files and JPEG (M387)', () => {
   it('reads an .xls workbook kept in the mini stream', () => {
     const [data, second] = readXls(fixture('small.xls'));
     expect(data.name).toBe('Data');

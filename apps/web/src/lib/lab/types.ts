@@ -1,7 +1,7 @@
 import { LabError } from './parse';
 import type { Mat } from './values';
 
-// UniVerse Lab's number types (M386): MATLAB's whole-number types (int8 … uint64) and single. A Mat with `cls` keeps
+// Hyperion's number types (M386): MATLAB's whole-number types (int8 … uint64) and single. A Mat with `cls` keeps
 // its numbers as doubles that are always whole and inside the type's range: anything put in is rounded (halves away
 // from zero) and held at the ends (saturation), NaN becomes 0, as MATLAB does. single rounds to 32-bit floats.
 

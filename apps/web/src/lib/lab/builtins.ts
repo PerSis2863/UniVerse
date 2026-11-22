@@ -5,7 +5,7 @@ import type { Lab } from './interp';
 import { concat, eye, inv, map1, matmul, range, solve, textOf, transpose, zip } from './interp';
 import { cast, CLASSES, isInt, isNumClass, RANGE, type NumClass } from './types';
 
-// UniVerse Lab's built-in functions (M374): written for UniVerse from the functions' documented behaviour (no code
+// Hyperion's built-in functions (M374): written for UniVerse from the functions' documented behaviour (no code
 // from MATLAB or GNU Octave). Each takes the values passed in and how many outputs were asked for (0 when the result
 // isn't used, -1 for "all of them"), and gives its outputs back.
 
@@ -609,9 +609,9 @@ def('eval evalin', (a, _n, lab) => { try { lab.run(textOf(a[a.length > 1 && a[0]
 def('input keyboard', () => { throw new LabError('input isn’t available yet: set the value in the script instead.'); });
 def('pause drawnow beep more pkg close', () => []);
 def('rng', () => []);
-def('version', () => [str('UniVerse Lab 1.0')]);
-def('ver', (_a, _n, lab) => { lab.host.out('UniVerse Lab 1.0: our own engine for the MATLAB and Octave language.\n'); return []; });
-def('help doc', (a, _n, lab) => { const n = a[0] ? textOf(a[0]) : ''; lab.host.out(n ? (BUILTINS[n] ? `${n} is a built-in function of UniVerse Lab.\n` : `No help found for “${n}”.\n`) : 'Type code and press Enter. Try: x = linspace(0, 2*pi); plot(x, sin(x))\n'); return []; });
+def('version', () => [str('Hyperion 1.0')]);
+def('ver', (_a, _n, lab) => { lab.host.out('Hyperion 1.0: our own engine for the MATLAB and Octave language.\n'); return []; });
+def('help doc', (a, _n, lab) => { const n = a[0] ? textOf(a[0]) : ''; lab.host.out(n ? (BUILTINS[n] ? `${n} is a built-in function of Hyperion.\n` : `No help found for “${n}”.\n`) : 'Type code and press Enter. Try: x = linspace(0, 2*pi); plot(x, sin(x))\n'); return []; });
 
 // ——— Helpers ———
 /** A second interpreter for str2num / str2func (their own variables), sharing the output. */

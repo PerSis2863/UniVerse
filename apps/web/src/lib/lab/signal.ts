@@ -3,7 +3,7 @@ import { cmat, imOf, mat, num, row, scalar, toMat, type Mat, type Value } from '
 import { BUILTINS, type Builtin } from './builtins';
 import { solve } from './interp';
 
-// UniVerse Lab's signals and statistics (M378): fft / ifft of any length (radix-2, Bluestein for the rest), filter,
+// Hyperion's signals and statistics (M378): fft / ifft of any length (radix-2, Bluestein for the rest), filter,
 // conv2, xcorr, freqz, windows, movmean; cov, corrcoef, prctile / quantile, histcounts, zscore, skewness, kurtosis,
 // the normal distribution and erf; cubic splines. Our own code from the documented definitions.
 

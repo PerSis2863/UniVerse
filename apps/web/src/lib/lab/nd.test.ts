@@ -4,7 +4,7 @@ import type { Mat } from './values';
 
 const run = (code: string) => { let out = ''; const lab = new Lab({ out: (t) => { out += t; } }); lab.run(code); return { lab, out, v: (n: string) => lab.vars.get(n) as Mat }; };
 
-describe('UniVerse Lab: 3D arrays (M382)', () => {
+describe('Hyperion: 3D arrays (M382)', () => {
   it('makes, sizes and prints them', () => {
     const { v, out } = run('A = zeros(2, 3, 4); s = size(A); n = numel(A); d = ndims(A); B = reshape(1:8, 2, 2, 2)');
     expect([...v('s').d]).toEqual([2, 3, 4]);
@@ -35,7 +35,7 @@ describe('UniVerse Lab: 3D arrays (M382)', () => {
   });
 });
 
-describe('UniVerse Lab: full-colour pictures (M382)', () => {
+describe('Hyperion: full-colour pictures (M382)', () => {
   it('shows a picture with three pages and converts it', async () => {
     const { Graphics, renderSvg, toTikz } = await import('./plot');
     const graphics = new Graphics();

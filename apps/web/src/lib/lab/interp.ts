@@ -7,7 +7,7 @@ import { colPositions, contents, isTable, joinTables, pick as pickTable, propert
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
 
-// UniVerse Lab's interpreter (M374): runs the tree from parse.ts. Our own code, written from the MATLAB / Octave
+// Hyperion's interpreter (M374): runs the tree from parse.ts. Our own code, written from the MATLAB / Octave
 // language's documented behaviour: implicit expansion, column-major indexing, growth on assignment, `end` in indexes,
 // multiple outputs, closures for @(x) handles, functions defined in the script.
 

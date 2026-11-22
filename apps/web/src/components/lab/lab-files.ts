@@ -2,7 +2,7 @@
 
 import type { Pixels } from '@/lib/lab/files';
 
-// M383: the Lab's files, kept on this device (IndexedDB: files can be megabytes, too big for localStorage). Nothing
+// M383: Hyperion's files, kept on this device (IndexedDB: files can be megabytes, too big for localStorage). Nothing
 // is uploaded to the server. Pictures are decoded here (the engine's worker can't wait for the browser's decoder).
 
 export interface Kept { name: string; bytes: Uint8Array }

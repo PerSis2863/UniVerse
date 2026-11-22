@@ -6,7 +6,7 @@ import { Sheet } from '@/components/ui/Sheet';
 import { cn } from '@/lib/utils';
 import { HELP, SECTIONS } from '@/lib/lab/help';
 
-// M391: every function of the Lab by section, searchable by name or by what it does; choosing one puts how to call it
+// M391: every function of Hyperion by section, searchable by name or by what it does; choosing one puts how to call it
 // in the command window.
 
 /** The first way of calling it: "fft(x, n), fft(A)" → "fft(x, n)" (commas inside brackets don't split). */

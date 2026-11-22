@@ -8,7 +8,7 @@ import { indentWithTab } from '@codemirror/commands';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
 
-// M389: the Lab's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
+// M389: Hyperion's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
 // if / for / end, suggestions as you type (functions with a line of help, keywords, the script's variables), find
 // and replace (Ctrl+F), many cursors, undo history, the line of an error marked, Ctrl+Enter to run.
 

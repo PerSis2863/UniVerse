@@ -2,7 +2,7 @@ import { LabError } from './parse';
 import type { Expr } from './parse';
 import type { NumClass } from './types';
 
-// UniVerse Lab's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
+// Hyperion's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
 // linear indexing and reshape behave the same), text, cell arrays, structs and function handles.
 
 /** `im`: the imaginary parts of a complex matrix (M377), the same length as `d`; absent for real ones. `p`: the

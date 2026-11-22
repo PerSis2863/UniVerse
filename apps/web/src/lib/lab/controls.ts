@@ -1,4 +1,4 @@
-// UniVerse Lab's live controls (M384, the owner, 22 Nov: features "unique and different from others"): a comment
+// Hyperion's live controls (M384, the owner, 22 Nov: features "unique and different from others"): a comment
 // after a value in a script turns it into a control the window draws above the code. Moving it rewrites the value in
 // the script and runs it again, so the figure follows the hand.
 //

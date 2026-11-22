@@ -14,7 +14,7 @@ import { keyOf } from '@/lib/sheet/refs';
 import { columnRows, heightOf, isTable, names as colNames, pick, table } from './table';
 import type { CellJSON } from '@/lib/sheet/book';
 
-// UniVerse Lab's files (M383): a store of files kept on the person's device (the window keeps them; the engine sees
+// Hyperion's files (M383): a store of files kept on the person's device (the window keeps them; the engine sees
 // them here), and MATLAB's file functions over it: delimited text and Excel (readmatrix, writematrix, readcell,
 // readtable, writetable, csvread, dlmwrite…), MATLAB's own .mat files (save, load: level 5, compressed or not),
 // pictures (imread, imwrite) and text files (fopen, fprintf, fgetl, fileread…). Tables are kept as a struct of
@@ -66,7 +66,7 @@ export class FileStore {
 /** A plain file name: no folders above this one, no odd characters. */
 function clean(name: string) {
   const n = name.trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '');
-  if (!n || n.length > 120 || n.startsWith('/') || n.split('/').includes('..') || /[\0-\x1f<>:"|?*]/.test(n)) throw new LabError(`“${name}” isn’t a file name the Lab can use.`);
+  if (!n || n.length > 120 || n.startsWith('/') || n.split('/').includes('..') || /[\0-\x1f<>:"|?*]/.test(n)) throw new LabError(`“${name}” isn’t a file name Hyperion can use.`);
   return n;
 }
 const store = (lab: Lab): FileStore => {
@@ -324,7 +324,7 @@ function matrix(v: Value, name: string): Uint8Array {
 }
 export function writeMat(vars: [string, Value][]): Uint8Array {
   const head = new Uint8Array(128);
-  head.set(new TextEncoder().encode(`MATLAB 5.0 MAT-file, Platform: UniVerse Lab, Created on: ${new Date().toUTCString()}`.padEnd(116, ' ').slice(0, 116)));
+  head.set(new TextEncoder().encode(`MATLAB 5.0 MAT-file, Platform: Hyperion, Created on: ${new Date().toUTCString()}`.padEnd(116, ' ').slice(0, 116)));
   head[124] = 0x00; head[125] = 0x01; head[126] = 0x49; head[127] = 0x4d; // version 0x0100, "IM" (little-endian)
   const w = new Writer();
   w.bytes(head);
@@ -343,7 +343,7 @@ const CLASS_OF: Record<number, NumClass> = { [MX.INT8]: 'int8', [MX.UINT8]: 'uin
 function readNumbers(type: number, b: Uint8Array): number[] {
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), out: number[] = [];
   const size = { [MI.INT8]: 1, [MI.UINT8]: 1, [MI.INT16]: 2, [MI.UINT16]: 2, [MI.INT32]: 4, [MI.UINT32]: 4, [MI.SINGLE]: 4, [MI.DOUBLE]: 8, [MI.INT64]: 8, [MI.UINT64]: 8, [MI.UTF8]: 1, [MI.UTF16]: 2, [MI.UTF32]: 4 }[type];
-  if (!size) throw new LabError('That .mat file holds a kind of number the Lab can’t read.');
+  if (!size) throw new LabError('That .mat file holds a kind of number Hyperion can’t read.');
   for (let o = 0; o + size <= b.length; o += size) {
     out.push(type === MI.INT8 ? dv.getInt8(o) : type === MI.UINT8 || type === MI.UTF8 ? dv.getUint8(o) : type === MI.INT16 ? dv.getInt16(o, true) : type === MI.UINT16 || type === MI.UTF16 ? dv.getUint16(o, true) : type === MI.INT32 ? dv.getInt32(o, true) : type === MI.UINT32 || type === MI.UTF32 ? dv.getUint32(o, true) : type === MI.SINGLE ? dv.getFloat32(o, true) : type === MI.DOUBLE ? dv.getFloat64(o, true) : type === MI.INT64 ? Number(dv.getBigInt64(o, true)) : Number(dv.getBigUint64(o, true)));
   }
@@ -375,7 +375,7 @@ function readMatrix(b: Uint8Array): { name: string; value: Value } {
   if (cls === MX.STRUCT) {
     const len = readNumbers(els[3][0], els[3][1])[0], raw = els[4][1], fields: string[] = [];
     for (let k = 0; k + len <= raw.length; k += len) fields.push(new TextDecoder().decode(raw.subarray(k, k + len)).replace(/\0+$/, ''));
-    if (r * c !== 1) throw new LabError(`“${name}” is a ${r}x${c} struct array: the Lab reads single structs.`);
+    if (r * c !== 1) throw new LabError(`“${name}” is a ${r}x${c} struct array: Hyperion reads single structs.`);
     return { name, value: { k: 'struct', f: new Map(fields.map((f, i) => [f, readMatrix(els[5 + i][1]).value])) } };
   }
   if (cls === MX.CHAR) {
@@ -383,7 +383,7 @@ function readMatrix(b: Uint8Array): { name: string; value: Value } {
     const rows = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => String.fromCharCode(codes[i + j * r])).join(''));
     return { name, value: str(rows.join('\n')) };
   }
-  if (cls === MX.SPARSE || cls === MX.OBJECT) throw new LabError(`“${name}” is a ${cls === MX.SPARSE ? 'sparse matrix' : 'MATLAB object'}: the Lab can’t read those yet.`);
+  if (cls === MX.SPARSE || cls === MX.OBJECT) throw new LabError(`“${name}” is a ${cls === MX.SPARSE ? 'sparse matrix' : 'MATLAB object'}: Hyperion can’t read those yet.`);
   const re = readNumbers(els[3][0], els[3][1]);
   const m = mat(r, c, re, logical);
   if (p > 1 && r * c === 0) m.p = p;
@@ -437,7 +437,7 @@ function fromH5(f: H5File, o: H5Object, name: string, skipped: string[]): Value 
   }
   if (o.type.cls === 6) {
     const re = o.type.members?.find((m) => m.name === 'real'), im = o.type.members?.find((m) => m.name === 'imag');
-    if (!re || !im) { skipped.push(`${name} (a compound the Lab doesn't read)`); return null; }
+    if (!re || !im) { skipped.push(`${name} (a compound Hyperion doesn't read)`); return null; }
     const raw = o.read(), n = raw.length / o.type.size, rd: number[] = [], id: number[] = [];
     for (let k = 0; k < n; k++) { rd.push(h5numbers(raw.subarray(k * o.type.size + re.offset, k * o.type.size + re.offset + re.type.size), re.type)[0]); id.push(h5numbers(raw.subarray(k * o.type.size + im.offset, k * o.type.size + im.offset + im.type.size), im.type)[0]); }
     const m = shape(mat(r, c, rd));
@@ -446,7 +446,7 @@ function fromH5(f: H5File, o: H5Object, name: string, skipped: string[]): Value 
     if (cls === 'single') m.cls = 'single';
     return m;
   }
-  if (o.type.cls !== 0 && o.type.cls !== 1) { skipped.push(`${name} (${cls || 'a kind of data'} the Lab doesn't read)`); return null; }
+  if (o.type.cls !== 0 && o.type.cls !== 1) { skipped.push(`${name} (${cls || 'a kind of data'} Hyperion doesn't read)`); return null; }
   const m = shape(mat(r, c, h5numbers(o.read(), o.type), cls === 'logical'));
   if (isNumClass(cls)) m.cls = cls;
   if (cls && cls !== 'double' && cls !== 'logical' && !isNumClass(cls)) { skipped.push(`${name} (a MATLAB ${cls})`); return null; }
@@ -471,7 +471,7 @@ export function readMat(bytes: Uint8Array): [string, Value][] {
     return vars;
   }
   if (bytes.length < 128 || new TextDecoder().decode(bytes.subarray(0, 6)) !== 'MATLAB') throw new LabError('That isn’t a MATLAB .mat file.');
-  if (bytes[126] !== 0x49 || bytes[127] !== 0x4d) throw new LabError('That .mat file is big-endian: the Lab reads the usual little-endian ones.');
+  if (bytes[126] !== 0x49 || bytes[127] !== 0x4d) throw new LabError('That .mat file is big-endian: Hyperion reads the usual little-endian ones.');
   const out: [string, Value][] = [];
   const walk = (b: Uint8Array) => {
     for (const [type, data] of elements(b)) {
@@ -506,7 +506,7 @@ def('load', (a, nout, lab, frame) => {
   let got: [string, Value][];
   if (ext(name) === 'mat' || (fs.get(name).bytes.length >= 6 && new TextDecoder().decode(fs.get(name).bytes.subarray(0, 6)) === 'MATLAB')) {
     got = readMat(fs.get(name).bytes);
-    if (lastSkipped.length) lab.host.out(`Not loaded (the Lab can’t hold these yet): ${lastSkipped.join(', ')}\n`);
+    if (lastSkipped.length) lab.host.out(`Not loaded (Hyperion can’t hold these yet): ${lastSkipped.join(', ')}\n`);
     const only = words.slice(1);
     if (only.length) got = got.filter(([n]) => only.includes(n));
   } else {
@@ -523,7 +523,7 @@ def('load', (a, nout, lab, frame) => {
 // ——— Pictures ———
 def('imread', (a, _n, lab) => {
   const f = store(lab).get(textOf(a[0]));
-  if (!f.pixels) throw new LabError('That file isn’t a picture the Lab could open (PNG, JPEG, GIF, WebP or BMP).');
+  if (!f.pixels) throw new LabError('That file isn’t a picture Hyperion could open (PNG, JPEG, GIF, WebP or BMP).');
   const { w, h, rgba } = f.pixels, n = w * h, d = new Float64Array(n * 3);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const s = (y * w + x) * 4, t = y + x * h; d[t] = rgba[s]; d[t + n] = rgba[s + 1]; d[t + 2 * n] = rgba[s + 2]; }
   return [cast(mat(h, w, d), 'uint8')];
@@ -599,7 +599,7 @@ def('isfile', (a, _n, lab) => [{ ...mat(1, 1, [store(lab).has(textOf(a[0])) ? 1 
 def('type', (a, _n, lab) => { lab.host.out(`${store(lab).text(textOf(a[0]))}\n`); return []; });
 def('copyfile movefile', (a, _n, lab) => { const fs = store(lab), from = textOf(a[0]), to = textOf(a[1]); fs.put(to, fs.get(from)); return []; });
 BUILTINS.movefile = (a, n, lab) => { BUILTINS.copyfile(a, n, lab); store(lab).remove(textOf(a[0])); return []; };
-def('pwd cd', (_a, nout, lab) => { if (nout > 0) return [str('/lab')]; lab.host.out('/lab (your Lab files)\n'); return []; });
+def('pwd cd', (_a, nout, lab) => { if (nout > 0) return [str('/hyperion')]; lab.host.out('/hyperion (your Hyperion files)\n'); return []; });
 
 
 // ——— Table tools (M385) ———

@@ -1,4 +1,4 @@
-// UniVerse Lab's JPEG and BMP writers (M387): imwrite(I, 'photo.jpg') and 'picture.bmp'. Our own baseline JPEG
+// Hyperion's JPEG and BMP writers (M387): imwrite(I, 'photo.jpg') and 'picture.bmp'. Our own baseline JPEG
 // encoder written from the JPEG standard (ITU T.81): colour to YCbCr, 8 × 8 blocks through the discrete cosine
 // transform, quantised by the standard tables scaled to the quality, then Huffman-coded with tables built from the
 // picture's own counts (Annex K.2), so no fixed code tables are needed. No colour subsampling (4:4:4).

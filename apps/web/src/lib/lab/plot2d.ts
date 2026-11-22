@@ -4,7 +4,7 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { add, blankAxes, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, style, tex, ticks, vec, type Axes, type Box, type Ink, type Series } from './plot';
 
-// UniVerse Lab's other plot kinds (M381): text, errorbar, pie, fill / patch / rectangle, line, polarplot, boxplot,
+// Hyperion's other plot kinds (M381): text, errorbar, pie, fill / patch / rectangle, line, polarplot, boxplot,
 // yyaxis, sgtitle, tick positions and names, xline / yline, and plots straight from a formula (fsurf, fmesh,
 // fcontour, fimplicit, fplot3). Bars (stacked, horizontal) are in plot.ts with the other bars.
 

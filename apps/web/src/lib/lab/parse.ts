@@ -1,4 +1,4 @@
-// UniVerse Lab (M374, the owner, 21 Nov 2026: "build your own matlab and octave together in one app which can be
+// Hyperion (M374, the owner, 21 Nov 2026: "build your own matlab and octave together in one app which can be
 // downloaded in the computer"): our own reader for the MATLAB / Octave language, written from scratch (no code from
 // MATLAB or GNU Octave). Code → tokens → a tree of statements the interpreter (interp.ts) runs. Pure, no browser APIs,
 // so the website's Lab and the computer app share it.

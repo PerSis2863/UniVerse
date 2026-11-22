@@ -7,7 +7,7 @@ const lab = new Lab({ out: () => {} });
 lab.run("A = reshape(1:24, 2, 3, 4); s.name = 'Ada'; s.m = magic(3); c = {1, [1 2 3]; 'x', s}; T = table([1; 2], {'a'; 'b'}, 'VariableNames', {'n', 'tag'}); B = zeros(300, 50);");
 const at = (name: string) => lab.vars.get(name)!;
 
-describe('UniVerse Lab: the variable viewer (M390)', () => {
+describe('Hyperion: the variable viewer (M390)', () => {
   it('shows a page of a 3D array with figures about it', () => {
     const v = view(at('A'), 2);
     expect(v.kind === 'grid' && [v.page, v.cells, v.stats.map(([k]) => k)]).toEqual([2, [['13', '15', '17'], ['14', '16', '18']], ['Min', 'Max', 'Mean']]);

@@ -1,7 +1,7 @@
 import { LabError } from './parse';
 import { fmtC, fmtNum, inline, kind, pages, sizeOf, type Fmt, type Value } from './values';
 
-// UniVerse Lab's variable viewer (M390): a value seen as a grid of its numbers (a window of a big one, one page of a
+// Hyperion's variable viewer (M390): a value seen as a grid of its numbers (a window of a big one, one page of a
 // 3D one), the fields of a struct, the items of a cell or the columns of a table, each one opened by a path.
 
 /** A step into a value: a field (s.a, T.col) or a cell item (c{i, j}). */

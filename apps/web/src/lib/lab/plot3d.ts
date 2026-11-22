@@ -6,7 +6,7 @@ import { add, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, 
 import { hex, hexAt, MAP_NAMES, mapOf, png, rgbAt } from './colormap';
 import { cast, unitValues } from './types';
 
-// UniVerse Lab's 3D plots and images (M379): surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor,
+// Hyperion's 3D plots and images (M379): surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor,
 // colour maps and colour bars, view and shading. Surfaces are drawn as SVG faces sorted far to near (each face whole,
 // so it stays sharp at any size); images and filled contours as a small PNG inside the SVG.
 

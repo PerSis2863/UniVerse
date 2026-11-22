@@ -6,7 +6,7 @@ import type { Mat, Struct, Value } from './values';
 
 const setup = () => { const files = new FileStore(); let out = ''; const lab = new Lab({ out: (t) => { out += t; }, files }); return { files, lab, out: () => out, v: (n: string) => lab.vars.get(n) as Mat }; };
 
-describe('UniVerse Lab: files (M383)', () => {
+describe('Hyperion: files (M383)', () => {
   it('reads and writes delimited text, skipping a header row', () => {
     const { files, lab, v } = setup();
     files.load('data.csv', { bytes: new TextEncoder().encode('time,speed\n0,1.5\n1,2.5\n2,\n') });

@@ -1,9 +1,9 @@
-// UniVerse Lab's colour maps and a small PNG writer (M379). "lab" is our own map and the default (parula, MATLAB's,
+// Hyperion's colour maps and a small PNG writer (M379). "lab" is our own map and the default (parula, MATLAB's,
 // opens it too); the rest are the well-known public ones, each made from a few stops.
 
 type Stop = [number, number, number, number?];
 const STOPS: Record<string, Stop[]> = {
-  lab: [[29, 58, 138], [37, 99, 235], [13, 148, 136], [101, 163, 13], [245, 158, 11], [253, 224, 71]],
+  hyperion: [[29, 58, 138], [37, 99, 235], [13, 148, 136], [101, 163, 13], [245, 158, 11], [253, 224, 71]],
   viridis: [[68, 1, 84], [59, 82, 139], [33, 145, 140], [94, 201, 98], [253, 231, 37]],
   plasma: [[13, 8, 135], [126, 3, 168], [204, 71, 120], [248, 149, 64], [240, 249, 33]],
   turbo: [[48, 18, 59], [70, 134, 251], [27, 229, 181], [164, 252, 60], [251, 185, 56], [228, 70, 10], [122, 4, 3]],
@@ -18,7 +18,7 @@ const STOPS: Record<string, Stop[]> = {
   autumn: [[255, 0, 0], [255, 255, 0]],
   winter: [[0, 0, 255], [0, 255, 128]],
 };
-const ALIAS: Record<string, string> = { parula: 'lab', default: 'lab', grey: 'gray' };
+const ALIAS: Record<string, string> = { parula: 'hyperion', default: 'hyperion', lab: 'hyperion', grey: 'gray' };
 export const MAP_NAMES = [...Object.keys(STOPS), ...Object.keys(ALIAS)];
 
 /** A named map as n rows of [r g b] from 0 to 1 (null for an unknown name). */
