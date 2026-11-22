@@ -19,7 +19,7 @@ const DOCS = [
 const PROVIDERS = [
   ['Cloudflare, Inc.', 'Hosting, database, file storage and real-time features', 'United States / global'],
   ['Google LLC — Firebase Authentication', 'Sign-in and identity', 'United States / global'],
-  ['Google LLC — Gemini API', 'AI features (only when you use them)', 'United States / global'],
+  ['Google LLC — Gemini API (runs Ghidra, UniVerse’s AI)', 'Ghidra and the other AI features (only when you use them)', 'United States / global'],
   ['Stripe, Inc.', 'Payments', 'United States / Ireland'],
   ['Resend, Inc.', 'Notification and account emails', 'United States'],
   ['Polygon public blockchain', 'Verification fingerprints of credentials (no personal data)', 'Public network'],

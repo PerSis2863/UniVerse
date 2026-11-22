@@ -10245,3 +10245,34 @@ It grows from "Ask UniVerse" (M30), which it replaces; the safety model is uncha
 - **Next rounds** (the owner said "yes build it" to all of them): Ghidra on every page (today the hub and search);
   more actions app by app (draft a message for you to send, a quiz draft for a teacher, a trip's days, a Trace scan
   history); the trained Ghidra (M362) answering simple questions on the device when the big AI is off or used up.
+
+## M364: Ghidra, the assistant, round 2: on every page (22 Nov)
+
+The owner (22 Nov): "yes continue with round 2", then, seeing the old "add a GEMINI_API_KEY" reply: "please remove that
+gemini api key part… only ghidra should be there nothing else", then for the last two mentions: "please remove this and
+update it with ghidra because we are going to use ghidra only from now on".
+
+- **One reply, two places:** `components/ui/GhidraReply.tsx` (the answer, the person's own list, or one action with
+  Confirm and Cancel; confirming calls the app's own route) is used by the hub's chat (`hub/Ghidra.tsx`) and the corner
+  assistant.
+- **The corner assistant is Ghidra** (`ui/AIStudyAssistant.tsx`, on every signed-in page; phones open it from "+" →
+  **Ask Ghidra**, `QuickCreate.tsx`). Order for each message: (0) a request to do something or to see your own things
+  (`localPlan` picks it; "how do I…" questions are left to the guide, `asksHow`) goes to `POST /ask` with the last turns
+  when online and comes back as a `GhidraReply`; (1) "who are you"/"hi" → Ghidra's own entry; (1) questions about using
+  UniVerse → the built-in guide, instant and offline; (2) offline → a saved answer; (3) anything else → the AI.
+- **The built-in guide** (`src/lib/help/knowledge.ts`) got 16 answers for Ghidra, the apps, Relief (ask, help,
+  offline, places), Green (log, streaks, Business), Trace (scan, brands), Travel (plan, where to go), Games, Meet & call
+  and dark mode, from the facts checked for Ghidra's training (M362). "How do I log a climate action?", "how do I ask
+  for help in Relief", "is this product fake", "plan a trip with friends" now answer instantly.
+- **Only the name Ghidra** in what people see: the corner's title and greeting, the study AI's prompt ("You are
+  Ghidra…", `api/ai/route.ts`), its replies when AI isn't set up or is busy (no more "add a GEMINI_API_KEY"), the offline
+  notes, the translation note in Messages ("translated by Ghidra, UniVerse's AI"). **Kept on purpose:** the policies'
+  list of outside services still names Google (now "Google LLC — Gemini API (runs Ghidra, UniVerse's AI)"): data-protection
+  law requires naming who handles people's data, and Google does while Ghidra's thinking runs on Gemini. Remove that row
+  only when Ghidra runs without Google. The owner was told why.
+- Fixed while here: the corner's own messages and link chips had too little contrast in light mode, "Related" links
+  were too small to tap (axe).
+- Browser check: `scripts/checks/ghidra-assistant-ui.mjs` (now the corner too). A duplicate guide id `delete-account`
+  predates this item (left as it was).
+- **Next round** (3): more actions app by app (draft a message to send, a quiz draft for a teacher, a trip's days), and
+  the trained Ghidra (M362) answering simple questions on the device when the AI is off.

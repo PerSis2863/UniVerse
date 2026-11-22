@@ -1,7 +1,8 @@
 // M363 Ghidra, the assistant, on the hub: "What's due this week?" answers from the student's own work (a list, or
 // "Nothing is due"), "How am I doing in Green?" answers with their numbers, "I cycled 8 km to school" proposes Log it,
 // Cancel leaves it undone, New chat clears it. Nothing is saved. Axe at 1280 (dark) and 390 (light, a touch phone),
-// no sideways scroll, no page errors.
+// no sideways scroll, no page errors. M364: the corner assistant is Ghidra on every page (the student home): "What's due
+// this week?" comes back as Ghidra's reply, "How do I log a climate action?" stays an instant built-in answer.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/ghidra-assistant-ui.mjs
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
@@ -41,9 +42,23 @@ try {
     if (shots) await box.screenshot({ path: `${shots}/ghidra-assistant-${theme}-${width}.png` });
     await box.getByRole('button', { name: 'New chat' }).click();
     r.cleared = (await box.locator('ol > li').count()) === 0;
+    // M364: Ghidra on another page, in the corner (phones open it from "+", here by the same event).
+    await page.goto(`${base}/student`, { waitUntil: 'load', timeout: 180_000 });
+    await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+    const corner = page.getByLabel('Message Ghidra');
+    for (let i = 0; i < 20 && !(await corner.isVisible()); i++) { await page.evaluate(() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))); await page.waitForTimeout(700); }
+    const panel = page.locator('div.ai-fab');
+    const send = async (q) => { await corner.fill(q); await panel.getByRole('button', { name: 'Send' }).click(); await page.waitForTimeout(2500); };
+    await send('What’s due this week?');
+    r.cornerDue = (await panel.innerText()).includes('Nothing is due') || (await panel.innerText()).includes('to finish');
+    await send('How do I log a climate action?');
+    r.cornerHowTo = await panel.getByText('Instant answer').last().isVisible().catch(() => false);
+    if (shots) await page.screenshot({ path: `${shots}/ghidra-corner-${theme}-${width}.png` });
+    await page.addScriptTag({ path: AXE });
+    r.cornerAxe = await page.evaluate(async () => (await window.axe.run({ include: [['div.ai-fab']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
     await ctx.close();
   }
 } finally { await browser.close(); }
 console.log(JSON.stringify({ out, errors }, null, 1));
-const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !r.cleared || r.axe.length || r.sideways) || errors.length;
+const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
 process.exit(bad ? 1 : 0);

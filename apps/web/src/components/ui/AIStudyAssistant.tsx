@@ -9,8 +9,16 @@ import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
 import { authFetch } from '@/lib/auth-token';
 import Link from '@/components/ui/Link';
-import { linkFor, type HelpEntry, type Role } from '@/lib/help/knowledge';
+import { HELP, linkFor, type HelpEntry, type Role } from '@/lib/help/knowledge';
 import { searchHelp, suggestions, tokens } from '@/lib/help/search';
+import { GhidraReply, type GhidraPlan, type Settled } from '@/components/ui/GhidraReply';
+import { api } from '@/lib/api';
+import { localPlan, type AskTurn } from '@/lib/ask';
+
+// Ghidra on every page (M364): the corner assistant. A request to do something or to see your own things ("what's due",
+// "I cycled 5 km", "open Travel": src/lib/ask.ts's matcher) goes to Ghidra's actions (POST /ask) and comes back as the
+// same reply as the hub's chat (GhidraReply: nothing happens without a tap). Questions about using UniVerse are answered
+// on the device, instantly, even offline; anything else (study questions) goes to the AI and is kept for offline.
 
 type Message = {
   id: string;
@@ -20,7 +28,13 @@ type Message = {
   source?: 'instant' | 'saved' | 'ai';
   links?: { label: string; href: string }[];
   related?: HelpEntry[];
+  /** M364: Ghidra's reply to a request (an action to confirm, or a list of the person's own things). */
+  plan?: GhidraPlan;
+  settled?: Settled;
 };
+
+/** "How do I log a bike ride?" asks how, it doesn't ask Ghidra to log one. */
+const asksHow = (q: string) => /^\s*(how|where|why|can i|could i|what is|what are|is there)\b/i.test(q);
 
 // Earlier AI answers, kept on this device so the same question can be answered again offline.
 const CACHE_KEY = 'universe-assistant-answers';
@@ -62,7 +76,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
   const role = useAuthStore((st) => st.user?.role) as Role | undefined;
   const guardian = useAuthStore((st) => st.user?.role === 'GUARDIAN');
   const [messages, setMessages] = useState<Message[]>([
-    { id: '1', role: 'assistant', content: "Hi! Ask me how to do anything on UniVerse and I'll answer instantly, even offline. For study questions, Gemini AI helps out." }
+    { id: '1', role: 'assistant', content: "Hi, I'm Ghidra! Ask what's due or how you're doing, tell me what to do in any app (you'll see it before anything happens), or ask how to do anything on UniVerse: I answer that instantly, even offline. Study questions are welcome too." }
   ]);
   const [online, setOnline] = useState(true);
   useEffect(() => {
@@ -72,7 +86,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     window.addEventListener('offline', update);
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
-  const quick = [...suggestions(role, 3).map((h) => h.q[0]), 'Explain Big O notation'];
+  const quick = ['What’s due this week?', ...suggestions(role, 2).map((h) => h.q[0]), 'Explain Big O notation'];
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -115,7 +129,24 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
 
-    // 1. Questions about using UniVerse: answered on the device, instantly, online or not.
+    // 0. Ghidra's actions (M364): your own things, or something to do, when online.
+    const wish = localPlan(text).action;
+    if ((wish === 'my_due' || wish === 'my_green' || (wish !== 'answer' && !asksHow(text))) && (typeof navigator === 'undefined' || navigator.onLine)) {
+      setIsTyping(true);
+      const history: AskTurn[] = messages.slice(1).slice(-6).filter((m) => m.content).map((m) => ({ who: m.role === 'user' ? 'me' : 'ghidra', text: m.content.slice(0, 400) }));
+      try {
+        const plan = (await api.post<GhidraPlan>('/ask', { text, history })).data;
+        reply({ content: plan.say, plan });
+      } catch {
+        reply({ content: 'Sorry, I couldn’t do that right now. Please try again.' });
+      } finally { setIsTyping(false); }
+      return;
+    }
+
+    // 1. Questions about using UniVerse: answered on the device, instantly, online or not ("who are you?" is all
+    //    small words the search skips, so Ghidra introduces itself directly).
+    const me = /^\s*(who|what)\s+(are|r)\s+(you|u)\b|^\s*(hi|hello|hey)( ghidra)?[\s!.]*$/i.test(text) ? HELP.find((h) => h.id === 'ghidra') : undefined;
+    if (me) { reply({ content: me.a, source: 'instant', links: me.links?.map((l) => ({ label: l.label, href: linkFor(l.href, role) })) }); return; }
     const { matches, confident } = searchHelp(text, role);
     if (confident) {
       const e = matches[0].entry;
@@ -130,14 +161,14 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
       if (saved) reply({ content: saved, source: 'saved' });
       else reply({
         content: related.length
-          ? "You're offline, so I can't reach Gemini right now. These built-in answers might help:"
-          : "You're offline, so I can't reach Gemini right now. I can still answer questions about using UniVerse, like the ones below, and I'll remember Gemini's answers for next time.",
+          ? "You're offline, so I can only use my built-in answers right now. These might help:"
+          : "You're offline, so I can only use my built-in answers right now. I can still answer questions about using UniVerse, like the ones below, and I remember my earlier answers for next time.",
         related: related.length ? related : suggestions(role, 4),
       });
       return;
     }
 
-    // 3. Everything else: Gemini.
+    // 3. Everything else: the AI behind Ghidra (Gemini, src/app/api/ai/route.ts); people only ever see the name Ghidra.
     setIsTyping(true);
 
     // Add a placeholder for streaming
@@ -210,9 +241,9 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
             {/* Dismiss Button - only shows on hover or mobile */}
             <button 
               onClick={() => setIsDismissed(true)}
-              aria-label="Hide AI Assistant"
+              aria-label="Hide Ghidra"
               className="hidden lg:flex w-7 h-7 rounded-full bg-zinc-800/80 backdrop-blur text-zinc-400 hover:text-white items-center justify-center shadow-lg transition-colors border border-zinc-700/50"
-              title="Hide AI Assistant"
+              title="Hide Ghidra"
             >
               <X className="w-4 h-4" />
             </button>
@@ -225,7 +256,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                 onClick={() => setIsOpen(true)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            aria-label="Open AI Study Assistant"
+            aria-label="Open Ghidra, your assistant"
             className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center relative overflow-hidden group active:scale-[0.95]"
           >
             {/* Glow effect */}
@@ -264,11 +295,11 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                 </div>
                 <div>
                   <h3 className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                    Study Assistant
+                    Ghidra
                     <Sparkles className="w-3.5 h-3.5 text-amber-500" />
                   </h3>
-                  <p className="text-[10px] font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
-                    {online ? 'Instant help · Gemini AI' : <><WifiOff className="w-3 h-3" /> Offline · built-in answers</>}
+                  <p className="text-[11px] font-medium text-indigo-600 dark:text-indigo-400 flex items-center gap-1">
+                    {online ? 'Your UniVerse assistant' : <><WifiOff className="w-3 h-3" /> Offline · built-in answers</>}
                   </p>
                 </div>
               </div>
@@ -291,14 +322,18 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                 >
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white",
-                    msg.role === 'user' ? "bg-indigo-500" : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                    msg.role === 'user' ? "bg-indigo-600" : "bg-gradient-to-br from-indigo-500 to-purple-600"
                   )}>
                     {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
+                  {msg.plan ? (
+                    <GhidraReply plan={msg.plan} role={role ?? 'STUDENT'} settled={msg.settled} className="max-w-[80%]" onLeave={() => setIsOpen(false)}
+                      onSettle={(st) => setMessages((prev) => prev.map((m) => (m.id === msg.id ? { ...m, settled: st } : m)))} />
+                  ) : (
                   <div className={cn(
                     "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm whitespace-pre-wrap break-words",
                     msg.role === 'user' 
-                      ? "bg-indigo-500 text-white rounded-ee-sm" 
+                      ? "bg-indigo-600 text-white rounded-ee-sm" 
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-es-sm"
                   )}>
                     {(msg.source === 'instant' || msg.source === 'saved') && (
@@ -310,7 +345,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                     {!!msg.links?.length && (
                       <span className="mt-2 flex flex-wrap gap-1.5">
                         {msg.links.map((l) => (
-                          <Link key={l.href} href={l.href} onClick={() => setIsOpen(false)} className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-600 dark:text-indigo-300 hover:bg-indigo-500/20">
+                          <Link key={l.href} href={l.href} onClick={() => setIsOpen(false)} className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20">
                             {l.label} <ArrowUpRight className="w-3 h-3" />
                           </Link>
                         ))}
@@ -320,13 +355,14 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                       <span className="mt-2 flex flex-col items-start gap-1">
                         <span className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Related</span>
                         {msg.related.map((h) => (
-                          <button key={h.id} type="button" onClick={() => handleSend(h.q[0])} className="text-start text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline">
+                          <button key={h.id} type="button" onClick={() => handleSend(h.q[0])} className="min-h-6 py-0.5 text-start text-xs font-medium text-indigo-600 dark:text-indigo-300 hover:underline">
                             {h.q[0]}
                           </button>
                         ))}
                       </span>
                     )}
                   </div>
+                  )}
                 </motion.div>
               ))}
               
@@ -370,8 +406,8 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                   type="text" 
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
-                  placeholder={online ? 'Ask anything…' : 'Ask how to use UniVerse…'}
-                  aria-label="Message the assistant"
+                  placeholder={online ? 'Ask or tell Ghidra…' : 'Ask how to use UniVerse…'}
+                  aria-label="Message Ghidra"
                   className="flex-1 bg-zinc-50 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-full px-4 py-2.5 text-sm outline-none focus:border-indigo-500 text-zinc-900 dark:text-white placeholder:text-zinc-400"
                 />
                 <button aria-label="Send" 

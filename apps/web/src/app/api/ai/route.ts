@@ -11,7 +11,7 @@ import { MATH_RULE } from '@/lib/tutor-rules';
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_HISTORY = 8;
 
-const SYSTEM_PROMPT = `You are an intelligent AI Study Assistant for UniVerse, a university and social-impact platform.
+const SYSTEM_PROMPT = `You are Ghidra, the friendly assistant of UniVerse, a university and social-impact platform.
 You help students with:
 - Explaining academic concepts clearly
 - Summarizing course notes
@@ -59,7 +59,7 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return plainTextStream("I'm your AI Study Assistant! The assistant isn't configured yet — an administrator needs to add a GEMINI_API_KEY in the hosting settings.");
+    return plainTextStream("I'm Ghidra, your UniVerse assistant! I can't answer that kind of question yet, but I can show what's due, how you're doing in Green, do things in any app for you, and answer how to use UniVerse.");
   }
 
   const spend = await spendAi(user);
@@ -81,8 +81,8 @@ export async function POST(req: NextRequest) {
     const res = await withTextModels(false, (model) => callGemini(model, apiKey, contents));
     if (!res || !res.ok || !res.body) {
       console.error(`Gemini API error: ${res?.status}`);
-      if (res?.status === 429) return NextResponse.json({ error: 'Lots of people are using the assistant right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
-      return NextResponse.json({ error: 'The AI assistant is temporarily unavailable.' }, { status: 502 });
+      if (res?.status === 429) return NextResponse.json({ error: 'Lots of people are asking Ghidra right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
+      return NextResponse.json({ error: 'Ghidra can’t answer that right now. Please try again soon.' }, { status: 502 });
     }
 
     const encoder = new TextEncoder();
