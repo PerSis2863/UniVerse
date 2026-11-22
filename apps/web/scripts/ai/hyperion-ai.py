@@ -10,6 +10,8 @@
 #   python3 scripts/ai/hyperion-ai.py train --dir DIR [--epochs 2]     the LoRA add-on → DIR/lora
 #   python3 scripts/ai/hyperion-ai.py score --dir DIR                  held-out requests: how many run, before and after
 #   python3 scripts/ai/hyperion-ai.py export --dir DIR --to OUT        the two files Cloudflare takes
+#   python3 scripts/ai/hyperion-ai.py upload --from OUT                 straight to the owner's Cloudflare (Workers AI), tried once
+#       (needs CLOUDFLARE_API_TOKEN with "Workers AI: Edit", given to the machine as a RunPod secret; never printed)
 import argparse, json, random, re, subprocess
 from pathlib import Path
 
@@ -142,11 +144,56 @@ def cmd_export(a):
     assert mb < 300, f'{mb:.0f} MB: Cloudflare takes under 300 MB (train with a smaller --rank)'
     print(f'→ {to}: adapter_model.safetensors ({mb:.0f} MB) and adapter_config.json')
 
+CF = 'https://api.cloudflare.com/client/v4'
+MODEL = '@cf/qwen/qwen2.5-coder-32b-instruct'
+
+def cmd_upload(a):
+    """Creates the finetune on the owner's Cloudflare account, uploads the two files, and asks it one question with the
+    add-on. Cloudflare's page lists model_type mistral, gemma and llama only: if the first try's answer fails, the add-on
+    is uploaded again as "llama" under a second name. Prints the name to set as HYPERION_LORA. The token is never printed."""
+    import os, time
+    token = os.environ.get('CLOUDFLARE_API_TOKEN', '').strip()
+    if not token: raise SystemExit('No CLOUDFLARE_API_TOKEN: skipped (download the files and upload them by hand, scripts/ai/hyperion-gpu.md step 6)')
+    import requests  # in the vLLM tools' folder
+    h = {'Authorization': f'Bearer {token}'}
+    account = os.environ.get('CLOUDFLARE_ACCOUNT_ID', '').strip()
+    if not account:
+        got = requests.get(f'{CF}/accounts', headers=h, timeout=60).json().get('result') or []
+        if len(got) != 1: raise SystemExit(f'The token reaches {len(got)} Cloudflare accounts: set CLOUDFLARE_ACCOUNT_ID too')
+        account = got[0]['id']
+    src = Path(a.src)
+    def one(name, model_type):
+        cfg = json.loads((src / 'adapter_config.json').read_text()); cfg['model_type'] = model_type
+        tmp = src / f'adapter_config.{model_type}.json'; tmp.write_text(json.dumps(cfg, indent=2))
+        r = requests.post(f'{CF}/accounts/{account}/ai/finetunes', headers=h, json={'model': MODEL, 'name': name, 'description': "UniVerse's Hyperion add-on"}, timeout=60).json()
+        if not r.get('success'): return f'could not create {name}: {r.get("errors")}'
+        fid = r['result']['id']
+        for remote, local in (('adapter_model.safetensors', src / 'adapter_model.safetensors'), ('adapter_config.json', tmp)):
+            with open(local, 'rb') as fh:
+                u = requests.post(f'{CF}/accounts/{account}/ai/finetunes/{fid}/finetune-assets', headers=h, data={'file_name': remote}, files={'file': (remote, fh)}, timeout=600).json()
+            if not u.get('success'): return f'could not upload {remote} to {name}: {u.get("errors")}'
+        time.sleep(20)
+        t = requests.post(f'{CF}/accounts/{account}/ai/run/{MODEL}', headers=h, timeout=120,
+                          json={'messages': [{'role': 'user', 'content': 'Write Hyperion code that prints the sum of 1 to 10.'}], 'lora': name, 'max_tokens': 200}).json()
+        if not t.get('success'): return f'{name} was uploaded, but a test question failed: {t.get("errors")}'
+        answer = t['result'].get('response') if isinstance(t['result'], dict) else t['result']
+        print(f'Test question answered by "{name}":\n{str(answer)[:400]}', flush=True)
+        return None
+    stamp = time.strftime('%Y%m%d-%H%M')
+    for name, model_type in ((f'hyperion-{stamp}', a.model_type), (f'hyperion-{stamp}-llama', 'llama')):
+        err = one(name, model_type)
+        if not err:
+            (src / 'cloudflare.txt').write_text(f'HYPERION_LORA={name}\n')
+            print(f'UPLOADED. In Cloudflare, set the variable HYPERION_LORA to: {name}', flush=True); return
+        print(f'Try with model_type "{model_type}": {err}', flush=True)
+    raise SystemExit('The upload to Cloudflare did not work: the files are still on this machine (scripts/ai/hyperion-gpu.md step 6)')
+
 if __name__ == '__main__':
     ap = argparse.ArgumentParser(); sub = ap.add_subparsers(dest='cmd', required=True)
     p = sub.add_parser('data'); p.add_argument('--dir', required=True); p.add_argument('--per', type=int, default=6)
     p = sub.add_parser('train'); p.add_argument('--dir', required=True); p.add_argument('--epochs', type=float, default=2); p.add_argument('--rank', type=int, default=8); p.add_argument('--seq', type=int, default=1536)
     p = sub.add_parser('score'); p.add_argument('--dir', required=True); p.add_argument('--n', type=int, default=150)
+    p = sub.add_parser('upload'); p.add_argument('--from', dest='src', required=True); p.add_argument('--model-type', default='qwen2')
     p = sub.add_parser('export'); p.add_argument('--dir', required=True); p.add_argument('--to', required=True); p.add_argument('--model-type', default='qwen2')
     a = ap.parse_args()
-    {'data': cmd_data, 'train': cmd_train, 'score': cmd_score, 'export': cmd_export}[a.cmd](a)
+    {'data': cmd_data, 'train': cmd_train, 'score': cmd_score, 'export': cmd_export, 'upload': cmd_upload}[a.cmd](a)

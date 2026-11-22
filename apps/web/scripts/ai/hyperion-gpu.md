@@ -68,9 +68,16 @@ its disk. To get the files later, press **Start** on the pod, download them (a f
 balance ever reaches US$0, RunPod stops everything, and a machine without a network volume is deleted with its files:
 download within a few days.
 
-## 6. Give the add-on to Cloudflare (on your own computer)
+## 6. The add-on goes to Cloudflare (by itself, or by hand)
 
-In the UniVerse folder on your computer (where you set it up, see AGENTS.md section 5), put the two files in a new
+**By itself (easiest):** before the run, make a Cloudflare key: dash.cloudflare.com → your profile (top right) → **API
+Tokens** → **Create Token** → **Create Custom Token**: name `runpod-hyperion`, permission **Account · Workers AI · Edit**,
+your account, a short **TTL** (a week) → **Create** and copy it. In RunPod → **Secrets** → **Create Secret**: name
+`cloudflare_token`, paste it. Give the machine `CLOUDFLARE_API_TOKEN={{ RUNPOD_SECRET_cloudflare_token }}`. After the score,
+the kit uploads the add-on, asks it one test question, and prints `In Cloudflare, set the variable HYPERION_LORA to: …`
+(also in `hyperion-ai-out/cloudflare.txt`). No download needed. Delete the key in Cloudflare afterwards.
+
+**By hand:** in the UniVerse folder on your computer (where you set it up, see AGENTS.md section 5), put the two files in a new
 folder `hyperion-lora`, then:
 
 ```

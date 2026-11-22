@@ -53,5 +53,9 @@ echo "== 5/5 Saving"
 "$WORK/vllm/bin/python" $H export --dir "$WORK" --to "$OUT"
 cp "$WORK/lessons.jsonl" "$OUT/lessons.jsonl"
 ls -la "$OUT"
+if [ -n "${CLOUDFLARE_API_TOKEN:-}" ]; then
+  echo "== Then: sending the add-on to your Cloudflare account, with one test question"
+  "$WORK/vllm/bin/python" $H upload --from "$OUT" || true
+fi
 echo "Done. Download adapter_model.safetensors, adapter_config.json and score.txt from $OUT (scripts/ai/hyperion-gpu.md, step 5)."
 echo "Then TERMINATE this machine (Pods → Terminate): until then its disk is still charged a little."
