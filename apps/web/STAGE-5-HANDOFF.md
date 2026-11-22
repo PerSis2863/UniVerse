@@ -11121,3 +11121,33 @@ feedback exact, minreal, a 2nd-order step's overshoot, peak and settling time, a
 −3 dB / −45° and an integrator's −90°, 1/(s(s+1)(s+2)) with a gain margin of 6 at √2 rad/s, pid, poles, ss, six plots.
 Not built: many inputs and outputs (MIMO), discrete time (c2d, z-transforms), delays, a PID auto-tuner, LQR and
 observers, the block-diagram simulator (next).
+
+## M415 (22 Nov): Hyperion Simulate, Blocks (block diagrams)
+
+Model-based design from the owner's list: Simulate's fifth tab, **Blocks** (`SimulateApp.tsx`, `BlocksBench.tsx`,
+`blocks.worker.ts`, `src/lib/sim/blocks.ts`). A `Diagram` is blocks (`id`, `kind`, `x`, `y`, settings `p`), wires (an
+output to one input; an output may feed many, an input takes one: a new wire replaces the old) and `stop`, `dt`.
+`KINDS` lists every block: name, library group, inputs (a sum has one per sign, a scope 1–4), outputs, settings with
+their defaults. `simulate` gives each block its states (an integrator 1, a PID 2: the integral and the filtered
+derivative `N (e − x)`, a transfer function its order, in the controllable canonical form `canon` with its direct
+part `D`), orders the blocks so one is worked out after those feeding it directly (a block whose output needs its
+input this instant: not sources, integrators, scopes or a strictly proper transfer function), refuses a loop of those
+as an "algebraic loop" in words, and steps every state with 4th-order Runge–Kutta, recording ~2,000 samples for the
+scopes (unwired scope inputs are NaN, drawn as nothing). At most `MAX_STEPS` = 200,000 steps (`capped` says it was
+cut); a value going infinite stops with "the model blew up at t = …". `readDiagram` reads a kept diagram safely
+(kinds known, settings typed, signs only + and −, wires only between blocks there, 120 blocks and 400 wires at most).
+The page: the library as buttons by group (a click adds the block at the first free spot), blocks dragged on a
+760 × 340 board snapped to 10 (arrows move the chosen one), wiring by dragging from the output dot (dropped on an
+input, or on a block: its first free input), each input's source also a select in the panel (the keyboard way);
+wires are routed as across–down–across, round above when they'd cross a block, round underneath when they go back
+(feedback), each in its own lane. Runs go to the worker 220 ms after the model changes (moving a block doesn't count,
+`logic`); each Scope is a plot with its traces' final and peak values. Kept in localStorage `uv-sim-blocks`. A
+block's picture (`Glyph`) sits outside its button, so its name is the button's name (axe's label rule). Examples:
+cruise control (PI on 1/(1000 s + 50), the force limited to ±5,000 N: the overshoot is the integrator winding up
+while the force is held), a damped mass on a spring (two integrators, two gains), a first-order loop. Tests
+(`blocks.test.ts`): the loop's 1 − e^(−2t), the spring against its exact damped answer, 1/(s+1) and (s+2)/(s+1),
+a second-order overshoot, the cruise control settling and the saturation holding, a PID's derivative of a ramp, the
+algebraic loop, blowing up and being cut short, `readDiagram`. Not built: subsystems (a block made of blocks),
+discrete blocks (unit delay, zero-order hold), lookup tables, a variable-step solver, physical modelling (mechanical
+and electrical parts as blocks), running a diagram from a script.
+

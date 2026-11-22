@@ -1,0 +1,393 @@
+'use client';
+
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react';
+import { Trash2 } from 'lucide-react';
+import { useDarkMode } from '@/lib/use-dark';
+import { cn } from '@/lib/utils';
+import { tfInline } from '@/lib/lab/lti-text';
+import { blockId, coeffs, EXAMPLES, KINDS, MAX_STEPS, newBlock, readDiagram, type Block, type BlockKind, type Diagram } from '@/lib/sim/blocks';
+import { NumField, ui } from './bench-ui';
+import type { FromBlocks, ToBlocks } from './blocks.worker';
+
+// Hyperion Simulate → Blocks (M415): model-based design. Add blocks from the library, drag them about, drag from a
+// block's output (the dot on its right) to another's input to wire them (or choose each input in the panel); the
+// diagram runs as you build it (src/lib/sim/blocks.ts, in a worker) and every Scope block draws its inputs below.
+
+const KEEP = 'uv-sim-blocks';
+const VW = 760, VH = 340, BW = 88, SNAP = 10;
+const height = (b: Block) => Math.max(54, 18 * (KINDS[b.kind].ins(b.p) + 1));
+const inPort = (b: Block, i: number) => ({ x: b.x, y: b.y + (height(b) * (i + 1)) / (KINDS[b.kind].ins(b.p) + 1) });
+const outPort = (b: Block) => ({ x: b.x + BW, y: b.y + height(b) / 2 });
+const GROUPS = ['Sources', 'Maths', 'Continuous', 'Sinks'];
+const LIGHT = ['#7c3aed', '#0e7490', '#b45309', '#047857'], DARK = ['#a78bfa', '#22d3ee', '#fbbf24', '#34d399'];
+
+type Field = { key: string; label: string; unit?: string; text?: string };
+const FIELDS: Record<BlockKind, Field[]> = {
+  step: [{ key: 'time', label: 'Step time', unit: 's' }, { key: 'before', label: 'Value before' }, { key: 'after', label: 'Value after' }],
+  sine: [{ key: 'amplitude', label: 'Amplitude' }, { key: 'frequency', label: 'Frequency', unit: 'Hz' }, { key: 'phase', label: 'Phase', unit: 'degrees' }],
+  constant: [{ key: 'value', label: 'Value' }],
+  pulse: [{ key: 'amplitude', label: 'Amplitude' }, { key: 'period', label: 'Period', unit: 's' }, { key: 'width', label: 'On for', unit: '% of the period' }],
+  ramp: [{ key: 'slope', label: 'Slope', unit: 'per second' }, { key: 'start', label: 'Starts at', unit: 's' }],
+  gain: [{ key: 'k', label: 'Gain' }],
+  sum: [{ key: 'signs', label: 'Signs', text: 'one + or − per input, e.g. +- or ++-' }],
+  product: [],
+  saturation: [{ key: 'lower', label: 'Lowest' }, { key: 'upper', label: 'Highest' }],
+  integrator: [{ key: 'initial', label: 'Starts at' }],
+  tf: [{ key: 'num', label: 'Numerator', text: 'powers of s, highest first: 1 2 = s + 2' }, { key: 'den', label: 'Denominator', text: '1 3 2 = s² + 3s + 2' }],
+  pid: [{ key: 'Kp', label: 'Kp (proportional)' }, { key: 'Ki', label: 'Ki (integral)' }, { key: 'Kd', label: 'Kd (derivative)' }, { key: 'N', label: 'Derivative filter N' }],
+  scope: [],
+};
+
+const fmt = (v: number) => (Math.abs(v) >= 1e4 || (Math.abs(v) < 1e-3 && v !== 0) ? v.toExponential(2) : String(+v.toPrecision(4)));
+function summary(b: Block): string {
+  const p = b.p, v = (k: string) => fmt(Number(p[k]));
+  switch (b.kind) {
+    case 'step': return `${v('before')} → ${v('after')} at ${v('time')} s`;
+    case 'sine': return `${v('amplitude')} · sin, ${v('frequency')} Hz`;
+    case 'constant': return v('value');
+    case 'pulse': return `${v('amplitude')} every ${v('period')} s`;
+    case 'ramp': return `slope ${v('slope')}`;
+    case 'gain': return `× ${v('k')}`;
+    case 'sum': return String(p.signs).replace(/-/g, '−');
+    case 'saturation': return `${v('lower')} to ${v('upper')}`;
+    case 'integrator': return `starts at ${v('initial')}`;
+    case 'tf': return tfInline(coeffs(p.num), coeffs(p.den));
+    case 'pid': return `Kp ${v('Kp')}, Ki ${v('Ki')}, Kd ${v('Kd')}`;
+    case 'scope': return `${KINDS.scope.ins(p)} input${KINDS.scope.ins(p) > 1 ? 's' : ''}`;
+    default: return '';
+  }
+}
+
+/** The picture inside a block, centred on (0, 0). */
+function Glyph({ b }: { b: Block }) {
+  const line = { fill: 'none', stroke: 'currentColor', strokeWidth: 1.8, strokeLinecap: 'round', strokeLinejoin: 'round' } as const;
+  const big = (t: string, size = 20) => <text x={0} y={size * 0.36} fontSize={size} textAnchor="middle" fill="currentColor" className="font-mono">{t}</text>;
+  switch (b.kind) {
+    case 'step': return <path d="M-22,8 H-4 V-8 H22" {...line} />;
+    case 'sine': return <path d="M-22,0 C-16,-14 -10,-14 -5.5,0 S5,14 11,0 S19,-12 22,-6" {...line} />;
+    case 'pulse': return <path d="M-22,8 H-16 V-8 H-6 V8 H4 V-8 H14 V8 H22" {...line} />;
+    case 'ramp': return <path d="M-22,10 H-10 L22,-10" {...line} />;
+    case 'saturation': return <path d="M-22,8 H-8 L8,-8 H22" {...line} />;
+    case 'constant': return big(fmt(Number(b.p.value)), 16);
+    case 'gain': return big(`×${fmt(Number(b.p.k))}`, 15);
+    case 'sum': return big('Σ', 24);
+    case 'product': return big('×', 24);
+    case 'pid': return big('PID', 15);
+    case 'integrator': return <><text x={0} y={-4} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">1</text><line x1={-10} y1={0} x2={10} y2={0} stroke="currentColor" strokeWidth={1.2} /><text x={0} y={14} fontSize={13} textAnchor="middle" fill="currentColor" className="font-mono">s</text></>;
+    case 'tf': {
+      const cut = (t: string) => (t.length > 12 ? `${t.slice(0, 11)}…` : t);
+      const top = cut(tfInline(coeffs(b.p.num), [1])), bottom = cut(tfInline(coeffs(b.p.den), [1]));
+      return <><text x={0} y={-5} fontSize={10.5} textAnchor="middle" fill="currentColor" className="font-mono">{top}</text><line x1={-34} y1={0} x2={34} y2={0} stroke="currentColor" strokeWidth={1.1} /><text x={0} y={13} fontSize={10.5} textAnchor="middle" fill="currentColor" className="font-mono">{bottom}</text></>;
+    }
+    case 'scope': return <><rect x={-22} y={-14} width={44} height={28} rx={4} fill="none" stroke="currentColor" strokeWidth={1.4} /><path d="M-17,6 C-10,-12 -4,12 3,-2 S13,-8 17,-4" {...line} strokeWidth={1.4} /></>;
+  }
+}
+
+/** Nice round tick values from lo to hi. */
+function ticks(lo: number, hi: number, count = 5) {
+  if (!(hi > lo)) { hi = lo + 1; lo -= 1; }
+  const raw = (hi - lo) / count, p = 10 ** Math.floor(Math.log10(raw)), step = [1, 2, 2.5, 5, 10].map((k) => k * p).find((k) => k >= raw) ?? raw;
+  const out: number[] = [];
+  for (let v = Math.ceil(lo / step) * step; v <= hi + step * 1e-9; v += step) out.push(+v.toPrecision(12));
+  return out;
+}
+
+function ScopePlot({ title, t, traces, colours }: { title: string; t: number[]; traces: { label: string; v: number[] }[]; colours: string[] }) {
+  const PW = 900, PH = 240, L = 58, R = 14, T = 10, Bt = 40;
+  const all = traces.flatMap((tr) => tr.v.filter(Number.isFinite));
+  const lo0 = all.length ? Math.min(...all) : -1, hi0 = all.length ? Math.max(...all) : 1, padY = (hi0 - lo0) * 0.08 || Math.abs(hi0) * 0.1 || 1;
+  const yt = ticks(lo0 - padY, hi0 + padY), lo = Math.min(yt[0], lo0 - padY), hi = Math.max(yt.at(-1)!, hi0 + padY);
+  const tEnd = t.at(-1) ?? 1, xt = ticks(0, tEnd, 6).filter((v) => v <= tEnd + 1e-9);
+  const X = (tt: number) => L + (tt / (tEnd || 1)) * (PW - L - R), Y = (v: number) => T + (1 - (v - lo) / (hi - lo)) * (PH - T - Bt);
+  return (
+    <figure className="min-w-0 rounded-lg border border-zinc-200 p-2 dark:border-white/10">
+      <figcaption className="mb-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-zinc-600 dark:text-zinc-300">
+        <span className="font-semibold text-zinc-900 dark:text-white">{title}</span>
+        {traces.map((tr, i) => {
+          const v = tr.v.filter(Number.isFinite);
+          return <span key={i} className="inline-flex items-center gap-1"><span className="h-2 w-3 rounded-sm" style={{ background: colours[i] }} aria-hidden />{tr.label}{v.length > 0 && <span className="font-mono tabular-nums text-zinc-500 dark:text-zinc-400">ends {fmt(v.at(-1)!)}, peak {fmt(Math.max(...v))}</span>}</span>;
+        })}
+      </figcaption>
+      <svg viewBox={`0 0 ${PW} ${PH}`} className="h-auto w-full" role="img" aria-label={`${title}: ${traces.map((tr) => { const v = tr.v.filter(Number.isFinite); return `${tr.label} ${v.length ? `ends at ${fmt(v.at(-1)!)}` : 'not wired'}`; }).join('; ')}`}>
+        {yt.map((v) => <g key={`y${v}`}><line x1={L} x2={PW - R} y1={Y(v)} y2={Y(v)} className={v === 0 ? 'stroke-zinc-400 dark:stroke-zinc-500' : 'stroke-zinc-200 dark:stroke-white/10'} strokeWidth={1} /><text x={L - 6} y={Y(v) + 4} fontSize={12} textAnchor="end" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
+        {xt.map((v) => <g key={`x${v}`}><line x1={X(v)} x2={X(v)} y1={T} y2={PH - Bt} className="stroke-zinc-200 dark:stroke-white/10" strokeWidth={1} /><text x={X(v)} y={PH - Bt + 16} fontSize={12} textAnchor="middle" className="fill-zinc-600 font-mono dark:fill-zinc-300">{fmt(v)}</text></g>)}
+        <text x={(L + PW - R) / 2} y={PH - 3} fontSize={12} textAnchor="middle" className="fill-zinc-500 dark:fill-zinc-400">time (s)</text>
+        {traces.map((tr, i) => {
+          // At most ~1,200 points drawn (the run keeps up to ~2,000).
+          const every = Math.max(1, Math.ceil(t.length / 1200)), pts: string[] = [];
+          for (let k = 0; k < t.length; k += every) if (Number.isFinite(tr.v[k])) pts.push(`${X(t[k]).toFixed(1)},${Y(Math.max(lo, Math.min(hi, tr.v[k]))).toFixed(1)}`);
+          return <polyline key={i} points={pts.join(' ')} fill="none" stroke={colours[i]} strokeWidth={1.8} strokeLinejoin="round" />;
+        })}
+      </svg>
+    </figure>
+  );
+}
+
+export function BlocksBench() {
+  const dark = useDarkMode(), colours = dark ? DARK : LIGHT;
+  const [dg, setDgNow] = useState<Diagram>(() => { try { return readDiagram(JSON.parse(localStorage.getItem(KEEP) ?? 'null')); } catch { return EXAMPLES[0].make(); } });
+  const [chosen, setChosen] = useState<string | null>(null);
+  const [drag, setDrag] = useState<{ move: string; dx: number; dy: number } | { from: string; x: number; y: number } | null>(null);
+  const [result, setResult] = useState<FromBlocks | null>(null);
+  const [text, setText] = useState<Record<string, string>>({});
+  const [pending, setPending] = useState(0);
+  const svg = useRef<SVGSVGElement>(null), keepTimer = useRef(0), worker = useRef<Worker | null>(null), asked = useRef(0);
+  const setDg = (f: (d: Diagram) => Diagram) => setDgNow((d) => {
+    const next = f(d);
+    clearTimeout(keepTimer.current);
+    keepTimer.current = window.setTimeout(() => { try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } }, 300);
+    return next;
+  });
+
+  useEffect(() => {
+    const w = new Worker(new URL('./blocks.worker.ts', import.meta.url));
+    w.onmessage = (e: MessageEvent<FromBlocks>) => { if (e.data.id === asked.current) setResult(e.data); };
+    worker.current = w;
+    return () => w.terminate();
+  }, []);
+  // Runs again when what the diagram does changes (not when a block is only moved).
+  const logic = useMemo(() => JSON.stringify([dg.blocks.map((b) => [b.id, b.kind, b.p]), dg.wires, dg.stop, dg.dt]), [dg]);
+  const run = useEffectEvent(() => { asked.current += 1; setPending(asked.current); worker.current?.postMessage({ id: asked.current, diagram: dg } satisfies ToBlocks); });
+  useEffect(() => {
+    const t = window.setTimeout(run, 220);
+    return () => clearTimeout(t);
+  }, [logic]);
+
+  const byId = useMemo(() => new Map(dg.blocks.map((b) => [b.id, b])), [dg.blocks]);
+  const names = useMemo(() => {
+    const seen = new Map<string, number>(), total = new Map<string, number>(), out = new Map<string, string>();
+    for (const b of dg.blocks) total.set(b.kind, (total.get(b.kind) ?? 0) + 1);
+    for (const b of dg.blocks) { const k = (seen.get(b.kind) ?? 0) + 1; seen.set(b.kind, k); out.set(b.id, total.get(b.kind)! > 1 ? `${KINDS[b.kind].name} ${k}` : KINDS[b.kind].name); }
+    return out;
+  }, [dg.blocks]);
+
+  const toWorld = (e: { clientX: number; clientY: number }) => {
+    const el = svg.current!, p = el.createSVGPoint();
+    p.x = e.clientX; p.y = e.clientY;
+    const q = p.matrixTransform(el.getScreenCTM()!.inverse());
+    return { x: q.x, y: q.y };
+  };
+  const place = (b: Block, x: number, y: number) => ({ ...b, x: Math.max(0, Math.min(VW - BW, Math.round(x / SNAP) * SNAP)), y: Math.max(0, Math.min(VH - height(b) - 18, Math.round(y / SNAP) * SNAP)) });
+  const connect = (from: string, to: string, port: number) => setDg((d) => ({ ...d, wires: [...d.wires.filter((w) => !(w.to === to && w.in === port)), { id: blockId('w'), from, out: 0, to, in: port }] }));
+  const unwire = (to: string, port: number) => setDg((d) => ({ ...d, wires: d.wires.filter((w) => !(w.to === to && w.in === port)) }));
+
+  const move = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (!drag) return;
+    const q = toWorld(e);
+    if ('move' in drag) setDg((d) => ({ ...d, blocks: d.blocks.map((b) => (b.id === drag.move ? place(b, q.x - drag.dx, q.y - drag.dy) : b)) }));
+    else setDrag({ ...drag, x: q.x, y: q.y });
+  };
+  const up = (e: ReactPointerEvent<SVGSVGElement>) => {
+    if (drag && 'from' in drag) {
+      const q = toWorld(e);
+      let best: { b: Block; i: number; d: number } | null = null;
+      for (const b of dg.blocks) for (let i = 0; i < KINDS[b.kind].ins(b.p); i++) { const p = inPort(b, i), d = Math.hypot(p.x - q.x, p.y - q.y); if (d < 20 && (!best || d < best.d)) best = { b, i, d }; }
+      if (!best) {
+        // Dropped on a block: its first free input (or its first).
+        const b = dg.blocks.find((bb) => q.x >= bb.x && q.x <= bb.x + BW && q.y >= bb.y && q.y <= bb.y + height(bb) && KINDS[bb.kind].ins(bb.p) > 0);
+        if (b) { const n = KINDS[b.kind].ins(b.p), free = Array.from({ length: n }, (_, i) => i).find((i) => !dg.wires.some((w) => w.to === b.id && w.in === i)); best = { b, i: free ?? 0, d: 0 }; }
+      }
+      if (best) connect(drag.from, best.b.id, best.i);
+    }
+    setDrag(null);
+  };
+
+  const add = (kind: BlockKind) => {
+    const b = newBlock(kind, 0, 0), h = height(b);
+    // The first free spot, left to right, top to bottom.
+    let spot = { x: 40, y: 30 };
+    search: for (let y = 30; y + h < VH - 18; y += 90) for (let x = 40; x + BW < VW; x += 140) {
+      if (!dg.blocks.some((o) => x < o.x + BW + 20 && x + BW + 20 > o.x && y < o.y + height(o) + 24 && y + h + 24 > o.y)) { spot = { x, y }; break search; }
+    }
+    setDg((d) => ({ ...d, blocks: [...d.blocks, { ...b, ...spot }] }));
+    setChosen(b.id);
+  };
+  const remove = (id: string) => { setDg((d) => ({ ...d, blocks: d.blocks.filter((b) => b.id !== id), wires: d.wires.filter((w) => w.id !== id && w.from !== id && w.to !== id) })); setChosen(null); };
+  const setParam = (id: string, key: string, value: number | string) => setDg((d) => {
+    const blocks = d.blocks.map((b) => (b.id === id ? { ...b, p: { ...b.p, [key]: value } } : b)), b = blocks.find((bb) => bb.id === id)!;
+    // Fewer inputs (a sum's signs, a scope's inputs): wires into the ones gone go too.
+    return { ...d, blocks, wires: d.wires.filter((w) => w.to !== id || w.in < KINDS[b.kind].ins(b.p)) };
+  });
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target && /^(INPUT|SELECT|TEXTAREA)$/.test(target.tagName)) return;
+      if ((e.key === 'Delete' || e.key === 'Backspace') && chosen) { e.preventDefault(); remove(chosen); }
+      if (e.key === 'Escape') { setChosen(null); setDrag(null); }
+      const step = { ArrowLeft: [-SNAP, 0], ArrowRight: [SNAP, 0], ArrowUp: [0, -SNAP], ArrowDown: [0, SNAP] }[e.key];
+      if (step && chosen && byId.has(chosen)) { e.preventDefault(); setDg((d) => ({ ...d, blocks: d.blocks.map((b) => (b.id === chosen ? place(b, b.x + step[0], b.y + step[1]) : b)) })); }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  });
+
+  /** Every wire's path: across, down or up, across; one that would cross a block goes round above it, and a feedback
+   * wire (back to the left) round underneath, each in its own lane. */
+  const paths = useMemo(() => {
+    const box = (b: Block) => ({ id: b.id, x0: b.x - 6, x1: b.x + BW + 6, y0: b.y - 6, y1: b.y + height(b) + 18 });
+    const boxes = dg.blocks.map(box), out = new Map<string, string>();
+    const across = (x0: number, x1: number, y: number, skip: string[]) => boxes.some((bx) => !skip.includes(bx.id) && y > bx.y0 && y < bx.y1 && Math.max(x0, x1) > bx.x0 && Math.min(x0, x1) < bx.x1);
+    const down = (x: number, y0: number, y1: number, skip: string[]) => boxes.some((bx) => !skip.includes(bx.id) && x > bx.x0 && x < bx.x1 && Math.max(y0, y1) > bx.y0 && Math.min(y0, y1) < bx.y1);
+    let above = 0, below = 0;
+    for (const w of dg.wires) {
+      const a = byId.get(w.from), b = byId.get(w.to);
+      if (!a || !b) continue;
+      const p = outPort(a), q = inPort(b, w.in), skip = [a.id, b.id], x0 = Math.min(p.x, q.x) - 20, x1 = Math.max(p.x, q.x) + 20;
+      const spanned = boxes.filter((bx) => bx.x1 > x0 && bx.x0 < x1);
+      if (q.x - p.x >= 10) {
+        const mx = Math.round((p.x + q.x) / 2);
+        if (!across(p.x, mx, p.y, skip) && !down(mx, p.y, q.y, skip) && !across(mx, q.x, q.y, skip)) { out.set(w.id, `M${p.x},${p.y} H${mx} V${q.y} H${q.x - 6}`); continue; }
+        const k = above++, lane = Math.max(6, Math.min(...spanned.map((bx) => bx.y0)) - 10 - 8 * k);
+        out.set(w.id, `M${p.x},${p.y} H${p.x + 12 + 5 * k} V${lane} H${q.x - 14 - 5 * k} V${q.y} H${q.x - 6}`);
+      } else {
+        const k = below++, lane = Math.min(VH - 4, Math.max(...spanned.map((bx) => bx.y1)) + 6 + 8 * k);
+        out.set(w.id, `M${p.x},${p.y} H${p.x + 12 + 5 * k} V${lane} H${q.x - 14 - 5 * k} V${q.y} H${q.x - 6}`);
+      }
+    }
+    return out;
+  }, [dg.blocks, dg.wires, byId]);
+
+  const sel = chosen ? byId.get(chosen) ?? null : null, selWire = chosen ? dg.wires.find((w) => w.id === chosen) ?? null : null;
+  const scopes = dg.blocks.filter((b) => b.kind === 'scope'), stale = !result || result.id !== pending;
+  const steps = Math.ceil(dg.stop / dg.dt);
+  const { label, small } = ui;
+
+  return (
+    <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+      <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Block diagram settings" data-no-motion>
+        <div>
+          <span className={label}>Add a block</span>
+          {GROUPS.map((g) => (
+            <div key={g} className="mt-2">
+              <p className="text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{g}</p>
+              <div className="mt-1 flex flex-wrap gap-1">
+                {(Object.keys(KINDS) as BlockKind[]).filter((k) => KINDS[k].group === g).map((k) => <button key={k} type="button" className={ui.add} onClick={() => add(k)}>{KINDS[k].name}</button>)}
+              </div>
+            </div>
+          ))}
+          <p className="mt-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Drag a block to move it. Drag from the dot on a block’s right to another block’s input to wire them. Delete removes what’s chosen.</p>
+        </div>
+        {sel && (
+          <div key={sel.id} className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-white/10" aria-live="polite">
+            <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">{names.get(sel.id)}</p>
+            {FIELDS[sel.kind].map((f) => f.text !== undefined ? (
+              <label key={f.key} className={label}>{f.label} <span className="font-normal text-zinc-500 dark:text-zinc-400">({f.text})</span>
+                <input value={text[`${sel.id}:${f.key}`] ?? String(sel.p[f.key])} className={ui.input}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setText((t) => ({ ...t, [`${sel.id}:${f.key}`]: v }));
+                    const ok = f.key === 'signs' ? /^[+-]{1,6}$/.test(v.replace(/−/g, '-').replace(/\s/g, '')) : v.trim() !== '' && v.trim().split(/[\s,]+/).every((x) => Number.isFinite(Number(x)));
+                    if (ok) setParam(sel.id, f.key, f.key === 'signs' ? v.replace(/−/g, '-').replace(/\s/g, '') : v.trim().slice(0, 80));
+                  }}
+                  onBlur={() => setText((t) => { const next = { ...t }; delete next[`${sel.id}:${f.key}`]; return next; })} />
+              </label>
+            ) : <NumField key={f.key} label={f.label} unit={f.unit} value={Number(sel.p[f.key])} onChange={(v) => setParam(sel.id, f.key, v)} />)}
+            {sel.kind === 'scope' && (
+              <label className={label}>Inputs
+                <select value={KINDS.scope.ins(sel.p)} onChange={(e) => setParam(sel.id, 'inputs', Number(e.target.value))} className="input mt-1 w-full">{[1, 2, 3, 4].map((v) => <option key={v} value={v}>{v}</option>)}</select>
+              </label>
+            )}
+            {Array.from({ length: KINDS[sel.kind].ins(sel.p) }, (_, i) => {
+              const w = dg.wires.find((ww) => ww.to === sel.id && ww.in === i);
+              return (
+                <label key={i} className={label}>Input {i + 1}{sel.kind === 'sum' ? ` (${String(sel.p.signs)[i] === '-' ? 'minus' : 'plus'})` : ''} comes from
+                  <select value={w?.from ?? ''} onChange={(e) => (e.target.value ? connect(e.target.value, sel.id, i) : unwire(sel.id, i))} className="input mt-1 w-full">
+                    <option value="">Nothing (0)</option>
+                    {dg.blocks.filter((b) => KINDS[b.kind].outs > 0).map((b) => <option key={b.id} value={b.id}>{names.get(b.id)}</option>)}
+                  </select>
+                </label>
+              );
+            })}
+            <button type="button" className={cn(small, 'text-red-700 dark:text-red-400')} onClick={() => remove(sel.id)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete the block</button>
+          </div>
+        )}
+        {selWire && (
+          <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-white/10" aria-live="polite">
+            <p className="text-[13px] text-zinc-800 dark:text-zinc-100">A wire from <strong>{names.get(selWire.from)}</strong> to input {selWire.in + 1} of <strong>{names.get(selWire.to)}</strong></p>
+            <button type="button" className={cn(small, 'text-red-700 dark:text-red-400')} onClick={() => remove(selWire.id)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete the wire</button>
+          </div>
+        )}
+        <div className="grid grid-cols-2 gap-2">
+          <NumField label="Run for" unit="s" value={dg.stop} min={0.001} onChange={(v) => { if (v > 0 && v <= 1e5) setDg((d) => ({ ...d, stop: v })); }} />
+          <NumField label="Time step" unit="s" value={dg.dt} min={0.00001} onChange={(v) => { if (v >= 1e-5 && v <= 10) setDg((d) => ({ ...d, dt: v })); }} />
+        </div>
+        <p className="-mt-2 text-xs text-zinc-600 dark:text-zinc-300">{steps.toLocaleString()} steps of Runge–Kutta (4th order){steps > MAX_STEPS ? `: only the first ${MAX_STEPS.toLocaleString()} run; make the step bigger` : ''}.</p>
+        <label className={label}>Start from
+          <select value="" onChange={(e) => { const ex = EXAMPLES.find((x) => x.id === e.target.value); if (ex) { setDg(() => ex.make()); setChosen(null); } }} className="input mt-1 w-full">
+            <option value="">Choose a model…</option>{EXAMPLES.map((ex) => <option key={ex.id} value={ex.id}>{ex.name}</option>)}
+          </select>
+        </label>
+        <button type="button" className={cn(small, 'self-start')} onClick={() => { if (confirm('Clear the whole diagram?')) { setDg((d) => ({ ...d, blocks: [], wires: [] })); setChosen(null); } }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Clear the diagram</button>
+      </aside>
+      <section className="panel flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="Block diagram">
+        {result?.error && result.id === pending && <p className="border-b border-zinc-200/80 bg-red-50 px-3 py-2 text-xs text-red-800 dark:border-white/10 dark:bg-red-950/40 dark:text-red-300">{result.error}</p>}
+        <div className="min-h-0 flex-1 overflow-auto p-2">
+          <svg ref={svg} viewBox={`0 0 ${VW} ${VH}`} className="h-full max-h-full w-full touch-none select-none" role="group" aria-label={`Block diagram: ${dg.blocks.length} blocks, ${dg.wires.length} wires`}
+            onPointerMove={move} onPointerUp={up} onPointerDown={(e) => { if (e.target === e.currentTarget) setChosen(null); }} data-no-motion>
+            <defs><pattern id="uv-blocks-dots" width={20} height={20} patternUnits="userSpaceOnUse"><circle cx={1} cy={1} r={1} className="fill-zinc-300 dark:fill-zinc-700" /></pattern></defs>
+            <rect width={VW} height={VH} fill="url(#uv-blocks-dots)" pointerEvents="none" />
+            {dg.wires.map((w) => {
+              const d = paths.get(w.id), on = w.id === chosen, q = byId.get(w.to) && inPort(byId.get(w.to)!, w.in);
+              if (!d || !q) return null;
+              return (
+                <g key={w.id} role="button" tabIndex={0} aria-label={`Wire from ${names.get(w.from)} to ${names.get(w.to)} input ${w.in + 1}`} className="cursor-pointer outline-none"
+                  onPointerDown={(e) => { e.stopPropagation(); setChosen(w.id); }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChosen(w.id); } }}>
+                  <path d={d} fill="none" stroke="transparent" strokeWidth={12} />
+                  <path d={d} fill="none" strokeWidth={on ? 2.6 : 1.8} strokeLinejoin="round" className={on ? 'stroke-violet-600 dark:stroke-violet-400' : 'stroke-zinc-500 dark:stroke-zinc-400'} />
+                  <path d={`M${q.x - 8},${q.y - 4.5} L${q.x},${q.y} L${q.x - 8},${q.y + 4.5} Z`} className={on ? 'fill-violet-600 dark:fill-violet-400' : 'fill-zinc-500 dark:fill-zinc-400'} />
+                </g>
+              );
+            })}
+            {dg.blocks.map((b) => {
+              const h = height(b), on = b.id === chosen, ins = KINDS[b.kind].ins(b.p), o = outPort(b);
+              return (
+                <g key={b.id}>
+                  <g role="button" tabIndex={0} aria-label={`${names.get(b.id)}: ${summary(b)}`} aria-pressed={on} className="cursor-grab outline-none"
+                    onPointerDown={(e) => { e.stopPropagation(); setChosen(b.id); const q = toWorld(e); svg.current?.setPointerCapture(e.pointerId); setDrag({ move: b.id, dx: q.x - b.x, dy: q.y - b.y }); }}
+                    onFocus={() => setChosen(b.id)}>
+                    <rect x={b.x} y={b.y} width={BW} height={h} rx={10} strokeWidth={on ? 2.2 : 1.2} className={cn('fill-white dark:fill-zinc-900', on ? 'stroke-violet-600 dark:stroke-violet-400' : 'stroke-zinc-300 dark:stroke-white/20')} />
+                    <text x={b.x + BW / 2} y={b.y + h + 14} fontSize={11} textAnchor="middle" className="fill-zinc-600 dark:fill-zinc-300">{names.get(b.id)}</text>
+                  </g>
+                  {/* The picture sits outside the button, so its name is the block's name alone. */}
+                  <g transform={`translate(${b.x + BW / 2} ${b.y + h / 2})`} className="pointer-events-none text-zinc-800 dark:text-zinc-100" aria-hidden><Glyph b={b} /></g>
+                  {Array.from({ length: ins }, (_, i) => {
+                    const p = inPort(b, i);
+                    return <g key={i} aria-hidden>
+                      <circle cx={p.x} cy={p.y} r={3.5} className="fill-white stroke-zinc-500 dark:fill-zinc-900 dark:stroke-zinc-400" strokeWidth={1.4} />
+                      {b.kind === 'sum' && <text x={p.x + 8} y={p.y + 4} fontSize={12} className="fill-zinc-700 font-mono dark:fill-zinc-200">{String(b.p.signs)[i] === '-' ? '−' : '+'}</text>}
+                    </g>;
+                  })}
+                  {KINDS[b.kind].outs > 0 && (
+                    <g aria-hidden className="cursor-crosshair" onPointerDown={(e) => { e.stopPropagation(); svg.current?.setPointerCapture(e.pointerId); const q = toWorld(e); setDrag({ from: b.id, x: q.x, y: q.y }); }}>
+                      <circle cx={o.x} cy={o.y} r={11} fill="transparent" />
+                      <circle cx={o.x} cy={o.y} r={4.5} className="fill-violet-600 dark:fill-violet-400" />
+                    </g>
+                  )}
+                </g>
+              );
+            })}
+            {drag && 'from' in drag && byId.get(drag.from) && <path d={`M${outPort(byId.get(drag.from)!).x},${outPort(byId.get(drag.from)!).y} L${drag.x},${drag.y}`} className="stroke-violet-600 dark:stroke-violet-400" strokeWidth={2} strokeDasharray="5 4" fill="none" pointerEvents="none" />}
+          </svg>
+        </div>
+        <div role="region" aria-label="Scopes" tabIndex={0} className="max-h-[48%] shrink-0 overflow-y-auto border-t border-zinc-200/80 p-3 outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:border-white/10" data-no-motion>
+          <p className="mb-2 flex flex-wrap items-center gap-x-3 text-xs text-zinc-600 dark:text-zinc-300">
+            <span className="font-semibold text-zinc-900 dark:text-white">Scopes</span>
+            {result && !result.error && <span className="font-mono tabular-nums">ran {Math.min(steps, MAX_STEPS).toLocaleString()} steps in {result.ms < 10 ? result.ms.toFixed(1) : Math.round(result.ms)} ms{result.capped ? ' (cut short)' : ''}</span>}
+            {stale && pending > 0 && <span>running…</span>}
+          </p>
+          {scopes.length === 0 ? <p className="text-xs text-zinc-600 dark:text-zinc-300">Add a Scope block (Sinks) and wire what you want to see into it.</p> : (
+            <div className="grid grid-cols-1 gap-3 2xl:grid-cols-2">
+              {scopes.map((s) => {
+                const traces = Array.from({ length: KINDS.scope.ins(s.p) }, (_, i) => {
+                  const w = dg.wires.find((ww) => ww.to === s.id && ww.in === i);
+                  return { label: w ? names.get(w.from) ?? `Input ${i + 1}` : `Input ${i + 1} (not wired)`, v: result?.scopes[s.id]?.[i] ?? [] };
+                });
+                return <ScopePlot key={s.id} title={names.get(s.id) ?? 'Scope'} t={result?.t ?? []} traces={traces} colours={colours} />;
+              })}
+            </div>
+          )}
+        </div>
+      </section>
+    </div>
+  );
+}
