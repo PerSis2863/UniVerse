@@ -60,7 +60,13 @@ At the end it prints two lines like `before (no add-on): 92 of 150 answers ran i
 
 In the folder `hyperion-ai-out` (in `/workspace`, the first folder Jupyter Lab shows): **adapter_model.safetensors**, **adapter_config.json**
 and **score.txt** (and `lessons.jsonl`, the lessons it learnt from). In Jupyter Lab: right-click → Download. Then
-**stop or delete the machine**.
+**terminate the machine** (Pods → your pod → Terminate).
+
+**It can't run up your money:** on RunPod the kit switches the machine off by itself when it finishes, when it fails,
+and after 8 hours at most (`MAX_HOURS`). A switched-off ("stopped") machine keeps your files and pays only a little for
+its disk. To get the files later, press **Start** on the pod, download them (a few minutes), then **Terminate**. If your
+balance ever reaches US$0, RunPod stops everything, and a machine without a network volume is deleted with its files:
+download within a few days.
 
 ## 6. Give the add-on to Cloudflare (on your own computer)
 
