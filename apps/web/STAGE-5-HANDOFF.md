@@ -10463,3 +10463,28 @@ stacked`, fills `-- cycle`, error bars (`+-` or `+=`/`-=`), text as `\node`, ref
 `polaraxis` (needs `\usepgfplotslibrary{polar}`, said in the header), pies as plain TikZ wedges (only when the pie
 is the figure's one plot), `hide axis`, xtick / xticklabels, sgtitle as a node above. `yyaxis` and `cla` are command
 words. Not built: legends for the right side of yyaxis, 3D text placement, histogram2, area stacking.
+
+## M382 (22 Nov): UniVerse Lab: 3D arrays and full-colour pictures
+
+`Mat.p` (values.ts): the pages of a 3D array, page after page in `d`; absent for a plain matrix. `mat(r, c, d)` infers
+`p` when `d` holds a whole number of r × c pages, which is why every builtin written as `mat(m.r, m.c, m.d.map(…))`
+keeps the pages with no change; `pages(v)`, `page(m, k)`, `stack(list)` (values.ts) are the helpers; `numel`
+counts pages; `sizeOf` stays [r, c] (most code is 2D). Printing shows `A(:,:,k) =` blocks; the workspace says
+`2x3x4 double`. interp.ts: `zip` broadcasts over three dimensions; `*` and `'` refuse 3D arrays with a plain message
+(`flatOnly`); `[A B]` joins page by page; one or two indices fold the pages into the columns (A(7), A(i, j) with j up
+to c·p), as MATLAB does; three indices read and write (growing rows, columns and pages, `place3`); A(:, :, k) = []
+removes pages; `for` walks the columns of every page. At the end of interp.ts, `ALONG` wraps the column functions
+(sum, prod, mean, median, mode, cum*, any, all, max, min, std, var, diff, sort, flips, rot90, circshift, triu, tril,
+trapz, bounds…): on a 3D array they run page by page; with dim = 3 they run along the pages (each element's values
+across the pages become one column of a p × (r·c) matrix, then back). The wrap is installed once interp.ts has loaded
+builtins.ts and signal.ts, so a column function added later in those files gets it by being listed there; a function
+in plot*.ts is not wrapped. builtins.ts: sizes take a third number (zeros(2, 3, 4), zeros([2 3 4])); size gives
+[r c p] (and [r, c] = size(A) folds pages into c, as MATLAB does), size(A, 3), ndims, length, isvector / ismatrix;
+reshape with 3 sizes or [] (and keeps complex parts now); cat(3, …), squeeze, permute / ipermute, repmat with a
+third count, meshgrid with 3 outputs, ndgrid. Pictures (plot3d.ts): image / imagesc / imshow take r × c × 3 (Grid.rgb,
+0–1; anything over 1 taken as 0–255), imshow also a grey matrix (with [low high] or [] to stretch it), shown pixelated,
+square and without axes; rgb2gray (0.2989 / 0.587 / 0.114), im2double, im2uint8 (values rounded 0–255: there is no
+uint8 type), imresize (bilinear, scale or [rows cols]); LaTeX writes each cell's colour (`mesh/color input=explicit`,
+`[rgb=…]`). Also: every SVG drawing names its clip areas uniquely (`Ink.uid`), so two figures on one page (the light
+and dark copies) never clip each other. Not built: more than three dimensions, integer types (uint8, int16), reading
+picture files (imread comes with files, next).

@@ -1,6 +1,6 @@
 import { LabError, parse, type Expr, type FnDef, type Stmt } from './parse';
 import { cbinop } from './complex';
-import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, scalar, show, sizeOf, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
+import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, page, pages, scalar, show, sizeOf, stack, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
 import { BUILTINS } from './builtins';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
@@ -89,7 +89,7 @@ export class Lab {
         return;
       case 'for': {
         const v = this.ev(st.e, f);
-        const [r, c] = sizeOf(v);
+        const [r, c0] = sizeOf(v), c = c0 * pages(v); // a 3D array's pages continue its columns
         for (let j = 0; j < c; j++) {
           // Each column of the value, in turn (a row vector gives its numbers one by one).
           const item: Value = v.k === 'mat' ? mat(r, 1, v.d.subarray(j * r, j * r + r)) : v.k === 'str' ? str(v.v[j]) : v.k === 'cell' ? { k: 'cell', r, c: 1, d: v.d.slice(j * r, j * r + r) } : v;
@@ -361,15 +361,21 @@ export const map1 = (m: Mat, fn: (x: number) => number): Mat => mat(m.r, m.c, m.
 
 /** Element by element, with MATLAB's implicit expansion (a row and a column make a grid). */
 export function zip(a: Mat, b: Mat, fn: (x: number, y: number) => number): Mat {
-  if (a.r === b.r && a.c === b.c) { const d = new Float64Array(a.d.length); for (let i = 0; i < d.length; i++) d[i] = fn(a.d[i], b.d[i]); return mat(a.r, a.c, d); }
-  const r = a.r === b.r ? a.r : a.r === 1 ? b.r : b.r === 1 ? a.r : -1;
-  const c = a.c === b.c ? a.c : a.c === 1 ? b.c : b.c === 1 ? a.c : -1;
-  if (r < 0 || c < 0) throw new LabError(`Sizes don’t match: ${a.r}x${a.c} and ${b.r}x${b.c}.`);
-  const d = new Float64Array(r * c);
-  for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) d[i + j * r] = fn(a.d[(a.r === 1 ? 0 : i) + (a.c === 1 ? 0 : j) * a.r], b.d[(b.r === 1 ? 0 : i) + (b.c === 1 ? 0 : j) * b.r]);
+  const pa = a.p ?? 1, pb = b.p ?? 1;
+  if (a.r === b.r && a.c === b.c && pa === pb) { const d = new Float64Array(a.d.length); for (let i = 0; i < d.length; i++) d[i] = fn(a.d[i], b.d[i]); return mat(a.r, a.c, d); }
+  const grow = (x: number, y: number) => (x === y ? x : x === 1 ? y : y === 1 ? x : -1);
+  const r = grow(a.r, b.r), c = grow(a.c, b.c), p = grow(pa, pb);
+  const size = (m: Mat, q: number) => `${m.r}x${m.c}${q > 1 ? `x${q}` : ''}`;
+  if (r < 0 || c < 0 || p < 0) throw new LabError(`Sizes don’t match: ${size(a, pa)} and ${size(b, pb)}.`);
+  const d = new Float64Array(r * c * p), na = a.r * a.c, nb = b.r * b.c;
+  for (let k = 0; k < p; k++) for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) {
+    d[i + j * r + k * r * c] = fn(a.d[(a.r === 1 ? 0 : i) + (a.c === 1 ? 0 : j) * a.r + (pa === 1 ? 0 : k) * na], b.d[(b.r === 1 ? 0 : i) + (b.c === 1 ? 0 : j) * b.r + (pb === 1 ? 0 : k) * nb]);
+  }
   return mat(r, c, d);
 }
+const flatOnly = (m: Mat, what: string) => { if ((m.p ?? 1) > 1) throw new LabError(`${what} works on 2D matrices; for a 3D array, work page by page (A(:, :, k)) or use permute.`); };
 export function matmul(a: Mat, b: Mat): Mat {
+  flatOnly(a, '*'); flatOnly(b, '*');
   if (a.c !== b.r) throw new LabError(`Can’t multiply a ${a.r}x${a.c} by a ${b.r}x${b.c} matrix: the inner sizes must match (use .* to multiply element by element).`);
   const d = new Float64Array(a.r * b.c);
   for (let j = 0; j < b.c; j++) for (let k = 0; k < a.c; k++) { const bk = b.d[k + j * b.r]; if (bk === 0) continue; for (let i = 0; i < a.r; i++) d[i + j * a.r] += a.d[i + k * a.r] * bk; }
@@ -379,6 +385,7 @@ export function transpose(v: Value): Value {
   if (v.k === 'cell') { const d: Value[] = []; for (let i = 0; i < v.r; i++) for (let j = 0; j < v.c; j++) d.push(v.d[i + j * v.r]); return { k: 'cell', r: v.c, c: v.r, d }; }
   if (v.k === 'str') return v.v.length <= 1 ? v : mat(v.v.length, 1, [...v.v].map((ch) => ch.charCodeAt(0)));
   const m = toMat(v);
+  flatOnly(m, 'Transposing (\')');
   const d = new Float64Array(m.d.length), im = m.im ? new Float64Array(m.d.length) : null;
   for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) { d[j + i * m.c] = m.d[i + j * m.r]; if (im) im[j + i * m.c] = m.im![i + j * m.r]; }
   return { ...mat(m.c, m.r, d), ...(m.logical ? { logical: true } : {}), ...(im ? { im } : {}) };
@@ -467,6 +474,12 @@ export function inv(A: Mat): Mat {
 
 /** Rows of values side by side, then the rows on top of each other ([a b; c d]). Text joins as text. */
 export function concat(rows: Value[][]): Value {
+  // 3D arrays join page by page (a plain matrix joins every page).
+  const P = Math.max(...rows.flat().map(pages), 1);
+  if (P > 1) {
+    if (rows.flat().some((v) => pages(v) > 1 && pages(v) !== P)) throw new LabError('3D arrays joined together must have the same number of pages.');
+    return stack(Array.from({ length: P }, (_, k) => toMat(concat(rows.map((r) => r.map((v) => (v.k === 'mat' && pages(v) > 1 ? page(v, k) : v)))))));
+  }
   if (rows.some((r) => r.some(isComplex))) {
     const re = concat(rows.map((r) => r.map((v) => (v.k === 'mat' ? { ...v, im: undefined } : v)))) as Mat;
     const im = concat(rows.map((r) => r.map((v) => (v.k === 'mat' ? mat(v.r, v.c, imOf(v)) : v)))) as Mat;
@@ -513,6 +526,22 @@ const positions = (idx: Idx, n: number) => (idx === 'all' ? Array.from({ length:
 
 export function getIndex(v: Value, idx: Idx[]): Value {
   if (v.k === 'mat' && v.im) { const re = getIndex({ ...v, im: undefined }, idx) as Mat, im = getIndex(mat(v.r, v.c, v.im), idx) as Mat; return cmat(re.r, re.c, re.d, im.d); }
+  if (v.k === 'mat' && (pages(v) > 1 || idx.length >= 3)) {
+    const P = pages(v), n = v.r * v.c;
+    // One or two indices fold the pages into the columns, as MATLAB does.
+    if (idx.length < 3) return getIndex({ ...v, c: v.c * P, p: undefined }, idx);
+    for (const x of idx.slice(3)) if (x !== 'all' && x.some((k) => k !== 0)) throw new LabError('Only three dimensions (rows, columns and pages) are supported.');
+    const rows = positions(idx[0], v.r), cols = positions(idx[1], v.c), pg = positions(idx[2], P);
+    for (const i of rows) if (i >= v.r) throw new LabError(`Row ${i + 1} is past the end: there are ${v.r}.`);
+    for (const j of cols) if (j >= v.c) throw new LabError(`Column ${j + 1} is past the end: there are ${v.c}.`);
+    for (const k of pg) if (k >= P) throw new LabError(`Page ${k + 1} is past the end: there ${P === 1 ? 'is 1' : `are ${P}`}.`);
+    const out = new Float64Array(rows.length * cols.length * pg.length);
+    let t = 0;
+    for (const k of pg) for (const j of cols) for (const i of rows) out[t++] = v.d[i + j * v.r + k * n];
+    const res = mat(rows.length, cols.length, out, v.logical);
+    if (rows.length * cols.length === 0 && pg.length > 1) res.p = pg.length;
+    return res;
+  }
   if (v.k === 'struct' || v.k === 'fn') {
     if (idx.every((x) => x === 'all' || (x.length === 1 && x[0] === 0))) return v;
     throw new LabError(`Index past the end: this ${kind(v)} has 1 element.`);
@@ -560,6 +589,13 @@ function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolea
     return place(b, idx, v.d.length === 1 ? (() => v.d[0]) : (k) => v.d[k], v.d.length, () => empty(), (r, c, d) => ({ k: 'cell', r, c, d }), false) as Cell;
   }
   if (base && base.k !== 'mat' && base.k !== 'str') throw new LabError(`Can’t index into ${kind(base)} with ( ).`);
+  if ((!base || base.k === 'mat') && idx.length >= 3) return place3(base ? toMat(base) : mat(0, 0), idx, toMat(v));
+  if (base?.k === 'mat' && pages(base) > 1) {
+    // One or two indices into a 3D array: its pages continue its columns, and the size must stay.
+    const P = pages(base), out = setIndex({ ...base, c: base.c * P, p: undefined }, idx, v, false);
+    if (out.k === 'mat' && out.r === base.r && out.c === base.c * P) return { ...out, c: base.c, p: P };
+    throw new LabError('That would change the size of a 3D array; use three indices, A(i, j, k) = ….');
+  }
   const isText = base?.k === 'str' || (!base && v.k === 'str');
   const B = base ? toMat(base) : mat(0, 0), V = toMat(v);
   // x(i) = [] deletes.
@@ -601,6 +637,27 @@ function place<T>(b: { r: number; c: number; d: ArrayLike<T> }, idx: Idx[], get:
   r = nr; c = nc;
   return make(r, c, d as T[]);
 }
+/** A(i, j, k) = v: grows rows, columns and pages as needed; A(:, :, k) = [] removes pages. */
+function place3(B: Mat, idx: Idx[], V: Mat): Mat {
+  for (const x of idx.slice(3)) if (x !== 'all' && x.some((k) => k !== 0)) throw new LabError('Only three dimensions (rows, columns and pages) are supported.');
+  const has = B.d.length > 0, r = has ? B.r : 0, c = has ? B.c : 0, P = has ? pages(B) : 0;
+  if (!V.d.length) {
+    if (idx[0] !== 'all' || idx[1] !== 'all') throw new LabError('To delete from a 3D array, delete whole pages: A(:, :, k) = [].');
+    const drop = new Set(positions(idx[2], P)), keep = Array.from({ length: P }, (_, k) => k).filter((k) => !drop.has(k));
+    return keep.length ? stack(keep.map((k) => page(B, k))) : mat(r, c > 0 ? 0 : 0);
+  }
+  const rows = idx[0] === 'all' ? positions('all', r || V.r) : idx[0], cols = idx[1] === 'all' ? positions('all', c || V.c) : idx[1], pg = idx[2] === 'all' ? positions('all', P || pages(V)) : idx[2];
+  const nr = Math.max(r, rows.length ? Math.max(...rows) + 1 : 0), nc = Math.max(c, cols.length ? Math.max(...cols) + 1 : 0), np = Math.max(P, pg.length ? Math.max(...pg) + 1 : 0);
+  const count = rows.length * cols.length * pg.length;
+  if (V.d.length !== 1 && V.d.length !== count) throw new LabError(`Sizes don’t match: ${count} places to fill but ${V.d.length} values given.`);
+  const d = new Float64Array(nr * nc * np);
+  for (let k = 0; k < P; k++) for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) d[i + j * nr + k * nr * nc] = B.d[i + j * r + k * r * c];
+  let t = 0;
+  for (const k of pg) for (const j of cols) for (const i of rows) d[i + j * nr + k * nr * nc] = V.d.length === 1 ? V.d[0] : V.d[t++];
+  const out = mat(nr, nc, d, !!B.logical && !!V.logical);
+  if (nr * nc === 0 && np > 1) out.p = np;
+  return out;
+}
 function remove(B: Mat, idx: Idx[], text: boolean): Value {
   let out: Mat;
   if (idx.length === 1) {
@@ -638,3 +695,38 @@ function lev(a: string, b: string) {
 }
 
 export { inline };
+
+// ——— 3D arrays in column functions (M382) ———
+// Functions that work down columns (sum, max, sort…) run on each page of a 3D array, as MATLAB's do; with dim = 3
+// they work along the pages instead (each element's values across the pages become one column).
+const ALONG: Record<string, number | null> = {
+  sum: 1, prod: 1, mean: 1, median: 1, mode: 1, cumsum: 1, cumprod: 1, cummax: 1, cummin: 1, any: 1, all: 1, max: 2, min: 2, std: 2, var: 2, diff: 2, sort: 1,
+  fliplr: null, flipud: null, rot90: null, circshift: null, triu: null, tril: null, trapz: null, cumtrapz: null, bounds: null, normalize: null, rescale: null,
+};
+for (const [name, at] of Object.entries(ALONG)) {
+  const f = BUILTINS[name];
+  if (!f) continue;
+  BUILTINS[name] = (a, nout, lab, frame) => {
+    const m = a[0];
+    if (!(m?.k === 'mat' && pages(m) > 1)) return f(a, nout, lab, frame);
+    // max(A, B) and min(A, B) are element by element (zip handles the pages).
+    if ((name === 'max' || name === 'min') && a.length >= 2 && numel(a[1]) > 0) return f(a, nout, lab, frame);
+    const P = pages(m), n = m.r * m.c;
+    const dim = at !== null && a[at]?.k === 'mat' && numel(a[at]) === 1 ? (a[at] as Mat).d[0] : null;
+    if (dim === 3) {
+      const T = mat(P, n);
+      for (let k = 0; k < P; k++) for (let e = 0; e < n; e++) T.d[k + e * P] = m.d[e + k * n];
+      if (m.im) { T.im = new Float64Array(P * n); for (let k = 0; k < P; k++) for (let e = 0; e < n; e++) T.im[k + e * P] = m.im[e + k * n]; }
+      const args = [...a]; args[0] = T; args[at!] = num(1);
+      return f(args, nout, lab, frame).map((v) => {
+        if (v.k !== 'mat' || v.c !== n) return v;
+        const q = v.r, o = mat(m.r, m.c, new Float64Array(n * q), v.logical);
+        for (let k = 0; k < q; k++) for (let e = 0; e < n; e++) o.d[e + k * n] = v.d[k + e * q];
+        if (v.im) { o.im = new Float64Array(n * q); for (let k = 0; k < q; k++) for (let e = 0; e < n; e++) o.im[e + k * n] = v.im[k + e * q]; }
+        return o;
+      });
+    }
+    const outs = Array.from({ length: P }, (_, k) => f(a.map((x, i) => (i === 0 || (x.k === 'mat' && pages(x) === P) ? page(x as Mat, k) : x)), nout, lab, frame));
+    return outs[0].map((_, i) => stack(outs.map((o) => toMat(o[i]))));
+  };
+}

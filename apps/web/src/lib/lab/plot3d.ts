@@ -1,5 +1,5 @@
 import { LabError } from './parse';
-import { mat, numel, scalar, toMat, type Mat, type Value } from './values';
+import { mat, numel, pages, scalar, toMat, type Mat, type Value } from './values';
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { add, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, points, style, tex, ticks, vec, type Axes, type Box, type Grid, type Ink, type Series } from './plot';
@@ -51,7 +51,8 @@ export function imageSvg(g: Grid, X: (v: number) => number, Y: (v: number) => nu
       const z = (a: number, b: number) => g.z[(j + b) * g.r + i + a];
       v = band((z(0, 0) * (1 - tj) + z(0, 1) * tj) * (1 - ti) + (z(1, 0) * (1 - tj) + z(1, 1) * tj) * ti);
     } else v = g.z[x * g.r + row];
-    const rgb = g.direct ? (Number.isFinite(v) ? cmap[Math.max(0, Math.min(cmap.length - 1, Math.round(v) - 1))].map((t) => Math.round(t * 255)) : null) : rgbAt(cmap, c0, c1, v);
+    const n = g.r * g.c, at = x * g.r + row;
+    const rgb = g.rgb ? [g.rgb[at], g.rgb[at + n], g.rgb[at + 2 * n]].map((t) => Math.round(Math.max(0, Math.min(1, Number.isFinite(t) ? t : 0)) * 255)) : g.direct ? (Number.isFinite(v) ? cmap[Math.max(0, Math.min(cmap.length - 1, Math.round(v) - 1))].map((t) => Math.round(t * 255)) : null) : rgbAt(cmap, c0, c1, v);
     if (!rgb) continue;
     const o = (y * W + x) * 4;
     px[o] = rgb[0]; px[o + 1] = rgb[1]; px[o + 2] = rgb[2]; px[o + 3] = Math.round(g.alpha * 255);
@@ -245,6 +246,12 @@ export function gridTikz(g: Grid, three: boolean): string {
     const cols = Array.from({ length: g.c }, (_, j) => Array.from({ length: g.r }, (_, i) => { const k = j * g.r + i; return `(${p(g.x[k])},${p(g.y[k])},${p(g.z[k])})`; }).join(' '));
     const o = g.kind === 'mesh' ? 'mesh' : `surf, shader=${g.edges ? 'faceted' : 'flat'}`;
     return `\\addplot3[${o}${three ? '' : ', view={0}{90}'}${g.alpha < 1 ? `, opacity=${g.alpha}` : ''}] coordinates {\n${cols.join('\n\n')}\n};`;
+  }
+  // A full-colour picture: each cell its own colour.
+  if (g.rgb) {
+    const n = g.r * g.c, rgb = g.rgb;
+    const rows = Array.from({ length: g.r }, (_, i) => Array.from({ length: g.c }, (_, j) => { const k = j * g.r + i; return `(${p(g.x[j])},${p(g.y[i])}) [rgb=${[rgb[k], rgb[k + n], rgb[k + 2 * n]].map((t) => +Math.max(0, Math.min(1, t)).toFixed(3)).join(',')}]`; }).join(' '));
+    return `\\addplot[matrix plot*, mesh/color input=explicit, point meta=explicit symbolic, mesh/cols=${g.c}] coordinates {\n${rows.join('\n')}\n};`;
   }
   // Images and filled contours: a matrix plot, one cell per value (x varies along each row).
   const rows = Array.from({ length: g.r }, (_, i) => Array.from({ length: g.c }, (_, j) => `(${p(g.x[j])},${p(g.y[i])}) [${p(g.z[j * g.r + i])}]`).join(' '));
@@ -511,7 +518,10 @@ for (const [name, direct, rev] of [['imagesc', false, true], ['image', true, tru
     const pc = name === 'pcolor' && leading(a).length >= 3 ? leading(a) : null;
     const { C, x, y, rest } = pc ? { C: pc[2], x: Array.from({ length: pc[2].c }, (_, j) => (isVec(pc[0]) ? pc[0].d[j] : pc[0].d[j * pc[0].r])), y: Array.from({ length: pc[2].r }, (_, i) => (isVec(pc[1]) ? pc[1].d[i] : pc[1].d[i])), rest: a.slice(3) } : imageArgs(a, name);
     const { alpha } = faceOpts(rest);
-    add(lab, [], [{ kind: 'image', r: C.r, c: C.c, x, y, z: [...C.d], direct, edges: false, alpha }]);
+    // A rows × columns × 3 array is a full-colour picture (its pages red, green, blue).
+    const rgb = pages(C) === 3 ? unit([...C.d]) : undefined;
+    if (pages(C) > 1 && !rgb) throw new LabError(`${name} shows a matrix, or a picture with 3 pages (red, green, blue).`);
+    add(lab, [], [{ kind: 'image', r: C.r, c: C.c, x, y, z: [...C.d.subarray(0, C.r * C.c)], direct: direct || !!rgb, edges: false, alpha, rgb }]);
     const ax = gfx(lab).axes();
     const hx = x.length > 1 ? (x[x.length - 1] - x[0]) / (x.length - 1) / 2 : 0.5, hy = y.length > 1 ? (y[y.length - 1] - y[0]) / (y.length - 1) / 2 : 0.5;
     ax.revY = rev;
@@ -614,6 +624,46 @@ def('peaks', (a, nout) => {
   return nout >= 3 ? [X, Y, Z] : [Z];
 });
 
+
+// ——— Pictures (M382): imshow, rgb2gray, im2double, im2uint8, imresize ———
+/** Picture values from 0 to 1: anything above 1 is taken as 0–255 (MATLAB's uint8 pictures). */
+const unit = (v: number[]) => { const top = Math.max(...v.filter(Number.isFinite), 0); return top > 1 ? v.map((t) => t / 255) : v; };
+def('imshow', (a, _n, lab) => {
+  const I = toMat(a[0]);
+  const P = pages(I), n = I.r * I.c;
+  if (P !== 1 && P !== 3) throw new LabError('imshow shows a grey picture (a matrix) or a colour one (rows × columns × 3).');
+  let vals = [...I.d];
+  // imshow(I, [low high]) (or []) stretches the greys between those values.
+  if (P === 1 && a[1]?.k === 'mat') { const lim = a[1].d.length === 2 ? [a[1].d[0], a[1].d[1]] : (minmax(vals) ?? [0, 1]); vals = vals.map((t) => (t - lim[0]) / (lim[1] - lim[0] || 1)); } else vals = unit(vals);
+  const rgb = P === 3 ? vals : [...vals, ...vals, ...vals];
+  const x = Array.from({ length: I.c }, (_, j) => j + 1), y = Array.from({ length: I.r }, (_, i) => i + 1);
+  add(lab, [], [{ kind: 'image', r: I.r, c: I.c, x, y, z: vals.slice(0, n), direct: true, edges: false, alpha: 1, rgb }]);
+  const ax = gfx(lab).axes();
+  Object.assign(ax, { revY: true, equal: true, visible: false, tight: [0.5, I.c + 0.5, 0.5, I.r + 0.5] });
+  return [];
+});
+def('rgb2gray', (a) => {
+  const I = toMat(a[0]), n = I.r * I.c;
+  if (pages(I) !== 3) throw new LabError('rgb2gray needs a colour picture (rows × columns × 3).');
+  const o = mat(I.r, I.c);
+  for (let k = 0; k < n; k++) o.d[k] = 0.2989 * I.d[k] + 0.587 * I.d[k + n] + 0.114 * I.d[k + 2 * n];
+  return [o];
+});
+def('im2double', (a) => { const I = toMat(a[0]); return [mat(I.r, I.c, unit([...I.d]))]; });
+def('im2uint8', (a) => { const I = toMat(a[0]); const top = Math.max(...I.d.filter(Number.isFinite), 0); return [mat(I.r, I.c, [...I.d].map((t) => Math.round(Math.max(0, Math.min(255, top > 1 ? t : t * 255)))))]; });
+def('imresize', (a) => {
+  // imresize(I, scale) or imresize(I, [rows cols]), bilinear, page by page.
+  const I = toMat(a[0]), P = pages(I), s = vec(a[1]);
+  const R = Math.max(1, Math.round(s.length >= 2 ? s[0] : I.r * s[0])), C = Math.max(1, Math.round(s.length >= 2 ? s[1] : I.c * s[0]));
+  const out = new Float64Array(R * C * P), n = I.r * I.c;
+  for (let k = 0; k < P; k++) for (let j = 0; j < C; j++) for (let i = 0; i < R; i++) {
+    const fi = Math.max(0, Math.min(I.r - 1, ((i + 0.5) * I.r) / R - 0.5)), fj = Math.max(0, Math.min(I.c - 1, ((j + 0.5) * I.c) / C - 0.5));
+    const i0 = Math.floor(fi), j0 = Math.floor(fj), i1 = Math.min(I.r - 1, i0 + 1), j1 = Math.min(I.c - 1, j0 + 1), ti = fi - i0, tj = fj - j0;
+    const g = (ii: number, jj: number) => I.d[ii + jj * I.r + k * n];
+    out[i + j * R + k * R * C] = (g(i0, j0) * (1 - tj) + g(i0, j1) * tj) * (1 - ti) + (g(i1, j0) * (1 - tj) + g(i1, j1) * tj) * ti;
+  }
+  return [mat(R, C, out)];
+});
 
 // Shapes: sphere, cylinder, ellipsoid give X, Y, Z (with no outputs, they draw the surface).
 function shape(lab: Lab, nout: number, r: number, c: number, f: (i: number, j: number) => [number, number, number]) {

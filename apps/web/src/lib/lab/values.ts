@@ -4,15 +4,40 @@ import type { Expr } from './parse';
 // UniVerse Lab's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
 // linear indexing and reshape behave the same), text, cell arrays, structs and function handles.
 
-/** `im`: the imaginary parts of a complex matrix (M377), the same length as `d`; absent for real ones. */
-export interface Mat { k: 'mat'; r: number; c: number; d: Float64Array; logical?: boolean; im?: Float64Array }
+/** `im`: the imaginary parts of a complex matrix (M377), the same length as `d`; absent for real ones. `p`: the
+ * pages of a 3D array (M382; r × c × p, page after page in `d`); absent for a plain matrix. */
+export interface Mat { k: 'mat'; r: number; c: number; p?: number; d: Float64Array; logical?: boolean; im?: Float64Array }
 export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 export interface Struct { k: 'struct'; f: Map<string, Value> }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
 export type Value = Mat | Str | Cell | Struct | Fn;
 
-export const mat = (r: number, c: number, d?: ArrayLike<number>, logical?: boolean): Mat => ({ k: 'mat', r, c, d: d ? Float64Array.from(d) : new Float64Array(r * c), ...(logical ? { logical } : {}) });
+/** A matrix; numbers for more than r × c (a whole number of times) make a 3D array with that many pages, so any
+ * code that maps over `d` keeps the pages. */
+export const mat = (r: number, c: number, d?: ArrayLike<number>, logical?: boolean): Mat => {
+  const n = r * c, len = d ? d.length : n, p = n > 0 && len > n && len % n === 0 ? len / n : 1;
+  return { k: 'mat', r, c, ...(p > 1 ? { p } : {}), d: d ? Float64Array.from(d) : new Float64Array(n), ...(logical ? { logical } : {}) };
+};
+/** The number of pages (1 for a plain matrix). */
+export const pages = (v: Value) => (v.k === 'mat' ? v.p ?? 1 : 1);
+/** Page k (from 0) of a 3D array, as a matrix. */
+export const page = (m: Mat, k: number): Mat => {
+  const n = m.r * m.c, out = mat(m.r, m.c, m.d.subarray(k * n, (k + 1) * n), m.logical);
+  if (m.im) out.im = Float64Array.from(m.im.subarray(k * n, (k + 1) * n));
+  return out;
+};
+/** Matrices of one size, as the pages of a 3D array. */
+export function stack(list: Mat[]): Mat {
+  if (list.length === 1) return list[0];
+  const { r, c } = list[0];
+  if (list.some((m) => m.r !== r || m.c !== c)) throw new LabError('Every page must be the same size.');
+  const d = new Float64Array(r * c * list.length), im = list.some((m) => m.im) ? new Float64Array(d.length) : null;
+  list.forEach((m, k) => { d.set(m.d.subarray(0, r * c), k * r * c); if (im && m.im) im.set(m.im.subarray(0, r * c), k * r * c); });
+  const out = mat(r, c, d, list.every((m) => m.logical));
+  if (im) out.im = im;
+  return out;
+}
 export const num = (v: number): Mat => mat(1, 1, [v]);
 /** A complex matrix; back to a real one when every imaginary part is 0 (as MATLAB shows it). */
 export const cmat = (r: number, c: number, re: ArrayLike<number>, im: ArrayLike<number>): Mat => {
@@ -36,7 +61,7 @@ export function toMat(v: Value, what = 'This'): Mat {
   throw new LabError(`${what} must be a number or a matrix, not ${kind(v)}.`);
 }
 export const isScalar = (m: Mat) => m.r === 1 && m.c === 1;
-export const numel = (v: Value) => (v.k === 'mat' || v.k === 'cell' ? v.r * v.c : v.k === 'str' ? v.v.length : 1);
+export const numel = (v: Value) => (v.k === 'mat' ? v.r * v.c * (v.p ?? 1) : v.k === 'cell' ? v.r * v.c : v.k === 'str' ? v.v.length : 1);
 export function scalar(v: Value, what = 'This'): number {
   const m = toMat(v, what);
   if (m.r * m.c < 1) throw new LabError(`${what} is empty: it needs one number.`);
@@ -81,6 +106,7 @@ export const fmtNum = (x: number, f: Fmt, int: boolean) => {
 
 /** How a value is shown after "x = …". */
 export function show(name: string, v: Value, f: Fmt): string {
+  if (v.k === 'mat' && (v.p ?? 1) > 1) return Array.from({ length: v.p! }, (_, k) => `${name}(:,:,${k + 1}) =\n\n${render(page(v, k), f)}\n\n`).join('');
   if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${v.im ? fmtC(v.d[0], v.im[0], f) : fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
   const body = render(v, f);
   if (v.k === 'str' && !v.v.includes('\n')) return `${name} = ${v.v}\n`;
@@ -89,6 +115,7 @@ export function show(name: string, v: Value, f: Fmt): string {
 }
 
 export function render(v: Value, f: Fmt): string {
+  if (v.k === 'mat' && (v.p ?? 1) > 1) return Array.from({ length: v.p! }, (_, k) => `(:,:,${k + 1}) =\n\n${render(page(v, k), f)}`).join('\n\n');
   switch (v.k) {
     case 'str': return v.v;
     case 'fn': return v.src ? `@${v.src}` : `@${v.name}`;
@@ -131,6 +158,7 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
     case 'struct': return `1x1 struct`;
     case 'cell': return `${v.r}x${v.c} cell`;
     case 'mat':
+      if ((v.p ?? 1) > 1) return `${v.r}x${v.c}x${v.p} ${v.im ? 'complex double' : kind(v)}`;
       if (v.im) return v.r * v.c === 1 ? fmtC(v.d[0], v.im[0], f) : `${v.r}x${v.c} complex double`;
       if (v.r * v.c === 1) return fmtNum(v.d[0], f, v.logical || Number.isInteger(v.d[0]));
       if (v.r * v.c <= 10 && v.r <= 1) return `[${[...v.d].map((x) => fmtNum(x, f, v.logical || Number.isInteger(x))).join(' ')}]`;

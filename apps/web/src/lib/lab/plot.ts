@@ -15,8 +15,9 @@ export type Kind = 'line' | 'scatter' | 'bar' | 'barh' | 'stairs' | 'stem' | 'ar
  * colours each point (scatter with a colour per point); `value` is a contour line's level, for its labels (clabel). */
 export interface Series { kind: Kind; x: number[]; y: number[]; z?: number[]; level?: number; value?: number; cv?: number[]; filled?: boolean; err?: [number[], number[]]; base?: number[]; edge?: string; fa?: number; color: string; dash: '' | '--' | ':' | '-.' | 'none'; marker: string | null; width: number; label: string | null; size: number }
 /** A surface or mesh (x, y, z all r×c, column by column), or an image / filled contour (x: c column centres, y: r row
- * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour). */
-export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean }
+ * centres, z: r×c values; `direct` images index the colour map, `levels` band a filled contour, `rgb` holds a full-colour
+ * picture's red, green and blue pages from 0 to 1, M382). */
+export interface Grid { kind: 'surf' | 'mesh' | 'image' | 'filled'; r: number; c: number; x: number[]; y: number[]; z: number[]; cdata?: number[]; levels?: number[]; direct?: boolean; edges: boolean; alpha: number; smooth?: boolean; rgb?: number[] }
 /** Text placed on the axes (text). */
 export interface Note { x: number; y: number; z?: number; s: string; color: string | null; size: number; align: 'start' | 'middle' | 'end' }
 /** A line across the whole axes at x = v or y = v (xline, yline). */
@@ -275,7 +276,9 @@ export function tex(s: string): string {
 }
 
 export interface Box { x: number; y: number; w: number; h: number }
-export interface Ink { ink: string; soft: string; line: string; bg: string }
+/** `uid` keeps each drawing's clip names its own (two figures on one page must not share them). */
+export interface Ink { ink: string; soft: string; line: string; bg: string; uid?: string }
+let drawings = 0;
 const DASH: Record<string, string> = { '': '', '--': '6 4', ':': '1.5 3', '-.': '6 3 1.5 3', none: '' };
 
 /** One figure as SVG text, `width` × `height` pixels. */
@@ -293,7 +296,7 @@ export function renderSvg(f: Figure, width: number, height: number, dark = false
     const three = is3d(ax), round = !!ax.pie || ax.polar, top = ax.title ? 34 : 16, right = ax.twin ? 52 : 0;
     const box: Box = three || round ? { x: col * cw + 12, y: y0 + top, w: cw - 24 - (ax.colorbar ? 56 : 0), h: ch - top - 8 } : { x: col * cw + 58, y: y0 + top, w: cw - 58 - 18 - right - (ax.colorbar ? 64 : 0), h: ch - top - (ax.xlabel ? 52 : 34) };
     if (box.w < 40 || box.h < 40) continue;
-    const c: Ink = { ink, soft, line, bg };
+    const c: Ink = { ink, soft, line, bg, uid: `f${++drawings}` };
     if (ax.pie) parts.push(drawPie(ax, box, c));
     else if (ax.polar) parts.push(drawPolar(ax, box, c));
     else if (three) parts.push(draw3d(ax, box, c, f.cmap));
@@ -359,7 +362,7 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][], o: { xr?: [number,
   const out: string[] = [];
   const xt = ax.xticks ?? (ax.logx ? decades(x0, x1) : ticks(x0, x1)), yt = ax.yticks ?? (ax.logy ? decades(y0, y1) : ticks(y0, y1));
   const show = ax.visible, main = !o.right;
-  const id = `c${Math.round(bx)}_${Math.round(by)}${o.right ? 'r' : ''}`;
+  const id = `${c.uid ?? 'c'}_${Math.round(bx)}_${Math.round(by)}${o.right ? 'r' : ''}`;
   out.push(`<defs><clipPath id="${id}"><rect x="${bx}" y="${by}" width="${w}" height="${h}"/></clipPath></defs>`);
   if (ax.grid && show) {
     if (main) for (const t of xt) if (t >= x0 && t <= x1) out.push(`<line x1="${X(t)}" y1="${by}" x2="${X(t)}" y2="${by + h}" stroke="${c.line}" stroke-width="0.8"/>`);
