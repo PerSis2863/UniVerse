@@ -10770,3 +10770,22 @@ gives the plain text. `toMat` turns a symbolic value with no letters into number
 Help: a "Symbolic maths" section. Example script `symbolic.m` (with a live slider on a formula's plot). Not built:
 symbolic functions `syms f(x)` and dsolve, assumptions, `piecewise`, vpa past double precision, factoring polynomials
 without rational roots above degree 2, integrals needing special functions.
+
+## M397 (22 Nov): Hyperion notebook pages and reports
+
+The second of the owner's 20 big features: a script read as a page and published from the same place. `src/lib/lab/notebook.ts`:
+`notebookOf` splits a script into sections at `%% Title` lines; `%` lines (and `%{ … %}` blocks) are a section's text,
+the rest its code (a section's whole body runs, comments included). Text is a little Markdown (**bold**, *italic*,
+`code`, `* ` lists) with maths between `$…$` and `$$…$$`; `textHtml` escapes everything and sets formulas through the
+`math` callback (`mathml` in `LabText.tsx`: KaTeX to MathML, trust off; `useKatex` loads it once); a `$$…$$` formula
+stands between paragraphs (never a block inside `<p>`). `reportHtml` writes a standalone page (text, code, output with
+typeset results, figures as SVG data URLs, print styles); `reportTex` a LaTeX document (listings, verbatim output with
+`\[…\]` for typeset results, the figures' pgfplots code). The window (`LabNotebook.tsx`, a Code / Notebook switch in the
+editor's name row, per script): Run all, a Run per section, Report (HTML) and LaTeX report downloads. LabApp runs sections
+one after another in the same workspace (`runNotes` / `nextNote`, `noteQueue`; `from: 'note'` sends printed text to
+`noteBuf`, not the command window); a section's results are kept by its code (`noteKey`), so an edited section starts
+afresh; an error stops the rest. The worker's `done` now lists the figures a run drew (`drawn`), so a section shows only
+its own. In the notebook view a live control runs every section again (queued as `NOTE_ALL` while busy). Trap: copy the
+section's text out of `noteBuf` before `setNoteOuts` (the next section clears it before React applies the update).
+Example script `notebook.m`. Not built: editing inside the notebook view (writing stays in Code), images in the text,
+running a section from the Code view (Ctrl+Enter runs the script).

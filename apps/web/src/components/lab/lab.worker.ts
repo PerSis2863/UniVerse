@@ -25,7 +25,7 @@ export interface FileIn { name: string; bytes: Uint8Array; pixels?: Pixels }
 export interface FileOut { name: string; bytes: Uint8Array | null; pixels?: Pixels }
 export type FromLab =
   | { out: string }
-  | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[] }
+  | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[]; drawn: number[] }
   | { fig: FigOut }
   | { names: string[] }
   | { trace: { steps: TraceStep[]; full: boolean } }
@@ -78,9 +78,11 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   let error: string | undefined, at: number | undefined;
   const before = new Set(graphics.figures.map((f) => f.id));
   let touched = false;
+  // M397: which figures this run drew on (a notebook section shows only its own).
+  const drawn = new Set<number>();
   const code = 'watch' in m ? m.watch : m.run;
   if ('watch' in m) recorder = new Recorder(code, graphics);
-  graphics.onChange = () => { touched = true; recorder?.figureChanged(); };
+  graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try { lab.run(code); } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;
@@ -98,5 +100,6 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   const changed = touched || graphics.figures.some((f) => !before.has(f.id)) || graphics.figures.length !== before.size;
   const figs = changed ? graphics.figures.map((f) => figOut(f.id)).filter((f): f is FigOut => !!f) : null;
   const written: FileOut[] = files.takeChanges().map(({ name, file }) => ({ name, bytes: file?.bytes ?? null, pixels: file?.pixels }));
-  postMessage({ done: m.id, error, at, vars, figs, current: graphics.current?.id ?? null, files: written } satisfies FromLab);
+  for (const f of graphics.figures) if (!before.has(f.id)) drawn.add(f.id);
+  postMessage({ done: m.id, error, at, vars, figs, current: graphics.current?.id ?? null, files: written, drawn: [...drawn] } satisfies FromLab);
 };

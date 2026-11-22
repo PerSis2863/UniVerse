@@ -12,15 +12,25 @@ let loading: Promise<Katex> | null = null;
 const loadKatex = () => (loading ??= import('katex/dist/katex.mjs').then((m) => (ready = m.default)));
 const MATH = /\u0001([^\u0002]*)\u0002([^\u0003]*)\u0003/g;
 
-export function LabText({ text }: { text: string }) {
-  const hasMath = text.includes('\u0001');
+/** KaTeX, loaded the first time something needs it (null until then). */
+export function useKatex(need: boolean): Katex | null {
   const [katex, setKatex] = useState<Katex | null>(ready);
   useEffect(() => {
-    if (!hasMath || katex) return;
+    if (!need || katex) return;
     let live = true;
     void loadKatex().then((k) => { if (live) setKatex(k); });
     return () => { live = false; };
-  }, [hasMath, katex]);
+  }, [need, katex]);
+  return katex;
+}
+/** A formula as MathML (KaTeX, trust off), or the LaTeX itself while KaTeX loads. */
+export const mathml = (katex: Katex | null, tex: string, display: boolean) => (katex
+  ? katex.renderToString(display ? `\\displaystyle ${tex}` : tex, { displayMode: false, output: 'mathml', throwOnError: false, strict: 'ignore', trust: false, maxSize: 20, maxExpand: 500 })
+  : `<code>${tex.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</code>`);
+
+export function LabText({ text }: { text: string }) {
+  const hasMath = text.includes('\u0001');
+  const katex = useKatex(hasMath);
   if (!hasMath) return <>{text}</>;
   const parts: React.ReactNode[] = [];
   let last = 0, k = 0;
@@ -29,7 +39,7 @@ export function LabText({ text }: { text: string }) {
     const [, tex, plain] = m;
     if (katex) {
       // Set at display size but lined up on the left with the rest of the output.
-      const html = katex.renderToString(`\\displaystyle ${tex}`, { displayMode: false, output: 'mathml', throwOnError: false, strict: 'ignore', trust: false, maxSize: 20, maxExpand: 500 });
+      const html = mathml(katex, tex, true);
       // KaTeX's own MathML (from our own LaTeX, trust off).
       parts.push(<span key={k++} className="inline-block max-w-full overflow-x-auto align-middle text-[1.15em]" dangerouslySetInnerHTML={{ __html: html }} />);
     } else parts.push(plain);

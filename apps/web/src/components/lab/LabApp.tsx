@@ -9,6 +9,8 @@ import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
 import { LabText } from './LabText';
+import { LabNotebook, type NoteOut } from './LabNotebook';
+import { notebookOf } from '@/lib/lab/notebook';
 import { VariableViewer, type Shown } from './VariableViewer';
 import { FunctionBrowser } from './FunctionBrowser';
 import { HELP } from '@/lib/lab/help';
@@ -26,7 +28,7 @@ import { builtinNames } from './matlab-lang';
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
 const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
-type From = 'cmd' | 'script' | 'live' | 'watch';
+type From = 'cmd' | 'script' | 'live' | 'watch' | 'note';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -38,11 +40,15 @@ const EXAMPLES: Script[] = [
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
   { name: 'waves.m', code: "% Live controls: drag them and the figure follows\nfreq = 2;        % slider 0.5 8\ndamping = 0.3;   % slider 0 1\nshape = 'sine';  % menu sine square sawtooth\nshowEnvelope = true; % toggle\nt = linspace(0, 10, 600);\nswitch shape\n  case 'sine', y = sin(2*pi*freq*t/5);\n  case 'square', y = sign(sin(2*pi*freq*t/5));\n  otherwise, y = 2*mod(freq*t/5, 1) - 1;\nend\ny = y .* exp(-damping*t);\nplot(t, y); hold on\nif showEnvelope, plot(t, exp(-damping*t), '--', t, -exp(-damping*t), '--'); end\nhold off; ylim([-1.2 1.2]); grid on\ntitle(sprintf('%s wave, f = %.1f', shape, freq))\n" },
+  { name: 'notebook.m', code: "%% Projectile motion\n% Press **Notebook** above to read this script as a page. A ball thrown at speed $v_0$\n% and angle $\\theta$ lands after $$t = \\frac{2 v_0 \\sin\\theta}{g}$$ and travels $x = v_0 \\cos\\theta \\, t$.\nv0 = 20;      % slider 5 40\ntheta = 45;   % slider 10 80\ng = 9.81;\nt = 2*v0*sind(theta)/g\nx = v0*cosd(theta)*t\n\n%% The path\n% Height against distance; move the sliders and every part runs again.\ntt = linspace(0, t, 100);\nplot(v0*cosd(theta)*tt, v0*sind(theta)*tt - g*tt.^2/2); grid on\nxlabel('distance (m)'); ylabel('height (m)')\n\n%% The exact answer\n% With symbols the distance is a formula; the longest throw is at $45^\\circ$.\nsyms v a\ndistance = simplify(v^2*sin(2*a)/g)\n" },
   { name: 'symbolic.m', code: "% Exact maths with symbols: answers are set as real maths\nsyms x\nf = x^3 - 6*x^2 + 11*x - 6\ndf = diff(f)\nr = solve(f == 0, x)\narea = int(f, 0, 1)\none = simplify(sin(x)^2 + cos(x)^2)\nseries = taylor(exp(x), x, 'Order', 5)\na = 1;   % slider -3 3\nfplot(f + a*x, [0 4]); grid on\ntitle('f(x) + a x')\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
+/** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
+const NOTE_ALL = '\u0000notes\u0000';
+const noteKey = (script: number, code: string) => `${script}\u0000${code}`;
 
 export function LabApp() {
   const dark = useDarkMode(), wide = useMedia('(min-width: 1024px)');
@@ -70,6 +76,14 @@ export function LabApp() {
   const [breakpoints, setBreakpoints] = useState<Record<number, number[]>>({});
   const looking = useRef<Inspect | null>(null);
   const [codeError, setCodeError] = useState<{ line: number; message: string } | null>(null);
+  // Notebook pages (M397): the view, each section's last results (by its code, so an edited section starts afresh),
+  // and the sections waiting to run one after another.
+  const [noteView, setNoteView] = useState<Record<number, boolean>>({});
+  const [noteOuts, setNoteOuts] = useState<Record<string, NoteOut>>({});
+  const [noteState, setNoteState] = useState<{ running: number | null; waiting: number[] }>({ running: null, waiting: [] });
+  const noteQueue = useRef<{ index: number; key: string; code: string; label: string }[]>([]);
+  const noteNow = useRef<{ index: number; key: string } | null>(null);
+  const noteBuf = useRef('');
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -93,16 +107,32 @@ export function LabApp() {
     pending.current = { id, code, from };
     busyNow.current = true;
     setBusy(true);
-    if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : 'run'} ${list[open]?.name ?? 'script'}` });
+    if (from === 'note') noteBuf.current = '';
+    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
     else worker.current.postMessage({ run: code, id } satisfies ToLab);
+  };
+  /** The next waiting notebook section, if any. */
+  const nextNote = () => {
+    const n = noteQueue.current.shift();
+    if (!n) { if (noteNow.current) { noteNow.current = null; setNoteState({ running: null, waiting: [] }); } return; }
+    noteNow.current = { index: n.index, key: n.key };
+    setNoteState({ running: n.index, waiting: noteQueue.current.map((q) => q.index) });
+    run(n.code, 'note');
+  };
+  /** Run a script's sections (all, or one) one after another, in the same workspace. */
+  const runNotes = (code: string, scriptIndex: number, only?: number) => {
+    const secs = notebookOf(code);
+    noteQueue.current = (only === undefined ? secs.map((_, i) => i) : [only]).map((i) => ({ index: i, key: noteKey(scriptIndex, secs[i].code), code: secs[i].code, label: secs[i].title }));
+    setNoteState({ running: noteNow.current?.index ?? null, waiting: noteQueue.current.map((q) => q.index) });
+    if (!busyNow.current) nextNote();
   };
   const start = () => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromLab>) => {
       const m = e.data;
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
-      if ('out' in m) { if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
+      if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
@@ -116,11 +146,18 @@ export function LabApp() {
         return;
       }
       const p = pending.current;
-      const errText = m.error ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
+      if (p?.from === 'note') {
+        // Taken now: the next section's run clears the buffer before React applies this update.
+        const at = noteNow.current, out: NoteOut = { text: noteBuf.current, error: m.error, figs: (m.figs ?? []).filter((f) => m.drawn.includes(f.id)) };
+        if (at) setNoteOuts((o) => ({ ...o, [at.key]: out }));
+        // Later sections usually need this one: an error stops the rest.
+        if (m.error) noteQueue.current = [];
+      }
+      const errText = m.error && p?.from !== 'note' ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
       if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
       lastLiveError.current = errText; // a live run repeating the same error stays quiet
       // A script's error is marked on its line in the editor (until the code changes).
-      setCodeError(m.error && p && p.from !== 'cmd' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
+      setCodeError(m.error && p && p.from !== 'cmd' && p.from !== 'note' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
       setVars(m.vars);
       // Files the code wrote or deleted: kept on this device (or forgotten).
       for (const f of m.files) {
@@ -137,7 +174,8 @@ export function LabApp() {
       if (looking.current) w.postMessage({ inspect: looking.current } satisfies ToLab);
       // The newest position of a control, if it moved while that run was going.
       const next = queued.current;
-      if (next !== null) { queued.current = null; run(next, 'live'); }
+      if (next !== null) { queued.current = null; if (next.startsWith(NOTE_ALL)) { const [k, ...rest] = next.slice(NOTE_ALL.length).split('\u0000'); runNotes(rest.join('\u0000'), Number(k)); } else run(next, 'live'); }
+      else nextNote();
     };
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
@@ -241,10 +279,15 @@ export function LabApp() {
   const script = list[open] ?? list[0];
   const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
+  const noteSecs = noteView[open] ? notebookOf(script.code) : null;
+  const runSection = (i: number) => runNotes(script.code, open, i);
+  const runAllSections = () => runNotes(script.code, open);
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
     const code = setControl(script.code, c, v);
     editScript(code);
+    // In the notebook view every section runs again, so each one's results follow the control.
+    if (noteView[open]) { if (busyNow.current) queued.current = `${NOTE_ALL}${open}\u0000${code}`; else runNotes(code, open); return; }
     if (busyNow.current) queued.current = code; else run(code, 'live');
   };
 
@@ -347,6 +390,7 @@ export function LabApp() {
         <label className="flex min-w-[9rem] flex-1 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">Name
           <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
         </label>
+        <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
         <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
         <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>
@@ -357,10 +401,11 @@ export function LabApp() {
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
         </div>
       )}
-      <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
+      {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
+          onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
         vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion}
         traceAt={watching && step ? step.line : null} breakpoints={marks}
-        onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />
+        onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />}
     </section>
   );
 
