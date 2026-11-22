@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { type Language, t as translate } from '@/lib/i18n';
+import { isAppLanguage, type Language, t as translate } from '@/lib/i18n';
 import { applyLanguage } from '@/lib/language-script';
 
 interface LanguageStore {
@@ -15,11 +15,15 @@ export const useLanguageStore = create<LanguageStore>()(
       language: 'en',
       setLanguage: (lang) => {
         set({ language: lang });
-        // lang for screen readers, and right to left for Arabic and Urdu (Stage 5 · Q21).
+        // lang for screen readers, and right to left for Arabic (Stage 5 · Q21).
         applyLanguage(lang);
       },
       t: (key: string) => translate(key, get().language),
     }),
-    { name: 'universe-language', onRehydrateStorage: () => (state) => { if (state) applyLanguage(state.language); } }
+    { name: 'universe-language', onRehydrateStorage: () => (state) => {
+      if (!state) return;
+      // A language no longer offered (Urdu, Bengali, Tamil, Telugu, Marathi: M403) goes back to English.
+      if (!isAppLanguage(state.language)) state.setLanguage('en'); else applyLanguage(state.language);
+    } }
   )
 );

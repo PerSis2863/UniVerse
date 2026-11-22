@@ -10871,3 +10871,16 @@ Motion; a strip of thumbnails; Save as GIF, drawn on a canvas from the light fra
 between; Table as CSV; "Use theta = 42" sets the slider and runs). Also fixed: a slider's step such as 0.25 wrote one
 decimal (0.25 became 0.3): `stepDecimals` counts the step's own decimals. Not built: sweeping menus and switches, two
 sliders at once (a grid).
+
+## M403 (22 Nov): languages: Hindi kept, the other Indian languages and Urdu removed
+
+The owner, 22 Nov: "keep hindi and remove all the other indian language and also remove the urdu from pakistan i dont
+want it". `src/lib/i18n.ts` `LANGUAGES` (the screens' languages) and `src/lib/languages.ts` `LANGUAGES` (what chat,
+parents' messages, oral checks, documents and captions translate into) no longer have ur, bn, ta, te, mr; `Language`
+lost them. Arabic is now the only right-to-left language: `RTL_LANGUAGES` comes from `LANGUAGES` (`dir: 'rtl'`), and
+the head script (`LANGUAGE_SCRIPT`) only applies a saved language that is still offered. `store/language.ts`: a saved
+language no longer offered goes back to English on load. Every server check already used `isLanguage` /
+`isAppLanguage`, so a stored `translateTo` or parent language of one of them now counts as none (no translation) and
+the AI translator refuses to draft them; their saved screen translations stay in `ui_translations` unused.
+`languageName` names any code through `Intl.DisplayNames` ("Translated from Urdu" still reads well). Test:
+`src/lib/languages-offered.test.ts`. "Urdu" as a subject of study (`options/academic.ts`) stays.

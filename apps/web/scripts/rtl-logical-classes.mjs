@@ -1,5 +1,5 @@
 // Stage 5 · Q21: turns left/right Tailwind classes into start/end ones, so layouts mirror by
-// themselves in right-to-left languages (Arabic, Urdu) and look exactly the same left-to-right.
+// themselves in right-to-left languages (Arabic) and look exactly the same left-to-right.
 //   ml-/mr- → ms-/me-   pl-/pr- → ps-/pe-   left-/right- → start-/end-   text-left/right → text-start/end
 //   rounded-l/r/tl/tr/bl/br → rounded-s/e/ss/se/es/ee   border-l/r → border-s/e
 //   translate-x-N gets an rtl: mirror (slide-in panels, switch knobs).

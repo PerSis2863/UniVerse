@@ -489,7 +489,7 @@ function glossary() {
   const words: [string, string][] = [
     ['Worker', 'A small server Cloudflare runs close to each user'], ['D1', 'Cloudflare’s database (SQLite)'], ['R2', 'Cloudflare’s file storage'],
     ['Durable Object', 'A live room everyone in a chat or board shares'], ['OpenNext', 'Turns the Next.js app into a Worker'], ['Prisma', 'How the code talks to the database'],
-    ['PWA', 'A website that installs like an app'], ['Passkey', 'Sign in with the phone’s lock: no password'], ['RTL', 'Right to left, for Arabic and Urdu'],
+    ['PWA', 'A website that installs like an app'], ['Passkey', 'Sign in with the phone’s lock: no password'], ['RTL', 'Right to left, for Arabic'],
     ['FSRS', 'The schedule that decides when a flashcard comes back'], ['KaTeX', 'Draws maths and chemistry properly'], ['LTI', 'How other school systems plug in'],
     ['Common Cartridge', 'A course packed in one file, for other systems'], ['GIFT and QTI', 'Question file formats from other quiz tools'], ['Polygon', 'Where certificate fingerprints are anchored'],
   ];

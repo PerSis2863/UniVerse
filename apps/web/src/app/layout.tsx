@@ -77,7 +77,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: `(function(){try{var t=localStorage.getItem('theme');var d=t==='dark'||t==='system'&&window.matchMedia('(prefers-color-scheme: dark)').matches;if(d)document.documentElement.classList.add('dark');else document.documentElement.classList.remove('dark');${BARS_SCRIPT}if(localStorage.getItem('uv-sidebar')==='folded')document.documentElement.dataset.sidebar='folded';}catch(e){}})();` }} />
         {/* The page colour before the stylesheet arrives: a refresh in dark mode never flashes white */}
         <script dangerouslySetInnerHTML={{ __html: DISPLAY_PREFS_SCRIPT }} />
-        {/* The saved language's direction (Arabic and Urdu read right to left) before paint */}
+        {/* The saved language's direction (Arabic reads right to left) before paint */}
         <script dangerouslySetInnerHTML={{ __html: LANGUAGE_SCRIPT }} />
         <style dangerouslySetInnerHTML={{ __html: 'html{background:#ececec}html.dark{background:#0b0b0c;color-scheme:dark}' }} />
         {/* An old tab after a deploy can ask for page files that no longer exist: load the new

@@ -1,19 +1,15 @@
-export type Language = 'en' | 'fr' | 'es' | 'hi' | 'ar' | 'ur' | 'bn' | 'ta' | 'te' | 'mr' | 'pt' | 'id' | 'sw';
+export type Language = 'en' | 'fr' | 'es' | 'hi' | 'ar' | 'pt' | 'id' | 'sw';
 
 // `locale` formats dates, numbers and money (Intl; src/lib/locale-format.ts): Indian grouping for
-// Hindi and English (₹1,00,000), Western digits in Arabic and Urdu. `drafted`: the screens are
-// translated by the AI translator (Owner console → Languages), not by hand (Stage 5 · Q21).
+// Hindi and English (₹1,00,000), Western digits in Arabic. `drafted`: the screens are
+// translated by the AI translator (Owner console → Languages), not by hand (Stage 5 · Q21). Of India's languages only
+// Hindi is offered, and not Urdu (the owner, 22 Nov, M403).
 export const LANGUAGES: { code: Language; name: string; nativeName: string; flag: string; dir: 'ltr' | 'rtl'; locale: string; drafted?: boolean }[] = [
   { code: 'en', name: 'English', nativeName: 'English', flag: '🇬🇧', dir: 'ltr', locale: 'en-IN' },
   { code: 'fr', name: 'French', nativeName: 'Français', flag: '🇫🇷', dir: 'ltr', locale: 'fr-FR' },
   { code: 'es', name: 'Spanish', nativeName: 'Español', flag: '🇪🇸', dir: 'ltr', locale: 'es-ES' },
   { code: 'hi', name: 'Hindi', nativeName: 'हिंदी', flag: '🇮🇳', dir: 'ltr', locale: 'hi-IN' },
   { code: 'ar', name: 'Arabic', nativeName: 'العربية', flag: '🇸🇦', dir: 'rtl', locale: 'ar-u-nu-latn', drafted: true },
-  { code: 'ur', name: 'Urdu', nativeName: 'اردو', flag: '🇵🇰', dir: 'rtl', locale: 'ur-PK-u-nu-latn', drafted: true },
-  { code: 'bn', name: 'Bengali', nativeName: 'বাংলা', flag: '🇧🇩', dir: 'ltr', locale: 'bn-IN', drafted: true },
-  { code: 'ta', name: 'Tamil', nativeName: 'தமிழ்', flag: '🇮🇳', dir: 'ltr', locale: 'ta-IN', drafted: true },
-  { code: 'te', name: 'Telugu', nativeName: 'తెలుగు', flag: '🇮🇳', dir: 'ltr', locale: 'te-IN', drafted: true },
-  { code: 'mr', name: 'Marathi', nativeName: 'मराठी', flag: '🇮🇳', dir: 'ltr', locale: 'mr-IN', drafted: true },
   { code: 'pt', name: 'Portuguese', nativeName: 'Português', flag: '🇧🇷', dir: 'ltr', locale: 'pt-BR', drafted: true },
   { code: 'id', name: 'Indonesian', nativeName: 'Bahasa Indonesia', flag: '🇮🇩', dir: 'ltr', locale: 'id-ID', drafted: true },
   { code: 'sw', name: 'Swahili', nativeName: 'Kiswahili', flag: '🇰🇪', dir: 'ltr', locale: 'sw-KE', drafted: true },
