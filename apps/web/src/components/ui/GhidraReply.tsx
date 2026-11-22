@@ -64,9 +64,10 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
     if (p.action === 'open') return pageHref(p.page, role);
     if (p.action === 'trip_new') {
       // M365: Travel's own route makes it; the trip's page opens to add its cities.
-      const r = await api.post<{ trip: { id: string } }>('/travel/trips', { name: p.name, startDate: p.startDate, travellers: p.travellers });
-      toast.success('Trip made. Add its cities and Ghidra can help plan the days.');
-      return `/travel/trip?id=${r.data.trip.id}`;
+      // M375, the Travel Planner: with a place, the trip starts with that city and its days, and opens planning them.
+      const r = await api.post<{ trip: { id: string } }>('/travel/trips', { name: p.name, startDate: p.startDate, travellers: p.travellers, ...(p.place ? { stop: { guide: p.place, days: p.days ?? 3 } } : {}) });
+      toast.success(p.place ? 'Trip made. Planning its days…' : 'Trip made. Add its cities and Ghidra can help plan the days.');
+      return `/travel/trip?id=${r.data.trip.id}${p.place ? '&plan=1' : ''}`;
     }
     if (p.action === 'quiz_draft' && p.courseId) {
       // M366: the quiz route checks the course again and saves a draft only this teacher sees; the editor opens on it.
@@ -111,7 +112,7 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
       <div className="text-sm text-zinc-800 dark:text-zinc-100 whitespace-pre-wrap break-words" translate="no"><MathText text={plan.say} /></div>
       {plan.action === 'message_draft' && <p className="mt-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 whitespace-pre-wrap dark:border-white/10 dark:bg-zinc-900 dark:text-white" translate="no">{plan.text}</p>}
       {plan.action === 'quiz_draft' && plan.courseName && <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{plan.courseName} · {plan.count} questions · multiple choice · a draft</p>}
-      {plan.action === 'trip_new' && <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{plan.name} · {plan.travellers} {plan.travellers === 1 ? 'person' : 'people'}{plan.startDate ? ` · from ${plan.startDate}` : ''}</p>}
+      {plan.action === 'trip_new' && <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{plan.name}{plan.days ? ` · ${plan.days} days` : ''} · {plan.travellers} {plan.travellers === 1 ? 'person' : 'people'}{plan.startDate ? ` · from ${plan.startDate}` : ''}</p>}
       {plan.action === 'show' && plan.items.length > 0 && (
         <ul className="mt-2 divide-y divide-zinc-200 dark:divide-white/10">
           {plan.items.map((i, n) => {

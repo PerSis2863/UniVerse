@@ -40,7 +40,10 @@ export type AskPlan =
   | { action: 'trace_check'; code: string; say: string }
   | { action: 'open'; page: AskPage; say: string }
   | { action: 'my_due' | 'my_green' | 'my_trips' | 'my_courses'; say: string }
-  | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; say: string }
+  /** `place` and `days` (M375, the Travel Planner): the city, found in Travel's guides on the server, and how long. */
+  | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; place?: string | null; days?: number | null; say: string }
+  /** M375: Customer Support for a product (its Trace code) and the buyer's question (src/server/agents/support.ts). */
+  | { action: 'product_help'; code: string; question: string; say: string }
   | { action: 'message_draft'; text: string; say: string }
   /** M366: a teacher's quiz draft. `course` is what they said; the server fills `courseId` and `courseName` from the
    *  courses they teach (never from AI), and the draft route checks access again. */
@@ -104,7 +107,13 @@ export function cleanPlan(raw: unknown): AskPlan {
     const name = str(r.name, 80), travellers = Math.round(num(r.travellers));
     const day = typeof r.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.startDate) && !Number.isNaN(Date.parse(r.startDate)) ? r.startDate : null;
     if (name.length < 3) return fallback;
-    return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, say: say || `Make a trip: ${name}.` };
+    const place = str(r.place, 80) || (/^trip to (.{2,60})$/i.exec(name)?.[1] ?? '');
+    const days = Math.round(num(r.days));
+    return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, place: place || null, days: days >= 1 && days <= 30 ? days : null, say: say || `Make a trip: ${name}.` };
+  }
+  if (r.action === 'product_help') {
+    const code = str(r.code, 40), question = str(r.question, 500);
+    return splitCode(code) && question.length >= 3 ? { action: 'product_help', code, question, say } : fallback;
   }
   if (r.action === 'research') {
     const topic = str(r.topic, 160);
@@ -138,6 +147,7 @@ const RELIEF_WORDS: [RegExp, ReliefKind][] = [[/\b(lift|ride|transport|van|drive
 export function localPlan(text: string): AskPlan {
   const t = text.trim();
   const code = t.split(/\s+/).find((w) => splitCode(w));
+  if (code && t.replace(code, '').trim().split(/\s+/).length >= 3 && /\?|\b(how|what|when|where|is|does|can|warranty|recall|made|repair|recycle|wash|care)\b/i.test(t.replace(code, ''))) return cleanPlan({ action: 'product_help', code, question: t.replace(code, '').trim() });
   if (code) return cleanPlan({ action: 'trace_check', code });
   const research = /\b(?:research|find (?:sources|information|info|articles)|look up|sources (?:on|about|for))\b\s*(?:on|about|for)?\s*(.{2,160}?)[.!?]?$/i.exec(t);
   if (research) return cleanPlan({ action: 'research', topic: research[1] });
@@ -150,7 +160,9 @@ export function localPlan(text: string): AskPlan {
   if (/\b(my trips?|trips)\b/i.test(t) && /\b(what|which|list|how many|upcoming|planned|have)\b/i.test(t)) return cleanPlan({ action: 'my_trips' });
   if (/\bmy (courses|classes|subjects)\b/i.test(t) && /\b(what|which|list|how many|am i in|do i (have|teach))\b/i.test(t)) return cleanPlan({ action: 'my_courses' });
   const trip = /\b(?:plan|make|create|start)\b.*?\btrip to ([\p{L}][\p{L}\s.'-]{1,40}?)(?:\s+(?:for|in|with|on|next|this)\b|[,.!?]|$)/iu.exec(t);
-  if (trip) return cleanPlan({ action: 'trip_new', name: `Trip to ${trip[1].trim()}`, travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1) });
+  if (trip) return cleanPlan({ action: 'trip_new', name: `Trip to ${trip[1].trim()}`, place: trip[1].trim(), travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1), days: Number(t.match(/\b(\d{1,2})[- ]days?\b/i)?.[1] ?? NaN) });
+  const days = /\b(\d{1,2})[- ]days? (?:in|at)\s+([\p{L}][\p{L}\s.'-]{1,40}?)(?:\s+(?:for|with|from|in)\b|[,.!?]|$)/iu.exec(t);
+  if (days && /\b(plan|make|trip|holiday|itinerary)\b/i.test(t)) return cleanPlan({ action: 'trip_new', name: `Trip to ${days[2].trim()}`, place: days[2].trim(), days: Number(days[1]), travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1) });
   const amount = Number(t.match(/(\d+(?:[.,]\d+)?)/)?.[1]?.replace(',', '.') ?? NaN);
   const green = GREEN_WORDS.find(([re]) => re.test(t))?.[1];
   if (green && /\b(i |i'|we |log|did|have|just)/i.test(`${t} `) && !/\b(need|offer)\b/i.test(t)) return cleanPlan({ action: 'green_log', kind: green, amount: amount > 0 ? amount : 1 });

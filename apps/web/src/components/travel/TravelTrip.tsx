@@ -98,7 +98,8 @@ export function TravelTrip() {
   const now = useNow();
   const role = useAuthStore((s) => s.user?.role);
   const [adding, setAdding] = useState(false);
-  const [planning, setPlanning] = useState(false);
+  // M375: the Travel Planner opens a new trip with ?plan=1, so "Plan my days" starts by itself.
+  const [planning, setPlanning] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === '1');
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
   const stop = stops.find((s) => s.id === chosen) ?? stops[0];

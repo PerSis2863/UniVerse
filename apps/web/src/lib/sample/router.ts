@@ -2506,6 +2506,7 @@ function ghidraSample(plan: AskPlan): AskPlan {
     { platform: 'Instagram', text: `Big news about ${plan.topic}! 🌱 Join us this week and be part of it. [add the date and place] #UniVerse #Impact`, when: 'Monday' },
     { platform: 'LinkedIn', text: `We’re proud to share an update on ${plan.topic}. Thank you to everyone who made it possible. [add one result you can stand behind]`, when: 'Tuesday' },
   ] };
+  if (plan.action === 'product_help') return { action: 'show', say: 'In the sample, Ghidra can’t read a real passport. In the app, it answers from the product’s own facts (warranty, materials, recalls) and points you to the brand when it can’t.', items: [{ title: 'Open the sample passport', sub: 'DEMO', href: '/t/demo' }] };
   if (plan.action === 'quiz_draft') return { ...plan, courseId: 'sample-course', courseName: 'Maths 7 (MATH7)', say: `Write a ${plan.count}-question quiz on ${plan.topic} for Maths 7? It’ll be a draft only you can see until you publish it.` };
   if (plan.action === 'my_courses') return { action: 'show', say: 'You’re in 3 courses:', items: [
     { title: 'Geography of cities', sub: 'GEO101', href: '/student/courses' },

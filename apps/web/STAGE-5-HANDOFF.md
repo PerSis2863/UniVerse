@@ -10446,3 +10446,47 @@ smaller within months (the M110 note says how).
   would let a plan pause on the server (LangGraph's `interrupt`) instead of in the browser.
 - Tests: `src/server/ghidra-chain.test.ts` (the cue, the split, the graph running two specialists in order, one request
   left alone).
+
+## M374: Ghidra's app agents, part 1: Research and Social Media (22 Nov)
+
+The owner (22 Nov): "build the app agents next" (their list: personal assistant, social media manager, customer support,
+research assistant, travel planner, "according to each app"). Ghidra is the supervisor: its classifier (or the word
+matcher) picks the agent, alone or for each step of a LangGraph plan (M373). Each agent is a module in
+`src/server/agents/`, with its own prompt from its playbook (M375) and the guardrails.
+
+- **Research Assistant** (`agents/research.ts`; UniVersity, Green Business): Wikipedia's REST search and page summaries
+  (free, no key; only the topic is sent, from the server, with a generic User-Agent; the older action API refuses shared
+  machines), up to 4 sources; AI summarises using only them, citing [n] (`keepCitations` drops numbers that point nowhere);
+  without AI, the sources' own summaries. Sources come back as `ShowItem`s with `external` (a new tab).
+- **Social Media Manager** (`agents/social.ts`; Trace brands, Relief organisations, schools): posts for Instagram,
+  LinkedIn, X, Facebook, WhatsApp in the name of what the person runs (`voices`: their brand, a Relief organisation they
+  run, their school; four queries: the Relief membership has no link to its organisation, so its name is read by id), a
+  day each; `checkPosts` keeps known platforms, X within 280 characters. A new reply kind `posts` with a Copy button each.
+  It never posts anything (no social accounts connected).
+- Routing: `research` and `social_posts` actions (`cleanPlan` checks them; the matcher knows "research …", "find sources
+  about …", "write 2 Instagram posts about …"). Demo answers in `ghidraSample`.
+- GitHub's checks caught one type error the local check (skipped beside training) would have: fixed in the next commit.
+
+## M375: Customer Support and the Travel Planner, and the agents' professional playbooks (22 Nov)
+
+The owner (22 Nov): "continue with customer support and travel planner agents and also need you to train all this agents
+professionally in there own sectors". Told: the agents run on models we can't retrain, so they're trained as a new
+professional is (standards, a worked example, real data, tests); Ghidra's own model can learn the same lessons as data.
+
+- **`agents/playbooks.ts`**: each agent's role, its field's standards and a worked example (research librarian: cite
+  everything, nothing invented, contested views fairly, search terms to go further; social media manager: hook and one call
+  to action, platform norms, `[add …]` for missing facts, no greenwashing or health claims, no children's names or faces,
+  dignity in appeals; support professional: only the product's facts, a recall first, never promise refunds or terms,
+  never ask for passwords or cards, under 120 words; travel agent: realistic pacing, never invented prices or hours, area
+  to stay, getting around, customs, safety, season). `prompt(playbook, format)` builds every agent's prompt (with the
+  untrusted-text rule). Change a playbook when reported answers show a gap.
+- **Customer Support** (`agents/support.ts`): `productFacts(code)` reads the product behind a real code without recording a
+  scan (product, brand, warranty, batch origin and date, an ACTIVE recall with its advice, the EU passport); AI answers only
+  from them, saying when they don't answer (then "please ask <brand>"); links to the brand's page and the passport. On the
+  passport page: **Ask about this product** (`AskProductCard` in `t/[code]/View.tsx`, signed in; `POST
+  /trace/scan/:code/ask`, in COSTLY). In Ghidra: `product_help` (a code plus a question; a bare code stays a check).
+- **Travel Planner** (`agents/travel.ts`): `trip_new` now carries `place` and `days`; the server finds the place in Travel's
+  guides (`placeOf`, Wikivoyage) and adds a travel agent's tips; **Make the trip** creates it with that city and its days
+  (`stop: { guide, days }`) and opens `/travel/trip?id=…&plan=1`, which starts "Plan my days" by itself (`TravelTrip.tsx`).
+  The matcher knows "plan 3 days in Jaipur for 2 of us".
+- Tests: `agents/agents.test.ts`, `agents/support-travel.test.ts` (21 with the chain and Ghidra's).

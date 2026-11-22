@@ -44,7 +44,7 @@ interface Env {
 }
 
 // Endpoints that cost money or send email per call.
-const COSTLY = /^\/api\/(ai|core\/ask$|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|chat\/conversations\/[^/]+\/app$|parent\/chats\/[^/]+\/file$|admin\/chat-apps\/[^/]+\/test$|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest|core\/quizzes\/draft|core\/ghidra\/report|core\/travel\/booking\/read|core\/green\/home\/read|core\/green\/biz\/[^/]+\/read-bill)(\/|$)/;
+const COSTLY = /^\/api\/(ai|core\/ask$|summarize|premium\/ai-report|support|upload|core\/files\/upload|core\/safety\/report|student\/guardians|chat\/translate-draft|chat\/conversations\/[^/]+\/translate|chat\/conversations\/[^/]+\/app$|parent\/chats\/[^/]+\/file$|admin\/chat-apps\/[^/]+\/test$|tutor\/(?!cards)[^/]+\/(ask|practice|flashcards|sources)|assignments\/submissions\/[^/]+\/draft|impact-rooms\/calls\/[^/]+\/report|boards\/[^/]+\/ai|courses\/[^/]+\/discussion\/[^/]+\/suggest|courses\/[^/]+\/syllabus\/draft|assignments\/[^/]+\/rubric-help|quizzes\/[^/]+\/short-answers\/suggest|core\/quizzes\/draft|core\/ghidra\/report|core\/trace\/scan\/[^/]+\/ask|core\/travel\/booking\/read|core\/green\/home\/read|core\/green\/biz\/[^/]+\/read-bill)(\/|$)/;
 
 // Sign-in steps someone could try over and over: the demo sign-in (per address) and the emailed
 // code / passkey second step and sign-up (per signed-in account). Passkey sign-in isn't here: it

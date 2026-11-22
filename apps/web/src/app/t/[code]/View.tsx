@@ -14,6 +14,7 @@ import { Journey } from '@/components/live/Journey';
 import { DppCard } from '@/components/trace/DppCard';
 import type { Dpp } from '@/lib/dpp';
 import { StaffView, type StaffAnswer } from './Staff';
+import { GhidraReply, type GhidraPlan } from '@/components/ui/GhidraReply';
 
 // The product passport (UniVerse Trace): what anyone sees after scanning the code on a product. A
 // big seal says whether it's genuine, then the product's story, where it has been, and (for shops
@@ -229,6 +230,7 @@ export default function View() {
 
             {data.code !== 'DEMO' && data.warranty && <WarrantyCard code={code!} warranty={data.warranty} suspect={data.result === 'SUSPECT'} />}
             <ReviewsCard code={code!} data={data} />
+            {data.code !== 'DEMO' && <AskProductCard code={code!} brand={data.brand.name} signedIn={signedIn} />}
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && <OwnerCard code={code!} owner={data.owner} signedIn={signedIn} />}
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.takeBack && <TakeBackCard code={code!} brand={data.brand.name} owned={!!data.owner?.you} signedIn={signedIn} initial={data.takeBack} />}
             {data.code !== 'DEMO' && data.result !== 'SUSPECT' && data.history && <HistoryCard code={code!} brand={data.brand.name} owners={data.owner?.owners ?? 0} history={data.history} />}
@@ -357,6 +359,38 @@ function WarrantyCard({ code, warranty, suspect }: { code: string; warranty: Non
           <input required type="email" maxLength={160} value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="Email" aria-label="Email" className="h-11 rounded-xl bg-white/10 px-3 text-white placeholder:text-zinc-500 outline-none focus:ring-2 focus:ring-pink-400" />
           <button type="submit" disabled={busy} className="btn-primary h-11 justify-center">{busy ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Register'}</button>
         </form>
+      )}
+    </section>
+  );
+}
+
+/** M375: Ghidra's Customer Support: a question about this product, answered only from its passport's facts. */
+function AskProductCard({ code, brand, signedIn }: { code: string; brand: string; signedIn: boolean }) {
+  const [q, setQ] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [reply, setReply] = useState<{ q: string; plan: GhidraPlan } | null>(null);
+  const ask = async () => {
+    const question = q.trim();
+    if (question.length < 3) return;
+    setBusy(true);
+    try { setReply({ q: question, plan: (await api.post<GhidraPlan>(`/trace/scan/${encodeURIComponent(code)}/ask`, { question })).data }); setQ(''); }
+    catch (err) { toast.error(errorMessage(err, 'Couldn’t ask right now.')); } finally { setBusy(false); }
+  };
+  return (
+    <section className="passport-card mt-4 p-5 pp-rise" aria-labelledby="ask-product-h">
+      <h2 id="ask-product-h" className="flex items-center gap-2 font-semibold"><Sparkles className="w-4 h-4" aria-hidden />Ask about this product</h2>
+      <p className="mt-1 text-sm opacity-80">Ghidra answers from this product’s passport only. For anything else, {brand} can help.</p>
+      {signedIn ? (
+        <>
+          <form onSubmit={(e) => { e.preventDefault(); void ask(); }} className="mt-3 flex gap-2">
+            <label className="sr-only" htmlFor="ask-product">Your question about this product</label>
+            <input id="ask-product" value={q} onChange={(e) => setQ(e.target.value)} maxLength={500} placeholder="How long is the warranty?" className="input flex-1" />
+            <button type="submit" disabled={busy || q.trim().length < 3} className="btn-primary shrink-0">{busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : null}Ask</button>
+          </form>
+          {reply && <div className="mt-3" aria-live="polite"><p className="text-xs opacity-70" translate="no">You asked: {reply.q}</p><GhidraReply plan={reply.plan} role="STUDENT" settled={undefined} onSettle={() => setReply(null)} className="mt-2" /></div>}
+        </>
+      ) : (
+        <p className="mt-3 text-sm"><Link href={`/login?next=${encodeURIComponent(`/t/${code}`)}`} className="font-semibold underline">Sign in</Link> to ask.</p>
       )}
     </section>
   );

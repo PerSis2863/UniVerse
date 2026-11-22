@@ -14,6 +14,8 @@ import { isHard, thinkHardText } from './ghidra-think';
 import { askChain } from './ghidra-chain';
 import { research } from './agents/research';
 import { socialPosts } from './agents/social';
+import { support } from './agents/support';
+import { planTrip } from './agents/travel';
 import { short } from './trace';
 import type { Body } from './body';
 
@@ -33,7 +35,8 @@ const SYSTEM = [
   '- my_green: they ask how they are doing in Green (CO2 saved, streak, actions).',
   '- my_trips: they ask which trips they have or are planning in Travel.',
   '- my_courses: they ask which courses they are in or teach.',
-  '- trip_new: they want to plan a new trip. name is short, like "Trip to Jaipur"; startDate YYYY-MM-DD only if they said when (assume the next such date); travellers is how many people.',
+  '- trip_new: they want to plan a trip. The Travel Planner makes it. name is short, like "Trip to Jaipur"; place: the city or region; days: how many days if said; startDate YYYY-MM-DD only if they said when (assume the next such date); travellers is how many people.',
+  '- product_help: they ask a question about a product and give its Trace code (code; question: their question without the code). Customer Support answers from its passport.',
   '- quiz_draft: a teacher wants a quiz written. topic is what it is about; count how many questions (default 5); course the course code or name if they said one.',
   '- research: they want information on a topic with sources (topic: the subject in a few words). The Research Assistant finds sources and cites them.',
   '- social_posts: they want social media posts or captions written (topic: what about; platforms: any of Instagram, LinkedIn, X, Facebook, WhatsApp; count: how many). The Social Media Manager drafts them.',
@@ -52,10 +55,10 @@ const SYSTEM = [
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
-    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'research', 'social_posts', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
+    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'research', 'social_posts', 'product_help', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
     say: { type: 'STRING' }, kind: { type: 'STRING' }, amount: { type: 'NUMBER' }, note: { type: 'STRING' },
     type: { type: 'STRING' }, title: { type: 'STRING' }, people: { type: 'NUMBER' }, urgency: { type: 'STRING' },
-    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' }, topic: { type: 'STRING' }, count: { type: 'NUMBER' }, course: { type: 'STRING' }, platforms: { type: 'ARRAY', items: { type: 'STRING' } },
+    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' }, topic: { type: 'STRING' }, count: { type: 'NUMBER' }, course: { type: 'STRING' }, platforms: { type: 'ARRAY', items: { type: 'STRING' } }, place: { type: 'STRING' }, days: { type: 'NUMBER' }, question: { type: 'STRING' },
   },
   required: ['action', 'say'],
 };
@@ -171,6 +174,8 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
     // M374: the app agents, each in src/server/agents.
     case 'research': return research(u, plan.topic);
     case 'social_posts': return socialPosts(u, plan.topic, plan.platforms, plan.count);
+    case 'product_help': return support(u, plan.code, plan.question);
+    case 'trip_new': return planTrip(u, plan);
     default: return plan;
   }
 }

@@ -1,9 +1,9 @@
 import type { SessionUser } from '@/lib/server-auth';
 import type { AskPlan } from '@/lib/ask';
-import { UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { spendAi } from '../ai-budget';
 import { featureOff } from '../moderation';
 import { geminiJson } from '../gemini';
+import { PLAYBOOKS, prompt } from './playbooks';
 
 // Ghidra's Research Assistant (M374, one of the owner's app agents, 22 Nov): for UniVersity and Green Business. It finds
 // sources on Wikipedia (free, no key: its REST search and page summaries; only the topic is sent, from the server, never
@@ -30,13 +30,7 @@ export async function findSources(topic: string, lang = 'en'): Promise<Source[]>
 /** Keeps only citation numbers that exist ([7] with four sources goes). */
 export const keepCitations = (text: string, n: number) => text.replace(/\[(\d+)\]/g, (m, d) => (Number(d) >= 1 && Number(d) <= n ? m : ''));
 
-const SYSTEM = [
-  'You are Ghidra\'s Research Assistant at UniVerse, helping students and organisations understand a topic.',
-  'Use ONLY the numbered sources given. Cite every claim with its source number in square brackets, like [1] or [2][3].',
-  'If the sources do not cover something, say so plainly; never add facts from elsewhere. Plain text, no ** or # marks.',
-  'Write a short summary (3–5 sentences) and up to 5 key points. Suitable for students.',
-  UNTRUSTED_RULE,
-].join('\n');
+const SYSTEM = prompt(PLAYBOOKS.research, 'Write a short summary (3–5 sentences) and up to 5 key points. Plain text, no ** or # marks.');
 const SCHEMA = { type: 'OBJECT', properties: { summary: { type: 'STRING' }, points: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['summary'] };
 
 export async function research(u: SessionUser, topic: string): Promise<AskPlan> {

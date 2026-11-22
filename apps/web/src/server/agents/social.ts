@@ -1,10 +1,10 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import type { AskPlan, SocialPost } from '@/lib/ask';
-import { UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { spendAi } from '../ai-budget';
 import { featureOff } from '../moderation';
 import { geminiJson } from '../gemini';
+import { PLAYBOOKS, prompt } from './playbooks';
 import { short } from '../trace';
 
 // Ghidra's Social Media Manager (M374, one of the owner's app agents, 22 Nov): for Trace brands, Relief organisations,
@@ -26,14 +26,7 @@ async function voices(u: SessionUser): Promise<string[]> {
     .filter((x): x is string => !!x);
 }
 
-const SYSTEM = [
-  'You are Ghidra\'s Social Media Manager at UniVerse. Write ready-to-post social media posts for the person.',
-  'One post per platform asked (or several if asked), each fitting its platform: Instagram warm with a few hashtags, LinkedIn',
-  'professional, X under 280 characters, Facebook friendly, WhatsApp short. Suggest a day for each (like "Monday").',
-  'Never invent numbers, results, prices, dates or quotes: if a detail is needed and not given, write [add …] for them to fill.',
-  'Kind and inclusive; suitable for schools and charities. Plain text, emojis sparingly.',
-  UNTRUSTED_RULE,
-].join('\n');
+const SYSTEM = prompt(PLAYBOOKS.social, 'Write one post per platform asked (or as many as asked), each with a suggested day like "Monday".');
 const SCHEMA = { type: 'OBJECT', properties: { posts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { platform: { type: 'STRING' }, text: { type: 'STRING' }, when: { type: 'STRING' } }, required: ['platform', 'text'] } } }, required: ['posts'] };
 
 /** The posts AI wrote, checked: a known platform, some words, X within its limit. */
