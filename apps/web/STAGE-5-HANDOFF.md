@@ -10884,3 +10884,42 @@ language no longer offered goes back to English on load. Every server check alre
 the AI translator refuses to draft them; their saved screen translations stay in `ui_translations` unused.
 `languageName` names any code through `Intl.DisplayNames` ("Translated from Urdu" still reads well). Test:
 `src/lib/languages-offered.test.ts`. "Urdu" as a subject of study (`options/academic.ts`) stays.
+
+## M404 (22 Nov): Hyperion Simulate, Structures
+
+The owner, 22 Nov: "where are the ansys software features i cant see it ?" (agreed on 21 Nov, not built until now: said
+so) and "we need to make a software not just platform like how these company has made so make things like that".
+Hyperion's menu now has **Code** (`/hyperion`) and **Simulate** (`/hyperion/simulate`; `Sidebar.tsx` `lab`, phone tabs
+in `app-tabs.ts`). Our own finite-element code, from the textbook method (no outside library):
+- `src/lib/sim/part.ts`: a flat part = an outline (`Loop`: polygon or circle) and holes; edges (`L{loop}S{side}`, a
+  circle `L{loop}`) with names; four ready-made parts with sizes (`TEMPLATES`: cantilever beam, plate with a hole,
+  L-bracket, lifting lug); `partProblem` (holes outside, too few corners).
+- `mesh.ts`: boundary sampled every h; inside a triangle lattice kept 0.55 h from the boundary; Bowyer–Watson
+  `delaunay`; triangles kept when their middle and every side's middle are inside; a boundary piece the triangles
+  skip is split and meshed again (up to 6 passes); then 6-node triangles (mid-side nodes on the circle for round
+  holes). `elementSize` = the longer side over 12/22/36/56 and at most the shorter (or the bracket's arm) over
+  2/4/6/8. Speed: up to ~10,000 nodes, meshed in ~0.1 s.
+- `skyline.ts`: reverse Cuthill–McKee numbering, a skyline matrix, L·D·Lᵀ in place (`MechanismError` when a pivot
+  vanishes: "the part isn't held firmly"), `fix` for held unknowns. The finest lug (~19,000 unknowns) solves in ~0.8 s.
+- `structure.ts`: plane stress, 3-point Gauss, `MATERIALS` (8, E / ν / density / yield), supports (fixed, slides
+  along x or y), loads (`force` spread by length, `pressure` normal to the edge × thickness, `bearing`: a pin pulled
+  one way pressing cos-weighted on that side of the hole, `gravity`), stresses at each element's nodes averaged
+  (x, y, shear, von Mises, principal), safety factor (yield / von Mises, at most 15), reactions per support
+  (inner forces at held unknowns minus the loads there), mass.
+- Tests (`structure.test.ts`) against textbook answers: the patch test (an evenly pulled bar: exact σ and stretch),
+  a cantilever (tip PL³/3EI within 2–4 %, σ = Mc/I within 5 %), a small hole in a wide plate (×2.85–3.4, Kirsch's
+  3), a part held nowhere or free to slide refused, its own weight carried by the support; colour bands add up.
+- `contour.ts`: 9 bands blue → red (reversed for the safety factor), each 6-node triangle as 4, cut along the band
+  limits, one `Path2D` per band (9 fills a frame). `model.ts`: what is kept (`uv-sim-structure`, read back safely by
+  `readModel`), each shape's usual supports and loads (`STARTS`), `verdict` in plain words.
+- `components/sim/sim.worker.ts` meshes (kept while only supports, loads or material change) and solves off the
+  page's thread; `StructureBench.tsx`: an outline (geometry, material, mesh, supports A…, loads B…, own weight,
+  solution) and its details; every change solves again after 120 ms (the newest change wins). `SimCanvas.tsx`: the
+  part, mesh (curved sides), bands on the bent shape (shown ×N, true size or not bent; Animate breathes it, not with
+  Reduce Motion), the outline dashed, supports in blue (hatches or rollers) and loads in red arrows with letters, Max
+  and Min flagged, a press on an edge adds it to the chosen support or load (also by ticks in the details), the value
+  under the pointer written into a label (no redraw), wheel or buttons zoom, drag moves; the legend beside the part,
+  a strip along the bottom when narrow. PNG and CSV downloads. Numbers in the side panel opt out of the count-up.
+Not built: 3D parts, contact, plasticity (it says "fails" past yield rather than following it), drawing your own
+outline (only the four shapes' sizes), units other than mm / N. Next: vibration (the same mesh: natural frequencies
+and mode shapes), heat, fluids, circuits, and installing Hyperion as its own computer app.
