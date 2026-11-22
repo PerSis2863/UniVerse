@@ -127,7 +127,7 @@ export function TravelTrip() {
   /** M357: how they'll get to a stop from the one before (the same choice as Ready → Footprint; the train logs a Green action). */
   const pickWay = (stopId: string, mode: TravelMode) => change({ stops: stops.map((x) => (x.id === stopId ? { ...x, mode } : x)) }, async () => {
     const { data: r } = await api.patch<{ green: { kg: number } | null }>(`/travel/trips/${t.id}/stops/${stopId}`, { mode, green: mode === 'train' });
-    if (r.green) toast.success(`Logged in Green: about ${kgText(r.green.kg)} of CO₂ saved by taking the train.`);
+    if (r.green) toast.success(`Logged in Green living: about ${kgText(r.green.kg)} of CO₂ saved by taking the train.`);
   });
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
   const total = tripDays(stops), cover = tripCover({ name: t.name, cover: stops[0]?.guide, places: stops.map((x) => x.guide) });

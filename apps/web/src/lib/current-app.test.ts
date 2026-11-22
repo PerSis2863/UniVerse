@@ -13,8 +13,8 @@ describe('the app you are in', () => {
     expect(currentAppNow('/play')).toBe('campus'); // M224: the games are UniVersity's
   });
   it('on a shared page, the app last used, then the one chosen, then UniVersity', () => {
-    vi.stubGlobal('localStorage', store({ 'uv-last-app': 'green' }));
-    expect(currentAppNow('/student/inbox')).toBe('green');
+    vi.stubGlobal('localStorage', store({ 'uv-last-app': 'relief' }));
+    expect(currentAppNow('/student/inbox')).toBe('relief');
     vi.stubGlobal('localStorage', store({ 'uv-last-app': 'nonsense' }));
     vi.stubGlobal('sessionStorage', store({ 'uv-app': 'trace' }));
     expect(currentAppNow('/teacher/inbox')).toBe('trace');

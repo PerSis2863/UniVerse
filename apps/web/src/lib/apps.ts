@@ -5,7 +5,8 @@
 // in, and the switcher at its top (and the hub, /hub) moves between them. Shared tools (Messages,
 // Collaborate, Calls, Settings) belong to every app.
 
-export type AppId = 'campus' | 'trace' | 'relief' | 'green' | 'travel' | 'lab';
+// M395: Green was folded into the other apps (the owner, 22 Nov): a stored 'green' falls back through knownApp.
+export type AppId = 'campus' | 'trace' | 'relief' | 'travel' | 'lab';
 
 export interface ImpactApp {
   id: AppId;
@@ -31,17 +32,13 @@ export const APPS: ImpactApp[] = [
   {
     id: 'trace', name: 'UniVerse Trace', tagline: 'Every product gets a passport', color: '#fe81d1',
     impact: 'Real or fake, in one scan.',
-    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply'],
+    // M395: a company's carbon footprint (Green → Business before) is Trace's Carbon, so its public auditor page too.
+    paths: ['/trace', '/carry', '/t', '/b', '/dpp', '/supply', '/carbon'],
   },
   {
     id: 'relief', name: 'UniVerse Relief', tagline: 'Help that reaches people fast', color: '#f97316',
     impact: 'Needs and offers, matched on a live map.',
     paths: ['/relief', '/aid'],
-  },
-  {
-    id: 'green', name: 'UniVerse Green', tagline: 'Climate action you can prove', color: '#10b981',
-    impact: 'Log an action, see the CO₂ saved.',
-    paths: ['/green'],
   },
   {
     // M202 (the owner, 15 Nov 2026): where to go, eat, sleep and what to see, trips planned day by day
@@ -89,10 +86,10 @@ export const knownApp = (id: string | null | undefined): AppId => (APPS.some((a)
 
 export const appById = (id: AppId) => APPS.find((a) => a.id === knownApp(id))!;
 
-/** Where an app opens for someone: Campus by role, the others at their own page. */
+/** Where an app opens for someone: Campus by role, the others at their first address (Hyperion: /hyperion). */
 export function appHome(id: AppId, role?: string | null) {
-  if (id === 'campus') return role === 'ADMIN' ? '/admin' : role === 'TEACHER' ? '/teacher' : role === 'GUARDIAN' ? '/parent' : '/student';
-  return `/${id}`;
+  if (knownApp(id) === 'campus') return role === 'ADMIN' ? '/admin' : role === 'TEACHER' ? '/teacher' : role === 'GUARDIAN' ? '/parent' : '/student';
+  return appById(id).paths[0];
 }
 
 /** Each role's Messages page (the inbox pages are shared by every app). */

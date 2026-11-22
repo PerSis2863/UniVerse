@@ -28,7 +28,7 @@ export function BizVerify({ org, role, year }: SectionProps) {
   const [f, setF] = useState({ email: '', firm: '', year: String(year) });
   const invite = async (e: React.FormEvent) => {
     e.preventDefault();
-    try { await api.post(`/green/biz/${org.id}/verifications`, { ...f, year: Number(f.year) }); setF({ ...f, email: '' }); await mutate(); toast.success('Invited: they’ll see it in their Green.'); }
+    try { await api.post(`/green/biz/${org.id}/verifications`, { ...f, year: Number(f.year) }); setF({ ...f, email: '' }); await mutate(); toast.success('Invited: they’ll see it in their Trace → Carbon.'); }
     catch (err) { toast.error(errorMessage(err, 'Couldn’t invite them.')); }
   };
   if (!data) return <div className="h-72 rounded-[var(--radius-card)] skeleton" />;

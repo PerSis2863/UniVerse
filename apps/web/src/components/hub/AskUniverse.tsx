@@ -54,7 +54,7 @@ export function AskUniverse({ role }: { role: string }) {
     try {
       if (plan.action === 'green_log') {
         await api.post('/green/actions', { kind: plan.kind, amount: plan.amount, note: plan.note });
-        toast.success('Logged in Green.', { action: { label: 'Open Green', onClick: () => router.push('/green') } });
+        toast.success('Logged in Green living.', { action: { label: 'Open Green living', onClick: () => router.push('/student/life/green') } });
         void mutate('/hub/wallet');
       } else if (plan.action === 'relief_post') {
         const pos = await here();

@@ -177,7 +177,7 @@ export async function greenStreakNudges(now = Date.now()) {
     iso(today - DAY), iso(today),
   );
   const ids = rows.map((r) => String(r.userId));
-  return ids.length ? notifyMany(ids, { type: 'reminder', title: 'Keep your Green streak going', body: 'You logged a climate action yesterday. One today keeps your streak alive.', link: '/green', email: false }) : 0;
+  return ids.length ? notifyMany(ids, { type: 'reminder', title: 'Keep your Green streak going', body: 'You logged a climate action yesterday. One today keeps your streak alive.', link: '/student/life/green', email: false }) : 0;
 }
 
 /** The teams a person is in. */
@@ -210,7 +210,7 @@ export async function confirmGreenAction(u: SessionUser, id: string) {
   const done = await prisma.greenAction.updateMany({ where: { id, verifiedAt: null }, data: { verifiedBy: u.id, verifiedAt: new Date() } });
   if (!done.count) return { ok: true, already: true };
   const f = GREEN_FACTORS[a.kind as GreenKind];
-  const n = { title: `${u.name ?? 'A teammate'} confirmed your action`, body: `${a.amount} ${f?.units ?? ''} · ${f?.label.toLowerCase() ?? 'climate action'}: ${a.co2Kg} kg CO₂ now counts for the challenge and the leaderboards.`, link: '/green' };
+  const n = { title: `${u.name ?? 'A teammate'} confirmed your action`, body: `${a.amount} ${f?.units ?? ''} · ${f?.label.toLowerCase() ?? 'climate action'}: ${a.co2Kg} kg CO₂ now counts for the challenge and the leaderboards.`, link: '/student/life/green' };
   await notify(a.userId, { type: 'green', ...n, email: false });
   await pushService.sendToUser(a.userId, { title: n.title, body: n.body.slice(0, 140), url: n.link, tag: `green-${id}` }).catch(() => 0);
   return { ok: true };

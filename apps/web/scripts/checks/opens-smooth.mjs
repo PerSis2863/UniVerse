@@ -10,7 +10,7 @@ const base = process.argv.find((a) => a.startsWith('http')) ?? 'http://localhost
 const only = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : null;
 const sizes = [['phone', 390, 844], ['computer', 1280, 860]].filter(([n]) => !(process.argv.includes('--phone-only') && n !== 'phone') && !(process.argv.includes('--computer-only') && n !== 'computer'));
 const PAGES = {
-  'alice@student.com': ['/student', '/student/inbox', '/student/calendar', '/student/courses', '/student/grades', '/student/settings', '/calls', '/hub', '/trace', '/relief', '/green', '/travel', '/play'],
+  'alice@student.com': ['/student', '/student/inbox', '/student/calendar', '/student/courses', '/student/grades', '/student/settings', '/calls', '/hub', '/trace', '/relief', '/student/life/green', '/travel', '/play'],
   'tara@teacher.com': ['/teacher', '/teacher/courses', '/teacher/grades', '/teacher/attendance', '/teacher/calendar'],
 };
 const OPENERS = 'button[aria-haspopup]:not([disabled]), button[aria-expanded="false"]:not([disabled]), button[aria-controls]:not([disabled]), button[aria-label^="More"]:not([disabled])';

@@ -1,17 +1,17 @@
 'use client';
 
-import { HandHeart, Leaf, MapPin, TreePine, Trophy, Users } from 'lucide-react';
+import { HandHeart, MapPin, Users } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import type { AppId } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { Accent, CountUp, Reveal, ghost, primary } from './bits';
 
-// The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a section each for Relief,
-// Green, and the grid of every app. Illustrations only: no invented customers or numbers
+// The website's parts for UniVerse Impact's newer apps (src/lib/apps.ts): a section for Relief (Green's
+// left with Green, M395) and the grid of every app. Illustrations only: no invented customers or numbers
 // about real people.
 
-function Feature({ icon: Icon, title, text, color }: { icon: typeof Leaf; title: string; text: string; color: string }) {
+function Feature({ icon: Icon, title, text, color }: { icon: typeof HandHeart; title: string; text: string; color: string }) {
   return (
     <div className="h-full rounded-3xl p-6 bg-white/[0.04] ring-1 ring-white/[0.08] hover:ring-white/20 transition-shadow">
       <Icon className="w-6 h-6" style={{ color }} aria-hidden />
@@ -35,25 +35,6 @@ export function ReliefSection() {
           ] as const).map(([icon, t, d], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color="#fdba74" /></Reveal>)}
         </div>
         <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=relief" className={primary}>Join Relief</Link><Link href="/login?app=relief" className={ghost}>Sign in to Relief</Link></div></Reveal>
-      </div>
-    </section>
-  );
-}
-
-export function GreenSection() {
-  return (
-    <section id="green" className="px-6 py-24 scroll-mt-24">
-      <div className="max-w-6xl mx-auto">
-        <Reveal delay={0.05}><h2 className="mt-5 text-4xl md:text-6xl font-bold tracking-tight text-white max-w-3xl">Climate action you can <Accent>prove.</Accent></h2></Reveal>
-        <Reveal delay={0.1}><p className="mt-5 text-lg text-zinc-300 max-w-2xl">Small actions add up when you can see them.</p></Reveal>
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-4">
-          {([
-            [TreePine, 'Log it in seconds', 'Trees, bikes, recycling: each turned into CO₂ saved.'],
-            [Trophy, 'Teams and a weekly challenge', 'Join with a code and beat the week together.'],
-            [Leaf, 'A map of what changed', 'Watch your school or city’s effect grow.'],
-          ] as const).map(([icon, t, d], i) => <Reveal key={t} delay={0.1 + i * 0.06}><Feature icon={icon} title={t} text={d} color="#6ee7b7" /></Reveal>)}
-        </div>
-        <Reveal delay={0.2}><div className="mt-10 flex flex-wrap gap-3"><Link href="/register?app=green" className={primary}>Join Green</Link><Link href="/login?app=green" className={ghost}>Sign in to Green</Link></div></Reveal>
       </div>
     </section>
   );

@@ -32,7 +32,6 @@ export function sampleHub(me: { id: string }) {
       campus: { value: 1240, label: 'courses running', mine: { value: 5, label: 'courses' } },
       trace: { value: 48_210, label: 'products checked', mine: { value: 1860, label: 'points earned' } },
       relief: { value: 3_904, label: 'people helped', mine: { value: 23, label: 'people helped' } },
-      green: { value: 182_450, label: 'kg CO₂ saved', mine: { value: 312, label: 'kg CO₂ saved' } },
       travel: { value: 3_912, label: 'places saved', mine: { value: 12, label: 'places saved' } },
       lab: { value: 250, label: 'functions built in', mine: null },
     },
@@ -54,7 +53,7 @@ export function sampleWallet(me: { id: string }) {
     ...credits.map((c) => ({ app: 'campus' as const, at: iso(c.at), text: c.text, amount: `+${c.v} impact pts` })),
     ...pts.map((p) => ({ app: 'trace' as const, at: iso(p.at), text: `Scanned · ${p.brand}`, amount: `+${p.v} pts` })),
     ...helped.map((h) => ({ app: 'relief' as const, at: iso(h.at), text: `Delivered: ${h.text}`, amount: `${h.v} helped` })),
-    ...actions.slice(0, 30).map((a) => ({ app: 'green' as const, at: a.createdAt, text: GREEN_FACTORS[a.kind].label, amount: `${Math.round(a.co2Kg * 10) / 10} kg CO₂` })),
+    ...actions.slice(0, 30).map((a) => ({ app: 'campus' as const, href: '/student/life/green', at: a.createdAt, text: GREEN_FACTORS[a.kind].label, amount: `${Math.round(a.co2Kg * 10) / 10} kg CO₂` })),
   ];
   return {
     campus: { points: 145, courses: 5, weeks: weekly(credits, now) },

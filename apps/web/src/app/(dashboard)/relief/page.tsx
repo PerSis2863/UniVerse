@@ -18,6 +18,7 @@ const VIEWS: Record<ReliefView, React.ComponentType> = {
   ready: dynamic(() => import('@/components/relief/ReliefReady').then((m) => m.ReliefReady), { loading: wait }),
   firstaid: dynamic(() => import('@/components/relief/ReliefReady').then((m) => m.ReliefFirstAid), { loading: wait }),
   hours: dynamic(() => import('@/components/relief/ReliefReady').then((m) => m.ReliefHours), { loading: wait }),
+  events: dynamic(() => import('@/components/green/GreenEvents').then((m) => m.GreenEvents), { loading: wait }),
 };
 
 function Relief() {

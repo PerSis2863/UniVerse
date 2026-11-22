@@ -49,7 +49,7 @@ describe('the scenes', () => {
     b.scene('trace', 0);
     expect(b.draw(400, true)).toBe(true); // arriving (1.1 s)
     expect(b.draw(1200, true)).toBe(false);
-    b.scene('green', 1200);
+    b.scene('relief', 1200);
     expect(b.draw(1500, true)).toBe(true); // the switch (1 s)
     expect(b.draw(2300, true)).toBe(false);
   });

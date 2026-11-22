@@ -212,7 +212,7 @@ export function BizReport({ report: r }: { report: Report }) {
         <h3 id="r-data" className={h3}>Data behind it</h3>
         <p className="mt-2">{r.data.lines} ledger lines · {r.data.suppliersAnswered} of {r.data.suppliers} suppliers answered with their own figures · {r.data.commuteAnswers} staff commute answers.</p>
         {r.audit && <p className="mt-1 break-all">Change log fingerprint (SHA-256) {r.audit.hash} at {new Date(r.audit.at).toLocaleString()}: an auditor’s link shows the whole chain.</p>}
-        <p className="mt-1">Made with UniVerse Green on {new Date(r.generatedAt).toLocaleDateString()}. Factors are published averages (DESNZ/DEFRA 2024, India’s CEA, US EPA, IEA and Ember), rounded, unless a line gives its own.</p>
+        <p className="mt-1">Made with UniVerse Trace Carbon on {new Date(r.generatedAt).toLocaleDateString()}. Factors are published averages (DESNZ/DEFRA 2024, India’s CEA, US EPA, IEA and Ember), rounded, unless a line gives its own.</p>
       </section>
     </article>
   );

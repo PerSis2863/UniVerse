@@ -10718,3 +10718,27 @@ entries ("Aether map"), the trip invite share text, the family journey page (`/j
 Kept on purpose: the addresses `/travel…` and `/journey/<code>` (live, and family links are already shared), the
 app id `travel`, the code's names (`components/travel`, `travel-*.ts`, API `/travel/…`), and the ordinary word
 "travel" in text (a green tip's "Travel" area, "your travel in numbers"). New notes and comments call the app Aether.
+
+## M395 (22 Nov): Green folded into the other apps
+
+The owner, 22 Nov: "remove the green app completely and add this to all the section of other apps where it is the part
+of the daily life". Green is no longer an app (`APPS`, `AppId`, menus, phone tabs, the landing's tab, hero, try-it and
+closing card, the sign-in picture, the hub's planet, the backdrop's aurora, the owner console's launch row). Its parts
+now live where they belong in daily life (`src/lib/green-home.ts` holds the map):
+- **UniVersity → Student life → Green living** (`/student/life/green`, a tab in `LIFE_TABS` and the student menu's
+  Campus group): My impact (`GreenApp`), Footprint, Goals, Tips, Teams (`GreenTeams`, the old teams page as a
+  component), and a "More green in your apps" card. Its `GreenTabs` row passes `keep` to `TabRow` (UniVersity has no
+  sections in the top bar, so the row must not hide on computers).
+- **Aether**: Journeys (`/travel?view=journeys`, `GreenJourney`) and Green places (`/travel?view=green`, `GreenPlaces`).
+- **Relief**: Community events (`/relief?view=events`, `GreenEvents`).
+- **Trace**: Swap & repair (`/trace/swap`, `SwapBoard`) and Carbon (`/trace/carbon`, `GreenBusiness`: Green → Business);
+  the auditor's public page `/carbon/[code]` is Trace's (its `paths`, share card, wording).
+Kept on purpose: the code's names (`components/green`, `src/server/green*.ts`, `green_*` tables) and the API
+`/api/green/…`, so nothing on the server or in the database changes. `/green` and `/green/teams` are small pages
+(`GreenMoved`) that send people on with `greenHome` (old links, bookmarks, notifications already sent; other query
+parts such as `&b=verify` are kept). New links point straight at the new homes. A stored `'green'` (last app, chosen
+app, a chat's app, the owner's shown-apps list) falls back through `knownApp` / `parseShownApps` / `lastApp`. Climate
+actions in the Impact Wallet are UniVersity's events with `href` to Green living (`WalletEvent.href`, new); the
+console's launch board counts them with UniVersity. Green's three games went to Trace (Recycle Rush) and Relief (Reef
+Rescue, Ocean Cleanup). Also fixed: `appHome` sent Hyperion to `/lab` (gone since M392); it now uses the app's first
+address. The hub no longer runs Green's two totals queries.

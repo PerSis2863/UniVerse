@@ -33,7 +33,7 @@ export function CarbonBudget() {
     <section className="panel p-5 space-y-3" aria-labelledby="budget-h">
       <h2 id="budget-h" className="font-bold flex items-center gap-2 text-zinc-900 dark:text-white"><Gauge className="w-4 h-4 text-emerald-600" aria-hidden />My monthly carbon budget</h2>
       {!plan ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">Work out your footprint first: the budget follows it month by month. <Link href="/green?view=footprint" className="font-medium text-emerald-700 hover:underline dark:text-emerald-300">Footprint</Link></p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">Work out your footprint first: the budget follows it month by month. <Link href="/student/life/green?view=footprint" className="font-medium text-emerald-700 hover:underline dark:text-emerald-300">Footprint</Link></p>
       ) : (
         <>
           {budget ? (

@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Sigma, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, ScanLine, ShieldCheck, Sparkles, Truck, Trophy, Wallet, type LucideIcon } from 'lucide-react';
+import { Sigma, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, Recycle, ScanLine, ShieldCheck, Sparkles, Truck, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -140,7 +140,15 @@ const APP_SEARCH: SearchPage[] = [
   { href: '/trace/vault', label: 'My vault', keywords: 'own ownership transfer warranty proof second hand' },
   { href: '/relief', label: 'Relief map', keywords: 'help need food water shelter medical volunteer aid disaster' },
   { href: '/relief/orgs', label: 'Relief organisations', keywords: 'ngo charity food bank shelter supplies stock inventory volunteer shifts rota join code' },
-  { href: '/green', label: 'Log a climate action', keywords: 'green climate co2 tree recycle cycle carbon' },
+  // M395: Green's parts live in the apps of daily life (Student life, Aether, Relief, Trace).
+  { href: '/student/life/green', label: 'Log a climate action', keywords: 'green climate co2 tree recycle cycle carbon impact streak badge' },
+  { href: '/student/life/green?view=footprint', label: 'My carbon footprint', keywords: 'green footprint calculator co2 carbon home food travel' },
+  { href: '/student/life/green?view=teams', label: 'Green teams', keywords: 'green team challenge league leaderboard co2' },
+  { href: '/travel?view=journeys', label: 'Greener journeys', keywords: 'journey commute train bus bike car flight co2 compare green' },
+  { href: '/travel?view=green', label: 'Green places', keywords: 'recycling repair refill bike charging green places map' },
+  { href: '/relief?view=events', label: 'Community events', keywords: 'clean up tree planting beach litter pick community event volunteer green' },
+  { href: '/trace/swap', label: 'Swap & repair', keywords: 'swap give away repair fix second hand reuse lend borrow' },
+  { href: '/trace/carbon', label: 'Company carbon footprint', keywords: 'business company carbon footprint ghg scope 1 2 3 brsr csrd suppliers emissions report' },
   { href: '/play', label: 'Play a game', keywords: 'play games arcade quiz fun friends multiplayer room code' },
   { href: '/play/leaderboard', label: 'Game leaderboards', keywords: 'games scores best rank leaderboard' },
 ];
@@ -179,6 +187,7 @@ export const navByRole: Record<string, NavItem[]> = {
       label: 'Campus', icon: Coffee,
       subItems: [
         { href: '/student/life/associations', label: 'nav.student_life', also: ['/student/life/board', '/student/life/rooms', '/student/life/medical', '/student/life/everyday', '/student/life/events', '/student/life/lost-found', '/campus-map'] },
+        { href: '/student/life/green', label: 'Green living' },
         { href: '/student/community', label: 'nav.community' },
         { href: '/student/support', label: 'Help & safety', also: ['/student/wellbeing', '/student/beesafe'] },
       ]
@@ -266,7 +275,7 @@ const sharedNav = (role: string): NavItem[] => [
 ];
 
 /** Each app's icon in the hub's menu. */
-const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, green: Leaf, travel: Plane, lab: Sigma };
+const APP_ICON: Record<AppId, LucideIcon> = { campus: GraduationCap, trace: ScanLine, relief: HandHeart, travel: Plane, lab: Sigma };
 
 /** Each app's own menu (src/lib/apps.ts). UniVersity keeps the school menus by role (navByRole). */
 export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
@@ -279,6 +288,8 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
     { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
     { href: '/trace/vault', label: 'My vault', icon: KeyRound },
+    { href: '/trace/swap', label: 'Swap & repair', icon: Recycle },
+    { href: '/trace/carbon', label: 'Carbon', icon: Leaf },
   ],
   travel: [
     { href: '/travel', label: 'Explore', icon: Compass, also: ['/travel/guide'] },
@@ -288,10 +299,6 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
     { href: '/relief', label: 'Live map', icon: Map },
     { href: '/relief/mine', label: 'My requests & tasks', icon: HandHeart },
     { href: '/relief/orgs', label: 'Organisations', icon: Building2 },
-  ],
-  green: [
-    { href: '/green', label: 'My impact', icon: Leaf },
-    { href: '/green/teams', label: 'Teams & leaderboard', icon: Trophy },
   ],
   lab: [
     { href: '/hyperion', label: 'Hyperion', icon: Sigma },

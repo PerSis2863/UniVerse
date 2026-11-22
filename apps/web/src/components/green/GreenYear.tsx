@@ -39,7 +39,7 @@ export function GreenYear({ year, totals }: { year: Record<string, number>; tota
     bg.addColorStop(0, '#0f3b2e'); bg.addColorStop(0.6, '#0b2620'); bg.addColorStop(1, '#111113');
     g.fillStyle = bg; g.fillRect(0, 0, W, H);
     const font = (w: number, px: number) => `${w} ${px}px Inter, system-ui, sans-serif`;
-    g.fillStyle = '#86d9b8'; g.font = font(600, 36); g.fillText('My year with UniVerse Green', 80, 130);
+    g.fillStyle = '#86d9b8'; g.font = font(600, 36); g.fillText('My green year with UniVerse', 80, 130);
     g.fillStyle = '#ffffff'; g.font = font(700, 150); g.fillText(`${Math.round(yearKg)} kg`, 80, 320);
     g.fillStyle = '#cbd5d1'; g.font = font(500, 40); g.fillText('of CO₂ saved', 84, 380);
     const stat = (label: string, value: string, x: number, y: number) => { g.fillStyle = '#ffffff'; g.font = font(700, 64); g.fillText(value, x, y); g.fillStyle = '#9fb3ab'; g.font = font(500, 30); g.fillText(label, x, y + 46); };

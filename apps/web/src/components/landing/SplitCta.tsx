@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Sigma, FunctionSquare, LineChart, Grid3x3, Download, Cpu, ArrowRight, BedDouble, Bell, BookOpen, Camera, Compass, Plane, CalendarDays, Gift, Globe2, GraduationCap, HandHeart, Leaf, MapPin, Megaphone, MessagesSquare, Recycle, ScanLine, TreePine, Trophy, Truck, Users, Wallet } from 'lucide-react';
+import { Sigma, FunctionSquare, LineChart, Grid3x3, Download, Cpu, ArrowRight, BedDouble, Bell, BookOpen, Camera, Compass, Plane, CalendarDays, Gift, Globe2, GraduationCap, HandHeart, MapPin, Megaphone, MessagesSquare, ScanLine, Truck, Users, Wallet } from 'lucide-react';
 import type { AppId } from '@/lib/apps';
 import { Reveal } from './bits';
 
@@ -15,7 +15,6 @@ const COPY: Record<AppId, { parts: typeof ScanLine[]; left: string; right: strin
   relief: { parts: [HandHeart, MapPin, Truck, Users, MessagesSquare, Bell], left: 'Every need and every offer on one live map.', right: 'Be the help that arrives.', sub: 'Volunteer, NGO or neighbour. Free.', placeholder: 'you@example.org' },
   lab: { parts: [Sigma, FunctionSquare, LineChart, Grid3x3, Cpu, Download], left: 'Write maths the way you know it, see it plotted.', right: 'Open Hyperion.', sub: 'Free. Runs in your browser.', placeholder: 'you@example.com' },
   travel: { parts: [Plane, Compass, MapPin, BedDouble, Camera, Users], left: 'Every place’s guide, every day planned.', right: 'Start your next trip.', sub: 'Free. Plan it with friends.', placeholder: 'you@example.com' },
-  green: { parts: [Leaf, TreePine, Recycle, Trophy, Users, Globe2], left: 'Small actions, counted honestly, add up.', right: 'Start your team’s challenge.', sub: 'Free for every team.', placeholder: 'you@example.com' },
 };
 
 export function SplitCta({ app = 'campus' }: { app?: AppId }) {

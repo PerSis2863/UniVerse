@@ -17,7 +17,7 @@ import { cn } from '@/lib/utils';
 import { SWAP_CATEGORIES, SWAP_KINDS, type SwapCategory, type SwapKind } from '@/lib/green-swap';
 import { Neighbourhood } from './Neighbourhood';
 
-// M320: Green → Swap & repair (API /green/swaps, src/server/green-swaps.ts): give, swap, lend or look for things,
+// M320: Swap & repair (Green's until M395, Trace's now; API /green/swaps, src/server/green-swaps.ts): give, swap, lend or look for things,
 // offer or ask for a repair, in my neighbourhood and the squares around it; reach people by message only.
 
 type Post = { id: string; kind: SwapKind; category: SwapCategory; title: string; details: string | null; status: string; createdAt: string; mine: boolean; by: string; userId: string | null; reported: boolean; here: boolean };
@@ -31,7 +31,13 @@ export function SwapBoard() {
   const router = useRouter();
   const role = useAuthStore((s) => s.user?.role);
   if (!data) return <div className="h-48 rounded-[var(--radius-card)] skeleton" />;
-  if (!data.area) return <div className="max-w-xl"><Neighbourhood /></div>;
+  // Swap & repair works with the people near you (M395: on Trace, where a thing's repairs and second life are kept).
+  if (!data.area) return (
+    <div className="max-w-xl space-y-3">
+      <p className="text-sm text-zinc-600 dark:text-zinc-300">Give away, swap, lend or borrow things and find someone to repair them, with the people near you. Choose your neighbourhood first.</p>
+      <Neighbourhood />
+    </div>
+  );
   const act = async (call: () => Promise<{ data: Data } | unknown>, ok: string) => { try { await call(); toast.success(ok); void mutate(); } catch (e) { toast.error(errorMessage(e, 'Couldn’t do that.')); } };
   const message = async (p: Post) => {
     if (!p.userId) return;

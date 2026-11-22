@@ -67,7 +67,7 @@ const COUNTRY: Record<string, string> = {};
 const cc = (name: string) => COUNTRY[name] ?? 'FR';
 for (const [n, lat, lng] of CITIES) COUNTRY[n] = lng < -30 ? (lat > 15 ? (n === 'Toronto' || n === 'Montreal' || n === 'Vancouver' ? 'CA' : n === 'Mexico City' ? 'MX' : 'US') : 'BR') : lng < 20 && lat > 35 ? 'FR' : lng > 60 && lng < 90 && lat < 35 ? 'IN' : lng > 100 && lat > 20 ? 'CN' : lat < 0 && lng > 100 ? 'AU' : lng > 30 && lng < 60 ? 'AE' : lat < 15 && lng < 50 ? 'NG' : 'DE';
 const DEVICES = ['Chrome on Android', 'Safari on iPhone', 'Chrome on Windows', 'Safari on Mac', 'Edge on Windows', 'Firefox on Linux'];
-const PATHS = ['/hub', '/trace', '/trace/map', '/trace/tracking', '/trace/wallet', '/relief', '/relief/mine', '/green', '/green/teams', '/student', '/student/courses', '/teacher', '/admin', '/student/inbox', '/collab', '/docs'];
+const PATHS = ['/hub', '/trace', '/trace/map', '/trace/tracking', '/trace/wallet', '/relief', '/relief/mine', '/student/life/green', '/trace/carbon', '/student', '/student/courses', '/teacher', '/admin', '/student/inbox', '/collab', '/docs'];
 const CLICKS = ['Log it', 'I can help', 'New product', 'Print codes', 'Start a campaign here', 'Send', 'Join', 'Open', 'Replay the period', 'Share with the driver'];
 const BRANDS: [string, string, string][] = [
   ['Aurora Foods', 'food', '#fe81d1'], ['Nordlys Skincare', 'cosmetics', '#e46bdb'], ['Kaveri Spices', 'food', '#f59e0b'], ['Velo Parts', 'auto parts', '#60a5fa'],

@@ -39,7 +39,7 @@ export async function impactWallet(u: SessionUser) {
     ...impact.slice(0, 30).map((c) => ({ app: 'campus' as const, at: c.awardedAt.toISOString(), text: c.reason, amount: `${c.points > 0 ? '+' : ''}${c.points} impact pts` })),
     ...points.slice(0, 30).map((p) => ({ app: 'trace' as const, at: p.createdAt.toISOString(), text: `${p.kind === 'SCAN' ? 'Scanned' : p.kind === 'CAMPAIGN' ? 'Campaign bonus' : p.kind === 'CASHOUT' ? 'Cashed out' : 'Points back'} · ${brand(p.brandId)?.name ?? 'a brand'}`, amount: `${p.points > 0 ? '+' : ''}${p.points} pts` })),
     ...helped.slice(0, 30).filter((h) => h.doneAt).map((h) => ({ app: 'relief' as const, at: h.doneAt!.toISOString(), text: `Delivered: ${h.title}`, amount: `${h.people} helped` })),
-    ...green.slice(0, 30).map((a) => ({ app: 'green' as const, at: a.createdAt.toISOString(), text: GREEN_FACTORS[a.kind as GreenKind]?.label ?? 'Climate action', amount: `${r1(a.co2Kg)} kg CO₂` })),
+    ...green.slice(0, 30).map((a) => ({ app: 'campus' as const, href: '/student/life/green', at: a.createdAt.toISOString(), text: GREEN_FACTORS[a.kind as GreenKind]?.label ?? 'Climate action', amount: `${r1(a.co2Kg)} kg CO₂` })),
   ];
 
   return {

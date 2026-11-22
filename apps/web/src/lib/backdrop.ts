@@ -7,7 +7,6 @@ import { appById, type AppId } from './apps';
 //     in place of the stars joined into constellations, the owner: "not important at all");
 //   · Trace: a dotted globe turning, shipments arcing between places, a ring where each one lands;
 //   · Relief: a map's contour lines drifting, requests for help pulsing, help travelling to them;
-//   · Green: an aurora waving across the top, leaves drifting down, fireflies rising;
 //   · Play: a neon floor running to the horizon, game-pad symbols floating above it.
 // Switching apps is a transition (1 s): the old scene fades as it drifts towards you while the new one
 // settles in from a little further away (only the fade with Reduce Motion); the first one arrives in
@@ -42,12 +41,10 @@ const ink = (c: Rgb, dark: boolean) => (dark ? mix(c, WHITE, 0.3) : mix(c, INK, 
 const wrap = (x: number, m: number) => ((x % m) + m) % m;
 
 /** Each app's colour (src/lib/apps.ts) and a second one that sits well beside it. */
-const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], green: [45, 212, 191], travel: [253, 186, 116], lab: [56, 189, 248] };
-/** Green's fireflies. */
-const FIREFLY: Rgb = [253, 230, 168];
+const ALT: Record<AppId, Rgb> = { campus: [56, 189, 248], trace: [167, 139, 250], relief: [251, 191, 36], travel: [253, 186, 116], lab: [56, 189, 248] };
 /** M132: UniVersity wears the site's own accent (blue, lighter on the dark page since M212), as its buttons do. */
 const CAMPUS = { dark: { base: [110, 162, 248] as Rgb, alt: [56, 189, 248] as Rgb }, light: { base: [37, 99, 235] as Rgb, alt: [56, 189, 248] as Rgb } };
-const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, green: 41, travel: 67, lab: 79 };
+const SEED: Record<AppId, number> = { campus: 11, trace: 23, relief: 37, travel: 67, lab: 79 };
 
 /** A small seeded random (mulberry32): a scene looks the same on every visit. */
 function rng(seed: number) {
@@ -391,68 +388,6 @@ const relief: Make = (v, rnd, hue) => {
   };
 };
 
-// ── Green: an aurora, leaves drifting down, fireflies rising ──
-const green: Make = (v, rnd, hue) => {
-  const ribbons = [0, 1, 2].map((i) => ({ yb: 0.16 + i * 0.07, amp: 0.05 + rnd() * 0.03, k1: 1.5 + rnd(), k2: 3 + rnd() * 2, s1: 0.12 + rnd() * 0.08, s2: 0.07 + rnd() * 0.05, ph: rnd() * TAU, top: 0.16 + rnd() * 0.08, alt: i === 1 }));
-  const leaves = Array.from({ length: v.phone ? 9 : 16 }, () => ({ x: rnd(), y: rnd() * 1.2, z: 0.4 + rnd() * 0.6, s: 10 + rnd() * 12, vy: 0.012 + rnd() * 0.01, sw: 0.3 + rnd() * 0.4, rs: (rnd() - 0.5) * 0.6, ph: rnd() * TAU, alt: rnd() < 0.35 }));
-  const flies = Array.from({ length: v.phone ? 12 : 22 }, () => ({ x: rnd(), y: rnd(), z: 0.4 + rnd() * 0.6, ph: rnd() * TAU, tw: 0.8 + rnd() * 1.4 }));
-  const STEPS = 40, ys = new Float32Array(STEPS + 1);
-  return {
-    soft(c, t, a) {
-      wash(c, v, t, a, hue, [0.25, 0.1, 0.8, 0.95]);
-      // Each curtain: bands stacked upward along its wave, bright at the foot and fading to nothing at
-      // the top (the soft layer's stretch blends them), its height rippling along the way.
-      const k = (v.dark ? 1 : 0.35) * a, bands = 7;
-      for (const r of ribbons) {
-        const yb = r.yb * v.h, A = r.amp * v.h, step = (r.top * v.h) / bands;
-        for (let i = 0; i <= STEPS; i++) {
-          const u = i / STEPS;
-          ys[i] = yb + A * Math.sin(u * r.k1 * Math.PI + t * r.s1 + r.ph) + A * 0.5 * Math.sin(u * r.k2 * Math.PI - t * r.s2);
-        }
-        c.strokeStyle = rgb(r.alt ? hue.alt : hue.base);
-        c.lineWidth = step * 1.6;
-        for (let j = -1; j < bands; j++) {
-          c.globalAlpha = k * (j < 0 ? 0.14 : 0.34 * (1 - j / bands) ** 1.6);
-          c.beginPath();
-          for (let i = 0; i <= STEPS; i++) {
-            const u = i / STEPS, y = ys[i] - (j + 0.5) * step * (0.65 + 0.35 * Math.sin(u * 7 + t * 0.25 + r.ph));
-            if (i) c.lineTo(u * v.w, y); else c.moveTo(0, y);
-          }
-          c.stroke();
-        }
-      }
-    },
-    sharp(c, t, a) {
-      for (const l of leaves) {
-        const x = (l.x + 0.035 * Math.sin(t * l.sw + l.ph)) * v.w, y = (wrap(l.y + t * l.vy * l.z, 1.2) - 0.1) * v.h;
-        const s = l.s * (0.6 + l.z * 0.6), col = ink(l.alt ? hue.alt : hue.base, v.dark);
-        turned(c, v, x, y, l.ph + t * l.rs + 0.5 * Math.sin(t * l.sw * 1.3 + l.ph), () => {
-          c.beginPath();
-          c.moveTo(0, -s);
-          c.quadraticCurveTo(s * 0.62, -s * 0.15, 0, s);
-          c.quadraticCurveTo(-s * 0.62, -s * 0.15, 0, -s);
-          c.fillStyle = rgb(col);
-          c.globalAlpha = a * (v.dark ? 0.34 : 0.3) * l.z;
-          c.fill();
-          c.strokeStyle = rgb(col);
-          c.lineWidth = 0.8;
-          c.globalAlpha = a * 0.55 * l.z;
-          c.beginPath();
-          c.moveTo(0, -s * 0.85);
-          c.lineTo(0, s * 1.15);
-          c.stroke();
-        });
-      }
-      c.fillStyle = rgb(v.dark ? FIREFLY : mix(FIREFLY, INK, 0.45));
-      for (const f of flies) {
-        const x = (f.x + 0.012 * Math.sin(t * 0.5 + f.ph)) * v.w, y = wrap(f.y - t * 0.01 * f.z, 1) * v.h, r = 1 + f.z * 1.4;
-        c.globalAlpha = a * f.z * (0.25 + 0.75 * Math.max(0, Math.sin(t * f.tw + f.ph)));
-        c.fillRect(x - r / 2, y - r / 2, r, r);
-      }
-    },
-  };
-};
-
 // ── Travel: dashed routes arcing between places, paper planes flying them, clouds drifting (M202) ──
 interface Route { a: { x: number; y: number }; b: { x: number; y: number }; lift: number; sp: number; ph: number; alt: boolean }
 const travel: Make = (v, rnd, hue) => {
@@ -526,7 +461,7 @@ const lab: Make = (v, rnd, hue) => {
   };
 };
 
-const SCENES: Record<AppId, Make> = { campus, trace, relief, green, travel, lab };
+const SCENES: Record<AppId, Make> = { campus, trace, relief, travel, lab };
 
 export type Backdrop = ReturnType<typeof makeBackdrop>;
 

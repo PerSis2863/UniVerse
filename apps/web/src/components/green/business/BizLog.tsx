@@ -111,7 +111,7 @@ function PlanPanel({ org, role, billing, lines }: { org: SectionProps['org']; ro
     <section className="panel p-5" aria-labelledby="plan-h">
       <h3 id="plan-h" className={h3}><CreditCard className={icon} aria-hidden />Plan</h3>
       {!billing.on ? (
-        <p className={`mt-2 ${muted}`}>Everything in Green → Business is free for now: no plan to choose.</p>
+        <p className={`mt-2 ${muted}`}>Everything in Trace → Carbon is free for now: no plan to choose.</p>
       ) : (
         <>
           <p className={`mt-2 ${muted}`}>You’re on <strong>{billing.tier === 'FREE' ? 'Free' : billing.tier === 'PRO' ? 'Pro' : 'Consultancy'}</strong>{billing.tier === 'FREE' ? ` (${lines} of ${billing.limits.lines} lines this year)` : ''}{billing.pro && billing.tier === 'FREE' ? ': your consultancy’s plan covers you' : ''}.</p>

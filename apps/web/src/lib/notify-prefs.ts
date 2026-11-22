@@ -20,7 +20,7 @@ export const NOTE_GROUPS: NoteGroup[] = [
   { id: 'school', label: 'School', hint: 'Announcements, events, fees, forms, the library, staff news and job openings.', types: ['event', 'announcement', 'consent', 'library', 'registers', 'staff', 'admissions', 'application', 'guardian', 'warning', 'fees', 'job'], tags: ['consent-', 'fees-', 'pack-', 'cover-', 'campus-network', 'parent-week', 'safety-', 'job-'] },
   // M304: one group each (they were one, "Relief, Green and Trace"; a saved choice for it carries over to all three).
   { id: 'relief', label: 'Relief', hint: 'Someone coming to help, a request delivered, urgent needs and emergencies near you.', types: ['relief'], tags: ['relief-'] },
-  { id: 'green', label: 'Green', hint: 'Streaks, team news, events and your company’s footprint.', types: ['green'], tags: ['green-'] },
+  { id: 'green', label: 'Green living', hint: 'Streaks, team news, community events and your company’s carbon.', types: ['green'], tags: ['green-'] },
   { id: 'trace', label: 'Trace', hint: 'Recalls, fake-label reports and alerts from your brand.', types: ['trace'], tags: ['trace-'] },
   { id: 'other', label: 'Everything else', hint: 'Anything not in the groups above.', types: [], tags: [] },
 ];

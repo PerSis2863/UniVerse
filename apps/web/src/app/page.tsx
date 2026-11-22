@@ -18,7 +18,7 @@ import { Glue } from '@/components/landing/Glue';
 import { Bento } from '@/components/landing/Bento';
 import { Statement } from '@/components/landing/Statement';
 import { AppTabs } from '@/components/landing/AppTabs';
-import { AppsGrid, GreenSection, ReliefSection } from '@/components/landing/ImpactApps';
+import { AppsGrid, ReliefSection } from '@/components/landing/ImpactApps';
 import { SplitCta } from '@/components/landing/SplitCta';
 import { LiveTotals } from '@/components/landing/LiveTotals';
 import { WorldSection } from '@/components/landing/WorldSection';
@@ -33,7 +33,6 @@ import { cn } from '@/lib/utils';
 const scene = () => <div className="h-[480px] w-full max-w-[520px]" />;
 const TraceScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TraceScene), { loading: scene });
 const ReliefScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.ReliefScene), { loading: scene });
-const GreenScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.GreenScene), { loading: scene });
 const TravelScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.TravelScene), { loading: scene });
 const LabScene = dynamic(() => import('@/components/landing/HeroScenesLab').then((m) => m.LabScene), { loading: scene });
 const TraceSection = dynamic(() => import('@/components/landing/TraceSection').then((m) => m.TraceSection));
@@ -41,7 +40,6 @@ const MapsSection = dynamic(() => import('@/components/landing/Business').then((
 const HowSection = dynamic(() => import('@/components/landing/Business').then((m) => m.HowSection));
 const CampaignsSection = dynamic(() => import('@/components/landing/Business').then((m) => m.CampaignsSection));
 const PricingSection = dynamic(() => import('@/components/landing/Business').then((m) => m.PricingSection));
-const GreenMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.GreenMore));
 const ReliefMore = dynamic(() => import('@/components/landing/ImpactMore').then((m) => m.ReliefMore));
 /** M130: the other apps' parts start loading when the pointer or focus reaches the tabs, so the first
  *  switch to an app doesn't wait for (and stall on) its code. */
@@ -87,9 +85,6 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
     { q: 'Where do the guides come from?', a: 'From Wikivoyage, written by travellers: every place with its address, hours and prices.' },
     { q: 'Can I book through UniVerse?', a: 'Stays, flights and tours open on our partners’ sites with your place and dates filled in.' },
   ],
-  green: [
-    { q: 'How is the CO₂ saved worked out?', a: 'From published averages: a young tree takes up about 22 kg a year.' },
-  ],
 };
 
 type Hero = { words: string[]; accent: string; text: string; note: string; card: React.ReactNode; extra?: React.ReactNode };
@@ -106,7 +101,6 @@ const HERO: Record<AppId, Hero> = {
   relief: { words: ['Help', 'that', 'reaches', 'people'], accent: 'fast.', text: 'Ask for help or offer it, on one live map.', note: 'free, always', card: <ReliefScene /> },
   travel: { words: ['Plan', 'trips'], accent: 'anywhere.', text: 'Where to go, eat and sleep, planned day by day.', note: 'free · plan with friends', card: <TravelScene /> },
   lab: { words: ['Maths,', 'matrices', 'and'], accent: 'plots.', text: 'Run MATLAB-style code in your browser, or download Hyperion for your computer.', note: 'free · no install needed', card: <LabScene /> },
-  green: { words: ['Climate', 'action', 'you', 'can'], accent: 'prove.', text: 'Log what you do. See the CO₂ you save.', note: 'free for everyone', card: <GreenScene /> },
 };
 
 function FaqItem({ q, a, i }: { q: string; a: string; i: number }) {
@@ -276,7 +270,6 @@ export default function ShowcasePage() {
           {(warm === 'campus' || later === 'campus') && <AppPart shown={later === 'campus'}><Motion kind="fan"><Proof /></Motion><Motion kind="sweep"><Glue /></Motion><Motion kind="tilt"><Live><Bento /></Live></Motion><Motion kind="mask"><Live><Statement /></Live></Motion></AppPart>}
           {(warm === 'trace' || later === 'trace') && <AppPart shown={later === 'trace'}><Motion kind="scrub"><TraceSection /></Motion><Motion kind="depth"><Live><MapsSection /></Live></Motion><Motion kind="sweep"><HowSection /></Motion><Motion kind="tilt"><CampaignsSection /></Motion><Motion kind="fan"><PricingSection /></Motion></AppPart>}
           {(warm === 'relief' || later === 'relief') && <AppPart shown={later === 'relief'}><Motion kind="scrub"><ReliefSection /></Motion><Motion kind="tilt"><Live><ReliefMore /></Live></Motion></AppPart>}
-          {(warm === 'green' || later === 'green') && <AppPart shown={later === 'green'}><Motion kind="depth"><GreenSection /></Motion><Motion kind="fan"><GreenMore /></Motion></AppPart>}
 
           <Motion kind="fan"><AppsGrid onPick={pick} /></Motion>
 

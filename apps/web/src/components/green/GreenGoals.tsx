@@ -78,7 +78,7 @@ export function GreenGoals() {
       <section className="panel p-5" aria-labelledby="pledges-h">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 id="pledges-h" className="flex items-center gap-2 text-lg font-semibold text-zinc-900 dark:text-white"><Flame className="h-5 w-5 text-amber-500" aria-hidden />My pledges</h3>
-          <Link href="/green?view=tips" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><Plus className="h-4 w-4" aria-hidden />Pledge something</Link>
+          <Link href="/student/life/green?view=tips" className="btn-secondary btn-sm inline-flex items-center gap-1.5"><Plus className="h-4 w-4" aria-hidden />Pledge something</Link>
         </div>
         {!data ? <div className="mt-4 h-32 animate-pulse rounded-xl bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" />
           : !data.pledges.length ? <p className="mt-3 text-sm text-zinc-600 dark:text-zinc-300">No pledges yet. Pick a habit from the tips (cycle to work, two meat-free days a week…) and tick the days you keep it.</p>

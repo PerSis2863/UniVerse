@@ -46,7 +46,7 @@ const RESULT_KIND = {
   brand: { group: 'Trace', icon: BadgeCheck },
   product: { group: 'Trace', icon: Package },
   relief: { group: 'Relief', icon: LifeBuoy },
-  green: { group: 'Green', icon: Leaf },
+  green: { group: 'Green living', icon: Leaf },
   page: { group: 'Pages', icon: ArrowUpRight },
 } satisfies Record<string, { group: string; icon: LucideIcon }>;
 
@@ -163,7 +163,7 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
       { id: 'act:hub', label: 'Switch app', hint: 'All apps', icon: Compass, group: 'Actions', keywords: 'apps hub trace relief green university switch', run: go('/hub') },
       { id: 'act:product', label: 'New product passport', hint: 'Trace', icon: FilePlus2, group: 'Actions', keywords: 'product passport code batch print label brand', run: go('/trace') },
       { id: 'act:relief', label: 'Ask for or offer help', hint: 'Relief', icon: MessageSquarePlus, group: 'Actions', keywords: 'help need food water shelter medical volunteer aid', run: go('/relief') },
-      { id: 'act:green', label: 'Log a climate action', hint: 'Green', icon: CalendarPlus, group: 'Actions', keywords: 'green co2 tree recycle cycle climate', run: go('/green') },
+      { id: 'act:green', label: 'Log a climate action', hint: 'Green living', icon: CalendarPlus, group: 'Actions', keywords: 'green co2 tree recycle cycle climate', run: go('/student/life/green') },
       ...(role === 'TEACHER' ? [
         { id: 'act:assignment', label: 'New assignment', hint: 'Assignments', icon: ClipboardList, group: 'Actions', keywords: 'homework essay task create set', run: go('/teacher/assignments') },
         { id: 'act:quiz', label: 'New quiz', hint: 'Quizzes', icon: SquareCheck, group: 'Actions', keywords: 'test exam create', run: go('/teacher/quizzes') },

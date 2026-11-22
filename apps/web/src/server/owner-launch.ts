@@ -26,15 +26,16 @@ export async function ownerLaunch() {
     prisma.$queryRawUnsafe<{ n: number }[]>(`SELECT COUNT(*) AS n FROM users u WHERE u.createdAt > ? AND ${REAL}`, since).catch(() => [] as { n: number }[]),
   ]);
   const rows = (list: Row[]) => list.map((r) => ({ userId: r.userId, at: Date.parse(r.at) }));
-  const apps = { campus: rows(campus), trace: rows(trace), relief: rows(relief), green: rows(green), play: rows(play), travel: rows(travel) };
+  // M395: Green's climate actions are UniVersity's (Student life → Green living) since Green was folded in.
+  const apps = { campus: rows([...campus, ...green]), trace: rows(trace), relief: rows(relief), play: rows(play), travel: rows(travel) };
   return {
     apps: {
       campus: launchSummary(apps.campus, now), trace: launchSummary(apps.trace, now),
-      relief: launchSummary(apps.relief, now), green: launchSummary(apps.green, now), play: launchSummary(apps.play, now), travel: launchSummary(apps.travel, now),
+      relief: launchSummary(apps.relief, now), play: launchSummary(apps.play, now), travel: launchSummary(apps.travel, now),
       // M376: the Lab runs in the browser and keeps nothing on the server yet, so nothing to count.
       lab: launchSummary([], now),
     },
     signUps: Number(joined[0]?.n ?? 0),
-    total: launchTotal([...apps.campus, ...apps.trace, ...apps.relief, ...apps.green, ...apps.play]),
+    total: launchTotal([...apps.campus, ...apps.trace, ...apps.relief, ...apps.play]),
   };
 }
