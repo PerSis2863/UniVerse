@@ -9,6 +9,7 @@ import { BUILTINS } from '@/lib/lab/builtins';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
+import { Profiler, type Profile } from '@/lib/lab/profile';
 import { Recorder, type TraceStep } from '@/lib/lab/trace';
 import type { Figure } from '@/lib/lab/plot';
 
@@ -16,7 +17,7 @@ import type { Figure } from '@/lib/lab/plot';
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number };
+export type ToLab = { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -30,6 +31,7 @@ export type FromLab =
   | { names: string[] }
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
+  | { profiled: Profile }
   | { view: Inspect & { expr: string; size: string; v: View | null; error?: string } };
 export interface VarRow { name: string; size: string; cls: string; value: string }
 export interface FigOut { id: number; light: string; dark: string; tex: string }
@@ -40,10 +42,12 @@ let buf = '', flushAt = 0;
 const flush = () => { if (buf) { postMessage({ out: buf } satisfies FromLab); buf = ''; } };
 // Watch it run (M393): while a recorded run goes, printing and figure changes go to the recorder.
 let recorder: Recorder | null = null;
+// Time it (M400): while a timed run goes, each statement tells the profiler.
+let profiler: Profiler | null = null;
 let traceFigs: Figure[] = [];
 const lab = new Lab({
   out: (t) => { if (recorder) { recorder.write(t); return; } buf += t; const now = performance.now(); if (now - flushAt > 50 || buf.length > 20000) { flushAt = now; flush(); } },
-  trace: (at, vars, depth) => recorder?.step(at, vars, depth),
+  trace: (at, vars, depth) => { recorder?.step(at, vars, depth); profiler?.step(at); },
   graphics,
   files,
   now: () => performance.now(),
@@ -80,8 +84,9 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   let touched = false;
   // M397: which figures this run drew on (a notebook section shows only its own).
   const drawn = new Set<number>();
-  const code = 'watch' in m ? m.watch : m.run;
+  const code = 'watch' in m ? m.watch : 'profile' in m ? m.profile : m.run;
   if ('watch' in m) recorder = new Recorder(code, graphics);
+  if ('profile' in m) profiler = new Profiler(code, () => performance.now());
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try { lab.run(code); } catch (err) {
     error = err instanceof Error ? err.message : String(err);
@@ -95,6 +100,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
     postMessage({ trace: { steps: recorder.steps, full: recorder.full } } satisfies FromLab);
     recorder = null;
   } else if (w) buf += `${w}\n`;
+  if (profiler) { postMessage({ profiled: profiler.finish() } satisfies FromLab); profiler = null; }
   flush();
   const vars: VarRow[] = [...lab.vars].sort((a, b) => a[0].localeCompare(b[0])).map(([name, v]) => ({ name, size: (v.k === 'mat' ? dimsOf(v) : sizeOf(v)).join('×'), cls: kind(v), value: inline(v) }));
   const changed = touched || graphics.figures.some((f) => !before.has(f.id)) || graphics.figures.length !== before.size;

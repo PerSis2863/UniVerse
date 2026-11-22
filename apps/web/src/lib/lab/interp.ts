@@ -702,7 +702,7 @@ function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolea
   const B = base ? toMat(base) : mat(0, 0), V = toMat(v);
   // x(i) = [] deletes.
   if (V.d.length === 0 && v.k === 'mat') return remove(B, idx, isText);
-  const out = place(B, idx, V.d.length === 1 ? (() => V.d[0]) : (k) => V.d[k], V.d.length, () => 0, (r, c, d) => mat(r, c, d), inPlace) as Mat;
+  const out = place(B, idx, V.d.length === 1 ? (() => V.d[0]) : (k) => V.d[k], V.d.length, () => 0, (r, c, d) => (d instanceof Float64Array && d.length === r * c ? { k: 'mat', r, c, d } as Mat : mat(r, c, d)), inPlace) as Mat;
   if (base?.k === 'mat' && base.logical && V.logical) out.logical = true;
   return isText && out.r <= 1 ? str(String.fromCharCode(...out.d)) : out;
 }
@@ -729,7 +729,14 @@ function place<T>(b: { r: number; c: number; d: ArrayLike<T> }, idx: Idx[], get:
   if (count !== 1 && count !== targets.length) throw new LabError(`Sizes don’t match: ${targets.length} places to fill but ${count} values given.`);
   let d: T[] | Float64Array;
   if (nr === r && nc === c && inPlace && b.d instanceof Float64Array) d = b.d as unknown as Float64Array;
-  else {
+  else if (b.d instanceof Float64Array) {
+    // Numbers (blank is 0): a zeroed array and whole columns copied at once (M400: x(end+1) = … in a loop was 100× slower
+    // one element at a time).
+    const fresh = new Float64Array(nr * nc), old = b.d;
+    if (nr === r) fresh.set(old.subarray(0, r * c));
+    else for (let j = 0; j < c; j++) fresh.set(old.subarray(j * r, j * r + r), j * nr);
+    d = fresh;
+  } else {
     const fresh: T[] = Array.from({ length: nr * nc }, blank);
     for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) fresh[i + j * nr] = (b.d as ArrayLike<T>)[i + j * r];
     d = fresh;

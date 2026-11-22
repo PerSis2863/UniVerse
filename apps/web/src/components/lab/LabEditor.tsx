@@ -36,6 +36,33 @@ const breaks = StateField.define<RangeSet<GutterMarker>>({
   },
 });
 
+// Time it (M400): a bar beside each line as long as its share of the slowest line's time.
+class Heat extends GutterMarker {
+  constructor(readonly level: number, readonly label: string) { super(); }
+  eq(o: Heat) { return o.level === this.level && o.label === this.label; }
+  toDOM() {
+    const d = document.createElement('span');
+    d.className = 'cm-heat-bar';
+    d.title = this.label;
+    d.style.transform = `scaleX(${Math.max(0.06, this.level)})`;
+    d.style.opacity = String(0.35 + 0.65 * this.level);
+    return d;
+  }
+}
+const setHeat = StateEffect.define<Map<number, { level: number; label: string }> | null>();
+const heatField = StateField.define<RangeSet<GutterMarker>>({
+  create: () => RangeSet.empty,
+  update(set, tr) {
+    let s = set.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setHeat)) {
+      const doc = tr.state.doc;
+      s = !e.value ? RangeSet.empty : RangeSet.of([...e.value].filter(([l]) => l <= doc.lines).sort((a, b) => a[0] - b[0]).map(([l, h]) => new Heat(h.level, h.label).range(doc.line(l).from)));
+    }
+    return s;
+  },
+});
+const heatSpacer = new Heat(1, '');
+
 // Explain (M399): what each line does, in plain words under it (a block widget per line, indented like the code).
 class Note extends WidgetType {
   constructor(readonly text: string, readonly indent: number) { super(); }
@@ -94,12 +121,15 @@ const look = (dark: boolean) => EditorView.theme({
   '.cm-lintRange-info': { backgroundImage: 'none', textDecoration: `underline dotted ${dark ? '#a78bfa' : '#7c3aed'}`, textUnderlineOffset: '3px' },
   '.cm-diagnostic': { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.5', maxWidth: '26rem', whiteSpace: 'normal' },
   '.cm-diagnosticAction': { backgroundColor: dark ? '#7c3aed' : '#6d28d9', borderRadius: '6px', padding: '1px 8px', fontSize: '12px' },
+  '.cm-heat': { width: '34px' },
+  '.cm-heat .cm-gutterElement': { display: 'flex', alignItems: 'center', paddingInlineEnd: '4px' },
+  '.cm-heat-bar': { display: 'block', width: '28px', height: '6px', borderRadius: '3px', backgroundColor: dark ? '#f87171' : '#dc2626', transformOrigin: 'left center' },
   '.cm-explain': { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.45', color: dark ? '#a1a1aa' : '#52525b', fontStyle: 'italic', paddingBlock: '0 3px', whiteSpace: 'normal' },
 }, { dark });
 
 const NONE: number[] = [];
 
-export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false }: {
+export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false, heat = null, jump = null }: {
   value: string;
   onChange: (code: string) => void;
   onRun: () => void;
@@ -122,6 +152,10 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
   isFn: (name: string) => boolean;
   /** Explain: what each line does, under it. */
   explain?: boolean;
+  /** Time it: each line's share of the slowest line (0–1) and its time, as a bar beside it (null: none). */
+  heat?: Map<number, { level: number; label: string }> | null;
+  /** A line to bring into view and put the cursor on (n changes for each request). */
+  jump?: { line: number; n: number } | null;
 }) {
   const host = useRef<HTMLDivElement>(null), view = useRef<EditorView | null>(null);
   const slots = useRef({ theme: new Compartment(), lang: new Compartment(), label: new Compartment(), wrap: new Compartment() });
@@ -166,6 +200,8 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
           }, { delay: 450 }),
           notes,
           explainer,
+          heatField,
+          gutter({ class: 'cm-heat', markers: (v) => v.state.field(heatField), initialSpacer: () => heatSpacer }),
           s.wrap.of([]),
           traceLine,
           breaks,
@@ -221,6 +257,14 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
     v.dispatch({ effects });
   }, [traceAt]);
   useEffect(() => { view.current?.dispatch({ effects: setBreaks.of(breakpoints) }); }, [breakpoints]);
+  useEffect(() => { view.current?.dispatch({ effects: setHeat.of(heat) }); }, [heat]);
+  useEffect(() => {
+    const v = view.current;
+    if (!v || !jump || jump.line > v.state.doc.lines) return;
+    const at = v.state.doc.line(jump.line).from;
+    v.dispatch({ selection: { anchor: at }, effects: EditorView.scrollIntoView(at, { y: 'center' }) });
+    v.focus();
+  }, [jump]);
   // A new run's error (or none), or the engine's names arriving: check again now.
   useEffect(() => { if (view.current) forceLinting(view.current); }, [error, namesVersion]);
   useEffect(() => {

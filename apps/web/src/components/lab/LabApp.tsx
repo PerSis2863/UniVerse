@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -12,6 +12,8 @@ import { LabText } from './LabText';
 import { LabNotebook, type NoteOut } from './LabNotebook';
 import { notebookOf } from '@/lib/lab/notebook';
 import { readShare, shareFragment, type Shared } from '@/lib/lab/share';
+import { hotLines, timeText, type Profile } from '@/lib/lab/profile';
+import { lintScript } from '@/lib/lab/lint';
 import { QrCode } from '@/components/ui/QrCode';
 import { VariableViewer, type Shown } from './VariableViewer';
 import { FunctionBrowser } from './FunctionBrowser';
@@ -30,7 +32,7 @@ import { builtinNames } from './matlab-lang';
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
 const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
-type From = 'cmd' | 'script' | 'live' | 'watch' | 'note';
+type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -93,6 +95,9 @@ export function LabApp() {
   const [sharing, setSharing] = useState(false);
   const [link, setLink] = useState<{ url: string; error?: string } | null>(null);
   const [bigQr, setBigQr] = useState(false);
+  // Time it (M400): the last timed run of a script (shown while its code is unchanged) and a line to jump to.
+  const [prof, setProf] = useState<(Profile & { script: number; code: string }) | null>(null);
+  const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -117,8 +122,9 @@ export function LabApp() {
     busyNow.current = true;
     setBusy(true);
     if (from === 'note') noteBuf.current = '';
-    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : 'run'} ${list[open]?.name ?? 'script'}` });
+    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
+    else if (from === 'profile') { watchingScript.current = open; worker.current.postMessage({ profile: code, id } satisfies ToLab); }
     else worker.current.postMessage({ run: code, id } satisfies ToLab);
   };
   /** The next waiting notebook section, if any. */
@@ -146,6 +152,7 @@ export function LabApp() {
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
+      if ('profiled' in m) { const p = pending.current; if (p) setProf({ script: watchingScript.current, code: p.code, ...m.profiled }); return; }
       if ('trace' in m) {
         // The recorded run: played back from its first step; everything it printed also goes to the log, for afterwards.
         const all = printedUpTo(m.trace.steps, m.trace.steps.length - 1);
@@ -299,6 +306,16 @@ export function LabApp() {
   const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
   const noteSecs = noteView[open] ? notebookOf(script.code) : null;
+  const timed = prof && prof.script === open && prof.code === script.code ? prof : null;
+  // Worked out once per timed run (not on every render: the editor redraws its bars when this changes).
+  const { hot, heat } = useMemo(() => {
+    if (!timed) return { hot: null, heat: null };
+    const most = Math.max(1e-9, ...timed.lines.map((l) => l.ms));
+    return {
+      hot: hotLines(timed.code, timed, lintScript(timed.code, (n) => HELP.has(n) || builtinNames.has(n)).problems),
+      heat: new Map(timed.lines.map((l) => [l.line, { level: l.ms / most, label: `${timeText(l.ms)} · ${l.count.toLocaleString()} time${l.count === 1 ? '' : 's'}` }])),
+    };
+  }, [timed]);
   const runSection = (i: number) => runNotes(script.code, open, i);
   // This script's link, made again while Share is open and the script (or its view) changes.
   const shareView = noteView[open] ? 'note' : 'code';
@@ -440,6 +457,7 @@ export function LabApp() {
         <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
         <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>
+        {!noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
       {sharing && (
@@ -462,6 +480,27 @@ export function LabApp() {
             : <p className="w-[132px] shrink-0 text-xs text-zinc-600 dark:text-zinc-300">Too long for a QR code; share the link.</p>)}
         </div>
       )}
+      {timed && hot && (
+        <div role="group" aria-label="Time per line" className="space-y-1.5 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
+          <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200">
+            <Gauge className="h-3.5 w-3.5 text-violet-600 dark:text-violet-300" aria-hidden />
+            <span className="flex-1">Ran in <b className="font-mono tabular-nums">{timeText(timed.total)}</b>{hot.length ? '. The slowest lines (darker bars beside the code):' : ': no line stands out.'}</span>
+            <button type="button" className={iconBtn} aria-label="Hide the times" onClick={() => setProf(null)}><X className="h-4 w-4" aria-hidden /></button>
+          </div>
+          {hot.length > 0 && (
+            <ul className="space-y-1">
+              {hot.map((h) => (
+                <li key={h.line}>
+                  <button type="button" onClick={() => setJump((j) => ({ line: h.line, n: (j?.n ?? 0) + 1 }))} className="flex w-full items-start gap-2 rounded-lg px-2 py-1 text-start text-xs hover:bg-zinc-100 dark:hover:bg-white/[0.06]">
+                    <span className="shrink-0 font-mono tabular-nums text-zinc-900 dark:text-white">Line {h.line} · {Math.round(h.share * 100)}%</span>
+                    <span className="text-zinc-600 dark:text-zinc-300">{h.tip}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
       {controls.length > 0 && (
         <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
@@ -469,7 +508,7 @@ export function LabApp() {
       )}
       {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
           onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
-        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn}
+        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn} heat={heat} jump={jump}
         traceAt={watching && step ? step.line : null} breakpoints={marks}
         onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />}
     </section>

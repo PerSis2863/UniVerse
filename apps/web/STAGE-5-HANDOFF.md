@@ -10824,3 +10824,19 @@ changes); fixes are the diagnostics' actions; Explain (a toggle in the name row,
 block widget under it (`notes` field, `explainer` plugin 400 ms after typing), and wraps long lines meanwhile. `isFn` is
 the help's names plus the engine's (`builtinNames`). Not built: checks across files, type checking, fixes for the
 text and decimal comparisons (only the advice).
+
+## M400 (22 Nov): Hyperion Time it (a heat map of the code, with speed advice)
+
+The fifth of the owner's 20 big features: a profiler joined with the code checker's advice. `src/lib/lab/profile.ts`:
+`Profiler` hangs on the interpreter's trace hook (the one Watch uses): each statement's start gives the time since the
+last one to the line before, and counts the line (a loop's line counts each pass), so a line's time is its own time
+(calls into functions go to the function's lines); `finish` gives `{ lines, total }`. `hotLines` picks the lines with at
+least 5% of the time (at most 3) and gives each a tip: the checker's "grows" or "prints" problem on that line, drawing or
+writing text inside a loop, many passes (do it on whole arrays), or a heavy function. Worker: `{ profile: code }` runs
+with a profiler and sends `{ profiled }` before `done`. Window: "Time it" (Code view) beside Watch; a row with the total
+and the slow lines (a press puts the cursor on the line: `jump`), and a bar beside every line in its own gutter
+(`heatField`, length and strength by its share of the slowest line, the time and count in its title); kept while the
+code is unchanged (`prof.code`). The first timing showed the engine's own slowness: `x(k) = …` growing an array in a loop
+copied it element by element through a general path; `place` now copies whole columns into a zeroed `Float64Array`, and
+the number case skips a second copy (20,000 passes: 11.8 s → 0.66 s). Not built: time spent inside built-in functions
+broken down, comparing two timed runs.
