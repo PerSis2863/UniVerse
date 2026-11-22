@@ -36,9 +36,10 @@ fi
 corepack enable >/dev/null 2>&1 || npm install -g pnpm
 [ -d node_modules/tsx ] || (cd ../.. && pnpm install --frozen-lockfile --ignore-scripts)
 node scripts/ai/hyperion-lab.mjs prompt >/dev/null   # Hyperion's engine works
-python3 -m pip install --quiet uv
-[ -x "$WORK/vllm/bin/python" ] || { python3 -m uv venv "$WORK/vllm" && VIRTUAL_ENV="$WORK/vllm" python3 -m uv pip install --quiet vllm; }
-[ -x "$WORK/train/bin/python" ] || { python3 -m uv venv "$WORK/train" && VIRTUAL_ENV="$WORK/train" python3 -m uv pip install --quiet unsloth trl datasets; }
+python3 -m pip install --quiet --break-system-packages uv 2>/dev/null || python3 -m pip install --quiet uv
+# --python names the venv: uv run as "python3 -m uv" otherwise installs into the system Python, which Ubuntu 24.04 refuses
+"$WORK/vllm/bin/python" -c "import vllm" 2>/dev/null || { python3 -m uv venv --allow-existing "$WORK/vllm" && python3 -m uv pip install --quiet --python "$WORK/vllm/bin/python" vllm; }
+"$WORK/train/bin/python" -c "import unsloth" 2>/dev/null || { python3 -m uv venv --allow-existing "$WORK/train" && python3 -m uv pip install --quiet --python "$WORK/train/bin/python" unsloth trl datasets; }
 
 echo "== 2/5 Lessons: requests for every function, answers, each run in Hyperion, fixes from Hyperion's errors"
 [ -s "$WORK/lessons.jsonl" ] || "$WORK/vllm/bin/python" $H data --dir "$WORK" --per "$PER"
