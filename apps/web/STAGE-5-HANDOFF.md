@@ -10600,3 +10600,28 @@ results from the next STRING record). Files older than Excel 97 (BIFF5) are refu
 .xls (or the compound-file signature) with 'Sheet' by name or number. Fixtures `src/lib/lab/fixtures/small.xls`
 (mini stream) and `big.xls` (600 rows, shared text over CONTINUE records), made with Python's xlwt while building.
 Not built: WebP and GIF writing, dates in .xls cells (they come in as Excel's day numbers), .xls writing.
+
+## M388 (22 Nov): UniVerse Lab: MATLAB 7.3 .mat files
+
+The owner, 22 Nov (mid-work): "make this seriously… add more than 20 features… dont stop working until i say… start
+the work after the limit reset… everything ultra smooth". A send_later reminder ("Keep building UniVerse Lab") brings
+the session back after an hour or a stop; re-arm it before ending a turn. The queue after M388 (task list): M389
+editor, M390 variable viewer, M391 help and function browser, M392 watch it run, M393 animations, M394 optimisation,
+M395 control systems, M396 statistics and machine learning, M397 signal processing, M398 image processing, M399
+symbolic maths, M400 notebook pages, M401 publish a report, M402–M405 simulations (structures, heat, circuits and
+vibration, fluids), M406 Lab in UniVersity, M407 sparse, ODE and interpolation extras, M408 the computer app.
+`src/lib/lab/hdf5.ts`: `H5File` reads HDF5 from the spec: superblocks 0–3 (found at 0, 512, 1024…; addresses count
+from the superblock, as the library itself does when a user block such as MATLAB's 512-byte header comes first),
+object headers 1 and 2 with continuations (v2 continuation blocks: "OCHK" + messages + checksum), attributes 1–3,
+dataspaces, datatypes (fixed-point, float, string, reference, compound with v1–v3 members), groups as symbol
+tables (v1 B-tree type 0 → SNOD → local heap names) or link messages (a link-info message with a fractal heap,
+i.e. dense storage past 8 links in the newest layout, is refused plainly), layouts 1–4 (compact, contiguous; chunked
+through a v1 B-tree type 1; v4's newer chunk indexes refused), filters deflate (fflate), shuffle, Fletcher-32.
+files.ts `fromH5` / `readMat73`: MATLAB_class labels the type; sizes are stored reversed (the data order is then
+MATLAB's own); char is UTF-16 codes; complex is a compound of real / imag; cells are object references (read through
+`deref`); a struct is a group of fields (struct arrays, stored as references per field, are named as skipped);
+MATLAB_empty datasets hold the empty array's sizes; MATLAB_sparse groups (data, ir, jc) are made full (up to 50
+million values). `readMat` picks 7.3 by the header text or the HDF5 signature at 512; load prints "Not loaded…"
+for what it skipped. Saving stays level 5 (MATLAB reads it; `save -v7.3` writes the same). Fixtures
+`fixtures/v73.mat` (older layout, compressed 100 × 500 in 50 × 40 chunks, every kind above) and `v73-new.mat`
+(superblock 2, v2 headers, link messages), made with h5py the way MATLAB lays files out, while building.

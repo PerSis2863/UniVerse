@@ -6,7 +6,8 @@ import { textOf, type Lab } from './interp';
 import { png } from './colormap';
 import { encodeBmp, encodeJpeg } from './jpeg';
 import { readXls } from './xls';
-import { cast, unitValues, type NumClass } from './types';
+import { H5File, numbers as h5numbers, type H5Object } from './hdf5';
+import { cast, isNumClass, unitValues, type NumClass } from './types';
 import { findAll, kid, parseXml } from '@/lib/xml-lite';
 import { writeXlsx } from '@/lib/sheet/xlsx';
 import { keyOf } from '@/lib/sheet/refs';
@@ -391,8 +392,85 @@ function readMatrix(b: Uint8Array): { name: string; value: Value } {
   if (!logical && CLASS_OF[cls]) m.cls = CLASS_OF[cls];
   return { name, value: m };
 }
+// MATLAB 7.3 files (M388): HDF5 (hdf5.ts) with MATLAB's conventions: each variable a dataset (or a group for a
+// struct or a sparse matrix) labelled MATLAB_class, sizes stored reversed, text as UTF-16 codes, complex numbers as
+// a compound of real and imag, cells as references into the #refs# group, empty arrays as their sizes.
+function fromH5(f: H5File, o: H5Object, name: string, skipped: string[]): Value | null {
+  const label = o.attrs.get('MATLAB_class'), cls = typeof label === 'string' ? label : '';
+  if (o.kind === 'group') {
+    const kids = o.children();
+    if (o.attrs.has('MATLAB_sparse')) {
+      // Sparse: column starts (jc), row numbers (ir) and values; made into an ordinary matrix.
+      const rows = Number((o.attrs.get('MATLAB_sparse') as number[])[0]);
+      const get = (n: string) => { const d = kids.find((k) => k.name === n); return d && d.kind === 'dataset' ? h5numbers(d.read(), d.type) : []; };
+      const jc = get('jc'), ir = get('ir'), data = get('data'), cols = jc.length - 1;
+      if (rows * cols > 5e7) { skipped.push(`${name} (a sparse matrix too big to make full)`); return null; }
+      const m = mat(rows, cols, undefined, cls === 'logical');
+      for (let j = 0; j < cols; j++) for (let k = jc[j]; k < jc[j + 1]; k++) m.d[ir[k] + j * rows] = cls === 'logical' ? 1 : data[k] ?? 1;
+      return m;
+    }
+    if (cls !== 'struct' && cls !== '') { skipped.push(`${name} (a MATLAB ${cls} object)`); return null; }
+    const fields = kids.filter((k) => !k.name.startsWith('#'));
+    if (fields.some((k) => k.kind === 'dataset' && k.type.cls === 7 && typeof k.attrs.get('MATLAB_class') !== 'string')) { skipped.push(`${name} (a struct array)`); return null; }
+    const out = new Map<string, Value>();
+    for (const k of fields) { const v = fromH5(f, k, `${name}.${k.name}`, skipped); if (v) out.set(k.name, v); }
+    return { k: 'struct', f: out };
+  }
+  const dims = [...o.dims].reverse();
+  while (dims.length < 2) dims.push(1);
+  if (o.attrs.has('MATLAB_empty') && (o.attrs.get('MATLAB_empty') as number[])[0]) {
+    const sizes = h5numbers(o.read(), o.type);
+    if (cls === 'char') return str('');
+    if (cls === 'cell') return { k: 'cell', r: sizes[0] ?? 0, c: sizes[1] ?? 0, d: [] };
+    return mat(sizes[0] ?? 0, sizes[1] ?? 0);
+  }
+  const shape = (m: Mat) => { if (dims.length > 2) { const p = dims.slice(2).reduce((s, x) => s * x, 1); if (m.r * m.c === 0 && p > 1) m.p = p; if (dims.length > 3) m.nd = dims.slice(2); } return m; };
+  const [r, c] = dims;
+  if (cls === 'cell') {
+    const refs = h5numbers(o.read(), o.type);
+    return { k: 'cell', r, c: refs.length / (r || 1), d: refs.map((a, i) => fromH5(f, f.deref(a), `${name}{${i + 1}}`, skipped) ?? mat(0, 0)) };
+  }
+  if (cls === 'char') {
+    const codes = h5numbers(o.read(), o.type);
+    const rows = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => String.fromCharCode(codes[i + j * r])).join(''));
+    return str(rows.join('\n'));
+  }
+  if (o.type.cls === 6) {
+    const re = o.type.members?.find((m) => m.name === 'real'), im = o.type.members?.find((m) => m.name === 'imag');
+    if (!re || !im) { skipped.push(`${name} (a compound the Lab doesn't read)`); return null; }
+    const raw = o.read(), n = raw.length / o.type.size, rd: number[] = [], id: number[] = [];
+    for (let k = 0; k < n; k++) { rd.push(h5numbers(raw.subarray(k * o.type.size + re.offset, k * o.type.size + re.offset + re.type.size), re.type)[0]); id.push(h5numbers(raw.subarray(k * o.type.size + im.offset, k * o.type.size + im.offset + im.type.size), im.type)[0]); }
+    const m = shape(mat(r, c, rd));
+    m.im = Float64Array.from(id);
+    if (isNumClass(cls) && cls !== 'single') return m;
+    if (cls === 'single') m.cls = 'single';
+    return m;
+  }
+  if (o.type.cls !== 0 && o.type.cls !== 1) { skipped.push(`${name} (${cls || 'a kind of data'} the Lab doesn't read)`); return null; }
+  const m = shape(mat(r, c, h5numbers(o.read(), o.type), cls === 'logical'));
+  if (isNumClass(cls)) m.cls = cls;
+  if (cls && cls !== 'double' && cls !== 'logical' && !isNumClass(cls)) { skipped.push(`${name} (a MATLAB ${cls})`); return null; }
+  return m;
+}
+function readMat73(bytes: Uint8Array): { vars: [string, Value][]; skipped: string[] } {
+  const f = new H5File(bytes), skipped: string[] = [], vars: [string, Value][] = [];
+  for (const o of f.root().children()) {
+    if (o.name.startsWith('#')) continue;
+    const v = fromH5(f, o, o.name, skipped);
+    if (v) vars.push([o.name, v]);
+  }
+  return { vars, skipped };
+}
+let lastSkipped: string[] = [];
 export function readMat(bytes: Uint8Array): [string, Value][] {
-  if (bytes.length < 128 || new TextDecoder().decode(bytes.subarray(0, 6)) !== 'MATLAB') throw new LabError('That isn’t a MATLAB .mat file (version 5 to 7.2; version 7.3 files are HDF5 and can’t be read).');
+  lastSkipped = [];
+  const head = new TextDecoder().decode(bytes.subarray(0, 20));
+  if (head.startsWith('MATLAB 7.3') || (bytes.length > 520 && bytes[512] === 0x89 && bytes[513] === 0x48 && bytes[514] === 0x44 && bytes[515] === 0x46) || (bytes[0] === 0x89 && bytes[1] === 0x48)) {
+    const { vars, skipped } = readMat73(bytes);
+    lastSkipped = skipped;
+    return vars;
+  }
+  if (bytes.length < 128 || new TextDecoder().decode(bytes.subarray(0, 6)) !== 'MATLAB') throw new LabError('That isn’t a MATLAB .mat file.');
   if (bytes[126] !== 0x49 || bytes[127] !== 0x4d) throw new LabError('That .mat file is big-endian: the Lab reads the usual little-endian ones.');
   const out: [string, Value][] = [];
   const walk = (b: Uint8Array) => {
@@ -428,6 +506,7 @@ def('load', (a, nout, lab, frame) => {
   let got: [string, Value][];
   if (ext(name) === 'mat' || (fs.get(name).bytes.length >= 6 && new TextDecoder().decode(fs.get(name).bytes.subarray(0, 6)) === 'MATLAB')) {
     got = readMat(fs.get(name).bytes);
+    if (lastSkipped.length) lab.host.out(`Not loaded (the Lab can’t hold these yet): ${lastSkipped.join(', ')}\n`);
     const only = words.slice(1);
     if (only.length) got = got.filter(([n]) => only.includes(n));
   } else {
