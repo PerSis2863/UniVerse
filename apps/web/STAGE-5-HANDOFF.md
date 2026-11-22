@@ -10337,3 +10337,33 @@ big model behind it, as a general assistant.
 - **`POST /ask`** (the hub's chat): an `answer` is now the whole answer (up to 6,000 characters, 2,000 tokens) on any
   topic, not one short sentence; the hub's reply card keeps line breaks.
 - **Next, if wanted:** formatting answers (lists, code with Copy), and voice.
+
+## M368: Ghidra 2, the recipe after MiniMind, and the rented-graphics-card kit (22 Nov)
+
+The owner (22 Nov) asked whether github.com/jingyaogong/minimind (Apache-2.0) would be good for their AI; told: a good
+fit (a 64 M model with word-pieces, a chat stage, tool use) that needs a graphics card (about US$1–3 rented; weeks on
+this machine's processor), its data partly non-commercial and mostly Chinese, still far from ChatGPT. The owner: "do
+both" (the free improvements here, and the rented-card version).
+
+- **`scripts/ai/ghidra2.py`** (written for UniVerse after MiniMind's design, not copied): byte-level BPE word-pieces
+  (8,192, any language; HF `tokenizers`), RMSNorm, rotary positions (θ 1e6, the halves of each head turned as pairs),
+  grouped-query attention, SwiGLU (hidden = 8/3 × width, to 64), the output tied to the input table. Commands:
+  `tokenizer`, `chat` (Ghidra's 287 UniVerse questions, weighted ×6, plus OpenAssistant oasst1's English first questions
+  with their best-ranked answer, Apache-2.0, answers naming other assistants dropped), `pretrain` (presets `small` ~8 M
+  for this processor, `base` ~64 M for a graphics card; texts cached as two-byte word-pieces in DIR/pretrain.bin),
+  `sft` (the chat shape `<|user|>…<|end|><|ghidra|>…<|end|>`, the loss only on the answer, a third of the learning rate),
+  `export` (public/ai/ghidra2.bin and .json: int8 tables with a scale per row, the word-pieces and merges, special ids,
+  a check of word-pieces and scores). CUDA with bf16 and torch.compile when there is a card; `--until` and DIR/state-*.pt
+  to run in chunks. Tried end to end at a tiny size.
+- **`src/lib/ghidra2.ts`**: the same in the browser (GPT-2's byte table and split rule, merges by rank, special markers
+  first; the model with a key/value memory; `answer()` in the chat shape, stopping at `<|end|>`). Checked against a trial
+  export: identical word-pieces (accents too) and scores within 0.0004. `ghidra2.test.ts` checks the committed model and
+  is skipped until one is trained.
+- **The kit:** `scripts/ai/ghidra2-gpu.sh` (one command: checks for a card, downloads TinyStories-train, one FineWeb-Edu
+  part (ODC-By, pages scored 3+), oasst1, UniVerse's sentences if Node is there; word-pieces, 15,000 base steps, 2,000
+  chat steps, the files in ~/ghidra2-out) and `scripts/ai/ghidra2-gpu.md` (the owner's steps: rent a 3090/4090 on
+  RunPod or Vast.ai, clone the branch, run, download the two files, stop the machine). The base model (~70 MB) is too big
+  for the repository: where it will be served from (R2) is decided when it exists. Hindi needs a commercially safe text
+  collection first.
+- **Not yet:** training the small Ghidra 2 here (it would share the processor with the letter Ghidra's 189,000 steps;
+  the owner chooses), and using Ghidra 2 in the console and as the corner's backup.
