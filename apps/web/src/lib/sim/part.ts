@@ -58,10 +58,24 @@ export function bounds(part: Part) {
   return { x0: Math.min(...xs), y0: Math.min(...ys), x1: Math.max(...xs), y1: Math.max(...ys) };
 }
 
+/** Do two sides of a polygon cross (other than neighbours meeting at a corner)? */
+export function selfCrossing(pts: Pt[]): boolean {
+  const n = pts.length, cross = (o: Pt, a: Pt, b: Pt) => (a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    if (j === i + 1 || (i === 0 && j === n - 1)) continue;
+    const a = pts[i], b = pts[(i + 1) % n], c = pts[j], d = pts[(j + 1) % n];
+    const d1 = cross(c, d, a), d2 = cross(c, d, b), d3 = cross(a, b, c), d4 = cross(a, b, d);
+    if (((d1 > 0 && d2 < 0) || (d1 < 0 && d2 > 0)) && ((d3 > 0 && d4 < 0) || (d3 < 0 && d4 > 0))) return true;
+  }
+  return false;
+}
+
 /** Does the part make sense: an outline of 3+ corners or a circle, holes inside it and apart from each other. */
 export function partProblem(part: Part): string | null {
   const o = part.outer;
   if (o.kind === 'poly' && (o.pts.length < 3 || Math.abs(area(o.pts)) < 1e-9)) return 'The outline needs at least three corners around an area.';
+  if (o.kind === 'poly' && selfCrossing(o.pts)) return 'The outline crosses itself: move a corner so its sides don’t cross.';
+  if (o.kind === 'poly' && o.pts.some((p, i) => { const q = o.pts[(i + 1) % o.pts.length]; return Math.hypot(q[0] - p[0], q[1] - p[1]) < 1e-6; })) return 'Two corners of the outline are in the same place: remove one.';
   if (o.kind === 'circle' && !(o.r > 0)) return 'The circle needs a radius.';
   for (const [i, h] of part.holes.entries()) {
     if (h.kind === 'circle') {
@@ -110,6 +124,20 @@ export const TEMPLATES: Template[] = [
     },
   },
 ];
+
+// ——— Your own shape (M411, the owner, 22 Nov: "drawing your own part shape… PLEASE DO THIS") ———
+
+/** An outline drawn corner by corner (mm), with round holes. */
+export interface CustomShape { pts: Pt[]; holes: { c: Pt; r: number }[] }
+export const CUSTOM_START: CustomShape = { pts: [[0, 0], [120, 0], [120, 30], [40, 30], [40, 90], [0, 90]], holes: [{ c: [20, 70], r: 8 }] };
+export const MAX_CORNERS = 60, MAX_HOLES = 10;
+export const customPart = (s: CustomShape): Part => ({ outer: { kind: 'poly', pts: s.pts }, holes: s.holes.map((h) => ({ kind: 'circle', c: h.c, r: h.r })) });
+/** A ready-made part as a shape to draw on (its outline's corners and its round holes), or null if it can't be. */
+export function shapeOf(part: Part): CustomShape | null {
+  if (part.outer.kind !== 'poly' || part.outer.pts.length > MAX_CORNERS) return null;
+  const holes = part.holes.filter((h): h is Extract<Loop, { kind: 'circle' }> => h.kind === 'circle').slice(0, MAX_HOLES).map((h) => ({ c: [h.c[0], h.c[1]] as Pt, r: h.r }));
+  return { pts: part.outer.pts.map((p) => [+p[0].toFixed(3), +p[1].toFixed(3)] as Pt), holes };
+}
 
 /** The rounded top of the lug is one edge for people (its 24 small sides share a name). */
 export function groupedEdges(edges: Edge[]): { label: string; ids: string[] }[] {

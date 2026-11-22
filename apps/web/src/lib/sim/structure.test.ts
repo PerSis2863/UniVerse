@@ -190,3 +190,26 @@ describe('Hyperion Simulate: heat (M407)', () => {
     expect(() => solveHeat(mesh, { thickness: 1, material: steel, generation: 10, faces: { h: 0, Tinf: 20 }, bcs: [], transient: null })).toThrow(/takes heat away/);
   });
 });
+
+describe('Hyperion Simulate: your own shape (M411)', () => {
+  it('a drawn outline with a hole meshes, holds and solves; a crossing one is refused', async () => {
+    const { customPart, CUSTOM_START, selfCrossing, partProblem, shapeOf } = await import('./part');
+    const { startModel, partOf, readCustom, studyOf } = await import('./model');
+    const m = startModel('custom'), { part, edges } = partOf(m);
+    expect(edges.map((e) => e.label)).toEqual(['Side 1', 'Side 2', 'Side 3', 'Side 4', 'Side 5', 'Side 6', 'Hole 1']);
+    const mesh = meshPart(part, edges, elementSize(part, 'medium'));
+    const r = solveStatic(mesh, studyOf(m));
+    expect(r.reactions[0].fy).toBeCloseTo(1000, 3);
+    expect(selfCrossing(CUSTOM_START.pts)).toBe(false);
+    const bow: [number, number][] = [[0, 0], [20, 10], [20, 0], [0, 20]]; // two sides cross; unequal lobes, so it still has an area
+    expect(selfCrossing(bow)).toBe(true);
+    expect(partProblem(customPart({ pts: bow, holes: [] }))).toMatch(/crosses itself/);
+    // A ready-made part becomes a drawing with the same sides (so its supports and loads stay where they were).
+    const lug = partOf(startModel('hook')), drawn = shapeOf(lug.part)!;
+    expect(drawn.pts).toHaveLength(27);
+    expect(partOf({ template: 'custom', values: {}, custom: drawn }).edges.map((e) => e.id)).toEqual(lug.edges.map((e) => e.id));
+    // Odd saved data: cleaned.
+    expect(readCustom({ pts: [[0, 0], [1, 'x'], [5, 0], [5, 5]], holes: [{ c: [1, 1], r: -2 }, { c: [2, 2], r: 1 }] })).toEqual({ pts: [[0, 0], [5, 0], [5, 5]], holes: [{ c: [2, 2], r: 1 }] });
+    expect(readCustom(null)).toEqual(CUSTOM_START);
+  });
+});

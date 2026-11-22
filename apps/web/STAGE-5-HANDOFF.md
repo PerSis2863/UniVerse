@@ -11034,3 +11034,21 @@ current now; time step and window; Run (not with Reduce Motion), Start again, St
 t = 0 (a capacitor is seen charging), steps a window in ~2 s (≤ 4,000 steps a frame), ~600 samples a window;
 wires coloured by voltage (green +, red −); the oscilloscope (V/div and time/div). The board is `role="group"` (its
 parts are buttons). Not built: transistors and op-amps, switches, AC sweeps (Bode plots), moving the drawn parts.
+
+## M411 (22 Nov): Hyperion Simulate, draw your own part shape
+
+The owner, 22 Nov, after M409's "left out": "PLEASE DO THIS" (3D parts, drawing your own shape, signed installers;
+this is the second). `part.ts`: `CustomShape` (corners in mm, round holes), `CUSTOM_START` (an L with a hole),
+`customPart`, `shapeOf(part)` (a ready-made part's outline and round holes as a drawing: the same sides in the same
+order, so `L0S#` ids and the supports and loads on them carry over), `selfCrossing` (any two non-neighbouring sides
+crossing) and `partProblem` now refuses a crossing outline or two corners in one place; limits 60 corners, 10 holes.
+`model.ts`: `Model.custom`, `templateInfo(id)` ("Your own shape", no sizes), `isTemplate`, `readCustom` (numbers only,
+within ±100 m, holes with a radius, at least 3 corners or the start shape), `partOf` builds the custom part (sides named
+Side 1…, holes Hole 1…), `STARTS.custom`; the same in `heat-model.ts`; the worker's mesh key includes the drawing.
+`ShapeSketch.tsx` (in both benches' Geometry details, above the thickness): an SVG fitted to the shape (frozen while
+dragging so it doesn't move under the pointer), a grid at a tidy step with the axes darker, corners as handles
+(dragged, snapped to half a step; focusable: arrows nudge, Delete removes, at least 3), a press on a side inserts a
+corner there (elsewhere after the last), holes' centres dragged; lists of corners and holes as number fields; a
+crossing outline turns red with a note. Tests: the start shape meshes and its support carries the load; crossing
+refused; the lug drawn keeps its edge ids; odd saved drawings cleaned. Not built: arcs and fillets as sides, holes of
+any shape, importing a drawing (DXF), sizes as dimensions between features.

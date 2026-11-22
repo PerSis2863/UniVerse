@@ -7,9 +7,10 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
-import { TEMPLATES } from '@/lib/sim/part';
+import { shapeOf, TEMPLATES } from '@/lib/sim/part';
+import { ShapeSketch } from './ShapeSketch';
 import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structure';
-import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, verdict, type Field, type Model } from '@/lib/sim/model';
+import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, templateInfo, verdict, type Field, type Model } from '@/lib/sim/model';
 import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
 import { EdgeTicks, NumField, ui } from './bench-ui';
@@ -75,7 +76,7 @@ export function StructureBench() {
   const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null;
   const mode = modal?.modes[Math.min(modeAt, modal.modes.length - 1)] ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
-  const tpl = TEMPLATES.find((t) => t.id === model.template) ?? TEMPLATES[0];
+  const tpl = templateInfo(model.template);
   const maxVm = result ? peak(result.vm).value : 0, maxU = result ? peak(result.u).value : 0;
   const says = result ? verdict(maxVm, material.yieldMPa, material.name) : null;
   const groupOf = (id: string) => groups.find((g) => g.ids.includes(id));
@@ -176,10 +177,16 @@ export function StructureBench() {
     details = (
       <div className="space-y-3">
         <label className={label}>Shape
-          <select value={model.template} onChange={(e) => { setModel(() => ({ ...startModel(e.target.value), material: model.material, thickness: model.thickness, fineness: model.fineness })); toast.message('New shape: its usual supports and loads were put on.'); }} className="input mt-1 w-full">
+          <select value={model.template} onChange={(e) => {
+            // Your own shape starts as the shape there was (its supports and loads stay on the same sides).
+            if (e.target.value === 'custom') { const from = shapeOf(part); setModel((m) => ({ ...m, template: 'custom', custom: from ?? startModel('custom').custom })); if (!from) toast.message('Started from an L shape: drag its corners.'); return; }
+            setModel(() => ({ ...startModel(e.target.value), material: model.material, thickness: model.thickness, fineness: model.fineness })); toast.message('New shape: its usual supports and loads were put on.');
+          }} className="input mt-1 w-full">
             {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="custom">Your own shape (draw it)</option>
           </select>
         </label>
+        {model.template === 'custom' && model.custom && <ShapeSketch shape={model.custom} onChange={(c) => setModel((m) => ({ ...m, custom: c }))} />}
         <div className="grid grid-cols-2 gap-2">
           {tpl.params.map((p) => <div key={p.key}>{num(model.values[p.key], (v) => setModel((m) => ({ ...m, values: { ...m.values, [p.key]: Math.max(p.min, Math.min(p.max, v)) } })), { label: p.label, unit: 'mm', min: p.min })}</div>)}
           {num(model.thickness, (v) => setModel((m) => ({ ...m, thickness: Math.max(0.01, v) })), { label: 'Thickness', unit: 'mm', min: 0.01 })}

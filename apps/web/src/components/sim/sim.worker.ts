@@ -22,7 +22,7 @@ self.onmessage = (e: MessageEvent<ToSim>) => {
   let t1 = t0, meshed = false;
   try {
     const { part, edges } = partOf(model);
-    const key = JSON.stringify([model.template, model.values, model.fineness]);
+    const key = JSON.stringify([model.template, model.values, model.fineness, model.custom ?? null]);
     if (kept?.key === key) mesh = kept.mesh;
     else { mesh = meshPart(part, edges, elementSize(part, model.fineness, model.values.T ?? Infinity)); kept = { key, mesh }; meshed = true; }
     t1 = performance.now();

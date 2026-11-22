@@ -7,9 +7,10 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
-import { TEMPLATES } from '@/lib/sim/part';
+import { shapeOf, TEMPLATES } from '@/lib/sim/part';
+import { ShapeSketch } from './ShapeSketch';
 import { MATERIALS } from '@/lib/sim/structure';
-import { edgeGroups, newId, partOf } from '@/lib/sim/model';
+import { edgeGroups, newId, partOf, templateInfo } from '@/lib/sim/model';
 import { HEAT_NAMES, heatProblem, readHeat, startHeat, type HeatModel } from '@/lib/sim/heat-model';
 import type { HeatBc } from '@/lib/sim/heat';
 import type { Fineness } from '@/lib/sim/mesh';
@@ -70,7 +71,7 @@ export function HeatBench() {
   const problem = heatProblem(model);
   const heat = out?.heat ?? null, mesh = out?.mesh ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
-  const tpl = TEMPLATES.find((t) => t.id === model.template) ?? TEMPLATES[0];
+  const tpl = templateInfo(model.template);
   const frames = heat?.frames.length ? heat.frames : null;
   const k = frames ? Math.min(frame ?? frames.length - 1, frames.length - 1) : 0;
   const T = frames ? frames[k] : heat?.T ?? null;
@@ -144,10 +145,16 @@ export function HeatBench() {
     details = (
       <div className="space-y-3">
         <label className={label}>Shape
-          <select value={model.template} onChange={(e) => { setModel(() => ({ ...startHeat(e.target.value), material: model.material, thickness: model.thickness, fineness: model.fineness })); toast.message('New shape: it was warmed and cooled the usual way.'); }} className="input mt-1 w-full">
+          <select value={model.template} onChange={(e) => {
+            // Your own shape starts as the shape there was (its supports and loads stay on the same sides).
+            if (e.target.value === 'custom') { const from = shapeOf(part); setModel((m) => ({ ...m, template: 'custom', custom: from ?? startHeat('custom').custom })); if (!from) toast.message('Started from an L shape: drag its corners.'); return; }
+            setModel(() => ({ ...startHeat(e.target.value), material: model.material, thickness: model.thickness, fineness: model.fineness })); toast.message('New shape: it was warmed and cooled the usual way.');
+          }} className="input mt-1 w-full">
             {TEMPLATES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+            <option value="custom">Your own shape (draw it)</option>
           </select>
         </label>
+        {model.template === 'custom' && model.custom && <ShapeSketch shape={model.custom} onChange={(c) => setModel((m) => ({ ...m, custom: c }))} />}
         <div className="grid grid-cols-2 gap-2">
           {tpl.params.map((p) => <NumField key={p.key} label={p.label} unit="mm" min={p.min} value={model.values[p.key]} onChange={(v) => setModel((m) => ({ ...m, values: { ...m.values, [p.key]: Math.max(p.min, Math.min(p.max, v)) } }))} />)}
           <NumField label="Thickness" unit="mm" min={0.01} value={model.thickness} onChange={(v) => setModel((m) => ({ ...m, thickness: Math.max(0.01, v) }))} />
