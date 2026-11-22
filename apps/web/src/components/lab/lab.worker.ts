@@ -1,5 +1,5 @@
 /// <reference lib="webworker" />
-import { Lab } from '@/lib/lab/interp';
+import { Lab, type Host } from '@/lib/lab/interp';
 import { Graphics, renderSvg, toTikz } from '@/lib/lab/plot';
 import { LabError } from '@/lib/lab/parse';
 import { dimsOf, inline, kind, sizeOf } from '@/lib/lab/values';
@@ -45,13 +45,14 @@ let recorder: Recorder | null = null;
 // Time it (M400): while a timed run goes, each statement tells the profiler.
 let profiler: Profiler | null = null;
 let traceFigs: Figure[] = [];
-const lab = new Lab({
+const host: Host = {
   out: (t) => { if (recorder) { recorder.write(t); return; } buf += t; const now = performance.now(); if (now - flushAt > 50 || buf.length > 20000) { flushAt = now; flush(); } },
   trace: (at, vars, depth) => { recorder?.step(at, vars, depth); profiler?.step(at); },
   graphics,
   files,
   now: () => performance.now(),
-});
+};
+const lab = new Lab(host);
 let size = { w: 720, h: 520 };
 // The editor colours and suggests the engine's functions (M389).
 postMessage({ names: Object.keys(BUILTINS).sort() } satisfies FromLab);
@@ -86,7 +87,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   const drawn = new Set<number>();
   const code = 'watch' in m ? m.watch : 'profile' in m ? m.profile : m.run;
   if ('watch' in m) recorder = new Recorder(code, graphics);
-  if ('profile' in m) profiler = new Profiler(code, () => performance.now());
+  if ('profile' in m) { profiler = new Profiler(code, () => performance.now()); host.fnTimer = profiler; }
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try { lab.run(code); } catch (err) {
     error = err instanceof Error ? err.message : String(err);
@@ -100,7 +101,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
     postMessage({ trace: { steps: recorder.steps, full: recorder.full } } satisfies FromLab);
     recorder = null;
   } else if (w) buf += `${w}\n`;
-  if (profiler) { postMessage({ profiled: profiler.finish() } satisfies FromLab); profiler = null; }
+  if (profiler) { postMessage({ profiled: profiler.finish() } satisfies FromLab); profiler = null; delete host.fnTimer; }
   flush();
   const vars: VarRow[] = [...lab.vars].sort((a, b) => a[0].localeCompare(b[0])).map(([name, v]) => ({ name, size: (v.k === 'mat' ? dimsOf(v) : sizeOf(v)).join('×'), cls: kind(v), value: inline(v) }));
   const changed = touched || graphics.figures.some((f) => !before.has(f.id)) || graphics.figures.length !== before.size;

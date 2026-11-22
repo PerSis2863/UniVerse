@@ -10840,3 +10840,15 @@ code is unchanged (`prof.code`). The first timing showed the engine's own slowne
 copied it element by element through a general path; `place` now copies whole columns into a zeroed `Float64Array`, and
 the number case skips a second copy (20,000 passes: 11.8 s → 0.66 s). Not built: time spent inside built-in functions
 broken down, comparing two timed runs.
+
+## M401 (22 Nov): Time it, the two left-outs: time inside functions, and the run before
+
+The owner, 22 Nov, after M400's "left out" (time inside built-in functions, comparing two timed runs): "work on this".
+The interpreter's `Host` has `fnTimer` (`{ enter(name), leave() }`): `call` wraps `callNow` with it only while it is set
+(the worker sets `host.fnTimer = profiler` for a timed run and deletes it after, so normal runs pay nothing). `Profiler`
+keeps a stack of running functions: a function's own time leaves out the calls inside it; its total counts once for a
+function calling itself; `finish` adds `fns` (by own time). Window: each script keeps its last two timed runs
+(`profs`); the newest (while the code is unchanged) shows "N× faster / slower than the time before" (`compared`, ±10%
+is "about the same") and "Time inside functions": a table (built-ins and the script's own functions: calls, own time,
+with what it calls, and the own time in the run before, matched by name, so it survives edits). Not built: anonymous
+functions (@(x) …) as rows of their own (their calls inside are counted).

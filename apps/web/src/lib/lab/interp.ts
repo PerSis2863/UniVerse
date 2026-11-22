@@ -26,6 +26,8 @@ export interface Host {
   files?: unknown;
   /** Watch it run (M393): told before each statement where it is (a place in the code) and the variables it sees. */
   trace?(at: number, vars: Map<string, Value>, depth: number): void;
+  /** Time it (M401): told when a function (built-in or the script's own) starts and finishes. */
+  fnTimer?: { enter(name: string): void; leave(): void };
 }
 
 class Flow { constructor(readonly kind: 'break' | 'continue' | 'return') {} }
@@ -315,6 +317,12 @@ export class Lab {
   // ——— Calls ———
   /** A function by name: one written in the script, else a built-in. */
   call(name: string, args: Value[], nout: number, f?: Frame): Value[] {
+    const timer = this.host.fnTimer;
+    if (!timer) return this.callNow(name, args, nout, f);
+    timer.enter(name);
+    try { return this.callNow(name, args, nout, f); } finally { timer.leave(); }
+  }
+  private callNow(name: string, args: Value[], nout: number, f?: Frame): Value[] {
     const user = this.fns.get(name);
     if (user) return this.callUser(user, args, nout, f?.depth ?? 0);
     if (name === 'nargin' && f) return [num(f.nargin)];

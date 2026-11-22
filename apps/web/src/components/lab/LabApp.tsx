@@ -12,7 +12,7 @@ import { LabText } from './LabText';
 import { LabNotebook, type NoteOut } from './LabNotebook';
 import { notebookOf } from '@/lib/lab/notebook';
 import { readShare, shareFragment, type Shared } from '@/lib/lab/share';
-import { hotLines, timeText, type Profile } from '@/lib/lab/profile';
+import { compared, hotLines, timeText, type Profile } from '@/lib/lab/profile';
 import { lintScript } from '@/lib/lab/lint';
 import { QrCode } from '@/components/ui/QrCode';
 import { VariableViewer, type Shown } from './VariableViewer';
@@ -95,8 +95,9 @@ export function LabApp() {
   const [sharing, setSharing] = useState(false);
   const [link, setLink] = useState<{ url: string; error?: string } | null>(null);
   const [bigQr, setBigQr] = useState(false);
-  // Time it (M400): the last timed run of a script (shown while its code is unchanged) and a line to jump to.
-  const [prof, setProf] = useState<(Profile & { script: number; code: string }) | null>(null);
+  // Time it (M400): each script's last two timed runs (the newest shown while its code is unchanged, compared with the
+  // one before it, M401) and a line to jump to.
+  const [profs, setProfs] = useState<Record<number, (Profile & { code: string })[]>>({});
   const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
@@ -152,7 +153,7 @@ export function LabApp() {
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
-      if ('profiled' in m) { const p = pending.current; if (p) setProf({ script: watchingScript.current, code: p.code, ...m.profiled }); return; }
+      if ('profiled' in m) { const p = pending.current, at = watchingScript.current; if (p) setProfs((all) => ({ ...all, [at]: [...(all[at] ?? []).slice(-1), { code: p.code, ...m.profiled }] })); return; }
       if ('trace' in m) {
         // The recorded run: played back from its first step; everything it printed also goes to the log, for afterwards.
         const all = printedUpTo(m.trace.steps, m.trace.steps.length - 1);
@@ -306,7 +307,12 @@ export function LabApp() {
   const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
   const noteSecs = noteView[open] ? notebookOf(script.code) : null;
-  const timed = prof && prof.script === open && prof.code === script.code ? prof : null;
+  const runs = profs[open] ?? [], latest = runs[runs.length - 1];
+  const timed = latest && latest.code === script.code ? latest : null;
+  const before = timed && runs.length > 1 ? runs[runs.length - 2] : null;
+  const vs = timed && before ? compared(timed.total, before.total) : null;
+  /** The functions that took the most of their own time (M401). */
+  const fnRows = (timed?.fns ?? []).filter((f) => f.self > 0).slice(0, 10);
   // Worked out once per timed run (not on every render: the editor redraws its bars when this changes).
   const { hot, heat } = useMemo(() => {
     if (!timed) return { hot: null, heat: null };
@@ -484,8 +490,10 @@ export function LabApp() {
         <div role="group" aria-label="Time per line" className="space-y-1.5 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200">
             <Gauge className="h-3.5 w-3.5 text-violet-600 dark:text-violet-300" aria-hidden />
-            <span className="flex-1">Ran in <b className="font-mono tabular-nums">{timeText(timed.total)}</b>{hot.length ? '. The slowest lines (darker bars beside the code):' : ': no line stands out.'}</span>
-            <button type="button" className={iconBtn} aria-label="Hide the times" onClick={() => setProf(null)}><X className="h-4 w-4" aria-hidden /></button>
+            <span className="flex-1">Ran in <b className="font-mono tabular-nums">{timeText(timed.total)}</b>
+              {vs?.text && <>, <b className={vs.better ? 'text-emerald-700 dark:text-emerald-400' : vs.better === false ? 'text-amber-700 dark:text-amber-400' : ''}>{vs.text}</b> than the time before ({timeText(before!.total)})</>}
+              {hot.length ? '. The slowest lines (darker bars beside the code):' : ': no line stands out.'}</span>
+            <button type="button" className={iconBtn} aria-label="Hide the times" onClick={() => setProfs((all) => ({ ...all, [open]: [] }))}><X className="h-4 w-4" aria-hidden /></button>
           </div>
           {hot.length > 0 && (
             <ul className="space-y-1">
@@ -498,6 +506,31 @@ export function LabApp() {
                 </li>
               ))}
             </ul>
+          )}
+          {fnRows.length > 0 && (
+            <details className="text-xs text-zinc-700 dark:text-zinc-200">
+              <summary className="cursor-pointer select-none rounded px-2 py-1 font-medium hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Time inside functions</summary>
+              <div className="mt-1 max-h-48 overflow-auto" tabIndex={0} role="region" aria-label="Time inside functions">
+                <table className="w-full text-start tabular-nums">
+                  <thead className="text-zinc-500 dark:text-zinc-400"><tr>
+                    <th className="px-2 py-1 text-start font-medium">Function</th><th className="px-2 py-1 text-end font-medium">Calls</th>
+                    <th className="px-2 py-1 text-end font-medium">Own time</th><th className="px-2 py-1 text-end font-medium">With what it calls</th>
+                    {before && <th className="px-2 py-1 text-end font-medium">Own time before</th>}
+                  </tr></thead>
+                  <tbody>
+                    {fnRows.map((f) => (
+                      <tr key={f.name} className="border-t border-zinc-200/70 dark:border-white/[0.06]">
+                        <td className="px-2 py-1 font-mono" translate="no">{f.name}</td>
+                        <td className="px-2 py-1 text-end font-mono">{f.calls.toLocaleString()}</td>
+                        <td className="px-2 py-1 text-end font-mono">{timeText(f.self)}</td>
+                        <td className="px-2 py-1 text-end font-mono">{timeText(f.total)}</td>
+                        {before && <td className="px-2 py-1 text-end font-mono">{(() => { const b = before.fns?.find((x) => x.name === f.name); return b ? timeText(b.self) : '–'; })()}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
           )}
         </div>
       )}

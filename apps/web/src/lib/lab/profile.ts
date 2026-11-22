@@ -5,7 +5,9 @@ import type { Problem } from './lint';
 // on how to make them faster (an array grown in a loop, printing or drawing on every pass, one number at a time).
 
 export interface LineTime { line: number; ms: number; count: number }
-export interface Profile { lines: LineTime[]; total: number }
+/** A function's calls, its own time and its time with what it calls (M401). */
+export interface FnTime { name: string; calls: number; self: number; total: number }
+export interface Profile { lines: LineTime[]; total: number; fns?: FnTime[] }
 
 /** Told before each statement (the interpreter's trace hook); the time until the next one goes to this line. */
 export class Profiler {
@@ -14,6 +16,9 @@ export class Profiler {
   private count = new Map<number, number>();
   private last = -1;
   private t0: number;
+  // M401: the functions being run (a stack), each with when it started and the time of the calls inside it.
+  private stack: { name: string; start: number; inner: number }[] = [];
+  private fns = new Map<string, FnTime>();
   private readonly begin: number;
   constructor(src: string, private now: () => number) {
     for (let i = 0; i < src.length; i++) if (src.charCodeAt(i) === 10) this.starts.push(i + 1);
@@ -27,12 +32,36 @@ export class Profiler {
     this.last = line;
     this.t0 = t;
   }
+  /** A function starts (a built-in or one written in the script). */
+  enter(name: string) { this.stack.push({ name, start: this.now(), inner: 0 }); }
+  /** The last function started has finished: its time with and without the calls inside it. */
+  leave() {
+    const f = this.stack.pop();
+    if (!f) return;
+    const total = this.now() - f.start, row = this.fns.get(f.name) ?? { name: f.name, calls: 0, self: 0, total: 0 };
+    row.calls++;
+    row.self += total - f.inner;
+    // A function calling itself counts its time once (only the outermost call adds to its total).
+    if (!this.stack.some((s) => s.name === f.name)) row.total += total;
+    this.fns.set(f.name, row);
+    const up = this.stack[this.stack.length - 1];
+    if (up) up.inner += total;
+  }
   finish(): Profile {
     const t = this.now();
     if (this.last >= 0) this.ms.set(this.last, (this.ms.get(this.last) ?? 0) + (t - this.t0));
     const lines = [...this.count].map(([line, count]) => ({ line, count, ms: this.ms.get(line) ?? 0 })).sort((a, b) => a.line - b.line);
-    return { lines, total: t - this.begin };
+    return { lines, total: t - this.begin, fns: [...this.fns.values()].sort((a, b) => b.self - a.self) };
   }
+}
+
+/** How a run compares with the one before: "9.2× faster", "1.5× slower", "about the same". */
+export function compared(now: number, before: number): { text: string; better: boolean | null } {
+  if (!(before > 0) || !(now > 0)) return { text: '', better: null };
+  const r = before / now;
+  if (r >= 1.1) return { text: `${r >= 10 ? Math.round(r) : r.toFixed(1)}× faster`, better: true };
+  if (r <= 1 / 1.1) return { text: `${(1 / r) >= 10 ? Math.round(1 / r) : (1 / r).toFixed(1)}× slower`, better: false };
+  return { text: 'about the same', better: null };
 }
 
 /** A time for people: 0.4 ms, 120 ms, 1.23 s. */
