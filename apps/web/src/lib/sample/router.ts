@@ -14,7 +14,7 @@ import * as biz from './green-business';
 import { budgetSummary, dishesOf, prepList, tally } from '@/lib/student-life';
 import * as impact from './impact';
 import * as extra from './new-features';
-import { localPlan } from '@/lib/ask';
+import { localPlan, type AskPlan } from '@/lib/ask';
 
 // Answers the app's API requests from example data while sample mode is on.
 // GETs without a sample answer fall through to the real server (read-only);
@@ -2484,16 +2484,32 @@ const GET: [RegExp, (c: Ctx) => Result][] = [
   [/^\/documents$/, ({ db: d }) => ok(d.documents.map((doc) => ({ ...doc, issuedAt: doc.createdAt, user: { name: d.people.aarav.name } })))],
 ];
 
+/** Ghidra's read answers in the demo: a made-up week of work and Green numbers (the real ones come from src/server/ask.ts). */
+function ghidraSample(plan: AskPlan): AskPlan {
+  const day = (n: number) => new Date(Date.now() + n * 86_400_000).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+  if (plan.action === 'my_due') return { action: 'show', say: 'You have 3 things to finish in the next two weeks:', items: [
+    { title: 'Essay: climate and cities', sub: `GEO101 · due ${day(2)}`, href: '/student/assignments' },
+    { title: 'Quiz: fractions', sub: `MATH7 · due ${day(4)}`, href: '/student/quizzes' },
+    { title: 'Lab report: plant growth', sub: `BIO201 · due ${day(9)}`, href: '/student/assignments' },
+  ] };
+  if (plan.action === 'my_green') return { action: 'show', say: 'Nice work: a 4-day streak, and 38.6 kg of CO₂ saved in all.', items: [
+    { title: '38.6 kg CO₂ saved', sub: '27 actions in all', href: '/green' },
+    { title: '5.2 kg this week', sub: 'the last 7 days', href: '/green' },
+    { title: '4-day streak', sub: 'log one today to keep it', href: '/green' },
+  ] };
+  return plan;
+}
+
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
-  // Ask UniVerse (M30) in the demo: the simple matcher, no AI.
+  // Ghidra, the assistant (M363; Ask UniVerse, M30) in the demo: the simple matcher, no AI; its two lists made up (ghidraSample).
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
   ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
   ['POST', /^\/api\/connections\/[^/]+\/(start|import)$/, () => { notice(); return fail('Sample mode: connect your accounts after you leave the sample.', 400); }],
   ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
-  ['POST', /^\/ask$/, ({ body }) => ok({ ...localPlan(String((body as { text?: unknown })?.text ?? '')), ai: false })],
+  ['POST', /^\/ask$/, ({ body }) => ok({ ...ghidraSample(localPlan(String((body as { text?: unknown })?.text ?? ''))), ai: false })],
   ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],
   ['POST', /^\/api\/campus\/elections\/[^/]+\/vote$/, () => { notice(); return ok({ receipt: 'SAMP-LE00-RCPT' }); }],
   ['POST', /^\/api\/campus\/board\/[^/]+\/contact$/, () => ok({ conversationId: 'sample-conv-aarav' })],

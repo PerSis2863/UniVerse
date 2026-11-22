@@ -1,0 +1,49 @@
+// M363 Ghidra, the assistant, on the hub: "What's due this week?" answers from the student's own work (a list, or
+// "Nothing is due"), "How am I doing in Green?" answers with their numbers, "I cycled 8 km to school" proposes Log it,
+// Cancel leaves it undone, New chat clears it. Nothing is saved. Axe at 1280 (dark) and 390 (light, a touch phone),
+// no sideways scroll, no page errors.
+//   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/ghidra-assistant-ui.mjs
+import { createRequire } from 'node:module';
+import { launch, signedIn } from '../browser-session.mjs';
+const require = createRequire(new URL('../../package.json', import.meta.url));
+const AXE = require.resolve('axe-core/axe.min.js');
+const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
+const browser = await launch();
+const out = {}, errors = [];
+try {
+  for (const [theme, width] of [['dark', 1280], ['light', 390]]) {
+    const phone = width < 600, r = (out[`${theme} ${width}`] = {});
+    const ctx = await signedIn(browser, base, 'alice@student.com', { width, height: phone ? 844 : 900 }, phone ? { isMobile: true, hasTouch: true } : {});
+    await ctx.addInitScript((th) => { localStorage.setItem('theme', th); localStorage.setItem('uv-cookies', 'essential'); }, theme);
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`${width}: ${e.message.slice(0, 160)}`));
+    await page.goto(`${base}/hub`, { waitUntil: 'load', timeout: 180_000 });
+    await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
+    const box = page.locator('section[aria-labelledby="ghidra-h"]');
+    await box.scrollIntoViewIfNeeded();
+    const say = async (q) => {
+      await box.getByLabel('Ask Ghidra').fill(q);
+      await box.getByRole('button', { name: 'Ask', exact: true }).click();
+      await box.getByText('Ghidra is thinking…').waitFor({ state: 'detached', timeout: 30_000 });
+      return (await box.locator('ol > li').last().innerText()).replace(/\s+/g, ' ');
+    };
+    r.due = await say('What’s due this week?');
+    r.green = await say('How am I doing in Green?');
+    r.cycle = await say('I cycled 8 km to school');
+    r.proposes = await box.getByRole('button', { name: 'Log it' }).isVisible();
+    await box.getByRole('button', { name: 'Cancel' }).click();
+    r.cancelled = await box.getByText('Cancelled.').isVisible();
+    r.turns = await box.locator('ol > li').count();
+    await page.waitForTimeout(400);
+    await page.addScriptTag({ path: AXE });
+    r.axe = await page.evaluate(async () => (await window.axe.run({ exclude: [['canvas']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
+    r.sideways = await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1);
+    if (shots) await box.screenshot({ path: `${shots}/ghidra-assistant-${theme}-${width}.png` });
+    await box.getByRole('button', { name: 'New chat' }).click();
+    r.cleared = (await box.locator('ol > li').count()) === 0;
+    await ctx.close();
+  }
+} finally { await browser.close(); }
+console.log(JSON.stringify({ out, errors }, null, 1));
+const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !r.cleared || r.axe.length || r.sideways) || errors.length;
+process.exit(bad ? 1 : 0);

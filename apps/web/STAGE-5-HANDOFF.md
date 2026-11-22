@@ -10219,3 +10219,29 @@ NSA's well-known reverse-engineering tool (the REA tools here use it); the owner
 - **To make it smarter** (each a later item, the owner's choice): answering questions it wasn't taught needs far more
   question-and-answer text and a much bigger model, and a bigger model needs a graphics card to train (a paid cloud machine: ask first); or start
   from a free open model (DeepSeek, Llama) instead of from nothing.
+
+## M363: Ghidra, the assistant, round 1 (22 Nov)
+
+The owner (22 Nov), asked what "the Ghidra assistant" would be (a big AI doing the thinking behind the Ghidra name,
+connected to UniVerse so it can act, always asking first): "yes build it". Round 1: the chat and a handful of actions.
+It grows from "Ask UniVerse" (M30), which it replaces; the safety model is unchanged.
+
+- **The chat** (`components/hub/Ghidra.tsx`, on the hub; was `AskUniverse.tsx`): turns (your words on the end side,
+  Ghidra's reply under them), a reply per request, the newest kept in view, **New chat**, examples to start. The last
+  three exchanges go back with each question (`history`, `AskTurn`) so follow-ups work. Search (⌘K) still hands a sentence
+  over ("Ask Ghidra: …", `uv-ask`).
+- **Answers from the person's own data** (new, read only, `src/server/ask.ts`): `my_due` (a student's unfinished
+  assignments and quizzes due in the next 14 days in their own courses; a teacher's courses' deadlines; three queries)
+  and `my_green` (CO₂ saved in all and this week, actions, the streak; one query). AI (or the word matcher) only picks the
+  action; the server reads and answers with a list (`show`, `ShowItem`: title, detail, a link). `cleanPlan` never
+  accepts a `show` from AI, so a list only ever comes from the server's own read.
+- **More pages to open:** calendar, grades, assignments, Meet & call, Travel, saved places and trips, Games (`ASK_PAGES`).
+- **Unchanged:** every action is a card that does nothing until confirmed, through the app's own route; AI only through
+  `spendAi` and the owner's AI switch; without AI the word matcher (`localPlan`) answers, including the two new reads.
+  The prompt adds: never invent their data; someone in danger is told to call the emergency number first.
+- Demo: `ghidraSample` in `src/lib/sample/router.ts` (a made-up week of work and Green numbers).
+- Tests: `src/lib/ask.test.ts` (the new matches and pages; a made-up `show` refused), `src/server/ask.test.ts` (the
+  history: last six real turns, cut short, anything else dropped). Browser check: `scripts/checks/ghidra-assistant-ui.mjs`.
+- **Next rounds** (the owner said "yes build it" to all of them): Ghidra on every page (today the hub and search);
+  more actions app by app (draft a message for you to send, a quiz draft for a teacher, a trip's days, a Trace scan
+  history); the trained Ghidra (M362) answering simple questions on the device when the big AI is off or used up.
