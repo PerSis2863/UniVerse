@@ -49,14 +49,24 @@ export type AskPlan =
   /** M373: several steps from one request (src/server/ghidra-chain.ts), each one of the replies above, approved together.
    *  Only the server makes it: cleanPlan never accepts one from AI. */
   | { action: 'chain'; say: string; steps: AskPlan[] }
+  /** M374, the app agents: the Research Assistant (src/server/agents/research.ts) and the Social Media Manager
+   *  (agents/social.ts). The supervisor (AI or the matcher) picks them; the server runs them. */
+  | { action: 'research'; topic: string; say: string }
+  | { action: 'social_posts'; topic: string; platforms: string[]; count: number; say: string }
+  | { action: 'posts'; say: string; posts: SocialPost[] }
   | { action: 'answer'; say: string };
 
 /** M373: whether a request may have several parts ("… and then …"): only then does Ghidra's planner run
  *  (src/server/ghidra-chain.ts), so ordinary requests cost nothing extra. Never a plain "and": "bread and milk" is one thing. */
 export const looksMultiStep = (text: string) => /\b(and then|then|after that|afterwards|and also|also)\b|;/i.test(text);
 
-/** One line of a 'show' answer: what, a detail (a date, a course, a number), and where to open it. */
-export interface ShowItem { title: string; sub: string; href: string | null }
+/** One line of a 'show' answer: what, a detail (a date, a course, a number), and where to open it (`external`: a
+ *  page outside UniVerse, like a Wikipedia source, opened in a new tab). */
+export interface ShowItem { title: string; sub: string; href: string | null; external?: boolean }
+
+/** M374: one post the Social Media Manager drafted, for the person to copy and post themselves. */
+export interface SocialPost { platform: string; text: string; when: string | null }
+const SOCIAL = ['Instagram', 'LinkedIn', 'X', 'Facebook', 'WhatsApp'];
 
 /** One turn of the chat, sent back with the next question so follow-ups work ("make it 10 km"). */
 export interface AskTurn { who: 'me' | 'ghidra'; text: string }
@@ -96,6 +106,15 @@ export function cleanPlan(raw: unknown): AskPlan {
     if (name.length < 3) return fallback;
     return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, say: say || `Make a trip: ${name}.` };
   }
+  if (r.action === 'research') {
+    const topic = str(r.topic, 160);
+    return topic.length >= 2 ? { action: 'research', topic, say } : fallback;
+  }
+  if (r.action === 'social_posts') {
+    const topic = str(r.topic, 300), count = Math.round(num(r.count));
+    const platforms = Array.isArray(r.platforms) ? [...new Set(r.platforms.map((x) => SOCIAL.find((p) => p.toLowerCase() === String(x).toLowerCase().replace('twitter', 'x'))).filter((x): x is string => !!x))] : [];
+    return topic.length >= 2 ? { action: 'social_posts', topic, platforms, count: count >= 1 && count <= 6 ? count : 3, say } : fallback;
+  }
   if (r.action === 'quiz_draft') {
     const topic = str(r.topic, 160), count = Math.round(num(r.count));
     if (topic.length < 2) return fallback;
@@ -120,6 +139,10 @@ export function localPlan(text: string): AskPlan {
   const t = text.trim();
   const code = t.split(/\s+/).find((w) => splitCode(w));
   if (code) return cleanPlan({ action: 'trace_check', code });
+  const research = /\b(?:research|find (?:sources|information|info|articles)|look up|sources (?:on|about|for))\b\s*(?:on|about|for)?\s*(.{2,160}?)[.!?]?$/i.exec(t);
+  if (research) return cleanPlan({ action: 'research', topic: research[1] });
+  const social = /\b(posts?|captions?|tweets?)\b.*?\b(?:about|on|for)\s+(.{2,200}?)[.!?]?$/i.exec(t);
+  if (social && /\b(write|make|create|draft|give me)\b/i.test(t)) return cleanPlan({ action: 'social_posts', topic: social[2], platforms: SOCIAL.filter((p) => new RegExp(`\\b${p}\\b`, 'i').test(t) || (p === 'X' && /\btwitter|tweets?\b/i.test(t))), count: Number(t.match(/\b(\d)\s+(?:\w+\s+)?(?:posts|captions|tweets)\b/i)?.[1] ?? 3) });
   const quiz = /\b(?:make|create|write|draft|give me|set)\b.*?\bquiz\b(?:.*?\b(\d{1,2})\s+questions?\b)?.*?\b(?:on|about)\s+(.+?)(?:\s+for\s+([\p{L}\p{N}][\p{L}\p{N} -]{0,40}))?[.!?]?$/iu.exec(t);
   if (quiz) return cleanPlan({ action: 'quiz_draft', topic: quiz[2], count: Number(quiz[1] ?? 5), course: quiz[3] ?? null });
   if (/\b(due|homework|assignments?|deadlines?|hand in|quiz(zes)?)\b/i.test(t) && !/\b(open|go to|take me)\b/i.test(t)) return cleanPlan({ action: 'my_due' });

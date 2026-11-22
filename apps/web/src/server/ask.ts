@@ -12,6 +12,8 @@ import { featureOff } from './moderation';
 import { geminiJson } from './gemini';
 import { isHard, thinkHardText } from './ghidra-think';
 import { askChain } from './ghidra-chain';
+import { research } from './agents/research';
+import { socialPosts } from './agents/social';
 import { short } from './trace';
 import type { Body } from './body';
 
@@ -33,6 +35,8 @@ const SYSTEM = [
   '- my_courses: they ask which courses they are in or teach.',
   '- trip_new: they want to plan a new trip. name is short, like "Trip to Jaipur"; startDate YYYY-MM-DD only if they said when (assume the next such date); travellers is how many people.',
   '- quiz_draft: a teacher wants a quiz written. topic is what it is about; count how many questions (default 5); course the course code or name if they said one.',
+  '- research: they want information on a topic with sources (topic: the subject in a few words). The Research Assistant finds sources and cites them.',
+  '- social_posts: they want social media posts or captions written (topic: what about; platforms: any of Instagram, LinkedIn, X, Facebook, WhatsApp; count: how many). The Social Media Manager drafts them.',
   '- message_draft: they want to tell or message someone. text is the message itself, written as they would send it, in their language; never claim it was sent (they choose the chat and press Send).',
   `- green_log: they did a climate action. kind is one of ${GREEN_KINDS.map((k) => `${k} (${GREEN_FACTORS[k].units})`).join(', ')}; amount is how many of that unit.`,
   `- relief_post: they need help (type NEED) or offer it (type OFFER). kind is one of ${RELIEF_KINDS.join(', ')}; title is a short line in their words; people is how many people; urgency LOW, MEDIUM, HIGH or CRITICAL.`,
@@ -48,10 +52,10 @@ const SYSTEM = [
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
-    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
+    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'research', 'social_posts', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
     say: { type: 'STRING' }, kind: { type: 'STRING' }, amount: { type: 'NUMBER' }, note: { type: 'STRING' },
     type: { type: 'STRING' }, title: { type: 'STRING' }, people: { type: 'NUMBER' }, urgency: { type: 'STRING' },
-    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' }, topic: { type: 'STRING' }, count: { type: 'NUMBER' }, course: { type: 'STRING' },
+    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' }, topic: { type: 'STRING' }, count: { type: 'NUMBER' }, course: { type: 'STRING' }, platforms: { type: 'ARRAY', items: { type: 'STRING' } },
   },
   required: ['action', 'say'],
 };
@@ -164,6 +168,9 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
     case 'my_trips': return myTrips(u);
     case 'my_courses': return myCourses(u);
     case 'quiz_draft': return quizFor(u, plan);
+    // M374: the app agents, each in src/server/agents.
+    case 'research': return research(u, plan.topic);
+    case 'social_posts': return socialPosts(u, plan.topic, plan.platforms, plan.count);
     default: return plan;
   }
 }

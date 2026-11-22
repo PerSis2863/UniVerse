@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { mutate } from 'swr';
-import { Check, ChevronRight, Loader2, X } from 'lucide-react';
+import { Check, ChevronRight, Copy, Loader2, X } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { MathText } from '@/components/ui/MathText';
 import { api, errorMessage } from '@/lib/api';
@@ -116,8 +116,21 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
         <ul className="mt-2 divide-y divide-zinc-200 dark:divide-white/10">
           {plan.items.map((i, n) => {
             const body = <><span className="min-w-0 flex-1"><span className="block truncate font-medium text-zinc-900 dark:text-white" translate="no">{i.title}</span><span className="block truncate text-xs text-zinc-600 dark:text-zinc-300">{i.sub}</span></span>{i.href && <ChevronRight className="w-4 h-4 shrink-0 text-zinc-400 rtl:rotate-180" aria-hidden />}</>;
-            return <li key={n}>{i.href ? <Link href={i.href} onClick={onLeave} className="flex items-center gap-2 py-2 text-sm">{body}</Link> : <span className="flex items-center gap-2 py-2 text-sm">{body}</span>}</li>;
+            return <li key={n}>{i.href && i.external ? <a href={i.href} target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 py-2 text-sm">{body}<span className="sr-only">(opens in a new tab)</span></a> : i.href ? <Link href={i.href} onClick={onLeave} className="flex items-center gap-2 py-2 text-sm">{body}</Link> : <span className="flex items-center gap-2 py-2 text-sm">{body}</span>}</li>;
           })}
+        </ul>
+      )}
+      {plan.action === 'posts' && (
+        <ul className="mt-2 space-y-2">
+          {plan.posts.map((p, n) => (
+            <li key={n} className="rounded-xl border border-zinc-200 bg-white p-3 dark:border-white/10 dark:bg-zinc-900">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">{p.platform}{p.when ? ` · ${p.when}` : ''}</span>
+                <button type="button" onClick={() => { void navigator.clipboard?.writeText(p.text).then(() => toast.success(`Copied the ${p.platform} post.`), () => toast.error('Couldn’t copy: select the text instead.')); }} className="btn-secondary btn-sm"><Copy className="w-4 h-4" aria-hidden />Copy<span className="sr-only"> the {p.platform} post</span></button>
+              </div>
+              <p className="mt-2 whitespace-pre-wrap break-words text-sm text-zinc-900 dark:text-white" translate="no">{p.text}</p>
+            </li>
+          ))}
         </ul>
       )}
       {plan.action === 'chain' && (

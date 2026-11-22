@@ -2501,6 +2501,11 @@ function ghidraSample(plan: AskPlan): AskPlan {
     { title: 'Rajasthan with friends', sub: `from ${day(24)} · Jaipur, Udaipur · 6 days`, href: '/travel' },
     { title: 'Weekend in Lisbon', sub: 'no date yet · Lisbon · 2 days', href: '/travel' },
   ] };
+  if (plan.action === 'research') return { action: 'show', say: `A short summary of “${plan.topic}” would be here, citing its sources like [1] and [2]. In the sample, Ghidra doesn’t look anything up.\n\nSources (Wikipedia):`, items: [{ title: `[1] ${plan.topic}`, sub: 'Wikipedia', href: `https://en.wikipedia.org/wiki/Special:Search?search=${encodeURIComponent(plan.topic)}`, external: true }] };
+  if (plan.action === 'social_posts') return { action: 'posts', say: '2 posts ready to copy (a sample). Check them, fill anything in [brackets], then post them yourself:', posts: [
+    { platform: 'Instagram', text: `Big news about ${plan.topic}! 🌱 Join us this week and be part of it. [add the date and place] #UniVerse #Impact`, when: 'Monday' },
+    { platform: 'LinkedIn', text: `We’re proud to share an update on ${plan.topic}. Thank you to everyone who made it possible. [add one result you can stand behind]`, when: 'Tuesday' },
+  ] };
   if (plan.action === 'quiz_draft') return { ...plan, courseId: 'sample-course', courseName: 'Maths 7 (MATH7)', say: `Write a ${plan.count}-question quiz on ${plan.topic} for Maths 7? It’ll be a draft only you can see until you publish it.` };
   if (plan.action === 'my_courses') return { action: 'show', say: 'You’re in 3 courses:', items: [
     { title: 'Geography of cities', sub: 'GEO101', href: '/student/courses' },
