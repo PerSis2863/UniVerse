@@ -10555,3 +10555,29 @@ groupsummary (methods mean, sum, min, max, median, std, var, range, nummissing; 
 GroupCount), join (left: every left row), innerjoin, outerjoin (missing matches NaN or empty text; same-named
 columns from the right get `_right`), cell2table, table2cell, struct2table, table2struct, istable. Not built: row
 names, categorical and datetime columns, varfun / rowfun, stack / unstack.
+
+## M386 (22 Nov): UniVerse Lab: number types and any number of dimensions
+
+`src/lib/lab/types.ts` (pure): `NumClass` (int8 … uint64, single), `castOne` / `cast` (round halves away from zero,
+hold at the type's ends, NaN → 0; single through Math.fround; `cast(m, undefined)` is back to double), `resultClass`
+(an integer type wins over double and single; two different integer types refuse), `unitValues` (picture values
+0–1 by type: uint8 / 255, uint16 / 65535, other integers by their range, doubles over 1 as 0–255). `Mat.cls` holds
+the type; numbers stay doubles that are whole and in range. interp.ts: `binop` works a typed pair out in doubles
+then casts (comparisons stay logical); unary minus and transpose keep the type; getIndex / setIndex / concat keep it
+(an assigned value takes the array's type; the first typed value in [a b] wins, as MATLAB joins). `call()`: a class
+name at the end of a maker (zeros, ones, eye, rand, randn, randi, inf, nan, cast; MAKERS) or 'like', x makes that
+type; functions in KEEP_TYPE (abs, round…, mod, min, max, sort, flips, reshape, sum, prod, cumsum, diff, unique…)
+give back the first argument's type (sum saturates, as MATLAB's does); other functions give doubles. builtins.ts:
+int8 … uint64 / single / double / cast as conversions, class from `kind`, isinteger, isfloat, isa (numeric, float,
+integer, a type), intmax / intmin (a type name or 'like' a value), idivide ('fix', 'round', 'floor', 'ceil'; the old
+plain one removed), bitand / bitor / bitxor / bitshift / bitget (BigInt, so 64 bits stay exact), dec2bin, bin2dec,
+dec2hex, hex2dec. imread returns uint8 and imshow / image / im2double / imwrite read types through `unitValues`;
+.mat files write and read each type (`TYPED`, `CLASS_OF` in files.ts). Dimensions: `Mat.nd` holds the sizes past the
+second when there are more than three (their product is `p`, so every page-by-page path still works);
+`dimsOf` / `pageLabel` (values.ts) print `A(:,:,1,2) =`; sizes take any count (`sizesOf`, `extra` in builtins.ts);
+size, ndims, length, reshape, squeeze (drops every size of 1), permute / ipermute (any order of any number of
+dimensions, by strides), cat(4, …); `pagePlaces` (interp.ts) turns indices past the second into page numbers (fewer
+indices than dimensions fold the last ones together); A(i, j, k, l) = v changes values in place (no growing past
+three dimensions); zip and the page-by-page column functions keep `nd`; `call()` keeps `nd` on a same-sized result
+except for RESHAPERS. Not built: growing or deleting parts of arrays past three dimensions, functions along
+dimension 4 and up, integer types inside complex numbers.

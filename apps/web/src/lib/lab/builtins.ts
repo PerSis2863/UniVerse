@@ -3,6 +3,7 @@ import { cexp, clog, cmap, csqrt, eigvals } from './complex';
 import { cmat, imOf, bool, empty, fmtNum, inline, isScalar, kind, mat, num, numel, page, pages, render, row, stack, scalar, sizeOf, str, toMat, truthy, type Cell, type Mat, type Struct, type Value } from './values';
 import type { Lab } from './interp';
 import { concat, eye, inv, map1, matmul, range, solve, textOf, transpose, zip } from './interp';
+import { cast, CLASSES, isInt, isNumClass, RANGE, type NumClass } from './types';
 
 // UniVerse Lab's built-in functions (M374): written for UniVerse from the functions' documented behaviour (no code
 // from MATLAB or GNU Octave). Each takes the values passed in and how many outputs were asked for (0 when the result
@@ -21,19 +22,25 @@ const M = (v: Value, what?: string) => {
 const MC = (v: Value) => toMat(v);
 const S = (v: Value | undefined, what: string, dflt?: number) => (v === undefined ? (dflt ?? (() => { throw new LabError(`${what} is missing.`); })()) : scalar(v, what));
 const need = (args: Value[], n: number, name: string) => { if (args.length < n) throw new LabError(`${name} needs ${n} input${n === 1 ? '' : 's'}.`); };
-/** Sizes like zeros(3), zeros(2, 3), zeros([2 3]), zeros(2, 3, 4) (the third is pages, M382). */
-function dims(args: Value[]): [number, number, number] {
+/** Every size given: zeros(3), zeros(2, 3), zeros([2 3]), zeros(2, 3, 4, 5) (M382 pages, M386 any number). */
+function sizesOf(args: Value[]): number[] {
   const nums = args.filter((a) => a.k !== 'str');
-  if (!nums.length) return [1, 1, 1];
-  if (nums.length === 1) { const m = M(nums[0]); return m.d.length >= 2 ? [m.d[0], m.d[1], m.d[2] ?? 1] : [m.d[0], m.d[0], 1]; }
-  return [scalar(nums[0]), scalar(nums[1]), nums[2] ? scalar(nums[2]) : 1];
+  if (!nums.length) return [1, 1];
+  if (nums.length === 1) { const m = M(nums[0]); return m.d.length >= 2 ? [...m.d] : [m.d[0], m.d[0]]; }
+  return nums.map((v) => scalar(v));
 }
+/** Rows, columns and pages (all the dimensions past the second together). */
+function dims(args: Value[]): [number, number, number] { const s = sizesOf(args); return [s[0], s[1], s.slice(2).reduce((p, x) => p * x, 1)]; }
+/** The sizes past the second, when there are more than one of them (the array's `nd`). */
+const extra = (sizes: number[]) => { const s = sizes.slice(2); while (s.length && s[s.length - 1] === 1) s.pop(); return s.length > 1 ? s : undefined; };
 const fill = (args: Value[], fn: (i: number) => number) => {
-  const [r, c, p] = dims(args);
-  if ([r, c, p].some((x) => x < 0 || !Number.isInteger(x))) throw new LabError('Sizes must be whole numbers, 0 or more.');
+  const sizes = sizesOf(args), [r, c, p] = dims(args);
+  if (sizes.some((x) => x < 0 || !Number.isInteger(x))) throw new LabError('Sizes must be whole numbers, 0 or more.');
   if (r * c * p > 5e7) throw new LabError('That’s too big (over 50 million numbers).');
   const out = mat(r, c, Float64Array.from({ length: r * c * p }, (_, i) => fn(i)));
   if (r * c === 0 && p > 1) out.p = p;
+  const nd = extra(sizes);
+  if (nd) out.nd = nd;
   return out;
 };
 
@@ -60,41 +67,63 @@ def('reshape', (a) => {
   const known = sizes.filter((x) => !Number.isNaN(x)).reduce((s, x) => s * x, 1);
   const full = sizes.map((x) => (Number.isNaN(x) ? n / (known || 1) : x));
   while (full.length > 2 && full[full.length - 1] === 1) full.pop();
-  if (full.length > 3) throw new LabError('Only three dimensions (rows, columns and pages) are supported.');
-  const [r, c, p = 1] = full;
+  const [r, c] = full, p = full.slice(2).reduce((s, x) => s * x, 1);
   if (r * c * p !== n || full.some((x) => !Number.isInteger(x) || x < 0)) throw new LabError(`Can’t reshape ${n} elements into ${full.join('x')}.`);
   const out = mat(r, c, m.d, m.logical);
   if (m.im) out.im = Float64Array.from(m.im);
   if (r * c === 0 && p > 1) out.p = p;
+  if (full.length > 3) out.nd = full.slice(2);
   return [out];
 });
 def('cat', (a) => {
   const d = S(a[0], 'The dimension');
   if (d === 3) return [stack(a.slice(1).flatMap((v) => { const m = MC(v); return Array.from({ length: pages(m) }, (_, k) => page(m, k)); }))];
+  if (d === 4) {
+    // Arrays of one size one after another along the fourth dimension.
+    const ms = a.slice(1).map((v) => MC(v)), P = pages(ms[0]);
+    if (ms.some((m) => pages(m) !== P || m.nd)) throw new LabError('cat(4, …) needs arrays of the same size, of up to three dimensions.');
+    const out = stack(ms.flatMap((m) => Array.from({ length: P }, (_, k) => page(m, k))));
+    if (ms.length > 1) out.nd = [P, ms.length];
+    return [out];
+  }
   return [d === 1 ? concat(a.slice(1).map((x) => [x])) : concat([a.slice(1)])];
 });
 def('squeeze', (a) => {
-  // A 1×c×p or r×1×p array becomes a c×p or r×p matrix (the numbers are already in that order).
-  const m = MC(a[0]), P = pages(m);
-  if (P === 1) return [m];
-  const out = m.r === 1 ? mat(m.c, P, m.d, m.logical) : m.c === 1 ? mat(m.r, P, m.d, m.logical) : m;
-  if (out !== m && m.im) out.im = Float64Array.from(m.im);
+  // Dimensions of size 1 go (the numbers are already in the right order): 1×c×p becomes c×p.
+  const m = MC(a[0]);
+  if (pages(m) === 1) return [m];
+  const sizes = [m.r, m.c, ...(m.nd ?? [pages(m)])].filter((x) => x !== 1);
+  while (sizes.length < 2) sizes.push(1);
+  const out = mat(sizes[0], sizes[1], m.d, m.logical);
+  if (m.im) out.im = Float64Array.from(m.im);
+  if (m.cls) out.cls = m.cls;
+  if (sizes.length > 3) out.nd = sizes.slice(2);
   return [out];
 });
-def('permute ipermute', (a) => {
-  const m = MC(a[0]), order = [...M(a[1]).d].map((x) => x - 1);
-  if (order.length < 2 || order.length > 3 || [...order].sort((p, q) => p - q).some((x, i) => x !== i)) throw new LabError('permute takes an order like [2 1 3].');
-  while (order.length < 3) order.push(order.length);
-  const size = [m.r, m.c, pages(m)], ns = order.map((k) => size[k]), n = m.d.length;
+for (const name of ['permute', 'ipermute']) def(name, (a) => {
+  // Any number of dimensions (M386): the dimensions put in the given order (ipermute undoes it).
+  const m = MC(a[0]), given = [...M(a[1]).d].map((x) => x - 1);
+  const size = [m.r, m.c, ...(m.nd ?? [pages(m)])];
+  if (given.length < size.filter((x, i) => i < 2 || x > 1).length || [...given].sort((p, q) => p - q).some((x, i) => x !== i)) throw new LabError(`${name} takes an order of all ${size.length} dimensions, like [2 1 3].`);
+  const order = name === 'permute' ? given : given.map((_, q) => given.indexOf(q));
+  while (size.length < order.length) size.push(1);
+  const ns = order.map((k) => size[k]), n = m.d.length, dimsN = size.length;
+  const strides = size.map((_, q) => size.slice(0, q).reduce((s, x) => s * x, 1)), nstr = ns.map((_, q) => ns.slice(0, q).reduce((s, x) => s * x, 1));
   const d = new Float64Array(n), im = m.im ? new Float64Array(n) : null;
-  for (let k = 0; k < size[2]; k++) for (let j = 0; j < size[1]; j++) for (let i = 0; i < size[0]; i++) {
-    const src = [i, j, k], dst = order.map((q) => src[q]);
-    const to = dst[0] + dst[1] * ns[0] + dst[2] * ns[0] * ns[1], from = i + j * m.r + k * m.r * m.c;
+  const at = new Array<number>(dimsN).fill(0);
+  for (let from = 0; from < n; from++) {
+    let rest = from;
+    for (let q = dimsN - 1; q >= 0; q--) { at[q] = Math.floor(rest / strides[q]); rest -= at[q] * strides[q]; }
+    let to = 0;
+    for (let q = 0; q < order.length; q++) to += at[order[q]] * nstr[q];
     d[to] = m.d[from];
     if (im) im[to] = m.im![from];
   }
   const out = mat(ns[0], ns[1], d, m.logical);
   if (im) out.im = im;
+  if (m.cls) out.cls = m.cls;
+  const nd = extra(ns);
+  if (nd) out.nd = nd;
   return [out];
 });
 def('horzcat', (a) => [concat([a])]);
@@ -136,15 +165,15 @@ def('circshift', (a) => { const m = M(a[0]), k = S(a[1], 'The shift'); const n =
 // ——— Size and type ———
 def('size', (a, nout) => {
   need(a, 1, 'size');
-  const [r, c] = sizeOf(a[0]), p = pages(a[0]);
-  if (a[1]) { const d = S(a[1], 'The dimension'); return [num(d === 1 ? r : d === 2 ? c : d === 3 ? p : 1)]; }
-  // [r, c] = size(A) of a 3D array folds the pages into c, as MATLAB does.
-  if (nout === 2) return [num(r), num(c * p)];
-  return nout > 1 ? [num(r), num(c), num(p), ...Array(Math.max(0, nout - 3)).fill(num(1))] : [row(p > 1 ? [r, c, p] : [r, c])];
+  const [r, c] = sizeOf(a[0]), p = pages(a[0]), all = a[0].k === 'mat' && a[0].nd ? [r, c, ...a[0].nd] : p > 1 ? [r, c, p] : [r, c];
+  if (a[1]) { const d = S(a[1], 'The dimension'); return [num(all[d - 1] ?? 1)]; }
+  // [r, c] = size(A) folds the dimensions past the outputs into the last one, as MATLAB does.
+  if (nout >= 2) { const shown = all.slice(0, nout - 1), last = all.slice(nout - 1).reduce((s, x) => s * x, 1); return [...shown, last, ...Array(Math.max(0, nout - all.length - 0)).fill(1)].slice(0, nout).map((x) => num(x)); }
+  return [row(all)];
 });
 def('numel', (a) => [num(numel(a[0]))]);
-def('length', (a) => { const [r, c] = sizeOf(a[0]), p = pages(a[0]); return [num(r * c === 0 ? 0 : Math.max(r, c, p))]; });
-def('ndims', (a) => [num(a[0] && pages(a[0]) > 1 ? 3 : 2)]);
+def('length', (a) => { const [r, c] = sizeOf(a[0]), more = a[0].k === 'mat' ? (a[0].nd ?? [pages(a[0])]) : [1]; return [num(r * c === 0 ? 0 : Math.max(r, c, ...more))]; });
+def('ndims', (a) => [num(a[0]?.k === 'mat' && a[0].nd ? 2 + a[0].nd.length : a[0] && pages(a[0]) > 1 ? 3 : 2)]);
 def('isempty', (a) => [bool(numel(a[0]) === 0)]);
 def('isscalar', (a) => [bool(numel(a[0]) === 1)]);
 def('isvector', (a) => { const [r, c] = sizeOf(a[0]); return [bool((r === 1 || c === 1) && r * c >= 1 && pages(a[0]) === 1)]; });
@@ -154,19 +183,25 @@ def('ismatrix', (a) => [bool(!a[0] || pages(a[0]) === 1)]);
 def('issquare', (a) => { const [r, c] = sizeOf(a[0]); return [bool(r === c)]; });
 def('class', (a) => [str(kind(a[0]))]);
 def('isnumeric', (a) => [bool(a[0].k === 'mat' && !a[0].logical)]);
+def('isinteger', (a) => [bool(a[0].k === 'mat' && isInt(a[0].cls))]);
 def('isreal', (a) => [bool(a[0].k === 'mat' && !a[0].im)]);
-def('isfloat', (a) => [bool(a[0].k === 'mat' && !a[0].logical)]);
+def('isfloat', (a) => [bool(a[0].k === 'mat' && !a[0].logical && !isInt(a[0].cls))]);
 def('islogical', (a) => [bool(a[0].k === 'mat' && !!a[0].logical)]);
 def('ischar', (a) => [bool(a[0].k === 'str')]);
 def('iscell', (a) => [bool(a[0].k === 'cell')]);
 def('isstruct', (a) => [bool(a[0].k === 'struct')]);
 def('is_function_handle', (a) => [bool(a[0].k === 'fn')]);
-def('isa', (a) => { const c = textOf(a[1]), k = kind(a[0]); return [bool(c === k || (c === 'numeric' && k === 'double') || (c === 'float' && k === 'double'))]; });
-def('double single', (a) => [{ ...M(a[0]), logical: undefined }]);
+def('isa', (a) => {
+  const c = textOf(a[1]), k = kind(a[0]), numeric = a[0].k === 'mat' && !a[0].logical;
+  return [bool(c === k || (c === 'numeric' && numeric) || (c === 'float' && (k === 'double' || k === 'single')) || (c === 'integer' && a[0].k === 'mat' && isInt(a[0].cls)))];
+});
+def('double', (a) => [cast(MC(a[0]), undefined)]);
+def('single', (a) => [cast(MC(a[0]), 'single')]);
+def('cast', (a) => { const to = textOf(a[1]); if (to !== 'double' && !isNumClass(to)) throw new LabError(`cast knows ${['double', ...CLASSES].join(', ')}.`); return [cast(MC(a[0]), to === 'double' ? undefined : to)]; });
 def('logical', (a) => [{ ...map1(M(a[0]), (x) => { if (Number.isNaN(x)) throw new LabError('NaN can’t become true or false.'); return x !== 0 ? 1 : 0; }), logical: true }]);
 def('true', (a) => [{ ...fill(a, () => 1), logical: true }]);
 def('false', (a) => [{ ...fill(a, () => 0), logical: true }]);
-def('int8 int16 int32 int64 uint8 uint16 uint32 uint64', (a) => [map1(M(a[0]), (x) => Math.round(x))]);
+for (const cls of CLASSES.filter((c) => c !== 'single')) def(cls, (a) => [cast(a[0] ? MC(a[0]) : num(0), cls)]);
 def('char', (a) => [a.length > 1 ? concat(a.map((x) => [str(textOf(x))])) : a[0].k === 'cell' ? concat(a[0].d.map((x) => [str(textOf(x))])) : str(textOf(a[0]))]);
 
 // ——— Constants ———
@@ -177,8 +212,34 @@ def('NaN nan NA', (a) => [fill(a, () => NaN)]);
 def('eps', (a) => { if (a[0] && a[0].k === 'mat' && !a[1]) { const x = Math.abs(scalar(a[0])); return [num(x === 0 ? 2 ** -1074 : 2 ** (Math.floor(Math.log2(x)) - 52))]; } return [fill(a, () => 2 ** -52)]; });
 def('realmax', () => [num(Number.MAX_VALUE)]);
 def('realmin', () => [num(2.2250738585072014e-308)]);
-def('intmax', () => [num(2147483647)]);
-def('intmin', () => [num(-2147483648)]);
+const intClass = (v: Value | undefined): Exclude<NumClass, 'single'> => { const c = v ? (v.k === 'str' ? v.v : v.k === 'mat' && v.cls ? v.cls : 'int32') : 'int32'; if (!isInt(c as NumClass)) throw new LabError(`That isn’t a whole-number type (${Object.keys(RANGE).join(', ')}).`); return c as Exclude<NumClass, 'single'>; };
+def('intmax', (a) => { const c = intClass(a[0]); return [cast(num(RANGE[c][1]), c)]; });
+def('intmin', (a) => { const c = intClass(a[0]); return [cast(num(RANGE[c][0]), c)]; });
+def('idivide', (a) => {
+  // Whole-number division with a chosen rounding: 'fix' (MATLAB's default), 'round', 'floor', 'ceil'.
+  const A = MC(a[0]), B = MC(a[1]), how = a[2] ? textOf(a[2]) : 'fix', cls = A.cls ?? B.cls;
+  if (!isInt(cls)) throw new LabError('idivide needs whole-number types, like idivide(int32(7), int32(2)).');
+  const r = how === 'round' ? Math.round : how === 'floor' ? Math.floor : how === 'ceil' ? Math.ceil : Math.trunc;
+  return [cast(zip(cast(A, undefined), cast(B, undefined), (x, y) => (y === 0 ? (x === 0 ? 0 : x > 0 ? Infinity : -Infinity) : r(x / y))), cls)];
+});
+/** Bit operations on whole numbers 0 or more (BigInt keeps all 64 bits). */
+const bits = (a: Value[], fn: (x: bigint, y: bigint) => bigint) => {
+  const A = MC(a[0]), B = MC(a[1]), cls = A.cls ?? B.cls;
+  return [cast(zip(cast(A, undefined), cast(B, undefined), (x, y) => { if (x < 0 || y < 0 || !Number.isInteger(x) || !Number.isInteger(y)) throw new LabError('Bit operations need whole numbers, 0 or more.'); return Number(fn(BigInt(x), BigInt(y))); }), cls)];
+};
+def('bitand', (a) => bits(a, (x, y) => x & y));
+def('bitor', (a) => bits(a, (x, y) => x | y));
+def('bitxor', (a) => bits(a, (x, y) => x ^ y));
+def('bitshift', (a) => {
+  const A = MC(a[0]), k = S(a[1], 'The shift'), cls = A.cls;
+  const top = isInt(cls) ? BigInt(RANGE[cls][1]) : (BigInt(1) << BigInt(53)) - BigInt(1);
+  return [cast(map1(cast(A, undefined), (x) => { const v = k >= 0 ? BigInt(x) << BigInt(k) : BigInt(x) >> BigInt(-k); return Number(v & top); }), cls)];
+});
+def('bitget', (a) => [map1(cast(MC(a[0]), undefined), (x) => Number((BigInt(x) >> BigInt(S(a[1], 'The bit') - 1)) & BigInt(1)))]);
+def('dec2bin', (a) => { const v = M(a[0]), w = a[1] ? S(a[1], 'The width') : 0; const rows = [...v.d].map((x) => Math.round(x).toString(2)); const len = Math.max(w, ...rows.map((t) => t.length)); return [str(rows.map((t) => t.padStart(len, '0')).join('\n'))]; });
+def('bin2dec', (a) => { const t = textOf(a[0]); return [mat(t.split('\n').length, 1, t.split('\n').map((x) => parseInt(x.replace(/\s/g, ''), 2)))]; });
+def('dec2hex', (a) => { const v = M(a[0]); return [str([...v.d].map((x) => Math.round(x).toString(16).toUpperCase()).join('\n'))]; });
+def('hex2dec', (a) => { const t = textOf(a[0]); return [mat(t.split('\n').length, 1, t.split('\n').map((x) => parseInt(x.trim(), 16)))]; });
 def('flintmax', () => [num(2 ** 53)]);
 
 // ——— Element-wise maths ———
@@ -216,7 +277,6 @@ two('mod', (x, y) => (y === 0 ? x : x - Math.floor(x / y) * y)); two('rem', (x, 
 two('atan2', Math.atan2); two('hypot', Math.hypot); two('power', Math.pow); two('plus', (x, y) => x + y); two('minus', (x, y) => x - y); two('times', (x, y) => x * y); two('rdivide', (x, y) => x / y);
 two('gcd', gcd); two('lcm', (x, y) => (x && y ? Math.abs(x * y) / gcd(x, y) : 0));
 two('nchoosek', (n, k) => { let r = 1; for (let i = 1; i <= k; i++) r = (r * (n - k + i)) / i; return Math.round(r); });
-two('idivide', (x, y) => Math.trunc(x / y));
 two('bitand', (x, y) => x & y); two('bitor', (x, y) => x | y); two('bitxor', (x, y) => x ^ y);
 def('primes', (a) => { const n = S(a[0], 'n'); const out: number[] = []; for (let i = 2; i <= n; i++) if (isPrime(i)) out.push(i); return [row(out)]; });
 def('mtimes', (a) => [matmul(M(a[0]), M(a[1]))]);

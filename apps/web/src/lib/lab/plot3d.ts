@@ -4,6 +4,7 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { add, colour, esc, gfx, isPairName, label, markerSvg, outward, PALETTE, points, style, tex, ticks, vec, type Axes, type Box, type Grid, type Ink, type Series } from './plot';
 import { hex, hexAt, MAP_NAMES, mapOf, png, rgbAt } from './colormap';
+import { cast, unitValues } from './types';
 
 // UniVerse Lab's 3D plots and images (M379): surf, mesh, plot3, scatter3, contour, contourf, imagesc, image, pcolor,
 // colour maps and colour bars, view and shading. Surfaces are drawn as SVG faces sorted far to near (each face whole,
@@ -519,7 +520,7 @@ for (const [name, direct, rev] of [['imagesc', false, true], ['image', true, tru
     const { C, x, y, rest } = pc ? { C: pc[2], x: Array.from({ length: pc[2].c }, (_, j) => (isVec(pc[0]) ? pc[0].d[j] : pc[0].d[j * pc[0].r])), y: Array.from({ length: pc[2].r }, (_, i) => (isVec(pc[1]) ? pc[1].d[i] : pc[1].d[i])), rest: a.slice(3) } : imageArgs(a, name);
     const { alpha } = faceOpts(rest);
     // A rows × columns × 3 array is a full-colour picture (its pages red, green, blue).
-    const rgb = pages(C) === 3 ? unit([...C.d]) : undefined;
+    const rgb = pages(C) === 3 ? unitValues(C) : undefined;
     if (pages(C) > 1 && !rgb) throw new LabError(`${name} shows a matrix, or a picture with 3 pages (red, green, blue).`);
     add(lab, [], [{ kind: 'image', r: C.r, c: C.c, x, y, z: [...C.d.subarray(0, C.r * C.c)], direct: direct || !!rgb, edges: false, alpha, rgb }]);
     const ax = gfx(lab).axes();
@@ -627,14 +628,13 @@ def('peaks', (a, nout) => {
 
 // ——— Pictures (M382): imshow, rgb2gray, im2double, im2uint8, imresize ———
 /** Picture values from 0 to 1: anything above 1 is taken as 0–255 (MATLAB's uint8 pictures). */
-const unit = (v: number[]) => { const top = Math.max(...v.filter(Number.isFinite), 0); return top > 1 ? v.map((t) => t / 255) : v; };
 def('imshow', (a, _n, lab) => {
   const I = toMat(a[0]);
   const P = pages(I), n = I.r * I.c;
   if (P !== 1 && P !== 3) throw new LabError('imshow shows a grey picture (a matrix) or a colour one (rows × columns × 3).');
   let vals = [...I.d];
   // imshow(I, [low high]) (or []) stretches the greys between those values.
-  if (P === 1 && a[1]?.k === 'mat') { const lim = a[1].d.length === 2 ? [a[1].d[0], a[1].d[1]] : (minmax(vals) ?? [0, 1]); vals = vals.map((t) => (t - lim[0]) / (lim[1] - lim[0] || 1)); } else vals = unit(vals);
+  if (P === 1 && a[1]?.k === 'mat') { const lim = a[1].d.length === 2 ? [a[1].d[0], a[1].d[1]] : (minmax(vals) ?? [0, 1]); vals = vals.map((t) => (t - lim[0]) / (lim[1] - lim[0] || 1)); } else vals = unitValues(I);
   const rgb = P === 3 ? vals : [...vals, ...vals, ...vals];
   const x = Array.from({ length: I.c }, (_, j) => j + 1), y = Array.from({ length: I.r }, (_, i) => i + 1);
   add(lab, [], [{ kind: 'image', r: I.r, c: I.c, x, y, z: vals.slice(0, n), direct: true, edges: false, alpha: 1, rgb }]);
@@ -649,8 +649,8 @@ def('rgb2gray', (a) => {
   for (let k = 0; k < n; k++) o.d[k] = 0.2989 * I.d[k] + 0.587 * I.d[k + n] + 0.114 * I.d[k + 2 * n];
   return [o];
 });
-def('im2double', (a) => { const I = toMat(a[0]); return [mat(I.r, I.c, unit([...I.d]))]; });
-def('im2uint8', (a) => { const I = toMat(a[0]); const top = Math.max(...I.d.filter(Number.isFinite), 0); return [mat(I.r, I.c, [...I.d].map((t) => Math.round(Math.max(0, Math.min(255, top > 1 ? t : t * 255)))))]; });
+def('im2double', (a) => { const I = toMat(a[0]); return [mat(I.r, I.c, unitValues(I))]; });
+def('im2uint8', (a) => { const I = toMat(a[0]); return [cast(mat(I.r, I.c, unitValues(I).map((t) => t * 255)), 'uint8')]; });
 def('imresize', (a) => {
   // imresize(I, scale) or imresize(I, [rows cols]), bilinear, page by page.
   const I = toMat(a[0]), P = pages(I), s = vec(a[1]);

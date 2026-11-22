@@ -2,6 +2,7 @@ import { LabError, parse, type Expr, type FnDef, type Stmt } from './parse';
 import { cbinop } from './complex';
 import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, page, pages, scalar, show, sizeOf, stack, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
 import { BUILTINS } from './builtins';
+import { cast, isNumClass, resultClass, type NumClass } from './types';
 import { colPositions, contents, isTable, joinTables, pick as pickTable, properties, remove as removeRows, renamed, setValues } from './table';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
@@ -215,7 +216,7 @@ export class Lab {
       case 'un': {
         const a = this.ev(e.a, f);
         if (e.op === '+') return [toMat(a)];
-        if (e.op === '-') { const m = toMat(a); return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
+        if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
         return [{ ...map1(toMat(a), (x) => (x === 0 ? 1 : 0)), logical: true }];
       }
       case 'post': { const v = transpose(this.ev(e.a, f)); return [e.op === "'" && v.k === 'mat' && v.im ? { ...v, im: v.im.map((x) => -x) } : v]; }
@@ -310,7 +311,24 @@ export class Lab {
     if (name === 'exist' && f) { const n = args[0] ? textOf(args[0]) : ''; const files = this.host.files as { has?(n: string): boolean } | undefined; return [num(f.vars.has(n) ? 1 : files?.has?.(n) ? 2 : this.fns.has(n) || BUILTINS[n] ? 5 : 0)]; }
     const b = BUILTINS[name];
     if (!b) throw new LabError(`“${name}” isn’t a variable or a function I know.${suggest(name)}`);
-    return b(args, nout, this, f);
+    // A class name at the end makes the result that type: zeros(2, 'uint8'), ones(3, 'like', x) (M386).
+    const last = args[args.length - 1], like = args.length >= 2 && args[args.length - 2]?.k === 'str' && /^like$/i.test((args[args.length - 2] as { v: string }).v);
+    if (MAKERS.has(name) && (like || (last?.k === 'str' && (isNumClass(last.v) || last.v === 'double')))) {
+      const target = like ? (last.k === 'mat' ? last.cls : undefined) : (last as { v: string }).v === 'double' ? undefined : ((last as { v: string }).v as NumClass);
+      const outs = b(args.slice(0, like ? -2 : -1), nout, this, f);
+      return outs.map((o) => (o.k === 'mat' ? cast(o, target) : o));
+    }
+    const outs = b(args, nout, this, f);
+    const first = args[0];
+    if (first?.k !== 'mat' || !(first.cls || first.nd)) return outs;
+    return outs.map((o) => {
+      if (o.k !== 'mat') return o;
+      let r = o;
+      // More than three dimensions: a result of the same size keeps its shape.
+      if (first.nd && !o.nd && !RESHAPERS.has(name) && o.r === first.r && o.c === first.c && (o.p ?? 1) === (first.p ?? 1)) r = { ...r, nd: first.nd };
+      if (first.cls && !o.cls && !o.logical && KEEP_TYPE.has(name)) r = cast(r, first.cls);
+      return r;
+    });
   }
   callFn(fn: Fn | Value, args: Value[], nout = 1): Value[] {
     if (fn.k === 'str') return this.call(fn.v, args, nout);
@@ -342,6 +360,11 @@ export class Lab {
   binop(op: string, a: Value, b: Value): Value {
     if ((op === '==' || op === '~=') && a.k === 'str' && b.k === 'str' && a.v.length !== b.v.length && a.v.length !== 1 && b.v.length !== 1) throw new LabError('To compare texts of different lengths use strcmp(a, b).');
     const A = toMat(a, 'The left side'), B = toMat(b, 'The right side');
+    // Whole-number types (M386): worked out in doubles, then rounded and held in the type's range.
+    if (A.cls || B.cls) {
+      const cls = resultClass(A, B), out = this.binop(op, cast(A, undefined), cast(B, undefined)) as Mat;
+      return out.logical ? out : cast(out, cls);
+    }
     if (A.im || B.im) return cbinop(op, A, B, solve);
     switch (op) {
       case '+': return zip(A, B, (x, y) => x + y);
@@ -376,7 +399,7 @@ export const map1 = (m: Mat, fn: (x: number) => number): Mat => mat(m.r, m.c, m.
 /** Element by element, with MATLAB's implicit expansion (a row and a column make a grid). */
 export function zip(a: Mat, b: Mat, fn: (x: number, y: number) => number): Mat {
   const pa = a.p ?? 1, pb = b.p ?? 1;
-  if (a.r === b.r && a.c === b.c && pa === pb) { const d = new Float64Array(a.d.length); for (let i = 0; i < d.length; i++) d[i] = fn(a.d[i], b.d[i]); return mat(a.r, a.c, d); }
+  if (a.r === b.r && a.c === b.c && pa === pb) { const d = new Float64Array(a.d.length); for (let i = 0; i < d.length; i++) d[i] = fn(a.d[i], b.d[i]); const o = mat(a.r, a.c, d); if (a.nd || b.nd) o.nd = a.nd ?? b.nd; return o; }
   const grow = (x: number, y: number) => (x === y ? x : x === 1 ? y : y === 1 ? x : -1);
   const r = grow(a.r, b.r), c = grow(a.c, b.c), p = grow(pa, pb);
   const size = (m: Mat, q: number) => `${m.r}x${m.c}${q > 1 ? `x${q}` : ''}`;
@@ -385,7 +408,10 @@ export function zip(a: Mat, b: Mat, fn: (x: number, y: number) => number): Mat {
   for (let k = 0; k < p; k++) for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) {
     d[i + j * r + k * r * c] = fn(a.d[(a.r === 1 ? 0 : i) + (a.c === 1 ? 0 : j) * a.r + (pa === 1 ? 0 : k) * na], b.d[(b.r === 1 ? 0 : i) + (b.c === 1 ? 0 : j) * b.r + (pb === 1 ? 0 : k) * nb]);
   }
-  return mat(r, c, d);
+  const o = mat(r, c, d);
+  const nd = (pa === p && a.nd) || (pb === p && b.nd);
+  if (nd) o.nd = nd;
+  return o;
 }
 const flatOnly = (m: Mat, what: string) => { if ((m.p ?? 1) > 1) throw new LabError(`${what} works on 2D matrices; for a 3D array, work page by page (A(:, :, k)) or use permute.`); };
 export function matmul(a: Mat, b: Mat): Mat {
@@ -402,7 +428,7 @@ export function transpose(v: Value): Value {
   flatOnly(m, 'Transposing (\')');
   const d = new Float64Array(m.d.length), im = m.im ? new Float64Array(m.d.length) : null;
   for (let i = 0; i < m.r; i++) for (let j = 0; j < m.c; j++) { d[j + i * m.c] = m.d[i + j * m.r]; if (im) im[j + i * m.c] = m.im![i + j * m.r]; }
-  return { ...mat(m.c, m.r, d), ...(m.logical ? { logical: true } : {}), ...(im ? { im } : {}) };
+  return { ...mat(m.c, m.r, d), ...(m.logical ? { logical: true } : {}), ...(im ? { im } : {}), ...(m.cls ? { cls: m.cls } : {}) };
 }
 function mpower(a: Mat, b: Mat): Mat {
   if (isScalar(a) && isScalar(b)) { const v = a.d[0] ** b.d[0]; return Number.isNaN(v) && a.d[0] < 0 ? cbinop('^', a, b, solve) : num(v); }
@@ -488,6 +514,9 @@ export function inv(A: Mat): Mat {
 
 /** Rows of values side by side, then the rows on top of each other ([a b; c d]). Text joins as text. */
 export function concat(rows: Value[][]): Value {
+  // A whole-number type wins (the first one met), as MATLAB joins them.
+  const typed = rows.flat().find((v): v is Mat => v.k === 'mat' && !!v.cls);
+  if (typed) { const out = concat(rows.map((r) => r.map((v) => (v.k === 'mat' && v.cls ? cast(v, undefined) : v)))); return out.k === 'mat' ? cast(out, typed.cls) : out; }
   // Tables join as tables: [T1; T2] adds rows, [T1, T2] adds columns.
   if (rows.flat().length > 1 && rows.flat().every((v) => isTable(v))) return joinTables(rows as Struct[][]);
   // 3D arrays join page by page (a plain matrix joins every page).
@@ -546,20 +575,22 @@ export function getIndex(v: Value, idx: Idx[]): Value {
     return pickTable(v, idx[0], idx[1]);
   }
   if (v.k === 'mat' && v.im) { const re = getIndex({ ...v, im: undefined }, idx) as Mat, im = getIndex(mat(v.r, v.c, v.im), idx) as Mat; return cmat(re.r, re.c, re.d, im.d); }
+  if (v.k === 'mat' && v.cls) { const out = getIndex(cast(v, undefined), idx); return out.k === 'mat' ? { ...out, cls: v.cls } : out; }
   if (v.k === 'mat' && (pages(v) > 1 || idx.length >= 3)) {
     const P = pages(v), n = v.r * v.c;
     // One or two indices fold the pages into the columns, as MATLAB does.
-    if (idx.length < 3) return getIndex({ ...v, c: v.c * P, p: undefined }, idx);
-    for (const x of idx.slice(3)) if (x !== 'all' && x.some((k) => k !== 0)) throw new LabError('Only three dimensions (rows, columns and pages) are supported.');
-    const rows = positions(idx[0], v.r), cols = positions(idx[1], v.c), pg = positions(idx[2], P);
+    if (idx.length < 3) return getIndex({ ...v, c: v.c * P, p: undefined, nd: undefined }, idx);
+    const rows = positions(idx[0], v.r), cols = positions(idx[1], v.c);
     for (const i of rows) if (i >= v.r) throw new LabError(`Row ${i + 1} is past the end: there are ${v.r}.`);
     for (const j of cols) if (j >= v.c) throw new LabError(`Column ${j + 1} is past the end: there are ${v.c}.`);
-    for (const k of pg) if (k >= P) throw new LabError(`Page ${k + 1} is past the end: there ${P === 1 ? 'is 1' : `are ${P}`}.`);
+    const { pages: pg, sizes } = pagePlaces(v, idx.slice(2));
     const out = new Float64Array(rows.length * cols.length * pg.length);
     let t = 0;
     for (const k of pg) for (const j of cols) for (const i of rows) out[t++] = v.d[i + j * v.r + k * n];
     const res = mat(rows.length, cols.length, out, v.logical);
     if (rows.length * cols.length === 0 && pg.length > 1) res.p = pg.length;
+    const trimmed = trimSizes(sizes);
+    if (trimmed.length > 1) res.nd = trimmed;
     return res;
   }
   if (v.k === 'struct' || v.k === 'fn') {
@@ -601,6 +632,12 @@ function getCell(v: Value, idx: Idx[]): Value[] {
 
 /** x(idx) = v: grows the matrix when needed (filled with 0), [] deletes, a scalar fills every position. */
 function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolean): Value {
+  // A typed array keeps its type; a new or empty one takes the value's (M386).
+  const cls = base?.k === 'mat' && base.d.length ? base.cls : v.k === 'mat' ? v.cls : undefined;
+  if ((base?.k === 'mat' && base.cls) || (v.k === 'mat' && v.cls)) {
+    const out = setIndex(base?.k === 'mat' ? cast(base, undefined) : base, idx, v.k === 'mat' ? cast(v, undefined) : v, false);
+    return out.k === 'mat' && cls ? cast(out, cls) : out;
+  }
   if (isTable(base)) {
     if (idx.length !== 2) throw new LabError('Index a table with rows and columns: T(rows, :) = [].');
     if (v.k === 'mat' && !v.d.length) return removeRows(base, idx[0], idx[1]);
@@ -667,9 +704,38 @@ function place<T>(b: { r: number; c: number; d: ArrayLike<T> }, idx: Idx[], get:
   r = nr; c = nc;
   return make(r, c, d as T[]);
 }
+/** Trailing sizes without the ones at the end (MATLAB's own sizes never end in 1 past the second). */
+const trimSizes = (sizes: number[]) => { const s = [...sizes]; while (s.length && s[s.length - 1] === 1) s.pop(); return s; };
+/** The pages that indices past the second pick (M386: any number of dimensions), and how many along each. */
+function pagePlaces(v: Mat, rest: Idx[]): { pages: number[]; sizes: number[] } {
+  let dims = v.nd ?? [pages(v)];
+  // Fewer indices than dimensions: the last index runs over the remaining ones together (as MATLAB folds them).
+  if (rest.length < dims.length) dims = [...dims.slice(0, rest.length - 1), dims.slice(rest.length - 1).reduce((s, x) => s * x, 1)];
+  const lists = rest.map((x, q) => {
+    const n = dims[q] ?? 1, list = positions(x, n);
+    for (const k of list) if (k >= n) throw new LabError(`Index ${k + 1} in dimension ${q + 3} is past the end: there ${n === 1 ? 'is 1' : `are ${n}`}.`);
+    return list;
+  });
+  // The order is the first trailing index fastest (column-major).
+  const sized = lists.reduce<number[][]>((acc, list) => list.flatMap((k) => acc.map((a) => [...a, k])), [[]]);
+  const strides = dims.map((_, q) => dims.slice(0, q).reduce((s, x) => s * x, 1));
+  return { pages: sized.map((ks) => ks.reduce((s, k, q) => s + k * strides[q], 0)), sizes: lists.map((l) => l.length) };
+}
 /** A(i, j, k) = v: grows rows, columns and pages as needed; A(:, :, k) = [] removes pages. */
 function place3(B: Mat, idx: Idx[], V: Mat): Mat {
-  for (const x of idx.slice(3)) if (x !== 'all' && x.some((k) => k !== 0)) throw new LabError('Only three dimensions (rows, columns and pages) are supported.');
+  // Past three dimensions, values change in place (the array keeps its size).
+  if (idx.length > 3 || B.nd) {
+    if (!V.d.length) throw new LabError('Deleting parts of an array with more than three dimensions isn’t supported: build a new one.');
+    const rows = positions(idx[0], B.r), cols = positions(idx[1], B.c), { pages: pg } = pagePlaces(B, idx.slice(2));
+    for (const i of rows) if (i >= B.r) throw new LabError(`Row ${i + 1} is past the end: there are ${B.r}.`);
+    for (const j of cols) if (j >= B.c) throw new LabError(`Column ${j + 1} is past the end: there are ${B.c}.`);
+    const count = rows.length * cols.length * pg.length;
+    if (V.d.length !== 1 && V.d.length !== count) throw new LabError(`Sizes don’t match: ${count} places to fill but ${V.d.length} values given.`);
+    const d = Float64Array.from(B.d), n = B.r * B.c;
+    let t = 0;
+    for (const k of pg) for (const j of cols) for (const i of rows) d[i + j * B.r + k * n] = V.d.length === 1 ? V.d[0] : V.d[t++];
+    return { ...B, d, im: undefined };
+  }
   const has = B.d.length > 0, r = has ? B.r : 0, c = has ? B.c : 0, P = has ? pages(B) : 0;
   if (!V.d.length) {
     if (idx[0] !== 'all' || idx[1] !== 'all') throw new LabError('To delete from a 3D array, delete whole pages: A(:, :, k) = [].');
@@ -747,6 +813,9 @@ for (const [name, at] of Object.entries(ALONG)) {
     if ((name === 'max' || name === 'min') && a.length >= 2 && numel(a[1]) > 0) return f(a, nout, lab, frame);
     const P = pages(m), n = m.r * m.c;
     const dim = at !== null && a[at]?.k === 'mat' && numel(a[at]) === 1 ? (a[at] as Mat).d[0] : null;
+    // Along a dimension the array doesn't have: each value stays itself (as sum(A, 4) of a 3D array is A).
+    if (dim !== null && dim > 3 && !m.nd) return [m];
+    if (dim !== null && (dim > 3 || (dim === 3 && m.nd))) throw new LabError(`${name} along dimension ${dim} of an array with more than three dimensions isn’t supported: reshape it first.`);
     if (dim === 3) {
       const T = mat(P, n);
       for (let k = 0; k < P; k++) for (let e = 0; e < n; e++) T.d[k + e * P] = m.d[e + k * n];
@@ -761,6 +830,13 @@ for (const [name, at] of Object.entries(ALONG)) {
       });
     }
     const outs = Array.from({ length: P }, (_, k) => f(a.map((x, i) => (i === 0 || (x.k === 'mat' && pages(x) === P) ? page(x as Mat, k) : x)), nout, lab, frame));
-    return outs[0].map((_, i) => stack(outs.map((o) => toMat(o[i]))));
+    return outs[0].map((_, i) => { const st = stack(outs.map((o) => toMat(o[i]))); if (m.nd) st.nd = m.nd; return st; });
   };
 }
+
+/** Functions whose job is to change an array's shape (their result's sizes are their own). */
+const RESHAPERS = new Set(['squeeze', 'reshape', 'permute', 'ipermute', 'cat', 'horzcat', 'vertcat', 'repmat']);
+/** Functions that make arrays and take a type at the end. */
+const MAKERS = new Set(['zeros', 'ones', 'eye', 'rand', 'randn', 'randi', 'inf', 'Inf', 'nan', 'NaN', 'cast']);
+/** Functions whose result keeps a whole-number type in MATLAB (sum included: it saturates, as MATLAB's does). */
+const KEEP_TYPE = new Set(['abs', 'round', 'floor', 'ceil', 'fix', 'sign', 'mod', 'rem', 'min', 'max', 'sort', 'fliplr', 'flipud', 'flip', 'rot90', 'circshift', 'reshape', 'repmat', 'squeeze', 'permute', 'ipermute', 'cat', 'horzcat', 'vertcat', 'unique', 'sum', 'prod', 'cumsum', 'cumprod', 'diff', 'cummax', 'cummin', 'triu', 'tril', 'diag', 'kron', 'bounds', 'mode', 'median', 'transpose', 'circshift', 'sortrows', 'imresize', 'rgb2gray', 'bitand', 'bitor', 'bitxor', 'bitshift', 'idivide']);

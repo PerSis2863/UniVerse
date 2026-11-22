@@ -4,6 +4,7 @@ import { mat, numel, pages, scalar, str, toMat, type Cell, type Mat, type Struct
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { png } from './colormap';
+import { cast, unitValues, type NumClass } from './types';
 import { findAll, kid, parseXml } from '@/lib/xml-lite';
 import { writeXlsx } from '@/lib/sheet/xlsx';
 import { keyOf } from '@/lib/sheet/refs';
@@ -284,8 +285,15 @@ function matrix(v: Value, name: string): Uint8Array {
   const flags = (cls: number, extra = 0) => { const o = new Uint8Array(8); new DataView(o.buffer).setUint32(0, cls | extra, true); return element(MI.UINT32, o); };
   const nameEl = element(MI.INT8, new TextEncoder().encode(name));
   if (v.k === 'mat') {
-    const dims = pages(v) > 1 ? [v.r, v.c, pages(v)] : [v.r, v.c];
+    const dims = v.nd ? [v.r, v.c, ...v.nd] : pages(v) > 1 ? [v.r, v.c, pages(v)] : [v.r, v.c];
     if (v.logical) { w.bytes(flags(MX.UINT8, 0x0200)); w.bytes(element(MI.INT32, i32s(dims))); w.bytes(nameEl); w.bytes(element(MI.UINT8, Uint8Array.from(v.d, (x) => (x ? 1 : 0)))); }
+    else if (v.cls) {
+      // A typed array keeps its type (MATLAB reads it back as that type).
+      const [mx, mi, typed] = TYPED[v.cls];
+      w.bytes(flags(mx, v.im ? 0x0800 : 0)); w.bytes(element(MI.INT32, i32s(dims))); w.bytes(nameEl);
+      w.bytes(element(mi, typed(v.d)));
+      if (v.im) w.bytes(element(mi, typed(v.im)));
+    }
     else { w.bytes(flags(MX.DOUBLE, v.im ? 0x0800 : 0)); w.bytes(element(MI.INT32, i32s(dims))); w.bytes(nameEl); w.bytes(element(MI.DOUBLE, f64s(v.d))); if (v.im) w.bytes(element(MI.DOUBLE, f64s(v.im))); }
   } else if (v.k === 'str') {
     const rows = v.v.split('\n'), c = Math.max(0, ...rows.map((r) => r.length)), r = v.v ? rows.length : 0;
@@ -314,6 +322,15 @@ export function writeMat(vars: [string, Value][]): Uint8Array {
   for (const [n, v] of vars) w.bytes(matrix(v, n));
   return w.done();
 }
+const bytesOf = (a: ArrayBufferView) => new Uint8Array(a.buffer, a.byteOffset, a.byteLength);
+const TYPED: Record<NumClass, [number, number, (d: Float64Array) => Uint8Array]> = {
+  int8: [MX.INT8, MI.INT8, (d) => bytesOf(Int8Array.from(d))], uint8: [MX.UINT8, MI.UINT8, (d) => bytesOf(Uint8Array.from(d))],
+  int16: [MX.INT16, MI.INT16, (d) => bytesOf(Int16Array.from(d))], uint16: [MX.UINT16, MI.UINT16, (d) => bytesOf(Uint16Array.from(d))],
+  int32: [MX.INT32, MI.INT32, (d) => bytesOf(Int32Array.from(d))], uint32: [MX.UINT32, MI.UINT32, (d) => bytesOf(Uint32Array.from(d))],
+  int64: [MX.INT64, MI.INT64, (d) => bytesOf(BigInt64Array.from(d, (x) => BigInt(x)))], uint64: [MX.UINT64, MI.UINT64, (d) => bytesOf(BigUint64Array.from(d, (x) => BigInt(x)))],
+  single: [MX.SINGLE, MI.SINGLE, (d) => bytesOf(Float32Array.from(d))],
+};
+const CLASS_OF: Record<number, NumClass> = { [MX.INT8]: 'int8', [MX.UINT8]: 'uint8', [MX.INT16]: 'int16', [MX.UINT16]: 'uint16', [MX.INT32]: 'int32', [MX.UINT32]: 'uint32', [MX.INT64]: 'int64', [MX.UINT64]: 'uint64', [MX.SINGLE]: 'single' };
 function readNumbers(type: number, b: Uint8Array): number[] {
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), out: number[] = [];
   const size = { [MI.INT8]: 1, [MI.UINT8]: 1, [MI.INT16]: 2, [MI.UINT16]: 2, [MI.INT32]: 4, [MI.UINT32]: 4, [MI.SINGLE]: 4, [MI.DOUBLE]: 8, [MI.INT64]: 8, [MI.UINT64]: 8, [MI.UTF8]: 1, [MI.UTF16]: 2, [MI.UTF32]: 4 }[type];
@@ -361,7 +378,9 @@ function readMatrix(b: Uint8Array): { name: string; value: Value } {
   const re = readNumbers(els[3][0], els[3][1]);
   const m = mat(r, c, re, logical);
   if (p > 1 && r * c === 0) m.p = p;
+  if (dims.length > 3) m.nd = dims.slice(2);
   if (complex && els[4]) m.im = Float64Array.from(readNumbers(els[4][0], els[4][1]));
+  if (!logical && CLASS_OF[cls]) m.cls = CLASS_OF[cls];
   return { name, value: m };
 }
 export function readMat(bytes: Uint8Array): [string, Value][] {
@@ -420,17 +439,17 @@ def('imread', (a, _n, lab) => {
   if (!f.pixels) throw new LabError('That file isn’t a picture the Lab could open (PNG, JPEG, GIF, WebP or BMP).');
   const { w, h, rgba } = f.pixels, n = w * h, d = new Float64Array(n * 3);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const s = (y * w + x) * 4, t = y + x * h; d[t] = rgba[s]; d[t + n] = rgba[s + 1]; d[t + 2 * n] = rgba[s + 2]; }
-  return [mat(h, w, d)];
+  return [cast(mat(h, w, d), 'uint8')];
 });
 def('imwrite', (a, _n, lab) => {
   const I = toMat(a[0]), name = textOf(a[1]);
   if (ext(name) !== 'png') throw new LabError('imwrite saves PNG pictures here: name the file something.png.');
   const P = pages(I), h = I.r, w = I.c, n = h * w;
   if (P !== 1 && P !== 3) throw new LabError('imwrite saves a grey picture (a matrix) or a colour one (rows × columns × 3).');
-  const top = Math.max(0, ...I.d.filter(Number.isFinite)), k = top > 1 ? 1 : 255;
+  const unit = unitValues(I);
   const rgba = new Uint8Array(n * 4);
   for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-    const s = y + x * h, o = (y * w + x) * 4, ch = (q: number) => Math.round(Math.max(0, Math.min(255, I.d[s + (P === 3 ? q : 0) * n] * k)));
+    const s = y + x * h, o = (y * w + x) * 4, ch = (q: number) => Math.round(Math.max(0, Math.min(255, unit[s + (P === 3 ? q : 0) * n] * 255)));
     rgba[o] = ch(0); rgba[o + 1] = ch(1); rgba[o + 2] = ch(2); rgba[o + 3] = 255;
   }
   const bytes = Uint8Array.from(atob(png(w, h, rgba).split(',')[1]), (ch) => ch.charCodeAt(0));
