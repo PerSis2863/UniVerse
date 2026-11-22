@@ -18,7 +18,8 @@ self.onmessage = async (e: MessageEvent<{ prompt?: string; heat?: number; max?: 
     let batch = '';
     const ask = e.data.ask === true;
     // The honesty guard: a question far from everything it was taught gets "I don't know that yet", not a made-up answer.
-    if (ask && m.meta.known?.length && familiar(e.data.prompt ?? '', m.meta.known) < FAMILIAR) { self.postMessage({ text: NOT_YET, guard: true }); self.postMessage({ done: true }); return; }
+    // Until it has been taught answers (no `known` list), every question gets the same honest reply.
+    if (ask && (!m.meta.known?.length || familiar(e.data.prompt ?? '', m.meta.known) < FAMILIAR)) { self.postMessage({ text: NOT_YET, guard: true }); self.postMessage({ done: true }); return; }
     await write(m, ask ? askPrompt(e.data.prompt ?? '') : e.data.prompt ?? '', (c) => {
       batch += c;
       if (batch.length >= 4) { self.postMessage({ text: batch }); batch = ''; }

@@ -39,7 +39,9 @@ export type AskPlan =
   | { action: 'relief_post'; type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; people: number; urgency: Urgency; say: string }
   | { action: 'trace_check'; code: string; say: string }
   | { action: 'open'; page: AskPage; say: string }
-  | { action: 'my_due' | 'my_green'; say: string }
+  | { action: 'my_due' | 'my_green' | 'my_trips' | 'my_courses'; say: string }
+  | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; say: string }
+  | { action: 'message_draft'; text: string; say: string }
   | { action: 'show'; say: string; items: ShowItem[] }
   | { action: 'answer'; say: string };
 
@@ -57,7 +59,7 @@ const one = <T extends string>(list: readonly T[], v: unknown): T | null => (typ
 export function cleanPlan(raw: unknown): AskPlan {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const say = str(r.say, 600);
-  const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, how you’re doing in Green, log a climate action, post a need or offer on Relief, check a product code, or open a page. Try “What’s due this week?”' };
+  const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, your courses, your trips and how you’re doing in Green, log a climate action, post on Relief, start a trip, draft a message, check a product code, or open a page. Try “What’s due this week?”' };
   if (r.action === 'green_log') {
     const kind = one(GREEN_KINDS, r.kind), amount = num(r.amount);
     if (!kind || !(amount > 0) || amount > GREEN_FACTORS[kind].max) return fallback;
@@ -75,7 +77,19 @@ export function cleanPlan(raw: unknown): AskPlan {
     return splitCode(code) ? { action: 'trace_check', code, say: say || 'Check this product’s passport.' } : fallback;
   }
   if (r.action === 'open' && typeof r.page === 'string' && r.page in ASK_PAGES) return { action: 'open', page: r.page as AskPage, say: say || `Open ${ASK_PAGES[r.page as AskPage].label}.` };
-  if (r.action === 'my_due' || r.action === 'my_green') return { action: r.action, say };
+  if (r.action === 'my_due' || r.action === 'my_green' || r.action === 'my_trips' || r.action === 'my_courses') return { action: r.action, say };
+  // M365: a new trip (Travel's own route makes it; its cities are added on the trip's page) and a message drafted for
+  // the person to send themselves (it waits in Messages until they pick a chat and press Send).
+  if (r.action === 'trip_new') {
+    const name = str(r.name, 80), travellers = Math.round(num(r.travellers));
+    const day = typeof r.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.startDate) && !Number.isNaN(Date.parse(r.startDate)) ? r.startDate : null;
+    if (name.length < 3) return fallback;
+    return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, say: say || `Make a trip: ${name}.` };
+  }
+  if (r.action === 'message_draft') {
+    const text = str(r.text, 1000);
+    return text.length >= 2 ? { action: 'message_draft', text, say: say || 'Here’s a draft. Choose the chat to send it to.' } : fallback;
+  }
   return fallback;
 }
 
@@ -93,6 +107,10 @@ export function localPlan(text: string): AskPlan {
   if (code) return cleanPlan({ action: 'trace_check', code });
   if (/\b(due|homework|assignments?|deadlines?|hand in|quiz(zes)?)\b/i.test(t) && !/\b(open|go to|take me)\b/i.test(t)) return cleanPlan({ action: 'my_due' });
   if (/\b(streak|co2|co₂|carbon|how am i doing|my green|saved)\b/i.test(t) && !/\b(i |we )(cycled|walked|recycled|planted)/i.test(t)) return cleanPlan({ action: 'my_green' });
+  if (/\b(my trips?|trips)\b/i.test(t) && /\b(what|which|list|how many|upcoming|planned|have)\b/i.test(t)) return cleanPlan({ action: 'my_trips' });
+  if (/\bmy (courses|classes|subjects)\b/i.test(t) && /\b(what|which|list|how many|am i in|do i (have|teach))\b/i.test(t)) return cleanPlan({ action: 'my_courses' });
+  const trip = /\b(?:plan|make|create|start)\b.*?\btrip to ([\p{L}][\p{L}\s.'-]{1,40}?)(?:\s+(?:for|in|with|on|next|this)\b|[,.!?]|$)/iu.exec(t);
+  if (trip) return cleanPlan({ action: 'trip_new', name: `Trip to ${trip[1].trim()}`, travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1) });
   const amount = Number(t.match(/(\d+(?:[.,]\d+)?)/)?.[1]?.replace(',', '.') ?? NaN);
   const green = GREEN_WORDS.find(([re]) => re.test(t))?.[1];
   if (green && /\b(i |i'|we |log|did|have|just)/i.test(`${t} `) && !/\b(need|offer)\b/i.test(t)) return cleanPlan({ action: 'green_log', kind: green, amount: amount > 0 ? amount : 1 });

@@ -14,6 +14,7 @@ import { searchHelp, suggestions, tokens } from '@/lib/help/search';
 import { GhidraReply, type GhidraPlan, type Settled } from '@/components/ui/GhidraReply';
 import { api } from '@/lib/api';
 import { localPlan, type AskTurn } from '@/lib/ask';
+import { askOnDevice } from '@/lib/ghidra-device';
 
 // Ghidra on every page (M364): the corner assistant. A request to do something or to see your own things ("what's due",
 // "I cycled 5 km", "open Travel": src/lib/ask.ts's matcher) goes to Ghidra's actions (POST /ask) and comes back as the
@@ -24,8 +25,9 @@ type Message = {
   id: string;
   role: 'user' | 'assistant';
   content: string;
-  /** instant: built-in answer (works offline); saved: an earlier AI answer replayed offline */
-  source?: 'instant' | 'saved' | 'ai';
+  /** instant: built-in answer (works offline); saved: an earlier AI answer replayed offline; device: the trained
+   *  Ghidra on this device (M365), when the AI couldn't answer */
+  source?: 'instant' | 'saved' | 'ai' | 'device';
   links?: { label: string; href: string }[];
   related?: HelpEntry[];
   /** M364: Ghidra's reply to a request (an action to confirm, or a list of the person's own things). */
@@ -158,7 +160,9 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     // 2. Offline: replay a saved answer to the same question, or point to built-in topics.
     if (typeof navigator !== 'undefined' && !navigator.onLine) {
       const saved = readCache(text);
+      const device = saved ? null : await askOnDevice(text, 8000);
       if (saved) reply({ content: saved, source: 'saved' });
+      else if (device) reply({ content: device, source: 'device' });
       else reply({
         content: related.length
           ? "You're offline, so I can only use my built-in answers right now. These might help:"
@@ -189,8 +193,9 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
         let msg = "Sorry, I'm having trouble connecting right now. Please try again.";
         try { const j = await res.json(); if (j?.error) msg = j.error; } catch { /* not JSON */ }
         const saved = readCache(text);
+        const device = saved ? null : await askOnDevice(text);
         setIsTyping(false);
-        setMessages(prev => prev.map(m => m.id === aiMsgId ? (saved ? { ...m, content: saved, source: 'saved' } : { ...m, content: msg, related }) : m));
+        setMessages(prev => prev.map(m => m.id === aiMsgId ? (saved ? { ...m, content: saved, source: 'saved' } : device ? { ...m, content: device, source: 'device' } : { ...m, content: msg, related }) : m));
         return;
       }
 
@@ -215,9 +220,10 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
       }
     } catch {
       const saved = readCache(text);
+      const device = saved ? null : await askOnDevice(text);
       setIsTyping(false);
       setMessages(prev => prev.map(m => m.id === aiMsgId
-        ? (saved ? { ...m, content: saved, source: 'saved' } : { ...m, content: "Sorry, I'm having trouble connecting right now. Please try again.", related })
+        ? (saved ? { ...m, content: saved, source: 'saved' } : device ? { ...m, content: device, source: 'device' } : { ...m, content: "Sorry, I'm having trouble connecting right now. Please try again.", related })
         : m
       ));
     }
@@ -336,6 +342,11 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                       ? "bg-indigo-600 text-white rounded-ee-sm" 
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-es-sm"
                   )}>
+                    {msg.source === 'device' && (
+                      <span className="mb-1 flex items-center gap-1 text-[11px] font-semibold text-amber-700 dark:text-amber-300">
+                        <Sparkles className="w-3 h-3" aria-hidden /> Ghidra on this device · small and still learning
+                      </span>
+                    )}
                     {(msg.source === 'instant' || msg.source === 'saved') && (
                       <span className="mb-1 flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-600 dark:text-emerald-400">
                         {msg.source === 'instant' ? <><Zap className="w-3 h-3" /> Instant answer · works offline</> : <><WifiOff className="w-3 h-3" /> Saved answer</>}

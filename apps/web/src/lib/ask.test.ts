@@ -32,4 +32,15 @@ describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
     expect(cleanPlan({ action: 'my_due', say: 'x' }).action).toBe('my_due');
     expect(cleanPlan({ action: 'show', items: [{ title: 'made up' }] }).action).toBe('answer'); // a list only ever comes from the server's own read
   });
+  it('M365: lists trips and courses, starts a trip, drafts a message, and checks what AI gives', () => {
+    expect(localPlan('What trips do I have?').action).toBe('my_trips');
+    expect(localPlan('which are my courses').action).toBe('my_courses');
+    expect(localPlan('Plan a trip to Jaipur for 3 of us')).toMatchObject({ action: 'trip_new', name: 'Trip to Jaipur', travellers: 3 });
+    expect(cleanPlan({ action: 'trip_new', name: 'Trip to Goa', startDate: '2026-12-20', travellers: 4 })).toMatchObject({ startDate: '2026-12-20', travellers: 4 });
+    expect(cleanPlan({ action: 'trip_new', name: 'Trip to Goa', startDate: 'next friday', travellers: 99 })).toMatchObject({ startDate: null, travellers: 1 });
+    expect(cleanPlan({ action: 'trip_new', name: 'x' }).action).toBe('answer');
+    expect(cleanPlan({ action: 'message_draft', text: 'The meeting moved to 4 pm.' })).toMatchObject({ action: 'message_draft', text: 'The meeting moved to 4 pm.' });
+    expect(cleanPlan({ action: 'message_draft', text: '' }).action).toBe('answer');
+    expect((cleanPlan({ action: 'message_draft', text: 'a'.repeat(5000) }) as { text: string }).text.length).toBe(1000);
+  });
 });

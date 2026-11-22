@@ -2497,6 +2497,15 @@ function ghidraSample(plan: AskPlan): AskPlan {
     { title: '5.2 kg this week', sub: 'the last 7 days', href: '/green' },
     { title: '4-day streak', sub: 'log one today to keep it', href: '/green' },
   ] };
+  if (plan.action === 'my_trips') return { action: 'show', say: 'You have 2 trips:', items: [
+    { title: 'Rajasthan with friends', sub: `from ${day(24)} · Jaipur, Udaipur · 6 days`, href: '/travel' },
+    { title: 'Weekend in Lisbon', sub: 'no date yet · Lisbon · 2 days', href: '/travel' },
+  ] };
+  if (plan.action === 'my_courses') return { action: 'show', say: 'You’re in 3 courses:', items: [
+    { title: 'Geography of cities', sub: 'GEO101', href: '/student/courses' },
+    { title: 'Maths 7', sub: 'MATH7', href: '/student/courses' },
+    { title: 'Biology', sub: 'BIO201', href: '/student/courses' },
+  ] };
   return plan;
 }
 

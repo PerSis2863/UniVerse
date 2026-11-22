@@ -10276,3 +10276,26 @@ update it with ghidra because we are going to use ghidra only from now on".
   predates this item (left as it was).
 - **Next round** (3): more actions app by app (draft a message to send, a quiz draft for a teacher, a trip's days), and
   the trained Ghidra (M362) answering simple questions on the device when the AI is off.
+
+## M365: Ghidra, the assistant, round 3: trips, courses, message drafts, the trained Ghidra as backup (22 Nov)
+
+The owner (22 Nov): "yes continue with round 3".
+
+- **Two more lists of the person's own things** (`src/server/ask.ts`, one query each): `my_trips` (their Travel trips,
+  newest first: dates, cities, days; links to `/travel/trip?id=…`) and `my_courses` (the courses a student is in or a
+  teacher teaches; a student's link opens the course).
+- **Two more actions, each confirmed by a tap** (`GhidraReply`): `trip_new` → **Make the trip** calls Travel's own
+  `POST /travel/trips { name, startDate?, travellers }` and opens the trip to add its cities (`cleanPlan` keeps a name of
+  3–80 characters, a real YYYY-MM-DD date or none, 1–20 people); `message_draft` → the draft is shown, **Choose a chat**
+  keeps it with `stashText` (`src/lib/share-in.ts`, the Share-to-UniVerse path) and opens Messages, which already says
+  "Pick a chat to send it to"; the chat picked gets it as its draft and it goes only when they press Send.
+- The word matcher (`localPlan`, AI off) knows "what trips do I have", "which are my courses" and "plan a trip to
+  Jaipur for 3 of us"; message drafts need the AI.
+- **The trained Ghidra as the corner's backup** (`src/lib/ghidra-device.ts` `askOnDevice`): when the AI can't answer
+  (offline with no saved answer, an error, busy), the small on-device model (M362) is asked on its background thread;
+  its answer shows marked "Ghidra on this device · small and still learning", only when the honesty guard lets it
+  through. Until it has been taught answers (its `known` list, after the 99,000-step run's question round), the worker
+  answers every question with `NOT_YET`, so the backup stays silent and the usual message shows.
+- Left for a later round: a quiz draft for teachers (UniVerse has no quiz-writing route yet: it needs its own item).
+- Tests: `src/lib/ask.test.ts` (the new matches; `trip_new` and `message_draft` checked field by field). Browser check:
+  `scripts/checks/ghidra-assistant-ui.mjs` (trips listed, Make the trip proposed and cancelled; answers awaited, not timed).

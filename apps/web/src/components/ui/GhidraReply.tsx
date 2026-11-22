@@ -10,10 +10,11 @@ import { MathText } from '@/components/ui/MathText';
 import { api, errorMessage } from '@/lib/api';
 import { ASK_PAGES, type AskPlan } from '@/lib/ask';
 import { inboxFor, settingsFor } from '@/lib/apps';
+import { stashText } from '@/lib/share-in';
 import { cleanCode } from '@/lib/trace';
 import { cn } from '@/lib/utils';
 
-// One Ghidra reply (M363–M364, src/lib/ask.ts), the same in the hub's chat (components/hub/Ghidra.tsx) and the assistant on
+// One Ghidra reply (M363–M365, src/lib/ask.ts), the same in the hub's chat (components/hub/Ghidra.tsx) and the assistant on
 // every page (AIStudyAssistant): the answer, a list of the person's own things ('show'), or one proposed action with
 // Confirm and Cancel. Confirming calls the app's own route, so its checks run again; nothing happens without the tap.
 
@@ -28,8 +29,9 @@ function pageHref(page: keyof typeof ASK_PAGES, role: string) {
 }
 const here = () => new Promise<{ lat: number; lng: number } | null>((done) => (navigator.geolocation ? navigator.geolocation.getCurrentPosition((g) => done({ lat: g.coords.latitude, lng: g.coords.longitude }), () => done(null), { timeout: 6000, maximumAge: 600_000 }) : done(null)));
 /** Whether a reply proposes something to confirm. */
-export const proposes = (p: GhidraPlan) => p.action === 'green_log' || p.action === 'relief_post' || p.action === 'trace_check' || p.action === 'open';
-const label = (p: GhidraPlan) => (p.action === 'green_log' ? 'Log it' : p.action === 'relief_post' ? 'Post it' : p.action === 'trace_check' ? 'Check it' : 'Open');
+export const proposes = (p: GhidraPlan) => ['green_log', 'relief_post', 'trace_check', 'open', 'trip_new', 'message_draft'].includes(p.action);
+const LABEL: Partial<Record<GhidraPlan['action'], string>> = { green_log: 'Log it', relief_post: 'Post it', trace_check: 'Check it', trip_new: 'Make the trip', message_draft: 'Choose a chat' };
+const label = (p: GhidraPlan) => LABEL[p.action] ?? 'Open';
 
 /** The reply's words, list and buttons. `onSettle` hears Confirm (after it worked) or Cancel; `onLeave` a link or page opened. */
 export function GhidraReply({ plan, role, settled, onSettle, onLeave, className }: {
@@ -55,6 +57,16 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className 
         go(`/t/${cleanCode(plan.code)}`);
       } else if (plan.action === 'open') {
         go(pageHref(plan.page, role));
+      } else if (plan.action === 'trip_new') {
+        // M365: Travel's own route makes it; the trip's page opens to add its cities.
+        const r = await api.post<{ trip: { id: string } }>('/travel/trips', { name: plan.name, startDate: plan.startDate, travellers: plan.travellers });
+        toast.success('Trip made. Add its cities and Ghidra can help plan the days.');
+        go(`/travel/trip?id=${r.data.trip.id}`);
+      } else if (plan.action === 'message_draft') {
+        // M365: the draft waits until a chat is picked; it becomes that chat's draft and goes only when they press Send.
+        if (!stashText(plan.text)) { toast.error('Couldn’t keep the draft on this device. Copy it, then open Messages.'); return; }
+        toast('Pick the chat: the draft will be waiting in its box.');
+        go(inboxFor(role));
       }
       onSettle('done');
     } catch (err) { toast.error(errorMessage(err, 'That didn’t work.')); } finally { setBusy(false); }
@@ -63,6 +75,8 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className 
   return (
     <div className={cn('rounded-2xl rounded-es-md border p-3.5', proposes(plan) && !settled ? 'border-fuchsia-400/40 bg-fuchsia-500/[0.06]' : 'border-zinc-200 bg-[var(--fill)] dark:border-white/10', className)}>
       <div className="text-sm text-zinc-800 dark:text-zinc-100" translate="no"><MathText text={plan.say} /></div>
+      {plan.action === 'message_draft' && <p className="mt-2 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 whitespace-pre-wrap dark:border-white/10 dark:bg-zinc-900 dark:text-white" translate="no">{plan.text}</p>}
+      {plan.action === 'trip_new' && <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{plan.name} · {plan.travellers} {plan.travellers === 1 ? 'person' : 'people'}{plan.startDate ? ` · from ${plan.startDate}` : ''}</p>}
       {plan.action === 'show' && plan.items.length > 0 && (
         <ul className="mt-2 divide-y divide-zinc-200 dark:divide-white/10">
           {plan.items.map((i, n) => {

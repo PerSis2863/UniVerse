@@ -2,7 +2,8 @@
 // "Nothing is due"), "How am I doing in Green?" answers with their numbers, "I cycled 8 km to school" proposes Log it,
 // Cancel leaves it undone, New chat clears it. Nothing is saved. Axe at 1280 (dark) and 390 (light, a touch phone),
 // no sideways scroll, no page errors. M364: the corner assistant is Ghidra on every page (the student home): "What's due
-// this week?" comes back as Ghidra's reply, "How do I log a climate action?" stays an instant built-in answer.
+// this week?" comes back as Ghidra's reply, "How do I log a climate action?" stays an instant built-in answer. M365: "What
+// trips do I have?" lists them, "Plan a trip to Jaipur for 3 of us" proposes Make the trip (cancelled).
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/ghidra-assistant-ui.mjs
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
@@ -35,6 +36,11 @@ try {
     await box.getByRole('button', { name: 'Cancel' }).click();
     r.cancelled = await box.getByText('Cancelled.').isVisible();
     r.turns = await box.locator('ol > li').count();
+    // M365: trips listed, a new trip proposed (cancelled: nothing made).
+    r.trips = await say('What trips do I have?');
+    r.tripNew = await say('Plan a trip to Jaipur for 3 of us');
+    r.makeTrip = await box.getByRole('button', { name: 'Make the trip' }).isVisible();
+    await box.getByRole('button', { name: 'Cancel' }).click();
     await page.waitForTimeout(400);
     await page.addScriptTag({ path: AXE });
     r.axe = await page.evaluate(async () => (await window.axe.run({ exclude: [['canvas']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
@@ -48,10 +54,13 @@ try {
     const corner = page.getByLabel('Message Ghidra');
     for (let i = 0; i < 20 && !(await corner.isVisible()); i++) { await page.evaluate(() => window.dispatchEvent(new CustomEvent('universe:open-assistant'))); await page.waitForTimeout(700); }
     const panel = page.locator('div.ai-fab');
-    const send = async (q) => { await corner.fill(q); await panel.getByRole('button', { name: 'Send' }).click(); await page.waitForTimeout(2500); };
-    await send('What’s due this week?');
-    r.cornerDue = (await panel.innerText()).includes('Nothing is due') || (await panel.innerText()).includes('to finish');
-    await send('How do I log a climate action?');
+    const send = async (q, want) => {
+      await corner.fill(q); await panel.getByRole('button', { name: 'Send' }).click();
+      for (let i = 0; i < 40; i++) { if (want.test(await panel.innerText())) return true; await page.waitForTimeout(500); }
+      return false;
+    };
+    r.cornerDue = await send('What’s due this week?', /Nothing is due|to finish|not in a course/);
+    await send('How do I log a climate action?', /Log an action/);
     r.cornerHowTo = await panel.getByText('Instant answer').last().isVisible().catch(() => false);
     if (shots) await page.screenshot({ path: `${shots}/ghidra-corner-${theme}-${width}.png` });
     await page.addScriptTag({ path: AXE });
@@ -60,5 +69,5 @@ try {
   }
 } finally { await browser.close(); }
 console.log(JSON.stringify({ out, errors }, null, 1));
-const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
+const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !/(trip)/i.test(r.trips) || !/Jaipur/.test(r.tripNew) || !r.makeTrip || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
 process.exit(bad ? 1 : 0);

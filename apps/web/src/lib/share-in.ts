@@ -31,6 +31,11 @@ export function stashShare(search: string): boolean {
   return true;
 }
 
+/** M365: text Ghidra drafted, waiting the same way until a chat is picked in Messages (never sent by itself). */
+export function stashText(text: string): boolean {
+  try { sessionStorage.setItem(KEY, text.slice(0, 2000)); sessionStorage.removeItem(PHOTOS); return true; } catch { return false; }
+}
+
 export function peekShare(): string | null {
   try { return sessionStorage.getItem(KEY); } catch { return null; }
 }

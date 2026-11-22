@@ -14,7 +14,8 @@ import type { Body } from './body';
 
 // POST /ask { text, history? }: Ghidra, the assistant (M363; "Ask UniVerse", M30, until then; src/lib/ask.ts).
 // The request becomes ONE proposed action the person confirms in the chat; this route never changes anything
-// itself. 'my_due' and 'my_green' only read the asker's own data and come back as a list ('show'). AI goes through
+// itself. 'my_due', 'my_green', 'my_trips' and 'my_courses' only read the asker's own data and come back as a list
+// ('show'). AI goes through
 // the daily allowance (spendAi) and the owner's switch (featureOff('ai')); without it, or when it fails, the simple
 // matcher answers. Every field AI returns is checked again (cleanPlan). The last few turns come along so follow-ups
 // work; they are the person's own words and Ghidra's replies, cut short, and only shape this one answer.
@@ -25,6 +26,10 @@ const SYSTEM = [
   'Turn the person\'s latest request into exactly one action. Earlier turns are only context for follow-ups. Actions:',
   '- my_due: they ask what schoolwork is due, coming up or still to hand in (their assignments and quizzes).',
   '- my_green: they ask how they are doing in Green (CO2 saved, streak, actions).',
+  '- my_trips: they ask which trips they have or are planning in Travel.',
+  '- my_courses: they ask which courses they are in or teach.',
+  '- trip_new: they want to plan a new trip. name is short, like "Trip to Jaipur"; startDate YYYY-MM-DD only if they said when (assume the next such date); travellers is how many people.',
+  '- message_draft: they want to tell or message someone. text is the message itself, written as they would send it, in their language; never claim it was sent (they choose the chat and press Send).',
   `- green_log: they did a climate action. kind is one of ${GREEN_KINDS.map((k) => `${k} (${GREEN_FACTORS[k].units})`).join(', ')}; amount is how many of that unit.`,
   `- relief_post: they need help (type NEED) or offer it (type OFFER). kind is one of ${RELIEF_KINDS.join(', ')}; title is a short line in their words; people is how many people; urgency LOW, MEDIUM, HIGH or CRITICAL.`,
   '- trace_check: they gave a product code to check.',
@@ -38,10 +43,10 @@ const SYSTEM = [
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
-    action: { type: 'STRING', enum: ['my_due', 'my_green', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
+    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
     say: { type: 'STRING' }, kind: { type: 'STRING' }, amount: { type: 'NUMBER' }, note: { type: 'STRING' },
     type: { type: 'STRING' }, title: { type: 'STRING' }, people: { type: 'NUMBER' }, urgency: { type: 'STRING' },
-    code: { type: 'STRING' }, page: { type: 'STRING' },
+    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' },
   },
   required: ['action', 'say'],
 };
@@ -103,9 +108,46 @@ async function myGreen(u: SessionUser): Promise<AskPlan> {
   };
 }
 
+/** M365: their trips in Travel, newest first, with their cities and dates. One query. */
+async function myTrips(u: SessionUser): Promise<AskPlan> {
+  const rows = await prisma.travelTripMember.findMany({
+    where: { userId: u.id }, take: 20,
+    select: { trip: { select: { id: true, name: true, startDate: true, updatedAt: true, stops: { select: { name: true, days: true }, orderBy: { position: 'asc' } } } } },
+  });
+  if (!rows.length) return { action: 'show', say: 'You have no trips yet. Tell me where you’d like to go, like “Plan a trip to Jaipur for 3 of us”.', items: [] };
+  const trips = rows.map((r) => r.trip).sort((a, b) => +b.updatedAt - +a.updatedAt).slice(0, 8);
+  return {
+    action: 'show', say: `You have ${rows.length} trip${rows.length === 1 ? '' : 's'}:`,
+    items: trips.map((t) => {
+      const days = t.stops.reduce((n, s) => n + s.days, 0);
+      const parts = [t.startDate ? `from ${when(new Date(`${t.startDate}T12:00:00Z`))}` : 'no date yet', t.stops.length ? t.stops.map((s) => s.name).slice(0, 3).join(', ') : 'no cities yet', days ? `${days} day${days === 1 ? '' : 's'}` : ''];
+      return { title: t.name, sub: parts.filter(Boolean).join(' · '), href: `/travel/trip?id=${t.id}` };
+    }),
+  };
+}
+
+/** M365: the courses they are in (a student) or teach. One query. */
+async function myCourses(u: SessionUser): Promise<AskPlan> {
+  const staff = isStaff(u.role);
+  const courses = staff
+    ? await prisma.course.findMany({ where: taughtBy(u.id), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 30 })
+    : (await prisma.enrollment.findMany({ where: { studentId: u.id }, select: { course: { select: { id: true, code: true, name: true } } }, take: 30 })).map((e) => e.course);
+  if (!courses.length) return { action: 'show', say: staff ? 'You don’t teach a course yet. Choose New course to start one.' : 'You’re not in a course yet. Open the invite link your teacher shares to join one.', items: [] };
+  return {
+    action: 'show', say: staff ? `You teach ${courses.length} course${courses.length === 1 ? '' : 's'}:` : `You’re in ${courses.length} course${courses.length === 1 ? '' : 's'}:`,
+    items: courses.slice(0, 12).map((c) => ({ title: c.name, sub: c.code, href: staff ? '/teacher/courses' : `/student/courses/${c.id}` })),
+  };
+}
+
 /** A read action answered from the person's own data; any other plan as it is. */
 async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
-  return plan.action === 'my_due' ? myDue(u) : plan.action === 'my_green' ? myGreen(u) : plan;
+  switch (plan.action) {
+    case 'my_due': return myDue(u);
+    case 'my_green': return myGreen(u);
+    case 'my_trips': return myTrips(u);
+    case 'my_courses': return myCourses(u);
+    default: return plan;
+  }
 }
 
 export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { ai: boolean; note?: string }> {
