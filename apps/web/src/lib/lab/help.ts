@@ -585,6 +585,8 @@ fitcdiscr | fitcdiscr(X, Y) | Linear discriminant analysis: classes as bell-shap
 fitcsvm | fitcsvm(X, Y, 'KernelFunction', 'rbf', 'KernelScale', 'auto', 'BoxConstraint', C) | A support vector machine separating two classes by the widest gap ('linear', 'rbf' or 'polynomial').
 fitcecoc | fitcecoc(X, Y, 'Learners', templateSVM(…)) | Three or more classes from one SVM per pair of classes.
 templateSVM | templateSVM('KernelFunction', 'rbf', …) | The settings for fitcecoc's SVMs.
+fitcnet | fitcnet(X, Y, 'LayerSizes', [10 10], 'Activations', 'relu', 'Lambda', 0, 'Standardize', true) | A neural network for classes: fully connected hidden layers ('relu', 'tanh', 'sigmoid' or 'none'), trained by L-BFGS (LayerWeights, LayerBiases, TrainingHistory, ConvergenceInfo).
+fitrnet | fitrnet(X, y, 'LayerSizes', 10, …) | A neural network that predicts numbers.
 fitrtree | fitrtree(X, y) | A decision tree that predicts numbers (each leaf's mean).
 fitlm | fitlm(X, y), fitlm(T, 'y ~ x1 + x2') | A linear regression: Coefficients (estimates, standard errors, t and p values), Rsquared, RMSE.
 fitglm | fitglm(X, y, 'Distribution', 'binomial') | A generalised linear model: 'normal' (as fitlm) or 'binomial' (logistic regression; predict gives probabilities).

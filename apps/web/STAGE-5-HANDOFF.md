@@ -11188,3 +11188,21 @@ built: the learner window (M417, next), neural networks, ensembles (bagged trees
 feature selection, hierarchical clustering, Gaussian mixtures, other distances for kNN, multinomial logistic
 regression, model display as MATLAB's summary text.
 
+## M417 (22 Nov): Hyperion toolbox, neural networks
+
+The owner, 22 Nov, of M416's left-outs: "please do this and continue your work and also make everything ultra smooth"
+(neural networks, ensembles, automatic tuning, tree-style clustering: M417–M420, then the Learner window). `ml-net.ts`
+(pure): `trainNet(X, y, rand, { layers, act, lambda, iterLimit, K })` (K classes with a softmax and mean cross-entropy, or
+K = 0 for numbers with half the mean squared error; Lambda/2·Σw² on weights only), parameters in one Float64Array
+(`layout`: each layer's out × in weights row by row, then its biases), Glorot-uniform starts from the seeded random
+numbers, L-BFGS (15 steps of memory, the two-loop recursion, a steepest-descent restart when the direction isn't
+downhill, Armijo backtracking, a pair kept only when sᵀy > 1e-10), stops on gradient 1e-6, loss change 1e-6 (relative),
+step 1e-6 or the iteration limit (`reason`); `lossGrad` is exported for the gradient check; `netPredictor` packs the
+weights once and returns a row → output function (use it for many rows: decision regions). In the language
+(`ml-lab.ts`): fitcnet / fitrnet with LayerSizes (default 10), Activations ('relu'), Lambda (0), IterationLimit (1000),
+Standardize (false); the model keeps LayerWeights (cell of out × in matrices), LayerBiases, TrainingHistory (a table:
+Iteration, TrainingLoss), ConvergenceInfo; `SETTINGS` lists them so crossval learns the same way. Training runs in
+Hyperion's worker like every script, so the window stays smooth. Tests (`ml-net.test.ts`): analytic against numeric
+gradients for four activations with and without Lambda, XOR, iris (≤ 2 wrong), a sine wave (RMSE < 0.02), fitcnet with
+two layers and its history, 5-fold cross-validation, fitrnet, a wrong activation explained.
+

@@ -7,6 +7,7 @@ import { isTable, names as columnNames, table } from './table';
 import { gfx } from './plot';
 import { IRIS_SPECIES, irisRows } from './iris';
 import * as ml from './ml';
+import { netPredictor, trainNet, type Act, type Net } from './ml-net';
 
 // Hyperion's machine learning toolbox in the language (M416): classifiers (fitcknn, fitctree, fitcnb, fitcdiscr,
 // fitcsvm, fitcecoc), regression (fitrtree, fitlm, fitglm), predict / loss / resubLoss, cross-validation (crossval,
@@ -111,8 +112,8 @@ function rowsOfTable(t: Struct, preds: string[]): ml.Rows {
 }
 
 // ——— Models ———
-type Kind = 'ClassificationKNN' | 'ClassificationTree' | 'ClassificationNaiveBayes' | 'ClassificationDiscriminant' | 'ClassificationSVM' | 'ClassificationECOC' | 'RegressionTree' | 'LinearModel' | 'GeneralizedLinearModel';
-const REGRESSION = new Set<Kind>(['RegressionTree', 'LinearModel', 'GeneralizedLinearModel']);
+type Kind = 'ClassificationKNN' | 'ClassificationTree' | 'ClassificationNaiveBayes' | 'ClassificationDiscriminant' | 'ClassificationSVM' | 'ClassificationECOC' | 'ClassificationNeuralNetwork' | 'RegressionTree' | 'RegressionNeuralNetwork' | 'LinearModel' | 'GeneralizedLinearModel';
+const REGRESSION = new Set<Kind>(['RegressionTree', 'RegressionNeuralNetwork', 'LinearModel', 'GeneralizedLinearModel']);
 const typeOf = (v: Value): Kind => {
   if (v.k !== 'struct' || !v.f.has('Type')) throw new LabError('That isn’t a model: make one with fitcknn, fitctree, fitcsvm, fitlm…');
   return textOf(v.f.get('Type')!) as Kind;
@@ -137,6 +138,8 @@ const SETTINGS: Partial<Record<Kind, string[]>> = {
   ClassificationSVM: ['KernelFunction', 'KernelScale', 'BoxConstraint', 'PolynomialOrder', 'Standardize'],
   ClassificationECOC: ['KernelFunction', 'KernelScale', 'BoxConstraint', 'PolynomialOrder', 'Standardize'],
   GeneralizedLinearModel: ['Distribution'],
+  ClassificationNeuralNetwork: ['LayerSizes', 'Activations', 'Lambda', 'IterationLimit', 'Standardize'],
+  RegressionNeuralNetwork: ['LayerSizes', 'Activations', 'Lambda', 'IterationLimit', 'Standardize'],
 };
 const settingsOf = (m: Struct): Opts => new Map((SETTINGS[typeOf(m)] ?? []).filter((k) => m.f.has(k)).map((k) => [k.toLowerCase(), m.f.get(k)!]));
 
@@ -222,6 +225,31 @@ FIT.ClassificationECOC = (d, o) => {
   const first = (learners[0] as Struct).f;
   return model('ClassificationECOC', d, [['CodingMatrix', coding], ['BinaryLearners', cellCol(learners)], ...['KernelFunction', 'KernelScale', 'BoxConstraint', 'PolynomialOrder', 'Standardize'].map((k) => [k, first.get(k)!] as [string, Value])], L);
 };
+/** A network learnt on (standardised) rows: classes 0…K-1, or numbers when K is 0. */
+function netFields(d: Data, y: number[], K: number, o: Opts): [string, Value][] {
+  const layers = o.has('layersizes') ? [...toMat(o.get('layersizes')!, 'LayerSizes').d].map(Math.round) : [10];
+  if (!layers.length || layers.length > 10 || layers.some((v) => !(v >= 1 && v <= 2000))) throw new LabError('LayerSizes is a row of hidden layer sizes, like [10 10] (1 to 2,000 each, at most 10 layers).');
+  const act = optStr(o, 'activations', 'relu') as Act;
+  if (!['relu', 'tanh', 'sigmoid', 'none'].includes(act)) throw new LabError("Activations is 'relu', 'tanh', 'sigmoid' or 'none'.");
+  const lambda = optNum(o, 'lambda', 0), iters = Math.max(0, Math.round(optNum(o, 'iterationlimit', 1000))), on = optBool(o, 'standardize', false), s = stdOf(d.X, on);
+  const net = trainNet(s ? ml.standardise(d.X, s.mu, s.sd) : d.X, y, random, { layers, act, lambda, iterLimit: iters, K });
+  const p = d.X[0].length, cellOf = (list: Value[]): Cell => ({ k: 'cell', r: 1, c: list.length, d: list });
+  const W = net.W.map((w, l) => { const nin = net.sizes[l], nout = net.sizes[l + 1], m = mat(nout, nin); for (let q = 0; q < nout; q++) for (let i = 0; i < nin; i++) m.d[q + i * nout] = w[q * nin + i]; return m; });
+  return [
+    ['LayerSizes', mat(1, layers.length, layers)], ['Activations', str(act)], ['Lambda', num(lambda)], ['IterationLimit', num(iters)], ['Standardize', mat(1, 1, [on ? 1 : 0], true)],
+    ['Mu', s ? mat(1, p, s.mu) : mat(0, 0)], ['Sigma', s ? mat(1, p, s.sd) : mat(0, 0)],
+    ['LayerWeights', cellOf(W)], ['LayerBiases', cellOf(net.b.map((b) => col([...b])))],
+    ['TrainingHistory', table([['Iteration', col(net.history.map((_, i) => i))], ['TrainingLoss', col(net.history)]])],
+    ['ConvergenceInfo', { k: 'struct', f: new Map<string, Value>([['Iterations', num(net.iterations)], ['ConvergenceCriterion', str(net.reason)], ['TrainingLoss', num(net.history[net.history.length - 1])]]) }],
+  ];
+}
+function netOf(m: Struct): Net {
+  const W = (field(m, 'LayerWeights') as Cell).d.map((v) => toMat(v)), b = (field(m, 'LayerBiases') as Cell).d.map((v) => Float64Array.from(toMat(v).d));
+  const sizes = [W[0].c, ...W.map((w) => w.r)];
+  return { sizes, W: W.map((w) => { const o = new Float64Array(w.r * w.c); for (let q = 0; q < w.r; q++) for (let i = 0; i < w.c; i++) o[q * w.c + i] = w.d[q + i * w.r]; return o; }), b, act: textOf(field(m, 'Activations')) as Act, K: m.f.has('ClassNames') ? W[W.length - 1].r : 0, history: [], iterations: 0, reason: '' };
+}
+FIT.ClassificationNeuralNetwork = (d, o) => { const L = labelsOf(d.y!); if (L.K < 2) throw new LabError('fitcnet needs at least two classes.'); return model('ClassificationNeuralNetwork', d, netFields(d, L.y, L.K, o), L); };
+FIT.RegressionNeuralNetwork = (d, o) => model('RegressionNeuralNetwork', d, netFields(d, [...toMat(d.y!, 'The response').d], 0, o), null);
 function coefTable(names: string[], est: number[], se: number[], stat: number[], p: number[]): Struct {
   return table([['Name', cellCol(names.map(str))], ['Estimate', col(est)], ['SE', col(se)], ['tStat', col(stat)], ['pValue', col(p)]]);
 }
@@ -250,7 +278,7 @@ FIT.GeneralizedLinearModel = (d, o) => {
   return m;
 };
 
-for (const [name, kind] of [['fitcknn', 'ClassificationKNN'], ['fitctree', 'ClassificationTree'], ['fitcnb', 'ClassificationNaiveBayes'], ['fitcdiscr', 'ClassificationDiscriminant'], ['fitcsvm', 'ClassificationSVM'], ['fitcecoc', 'ClassificationECOC'], ['fitrtree', 'RegressionTree'], ['fitlm', 'LinearModel'], ['fitglm', 'GeneralizedLinearModel']] as const) {
+for (const [name, kind] of [['fitcknn', 'ClassificationKNN'], ['fitctree', 'ClassificationTree'], ['fitcnb', 'ClassificationNaiveBayes'], ['fitcdiscr', 'ClassificationDiscriminant'], ['fitcsvm', 'ClassificationSVM'], ['fitcecoc', 'ClassificationECOC'], ['fitcnet', 'ClassificationNeuralNetwork'], ['fitrtree', 'RegressionTree'], ['fitrnet', 'RegressionNeuralNetwork'], ['fitlm', 'LinearModel'], ['fitglm', 'GeneralizedLinearModel']] as const) {
   def(name, (a, _n, lab) => {
     const d = dataOf(a, name), o = options(a, d.rest), m = FIT[kind]!(d, o);
     if (o.has('kfold') || o.has('holdout') || o.has('leaveout') || o.has('cvpartition') || (o.has('crossval') && optBool(o, 'crossval', false))) return [crossval(m, o)];
@@ -285,6 +313,7 @@ function classify(m: Struct, X: ml.Rows): { idx: number[]; scores: ml.Rows } {
     const post = kind === 'ClassificationNaiveBayes' ? X.map((x) => ml.nbPosterior({ mu, sd: S, prior }, x)) : (() => { const lda: ml.LDA = { mu, sigma: S, inv: ml.inverse(S) ?? S, prior }; return X.map((x) => ml.ldaPosterior(lda, x)); })();
     return { idx: post.map(argmax), scores: post };
   }
+  if (kind === 'ClassificationNeuralNetwork') { const f = netPredictor(netOf(m)), post = scaled(m, X).map((x) => [...f(x)]); return { idx: post.map(argmax), scores: post }; }
   if (kind === 'ClassificationSVM') { const f = svmScores(m, X); return { idx: f.map((v) => (v > 0 ? 1 : 0)), scores: f.map((v) => [-v, v]) }; }
   if (kind === 'ClassificationECOC') {
     const M = toMat(field(m, 'CodingMatrix')), learners = (field(m, 'BinaryLearners') as Cell).d as Struct[], f = learners.map((l) => svmScores(l, X));
@@ -301,6 +330,7 @@ function treeOf(m: Struct): ml.Tree {
 }
 function regress(m: Struct, X: ml.Rows): number[] {
   const kind = typeOf(m);
+  if (kind === 'RegressionNeuralNetwork') { const f = netPredictor(netOf(m)); return scaled(m, X).map((x) => f(x)[0]); }
   if (kind === 'RegressionTree') { const t = treeOf(m), mean = toMat(field(m, 'NodeMean')).d; return X.map((x) => mean[ml.treeLeaf(t, x)]); }
   if (kind === 'GeneralizedLinearModel' && m.f.has('ClassNames')) { const b = [...toMat(field(m, 'Beta')).d]; return X.map((x) => ml.logisticProb(b, x)); }
   if (kind === 'LinearModel' || kind === 'GeneralizedLinearModel') {
