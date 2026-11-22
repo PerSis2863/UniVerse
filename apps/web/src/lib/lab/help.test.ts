@@ -4,6 +4,7 @@ import './plot';
 import './files';
 import './ml-lab';
 import './optim-lab';
+import './maint-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

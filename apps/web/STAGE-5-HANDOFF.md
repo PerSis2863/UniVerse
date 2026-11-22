@@ -11310,3 +11310,27 @@ ga, a sphere by the swarm, the same in the language with MATLAB's examples, Disp
 errors, the legend. Not built: interior-point and SQP choices, Hessians, multi-objective (gamultiobj, Pareto fronts),
 surrogate optimisation, simulated annealing, problem-based optimisation (optimproblem).
 
+## M423 (22 Nov): Hyperion toolbox, predictive maintenance
+
+`maint.ts` (pure; imports `dft` from signal.ts): `analytic` (FFT, negative frequencies zeroed, positive doubled, the
+Nyquist bin kept), `envelope` (the analytic signal's size around the mean), `envspectrum(x, fs)` (the envelope's
+one-sided amplitude spectrum: { f, p }), `bearingFrequencies(fr, nb, db, dp, β)` (BPFO, BPFI, FTF, BSF), `changePoints(x,
+{ stat, max, penalty, minDistance })` (costs from running sums in constant time: 'mean' squared error, 'rms' and 'std'
+Gaussian log-likelihood, 'linear' a fitted line's squared error; `max` changes exactly by dynamic programming,
+O(k·n²); `penalty` by optimal partitioning; indices 0-based where each new segment starts), `cusum` (sums of the drift
+past ±mshift·σ/2, an alarm at climit·σ), `monotonicity`, `trendability` (the weakest |correlation| between members cut
+to the shortest), `prognosability`, and degradation models: `fitDegradation('exponential' | 'linear', members, phi)`
+(each member's line through log(y − φ) or y against t; the prior is their mean and covariance, the noise their mean
+residual variance), `updateDegradation` (conjugate Bayesian linear regression of intercept and slope), `remainingLife`
+(the crossing of the threshold from the mean, and 4,000 draws through the Cholesky factor for a 90% range; Infinity
+when the slope isn't rising). Language (`maint-lab.ts`, loaded by the worker and the help test): rms, peak2peak,
+peak2rms (per column for a matrix), hilbert (complex), envelope ([up, lo]), envspectrum, bearingFaultBands ([FB ±5%,
+info]), findchangepts ('Statistic', 'MaxNumChanges', 'MinThreshold', 'MinDistance'; 1-based; drawn without outputs, an
+exact search refused past n²·k = 2e8), cusum (drawn without outputs), monotonicity / trendability / prognosability (a
+cell of vectors or a column each), exponentialDegradationModel / linearDegradationModel ('Phi', 'LifeTimeVariable',
+'DataVariables'), fit (a cell of [t y] matrices or tables; `fit` is only this here: other uses are told to use polyfit
+or lsqcurvefit), update, predictRUL(mdl, [readings,] threshold) → [rul, ci, pdf table] (prints a line without
+outputs). The model struct keeps Mean, Covariance, NoiseVariance, CurrentTime, Theta, Beta. Example `maintenance.m`.
+Tests (`maint.test.ts`). Not built: spectral kurtosis and the kurtogram, time-synchronous averaging, order analysis,
+similarity and survival models, a Diagnostic Feature Designer window.
+

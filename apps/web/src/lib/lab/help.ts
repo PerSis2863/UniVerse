@@ -635,6 +635,25 @@ ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A ge
 particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
 optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
 optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
+
+# Predictive maintenance
+rms | rms(x) | The root mean square: a signal's typical size (for a matrix, each column's).
+peak2peak | peak2peak(x) | The distance from the lowest value to the highest.
+peak2rms | peak2rms(x) | The crest factor: the largest size against the RMS (impacts from a failing bearing raise it).
+hilbert | z = hilbert(x) | The analytic signal x + i·H{x}: its size abs(z) is the envelope, its angle the phase.
+envelope | [up, lo] = envelope(x) | The upper and lower envelopes, from the Hilbert transform.
+envspectrum | [p, f] = envspectrum(x, fs) | The spectrum of the envelope: a bearing's damage shows as peaks at its defect frequencies. Without outputs, drawn.
+bearingFaultBands | [FB, info] = bearingFaultBands(fr, nb, db, dp, beta) | A bearing's defect frequencies (outer race BPFO, inner race BPFI, cage FTF, ball spin BSF) from the shaft speed (Hz), the number of balls, the ball and pitch diameters and the contact angle; FB is a ±5% band around each.
+findchangepts | i = findchangepts(x, 'Statistic', 'mean', 'MaxNumChanges', k, 'MinThreshold', c) | Where a signal changes ('mean', 'rms', 'std' or 'linear'): the k best changes exactly, or every change worth more than c. Without outputs, drawn.
+cusum | [iupper, ilower] = cusum(x, climit, mshift, tmean, tdev) | Cumulative sums that catch a small, lasting drift above or below the target mean.
+monotonicity | monotonicity(members) | 1 when a feature only rises (or only falls) over each machine's life; members is a cell of vectors or a column each.
+trendability | trendability(members) | How alike the members' paths are (the weakest correlation between two).
+prognosability | prognosability(members) | How alike the machines' values at failure are, against how far each travelled.
+exponentialDegradationModel | mdl = exponentialDegradationModel('Phi', phi) | Wear that grows like phi + θ·e^(βt): fit it to past machines, update it on one, predict its remaining life.
+linearDegradationModel | mdl = linearDegradationModel | Wear that grows in a straight line.
+fit | mdl = fit(mdl, {[t1 y1], [t2 y2], …}) | Learns a degradation model from past machines' histories ([time value] each, or tables).
+update | mdl = update(mdl, [t y]) | The model after seeing one machine's readings so far.
+predictRUL | [rul, ci, pdf] = predictRUL(mdl, [t y], threshold) | The remaining useful life: when the level will reach the threshold, a 90% range and the spread of possible times.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
