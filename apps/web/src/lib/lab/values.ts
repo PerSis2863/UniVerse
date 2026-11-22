@@ -9,7 +9,8 @@ import type { Expr } from './parse';
 export interface Mat { k: 'mat'; r: number; c: number; p?: number; d: Float64Array; logical?: boolean; im?: Float64Array }
 export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
-export interface Struct { k: 'struct'; f: Map<string, Value> }
+/** `table`: a table (M383): a struct whose fields are equal-height columns, shown as rows. */
+export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
 export type Value = Mat | Str | Cell | Struct | Fn;
 
@@ -81,7 +82,7 @@ export function kind(v: Value): string {
     case 'mat': return v.logical ? 'logical' : 'double';
     case 'str': return 'char';
     case 'cell': return 'cell';
-    case 'struct': return 'struct';
+    case 'struct': return v.table ? 'table' : 'struct';
     case 'fn': return 'function_handle';
   }
 }
@@ -119,7 +120,7 @@ export function render(v: Value, f: Fmt): string {
   switch (v.k) {
     case 'str': return v.v;
     case 'fn': return v.src ? `@${v.src}` : `@${v.name}`;
-    case 'struct': return [...v.f].map(([k, x]) => `    ${k}: ${inline(x, f)}`).join('\n') || '    (no fields)';
+    case 'struct': return v.table ? tableText(v, f) : [...v.f].map(([k, x]) => `    ${k}: ${inline(x, f)}`).join('\n') || '    (no fields)';
     case 'cell': {
       if (!v.d.length) return `{}(${v.r}x${v.c})`;
       const cells = Array.from({ length: v.r }, (_, i) => Array.from({ length: v.c }, (_, j) => `[${inline(v.d[i + j * v.r], f)}]`));
@@ -155,7 +156,7 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
   switch (v.k) {
     case 'str': return `'${v.v}'`;
     case 'fn': return render(v, f);
-    case 'struct': return `1x1 struct`;
+    case 'struct': return v.table ? `${tableHeight(v)}x${v.f.size} table` : `1x1 struct`;
     case 'cell': return `${v.r}x${v.c} cell`;
     case 'mat':
       if ((v.p ?? 1) > 1) return `${v.r}x${v.c}x${v.p} ${v.im ? 'complex double' : kind(v)}`;
@@ -164,4 +165,15 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
       if (v.r * v.c <= 10 && v.r <= 1) return `[${[...v.d].map((x) => fmtNum(x, f, v.logical || Number.isInteger(x))).join(' ')}]`;
       return `${v.r}x${v.c} ${kind(v)}`;
   }
+}
+
+const tableHeight = (t: Struct) => { const v = [...t.f.values()][0]; return v ? (v.k === 'mat' || v.k === 'cell' ? v.r : 1) : 0; };
+/** A table as rows under its column names (the first 20 rows, then how many more). */
+function tableText(t: Struct, f: Fmt): string {
+  const cols = [...t.f], h = tableHeight(t), show = Math.min(h, 20);
+  const cell = (v: Value, i: number) => (v.k === 'cell' ? inline(v.d[i] ?? mat(0, 0), f).replace(/^'|'$/g, '') : v.k === 'mat' ? (v.c > 1 ? `[${Array.from({ length: v.c }, (_, j) => fmtNum(v.d[i + j * v.r], f, Number.isInteger(v.d[i + j * v.r]))).join(' ')}]` : fmtNum(v.d[i], f, !!v.logical || Number.isInteger(v.d[i]))) : inline(v, f));
+  const grid = [cols.map(([n]) => n), ...Array.from({ length: show }, (_, i) => cols.map(([, v]) => cell(v, i)))];
+  const w = cols.map((_, j) => Math.max(...grid.map((r) => r[j].length)));
+  const line = (r: string[]) => `    ${r.map((x, j) => x.padStart(w[j])).join('    ')}`;
+  return [line(grid[0]), `    ${w.map((n) => '_'.repeat(n)).join('    ')}`, '', ...grid.slice(1).map(line), ...(h > show ? [`    … ${h - show} more rows`] : [])].join('\n');
 }

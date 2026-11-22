@@ -10488,3 +10488,30 @@ uint8 type), imresize (bilinear, scale or [rows cols]); LaTeX writes each cell's
 `[rgb=…]`). Also: every SVG drawing names its clip areas uniquely (`Ink.uid`), so two figures on one page (the light
 and dark copies) never clip each other. Not built: more than three dimensions, integer types (uint8, int16), reading
 picture files (imread comes with files, next).
+
+## M383 (22 Nov): UniVerse Lab: files and tables
+
+`src/lib/lab/files.ts` (the worker and tests import it; it registers its builtins). `FileStore` is the engine's
+folder (`Host.files`): `load` takes the window's files (not reported back), `put` / `remove` are code's writes
+(`takeChanges()` after each run tells the window what to keep or forget), names are plain (`clean`: no `..`, no
+leading `/`, under 120 characters), 50 MB a file. The window (`LabApp.tsx` Files panel, `lab-files.ts`) keeps files
+in IndexedDB `uv-lab` / `files` on the device only (never uploaded), sends them to the worker on start and after Stop,
+and decodes pictures itself (`createImageBitmap` → RGBA `pixels`, since the engine can't wait for the browser's
+decoder), so imread reads any picture the browser can open; imwrite writes PNG (with its pixels). Delimited text:
+`splitRows` (comma, tab, semicolon or spaces, quotes), header rows of text skipped by readmatrix (`numbers`), gaps
+NaN (csvread / dlmread give 0, as MATLAB's old ones do). Excel: `xlsxRows` reads a sheet's cells with formulas'
+saved results (fflate's unzipSync, `xml-lite`; 'Sheet' by name or number); writing goes through the spreadsheets
+app's `writeXlsx` and fflate's zipSync. .mat: our own level-5 reader and writer (`readMat`, `writeMat`): doubles
+(complex too), logicals, text, cells, single structs (tables saved as structs), 3D arrays; reads every number type
+as doubles, miCOMPRESSED parts (unzlibSync), and the short element form; refuses sparse, objects, struct arrays and
+v7.3 (HDF5) plainly. save / load: all variables or named ones, -ascii and .txt / .csv as numbers, load into the
+caller's workspace (the frame) or as a struct when an output is asked for; a text file loads as one variable named
+after the file. Tables: a `Struct` with `table: true` (columns as fields: numbers as column vectors, text as cell
+columns; headings made into valid names, "Height (cm)" → Height_cm), printed as rows (the first 20); T.col works,
+T(rows, :) does not yet. Text files: fopen (r, w, a) / fprintf(fid, …) (1 and 2 are the command window) / fgetl /
+fgets / feof / frewind / fscanf (the numbers left) / fclose (writes on close). The reader (parse.ts) now reads
+MATLAB's command style properly: a command word starting a statement takes the rest of the line as words
+(`word` tokens: `save data.mat x y`, `load 'my file.csv'`), unless = or ( follows; new command words: save, load,
+type, dir, ls, delete, cd, pwd. The Files list is `data-no-motion` (the motion layer counted file sizes up).
+Not built: T(rows, :) indexing, readtable's options beyond 'Sheet' / 'Delimiter' / 'ReadVariableNames', JPEG
+writing, folders.

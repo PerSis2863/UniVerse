@@ -18,6 +18,8 @@ export interface Host {
   now?(): number;
   /** Asked now and then during long runs: true stops the code (the Stop button). */
   stopped?(): boolean;
+  /** The person's files (files.ts adds them); the interpreter only passes it along. */
+  files?: unknown;
 }
 
 class Flow { constructor(readonly kind: 'break' | 'continue' | 'return') {} }
@@ -293,7 +295,7 @@ export class Lab {
     if (user) return this.callUser(user, args, nout, f?.depth ?? 0);
     if (name === 'nargin' && f) return [num(f.nargin)];
     if (name === 'nargout' && f) return [num(f.nargout)];
-    if (name === 'exist' && f) { const n = args[0] ? textOf(args[0]) : ''; return [num(f.vars.has(n) ? 1 : this.fns.has(n) || BUILTINS[n] ? 5 : 0)]; }
+    if (name === 'exist' && f) { const n = args[0] ? textOf(args[0]) : ''; const files = this.host.files as { has?(n: string): boolean } | undefined; return [num(f.vars.has(n) ? 1 : files?.has?.(n) ? 2 : this.fns.has(n) || BUILTINS[n] ? 5 : 0)]; }
     const b = BUILTINS[name];
     if (!b) throw new LabError(`“${name}” isn’t a variable or a function I know.${suggest(name)}`);
     return b(args, nout, this, f);

@@ -2,19 +2,21 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Copy, Download, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2 } from 'lucide-react';
+import { Copy, Download, File as FileIcon, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
-import type { FigOut, FromLab, ToLab, VarRow } from './lab.worker';
+import type { FigOut, FileIn, FromLab, ToLab, VarRow } from './lab.worker';
+import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 
 // M376: UniVerse Lab's window: the command window, a script editor, the variables and the figures, like a desktop
 // maths program. The engine (src/lib/lab) runs in a background worker (lab.worker.ts): the page never freezes and
-// Stop ends a run. Scripts are kept on this device. Phones get the same parts as tabs.
+// Stop ends a run. Scripts are kept on this device, and so are files (M383: uploaded, or written by code; IndexedDB).
+// Phones get the same parts as tabs.
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
-type Tab = 'command' | 'editor' | 'variables' | 'figure';
+type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
 interface Script { name: string; code: string }
 const KEEP = 'uv-lab-scripts';
 const EXAMPLES: Script[] = [
@@ -42,6 +44,10 @@ export function LabApp() {
   const [hist, setHist] = useState<string[]>([]);
   const [hi, setHi] = useState(-1);
   const [tab, setTab] = useState<Tab>('command');
+  const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
+  const [dragging, setDragging] = useState(false);
+  const fileData = useRef(new Map<string, FileIn>());
+  const picker = useRef<HTMLInputElement>(null);
   const worker = useRef<Worker | null>(null);
   const pending = useRef<{ id: number; code: string; from: 'cmd' | 'script' } | null>(null);
   const logBox = useRef<HTMLDivElement>(null);
@@ -62,12 +68,50 @@ export function LabApp() {
       const p = pending.current;
       if (m.error) print({ k: 'err', t: `Error${p?.from === 'script' && m.at !== undefined ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` });
       setVars(m.vars);
+      // Files the code wrote or deleted: kept on this device (or forgotten).
+      for (const f of m.files) {
+        if (f.bytes) { fileData.current.set(f.name, { name: f.name, bytes: f.bytes, pixels: f.pixels }); void keep(f.name, f.bytes); }
+        else { fileData.current.delete(f.name); void forget(f.name); }
+      }
+      if (m.files.length) listFiles();
       // Figures only come back when a run changed them (null: keep what's shown).
       if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; if (m.figs.length) setTab((t) => (t === 'editor' && p?.from === 'script' ? 'figure' : t)); }
       pending.current = null;
       setBusy(false);
     };
     worker.current = w;
+    // A restarted engine (after Stop) gets the files again.
+    if (fileData.current.size) w.postMessage({ upload: [...fileData.current.values()] } satisfies ToLab);
+  };
+  const listFiles = () => setFiles([...fileData.current.values()].map((f) => ({ name: f.name, size: f.bytes.length })).sort((a, b) => a.name.localeCompare(b.name)));
+  const restore = useEffectEvent(async () => {
+    const kept = await keptFiles();
+    const list = await Promise.all(kept.map(async (k): Promise<FileIn> => ({ name: k.name, bytes: k.bytes, pixels: (await pixelsOf(k.name, k.bytes)) ?? undefined })));
+    for (const f of list) fileData.current.set(f.name, f);
+    if (list.length) { worker.current?.postMessage({ upload: list } satisfies ToLab); listFiles(); }
+  });
+  useEffect(() => { void restore(); }, []);
+  const addFiles = async (picked: FileList | File[]) => {
+    const added: FileIn[] = [];
+    for (const file of Array.from(picked)) {
+      if (file.size > MAX_FILE) { toast.error(`${file.name} is over 50 MB.`); continue; }
+      const name = file.name.replace(/[\\/:*?"<>|]+/g, '_').slice(0, 120);
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      const f: FileIn = { name, bytes, pixels: (await pixelsOf(name, bytes)) ?? undefined };
+      fileData.current.set(name, f);
+      void keep(name, bytes);
+      added.push(f);
+    }
+    if (!added.length) return;
+    worker.current?.postMessage({ upload: added } satisfies ToLab);
+    listFiles();
+    toast.success(added.length === 1 ? `${added[0].name} is ready: use it by name, like readmatrix('${added[0].name}').` : `${added.length} files are ready.`);
+  };
+  const removeFile = (name: string) => {
+    if (!confirm(`Delete ${name} from your Lab files?`)) return;
+    fileData.current.delete(name); void forget(name);
+    worker.current?.postMessage({ remove: name } satisfies ToLab);
+    listFiles();
   };
   const boot = useEffectEvent(() => start());
   useEffect(() => { boot(); return () => worker.current?.terminate(); }, []);
@@ -195,6 +239,28 @@ export function LabApp() {
     </section>
   );
 
+  const fileList = (
+    <section className={cn(panel, 'h-full')} aria-label="Files">
+      <div className={head}>Files{files.length > 0 && <span className="font-normal text-zinc-500">{files.length}</span>}
+        <button type="button" className={cn(btn, 'ms-auto')} onClick={() => picker.current?.click()}><Upload className="h-3.5 w-3.5" aria-hidden />Upload</button>
+        <input ref={picker} type="file" multiple hidden onChange={(e) => { if (e.target.files) void addFiles(e.target.files); e.target.value = ''; }} />
+      </div>
+      {files.length ? (
+        <ul className="min-h-0 flex-1 overflow-auto" data-no-motion>
+          {files.map((f) => (
+            <li key={f.name} className="flex items-center gap-2 border-t border-zinc-100 px-3 py-1.5 text-[13px] first:border-t-0 dark:border-white/[0.06]">
+              <FileIcon className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
+              <button type="button" className="min-w-0 flex-1 truncate text-start font-mono text-zinc-900 hover:underline dark:text-white" title={`Put '${f.name}' in the command`} onClick={() => { setCmd((c) => `${c}'${f.name}'`); setTab('command'); }} translate="no">{f.name}</button>
+              <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">{sizeText(f.size)}</span>
+              <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-white/[0.08] dark:hover:text-white" aria-label={`Download ${f.name}`} onClick={() => { const d = fileData.current.get(f.name); if (d) download(f.name, d.bytes as BlobPart, 'application/octet-stream'); }}><Download className="h-3.5 w-3.5" aria-hidden /></button>
+              <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-700 dark:hover:bg-white/[0.08] dark:hover:text-red-400" aria-label={`Delete ${f.name}`} onClick={() => removeFile(f.name)}><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>
+            </li>
+          ))}
+        </ul>
+      ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Upload or drop spreadsheets (CSV, Excel), .mat files, pictures or text here, then use them by name: <code className="font-mono">readmatrix(&apos;data.csv&apos;)</code>. They stay on this device.</p>}
+    </section>
+  );
+
   const figure = (
     <section className={cn(panel, 'h-full')} aria-label="Figure">
       <div className={cn(head, 'flex-wrap')}>
@@ -214,17 +280,20 @@ export function LabApp() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[30rem] flex-col gap-3">
+    <div className={cn('relative flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[30rem] flex-col gap-3', dragging && 'rounded-2xl outline-2 outline-offset-4 outline-blue-600 outline-dashed')}
+      onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
+      onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
+      onDrop={(e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDragging(false); void addFiles(e.dataTransfer.files); }}>
       {wide ? (
         <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
-          {variables}
+          <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
           <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
           {figure}
         </div>
       ) : (
         <>
-          <Segmented<Tab> label="Lab part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'figure', label: 'Figure' }]} />
-          <div className="min-h-0 flex-1">{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : figure}</div>
+          <Segmented<Tab> label="Lab part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
+          <div className="min-h-0 flex-1">{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
         </>
       )}
     </div>

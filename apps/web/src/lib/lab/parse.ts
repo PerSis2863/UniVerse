@@ -10,6 +10,7 @@ export type Tok =
   | { t: 'kw'; v: string; at: number }
   | { t: 'op'; v: string; at: number }
   | { t: 'nl'; v: string; at: number } // a newline, ';' or ',' between statements (v says which)
+  | { t: 'word'; v: string; at: number } // a word after a command (save data.mat x): taken as text
   | { t: 'eof'; v: ''; at: number };
 
 const KEYWORDS = new Set(['if', 'elseif', 'else', 'end', 'endif', 'endfor', 'endwhile', 'endfunction', 'endswitch', 'end_try_catch', 'for', 'while', 'do', 'until', 'break', 'continue', 'return', 'function', 'switch', 'case', 'otherwise', 'try', 'catch', 'global', 'persistent']);
@@ -77,6 +78,26 @@ export function lex(src: string): Tok[] {
     if (/[A-Za-z_]/.test(c)) {
       const m = /^[A-Za-z_]\w*/.exec(src.slice(i))!;
       const w = m[0];
+      // Command syntax (M383): a command word starting a statement, then words to the end of the line, as MATLAB
+      // reads "save data.mat x y" or "load 'my file.csv'". Not when an = or ( follows (a variable or a call).
+      const prev = out[out.length - 1];
+      const starts = !depth.length && (!prev || prev.t === 'nl');
+      const after = src.slice(i + w.length);
+      if (starts && COMMANDS.has(w) && /^[ \t]+[^ \t\n;,%=(]/.test(after) && !/^[ \t]+[-+*/^<>&|~!]?=/.test(after) && !/^[ \t]+[-+*/^<>&|]\s/.test(after)) {
+        out.push({ t: 'id', v: w, at: i });
+        i += w.length;
+        for (;;) {
+          while (src[i] === ' ' || src[i] === '\t') i++;
+          const ch = src[i];
+          if (ch === undefined || ch === '\n' || ch === ';' || ch === ',' || ch === '%' || ch === '\r') break;
+          const at = i;
+          let word = '';
+          if (ch === "'" || ch === '"') { i++; while (i < src.length && src[i] !== ch && src[i] !== '\n') word += src[i++]; i++; }
+          else while (i < src.length && !/[ \t\n;,%\r]/.test(src[i])) word += src[i++];
+          out.push({ t: 'word', v: word, at });
+        }
+        continue;
+      }
       // "end" inside an index means the last element (primary() reads it); elsewhere it closes a block.
       out.push(KEYWORDS.has(w) ? { t: 'kw', v: w, at: i } : { t: 'id', v: w, at: i });
       i += w.length; continue;
@@ -140,7 +161,7 @@ export interface FnDef { name: string; params: string[]; outs: string[]; body: S
 export interface Program { body: Stmt[]; fns: Map<string, FnDef> }
 
 /** Commands written without brackets ("hold on", "clc", "format long", "close all"). */
-const COMMANDS = new Set(['legend', 'hold', 'clc', 'clear', 'close', 'format', 'grid', 'axis', 'figure', 'disp', 'who', 'whos', 'more', 'pkg', 'clf', 'help', 'doc', 'tic', 'toc', 'box', 'colormap', 'colorbar', 'shading', 'view', 'rotate3d', 'caxis', 'camlight', 'lighting', 'material', 'clabel', 'yyaxis', 'cla']);
+const COMMANDS = new Set(['save', 'load', 'type', 'dir', 'ls', 'delete', 'cd', 'pwd', 'legend', 'hold', 'clc', 'clear', 'close', 'format', 'grid', 'axis', 'figure', 'disp', 'who', 'whos', 'more', 'pkg', 'clf', 'help', 'doc', 'tic', 'toc', 'box', 'colormap', 'colorbar', 'shading', 'view', 'rotate3d', 'caxis', 'camlight', 'lighting', 'material', 'clabel', 'yyaxis', 'cla']);
 
 export function parse(src: string): Program {
   const toks = lex(src);
@@ -244,10 +265,10 @@ export function parse(src: string): Program {
       }
     }
     // A command without brackets: "hold on", "format long", "close all".
-    if (t.t === 'id' && COMMANDS.has(t.v) && (peek(1).t === 'nl' || peek(1).t === 'eof' || (peek(1).t === 'id' && peek(2).t !== 'op') || (peek(1).t === 'id' && (peek(2).t === 'nl' || peek(2).t === 'eof')))) {
+    if (t.t === 'id' && COMMANDS.has(t.v) && (peek(1).t === 'nl' || peek(1).t === 'eof' || peek(1).t === 'word')) {
       take();
       const args: string[] = [];
-      while (is('id') || is('num')) args.push(String(take().v));
+      while (is('word')) args.push(String(take().v));
       return { s: 'command', name: t.v, args, show: ending(), at: t.at };
     }
     // [a, b] = f(...)

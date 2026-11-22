@@ -1,0 +1,496 @@
+import { unzipSync, unzlibSync, zipSync } from 'fflate';
+import { LabError } from './parse';
+import { mat, numel, pages, scalar, str, toMat, type Cell, type Mat, type Struct, type Value } from './values';
+import { BUILTINS, type Builtin } from './builtins';
+import { textOf, type Lab } from './interp';
+import { png } from './colormap';
+import { findAll, kid, parseXml } from '@/lib/xml-lite';
+import { writeXlsx } from '@/lib/sheet/xlsx';
+import { keyOf } from '@/lib/sheet/refs';
+import type { CellJSON } from '@/lib/sheet/book';
+
+// UniVerse Lab's files (M383): a store of files kept on the person's device (the window keeps them; the engine sees
+// them here), and MATLAB's file functions over it: delimited text and Excel (readmatrix, writematrix, readcell,
+// readtable, writetable, csvread, dlmwrite…), MATLAB's own .mat files (save, load: level 5, compressed or not),
+// pictures (imread, imwrite) and text files (fopen, fprintf, fgetl, fileread…). Tables are kept as a struct of
+// columns marked as a table.
+
+export interface Pixels { w: number; h: number; rgba: Uint8Array | Uint8ClampedArray }
+export interface LabFile { bytes: Uint8Array; pixels?: Pixels }
+const MAX = 50_000_000;
+
+export class FileStore {
+  files = new Map<string, LabFile>();
+  /** Names written or deleted by code since the last takeChanges (the window saves or removes them). */
+  private changed = new Set<string>();
+  private open = new Map<number, { name: string; write: boolean; text: string; pos: number }>();
+  private nextFid = 3;
+  has(name: string) { try { return this.files.has(clean(name)); } catch { return false; } }
+  get(name: string): LabFile {
+    const f = this.files.get(clean(name));
+    if (!f) throw new LabError(`There’s no file called “${name}”. Upload it in Files (or check the name).`);
+    return f;
+  }
+  /** From the window (an upload): not reported back as a change. */
+  load(name: string, f: LabFile) { this.files.set(clean(name), f); }
+  put(name: string, f: LabFile) {
+    if (f.bytes.length > MAX) throw new LabError('That file would be over 50 MB.');
+    const n = clean(name);
+    this.files.set(n, f); this.changed.add(n);
+  }
+  remove(name: string) { const n = clean(name); if (!this.files.delete(n)) throw new LabError(`There’s no file called “${name}”.`); this.changed.add(n); }
+  takeChanges(): { name: string; file: LabFile | null }[] {
+    const out = [...this.changed].map((name) => ({ name, file: this.files.get(name) ?? null }));
+    this.changed.clear();
+    return out;
+  }
+  text(name: string) { return new TextDecoder().decode(this.get(name).bytes).replace(/^﻿/, ''); }
+  putText(name: string, text: string) { this.put(name, { bytes: new TextEncoder().encode(text) }); }
+  fopen(name: string, mode: string): number {
+    const write = /[wa]/.test(mode), n = clean(name);
+    if (!write && !this.files.has(n)) return -1;
+    const fid = this.nextFid++;
+    this.open.set(fid, { name: n, write, text: write ? (mode.includes('a') && this.files.has(n) ? this.text(n) : '') : this.text(n), pos: 0 });
+    return fid;
+  }
+  handle(fid: number) { const h = this.open.get(fid); if (!h) throw new LabError(`File ${fid} isn’t open (use fopen first).`); return h; }
+  fclose(fid: number | 'all') {
+    for (const [id, h] of [...this.open]) if (fid === 'all' || id === fid) { if (h.write) this.putText(h.name, h.text); this.open.delete(id); }
+  }
+}
+/** A plain file name: no folders above this one, no odd characters. */
+function clean(name: string) {
+  const n = name.trim().replace(/\\/g, '/').replace(/^(\.\/)+/, '');
+  if (!n || n.length > 120 || n.startsWith('/') || n.split('/').includes('..') || /[\0-\x1f<>:"|?*]/.test(n)) throw new LabError(`“${name}” isn’t a file name the Lab can use.`);
+  return n;
+}
+const store = (lab: Lab): FileStore => {
+  const s = (lab.host as { files?: unknown }).files;
+  if (!(s instanceof FileStore)) throw new LabError('Files aren’t available here.');
+  return s;
+};
+const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
+const ext = (name: string) => (/\.([^./]+)$/.exec(name)?.[1] ?? '').toLowerCase();
+/** Name–value options: opt(a, 'Sheet'). */
+const opt = (a: Value[], key: string): Value | undefined => { const i = a.findIndex((v) => v.k === 'str' && v.v.toLowerCase() === key.toLowerCase()); return i >= 0 ? a[i + 1] : undefined; };
+
+// ——— Rows of text cells: from CSV / text, or from an Excel sheet ———
+
+export function splitRows(text: string, delim?: string): string[][] {
+  const first = text.split(/\r?\n/).find((l) => l.trim()) ?? '';
+  const sep = delim ?? (first.includes('\t') ? '\t' : first.includes(',') ? ',' : first.includes(';') ? ';' : ' ');
+  const rows: string[][] = [];
+  for (const line of text.split(/\r?\n/)) {
+    if (!line.trim()) continue;
+    if (sep === ' ') { rows.push(line.trim().split(/\s+/)); continue; }
+    const row: string[] = [];
+    let cell = '', quoted = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (quoted) { if (ch === '"') { if (line[i + 1] === '"') { cell += '"'; i++; } else quoted = false; } else cell += ch; continue; }
+      if (ch === '"' && !cell.trim()) { quoted = true; cell = ''; } else if (ch === sep) { row.push(cell.trim()); cell = ''; } else cell += ch;
+    }
+    row.push(cell.trim());
+    rows.push(row);
+  }
+  return rows;
+}
+/** An Excel sheet's cells as text, with formulas' saved results (not their formulas). */
+function xlsxRows(bytes: Uint8Array, sheet?: Value): string[][] {
+  let files: Record<string, Uint8Array>;
+  try { files = unzipSync(bytes, { filter: (x) => /\.(xml|rels)$/i.test(x.name) }); } catch { throw new LabError('That Excel file couldn’t be opened.'); }
+  const read = (p: string) => { const k = Object.keys(files).find((x) => x.toLowerCase() === p.toLowerCase()); return k ? new TextDecoder().decode(files[k]) : null; };
+  const wb = read('xl/workbook.xml');
+  if (!wb) throw new LabError('That isn’t an Excel workbook (.xlsx).');
+  const sheets = findAll(parseXml(wb), 'sheet');
+  const rels = new Map(findAll(parseXml(read('xl/_rels/workbook.xml.rels') ?? '<Relationships/>'), 'Relationship').map((r) => [r.attrs.Id, r.attrs.Target ?? '']));
+  const want = sheet === undefined ? 0 : sheet.k === 'str' ? sheets.findIndex((s) => s.attrs.name === sheet.v) : scalar(sheet) - 1;
+  const s = sheets[want];
+  if (!s) throw new LabError(`There’s no sheet ${sheet && sheet.k === 'str' ? `called “${sheet.v}”` : want + 1} (the sheets: ${sheets.map((x) => x.attrs.name).join(', ')}).`);
+  const target = (rels.get(s.attrs['r:id'] ?? s.attrs.id ?? '') ?? `worksheets/sheet${want + 1}.xml`).replace(/^\/?xl\//, '');
+  const xml = read(`xl/${target}`);
+  if (!xml) throw new LabError('That sheet is missing from the file.');
+  const shared = findAll(parseXml(read('xl/sharedStrings.xml') ?? '<sst/>'), 'si').map((si) => findAll(si, 't').map((t) => t.text).join(''));
+  const rows: string[][] = [];
+  for (const c of findAll(parseXml(xml), 'c')) {
+    const m = /^([A-Z]+)(\d+)$/.exec(c.attrs.r ?? '');
+    if (!m) continue;
+    const r = Number(m[2]) - 1, col = m[1].split('').reduce((t, ch) => t * 26 + ch.charCodeAt(0) - 64, 0) - 1;
+    const v = kid(c, 'v')?.text ?? '', t = c.attrs.t ?? 'n';
+    const text = t === 's' ? shared[Number(v)] ?? '' : t === 'inlineStr' ? findAll(kid(c, 'is'), 't').map((x) => x.text).join('') : t === 'b' ? (v === '1' ? 'true' : 'false') : v;
+    (rows[r] ??= [])[col] = text;
+  }
+  return Array.from(rows, (row) => Array.from(row ?? [], (x) => x ?? ''));
+}
+function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
+  const fs = store(lab), f = fs.get(name);
+  if (ext(name) === 'xlsx' || (f.bytes[0] === 0x50 && f.bytes[1] === 0x4b)) return xlsxRows(f.bytes, opt(a, 'Sheet'));
+  if (ext(name) === 'xls') throw new LabError('Old Excel files (.xls) can’t be read: save it as .xlsx in Excel first.');
+  const d = opt(a, 'Delimiter');
+  return splitRows(fs.text(name), d ? textOf(d).replace('\\t', '\t') : undefined);
+}
+const asNumber = (s: string) => { const t = s.trim(); if (!t) return NaN; if (/^(nan|na)$/i.test(t)) return NaN; if (/^[+-]?inf$/i.test(t)) return t.startsWith('-') ? -Infinity : Infinity; const n = Number(t.replace(/,(?=\d{3}\b)/g, '')); return Number.isFinite(n) ? n : null; };
+/** The numbers of rows of cells, skipping header rows of text at the top (as readmatrix does). */
+function numbers(rows: string[][]): Mat {
+  let start = 0;
+  while (start < rows.length && rows[start].some((s) => s.trim() && asNumber(s) === null) && !rows[start].some((s) => asNumber(s) !== null && s.trim())) start++;
+  const body = rows.slice(start);
+  const c = Math.max(0, ...body.map((r) => r.length)), r = body.length;
+  const o = mat(r, c);
+  body.forEach((row, i) => { for (let j = 0; j < c; j++) { const n = asNumber(row[j] ?? ''); o.d[i + j * r] = n ?? NaN; } });
+  return o;
+}
+const csvCell = (s: string) => (/[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
+const fmt = (x: number) => (Number.isNaN(x) ? 'NaN' : Number.isFinite(x) ? String(+x.toPrecision(15)) : x > 0 ? 'Inf' : '-Inf');
+/** Writes rows of text cells as CSV / text, or as an Excel workbook. */
+function writeRows(lab: Lab, name: string, rows: string[][], delim = ',') {
+  const fs = store(lab);
+  if (ext(name) === 'xlsx') {
+    const cells: Record<string, CellJSON> = {};
+    rows.forEach((row, i) => row.forEach((v, j) => { if (v !== '') cells[keyOf(i, j)] = { v }; }));
+    const parts = writeXlsx({ sheets: [{ id: 's1', name: 'Sheet1', cells }] });
+    fs.put(name, { bytes: zipSync(parts, { level: 6 }) });
+    return;
+  }
+  fs.putText(name, `${rows.map((r) => r.map((s) => (delim === ',' ? csvCell(s) : s)).join(delim)).join('\n')}\n`);
+}
+const matRows = (m: Mat) => Array.from({ length: m.r }, (_, i) => Array.from({ length: m.c * pages(m) }, (_, j) => fmt(m.d[i + j * m.r])));
+
+// ——— Numbers and cells from files ———
+def('readmatrix', (a, _n, lab) => [numbers(rowsOf(lab, textOf(a[0]), a))]);
+def('csvread dlmread', (a, _n, lab) => {
+  // csvread(file, r0, c0) and dlmread(file, delim, r0, c0): rows and columns counted from 0.
+  const delim = a[1]?.k === 'str' ? textOf(a[1]).replace('\\t', '\t') : undefined;
+  const nums = a.slice(delim ? 2 : 1).filter((v) => v.k === 'mat').map((v) => scalar(v));
+  const rows = splitRows(store(lab).text(textOf(a[0])), delim).slice(nums[0] ?? 0).map((r) => r.slice(nums[1] ?? 0));
+  const m = numbers(rows);
+  for (let k = 0; k < m.d.length; k++) if (Number.isNaN(m.d[k])) m.d[k] = 0; // these old functions read gaps as 0
+  return [m];
+});
+def('writematrix', (a, _n, lab) => {
+  const m = toMat(a[0]), name = a[1] ? textOf(a[1]) : 'matrix.txt', d = opt(a, 'Delimiter');
+  writeRows(lab, name, matRows(m), d ? textOf(d).replace('\\t', '\t') : ext(name) === 'txt' ? ',' : ',');
+  return [];
+});
+def('csvwrite', (a, _n, lab) => { writeRows(lab, textOf(a[0]), matRows(toMat(a[1]))); return []; });
+def('dlmwrite', (a, _n, lab) => { const d = opt(a, 'delimiter') ?? (a[2]?.k === 'str' && !/^(delimiter|precision|-append)$/i.test(a[2].v) ? a[2] : undefined); writeRows(lab, textOf(a[0]), matRows(toMat(a[1])), d ? textOf(d).replace('\\t', '\t') : ','); return []; });
+const cellOfText = (s: string): Value => { const n = asNumber(s); return n !== null && s.trim() ? mat(1, 1, [n]) : str(s); };
+def('readcell', (a, _n, lab) => {
+  const rows = rowsOf(lab, textOf(a[0]), a), c = Math.max(0, ...rows.map((r) => r.length)), r = rows.length;
+  const d: Value[] = new Array(r * c);
+  for (let j = 0; j < c; j++) for (let i = 0; i < r; i++) d[i + j * r] = rows[i][j] === undefined || rows[i][j] === '' ? mat(0, 0) : cellOfText(rows[i][j]);
+  return [{ k: 'cell', r, c, d } satisfies Cell];
+});
+const cellText = (v: Value) => (v.k === 'str' ? v.v : v.k === 'mat' ? (numel(v) ? fmt(v.d[0]) : '') : '');
+def('writecell', (a, _n, lab) => {
+  const C = a[0];
+  if (C.k !== 'cell') throw new LabError('writecell needs a cell array.');
+  writeRows(lab, a[1] ? textOf(a[1]) : 'cell.txt', Array.from({ length: C.r }, (_, i) => Array.from({ length: C.c }, (_, j) => cellText(C.d[i + j * C.r]))));
+  return [];
+});
+def('fileread', (a, _n, lab) => [str(store(lab).text(textOf(a[0])))]);
+def('readlines', (a, _n, lab) => { const lines = store(lab).text(textOf(a[0])).replace(/\r?\n$/, '').split(/\r?\n/); return [{ k: 'cell', r: lines.length, c: 1, d: lines.map((l) => str(l)) }]; });
+def('writelines', (a, _n, lab) => { const v = a[0]; const lines = v.k === 'cell' ? v.d.map((x) => textOf(x)) : [textOf(v)]; store(lab).putText(textOf(a[1]), `${lines.join('\n')}\n`); return []; });
+
+// ——— Tables: a struct of equal-height columns, marked as a table ———
+/** A valid, unique variable name from a heading. */
+function names(heads: string[]): string[] {
+  const used = new Set<string>();
+  return heads.map((h, j) => {
+    let n = h.trim().replace(/[^A-Za-z0-9_]+/g, '_').replace(/^_+|_+$/g, '') || `Var${j + 1}`;
+    if (!/^[A-Za-z]/.test(n)) n = `x${n}`;
+    let k = n, q = 1;
+    while (used.has(k)) k = `${n}_${q++}`;
+    used.add(k);
+    return k.slice(0, 63);
+  });
+}
+export function makeTable(cols: [string, Value][]): Struct {
+  return { k: 'struct', f: new Map(cols), table: true };
+}
+const heightOf = (T: Struct) => { const v = [...T.f.values()][0]; return v ? (v.k === 'cell' ? v.r : v.k === 'mat' ? v.r : 1) : 0; };
+def('readtable', (a, _n, lab) => {
+  const rows = rowsOf(lab, textOf(a[0]), a);
+  const width = Math.max(0, ...rows.map((r) => r.length));
+  // The first row is the headings when any of it isn't a number.
+  const headed = rows.length > 0 && rows[0].some((s) => s.trim() && asNumber(s) === null) && !(opt(a, 'ReadVariableNames')?.k === 'mat' && !scalar(opt(a, 'ReadVariableNames')!));
+  const heads = names(Array.from({ length: width }, (_, j) => (headed ? rows[0][j] ?? '' : '')));
+  const body = rows.slice(headed ? 1 : 0), h = body.length;
+  const cols: [string, Value][] = heads.map((name, j) => {
+    const cells = body.map((r) => r[j] ?? '');
+    const nums = cells.map(asNumber);
+    if (nums.every((n) => n !== null)) return [name, mat(h, 1, nums as number[])];
+    return [name, { k: 'cell', r: h, c: 1, d: cells.map((s) => str(s)) }];
+  });
+  return [makeTable(cols)];
+});
+function tableRows(T: Struct): string[][] {
+  const cols = [...T.f], h = heightOf(T);
+  return [cols.map(([n]) => n), ...Array.from({ length: h }, (_, i) => cols.map(([, v]) => (v.k === 'cell' ? cellText(v.d[i]) : v.k === 'mat' ? fmt(v.d[i]) : v.k === 'str' ? v.v : '')))];
+}
+def('writetable', (a, _n, lab) => {
+  const T = a[0];
+  if (T.k !== 'struct' || !T.table) throw new LabError('writetable needs a table (make one with table or readtable).');
+  writeRows(lab, a[1] ? textOf(a[1]) : 'table.txt', tableRows(T));
+  return [];
+});
+def('table', (a) => {
+  const ni = a.findIndex((v) => v.k === 'str' && /^variablenames$/i.test(v.v));
+  const data = ni >= 0 ? a.slice(0, ni) : a;
+  const given = ni >= 0 && a[ni + 1]?.k === 'cell' ? (a[ni + 1] as Cell).d.map((v) => textOf(v)) : [];
+  const cols = data.map((v): Value => (v.k === 'mat' && v.r === 1 && v.c > 1 ? mat(v.c, 1, v.d) : v.k === 'cell' && v.r === 1 && v.c > 1 ? { ...v, r: v.c, c: 1 } : v));
+  const h = cols.length ? (cols[0].k === 'mat' || cols[0].k === 'cell' ? cols[0].r : 1) : 0;
+  if (cols.some((v) => (v.k === 'mat' || v.k === 'cell' ? v.r : 1) !== h)) throw new LabError('Every column of a table must have the same number of rows.');
+  return [makeTable(names(cols.map((_, j) => given[j] ?? `Var${j + 1}`)).map((n, j) => [n, cols[j]]))];
+});
+def('array2table', (a) => {
+  const m = toMat(a[0]), ni = a.findIndex((v) => v.k === 'str' && /^variablenames$/i.test(v.v));
+  const given = ni >= 0 && a[ni + 1]?.k === 'cell' ? (a[ni + 1] as Cell).d.map((v) => textOf(v)) : [];
+  return [makeTable(names(Array.from({ length: m.c }, (_, j) => given[j] ?? `Var${j + 1}`)).map((n, j) => [n, mat(m.r, 1, m.d.subarray(j * m.r, (j + 1) * m.r))]))];
+});
+def('table2array', (a) => {
+  const T = a[0];
+  if (T.k !== 'struct' || !T.table) throw new LabError('table2array needs a table.');
+  const cols = [...T.f.values()];
+  if (cols.some((v) => v.k !== 'mat')) throw new LabError('table2array needs every column to be numbers.');
+  const h = heightOf(T), o = mat(h, cols.reduce((s, v) => s + (v as Mat).c, 0));
+  let at = 0;
+  for (const v of cols as Mat[]) { o.d.set(v.d.subarray(0, h * v.c), at * h); at += v.c; }
+  return [o];
+});
+def('height', (a) => [mat(1, 1, [a[0].k === 'struct' && a[0].table ? heightOf(a[0]) : a[0].k === 'mat' || a[0].k === 'cell' ? a[0].r : 1])]);
+def('width', (a) => [mat(1, 1, [a[0].k === 'struct' && a[0].table ? a[0].f.size : a[0].k === 'mat' || a[0].k === 'cell' ? a[0].c : 1])]);
+
+// ——— MATLAB's .mat files (level 5) ———
+const MI = { INT8: 1, UINT8: 2, INT16: 3, UINT16: 4, INT32: 5, UINT32: 6, SINGLE: 7, DOUBLE: 9, INT64: 12, UINT64: 13, MATRIX: 14, COMPRESSED: 15, UTF8: 16, UTF16: 17, UTF32: 18 };
+const MX = { CELL: 1, STRUCT: 2, OBJECT: 3, CHAR: 4, SPARSE: 5, DOUBLE: 6, SINGLE: 7, INT8: 8, UINT8: 9, INT16: 10, UINT16: 11, INT32: 12, UINT32: 13, INT64: 14, UINT64: 15 };
+
+class Writer {
+  private parts: Uint8Array[] = [];
+  bytes(b: Uint8Array) { this.parts.push(b); }
+  done() { const n = this.parts.reduce((s, p) => s + p.length, 0), o = new Uint8Array(n); let at = 0; for (const p of this.parts) { o.set(p, at); at += p.length; } return o; }
+}
+const pad8 = (n: number) => (8 - (n % 8)) % 8;
+/** One data element: its tag (type, length) then the data, padded to 8 bytes. */
+function element(type: number, data: Uint8Array): Uint8Array {
+  const o = new Uint8Array(8 + data.length + pad8(data.length));
+  const dv = new DataView(o.buffer);
+  dv.setUint32(0, type, true); dv.setUint32(4, data.length, true);
+  o.set(data, 8);
+  return o;
+}
+const i32s = (v: number[]) => { const o = new Uint8Array(v.length * 4), dv = new DataView(o.buffer); v.forEach((x, i) => dv.setInt32(i * 4, x, true)); return o; };
+const f64s = (v: ArrayLike<number>) => new Uint8Array(Float64Array.from(v).buffer);
+function matrix(v: Value, name: string): Uint8Array {
+  const w = new Writer();
+  const flags = (cls: number, extra = 0) => { const o = new Uint8Array(8); new DataView(o.buffer).setUint32(0, cls | extra, true); return element(MI.UINT32, o); };
+  const nameEl = element(MI.INT8, new TextEncoder().encode(name));
+  if (v.k === 'mat') {
+    const dims = pages(v) > 1 ? [v.r, v.c, pages(v)] : [v.r, v.c];
+    if (v.logical) { w.bytes(flags(MX.UINT8, 0x0200)); w.bytes(element(MI.INT32, i32s(dims))); w.bytes(nameEl); w.bytes(element(MI.UINT8, Uint8Array.from(v.d, (x) => (x ? 1 : 0)))); }
+    else { w.bytes(flags(MX.DOUBLE, v.im ? 0x0800 : 0)); w.bytes(element(MI.INT32, i32s(dims))); w.bytes(nameEl); w.bytes(element(MI.DOUBLE, f64s(v.d))); if (v.im) w.bytes(element(MI.DOUBLE, f64s(v.im))); }
+  } else if (v.k === 'str') {
+    const rows = v.v.split('\n'), c = Math.max(0, ...rows.map((r) => r.length)), r = v.v ? rows.length : 0;
+    const d = new Uint16Array(r * c);
+    rows.forEach((row, i) => { for (let j = 0; j < c; j++) d[i + j * r] = row.charCodeAt(j) || 32; });
+    w.bytes(flags(MX.CHAR)); w.bytes(element(MI.INT32, i32s([r, c]))); w.bytes(nameEl); w.bytes(element(MI.UINT16, new Uint8Array(d.buffer)));
+  } else if (v.k === 'cell') {
+    w.bytes(flags(MX.CELL)); w.bytes(element(MI.INT32, i32s([v.r, v.c]))); w.bytes(nameEl);
+    for (const x of v.d) w.bytes(matrix(x, ''));
+  } else if (v.k === 'struct') {
+    // A table is saved as a plain struct of its columns.
+    const fields = [...v.f.keys()], len = Math.max(1, ...fields.map((f) => f.length)) + 1;
+    const fn = new Uint8Array(fields.length * len);
+    fields.forEach((f, i) => fn.set(new TextEncoder().encode(f), i * len));
+    w.bytes(flags(MX.STRUCT)); w.bytes(element(MI.INT32, i32s([1, 1]))); w.bytes(nameEl); w.bytes(element(MI.INT32, i32s([len]))); w.bytes(element(MI.INT8, fn));
+    for (const f of fields) w.bytes(matrix(v.f.get(f)!, ''));
+  } else throw new LabError(`“${name}” is a function handle: .mat files here keep numbers, text, cells and structs.`);
+  return element(MI.MATRIX, w.done());
+}
+export function writeMat(vars: [string, Value][]): Uint8Array {
+  const head = new Uint8Array(128);
+  head.set(new TextEncoder().encode(`MATLAB 5.0 MAT-file, Platform: UniVerse Lab, Created on: ${new Date().toUTCString()}`.padEnd(116, ' ').slice(0, 116)));
+  head[124] = 0x00; head[125] = 0x01; head[126] = 0x49; head[127] = 0x4d; // version 0x0100, "IM" (little-endian)
+  const w = new Writer();
+  w.bytes(head);
+  for (const [n, v] of vars) w.bytes(matrix(v, n));
+  return w.done();
+}
+function readNumbers(type: number, b: Uint8Array): number[] {
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), out: number[] = [];
+  const size = { [MI.INT8]: 1, [MI.UINT8]: 1, [MI.INT16]: 2, [MI.UINT16]: 2, [MI.INT32]: 4, [MI.UINT32]: 4, [MI.SINGLE]: 4, [MI.DOUBLE]: 8, [MI.INT64]: 8, [MI.UINT64]: 8, [MI.UTF8]: 1, [MI.UTF16]: 2, [MI.UTF32]: 4 }[type];
+  if (!size) throw new LabError('That .mat file holds a kind of number the Lab can’t read.');
+  for (let o = 0; o + size <= b.length; o += size) {
+    out.push(type === MI.INT8 ? dv.getInt8(o) : type === MI.UINT8 || type === MI.UTF8 ? dv.getUint8(o) : type === MI.INT16 ? dv.getInt16(o, true) : type === MI.UINT16 || type === MI.UTF16 ? dv.getUint16(o, true) : type === MI.INT32 ? dv.getInt32(o, true) : type === MI.UINT32 || type === MI.UTF32 ? dv.getUint32(o, true) : type === MI.SINGLE ? dv.getFloat32(o, true) : type === MI.DOUBLE ? dv.getFloat64(o, true) : type === MI.INT64 ? Number(dv.getBigInt64(o, true)) : Number(dv.getBigUint64(o, true)));
+  }
+  return out;
+}
+/** The data elements in a byte range: [type, data] each (with the short "small element" form). */
+function elements(b: Uint8Array): [number, Uint8Array][] {
+  const out: [number, Uint8Array][] = [];
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
+  let o = 0;
+  while (o + 8 <= b.length) {
+    const first = dv.getUint32(o, true);
+    if (first >>> 16) { const n = first >>> 16; out.push([first & 0xffff, b.subarray(o + 4, o + 4 + n)]); o += 8; continue; }
+    const n = dv.getUint32(o + 4, true);
+    if (o + 8 + n > b.length) throw new LabError('That .mat file is cut short.');
+    out.push([first, b.subarray(o + 8, o + 8 + n)]);
+    o += 8 + n + (first === MI.COMPRESSED ? 0 : pad8(n));
+  }
+  return out;
+}
+function readMatrix(b: Uint8Array): { name: string; value: Value } {
+  const els = elements(b);
+  const flags = readNumbers(MI.UINT32, els[0][1]);
+  const cls = flags[0] & 0xff, complex = !!(flags[0] & 0x0800), logical = !!(flags[0] & 0x0200);
+  const dims = readNumbers(els[1][0], els[1][1]);
+  const name = new TextDecoder().decode(els[2][1]);
+  const [r, c] = dims, p = dims.slice(2).reduce((s, x) => s * x, 1);
+  if (cls === MX.CELL) return { name, value: { k: 'cell', r, c, d: els.slice(3).map(([, x]) => readMatrix(x).value) } };
+  if (cls === MX.STRUCT) {
+    const len = readNumbers(els[3][0], els[3][1])[0], raw = els[4][1], fields: string[] = [];
+    for (let k = 0; k + len <= raw.length; k += len) fields.push(new TextDecoder().decode(raw.subarray(k, k + len)).replace(/\0+$/, ''));
+    if (r * c !== 1) throw new LabError(`“${name}” is a ${r}x${c} struct array: the Lab reads single structs.`);
+    return { name, value: { k: 'struct', f: new Map(fields.map((f, i) => [f, readMatrix(els[5 + i][1]).value])) } };
+  }
+  if (cls === MX.CHAR) {
+    const codes = readNumbers(els[3][0], els[3][1]);
+    const rows = Array.from({ length: r }, (_, i) => Array.from({ length: c }, (_, j) => String.fromCharCode(codes[i + j * r])).join(''));
+    return { name, value: str(rows.join('\n')) };
+  }
+  if (cls === MX.SPARSE || cls === MX.OBJECT) throw new LabError(`“${name}” is a ${cls === MX.SPARSE ? 'sparse matrix' : 'MATLAB object'}: the Lab can’t read those yet.`);
+  const re = readNumbers(els[3][0], els[3][1]);
+  const m = mat(r, c, re, logical);
+  if (p > 1 && r * c === 0) m.p = p;
+  if (complex && els[4]) m.im = Float64Array.from(readNumbers(els[4][0], els[4][1]));
+  return { name, value: m };
+}
+export function readMat(bytes: Uint8Array): [string, Value][] {
+  if (bytes.length < 128 || new TextDecoder().decode(bytes.subarray(0, 6)) !== 'MATLAB') throw new LabError('That isn’t a MATLAB .mat file (version 5 to 7.2; version 7.3 files are HDF5 and can’t be read).');
+  if (bytes[126] !== 0x49 || bytes[127] !== 0x4d) throw new LabError('That .mat file is big-endian: the Lab reads the usual little-endian ones.');
+  const out: [string, Value][] = [];
+  const walk = (b: Uint8Array) => {
+    for (const [type, data] of elements(b)) {
+      if (type === MI.COMPRESSED) { let inner: Uint8Array; try { inner = unzlibSync(data); } catch { throw new LabError('A compressed part of that .mat file couldn’t be opened.'); } walk(inner); }
+      else if (type === MI.MATRIX) { const { name, value } = readMatrix(data); out.push([name, value]); }
+    }
+  };
+  walk(bytes.subarray(128));
+  return out;
+}
+
+// ——— save and load ———
+type Vars = Map<string, Value>;
+const varsOf = (lab: Lab, frame: unknown): Vars => (frame as { vars?: Vars } | undefined)?.vars ?? lab.vars;
+def('save', (a, _n, lab, frame) => {
+  const words = a.map((v) => textOf(v));
+  const flags = words.filter((w) => w.startsWith('-')), rest = words.filter((w) => !w.startsWith('-'));
+  const name = rest[0] ? (/\.\w+$/.test(rest[0]) ? rest[0] : `${rest[0]}.mat`) : 'matlab.mat';
+  const vars = varsOf(lab, frame);
+  const pick = rest.slice(1);
+  const chosen = pick.length ? pick.map((n) => { const v = vars.get(n); if (!v) throw new LabError(`There’s no variable called “${n}” to save.`); return [n, v] as [string, Value]; }) : [...vars];
+  if (flags.includes('-ascii') || ext(name) === 'txt' || ext(name) === 'csv') {
+    const rows = chosen.flatMap(([, v]) => matRows(toMat(v)));
+    writeRows(lab, name, rows, ext(name) === 'csv' ? ',' : ' ');
+  } else store(lab).put(name, { bytes: writeMat(chosen) });
+  return [];
+});
+def('load', (a, nout, lab, frame) => {
+  const words = a.map((v) => textOf(v)).filter((w) => !w.startsWith('-'));
+  const name = words[0] ? (/\.\w+$/.test(words[0]) || store(lab).has(words[0]) ? words[0] : `${words[0]}.mat`) : 'matlab.mat';
+  const fs = store(lab);
+  let got: [string, Value][];
+  if (ext(name) === 'mat' || (fs.get(name).bytes.length >= 6 && new TextDecoder().decode(fs.get(name).bytes.subarray(0, 6)) === 'MATLAB')) {
+    got = readMat(fs.get(name).bytes);
+    const only = words.slice(1);
+    if (only.length) got = got.filter(([n]) => only.includes(n));
+  } else {
+    // A text file of numbers becomes one variable named after the file.
+    const base = (name.split('/').pop() ?? name).replace(/\.[^.]*$/, '').replace(/\W/g, '_').replace(/^(\d)/, 'x$1') || 'data';
+    got = [[base, numbers(splitRows(fs.text(name)))]];
+  }
+  if (nout > 0) return [{ k: 'struct', f: new Map(got) }];
+  const vars = varsOf(lab, frame);
+  for (const [n, v] of got) vars.set(n, v);
+  return [];
+});
+
+// ——— Pictures ———
+def('imread', (a, _n, lab) => {
+  const f = store(lab).get(textOf(a[0]));
+  if (!f.pixels) throw new LabError('That file isn’t a picture the Lab could open (PNG, JPEG, GIF, WebP or BMP).');
+  const { w, h, rgba } = f.pixels, n = w * h, d = new Float64Array(n * 3);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) { const s = (y * w + x) * 4, t = y + x * h; d[t] = rgba[s]; d[t + n] = rgba[s + 1]; d[t + 2 * n] = rgba[s + 2]; }
+  return [mat(h, w, d)];
+});
+def('imwrite', (a, _n, lab) => {
+  const I = toMat(a[0]), name = textOf(a[1]);
+  if (ext(name) !== 'png') throw new LabError('imwrite saves PNG pictures here: name the file something.png.');
+  const P = pages(I), h = I.r, w = I.c, n = h * w;
+  if (P !== 1 && P !== 3) throw new LabError('imwrite saves a grey picture (a matrix) or a colour one (rows × columns × 3).');
+  const top = Math.max(0, ...I.d.filter(Number.isFinite)), k = top > 1 ? 1 : 255;
+  const rgba = new Uint8Array(n * 4);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const s = y + x * h, o = (y * w + x) * 4, ch = (q: number) => Math.round(Math.max(0, Math.min(255, I.d[s + (P === 3 ? q : 0) * n] * k)));
+    rgba[o] = ch(0); rgba[o + 1] = ch(1); rgba[o + 2] = ch(2); rgba[o + 3] = 255;
+  }
+  const bytes = Uint8Array.from(atob(png(w, h, rgba).split(',')[1]), (ch) => ch.charCodeAt(0));
+  store(lab).put(name, { bytes, pixels: { w, h, rgba } });
+  return [];
+});
+
+// ——— Text files: fopen, fprintf, fgetl… ———
+def('fopen', (a, _n, lab) => [mat(1, 1, [store(lab).fopen(textOf(a[0]), a[1] ? textOf(a[1]) : 'r')])]);
+def('fclose', (a, _n, lab) => { store(lab).fclose(a[0]?.k === 'str' ? 'all' : scalar(a[0])); return [mat(1, 1, [0])]; });
+const plainPrint = BUILTINS.fprintf;
+def('fprintf', (a, n, lab, frame) => {
+  // fprintf(fid, format, …): 1 and 2 are the command window; others are files opened with fopen.
+  if (a.length >= 2 && a[0].k === 'mat' && numel(a[0]) === 1 && a[1].k === 'str') {
+    const fid = a[0].d[0];
+    if (fid === 1 || fid === 2) return plainPrint(a.slice(1), n, lab, frame);
+    const h = store(lab).handle(fid);
+    if (!h.write) throw new LabError('That file was opened for reading: open it with fopen(name, \'w\') to write.');
+    h.text += textOf(BUILTINS.sprintf(a.slice(1), 1, lab, frame)[0]);
+    return [];
+  }
+  return plainPrint(a, n, lab, frame);
+});
+function nextLine(lab: Lab, fid: number, keep: boolean): Value {
+  const h = store(lab).handle(fid);
+  if (h.pos >= h.text.length) return mat(1, 1, [-1]);
+  const end = h.text.indexOf('\n', h.pos), stop = end < 0 ? h.text.length : end + 1;
+  const line = h.text.slice(h.pos, stop);
+  h.pos = stop;
+  return str(keep ? line : line.replace(/\r?\n$/, ''));
+}
+def('fgetl', (a, _n, lab) => [nextLine(lab, scalar(a[0]), false)]);
+def('fgets', (a, _n, lab) => [nextLine(lab, scalar(a[0]), true)]);
+def('feof', (a, _n, lab) => { const h = store(lab).handle(scalar(a[0])); return [{ ...mat(1, 1, [h.pos >= h.text.length ? 1 : 0]), logical: true }]; });
+def('frewind', (a, _n, lab) => { store(lab).handle(scalar(a[0])).pos = 0; return []; });
+def('fscanf', (a, _n, lab) => {
+  // The numbers left in the file, as a column (or shaped by a size [r c]).
+  const h = store(lab).handle(scalar(a[0]));
+  const nums = (h.text.slice(h.pos).match(/[-+]?(\d+\.?\d*|\.\d+)([eE][-+]?\d+)?|[-+]?(Inf|NaN)/g) ?? []).map(Number);
+  h.pos = h.text.length;
+  const size = a[2] ? [...toMat(a[2]).d] : null;
+  if (size && size.length === 2 && Number.isFinite(size[1])) { const r = size[0], c = Math.ceil(nums.length / r); return [mat(r, c, [...nums, ...new Array(r * c - nums.length).fill(0)])]; }
+  return [mat(nums.length, 1, nums)];
+});
+
+// ——— The folder ———
+def('dir ls', (a, nout, lab) => {
+  const fs = store(lab), pat = a[0] ? textOf(a[0]) : '*';
+  const re = new RegExp(`^${pat.replace(/[.+^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*').replace(/\?/g, '.')}$`, 'i');
+  const list = [...fs.files].filter(([n]) => re.test(n)).sort(([p], [q]) => p.localeCompare(q));
+  if (nout > 0) return [{ k: 'cell', r: list.length, c: 1, d: list.map(([n]) => str(n)) }];
+  lab.host.out(list.length ? `${list.map(([n, f]) => `${n}  (${f.bytes.length < 1024 ? `${f.bytes.length} B` : `${(f.bytes.length / 1024).toFixed(1)} KB`})`).join('\n')}\n` : 'No files yet: upload some in Files, or save with writematrix, save or imwrite.\n');
+  return [];
+});
+def('delete', (a, _n, lab) => { for (const v of a) store(lab).remove(textOf(v)); return []; });
+def('isfile', (a, _n, lab) => [{ ...mat(1, 1, [store(lab).has(textOf(a[0])) ? 1 : 0]), logical: true }]);
+def('type', (a, _n, lab) => { lab.host.out(`${store(lab).text(textOf(a[0]))}\n`); return []; });
+def('copyfile movefile', (a, _n, lab) => { const fs = store(lab), from = textOf(a[0]), to = textOf(a[1]); fs.put(to, fs.get(from)); return []; });
+BUILTINS.movefile = (a, n, lab) => { BUILTINS.copyfile(a, n, lab); store(lab).remove(textOf(a[0])); return []; };
+def('pwd cd', (_a, nout, lab) => { if (nout > 0) return [str('/lab')]; lab.host.out('/lab (your Lab files)\n'); return []; });
+
