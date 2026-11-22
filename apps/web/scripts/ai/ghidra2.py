@@ -15,6 +15,10 @@
 # minimind and after that start from there") instead of pretraining, then teach it to chat as Ghidra:
 #   python3 scripts/ai/ghidra2.py adopt --hf MINIMIND3_FOLDER --dir DIR           (its config, weights, word-pieces)
 #   python3 scripts/ai/ghidra2.py chat --out DIR/chat.jsonl --oasst oasst1.parquet && python3 scripts/ai/ghidra2.py sft --dir DIR --steps N
+# Teach it to think first, the way DeepSeek-R1's answers do (M372; the owner, 22 Nov: "i want to build my own deepseek ai"):
+#   python3 scripts/ai/ghidra2.py reason --out DIR/reason.jsonl --gsm8k train.parquet   (GSM8K, MIT: worked maths steps)
+#   python3 scripts/ai/ghidra2.py sft --dir DIR --stage think --data chat.jsonl,reason.jsonl --steps N
+#   python3 scripts/ai/ghidra2.py score --dir DIR --gsm8k test.parquet --n 100           (how many it gets right)
 # Long runs: --until N stops after step N, the next run with the same command carries on (DIR/state-*.pt).
 import argparse, json, math, os, time
 from pathlib import Path
@@ -185,6 +189,26 @@ def cmd_chat(a):
     print(f'{len(pairs)} questions and answers → {a.out}')
 
 
+# ─── Thinking lessons (M372) ───────────────────────────────────────────────────────────────────────
+def gsm8k(path):
+    """GSM8K's problems as (question, steps, final number); its calculator notes <<…>> taken out."""
+    import re
+    import pyarrow.parquet as pq
+    out = []
+    for r in pq.read_table(path).to_pylist():
+        steps, _, final = r['answer'].partition('####')
+        steps = re.sub(r'<<[^>]*>>', '', steps).strip()
+        out.append((r['question'].strip(), steps, final.strip().replace(',', '')))
+    return out
+
+def cmd_reason(a):
+    rows = [{'q': q, 'think': steps, 'a': f'The answer is {final}.', 'w': 1} for q, steps, final in gsm8k(a.gsm8k)]
+    Path(a.out).parent.mkdir(parents=True, exist_ok=True)
+    with open(a.out, 'w', encoding='utf-8') as fh:
+        for r in rows: fh.write(json.dumps(r, ensure_ascii=False) + '\n')
+    print(f'{len(rows)} thinking lessons → {a.out}')
+
+
 # ─── Training ──────────────────────────────────────────────────────────────────────────────────────
 def device():
     return 'cuda' if torch.cuda.is_available() else 'mps' if torch.backends.mps.is_available() else 'cpu'
@@ -215,23 +239,28 @@ def pretrain_data(a, tok, d):
     split = int(len(data) * 0.99)
     return data[:split], data[split:]
 
-def chat_data(tok, d, block, chat='ghidra'):
+def chat_data(tok, d, block, chat='ghidra', files=('chat.jsonl',)):
     """Each pair in the model's chat shape (ours: <|user|>question<|end|><|ghidra|>answer<|end|>; MiniMind-3's: Qwen's
-    <|im_start|>user … <|im_end|> <|im_start|>assistant, an empty thinking block, the answer, <|im_end|>); the model
-    learns only the answer part."""
+    <|im_start|>user … <|im_end|> <|im_start|>assistant, a thinking block, the answer, <|im_end|>); the model learns only
+    the answer part. A lesson with `think` (M372) learns its thinking too: <think>steps</think> then the answer; the rest
+    keep an empty thinking block in the part it doesn't learn."""
     rows = []
-    for line in open(d / 'chat.jsonl', encoding='utf-8'):
-        p = json.loads(line)
-        if chat == 'qwen':
-            head = tok.encode(f"<|im_start|>user\n{p['q']}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n").ids
-            ans = tok.encode(p['a']).ids + [tok.token_to_id('<|im_end|>')]
-        else:
-            u, g, e = (tok.token_to_id(x) for x in ('<|user|>', '<|ghidra|>', '<|end|>'))
-            head, ans = [u] + tok.encode(p['q']).ids + [e, g], tok.encode(' ' + p['a']).ids + [e]
-        x = head + ans
-        if len(x) > block + 1: continue
-        mask = [0] * len(head) + [1] * len(ans)
-        rows += [(x, mask)] * p.get('w', 1)
+    for name in files:
+        for line in open(d / name, encoding='utf-8'):
+            p = json.loads(line)
+            if chat == 'qwen':
+                head = f"<|im_start|>user\n{p['q']}<|im_end|>\n<|im_start|>assistant\n"
+                if p.get('think'): ans_text = f"<think>\n{p['think']}\n</think>\n\n{p['a']}"
+                else: head, ans_text = head + "<think>\n\n</think>\n\n", p['a']
+                head = tok.encode(head).ids
+                ans = tok.encode(ans_text).ids + [tok.token_to_id('<|im_end|>')]
+            else:
+                u, g, e = (tok.token_to_id(x) for x in ('<|user|>', '<|ghidra|>', '<|end|>'))
+                head, ans = [u] + tok.encode(p['q']).ids + [e, g], tok.encode(' ' + p['a']).ids + [e]
+            x = head + ans
+            if len(x) > block + 1: continue
+            mask = [0] * len(head) + [1] * len(ans)
+            rows += [(x, mask)] * p.get('w', 1)
     order = np.random.default_rng(7).permutation(len(rows))
     rows = [rows[i] for i in order]
     n = max(1, len(rows) // 50)
@@ -254,12 +283,13 @@ def batch_chat(rows, c, dev, pad):
 
 def train(a, stage):
     d = Path(a.dir); tok = load_tok(d)
-    state_file = d / f'state-{stage}.pt'
+    name = getattr(a, 'stage', None) or stage  # the chat stages can be named (sft, think…), each with its own state file
+    state_file = d / f'state-{name}.pt'
     if stage == 'pretrain':
         c = dict(PRESETS[a.preset], vocab=tok.get_vocab_size())
         start = None
-    else:  # the chat stage carries on from the pretrained model
-        start = torch.load(d / 'state-pretrain.pt', map_location='cpu', weights_only=False)
+    else:  # a chat stage carries on from --from's state (default: the pretrained or adopted model)
+        start = torch.load(d / f"state-{getattr(a, 'start_from', None) or 'pretrain'}.pt", map_location='cpu', weights_only=False)
         c = dict(start['config'])
     if stage == 'sft': c['lr'] = c['lr'] / 3  # the chat stage nudges what pretraining learned, gently
     for k in ('batch', 'lr', 'block'):
@@ -278,7 +308,7 @@ def train(a, stage):
         if s['opt']: opt.load_state_dict(s['opt'])
         print(f'resumed {stage} at step {s["step"]}', flush=True)
     if stage == 'pretrain': train_d, val_d = pretrain_data(a, tok, d)
-    else: train_d, val_d = chat_data(tok, d, c['block'], c.get('chat', 'ghidra'))
+    else: train_d, val_d = chat_data(tok, d, c['block'], c.get('chat', 'ghidra'), tuple((getattr(a, 'data', None) or 'chat.jsonl').split(',')))
     pad = tok.token_to_id('<|endoftext|>')
     get = (lambda dd: batch_lm(dd, c, dev)) if stage == 'pretrain' else (lambda dd: batch_chat(dd, c, dev, pad))
     amp = torch.autocast('cuda', dtype=torch.bfloat16) if dev == 'cuda' else torch.autocast('cpu', enabled=False)
@@ -293,7 +323,7 @@ def train(a, stage):
 
     def save(step):
         tmp = state_file.with_suffix('.tmp')
-        torch.save({'model': model.state_dict(), 'opt': opt.state_dict(), 'step': step, 'config': c}, tmp); tmp.replace(state_file)
+        torch.save({'model': model.state_dict(), 'opt': opt.state_dict(), 'step': step, 'config': c, 'from': (start or {}).get('from')}, tmp); tmp.replace(state_file)
 
     warm = 100 if stage == 'sft' else 500
     print(f'{stage} on {dev}: {params:,} numbers, {c["layers"]} layers × {c["dim"]}, {c["vocab"]} word-pieces', flush=True)
@@ -310,11 +340,49 @@ def train(a, stage):
             print(f'step {step} val {val_loss():.3f}', flush=True); save(step)
 
 
+# ─── How many school maths problems it gets right (M372) ──────────────────────────────────────────
+def to_hf(model):
+    """Our model as the standard library's Qwen3 (the same design), for fast writing with a key/value memory."""
+    from transformers import Qwen3Config, Qwen3ForCausalLM
+    c = model.c
+    hf = Qwen3ForCausalLM(Qwen3Config(vocab_size=c['vocab'], hidden_size=c['dim'], intermediate_size=c['ffn'], num_hidden_layers=c['layers'], num_attention_heads=c['heads'],
+                                      num_key_value_heads=c['kv'], head_dim=c['head_dim'], rope_theta=c.get('theta', 1e6), rms_norm_eps=1e-6, tie_word_embeddings=True, max_position_embeddings=4096))
+    w = {'model.embed_tokens.weight': model.tok.weight, 'model.norm.weight': model.norm.weight, 'lm_head.weight': model.tok.weight}
+    for i, b in enumerate(model.blocks):
+        for ours, theirs in HF_NAMES.items(): w[f'model.layers.{i}.{theirs}.weight'] = getattr(b, ours).weight
+    hf.load_state_dict({k: v.detach().clone() for k, v in w.items()}, strict=True)
+    return hf.eval()
+
+def final_number(text):
+    import re
+    after = text.split('</think>')[-1]
+    m = re.findall(r'-?\d[\d,]*\.?\d*', after) or re.findall(r'-?\d[\d,]*\.?\d*', text)
+    return m[-1].replace(',', '').rstrip('.') if m else None
+
+@torch.no_grad()
+def cmd_score(a):
+    d = Path(a.dir); tok = load_tok(d)
+    s = torch.load(d / f'state-{a.stage}.pt', map_location='cpu', weights_only=False)
+    model = GPT(s['config']); model.load_state_dict({k.replace('_orig_mod.', ''): v for k, v in s['model'].items()})
+    hf = to_hf(model)
+    probs = gsm8k(a.gsm8k)[: a.n]
+    right, shown = 0, 0
+    for q, _, final in probs:
+        prompt = f"<|im_start|>user\n{q}<|im_end|>\n<|im_start|>assistant\n<think>\n"
+        ids = torch.tensor([tok.encode(prompt).ids])
+        out = hf.generate(ids, max_new_tokens=a.tokens, do_sample=False, eos_token_id=tok.token_to_id('<|im_end|>'), pad_token_id=tok.token_to_id('<|endoftext|>'))
+        text = tok.decode(out[0, ids.shape[1]:].tolist(), skip_special_tokens=False)
+        ok = final_number(text) == final
+        right += ok
+        if shown < 2: print(f'Q: {q[:120]}\nA: {text[:400]!r}\n→ {"right" if ok else "wrong"} (wanted {final})\n', flush=True); shown += 1
+    print(f'{a.stage} (step {s["step"]}): {right} of {len(probs)} right ({100 * right / len(probs):.1f}%)', flush=True)
+
+
 # ─── For the browser ───────────────────────────────────────────────────────────────────────────────
 @torch.no_grad()
 def cmd_export(a):
     d = Path(a.dir); tok = load_tok(d)
-    stage = 'sft' if (d / 'state-sft.pt').exists() and not a.pretrained else 'pretrain'
+    stage = a.stage or ('sft' if (d / 'state-sft.pt').exists() and not a.pretrained else 'pretrain')
     s = torch.load(d / f'state-{stage}.pt', map_location='cpu', weights_only=False)
     model = GPT(s['config']); model.load_state_dict({k.replace('_orig_mod.', ''): v for k, v in s['model'].items()}); model.eval()
     blobs, shapes, at = [], [], 0
@@ -359,11 +427,16 @@ for name in ('pretrain', 'sft'):
     p.add_argument('--every', type=int, default=500); p.add_argument('--batch', type=int); p.add_argument('--lr', type=float); p.add_argument('--block', type=int)
     p.add_argument('--no-compile', action='store_true')
     if name == 'pretrain': p.add_argument('--preset', choices=PRESETS, default='small'); p.add_argument('texts', nargs='+')
+    else: p.add_argument('--stage', help='name of this chat stage (default sft)'); p.add_argument('--from', dest='start_from', help='the stage to start from (default pretrain)'); p.add_argument('--data', help='lesson files in DIR, comma-separated (default chat.jsonl)')
+p = sub.add_parser('reason'); p.add_argument('--out', required=True); p.add_argument('--gsm8k', required=True)
+p = sub.add_parser('score'); p.add_argument('--dir', required=True); p.add_argument('--gsm8k', required=True); p.add_argument('--stage', default='sft'); p.add_argument('--n', type=int, default=100); p.add_argument('--tokens', type=int, default=320)
 p = sub.add_parser('adopt'); p.add_argument('--hf', required=True); p.add_argument('--dir', required=True)
-p = sub.add_parser('export'); p.add_argument('--dir', required=True); p.add_argument('--to', required=True); p.add_argument('--pretrained', action='store_true')
+p = sub.add_parser('export'); p.add_argument('--dir', required=True); p.add_argument('--to', required=True); p.add_argument('--pretrained', action='store_true'); p.add_argument('--stage')
 a = ap.parse_args()
 if a.cmd == 'tokenizer': cmd_tokenizer(a)
 elif a.cmd == 'chat': cmd_chat(a)
 elif a.cmd == 'adopt': cmd_adopt(a)
+elif a.cmd == 'reason': cmd_reason(a)
+elif a.cmd == 'score': cmd_score(a)
 elif a.cmd in ('pretrain', 'sft'): train(a, a.cmd)
 else: cmd_export(a)
