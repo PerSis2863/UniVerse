@@ -3,9 +3,11 @@
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { Compartment, EditorState, Prec, RangeSet, StateEffect, StateField } from '@codemirror/state';
-import { Decoration, gutter, GutterMarker, hoverTooltip, keymap, type DecorationSet } from '@codemirror/view';
+import { Decoration, gutter, GutterMarker, hoverTooltip, keymap, ViewPlugin, WidgetType, type DecorationSet, type ViewUpdate } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
-import { lintGutter, setDiagnostics } from '@codemirror/lint';
+import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/lint';
+import { lintScript } from '@/lib/lab/lint';
+import { explainScript } from '@/lib/lab/explain';
 import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
 
 // M389: Hyperion's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
@@ -34,6 +36,37 @@ const breaks = StateField.define<RangeSet<GutterMarker>>({
   },
 });
 
+// Explain (M399): what each line does, in plain words under it (a block widget per line, indented like the code).
+class Note extends WidgetType {
+  constructor(readonly text: string, readonly indent: number) { super(); }
+  eq(o: Note) { return o.text === this.text && o.indent === this.indent; }
+  toDOM() { const d = document.createElement('div'); d.className = 'cm-explain'; d.style.paddingInlineStart = `calc(${this.indent}ch + 6px)`; d.textContent = this.text; return d; }
+  ignoreEvent() { return true; }
+}
+const setNotes = StateEffect.define<Map<number, string> | null>();
+const notes = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    let d = deco.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setNotes)) {
+      const doc = tr.state.doc;
+      d = !e.value ? Decoration.none : Decoration.set([...e.value].filter(([l]) => l <= doc.lines).sort((a, b) => a[0] - b[0]).map(([l, t]) => {
+        const line = doc.line(l);
+        return Decoration.widget({ widget: new Note(t, /^\s*/.exec(line.text)![0].length), block: true, side: 1 }).range(line.to);
+      }));
+    }
+    return d;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+/** The explanations worked out again (null: Explain is off). Code that can't be read keeps the last ones. */
+function explainNow(v: EditorView, on: boolean, isFn: (n: string) => boolean) {
+  if (!on) { v.dispatch({ effects: setNotes.of(null) }); return; }
+  const src = v.state.doc.toString(), { prog } = lintScript(src, isFn);
+  if (prog) v.dispatch({ effects: setNotes.of(explainScript(src, prog, isFn)) });
+}
+
 const look = (dark: boolean) => EditorView.theme({
   '&': { height: '100%', fontSize: '13px', backgroundColor: 'transparent', color: dark ? '#e4e4e7' : '#18181b' },
   '.cm-scroller': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', lineHeight: '1.65' },
@@ -57,11 +90,16 @@ const look = (dark: boolean) => EditorView.theme({
   '.cm-bp-dot': { width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#dc2626' },
   '.cm-lab-help': { padding: '6px 10px', maxWidth: '24rem', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.5' },
   '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy #dc2626', textUnderlineOffset: '3px' },
+  '.cm-lintRange-warning': { backgroundImage: 'none', textDecoration: 'underline wavy #d97706', textUnderlineOffset: '3px' },
+  '.cm-lintRange-info': { backgroundImage: 'none', textDecoration: `underline dotted ${dark ? '#a78bfa' : '#7c3aed'}`, textUnderlineOffset: '3px' },
+  '.cm-diagnostic': { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.5', maxWidth: '26rem', whiteSpace: 'normal' },
+  '.cm-diagnosticAction': { backgroundColor: dark ? '#7c3aed' : '#6d28d9', borderRadius: '6px', padding: '1px 8px', fontSize: '12px' },
+  '.cm-explain': { fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.45', color: dark ? '#a1a1aa' : '#52525b', fontStyle: 'italic', paddingBlock: '0 3px', whiteSpace: 'normal' },
 }, { dark });
 
 const NONE: number[] = [];
 
-export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak }: {
+export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false }: {
   value: string;
   onChange: (code: string) => void;
   onRun: () => void;
@@ -80,16 +118,27 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
   /** Lines with a breakpoint, and what a click beside a line number does. */
   breakpoints?: number[];
   onToggleBreak?: (line: number) => void;
+  /** Whether a name is a function (the checker and the explanations; M399). */
+  isFn: (name: string) => boolean;
+  /** Explain: what each line does, under it. */
+  explain?: boolean;
 }) {
   const host = useRef<HTMLDivElement>(null), view = useRef<EditorView | null>(null);
-  const slots = useRef({ theme: new Compartment(), lang: new Compartment(), label: new Compartment() });
-  const live = useRef({ onChange, onRun, vars, describe, onToggleBreak });
+  const slots = useRef({ theme: new Compartment(), lang: new Compartment(), label: new Compartment(), wrap: new Compartment() });
+  const live = useRef({ onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain });
   const first = useRef({ value, dark, label });
-  useEffect(() => { live.current = { onChange, onRun, vars, describe, onToggleBreak }; });
+  useEffect(() => { live.current = { onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain }; });
 
   // The editor is made once; later props reach it through the effects below.
   useEffect(() => {
     const s = slots.current, { value: doc, dark: night, label: name } = first.current;
+    // Explain keeps up with the typing, a moment after it stops.
+    const explainer = ViewPlugin.fromClass(class {
+      timer = 0;
+      constructor(readonly v: EditorView) {}
+      update(u: ViewUpdate) { if (!u.docChanged || !live.current.explain) return; clearTimeout(this.timer); this.timer = window.setTimeout(() => explainNow(this.v, live.current.explain, live.current.isFn), 400); }
+      destroy() { clearTimeout(this.timer); }
+    });
     const v = new EditorView({
       parent: host.current!,
       state: EditorState.create({
@@ -102,6 +151,22 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
           s.lang.of([matlab, matlabIndent]),
           matlab.data.of({ autocomplete: completions(() => live.current.vars, (n) => live.current.describe(n)) }),
           lintGutter(),
+          // The checker (M399): a moment after typing stops, what a careful reader would point out, fixes included;
+          // the last run's error stays on its line until the code changes.
+          linter((v) => {
+            const doc = v.state.doc, src = doc.toString(), out: Diagnostic[] = [];
+            for (const p of lintScript(src, live.current.isFn).problems) {
+              const fix = p.fix, d: Diagnostic = { from: p.from, to: Math.min(p.to, doc.length), severity: p.severity, message: p.message };
+              if (fix) d.actions = [{ name: fix.label, apply: (view, from) => view.dispatch({ changes: { from: from + (fix.from - p.from), to: from + (fix.to - p.from), insert: fix.insert } }) }];
+              out.push(d);
+            }
+            const err = live.current.error;
+            if (err && err.line >= 1 && err.line <= doc.lines) out.push({ from: doc.line(err.line).from, to: Math.max(doc.line(err.line).from, doc.line(err.line).to), severity: 'error', message: err.message });
+            return out;
+          }, { delay: 450 }),
+          notes,
+          explainer,
+          s.wrap.of([]),
           traceLine,
           breaks,
           gutter({ class: 'cm-breakpoints', renderEmptyElements: true, markers: (v) => v.state.field(breaks), initialSpacer: () => dot, domEventHandlers: { mousedown: (v, line) => { live.current.onToggleBreak?.(v.state.doc.lineAt(line.from).number); return true; } } }),
@@ -156,13 +221,15 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
     v.dispatch({ effects });
   }, [traceAt]);
   useEffect(() => { view.current?.dispatch({ effects: setBreaks.of(breakpoints) }); }, [breakpoints]);
+  // A new run's error (or none), or the engine's names arriving: check again now.
+  useEffect(() => { if (view.current) forceLinting(view.current); }, [error, namesVersion]);
   useEffect(() => {
     const v = view.current;
     if (!v) return;
-    const doc = v.state.doc;
-    const diags = error && error.line >= 1 && error.line <= doc.lines ? [{ from: doc.line(error.line).from, to: Math.max(doc.line(error.line).from, doc.line(error.line).to), severity: 'error' as const, message: error.message }] : [];
-    v.dispatch(setDiagnostics(v.state, diags));
-  }, [error]);
+    // While explaining, long lines wrap so every explanation stays in view.
+    v.dispatch({ effects: slots.current.wrap.reconfigure(explain ? EditorView.lineWrapping : []) });
+    explainNow(v, explain, live.current.isFn);
+  }, [explain, namesVersion]);
 
   return <div ref={host} className="min-h-0 flex-1 overflow-hidden [&_.cm-editor]:h-full" />;
 }

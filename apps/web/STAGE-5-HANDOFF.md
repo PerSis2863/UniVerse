@@ -10805,3 +10805,22 @@ it was shared as one) and clears the `#` from the address. Also: `src/lib/qr.ts`
 computed (`alignPositions`, version 32's step 26), 13-bit counts for alphanumeric past version 26; `qr-big.test.ts`
 reads codes back with jsQR at every size. Not built: links that point at a stored copy (they would need the server),
 sharing data files with a script (only the code travels).
+
+## M399 (22 Nov): Hyperion code checker and Explain
+
+The fourth of the owner's 20 big features: a checker that reads the code without running it, joined with plain-English
+explanations of every line. `src/lib/lab/lint.ts` `lintScript(src, isFn)` → `{ problems, prog }`: a parse error where it
+is; a name read before it has a value and isn't a function (with "Did you mean …" and a fix when a defined name is within
+two letters); inside a loop, a read under an if is let pass (it may be last pass's value), so `total = total + k` is
+caught without false alarms; a variable that hides a function (info); a loop line that prints every pass (fix: add `;`
+before any comment, `codeEnd`); an array grown in a loop it wasn't made before (info); `==` on text (use strcmp) and on
+decimals (info); code after return / break / continue; inside functions, values never used afterwards (scripts are
+skipped, their variables live on in the workspace). `syms`, `load` and `eval` stop the "no value" check where they make
+names it can't see. `src/lib/lab/explain.ts` `explainScript(src, prog, isFn)` → line → sentence: assignments ("x: …"),
+calls (the help line of the function, then the values given for its parameters, read from the help syntax), loops,
+conditions, commands, function headers; `exprText` writes an expression back as code. Editor (`LabEditor.tsx`):
+CodeMirror's `linter` (450 ms after typing stops) carries the checker and the last run's error (`forceLinting` when either
+changes); fixes are the diagnostics' actions; Explain (a toggle in the name row, Code view) shows each line's sentence as a
+block widget under it (`notes` field, `explainer` plugin 400 ms after typing), and wraps long lines meanwhile. `isFn` is
+the help's names plus the engine's (`builtinNames`). Not built: checks across files, type checking, fixes for the
+text and decimal comparisons (only the advice).

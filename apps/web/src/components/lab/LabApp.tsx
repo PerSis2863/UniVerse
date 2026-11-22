@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -223,6 +223,9 @@ export function LabApp() {
   };
   /** A function's help for the editor (beside suggestions and on hover). */
   const describe = (n: string) => { const e = HELP.get(n); return e ? `${e.syntax}\n${e.text}` : undefined; };
+  // M399: a name is a function when the help or the engine knows it (the checker and Explain).
+  const isFn = (n: string) => HELP.has(n) || builtinNames.has(n);
+  const [explainOn, setExplainOn] = useState(false);
   /** The variable viewer: open a variable (or a part of it), go further in, page through. */
   const inspect = (q: Inspect | null) => { looking.current = q; if (!q) { setShown(null); return; } worker.current?.postMessage({ inspect: q } satisfies ToLab); };
   const removeFile = (name: string) => {
@@ -432,6 +435,7 @@ export function LabApp() {
           <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
         </label>
         <button type="button" className={btn} aria-expanded={sharing} onClick={() => setSharing((v) => !v)}><Share2 className="h-3.5 w-3.5" aria-hidden />Share</button>
+        {!noteView[open] && <button type="button" className={cn(btn, explainOn && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-pressed={explainOn} onClick={() => setExplainOn((v) => !v)} title="What each line does, in plain words under it"><Lightbulb className="h-3.5 w-3.5" aria-hidden />Explain</button>}
         <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
         <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
@@ -465,7 +469,7 @@ export function LabApp() {
       )}
       {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
           onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
-        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion}
+        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn}
         traceAt={watching && step ? step.line : null} breakpoints={marks}
         onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />}
     </section>
