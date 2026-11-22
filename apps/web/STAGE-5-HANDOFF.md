@@ -11245,3 +11245,23 @@ built this in rtx 4090 and i am ok to work for 10 dollar plan credit". Hyperion 
   model, the instructions (`HYPERION_SYSTEM`, shared with the kit) and `codeOf`.
 - **Not yet:** a browser check of Ask AI (left until Ghidra 2's training stops using the machine); Simulate (Structures,
   Heat, Fluids, Circuits) is on `claude/funny-galileo-y4mz9r`, not `main`, so the AI doesn't set up simulations yet.
+
+## M431 (built as M372 on `claude/youthful-fermi-sbdtcp`): Ghidra 2 thinks first, and writes; the trained model committed (22 Nov)
+
+The owner (22 Nov): "continue with the thinking training", then "do all this training for next 5 hours".
+
+- **The thinking stage:** `sft --stage think --from sft --data chat.jsonl,reason.jsonl,write.jsonl --steps 3600 --every 300`
+  on this machine's processor (~4.5 s a step, 3 h 30 min). Lessons: Ghidra's UniVerse questions and oasst1 (3,450 rows),
+  GSM8K's 7,473 worked answers in `<think>` (MIT), and **6,389 everyday writing lessons** (new `ghidra2.py write`:
+  HuggingFaceTB/smol-smoltalk, Apache-2.0; first question and answer, short enough, answers naming other assistants
+  dropped, at most 1,600 of each kind). The best checkpoint was kept by val loss (scratch `keep-best.sh`): step 3,000,
+  val 1.172 (the val set is small and noisy: 1.22–1.45 between saves).
+- **Score on 100 GSM8K test problems:** the chat stage 0 of 100 (it wrote empty lines), the thinking stage **4 of 100**.
+  It now writes steps then "The answer is N", and the email no longer loops on a word (it has a subject, greeting and
+  sign-off; the content is still muddled). A 64 M model can't do much more: the graphics-card kit
+  (`scripts/ai/ghidra2-gpu.sh`, now starting from MiniMind-3 with chat, thinking and writing) is the way to go further.
+- **Committed:** `public/ai/ghidra2-0…3.bin` and `ghidra2.json` (64.2 MB, int8, step 3,000); `ghidra2.test.ts` now reads
+  the parts and passes (word-pieces identical, scores within 0.1). `next.config.ts` keeps `ai/**` out of the offline
+  cache's install list (before this, every visitor's device would have downloaded the models when the app installed).
+- **Not yet:** Ghidra 2 in the console card and as the corner's backup (`ghidra-device.ts` still uses the old letter
+  model: switch to `loadGhidra2` + `answer()` on a worker, download on first use with a size warning).

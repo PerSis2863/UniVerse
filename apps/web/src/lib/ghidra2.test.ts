@@ -10,8 +10,8 @@ const has = existsSync(join(dir, 'ghidra2.json'));
 
 describe.skipIf(!has)('Ghidra 2 (M427)', () => {
   const meta = has ? (JSON.parse(readFileSync(join(dir, 'ghidra2.json'), 'utf8')) as Ghidra2Meta) : null!;
-  const file = has ? readFileSync(join(dir, 'ghidra2.bin')) : null!;
-  const m = has ? makeGhidra2(meta, file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength)) : null!;
+  const buf = (name: string) => { const f = readFileSync(join(dir, name)); return f.buffer.slice(f.byteOffset, f.byteOffset + f.byteLength) as ArrayBuffer; };
+  const m = has ? makeGhidra2(meta, meta.parts ? meta.parts.map((_, i) => buf(`ghidra2-${i}.bin`)) : buf('ghidra2.bin')) : null!;
 
   it('splits text into the same word-pieces as the training script, and back', () => {
     expect(m.pieces.encode(meta.check.prompt)).toEqual(meta.check.ids);
