@@ -5,7 +5,6 @@ import { toast } from 'sonner';
 import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
 import { LabText } from './LabText';
@@ -32,8 +31,6 @@ import { builtinNames } from './matlab-lang';
 // Phones get the same parts as tabs.
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
-type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
-const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
 type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
@@ -59,7 +56,7 @@ const QR_MAX = 2300;
 const noteKey = (script: number, code: string) => `${script}\u0000${code}`;
 
 export function LabApp() {
-  const dark = useDarkMode(), wide = useMedia('(min-width: 1024px)');
+  const dark = useDarkMode();
   const kept = useSyncExternalStore(() => () => {}, () => { try { return localStorage.getItem(KEEP) ?? ''; } catch { return ''; } }, () => '');
   const [scripts, setScripts] = useState<Script[] | null>(null);
   const list = scripts ?? (kept ? read() : EXAMPLES);
@@ -72,9 +69,6 @@ export function LabApp() {
   const [cmd, setCmd] = useState('');
   const [hist, setHist] = useState<string[]>([]);
   const [hi, setHi] = useState(-1);
-  const [tab, setTabNow] = useState<Tab>('command');
-  const [tabDir, setTabDir] = useState<'next' | 'back'>('next');
-  const setTab = (t: Tab | ((old: Tab) => Tab)) => setTabNow((old) => { const n = typeof t === 'function' ? t(old) : t; if (n !== old) setTabDir(TABS.indexOf(n) > TABS.indexOf(old) ? 'next' : 'back'); return n; });
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
   const [namesVersion, setNamesVersion] = useState(0);
   const [shown, setShown] = useState<Shown | null>(null);
@@ -196,7 +190,7 @@ export function LabApp() {
       }
       if (m.files.length) listFiles();
       // Figures only come back when a run changed them (null: keep what's shown).
-      if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; if (m.figs.length) setTab((t) => (t === 'editor' && p?.from === 'script' ? 'figure' : t)); }
+      if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; }
       pending.current = null;
       busyNow.current = false;
       setBusy(false);
@@ -303,7 +297,7 @@ export function LabApp() {
     const ro = new ResizeObserver(() => { clearTimeout(t); t = window.setTimeout(ask, 120); });
     ro.observe(el); ask();
     return () => { ro.disconnect(); clearTimeout(t); };
-  }, [figId, tab, wide]);
+  }, [figId]);
   const svg = fig ? (dark ? fig.dark : fig.light) : '';
   const download = (name: string, body: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const png = async () => {
@@ -357,7 +351,6 @@ export function LabApp() {
     save([...list, { name, code: incoming.code }]);
     setOpen(at);
     setNoteView((v) => ({ ...v, [at]: incoming.view === 'note' }));
-    setTab('editor');
     setIncoming(null);
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   };
@@ -380,7 +373,6 @@ export function LabApp() {
     setBusy(true);
     setSweep({ script: open, scriptName: script.name, name: c.name, values, frames: [], done: false });
     setSweepAsk(null);
-    setTab('figure');
     print({ k: 'in', t: `>> sweep ${c.name} from ${values[0]} to ${values[values.length - 1]} (${values.length} runs) in ${script.name}` });
     worker.current.postMessage({ sweep: { codes: sweepCodes(script.code, c, values), values, w: FRAME_W, h: FRAME_H }, id } satisfies ToLab);
   };
@@ -662,7 +654,7 @@ export function LabApp() {
           {files.map((f) => (
             <li key={f.name} className="flex items-center gap-2 border-t border-zinc-100 px-3 py-1.5 text-[13px] first:border-t-0 dark:border-white/[0.06]">
               <FileIcon className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
-              <button type="button" className="min-w-0 flex-1 truncate text-start font-mono text-zinc-900 hover:underline dark:text-white" title={`Put '${f.name}' in the command`} onClick={() => { setCmd((c) => `${c}'${f.name}'`); setTab('command'); }} translate="no">{f.name}</button>
+              <button type="button" className="min-w-0 flex-1 truncate text-start font-mono text-zinc-900 hover:underline dark:text-white" title={`Put '${f.name}' in the command`} onClick={() => { setCmd((c) => `${c}'${f.name}'`); }} translate="no">{f.name}</button>
               <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">{sizeText(f.size)}</span>
               <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-white/[0.08] dark:hover:text-white" aria-label={`Download ${f.name}`} onClick={() => { const d = fileData.current.get(f.name); if (d) download(f.name, d.bytes as BlobPart, 'application/octet-stream'); }}><Download className="h-3.5 w-3.5" aria-hidden /></button>
               <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-700 dark:hover:bg-white/[0.08] dark:hover:text-red-400" aria-label={`Delete ${f.name}`} onClick={() => removeFile(f.name)}><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>
@@ -697,7 +689,7 @@ export function LabApp() {
 
   const viewer = shown && (
     <VariableViewer shown={shown} busy={busy} onAsk={inspect} onClose={() => inspect(null)} onRun={(code) => run(code, 'cmd')}
-      onInsert={(expr) => { setCmd((c) => c + expr); setTab('command'); inspect(null); }} />
+      onInsert={(expr) => { setCmd((c) => c + expr); inspect(null); }} />
   );
 
   return (
@@ -713,18 +705,12 @@ export function LabApp() {
           <button type="button" className={btn} onClick={dismissShared}>Not now</button>
         </div>
       )}
-      {wide ? (
-        <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
-          <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
-          <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
-          {figure}
-        </div>
-      ) : (
-        <>
-          <Segmented<Tab> label="Hyperion part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
-          <div key={tab} className="swap min-h-0 flex-1" data-dir={tabDir}>{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
-        </>
-      )}
+      {/* Computers only (M405): variables and files, the editor over the command window, the figure. */}
+      <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
+        <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
+        {figure}
+      </div>
       {viewer}
       {bigQr && link?.url && (
         // Big enough to scan from the back of a room (a projector, a shared screen).
@@ -736,7 +722,7 @@ export function LabApp() {
           </div>
         </div>
       )}
-      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); setTab('command'); }} />}
+      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); }} />}
     </div>
   );
 }

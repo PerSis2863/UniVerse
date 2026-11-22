@@ -25,7 +25,7 @@ const LETTERS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
 const DIRECTIONS = [{ a: -90, label: 'Down' }, { a: 90, label: 'Up' }, { a: 0, label: 'Right' }, { a: 180, label: 'Left' }];
 
 export function StructureBench() {
-  const dark = useDarkMode(), wide = useMedia('(min-width: 1024px)'), still = useMedia('(prefers-reduced-motion: reduce)');
+  const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
   const [model, setModelNow] = useState<Model>(() => { try { return readModel(JSON.parse(localStorage.getItem(KEEP) ?? 'null')); } catch { return startModel(); } });
   const [sel, setSel] = useState<Sel>({ k: 'solution' });
   const [out, setOut] = useState<FromSim | null>(null);
@@ -321,13 +321,12 @@ export function StructureBench() {
     </section>
   );
   const side = (
-    <aside className="panel flex min-h-0 flex-col overflow-hidden p-0 lg:w-[22rem] lg:shrink-0" aria-label="Study">
-      <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10 max-lg:max-h-none" data-no-motion>{outline}</div>
+    <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col overflow-hidden p-0" aria-label="Study">
+      <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3" aria-live="polite" data-no-motion>{details}</div>
       {sel.k !== 'solution' && <div className="border-t border-zinc-200/80 p-2 dark:border-white/10"><button type="button" className={cn(small, 'w-full justify-center')} onClick={() => setSel({ k: 'solution' })}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Back to the results</button></div>}
     </aside>
   );
-  return wide
-    ? <div className="flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>
-    : <div className="flex flex-col gap-3"><div className="h-[58vh] min-h-[22rem]">{graphic}</div>{side}</div>;
+  // Computers only (M405): the study on the left, the graphics window filling the rest.
+  return <div className="flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
 }

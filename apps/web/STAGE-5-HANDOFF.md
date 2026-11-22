@@ -10923,3 +10923,16 @@ in `app-tabs.ts`). Our own finite-element code, from the textbook method (no out
 Not built: 3D parts, contact, plasticity (it says "fails" past yield rather than following it), drawing your own
 outline (only the four shapes' sizes), units other than mm / N. Next: vibration (the same mesh: natural frequencies
 and mode shapes), heat, fluids, circuits, and installing Hyperion as its own computer app.
+
+## M405 (22 Nov): Hyperion on computers only
+
+The owner, 22 Nov: "no need to build hyperion on phone it should be available on computer only". A computer is
+`(hover: hover) and (pointer: fine) and (min-width: 1024px)` (`src/lib/use-desktop.ts`: `DESKTOP`, `useDesktop(server)`,
+shared with STORMFALL, whose copy went). `APPS` entries may be `desktopOnly` (Hyperion is); `useShownApps` leaves them
+out on phones and tablets (unless it is the only app shown; `useDesktop(true)` so a computer's first render lists it),
+so the app switcher, top bar, hub, landing tabs, wallet and Messages' app list lose it there; `globals.css` hides
+`[data-uv-app="lab"]` there from the first paint. `ShownAppsGuard` doesn't send a phone away from a computer-only app
+the owner shows: `ComputerOnly` (`components/lab/ComputerOnly.tsx`) wraps both Hyperion pages and says "Hyperion is
+made for computers" with the link (copied or sent whole, a shared script's #s=… included); nothing of the engine
+downloads on a phone. Removed: LabApp's phone tabs (`tab`, the Segmented parts row) and the Simulate bench's phone
+column. A person whose chosen app is Hyperion and signs in on a phone lands on that note (it links to the hub).

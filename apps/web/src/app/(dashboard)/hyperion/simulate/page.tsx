@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import { Topbar } from '@/components/layout/Topbar';
+import { ComputerOnly } from '@/components/lab/ComputerOnly';
 
 // Hyperion Simulate (M404, the owner, 22 Nov: "where are the ansys software features… we need to make a software not
 // just platform"): engineering simulation in Hyperion, starting with Structures (src/components/sim). Loaded only here.
@@ -11,7 +12,7 @@ export default function SimulatePage() {
   return (
     <>
       <Topbar title="Simulate" subtitle="Stress and bending of a part, like engineering software" />
-      <div className="flex-1 p-3 sm:p-6"><StructureBench /></div>
+      <div className="flex-1 p-3 sm:p-6"><ComputerOnly skeleton={<div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />}><StructureBench /></ComputerOnly></div>
     </>
   );
 }
