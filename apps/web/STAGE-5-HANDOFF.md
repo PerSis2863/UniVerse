@@ -10146,7 +10146,7 @@ M358); this branch's unmerged M330–M331 were reverted first (the merged M346/M
 
 The owner (21 Nov): "can we make my own ai in this project?", then "can you make option 3?" (an AI trained from
 nothing), then "do both A and B". A, this item: a small model that does one job, trained from nothing. B (a tiny talking
-model) is paused: the owner then sent a big "all-rounder AI platform" plan and asked about DeepSeek, so B waits for their choice.
+model) is M362.
 
 - **`src/lib/relief-model.ts`**: reads a request for help and says how urgent it is (Low, Medium, High, Critical) and what
   kind it is (the seven Relief kinds), with how sure it is. A linear model over hashed features (each word, each pair
@@ -10168,3 +10168,54 @@ model) is paused: the owner then sent a big "all-rounder AI platform" plan and a
   follow them); the labels follow the four definitions at the top of `relief-examples.ts`. Retrain after adding examples.
 - Left out on purpose: learning from real posts automatically (needs real data and the owner's say), other languages
   beyond a few Hindi words, a sorter for "Most urgent" (it still trusts the asker's choice).
+
+## M362: Ghidra, UniVerse's own GPT (21 Nov)
+
+The owner (21 Nov), after M361: "https://github.com/karpathy/nanogpt built this as i need my own ai", then "please upgrade
+my ai which should be called ghidra and make it efficient and train it like crazy level", then "commit and push once the
+model is trained and upgrade the ai with our senses and experince" (read as: use our judgement to make it more useful;
+the answer was teaching it to answer questions about UniVerse), then "train the ghidra and make it more accurate and sharp
+for next one hour alteast and make it really good like big ai in the market" (told plainly that big AIs are about a
+million times larger; more topics, a longer fine-tune and the honesty guard instead). B from M361's reply: a talking
+model trained from nothing, in nanoGPT's design (a character-level transformer like its `shakespeare_char` example;
+Karpathy's nanoGPT is MIT and credited; the code is written for UniVerse, not copied). Told once that Ghidra is also the
+NSA's well-known reverse-engineering tool (the REA tools here use it); the owner's choice of name stands.
+
+- **The text (~21 M characters):** UniVerse's own sentences, taken out of `src/` by `scripts/ai/ghidra-corpus.mjs`
+  (~7,900 sentences, ~455,000 characters; no code, class lists, paths or links; sample data and tests left out), counted
+  four times; and **TinyStories** (huggingface.co/datasets/roneneldan/TinyStories, CDLA-Sharing-1.0, its
+  `TinyStories-valid.txt`: ~22,000 simple stories made for teaching small models fluent English). Neither file is
+  committed; rebuild them any time (the commands are at the top of `train-ghidra.py`).
+- **Training:** `scripts/ai/train-ghidra.py` (PyTorch on the processor, no graphics card): 6 layers, 6 heads, 192 wide, a
+  window of 256 characters, ~2.7 M numbers, weight tying, AdamW with warm-up and a cosine schedule, no dropout (plenty
+  of text). Trained first 6,000 steps on ~21 M characters (UniVerse's sentences four times and TinyStories-valid): the
+  score on unseen text (cross-entropy per character, lower is better) went 4.5 → 1.12 (1,000) → 0.93 → 0.86 → 0.83 →
+  0.80 → **0.773**. The owner then asked for **99,000 steps**: it goes on from there in chunks (`--ckpt`, `--until`,
+  `--resume`; the full state stays in the scratch folder, not the repo) with ~228 M characters (plus the first 200 MB of
+  TinyStories-train), each chunk's model committed. Then **fine-tuning** (`--from public/ai/ghidra.json --qa scripts/ai/ghidra-qa.txt:150`, lr 3e-4):
+  69 topics about UniVerse asked 287 ways in all, one short answer each (written from this guide, the button names
+  checked in the app), mixed with the first text so it keeps its English. (Run after the 99,000 steps.) It saves every 1,000 steps, so a long run is never lost. Options: `--steps --layers --heads
+  --embd --block --batch --lr`.
+- **The files:** `public/ai/ghidra.bin` (each table one byte per number with a 32-bit scale per row, layer norms as
+  32-bit floats; 2.8 MB) and `public/ai/ghidra.json` (its alphabet, each table's shape and place, a check: the
+  next-letter scores for "Once upon a time" from the rounded numbers, as the browser has them).
+- **In the browser:** `src/lib/ghidra.ts` (unpacks the bytes, layer norm, attention with a memory of what it has worked
+  out, GELU, the weight-tied output; `write()` picks among the 20 likeliest letters with a "heat", restarts from the
+  last half of the text when the window fills, stops at a blank line; `askPrompt()` and `oneLine` for answers) on a background thread, `ghidra.worker.ts`
+  (loads once, sends letters back four at a time, Stop). Nothing loads until Write is pressed.
+- **Where to try it:** owner console → Health → Server → Usage → **Ghidra, our own AI** (`console/ghidra.tsx`): start it
+  **Ask** (a question, answered on one line, carefully) or **Write on** (three starts to pick, Careful ↔ Adventurous),
+  Stop. Owner only: it answers well only what it was taught and writes simple English, so it isn't shown to people yet.
+- **The honesty guard** (`familiar`, `FAMILIAR` 0.35, `NOT_YET` in `ghidra.ts`; the worker): a question whose meaningful
+  words' three-letter groups share little with every taught question (`known` in the JSON) gets "I don't know that yet"
+  instead of a made-up answer. Tested with five questions on each side of the line.
+- **Teaching it more:** add blocks to `ghidra-qa.txt` (`Q: one way|another way` then `A: the answer`, a blank line
+  between), keep answers true to this guide, and fine-tune again from the saved model (a few minutes per 1,000 steps).
+- Tests: `ghidra.test.ts` (the browser's scores match Python's; it writes in its own alphabet within the limit). Browser
+  check: `scripts/checks/ghidra-ui.mjs` (Ask and Write on; the owner test sign-in, see the file).
+- **Rules for code that builds on it:** `ghidra.ts` reads the tables in the order and format `train-ghidra.py` writes
+  them (`shapes` in the JSON): change both together and retrain. Keep it off the page's thread and out of first-load
+  bundles.
+- **To make it smarter** (each a later item, the owner's choice): answering questions it wasn't taught needs far more
+  question-and-answer text and a much bigger model, and a bigger model needs a graphics card to train (a paid cloud machine: ask first); or start
+  from a free open model (DeepSeek, Llama) instead of from nothing.
