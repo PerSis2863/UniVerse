@@ -2,7 +2,7 @@
 import Link from '@/components/ui/Link';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/auth';
-import { Boxes, Sigma, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, Recycle, ScanLine, ShieldCheck, Sparkles, Truck, Wallet, type LucideIcon } from 'lucide-react';
+import { BrainCircuit, Boxes, Sigma, Compass, Luggage, Plane, BarChart3, Briefcase, Building2, Check, ChevronLeft, ChevronsUpDown, Gamepad2, HandHeart, Leaf, LayoutGrid, KeyRound, Megaphone, PenTool, Radar, Recycle, ScanLine, ShieldCheck, Sparkles, Truck, Wallet, type LucideIcon } from 'lucide-react';
 import { APPS, appFor, appHome, inboxFor, settingsFor, type AppId, type ImpactApp } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
 import { AppIcon } from '@/components/apps/AppIcon';
@@ -303,6 +303,7 @@ export const APP_NAV: Record<Exclude<AppId, 'campus'>, NavItem[]> = {
   lab: [
     { href: '/hyperion', label: 'Code', icon: Sigma },
     { href: '/hyperion/simulate', label: 'Simulate', icon: Boxes },
+    { href: '/hyperion/learn', label: 'Learn', icon: BrainCircuit },
   ],
 };
 

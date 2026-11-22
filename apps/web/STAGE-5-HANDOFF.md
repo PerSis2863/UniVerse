@@ -11262,3 +11262,25 @@ top; 'off'), 'Labels'; one plot series per colour with NaN gaps; x ticks the row
 [H (empty), T, perm]). Tests (in `ml-net.test.ts`): hand-worked heights for single, complete, average, centroid and Ward,
 cutting both ways, cophenetic distances, the layout's colours and collapsing, iris by Ward in the language.
 
+## M421 (22 Nov): Hyperion Learn, the learner window
+
+`/hyperion/learn` (`src/app/(dashboard)/hyperion/learn/page.tsx`, ComputerOnly like the rest of Hyperion; "Learn" in
+Sidebar's lab menu and app-tabs, `BrainCircuit`). Engine `src/lib/lab/learn.ts` (pure, tested in `learn.test.ts`):
+`irisData`, `madeData(kind, n, noise, seed)` (moons, circles, blobs, spirals, xor; `seeded` LCG), `csvColumns` / `csvData`
+(header row; ',' ';' or tab; numeric columns can be predictors; at most 5,000 rows and 20 classes), `LEARNERS` (each:
+name, detail, `fit(X, y, K, rand)` → a scorer giving one score per class, the matching Hyperion call `code(K)`,
+`twoOnly` for logistic regression; kNN, SVM and the net standardise; the SVM is one-vs-one radial with the kernel scale
+from `autoScale`; the net is 10 relu units, 300 L-BFGS steps; the forest 60 bagged trees with √p predictors per split;
+boosting 50 AdaBoost rounds), `crossValidate(id, data, k)` (stratified folds, out-of-fold classes, accuracy, confusion),
+`regionGrid(id, data, xi, yi, 200, 150)` (the model learnt on those two predictors, each cell's class and certainty),
+`scriptFor(id, data, k)` (the data as Hyperion code: `load fisheriris`, the made-up shape's formula with rng(1), or
+readtable for a CSV; then the fit, crossval and confusionchart; tested by running each). `learn.worker.ts` runs jobs;
+the page (`LearnApp.tsx`) keeps two workers (cross-validation, regions) through `useLatestWorker`: a new job while one
+runs terminates and replaces the worker, so changes never queue; results stream per model (`results.job` guards stale
+ones). The picture is one canvas (DPR up to 2, ResizeObserver): the region grid put into an OffscreenCanvas and
+scaled up smoothly (each class's colour, fainter where unsure), the points, the chosen model's out-of-fold mistakes
+ringed. Model rows are radio buttons with a `<Fill>` bar and the time; the confusion matrix is a table (blue diagonal,
+red mistakes, ink text: no white text on light fills, axe). Settings kept in localStorage `uv-learn` (a CSV isn't
+kept). "Open in Code" goes to `/hyperion#` + `shareFragment(...)` (the Code window's shared-script prompt). Measured
+in the browser: worst frame 17 ms (an odd 33 ms in development) while all nine models trained.
+
