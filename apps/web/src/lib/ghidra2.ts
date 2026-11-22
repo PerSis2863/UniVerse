@@ -196,6 +196,13 @@ export function scoresAfter(m: Ghidra2, ids: number[]): Float32Array {
   return s;
 }
 
+/** Word-pieces it said lately score lower (the usual repetition penalty: a positive score divided, a negative one
+ *  multiplied), so a small model can't get stuck saying one word over and over (M369). Changes `scores` in place. */
+export function damp(scores: Float32Array, recent: Iterable<number>, by = 1.1) {
+  for (const id of new Set(recent)) { const s = scores[id]; if (s !== undefined) scores[id] = s > 0 ? s / by : s * by; }
+  return scores;
+}
+
 /**
  * Ghidra 2 answers a question (the chat shape it learned: <|user|>…<|end|><|ghidra|>), a few letters at a time
  * (`onText` gets the answer so far), stopping at <|end|>, at `max` word-pieces or at its window.
@@ -210,6 +217,7 @@ export async function answer(m: Ghidra2, question: string, onText: (sofar: strin
   for (const id of ids) scores = run.step(id);
   const said: number[] = [];
   for (let n = 0; n < max && run.length < block && !signal?.aborted; n++) {
+    damp(scores, said.slice(-64));
     const top = [...scores].map((s, i) => [s / heat, i] as const).sort((a, b) => b[0] - a[0]).slice(0, 30);
     const e = top.map(([s]) => Math.exp(s - top[0][0])), sum = e.reduce((a, b) => a + b, 0);
     let r = Math.random() * sum, pick = top[0][1];
