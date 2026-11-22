@@ -11015,3 +11015,22 @@ thanks; hidden in the installed window (`display-mode`) and on phones. Checked w
 manifest is read with no errors and no installability errors. A real desktop program (an .exe / .dmg with Electron or
 Tauri) would need code-signing certificates (paid, the owner's accounts): not done; ask first. Note: a file named
 `.webmanifest` at public's root wasn't served by the dev server, so the manifest lives as `manifest.json` in its folder.
+
+## M410 (22 Nov): Hyperion Simulate, Circuits
+
+The owner's Ansys ask, electronics. `src/lib/sim/circuit.ts`: `Circuit` by modified nodal analysis: node voltages plus
+a current per voltage source and coil; resistors stamp conductance; capacitors and coils step by the trapezoidal rule
+(the first step backward Euler), each capacitor's current kept for the next step; coils are a branch (shorted at DC);
+sources DC, sine (peak, Hz) or square (0 to V); current sources; diodes by Shockley (Is 1e-14, Vt 25.85 mV) with
+Newton and SPICE's pnjlim voltage limiting; GMIN to ground on every node; `solveDense` (partial pivoting; singular →
+`CircuitError` "a source or a coil is shorted…"); `dc()`; `current(part)` a → b inside it; `si` / `parseSi` (4.7k,
+10u, 2m). `schematic.ts`: the board (items between grid points, ground and probe marks, time step, window), `netlist`
+(union-find over points; wires join; ground is "0"; a source's first end is +), four `EXAMPLES`, `readBoard` (safe).
+Tests: a divider, RC charging (to 2 decimals at τ), RLC ringing period and first overshoot, a diode's ~0.7 V and
+blocking, a low-pass at 1/(2πRC) passing 1/√2, a shorted coil refused, the board's wiring and every example running.
+`CircuitBench.tsx`: tools (select, wire, R, C, L, V, I, D, ground, probe; drag between dots along a row or column;
+Delete removes, Escape back to select), the chosen part's value (SI text), source kind and frequency, its voltage and
+current now; time step and window; Run (not with Reduce Motion), Start again, Start from, Clear. Runs from rest at
+t = 0 (a capacitor is seen charging), steps a window in ~2 s (≤ 4,000 steps a frame), ~600 samples a window;
+wires coloured by voltage (green +, red −); the oscilloscope (V/div and time/div). The board is `role="group"` (its
+parts are buttons). Not built: transistors and op-amps, switches, AC sweeps (Bode plots), moving the drawn parts.

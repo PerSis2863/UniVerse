@@ -12,7 +12,7 @@ const SimulateApp = dynamic(() => import('@/components/sim/SimulateApp').then((m
 export default function SimulatePage() {
   return (
     <>
-      <Topbar title="Simulate" subtitle="Engineering simulation: stress, vibration, heat and flow" rightNode={<InstallHyperion />} />
+      <Topbar title="Simulate" subtitle="Engineering simulation: stress, vibration, heat, flow and circuits" rightNode={<InstallHyperion />} />
       <div className="flex-1 p-3 sm:p-6"><ComputerOnly skeleton={<div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />}><SimulateApp /></ComputerOnly></div>
     </>
   );
