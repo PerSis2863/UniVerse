@@ -10789,3 +10789,19 @@ its own. In the notebook view a live control runs every section again (queued as
 section's text out of `noteBuf` before `setNoteOuts` (the next section clears it before React applies the update).
 Example script `notebook.m`. Not built: editing inside the notebook view (writing stays in Code), images in the text,
 running a section from the Code view (Ctrl+Enter runs the script).
+
+## M398 (22 Nov): Hyperion share by link and QR
+
+The third of the owner's 20 big features: a script travels inside its own link, and the link shows as a QR code a class
+can scan off the board. `src/lib/lab/share.ts`: `shareFragment` packs `{n: name, c: code, v: 'code' | 'note'}` as JSON,
+deflate-raw (`CompressionStream`), URL-safe base64, behind `s=h1.` after the `#` (browsers never send the fragment to a
+server: nothing is stored on ours); `readShare` unpacks with a 400 KB ceiling (a crafted link can't blow up), checks
+the shape, and `cleanName` keeps names to letters, digits, `_ . -` ending in `.m`. Window: Share in the editor's name
+row opens a row with the link (made again as the code, its sliders or its view change), Copy, its length (a warning past
+8,000 characters) and the QR code; "Show it big" fills the screen with it (for a projector). Opening a link shows a
+banner (Open it / Not now; nothing runs by itself); Open it adds the script under a free name, opens it (as a page when
+it was shared as one) and clears the `#` from the address. Also: `src/lib/qr.ts` now goes to version 40 at level M
+(2,331 bytes; it stopped at version 15, 412): the standard's tables for blocks and error codewords, alignment positions
+computed (`alignPositions`, version 32's step 26), 13-bit counts for alphanumeric past version 26; `qr-big.test.ts`
+reads codes back with jsQR at every size. Not built: links that point at a stored copy (they would need the server),
+sharing data files with a script (only the code travels).

@@ -1,17 +1,22 @@
 // A small QR code encoder (ISO/IEC 18004), so we don't ship a dependency for a few links.
 // Error correction level M (survives ~15% damage, enough for print and phone screens), versions
-// 1-15: up to 412 bytes. Byte mode for anything; alphanumeric mode (about a third more per code)
+// 1-40 (1-15 until M398): up to 2,331 bytes. Byte mode for anything; alphanumeric mode (about a third more per code)
 // when the text only has capitals, digits and ` $%*+-./:`, as the moving codes of D17 do.
 
-const MAX_VERSION = 15;
-// Per version 1..15 at level M: error-correction codewords per block, and number of blocks.
-const ECC_PER_BLOCK = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24];
-const NUM_BLOCKS = [1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10];
-// Centre coordinates of the alignment patterns per version (version 1 has none).
-const ALIGN_POS: number[][] = [
-  [], [6, 18], [6, 22], [6, 26], [6, 30], [6, 34], [6, 22, 38], [6, 24, 42], [6, 26, 46], [6, 28, 50],
-  [6, 30, 54], [6, 32, 58], [6, 34, 62], [6, 26, 46, 66], [6, 26, 48, 70],
-];
+const MAX_VERSION = 40;
+// Per version 1..40 at level M (ISO/IEC 18004 table 9): error-correction codewords per block, and number of blocks.
+const ECC_PER_BLOCK = [10, 16, 26, 18, 24, 16, 18, 22, 22, 26, 30, 22, 22, 24, 24, 28, 28, 26, 26, 26, 26, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28, 28];
+const NUM_BLOCKS = [1, 1, 1, 2, 2, 4, 4, 4, 5, 5, 5, 8, 9, 9, 10, 10, 11, 13, 14, 16, 17, 17, 18, 20, 21, 23, 25, 26, 28, 29, 31, 33, 35, 37, 38, 40, 43, 45, 47, 49];
+/** Centre coordinates of the alignment patterns of a version (version 1 has none): evenly stepped back from the far
+ *  corner, the step rounded up to even (version 32's is 26), as the standard's table lists them. */
+function alignPositions(ver: number): number[] {
+  if (ver === 1) return [];
+  const n = Math.floor(ver / 7) + 2, size = ver * 4 + 17;
+  const step = ver === 32 ? 26 : Math.ceil((ver * 4 + 4) / (n * 2 - 2)) * 2;
+  const out = [6];
+  for (let pos = size - 7; out.length < n; pos -= step) out.splice(1, 0, pos);
+  return out;
+}
 const EC_LEVEL_M_BITS = 0; // format-info bits for level M are 00
 
 /** Data + error-correction modules a version holds (everything that isn't a function pattern). */
@@ -115,7 +120,7 @@ class Matrix {
     this.drawFinder(3, 3);
     this.drawFinder(size - 4, 3);
     this.drawFinder(3, size - 4);
-    const pos = ALIGN_POS[this.ver - 1];
+    const pos = alignPositions(this.ver);
     const n = pos.length;
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
@@ -280,7 +285,7 @@ export function encodeQr(text: string, forceMask?: number): boolean[][] {
   const alnum = text.length > 0 && isAlnum(text);
   const bytes = alnum ? [] : utf8(text);
   // Mode indicator, character-count length (it grows at version 10) and data length, in bits.
-  const countBits = (ver: number) => (alnum ? (ver <= 9 ? 9 : 11) : ver <= 9 ? 8 : 16);
+  const countBits = (ver: number) => (alnum ? (ver <= 9 ? 9 : ver <= 26 ? 11 : 13) : ver <= 9 ? 8 : 16);
   const dataBits = alnum ? 11 * Math.floor(text.length / 2) + 6 * (text.length % 2) : bytes.length * 8;
   let ver = 1;
   for (; ver <= MAX_VERSION; ver++) {

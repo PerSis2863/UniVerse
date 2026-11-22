@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -11,6 +11,8 @@ import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.work
 import { LabText } from './LabText';
 import { LabNotebook, type NoteOut } from './LabNotebook';
 import { notebookOf } from '@/lib/lab/notebook';
+import { readShare, shareFragment, type Shared } from '@/lib/lab/share';
+import { QrCode } from '@/components/ui/QrCode';
 import { VariableViewer, type Shown } from './VariableViewer';
 import { FunctionBrowser } from './FunctionBrowser';
 import { HELP } from '@/lib/lab/help';
@@ -48,6 +50,8 @@ const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(K
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
 /** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
 const NOTE_ALL = '\u0000notes\u0000';
+/** The longest link a QR code holds (version 40, level M, bytes). */
+const QR_MAX = 2300;
 const noteKey = (script: number, code: string) => `${script}\u0000${code}`;
 
 export function LabApp() {
@@ -84,6 +88,11 @@ export function LabApp() {
   const noteQueue = useRef<{ index: number; key: string; code: string; label: string }[]>([]);
   const noteNow = useRef<{ index: number; key: string } | null>(null);
   const noteBuf = useRef('');
+  // Shared links (M398): a script that came in a link (#s=…), and this script's own link while Share is open.
+  const [incoming, setIncoming] = useState<Shared | null>(null);
+  const [sharing, setSharing] = useState(false);
+  const [link, setLink] = useState<{ url: string; error?: string } | null>(null);
+  const [bigQr, setBigQr] = useState(false);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -189,6 +198,13 @@ export function LabApp() {
     if (list.length) { worker.current?.postMessage({ upload: list } satisfies ToLab); listFiles(); }
   });
   useEffect(() => { void restore(); }, []);
+  useEffect(() => {
+    const readHash = () => { void readShare(window.location.hash).then((s) => { if (s) setIncoming(s); }); };
+    readHash();
+    const onHash = () => readHash();
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
   const addFiles = async (picked: FileList | File[]) => {
     const added: FileIn[] = [];
     for (const file of Array.from(picked)) {
@@ -281,6 +297,31 @@ export function LabApp() {
   const controls = controlsOf(script.code);
   const noteSecs = noteView[open] ? notebookOf(script.code) : null;
   const runSection = (i: number) => runNotes(script.code, open, i);
+  // This script's link, made again while Share is open and the script (or its view) changes.
+  const shareView = noteView[open] ? 'note' : 'code';
+  useEffect(() => {
+    if (!sharing) return;
+    let live = true;
+    shareFragment({ name: script.name, code: script.code, view: shareView })
+      .then((f) => { if (live) setLink({ url: `${window.location.origin}/hyperion#${f}` }); })
+      .catch((e: unknown) => { if (live) setLink({ url: '', error: e instanceof Error ? e.message : 'Couldn’t make a link.' }); });
+    return () => { live = false; };
+  }, [sharing, script.name, script.code, shareView]);
+  const copyLink = async () => { if (!link?.url) return; try { await navigator.clipboard.writeText(link.url); toast.success('Link copied: anyone who opens it gets a copy of this script.'); } catch { toast.error('Copying isn’t allowed here: select the link and copy it.'); } };
+  const openShared = () => {
+    if (!incoming) return;
+    const taken = new Set(list.map((x) => x.name)), base = incoming.name.replace(/\.m$/, '');
+    let name = incoming.name;
+    for (let k = 2; taken.has(name); k++) name = `${base}-${k}.m`;
+    const at = list.length;
+    save([...list, { name, code: incoming.code }]);
+    setOpen(at);
+    setNoteView((v) => ({ ...v, [at]: incoming.view === 'note' }));
+    setTab('editor');
+    setIncoming(null);
+    window.history.replaceState(null, '', window.location.pathname + window.location.search);
+  };
+  const dismissShared = () => { setIncoming(null); window.history.replaceState(null, '', window.location.pathname + window.location.search); };
   const runAllSections = () => runNotes(script.code, open);
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
@@ -390,12 +431,33 @@ export function LabApp() {
         <label className="flex min-w-[9rem] flex-1 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">Name
           <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
         </label>
+        <button type="button" className={btn} aria-expanded={sharing} onClick={() => setSharing((v) => !v)}><Share2 className="h-3.5 w-3.5" aria-hidden />Share</button>
         <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
         <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
         <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
+      {sharing && (
+        <div role="group" aria-label="Share this script" className="flex flex-wrap items-start gap-3 border-b border-zinc-200/80 px-3 py-3 dark:border-white/10" data-no-motion>
+          <div className="min-w-[14rem] flex-1 space-y-2">
+            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Anyone with this link gets their own copy of <b translate="no">{script.name}</b> as it is now{controls.length ? ', sliders where they are' : ''}{shareView === 'note' ? ', opened as a page' : ''}. The script travels inside the link: nothing is stored on our server.</p>
+            {link?.error ? <p className="text-xs text-red-700 dark:text-red-400">{link.error}</p> : (
+              <div className="flex gap-2">
+                <input readOnly value={link?.url ?? ''} aria-label={`Link to ${script.name}`} onFocus={(e) => e.currentTarget.select()} className="input min-w-0 flex-1 font-mono text-xs" />
+                <button type="button" className="btn-secondary btn-sm inline-flex items-center gap-1.5" disabled={!link?.url} onClick={() => void copyLink()}><Copy className="h-3.5 w-3.5" aria-hidden />Copy</button>
+              </div>
+            )}
+            {link?.url && <p className="text-xs text-zinc-600 dark:text-zinc-300">{link.url.length.toLocaleString()} characters{link.url.length > 8000 ? ': some chat apps cut links this long, so send the script as a file instead.' : '.'}</p>}
+          </div>
+          {link?.url && (link.url.length <= QR_MAX
+            ? <span className="flex shrink-0 flex-col items-center gap-1">
+                <QrCode value={link.url} size={132} title={`QR code for the link to ${script.name}`} className="rounded-lg bg-white p-1" />
+                <button type="button" className={btn} onClick={() => setBigQr(true)}>Show it big</button>
+              </span>
+            : <p className="w-[132px] shrink-0 text-xs text-zinc-600 dark:text-zinc-300">Too long for a QR code; share the link.</p>)}
+        </div>
+      )}
       {controls.length > 0 && (
         <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
@@ -500,6 +562,14 @@ export function LabApp() {
       onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
       onDrop={(e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDragging(false); void addFiles(e.dataTransfer.files); }}>
+      {incoming && (
+        <div role="status" className="panel flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3">
+          <Share2 className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-300" aria-hidden />
+          <p className="min-w-[12rem] flex-1 text-sm text-zinc-800 dark:text-zinc-100">Someone shared <b translate="no">{incoming.name}</b> with you ({incoming.code.split('\n').length} lines). Open it to read it and run your own copy.</p>
+          <button type="button" className="btn-primary btn-sm" onClick={openShared}>Open it</button>
+          <button type="button" className={btn} onClick={dismissShared}>Not now</button>
+        </div>
+      )}
       {wide ? (
         <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
           <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
@@ -513,6 +583,16 @@ export function LabApp() {
         </>
       )}
       {viewer}
+      {bigQr && link?.url && (
+        // Big enough to scan from the back of a room (a projector, a shared screen).
+        <div role="dialog" aria-modal="true" aria-label={`QR code for ${script.name}`} className="fixed inset-0 z-50 grid place-items-center bg-white p-6" onClick={() => setBigQr(false)} onKeyDown={(e) => { if (e.key === 'Escape') setBigQr(false); }}>
+          <div className="flex flex-col items-center gap-4">
+            <QrCode value={link.url} size={720} title={`QR code for the link to ${script.name}`} className="h-auto w-[min(86vw,78vh)]" />
+            <p className="text-center text-base font-semibold text-zinc-900" translate="no">{script.name}</p>
+            <button type="button" autoFocus className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white" onClick={() => setBigQr(false)}>Close</button>
+          </div>
+        </div>
+      )}
       {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); setTab('command'); }} />}
     </div>
   );
