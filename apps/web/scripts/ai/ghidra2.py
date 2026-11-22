@@ -17,7 +17,9 @@
 #   python3 scripts/ai/ghidra2.py chat --out DIR/chat.jsonl --oasst oasst1.parquet && python3 scripts/ai/ghidra2.py sft --dir DIR --steps N
 # Teach it to think first, the way DeepSeek-R1's answers do (M372; the owner, 22 Nov: "i want to build my own deepseek ai"):
 #   python3 scripts/ai/ghidra2.py reason --out DIR/reason.jsonl --gsm8k train.parquet   (GSM8K, MIT: worked maths steps)
-#   python3 scripts/ai/ghidra2.py sft --dir DIR --stage think --data chat.jsonl,reason.jsonl --steps N
+#   python3 scripts/ai/ghidra2.py write --out DIR/write.jsonl --smoltalk smol-smoltalk.parquet --tok DIR/tokenizer.json
+#       (M369: everyday writing, emails, rewrites, summaries, code; HuggingFaceTB/smol-smoltalk, Apache-2.0)
+#   python3 scripts/ai/ghidra2.py sft --dir DIR --stage think --from sft --data chat.jsonl,reason.jsonl,write.jsonl --steps N
 #   python3 scripts/ai/ghidra2.py score --dir DIR --gsm8k test.parquet --n 100           (how many it gets right)
 # Long runs: --until N stops after step N, the next run with the same command carries on (DIR/state-*.pt).
 import argparse, json, math, os, time
@@ -207,6 +209,29 @@ def cmd_reason(a):
     with open(a.out, 'w', encoding='utf-8') as fh:
         for r in rows: fh.write(json.dumps(r, ensure_ascii=False) + '\n')
     print(f'{len(rows)} thinking lessons → {a.out}')
+
+
+OTHER_AI = r'\b(ChatGPT|OpenAI|GPT-?\d|Qwen|Alibaba|Claude|Anthropic|Gemini|Bard|LLaMA|Llama|Meta AI|Hugging ?Face|SmolLM|language model|an AI (assistant|model) (developed|created|trained) by)\b'
+
+def cmd_write(a, per_kind=1600):
+    """Everyday writing lessons (M369: a small model's weak spot) from smol-smoltalk's first question and answer, short
+    enough for the window, answers naming another assistant dropped, at most `per_kind` of each kind so code and rewrites
+    don't crowd out the rest."""
+    import collections, re
+    import pyarrow.parquet as pq
+    from tokenizers import Tokenizer
+    tok, other, rows, kinds = Tokenizer.from_file(a.tok), re.compile(OTHER_AI, re.I), [], collections.Counter()
+    for r in pq.read_table(a.smoltalk).to_pylist():
+        system = [x['content'] for x in r['messages'] if x['role'] == 'system']
+        turns = [x for x in r['messages'] if x['role'] != 'system']
+        if len(turns) < 2 or turns[0]['role'] != 'user' or turns[1]['role'] != 'assistant': continue
+        q, ans = ((system[0] + '\n\n') if system else '') + turns[0]['content'].strip(), turns[1]['content'].strip()
+        if other.search(q + ans) or len(tok.encode(q).ids) > 220 or not 8 <= len(tok.encode(ans).ids) <= 260: continue
+        if kinds[r['source']] >= per_kind: continue
+        kinds[r['source']] += 1; rows.append({'q': q, 'a': ans, 'w': 1})
+    with open(a.out, 'w', encoding='utf-8') as fh:
+        for r in rows: fh.write(json.dumps(r, ensure_ascii=False) + '\n')
+    print(f'{len(rows)} writing lessons → {a.out}', dict(kinds))
 
 
 # ─── Training ──────────────────────────────────────────────────────────────────────────────────────
@@ -429,6 +454,7 @@ if __name__ == '__main__':  # run as a command (the functions above can also be 
         p.add_argument('--no-compile', action='store_true')
         if name == 'pretrain': p.add_argument('--preset', choices=PRESETS, default='small'); p.add_argument('texts', nargs='+')
         else: p.add_argument('--stage', help='name of this chat stage (default sft)'); p.add_argument('--from', dest='start_from', help='the stage to start from (default pretrain)'); p.add_argument('--data', help='lesson files in DIR, comma-separated (default chat.jsonl)')
+    p = sub.add_parser('write'); p.add_argument('--out', required=True); p.add_argument('--smoltalk', required=True); p.add_argument('--tok', required=True)
     p = sub.add_parser('reason'); p.add_argument('--out', required=True); p.add_argument('--gsm8k', required=True)
     p = sub.add_parser('score'); p.add_argument('--dir', required=True); p.add_argument('--gsm8k', required=True); p.add_argument('--stage', default='sft'); p.add_argument('--n', type=int, default=100); p.add_argument('--tokens', type=int, default=320)
     p = sub.add_parser('adopt'); p.add_argument('--hf', required=True); p.add_argument('--dir', required=True)
@@ -438,6 +464,7 @@ if __name__ == '__main__':  # run as a command (the functions above can also be 
     elif a.cmd == 'chat': cmd_chat(a)
     elif a.cmd == 'adopt': cmd_adopt(a)
     elif a.cmd == 'reason': cmd_reason(a)
+    elif a.cmd == 'write': cmd_write(a)
     elif a.cmd == 'score': cmd_score(a)
     elif a.cmd in ('pretrain', 'sft'): train(a, a.cmd)
     else: cmd_export(a)

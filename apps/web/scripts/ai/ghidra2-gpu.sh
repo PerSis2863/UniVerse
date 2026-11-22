@@ -22,6 +22,7 @@ get() { [ -s "$2" ] || curl -L --fail --retry 3 -o "$2" "$1"; }
 get "$HF/roneneldan/TinyStories/resolve/main/TinyStories-train.txt" "$WORK/data/stories.txt"
 get "$HF/HuggingFaceFW/fineweb-edu/resolve/main/sample/10BT/000_00000.parquet" "$WORK/data/fineweb.parquet"
 get "https://huggingface.co/api/datasets/OpenAssistant/oasst1/parquet/default/train/0.parquet" "$WORK/data/oasst1.parquet"
+get "$HF/HuggingFaceTB/smol-smoltalk/resolve/main/data/train-00000-of-00004.parquet" "$WORK/data/smoltalk.parquet"
 [ -s "$WORK/data/fineweb.txt" ] || python3 -I - "$WORK/data/fineweb.parquet" "$WORK/data/fineweb.txt" <<'PY'
 import sys, pyarrow.parquet as pq
 t = pq.read_table(sys.argv[1], columns=['text', 'score'])
@@ -37,10 +38,11 @@ echo "== 3/6 Word-pieces"
 
 echo "== 4/6 Questions and answers"
 [ -s "$WORK/chat.jsonl" ] || python3 scripts/ai/ghidra2.py chat --out "$WORK/chat.jsonl" --oasst "$WORK/data/oasst1.parquet"
+[ -s "$WORK/write.jsonl" ] || python3 scripts/ai/ghidra2.py write --out "$WORK/write.jsonl" --smoltalk "$WORK/data/smoltalk.parquet" --tok "$WORK/tokenizer.json"
 
 echo "== 5/6 Training ($STEPS steps, then $CHAT_STEPS chat steps)"
 python3 scripts/ai/ghidra2.py pretrain --dir "$WORK" --preset base --steps "$STEPS" --every 1000 "${TEXTS[@]}"
-python3 scripts/ai/ghidra2.py sft --dir "$WORK" --steps "$CHAT_STEPS" --every 500
+python3 scripts/ai/ghidra2.py sft --dir "$WORK" --data chat.jsonl,write.jsonl --steps "$CHAT_STEPS" --every 500
 
 echo "== 6/6 Saving"
 python3 scripts/ai/ghidra2.py export --dir "$WORK" --to "$OUT"
