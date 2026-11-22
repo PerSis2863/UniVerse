@@ -10399,3 +10399,26 @@ security and user experience; adjust your guardrails over time": "do this also f
   (4.26 and 4.34 where 4.5 is needed): they use the hub chat's ink colours now.
 - Tests: `ghidra-guard.test.ts`, `src/server/ask.test.ts` (the crisis answer with AI set up; reports cut short, 20 a day).
   Browser check: `scripts/checks/ghidra-assistant-ui.mjs` (crisis, Report).
+
+## M371: Ghidra thinks harder with DeepSeek (22 Nov)
+
+The owner (22 Nov): "https://github.com/deepseek-ai/DeepSeek-R1 use this model in the ai". Told: R1 (671 B) can't run
+here; Cloudflare stopped hosting its distilled copy on 20 Nov 2026 (`deepseek-r1-distill-qwen-32b` is gone); its successor
+with the same step-by-step thinking, **DeepSeek V4.1 Flash**, runs on Cloudflare's own servers (zero data retention, not
+DeepSeek's in China: safer for students' data). A 1.5 B on-device R1 copy (~1 GB) is too heavy for students' phones.
+
+- **`src/server/ghidra-think.ts`**: `isHard(text)` (maths with numbers and signs, solve/prove/calculate…, code words,
+  fenced code, "step by step"; tested both ways); `thinkHard()` streams DeepSeek's answer as plain text (only the answer:
+  `streamWords` drops `reasoning_content`; both Workers AI's own and the chat-completions stream shapes) and
+  `thinkHardText()` gives it whole. Both return null when the switch is off, the binding is missing, the account's 20 a
+  minute are used or it fails: then **Gemini answers as before**.
+- **Where:** the corner's general answers (`api/ai/route.ts`: hard → DeepSeek, works even without a Gemini key) and the
+  hub chat's answers (`POST /ask`: an `answer` to a hard question replaced by DeepSeek's). Guardrails (M370) and the daily
+  AI allowance run before either.
+- **The switch:** "Ghidra thinks with DeepSeek" (`deepseek`, opt-in: **off** until the owner turns it on in console →
+  Server; `src/lib/feature-switches.ts`; school-switches tests updated). Costs past Workers AI's free daily amount: about
+  US$0.30 per million words read, $1.20 per million written.
+- **`wrangler.jsonc`: `"ai": { "binding": "AI" }`** (Workers AI, on the Paid plan; no secret needed). Locally there is no
+  remote Cloudflare: `next.config.ts` passes `remoteBindings: false` and `scripts/local/serve.mjs` runs `wrangler dev
+  --local`, or both local servers stop asking to sign in to Cloudflare (`CLOUDFLARE_API_TOKEN`). Locally Ghidra uses Gemini.
+- Tests: `src/server/ghidra-think.test.ts`.

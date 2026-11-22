@@ -10,6 +10,7 @@ import { spendAi } from './ai-budget';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
 import { geminiJson } from './gemini';
+import { isHard, thinkHardText } from './ghidra-think';
 import { short } from './trace';
 import type { Body } from './body';
 
@@ -179,7 +180,14 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   const history = cleanHistory(b.history);
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
   const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
-  return out ? { ...(await resolve(u, cleanPlan(out))), ai: true } : local();
+  if (!out) return local();
+  const plan = await resolve(u, cleanPlan(out));
+  // M371: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.
+  if (plan.action === 'answer' && isHard(text)) {
+    const deep = await thinkHardText(`You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
+    if (deep) return { action: 'answer', say: deep.slice(0, 6000), ai: true };
+  }
+  return { ...plan, ai: true };
 }
 
 /** M370: POST /ghidra/report { question, answer, reason? }: someone reports one of Ghidra's answers (wrong, unsafe, unkind)

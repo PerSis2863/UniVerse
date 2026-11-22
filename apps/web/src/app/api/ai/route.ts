@@ -6,6 +6,7 @@ import { withTextModels } from '@/server/ai-models';
 import { MATH_RULE } from '@/lib/tutor-rules';
 import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { SAFETY } from '@/server/gemini';
+import { isHard, thinkHard } from '@/server/ghidra-think';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
 // or missing, the next answers (src/server/ai-models.ts).
@@ -72,9 +73,10 @@ export async function POST(req: NextRequest) {
   if (g) return plainTextStream(guardReply(g));
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return plainTextStream("I'm Ghidra, your UniVerse assistant! I can't answer that kind of question yet, but I can show what's due, how you're doing in Green, do things in any app for you, and answer how to use UniVerse.");
-  }
+  const cannot = () => plainTextStream("I'm Ghidra, your UniVerse assistant! I can't answer that kind of question yet, but I can show what's due, how you're doing in Green, do things in any app for you, and answer how to use UniVerse.");
+  // M371: maths, code and logic go to DeepSeek when the owner has it on (src/server/ghidra-think.ts); otherwise Gemini.
+  const hard = isHard(message);
+  if (!apiKey && !hard) return cannot();
 
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
@@ -90,6 +92,13 @@ export async function POST(req: NextRequest) {
       })),
     { role: 'user', parts: [{ text: message }] },
   ];
+
+  if (hard) {
+    const turns = contents.map((c) => ({ role: c.role === 'model' ? 'assistant' as const : 'user' as const, content: c.parts[0].text }));
+    const deep = await thinkHard(SYSTEM_PROMPT, turns);
+    if (deep) return new Response(deep, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  if (!apiKey) return cannot();
 
   try {
     const res = await withTextModels(false, (model) => callGemini(model, apiKey, contents));
