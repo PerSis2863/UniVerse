@@ -316,6 +316,13 @@ that builds on it) and a Progress row in `apps/web/STAGE-5-PLAN.md`.
   3. **Each app, upgrades and new features** (ask the owner for their wishes per app first, in one question with
      options): UniVersity (the first real class: courses, grading, messages), the website and sign-up (the 10
      returning people), Trace, Relief, Green (and Green → Business), Travel, Games.
+- **Ghidra's road (the owner, 22 Nov):** the tools approved ("do all of them"): long-term memory (seen and deleted in
+  Settings), calendar events, chaining steps (one request → a short plan confirmed together), reading documents, web
+  search (behind a switch, off: it can cost money). **Later, remember:** a **multi-agent system** ("remember we need to
+  make multiagent system in future"): a supervisor Ghidra splitting a task among specialist sub-agents (per app, say)
+  and combining their results; build it on the chaining step. Ghidra's own model: MiniMind-3 (64 M, Apache-2.0) adopted
+  and taught to be Ghidra (M369); the letter Ghidra's 189,000-step run paused at 79,000 for it (resume with
+  `train-ghidra.py --resume … --steps 183000`, the texts in the M362 note).
 - **Next up** (asked by the owner, not started; details at the end of `apps/web/STAGE-5-HANDOFF.md`): the owner's Airbnb list for Travel is done (M204–M207, 16 Nov; M181 and M182 were done the same day);
   then the owner's 9 Nov ask "make the design and ui of these video exactly the same" (the Ballast reels,
   inside the app; dark was the default then, light since M220; the scenes stay): M134–M135 and M138 done (shared rules reach every
