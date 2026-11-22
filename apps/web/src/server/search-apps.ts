@@ -13,9 +13,9 @@ const DAY = 86_400_000;
 
 /** The apps' own pages people look for by name. */
 export const APP_PAGES: { title: string; words: string; href: string; app: string }[] = [
-  { title: 'Trip planner', words: 'trips plan itinerary holiday travel', href: '/travel/saved', app: 'Travel' },
-  { title: 'Find where to go', words: 'destination ideas where to go budget travel', href: '/travel?view=find', app: 'Travel' },
-  { title: 'Travel map', words: 'map places nearby directions', href: '/travel?view=map', app: 'Travel' },
+  { title: 'Trip planner', words: 'trips plan itinerary holiday travel', href: '/travel/saved', app: 'Aether' },
+  { title: 'Find where to go', words: 'destination ideas where to go budget travel', href: '/travel?view=find', app: 'Aether' },
+  { title: 'Aether map', words: 'map places nearby directions', href: '/travel?view=map', app: 'Aether' },
   { title: 'Scan a product', words: 'scan passport verify fake product trace', href: '/t/demo', app: 'Trace' },
   { title: 'Trace wallet', words: 'points wallet rewards shop', href: '/trace/wallet', app: 'Trace' },
   { title: 'Relief map', words: 'help needs offers emergency relief map', href: '/relief', app: 'Relief' },

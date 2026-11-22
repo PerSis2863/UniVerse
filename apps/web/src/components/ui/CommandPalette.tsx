@@ -41,8 +41,8 @@ const RESULT_KIND = {
   internship: { group: 'Internships', icon: Briefcase },
   resource: { group: 'Resources', icon: Library },
   // M303: the other apps (src/server/search-apps.ts).
-  trip: { group: 'Travel', icon: Plane },
-  place: { group: 'Travel', icon: MapPin },
+  trip: { group: 'Aether', icon: Plane },
+  place: { group: 'Aether', icon: MapPin },
   brand: { group: 'Trace', icon: BadgeCheck },
   product: { group: 'Trace', icon: Package },
   relief: { group: 'Relief', icon: LifeBuoy },

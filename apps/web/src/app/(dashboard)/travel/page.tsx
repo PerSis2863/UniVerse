@@ -8,7 +8,7 @@ import { TravelExplore } from '@/components/travel/TravelExplore';
 export default function TravelPage() {
   return (
     <>
-      <Topbar title="Travel" subtitle="Plan trips, anywhere in the world" />
+      <Topbar title="Aether" subtitle="Plan trips, anywhere in the world" />
       <div className="flex-1 overflow-x-clip p-4 sm:p-8">
         <div className="w-full"><Suspense><TravelExplore /></Suspense></div>
       </div>

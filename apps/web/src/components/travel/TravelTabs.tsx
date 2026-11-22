@@ -29,5 +29,5 @@ export function TravelTabs() {
     if (w.requestIdleCallback) { const id = w.requestIdleCallback(warmMap, { timeout: 4000 }); return () => w.cancelIdleCallback?.(id); }
     const t = setTimeout(warmMap, 2500); return () => clearTimeout(t);
   }, []);
-  return <TabRow label="Travel" glide="travel-tab" tabs={travelSections(path, new URLSearchParams(sp.toString()))} />;
+  return <TabRow label="Aether" glide="travel-tab" tabs={travelSections(path, new URLSearchParams(sp.toString()))} />;
 }

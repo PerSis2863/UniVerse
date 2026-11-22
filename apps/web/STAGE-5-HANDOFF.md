@@ -10709,3 +10709,12 @@ StateField, scrolled into view only when it leaves the screen) and draws breakpo
 marked; the command window shows what was printed up to the step (everything also goes to the log for afterwards);
 the Figure shows the step's copy. Editing the code ends the playback. Not built: watching commands typed in the
 command window, conditions on breakpoints.
+
+## M394 (22 Nov): Travel is now Aether
+
+The owner, 22 Nov: "change the name of travel app to aether". `APPS` name 'Aether'; the Topbar title, the section
+row's label, Spotlight's result groups, the owner console's Moderation group and report wording, the app search
+entries ("Aether map"), the trip invite share text, the family journey page (`/journey/<code>`: brand and footer).
+Kept on purpose: the addresses `/travel…` and `/journey/<code>` (live, and family links are already shared), the
+app id `travel`, the code's names (`components/travel`, `travel-*.ts`, API `/travel/…`), and the ordinary word
+"travel" in text (a green tip's "Travel" area, "your travel in numbers"). New notes and comments call the app Aether.

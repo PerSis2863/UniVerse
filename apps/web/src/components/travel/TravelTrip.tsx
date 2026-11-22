@@ -157,7 +157,7 @@ export function TravelTrip() {
   };
   const share = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: t.name, text: `Plan “${t.name}” with me on UniVerse Travel`, url: invite }); return; }
+      if (navigator.share) { await navigator.share({ title: t.name, text: `Plan “${t.name}” with me on Aether`, url: invite }); return; }
       await navigator.clipboard.writeText(invite);
       toast.success('Invite link copied: send it to the friends you’re travelling with.');
     } catch { /* closed the share sheet */ }

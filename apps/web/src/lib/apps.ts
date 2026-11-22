@@ -46,7 +46,7 @@ export const APPS: ImpactApp[] = [
   {
     // M202 (the owner, 15 Nov 2026): where to go, eat, sleep and what to see, trips planned day by day
     // with friends, and booking through partners.
-    id: 'travel', name: 'UniVerse Travel', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
+    id: 'travel', name: 'Aether', tagline: 'Plan trips, anywhere in the world', color: '#0ea5e9',
     impact: 'Guides, day-by-day plans and greener trips.',
     paths: ['/travel', '/journey'],
   },
