@@ -75,7 +75,7 @@ export function Ghidra({ role }: { role: string }) {
                 {!t.reply ? (
                   <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="w-4 h-4 animate-spin" aria-hidden />Ghidra is thinking…</p>
                 ) : (
-                  <GhidraReply plan={t.reply} role={role} settled={t.done} onSettle={(d) => settle(t.id, d)} className="max-w-[92%]" />
+                  <GhidraReply plan={t.reply} role={role} settled={t.done} onSettle={(d) => settle(t.id, d)} className="max-w-[92%]" question={t.q} />
                 )}
               </motion.li>
             ))}

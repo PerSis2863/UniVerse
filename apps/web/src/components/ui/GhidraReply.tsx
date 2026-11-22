@@ -13,6 +13,7 @@ import { inboxFor, settingsFor } from '@/lib/apps';
 import { stashText } from '@/lib/share-in';
 import { cleanCode } from '@/lib/trace';
 import { cn } from '@/lib/utils';
+import { ReportAnswer } from '@/components/ui/ReportAnswer';
 
 // One Ghidra reply (M363–M365, src/lib/ask.ts), the same in the hub's chat (components/hub/Ghidra.tsx) and the assistant on
 // every page (AIStudyAssistant): the answer, a list of the person's own things ('show'), or one proposed action with
@@ -34,8 +35,10 @@ const LABEL: Partial<Record<GhidraPlan['action'], string>> = { green_log: 'Log i
 const label = (p: GhidraPlan) => LABEL[p.action] ?? 'Open';
 
 /** The reply's words, list and buttons. `onSettle` hears Confirm (after it worked) or Cancel; `onLeave` a link or page opened. */
-export function GhidraReply({ plan, role, settled, onSettle, onLeave, className }: {
+export function GhidraReply({ plan, role, settled, onSettle, onLeave, className, question }: {
   plan: GhidraPlan; role: string; settled: Settled; onSettle: (s: 'done' | 'cancelled') => void; onLeave?: () => void; className?: string;
+  /** The words it answered: with them, an answer can be reported (M370). */
+  question?: string;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -92,6 +95,7 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className 
         </ul>
       )}
       {plan.note && <p className="mt-2 text-xs text-zinc-600 dark:text-zinc-300">{plan.note}</p>}
+      {question && plan.action === 'answer' && <ReportAnswer question={question} answer={plan.say} />}
       {proposes(plan) && (settled ? (
         <p className="mt-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">{settled === 'done' ? 'Done.' : 'Cancelled.'}</p>
       ) : (

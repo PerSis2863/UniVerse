@@ -15,6 +15,8 @@ import { GhidraReply, type GhidraPlan, type Settled } from '@/components/ui/Ghid
 import { api } from '@/lib/api';
 import { localPlan, type AskTurn } from '@/lib/ask';
 import { askOnDevice } from '@/lib/ghidra-device';
+import { ReportAnswer } from '@/components/ui/ReportAnswer';
+import { guard, guardReply } from '@/lib/ghidra-guard';
 
 // Ghidra on every page (M364): the corner assistant. A request to do something or to see your own things ("what's due",
 // "I cycled 5 km", "open Travel": src/lib/ask.ts's matcher) goes to Ghidra's actions (POST /ask) and comes back as the
@@ -130,6 +132,10 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     const userMsg: Message = { id: crypto.randomUUID(), role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
+
+    // M370: someone in crisis or in danger: the safe, human answer at once, online or not (src/lib/ghidra-guard.ts).
+    const danger = guard(text);
+    if (danger) { reply({ content: guardReply(danger), source: 'instant' }); return; }
 
     // 0. Ghidra's actions (M364): your own things, or something to do, when online.
     const wish = localPlan(text).action;
@@ -328,7 +334,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                 >
                   <div className={cn(
                     "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white",
-                    msg.role === 'user' ? "bg-indigo-600" : "bg-gradient-to-br from-indigo-500 to-purple-600"
+                    msg.role === 'user' ? "bg-zinc-700" : "bg-gradient-to-br from-indigo-500 to-purple-600"
                   )}>
                     {msg.role === 'user' ? <User className="w-4 h-4" /> : <Bot className="w-4 h-4" />}
                   </div>
@@ -339,7 +345,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                   <div className={cn(
                     "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm shadow-sm whitespace-pre-wrap break-words",
                     msg.role === 'user' 
-                      ? "bg-indigo-600 text-white rounded-ee-sm" 
+                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 rounded-ee-sm" 
                       : "bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-es-sm"
                   )}>
                     {msg.source === 'device' && (
@@ -353,10 +359,14 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                       </span>
                     )}
                     {msg.role === 'user' ? msg.content : <MathText text={msg.content} />}
+                    {msg.role === 'assistant' && (msg.source === 'ai' || msg.source === 'device') && msg.content && (() => {
+                      const at = messages.findIndex((m) => m.id === msg.id), asked = messages.slice(0, at).reverse().find((m) => m.role === 'user');
+                      return asked ? <span className="block"><ReportAnswer question={asked.content} answer={msg.content} /></span> : null;
+                    })()}
                     {!!msg.links?.length && (
                       <span className="mt-2 flex flex-wrap gap-1.5">
                         {msg.links.map((l) => (
-                          <Link key={l.href} href={l.href} onClick={() => setIsOpen(false)} className="inline-flex items-center gap-1 rounded-full bg-indigo-500/10 px-2.5 py-1 text-xs font-semibold text-indigo-700 dark:text-indigo-200 hover:bg-indigo-500/20">
+                          <Link key={l.href} href={l.href} onClick={() => setIsOpen(false)} className="inline-flex items-center gap-1 rounded-full bg-zinc-900/[0.06] px-2.5 py-1 text-xs font-semibold text-zinc-900 dark:bg-white/10 dark:text-white hover:bg-zinc-900/10 dark:hover:bg-white/15">
                             {l.label} <ArrowUpRight className="w-3 h-3" />
                           </Link>
                         ))}

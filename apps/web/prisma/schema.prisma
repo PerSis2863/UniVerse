@@ -427,6 +427,7 @@ model User {
   @@index([cardsRemindAt])
   @@index([organizationId])
   @@map("users")
+  ghidraReports GhidraReport[]
 }
 
 // ─── BILLING / ORGANIZATION SUBSCRIPTIONS ─────────────────────────────────
@@ -8465,4 +8466,20 @@ model GreenSwapReport {
 
   @@id([swapId, userId])
   @@map("green_swap_reports")
+}
+
+/// M370: Ghidra's answers that people reported, for the owner console's Moderation (only what they chose to send).
+model GhidraReport {
+  id         String    @id @default(cuid())
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question   String
+  answer     String
+  reason     String?
+  createdAt  DateTime  @default(now())
+  resolvedAt DateTime?
+
+  @@index([resolvedAt, createdAt])
+  @@index([userId, createdAt])
+  @@map("ghidra_reports")
 }

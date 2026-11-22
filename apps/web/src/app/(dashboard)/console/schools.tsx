@@ -4,7 +4,7 @@ import { useState } from 'react';
 import useSWR from 'swr';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { Building2, ChevronDown, Eye, Flag, Loader2, Plane, ShieldAlert, Star, Store, Users } from 'lucide-react';
+import { Building2, ChevronDown, Eye, Flag, Loader2, Plane, ShieldAlert, Sparkles, Star, Store, Users } from 'lucide-react';
 import { api } from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { card, errorMessage, fetcher, field, ConsoleSkeleton, SearchBox, useDebounced } from './shared';
@@ -26,7 +26,7 @@ type Growth = {
   cohorts: { month: string; size: number; kept: number[] }[];
 };
 type Person = { id: string; name: string; email: string; role: string; lastSeenAt: string | null };
-type Item = { kind: 'flag' | 'report' | 'listing' | 'travel-post' | 'travel-review'; group?: string; id: string; title: string; severity: string | null; text: string; reason?: string | null; repeats?: number; hidden?: boolean; at: string; person: { id: string | null; name: string; school: string | null } };
+type Item = { kind: 'flag' | 'report' | 'listing' | 'travel-post' | 'travel-review' | 'ghidra'; group?: string; id: string; title: string; severity: string | null; text: string; reason?: string | null; repeats?: number; hidden?: boolean; at: string; person: { id: string | null; name: string; school: string | null } };
 
 const heavy = { revalidateOnFocus: false, dedupingInterval: 30_000, errorRetryCount: 2 };
 const HEALTH: Record<Health, { label: string; cls: string }> = {
@@ -213,6 +213,8 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
 const KIND: Record<Item['kind'], { label: string; icon: typeof Flag; actions: { id: string; label: string }[] }> = {
   flag: { label: 'Chat safety flag', icon: ShieldAlert, actions: [{ id: 'reviewed', label: 'Reviewed' }, { id: 'dismiss', label: 'Dismiss' }] },
   report: { label: 'Community report', icon: Flag, actions: [{ id: 'dismiss', label: 'Dismiss' }] },
+  // M370: Ghidra's answers people reported: read them, adjust Ghidra's rules (src/lib/ghidra-guard.ts, its prompts), then Done.
+  ghidra: { label: 'Reported Ghidra answer', icon: Sparkles, actions: [{ id: 'dismiss', label: 'Done' }] },
   listing: { label: 'Reported campus post', icon: Store, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
   'travel-post': { label: 'Reported travellers-board note', icon: Plane, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
   'travel-review': { label: 'Reported Travel review', icon: Star, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
@@ -268,7 +270,7 @@ export function ModerationPanel({ onPerson }: { onPerson: (id: string) => void }
                   <span>{item.group ?? item.person.school ?? 'No school'}</span>
                   <span>{formatDistanceToNow(new Date(item.at), { addSuffix: true })}</span>
                 </div>
-                <p className="mt-2 text-sm text-zinc-900 dark:text-white break-words">{item.text}</p>
+                <p className="mt-2 text-sm text-zinc-900 dark:text-white break-words whitespace-pre-line">{item.text}</p>
                 {item.reason && <p className="mt-1 text-xs text-zinc-600 dark:text-zinc-400">Reason: {item.reason}</p>}
                 <div className="mt-3 flex flex-wrap items-center gap-2">
                   {item.person.id && (

@@ -4,6 +4,8 @@ import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
 import { withTextModels } from '@/server/ai-models';
 import { MATH_RULE } from '@/lib/tutor-rules';
+import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
+import { SAFETY } from '@/server/gemini';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
 // or missing, the next answers (src/server/ai-models.ts).
@@ -28,6 +30,7 @@ suggest a qualified person. If anyone may be in danger, tell them to call the lo
 and India, 911 in North America).
 About yourself: you are Ghidra, made by UniVerse. If someone asks which company's technology you run on, say UniVerse's
 AI currently uses Google's models, as UniVerse's privacy policy explains; never claim to be another company's assistant.
+${UNTRUSTED_RULE}
 ${MATH_RULE}`;
 
 function plainTextStream(text: string) {
@@ -44,6 +47,7 @@ async function callGemini(model: string, apiKey: string, contents: unknown) {
         contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        safetySettings: SAFETY,
       }),
     },
   );
@@ -63,6 +67,9 @@ export async function POST(req: NextRequest) {
   }
   const message = typeof payload.message === 'string' ? payload.message.trim().slice(0, MAX_MESSAGE_CHARS) : '';
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  // M370: someone in crisis or in danger gets the safe, human answer first, with or without AI (src/lib/ghidra-guard.ts).
+  const g = guard(message);
+  if (g) return plainTextStream(guardReply(g));
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {

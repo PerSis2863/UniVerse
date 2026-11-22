@@ -2519,6 +2519,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
+  ['POST', /^\/ghidra\/report$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/quizzes\/draft$/, () => { notice(); return fail('Sample mode: Ghidra writes quizzes in the real app. Exit sample mode to draft one.', 400); }],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...ghidraSample(localPlan(String((body as { text?: unknown })?.text ?? ''))), ai: false })],
   ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],

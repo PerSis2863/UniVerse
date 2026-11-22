@@ -5,6 +5,7 @@ import { taughtBy } from '@/lib/course-access';
 import { GREEN_FACTORS, GREEN_KINDS, streak } from '@/lib/green';
 import { RELIEF_KINDS } from '@/lib/relief';
 import { MATH_RULE } from '@/lib/tutor-rules';
+import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { spendAi } from './ai-budget';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
@@ -37,6 +38,7 @@ const SYSTEM = [
   `- open: they want a page. page is one of ${Object.keys(ASK_PAGES).join(', ')}.`,
   '- answer: anything else, on any topic, like a general-purpose assistant: answer it fully and helpfully in "say" (explain, write, translate, plan, solve step by step, code in fenced blocks). Never invent their own data, marks or dates. Keep it suitable for students; refuse harmful requests kindly.',
   'If someone is in danger, answer that UniVerse is not an emergency service and they should call the local emergency number first (112 in Europe and India, 911 in North America), and offer relief_post.',
+  UNTRUSTED_RULE,
   'Always fill "say": for an action, one plain sentence telling them what will happen; for an answer, the whole answer in plain text (lists as lines starting with "- ", no ** or # marks). Be warm.',
   MATH_RULE,
 ].join('\n');
@@ -167,6 +169,9 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
 export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { ai: boolean; note?: string }> {
   const text = short(b.text, 400);
   if (!text) throw new BadRequestException('Type what you’d like to do.');
+  // M370: someone in crisis or in danger gets the safe, human answer first, whatever AI would say (src/lib/ghidra-guard.ts).
+  const g = guard(text);
+  if (g) return { action: 'answer', say: guardReply(g), ai: false };
   const local = async (note?: string) => ({ ...(await resolve(u, localPlan(text))), ai: false, ...(note ? { note } : {}) });
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) return local();
   const spend = await spendAi(u);
@@ -175,4 +180,15 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
   const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   return out ? { ...(await resolve(u, cleanPlan(out))), ai: true } : local();
+}
+
+/** M370: POST /ghidra/report { question, answer, reason? }: someone reports one of Ghidra's answers (wrong, unsafe, unkind)
+ *  for the owner console's Moderation. Only what they send; at most 20 a day each. */
+export async function reportAnswer(u: SessionUser, b: Body) {
+  const question = short(b.question, 1000), answer = short(b.answer, 6000), reason = short(b.reason, 300);
+  if (!question || !answer) throw new BadRequestException('Nothing to report.');
+  const today = await prisma.ghidraReport.count({ where: { userId: u.id, createdAt: { gte: new Date(Date.now() - DAY) } } });
+  if (today >= 20) throw new BadRequestException('Thanks: you’ve sent a lot of reports today. Try again tomorrow.');
+  await prisma.ghidraReport.create({ data: { userId: u.id, question, answer, reason: reason || null } });
+  return { ok: true };
 }

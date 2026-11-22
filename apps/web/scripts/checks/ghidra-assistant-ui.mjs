@@ -4,7 +4,8 @@
 // no sideways scroll, no page errors. M364: the corner assistant is Ghidra on every page (the student home): "What's due
 // this week?" comes back as Ghidra's reply, "How do I log a climate action?" stays an instant built-in answer. M365: "What
 // trips do I have?" lists them, "Plan a trip to Jaipur for 3 of us" proposes Make the trip (cancelled). M366: a teacher's
-// "Make a quiz on fractions for CS101" finds the course and proposes Write the quiz (cancelled).
+// "Make a quiz on fractions for CS101" finds the course and proposes Write the quiz (cancelled). M370: "i want to die" gets
+// the helplines at once; an answer is reported (one ghidra_reports row for alice is left: Done in the console's Moderation).
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/ghidra-assistant-ui.mjs
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
@@ -19,7 +20,7 @@ try {
     const ctx = await signedIn(browser, base, 'alice@student.com', { width, height: phone ? 844 : 900 }, phone ? { isMobile: true, hasTouch: true } : {});
     await ctx.addInitScript((th) => { localStorage.setItem('theme', th); localStorage.setItem('uv-cookies', 'essential'); }, theme);
     const page = await ctx.newPage();
-    page.on('pageerror', (e) => errors.push(`${width}: ${e.message.slice(0, 160)}`));
+    page.on('pageerror', (e) => errors.push(`${width}: ${e.message.slice(0, 160)} @ ${(e.stack ?? '').split('\n').slice(1, 3).join(' | ').slice(0, 300)}`));
     await page.goto(`${base}/hub`, { waitUntil: 'load', timeout: 180_000 });
     await page.addStyleTag({ content: 'nextjs-portal { display: none !important; }' });
     const box = page.locator('section[aria-labelledby="ghidra-h"]');
@@ -42,6 +43,11 @@ try {
     r.tripNew = await say('Plan a trip to Jaipur for 3 of us');
     r.makeTrip = await box.getByRole('button', { name: 'Make the trip' }).isVisible();
     await box.getByRole('button', { name: 'Cancel' }).click();
+    // M370: someone in crisis gets helplines at once; an answer can be reported.
+    r.crisis = await say('i want to die');
+    r.plain = await say('what is the weather like');
+    await box.getByRole('button', { name: 'Report this answer' }).last().click();
+    r.reported = await box.getByText('Reported', { exact: true }).last().waitFor({ timeout: 8000 }).then(() => true, () => false);
     await page.waitForTimeout(400);
     await page.addScriptTag({ path: AXE });
     r.axe = await page.evaluate(async () => (await window.axe.run({ exclude: [['canvas']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
@@ -65,7 +71,7 @@ try {
     r.cornerHowTo = await panel.getByText('Instant answer').last().isVisible().catch(() => false);
     if (shots) await page.screenshot({ path: `${shots}/ghidra-corner-${theme}-${width}.png` });
     await page.addScriptTag({ path: AXE });
-    r.cornerAxe = await page.evaluate(async () => (await window.axe.run({ include: [['div.ai-fab']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
+    r.cornerAxe = await page.evaluate(async () => (await window.axe.run({ include: [['div.ai-fab']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => `${n.target.join(' ')} (${(n.any[0]?.message ?? '').slice(0, 160)})`).join(' | ')}`));
     await ctx.close();
   }
   // M366: a teacher asks for a quiz; Ghidra finds the course and proposes Write the quiz (cancelled: nothing written).
@@ -88,5 +94,5 @@ try {
 console.log(JSON.stringify({ out, errors }, null, 1));
 const teacher = out.teacher;
 delete out.teacher;
-const bad = !teacher?.write || !/CS101/.test(teacher.reply) || Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !/(trip)/i.test(r.trips) || !/Jaipur/.test(r.tripNew) || !r.makeTrip || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
+const bad = !teacher?.write || !/CS101/.test(teacher.reply) || Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !/(trip)/i.test(r.trips) || !/Jaipur/.test(r.tripNew) || !r.makeTrip || !/14416/.test(r.crisis) || !r.reported || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
 process.exit(bad ? 1 : 0);
