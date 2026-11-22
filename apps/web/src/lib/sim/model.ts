@@ -16,6 +16,8 @@ export interface Model {
   gravity: boolean;
   /** The outline and holes when the shape is drawn by hand (template "custom", M411). */
   custom?: CustomShape;
+  /** Flat (plane stress, 2D) or a solid of the thickness (3D, M413). */
+  dim?: '2d' | '3d';
 }
 
 /** A ready-made shape's name and sizes, or the hand-drawn one's (no sizes: its corners are drawn). */
@@ -83,6 +85,7 @@ export function readModel(raw: unknown): Model {
     material: MATERIALS.some((x) => x.id === m.material) ? m.material! : base.material,
     fineness: (['coarse', 'medium', 'fine', 'finest'] as const).find((f) => f === m.fineness) ?? base.fineness,
     gravity: m.gravity === true,
+    dim: m.dim === '3d' ? '3d' : '2d',
     ...(m.template === 'custom' ? { custom: readCustom(m.custom) } : {}),
     supports: Array.isArray(m.supports) ? m.supports.filter((s) => s && ['fixed', 'slideX', 'slideY'].includes(s.kind)).map((s) => ({ id: String(s.id), kind: s.kind, edges: strs(s.edges) })) : base.supports,
     loads: Array.isArray(m.loads) ? m.loads.filter((l) => l && ['force', 'pressure', 'bearing'].includes(l.kind)).map((l): Load => (l.kind === 'pressure' ? { id: String(l.id), kind: 'pressure', edges: strs(l.edges), p: num(l.p, 1) } : { id: String(l.id), kind: l.kind, edges: strs(l.edges), F: num(l.F, 1000), angle: num(l.angle, -90) })) : base.loads,

@@ -11073,3 +11073,27 @@ on Windows, Mac and Linux runners (free: the repository is public), signs when t
 proof numbers and FAQ and the guide (8 since M403; "Arabic, read right to left"), with a test in
 `languages-offered.test.ts`. The owner's full MATLAB list is now the roadmap in STAGE-5-PLAN.md ("Hyperion toolboxes").
 Not built: an offline copy of Hyperion inside the app (it needs the site), auto-update (it is always the site's newest).
+
+## M413 (22 Nov): Hyperion Simulate, 3D parts
+
+The owner, 22 Nov ("3D parts… PLEASE DO THIS"). `src/lib/sim/solid.ts`: `extrude(mesh, t, layers)` stacks the flat
+mesh's corner nodes in layers through the thickness (z centred on 0), cuts each prism into three tetrahedra by the
+lowest node number (Dompierre et al.: rotate the prism so its lowest node is first, then pick the split from the face
+opposite it, so neighbours agree on every shared face), turns any inside-out tetrahedron round, adds the 6 middle
+nodes (10-node tetrahedra), finds the outside (faces used once, turned outwards) and gives each edge its side faces
+(two different flat nodes among a face's corners, matched to the edge's boundary pieces). `solveSolid`: 3D isotropic
+elasticity (Lamé λ, μ; 4-point rule), the skyline solver with RCM, loads on side faces (a uniform push on a 6-node
+face goes a third to each middle node: force by area, pressure along the outward normal, bolt loads cos-weighted),
+gravity, supports (fixed holds x, y, z; sliding holds y or x and z, as the part can't leave its plane), reactions from
+the elements touching a support (stiffness recomputed for those only), stresses at each element's nodes averaged
+(x, y, z, von Mises), safety factor, mass. Tests: the tetrahedra fill the solid exactly and its outside's area is the
+box's; a solid cantilever within 0.97–1.04 of PL³/3EI with no twist; checked by hand: every shape's 3D movement within
+~1 % of the flat model's. The worker (`solidOf`): the flat mesh at 1.6× the size (finest uses fine's), 2–4 layers, at
+most ~21,000 unknowns (coarser until it fits; the finest lug was 22 s before the cap); kept while only loads change.
+`Sim3DView.tsx`: three.js (loaded only for 3D), the outside as 4 small triangles per face, values as a texture
+coordinate into a 9-pixel band texture with nearest sampling (crisp bands), lit (ambient + two lights), bent ×N (or
+true size), animated, the mesh lines, the unbent outline (EdgesGeometry), OrbitControls (render on change), a legend,
+back-to-first-view, PNG. `Model.dim` ('2d' | '3d', Geometry → "Model it as"); the bench's summary, verdict, reactions
+and CSV read the 3D result (`res`); 3D shows displacement, x / y stress, von Mises and the safety factor. Not built:
+3D vibration and heat (they use the flat model), supports or loads on the flat faces, parts not of one thickness
+(holes through part of it, ribs), contact.

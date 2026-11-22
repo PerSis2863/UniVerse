@@ -13,6 +13,7 @@ import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structur
 import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, templateInfo, verdict, type Field, type Model } from '@/lib/sim/model';
 import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
+import { Sim3DView } from './Sim3DView';
 import { EdgeTicks, NumField, ui } from './bench-ui';
 import type { FromSim, ToSim } from './sim.worker';
 
@@ -74,11 +75,14 @@ export function StructureBench() {
   const groups = useMemo(() => edgeGroups(edges), [edges]);
   const problem = modelProblem(model);
   const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null;
+  // M413: a solid (3D) part's stress and bending; vibration still uses the flat model.
+  const is3d = model.dim === '3d' && analysis === 'static', solidRes = out?.solidResult ?? null, solid3 = out?.solid ?? null;
+  const res = is3d ? solidRes : result;
   const mode = modal?.modes[Math.min(modeAt, modal.modes.length - 1)] ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
   const tpl = templateInfo(model.template);
-  const maxVm = result ? peak(result.vm).value : 0, maxU = result ? peak(result.u).value : 0;
-  const says = result ? verdict(maxVm, material.yieldMPa, material.name) : null;
+  const maxVm = res ? peak(res.vm).value : 0, maxU = res ? peak(res.u).value : 0;
+  const says = res ? verdict(maxVm, material.yieldMPa, material.name) : null;
   const groupOf = (id: string) => groups.find((g) => g.ids.includes(id));
   const where = (ids: string[]) => groups.filter((g) => g.ids.some((i) => ids.includes(i))).map((g) => g.label).join(', ') || 'no edge yet';
   const letterOf = (id: string) => { const i = [...model.supports.map((s) => s.id), ...model.loads.map((l) => l.id)].indexOf(id); return LETTERS[i % 26]; };
@@ -100,7 +104,7 @@ export function StructureBench() {
   };
   const remove = (id: string) => { setModel((m) => ({ ...m, supports: m.supports.filter((s) => s.id !== id), loads: m.loads.filter((l) => l.id !== id) })); setSel({ k: 'solution' }); };
   /** A force for a table: 0 when it is only rounding (a millionth of the loads). */
-  const force = (v: number) => { const scale = result ? Math.max(1, Math.abs(result.applied.fx), Math.abs(result.applied.fy)) : 1; return Math.abs(v) < scale * 1e-6 ? '0' : (+v.toPrecision(5)).toLocaleString(); };
+  const force = (v: number) => { const scale = res ? Math.max(1, Math.abs(res.applied.fx), Math.abs(res.applied.fy)) : 1; return Math.abs(v) < scale * 1e-6 ? '0' : (+v.toPrecision(5)).toLocaleString(); };
   const fmtHz = (f: number) => (f >= 1000 ? `${(f / 1000).toPrecision(4)} kHz` : `${f.toPrecision(4)} Hz`);
   /** The mode as a sound: a struck note at its frequency, dying away like a ringing part. */
   const ring = (f: number) => {
@@ -115,6 +119,12 @@ export function StructureBench() {
   };
   const download = (name: string, body: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const csv = () => {
+    if (is3d && solidRes && solid3) {
+      const rows = ['node,x_mm,y_mm,z_mm,ux_mm,uy_mm,uz_mm,u_mm,von_mises_MPa,sx_MPa,sy_MPa,sz_MPa,safety'];
+      for (let n = 0; n < solid3.x.length; n++) rows.push([n + 1, solid3.x[n], solid3.y[n], solid3.z[n], solidRes.ux[n], solidRes.uy[n], solidRes.uz[n], solidRes.u[n], solidRes.vm[n], solidRes.sx[n], solidRes.sy[n], solidRes.sz[n], solidRes.safety[n]].map((v) => +v.toPrecision(7)).join(','));
+      download(`${tpl.name.replace(/\W+/g, '-').toLowerCase()}-3d-results.csv`, `${rows.join('\n')}\n`, 'text/csv');
+      return;
+    }
     if (!result || !mesh) return;
     const rows = ['node,x_mm,y_mm,ux_mm,uy_mm,u_mm,von_mises_MPa,s1_MPa,s2_MPa,sx_MPa,sy_MPa,sxy_MPa,safety'];
     for (let n = 0; n < mesh.x.length; n++) rows.push([n + 1, mesh.x[n], mesh.y[n], result.ux[n], result.uy[n], result.u[n], result.vm[n], result.s1[n], result.s2[n], result.sx[n], result.sy[n], result.sxy[n], result.safety[n]].map((v) => (typeof v === 'number' ? +v.toPrecision(7) : v)).join(','));
@@ -158,7 +168,7 @@ export function StructureBench() {
       </label>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
       {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity]] as const).map(([a, name, Icon]) => {
-        const here = analysis === a, solved = here && (a === 'static' ? !!result : !!modal);
+        const here = analysis === a, solved = here && (a === 'static' ? !!res : !!modal);
         return (
           <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a === 'modal' && !still) setPlaying(true); }}>
             {solved ? <Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : here && !busy ? <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden /> : <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}
@@ -186,6 +196,10 @@ export function StructureBench() {
             <option value="custom">Your own shape (draw it)</option>
           </select>
         </label>
+        <div><span className={label}>Model it as</span>
+          <div className="mt-1"><Segmented<'2d' | '3d'> label="Model it as" value={model.dim ?? '2d'} onChange={(v) => setModel((m) => ({ ...m, dim: v }))} segments={[{ value: '2d', label: 'Flat (2D)' }, { value: '3d', label: 'Solid (3D)' }]} /></div>
+          <p className="mt-1 text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{model.dim === '3d' ? 'A solid of the thickness, meshed with 3D elements: turn it with the mouse. Vibration still uses the flat model.' : 'A thin plate loaded in its own plane (plane stress): quick and exact for flat parts.'}</p>
+        </div>
         {model.template === 'custom' && model.custom && <ShapeSketch shape={model.custom} onChange={(c) => setModel((m) => ({ ...m, custom: c }))} />}
         <div className="grid grid-cols-2 gap-2">
           {tpl.params.map((p) => <div key={p.key}>{num(model.values[p.key], (v) => setModel((m) => ({ ...m, values: { ...m.values, [p.key]: Math.max(p.min, Math.min(p.max, v)) } })), { label: p.label, unit: 'mm', min: p.min })}</div>)}
@@ -311,18 +325,18 @@ export function StructureBench() {
         {problem ? <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{problem}</p>
           : out?.error ? <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p>
             : says && <p className={cn('rounded-lg p-2.5 text-xs leading-relaxed', says.ok ? 'bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200' : 'bg-red-50 text-red-900 dark:bg-red-950/40 dark:text-red-200')}>{says.text}</p>}
-        {result && (
+        {res && (
           <>
             <dl className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-xs">
-              {[['Largest movement', `${+maxU.toPrecision(3)} mm`], ['Highest stress', `${+maxVm.toPrecision(4)} MPa`], ['Weight of the part', `${+(result.massKg).toPrecision(3)} kg`], ['Unknowns solved', result.dofs.toLocaleString()]].map(([k, v]) => <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>)}
+              {[['Largest movement', `${+maxU.toPrecision(3)} mm`], ['Highest stress', `${+maxVm.toPrecision(4)} MPa`], ['Weight of the part', `${+(res.massKg).toPrecision(3)} kg`], ['Unknowns solved', res.dofs.toLocaleString()]].map(([k, v]) => <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>)}
             </dl>
             <div>
               <p className={label}>What the supports carry</p>
               <table className="mt-1 w-full text-xs tabular-nums">
                 <thead className="text-zinc-500 dark:text-zinc-400"><tr><th className="py-1 text-start font-medium">Support</th><th className="py-1 text-end font-medium">x (N)</th><th className="py-1 text-end font-medium">y (N)</th></tr></thead>
                 <tbody>
-                  {result.reactions.map((r) => <tr key={r.id} className="border-t border-zinc-100 dark:border-white/[0.06]"><td className="py-1">{letterOf(r.id)}: {SUPPORT_NAMES[model.supports.find((s) => s.id === r.id)?.kind ?? 'fixed']}</td><td className="py-1 text-end font-mono">{force(r.fx)}</td><td className="py-1 text-end font-mono">{force(r.fy)}</td></tr>)}
-                  <tr className="border-t border-zinc-200 text-zinc-500 dark:border-white/10 dark:text-zinc-400"><td className="py-1">Loads, in all</td><td className="py-1 text-end font-mono">{force(result.applied.fx)}</td><td className="py-1 text-end font-mono">{force(result.applied.fy)}</td></tr>
+                  {res.reactions.map((r) => <tr key={r.id} className="border-t border-zinc-100 dark:border-white/[0.06]"><td className="py-1">{letterOf(r.id)}: {SUPPORT_NAMES[model.supports.find((s) => s.id === r.id)?.kind ?? 'fixed']}</td><td className="py-1 text-end font-mono">{force(r.fx)}</td><td className="py-1 text-end font-mono">{force(r.fy)}</td></tr>)}
+                  <tr className="border-t border-zinc-200 text-zinc-500 dark:border-white/10 dark:text-zinc-400"><td className="py-1">Loads, in all</td><td className="py-1 text-end font-mono">{force(res.applied.fx)}</td><td className="py-1 text-end font-mono">{force(res.applied.fy)}</td></tr>
                 </tbody>
               </table>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">The supports push back exactly as hard as the loads push (a check that the answer balances).</p>
@@ -340,7 +354,11 @@ export function StructureBench() {
 
   const picking = sel.k === 'support' || sel.k === 'load';
   const chosenEdges = picking ? ((sel.k === 'support' ? model.supports : model.loads).find((x) => x.id === sel.id)?.edges ?? []) : [];
-  const fieldInfo = FIELDS.find((f) => f.id === field)!;
+  // A solid has no principal or shear plot yet (M413): its list is shorter, von Mises when the field isn't there.
+  const fields = is3d ? FIELDS.filter((f) => ['u', 'ux', 'uy', 'vm', 'sx', 'sy', 'safety'].includes(f.id)) : FIELDS;
+  const fieldNow: Field = fields.some((f) => f.id === field) ? field : 'vm';
+  const fieldInfo = FIELDS.find((f) => f.id === fieldNow)!;
+  const shown3 = is3d && solidRes && !problem ? { ux: solidRes.ux, uy: solidRes.uy, uz: solidRes.uz, values: solidRes[fieldNow as 'u' | 'ux' | 'uy' | 'vm' | 'sx' | 'sy' | 'safety'], name: fieldInfo.name, unit: fieldInfo.unit, reverse: fieldNow === 'safety' } : null;
   const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
   const shown: Shown | null = problem ? null : analysis === 'static'
     ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' } : null)
@@ -350,8 +368,8 @@ export function StructureBench() {
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10">
         {analysis === 'static' ? (
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
-            <select value={field} onChange={(e) => setField(e.target.value as Field)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
-              {FIELDS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            <select value={fieldNow} onChange={(e) => setField(e.target.value as Field)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
+              {fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
             </select>
           </label>
         ) : (
@@ -367,13 +385,15 @@ export function StructureBench() {
           </select>
         </label>}
         <button type="button" className={small} aria-pressed={showMesh} onClick={() => setShowMesh((v) => !v)}><Grid3x3 className="h-3.5 w-3.5" aria-hidden />Mesh</button>
-        <button type="button" className={small} disabled={!shown || (analysis === 'static' && deform === 'none')} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
+        <button type="button" className={small} disabled={!(is3d ? shown3 : shown) || (analysis === 'static' && deform === 'none')} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
         {busy && <span className="ms-auto text-xs text-zinc-500 dark:text-zinc-400">solving…</span>}
       </div>
       <div className="relative min-h-0 flex-1">
-        <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis === 'modal' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
+        {is3d ? (solid3 ? <Sim3DView ref={view} solid={solid3} shown={shown3} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still} dark={dark} deform={deform}
+          label={shown3 ? `${tpl.name} as a solid: ${shown3.name} from ${+Math.min(...shown3.values).toPrecision(3)} to ${+Math.max(...shown3.values).toPrecision(3)} ${shown3.unit}` : `${tpl.name} as a solid: not solved yet`} />
+          : <div className="grid h-full place-items-center text-[13px] text-zinc-500 dark:text-zinc-400">Making the solid…</div>) : <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis === 'modal' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
           supports={model.supports} loads={analysis === 'static' ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
-          label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />
+          label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />}
       </div>
       {picking && <p className="border-t border-zinc-200/80 px-3 py-1.5 text-xs text-violet-800 dark:border-white/10 dark:text-violet-200">Press an edge in the picture to add it to {letterOf(sel.id)} or take it away.</p>}
     </section>
