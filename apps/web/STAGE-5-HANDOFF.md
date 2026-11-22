@@ -10975,3 +10975,27 @@ moved to `bench-ui.tsx`: `ui` styles, `NumField`, `EdgeTicks`); `SimCanvas` gain
 letter: held temperature orange, heat in red, air blue); `SimulateApp.tsx`: Structures | Heat (kept for the visit).
 Not built: temperatures that change with time at an edge, radiation, contact between parts, thermal stress (the
 temperatures as a load on Structures: a good next step).
+
+## M408 (22 Nov): Hyperion Simulate, Fluids (a wind tunnel)
+
+The fourth piece of the owner's Ansys ask (Fluent's kind of picture). `src/lib/sim/flow.ts` `Tunnel`: lattice
+Boltzmann D2Q9, one relaxation time (BGK), pull-and-collide in one pass; inflow: the equilibrium at U = 0.08 in the
+first column; outflow: the last column copied; top and bottom wrap round; the shape's cells (inside its outline,
+`shapeOutline`: a cylinder, a NACA 4-digit wing at 2.5 D chord turned about its quarter chord, a square, a plate)
+bounce packets back halfway, and the momentum they give it is the force (Cd, Cl = 2F / (U²D), D the cells across).
+ν from Re = U·D/ν, τ kept ≥ 0.505. The shape sits 0.37 cells off the middle (a perfectly symmetric start never starts
+swaying). Speed: a fast path for cells with open water all round (fully unrolled; the slow path's array
+destructuring had made the whole loop slow): ~30 M cells/s, ~700 steps/s at 300×150. `field` gives speed (× U),
+pressure coefficient, or vorticity (× D/U); `velocity` bilinear for particles; `swingRate` (upward mean crossings)
+for the Strouhal number. Tests: a cylinder at Re 20 (Cd 1.9–3.6, no lift, nothing runs away), a wing at ±8° lifts
+up and down, the NACA thickness, swing counting; measured by hand: a cylinder at Re 100 sheds at St 0.195–0.20 with
+Cd ≈ 1.8 (the neighbours above and below raise both a little from the open-flow 0.165 and 1.35).
+`components/sim/flow.worker.ts`: steps for ~20 ms at a time, keeps Cd and Cl every 10 steps (the last 600), moves
+1,400 tracer particles (respawned at the inflow when they leave, enter the shape, or after 9,000 steps); a frame goes
+out only after the page drew the last one (`drawn`), its arrays transferred. `FlowBench.tsx`: shape, angle, wing
+thickness and camber (its NACA name), the Reynolds number (10–300), Speed / Pressure / Swirl (smooth colour ramps,
+blue–white–red for signed ones), particles, Pause (it starts paused with Reduce Motion, and pauses while the tab is
+hidden), Start again; the drag and lift in numbers and a live chart; the Strouhal number and a sentence once the flow
+has crossed the tunnel twice. Simulate's tabs: Structures | Heat | Fluids.
+Not built: 3D flow, turbulence models (above ~300 the grid is too coarse; τ is held at 0.505), the shapes from
+Structures, walls above and below, heat carried by the flow.
