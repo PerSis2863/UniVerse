@@ -179,7 +179,6 @@ cumsum | cumsum(A, dim) | Running sum.
 cumprod | cumprod(A, dim) | Running product.
 cummax | cummax(A) | Running maximum.
 cummin | cummin(A) | Running minimum.
-diff | diff(x, n) | Differences between neighbours (n times).
 mean | mean(A, dim) | Average.
 median | median(A, dim) | Middle value.
 mode | mode(A) | Most frequent value.
@@ -251,7 +250,7 @@ fzero | fzero(f, x0) | Where f is zero, near x0 (or between [a b]).
 fminbnd | [x, fx] = fminbnd(f, a, b) | Where f is smallest between a and b.
 ode45 | [t, y] = ode45(f, [t0 t1], y0) | Solves y' = f(t, y) (Dormand–Prince, adaptive steps).
 ode23 | [t, y] = ode23(f, [t0 t1], y0) | Solves y' = f(t, y) (lower order, for rougher problems).
-gradient | gradient(F, h), [fx, fy] = gradient(F) | Slopes on a grid.
+gradient | gradient(F, h), [fx, fy] = gradient(F) | Slopes on a grid; gradient(f, [x, y]) of a formula: its derivatives by each letter.
 del2 | del2(F, h) | The discrete Laplacian (/ 4, as MATLAB).
 divergence | divergence(X, Y, U, V) | Divergence of a 2D field.
 curl | curl(X, Y, U, V) | Turning of a 2D field.
@@ -518,6 +517,40 @@ rgb2gray | rgb2gray(I) | A colour picture in grey.
 im2double | im2double(I) | Picture values from 0 to 1.
 im2uint8 | im2uint8(I) | Picture values 0–255 (uint8).
 imresize | imresize(I, scale), imresize(I, [r c]) | A picture at another size.
+
+# Symbolic maths
+syms | syms x y | Makes symbols: letters that stay letters, for exact maths (syms x y t).
+sym | sym(x) | An exact value: sym('x') a symbol, sym(1/3) the fraction 1/3, sym(pi) pi, sym('a', [1 3]) [a1, a2, a3].
+diff | diff(f, x, n) | Derivative of a formula (n-th with n); for numbers, differences between neighbours.
+int | int(f, x, a, b) | Integral of a formula: int(f) the formula, int(f, a, b) or int(f, x, a, b) its value from a to b.
+solve | solve(eqn, x) | Solves equations exactly when it can: solve(x^2 == 4, x), solve([e1, e2], [x, y]).
+subs | subs(f, x, v) | f with x replaced by v (a number, a formula or an array of numbers).
+simplify | simplify(f) | The simplest form found: fractions cancelled, sin² + cos² = 1, common factors out.
+expand | expand(f) | Multiplies out brackets and powers.
+factor | factor(f) | The factors of a polynomial (or the prime factors of a number), as a row.
+collect | collect(f, x) | Gathers the terms by powers of x.
+simplifyFraction | simplifyFraction(f) | One fraction, with common factors cancelled.
+numden | [n, d] = numden(f) | The top and the bottom of f as one fraction.
+limit | limit(f, x, a) | The limit as x → a ('left' or 'right' for one side; a can be Inf).
+taylor | taylor(f, x, a) | The Taylor polynomial about a ('Order', n: terms below (x − a)^n; 6 by default).
+symsum | symsum(f, k, a, b) | The sum of f for k from a to b (b can be a letter or Inf).
+vpa | vpa(f, d) | f with its numbers worked out as decimals (d significant figures; double precision, about 16).
+latex | latex(f) | The formula as LaTeX text.
+pretty | pretty(f) | Shows a formula set as maths.
+symvar | symvar(f) | The letters in a formula.
+coeffs | coeffs(f, x) | The coefficients of a polynomial, lowest power first ('All': every power, highest first).
+sym2poly | sym2poly(f) | A polynomial's coefficients as numbers, highest power first (for polyval, roots).
+poly2sym | poly2sym(c, x) | A polynomial from its coefficients.
+jacobian | jacobian(F, v) | The matrix of derivatives of each of F by each of v.
+hessian | hessian(f, v) | The matrix of second derivatives of f.
+lhs | lhs(eqn) | The left side of an equation.
+rhs | rhs(eqn) | The right side of an equation.
+isolate | isolate(eqn, x) | The equation rewritten as x == ….
+isAlways | isAlways(eqn) | True when the equation always holds (checked by simplifying).
+matlabFunction | matlabFunction(f) | A function handle that works out f (element by element), its inputs the letters in f.
+assume | assume(cond) | Accepted and noted; this Lab doesn’t use assumptions yet.
+assumeAlso | assumeAlso(cond) | Accepted and noted, as assume.
+nthroot | nthroot(x, n) | The real n-th root.
 
 # Running code
 help | help name | Help for a function.

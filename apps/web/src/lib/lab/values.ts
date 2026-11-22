@@ -1,6 +1,7 @@
 import { LabError } from './parse';
 import type { Expr } from './parse';
 import type { NumClass } from './types';
+import { evalC, latex as symLatex, print as symPrint, symbols, type N as SymNode } from './sym';
 
 // Hyperion's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
 // linear indexing and reshape behave the same), text, cell arrays, structs and function handles.
@@ -15,7 +16,9 @@ export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 /** `table`: a table (M383): a struct whose fields are equal-height columns, shown as rows. */
 export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
-export type Value = Mat | Str | Cell | Struct | Fn;
+/** A symbolic array (M396): expressions from sym.ts, column by column like a matrix. */
+export interface Sym { k: 'sym'; r: number; c: number; d: SymNode[] }
+export type Value = Mat | Str | Cell | Struct | Fn | Sym;
 
 /** A matrix; numbers for more than r × c (a whole number of times) make a 3D array with that many pages, so any
  * code that maps over `d` keeps the pages. */
@@ -72,11 +75,20 @@ export const col = (vs: number[]): Mat => mat(vs.length, 1, vs);
 /** The value as numbers (text becomes its character codes, as in MATLAB). */
 export function toMat(v: Value, what = 'This'): Mat {
   if (v.k === 'mat') return v;
+  // A symbolic value with no letters left is its number (M396); with letters, the error says which.
+  if (v.k === 'sym') {
+    const left = new Set<string>();
+    for (const n of v.d) symbols(n, left);
+    if (left.size) throw new LabError(`${what} is symbolic and still has ${[...left].join(', ')} in it: use subs to give ${left.size > 1 ? 'them values' : 'it a value'}, or double(…) when none are left.`);
+    const re: number[] = [], im: number[] = [];
+    for (const n of v.d) { const [a, b] = evalC(n); re.push(a); im.push(Math.abs(b) < 1e-14 * (1 + Math.abs(a)) ? 0 : b); }
+    return im.some((x) => x !== 0) ? cmat(v.r, v.c, re, im) : mat(v.r, v.c, re);
+  }
   if (v.k === 'str') return mat(v.v.length ? 1 : 0, v.v.length, [...v.v].map((ch) => ch.charCodeAt(0)));
   throw new LabError(`${what} must be a number or a matrix, not ${kind(v)}.`);
 }
 export const isScalar = (m: Mat) => m.r === 1 && m.c === 1;
-export const numel = (v: Value) => (v.k === 'mat' ? v.r * v.c * (v.p ?? 1) : v.k === 'cell' ? v.r * v.c : v.k === 'str' ? v.v.length : 1);
+export const numel = (v: Value) => (v.k === 'mat' ? v.r * v.c * (v.p ?? 1) : v.k === 'cell' || v.k === 'sym' ? v.r * v.c : v.k === 'str' ? v.v.length : 1);
 export function scalar(v: Value, what = 'This'): number {
   const m = toMat(v, what);
   if (m.r * m.c < 1) throw new LabError(`${what} is empty: it needs one number.`);
@@ -89,7 +101,7 @@ export const truthy = (v: Value): boolean => {
   return m.d.length > 0 && m.d.every((x) => x !== 0 && !Number.isNaN(x));
 };
 export const at = (m: Mat, i: number, j: number) => m.d[i + j * m.r];
-export const sizeOf = (v: Value): [number, number] => (v.k === 'mat' || v.k === 'cell' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : v.k === 'struct' && v.table ? [tableHeight(v), v.f.size] : [1, 1]);
+export const sizeOf = (v: Value): [number, number] => (v.k === 'mat' || v.k === 'cell' || v.k === 'sym' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : v.k === 'struct' && v.table ? [tableHeight(v), v.f.size] : [1, 1]);
 
 export function kind(v: Value): string {
   switch (v.k) {
@@ -98,6 +110,7 @@ export function kind(v: Value): string {
     case 'cell': return 'cell';
     case 'struct': return v.table ? 'table' : 'struct';
     case 'fn': return 'function_handle';
+    case 'sym': return 'sym';
   }
 }
 
@@ -119,8 +132,28 @@ export const fmtNum = (x: number, f: Fmt, int: boolean) => {
   return x.toFixed(f.long ? 15 : 4);
 };
 
+// ——— Symbolic values (M396): plain text as MATLAB prints them, and LaTeX for the window's typeset maths ———
+
+const symAt = (v: Sym, i: number, j: number) => v.d[i + j * v.r];
+export function symPlain(v: Sym): string {
+  if (v.d.length === 1) return symPrint(v.d[0]);
+  if (!v.d.length) return '[ ]';
+  return Array.from({ length: v.r }, (_, i) => `[${Array.from({ length: v.c }, (_, j) => symPrint(symAt(v, i, j))).join(', ')}]`).join('\n');
+}
+export function symTex(v: Sym): string {
+  if (v.d.length === 1) return symLatex(v.d[0]);
+  const rows = Array.from({ length: v.r }, (_, i) => Array.from({ length: v.c }, (_, j) => symLatex(symAt(v, i, j))).join(' & '));
+  return `\\left(\\begin{array}{${'c'.repeat(v.c)}}${rows.join(' \\\\ ')}\\end{array}\\right)`;
+}
+/** Text the window sets as maths: \u0001 LaTeX \u0002 plain text \u0003 (copied or saved, only the plain text is kept). */
+export const TEX_OPEN = '\u0001', TEX_MID = '\u0002', TEX_CLOSE = '\u0003';
+export const symShown = (v: Sym) => (v.d.length ? `${TEX_OPEN}${symTex(v)}${TEX_MID}${symPlain(v)}${TEX_CLOSE}` : '[ ]');
+/** The plain text of output that may hold typeset maths. */
+export const plainOf = (text: string) => text.replace(/\u0001[^\u0002]*\u0002([^\u0003]*)\u0003/g, '$1');
+
 /** How a value is shown after "x = …". */
 export function show(name: string, v: Value, f: Fmt): string {
+  if (v.k === 'sym') return `${name} =\n\n${symShown(v)}\n\n`;
   if (v.k === 'mat' && (v.p ?? 1) > 1) return Array.from({ length: v.p! }, (_, k) => `${name}${pageLabel(v, k)} =\n\n${render(page(v, k), f)}\n\n`).join('');
   if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${v.im ? fmtC(v.d[0], v.im[0], f) : fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
   const body = render(v, f);
@@ -134,6 +167,7 @@ export function render(v: Value, f: Fmt): string {
   switch (v.k) {
     case 'str': return v.v;
     case 'fn': return v.src ? `@${v.src}` : `@${v.name}`;
+    case 'sym': return symPlain(v);
     case 'struct': return v.table ? tableText(v, f) : [...v.f].map(([k, x]) => `    ${k}: ${inline(x, f)}`).join('\n') || '    (no fields)';
     case 'cell': {
       if (!v.d.length) return `{}(${v.r}x${v.c})`;
@@ -170,6 +204,7 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
   switch (v.k) {
     case 'str': return `'${v.v}'`;
     case 'fn': return render(v, f);
+    case 'sym': { if (v.d.length !== 1) return `${v.r}x${v.c} sym`; const t = symPrint(v.d[0]); return t.length > 400 ? '1x1 sym' : t; }
     case 'struct': return v.table ? `${tableHeight(v)}x${v.f.size} table` : `1x1 struct`;
     case 'cell': return `${v.r}x${v.c} cell`;
     case 'mat':

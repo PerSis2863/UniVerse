@@ -8,6 +8,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
+import { LabText } from './LabText';
 import { VariableViewer, type Shown } from './VariableViewer';
 import { FunctionBrowser } from './FunctionBrowser';
 import { HELP } from '@/lib/lab/help';
@@ -37,6 +38,7 @@ const EXAMPLES: Script[] = [
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
   { name: 'waves.m', code: "% Live controls: drag them and the figure follows\nfreq = 2;        % slider 0.5 8\ndamping = 0.3;   % slider 0 1\nshape = 'sine';  % menu sine square sawtooth\nshowEnvelope = true; % toggle\nt = linspace(0, 10, 600);\nswitch shape\n  case 'sine', y = sin(2*pi*freq*t/5);\n  case 'square', y = sign(sin(2*pi*freq*t/5));\n  otherwise, y = 2*mod(freq*t/5, 1) - 1;\nend\ny = y .* exp(-damping*t);\nplot(t, y); hold on\nif showEnvelope, plot(t, exp(-damping*t), '--', t, -exp(-damping*t), '--'); end\nhold off; ylim([-1.2 1.2]); grid on\ntitle(sprintf('%s wave, f = %.1f', shape, freq))\n" },
+  { name: 'symbolic.m', code: "% Exact maths with symbols: answers are set as real maths\nsyms x\nf = x^3 - 6*x^2 + 11*x - 6\ndf = diff(f)\nr = solve(f == 0, x)\narea = int(f, 0, 1)\none = simplify(sin(x)^2 + cos(x)^2)\nseries = taylor(exp(x), x, 'Order', 5)\na = 1;   % slider -3 3\nfplot(f + a*x, [0 4]); grid on\ntitle('f(x) + a x')\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
@@ -290,8 +292,8 @@ export function LabApp() {
         {busy && <span className="lab-busy" aria-hidden><span className="bg-indigo-600" /></span>}
       </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
-        {watching && watch ? <pre className="whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100"><span className="text-violet-700 dark:text-violet-300">{`Watching: what the run printed up to step ${watch.k + 1}\n`}</span>{printedUpTo(watch.steps, watch.k)}</pre> : <>
-        {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' && !l.t.startsWith('>>') ? `>> ${l.t}` : l.t}</pre>)}
+        {watching && watch ? <pre className="whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100"><span className="text-violet-700 dark:text-violet-300">{`Watching: what the run printed up to step ${watch.k + 1}\n`}</span><LabText text={printedUpTo(watch.steps, watch.k)} /></pre> : <>
+        {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' ? (l.t.startsWith('>>') ? l.t : `>> ${l.t}`) : <LabText text={l.t} />}</pre>)}
         </>}
       </div>
       <div className="flex items-start gap-2 border-t border-zinc-200/80 px-3 py-2 font-mono text-[13px] dark:border-white/10">

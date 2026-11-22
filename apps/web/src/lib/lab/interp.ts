@@ -6,6 +6,8 @@ import { cast, isNumClass, resultClass, type NumClass } from './types';
 import { colPositions, contents, isTable, joinTables, pick as pickTable, properties, remove as removeRows, renamed, setValues } from './table';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
+import { symBinop, symCall, symConcat, symNeg, symTranspose } from './sym-lab';
+import { ZERO as ZERO_SYM } from './sym';
 
 // Hyperion's interpreter (M374): runs the tree from parse.ts. Our own code, written from the MATLAB / Octave
 // language's documented behaviour: implicit expansion, column-major indexing, growth on assignment, `end` in indexes,
@@ -223,6 +225,7 @@ export class Lab {
       }
       case 'un': {
         const a = this.ev(e.a, f);
+        if (a.k === 'sym' && e.op !== '~') return [e.op === '-' ? symNeg(a) : a];
         if (e.op === '+') return [toMat(a)];
         if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
         return [{ ...map1(toMat(a), (x) => (x === 0 ? 1 : 0)), logical: true }];
@@ -317,6 +320,8 @@ export class Lab {
     if (name === 'nargin' && f) return [num(f.nargin)];
     if (name === 'nargout' && f) return [num(f.nargout)];
     if (name === 'exist' && f) { const n = args[0] ? textOf(args[0]) : ''; const files = this.host.files as { has?(n: string): boolean } | undefined; return [num(f.vars.has(n) ? 1 : files?.has?.(n) ? 2 : this.fns.has(n) || BUILTINS[n] ? 5 : 0)]; }
+    const sc = symCall(name, args);
+    if (sc) return sc(args, nout, this, f);
     const b = BUILTINS[name];
     if (!b) throw new LabError(`“${name}” isn’t a variable or a function I know.${suggest(name)}`);
     // A class name at the end makes the result that type: zeros(2, 'uint8'), ones(3, 'like', x) (M386).
@@ -366,6 +371,8 @@ export class Lab {
 
   // ——— Operators ———
   binop(op: string, a: Value, b: Value): Value {
+    // Symbolic maths (M396): exact, with letters; back to numbers when neither side has any.
+    if (a.k === 'sym' || b.k === 'sym') { const r = symBinop(op, a, b); if (r) return r; }
     if ((op === '==' || op === '~=') && a.k === 'str' && b.k === 'str' && a.v.length !== b.v.length && a.v.length !== 1 && b.v.length !== 1) throw new LabError('To compare texts of different lengths use strcmp(a, b).');
     const A = toMat(a, 'The left side'), B = toMat(b, 'The right side');
     // Whole-number types (M386): worked out in doubles, then rounded and held in the type's range.
@@ -430,6 +437,7 @@ export function matmul(a: Mat, b: Mat): Mat {
   return mat(a.r, b.c, d);
 }
 export function transpose(v: Value): Value {
+  if (v.k === 'sym') return symTranspose(v);
   if (v.k === 'cell') { const d: Value[] = []; for (let i = 0; i < v.r; i++) for (let j = 0; j < v.c; j++) d.push(v.d[i + j * v.r]); return { k: 'cell', r: v.c, c: v.r, d }; }
   if (v.k === 'str') return v.v.length <= 1 ? v : mat(v.v.length, 1, [...v.v].map((ch) => ch.charCodeAt(0)));
   const m = toMat(v);
@@ -522,6 +530,7 @@ export function inv(A: Mat): Mat {
 
 /** Rows of values side by side, then the rows on top of each other ([a b; c d]). Text joins as text. */
 export function concat(rows: Value[][]): Value {
+  if (rows.some((r) => r.some((v) => v.k === 'sym'))) return symConcat(rows);
   // A whole-number type wins (the first one met), as MATLAB joins them.
   const typed = rows.flat().find((v): v is Mat => v.k === 'mat' && !!v.cls);
   if (typed) { const out = concat(rows.map((r) => r.map((v) => (v.k === 'mat' && v.cls ? cast(v, undefined) : v)))); return out.k === 'mat' ? cast(out, typed.cls) : out; }
@@ -601,6 +610,20 @@ export function getIndex(v: Value, idx: Idx[]): Value {
     if (trimmed.length > 1) res.nd = trimmed;
     return res;
   }
+  if (v.k === 'sym') {
+    const [r, c] = [v.r, v.c];
+    if (idx.length === 1) {
+      const p = positions(idx[0], r * c);
+      for (const k of p) if (k >= r * c) throw new LabError(`Index ${k + 1} is past the end: this has ${r * c} elements.`);
+      const items = p.map((k) => v.d[k]);
+      return idx[0] === 'all' || c === 1 ? { k: 'sym', r: items.length, c: 1, d: items } : { k: 'sym', r: 1, c: items.length, d: items };
+    }
+    const rows = positions(idx[0], r), cols = positions(idx[1], c), items = [];
+    for (const i of rows) if (i >= r) throw new LabError(`Row ${i + 1} is past the end: there are ${r}.`);
+    for (const j of cols) if (j >= c) throw new LabError(`Column ${j + 1} is past the end: there are ${c}.`);
+    for (const j of cols) for (const i of rows) items.push(v.d[i + j * r]);
+    return { k: 'sym', r: rows.length, c: cols.length, d: items };
+  }
   if (v.k === 'struct' || v.k === 'fn') {
     if (idx.every((x) => x === 'all' || (x.length === 1 && x[0] === 0))) return v;
     throw new LabError(`Index past the end: this ${kind(v)} has 1 element.`);
@@ -645,6 +668,10 @@ function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolea
   if ((base?.k === 'mat' && base.cls) || (v.k === 'mat' && v.cls)) {
     const out = setIndex(base?.k === 'mat' ? cast(base, undefined) : base, idx, v.k === 'mat' ? cast(v, undefined) : v, false);
     return out.k === 'mat' && cls ? cast(out, cls) : out;
+  }
+  if (base?.k === 'sym' || v.k === 'sym') {
+    const B = base ? symConcat([[base]]) : symConcat([]), V = symConcat([[v]]);
+    return place(B, idx, V.d.length === 1 ? (() => V.d[0]) : (k) => V.d[k], V.d.length, () => ZERO_SYM, (r, c, d) => ({ k: 'sym', r, c, d }), false) as Value;
   }
   if (isTable(base)) {
     if (idx.length !== 2) throw new LabError('Index a table with rows and columns: T(rows, :) = [].');

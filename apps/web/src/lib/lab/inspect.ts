@@ -1,5 +1,5 @@
 import { LabError } from './parse';
-import { fmtC, fmtNum, inline, kind, pages, sizeOf, type Fmt, type Value } from './values';
+import { fmtC, fmtNum, inline, kind, pages, sizeOf, type Fmt, type Value, symPlain } from './values';
 
 // Hyperion's variable viewer (M390): a value seen as a grid of its numbers (a window of a big one, one page of a
 // 3D one), the fields of a struct, the items of a cell or the columns of a table, each one opened by a path.
@@ -49,6 +49,7 @@ export function view(v: Value, page = 0, from: [number, number] = [0, 0]): View 
   if (v.k === 'cell') return { kind: 'cells', r: v.r, c: v.c, items: v.d.map((x, k) => ({ at: [k % v.r, Math.floor(k / v.r)] as [number, number], summary: inline(x, F), open: openable(x) })) };
   if (v.k === 'str') return { kind: 'text', text: v.v };
   if (v.k === 'fn') return { kind: 'text', text: inline(v, F) };
+  if (v.k === 'sym') return { kind: 'text', text: symPlain(v) };
   const P = pages(v), pg = Math.max(0, Math.min(P - 1, page)), n = v.r * v.c;
   const r0 = Math.max(0, Math.min(from[0], Math.max(0, v.r - 1))), c0 = Math.max(0, Math.min(from[1], Math.max(0, v.c - 1)));
   const cells = Array.from({ length: Math.min(ROWS, v.r - r0) }, (_, i) => Array.from({ length: Math.min(COLS, v.c - c0) }, (_, j) => {

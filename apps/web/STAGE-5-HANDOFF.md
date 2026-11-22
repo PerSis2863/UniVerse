@@ -10742,3 +10742,31 @@ actions in the Impact Wallet are UniVersity's events with `href` to Green living
 console's launch board counts them with UniVersity. Green's three games went to Trace (Recycle Rush) and Relief (Reef
 Rescue, Ocean Cleanup). Also fixed: `appHome` sent Hyperion to `/lab` (gone since M392); it now uses the app's first
 address. The hub no longer runs Green's two totals queries.
+
+## M396 (22 Nov): Hyperion symbolic maths, set as real maths
+
+The owner, 22 Nov: "in hyperion app add 20 more features… big features which are unique… combine 2 features into one".
+The first: our own computer algebra system joined to typeset output. `src/lib/lab/sym.ts` is the core: expression trees
+(`N`) kept in one tidy form by their constructors (`add`, `mul`, `pow`, `fn`: flattened, like terms and like powers
+gathered, exact fractions with a decimal fallback past 2^53, known values of sin/cos at multiples of pi/12, exp/log
+pairs), `print` (MATLAB's way: `x^2 + 2*x + 1`, `x/2`, `2^(1/2)`, `2i`) and `latex`, `evalC` (complex numbers),
+`diff`, `expand`, `polyOf` / `fromPoly`, `numden`. `sym-calc.ts`: `factorList` (common factors, rational roots,
+difference of squares), `together`, `simplify` (tries forms and keeps the smallest that equals the original at three
+points), `integrate` (table for linear arguments, derivative-divides substitution, by parts, partial fractions with
+linear and one irreducible quadratic factor; `definite` falls back to adaptive Simpson), `solveFor` (polynomials:
+exact to degree 2, rational roots, then Durand–Kerner decimals; inverting sin/cos/exp/log/powers; a sign-change scan
+as the last resort), `solveSystem` (linear by `gauss`, else substitution), `limitOf` (direct, l'Hôpital, 1/x for
+infinity, exp-log for powers, one-sided signs, a numeric last resort with `nice` fractions), `taylor`.
+`sym-lab.ts` puts it in the language: the value kind `sym` (`values.ts` `Sym`: r × c of `N`, column by column),
+`symBinop` / `symConcat` / `symNeg` / `symTranspose` / indexing (interp.ts), `fromNumber` (MATLAB's sym: short
+fraction, pi fraction, square root, exact fraction, decimal), `symCall` (a call with a symbolic argument, or one of the
+symbolic-only names, goes to `SYM`), and the functions: syms (command syntax), sym, diff, int, solve, subs, simplify,
+expand, factor, collect, simplifyFraction, numden, limit, taylor, symsum, vpa, latex, pretty, symvar, coeffs,
+sym2poly, poly2sym, jacobian, hessian, gradient, lhs, rhs, isolate, isAlways, assume (accepted, not used),
+matlabFunction (code made element by element and parsed into a handle), det / inv / eig of symbolic matrices,
+elementwise sin/exp/…, and fplot/fsurf/fmesh/fcontour/fimplicit of formulas. A symbolic result's display carries
+`\u0001 LaTeX \u0002 plain \u0003` (`symShown`); `LabText` sets it with KaTeX as MathML (no style sheet), `plainOf`
+gives the plain text. `toMat` turns a symbolic value with no letters into numbers, otherwise its error names them.
+Help: a "Symbolic maths" section. Example script `symbolic.m` (with a live slider on a formula's plot). Not built:
+symbolic functions `syms f(x)` and dsolve, assumptions, `piecewise`, vpa past double precision, factoring polynomials
+without rational roots above degree 2, integrals needing special functions.
