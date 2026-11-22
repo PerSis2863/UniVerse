@@ -9,6 +9,7 @@ import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, ToLab, VarRow } from './lab.worker';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
+import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 
 // M376: UniVerse Lab's window: the command window, a script editor, the variables and the figures, like a desktop
 // maths program. The engine (src/lib/lab) runs in a background worker (lab.worker.ts): the page never freezes and
@@ -17,6 +18,8 @@ import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-fil
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
+const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
+type From = 'cmd' | 'script' | 'live';
 interface Script { name: string; code: string }
 const KEEP = 'uv-lab-scripts';
 const EXAMPLES: Script[] = [
@@ -24,6 +27,7 @@ const EXAMPLES: Script[] = [
   { name: 'matrices.m', code: "% Solve A x = b\nA = [4 -2 1; -2 4 -2; 1 -2 4];\nb = [11; -16; 17];\nx = A \\ b\ncheck = A * x - b\nd = det(A)\n" },
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
+  { name: 'waves.m', code: "% Live controls: drag them and the figure follows\nfreq = 2;        % slider 0.5 8\ndamping = 0.3;   % slider 0 1\nshape = 'sine';  % menu sine square sawtooth\nshowEnvelope = true; % toggle\nt = linspace(0, 10, 600);\nswitch shape\n  case 'sine', y = sin(2*pi*freq*t/5);\n  case 'square', y = sign(sin(2*pi*freq*t/5));\n  otherwise, y = 2*mod(freq*t/5, 1) - 1;\nend\ny = y .* exp(-damping*t);\nplot(t, y); hold on\nif showEnvelope, plot(t, exp(-damping*t), '--', t, -exp(-damping*t), '--'); end\nhold off; ylim([-1.2 1.2]); grid on\ntitle(sprintf('%s wave, f = %.1f', shape, freq))\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
@@ -43,30 +47,46 @@ export function LabApp() {
   const [cmd, setCmd] = useState('');
   const [hist, setHist] = useState<string[]>([]);
   const [hi, setHi] = useState(-1);
-  const [tab, setTab] = useState<Tab>('command');
+  const [tab, setTabNow] = useState<Tab>('command');
+  const [tabDir, setTabDir] = useState<'next' | 'back'>('next');
+  const setTab = (t: Tab | ((old: Tab) => Tab)) => setTabNow((old) => { const n = typeof t === 'function' ? t(old) : t; if (n !== old) setTabDir(TABS.indexOf(n) > TABS.indexOf(old) ? 'next' : 'back'); return n; });
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
   const worker = useRef<Worker | null>(null);
-  const pending = useRef<{ id: number; code: string; from: 'cmd' | 'script' } | null>(null);
+  const pending = useRef<{ id: number; code: string; from: From } | null>(null);
+  const busyNow = useRef(false), queued = useRef<string | null>(null), lastLiveError = useRef('');
+  const keepTimer = useRef(0);
   const logBox = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
 
-  const save = (next: Script[]) => { setScripts(next); try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } };
+  // Saved a moment after the last change (a slider sends many changes a second).
+  const save = (next: Script[]) => { setScripts(next); clearTimeout(keepTimer.current); keepTimer.current = window.setTimeout(() => { try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } }, 250); };
   const print = (l: Line) => setLog((prev) => {
     if (l.t.includes('\f')) return [{ ...l, t: l.t.slice(l.t.lastIndexOf('\f') + 1) }].filter((x) => x.t);
     return [...prev.slice(-800), l];
   });
 
-  const start = () => {
+  const run = (code: string, from: From) => {
+    if (busyNow.current || !code.trim() || !worker.current) return;
+    const id = ++seq.current;
+    pending.current = { id, code, from };
+    busyNow.current = true;
+    setBusy(true);
+    if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> run ${list[open]?.name ?? 'script'}` });
+    worker.current.postMessage({ run: code, id } satisfies ToLab);
+  };  const start = () => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromLab>) => {
       const m = e.data;
-      if ('out' in m) { print({ k: 'out', t: m.out }); return; }
+      // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
+      if ('out' in m) { if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
       const p = pending.current;
-      if (m.error) print({ k: 'err', t: `Error${p?.from === 'script' && m.at !== undefined ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` });
+      const errText = m.error ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
+      if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
+      if (p?.from === 'live') lastLiveError.current = errText;
       setVars(m.vars);
       // Files the code wrote or deleted: kept on this device (or forgotten).
       for (const f of m.files) {
@@ -77,7 +97,11 @@ export function LabApp() {
       // Figures only come back when a run changed them (null: keep what's shown).
       if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; if (m.figs.length) setTab((t) => (t === 'editor' && p?.from === 'script' ? 'figure' : t)); }
       pending.current = null;
+      busyNow.current = false;
       setBusy(false);
+      // The newest position of a control, if it moved while that run was going.
+      const next = queued.current;
+      if (next !== null) { queued.current = null; run(next, 'live'); }
     };
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
@@ -117,17 +141,10 @@ export function LabApp() {
   useEffect(() => { boot(); return () => worker.current?.terminate(); }, []);
   useEffect(() => { logBox.current?.scrollTo({ top: logBox.current.scrollHeight }); }, [log]);
 
-  const run = (code: string, from: 'cmd' | 'script') => {
-    if (busy || !code.trim() || !worker.current) return;
-    const id = ++seq.current;
-    pending.current = { id, code, from };
-    setBusy(true);
-    print({ k: 'in', t: from === 'cmd' ? code : `>> run ${list[open]?.name ?? 'script'}` });
-    worker.current.postMessage({ run: code, id } satisfies ToLab);
-  };
+
   const stop = () => {
     worker.current?.terminate(); start();
-    setBusy(false); setVars([]); pending.current = null;
+    setBusy(false); setVars([]); pending.current = null; busyNow.current = false; queued.current = null;
     print({ k: 'err', t: 'Stopped. The variables were cleared (the engine was restarted).\n' });
   };
   const send = () => { const c = cmd; if (!c.trim()) return; setHist((h) => [...h.filter((x) => x !== c), c].slice(-100)); setHi(-1); setCmd(''); run(c, 'cmd'); };
@@ -166,6 +183,13 @@ export function LabApp() {
 
   const script = list[open] ?? list[0];
   const editScript = (code: string) => save(list.map((s, i) => (i === open ? { ...s, code } : s)));
+  const controls = controlsOf(script.code);
+  /** A control moved: its value is written into the script, which runs again (the newest position wins). */
+  const live = (c: Control, v: number | boolean | string) => {
+    const code = setControl(script.code, c, v);
+    editScript(code);
+    if (busyNow.current) queued.current = code; else run(code, 'live');
+  };
 
   const panel = 'panel flex min-h-0 flex-col overflow-hidden p-0';
   const head = 'flex items-center gap-2 border-b border-zinc-200/80 px-3 py-2 text-[13px] font-semibold text-zinc-800 dark:border-white/10 dark:text-zinc-100';
@@ -173,7 +197,9 @@ export function LabApp() {
 
   const command = (
     <section className={cn(panel, 'h-full')} aria-label="Command window">
-      <div className={head}>Command window{busy && <span className="ms-auto inline-flex items-center gap-2 text-xs font-normal text-zinc-500">running…<button type="button" onClick={stop} className={btn}><Square className="h-3.5 w-3.5" aria-hidden />Stop</button></span>}</div>
+      <div className={cn(head, 'relative')}>Command window{busy && <span className="ms-auto inline-flex items-center gap-2 text-xs font-normal text-zinc-500">running…<button type="button" onClick={stop} className={btn}><Square className="h-3.5 w-3.5" aria-hidden />Stop</button></span>}
+        {busy && <span className="lab-busy" aria-hidden><span className="bg-indigo-600" /></span>}
+      </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
         {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' && !l.t.startsWith('>>') ? `>> ${l.t}` : l.t}</pre>)}
       </div>
@@ -208,6 +234,11 @@ export function LabApp() {
       <label className="flex items-center gap-2 border-b border-zinc-200/80 px-3 py-1.5 text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-400">Name
         <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
       </label>
+      {controls.length > 0 && (
+        <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
+          {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
+        </div>
+      )}
       <textarea value={script.code} onChange={(e) => editScript(e.target.value)} aria-label={`Code of ${script.name}`} spellCheck={false}
         onKeyDown={(e) => {
           if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(script.code, 'script'); }
@@ -274,7 +305,7 @@ export function LabApp() {
       </div>
       {fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
-        <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
+        <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Figures appear here. Try plot(1:10) in the command window.</p>}
     </section>
   );
@@ -293,9 +324,42 @@ export function LabApp() {
       ) : (
         <>
           <Segmented<Tab> label="Lab part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
-          <div className="min-h-0 flex-1">{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
+          <div key={tab} className="swap min-h-0 flex-1" data-dir={tabDir}>{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
         </>
       )}
     </div>
+  );
+}
+
+/** One live control: a slider with its value, a switch, or a menu. */
+function LiveControl({ c, onChange }: { c: Control; onChange: (v: number | boolean | string) => void }) {
+  const label = 'font-mono text-[13px] font-semibold text-zinc-800 dark:text-zinc-100';
+  if (c.kind === 'toggle') {
+    const on = c.value === true;
+    return (
+      <button type="button" role="switch" aria-checked={on} onClick={() => onChange(!on)} className="inline-flex items-center gap-2">
+        <span className={label}>{c.name}</span>
+        <span className={cn('relative inline-flex h-5 w-9 shrink-0 rounded-full transition-colors duration-200', on ? 'bg-indigo-600' : 'bg-zinc-300 dark:bg-zinc-600')}>
+          <span className={cn('absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform duration-200 ease-out', on ? 'translate-x-[18px] rtl:-translate-x-[18px]' : 'translate-x-0.5 rtl:-translate-x-0.5')} />
+        </span>
+      </button>
+    );
+  }
+  if (c.kind === 'menu') {
+    return (
+      <label className="inline-flex items-center gap-2">
+        <span className={label}>{c.name}</span>
+        <select value={String(c.value)} onChange={(e) => onChange(e.target.value)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] dark:border-white/15 dark:bg-white/[0.06]">
+          {c.options.map((o) => <option key={o} value={o}>{o}</option>)}
+        </select>
+      </label>
+    );
+  }
+  return (
+    <label className="inline-flex min-w-[14rem] flex-1 items-center gap-2 sm:max-w-[22rem]">
+      <span className={label}>{c.name}</span>
+      <input type="range" min={c.min} max={c.max} step={c.step} value={Number(c.value)} onChange={(e) => onChange(Number(e.target.value))} className="min-w-0 flex-1 accent-indigo-600" />
+      <span className="w-12 text-end font-mono text-[13px] tabular-nums text-zinc-600 dark:text-zinc-300">{+Number(c.value).toPrecision(4)}</span>
+    </label>
   );
 }

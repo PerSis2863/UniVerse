@@ -10515,3 +10515,21 @@ MATLAB's command style properly: a command word starting a statement takes the r
 type, dir, ls, delete, cd, pwd. The Files list is `data-no-motion` (the motion layer counted file sizes up).
 Not built: T(rows, :) indexing, readtable's options beyond 'Sheet' / 'Delimiter' / 'ReadVariableNames', JPEG
 writing, folders.
+
+## M384 (22 Nov): UniVerse Lab: live controls and a smoother window
+
+The owner asked for features "unique and different from others" and "ultra smooth"; offered four, they chose all:
+live controls (this), watch it run (M385), notebook pages (M386), Lab in UniVersity (M387); the computer app,
+simulations and toolboxes stay queued after them. `src/lib/lab/controls.ts`: `controlsOf(code)` finds
+`name = value; % slider 0 10` (also `slider(0, 10, 0.5)`, `slider 0:0.5:10`, or none: 0 to twice the value),
+`% toggle` (true / false / 0 / 1) and `% menu a b c` (the value joins the options); `setControl` rewrites only the
+value's characters (a number to its step's decimals). LabApp: a "Live controls" group under the script's name
+(LiveControl: range input with its value, a switch with role="switch", a select); moving one edits the script and
+runs it as a 'live' run: no ">> run" line and no printed output (figures and variables show the change; an error is
+printed once until it changes). Runs never overlap: `busyNow` (a ref, so the worker's message handler sees it) and
+`queued` keep only the newest code while one runs; `run` sits above `start` (the compiler lint refuses a use before
+its declaration). Scripts are saved 250 ms after the last change (a slider sends many). Smoother: phone tabs are a
+keyed `.swap` with `data-dir` from their order; a figure glides in when you switch to it (`.swap` keyed by its id; a
+live redraw of the same figure doesn't replay it); the command window shows `.lab-busy` while running (a stripe on
+transform only, paused while scrolling, still with Reduce Motion; globals.css). The example `waves.m` (new visitors;
+saved script lists are kept as they were). Not built: controls in the command window, a control for text boxes.

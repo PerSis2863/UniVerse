@@ -3190,3 +3190,10 @@ html.reduce-motion .map-panel { transition-property: opacity; }
   :root { --radius-xs: 0.25rem; --radius-sm: 0.5rem; --radius: 0.5rem; --radius-md: 0.6875rem; --radius-lg: 1rem; --radius-xl: 1.375rem; --radius-2xl: 1.75rem; --radius-3xl: 2.375rem; --radius-4xl: 3rem; --radius-card: 1.5rem; }
   :where(.rounded, [class*="rounded-"], .btn-primary, .btn-secondary, .btn-ghost, .input, .sidebar-item, .ios-segmented):not(:where([class*="-full"], [class*="rounded-none"])) { corner-shape: squircle; }
 }
+
+/* M384: UniVerse Lab's running bar: a short stripe gliding along the command window's edge (transform only). */
+.lab-busy { position: absolute; inset-inline: 0; bottom: -1px; height: 2px; overflow: hidden; pointer-events: none; }
+.lab-busy > span { position: absolute; inset-block: 0; width: 35%; border-radius: 2px; animation: lab-busy 1.1s var(--ease-glide) infinite; }
+@keyframes lab-busy { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+html[data-scrolling] .lab-busy > span { animation-play-state: paused; }
+@media (prefers-reduced-motion: reduce) { .lab-busy > span { animation: none; width: 100%; opacity: 0.5; } }
