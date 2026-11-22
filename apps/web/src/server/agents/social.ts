@@ -14,14 +14,15 @@ import { short } from '../trace';
 
 export const PLATFORMS = ['Instagram', 'LinkedIn', 'X', 'Facebook', 'WhatsApp'] as const;
 
-/** The names of what this person speaks for: their Trace brand, a Relief organisation they run, their school. 3 queries. */
+/** The names of what this person speaks for: their Trace brand, a Relief organisation they run, their school. 4 queries. */
 async function voices(u: SessionUser): Promise<string[]> {
-  const [brand, relief, me] = await Promise.all([
+  const [brand, member, me] = await Promise.all([
     prisma.traceBrandMember.findFirst({ where: { userId: u.id }, select: { brand: { select: { name: true } } } }).catch(() => null),
-    prisma.reliefOrgMember.findFirst({ where: { userId: u.id, role: { in: ['OWNER', 'COORDINATOR'] } }, select: { org: { select: { name: true } } } }).catch(() => null),
+    prisma.reliefOrgMember.findFirst({ where: { userId: u.id, role: { in: ['OWNER', 'COORDINATOR'] } }, select: { orgId: true } }).catch(() => null),
     prisma.user.findUnique({ where: { id: u.id }, select: { organization: { select: { name: true } } } }).catch(() => null),
   ]);
-  return [brand?.brand.name && `the brand ${brand.brand.name} (on Trace)`, relief?.org.name && `the organisation ${relief.org.name} (on Relief)`, me?.organization?.name && `the school ${me.organization.name}`]
+  const relief = member ? await prisma.reliefOrg.findUnique({ where: { id: member.orgId }, select: { name: true } }).catch(() => null) : null;
+  return [brand?.brand.name && `the brand ${brand.brand.name} (on Trace)`, relief?.name && `the organisation ${relief.name} (on Relief)`, me?.organization?.name && `the school ${me.organization.name}`]
     .filter((x): x is string => !!x);
 }
 
