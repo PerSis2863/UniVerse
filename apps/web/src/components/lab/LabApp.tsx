@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, Copy, Download, File as FileIcon, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -11,6 +11,7 @@ import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.work
 import { VariableViewer, type Shown } from './VariableViewer';
 import { FunctionBrowser } from './FunctionBrowser';
 import { HELP } from '@/lib/lab/help';
+import { printedUpTo, varsAt, type TraceStep } from '@/lib/lab/trace';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
@@ -24,7 +25,10 @@ import { builtinNames } from './matlab-lang';
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
 const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
-type From = 'cmd' | 'script' | 'live';
+type From = 'cmd' | 'script' | 'live' | 'watch';
+/** Watch it run (M393): a recorded run being played back. */
+interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
+const SPEEDS = [1, 2, 4, 8, 16, 32];
 interface Script { name: string; code: string }
 const KEEP = 'uv-lab-scripts';
 const EXAMPLES: Script[] = [
@@ -59,6 +63,9 @@ export function LabApp() {
   const [namesVersion, setNamesVersion] = useState(0);
   const [shown, setShown] = useState<Shown | null>(null);
   const [browsing, setBrowsing] = useState(false);
+  const [watch, setWatch] = useState<Watch | null>(null);
+  const [traceSvg, setTraceSvg] = useState<Record<number, { light: string; dark: string }>>({});
+  const [breakpoints, setBreakpoints] = useState<Record<number, number[]>>({});
   const looking = useRef<Inspect | null>(null);
   const [codeError, setCodeError] = useState<{ line: number; message: string } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -66,7 +73,7 @@ export function LabApp() {
   const picker = useRef<HTMLInputElement>(null);
   const worker = useRef<Worker | null>(null);
   const pending = useRef<{ id: number; code: string; from: From } | null>(null);
-  const busyNow = useRef(false), queued = useRef<string | null>(null), lastLiveError = useRef('');
+  const busyNow = useRef(false), queued = useRef<string | null>(null), lastLiveError = useRef(''), watchingScript = useRef(0);
   const keepTimer = useRef(0);
   const logBox = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
@@ -84,9 +91,11 @@ export function LabApp() {
     pending.current = { id, code, from };
     busyNow.current = true;
     setBusy(true);
-    if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> run ${list[open]?.name ?? 'script'}` });
-    worker.current.postMessage({ run: code, id } satisfies ToLab);
-  };  const start = () => {
+    if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : 'run'} ${list[open]?.name ?? 'script'}` });
+    if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
+    else worker.current.postMessage({ run: code, id } satisfies ToLab);
+  };
+  const start = () => {
     const w = new Worker(new URL('./lab.worker.ts', import.meta.url));
     w.onmessage = (e: MessageEvent<FromLab>) => {
       const m = e.data;
@@ -95,6 +104,15 @@ export function LabApp() {
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
+      if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
+      if ('trace' in m) {
+        // The recorded run: played back from its first step; everything it printed also goes to the log, for afterwards.
+        const all = printedUpTo(m.trace.steps, m.trace.steps.length - 1);
+        if (all) print({ k: 'out', t: all });
+        setTraceSvg({});
+        setWatch(m.trace.steps.length ? { steps: m.trace.steps, full: m.trace.full, k: 0, playing: true, speed: 4, script: watchingScript.current } : null);
+        return;
+      }
       const p = pending.current;
       const errText = m.error ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
       if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
@@ -219,7 +237,7 @@ export function LabApp() {
   const copyTex = async () => { if (!fig) return; try { await navigator.clipboard.writeText(fig.tex); toast.success('LaTeX copied: paste it into your document (it needs \\usepackage{pgfplots}).'); } catch { download(`figure${fig.id}.tex`, fig.tex, 'text/x-tex'); } };
 
   const script = list[open] ?? list[0];
-  const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
+  const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
@@ -228,9 +246,39 @@ export function LabApp() {
     if (busyNow.current) queued.current = code; else run(code, 'live');
   };
 
+  // ——— Watch it run: playback ———
+  const step = watch ? watch.steps[watch.k] : null;
+  const watching = !!watch && watch.script === open;
+  const marks = breakpoints[open] ?? [];
+  const toBreak = (from: number) => { if (!watch) return from; for (let i = from + 1; i < watch.steps.length; i++) if ((breakpoints[watch.script] ?? []).includes(watch.steps[i].line)) return i; return watch.steps.length - 1; };
+  const seek = (k: number, playing = false) => setWatch((w) => (w ? { ...w, k: Math.max(0, Math.min(w.steps.length - 1, k)), playing } : w));
+  const playing = !!watch?.playing, at = watch?.k ?? 0, speed = watch?.speed ?? 4;
+  useEffect(() => {
+    if (!playing) return;
+    const t = window.setTimeout(() => {
+      setWatch((w) => {
+        if (!w) return w;
+        const next = w.k + 1;
+        if (next >= w.steps.length) return { ...w, playing: false };
+        // A breakpoint stops the playback on its line.
+        const stop = (breakpoints[w.script] ?? []).includes(w.steps[next].line);
+        return { ...w, k: next, playing: !stop };
+      });
+    }, 1000 / speed);
+    return () => clearTimeout(t);
+  }, [playing, at, speed, breakpoints]);
+  const figIndex = step && watching ? step.fig : -1;
+  useEffect(() => {
+    if (figIndex < 0 || traceSvg[figIndex]) return;
+    const el = figBox.current;
+    const w = Math.round((el?.clientWidth ?? 640) - 16), h = Math.round(Math.min((el?.clientHeight ?? 480) - 16, w * 0.8));
+    worker.current?.postMessage({ traceFig: figIndex, w: Math.max(240, w), h: Math.max(200, h) } satisfies ToLab);
+  }, [figIndex, traceSvg]);
+
   const panel = 'panel flex min-h-0 flex-col overflow-hidden p-0';
   const head = 'flex items-center gap-2 border-b border-zinc-200/80 px-3 py-2 text-[13px] font-semibold text-zinc-800 dark:border-white/10 dark:text-zinc-100';
   const btn = 'inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[13px] font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
+  const iconBtn = 'inline-flex h-8 w-8 items-center justify-center rounded-lg text-zinc-700 hover:bg-white disabled:opacity-35 dark:text-zinc-200 dark:hover:bg-white/[0.1]';
 
   const command = (
     <section className={cn(panel, 'h-full')} aria-label="Command window">
@@ -242,7 +290,9 @@ export function LabApp() {
         {busy && <span className="lab-busy" aria-hidden><span className="bg-indigo-600" /></span>}
       </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
+        {watching && watch ? <pre className="whitespace-pre-wrap break-words text-zinc-900 dark:text-zinc-100"><span className="text-violet-700 dark:text-violet-300">{`Watching: what the run printed up to step ${watch.k + 1}\n`}</span>{printedUpTo(watch.steps, watch.k)}</pre> : <>
         {log.map((l, i) => <pre key={i} className={cn('whitespace-pre-wrap break-words', l.k === 'in' ? 'text-zinc-500 dark:text-zinc-400' : l.k === 'err' ? 'text-red-700 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100')}>{l.k === 'in' && !l.t.startsWith('>>') ? `>> ${l.t}` : l.t}</pre>)}
+        </>}
       </div>
       <div className="flex items-start gap-2 border-t border-zinc-200/80 px-3 py-2 font-mono text-[13px] dark:border-white/10">
         <span aria-hidden className="pt-1 text-zinc-500">&gt;&gt;</span>
@@ -260,7 +310,7 @@ export function LabApp() {
 
   const editor = (
     <section className={cn(panel, 'h-full')} aria-label="Script editor">
-      <div className={cn(head, 'flex-wrap')}>
+      <div className={head}>
         <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto [scrollbar-width:none]" role="tablist" aria-label="Scripts">
           {list.map((s, i) => (
             <button key={`${s.name}-${i}`} type="button" role="tab" aria-selected={i === open} onClick={() => setOpen(i)}
@@ -269,27 +319,70 @@ export function LabApp() {
             </button>
           ))}
         </div>
+      </div>
+      {watching && watch && step && (
+        <div role="group" aria-label="Watch it run" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-200/80 bg-violet-50/60 px-3 py-2 dark:border-white/10 dark:bg-violet-950/30" data-no-motion>
+          <span className="inline-flex items-center gap-0.5">
+            <button type="button" className={iconBtn} aria-label="Back to the start" onClick={() => seek(0)}><SkipBack className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>
+            <button type="button" className={iconBtn} aria-label="One step back" disabled={watch.k === 0} onClick={() => seek(watch.k - 1)}><ChevronLeft className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>
+            <button type="button" className={cn(iconBtn, 'bg-violet-600 text-white hover:bg-violet-700 dark:bg-violet-500 dark:hover:bg-violet-400')} aria-label={watch.playing ? 'Pause' : 'Play'} onClick={() => seek(watch.k >= watch.steps.length - 1 ? 0 : watch.k, !watch.playing)}>{watch.playing ? <Pause className="h-4 w-4" aria-hidden /> : <Play className="h-4 w-4" aria-hidden />}</button>
+            <button type="button" className={iconBtn} aria-label="One step forward" disabled={watch.k >= watch.steps.length - 1} onClick={() => seek(watch.k + 1)}><ChevronRight className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>
+            <button type="button" className={iconBtn} aria-label={marks.length ? 'Next breakpoint' : 'To the end'} onClick={() => seek(toBreak(watch.k))}><SkipForward className="h-4 w-4 rtl:rotate-180" aria-hidden /></button>
+          </span>
+          <input type="range" min={0} max={watch.steps.length - 1} value={watch.k} onChange={(e) => seek(Number(e.target.value))} aria-label="Step" className="min-w-[8rem] flex-1 accent-violet-600" />
+          <span className="font-mono text-xs tabular-nums text-zinc-700 dark:text-zinc-200">step {watch.k + 1} / {watch.steps.length} · line {step.line}{step.depth ? ` · in a function (${step.depth})` : ''}</span>
+          <label className="inline-flex items-center gap-1.5 text-xs text-zinc-600 dark:text-zinc-300">Speed
+            <select value={watch.speed} onChange={(e) => setWatch((w) => (w ? { ...w, speed: Number(e.target.value) } : w))} className="rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 text-xs dark:border-white/15 dark:bg-white/[0.06]">
+              {SPEEDS.map((v) => <option key={v} value={v}>{v} a second</option>)}
+            </select>
+          </label>
+          <button type="button" className={iconBtn} aria-label="Stop watching" onClick={() => setWatch(null)}><X className="h-4 w-4" aria-hidden /></button>
+          {watch.full && <span className="w-full text-xs text-zinc-600 dark:text-zinc-300">The first {watch.steps.length} steps were recorded; the run itself went on to the end.</span>}
+          {!marks.length && <span className="w-full text-xs text-zinc-500 dark:text-zinc-400">Click beside a line number to stop there (a breakpoint).</span>}
+        </div>
+      )}
+      <div className="flex flex-wrap items-center gap-x-1 gap-y-1 border-b border-zinc-200/80 px-3 py-1.5 dark:border-white/10">
+        <label className="flex min-w-[9rem] flex-1 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">Name
+          <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
+        </label>
         <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
+        <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
-      <label className="flex items-center gap-2 border-b border-zinc-200/80 px-3 py-1.5 text-xs text-zinc-500 dark:border-white/10 dark:text-zinc-400">Name
-        <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
-      </label>
       {controls.length > 0 && (
         <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
         </div>
       )}
       <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
-        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} />
+        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion}
+        traceAt={watching && step ? step.line : null} breakpoints={marks}
+        onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />
     </section>
   );
 
+  // While watching: the variables the step sees (its function's, inside one), those it changed marked.
+  const traceVars = watching && watch ? varsAt(watch.steps, watch.k) : null;
+  const traceChanged = new Set(watching && step ? step.changed : []);
   const variables = (
     <section className={cn(panel, 'h-full')} aria-label="Variables">
-      <div className={head}>Variables{vars.length > 0 && <span className="font-normal text-zinc-500">{vars.length}</span>}</div>
-      {vars.length ? (
+      <div className={head}>Variables{(traceVars ?? vars).length > 0 && <span className="font-normal text-zinc-500">{(traceVars ?? vars).length}</span>}{traceVars && <span className="ms-auto text-xs font-normal text-violet-700 dark:text-violet-300">at step {watch!.k + 1}</span>}</div>
+      {traceVars ? (
+        <div className="min-h-0 flex-1 overflow-auto" data-no-motion>
+          <table className="w-full text-[13px]">
+            <thead className="sticky top-0 bg-white text-start text-xs text-zinc-500 dark:bg-[#1b1d22] dark:text-zinc-400"><tr><th className="px-3 py-1.5 text-start font-medium">Name</th><th className="px-2 py-1.5 text-start font-medium">Value</th></tr></thead>
+            <tbody>
+              {traceVars.map(([name, value]) => (
+                <tr key={name} className={cn('border-t border-zinc-100 dark:border-white/[0.06]', traceChanged.has(name) && 'bg-violet-100/70 dark:bg-violet-900/40')}>
+                  <td className="px-3 py-1.5 font-mono font-semibold text-zinc-900 dark:text-white">{name}{traceChanged.has(name) && <span className="sr-only"> (changed in this step)</span>}</td>
+                  <td className="max-w-[12rem] truncate px-2 py-1.5 font-mono text-zinc-700 dark:text-zinc-200" title={value}>{value}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : vars.length ? (
         <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-white text-start text-xs text-zinc-500 dark:bg-[#1b1d22] dark:text-zinc-400"><tr><th className="px-3 py-1.5 text-start font-medium">Name</th><th className="px-2 py-1.5 text-start font-medium">Value</th><th className="px-2 py-1.5 text-start font-medium">Size</th></tr></thead>
@@ -341,7 +434,9 @@ export function LabApp() {
           <button type="button" className={btn} disabled={!fig} onClick={() => void copyTex()}><Copy className="h-3.5 w-3.5" aria-hidden />LaTeX</button>
         </span>
       </div>
-      {fig ? (
+      {watching && figIndex >= 0 ? (
+        traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
+      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
         <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Figures appear here. Try plot(1:10) in the command window.</p>}

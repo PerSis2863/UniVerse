@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
-import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { hoverTooltip, keymap } from '@codemirror/view';
+import { Compartment, EditorState, Prec, RangeSet, StateEffect, StateField } from '@codemirror/state';
+import { Decoration, gutter, GutterMarker, hoverTooltip, keymap, type DecorationSet } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
@@ -11,6 +11,28 @@ import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
 // M389: Hyperion's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
 // if / for / end, suggestions as you type (functions with a line of help, keywords, the script's variables), find
 // and replace (Ctrl+F), many cursors, undo history, the line of an error marked, Ctrl+Enter to run.
+
+// Watch it run (M393): the line the playback is on, and the breakpoints (a dot beside the line number).
+const setTraceLine = StateEffect.define<number | null>();
+const traceLine = StateField.define<DecorationSet>({
+  create: () => Decoration.none,
+  update(deco, tr) {
+    let d = deco.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setTraceLine)) d = e.value === null || e.value > tr.state.doc.lines ? Decoration.none : Decoration.set([Decoration.line({ class: 'cm-trace-line' }).range(tr.state.doc.line(e.value).from)]);
+    return d;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+const setBreaks = StateEffect.define<number[]>();
+const dot = new (class extends GutterMarker { toDOM() { const d = document.createElement('span'); d.className = 'cm-bp-dot'; return d; } })();
+const breaks = StateField.define<RangeSet<GutterMarker>>({
+  create: () => RangeSet.empty,
+  update(set, tr) {
+    let s = set.map(tr.changes);
+    for (const e of tr.effects) if (e.is(setBreaks)) s = RangeSet.of(e.value.filter((l) => l >= 1 && l <= tr.state.doc.lines).sort((a, b) => a - b).map((l) => dot.range(tr.state.doc.line(l).from)));
+    return s;
+  },
+});
 
 const look = (dark: boolean) => EditorView.theme({
   '&': { height: '100%', fontSize: '13px', backgroundColor: 'transparent', color: dark ? '#e4e4e7' : '#18181b' },
@@ -29,11 +51,17 @@ const look = (dark: boolean) => EditorView.theme({
   '.cm-panels': { backgroundColor: dark ? '#1b1d22' : '#fafafa', color: 'inherit', borderColor: dark ? '#3f3f46' : '#e4e4e7' },
   '.cm-panel.cm-search input, .cm-panel.cm-search button': { fontSize: '12px' },
   '.cm-diagnostic-error': { borderLeftColor: '#dc2626' },
+  '.cm-trace-line': { backgroundColor: dark ? 'rgba(139,92,246,0.22)' : 'rgba(139,92,246,0.13)', boxShadow: `inset 3px 0 0 ${dark ? '#a78bfa' : '#7c3aed'}` },
+  '.cm-breakpoints': { width: '14px', cursor: 'pointer' },
+  '.cm-breakpoints .cm-gutterElement': { display: 'flex', alignItems: 'center', justifyContent: 'center' },
+  '.cm-bp-dot': { width: '9px', height: '9px', borderRadius: '50%', backgroundColor: '#dc2626' },
   '.cm-lab-help': { padding: '6px 10px', maxWidth: '24rem', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.5' },
   '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy #dc2626', textUnderlineOffset: '3px' },
 }, { dark });
 
-export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion }: {
+const NONE: number[] = [];
+
+export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak }: {
   value: string;
   onChange: (code: string) => void;
   onRun: () => void;
@@ -47,12 +75,17 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
   error: { line: number; message: string } | null;
   /** Changes when the engine's function names arrive (the colours are worked out again). */
   namesVersion: number;
+  /** Watch it run: the line the playback is on (null: not watching). */
+  traceAt?: number | null;
+  /** Lines with a breakpoint, and what a click beside a line number does. */
+  breakpoints?: number[];
+  onToggleBreak?: (line: number) => void;
 }) {
   const host = useRef<HTMLDivElement>(null), view = useRef<EditorView | null>(null);
   const slots = useRef({ theme: new Compartment(), lang: new Compartment(), label: new Compartment() });
-  const live = useRef({ onChange, onRun, vars, describe });
+  const live = useRef({ onChange, onRun, vars, describe, onToggleBreak });
   const first = useRef({ value, dark, label });
-  useEffect(() => { live.current = { onChange, onRun, vars, describe }; });
+  useEffect(() => { live.current = { onChange, onRun, vars, describe, onToggleBreak }; });
 
   // The editor is made once; later props reach it through the effects below.
   useEffect(() => {
@@ -69,6 +102,9 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
           s.lang.of([matlab, matlabIndent]),
           matlab.data.of({ autocomplete: completions(() => live.current.vars, (n) => live.current.describe(n)) }),
           lintGutter(),
+          traceLine,
+          breaks,
+          gutter({ class: 'cm-breakpoints', renderEmptyElements: true, markers: (v) => v.state.field(breaks), initialSpacer: () => dot, domEventHandlers: { mousedown: (v, line) => { live.current.onToggleBreak?.(v.state.doc.lineAt(line.from).number); return true; } } }),
           // Help for a function when the pointer rests on its name.
           hoverTooltip((view, pos) => {
             const { from, to, text } = view.state.doc.lineAt(pos);
@@ -111,6 +147,15 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
     v.dispatch({ effects: slots.current.lang.reconfigure([]) });
     v.dispatch({ effects: slots.current.lang.reconfigure([matlab, matlabIndent]) });
   }, [namesVersion]);
+  useEffect(() => {
+    const v = view.current;
+    if (!v) return;
+    const effects: StateEffect<unknown>[] = [setTraceLine.of(traceAt)];
+    // The line comes into view when it leaves it (no jump while it is already on screen).
+    if (traceAt !== null && traceAt <= v.state.doc.lines) effects.push(EditorView.scrollIntoView(v.state.doc.line(traceAt).from, { y: 'nearest', yMargin: 48 }));
+    v.dispatch({ effects });
+  }, [traceAt]);
+  useEffect(() => { view.current?.dispatch({ effects: setBreaks.of(breakpoints) }); }, [breakpoints]);
   useEffect(() => {
     const v = view.current;
     if (!v) return;

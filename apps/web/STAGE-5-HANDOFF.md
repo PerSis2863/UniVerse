@@ -10685,3 +10685,27 @@ folders (`src/lib/lab`, `src/components/lab`), the device storage keys (`uv-lab-
 nothing people kept is lost. Not live yet, so the old /lab address needs no redirect. In notes and code comments from
 here on, the app is Hyperion; older notes say UniVerse Lab. A stale `.next/dev/types` after moving a page breaks
 `pnpm typecheck`: delete that folder (it is the development server's, not committed).
+
+## M393 (22 Nov): Hyperion: watch it run
+
+The owner, 22 Nov (during this item): "change the name of travel app to aether and remove the green app completely and
+add this to all the section of other apps where it is the part of the daily life… in hyperion app add 20 more
+features… big features which are unique and different from the internet… combine 2 features into one… dont stop
+working until i say". Next: M394 Travel → Aether, M395 Green removed (its everyday parts moved into the other apps),
+then 20 big Hyperion features.
+Engine: `Host.trace(at, vars, depth)` before every statement (interp `exec`), and again at the loop's own line on every
+pass after the first (`for`, `while`), as a debugger shows it. `src/lib/lab/trace.ts`: `Recorder` keeps per step the
+line, the call depth, what it printed, the variables of its own frame as one-line summaries (only when something
+changed; a function's last step keeps the function's variables, not the caller's), the names it changed and which
+figure copy shows (figures copied with structuredClone when they changed, within a budget of 3 million numbers);
+the first 5000 steps (`MAX_STEPS`), the run itself goes to the end. `varsAt`, `printedUpTo` rebuild a step's view.
+Worker: `{ watch, id }` runs with a recorder (printing goes to it, not the log), answers `{ trace }` then the usual
+`{ done }`; `{ traceFig }` renders a copy at the panel's size. Window: Watch (beside Run, in the name row now: the
+script tabs have their own row); the playback bar (start, back, play / pause, forward, next breakpoint or the end, a
+step slider, step / line / depth, speed 1–32 a second, stop watching) plays on a timer (`playing`, `at`, `speed`,
+`breakpoints` as the effect's dependencies) and pauses on a breakpoint; the editor lights the line (`traceLine`
+StateField, scrolled into view only when it leaves the screen) and draws breakpoints in their own gutter
+(`renderEmptyElements`, so any line's slot takes a click); Variables show the step's variables with changed rows
+marked; the command window shows what was printed up to the step (everything also goes to the log for afterwards);
+the Figure shows the step's copy. Editing the code ends the playback. Not built: watching commands typed in the
+command window, conditions on breakpoints.

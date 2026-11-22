@@ -9,12 +9,14 @@ import { BUILTINS } from '@/lib/lab/builtins';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
+import { Recorder, type TraceStep } from '@/lib/lab/trace';
+import type { Figure } from '@/lib/lab/plot';
 
 // M376: Hyperion's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect };
+export type ToLab = { run: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -26,6 +28,8 @@ export type FromLab =
   | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[] }
   | { fig: FigOut }
   | { names: string[] }
+  | { trace: { steps: TraceStep[]; full: boolean } }
+  | { traceFig: { index: number; light: string; dark: string } }
   | { view: Inspect & { expr: string; size: string; v: View | null; error?: string } };
 export interface VarRow { name: string; size: string; cls: string; value: string }
 export interface FigOut { id: number; light: string; dark: string; tex: string }
@@ -34,8 +38,12 @@ const graphics = new Graphics();
 const files = new FileStore();
 let buf = '', flushAt = 0;
 const flush = () => { if (buf) { postMessage({ out: buf } satisfies FromLab); buf = ''; } };
+// Watch it run (M393): while a recorded run goes, printing and figure changes go to the recorder.
+let recorder: Recorder | null = null;
+let traceFigs: Figure[] = [];
 const lab = new Lab({
-  out: (t) => { buf += t; const now = performance.now(); if (now - flushAt > 50 || buf.length > 20000) { flushAt = now; flush(); } },
+  out: (t) => { if (recorder) { recorder.write(t); return; } buf += t; const now = performance.now(); if (now - flushAt > 50 || buf.length > 20000) { flushAt = now; flush(); } },
+  trace: (at, vars, depth) => recorder?.step(at, vars, depth),
   graphics,
   files,
   now: () => performance.now(),
@@ -61,16 +69,30 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
     } catch (err) { postMessage({ view: { ...q, expr: q.name, size: '', v: null, error: err instanceof Error ? err.message : String(err) } } satisfies FromLab); }
     return;
   }
+  if ('traceFig' in m) {
+    const f = traceFigs[m.traceFig];
+    if (f) postMessage({ traceFig: { index: m.traceFig, light: renderSvg(f, m.w, m.h, false), dark: renderSvg(f, m.w, m.h, true) } } satisfies FromLab);
+    return;
+  }
   if ('figure' in m) { size = { w: m.w, h: m.h }; const f = figOut(m.figure); if (f) postMessage({ fig: f } satisfies FromLab); return; }
   let error: string | undefined, at: number | undefined;
   const before = new Set(graphics.figures.map((f) => f.id));
   let touched = false;
-  graphics.onChange = () => { touched = true; };
-  try { lab.run(m.run); } catch (err) {
+  const code = 'watch' in m ? m.watch : m.run;
+  if ('watch' in m) recorder = new Recorder(code, graphics);
+  graphics.onChange = () => { touched = true; recorder?.figureChanged(); };
+  try { lab.run(code); } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;
   }
-  const w = takeWarning(); if (w) buf += `${w}\n`;
+  const w = takeWarning();
+  if (recorder) {
+    if (w) recorder.write(`${w}\n`);
+    recorder.finish();
+    traceFigs = recorder.figs;
+    postMessage({ trace: { steps: recorder.steps, full: recorder.full } } satisfies FromLab);
+    recorder = null;
+  } else if (w) buf += `${w}\n`;
   flush();
   const vars: VarRow[] = [...lab.vars].sort((a, b) => a[0].localeCompare(b[0])).map(([name, v]) => ({ name, size: (v.k === 'mat' ? dimsOf(v) : sizeOf(v)).join('×'), cls: kind(v), value: inline(v) }));
   const changed = touched || graphics.figures.some((f) => !before.has(f.id)) || graphics.figures.length !== before.size;

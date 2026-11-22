@@ -22,6 +22,8 @@ export interface Host {
   stopped?(): boolean;
   /** The person's files (files.ts adds them); the interpreter only passes it along. */
   files?: unknown;
+  /** Watch it run (M393): told before each statement where it is (a place in the code) and the variables it sees. */
+  trace?(at: number, vars: Map<string, Value>, depth: number): void;
 }
 
 class Flow { constructor(readonly kind: 'break' | 'continue' | 'return') {} }
@@ -51,6 +53,7 @@ export class Lab {
   private exec(body: Stmt[], f: Frame) {
     for (const st of body) {
       if (++this.steps % 20000 === 0 && this.host.stopped?.()) throw new LabError('Stopped.');
+      this.host.trace?.(st.at, f.vars, f.depth);
       try { this.stmt(st, f); } catch (e) {
         if (e instanceof Flow) throw e;
         if (e instanceof LabError && e.at < 0) throw new LabError(e.message, st.at);
@@ -95,6 +98,8 @@ export class Lab {
         const v = this.ev(st.e, f);
         const [r, c0] = sizeOf(v), c = c0 * pages(v); // a 3D array's pages continue its columns
         for (let j = 0; j < c; j++) {
+          // Watch it run (M393): the loop's own line again on every pass after the first, as a debugger shows it.
+          if (j > 0) this.host.trace?.(st.at, f.vars, f.depth);
           // Each column of the value, in turn (a row vector gives its numbers one by one).
           const item: Value = v.k === 'mat' ? mat(r, 1, v.d.subarray(j * r, j * r + r)) : v.k === 'str' ? str(v.v[j]) : v.k === 'cell' ? { k: 'cell', r, c: 1, d: v.d.slice(j * r, j * r + r) } : v;
           this.assign(st.v, item, f);
@@ -102,11 +107,14 @@ export class Lab {
         }
         return;
       }
-      case 'while':
-        while (truthy(this.ev(st.cond, f))) {
+      case 'while': {
+        for (let pass = 0; ; pass++) {
+          if (pass > 0) this.host.trace?.(st.at, f.vars, f.depth); // the condition's line again, as for loops
+          if (!truthy(this.ev(st.cond, f))) break;
           try { this.exec(st.body, f); } catch (e) { if (e instanceof Flow && e.kind === 'break') break; if (e instanceof Flow && e.kind === 'continue') continue; throw e; }
         }
         return;
+      }
       case 'do':
         do {
           try { this.exec(st.body, f); } catch (e) { if (e instanceof Flow && e.kind === 'break') break; if (e instanceof Flow && e.kind === 'continue') continue; throw e; }
