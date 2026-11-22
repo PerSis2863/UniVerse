@@ -11284,3 +11284,29 @@ red mistakes, ink text: no white text on light fills, axe). Settings kept in loc
 kept). "Open in Code" goes to `/hyperion#` + `shareFragment(...)` (the Code window's shared-script prompt). Measured
 in the browser: worst frame 17 ms (an odd 33 ms in development) while all nine models trained.
 
+## M422 (22 Nov): Hyperion toolbox, optimisation
+
+`optim.ts` (pure, every solver returns { x, f, iterations, evals, path, flag, message }): `nelderMead` (MATLAB's start:
+5% along each axis, 0.00025 for a zero; reflection 1, expansion 2, contraction ½, shrink ½; TolX and TolFun 1e-4,
+200n steps), `numGrad` (central differences), `bfgs` (inverse-Hessian BFGS, the first step scaled to length ≤ 1,
+Armijo backtracking, updates only when sᵀy > 0; with lb/ub a variable held at a bound that the gradient pushes out
+is frozen and steps are projected into the box), `augLag` (fmincon/quadprog: A x ≤ b, Aeq x = beq, bounds and
+nonlcon's [c, ceq] as an augmented Lagrangian, ρ from 10 ×10 when the violation doesn't fall by 4, each round by the
+bound-projected BFGS; every inner step goes in `path`; `violation`), `linprog` (two-phase simplex in a dense tableau
+with Bland's rule; free variables split, a finite upper bound becomes a row; MATLAB's default bounds: none; flags 1,
+−2 infeasible, −3 unbounded), `intlinprog` (depth-first branch and bound, 20,000 nodes), `levenbergMarquardt`
+(lsqnonlin, lsqcurvefit, fsolve; forward-difference Jacobian; damping ×10 / ÷10), `solve`, `ga` (tournaments, blend
+crossover, shrinking mutation, 5% elite, stop after 50 generations without improvement; constraints as a 1e6
+penalty), `particleswarm` (Clerc's constriction 0.7298 / 1.49445, stop when the best moves < 1e-6 over 20
+iterations). Language (`optim-lab.ts`, loaded by the worker and the help test): the solvers with MATLAB's argument
+order and outputs ([x, fval, exitflag, output]; lsq*: [x, resnorm, residual, exitflag, output]); `optimset` /
+`optimoptions` (aliases TolX → StepTolerance and so on, an unknown name explained); Display ('notify' for fminsearch,
+'final' for the rest: one line; 'iter' a table); PlotFcns @optimplotfval / @optimplotx draw after the run;
+SpecifyObjectiveGradient takes [f, g] from the function. `output.path` (a row per iterate) is ours, for drawing.
+plot.ts: `legendSeries` (a contour's level lines count once in a legend, SVG and LaTeX via `forget plot`). Example
+`optim.m`. Tests (`optim.test.ts`): Rosenbrock by both, fmincon's disc example, linear, bound and equality limits,
+linprog's example, infeasible and unbounded, intlinprog's example and a knapsack, curve fitting, a system, Rastrigin by
+ga, a sphere by the swarm, the same in the language with MATLAB's examples, Display 'iter' and the plot, plain-word
+errors, the legend. Not built: interior-point and SQP choices, Hessians, multi-objective (gamultiobj, Pareto fronts),
+surrogate optimisation, simulated annealing, problem-based optimisation (optimproblem).
+

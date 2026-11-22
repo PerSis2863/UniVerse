@@ -56,6 +56,8 @@ export class Graphics {
   }
   changed() { this.onChange?.(); }
 }
+/** What a legend lists: each series, except that a contour plot's many level lines count once (as in MATLAB). */
+export const legendSeries = (ax: Axes) => ax.series.filter((s, i) => s.level === undefined || ax.series[i - 1]?.level === undefined);
 export const blankAxes = (): Axes => ({ series: [], grids: [], title: '', xlabel: '', ylabel: '', zlabel: '', legend: null, grid: false, hold: false, xlim: null, ylim: null, zlim: null, equal: false, logx: false, logy: false, next: 0, view: null, colorbar: false, clim: null, zrange: null, revY: false, tight: null, lights: [], lighting: 'flat', material: [0.3, 0.6, 0.9, 10], clabel: false, texts: [], refs: [], pie: null, polar: false, twin: null, side: 'left', xticks: null, yticks: null, xtl: null, ytl: null, visible: true });
 
 export const gfx = (lab: Lab): Graphics => {
@@ -210,7 +212,7 @@ def('legend', (a, _n, lab) => {
     for (let i = 0; i < a.length; i++) { const v = a[i]; if (v.k !== 'str') continue; if (/^(location|orientation|box|fontsize)$/i.test(v.v)) { i++; continue; } names.push(v.v); }
     ax.legend = names;
   }
-  if (!ax.legend?.length) ax.legend = ax.series.map((s, i) => s.label ?? `data${i + 1}`);
+  if (!ax.legend?.length) ax.legend = legendSeries(ax).map((s, i) => s.label ?? `data${i + 1}`);
   gfx(lab).changed();
   return [];
 });
@@ -437,11 +439,11 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][], o: { xr?: [number,
   }
   if (ax.title) out.push(`<text x="${bx + w / 2}" y="${by - 12}" fill="${c.ink}" font-size="14" font-weight="600" text-anchor="middle">${esc(tex(ax.title))}</text>`);
   if (ax.colorbar && main) out.push(colorbarSvg({ x: bx + w + 14, y: by, w: 14, h }, cmap, c0, c1, c));
-  const names = ax.legend ?? (ax.series.some((s) => s.label) ? ax.series.map((s, i) => s.label ?? `data${i + 1}`) : null);
+  const shown = legendSeries(ax), names = ax.legend ?? (shown.some((s) => s.label) ? shown.map((s, i) => s.label ?? `data${i + 1}`) : null);
   if (names?.length && main) {
     const lw = Math.max(...names.map((n) => n.length)) * 6.6 + 40, lh = names.length * 18 + 8;
     out.push(`<g transform="translate(${bx + w - lw - 8} ${by + 8})"><rect width="${lw}" height="${lh}" rx="6" fill="${c.bg}" fill-opacity="0.92" stroke="${c.line}"/>`);
-    names.forEach((n, i) => { const s = ax.series[i]; if (!s) return; const yy = 14 + i * 18; out.push(s.kind === 'bar' || s.kind === 'barh' || s.kind === 'area' || s.kind === 'fill' ? `<rect x="8" y="${yy - 6}" width="18" height="10" fill="${s.color}"/>` : `<line x1="8" y1="${yy - 1}" x2="26" y2="${yy - 1}" stroke="${s.color}" stroke-width="${s.dash === 'none' ? 0 : s.width}"${DASH[s.dash] ? ` stroke-dasharray="${DASH[s.dash]}"` : ''}/>${s.marker ? markerSvg(s.marker, 17, yy - 1, 3.5, s.color) : ''}`, `<text x="32" y="${yy + 3}" fill="${c.ink}" font-size="11">${esc(tex(n))}</text>`); });
+    names.forEach((n, i) => { const s = shown[i]; if (!s) return; const yy = 14 + i * 18; out.push(s.kind === 'bar' || s.kind === 'barh' || s.kind === 'area' || s.kind === 'fill' ? `<rect x="8" y="${yy - 6}" width="18" height="10" fill="${s.color}"/>` : `<line x1="8" y1="${yy - 1}" x2="26" y2="${yy - 1}" stroke="${s.color}" stroke-width="${s.dash === 'none' ? 0 : s.width}"${DASH[s.dash] ? ` stroke-dasharray="${DASH[s.dash]}"` : ''}/>${s.marker ? markerSvg(s.marker, 17, yy - 1, 3.5, s.color) : ''}`, `<text x="32" y="${yy + 3}" fill="${c.ink}" font-size="11">${esc(tex(n))}</text>`); });
     out.push('</g>');
   }
   return out.join('');
@@ -503,12 +505,14 @@ function axisTikz(ax: Axes, f: Figure, name: (hex: string) => string) {
     const stacked = bars.some((s) => s.base);
     opts.push(`${k === 'bar' ? 'ybar' : 'xbar'}${stacked ? ' stacked' : ''}`, `bar width=${(barWidth(bars[0].x) * 0.8 / (stacked ? 1 : bars.length)).toPrecision(3)}`);
   }
-  const names = ax.legend ?? (ax.series.some((s) => s.label) ? ax.series.map((s, i) => s.label ?? `data${i + 1}`) : null);
+  const names = ax.legend ?? (legendSeries(ax).some((s) => s.label) ? legendSeries(ax).map((s, i) => s.label ?? `data${i + 1}`) : null);
   if (names?.length) opts.push('legend pos=north east', `legend style={font=\\small}`);
   const p = (v: number) => +v.toPrecision(6);
-  const plots = [...ax.grids.map((g) => gridTikz(g, three)), ...ax.series.map((s0) => {
+  const plots = [...ax.grids.map((g) => gridTikz(g, three)), ...ax.series.map((s0, si) => {
     const s = s0.level !== undefined ? { ...s0, color: hexAt(f.cmap, c0, c1, s0.level) } : s0;
     const o = [`color=${name(s.color)}`];
+    // A contour's later level lines stay out of the legend (it lists the contour once).
+    if (s0.level !== undefined && ax.series[si - 1]?.level !== undefined) o.push('forget plot');
     if (s.kind === 'bar' || s.kind === 'barh') o.push(`fill=${name(s.color)}`);
     if (s.kind === 'area') o.push(`fill=${name(s.color)}, fill opacity=0.25`);
     if (s.kind === 'fill') { o[0] = s.edge === 'none' ? 'draw=none' : `draw=${name(s.edge ?? '#18181b')}`; o.push(`fill=${name(s.color)}`); if ((s.fa ?? 1) < 1) o.push(`fill opacity=${s.fa}`); }

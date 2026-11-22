@@ -620,6 +620,21 @@ clusterdata | T = clusterdata(X, 'Linkage', 'ward', 'MaxClust', 3) | pdist, link
 cophenet | [c, d] = cophenet(Z, D) | How faithfully the tree keeps the distances: the correlation between them and the heights where pairs first join.
 inconsistent | inconsistent(Z, depth) | Each join's height against the joins just below it: mean, spread, count and the inconsistency coefficient.
 dendrogram | [H, T, perm] = dendrogram(Z, 30, 'ColorThreshold', t, 'Labels', names) | Draws the tree: at most 30 leaves (deeper groups shown as one), groups below 70% of the top height in colours.
+
+# Optimisation
+fminsearch | [x, fval, flag, output] = fminsearch(fun, x0, options) | The smallest value of a function by the Nelder–Mead simplex (no slopes needed). output.path holds every step, to draw.
+fminunc | [x, fval, flag, output] = fminunc(fun, x0, options) | The smallest value by BFGS (a quasi-Newton method using slopes, measured or given with 'SpecifyObjectiveGradient').
+fmincon | x = fmincon(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | The smallest value with limits: A·x ≤ b, Aeq·x = beq, lb ≤ x ≤ ub and nonlcon(x) giving [c, ceq] with c ≤ 0, ceq = 0 (an augmented Lagrangian).
+linprog | [x, fval, flag] = linprog(f, A, b, Aeq, beq, lb, ub) | The best of a linear cost f·x under linear limits, by the simplex method (flag −2: impossible; −3: no bottom).
+intlinprog | x = intlinprog(f, intcon, A, b, Aeq, beq, lb, ub) | As linprog, with the variables listed in intcon whole numbers (branch and bound).
+quadprog | x = quadprog(H, f, A, b, Aeq, beq, lb, ub) | The smallest ½xᵀHx + fᵀx under linear limits.
+lsqnonlin | [x, resnorm, residual] = lsqnonlin(fun, x0, lb, ub) | The x making fun(x)'s entries as small as possible (sum of squares), by Levenberg–Marquardt.
+lsqcurvefit | p = lsqcurvefit(@(p, x) model, p0, xdata, ydata, lb, ub) | Fits a model's parameters to data by least squares.
+fsolve | x = fsolve(fun, x0) | Solves a system F(x) = 0 (as many equations as wanted).
+ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A genetic algorithm: a population that breeds and mutates towards the best, for bumpy functions with many dips.
+particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
+optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
+optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
