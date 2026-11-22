@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { EditorView, basicSetup } from 'codemirror';
 import { Compartment, EditorState, Prec } from '@codemirror/state';
-import { keymap } from '@codemirror/view';
+import { hoverTooltip, keymap } from '@codemirror/view';
 import { indentWithTab } from '@codemirror/commands';
 import { lintGutter, setDiagnostics } from '@codemirror/lint';
 import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
@@ -29,6 +29,7 @@ const look = (dark: boolean) => EditorView.theme({
   '.cm-panels': { backgroundColor: dark ? '#1b1d22' : '#fafafa', color: 'inherit', borderColor: dark ? '#3f3f46' : '#e4e4e7' },
   '.cm-panel.cm-search input, .cm-panel.cm-search button': { fontSize: '12px' },
   '.cm-diagnostic-error': { borderLeftColor: '#dc2626' },
+  '.cm-lab-help': { padding: '6px 10px', maxWidth: '24rem', fontFamily: 'Inter, system-ui, sans-serif', fontSize: '12px', lineHeight: '1.5' },
   '.cm-lintRange-error': { backgroundImage: 'none', textDecoration: 'underline wavy #dc2626', textUnderlineOffset: '3px' },
 }, { dark });
 
@@ -68,6 +69,16 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
           s.lang.of([matlab, matlabIndent]),
           matlab.data.of({ autocomplete: completions(() => live.current.vars, (n) => live.current.describe(n)) }),
           lintGutter(),
+          // Help for a function when the pointer rests on its name.
+          hoverTooltip((view, pos) => {
+            const { from, to, text } = view.state.doc.lineAt(pos);
+            let a = pos - from, b = a;
+            while (a > 0 && /\w/.test(text[a - 1])) a--;
+            while (b < text.length && /\w/.test(text[b])) b++;
+            const help = a < b ? live.current.describe(text.slice(a, b)) : undefined;
+            if (!help) return null;
+            return { pos: from + a, end: Math.min(to, from + b), above: true, create: () => { const dom = document.createElement('div'); dom.className = 'cm-lab-help'; dom.textContent = help; return { dom }; } };
+          }, { hoverTime: 350 }),
           s.theme.of([look(night), highlight(night)]),
           s.label.of(EditorView.contentAttributes.of({ 'aria-label': name })),
           EditorView.updateListener.of((u) => { if (u.docChanged) live.current.onChange(u.state.doc.toString()); }),

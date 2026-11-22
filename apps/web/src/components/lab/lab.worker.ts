@@ -6,6 +6,7 @@ import { dimsOf, inline, kind, sizeOf } from '@/lib/lab/values';
 import { takeWarning } from '@/lib/lab/interp';
 import { FileStore, type Pixels } from '@/lib/lab/files';
 import { BUILTINS } from '@/lib/lab/builtins';
+import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
 

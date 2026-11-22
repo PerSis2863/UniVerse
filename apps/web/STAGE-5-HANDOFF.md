@@ -10661,3 +10661,14 @@ a new figure), Copy (tab-separated, for spreadsheets), Put in the command. LabAp
 and asks again after every run, so the viewer follows changes; clicking a variable's name opens it (Put in the
 command does what the click used to). Note for browser checks: in development, Next's "N" badge covers the bottom-left
 of a phone sheet (press its buttons with the keyboard).
+
+## M391 (22 Nov): UniVerse Lab: help for every function
+
+`src/lib/lab/help.ts` (pure data, also loaded by the window): one line per function, `name | how to call it | what it
+does`, under `# Section` headings (17 sections); `HELP`, `SECTIONS`, `helpFor(name)` (the line, the forms and up to 8
+others of its section), `lookFor(words)`. `help-commands.ts` registers help / doc / lookfor (the worker and tests
+import it; `lookfor` is a command word). `help.test.ts` fails when a function has no help line: a new builtin needs
+one. The editor's suggestions show the help (`describe` in LabApp) and `hoverTooltip` shows it when the pointer
+rests on a name (`.cm-lab-help`). `FunctionBrowser.tsx`: a Sheet with a search box (words match the name or the
+help), section chips, up to 300 rows; choosing one puts its first form (`firstForm`: commas inside brackets don't
+split) in the command window. The Functions button sits in the command window's header.

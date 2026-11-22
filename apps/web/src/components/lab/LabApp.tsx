@@ -2,13 +2,15 @@
 
 import { useEffect, useEffectEvent, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { Copy, Download, File as FileIcon, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Copy, Download, File as FileIcon, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
 import { VariableViewer, type Shown } from './VariableViewer';
+import { FunctionBrowser } from './FunctionBrowser';
+import { HELP } from '@/lib/lab/help';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
@@ -56,6 +58,7 @@ export function LabApp() {
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
   const [namesVersion, setNamesVersion] = useState(0);
   const [shown, setShown] = useState<Shown | null>(null);
+  const [browsing, setBrowsing] = useState(false);
   const looking = useRef<Inspect | null>(null);
   const [codeError, setCodeError] = useState<{ line: number; message: string } | null>(null);
   const [dragging, setDragging] = useState(false);
@@ -144,6 +147,8 @@ export function LabApp() {
     listFiles();
     toast.success(added.length === 1 ? `${added[0].name} is ready: use it by name, like readmatrix('${added[0].name}').` : `${added.length} files are ready.`);
   };
+  /** A function's help for the editor (beside suggestions and on hover). */
+  const describe = (n: string) => { const e = HELP.get(n); return e ? `${e.syntax}\n${e.text}` : undefined; };
   /** The variable viewer: open a variable (or a part of it), go further in, page through. */
   const inspect = (q: Inspect | null) => { looking.current = q; if (!q) { setShown(null); return; } worker.current?.postMessage({ inspect: q } satisfies ToLab); };
   const removeFile = (name: string) => {
@@ -229,7 +234,11 @@ export function LabApp() {
 
   const command = (
     <section className={cn(panel, 'h-full')} aria-label="Command window">
-      <div className={cn(head, 'relative')}>Command window{busy && <span className="ms-auto inline-flex items-center gap-2 text-xs font-normal text-zinc-500">running…<button type="button" onClick={stop} className={btn}><Square className="h-3.5 w-3.5" aria-hidden />Stop</button></span>}
+      <div className={cn(head, 'relative')}>Command window
+        <span className="ms-auto inline-flex items-center gap-2 text-xs font-normal text-zinc-500">
+          {busy && <>running…<button type="button" onClick={stop} className={btn}><Square className="h-3.5 w-3.5" aria-hidden />Stop</button></>}
+          <button type="button" onClick={() => setBrowsing(true)} className={btn}><BookOpen className="h-3.5 w-3.5" aria-hidden />Functions</button>
+        </span>
         {busy && <span className="lab-busy" aria-hidden><span className="bg-indigo-600" /></span>}
       </div>
       <div ref={logBox} role="log" aria-label="Output" tabIndex={0} className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[13px] leading-relaxed" data-no-motion>
@@ -273,7 +282,7 @@ export function LabApp() {
         </div>
       )}
       <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
-        vars={vars.map((v) => v.name)} describe={() => undefined} error={codeError} namesVersion={namesVersion} />
+        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} />
     </section>
   );
 
@@ -362,6 +371,7 @@ export function LabApp() {
         </>
       )}
       {viewer}
+      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); setTab('command'); }} />}
     </div>
   );
 }
