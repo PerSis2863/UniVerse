@@ -612,6 +612,14 @@ confusionchart | confusionchart(Ytrue, Ypred), confusionchart(C, names) | The co
 gscatter | gscatter(x, y, groups) | A scatter plot coloured by group, with a legend.
 kmeans | [idx, C, sumd, D] = kmeans(X, k, 'Replicates', r) | k clusters by k-means (k-means++ starts; the best of r tries).
 dbscan | [idx, core] = dbscan(X, epsilon, minpts) | Clusters of dense rows; -1 marks noise.
+pdist | D = pdist(X, 'euclidean') | The distance between every pair of rows, as one row ('euclidean', 'squaredeuclidean', 'seuclidean', 'cityblock', 'chebychev', 'minkowski', 'cosine', 'correlation', 'hamming').
+squareform | S = squareform(D) | pdist's list as a square matrix of distances, or the matrix back as the list.
+linkage | Z = linkage(X, 'ward'), linkage(D, 'average') | Tree-style clustering: joins the two nearest groups again and again ('single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'); each row of Z: the two groups joined and their distance.
+cluster | T = cluster(Z, 'MaxClust', k), cluster(Z, 'Cutoff', c, 'Criterion', 'distance') | Cuts the tree into groups: k of them, or below a height (or below an inconsistency, the default for Cutoff).
+clusterdata | T = clusterdata(X, 'Linkage', 'ward', 'MaxClust', 3) | pdist, linkage and cluster in one step.
+cophenet | [c, d] = cophenet(Z, D) | How faithfully the tree keeps the distances: the correlation between them and the heights where pairs first join.
+inconsistent | inconsistent(Z, depth) | Each join's height against the joins just below it: mean, spread, count and the inconsistency coefficient.
+dendrogram | [H, T, perm] = dendrogram(Z, 30, 'ColorThreshold', t, 'Labels', names) | Draws the tree: at most 30 leaves (deeper groups shown as one), groups below 70% of the top height in colours.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.

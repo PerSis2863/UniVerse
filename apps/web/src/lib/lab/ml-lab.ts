@@ -4,11 +4,12 @@ import { BUILTINS, random, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { col, mat, num, str, toMat, type Cell, type Mat, type Struct, type Value } from './values';
 import { isTable, names as columnNames, table } from './table';
-import { gfx } from './plot';
+import { gfx, PALETTE } from './plot';
 import { IRIS_SPECIES, irisRows } from './iris';
 import * as ml from './ml';
 import { netPredictor, trainNet, type Act, type Net } from './ml-net';
 import { tune, type Setting, type TuneVar } from './ml-tune';
+import * as hc from './ml-cluster';
 
 // Hyperion's machine learning toolbox in the language (M416): classifiers (fitcknn, fitctree, fitcnb, fitcdiscr,
 // fitcsvm, fitcecoc), regression (fitrtree, fitlm, fitglm), predict / loss / resubLoss, cross-validation (crossval,
@@ -706,6 +707,92 @@ def('perfcurve', (a) => {
   if (s.length !== L.y.length) throw new LabError('perfcurve needs a score for every label.');
   const r = ml.roc(L.y.map((c) => c === pos), s);
   return [col(r.fpr), col(r.tpr), col(r.thr), num(r.auc)];
+});
+
+// ——— Tree-style (hierarchical) clustering ———
+const linkOf = (v: Value): [number, number, number][] => {
+  const m = toMat(v, 'The tree');
+  if (m.c !== 3 || m.r < 1) throw new LabError('That isn’t a tree from linkage (it has 3 columns: the two groups joined and their distance).');
+  return Array.from({ length: m.r }, (_, i) => [m.d[i], m.d[i + m.r], m.d[i + 2 * m.r]]);
+};
+const metricOf = (v: Value | undefined): hc.Metric => {
+  const name = v ? textOf(v).toLowerCase().replace('chebyshev', 'chebychev') : 'euclidean';
+  if (!hc.METRICS.includes(name as hc.Metric)) throw new LabError(`The distance is one of: ${hc.METRICS.join(', ')}.`);
+  return name as hc.Metric;
+};
+def('pdist', (a) => {
+  const X = rowsOf(toMat(a[0], 'The rows'));
+  if (X.length > hc.MAX_ROWS) throw new LabError(`pdist here measures at most ${hc.MAX_ROWS.toLocaleString()} rows.`);
+  const D = hc.pdist(X, metricOf(a[1]), a[2] ? toMat(a[2]).d[0] : 2);
+  return [mat(1, D.length, D)];
+});
+def('squareform', (a) => {
+  const m = toMat(a[0], 'The distances');
+  if (m.r === 1 || m.c === 1) {
+    const n = m.d.length ? hc.rowsFor(m.d.length) : 1;
+    if (n < 0) throw new LabError('That many distances don’t come from whole rows (a list of n(n−1)/2 distances is needed).');
+    const S = mat(n, n);
+    let k = 0;
+    for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) { S.d[i + j * n] = m.d[k]; S.d[j + i * n] = m.d[k]; k++; }
+    return [S];
+  }
+  if (m.r !== m.c) throw new LabError('squareform turns a square distance matrix into a list, or a list into the matrix.');
+  const n = m.r, out: number[] = [];
+  for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) out.push(m.d[i + j * n]);
+  return [mat(1, out.length, out)];
+});
+function linkageOf(v: Value, method: Value | undefined, metric: Value | undefined) {
+  const m = toMat(v, 'The data'), name = method ? textOf(method).toLowerCase() : 'single';
+  if (!hc.METHODS.includes(name as hc.Method)) throw new LabError(`The linkage is one of: ${hc.METHODS.join(', ')}.`);
+  const D = m.r === 1 && hc.rowsFor(m.c) > 1 ? Float64Array.from(m.d) : (() => { const X = rowsOf(m); if (X.length > hc.MAX_ROWS) throw new LabError(`linkage here joins at most ${hc.MAX_ROWS.toLocaleString()} rows.`); return hc.pdist(X, metricOf(metric)); })();
+  try { return hc.linkage(D, name as hc.Method); } catch (e) { throw new LabError((e as Error).message); }
+}
+const zMat = (Z: [number, number, number][]) => matOf(Z, 3);
+def('linkage', (a) => { if (!a[0]) throw new LabError("linkage needs the rows (or the distances from pdist): linkage(X, 'ward')."); return [zMat(linkageOf(a[0], a[1], a[2]))]; });
+function cutTree(Z: [number, number, number][], o: Opts): number[] {
+  if (o.has('maxclust')) return hc.clusterMax(Z, Math.round(optNum(o, 'maxclust', 2)));
+  if (!o.has('cutoff')) throw new LabError("Say how to cut the tree: 'MaxClust', k (k groups) or 'Cutoff', c.");
+  const c = optNum(o, 'cutoff', 1), how = optStr(o, 'criterion', 'inconsistent');
+  if (how === 'distance') return hc.clusterCutoff(Z, c);
+  if (how !== 'inconsistent') throw new LabError("Criterion is 'inconsistent' or 'distance'.");
+  return hc.clusterCutoff(Z, c, hc.inconsistent(Z, Math.round(optNum(o, 'depth', 2))).map((r) => r[3]));
+}
+def('cluster', (a) => { if (!a[0]) throw new LabError("cluster needs a tree from linkage: cluster(Z, 'MaxClust', 3)."); return [col(cutTree(linkOf(a[0]), options(a, 1)))]; });
+def('clusterdata', (a) => {
+  if (!a[0]) throw new LabError("clusterdata needs the rows: clusterdata(X, 'Linkage', 'ward', 'MaxClust', 3).");
+  const o = options(a, a[1] && a[1].k === 'mat' ? 2 : 1);
+  if (a[1] && a[1].k === 'mat') o.set('cutoff', a[1]);
+  return [col(cutTree(linkageOf(a[0], o.get('linkage'), o.get('distance')), o))];
+});
+def('inconsistent', (a) => { const Z = linkOf(a[0]); return [matOf(hc.inconsistent(Z, a[1] ? Math.round(toMat(a[1]).d[0]) : 2), 4)]; });
+def('cophenet', (a) => {
+  const Z = linkOf(a[0]), D = a[1] ? Float64Array.from(toMat(a[1], 'The distances').d) : undefined;
+  if (D && D.length !== (Z.length * (Z.length + 1)) / 2) throw new LabError('cophenet needs the distances the tree was made from (from pdist).');
+  const r = hc.cophenet(Z, D);
+  return [num(r.c), mat(1, r.C.length, r.C)];
+});
+def('dendrogram', (a, _n, lab) => {
+  const Z = linkOf(a[0]), hasP = a[1] && a[1].k === 'mat', P = hasP ? Math.round(toMat(a[1]).d[0]) : 30, o = options(a, hasP ? 2 : 1);
+  const ct = o.get('colorthreshold'), t = !ct || (ct.k === 'str' && ct.v === 'default') ? undefined : ct.k === 'str' ? Infinity : toMat(ct).d[0];
+  const L = hc.dendrogramLayout(Z, P, t), labels = o.get('labels');
+  const names = labels?.k === 'cell' ? labels.d.map((v) => textOf(v)) : null, m = new Map<number, number[]>();
+  // Each shown leaf: a row's number (or label), or "(k)" for a group of k rows.
+  L.leafOf.forEach((leaf, r) => { if (!m.has(leaf)) m.set(leaf, []); m.get(leaf)!.push(r); });
+  const tick = L.order.map((_, i) => { const rows = m.get(i + 1) ?? []; return rows.length === 1 ? (names?.[rows[0]] ?? String(rows[0] + 1)) : `(${rows.length})`; });
+  const groups = new Map<number, number[][]>();
+  for (const k of L.links) { if (!groups.has(k.colour)) groups.set(k.colour, [[], []]); const g = groups.get(k.colour)!; g[0].push(...k.x, NaN); g[1].push(...k.y, NaN); }
+  const was = gfx(lab).axes().hold;
+  [...groups].forEach(([c, [x, y]], i) => {
+    call(lab, 'plot', mat(1, x.length, x), mat(1, y.length, y), str('Color'), str(c < 0 ? '#71717a' : PALETTE[c % PALETTE.length]), str('LineWidth'), num(1.5));
+    if (i === 0) call(lab, 'hold', str('on'));
+  });
+  if (!was) call(lab, 'hold', str('off'));
+  call(lab, 'xticks', mat(1, tick.length, tick.map((_, i) => i + 1))); call(lab, 'xticklabels', cellRow(tick));
+  call(lab, 'xlim', mat(1, 2, [0.5, tick.length + 0.5]));
+  call(lab, 'ylim', mat(1, 2, [0, Math.max(...Z.map((r) => r[2])) * 1.05 || 1]));
+  // With every row shown, T is each row itself and the order is the rows left to right; otherwise the shown leaves.
+  const all = L.order.length === L.leafOf.length;
+  return [mat(0, 0), col(all ? L.leafOf.map((_, r) => r + 1) : L.leafOf), mat(1, L.order.length, all ? L.order : L.order.map((_, i) => i + 1))];
 });
 
 // ——— Sample data ———

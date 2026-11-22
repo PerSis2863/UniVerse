@@ -11245,3 +11245,20 @@ vs. number of tries". `optimizableVariable` and `bayesopt(fun, vars or {vars}, '
 ObjectiveTrace. Naive Bayes, discriminant and linear models have nothing to tune (said in words). Tests (in
 `ml-net.test.ts`).
 
+## M420 (22 Nov): Hyperion toolbox, tree-style (hierarchical) clustering
+
+`ml-cluster.ts` (pure): `pdist(X, metric, p)` (MATLAB's pair order (1,2), (1,3)…; seuclidean divides by each column's
+variance; correlation centres each row), `rowsFor(len)`, `linkage(D, method)` (a full n × n matrix, each row's nearest
+live neighbour kept and refreshed only when its neighbour was joined or the new group comes nearer; Lance–Williams
+updates; centroid, median and Ward on squared distances, heights reported plain; rows of Z: the smaller group number
+first; at most `MAX_ROWS` = 2,000 rows), `clusterMax`, `clusterCutoff(Z, c, by)` (a join counts when it and every join
+under it are at most c; `by` swaps the heights for inconsistency coefficients), `inconsistent(Z, depth)`, `cophenet`,
+`dendrogramLayout(Z, p, threshold)` (leaves in the tree's order, at most p of them, each join a ∏, joins inside a group
+of the cut at the threshold coloured by that group, the rest grey; `leafOf` gives each row's shown leaf). Groups are
+numbered by their first row (MATLAB's numbering differs: compare groupings, not numbers). In the language: pdist,
+squareform, linkage (rows or pdist's list), cluster ('MaxClust', or 'Cutoff' with 'Criterion' 'inconsistent' (default)
+or 'distance', 'Depth'), clusterdata, inconsistent, cophenet, dendrogram (P = 30, 'ColorThreshold' (default 70% of the
+top; 'off'), 'Labels'; one plot series per colour with NaN gaps; x ticks the rows or "(k)" for a group; outputs
+[H (empty), T, perm]). Tests (in `ml-net.test.ts`): hand-worked heights for single, complete, average, centroid and Ward,
+cutting both ways, cophenetic distances, the layout's colours and collapsing, iris by Ward in the language.
+

@@ -106,3 +106,45 @@ describe('Hyperion automatic tuning (M419)', () => {
     expect(r.out).toMatch(/Best: MinLeafSize = \d+/);
   });
 });
+
+describe('Hyperion tree-style clustering (M420)', () => {
+  it('distances, the joins of every linkage, cutting and the cophenetic correlation', async () => {
+    const hc = await import('./ml-cluster');
+    const X = [[0, 0], [0, 1], [4, 0], [4, 1.5], [10, 0]], D = hc.pdist(X);
+    expect([...D].slice(0, 4).map((v) => +v.toFixed(6))).toEqual([1, 4, +Math.hypot(4, 1.5).toFixed(6), 10]);
+    // Single: (1,2) at 1, (3,4) at 1.5, then the pair groups at the nearest points' 4, then row 5 at 6 (from row 3).
+    expect(hc.linkage(D, 'single').map((r) => r.map((v) => +v.toFixed(6)))).toEqual([[1, 2, 1], [3, 4, 1.5], [6, 7, 4], [5, 8, 6]]);
+    // Complete: the farthest points.
+    expect(hc.linkage(D, 'complete')[2][2]).toBeCloseTo(Math.hypot(4, 1.5), 9);
+    // Average between {1,2} and {3,4}: the mean of the four distances.
+    const avg = (Math.hypot(4, 0) + Math.hypot(4, 1.5) + Math.hypot(4, 1) + Math.hypot(4, 0.5)) / 4;
+    expect(hc.linkage(D, 'average')[2][2]).toBeCloseTo(avg, 9);
+    // Centroid: the distance between the groups' centres, (0, 0.5) and (4, 0.75).
+    expect(hc.linkage(D, 'centroid')[2][2]).toBeCloseTo(Math.hypot(4, 0.25), 9);
+    // Ward: √(2·n1·n2/(n1+n2))·|centre difference|.
+    expect(hc.linkage(D, 'ward')[2][2]).toBeCloseTo(Math.sqrt(2) * Math.hypot(4, 0.25), 9);
+    const Z = hc.linkage(D, 'single');
+    expect(hc.clusterMax(Z, 3)).toEqual([1, 1, 2, 2, 3]);
+    expect(hc.clusterCutoff(Z, 1.2)).toEqual([1, 1, 2, 3, 4]);
+    const { c, C } = hc.cophenet(Z, D);
+    expect(C[0]).toBe(1);
+    expect(c).toBeGreaterThan(0.8);
+    expect(c).toBeLessThanOrEqual(1);
+    const L = hc.dendrogramLayout(Z, 30, 5);
+    expect(L.order).toHaveLength(5);
+    expect(L.links.filter((k) => k.colour >= 0)).toHaveLength(3);
+    expect(hc.dendrogramLayout(Z, 2).order).toHaveLength(2);
+  });
+
+  it('in the language: iris by Ward’s method, clusterdata, a dendrogram', () => {
+    const r = run("load fisheriris\nY = pdist(meas);\nZ = linkage(Y, 'ward');\nT = cluster(Z, 'MaxClust', 3);\nk = numel(unique(T));\n[c, ~] = cophenet(Z, Y);\nS = squareform(Y); s = size(S); back = isequal(squareform(S), Y);\nT2 = clusterdata(meas, 'Linkage', 'ward', 'MaxClust', 3);\nsame = isequal(T, T2);\n[~, Tleaf, perm] = dendrogram(Z);\nnl = max(Tleaf);\nsetosa = numel(unique(T(1:50)));");
+    expect(r.d('k')).toEqual([3]);
+    expect(r.d('c')[0]).toBeGreaterThan(0.8);
+    expect(r.d('s')).toEqual([150, 150]);
+    expect(r.d('back')).toEqual([1]);
+    expect(r.d('same')).toEqual([1]);
+    expect(r.d('nl')).toEqual([30]);
+    expect(r.d('setosa')).toEqual([1]);
+    expect(() => run("linkage([1 2; 3 4], 'nearest')")).toThrow(/single/);
+  });
+});
