@@ -12,12 +12,13 @@ import { pages as pagesOf } from '@/lib/lab/values';
 import { Profiler, type Profile } from '@/lib/lab/profile';
 import { Recorder, type TraceStep } from '@/lib/lab/trace';
 import type { Figure } from '@/lib/lab/plot';
+import type { SweepFrame } from '@/lib/lab/sweep';
 
 // M376: Hyperion's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number };
+export type ToLab = { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -32,6 +33,7 @@ export type FromLab =
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
   | { profiled: Profile }
+  | { sweepFrame: { index: number; frame: SweepFrame } }
   | { view: Inspect & { expr: string; size: string; v: View | null; error?: string } };
 export interface VarRow { name: string; size: string; cls: string; value: string }
 export interface FigOut { id: number; light: string; dark: string; tex: string }
@@ -61,8 +63,37 @@ const figOut = (id: number): FigOut | null => {
   return f ? { id, light: renderSvg(f, size.w, size.h, false), dark: renderSvg(f, size.w, size.h, true), tex: toTikz(f) } : null;
 };
 
+const varRows = (): VarRow[] => [...lab.vars].sort((a, b) => a[0].localeCompare(b[0])).map(([name, v]) => ({ name, size: (v.k === 'mat' ? dimsOf(v) : sizeOf(v)).join('×'), cls: kind(v), value: inline(v) }));
+
+/** Sweep (M402): each script in a fresh workspace of its own, its figure drawn as a frame, its numbers kept. */
+function sweep(codes: string[], values: number[], w: number, h: number) {
+  codes.forEach((code, index) => {
+    const g = new Graphics();
+    const one = new Lab({ out: () => {}, graphics: g, files, now: () => performance.now() });
+    let error: string | undefined;
+    try { one.run(code); } catch (err) {
+      error = err instanceof Error ? err.message : String(err);
+      if (err instanceof LabError && err.at >= 0) error = `line ${code.slice(0, err.at).split('\n').length}: ${error}`;
+    }
+    takeWarning();
+    const f = g.current ?? g.figures[g.figures.length - 1];
+    const outs: Record<string, number> = {};
+    for (const [name, v] of one.vars) {
+      if (v.k === 'mat' && v.d.length === 1 && !(v.im && v.im[0] !== 0)) outs[name] = v.d[0];
+    }
+    const frame: SweepFrame = { value: values[index], light: f ? renderSvg(f, w, h, false) : '', dark: f ? renderSvg(f, w, h, true) : '', outs, ...(error ? { error } : {}) };
+    postMessage({ sweepFrame: { index, frame } } satisfies FromLab);
+  });
+}
+
 self.onmessage = (e: MessageEvent<ToLab>) => {
   const m = e.data;
+  if ('sweep' in m) {
+    sweep(m.sweep.codes, m.sweep.values, m.sweep.w, m.sweep.h);
+    const written: FileOut[] = files.takeChanges().map(({ name, file }) => ({ name, bytes: file?.bytes ?? null, pixels: file?.pixels }));
+    postMessage({ done: m.id, vars: varRows(), figs: null, current: graphics.current?.id ?? null, files: written, drawn: [] } satisfies FromLab);
+    return;
+  }
   if ('upload' in m) { for (const f of m.upload) files.load(f.name, { bytes: f.bytes, pixels: f.pixels }); return; }
   if ('remove' in m) { files.files.delete(m.remove); return; }
   if ('inspect' in m) {
@@ -103,7 +134,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   } else if (w) buf += `${w}\n`;
   if (profiler) { postMessage({ profiled: profiler.finish() } satisfies FromLab); profiler = null; delete host.fnTimer; }
   flush();
-  const vars: VarRow[] = [...lab.vars].sort((a, b) => a[0].localeCompare(b[0])).map(([name, v]) => ({ name, size: (v.k === 'mat' ? dimsOf(v) : sizeOf(v)).join('×'), cls: kind(v), value: inline(v) }));
+  const vars = varRows();
   const changed = touched || graphics.figures.some((f) => !before.has(f.id)) || graphics.figures.length !== before.size;
   const figs = changed ? graphics.figures.map((f) => figOut(f.id)).filter((f): f is FigOut => !!f) : null;
   const written: FileOut[] = files.takeChanges().map(({ name, file }) => ({ name, bytes: file?.bytes ?? null, pixels: file?.pixels }));

@@ -10852,3 +10852,22 @@ function calling itself; `finish` adds `fns` (by own time). Window: each script 
 is "about the same") and "Time inside functions": a table (built-ins and the script's own functions: calls, own time,
 with what it calls, and the own time in the run before, matched by name, so it survives edits). Not built: anonymous
 functions (@(x) …) as rows of their own (their calls inside are counted).
+
+## M402 (22 Nov): Hyperion Sweep (a slider's range as a film and a table)
+
+The sixth of the owner's 20 big features (two ideas in one: a parameter study and an animation). `src/lib/lab/sweep.ts`:
+`sweepValues(c, from, to, n)` (2–48 values, the ends as typed, the rest on the slider's steps, repeats dropped),
+`sweepCodes` (one script per value, the literal written exactly), `sweepColumns` (every real scalar the runs left that
+changes, at most 8, with the frames of its largest and smallest value and where it changes sign), `findings` (those in
+sentences), `sweepCsv`. `src/lib/lab/gif.ts`: GIF89a written from the spec: `PaletteMaker` (15-bit bins, the 256 most
+used, averaged; other colours to the nearest, remembered per bin), `indexPixels`, `GifWriter` (a global table, the
+NETSCAPE loop, a frame's delay, LZW with the 12-bit table restarted when full); the tests read it back with their own
+decoder, pixel for pixel. Worker: `{ sweep: { codes, values, w, h } }` runs each script in a fresh `Lab` with its own
+`Graphics` (the shared files store; output thrown away), posts `{ sweepFrame }` per run (the current figure as SVG in
+both themes at 640×480, the scalars, the error with its line), then a normal `done`. Window: a Sweep button after the
+live controls opens a form (which slider, from, to, 6/12/24/48 runs); the figure panel shows `LabSweep.tsx` (frames as
+blob-URL images, freed on close or a new sweep; play, step, a frame slider, speed; it plays once done unless Reduce
+Motion; a strip of thumbnails; Save as GIF, drawn on a canvas from the light frames a frame at a time with a pause
+between; Table as CSV; "Use theta = 42" sets the slider and runs). Also fixed: a slider's step such as 0.25 wrote one
+decimal (0.25 became 0.3): `stepDecimals` counts the step's own decimals. Not built: sweeping menus and switches, two
+sliders at once (a grid).

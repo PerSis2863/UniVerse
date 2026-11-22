@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -22,6 +22,8 @@ import { printedUpTo, varsAt, type TraceStep } from '@/lib/lab/trace';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
+import { FRAME_H, FRAME_W, LabSweep, type Sweep } from './LabSweep';
+import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
 import { builtinNames } from './matlab-lang';
 
 // M376: Hyperion's window: the command window, a script editor, the variables and the figures, like a desktop
@@ -32,7 +34,7 @@ import { builtinNames } from './matlab-lang';
 type Line = { k: 'in' | 'out' | 'err'; t: string };
 type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
 const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
-type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile';
+type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -99,6 +101,10 @@ export function LabApp() {
   // one before it, M401) and a line to jump to.
   const [profs, setProfs] = useState<Record<number, (Profile & { code: string })[]>>({});
   const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
+  // Sweep (M402): a slider run through its range (the film and its table), and the form that starts one.
+  const [sweep, setSweep] = useState<Sweep | null>(null);
+  const [sweepAsk, setSweepAsk] = useState<{ name: string; from: string; to: string; n: number } | null>(null);
+  const sweepUrls = useRef<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -153,6 +159,12 @@ export function LabApp() {
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
+      if ('sweepFrame' in m) {
+        const { index, frame } = m.sweepFrame, url = (svg: string) => { if (!svg) return ''; const u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); sweepUrls.current.push(u); return u; };
+        const shown = { ...frame, lightUrl: url(frame.light), darkUrl: url(frame.dark) };
+        setSweep((s) => { if (!s) return s; const frames = [...s.frames]; frames[index] = shown; return { ...s, frames }; });
+        return;
+      }
       if ('profiled' in m) { const p = pending.current, at = watchingScript.current; if (p) setProfs((all) => ({ ...all, [at]: [...(all[at] ?? []).slice(-1), { code: p.code, ...m.profiled }] })); return; }
       if ('trace' in m) {
         // The recorded run: played back from its first step; everything it printed also goes to the log, for afterwards.
@@ -163,6 +175,7 @@ export function LabApp() {
         return;
       }
       const p = pending.current;
+      if (p?.from === 'sweep') setSweep((s) => (s ? { ...s, done: true } : s));
       if (p?.from === 'note') {
         // Taken now: the next section's run clears the buffer before React applies this update.
         const at = noteNow.current, out: NoteOut = { text: noteBuf.current, error: m.error, figs: (m.figs ?? []).filter((f) => m.drawn.includes(f.id)) };
@@ -250,6 +263,7 @@ export function LabApp() {
   const stop = () => {
     worker.current?.terminate(); start();
     setBusy(false); setVars([]); pending.current = null; busyNow.current = false; queued.current = null;
+    setSweep((s) => (s ? { ...s, done: true } : s));
     print({ k: 'err', t: 'Stopped. The variables were cleared (the engine was restarted).\n' });
   };
   /** Tab in the command window: finish the word (functions, variables, files), or list what it could be. */
@@ -349,6 +363,30 @@ export function LabApp() {
   };
   const dismissShared = () => { setIncoming(null); window.history.replaceState(null, '', window.location.pathname + window.location.search); };
   const runAllSections = () => runNotes(script.code, open);
+  // ——— Sweep ———
+  const sliders = controls.filter((c) => c.kind === 'slider');
+  const askSweep = () => setSweepAsk((a) => (a ? null : sliders[0] ? { name: sliders[0].name, from: String(sliders[0].min), to: String(sliders[0].max), n: 12 } : null));
+  const dropSweep = () => { for (const u of sweepUrls.current) URL.revokeObjectURL(u); sweepUrls.current = []; setSweep(null); };
+  useEffect(() => () => { for (const u of sweepUrls.current) URL.revokeObjectURL(u); }, []);
+  const startSweep = () => {
+    const c = sliders.find((x) => x.name === sweepAsk?.name);
+    if (!c || !sweepAsk || busyNow.current || !worker.current) return;
+    const values = sweepValues(c, Number(sweepAsk.from), Number(sweepAsk.to), sweepAsk.n);
+    if (values.length < 2) { toast.error('Give two different numbers for where the sweep starts and ends.'); return; }
+    dropSweep();
+    const id = ++seq.current;
+    pending.current = { id, code: script.code, from: 'sweep' };
+    busyNow.current = true;
+    setBusy(true);
+    setSweep({ script: open, scriptName: script.name, name: c.name, values, frames: [], done: false });
+    setSweepAsk(null);
+    setTab('figure');
+    print({ k: 'in', t: `>> sweep ${c.name} from ${values[0]} to ${values[values.length - 1]} (${values.length} runs) in ${script.name}` });
+    worker.current.postMessage({ sweep: { codes: sweepCodes(script.code, c, values), values, w: FRAME_W, h: FRAME_H }, id } satisfies ToLab);
+  };
+  /** "Use this value": the slider goes to a frame's value and the script runs with it. */
+  const sweepSlider = sweep && sweep.script === open ? sliders.find((c) => c.name === sweep.name) : undefined;
+  const takeSwept = (v: number) => { if (sweepSlider) live(sweepSlider, v); };
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
     const code = setControl(script.code, c, v);
@@ -537,8 +575,35 @@ export function LabApp() {
       {controls.length > 0 && (
         <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
+          {sliders.length > 0 && <button type="button" className={cn(btn, sweepAsk && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-expanded={!!sweepAsk} onClick={askSweep} title="Run the script for every step of a slider: a film of the figures and a table of the results"><Film className="h-3.5 w-3.5" aria-hidden />Sweep</button>}
         </div>
       )}
+      {sweepAsk && sliders.length > 0 && (() => {
+        const c = sliders.find((x) => x.name === sweepAsk.name) ?? sliders[0];
+        const field = 'w-20 rounded-lg border border-zinc-200 bg-white px-2 py-1 font-mono text-[13px] tabular-nums dark:border-white/15 dark:bg-white/[0.06]';
+        return (
+          <form role="group" aria-label="Sweep a slider" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-200/80 bg-violet-50/60 px-3 py-2 text-xs text-zinc-700 dark:border-white/10 dark:bg-violet-950/30 dark:text-zinc-200" data-no-motion
+            onSubmit={(e) => { e.preventDefault(); startSweep(); }}>
+            <label className="inline-flex items-center gap-1.5">Sweep
+              {sliders.length > 1 ? (
+                <select value={c.name} onChange={(e) => { const n = sliders.find((x) => x.name === e.target.value)!; setSweepAsk({ ...sweepAsk, name: n.name, from: String(n.min), to: String(n.max) }); }} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 font-mono text-[13px] dark:border-white/15 dark:bg-white/[0.06]">
+                  {sliders.map((x) => <option key={x.name} value={x.name}>{x.name}</option>)}
+                </select>
+              ) : <b className="font-mono text-[13px]" translate="no">{c.name}</b>}
+            </label>
+            <label className="inline-flex items-center gap-1.5">from<input type="number" inputMode="decimal" step="any" value={sweepAsk.from} onChange={(e) => setSweepAsk({ ...sweepAsk, from: e.target.value })} className={field} /></label>
+            <label className="inline-flex items-center gap-1.5">to<input type="number" inputMode="decimal" step="any" value={sweepAsk.to} onChange={(e) => setSweepAsk({ ...sweepAsk, to: e.target.value })} className={field} /></label>
+            <label className="inline-flex items-center gap-1.5">in
+              <select value={sweepAsk.n} onChange={(e) => setSweepAsk({ ...sweepAsk, n: Number(e.target.value) })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] dark:border-white/15 dark:bg-white/[0.06]">
+                {[6, 12, 24, MAX_FRAMES].map((n) => <option key={n} value={n}>{n} runs</option>)}
+              </select>
+            </label>
+            <button type="submit" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy}><Play className="h-3.5 w-3.5" aria-hidden />Start</button>
+            <button type="button" className={btn} onClick={() => setSweepAsk(null)}>Cancel</button>
+            <span className="w-full text-zinc-600 dark:text-zinc-300">Each run starts afresh with {c.name} set to the next value; its figure becomes a frame and the numbers it leaves go in a table.</span>
+          </form>
+        );
+      })()}
       {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
           onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
         vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn} heat={heat} jump={jump}
@@ -612,16 +677,18 @@ export function LabApp() {
     <section className={cn(panel, 'h-full')} aria-label="Figure">
       <div className={cn(head, 'flex-wrap')}>
         <span>Figure</span>
-        {figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
-        <span className="ms-auto flex flex-wrap gap-1">
+        {!(sweep && !watching) && figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
+        {sweep && !watching ? <span className="ms-auto text-xs font-normal text-zinc-500 dark:text-zinc-400" translate="no">Sweep of {sweep.name} in {sweep.scriptName}</span> : <span className="ms-auto flex flex-wrap gap-1">
           <button type="button" className={btn} disabled={!fig} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />PNG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => fig && download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml')}><Download className="h-3.5 w-3.5" aria-hidden />SVG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => void copyTex()}><Copy className="h-3.5 w-3.5" aria-hidden />LaTeX</button>
-        </span>
+        </span>}
       </div>
       {watching && figIndex >= 0 ? (
         traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
-      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : fig ? (
+      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : sweep ? (
+        <LabSweep sweep={sweep} dark={dark} onClose={dropSweep} onUse={sweepSlider ? takeSwept : null} onDownload={download} />
+      ) : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
         <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Figures appear here. Try plot(1:10) in the command window.</p>}
