@@ -11052,3 +11052,24 @@ corner there (elsewhere after the last), holes' centres dragged; lists of corner
 crossing outline turns red with a note. Tests: the start shape meshes and its support carries the load; crossing
 refused; the lug drawn keeps its edge ids; odd saved drawings cleaned. Not built: arcs and fillets as sides, holes of
 any shape, importing a drawing (DXF), sizes as dimensions between features.
+
+## M412 (22 Nov): Hyperion's computer app (Windows, Mac and Linux installers)
+
+The owner, 22 Nov: "a signed desktop installer… PLEASE DO THIS", then "we need to build all of these in the downloaded
+app". `desktop/hyperion/` (outside the pnpm workspace, so the website's build never installs Electron): `main.js`
+opens `https://universeimpact.com/hyperion` (`HYPERION_URL` for a local copy) in a window of its own (bounds kept,
+one copy at a time), context isolation, sandbox, no Node in the page; same-site links stay, sign-in pages (Firebase,
+Google, Microsoft, Apple) open in a small window, anything else in the normal browser; the camera, microphone,
+clipboard and notifications only for the site; its user agent without "Electron" (some sign-in pages refuse it);
+/login and /register get `?app=lab` (Hyperion's tab); File → Code (Ctrl/⌘ 1), Simulate (2); `offline.html` with Try
+again. `package.json`: Electron 45.2.3 and electron-builder 26.18.1 (both over two weeks old), NSIS / dmg / AppImage
+named `Hyperion-Setup.exe`, `Hyperion-mac.dmg`, `Hyperion-linux.AppImage`; `package-lock.json` committed. Checked here:
+the AppImage builds (126 MB) and, run under Xvfb against the local site, opens Hyperion's sign-in in its window.
+`.github/workflows/hyperion-desktop.yml` (manual: Actions → Hyperion desktop → Run; on main only once merged): builds
+on Windows, Mac and Linux runners (free: the repository is public), signs when the owner's secrets exist (Windows
+`HYPERION_WIN_CERT…`, Mac `HYPERION_MAC_CERT…`, notarisation with `HYPERION_APPLE_…`), uploads them, and with
+"publish" puts them on the release `hyperion-latest`. Hyperion's Install button lists the downloads once
+`NEXT_PUBLIC_HYPERION_DOWNLOADS=1` is set ([owner]). Also fixed: "13 languages" on the sign-in page, the landing's
+proof numbers and FAQ and the guide (8 since M403; "Arabic, read right to left"), with a test in
+`languages-offered.test.ts`. The owner's full MATLAB list is now the roadmap in STAGE-5-PLAN.md ("Hyperion toolboxes").
+Not built: an offline copy of Hyperion inside the app (it needs the site), auto-update (it is always the site's newest).

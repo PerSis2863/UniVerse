@@ -1811,3 +1811,35 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M409 | Hyperion installs as its own computer app | **Done** | Hyperion's pages now have "Install Hyperion": with Chrome or Edge it installs as a program with its own Σ icon (on the desktop, dock or start menu, with Code and Simulate as shortcuts) that opens in its own window straight into Hyperion; Safari users are told File → Add to Dock, Firefox users which browsers can. The button hides inside the installed app and on phones. |
 | M410 | Hyperion Simulate: Circuits | **Done** | Simulate's fourth kind: a circuit board. Pick resistors, capacitors, coils, batteries and AC or square-wave sources, current sources and diodes, drag them between dots, join them with wires, add a ground and probes; it runs as you build, wires coloured by their voltage, each part's voltage and current when chosen, and an oscilloscope of the probes. Four circuits to start from (a capacitor charging, ringing, a rectifier, a divider). Checked against the textbook: a divider, RC charging, RLC ringing, a diode's 0.7 V, a filter's corner frequency. |
 | M411 | Hyperion Simulate: draw your own part shape | **Done** | In Structures and Heat, Geometry → Shape has "Your own shape (draw it)": it starts from the shape you had (its supports and loads stay on the same sides), and you drag its corners on a grid, press a side to add a corner, nudge one with the arrow keys or remove it, add round holes and move them, or type every corner's and hole's numbers; the part is meshed and solved again as you draw, and an outline that crosses itself is pointed out. |
+| M412 | Hyperion's computer app (Windows, Mac and Linux installers) | **Done** | `desktop/hyperion`: Hyperion in a window of its own (its Σ icon, File → Code and Simulate, an offline page, other sites in the normal browser, sign-in on Hyperion's tab), always the newest Hyperion. GitHub builds the installers (.exe, .dmg, .AppImage) when the owner runs "Hyperion desktop" and can publish them as the public download; signed automatically once the owner adds the certificates. Also: the sign-in page and the landing still said 13 languages (8 since M403): fixed, with a test. |
+
+### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
+
+The owner's list is MathWorks' range (applications, industries, academic disciplines, product capabilities); built as
+Hyperion's own toolboxes (our code, our names; nothing copied), each a working tool in the computer app with script
+functions where they belong, tested against textbook answers. Done before the list: Code (the language, plots,
+symbolic maths, signals and statistics basics, files), Simulate (structures, vibration, heat, fluids, circuits). Order:
+1. **3D parts** (M413) for Simulate.
+2. **Control systems and model-based design**: transfer functions and state space (`tf`, `ss`, `step`, `impulse`,
+   `bode`, `nyquist`, `rlocus`, `margin`, `feedback`), a PID tuner, and a block-diagram simulator (blocks, wires,
+   scopes) covering physical modelling, real-time simulation and testing, variant design.
+3. **AI and data**: machine learning (classification and regression learners, clustering), neural networks (train,
+   test, export), predictive maintenance (vibration features, trends, remaining useful life), statistics and
+   optimisation (`fmincon`-style solvers with the path drawn), embedded AI (run a trained model in a script).
+4. **Electrical and energy**: power electronics (switches, MOSFETs and PWM in Circuits; buck and boost converters),
+   batteries (cell models, state of charge with a Kalman filter, packs, a battery management system), power systems
+   (load flow, faults, a small grid), mixed-signal (ADC, DAC, PLL), energy production (solar, wind).
+5. **Signals, comms and sensing**: a signal analyser and filter designer, wireless communications (modulation,
+   constellations, channels, bit-error curves), radar (range, Doppler, pulse compression), image processing and
+   computer vision (filters, edges, segmentation, the camera), test and measurement (the microphone, serial devices,
+   data logging), the Internet of Things (devices sending data, dashboards).
+6. **Machines and vehicles**: robotics and mechatronics (arm kinematics and dynamics, path planning), automated driving
+   and vehicles (vehicle dynamics, lane keeping, electric drive), aerospace (flight dynamics, orbits), railways.
+7. **Sciences and industries**: biology and biotech (epidemics, pharmacokinetics, DNA tools), chemistry and chemical
+   engineering (kinetics, equilibria, reactors), neuroscience (neuron and network models), physics (mechanics, waves,
+   fields), geoscience (seismic and map data), medical devices (ECG and biosignals), finance (options, portfolios,
+   risk), mathematics teaching.
+8. **Capabilities**: C code from scripts (embedded code generation), parallel computing (workers, `parfor`), GPU
+   computing (WebGPU), discrete-event simulation, unit tests and checks for scripts (verification), hardware support
+   (Arduino and serial), reports (done in M397), deployment (share links M398, the computer app M412).
+

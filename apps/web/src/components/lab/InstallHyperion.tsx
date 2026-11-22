@@ -10,6 +10,13 @@ import { useDesktop } from '@/lib/use-desktop';
 // installed app itself, and on phones (Hyperion is for computers, M405).
 interface InstallPrompt extends Event { prompt: () => Promise<void>; userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }> }
 const STANDALONE = '(display-mode: standalone), (display-mode: window-controls-overlay)';
+// The computer app's installers (M412: desktop/hyperion, built by GitHub Actions → "Hyperion desktop"), shown once the
+// owner has published them and set NEXT_PUBLIC_HYPERION_DOWNLOADS=1 in the site's build settings (until then the links
+// would say "not found").
+const RELEASE = 'https://github.com/PerSis2863/UniVerse/releases/download/hyperion-latest';
+const DOWNLOADS = process.env.NEXT_PUBLIC_HYPERION_DOWNLOADS === '1'
+  ? [{ os: 'Windows', file: 'Hyperion-Setup.exe' }, { os: 'Mac', file: 'Hyperion-mac.dmg' }, { os: 'Linux', file: 'Hyperion-linux.AppImage' }]
+  : [];
 const subscribe = (cb: () => void) => { const m = window.matchMedia(STANDALONE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); };
 
 export function InstallHyperion() {
@@ -51,8 +58,14 @@ export function InstallHyperion() {
       </button>
       {help && (
         <div role="dialog" aria-label="How to install Hyperion" className="absolute end-0 top-full z-40 mt-2 w-72 rounded-xl bg-white p-3 text-start text-xs leading-relaxed text-zinc-700 shadow-lg ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-200 dark:ring-white/10">
+          {DOWNLOADS.length > 0 && (
+            <div className="mb-2 border-b border-zinc-200 pb-2 dark:border-white/10">
+              <p className="mb-1 font-semibold text-zinc-900 dark:text-white">Download the app</p>
+              <div className="flex flex-wrap gap-1">{DOWNLOADS.map((d) => <a key={d.os} href={`${RELEASE}/${d.file}`} className="rounded-md bg-violet-600 px-2 py-1 font-semibold text-white hover:bg-violet-700" download>{d.os}</a>)}</div>
+            </div>
+          )}
           <div className="flex items-start gap-2">
-            <p className="flex-1">{how} It keeps your scripts and files on this computer.</p>
+            <p className="flex-1">{DOWNLOADS.length ? 'Or install it from the browser: ' : ''}{how} It keeps your scripts and files on this computer.</p>
             <button type="button" className="rounded p-0.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-white/10" aria-label="Close" onClick={() => setHelp(false)}><X className="h-3.5 w-3.5" aria-hidden /></button>
           </div>
         </div>

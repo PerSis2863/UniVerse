@@ -160,7 +160,7 @@ function everyFeature() {
   // The corners the branches leave free: who it's for, what every page does, where things live, cost.
   const corners: [number, number, number, string, string][] = [
     [60, 80, 360, `Who uses it\n\n${bullets('Students (always free)', 'Teachers and teaching assistants', 'School admins, one school or many', 'Parents, mentors and alumni', 'The owner (you)')}`, C.parent],
-    [1800, 80, 360, `On every page\n\n${bullets('13 languages, 2 read right to left', 'Light and dark, Reduce Motion', 'Works on a patchy connection', 'Installs as an app on any phone')}`, C.student],
+    [1800, 80, 360, `On every page\n\n${bullets('8 languages, Arabic read right to left', 'Light and dark, Reduce Motion', 'Works on a patchy connection', 'Installs as an app on any phone')}`, C.student],
     [60, 1460, 250, `Where things live\n${bullets('D1 database, R2 files', 'Durable Objects: live rooms', 'Firebase: sign-in')}`, C.tech],
     [1800, 1460, 250, `What it costs to run\n${bullets('Workers Paid: $5 a month', 'A guard pauses at 90%', 'AI with daily allowances')}`, C.tech],
   ];

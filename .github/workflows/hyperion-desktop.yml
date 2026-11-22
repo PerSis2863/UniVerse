@@ -1,0 +1,79 @@
+# Hyperion's computer app (M412): builds the installers for Windows (.exe), Mac (.dmg) and Linux (.AppImage) from
+# desktop/hyperion, and, when asked, publishes them as the public download (a GitHub release named hyperion-latest).
+# Run it by hand: GitHub → Actions → "Hyperion desktop" → Run workflow (tick "publish" to put them online).
+# Signing (the owner's certificates, see desktop/hyperion/README.md) happens only when the secrets below exist;
+# without them the installers are built unsigned (Windows and Mac then warn before the first start).
+name: Hyperion desktop
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish the installers as the public download
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop/hyperion
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --no-audit --no-fund
+      - name: Build (signed when the certificates are set)
+        env:
+          WIN_CERT: ${{ secrets.HYPERION_WIN_CERT }}
+          WIN_CERT_PASSWORD: ${{ secrets.HYPERION_WIN_CERT_PASSWORD }}
+          MAC_CERT: ${{ secrets.HYPERION_MAC_CERT }}
+          MAC_CERT_PASSWORD: ${{ secrets.HYPERION_MAC_CERT_PASSWORD }}
+          APPLE_ID: ${{ secrets.HYPERION_APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.HYPERION_APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.HYPERION_APPLE_TEAM_ID }}
+        run: |
+          extra=""
+          if [ "$RUNNER_OS" = "Windows" ] && [ -n "$WIN_CERT" ]; then export CSC_LINK="$WIN_CERT" CSC_KEY_PASSWORD="$WIN_CERT_PASSWORD"; fi
+          if [ "$RUNNER_OS" = "macOS" ]; then
+            if [ -n "$MAC_CERT" ]; then export CSC_LINK="$MAC_CERT" CSC_KEY_PASSWORD="$MAC_CERT_PASSWORD"; else export CSC_IDENTITY_AUTO_DISCOVERY=false; fi
+            if [ -n "$APPLE_ID" ] && [ -n "$MAC_CERT" ]; then extra="-c.mac.notarize=true"; fi
+          fi
+          if [ -z "$APPLE_ID" ]; then unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; fi
+          npx electron-builder --publish never $extra
+      - uses: actions/upload-artifact@v4
+        with:
+          name: hyperion-${{ runner.os }}
+          path: |
+            desktop/hyperion/dist/Hyperion-Setup.exe
+            desktop/hyperion/dist/Hyperion-mac.dmg
+            desktop/hyperion/dist/Hyperion-linux.AppImage
+          if-no-files-found: ignore
+
+  publish:
+    needs: build
+    if: ${{ inputs.publish }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Put the installers on the hyperion-latest release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          ls -la out
+          gh release view hyperion-latest >/dev/null 2>&1 || gh release create hyperion-latest --title "Hyperion for computers" --notes "Hyperion by UniVerse for Windows, Mac and Linux. It opens Hyperion in its own window and always has the newest features."
+          gh release upload hyperion-latest out/* --clobber

@@ -27,3 +27,16 @@ describe('the languages offered', () => {
     expect(run('hi')).toEqual({ lang: 'hi', dir: 'ltr' });
   });
 });
+
+describe('the pages say how many languages there are', () => {
+  it('every place that counts them says the real number (it was left at 13 after M403)', async () => {
+    const { readFileSync } = await import('node:fs');
+    const n = APP.length;
+    for (const f of ['src/components/landing/AuthShowcase.tsx', 'src/components/landing/WorldSection.tsx', 'src/app/page.tsx', 'src/components/boards/universe-guide.ts']) {
+      const counts = [...readFileSync(f, 'utf8').matchAll(/(\d+) languages/g)].map((m) => Number(m[1]));
+      expect(counts.length, f).toBeGreaterThan(0);
+      expect(counts.every((c) => c === n), f).toBe(true);
+    }
+    expect(readFileSync('src/components/landing/Proof.tsx', 'utf8')).toContain(`<CountUp to={${n}} />`);
+  });
+});

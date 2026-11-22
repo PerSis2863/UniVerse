@@ -62,7 +62,7 @@ export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId)
     <section aria-labelledby="world-h" data-uv-many className="world-earth relative overflow-hidden px-6 pt-20 pb-20 md:pt-28 md:pb-24">
       <div className="relative z-[1] max-w-6xl mx-auto text-center">
         <Reveal><h2 id="world-h" className="text-4xl md:text-6xl font-bold tracking-[-0.03em] leading-[1.05]">One account. <Accent>One planet.</Accent></h2></Reveal>
-        <Reveal delay={0.06}><p className="mt-5 mx-auto max-w-xl text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed">School, products, help, climate and travel share one sign-in, one wallet and one inbox, on any phone, in 13 languages.</p></Reveal>
+        <Reveal delay={0.06}><p className="mt-5 mx-auto max-w-xl text-lg text-zinc-600 dark:text-zinc-300 leading-relaxed">School, products, help, climate and travel share one sign-in, one wallet and one inbox, on any phone, in 8 languages.</p></Reveal>
       </div>
       {/* The Earth rising out of the clouds: its lower part hidden by them, as tripist's. */}
       <div className="relative mx-auto mt-4 w-[min(92vw,760px)]">
