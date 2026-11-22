@@ -5,6 +5,7 @@ import { LabError } from '@/lib/lab/parse';
 import { inline, kind, sizeOf } from '@/lib/lab/values';
 import { takeWarning } from '@/lib/lab/interp';
 import { FileStore, type Pixels } from '@/lib/lab/files';
+import { BUILTINS } from '@/lib/lab/builtins';
 
 // M376: UniVerse Lab's engine runs here, off the page's thread, so a long loop never freezes the window (Stop ends
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
@@ -18,7 +19,8 @@ export interface FileOut { name: string; bytes: Uint8Array | null; pixels?: Pixe
 export type FromLab =
   | { out: string }
   | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[] }
-  | { fig: FigOut };
+  | { fig: FigOut }
+  | { names: string[] };
 export interface VarRow { name: string; size: string; cls: string; value: string }
 export interface FigOut { id: number; light: string; dark: string; tex: string }
 
@@ -33,6 +35,8 @@ const lab = new Lab({
   now: () => performance.now(),
 });
 let size = { w: 720, h: 520 };
+// The editor colours and suggests the engine's functions (M389).
+postMessage({ names: Object.keys(BUILTINS).sort() } satisfies FromLab);
 const figOut = (id: number): FigOut | null => {
   const f = graphics.figures.find((x) => x.id === id);
   return f ? { id, light: renderSvg(f, size.w, size.h, false), dark: renderSvg(f, size.w, size.h, true), tex: toTikz(f) } : null;

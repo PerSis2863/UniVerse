@@ -10625,3 +10625,23 @@ million values). `readMat` picks 7.3 by the header text or the HDF5 signature at
 for what it skipped. Saving stays level 5 (MATLAB reads it; `save -v7.3` writes the same). Fixtures
 `fixtures/v73.mat` (older layout, compressed 100 × 500 in 50 × 40 chunks, every kind above) and `v73-new.mat`
 (superblock 2, v2 headers, link messages), made with h5py the way MATLAB lays files out, while building.
+
+## M389 (22 Nov): UniVerse Lab: a real code editor
+
+`src/components/lab/LabEditor.tsx` (CodeMirror 6, already used by the code rooms; @codemirror/language, autocomplete,
+lint, search and @lezer/highlight added as direct dependencies at the versions the lockfile already had: no new
+packages). Made once (first props through a ref); later changes arrive by effects: outside code changes (a live
+control, the example) replace only the changed middle (the cursor stays), `dark` and the label reconfigure
+compartments, `namesVersion` re-colours once the engine's function names arrive, `error` sets a lint diagnostic on
+that line (red wavy underline and a gutter dot; cleared when the code changes). Ctrl / Cmd + Enter runs at
+Prec.highest (CodeMirror's own Mod-Enter inserts a blank line). The scroll area is tabIndex −1 and the content 0
+(axe: scrollable-region-focusable). Keyed by the open script, so each has its own undo history. `matlab-lang.ts`:
+our own StreamLanguage (keywords, %{ %} blocks, % and # comments, `...`, text vs the transpose quote by whether a
+value came before, numbers with i / j, operators, built-in names from `builtinNames`), an indent service (one step in
+after if / for / while / switch / try / function, out for end / else / case / catch, re-indented as you type them),
+our own colours in both themes (violet keywords, blue functions, green text, grey comments, amber numbers), and a
+completion source (variables, the script's own assignments, keywords, functions with `describe` for a line of help:
+filled by M391). The worker posts `{ names }` (every builtin) on start. Command window: Tab finishes the word to the
+longest common start (functions, variables; file names inside quotes) or lists the choices. A live run repeating
+the last error prints nothing. Not built: code folding by blocks (fold markers come from indentation only), a
+debugger (M392).

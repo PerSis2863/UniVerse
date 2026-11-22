@@ -10,6 +10,8 @@ import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, ToLab, VarRow } from './lab.worker';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
+import { LabEditor } from './LabEditor';
+import { builtinNames } from './matlab-lang';
 
 // M376: UniVerse Lab's window: the command window, a script editor, the variables and the figures, like a desktop
 // maths program. The engine (src/lib/lab) runs in a background worker (lab.worker.ts): the page never freezes and
@@ -51,6 +53,8 @@ export function LabApp() {
   const [tabDir, setTabDir] = useState<'next' | 'back'>('next');
   const setTab = (t: Tab | ((old: Tab) => Tab)) => setTabNow((old) => { const n = typeof t === 'function' ? t(old) : t; if (n !== old) setTabDir(TABS.indexOf(n) > TABS.indexOf(old) ? 'next' : 'back'); return n; });
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
+  const [namesVersion, setNamesVersion] = useState(0);
+  const [codeError, setCodeError] = useState<{ line: number; message: string } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -83,10 +87,13 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       const p = pending.current;
       const errText = m.error ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
       if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
-      if (p?.from === 'live') lastLiveError.current = errText;
+      lastLiveError.current = errText; // a live run repeating the same error stays quiet
+      // A script's error is marked on its line in the editor (until the code changes).
+      setCodeError(m.error && p && p.from !== 'cmd' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
       setVars(m.vars);
       // Files the code wrote or deleted: kept on this device (or forgotten).
       for (const f of m.files) {
@@ -147,6 +154,23 @@ export function LabApp() {
     setBusy(false); setVars([]); pending.current = null; busyNow.current = false; queued.current = null;
     print({ k: 'err', t: 'Stopped. The variables were cleared (the engine was restarted).\n' });
   };
+  /** Tab in the command window: finish the word (functions, variables, files), or list what it could be. */
+  const complete = (box: HTMLTextAreaElement) => {
+    const at = box.selectionStart, before = cmd.slice(0, at), word = /[\w.]*$/.exec(before)![0];
+    if (!word) return;
+    const quoted = /'[^']*$/.test(before);
+    const pool = quoted ? files.map((f) => f.name) : [...vars.map((v) => v.name), ...builtinNames];
+    const hits = [...new Set(pool)].filter((n) => n.startsWith(word)).sort();
+    if (!hits.length) return;
+    let common = hits[0];
+    for (const h of hits) while (!h.startsWith(common)) common = common.slice(0, -1);
+    if (common.length > word.length || hits.length === 1) {
+      const next = before.slice(0, at - word.length) + (hits.length === 1 ? hits[0] : common) + cmd.slice(at);
+      setCmd(next);
+      const caret = at - word.length + (hits.length === 1 ? hits[0] : common).length;
+      requestAnimationFrame(() => { box.selectionStart = box.selectionEnd = caret; });
+    } else print({ k: 'out', t: `${hits.slice(0, 60).join('   ')}${hits.length > 60 ? `   … ${hits.length - 60} more` : ''}\n` });
+  };
   const send = () => { const c = cmd; if (!c.trim()) return; setHist((h) => [...h.filter((x) => x !== c), c].slice(-100)); setHi(-1); setCmd(''); run(c, 'cmd'); };
 
   const fig = figs.find((f) => f.id === current) ?? figs[figs.length - 1] ?? null;
@@ -182,7 +206,7 @@ export function LabApp() {
   const copyTex = async () => { if (!fig) return; try { await navigator.clipboard.writeText(fig.tex); toast.success('LaTeX copied: paste it into your document (it needs \\usepackage{pgfplots}).'); } catch { download(`figure${fig.id}.tex`, fig.tex, 'text/x-tex'); } };
 
   const script = list[open] ?? list[0];
-  const editScript = (code: string) => save(list.map((s, i) => (i === open ? { ...s, code } : s)));
+  const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
@@ -208,6 +232,7 @@ export function LabApp() {
         <textarea value={cmd} rows={Math.min(6, cmd.split('\n').length)} onChange={(e) => setCmd(e.target.value)} aria-label="Command" spellCheck={false} placeholder="Type a command, then Enter"
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+            else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); complete(e.currentTarget); }
             else if (e.key === 'ArrowUp' && !cmd.includes('\n') && hist.length) { e.preventDefault(); const n = hi < 0 ? hist.length - 1 : Math.max(0, hi - 1); setHi(n); setCmd(hist[n]); }
             else if (e.key === 'ArrowDown' && hi >= 0) { e.preventDefault(); const n = hi + 1; if (n >= hist.length) { setHi(-1); setCmd(''); } else { setHi(n); setCmd(hist[n]); } }
           }}
@@ -239,12 +264,8 @@ export function LabApp() {
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
         </div>
       )}
-      <textarea value={script.code} onChange={(e) => editScript(e.target.value)} aria-label={`Code of ${script.name}`} spellCheck={false}
-        onKeyDown={(e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); run(script.code, 'script'); }
-          else if (e.key === 'Tab') { e.preventDefault(); const t = e.currentTarget, s = t.selectionStart; editScript(`${script.code.slice(0, s)}    ${script.code.slice(t.selectionEnd)}`); requestAnimationFrame(() => { t.selectionStart = t.selectionEnd = s + 4; }); }
-        }}
-        className="min-h-0 flex-1 resize-none border-0 bg-transparent p-3 font-mono text-[13px] leading-relaxed text-zinc-900 outline-none focus-visible:shadow-none! dark:text-zinc-100" />
+      <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
+        vars={vars.map((v) => v.name)} describe={() => undefined} error={codeError} namesVersion={namesVersion} />
     </section>
   );
 
