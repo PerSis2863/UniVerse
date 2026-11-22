@@ -7,17 +7,18 @@ import { rcm, Skyline } from './skyline';
 // how far every point moves, the stresses everywhere (von Mises, principal, x, y, shear), how safe the part is against
 // its material's yield strength, and the forces the supports carry (which must balance the loads).
 
-export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number }
+/** k: thermal conductivity W/(m·K), c: specific heat J/(kg·K) (for Heat, M407). */
+export interface Material { id: string; name: string; E: number; nu: number; rho: number; yieldMPa: number; k: number; c: number }
 /** E and yield in MPa, density in kg/m³ (common handbook values). */
 export const MATERIALS: Material[] = [
-  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250 },
-  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215 },
-  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276 },
-  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880 },
-  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70 },
-  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200 },
-  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40 },
-  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70 },
+  { id: 'steel', name: 'Structural steel', E: 200_000, nu: 0.3, rho: 7850, yieldMPa: 250, k: 60.5, c: 434 },
+  { id: 'stainless', name: 'Stainless steel 304', E: 193_000, nu: 0.29, rho: 8000, yieldMPa: 215, k: 16.2, c: 500 },
+  { id: 'aluminium', name: 'Aluminium 6061-T6', E: 68_900, nu: 0.33, rho: 2700, yieldMPa: 276, k: 167, c: 896 },
+  { id: 'titanium', name: 'Titanium Ti-6Al-4V', E: 113_800, nu: 0.342, rho: 4430, yieldMPa: 880, k: 6.7, c: 526 },
+  { id: 'copper', name: 'Copper', E: 110_000, nu: 0.34, rho: 8960, yieldMPa: 70, k: 401, c: 385 },
+  { id: 'brass', name: 'Brass', E: 100_000, nu: 0.34, rho: 8500, yieldMPa: 200, k: 109, c: 380 },
+  { id: 'abs', name: 'ABS plastic', E: 2_300, nu: 0.35, rho: 1050, yieldMPa: 40, k: 0.17, c: 1400 },
+  { id: 'nylon', name: 'Nylon 6', E: 2_700, nu: 0.39, rho: 1140, yieldMPa: 70, k: 0.25, c: 1700 },
 ];
 
 /** fixed: held still; slideX: may slide along x only (y held); slideY: may slide along y only (x held). */

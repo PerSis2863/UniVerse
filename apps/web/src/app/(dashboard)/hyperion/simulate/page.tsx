@@ -5,14 +5,14 @@ import { Topbar } from '@/components/layout/Topbar';
 import { ComputerOnly } from '@/components/lab/ComputerOnly';
 
 // Hyperion Simulate (M404, the owner, 22 Nov: "where are the ansys software features… we need to make a software not
-// just platform"): engineering simulation in Hyperion, starting with Structures (src/components/sim). Loaded only here.
-const StructureBench = dynamic(() => import('@/components/sim/StructureBench').then((m) => m.StructureBench), { ssr: false, loading: () => <div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" /> });
+// just platform"): engineering simulation in Hyperion: Structures and Heat (src/components/sim). Loaded only here.
+const SimulateApp = dynamic(() => import('@/components/sim/SimulateApp').then((m) => m.SimulateApp), { ssr: false, loading: () => <div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" /> });
 
 export default function SimulatePage() {
   return (
     <>
-      <Topbar title="Simulate" subtitle="Stress and bending of a part, like engineering software" />
-      <div className="flex-1 p-3 sm:p-6"><ComputerOnly skeleton={<div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />}><StructureBench /></ComputerOnly></div>
+      <Topbar title="Simulate" subtitle="Engineering simulation: stress, vibration and heat" />
+      <div className="flex-1 p-3 sm:p-6"><ComputerOnly skeleton={<div className="h-[calc(100dvh-10.5rem)] min-h-[34rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />}><SimulateApp /></ComputerOnly></div>
     </>
   );
 }

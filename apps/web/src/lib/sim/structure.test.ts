@@ -152,3 +152,41 @@ describe('Hyperion Simulate: the note a mode rings at (M406)', () => {
     expect(noteOf(5)).toBeNull();
   });
 });
+
+describe('Hyperion Simulate: heat (M407)', () => {
+  it('a bar between two temperatures: a straight line, and k·A·ΔT/L watts through it', async () => {
+    const { solveHeat } = await import('./heat');
+    const { mesh, byName } = build('beam', { L: 100, H: 10 });
+    const r = solveHeat(mesh, { thickness: 2, material: steel, generation: 0, faces: { h: 0, Tinf: 20 }, transient: null,
+      bcs: [{ id: 'hot', kind: 'temp', edges: byName('Left end'), T: 100 }, { id: 'cold', kind: 'temp', edges: byName('Right end'), T: 0 }] });
+    for (let n = 0; n < mesh.x.length; n++) expect(r.T[n]).toBeCloseTo(100 - mesh.x[n], 6);
+    const watts = steel.k * (10 * 2 * 1e-6) * 100 / 0.1; // k A ΔT / L in metres
+    expect(r.through[0].watts).toBeCloseTo(watts, 4);
+    expect(r.through[1].watts).toBeCloseTo(-watts, 4);
+    expect(r.flux[0]).toBeCloseTo(steel.k * 100 / 0.1, 0);
+  });
+  it('a cooling fin follows T∞ + (Tb − T∞)·cosh(m(L − x)) / cosh(mL)', async () => {
+    const { solveHeat } = await import('./heat');
+    const { mesh, byName } = build('beam', { L: 100, H: 10 }, 2.5);
+    const h = 25, t = 2, k = 167, Tb = 100, Tinf = 20, al = MATERIALS.find((x) => x.id === 'aluminium')!;
+    const r = solveHeat(mesh, { thickness: t, material: al, generation: 0, faces: { h, Tinf }, transient: null, bcs: [{ id: 'b', kind: 'temp', edges: byName('Left end'), T: Tb }] });
+    const mfin = Math.sqrt((2 * h) / (k * t * 1e-3)), L = 0.1, theory = (x: number) => Tinf + ((Tb - Tinf) * Math.cosh(mfin * (L - x))) / Math.cosh(mfin * L);
+    let tip = 0;
+    for (let n = 0; n < mesh.x.length; n++) if (mesh.x[n] > mesh.x[tip]) tip = n;
+    expect(r.T[tip]).toBeCloseTo(theory(0.1), 1);
+  });
+  it('over time, heat made inside an insulated part warms it evenly by Q·t / (ρ·c)', async () => {
+    const { solveHeat } = await import('./heat');
+    const { mesh } = build('plate', { W: 100, H: 50, R: 10 });
+    const r = solveHeat(mesh, { thickness: 5, material: steel, generation: 1e6, faces: { h: 0, Tinf: 20 }, bcs: [], transient: { seconds: 100, steps: 10, T0: 20 } });
+    const expected = 20 + (1e6 * 100) / (steel.rho * steel.c);
+    for (const v of [r.T[0], r.T[mesh.x.length - 1]]) expect(v).toBeCloseTo(expected, 6);
+    expect(r.frames).toHaveLength(11);
+    expect(r.times[10]).toBe(100);
+  });
+  it('a part nothing cools is refused in plain words', async () => {
+    const { solveHeat } = await import('./heat');
+    const { mesh } = build('beam', { L: 100, H: 10 });
+    expect(() => solveHeat(mesh, { thickness: 1, material: steel, generation: 10, faces: { h: 0, Tinf: 20 }, bcs: [], transient: null })).toThrow(/takes heat away/);
+  });
+});

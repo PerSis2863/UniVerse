@@ -24,6 +24,8 @@ interface Props {
   part: Part; edges: Edge[]; mesh: MeshOut | null; shown: Shown | null;
   deform: 'auto' | 'true' | 'none'; showMesh: boolean; playing: boolean;
   supports: Support[]; loads: Load[]; chosen: string[]; picking: boolean; onPick: (edgeId: string) => void;
+  /** Plain coloured edges with a letter (Heat's conditions, M407). */
+  marks?: { id: string; edges: string[]; colour: string; letter: string }[];
   dark: boolean; label: string; ref?: Ref<SimView>;
 }
 
@@ -42,7 +44,7 @@ const distSeg = (px: number, py: number, [ax, ay]: Pt, [bx, by]: Pt) => {
   return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 };
 
-export function SimCanvas({ part, edges, mesh, shown, deform, showMesh, playing, supports, loads, chosen, picking, onPick, dark, label, ref }: Props) {
+export function SimCanvas({ part, edges, mesh, shown, deform, showMesh, playing, supports, loads, marks = [], chosen, picking, onPick, dark, label, ref }: Props) {
   const box = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const view = useRef({ s: 1, ox: 0, oy: 0, fitted: '' });
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -191,6 +193,11 @@ export function SimCanvas({ part, edges, mesh, shown, deform, showMesh, playing,
         if (!at) at = pts[Math.floor(pts.length / 2)];
       }
       if (at) badge(X(at[0]), Y(at[1]) + 18, L, '#dc2626');
+    }
+    for (const mk of marks) {
+      let at: Pt | null = null;
+      for (const id of mk.edges) { mark(id, mk.colour, 4); const pts = lines.current.get(id); if (pts && !at) at = pts[Math.floor(pts.length / 2)]; }
+      if (at) badge(X(at[0]), Y(at[1]) - 16, mk.letter, mk.colour);
     }
     for (const id of chosen) mark(id, '#7c3aed', 5);
     if (hoverEdge && picking) mark(hoverEdge, dark ? '#c4b5fd' : '#a78bfa', 6);

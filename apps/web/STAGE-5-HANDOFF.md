@@ -10956,3 +10956,22 @@ true size, no Min flag); details: the first frequency in words with the motor sp
 mass x / y, the nearest note: `noteOf`), "Hear mode n" (a struck sine at its frequency, 20 Hz–16 kHz, Web Audio).
 Not built: free-free modes (a part held nowhere), modes with the loads' stiffening (prestress), damping and the
 response to a shaking (harmonic response).
+
+## M407 (22 Nov): Hyperion Simulate, Heat
+
+The third piece of the owner's Ansys ask (thermal). `src/lib/sim/heat.ts` `solveHeat(mesh, study)`: one temperature
+per node of the same 6-node mesh (its own RCM numbering and skyline); conduction k·t·∇N∇Nᵀ (3-point), both faces'
+air 2h·N·Nᵀ and heat made inside Q·t·N (6-point), edge conditions on the quadratic boundary pieces (flux q·t·l·
+[1/6, 2/3, 1/6], convection h·t·l·[4 2 −1; 2 16 2; −1 2 4]/30 and its h·T∞ part), held temperatures by moving
+K·(held values) to the right; steady (one solve) or over time by backward Euler ((C/Δt + K) factored once, ≤ 200
+steps, each a frame). Results: temperatures (each frame), heat flow |−k∇T| in W/m² averaged at nodes, the watts
+through each held-temperature condition (K·T − loads there, from the matrix kept before holding). Units: inputs in
+°C, W/m², W/(m²·K), W/m³, s; inside mm (k×1e-3, per m² ×1e-6, per m³ ×1e-9, ρc ×1e-9). Materials gained k and c.
+Tests: a bar between 100 and 0 °C (straight line, k·A·ΔT/L watts each way), an aluminium fin with air on its faces
+(cosh formula at the tip), heat made in an insulated part over time (T0 + Q·t/(ρc) everywhere), nothing cooling it
+refused. `heat-model.ts`: kept as `uv-sim-heat` (`readHeat` safe), each shape's start (the plate's hole a 120 °C pipe
+with air on the sides; steel, 3 mm), `heatProblem`. `HeatBench.tsx` (the same layout as Structures; shared parts
+moved to `bench-ui.tsx`: `ui` styles, `NumField`, `EdgeTicks`); `SimCanvas` gained `marks` (coloured edges with a
+letter: held temperature orange, heat in red, air blue); `SimulateApp.tsx`: Structures | Heat (kept for the visit).
+Not built: temperatures that change with time at an edge, radiation, contact between parts, thermal stress (the
+temperatures as a load on Structures: a good next step).

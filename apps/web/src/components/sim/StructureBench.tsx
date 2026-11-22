@@ -12,6 +12,7 @@ import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structur
 import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, verdict, type Field, type Model } from '@/lib/sim/model';
 import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
+import { EdgeTicks, NumField, ui } from './bench-ui';
 import type { FromSim, ToSim } from './sim.worker';
 
 // Hyperion Simulate → Structures (M404): the workbench, laid out like engineering software. On the left the outline of
@@ -120,11 +121,7 @@ export function StructureBench() {
   };
   const png = async () => { const b = await view.current?.png(); if (b) download(`${tpl.name.replace(/\W+/g, '-').toLowerCase()}.png`, b, 'image/png'); };
 
-  const item = 'flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-start text-[13px] text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/[0.06]';
-  const on = 'bg-violet-100 font-semibold text-violet-950 hover:bg-violet-100 dark:bg-violet-500/20 dark:text-white dark:hover:bg-violet-500/20';
-  const small = 'inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
-  const label = 'block text-xs font-medium text-zinc-600 dark:text-zinc-300';
-  const input = 'input mt-1 w-full font-mono tabular-nums';
+  const { item, on, small, label } = ui;
   const isSel = (k: string, id?: string) => sel.k === k && (!id || ('id' in sel && sel.id === id));
 
   const outline = (
@@ -171,26 +168,8 @@ export function StructureBench() {
     </nav>
   );
 
-  const edgeList = (ids: string[]) => (
-    <fieldset className="space-y-1">
-      <legend className={label}>Edges <span className="font-normal text-zinc-500 dark:text-zinc-400">(or press them in the picture)</span></legend>
-      <div className="flex flex-wrap gap-1.5 pt-1">
-        {groups.map((g) => {
-          const ticked = g.ids.every((i) => ids.includes(i));
-          return (
-            <label key={g.label} className={cn('inline-flex cursor-pointer items-center gap-1.5 rounded-lg border px-2 py-1 text-xs', ticked ? 'border-violet-400 bg-violet-50 text-violet-950 dark:border-violet-400/60 dark:bg-violet-500/15 dark:text-white' : 'border-zinc-200 text-zinc-700 dark:border-white/15 dark:text-zinc-200')}>
-              <input type="checkbox" checked={ticked} onChange={() => toggleEdge(g.ids[0])} className="h-3.5 w-3.5 accent-violet-600" />{g.label}
-            </label>
-          );
-        })}
-      </div>
-    </fieldset>
-  );
-  const num = (value: number, onChange: (v: number) => void, props: { label: string; unit?: string; min?: number; step?: string }) => (
-    <label className={label}>{props.label}{props.unit && <span className="font-normal text-zinc-500 dark:text-zinc-400"> ({props.unit})</span>}
-      <input type="number" inputMode="decimal" step={props.step ?? 'any'} min={props.min} value={Number.isFinite(value) ? value : ''} onChange={(e) => { const v = Number(e.target.value); if (e.target.value !== '' && Number.isFinite(v)) onChange(v); }} className={input} />
-    </label>
-  );
+  const edgeList = (ids: string[]) => <EdgeTicks groups={groups} ids={ids} onToggle={toggleEdge} />;
+  const num = (value: number, onChange: (v: number) => void, props: { label: string; unit?: string; min?: number }) => <NumField value={value} onChange={onChange} {...props} />;
 
   let details: ReactNode = null;
   if (sel.k === 'geometry') {
@@ -400,5 +379,5 @@ export function StructureBench() {
     </aside>
   );
   // Computers only (M405): the study on the left, the graphics window filling the rest.
-  return <div className="flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
+  return <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
 }
