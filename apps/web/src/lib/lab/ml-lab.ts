@@ -112,8 +112,8 @@ function rowsOfTable(t: Struct, preds: string[]): ml.Rows {
 }
 
 // ——— Models ———
-type Kind = 'ClassificationKNN' | 'ClassificationTree' | 'ClassificationNaiveBayes' | 'ClassificationDiscriminant' | 'ClassificationSVM' | 'ClassificationECOC' | 'ClassificationNeuralNetwork' | 'RegressionTree' | 'RegressionNeuralNetwork' | 'LinearModel' | 'GeneralizedLinearModel';
-const REGRESSION = new Set<Kind>(['RegressionTree', 'RegressionNeuralNetwork', 'LinearModel', 'GeneralizedLinearModel']);
+type Kind = 'ClassificationKNN' | 'ClassificationTree' | 'ClassificationNaiveBayes' | 'ClassificationDiscriminant' | 'ClassificationSVM' | 'ClassificationECOC' | 'ClassificationNeuralNetwork' | 'ClassificationEnsemble' | 'RegressionTree' | 'RegressionNeuralNetwork' | 'RegressionEnsemble' | 'TreeBagger' | 'LinearModel' | 'GeneralizedLinearModel';
+const REGRESSION = new Set<Kind>(['RegressionTree', 'RegressionNeuralNetwork', 'RegressionEnsemble', 'LinearModel', 'GeneralizedLinearModel']);
 const typeOf = (v: Value): Kind => {
   if (v.k !== 'struct' || !v.f.has('Type')) throw new LabError('That isn’t a model: make one with fitcknn, fitctree, fitcsvm, fitlm…');
   return textOf(v.f.get('Type')!) as Kind;
@@ -140,6 +140,9 @@ const SETTINGS: Partial<Record<Kind, string[]>> = {
   GeneralizedLinearModel: ['Distribution'],
   ClassificationNeuralNetwork: ['LayerSizes', 'Activations', 'Lambda', 'IterationLimit', 'Standardize'],
   RegressionNeuralNetwork: ['LayerSizes', 'Activations', 'Lambda', 'IterationLimit', 'Standardize'],
+  ClassificationEnsemble: ['Method', 'NumLearningCycles', 'LearnRate', 'MaxNumSplits', 'MinLeafSize', 'NumVariablesToSample'],
+  RegressionEnsemble: ['Method', 'NumLearningCycles', 'LearnRate', 'MaxNumSplits', 'MinLeafSize', 'NumVariablesToSample'],
+  TreeBagger: ['NumTrees', 'Method', 'MinLeafSize', 'NumVariablesToSample'],
 };
 const settingsOf = (m: Struct): Opts => new Map((SETTINGS[typeOf(m)] ?? []).filter((k) => m.f.has(k)).map((k) => [k.toLowerCase(), m.f.get(k)!]));
 
@@ -158,6 +161,7 @@ function treeFields(t: ml.Tree, d: Data, L: Labels | null): [string, Value][] {
     ['Children', matOf(t.pred.map((_, i) => (t.left[i] >= 0 ? [t.left[i] + 1, t.right[i] + 1] : [0, 0])), 2)],
     ...(L ? [['NodeClass', L.back(t.value)] as [string, Value], ['ClassProbability', matOf(t.probs, L.K)] as [string, Value]] : [['NodeMean', mat(n, 1, t.value)] as [string, Value]]),
     ['NodeSize', mat(n, 1, t.size)],
+    ['PredictorImportance', mat(1, d.predictors.length, ml.importance(t, d.predictors.length).map((v) => v / Math.max(1, t.pred.filter((q) => q >= 0).length)))],
   ];
 }
 const treeOpts = (o: Opts, n: number) => ({ maxSplits: Math.max(0, Math.round(optNum(o, 'maxnumsplits', n - 1))), minLeaf: Math.max(1, Math.round(optNum(o, 'minleafsize', 1))), minParent: Math.max(2, Math.round(optNum(o, 'minparentsize', 10))) });
@@ -250,6 +254,71 @@ function netOf(m: Struct): Net {
 }
 FIT.ClassificationNeuralNetwork = (d, o) => { const L = labelsOf(d.y!); if (L.K < 2) throw new LabError('fitcnet needs at least two classes.'); return model('ClassificationNeuralNetwork', d, netFields(d, L.y, L.K, o), L); };
 FIT.RegressionNeuralNetwork = (d, o) => model('RegressionNeuralNetwork', d, netFields(d, [...toMat(d.y!, 'The response').d], 0, o), null);
+// ——— Ensembles ———
+const TREE_OPTS: Record<string, string> = { maxnumsplits: 'MaxNumSplits', minleafsize: 'MinLeafSize', numvariablestosample: 'NumVariablesToSample' };
+def('templateTree', (a) => { const o = options(a, 0), f = new Map<string, Value>([['Type', str('templateTree')]]); for (const [k, v] of o) f.set(TREE_OPTS[k] ?? k, v); return [{ k: 'struct', f } satisfies Struct]; });
+const METHODS: Record<string, ml.EnsembleMethod> = { bag: 'bag', adaboostm1: 'adaboostm1', adaboostm2: 'adaboostm2', lsboost: 'lsboost' };
+const METHOD_NAMES: Record<ml.EnsembleMethod, string> = { bag: 'Bag', adaboostm1: 'AdaBoostM1', adaboostm2: 'AdaBoostM2', lsboost: 'LSBoost' };
+const treeCell = (t: ml.Tree, K: number): Struct => ({ k: 'struct', f: new Map<string, Value>([
+  ['CutPredictorIndex', mat(t.pred.length, 1, t.pred.map((q) => q + 1))], ['CutPoint', mat(t.cut.length, 1, t.cut)],
+  ['Children', matOf(t.pred.map((_, i) => (t.left[i] >= 0 ? [t.left[i] + 1, t.right[i] + 1] : [0, 0])), 2)],
+  K ? ['ClassProbability', matOf(t.probs, K)] : ['NodeMean', mat(t.value.length, 1, t.value)],
+]) });
+/** An ensemble's fields, its settings first (crossval learns the same way from them). */
+function fitEnsembleFields(d: Data, y: number[], K: number, o: Opts, dflt: ml.EnsembleMethod, tb = false): [string, Value][] {
+  const tpl = o.get('learners');
+  if (tpl && tpl.k === 'struct') { for (const [k, v] of tpl.f) if (k !== 'Type') o.set(k.toLowerCase(), v); }
+  else if (tpl && !(tpl.k === 'str' && /^tree$/i.test(tpl.v))) throw new LabError("The learners here are decision trees: 'Learners', 'tree' or templateTree(…).");
+  const p = d.X[0].length, method = METHODS[optStr(o, 'method', dflt)];
+  if (!method || (K && method === 'lsboost') || (!K && method.startsWith('ada'))) throw new LabError(K ? "Method is 'Bag', 'AdaBoostM1' (two classes) or 'AdaBoostM2' (any number)." : "Method is 'LSBoost' or 'Bag'.");
+  const cycles = Math.max(1, Math.round(optNum(o, tb ? 'numtrees' : 'numlearningcycles', 100)));
+  if (cycles > 2000) throw new LabError('At most 2,000 trees here.');
+  const nv = o.get('numvariablestosample') ?? o.get('numpredictorstosample'), vars = nv ? (nv.k === 'str' ? p : Math.round(toMat(nv).d[0])) : tb ? (K ? Math.max(1, Math.round(Math.sqrt(p))) : Math.max(1, Math.ceil(p / 3))) : p;
+  const maxSplits = o.has('maxnumsplits') ? Math.round(optNum(o, 'maxnumsplits', 10)) : method === 'bag' ? d.X.length - 1 : 10;
+  const minLeaf = Math.round(optNum(o, 'minleafsize', method === 'bag' && !K ? 5 : 1)), learnRate = optNum(o, 'learnrate', 1);
+  let e: ml.Ensemble;
+  try { e = ml.fitEnsemble(d.X, y, random, { method, cycles, K, maxSplits, minLeaf, vars, learnRate }); } catch (err) { throw new LabError((err as Error).message); }
+  const imp = new Array(p).fill(0);
+  for (const t of e.trees) ml.importance(t, p).forEach((v, j) => { imp[j] += v / Math.max(1, t.pred.filter((q) => q >= 0).length) / e.trees.length; });
+  let oobLoss = NaN;
+  if (e.oobCurve) oobLoss = e.oobCurve[e.oobCurve.length - 1];
+  return [
+    ...(tb ? [['NumTrees', num(cycles)] as [string, Value], ['Method', str(K ? 'classification' : 'regression')] as [string, Value]] : [['Method', str(METHOD_NAMES[method])] as [string, Value], ['NumLearningCycles', num(cycles)] as [string, Value], ['LearnRate', num(learnRate)] as [string, Value], ['MaxNumSplits', num(maxSplits)] as [string, Value]]),
+    ['MinLeafSize', num(minLeaf)], ['NumVariablesToSample', num(vars)], ['NumTrained', num(e.trees.length)],
+    ['Trained', cellCol(e.trees.map((t) => treeCell(t, K)))], ['LearnerWeights', mat(1, e.alpha.length, e.alpha)], ['Init', num(e.init)],
+    ['PredictorImportance', mat(1, p, imp)],
+    ...(e.oobCurve ? [['OOBLoss', num(oobLoss)] as [string, Value], ['OOBErrorCurve', col(e.oobCurve)] as [string, Value]] : []),
+  ];
+}
+FIT.ClassificationEnsemble = (d, o) => { const L = labelsOf(d.y!); return model('ClassificationEnsemble', d, fitEnsembleFields(d, L.y, L.K, o, L.K === 2 ? 'adaboostm1' : 'adaboostm2'), L); };
+FIT.RegressionEnsemble = (d, o) => model('RegressionEnsemble', d, fitEnsembleFields(d, [...toMat(d.y!, 'The response').d], 0, o, 'lsboost'), null);
+FIT.TreeBagger = (d, o) => {
+  const cls = optStr(o, 'method', 'classification') !== 'regression';
+  o.set('method', str('bag'));
+  if (cls) { const L = labelsOf(d.y!); return model('TreeBagger', d, fitEnsembleFields(d, L.y, L.K, o, 'bag', true), L); }
+  return model('TreeBagger', d, fitEnsembleFields(d, [...toMat(d.y!, 'The response').d], 0, o, 'bag', true), null);
+};
+/** The ensemble as ml.ts reads it, from its fields. */
+function ensembleOf(m: Struct) {
+  const K = m.f.has('ClassNames') ? labelsOf(field(m, 'Y')).K : 0;
+  const trees = (field(m, 'Trained') as Cell).d.map((v) => {
+    const t = treeOf(v as Struct), s = v as Struct;
+    if (K) { const P = rowsOf(toMat(field(s, 'ClassProbability'))); return { ...t, probs: P, value: P.map((r) => r.indexOf(Math.max(...r))) }; }
+    return { ...t, probs: [], value: [...toMat(field(s, 'NodeMean')).d] };
+  });
+  const kind = typeOf(m), method: ml.EnsembleMethod = kind === 'TreeBagger' ? 'bag' : METHODS[textOf(field(m, 'Method')).toLowerCase()];
+  return { trees, alpha: [...toMat(field(m, 'LearnerWeights')).d], method, K, init: fnum(m, 'Init') };
+}
+def('TreeBagger', (a) => {
+  if (a.length < 3) throw new LabError("TreeBagger needs the number of trees, the data and the answers: TreeBagger(100, X, Y, 'Method', 'classification').");
+  const d = dataOf(a.slice(1), 'TreeBagger'), o = options(a, d.rest + 1);
+  o.set('numtrees', a[0]);
+  return [FIT.TreeBagger!(d, o)];
+});
+def('oobError', (a) => { const m = a[0]; if (!isModel(m) || !m.f.has('OOBErrorCurve')) throw new LabError('oobError needs a TreeBagger (or a bagged ensemble).'); return [field(m, 'OOBErrorCurve')]; });
+def('oobLoss', (a) => { const m = a[0]; if (!isModel(m) || !m.f.has('OOBLoss')) throw new LabError("oobLoss needs a bagged ensemble: fitcensemble(X, Y, 'Method', 'Bag')."); return [field(m, 'OOBLoss')]; });
+def('predictorImportance', (a) => { const m = a[0]; if (!isModel(m) || !m.f.has('PredictorImportance')) throw new LabError('predictorImportance needs a tree or an ensemble of trees.'); return [field(m, 'PredictorImportance')]; });
+
 function coefTable(names: string[], est: number[], se: number[], stat: number[], p: number[]): Struct {
   return table([['Name', cellCol(names.map(str))], ['Estimate', col(est)], ['SE', col(se)], ['tStat', col(stat)], ['pValue', col(p)]]);
 }
@@ -278,7 +347,7 @@ FIT.GeneralizedLinearModel = (d, o) => {
   return m;
 };
 
-for (const [name, kind] of [['fitcknn', 'ClassificationKNN'], ['fitctree', 'ClassificationTree'], ['fitcnb', 'ClassificationNaiveBayes'], ['fitcdiscr', 'ClassificationDiscriminant'], ['fitcsvm', 'ClassificationSVM'], ['fitcecoc', 'ClassificationECOC'], ['fitcnet', 'ClassificationNeuralNetwork'], ['fitrtree', 'RegressionTree'], ['fitrnet', 'RegressionNeuralNetwork'], ['fitlm', 'LinearModel'], ['fitglm', 'GeneralizedLinearModel']] as const) {
+for (const [name, kind] of [['fitcknn', 'ClassificationKNN'], ['fitctree', 'ClassificationTree'], ['fitcnb', 'ClassificationNaiveBayes'], ['fitcdiscr', 'ClassificationDiscriminant'], ['fitcsvm', 'ClassificationSVM'], ['fitcecoc', 'ClassificationECOC'], ['fitcnet', 'ClassificationNeuralNetwork'], ['fitcensemble', 'ClassificationEnsemble'], ['fitrtree', 'RegressionTree'], ['fitrnet', 'RegressionNeuralNetwork'], ['fitrensemble', 'RegressionEnsemble'], ['fitlm', 'LinearModel'], ['fitglm', 'GeneralizedLinearModel']] as const) {
   def(name, (a, _n, lab) => {
     const d = dataOf(a, name), o = options(a, d.rest), m = FIT[kind]!(d, o);
     if (o.has('kfold') || o.has('holdout') || o.has('leaveout') || o.has('cvpartition') || (o.has('crossval') && optBool(o, 'crossval', false))) return [crossval(m, o)];
@@ -313,6 +382,7 @@ function classify(m: Struct, X: ml.Rows): { idx: number[]; scores: ml.Rows } {
     const post = kind === 'ClassificationNaiveBayes' ? X.map((x) => ml.nbPosterior({ mu, sd: S, prior }, x)) : (() => { const lda: ml.LDA = { mu, sigma: S, inv: ml.inverse(S) ?? S, prior }; return X.map((x) => ml.ldaPosterior(lda, x)); })();
     return { idx: post.map(argmax), scores: post };
   }
+  if (kind === 'ClassificationEnsemble' || kind === 'TreeBagger') { const e = ensembleOf(m), post = X.map((x) => ml.ensembleOut(e, x)); return { idx: post.map(argmax), scores: post }; }
   if (kind === 'ClassificationNeuralNetwork') { const f = netPredictor(netOf(m)), post = scaled(m, X).map((x) => [...f(x)]); return { idx: post.map(argmax), scores: post }; }
   if (kind === 'ClassificationSVM') { const f = svmScores(m, X); return { idx: f.map((v) => (v > 0 ? 1 : 0)), scores: f.map((v) => [-v, v]) }; }
   if (kind === 'ClassificationECOC') {
@@ -324,12 +394,13 @@ function classify(m: Struct, X: ml.Rows): { idx: number[]; scores: ml.Rows } {
   if (kind === 'GeneralizedLinearModel' && m.f.has('ClassNames')) { const b = [...toMat(field(m, 'Beta')).d], p = X.map((x) => ml.logisticProb(b, x)); return { idx: p.map((v) => (v >= 0.5 ? 1 : 0)), scores: p.map((v) => [1 - v, v]) }; }
   throw new LabError('That model predicts numbers, not classes.');
 }
-function treeOf(m: Struct): ml.Tree {
+function treeOf(m: Struct): Pick<ml.Tree, 'pred' | 'cut' | 'left' | 'right'> {
   const pred = [...toMat(field(m, 'CutPredictorIndex')).d].map((p) => p - 1), ch = toMat(field(m, 'Children')), n = pred.length;
-  return { pred, cut: [...toMat(field(m, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1), value: [], probs: [], size: [] };
+  return { pred, cut: [...toMat(field(m, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1) };
 }
 function regress(m: Struct, X: ml.Rows): number[] {
   const kind = typeOf(m);
+  if (kind === 'RegressionEnsemble' || kind === 'TreeBagger') { const e = ensembleOf(m); return X.map((x) => ml.ensembleOut(e, x)[0]); }
   if (kind === 'RegressionNeuralNetwork') { const f = netPredictor(netOf(m)); return scaled(m, X).map((x) => f(x)[0]); }
   if (kind === 'RegressionTree') { const t = treeOf(m), mean = toMat(field(m, 'NodeMean')).d; return X.map((x) => mean[ml.treeLeaf(t, x)]); }
   if (kind === 'GeneralizedLinearModel' && m.f.has('ClassNames')) { const b = [...toMat(field(m, 'Beta')).d]; return X.map((x) => ml.logisticProb(b, x)); }
@@ -340,7 +411,7 @@ function regress(m: Struct, X: ml.Rows): number[] {
   throw new LabError('That model predicts classes: predict gives its labels.');
 }
 /** Predicts numbers (a logistic model's are probabilities). */
-const isRegression = (m: Struct) => REGRESSION.has(typeOf(m));
+const isRegression = (m: Struct) => REGRESSION.has(typeOf(m)) || (typeOf(m) === 'TreeBagger' && !m.f.has('ClassNames'));
 def('predict', (a, nout) => {
   const m = a[0];
   if (!isModel(m)) throw new LabError('predict needs a model and new rows: predict(model, X).');

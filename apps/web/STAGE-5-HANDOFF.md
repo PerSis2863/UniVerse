@@ -11206,3 +11206,22 @@ Hyperion's worker like every script, so the window stays smooth. Tests (`ml-net.
 gradients for four activations with and without Lambda, XOR, iris (≤ 2 wrong), a sine wave (RMSE < 0.02), fitcnet with
 two layers and its history, 5-fold cross-validation, fitrnet, a wrong activation explained.
 
+## M418 (22 Nov): Hyperion toolbox, ensembles
+
+`growTree` (ml.ts) now takes row weights `w` (weighted Gini / squared error: boosting), `vars` predictors picked at random
+per split with `rand` (random forests) and `rows` (a bootstrap sample, repeats allowed), and records each split's
+impurity drop in `gain` (`importance(t, p)`). `fitEnsemble(X, y, rand, { method, cycles, K, maxSplits, minLeaf, vars,
+learnRate })`: 'bag' (bootstrap trees, full depth by default, minLeaf 1 for classes and 5 for numbers; out-of-bag scores
+and `oobCurve`, the OOB error after each tree), 'adaboostm1' (two classes), 'adaboostm2' (any number; the SAMME rule,
+log((1 − err)/err) + log(K − 1): named after MATLAB's method so scripts carry over, but it is SAMME, said in help),
+'lsboost' (numbers: each tree, 10 splits by default, fits the residual, scaled by LearnRate); `ensembleOut` gives class
+shares (bag: averaged probabilities; boosting: weighted votes) or the number. Language: fitcensemble (default
+AdaBoostM1 for two classes, AdaBoostM2 for more, 100 cycles, LearnRate 1), fitrensemble (LSBoost), TreeBagger(n, X, Y,
+'Method', …) (sqrt(p) predictors per split for classes, p/3 for numbers), templateTree, oobError, oobLoss,
+predictorImportance (also on fitctree / fitrtree models: `PredictorImportance` is now a tree field, the drops per
+predictor over the rows, divided by the number of splits). An ensemble keeps `Trained` (a cell of plain tree structs:
+CutPredictorIndex, CutPoint, Children, ClassProbability or NodeMean), LearnerWeights, Init, its settings (`SETTINGS`
+lists them for crossval). `treeOf` now gives only the shape (pred, cut, left, right). Tests (in `ml-net.test.ts`): bagged
+iris OOB < 8%, TreeBagger's 80-point OOB curve and petal importance, prediction, 5-fold CV; AdaBoostM1 on two noisy
+rings beating two stumps, AdaBoostM2 on iris, LSBoost on a sine, AdaBoostM1 refusing three classes.
+

@@ -32,53 +32,63 @@ export function knn(X: Rows, y: number[], K: number, k: number, x: number[]) {
 }
 
 // ——— Decision trees (CART) ———
-export interface Tree { pred: number[]; cut: number[]; left: number[]; right: number[]; value: number[]; probs: number[][]; size: number[] }
-export interface TreeOpts { K?: number; maxSplits?: number; minLeaf?: number; minParent?: number }
+export interface Tree { pred: number[]; cut: number[]; left: number[]; right: number[]; value: number[]; probs: number[][]; size: number[]; gain: number[] }
+export interface TreeOpts { K?: number; maxSplits?: number; minLeaf?: number; minParent?: number; w?: number[]; vars?: number; rand?: Rand; rows?: number[] }
 
 /** Grows a tree level by level: each node takes the split (between two neighbouring values) that lowers its Gini
- * impurity (classes) or squared error (numbers) most, until the splits allowed are used up. */
+ * impurity (classes) or squared error (numbers) most, until the splits allowed are used up. Rows may carry weights
+ * (boosting), and each split may look at only `vars` predictors picked at random (random forests). `gain` keeps each
+ * split's drop in impurity, for the predictors' importance. */
 export function growTree(X: Rows, y: number[], o: TreeOpts = {}): Tree {
-  const K = o.K, p = X[0]?.length ?? 0, maxSplits = o.maxSplits ?? X.length - 1, minLeaf = Math.max(1, o.minLeaf ?? 1), minParent = Math.max(2 * minLeaf, o.minParent ?? 10);
-  const t: Tree = { pred: [], cut: [], left: [], right: [], value: [], probs: [], size: [] };
+  const K = o.K, p = X[0]?.length ?? 0, w = o.w, maxSplits = o.maxSplits ?? X.length - 1, minLeaf = Math.max(1, o.minLeaf ?? 1), minParent = Math.max(2 * minLeaf, o.minParent ?? 10);
+  const vars = Math.max(1, Math.min(p, o.vars ?? p)), rand = o.rand ?? Math.random;
+  const t: Tree = { pred: [], cut: [], left: [], right: [], value: [], probs: [], size: [], gain: [] };
+  const wt = (i: number) => (w ? w[i] : 1);
   const summary = (idx: number[]) => {
+    let W = 0;
+    for (const i of idx) W += wt(i);
     if (K) {
       const c = new Array(K).fill(0);
-      for (const i of idx) c[y[i]]++;
+      for (const i of idx) c[y[i]] += wt(i);
       let best = 0;
       for (let k = 1; k < K; k++) if (c[k] > c[best]) best = k;
-      return { value: best, probs: c.map((v) => v / idx.length), impurity: idx.length * (1 - c.reduce((s, v) => s + (v / idx.length) ** 2, 0)) };
+      return { value: best, probs: c.map((v) => (W ? v / W : 0)), impurity: W ? W - c.reduce((s, v) => s + v * v, 0) / W : 0 };
     }
-    const m = idx.reduce((s, i) => s + y[i], 0) / idx.length;
-    return { value: m, probs: [], impurity: idx.reduce((s, i) => s + (y[i] - m) ** 2, 0) };
+    let s1 = 0, s2 = 0;
+    for (const i of idx) { s1 += wt(i) * y[i]; s2 += wt(i) * y[i] ** 2; }
+    return { value: W ? s1 / W : 0, probs: [], impurity: W ? Math.max(0, s2 - (s1 * s1) / W) : 0 };
   };
   const node = (idx: number[]) => {
     const s = summary(idx), id = t.pred.length;
-    t.pred.push(-1); t.cut.push(NaN); t.left.push(-1); t.right.push(-1); t.value.push(s.value); t.probs.push(s.probs); t.size.push(idx.length);
+    t.pred.push(-1); t.cut.push(NaN); t.left.push(-1); t.right.push(-1); t.value.push(s.value); t.probs.push(s.probs); t.size.push(idx.length); t.gain.push(0);
     return { id, idx, impurity: s.impurity };
   };
-  const queue = [node(Array.from({ length: X.length }, (_, i) => i))];
+  const queue = [node(o.rows ?? Array.from({ length: X.length }, (_, i) => i))];
   let splits = 0;
   while (queue.length && splits < maxSplits) {
     const { id, idx, impurity } = queue.shift()!;
     if (idx.length < minParent || impurity <= 1e-12) continue;
     let best = { gain: 1e-12, j: -1, cut: 0 };
-    for (let j = 0; j < p; j++) {
+    let cols = Array.from({ length: p }, (_, j) => j);
+    if (vars < p) { for (let i = 0; i < vars; i++) { const j = i + Math.floor(rand() * (p - i)); [cols[i], cols[j]] = [cols[j], cols[i]]; } cols = cols.slice(0, vars); }
+    for (const j of cols) {
       const order = [...idx].sort((a, b) => X[a][j] - X[b][j]), n = order.length;
-      // Running sums on the left; the right is the rest.
+      // Running weighted sums on the left; the right is the rest.
       const cl = K ? new Array(K).fill(0) : [], ct = K ? new Array(K).fill(0) : [];
-      let sl = 0, ql = 0, st = 0, qt = 0;
-      for (const i of order) { if (K) ct[y[i]]++; else { st += y[i]; qt += y[i] ** 2; } }
+      let wl = 0, wtot = 0, sl = 0, ql = 0, st = 0, qt = 0;
+      for (const i of order) { const v = wt(i); wtot += v; if (K) ct[y[i]] += v; else { st += v * y[i]; qt += v * y[i] ** 2; } }
       for (let q = 0; q < n - 1; q++) {
-        const i = order[q];
-        if (K) cl[y[i]]++; else { sl += y[i]; ql += y[i] ** 2; }
-        const nl = q + 1, nr = n - nl;
-        if (nl < minLeaf || nr < minLeaf || X[order[q + 1]][j] === X[i][j]) continue;
+        const i = order[q], v = wt(i);
+        wl += v;
+        if (K) cl[y[i]] += v; else { sl += v * y[i]; ql += v * y[i] ** 2; }
+        const nl = q + 1, nr = n - nl, wr = wtot - wl;
+        if (nl < minLeaf || nr < minLeaf || X[order[q + 1]][j] === X[i][j] || wl <= 0 || wr <= 0) continue;
         let child: number;
         if (K) {
           let gl = 0, gr = 0;
           for (let k = 0; k < K; k++) { gl += cl[k] ** 2; gr += (ct[k] - cl[k]) ** 2; }
-          child = nl - gl / nl + nr - gr / nr;
-        } else child = ql - sl ** 2 / nl + (qt - ql) - (st - sl) ** 2 / nr;
+          child = wl - gl / wl + wr - gr / wr;
+        } else child = ql - sl ** 2 / wl + (qt - ql) - (st - sl) ** 2 / wr;
         const gain = impurity - child;
         if (gain > best.gain) best = { gain, j, cut: (X[i][j] + X[order[q + 1]][j]) / 2 };
       }
@@ -86,19 +96,87 @@ export function growTree(X: Rows, y: number[], o: TreeOpts = {}): Tree {
     if (best.j < 0) continue;
     const L = idx.filter((i) => X[i][best.j] < best.cut), R = idx.filter((i) => X[i][best.j] >= best.cut);
     const a = node(L), b = node(R);
-    t.pred[id] = best.j; t.cut[id] = best.cut; t.left[id] = a.id; t.right[id] = b.id;
+    t.pred[id] = best.j; t.cut[id] = best.cut; t.left[id] = a.id; t.right[id] = b.id; t.gain[id] = best.gain;
     queue.push(a, b);
     splits++;
   }
   return t;
 }
 /** The leaf a row lands in. */
-export function treeLeaf(t: Tree, x: number[]) {
+export function treeLeaf(t: Pick<Tree, 'pred' | 'cut' | 'left' | 'right'>, x: number[]) {
   let n = 0;
   while (t.pred[n] >= 0) n = x[t.pred[n]] < t.cut[n] ? t.left[n] : t.right[n];
   return n;
 }
+/** Each predictor's share of a tree's drops in impurity, per row the tree learnt from. */
+export function importance(t: Tree, p: number) {
+  const imp = new Array(p).fill(0), total = t.size[0] || 1;
+  t.pred.forEach((j, i) => { if (j >= 0) imp[j] += t.gain[i] / total; });
+  return imp;
+}
 
+// ——— Ensembles ———
+export type EnsembleMethod = 'bag' | 'adaboostm1' | 'adaboostm2' | 'lsboost';
+export interface EnsembleOpts { method: EnsembleMethod; cycles?: number; K?: number; maxSplits?: number; minLeaf?: number; vars?: number; learnRate?: number }
+export interface Ensemble { trees: Tree[]; alpha: number[]; method: EnsembleMethod; K: number; init: number; oob: number[][] | null; oobCount: number[] | null; oobCurve: number[] | null }
+/** Many trees voting. 'bag': each tree on a bootstrap sample (with `vars` random predictors per split: a random forest),
+ * their class shares averaged; 'adaboostm1' (two classes) and 'adaboostm2' (any number, the SAMME rule): each tree on
+ * weights that grow on the rows the trees so far got wrong, voting with weight log((1 − err)/err) (+ log(K − 1));
+ * 'lsboost' (numbers): each small tree fits what the sum so far still misses, scaled by the learning rate. */
+export function fitEnsemble(X: Rows, y: number[], rand: Rand, o: EnsembleOpts): Ensemble {
+  const n = X.length, K = o.K ?? 0, cycles = Math.max(1, o.cycles ?? 100), trees: Tree[] = [], alpha: number[] = [];
+  const base = { K: K || undefined, maxSplits: o.maxSplits, minLeaf: o.minLeaf, minParent: o.minLeaf ? 2 * o.minLeaf : undefined, vars: o.vars, rand };
+  if (o.method === 'bag') {
+    const oob = Array.from({ length: n }, () => new Array(Math.max(1, K)).fill(0)), oobCount = new Array(n).fill(0), oobCurve: number[] = [];
+    for (let c = 0; c < cycles; c++) {
+      const rows = Array.from({ length: n }, () => Math.floor(rand() * n)), inBag = new Uint8Array(n);
+      for (const r of rows) inBag[r] = 1;
+      const t = growTree(X, y, { ...base, minLeaf: o.minLeaf ?? (K ? 1 : 5), minParent: base.minParent ?? (K ? 2 : 10), rows });
+      trees.push(t); alpha.push(1);
+      for (let i = 0; i < n; i++) if (!inBag[i]) { const leaf = treeLeaf(t, X[i]); if (K) t.probs[leaf].forEach((v, k) => { oob[i][k] += v; }); else oob[i][0] += t.value[leaf]; oobCount[i]++; }
+      // The out-of-bag error so far: each row judged only by the trees that didn't see it.
+      let bad = 0, seen = 0;
+      for (let i = 0; i < n; i++) if (oobCount[i]) { seen++; bad += K ? (oob[i].indexOf(Math.max(...oob[i])) !== y[i] ? 1 : 0) : (oob[i][0] / oobCount[i] - y[i]) ** 2; }
+      oobCurve.push(seen ? bad / seen : NaN);
+    }
+    return { trees, alpha, method: 'bag', K, init: 0, oob, oobCount, oobCurve };
+  }
+  if (o.method === 'lsboost') {
+    const rate = o.learnRate ?? 0.1, init = y.reduce((s, v) => s + v, 0) / n, F = new Array(n).fill(init);
+    for (let c = 0; c < cycles; c++) {
+      const r = y.map((v, i) => v - F[i]), t = growTree(X, r, { ...base, maxSplits: o.maxSplits ?? 10 });
+      trees.push(t); alpha.push(rate);
+      for (let i = 0; i < n; i++) F[i] += rate * t.value[treeLeaf(t, X[i])];
+    }
+    return { trees, alpha, method: 'lsboost', K: 0, init, oob: null, oobCount: null, oobCurve: null };
+  }
+  if (o.method === 'adaboostm1' && K !== 2) throw new Error(`AdaBoostM1 separates two classes (these labels have ${K}); use AdaBoostM2 for more.`);
+  const w = new Array(n).fill(1 / n), extra = o.method === 'adaboostm2' ? Math.log(Math.max(1, K - 1)) : 0;
+  for (let c = 0; c < cycles; c++) {
+    const t = growTree(X, y, { ...base, maxSplits: o.maxSplits ?? 10, w, minParent: 2 }), wrong = X.map((x, i) => t.value[treeLeaf(t, x)] !== y[i]);
+    const err = wrong.reduce((s, b, i) => s + (b ? w[i] : 0), 0);
+    if (err >= 1 - 1 / Math.max(2, K)) break;
+    const a = (o.learnRate ?? 1) * (Math.log((1 - Math.max(err, 1e-10)) / Math.max(err, 1e-10)) + extra);
+    trees.push(t); alpha.push(a);
+    if (err <= 1e-10) break;
+    let s = 0;
+    for (let i = 0; i < n; i++) { if (wrong[i]) w[i] *= Math.exp(a); s += w[i]; }
+    for (let i = 0; i < n; i++) w[i] /= s;
+  }
+  if (!trees.length) throw new Error('Boosting found no tree better than guessing.');
+  return { trees, alpha, method: o.method, K, init: 0, oob: null, oobCount: null, oobCurve: null };
+}
+/** An ensemble's class scores (each class's share of the votes) or its number. */
+export function ensembleOut(e: { trees: Pick<Tree, 'pred' | 'cut' | 'left' | 'right' | 'value' | 'probs'>[]; alpha: number[]; method: EnsembleMethod; K: number; init: number }, x: number[]): number[] {
+  if (!e.K) {
+    if (e.method === 'lsboost') return [e.trees.reduce((s, t, i) => s + e.alpha[i] * t.value[treeLeaf(t, x)], e.init)];
+    return [e.trees.reduce((s, t) => s + t.value[treeLeaf(t, x)], 0) / e.trees.length];
+  }
+  const v = new Array(e.K).fill(0);
+  e.trees.forEach((t, i) => { const leaf = treeLeaf(t, x); if (e.method === 'bag') t.probs[leaf].forEach((p, k) => { v[k] += p; }); else v[t.value[leaf]] += e.alpha[i]; });
+  const s = v.reduce((a, b) => a + b, 0) || 1;
+  return v.map((x2) => x2 / s);
+}
 // ——— Gaussian naive Bayes ———
 export interface NB { mu: number[][]; sd: number[][]; prior: number[] }
 export function fitNB(X: Rows, y: number[], K: number): NB {

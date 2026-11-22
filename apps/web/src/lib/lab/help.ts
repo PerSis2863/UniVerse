@@ -587,6 +587,13 @@ fitcecoc | fitcecoc(X, Y, 'Learners', templateSVM(…)) | Three or more classes 
 templateSVM | templateSVM('KernelFunction', 'rbf', …) | The settings for fitcecoc's SVMs.
 fitcnet | fitcnet(X, Y, 'LayerSizes', [10 10], 'Activations', 'relu', 'Lambda', 0, 'Standardize', true) | A neural network for classes: fully connected hidden layers ('relu', 'tanh', 'sigmoid' or 'none'), trained by L-BFGS (LayerWeights, LayerBiases, TrainingHistory, ConvergenceInfo).
 fitrnet | fitrnet(X, y, 'LayerSizes', 10, …) | A neural network that predicts numbers.
+fitcensemble | fitcensemble(X, Y, 'Method', 'Bag', 'NumLearningCycles', 100) | Many decision trees voting: 'Bag' (each on a random resample; with NumVariablesToSample, a random forest), 'AdaBoostM1' (two classes) or 'AdaBoostM2' (several, by the SAMME rule), each tree on the rows the others got wrong.
+fitrensemble | fitrensemble(X, y, 'Method', 'LSBoost', 'LearnRate', 0.1) | Trees adding up to a number: 'LSBoost' (each small tree fits what is still missed) or 'Bag' (the trees' average).
+TreeBagger | TreeBagger(100, X, Y, 'Method', 'classification') | A random forest: trees on random resamples, each split looking at a few random predictors; oobError shows the error as trees are added.
+templateTree | templateTree('MaxNumSplits', 1, 'MinLeafSize', 5) | The settings of an ensemble's trees ('Learners', templateTree(…)).
+oobError | oobError(B) | A random forest's out-of-bag error after 1, 2, … trees (each row judged by the trees that didn't see it).
+oobLoss | oobLoss(ens) | A bagged ensemble's out-of-bag error: an honest estimate without cross-validation.
+predictorImportance | predictorImportance(model) | How much each predictor helped a tree or an ensemble of trees (the drop in impurity its splits gave).
 fitrtree | fitrtree(X, y) | A decision tree that predicts numbers (each leaf's mean).
 fitlm | fitlm(X, y), fitlm(T, 'y ~ x1 + x2') | A linear regression: Coefficients (estimates, standard errors, t and p values), Rsquared, RMSE.
 fitglm | fitglm(X, y, 'Distribution', 'binomial') | A generalised linear model: 'normal' (as fitlm) or 'binomial' (logistic regression; predict gives probabilities).

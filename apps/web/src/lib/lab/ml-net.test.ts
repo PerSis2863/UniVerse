@@ -50,3 +50,27 @@ describe('Hyperion neural networks (M417)', () => {
     expect(() => run("fitcnet([1;2;3], [1;2;3], 'Activations', 'swish')")).toThrow(/relu/);
   });
 });
+
+describe('Hyperion ensembles (M418)', () => {
+  it('bagging and random forests: out-of-bag error, importance', () => {
+    const r = run("rng(1)\nload fisheriris\nbag = fitcensemble(meas, species, 'Method', 'Bag', 'NumLearningCycles', 60);\nol = oobLoss(bag);\nrf = TreeBagger(80, meas, species, 'OOBPrediction', 'on');\ncurve = oobError(rf);\nimp = predictorImportance(rf);\nlab = predict(rf, [6.5 3 5.5 2]);\nis = strcmp(lab{1}, 'virginica');\ncv = kfoldLoss(crossval(bag, 'KFold', 5));");
+    expect(r.d('ol')[0]).toBeLessThan(0.08);
+    const curve = r.d('curve');
+    expect(curve).toHaveLength(80);
+    expect(curve[79]).toBeLessThan(0.08);
+    const imp = r.d('imp');
+    // The petals (3 and 4) matter far more than the sepals.
+    expect(Math.min(imp[2], imp[3])).toBeGreaterThan(Math.max(imp[0], imp[1]));
+    expect(r.d('is')).toEqual([1]);
+    expect(r.d('cv')[0]).toBeLessThan(0.1);
+  });
+
+  it('boosting: AdaBoostM1 on a ring, AdaBoostM2 on three classes, LSBoost on numbers', () => {
+    const r = run("rng(2)\nt = [linspace(0, 2*pi, 100) linspace(0, 2*pi, 100)]'; rr = [ones(100,1)*0.5; ones(100,1)*1.5] + 0.1*randn(200,1);\nX = [rr.*cos(t) rr.*sin(t)]; Y = [zeros(100,1); ones(100,1)];\nada = fitcensemble(X, Y);\ne1 = resubLoss(ada);\nm = ada.Method;\nstump = fitcensemble(X, Y, 'Learners', templateTree('MaxNumSplits', 1), 'NumLearningCycles', 2);\ne0 = resubLoss(stump);\nload fisheriris\nm2 = fitcensemble(meas, species, 'NumLearningCycles', 30);\ne2 = resubLoss(m2);\nx = linspace(0, 6, 80)'; y = sin(x);\nls = fitrensemble(x, y, 'NumLearningCycles', 200, 'LearnRate', 0.1);\ne3 = resubLoss(ls);");
+    expect(r.d('e1')[0]).toBeLessThan(0.05);
+    expect(r.d('e1')[0]).toBeLessThan(r.d('e0')[0]);
+    expect(r.d('e2')[0]).toBeLessThan(0.03);
+    expect(r.d('e3')[0]).toBeLessThan(0.005);
+    expect(() => run("fitcensemble([1;2;3;4], [1;2;3;1], 'Method', 'AdaBoostM1')")).toThrow(/two classes/);
+  });
+});
