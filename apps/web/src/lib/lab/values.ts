@@ -2,6 +2,10 @@ import { LabError } from './parse';
 import type { Expr } from './parse';
 import type { NumClass } from './types';
 import { evalC, latex as symLatex, print as symPrint, symbols, type N as SymNode } from './sym';
+import { tfInline, tfText } from './lti-text';
+
+/** A transfer function's polynomials (M414). */
+const tfParts = (v: Struct): [number[], number[]] => [[...((v.f.get('num') as Mat | undefined)?.d ?? [0])], [...((v.f.get('den') as Mat | undefined)?.d ?? [1])]];
 
 // Hyperion's values (M374): numeric and logical matrices stored column by column (as MATLAB and Octave do, so
 // linear indexing and reshape behave the same), text, cell arrays, structs and function handles.
@@ -14,7 +18,8 @@ export interface Mat { k: 'mat'; r: number; c: number; p?: number; nd?: number[]
 export interface Str { k: 'str'; v: string }
 export interface Cell { k: 'cell'; r: number; c: number; d: Value[] }
 /** `table`: a table (M383): a struct whose fields are equal-height columns, shown as rows. */
-export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean }
+/** `lti`: a transfer function (M414: fields num, den, Ts; control.ts gives it arithmetic and the toolbox). */
+export interface Struct { k: 'struct'; f: Map<string, Value>; table?: boolean; lti?: true }
 export interface Fn { k: 'fn'; name?: string; params?: string[]; body?: Expr; src?: string; closure?: Map<string, Value> }
 /** A symbolic array (M396): expressions from sym.ts, column by column like a matrix. */
 export interface Sym { k: 'sym'; r: number; c: number; d: SymNode[] }
@@ -108,7 +113,7 @@ export function kind(v: Value): string {
     case 'mat': return v.logical ? 'logical' : v.cls ?? 'double';
     case 'str': return 'char';
     case 'cell': return 'cell';
-    case 'struct': return v.table ? 'table' : 'struct';
+    case 'struct': return v.lti ? 'tf' : v.table ? 'table' : 'struct';
     case 'fn': return 'function_handle';
     case 'sym': return 'sym';
   }
@@ -154,6 +159,7 @@ export const plainOf = (text: string) => text.replace(/\u0001[^\u0002]*\u0002([^
 /** How a value is shown after "x = …". */
 export function show(name: string, v: Value, f: Fmt): string {
   if (v.k === 'sym') return `${name} =\n\n${symShown(v)}\n\n`;
+  if (v.k === 'struct' && v.lti) return `${name} =\n\n${tfText(...tfParts(v))}\n\nContinuous-time transfer function.\n\n`;
   if (v.k === 'mat' && (v.p ?? 1) > 1) return Array.from({ length: v.p! }, (_, k) => `${name}${pageLabel(v, k)} =\n\n${render(page(v, k), f)}\n\n`).join('');
   if (v.k === 'mat' && v.r * v.c === 1) return `${name} = ${v.im ? fmtC(v.d[0], v.im[0], f) : fmtNum(v.d[0], f, !!v.logical || Number.isInteger(v.d[0]))}\n`;
   const body = render(v, f);
@@ -168,7 +174,7 @@ export function render(v: Value, f: Fmt): string {
     case 'str': return v.v;
     case 'fn': return v.src ? `@${v.src}` : `@${v.name}`;
     case 'sym': return symPlain(v);
-    case 'struct': return v.table ? tableText(v, f) : [...v.f].map(([k, x]) => `    ${k}: ${inline(x, f)}`).join('\n') || '    (no fields)';
+    case 'struct': return v.lti ? tfText(...tfParts(v)) : v.table ? tableText(v, f) : [...v.f].map(([k, x]) => `    ${k}: ${inline(x, f)}`).join('\n') || '    (no fields)';
     case 'cell': {
       if (!v.d.length) return `{}(${v.r}x${v.c})`;
       const cells = Array.from({ length: v.r }, (_, i) => Array.from({ length: v.c }, (_, j) => `[${inline(v.d[i + j * v.r], f)}]`));
@@ -205,7 +211,7 @@ export function inline(v: Value, f: Fmt = { long: false }): string {
     case 'str': return `'${v.v}'`;
     case 'fn': return render(v, f);
     case 'sym': { if (v.d.length !== 1) return `${v.r}x${v.c} sym`; const t = symPrint(v.d[0]); return t.length > 400 ? '1x1 sym' : t; }
-    case 'struct': return v.table ? `${tableHeight(v)}x${v.f.size} table` : `1x1 struct`;
+    case 'struct': return v.lti ? tfInline(...tfParts(v)) : v.table ? `${tableHeight(v)}x${v.f.size} table` : `1x1 struct`;
     case 'cell': return `${v.r}x${v.c} cell`;
     case 'mat':
       if ((v.p ?? 1) > 1) return `${dimsOf(v).join('x')} ${v.im ? `complex ${kind(v)}` : kind(v)}`;

@@ -11097,3 +11097,27 @@ back-to-first-view, PNG. `Model.dim` ('2d' | '3d', Geometry → "Model it as"); 
 and CSV read the 3D result (`res`); 3D shows displacement, x / y stress, von Mises and the safety factor. Not built:
 3D vibration and heat (they use the flat model), supports or loads on the flat faces, parts not of one thickness
 (holes through part of it, ribs), contact.
+
+## M414 (22 Nov): Hyperion toolbox, control systems
+
+The first toolbox from the owner's MATLAB list ("need to build all of these in the downloaded app"). Transfer functions
+are a value: a `Struct` with `lti: true` and fields `num`, `den` (rows, highest power first, the denominator made monic)
+and `Ts` (0: continuous). `values.ts` shows one as a fraction over dashes with "Continuous-time transfer function."
+(`lti-text.ts`: `polyText`, `tfText`, `tfInline`, kept apart so values.ts needn't load the toolbox), its kind is `tf`.
+`interp.ts` sends `+ - * / ^` (and unary minus) with a transfer function to `ltiBinop` / `ltiNeg` (`control.ts`, also
+imported there for its functions): products and quotients of polynomials, sums over one denominator (the same
+denominator kept as is), whole powers. `control.ts`: tf (tf('s')), zpk, ss (SISO; the characteristic polynomial from
+eig, the numerator fitted through n + 1 points of C adj(sI − A) B), pid (Kp + Ki/s + Kd s/(Tf s + 1)), feedback (sign),
+series, parallel, minreal (pole–zero pairs within tol), pole, zero, tzero, dcgain, isstable, damp, stepinfo; time
+responses in the controllable canonical form stepped exactly ([[A B];[0 0]]·h through `expm`, scaling and squaring
+with Padé 6): step, impulse, lsim (an auto span: six slowest time constants, or 20 / the fastest pole if unstable);
+frequency: bode (unwrapped phase, started where the textbook draws it: −90° per integrator, −180° for a negative
+gain), margin (first crossings on 6,000 log-spaced points refined by bisection: |H| = 1, and Im H = 0 for −180°),
+nyquist (with its mirror and −1), rlocus (branches matched to the nearest root gain by gain). Plots go through the
+plot functions (subplot, semilogx, hold, title…). Help: a "Control systems" section (the help test needs a line for
+every function). Example `control.m` (a plant, a PID with sliders for Kp, Ki, Kd, the closed loop's stepinfo, steps
+and margins): dragging a slider is the PID tuner; Sweep studies a gain. Tests (`control.test.ts`): arithmetic and
+feedback exact, minreal, a 2nd-order step's overshoot, peak and settling time, a 1st-order step exact at τ, Bode
+−3 dB / −45° and an integrator's −90°, 1/(s(s+1)(s+2)) with a gain margin of 6 at √2 rad/s, pid, poles, ss, six plots.
+Not built: many inputs and outputs (MIMO), discrete time (c2d, z-transforms), delays, a PID auto-tuner, LQR and
+observers, the block-diagram simulator (next).

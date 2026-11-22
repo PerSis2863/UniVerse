@@ -552,6 +552,30 @@ assume | assume(cond) | Accepted and noted; this Lab doesn’t use assumptions y
 assumeAlso | assumeAlso(cond) | Accepted and noted, as assume.
 nthroot | nthroot(x, n) | The real n-th root.
 
+# Control systems
+tf | tf(num, den), tf('s') | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works.
+zpk | zpk(zeros, poles, gain) | A transfer function from its zeros, poles and gain.
+ss | ss(A, B, C, D) | A system from state-space matrices (one input, one output), shown as its transfer function.
+pid | pid(Kp, Ki, Kd, Tf) | A PID controller: Kp + Ki/s + Kd·s/(Tf·s + 1).
+feedback | feedback(G, H, sign) | The closed loop G/(1 + G·H) (sign −1, the usual; +1 for positive feedback).
+series | series(G, H) | G and H one after the other (G·H).
+parallel | parallel(G, H) | G and H side by side (G + H).
+minreal | minreal(G) | Cancels poles and zeros that are the same.
+pole | pole(G) | The poles (roots of the denominator).
+zero | zero(G) | The zeros (roots of the numerator).
+tzero | tzero(G) | The zeros (as zero).
+dcgain | dcgain(G) | The steady value for a step of 1 (G at s = 0).
+isstable | isstable(G) | True when every pole is in the left half-plane.
+damp | damp(G) | Each pole's natural frequency and damping.
+stepinfo | stepinfo(G) | Rise time, settling time (2 %), overshoot (%), peak and peak time, steady state.
+step | step(G), step(G, T), [y, t] = step(G) | The response to a step of 1, drawn or returned.
+impulse | impulse(G), [y, t] = impulse(G) | The response to an impulse.
+lsim | lsim(G, u, t) | The response to any input u at times t.
+bode | bode(G), [mag, phase, w] = bode(G) | Magnitude (dB) and phase (°) against frequency.
+margin | margin(G), [Gm, Pm, Wcg, Wcp] = margin(G) | Gain and phase margins and where they are.
+nyquist | nyquist(G) | The frequency response drawn in the complex plane, with −1 marked.
+rlocus | rlocus(G), [r, K] = rlocus(G) | Where the closed loop's poles go as the gain rises.
+
 # Running code
 help | help name | Help for a function.
 doc | doc name | Help for a function.

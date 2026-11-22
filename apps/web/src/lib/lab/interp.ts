@@ -6,6 +6,7 @@ import { cast, isNumClass, resultClass, type NumClass } from './types';
 import { colPositions, contents, isTable, joinTables, pick as pickTable, properties, remove as removeRows, renamed, setValues } from './table';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
+import { isLti, ltiBinop, ltiNeg } from './control';
 import { symBinop, symCall, symConcat, symNeg, symTranspose } from './sym-lab';
 import { ZERO as ZERO_SYM } from './sym';
 
@@ -227,6 +228,7 @@ export class Lab {
       }
       case 'un': {
         const a = this.ev(e.a, f);
+        if (isLti(a) && e.op !== '~') return [e.op === '-' ? ltiNeg(a) : a];
         if (a.k === 'sym' && e.op !== '~') return [e.op === '-' ? symNeg(a) : a];
         if (e.op === '+') return [toMat(a)];
         if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
@@ -380,6 +382,7 @@ export class Lab {
   // ——— Operators ———
   binop(op: string, a: Value, b: Value): Value {
     // Symbolic maths (M396): exact, with letters; back to numbers when neither side has any.
+    if (isLti(a) || isLti(b)) { const r = ltiBinop(op, a, b); if (r) return r; }
     if (a.k === 'sym' || b.k === 'sym') { const r = symBinop(op, a, b); if (r) return r; }
     if ((op === '==' || op === '~=') && a.k === 'str' && b.k === 'str' && a.v.length !== b.v.length && a.v.length !== 1 && b.v.length !== 1) throw new LabError('To compare texts of different lengths use strcmp(a, b).');
     const A = toMat(a, 'The left side'), B = toMat(b, 'The right side');
