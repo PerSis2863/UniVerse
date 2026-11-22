@@ -6,8 +6,11 @@
 # files Cloudflare takes in ~/hyperion-ai-out. About 3–5 hours on one RTX 4090 (24 GB) or RTX A6000 (48 GB). Safe to
 # run again: each stage that finished is skipped, and training carries on from its last save.
 set -euo pipefail
-WORK="${WORK:-$HOME/hyperion-ai}"
-OUT="${OUT:-$HOME/hyperion-ai-out}"
+# On RunPod the big disk is /workspace (the home folder's disk is small): keep the work, the downloads and the tools there.
+BIG="$HOME"; [ -d /workspace ] && [ -w /workspace ] && BIG=/workspace
+export XDG_CACHE_HOME="${XDG_CACHE_HOME:-$BIG/.cache}"   # the model downloads (~40 GB) and the tools' caches
+WORK="${WORK:-$BIG/hyperion-ai}"
+OUT="${OUT:-$BIG/hyperion-ai-out}"
 PER="${PER:-6}"          # requests written for each of Hyperion's functions
 EPOCHS="${EPOCHS:-2}"
 mkdir -p "$WORK" "$OUT"

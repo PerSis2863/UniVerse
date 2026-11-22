@@ -26,13 +26,14 @@ Not tried on a real card yet: if anything stops with an error, copy the last lin
 ## 1. Rent the machine
 
 On **RunPod** (runpod.io) or **Vast.ai** (vast.ai): one **RTX 4090** (or **RTX A6000 / L40S**, 48 GB), a **PyTorch**
-template, at least **120 GB of disk**. Open its terminal (RunPod: Connect → "Start Web Terminal" or Jupyter Lab →
+template, with **Container Disk 50 GB** and **Volume Disk 150 GB** (the kit keeps its work and the ~40 GB of
+downloads on the volume, `/workspace`, by itself). Open its terminal (RunPod: Connect → "Start Web Terminal" or Jupyter Lab →
 Terminal).
 
 ## 2. Get UniVerse
 
 ```
-git clone --branch claude/youthful-fermi-sbdtcp --depth 1 https://github.com/PerSis2863/UniVerse.git && cd UniVerse/apps/web
+cd /workspace && git clone --branch claude/youthful-fermi-sbdtcp --depth 1 https://github.com/PerSis2863/UniVerse.git && cd UniVerse/apps/web
 ```
 
 GitHub asks for your name and a password: use a short-lived, read-only token (GitHub → Settings → Developer settings →
@@ -42,9 +43,11 @@ the rented machine: never into a chat or a file.
 ## 3. Start
 
 ```
+apt-get update -qq && apt-get install -y -qq tmux && tmux new -s hyperion
 bash scripts/ai/hyperion-gpu.sh
 ```
 
+`tmux` keeps it running if the browser tab closes: to see it again, open a terminal and type `tmux attach -t hyperion`.
 It shows five steps. The first takes 10–20 minutes (it downloads the tools and the model, about 40 GB). If the
 connection drops, run the same command again: it carries on.
 
@@ -55,7 +58,7 @@ At the end it prints two lines like `before (no add-on): 92 of 150 answers ran i
 
 ## 5. Bring the files home
 
-In the folder `hyperion-ai-out` (in the machine's home folder): **adapter_model.safetensors**, **adapter_config.json**
+In the folder `hyperion-ai-out` (in `/workspace`, the first folder Jupyter Lab shows): **adapter_model.safetensors**, **adapter_config.json**
 and **score.txt** (and `lessons.jsonl`, the lessons it learnt from). In Jupyter Lab: right-click → Download. Then
 **stop or delete the machine**.
 
