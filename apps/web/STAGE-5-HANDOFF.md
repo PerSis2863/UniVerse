@@ -11225,3 +11225,23 @@ lists them for crossval). `treeOf` now gives only the shape (pred, cut, left, ri
 iris OOB < 8%, TreeBagger's 80-point OOB curve and petal importance, prediction, 5-fold CV; AdaBoostM1 on two noisy
 rings beating two stumps, AdaBoostM2 on iris, LSBoost on a sine, AdaBoostM1 refusing three classes.
 
+## M419 (22 Nov): Hyperion toolbox, automatic tuning
+
+`ml-tune.ts` (pure): `tune(vars, objective, rand, { evals, method, divisions, seeds, onEval })`. A `TuneVar` is real,
+integer or categorical, on a straight or log scale; `encode` / `decode` map settings to the unit box (a category is a
+slice of [0, 1]). 'bayesopt' (default): 4 random seed points, then a Gaussian process (`gp`: squared-exponential, its
+length from {0.05 … 1} by the marginal likelihood, the objective standardised, 1e-4 noise) and the next point where
+`expectedImprovement` is largest among 1,000 random points and 500 small steps around the best; 'gridsearch'
+(`divisions` per real axis, every category, shuffled, at most `evals`); 'randomsearch'. A point already tried isn't
+tried again; a failed or non-finite objective counts as the worst seen + 1. In the language (`ml-lab.ts`): every
+fitc…/fitr… takes 'OptimizeHyperparameters' ('auto', 'all', 'none' or a cell of names; `TUNABLE` holds each kind's
+settings and ranges, `auto` marking MATLAB's default set) and 'HyperparameterOptimizationOptions' (a struct:
+MaxObjectiveEvaluations 30, Optimizer, KFold 5 or Holdout, NumGridDivisions 10, ShowPlots, Verbose). Each try is the
+out-of-fold error on one partition made once (`outOfFold`, now shared with crossval, and `partitionFor`), log(1 + MSE)
+for numbers; the model is learnt on all rows with the best settings and keeps `HyperparameterOptimizationResults` (a
+table: the settings tried and their Objective). `search` prints a table of tries and the best, and draws "Min objective
+vs. number of tries". `optimizableVariable` and `bayesopt(fun, vars or {vars}, 'MaxObjectiveEvaluations', n,
+'Verbose', 0, 'PlotFcn', [])`: fun gets a one-row table; the result has XAtMinObjective, MinObjective, XTrace,
+ObjectiveTrace. Naive Bayes, discriminant and linear models have nothing to tune (said in words). Tests (in
+`ml-net.test.ts`).
+

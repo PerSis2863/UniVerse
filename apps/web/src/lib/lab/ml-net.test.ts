@@ -74,3 +74,35 @@ describe('Hyperion ensembles (M418)', () => {
     expect(() => run("fitcensemble([1;2;3;4], [1;2;3;1], 'Method', 'AdaBoostM1')")).toThrow(/two classes/);
   });
 });
+
+describe('Hyperion automatic tuning (M419)', () => {
+  it('Bayesian optimisation finds a minimum in few tries; settings map to the unit box and back', async () => {
+    const { tune, decode, encode } = await import('./ml-tune');
+    const vars = [{ name: 'x', type: 'real' as const, range: [0, 1] as [number, number], log: false }, { name: 'c', type: 'real' as const, range: [1e-3, 1e3] as [number, number], log: true }];
+    const r = tune(vars, ([x, c]) => (Number(x) - 0.3) ** 2 + (Math.log10(Number(c)) - 1) ** 2, seeded(4), { evals: 25 });
+    const [x, c] = r.tried[r.best].map(Number);
+    expect(Math.abs(x - 0.3)).toBeLessThan(0.08);
+    expect(Math.abs(Math.log10(c) - 1)).toBeLessThan(0.25);
+    expect(decode(vars, encode(vars, [0.25, 100])).map((v) => +Number(v).toFixed(9))).toEqual([0.25, 100]);
+    const cats = [{ name: 'k', type: 'categorical' as const, range: ['a', 'b', 'c'], log: false }, { name: 'n', type: 'integer' as const, range: [1, 10] as [number, number], log: false }];
+    expect(decode(cats, encode(cats, ['b', 7]))).toEqual(['b', 7]);
+    const grid = tune(cats, () => 1, seeded(1), { method: 'gridsearch', divisions: 4, evals: 100 });
+    expect(grid.tried).toHaveLength(12);
+  });
+
+  it('tunes a model by its cross-validated error, and bayesopt tunes any function', () => {
+    const r = run("rng(1)\nload fisheriris\nm = fitcknn(meas, species, 'OptimizeHyperparameters', 'auto', 'HyperparameterOptimizationOptions', struct('MaxObjectiveEvaluations', 10, 'ShowPlots', false, 'Verbose', 0));\nk = m.NumNeighbors;\nres = m.HyperparameterOptimizationResults;\nn = height(res);\nbest = min(res.Objective);\ns = fitcsvm(meas(51:end, 3:4), species(51:end), 'KernelFunction', 'rbf', 'OptimizeHyperparameters', {'BoxConstraint'}, 'HyperparameterOptimizationOptions', struct('Optimizer', 'gridsearch', 'NumGridDivisions', 5, 'ShowPlots', false, 'Verbose', 0));\nns = height(s.HyperparameterOptimizationResults);\nx = optimizableVariable('x', [-5 5]);\nb = bayesopt(@(t) (t.x - 1.5)^2, x, 'MaxObjectiveEvaluations', 15, 'Verbose', 0, 'PlotFcn', []);\nxb = b.XAtMinObjective.x;");
+    expect(r.d('n')).toEqual([10]);
+    expect(r.d('best')[0]).toBeLessThan(0.07);
+    expect(r.d('k')[0]).toBeGreaterThanOrEqual(1);
+    expect(r.d('ns')).toEqual([5]);
+    expect(Math.abs(r.d('xb')[0] - 1.5)).toBeLessThan(0.2);
+    expect(() => run("fitcnb([1 2;3 4;5 6;7 8], [1;1;2;2], 'OptimizeHyperparameters', 'auto')")).toThrow(/no settings to tune/);
+  });
+
+  it('prints each try and draws the best so far', () => {
+    const r = run("rng(2)\nload fisheriris\nm = fitctree(meas, species, 'OptimizeHyperparameters', 'auto', 'HyperparameterOptimizationOptions', struct('MaxObjectiveEvaluations', 5));");
+    expect(r.out).toContain('Tuning classification tree by Bayesian optimisation (5 tries)');
+    expect(r.out).toMatch(/Best: MinLeafSize = \d+/);
+  });
+});

@@ -614,6 +614,8 @@ kmeans | [idx, C, sumd, D] = kmeans(X, k, 'Replicates', r) | k clusters by k-mea
 dbscan | [idx, core] = dbscan(X, epsilon, minpts) | Clusters of dense rows; -1 marks noise.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
+optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
+bayesopt | r = bayesopt(@(t) loss(t.x, t.y), [vars], 'MaxObjectiveEvaluations', 30) | Finds the settings with the smallest value by Bayesian optimisation (a Gaussian process and expected improvement): r.XAtMinObjective, r.MinObjective. Every fitc…/fitr… also tunes itself: fitcsvm(X, Y, 'OptimizeHyperparameters', 'auto') tries settings by their 5-fold error ('HyperparameterOptimizationOptions', struct('MaxObjectiveEvaluations', 30, 'Optimizer', 'bayesopt' or 'gridsearch' or 'randomsearch')).
 
 # Running code
 help | help name | Help for a function.

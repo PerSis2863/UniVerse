@@ -8,6 +8,7 @@ import { gfx } from './plot';
 import { IRIS_SPECIES, irisRows } from './iris';
 import * as ml from './ml';
 import { netPredictor, trainNet, type Act, type Net } from './ml-net';
+import { tune, type Setting, type TuneVar } from './ml-tune';
 
 // Hyperion's machine learning toolbox in the language (M416): classifiers (fitcknn, fitctree, fitcnb, fitcdiscr,
 // fitcsvm, fitcecoc), regression (fitrtree, fitlm, fitglm), predict / loss / resubLoss, cross-validation (crossval,
@@ -349,7 +350,10 @@ FIT.GeneralizedLinearModel = (d, o) => {
 
 for (const [name, kind] of [['fitcknn', 'ClassificationKNN'], ['fitctree', 'ClassificationTree'], ['fitcnb', 'ClassificationNaiveBayes'], ['fitcdiscr', 'ClassificationDiscriminant'], ['fitcsvm', 'ClassificationSVM'], ['fitcecoc', 'ClassificationECOC'], ['fitcnet', 'ClassificationNeuralNetwork'], ['fitcensemble', 'ClassificationEnsemble'], ['fitrtree', 'RegressionTree'], ['fitrnet', 'RegressionNeuralNetwork'], ['fitrensemble', 'RegressionEnsemble'], ['fitlm', 'LinearModel'], ['fitglm', 'GeneralizedLinearModel']] as const) {
   def(name, (a, _n, lab) => {
-    const d = dataOf(a, name), o = options(a, d.rest), m = FIT[kind]!(d, o);
+    const d = dataOf(a, name), o = options(a, d.rest), ask = o.get('optimizehyperparameters');
+    if (ask && !(ask.k === 'str' && /^none$/i.test(ask.v))) return [tuneFit(kind, d, o, lab)];
+    o.delete('optimizehyperparameters');
+    const m = FIT[kind]!(d, o);
     if (o.has('kfold') || o.has('holdout') || o.has('leaveout') || o.has('cvpartition') || (o.has('crossval') && optBool(o, 'crossval', false))) return [crossval(m, o)];
     if (kind === 'GeneralizedLinearModel' && optStr(o, 'distribution', 'normal') === 'binomial' && !(field(m, 'Converged') as Mat).d[0]) lab.host.out('Warning: the logistic fit didn’t settle: the classes may be perfectly separated, so the coefficients grow without end.\n');
     return [m];
@@ -486,18 +490,10 @@ for (const [name, testSide] of [['training', false], ['test', true]] as const) {
 }
 /** Learns again on each training part and predicts the part held out; every row gets an answer from a model that
  * never saw it. */
-function crossval(m: Struct, o: Opts): Struct {
-  const kind = typeOf(m), X = rowsOf(toMat(field(m, 'X'))), Y = field(m, 'Y'), n = X.length, regression = isRegression(m) && !m.f.has('ClassNames');
-  const y = regression ? null : labelsOf(Y).y;
-  let c: Struct;
-  const given = o.get('cvpartition');
-  if (isPartition(given)) c = given;
-  else if (o.has('holdout')) c = partition(n, y, 'holdout', optNum(o, 'holdout', 0.1));
-  else if (o.has('leaveout') && optBool(o, 'leaveout', false)) c = partition(n, y, 'leaveout', n);
-  else c = partition(n, y, 'kfold', optNum(o, 'kfold', 10));
-  const fold = toMat(field(c, 'Fold')).d, tests = fnum(c, 'NumTestSets'), holdout = textOf(field(c, 'Type')) === 'holdout';
-  const settings = settingsOf(m), preds = (field(m, 'PredictorNames') as Cell).d.map((v) => textOf(v)), response = textOf(field(m, 'ResponseName'));
-  const predNum = new Array(n).fill(NaN), predIdx = new Array(n).fill(-1), tested = new Array(n).fill(false);
+/** Each row's prediction from a model learnt without it (per the partition), learnt with `settings`. */
+function outOfFold(kind: Kind, X: ml.Rows, Y: Value, preds: string[], response: string, settings: Opts, c: Struct, regression: boolean) {
+  const n = X.length, fold = toMat(field(c, 'Fold')).d, tests = fnum(c, 'NumTestSets'), holdout = textOf(field(c, 'Type')) === 'holdout';
+  const predNum = new Array(n).fill(NaN), predIdx = new Array(n).fill(-1), tested = new Array(n).fill(false), L = regression ? null : labelsOf(Y);
   for (let t = 1; t <= tests; t++) {
     const isTest = (f: number) => (holdout ? f === 1 : f === t);
     const tr = [...fold.keys()].filter((i) => !isTest(fold[i])), te = [...fold.keys()].filter((i) => isTest(fold[i]));
@@ -505,13 +501,118 @@ function crossval(m: Struct, o: Opts): Struct {
     const sub = FIT[kind]!({ X: tr.map((i) => X[i]), y: subset(Y, tr), predictors: preds, response, rest: 0 }, new Map(settings));
     const rows = te.map((i) => X[i]);
     if (regression) regress(sub, rows).forEach((v, q) => { predNum[te[q]] = v; });
-    else { const L = labelsOf(Y), subL = labelsOf(field(sub, 'Y')), map = subL.names.map((nm) => L.names.indexOf(nm)); classify(sub, rows).idx.forEach((v, q) => { predIdx[te[q]] = map[v]; }); }
+    else { const subL = labelsOf(field(sub, 'Y')), map = subL.names.map((nm) => L!.names.indexOf(nm)); classify(sub, rows).idx.forEach((v, q) => { predIdx[te[q]] = map[v]; }); }
     te.forEach((i) => { tested[i] = true; });
   }
-  const L = regression ? null : labelsOf(Y);
-  const prediction: Value = regression ? col(predNum) : L!.back(predIdx.map((v) => Math.max(0, v)));
-  return { k: 'struct', f: new Map<string, Value>([['Type', str(regression ? 'RegressionPartitionedModel' : 'ClassificationPartitionedModel')], ['ModelType', str(kind)], ['KFold', num(tests)], ['Partition', c], ['Y', Y], ['Prediction', prediction], ['Tested', mat(n, 1, tested.map(Number), true)], ...(L ? [['ClassNames', L.classes] as [string, Value]] : [])]) };
+  const rows = [...tested.keys()].filter((i) => tested[i]), yn = regression ? toMat(Y).d : null;
+  const loss = regression ? rows.reduce((acc, i) => acc + (predNum[i] - yn![i]) ** 2, 0) / rows.length : rows.reduce((acc, i) => acc + (predIdx[i] !== L!.y[i] ? 1 : 0), 0) / rows.length;
+  return { predNum, predIdx, tested, loss, tests };
 }
+/** The partition crossval asks for ('KFold', 'Holdout', 'Leaveout' or a given 'CVPartition'). */
+function partitionFor(o: Opts, n: number, y: number[] | null, k = 10): Struct {
+  const given = o.get('cvpartition');
+  if (isPartition(given)) return given;
+  if (o.has('holdout')) return partition(n, y, 'holdout', optNum(o, 'holdout', 0.1));
+  if (o.has('leaveout') && optBool(o, 'leaveout', false)) return partition(n, y, 'leaveout', n);
+  return partition(n, y, 'kfold', optNum(o, 'kfold', k));
+}
+/** Learns again on each training part and predicts the part held out; every row gets an answer from a model that
+ * never saw it. */
+function crossval(m: Struct, o: Opts): Struct {
+  const kind = typeOf(m), X = rowsOf(toMat(field(m, 'X'))), Y = field(m, 'Y'), n = X.length, regression = isRegression(m) && !m.f.has('ClassNames');
+  const L = regression ? null : labelsOf(Y), c = partitionFor(o, n, L ? L.y : null);
+  const preds = (field(m, 'PredictorNames') as Cell).d.map((v) => textOf(v)), response = textOf(field(m, 'ResponseName'));
+  const r = outOfFold(kind, X, Y, preds, response, settingsOf(m), c, regression);
+  const prediction: Value = regression ? col(r.predNum) : L!.back(r.predIdx.map((v) => Math.max(0, v)));
+  return { k: 'struct', f: new Map<string, Value>([['Type', str(regression ? 'RegressionPartitionedModel' : 'ClassificationPartitionedModel')], ['ModelType', str(kind)], ['KFold', num(r.tests)], ['Partition', c], ['Y', Y], ['Prediction', prediction], ['Tested', mat(n, 1, r.tested.map(Number), true)], ...(L ? [['ClassNames', L.classes] as [string, Value]] : [])]) };
+}
+
+// ——— Automatic tuning ———
+const int = (name: string, lo: number, hi: number, auto = true): TuneVar & { auto: boolean } => ({ name, type: 'integer', range: [lo, Math.max(lo + 1, hi)], log: true, auto });
+const real = (name: string, lo: number, hi: number, auto = true): TuneVar & { auto: boolean } => ({ name, type: 'real', range: [lo, hi], log: true, auto });
+const cat = (name: string, range: string[], auto = true): TuneVar & { auto: boolean } => ({ name, type: 'categorical', range, log: false, auto });
+/** What 'auto' tunes for each kind (and what 'all' adds), with MATLAB's usual ranges. */
+const TUNABLE: Partial<Record<Kind, (n: number, K: number) => (TuneVar & { auto: boolean })[]>> = {
+  ClassificationKNN: (n) => [int('NumNeighbors', 1, Math.max(2, Math.round(n / 2))), cat('Standardize', ['true', 'false'], false)],
+  ClassificationTree: (n) => [int('MinLeafSize', 1, Math.max(2, Math.floor(n / 2))), int('MaxNumSplits', 1, Math.max(2, n - 1), false)],
+  RegressionTree: (n) => [int('MinLeafSize', 1, Math.max(2, Math.floor(n / 2))), int('MaxNumSplits', 1, Math.max(2, n - 1), false)],
+  ClassificationSVM: () => [real('BoxConstraint', 1e-3, 1e3), real('KernelScale', 1e-3, 1e3), cat('KernelFunction', ['gaussian', 'linear', 'polynomial'], false), cat('Standardize', ['true', 'false'], false)],
+  ClassificationECOC: () => [real('BoxConstraint', 1e-3, 1e3), real('KernelScale', 1e-3, 1e3), cat('KernelFunction', ['gaussian', 'linear', 'polynomial'], false), cat('Standardize', ['true', 'false'], false)],
+  ClassificationNeuralNetwork: (n) => [cat('Activations', ['relu', 'tanh', 'sigmoid', 'none']), real('Lambda', 1e-5 / n, 1e5 / n), int('LayerSizes', 1, 300), cat('Standardize', ['true', 'false'])],
+  RegressionNeuralNetwork: (n) => [cat('Activations', ['relu', 'tanh', 'sigmoid', 'none']), real('Lambda', 1e-5 / n, 1e5 / n), int('LayerSizes', 1, 300), cat('Standardize', ['true', 'false'])],
+  ClassificationEnsemble: (n, K) => [cat('Method', ['Bag', K > 2 ? 'AdaBoostM2' : 'AdaBoostM1']), int('NumLearningCycles', 10, 500), real('LearnRate', 1e-3, 1), int('MinLeafSize', 1, Math.max(2, Math.floor(n / 2)))],
+  RegressionEnsemble: (n) => [cat('Method', ['Bag', 'LSBoost']), int('NumLearningCycles', 10, 500), real('LearnRate', 1e-3, 1), int('MinLeafSize', 1, Math.max(2, Math.floor(n / 2)))],
+};
+const fmtSetting = (v: Setting) => (typeof v === 'number' ? String(+v.toPrecision(4)) : v);
+const hopt = (s: Value | undefined, name: string): Value | undefined => (s && s.k === 'struct' ? [...s.f].find(([k]) => k.toLowerCase() === name)?.[1] : undefined);
+/** Runs a search over settings, printing each try (and drawing the best so far); gives the results as a table. */
+function search(lab: Lab, vars: TuneVar[], objective: (s: Setting[]) => number, how: Value | undefined, what: string) {
+  const evals = Math.max(1, Math.min(500, Math.round(hopt(how, 'maxobjectiveevaluations') ? toMat(hopt(how, 'maxobjectiveevaluations')!).d[0] : 30)));
+  const method = (hopt(how, 'optimizer') ? textOf(hopt(how, 'optimizer')!).toLowerCase() : 'bayesopt') as 'bayesopt';
+  if (!['bayesopt', 'gridsearch', 'randomsearch'].includes(method)) throw new LabError("Optimizer is 'bayesopt', 'gridsearch' or 'randomsearch'.");
+  const verbose = hopt(how, 'verbose') ? toMat(hopt(how, 'verbose')!).d[0] !== 0 : true, plots = hopt(how, 'showplots') ? toMat(hopt(how, 'showplots')!).d[0] !== 0 : true;
+  const divisions = hopt(how, 'numgriddivisions') ? Math.round(toMat(hopt(how, 'numgriddivisions')!).d[0]) : 10;
+  if (verbose) lab.host.out(`Tuning ${what} by ${method === 'bayesopt' ? 'Bayesian optimisation' : method === 'gridsearch' ? 'a grid search' : 'random search'} (${evals} tries):\n  Try   Objective    Best so far   ${vars.map((v) => v.name.padEnd(14)).join('')}\n`);
+  const r = tune(vars, objective, random, { evals, method, divisions, onEval: (i, at, v, best) => { if (verbose) lab.host.out(`  ${String(i).padStart(3)}   ${fmtSetting(v).padEnd(12)} ${fmtSetting(best).padEnd(13)} ${at.map((x) => fmtSetting(x).padEnd(14)).join('')}\n`); } });
+  const bestAt = r.tried[r.best];
+  if (verbose) lab.host.out(`Best: ${vars.map((v, i) => `${v.name} = ${fmtSetting(bestAt[i])}`).join(', ')} (objective ${fmtSetting(r.values[r.best])}).\n`);
+  if (plots) {
+    const n = r.values.length, mins = r.values.map((_, i) => Math.min(...r.values.slice(0, i + 1)));
+    call(lab, 'figure');
+    call(lab, 'plot', mat(1, n, r.values.map((_, i) => i + 1)), mat(1, n, r.values), str('o'));
+    call(lab, 'hold', str('on'));
+    call(lab, 'stairs', mat(1, n, mins.map((_, i) => i + 1)), mat(1, n, mins));
+    call(lab, 'hold', str('off'));
+    call(lab, 'legend', str('Each try'), str('Best so far'));
+    call(lab, 'title', str('Min objective vs. number of tries')); call(lab, 'xlabel', str('Tries')); call(lab, 'ylabel', str('Objective')); call(lab, 'grid', str('on'));
+  }
+  const results = table([...vars.map((v, k) => [v.name, v.type === 'categorical' ? cellCol(r.tried.map((t) => str(String(t[k])))) : col(r.tried.map((t) => Number(t[k])))] as [string, Value]), ['Objective', col(r.values)]]);
+  return { r, bestAt, results };
+}
+/** fit…(…, 'OptimizeHyperparameters', 'auto'): each try is the cross-validated error (5 folds; log(1 + MSE) for
+ * numbers), all on the same partition; the model is then learnt on every row with the best settings. */
+function tuneFit(kind: Kind, d: Data, o: Opts, lab: Lab): Struct {
+  const ask = o.get('optimizehyperparameters')!, how = o.get('hyperparameteroptimizationoptions');
+  o.delete('optimizehyperparameters'); o.delete('hyperparameteroptimizationoptions');
+  const regression = REGRESSION.has(kind) && !(kind === 'GeneralizedLinearModel' && optStr(o, 'distribution', 'normal') === 'binomial');
+  const L = regression ? null : labelsOf(d.y!), all = TUNABLE[kind]?.(d.X.length, L?.K ?? 0);
+  if (!all) throw new LabError('This kind of model has no settings to tune.');
+  const word = ask.k === 'str' ? ask.v.toLowerCase() : '';
+  const names = ask.k === 'cell' ? ask.d.map((v) => textOf(v).toLowerCase()) : null;
+  const vars = word === 'auto' ? all.filter((v) => v.auto) : word === 'all' ? all : names ? names.map((nm) => all.find((v) => v.name.toLowerCase() === nm) ?? (() => { throw new LabError(`“${nm}” isn’t a setting this model can tune (it can: ${all.map((v) => v.name).join(', ')}).`); })()) : null;
+  if (!vars) throw new LabError("OptimizeHyperparameters is 'auto', 'all', 'none' or a cell of setting names.");
+  const holdout = hopt(how, 'holdout'), k = hopt(how, 'kfold');
+  const part = holdout ? partition(d.X.length, L ? L.y : null, 'holdout', toMat(holdout).d[0]) : partition(d.X.length, L ? L.y : null, 'kfold', k ? toMat(k).d[0] : 5);
+  const withSettings = (s: Setting[]) => { const so = new Map(o); vars.forEach((v, i) => so.set(v.name.toLowerCase(), typeof s[i] === 'number' ? num(s[i] as number) : str(String(s[i])))); return so; };
+  const objective = (s: Setting[]) => { const loss = outOfFold(kind, d.X, d.y!, d.predictors, d.response, withSettings(s), part, regression).loss; return regression ? Math.log1p(loss) : loss; };
+  const { bestAt, results } = search(lab, vars, objective, how, kind.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase());
+  const m = FIT[kind]!(d, withSettings(bestAt));
+  m.f.set('HyperparameterOptimizationResults', results);
+  return m;
+}
+def('optimizableVariable', (a) => {
+  if (a.length < 2) throw new LabError("optimizableVariable needs a name and a range: optimizableVariable('x', [0 1]).");
+  const o = options(a, 2), type = optStr(o, 'type', a[1].k === 'cell' ? 'categorical' : 'real');
+  if (!['real', 'integer', 'categorical'].includes(type)) throw new LabError("Type is 'real', 'integer' or 'categorical'.");
+  return [{ k: 'struct', f: new Map<string, Value>([['Type', str('optimizableVariable')], ['Name', str(textOf(a[0]))], ['Range', a[1]], ['VarType', str(type)], ['Transform', str(optStr(o, 'transform', 'none'))]]) } satisfies Struct];
+});
+const tuneVarOf = (v: Value): TuneVar => {
+  if (v.k !== 'struct' || !v.f.has('VarType')) throw new LabError('bayesopt needs variables made by optimizableVariable.');
+  const type = textOf(field(v, 'VarType')) as TuneVar['type'], range = field(v, 'Range'), log = textOf(field(v, 'Transform')) === 'log';
+  if (type === 'categorical') { if (range.k !== 'cell') throw new LabError('A categorical variable’s range is a cell of names.'); return { name: textOf(field(v, 'Name')), type, range: range.d.map((x) => textOf(x)), log: false }; }
+  const r = toMat(range).d;
+  if (!(r[1] > r[0]) || (log && r[0] <= 0)) throw new LabError(`The range of ${textOf(field(v, 'Name'))} needs low < high${log ? ', both above 0 for a log scale' : ''}.`);
+  return { name: textOf(field(v, 'Name')), type, range: [r[0], r[1]], log };
+};
+def('bayesopt', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError("bayesopt needs a function and its variables: bayesopt(@(t) t.x^2, optimizableVariable('x', [-1 1])).");
+  const list = a[1].k === 'cell' ? a[1].d : [a[1]], vars = list.map(tuneVarOf), o = options(a, 2);
+  const how: Struct = { k: 'struct', f: new Map<string, Value>([['MaxObjectiveEvaluations', o.get('maxobjectiveevaluations') ?? num(30)], ['Verbose', o.get('verbose') ?? num(1)], ['ShowPlots', num(o.has('plotfcn') && (o.get('plotfcn')!.k === 'mat' && !(o.get('plotfcn') as Mat).d.length) ? 0 : 1)], ['Optimizer', str('bayesopt')]]) };
+  const row = (s: Setting[]) => table(vars.map((v, k) => [v.name, typeof s[k] === 'number' ? num(s[k] as number) : cellCol([str(String(s[k]))])]));
+  const objective = (s: Setting[]) => toMat(lab.callFn(a[0], [row(s)])[0], 'The objective').d[0];
+  const { r, bestAt, results } = search(lab, vars, objective, how, 'the objective');
+  return [{ k: 'struct', f: new Map<string, Value>([['Type', str('BayesianOptimization')], ['XAtMinObjective', row(bestAt)], ['MinObjective', num(r.values[r.best])], ['XTrace', results], ['ObjectiveTrace', col(r.values)], ['NumObjectiveEvaluations', num(r.values.length)]]) } satisfies Struct];
+});
 const isPartitioned = (v: Value | undefined): v is Struct => !!v && v.k === 'struct' && v.f.has('Prediction') && v.f.has('Partition');
 def('crossval', (a) => {
   const m = a[0];
