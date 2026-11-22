@@ -12,7 +12,7 @@ import type { Body } from '../body';
 import { guard, guardReply } from '@/lib/ghidra-guard';
 import { PLAYBOOKS, prompt } from './playbooks';
 
-// Ghidra's Customer Support (M375, one of the owner's app agents, 22 Nov): a buyer asks about the product in their hand
+// Ghidra's Customer Support (M434, one of the owner's app agents, 22 Nov): a buyer asks about the product in their hand
 // (its Trace passport), and Ghidra answers ONLY from that product's facts: the brand's description and story, the
 // warranty, the batch's origin and date, any active recall (first, with its advice) and the EU product passport
 // (materials, repair, recycling). Read here, never recording a scan; nothing from the request is taken as a fact. When the

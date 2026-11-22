@@ -102,7 +102,7 @@ export function GreenFootprint() {
               </div>
             ))}
           </dl>
-          <p className="mt-4 rounded-xl bg-emerald-500/[0.08] p-3 text-sm text-zinc-700 dark:text-zinc-200">Your biggest part is <strong>{biggest.label.toLowerCase()}</strong>. <Link href="/green?view=tips" className="font-semibold text-emerald-700 underline dark:text-emerald-300">Tips for {TIP_AREA[biggest.id].toLowerCase()}</Link></p>
+          <p className="mt-4 rounded-xl bg-emerald-500/[0.08] p-3 text-sm text-zinc-700 dark:text-zinc-200">Your biggest part is <strong>{biggest.label.toLowerCase()}</strong>. <Link href="/student/life/green?view=tips" className="font-semibold text-emerald-700 underline dark:text-emerald-300">Tips for {TIP_AREA[biggest.id].toLowerCase()}</Link></p>
           <button type="button" onClick={() => void save()} className="btn-primary mt-4 inline-flex items-center gap-1.5"><Save className="h-4 w-4" aria-hidden />Save this result</button>
           <p className="mt-3 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">An estimate from averages: travel from the UK government’s 2024 conversion factors (flights with their extra warming), food from Scarborough et al. 2014, things bought a rough share of a European’s footprint. The world’s average is about 4.7 t of CO₂ a person.</p>
         </section>

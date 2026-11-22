@@ -1,4 +1,4 @@
-// Trains Relief's own AI (M361) from nothing and writes src/lib/relief-model.gen.ts. No outside service:
+// Trains Relief's own AI (M420) from nothing and writes src/lib/relief-model.gen.ts. No outside service:
 // it runs on this computer in a few seconds. From apps/web:
 //
 //   npx tsx scripts/ai/train-relief.mts                     the made-up examples only

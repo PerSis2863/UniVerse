@@ -2518,7 +2518,7 @@ function ghidraSample(plan: AskPlan): AskPlan {
 
 // ── Write routes (in-memory only) ──────────────────────────────────────
 const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
-  // Ghidra, the assistant (M363; Ask UniVerse, M30) in the demo: the simple matcher, no AI; its two lists made up (ghidraSample).
+  // Ghidra, the assistant (M422; Ask UniVerse, M30) in the demo: the simple matcher, no AI; its two lists made up (ghidraSample).
   // UniVerse Play (M31): solo rounds play fully in the demo; rooms need the real app.
   ['POST', /^\/api\/collab\/saves(\/[^/]+\/share)?$/, () => { notice(); return fail('Sample mode: nothing is saved. Exit sample mode to save your work.', 400); }],
   ['POST', /^\/api\/connections\/[^/]+\/(start|import)$/, () => { notice(); return fail('Sample mode: connect your accounts after you leave the sample.', 400); }],

@@ -7,7 +7,7 @@ import { geminiJson } from '../gemini';
 import { PLAYBOOKS, prompt } from './playbooks';
 import { short } from '../trace';
 
-// Ghidra's Social Media Manager (M374, one of the owner's app agents, 22 Nov): for Trace brands, Relief organisations,
+// Ghidra's Social Media Manager (M433, one of the owner's app agents, 22 Nov): for Trace brands, Relief organisations,
 // Green Business companies and schools. It drafts posts for the platforms asked (Instagram, LinkedIn, X, Facebook,
 // WhatsApp) in the name of what the person runs, with a suggested day each, for them to copy and post themselves:
 // it never posts anything (no social accounts are connected). It never invents numbers, results or quotes.

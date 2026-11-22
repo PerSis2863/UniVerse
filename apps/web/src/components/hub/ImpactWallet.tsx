@@ -49,7 +49,7 @@ export function ImpactWallet({ role }: { role: string }) {
       body: <Spark values={data.trace.weeks} />, detail: { title: 'Trace points, last 12 weeks', description: 'Points earned each week from scans and campaigns.', series: data.trace.weeks, labels } },
     { id: 'relief', label: 'People helped · Relief', value: data.relief.people, unit: 'people', note: `${data.relief.deliveries} deliver${data.relief.deliveries === 1 ? 'y' : 'ies'} · ${data.relief.received} of my needs met`,
       body: <Spark values={data.relief.weeks} />, detail: { title: 'People helped, last 12 weeks', description: 'People reached each week by the requests you delivered.', series: data.relief.weeks, labels } },
-    { id: 'green', label: 'CO₂ saved · Green', value: data.green.kg, digits: 1, unit: 'kg', note: `${data.green.streak}-day streak · ${data.green.badges}/${data.green.badgesOf} badges`,
+    { id: 'green', label: 'CO₂ saved · Green living', value: data.green.kg, digits: 1, unit: 'kg', note: `${data.green.streak}-day streak · ${data.green.badges}/${data.green.badgesOf} badges`,
       body: <Spark values={data.green.weeks} />, detail: { title: 'CO₂ saved, last 12 weeks', description: 'Kilograms of CO₂ saved each week by the actions you logged.', series: data.green.weeks, labels } },
     { id: 'weeks', label: 'Active weeks, every app', value: active, unit: `of ${WALLET_WEEKS}`,
       body: <HeatStrip rows={[{ label: 'Uni', values: data.campus.weeks }, { label: 'Trace', values: data.trace.weeks }, { label: 'Relief', values: data.relief.weeks }, { label: 'Green', values: data.green.weeks }]} foot={[`${WALLET_WEEKS} weeks ago`, 'now']} /> },
@@ -79,7 +79,7 @@ export function ImpactWallet({ role }: { role: string }) {
           <ul className="mt-3 divide-y divide-zinc-200/70 dark:divide-white/[0.06]">
             {events.map((e, i) => (
               <li key={`${e.app}-${e.at}-${i}`}>
-                <Link href={appHome(e.app, role)} className="flex items-center gap-3 py-2.5">
+                <Link href={e.href ?? appHome(e.app, role)} className="flex items-center gap-3 py-2.5">
                   <AppIcon id={e.app} size={28} />
                   <span className="min-w-0 flex-1">
                     <span className="block truncate text-sm text-zinc-900 dark:text-white" translate="no">{e.text}</span>

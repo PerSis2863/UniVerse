@@ -1,4 +1,4 @@
-// M361 Relief's own AI in the ask form: typing "grandpa is not breathing" shows "reads this as Critical · Medical",
+// M420 Relief's own AI in the ask form: typing "grandpa is not breathing" shows "reads this as Critical · Medical",
 // Use this sets both; nothing is posted. Axe at 1280 (dark) and 390 (light, a touch phone), no page errors.
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/relief-own-ai-ui.mjs
 import { createRequire } from 'node:module';

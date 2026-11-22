@@ -1,4 +1,5 @@
 import { kmBetween } from './relief';
+import { quickWays, type QuickMode } from './transit-options';
 
 // Relief's delivery route (M312): the order to visit the requests a helper took, from where they start:
 // nearest first, then improved by swapping legs (2-opt) while it gets shorter. Positions are rounded to
@@ -49,3 +50,15 @@ export function mapsLink(start: Pt, order: Pt[], mode: Mode) {
   if (stops.length > 1) params.set('waypoints', stops.slice(0, -1).map(f).join('|'));
   return `https://www.google.com/maps/dir/?${params.toString()}`;
 }
+
+// M362 (the owner, 20 Nov: "add the same idea to Relief (the quickest way for a helper to reach someone who needs
+// help)… please do this also"): every way from a helper to a need, with the quickest one, Travel's estimates (M360).
+const REACH_WORD: Record<QuickMode, string> = { foot: 'on foot', bike: 'by bike', transit: 'by bus or train', car: 'by car' };
+export function reach(from: Pt, to: Pt) {
+  const ways = quickWays({ lat: from.lat, lon: from.lng }, { lat: to.lat, lon: to.lng }).map((w) => ({ ...w, words: REACH_WORD[w.mode] }));
+  const best = ways.reduce<(typeof ways)[number] | null>((b, w) => (!b || w.minutes < b.minutes ? w : b), null);
+  return { ways, best };
+}
+/** Google Maps directions from the helper to one need by that way (transit included, which the delivery route can't). */
+export const reachLink = (from: Pt, to: Pt, mode: QuickMode) =>
+  `https://www.google.com/maps/dir/?api=1&origin=${from.lat.toFixed(5)},${from.lng.toFixed(5)}&destination=${to.lat.toFixed(5)},${to.lng.toFixed(5)}&travelmode=${mode === 'car' ? 'driving' : mode === 'bike' ? 'bicycling' : mode === 'transit' ? 'transit' : 'walking'}`;

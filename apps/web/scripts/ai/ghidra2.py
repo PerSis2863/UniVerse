@@ -1,4 +1,4 @@
-# Ghidra 2 (M368): UniVerse's own chat model, trained from nothing, after MiniMind's design
+# Ghidra 2 (M427): UniVerse's own chat model, trained from nothing, after MiniMind's design
 # (github.com/jingyaogong/minimind, Apache-2.0; the code is written for UniVerse, not copied): it reads word-pieces
 # (byte-level BPE, so any language and any character works) instead of single letters; RMSNorm, rotary positions (RoPE),
 # grouped-query attention and a SwiGLU feed-forward, as Llama, Qwen and MiniMind use; two stages: pretraining on plain
@@ -15,10 +15,10 @@
 # minimind and after that start from there") instead of pretraining, then teach it to chat as Ghidra:
 #   python3 scripts/ai/ghidra2.py adopt --hf MINIMIND3_FOLDER --dir DIR           (its config, weights, word-pieces)
 #   python3 scripts/ai/ghidra2.py chat --out DIR/chat.jsonl --oasst oasst1.parquet && python3 scripts/ai/ghidra2.py sft --dir DIR --steps N
-# Teach it to think first, the way DeepSeek-R1's answers do (M372; the owner, 22 Nov: "i want to build my own deepseek ai"):
+# Teach it to think first, the way DeepSeek-R1's answers do (M431; the owner, 22 Nov: "i want to build my own deepseek ai"):
 #   python3 scripts/ai/ghidra2.py reason --out DIR/reason.jsonl --gsm8k train.parquet   (GSM8K, MIT: worked maths steps)
 #   python3 scripts/ai/ghidra2.py write --out DIR/write.jsonl --smoltalk smol-smoltalk.parquet --tok DIR/tokenizer.json
-#       (M369: everyday writing, emails, rewrites, summaries, code; HuggingFaceTB/smol-smoltalk, Apache-2.0)
+#       (M428: everyday writing, emails, rewrites, summaries, code; HuggingFaceTB/smol-smoltalk, Apache-2.0)
 #   python3 scripts/ai/ghidra2.py sft --dir DIR --stage think --from sft --data chat.jsonl,reason.jsonl,write.jsonl --steps N
 #   python3 scripts/ai/ghidra2.py score --dir DIR --gsm8k test.parquet --n 100           (how many it gets right)
 # Long runs: --until N stops after step N, the next run with the same command carries on (DIR/state-*.pt).
@@ -169,7 +169,7 @@ def cmd_adopt(a):
 # ─── Questions and answers to learn (the chat stage) ───────────────────────────────────────────────
 def cmd_chat(a):
     pairs = []
-    qa = HERE.parent / 'ghidra-qa.txt'  # Ghidra's own answers about UniVerse (M362), each way of asking
+    qa = HERE.parent / 'ghidra-qa.txt'  # Ghidra's own answers about UniVerse (M421), each way of asking
     for blk in qa.read_text(encoding='utf-8').strip().split('\n\n'):
         q, ans = blk.strip().split('\n', 1)
         pairs += [{'q': v.strip(), 'a': ans.strip()[3:].strip(), 'w': 6} for v in q[3:].split('|')]
@@ -191,7 +191,7 @@ def cmd_chat(a):
     print(f'{len(pairs)} questions and answers → {a.out}')
 
 
-# ─── Thinking lessons (M372) ───────────────────────────────────────────────────────────────────────
+# ─── Thinking lessons (M431) ───────────────────────────────────────────────────────────────────────
 def gsm8k(path):
     """GSM8K's problems as (question, steps, final number); its calculator notes <<…>> taken out."""
     import re
@@ -214,7 +214,7 @@ def cmd_reason(a):
 OTHER_AI = r'\b(ChatGPT|OpenAI|GPT-?\d|Qwen|Alibaba|Claude|Anthropic|Gemini|Bard|LLaMA|Llama|Meta AI|Hugging ?Face|SmolLM|language model|an AI (assistant|model) (developed|created|trained) by)\b'
 
 def cmd_write(a, per_kind=1600):
-    """Everyday writing lessons (M369: a small model's weak spot) from smol-smoltalk's first question and answer, short
+    """Everyday writing lessons (M428: a small model's weak spot) from smol-smoltalk's first question and answer, short
     enough for the window, answers naming another assistant dropped, at most `per_kind` of each kind so code and rewrites
     don't crowd out the rest."""
     import collections, re
@@ -267,7 +267,7 @@ def pretrain_data(a, tok, d):
 def chat_data(tok, d, block, chat='ghidra', files=('chat.jsonl',)):
     """Each pair in the model's chat shape (ours: <|user|>question<|end|><|ghidra|>answer<|end|>; MiniMind-3's: Qwen's
     <|im_start|>user … <|im_end|> <|im_start|>assistant, a thinking block, the answer, <|im_end|>); the model learns only
-    the answer part. A lesson with `think` (M372) learns its thinking too: <think>steps</think> then the answer; the rest
+    the answer part. A lesson with `think` (M431) learns its thinking too: <think>steps</think> then the answer; the rest
     keep an empty thinking block in the part it doesn't learn."""
     rows = []
     for name in files:
@@ -365,7 +365,7 @@ def train(a, stage):
             print(f'step {step} val {val_loss():.3f}', flush=True); save(step)
 
 
-# ─── How many school maths problems it gets right (M372) ──────────────────────────────────────────
+# ─── How many school maths problems it gets right (M431) ──────────────────────────────────────────
 def to_hf(model):
     """Our model as the standard library's Qwen3 (the same design), for fast writing with a key/value memory."""
     from transformers import Qwen3Config, Qwen3ForCausalLM

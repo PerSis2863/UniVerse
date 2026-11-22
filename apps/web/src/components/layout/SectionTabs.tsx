@@ -237,6 +237,7 @@ export const LIFE_TABS: SectionTab[] = [
   { href: '/campus-map', label: 'Campus map' },
   { href: '/student/life/medical', label: 'Medical & disability' },
   { href: '/student/life/everyday', label: 'Everyday life' },
+  { href: '/student/life/green', label: 'Green living' },
 ];
 
 // Impact reports (admin): signed reports, volunteer shifts and the yearly volunteering report (upgrade 5)

@@ -8,7 +8,7 @@ const meta = JSON.parse(readFileSync(join(dir, 'ghidra.json'), 'utf8')) as Ghidr
 const file = readFileSync(join(dir, 'ghidra.bin'));
 const ghidra = makeGhidra(meta, file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength));
 
-describe('Ghidra (M362)', () => {
+describe('Ghidra (M421)', () => {
   it('works out the same next-letter scores in the browser as the training script did', () => {
     const got = [...nextScores(ghidra, meta.check.prompt).slice(0, 8)];
     got.forEach((v, i) => expect(v).toBeCloseTo(meta.check.logits[i], 1));

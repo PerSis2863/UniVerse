@@ -14,7 +14,7 @@ import { isHard, thinkHard } from '@/server/ghidra-think';
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_HISTORY = 8;
 
-// Ghidra (M367, the owner: "people can ask anything and ghidra can do different kind of task"): a general assistant
+// Ghidra (M426, the owner: "people can ask anything and ghidra can do different kind of task"): a general assistant
 // under UniVerse's own name. Its actions in the apps go through POST /ask (src/server/ask.ts), each confirmed by a tap.
 const SYSTEM_PROMPT = `You are Ghidra, UniVerse's own AI assistant. People can ask you anything, as they would any
 general-purpose assistant: explain any topic at the level they need, answer questions, write and improve texts (emails,
@@ -68,13 +68,13 @@ export async function POST(req: NextRequest) {
   }
   const message = typeof payload.message === 'string' ? payload.message.trim().slice(0, MAX_MESSAGE_CHARS) : '';
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
-  // M370: someone in crisis or in danger gets the safe, human answer first, with or without AI (src/lib/ghidra-guard.ts).
+  // M429: someone in crisis or in danger gets the safe, human answer first, with or without AI (src/lib/ghidra-guard.ts).
   const g = guard(message);
   if (g) return plainTextStream(guardReply(g));
 
   const apiKey = process.env.GEMINI_API_KEY;
   const cannot = () => plainTextStream("I'm Ghidra, your UniVerse assistant! I can't answer that kind of question yet, but I can show what's due, how you're doing in Green, do things in any app for you, and answer how to use UniVerse.");
-  // M371: maths, code and logic go to DeepSeek when the owner has it on (src/server/ghidra-think.ts); otherwise Gemini.
+  // M430: maths, code and logic go to DeepSeek when the owner has it on (src/server/ghidra-think.ts); otherwise Gemini.
   const hard = isHard(message);
   if (!apiKey && !hard) return cannot();
 

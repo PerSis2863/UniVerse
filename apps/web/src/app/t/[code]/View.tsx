@@ -364,7 +364,7 @@ function WarrantyCard({ code, warranty, suspect }: { code: string; warranty: Non
   );
 }
 
-/** M375: Ghidra's Customer Support: a question about this product, answered only from its passport's facts. */
+/** M434: Ghidra's Customer Support: a question about this product, answered only from its passport's facts. */
 function AskProductCard({ code, brand, signedIn }: { code: string; brand: string; signedIn: boolean }) {
   const [q, setQ] = useState('');
   const [busy, setBusy] = useState(false);

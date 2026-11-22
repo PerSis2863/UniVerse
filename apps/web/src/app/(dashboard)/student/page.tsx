@@ -140,7 +140,7 @@ export default function StudentDashboard() {
   const home = useHome();
   const mine = useMyCourseColors();
   const cards: Record<string, React.ReactNode | null> = {
-    upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
+    upnext: <UpNextCard items={home.data?.upNext} loading={home.isLoading} note={s ? (s.upcoming ? `${s.upcoming} due soon` : 'Nothing due soon') : undefined} empty="Nothing coming up today. A good time to review flashcards or pick up an impact project." />,
     brief: <DailyBrief />,
     impact: (
       <div className="relative rounded-2xl bg-gradient-to-r from-indigo-50 via-pink-50 to-violet-50 dark:from-indigo-950/60 dark:via-indigo-900/40 dark:to-aqua-950/30 border border-[var(--separator)] dark:border-white/10 p-4 md:p-6 overflow-hidden shadow-xl shadow-indigo-500/5 dark:shadow-black/20">
@@ -378,7 +378,7 @@ export default function StudentDashboard() {
         )}
         {/* The account setup reminder sits below the top cards, so it never pushes them down. */}
         <HomeBoard role="student" layout={home.layout} onSave={(l) => void home.saveLayout(l)} cards={cards} afterTop={<AccountSetupCard />}
-          head={<DashHead name={user?.name} summary={s ? [s.upcoming ? `${s.upcoming} due soon` : 'Nothing due soon', s.attendance !== null ? `${s.attendance}% attendance` : null, s.averageGrade !== null ? `average ${s.averageGrade}%` : null].filter(Boolean).join(' · ') : null} />} />
+          head={<DashHead name={user?.name} />} />
       </div>
     </>
   );

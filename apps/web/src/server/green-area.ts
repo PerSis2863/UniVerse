@@ -73,7 +73,7 @@ export async function addAreaChallenge(u: SessionUser, b: Body) {
   await prisma.greenAreaChallenge.create({ data: { areaLat: area.lat, areaLng: area.lng, title, kind: b.kind, goal, startsAt: now, endsAt: new Date(now.getTime() + days * DAY), createdBy: u.id } });
   // The neighbours hear in the app (no email): 200 at most.
   const near = await prisma.greenHome.findMany({ where: { areaLat: area.lat, areaLng: area.lng, userId: { not: u.id } }, select: { userId: true }, take: 200 });
-  await notifyMany(near.map((n) => n.userId), { type: 'green', title: 'A new challenge in your neighbourhood', body: `${title}, for ${days} days. Every confirmed action counts.`, link: '/green', email: false });
+  await notifyMany(near.map((n) => n.userId), { type: 'green', title: 'A new challenge in your neighbourhood', body: `${title}, for ${days} days. Every confirmed action counts.`, link: '/student/life/green', email: false });
   return greenArea(u);
 }
 

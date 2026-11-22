@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { checkQuestions } from './quiz-draft';
 
-describe('Ghidra’s quiz drafts: every question checked (M366)', () => {
+describe('Ghidra’s quiz drafts: every question checked (M425)', () => {
   it('keeps real questions with four different options and a right answer among them', () => {
     const good = { question: 'What is 1/2 + 1/4?', options: ['3/4', '2/6', '1/8', '2/4'], answer: 0 };
     expect(checkQuestions([good], 5)).toEqual([good]);

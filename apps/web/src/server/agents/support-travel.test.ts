@@ -15,7 +15,7 @@ vi.mock('../travel', () => ({ placeOf: vi.fn(async (q: string) => (q === 'Nowher
 
 const me = { id: 'u1', role: 'STUDENT' } as SessionUser;
 
-describe('Customer Support and the Travel Planner (M375)', () => {
+describe('Customer Support and the Travel Planner (M434)', () => {
   it('every agent is briefed by its field’s playbook and the guardrail rule', () => {
     for (const p of Object.values(PLAYBOOKS)) {
       const text = prompt(p, 'Format.');

@@ -3,12 +3,12 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { damp, makeGhidra2, scoresAfter, type Ghidra2Meta } from './ghidra2';
 
-// M368: the browser's Ghidra 2 against the numbers the training script wrote. The model is added once it is trained
+// M427: the browser's Ghidra 2 against the numbers the training script wrote. The model is added once it is trained
 // (scripts/ai/ghidra2.py, or the rented graphics card's run, scripts/ai/ghidra2-gpu.md); until then there is nothing to check.
 const dir = join(__dirname, '../../public/ai');
 const has = existsSync(join(dir, 'ghidra2.json'));
 
-describe.skipIf(!has)('Ghidra 2 (M368)', () => {
+describe.skipIf(!has)('Ghidra 2 (M427)', () => {
   const meta = has ? (JSON.parse(readFileSync(join(dir, 'ghidra2.json'), 'utf8')) as Ghidra2Meta) : null!;
   const file = has ? readFileSync(join(dir, 'ghidra2.bin')) : null!;
   const m = has ? makeGhidra2(meta, file.buffer.slice(file.byteOffset, file.byteOffset + file.byteLength)) : null!;
@@ -25,7 +25,7 @@ describe.skipIf(!has)('Ghidra 2 (M368)', () => {
   });
 });
 
-describe('Ghidra 2’s repetition penalty (M369)', () => {
+describe('Ghidra 2’s repetition penalty (M428)', () => {
   it('lowers what it said lately, once each, whatever the sign', () => {
     const s = damp(new Float32Array([2.2, -1, 3, 0]), [0, 1, 0]);
     expect([...s].map((x) => +x.toFixed(3))).toEqual([2, -1.1, 3, 0]);

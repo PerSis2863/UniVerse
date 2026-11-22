@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { guard } from './ghidra-guard';
 
-describe('Ghidra’s guardrails (M370)', () => {
+describe('Ghidra’s guardrails (M429)', () => {
   it('answers someone in crisis before any AI runs', () => {
     for (const t of ['i want to die', 'I keep thinking about suicide', 'I want to kill myself', 'there is no point in living', 'mai marna chahta hoon', 'I have been cutting myself, self-harm']) expect(guard(t)).toBe('crisis');
   });

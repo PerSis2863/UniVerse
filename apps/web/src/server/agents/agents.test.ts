@@ -10,7 +10,7 @@ vi.mock('../moderation', () => ({ featureOff: vi.fn().mockResolvedValue(true) })
 const me = { id: 'u1', role: 'STUDENT' } as SessionUser;
 const page = (title: string) => ({ type: 'standard', title, extract: `${title} is a topic. It has two sentences. And a third.`, content_urls: { desktop: { page: `https://en.wikipedia.org/wiki/${title}` } } });
 
-describe('Ghidra’s app agents (M374)', () => {
+describe('Ghidra’s app agents (M433)', () => {
   afterEach(() => vi.unstubAllGlobals());
 
   it('the supervisor sends research and social posts to their agents, and checks what AI asks for', () => {

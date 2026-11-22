@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { BUCKETS, WEIGHTS } from './relief-model.gen';
 import { COLUMNS, features, readNeed } from './relief-model';
 
-describe("Relief's own AI (M361)", () => {
+describe("Relief's own AI (M420)", () => {
   it('ships one weight per bucket and answer', () => {
     expect(atob(WEIGHTS).length).toBe(BUCKETS * COLUMNS.length);
   });

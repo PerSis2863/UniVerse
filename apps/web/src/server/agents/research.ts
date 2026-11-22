@@ -5,7 +5,7 @@ import { featureOff } from '../moderation';
 import { geminiJson } from '../gemini';
 import { PLAYBOOKS, prompt } from './playbooks';
 
-// Ghidra's Research Assistant (M374, one of the owner's app agents, 22 Nov): for UniVersity and Green Business. It finds
+// Ghidra's Research Assistant (M433, one of the owner's app agents, 22 Nov): for UniVersity and Green Business. It finds
 // sources on Wikipedia (free, no key: its REST search and page summaries; only the topic is sent, from the server, never
 // who asks) and writes a short summary that cites them as [1], [2]… using only what they say. Without AI it shows the
 // sources' own summaries. The sources come back as links.

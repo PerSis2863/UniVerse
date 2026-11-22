@@ -56,7 +56,7 @@ export default function traceModule(router: Router) {
   // Signed in: the ownership vault
   r.post<{ code: string }>('scan/:code/own', ({ params, user }) => ownUnit(params.code, user));
   r.post<{ code: string }>('scan/:code/report', { status: 200 }, ({ params, user, body, req }) => reportFake(params.code, user, body ?? {}, req));
-  // M375: Ghidra's Customer Support answers a buyer's question from this product's passport (signed in: AI costs money).
+  // M434: Ghidra's Customer Support answers a buyer's question from this product's passport (signed in: AI costs money).
   r.post<{ code: string }>('scan/:code/ask', { status: 200 }, ({ params, user, body }) => askProduct(user, params.code, body ?? {}));
   r.post<{ code: string }>('scan/:code/takeback', { status: 200 }, ({ params, user }) => askTakeBack(params.code, user));
   r.post<{ code: string }>('scan/:code/repairs', { status: 200 }, ({ params, user, body }) => logRepair(params.code, user, body ?? {}));

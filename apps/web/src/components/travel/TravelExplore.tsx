@@ -20,6 +20,9 @@ const TravelFinder = dynamic(() => import('./TravelFinder').then((m) => m.Travel
   loading: () => <div className="h-96 skeleton rounded-[var(--radius-card)]" aria-busy="true" />,
 });
 // M209: the map (MapLibre and its styles load only when it's opened).
+// M395: Green's journeys compared and green places near you, as Aether's sections.
+const GreenJourney = dynamic(() => import('@/components/green/GreenJourney').then((m) => m.GreenJourney), { loading: () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> });
+const GreenPlaces = dynamic(() => import('@/components/green/GreenPlaces'), { ssr: false, loading: () => <div className="h-96 animate-pulse rounded-[var(--radius-card)] bg-zinc-200/60 dark:bg-white/[0.05]" aria-busy="true" /> });
 const TravelMap = dynamic(() => import('./map/TravelMap'), {
   ssr: false,
   loading: () => <div className="h-[calc(100dvh-12rem+var(--bare-gain))] min-h-[32rem] skeleton rounded-[var(--radius-card)]" aria-busy="true" />,
@@ -80,6 +83,8 @@ export function TravelExplore() {
 
   const switcher = <TravelTabs />;
   if (view === 'map') return <div className="space-y-4">{switcher}<TravelMap at={sp.get('at')} place={sp.get('d')} pin={sp.get('pin') === '1'} find={find} /></div>;
+  if (asked === 'journeys') return <div className="space-y-5">{switcher}<GreenJourney /></div>;
+  if (asked === 'green') return <div className="space-y-5">{switcher}<GreenPlaces /></div>;
   if (view === 'find') return <div className="space-y-5">{switcher}<TravelFinder onPlan={(m, days) => void startTrip(router, { guide: m.idea.title, cc: m.idea.cc, lat: m.idea.lat, lon: m.idea.lon, days })} /></div>;
 
   return (

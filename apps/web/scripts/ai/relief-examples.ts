@@ -1,4 +1,4 @@
-// The examples Relief's own AI learns from (M361; trained by train-relief.mts). Made up by hand, since
+// The examples Relief's own AI learns from (M420; trained by train-relief.mts). Made up by hand, since
 // UniVerse has almost no real requests yet. Two kinds:
 //  - REAL_LIKE: whole messages written the way people really write them (typos, no punctuation, SMS
 //    style, a few in romanised Hindi). Part of them is kept aside to test the model honestly.

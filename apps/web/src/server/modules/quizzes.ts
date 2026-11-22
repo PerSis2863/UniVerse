@@ -14,7 +14,7 @@ export default function quizzesModule(router: Router) {
   const r = router.controller('quizzes');
 
   r.post('', { roles: ['ADMIN', 'TEACHER'] }, ({ body, user }) => quizzes.create(validate<CreateQuizDto>(CreateQuizDto, body), user));
-  // M366: Ghidra drafts a quiz in a course the asker may manage (checked first, the same way as creating one by hand).
+  // M425: Ghidra drafts a quiz in a course the asker may manage (checked first, the same way as creating one by hand).
   r.post('draft', { roles: ['ADMIN', 'TEACHER'] }, async ({ body, user }) => {
     const courseId = str((body ?? {}).courseId);
     if (!courseId) throw new BadRequestException('Choose the course.');

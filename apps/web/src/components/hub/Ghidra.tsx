@@ -9,10 +9,10 @@ import { api, errorMessage } from '@/lib/api';
 import type { AskTurn } from '@/lib/ask';
 import { spring } from '@/lib/motion';
 
-// Ghidra, the assistant (M363; "Ask UniVerse", M30, until then; src/lib/ask.ts): a short chat on the hub. Each request
+// Ghidra, the assistant (M422; "Ask UniVerse", M30, until then; src/lib/ask.ts): a short chat on the hub. Each request
 // gets one reply (GhidraReply: an answer, a list of the person's own things, or one action to confirm). The last turns go
 // back with the next question so follow-ups work. Search (⌘K) hands a sentence over here through sessionStorage "uv-ask".
-// The same Ghidra answers on every page in the corner assistant (AIStudyAssistant, M364).
+// The same Ghidra answers on every page in the corner assistant (AIStudyAssistant, M423).
 
 const EXAMPLES = ['What’s due this week?', 'How am I doing in Green?', 'I cycled 8 km to school', 'We need drinking water for 4 people'];
 

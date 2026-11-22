@@ -2,7 +2,7 @@ import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from './green';
 import { RELIEF_KINDS, URGENCIES, type ReliefKind, type Urgency } from './relief';
 import { splitCode } from './trace';
 
-// Ghidra, the assistant (M363; "Ask UniVerse" until then, M30): one chat that acts in every app. Each
+// Ghidra, the assistant (M422; "Ask UniVerse" until then, M30): one chat that acts in every app. Each
 // request becomes one proposed action (AI on the server, or the simple matcher below when AI is off),
 // shown as a card the person must confirm; confirming calls the app's own route, which checks
 // everything again. Nothing is done without the tap. Two actions only read the person's own data
@@ -12,8 +12,8 @@ import { splitCode } from './trace';
 /** Pages the assistant may open (the box turns role-specific ones into the person's own address). */
 export const ASK_PAGES = {
   hub: { href: '/hub', label: 'All apps and your Impact Wallet' },
-  green: { href: '/green', label: 'Green: your climate actions' },
-  green_teams: { href: '/green/teams', label: 'Green teams and leaderboard' },
+  green: { href: '/student/life/green', label: 'Green: your climate actions' },
+  green_teams: { href: '/student/life/green?view=teams', label: 'Green teams and leaderboard' },
   relief: { href: '/relief', label: 'Relief: the live map of needs and offers' },
   relief_mine: { href: '/relief/mine', label: 'Your Relief requests and tasks' },
   trace: { href: '/trace', label: 'Trace: your brand console' },
@@ -40,26 +40,26 @@ export type AskPlan =
   | { action: 'trace_check'; code: string; say: string }
   | { action: 'open'; page: AskPage; say: string }
   | { action: 'my_due' | 'my_green' | 'my_trips' | 'my_courses'; say: string }
-  /** `place` and `days` (M375, the Travel Planner): the city, found in Travel's guides on the server, and how long. */
+  /** `place` and `days` (M434, the Travel Planner): the city, found in Travel's guides on the server, and how long. */
   | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; place?: string | null; days?: number | null; say: string }
-  /** M375: Customer Support for a product (its Trace code) and the buyer's question (src/server/agents/support.ts). */
+  /** M434: Customer Support for a product (its Trace code) and the buyer's question (src/server/agents/support.ts). */
   | { action: 'product_help'; code: string; question: string; say: string }
   | { action: 'message_draft'; text: string; say: string }
-  /** M366: a teacher's quiz draft. `course` is what they said; the server fills `courseId` and `courseName` from the
+  /** M425: a teacher's quiz draft. `course` is what they said; the server fills `courseId` and `courseName` from the
    *  courses they teach (never from AI), and the draft route checks access again. */
   | { action: 'quiz_draft'; topic: string; count: number; course: string | null; courseId?: string; courseName?: string; say: string }
   | { action: 'show'; say: string; items: ShowItem[] }
-  /** M373: several steps from one request (src/server/ghidra-chain.ts), each one of the replies above, approved together.
+  /** M432: several steps from one request (src/server/ghidra-chain.ts), each one of the replies above, approved together.
    *  Only the server makes it: cleanPlan never accepts one from AI. */
   | { action: 'chain'; say: string; steps: AskPlan[] }
-  /** M374, the app agents: the Research Assistant (src/server/agents/research.ts) and the Social Media Manager
+  /** M433, the app agents: the Research Assistant (src/server/agents/research.ts) and the Social Media Manager
    *  (agents/social.ts). The supervisor (AI or the matcher) picks them; the server runs them. */
   | { action: 'research'; topic: string; say: string }
   | { action: 'social_posts'; topic: string; platforms: string[]; count: number; say: string }
   | { action: 'posts'; say: string; posts: SocialPost[] }
   | { action: 'answer'; say: string };
 
-/** M373: whether a request may have several parts ("… and then …"): only then does Ghidra's planner run
+/** M432: whether a request may have several parts ("… and then …"): only then does Ghidra's planner run
  *  (src/server/ghidra-chain.ts), so ordinary requests cost nothing extra. Never a plain "and": "bread and milk" is one thing. */
 export const looksMultiStep = (text: string) => /\b(and then|then|after that|afterwards|and also|also)\b|;/i.test(text);
 
@@ -67,7 +67,7 @@ export const looksMultiStep = (text: string) => /\b(and then|then|after that|aft
  *  page outside UniVerse, like a Wikipedia source, opened in a new tab). */
 export interface ShowItem { title: string; sub: string; href: string | null; external?: boolean }
 
-/** M374: one post the Social Media Manager drafted, for the person to copy and post themselves. */
+/** M433: one post the Social Media Manager drafted, for the person to copy and post themselves. */
 export interface SocialPost { platform: string; text: string; when: string | null }
 const SOCIAL = ['Instagram', 'LinkedIn', 'X', 'Facebook', 'WhatsApp'];
 
@@ -81,7 +81,7 @@ const one = <T extends string>(list: readonly T[], v: unknown): T | null => (typ
 /** Checks a proposed action field by field (AI answers are untrusted); anything off becomes an answer. */
 export function cleanPlan(raw: unknown): AskPlan {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const say = str(r.say, r.action === 'answer' ? 6000 : 600); // M367: an answer may be a whole explanation
+  const say = str(r.say, r.action === 'answer' ? 6000 : 600); // M426: an answer may be a whole explanation
   const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, your courses, your trips and how you’re doing in Green, log a climate action, post on Relief, start a trip, draft a message or (for teachers) a quiz, check a product code, or open a page. Try “What’s due this week?”' };
   if (r.action === 'green_log') {
     const kind = one(GREEN_KINDS, r.kind), amount = num(r.amount);
@@ -101,7 +101,7 @@ export function cleanPlan(raw: unknown): AskPlan {
   }
   if (r.action === 'open' && typeof r.page === 'string' && r.page in ASK_PAGES) return { action: 'open', page: r.page as AskPage, say: say || `Open ${ASK_PAGES[r.page as AskPage].label}.` };
   if (r.action === 'my_due' || r.action === 'my_green' || r.action === 'my_trips' || r.action === 'my_courses') return { action: r.action, say };
-  // M365: a new trip (Travel's own route makes it; its cities are added on the trip's page) and a message drafted for
+  // M424: a new trip (Travel's own route makes it; its cities are added on the trip's page) and a message drafted for
   // the person to send themselves (it waits in Messages until they pick a chat and press Send).
   if (r.action === 'trip_new') {
     const name = str(r.name, 80), travellers = Math.round(num(r.travellers));

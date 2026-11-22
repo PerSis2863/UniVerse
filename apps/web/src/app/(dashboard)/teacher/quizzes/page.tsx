@@ -28,7 +28,7 @@ export default function TeacherQuizzes() {
   
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [newQuiz, setNewQuiz] = useState({ title: '', courseId: '', timeLimit: 30 });
-  // M366: /teacher/quizzes?manage=<id> (Ghidra's quiz drafts) opens that quiz in the editor.
+  // M425: /teacher/quizzes?manage=<id> (Ghidra's quiz drafts) opens that quiz in the editor.
   const [managing, setManaging] = useState<string | null>(() => (typeof window === 'undefined' ? null : new URLSearchParams(window.location.search).get('manage')));
   // Quizzes, or the course question banks (Stage 5 · B4.1).
   const [view, setView] = useState<'quizzes' | 'bank' | 'papers'>('quizzes');

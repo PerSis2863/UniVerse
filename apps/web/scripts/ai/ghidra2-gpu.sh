@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Ghidra 2 on a rented graphics card (M368, M369; the steps for the owner: scripts/ai/ghidra2-gpu.md). One command, from
+# Ghidra 2 on a rented graphics card (M427, M428; the steps for the owner: scripts/ai/ghidra2-gpu.md). One command, from
 # apps/web:   bash scripts/ai/ghidra2-gpu.sh
 # Default (MODE=minimind, about 30 minutes with downloads): starts from MiniMind-3's trained model (64 M numbers,
 # Apache-2.0), teaches it to chat as Ghidra, then to think first and to write (GSM8K's worked maths, everyday writing),

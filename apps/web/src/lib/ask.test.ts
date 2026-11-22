@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cleanPlan, localPlan } from './ask';
 
-describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
+describe('Ghidra, the assistant (Ask UniVerse until M422)', () => {
   it('keeps a valid climate action and works out its CO₂', () => {
     const p = cleanPlan({ action: 'green_log', kind: 'cycle', amount: '8' });
     expect(p).toMatchObject({ action: 'green_log', kind: 'CYCLE', amount: 8 });
@@ -21,7 +21,7 @@ describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
     expect(localPlan('open my wallet')).toMatchObject({ action: 'open', page: 'hub' });
     expect(localPlan('what is the weather').action).toBe('answer');
   });
-  it('M363: reads the person’s own work and Green numbers, and opens the new pages', () => {
+  it('M422: reads the person’s own work and Green numbers, and opens the new pages', () => {
     expect(localPlan('What’s due this week?').action).toBe('my_due');
     expect(localPlan('any homework for tomorrow').action).toBe('my_due');
     expect(localPlan('How am I doing in Green?').action).toBe('my_green');
@@ -32,7 +32,7 @@ describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
     expect(cleanPlan({ action: 'my_due', say: 'x' }).action).toBe('my_due');
     expect(cleanPlan({ action: 'show', items: [{ title: 'made up' }] }).action).toBe('answer'); // a list only ever comes from the server's own read
   });
-  it('M365: lists trips and courses, starts a trip, drafts a message, and checks what AI gives', () => {
+  it('M424: lists trips and courses, starts a trip, drafts a message, and checks what AI gives', () => {
     expect(localPlan('What trips do I have?').action).toBe('my_trips');
     expect(localPlan('which are my courses').action).toBe('my_courses');
     expect(localPlan('Plan a trip to Jaipur for 3 of us')).toMatchObject({ action: 'trip_new', name: 'Trip to Jaipur', travellers: 3 });
@@ -43,7 +43,7 @@ describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
     expect(cleanPlan({ action: 'message_draft', text: '' }).action).toBe('answer');
     expect((cleanPlan({ action: 'message_draft', text: 'a'.repeat(5000) }) as { text: string }).text.length).toBe(1000);
   });
-  it('M366: a teacher’s quiz draft, with the course left for the server to find', () => {
+  it('M425: a teacher’s quiz draft, with the course left for the server to find', () => {
     expect(localPlan('Make a quiz on fractions for MATH7')).toMatchObject({ action: 'quiz_draft', topic: 'fractions', course: 'MATH7', count: 5 });
     expect(localPlan('write a quiz with 8 questions about the water cycle')).toMatchObject({ action: 'quiz_draft', topic: 'the water cycle', count: 8, course: null });
     expect(localPlan('what quizzes are due').action).toBe('my_due');

@@ -6,7 +6,7 @@ import { geminiJson } from '../gemini';
 import { placeOf } from '../travel';
 import { PLAYBOOKS, prompt } from './playbooks';
 
-// Ghidra's Travel Planner (M375, one of the owner's app agents, 22 Nov): "plan 3 days in Jaipur for 2 of us" becomes a
+// Ghidra's Travel Planner (M434, one of the owner's app agents, 22 Nov): "plan 3 days in Jaipur for 2 of us" becomes a
 // real trip: the place found in Travel's guides (Wikivoyage, placeOf), its days, the travellers, an honest travel agent's
 // tips for that place (its playbook: pacing, area to stay, getting around, customs, safety, season; never invented prices
 // or hours), and, once the person taps Make the trip, the trip opens with "Plan my days" started (/travel/trip?plan=1).

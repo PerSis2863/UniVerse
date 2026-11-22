@@ -1,12 +1,13 @@
 'use client';
 
 import { usePathname } from 'next/navigation';
-import { Building2, Globe, Globe2, KeyRound, Megaphone, Radar, ScanLine, Sparkles, Truck, Wallet } from 'lucide-react';
-import { TabRow } from '@/components/ui/TabRow';
+import { Building2, Globe, Globe2, KeyRound, Leaf, Megaphone, Radar, Recycle, ScanLine, Sparkles, Truck, Wallet } from 'lucide-react';
+import { TabRow, type RowTab } from '@/components/ui/TabRow';
 import { useAuthStore } from '@/store/auth';
 
 // The tab row across the UniVerse Trace pages: the brand's console, its two live maps, the Radar and
-// Insights, campaigns, everyone's wallet and vault, and (for the platform owner) every brand.
+// Insights, campaigns, everyone's wallet and vault, and (for the platform owner) every brand. M395: swap & repair and a
+// company's carbon footprint, from Green (folded into the other apps, the owner, 22 Nov).
 
 const TABS = [
   { href: '/trace', label: 'Console', icon: ScanLine },
@@ -18,11 +19,18 @@ const TABS = [
   { href: '/trace/campaigns', label: 'Campaigns', icon: Megaphone },
   { href: '/trace/wallet', label: 'Wallet', icon: Wallet },
   { href: '/trace/vault', label: 'Vault', icon: KeyRound },
+  { href: '/trace/swap', label: 'Swap & repair', icon: Recycle },
+  { href: '/trace/carbon', label: 'Carbon', icon: Leaf },
 ];
+
+/** Trace's sections (M370: the same list fills the top bar on a computer); the platform owner also sees every brand. */
+export function traceSections(path: string, owner: boolean): RowTab[] {
+  const tabs = owner ? [...TABS, { href: '/trace/brands', label: 'All brands', icon: Building2 }] : TABS;
+  return tabs.map((t) => ({ ...t, on: t.href === '/trace' ? path === '/trace' : path.startsWith(t.href) }));
+}
 
 export function TraceTabs() {
   const path = usePathname();
   const owner = useAuthStore((s) => s.user?.owner === true);
-  const tabs = owner ? [...TABS, { href: '/trace/brands', label: 'All brands', icon: Building2 }] : TABS;
-  return <TabRow label="Trace" glide="trace-tab" tabs={tabs.map((t) => ({ ...t, on: t.href === '/trace' ? path === '/trace' : path.startsWith(t.href) }))} />;
+  return <TabRow label="Trace" glide="trace-tab" tabs={traceSections(path, owner)} />;
 }

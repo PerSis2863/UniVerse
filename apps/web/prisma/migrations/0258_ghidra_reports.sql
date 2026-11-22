@@ -1,4 +1,4 @@
--- M370: answers from Ghidra that people reported (wrong, unsafe or unkind), for the owner console's Moderation, so
+-- M429: answers from Ghidra that people reported (wrong, unsafe or unkind), for the owner console's Moderation, so
 -- Ghidra's guardrails can be adjusted over time. Only what the person chose to send: their question and Ghidra's answer.
 CREATE TABLE "ghidra_reports" (
   "id" TEXT NOT NULL PRIMARY KEY,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState } from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Bell, ChevronDown, Link2, LogOut, MoreHorizontal, RotateCcw, Search } from 'lucide-react';
 import useSWR from 'swr';
 import Link from '@/components/ui/Link';
@@ -20,7 +20,20 @@ import { authedJson } from '@/lib/authed-fetch';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { ArrangeButton } from '@/components/ArrangeMode';
 import { LanguageMenu } from './LanguageMenu';
-import { APP_NAV, AppSwitcher, isOn, navFor, signOut, useCurrentApp, type NavItem } from './Sidebar';
+import { APP_NAV, AppSwitcher, isOn as isOnPath, navFor, signOut, useCurrentApp, type NavItem } from './Sidebar';
+import type { RowTab } from '@/components/ui/TabRow';
+import { reliefSections } from '@/components/relief/ReliefTabs';
+import { traceSections } from '@/components/trace/TraceTabs';
+import { travelSections } from '@/components/travel/TravelTabs';
+
+/** M370 (the owner, 20 Nov: "please add live map, most urgent, matches, alert and other up there where message and
+ *  collaborate are so it stay together and make like this for other apps also"): in an app with its own row of
+ *  sections, the bar carries those sections first (the page's row hides itself, `topnav:hidden` in TabRow). */
+function sectionsOf(app: AppId | undefined, path: string, sp: URLSearchParams, owner: boolean): RowTab[] {
+  return app === 'relief' ? reliefSections(path, sp) : app === 'trace' ? traceSections(path, owner) : app === 'travel' ? travelSections(path, sp) : [];
+}
+/** An entry is chosen when its owner says so, else by the page it opens. */
+const isOn = (here: string, href?: string, also?: string[], on?: boolean) => on ?? isOnPath(here, href, also);
 
 // M219 (the owner, 16 Nov: "make that part horizontal at the top of the website", the side menu, "but not
 // in the app"): on a computer in a browser the side menu is this bar across the top; the installed app and
@@ -31,14 +44,14 @@ import { APP_NAV, AppSwitcher, isOn, navFor, signOut, useCurrentApp, type NavIte
 // top while the page scrolls, in the same 4 rem the page bar took (things that stick under it still line up).
 // M221 (the owner: "please work on this also"): its entries are dragged into another order, kept with the side
 // menu's (the same `/~menu/<scope>` arrangement, so More follows it too); and on the pages of an app with its
-// own row of sections (Trace, Green, Relief, Travel) the bar leaves out what that row shows.
+// own row of sections (Trace, Relief, Aether) the bar leaves out what that row shows.
 
 const ITEM = 'relative shrink-0 inline-flex items-center gap-1.5 h-9 min-w-0 px-2.5 rounded-lg text-[13.5px] font-medium whitespace-nowrap text-[var(--sidebar-item-color)] dark:text-[var(--sidebar-item-color)] hover:text-[var(--sidebar-item-hover-color)] hover:bg-[var(--sidebar-item-hover-bg)] dark:hover:bg-[var(--sidebar-item-hover-bg)] transition-colors';
 const ON = 'bg-[var(--sidebar-item-active-bg)] dark:bg-[var(--sidebar-item-active-bg)] text-[var(--sidebar-item-active-color)] dark:text-[var(--sidebar-item-active-color)] font-semibold shadow-[0_0_0_1px_var(--hairline),0_1px_2px_rgb(0_0_0/0.06)]';
 const ROW = 'block w-full rounded-lg px-3 py-2 text-start text-[13.5px] text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none';
 const GAP = 4;
-/** The apps whose pages have their own row of sections (TraceTabs, GreenTabs, ReliefTabs, TravelTabs). */
-const ROWED = new Set<AppId>(['trace', 'green', 'relief', 'travel']);
+/** The apps whose pages have their own row of sections (TraceTabs, ReliefTabs, TravelTabs). */
+const ROWED = new Set<AppId>(['trace', 'relief', 'travel']);
 
 const groupOn = (here: string, item: NavItem) => !!item.subItems?.some((s) => isOn(here, s.href, s.also) || here.startsWith(s.href + '/'));
 
@@ -54,7 +67,7 @@ function Links({ items, here, close, t, plain }: { items: NavItem[]; here: strin
           ))}
         </div>
       ) : (
-        <Link key={item.href} role="menuitem" href={item.href!} onClick={close} aria-current={isOn(here, item.href, item.also) ? 'page' : undefined} className={cn(ROW, 'flex items-center gap-2.5', isOn(here, item.href, item.also) && 'font-semibold text-tint-text')}>
+        <Link key={item.href} role="menuitem" href={item.href!} onClick={close} aria-current={isOn(here, item.href, item.also, item.on) ? 'page' : undefined} className={cn(ROW, 'flex items-center gap-2.5', isOn(here, item.href, item.also, item.on) && 'font-semibold text-tint-text')}>
           {!plain && <item.icon className="w-4 h-4 shrink-0 text-zinc-500 dark:text-zinc-400" aria-hidden />}<span translate={item.icon === Link2 ? 'no' : undefined}>{t(item.label)}</span>
         </Link>
       ))}
@@ -87,16 +100,19 @@ export function TopNav() {
   const [drag, setDrag] = useState<{ from: number; to: number; dx: number; w: number } | null>(null);
 
   const scope = `${app ?? 'all'}-${user?.role ?? ''}`.toLowerCase();
-  const all: NavItem[] = user ? [...navFor(app, user, shown), ...(pins ?? []).map((p): NavItem => ({ href: p.href, label: p.label, icon: Link2 }))] : [];
+  const own = appFor(here)?.id;
+  const sp = useSearchParams();
+  const sections: NavItem[] = own && own === app && ROWED.has(own) ? sectionsOf(own, here, new URLSearchParams(sp?.toString() ?? ''), !!user?.owner).map((x) => ({ href: x.href, label: x.label, icon: x.icon, on: x.on })) : [];
+  // The app's own entries (APP_NAV) give way to its sections, which say the same and more.
+  const appHrefs = new Set(sections.length ? APP_NAV[own as Exclude<AppId, 'campus'>].map((e) => e.href) : []);
+  const all: NavItem[] = user ? [...sections, ...navFor(app, user, shown).filter((e) => !appHrefs.has(e.href ?? '')), ...(pins ?? []).map((p): NavItem => ({ href: p.href, label: p.label, icon: Link2 }))] : [];
   // Known by the names the side menu's entries carry (`data-arrange-key`; a shortcut's is "Shortcut …").
   const allKeys = uniqueKeys(all.map((e) => cleanKey(e.icon === Link2 ? `Shortcut ${e.label}` : t(e.label))));
   const saved = readMenu(scope);
   // The saved group these entries belong to: the one that knows most of them (two at least, as the side menu's).
   const best = saved.reduce((b, e, i) => (overlap(e, allKeys) >= 2 && (b < 0 || overlap(e, allKeys) > overlap(saved[b], allKeys)) ? i : b), -1);
   const fullOrder = best < 0 ? allKeys : arranged(saved[best].order, allKeys);
-  const own = appFor(here)?.id;
-  const skip = new Set(own && own === app && ROWED.has(own) ? APP_NAV[own as Exclude<AppId, 'campus'>].map((e) => e.href) : []);
-  const keys = fullOrder.filter((k) => !skip.has(all[allKeys.indexOf(k)].href ?? ''));
+  const keys = fullOrder;
   const entries = keys.map((k) => all[allKeys.indexOf(k)]);
   const sig = keys.join('|');
   const custom = best >= 0 && fullOrder.join('|') !== allKeys.join('|');
@@ -198,8 +214,8 @@ export function TopNav() {
                   {(close) => <Links plain items={item.subItems!.map((s) => ({ ...s, icon: item.icon }))} here={here} close={close} t={t} />}
                 </Popover>
               ) : (
-                <Link href={item.href!} draggable={false} data-vt="fade" data-tour-href={item.href!.split('?')[0]} aria-current={isOn(here, item.href, item.also) ? 'page' : undefined}
-                  className={cn(ITEM, isOn(here, item.href, item.also) && ON)}>
+                <Link href={item.href!} draggable={false} data-vt="fade" data-tour-href={item.href!.split('?')[0]} aria-current={isOn(here, item.href, item.also, item.on) ? 'page' : undefined}
+                  className={cn(ITEM, isOn(here, item.href, item.also, item.on) && ON)}>
                   {chip(item)}
                 </Link>
               )}
@@ -207,7 +223,7 @@ export function TopNav() {
           ))}
           {rest.length > 0 && (
             <span className="shrink-0" data-tour="more">
-              <Popover label="More" title="More" className={cn(ITEM, rest.some((r) => isOn(here, r.href, r.also) || groupOn(here, r)) && ON)}
+              <Popover label="More" title="More" className={cn(ITEM, rest.some((r) => isOn(here, r.href, r.also, r.on) || groupOn(here, r)) && ON)}
                 button={<><MoreHorizontal className="w-4 h-4" aria-hidden />More<ChevronDown className="w-3.5 h-3.5 opacity-60" strokeWidth={2.5} aria-hidden /></>}>
                 {(close) => <Links items={rest} here={here} close={close} t={t} />}
               </Popover>

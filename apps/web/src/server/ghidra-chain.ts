@@ -11,7 +11,7 @@ import { short } from './trace';
 import { UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { askOne } from './ask';
 
-// Ghidra's chaining steps (M373; the owner, 22 Nov: "continue with chaining steps using langgraph"; LangGraph is MIT,
+// Ghidra's chaining steps (M432; the owner, 22 Nov: "continue with chaining steps using langgraph"; LangGraph is MIT,
 // github.com/langchain-ai/langgraph). One request with several parts ("plan a trip to Goa for 3 of us and then tell my
 // friends") becomes a short plan: a PLANNER splits it into at most four requests, a SPECIALIST answers each one (Ghidra's
 // one-request skill, askOne in ask.ts: the guardrails, the daily AI allowance, only the asker's own data), side by side,

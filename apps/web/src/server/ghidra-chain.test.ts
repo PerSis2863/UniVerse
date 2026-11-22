@@ -7,7 +7,7 @@ vi.mock('./moderation', () => ({ featureOff: vi.fn().mockResolvedValue(true) }))
 
 const me = { id: 'u1', role: 'STUDENT' } as SessionUser;
 
-describe('Ghidra’s chaining steps with LangGraph (M373)', () => {
+describe('Ghidra’s chaining steps with LangGraph (M432)', () => {
   it('asks the planner only when a request may have several parts', () => {
     expect(looksMultiStep('Plan a trip to Goa for 3 of us and then tell my friends')).toBe(true);
     expect(looksMultiStep('I bought bread and milk')).toBe(false);

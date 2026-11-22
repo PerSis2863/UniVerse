@@ -8,7 +8,7 @@ import { geminiJson } from './gemini';
 import { short } from './trace';
 import type { Body } from './body';
 
-// POST /quizzes/draft { courseId, topic, count? } (M366): Ghidra writes a quiz for a teacher, as a DRAFT in their course:
+// POST /quizzes/draft { courseId, topic, count? } (M425): Ghidra writes a quiz for a teacher, as a DRAFT in their course:
 // multiple choice, four options, one right. The route (modules/quizzes.ts) checks first that the asker may manage the
 // course (the quiz page's own check). AI only within the daily allowance and the owner's AI switch; every question it
 // gives is checked here (checkQuestions) and anything off is dropped. Students never see a draft: the teacher reads it,

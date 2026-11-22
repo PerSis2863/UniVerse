@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import useSWR, { mutate } from 'swr';
 import { toast } from 'sonner';
-import { Bookmark, BookOpen, Clock, ExternalLink, Globe, Landmark, Lightbulb, Loader2, MapPin, Navigation, Phone, Rotate3d, UtensilsCrossed, X } from 'lucide-react';
+import { Bike, Bookmark, BookOpen, Car, Clock, ExternalLink, Footprints, TrainFront, Globe, Landmark, Lightbulb, Loader2, MapPin, Navigation, Phone, Rotate3d, UtensilsCrossed, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { commonsFileOf, commonsImage, commonsSrcSet } from '@/lib/travel-guide';
@@ -13,6 +13,9 @@ import { localClock, zoneAt } from '@/lib/travel-local';
 import { listingKind, type StreetPhoto } from '@/lib/travel-map';
 import type { Photo, PlaceInfo, Story } from '@/lib/travel-place';
 import { cn } from '@/lib/utils';
+import { duration, type Spot } from '@/lib/map-tools';
+import { quickWays, type QuickMode } from '@/lib/transit-options';
+import { discountsFor, type Sector } from '@/lib/travel-discounts';
 import { Reviews } from './Reviews';
 import { TripPicker } from './TripPicker';
 
@@ -36,26 +39,48 @@ async function save(p: { name: string; kind: string; lat: number; lon: number; c
     toast.success(`Saved ${p.name}`);
   } catch (e) { toast.error(errorMessage(e, 'Couldn’t save it.')); }
 }
-type Go = (to: { lat: number; lon: number; name: string }) => void;
+type Go = (to: { lat: number; lon: number; name: string }, mode?: QuickMode) => void;
 /** Directions on Travel's own map (M237), never another website. */
 const GoButton = ({ to, onGo, label = 'Directions' }: { to: { lat: number; lon: number; name: string }; onGo: Go; label?: string }) => (
   <button type="button" onClick={() => onGo(to)} className="btn-primary btn-sm inline-flex items-center gap-1.5"><Navigation className="h-4 w-4" aria-hidden />{label}</button>
 );
 
-export function PlaceCard({ picked, at, onClose, onDirections, onFlyover }: { picked: Picked; at: Date; onClose: () => void; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
+const QUICK: Record<QuickMode, { icon: typeof Car; label: string }> = { foot: { icon: Footprints, label: 'Walk' }, bike: { icon: Bike, label: 'Cycle' }, transit: { icon: TrainFront, label: 'Transit' }, car: { icon: Car, label: 'Drive' } };
+/** M360: how long it takes to get there each way (from you, or the middle of the map), like Apple Maps' place card; a
+ *  press opens Directions that way. Estimates from the distance until Directions draws the real route. */
+function QuickWays({ from, to, onGo }: { from: Spot; to: Spot; onGo: Go }) {
+  const ways = quickWays(from, to);
+  if (!ways.length) return null;
+  return (
+    <div role="group" aria-label={`Getting there from ${from.name === 'Your location' ? 'where you are' : 'the middle of the map'}`} className={cn('grid gap-1.5', ways.length === 4 ? 'grid-cols-4' : ways.length === 3 ? 'grid-cols-3' : ways.length === 2 ? 'grid-cols-2' : 'grid-cols-1')}>
+      {ways.map((w) => {
+        const { icon: I, label } = QUICK[w.mode];
+        return (
+          <button key={w.mode} type="button" onClick={() => onGo(to, w.mode)} className="flex flex-col items-center gap-0.5 rounded-2xl bg-zinc-100 px-1 py-2 text-zinc-900 hover:bg-zinc-200/80 dark:bg-white/[0.07] dark:text-white dark:hover:bg-white/[0.11]">
+            <I className="h-[18px] w-[18px] text-[#0066cc] dark:text-[#4da3ff]" aria-hidden />
+            <span className="text-[13px] font-semibold tabular-nums">{w.mode === 'transit' ? '~' : ''}{duration(w.minutes)}</span>
+            <span className="text-[11px] text-zinc-600 dark:text-zinc-300">{label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+export function PlaceCard({ picked, at, from, onClose, onDirections, onFlyover }: { picked: Picked; at: Date; from?: Spot | null; onClose: () => void; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-start justify-end">
         <button type="button" onClick={onClose} className="btn-ghost btn-sm p-1.5" aria-label="Close"><X className="h-5 w-5" aria-hidden /></button>
       </div>
       <div className="-mt-8 min-h-0 flex-1 space-y-4 overflow-y-auto pe-1">
-        {picked.type === 'place' ? <PlaceBody p={picked} at={at} onDirections={onDirections} onFlyover={onFlyover} /> : picked.type === 'story' ? <StoryBody s={picked.story} onGo={onDirections} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} onGo={onDirections} /> : <PhotoBody ph={picked.photo} onGo={onDirections} />}
+        {picked.type === 'place' ? <PlaceBody p={picked} at={at} from={from ?? null} onDirections={onDirections} onFlyover={onFlyover} /> : picked.type === 'story' ? <StoryBody s={picked.story} onGo={onDirections} /> : picked.type === 'street' ? <StreetBody ph={picked.photo} onGo={onDirections} /> : <PhotoBody ph={picked.photo} onGo={onDirections} />}
       </div>
     </div>
   );
 }
 
-function PlaceBody({ p, at, onDirections, onFlyover }: { p: Extract<Picked, { type: 'place' }>; at: Date; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
+function PlaceBody({ p, at, from, onDirections, onFlyover }: { p: Extract<Picked, { type: 'place' }>; at: Date; from: Spot | null; onDirections: Go; onFlyover?: (p: { lat: number; lon: number }) => void }) {
   const key = p.key ? `/travel/place?osm=${p.key}` : `/travel/place?name=${encodeURIComponent(p.name)}&lat=${p.lat.toFixed(5)}&lon=${p.lon.toFixed(5)}`;
   const { data, error, isLoading } = useSWR<{ place: PlaceInfo }>(key, fetcher, { revalidateOnFocus: false, shouldRetryOnError: false });
   const [week, setWeek] = useState(false);
@@ -70,6 +95,7 @@ function PlaceBody({ p, at, onDirections, onFlyover }: { p: Extract<Picked, { ty
         <h3 className="text-xl font-semibold text-zinc-900 dark:text-white" translate="no">{name}</h3>
         <p className="text-sm text-zinc-600 dark:text-zinc-300">{kind}{info?.cuisine.length ? ` · ${info.cuisine.join(', ')}` : ''}</p>
       </div>
+      {from && <QuickWays from={from} to={{ lat: p.lat, lon: p.lon, name: info?.name ?? p.name }} onGo={onDirections} />}
       {info?.image && <CardPhoto file={info.image} />}
       {isLoading && <p className="flex items-center gap-2 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" aria-hidden />Looking it up…</p>}
       {error && <p className="text-sm text-zinc-600 dark:text-zinc-300">OpenStreetMap has nothing more on this place yet.</p>}
@@ -105,6 +131,7 @@ function PlaceBody({ p, at, onDirections, onFlyover }: { p: Extract<Picked, { ty
             <p className="text-xs text-zinc-700 dark:text-zinc-200">{[info.access.toilet !== null && (info.access.toilet ? 'Accessible toilet' : 'No accessible toilet'), info.access.lift !== null && (info.access.lift ? 'Lift' : 'No lift'), info.access.hearingLoop !== null && (info.access.hearingLoop ? 'Hearing loop' : 'No hearing loop')].filter(Boolean).join(' · ')}{info.access.description ? <> · <span translate="no">{info.access.description}</span></> : null}<span className="text-zinc-500"> (OpenStreetMap)</span></p>
           )}
           {info.address && <p className="flex items-start gap-1.5 text-sm text-zinc-600 dark:text-zinc-300"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{info.address}</p>}
+          <PlaceDeals cc={info.cc} kind={listingKind(p.cls)} />
         </>
       )}
       <div className="flex flex-wrap gap-1.5">
@@ -119,6 +146,22 @@ function PlaceBody({ p, at, onDirections, onFlyover }: { p: Extract<Picked, { ty
       </div>
       <Reviews place={p.review ?? info?.key ?? p.key ?? `wp:${name}`} name={name} lat={p.lat} lon={p.lon} />
     </>
+  );
+}
+
+/** M367: ways to pay less at this kind of place in its country (a museum's reduced tickets, the set lunch, tax-free
+ *  shopping), at most two, from src/lib/travel-discounts.ts. */
+function PlaceDeals({ cc, kind }: { cc: string | null; kind: string }) {
+  const sector: Sector | null = kind === 'see' ? 'sights' : kind === 'eat' || kind === 'drink' ? 'food' : kind === 'buy' ? 'shopping' : null;
+  const deals = sector && cc ? discountsFor([cc], [], sector).filter((d) => !d.where.includes('*') || d.id === 'sights-id').slice(0, 2) : [];
+  if (!deals.length) return null;
+  return (
+    <div className="rounded-xl bg-indigo-500/[0.07] p-3">
+      <p className="text-xs font-semibold text-indigo-800 dark:text-indigo-200">Pay less</p>
+      <ul className="mt-1 space-y-1.5">
+        {deals.map((d) => <li key={d.id} className="text-sm leading-snug text-zinc-700 dark:text-zinc-200"><span className="font-semibold text-zinc-900 dark:text-white">{d.title}</span>: {d.text}{d.url && <> <a href={d.url} target="_blank" rel="noopener noreferrer" className="font-semibold text-indigo-700 hover:underline dark:text-indigo-300">Official page</a></>}</li>)}
+      </ul>
+    </div>
   );
 }
 

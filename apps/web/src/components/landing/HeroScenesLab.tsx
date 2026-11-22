@@ -1,14 +1,14 @@
 'use client';
 
 import { AnimatePresence, m as motion } from 'framer-motion';
-import { BedDouble, Bike, Camera, Check, Droplets, Home, Leaf, Plane, Recycle, ScanLine, ShieldCheck, Sparkles, Stethoscope, Sun, TreePine, Utensils } from 'lucide-react';
+import { BedDouble, Camera, Check, Droplets, Home, Plane, ScanLine, ShieldCheck, Sparkles, Stethoscope, Sun, Utensils } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { EASE, useCalm } from './bits';
 import { pop, still, useStep } from './HeroScenes';
 
 // The landing hero's pictures for the four Lab apps (M117: split from HeroScenes.tsx so the landing and
 // sign-in load them only when one of these tabs is opened; UniVersity's stays in HeroScenes.tsx): Trace a
-// holographic label over a dotted world, Relief a radar, Green a growing landscape, Play a neon arcade.
+// holographic label over a dotted world, Relief a radar, Play a neon arcade.
 
 /* ── Trace: a holographic label tilting over a world of dots, routes drawing between cities ── */
 const DOTS: [number, number][] = (() => {
@@ -111,87 +111,6 @@ function Relief() {
   );
 }
 
-/* ── Green: a living planet ──
-   A globe turns slowly (a band of dots sliding under a shaded sphere); green patches bloom where
-   people act; a tree, a bike and a recycling badge orbit on a tilted ring; the CO₂ saved climbs and a
-   ticker shows each action. Transform, opacity and offset-distance only; Reduce Motion: still. */
-const ACTS = [
-  { icon: TreePine, who: 'Maya planted a tree', kg: 22 },
-  { icon: Bike, who: 'Leo cycled 12 km to school', kg: 2 },
-  { icon: Recycle, who: 'Class 9B recycled 8 kg', kg: 5 },
-  { icon: Leaf, who: 'Omar went meat-free today', kg: 3 },
-] as const;
-const BLOOMS = [[18, 38, 26], [42, 62, 34], [64, 30, 22], [80, 58, 30], [30, 74, 20], [56, 46, 18]] as const; // % across the band, % down, size px
-const RING = 'M 20 150 A 160 52 0 1 0 340 150 A 160 52 0 1 0 20 150';
-
-function Green() {
-  const { s, loop, calm } = useStep(ACTS.length, 1700);
-  const n = loop * ACTS.length + s;
-  const kg = 412 + Array.from({ length: n + 1 }, (_, i) => ACTS[i % ACTS.length].kg).reduce((a, b) => a + b, 0);
-  const act = ACTS[s];
-  const band = (
-    <div className="relative h-full w-1/2 shrink-0 bg-[radial-gradient(circle,rgba(167,243,208,0.35)_1.2px,transparent_1.6px)] [background-size:11px_11px]">
-      {BLOOMS.map(([x, y, r], i) => (
-        <motion.span key={i} className="absolute rounded-full bg-[radial-gradient(circle,rgba(52,211,153,0.85),rgba(16,185,129,0.25)_60%,transparent_72%)]" style={{ left: `${x}%`, top: `${y}%`, width: r * 2, height: r * 2, marginLeft: -r, marginTop: -r }}
-          initial={false} animate={{ scale: calm || i <= n ? 1 : 0.3, opacity: calm || i <= n ? 1 : 0.15 }} transition={{ type: 'spring', stiffness: 120, damping: 14 }} />
-      ))}
-    </div>
-  );
-  return (
-    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A planet turning while green patches bloom and the CO₂ saved climbs">
-      {/* stars */}
-      {[[8, 12], [22, 30], [86, 18], [74, 8], [92, 44], [12, 52], [60, 14]].map(([x, y], i) => (
-        <span key={i} aria-hidden className={cn('absolute h-1 w-1 rounded-full bg-white', calm ? 'opacity-50' : 'twinkle')} style={{ left: `${x}%`, top: `${y}%`, animationDuration: `${2.4 + (i % 3)}s`, animationDelay: `${i * 0.3}s` }} />
-      ))}
-      {/* the counter */}
-      <div className="absolute inset-x-0 top-6 text-center">
-        <p className="text-xs text-emerald-200/80">CO₂ saved by Class 9B</p>
-        <div className="relative mx-auto mt-1 h-14 overflow-hidden">
-          <AnimatePresence mode="popLayout" initial={false}>
-            <motion.p key={kg} className="font-mono text-5xl font-bold tabular-nums text-white" initial={{ y: 40, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: -40, opacity: 0 }} transition={{ duration: 0.5, ease: EASE }}>
-              {kg}<span className="ms-2 text-lg font-medium text-emerald-200">kg</span>
-            </motion.p>
-          </AnimatePresence>
-        </div>
-      </div>
-      {/* the planet and its ring */}
-      <div className="absolute left-1/2 top-[120px] h-[300px] w-[360px] -translate-x-1/2">
-        <svg aria-hidden className="absolute inset-0 h-full w-full overflow-visible" viewBox="0 0 360 300">
-          <path d={RING} transform="translate(0 0)" fill="none" stroke="rgba(110,231,183,0.18)" strokeWidth="1.5" strokeDasharray="2 6" />
-        </svg>
-        <div className="on-dark absolute left-1/2 top-[25px] h-[250px] w-[250px] -translate-x-1/2 overflow-hidden rounded-full bg-[#0a2a1f] shadow-[0_0_80px_-10px_rgba(52,211,153,0.55),inset_0_0_40px_rgba(52,211,153,0.25)]">
-          <div className={cn('flex h-full w-[200%]', !calm && 'scene-pan')}>
-            {band}{band}
-          </div>
-          {/* light and shade: lit top-left, night on the right */}
-          <span aria-hidden className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_32%_28%,rgba(255,255,255,0.22),transparent_38%),radial-gradient(circle_at_85%_70%,rgba(0,0,0,0.75),transparent_62%)]" />
-        </div>
-        <span aria-hidden className="absolute left-1/2 top-[13px] h-[274px] w-[274px] -translate-x-1/2 rounded-full ring-1 ring-emerald-300/25" />
-        {/* things on the ring (they ride the same ellipse) */}
-        {!calm && [TreePine, Bike, Recycle].map((Icon, i) => (
-          <span key={i} aria-hidden className="ring-ride absolute left-0 top-0 -ms-4 -mt-4 grid h-8 w-8 place-items-center rounded-full bg-emerald-400 text-emerald-950 shadow-[0_0_20px_rgba(52,211,153,0.8)]"
-            style={{ offsetPath: `path("${RING}")`, offsetRotate: '0deg', animationDelay: `${-i * 6}s` }}>
-            <Icon className="h-4 w-4" />
-          </span>
-        ))}
-      </div>
-      {/* the ticker */}
-      <div className="absolute inset-x-6 bottom-5 h-14">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div key={n} className="absolute inset-0 flex items-center gap-3 rounded-full bg-black/30 px-4 ring-1 ring-emerald-300/25 shadow-[0_0_30px_-8px_rgba(52,211,153,0.6)]"
-            initial={{ opacity: 0, y: 24 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -24 }} transition={{ duration: 0.5, ease: EASE }}>
-            <span className="grid h-9 w-9 place-items-center rounded-full bg-emerald-400/20 text-emerald-200"><act.icon className="h-5 w-5" aria-hidden /></span>
-            <span className="min-w-0 flex-1 truncate text-sm font-semibold text-white">{act.who}</span>
-            <span className="font-mono text-sm font-bold text-emerald-300">−{act.kg} kg</span>
-          </motion.div>
-        </AnimatePresence>
-      </div>
-    </div>
-  );
-}
-
-// M202: Travel's card: a trip drawn as a route between three cities with a plane flying it, and the
-// plan day by day underneath (a place to see, to eat, to sleep).
 const ROUTE = 'M40 150 C 110 40, 190 40, 220 110 S 330 170, 360 60';
 const STOPS = [{ x: 40, y: 150, n: 'Lisbon' }, { x: 220, y: 110, n: 'Sintra' }, { x: 360, y: 60, n: 'Porto' }];
 const PLAN = [
@@ -238,7 +157,29 @@ function Travel() {
   );
 }
 
+/** M376: the Lab: a few lines of MATLAB-style code and the plot they make. */
+const CURVE = Array.from({ length: 81 }, (_, i) => { const t = (i / 80) * 20; return `${i ? 'L' : 'M'}${(20 + t * 18).toFixed(1)},${(100 - 70 * Math.exp(-0.15 * t) * Math.cos(t)).toFixed(1)}`; }).join(' ');
+function Lab() {
+  const calm = useCalm();
+  return (
+    <div className="relative h-[480px] w-full max-w-[520px]" role="img" aria-label="A short script that solves a damped spring with ode45 and plots it, and the plot it draws">
+      <pre className="mx-5 mt-5 rounded-2xl bg-black/40 p-4 font-mono text-[12.5px] leading-relaxed text-violet-100 ring-1 ring-white/[0.07]">
+        <span className="text-zinc-400">% a damped spring</span>{'\n'}
+        f = @(t, y) [y(2); -y(1) - 0.3*y(2)];{'\n'}
+        [t, y] = ode45(f, [0 20], [1; 0]);{'\n'}
+        plot(t, y(:, 1)); grid on{'\n'}
+        title(<span className="text-amber-200">&apos;Position&apos;</span>)
+      </pre>
+      <svg viewBox="0 0 400 200" className="mx-auto mt-4 block w-[92%]" aria-hidden>
+        <rect x="20" y="20" width="360" height="160" fill="none" stroke="rgba(255,255,255,0.18)" />
+        {[60, 100, 140].map((y) => <line key={y} x1="20" x2="380" y1={y} y2={y} stroke="rgba(255,255,255,0.07)" />)}
+        <motion.path d={CURVE} fill="none" stroke="#a78bfa" strokeWidth="2" initial={calm ? false : { pathLength: 0 }} animate={{ pathLength: 1 }} transition={{ duration: 1.6, ease: EASE }} />
+      </svg>
+    </div>
+  );
+}
+
+export const LabScene = still(Lab);
 export const TraceScene = still(Trace);
 export const ReliefScene = still(Relief);
-export const GreenScene = still(Green);
 export const TravelScene = still(Travel);

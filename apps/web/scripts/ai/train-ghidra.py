@@ -1,4 +1,4 @@
-# Ghidra (M362): UniVerse's own GPT, trained from nothing, in the design of Andrej Karpathy's nanoGPT
+# Ghidra (M421): UniVerse's own GPT, trained from nothing, in the design of Andrej Karpathy's nanoGPT
 # (github.com/karpathy/nanoGPT, MIT): a character-level transformer, small enough to train on an ordinary computer's
 # processor and to run in a browser. The code is written for UniVerse; the design is nanoGPT's.
 #

@@ -1,4 +1,4 @@
-// Ghidra's background thread (M362): loads the model once and writes on from a prompt (or answers a question), sending the
+// Ghidra's background thread (M421): loads the model once and writes on from a prompt (or answers a question), sending the
 // letters back in small batches, so the page stays smooth while it thinks. Messages in: { prompt, heat, max, ask } to
 // write (ask: the prompt is a question, answered on one line), { stop: true } to stop.
 // Messages out: { meta } once loaded, { text } as it writes, { done: true } at the end, { error } if it couldn't load.

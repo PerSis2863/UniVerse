@@ -1,7 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { featureOff } from './moderation';
 
-// Ghidra thinks harder with DeepSeek (M371; the owner, 22 Nov: "use this model in the ai", DeepSeek-R1). R1 itself is too
+// Ghidra thinks harder with DeepSeek (M430; the owner, 22 Nov: "use this model in the ai", DeepSeek-R1). R1 itself is too
 // big to run and Cloudflare stopped hosting its smaller copy on 20 Nov 2026; its successor with the same step-by-step
 // thinking, DeepSeek V4.1 Flash, runs on Cloudflare's own servers (Workers AI, the `AI` binding in wrangler.jsonc; zero
 // data retention) and answers Ghidra's HARD questions: maths, code, logic. Everything else stays with Gemini. Off until

@@ -1,4 +1,4 @@
-// Ghidra 2 (M368–M369): UniVerse's own chat model in the browser: MiniMind-3 (64 M numbers, Apache-2.0, Qwen3's design)
+// Ghidra 2 (M427–M428): UniVerse's own chat model in the browser: MiniMind-3 (64 M numbers, Apache-2.0, Qwen3's design)
 // taught to be Ghidra (scripts/ai/ghidra2.py adopt + sft), or one trained by the same recipe. Word-pieces: byte-level BPE
 // (GPT-2's way: the text's UTF-8 bytes, split into words, then merged by rank), so any language works. The model:
 // RMSNorm, rotary positions, grouped-query attention (each head's query and key normalised, as Qwen3 does), a SwiGLU
@@ -197,7 +197,7 @@ export function scoresAfter(m: Ghidra2, ids: number[]): Float32Array {
 }
 
 /** Word-pieces it said lately score lower (the usual repetition penalty: a positive score divided, a negative one
- *  multiplied), so a small model can't get stuck saying one word over and over (M369). Changes `scores` in place. */
+ *  multiplied), so a small model can't get stuck saying one word over and over (M428). Changes `scores` in place. */
 export function damp(scores: Float32Array, recent: Iterable<number>, by = 1.1) {
   for (const id of new Set(recent)) { const s = scores[id]; if (s !== undefined) scores[id] = s > 0 ? s / by : s * by; }
   return scores;

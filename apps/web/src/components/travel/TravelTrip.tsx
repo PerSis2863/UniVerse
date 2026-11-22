@@ -11,12 +11,13 @@ import { Segmented } from '@/components/ui/Segmented';
 import { api, errorMessage } from '@/lib/api';
 import { fetcher } from '@/lib/fetcher';
 import { useLiveInterval } from '@/lib/realtime-client';
-import { CURRENCIES, STYLES, STYLE_IDS, money, type Style } from '@/lib/travel-find';
+import { CURRENCIES, STYLES, STYLE_IDS, fromUsd, money, type Style } from '@/lib/travel-find';
 import { tripCover } from '@/lib/travel-ideas';
 import { tripFootprint } from '@/lib/travel-footprint';
 import type { TravelMode } from '@/lib/green';
 import { TripLeg, TripLegTotals, kgText } from './trip-legs';
-import { bestOrder, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
+import { PayLess } from './PayLess';
+import { bestOrder, legCostUsd, legLevel, nightsAt, stopDates, tripBudget, tripDays, tripIcs, type PlanStop } from '@/lib/travel-plan';
 import { cn } from '@/lib/utils';
 import { Cover, PlaceSearch } from './travel-ui';
 import { TripDays, type Move, type TripItem } from './trip-days';
@@ -98,7 +99,7 @@ export function TravelTrip() {
   const now = useNow();
   const role = useAuthStore((s) => s.user?.role);
   const [adding, setAdding] = useState(false);
-  // M375: the Travel Planner opens a new trip with ?plan=1, so "Plan my days" starts by itself.
+  // M434: the Travel Planner opens a new trip with ?plan=1, so "Plan my days" starts by itself.
   const [planning, setPlanning] = useState(() => typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('plan') === '1');
 
   const t = data?.trip, stops = useMemo(() => data?.stops ?? [], [data]);
@@ -127,7 +128,7 @@ export function TravelTrip() {
   /** M357: how they'll get to a stop from the one before (the same choice as Ready → Footprint; the train logs a Green action). */
   const pickWay = (stopId: string, mode: TravelMode) => change({ stops: stops.map((x) => (x.id === stopId ? { ...x, mode } : x)) }, async () => {
     const { data: r } = await api.patch<{ green: { kg: number } | null }>(`/travel/trips/${t.id}/stops/${stopId}`, { mode, green: mode === 'train' });
-    if (r.green) toast.success(`Logged in Green: about ${kgText(r.green.kg)} of CO₂ saved by taking the train.`);
+    if (r.green) toast.success(`Logged in Green living: about ${kgText(r.green.kg)} of CO₂ saved by taking the train.`);
   });
   const setTrip = (patch: Partial<TripAnswer['trip']>) => change({ trip: { ...t, ...patch } }, () => api.patch(`/travel/trips/${t.id}`, patch));
   const total = tripDays(stops), cover = tripCover({ name: t.name, cover: stops[0]?.guide, places: stops.map((x) => x.guide) });
@@ -157,7 +158,7 @@ export function TravelTrip() {
   };
   const share = async () => {
     try {
-      if (navigator.share) { await navigator.share({ title: t.name, text: `Plan “${t.name}” with me on UniVerse Travel`, url: invite }); return; }
+      if (navigator.share) { await navigator.share({ title: t.name, text: `Plan “${t.name}” with me on Aether`, url: invite }); return; }
       await navigator.clipboard.writeText(invite);
       toast.success('Invite link copied: send it to the friends you’re travelling with.');
     } catch { /* closed the share sheet */ }
@@ -285,7 +286,7 @@ export function TravelTrip() {
                       <button type="button" className="btn-ghost btn-sm p-1.5 text-red-600 dark:text-red-400" aria-label={`Take ${nice(s.name)} off the trip`} onClick={() => { if (confirm(`Take ${nice(s.name)} and its planned places off the trip?`)) void change({ stops: stops.filter((x) => x.id !== s.id) }, () => api.delete(`/travel/trips/${t.id}/stops/${s.id}`)); }}><Trash2 className="h-4 w-4" aria-hidden /></button>
                     </div>
                   </div>
-                  {next && (fl ? <TripLeg leg={fl} from={s} to={next} date={dates[i + 1].from} onPick={(mode) => void pickWay(next.id, mode)} />
+                  {next && (fl ? <TripLeg leg={fl} from={s} to={next} date={dates[i + 1].from} onPick={(mode) => void pickWay(next.id, mode)} price={(mode) => { const v = Math.round(fromUsd(legCostUsd(fl.km, mode, legLevel(s.cc, next.cc), t.travellers), t.currency)); return { value: v, text: money(v, t.currency), each: money(Math.round(v / Math.max(1, t.travellers)), t.currency) }; }} travellers={t.travellers} />
                     : <p className="ms-4 border-s-2 border-dashed border-indigo-300/70 py-2 ps-5 text-xs text-zinc-500 dark:border-indigo-400/30 dark:text-zinc-400">How to get there shows once both places are on the map.</p>)}
                 </li>
               );
@@ -295,7 +296,10 @@ export function TravelTrip() {
         </section>
 
         {/* The whole trip's budget. */}
-        {budget && <BudgetCard b={budget} travellers={t.travellers} style={t.style} />}
+        <div className="space-y-6">
+          {budget && <BudgetCard b={budget} travellers={t.travellers} style={t.style} />}
+          {stops.some((x) => x.cc) && <PayLess countries={stops.map((x) => x.cc)} place={t.name} title="Pay less on this trip" compact />}
+        </div>
       </div>
 
       {/* Day by day. */}

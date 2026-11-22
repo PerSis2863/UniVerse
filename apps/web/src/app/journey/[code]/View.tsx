@@ -36,7 +36,7 @@ export default function View() {
     <main className="min-h-[100dvh] overflow-x-hidden px-4 py-8 sm:py-14" style={{ backgroundColor: 'var(--background)' }}>
       <div className="mx-auto max-w-3xl">
         <header className="flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><LogoMark className="h-7 w-7" />UniVerse Travel</Link>
+          <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><LogoMark className="h-7 w-7" />Aether</Link>
           <span className="text-xs text-zinc-500 dark:text-zinc-400">Trip for family</span>
         </header>
         {!data && !error && <div className="mt-24 flex flex-col items-center gap-3 text-zinc-600 dark:text-zinc-300" role="status"><Loader2 className="h-7 w-7 animate-spin" aria-hidden />Opening the trip…</div>}
@@ -99,7 +99,7 @@ function Trip({ d }: { d: Shared }) {
       ))}
 
       {d.journal.length > 0 && <section aria-labelledby="j-story"><h2 id="j-story" className="mb-3 text-xl font-semibold text-zinc-900 dark:text-white">Their story</h2><Story stops={d.stops} days={tripDayList(d.stops, d.trip.startDate)} entries={d.journal} /></section>}
-      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">Shared by the travellers from UniVerse Travel. Times are their plan’s, in each city’s own time.</p>
+      <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">Shared by the travellers from Aether. Times are their plan’s, in each city’s own time.</p>
     </div>
   );
 }

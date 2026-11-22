@@ -1,4 +1,4 @@
-// M365: the trained Ghidra (M362, public/ai/ghidra.*) as the corner assistant's backup: when the AI can't answer (offline,
+// M424: the trained Ghidra (M421, public/ai/ghidra.*) as the corner assistant's backup: when the AI can't answer (offline,
 // busy, used up), it asks the small model on this device. Its answer comes back only when the question is close to what
 // it was taught (the honesty guard in ghidra.worker.ts); otherwise null, and the assistant says what it would have said.
 

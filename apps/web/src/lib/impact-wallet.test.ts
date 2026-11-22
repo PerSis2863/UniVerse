@@ -10,7 +10,7 @@ describe('impact wallet', () => {
     expect(w).toEqual([0, 0, 3, 2]);
   });
   it('sorts events newest first and cuts the list', () => {
-    const e = (at: string) => ({ app: 'green' as const, at, text: '', amount: '' });
+    const e = (at: string) => ({ app: 'relief' as const, at, text: '', amount: '' });
     expect(newest([e('2026-01-01'), e('2026-03-01'), e('2026-02-01')], 2).map((x) => x.at)).toEqual(['2026-03-01', '2026-02-01']);
   });
   it('adds points per currency and skips empty balances', () => {

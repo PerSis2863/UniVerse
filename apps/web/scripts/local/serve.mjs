@@ -22,5 +22,5 @@ if (process.argv.includes('--payments-test')) vars.push('PAYMENTS_TEST_MODE:1');
 if (process.argv.includes('--test-secret')) vars.push(`SESSION_SECRET:${randomBytes(24).toString('hex')}`);
 if (process.argv.includes('--owner-test')) vars.push('SUPER_ADMIN_EMAILS:owner@check.test', 'FIREBASE_TEST_JWKS_URL:http://localhost:8790/jwks.json');
 console.log('Starting on http://localhost:8787 (Ctrl+C stops it).');
-// --local: no remote bindings (the AI binding, M371, would sign in to the real Cloudflare account; locally Ghidra uses Gemini).
+// --local: no remote bindings (the AI binding, M430, would sign in to the real Cloudflare account; locally Ghidra uses Gemini).
 run('npx', ['wrangler', 'dev', '--local', '--port', '8787', '--test-scheduled', ...vars.flatMap((v) => ['--var', v])]);

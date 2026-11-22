@@ -11,7 +11,7 @@ const base = process.env.BASE ?? 'http://localhost:8787';
 const arg = (n) => (process.argv.includes(n) ? process.argv[process.argv.indexOf(n) + 1] : null);
 const only = arg('--only'), phoneOnly = process.argv.includes('--phone-only');
 // M282: every app's home.
-const PAGES = [['/', null], ['/hub', 'alice@student.com'], ['/student', 'alice@student.com'], ['/teacher', 'tara@teacher.com'], ['/admin', 'demo@admin.com'], ['/travel', 'alice@student.com'], ['/trace', 'alice@student.com'], ['/relief', 'alice@student.com'], ['/green', 'alice@student.com'], ['/play', 'alice@student.com']].filter(([p]) => !only || p === only);
+const PAGES = [['/', null], ['/hub', 'alice@student.com'], ['/student', 'alice@student.com'], ['/teacher', 'tara@teacher.com'], ['/admin', 'demo@admin.com'], ['/travel', 'alice@student.com'], ['/trace', 'alice@student.com'], ['/relief', 'alice@student.com'], ['/student/life/green', 'alice@student.com'], ['/play', 'alice@student.com']].filter(([p]) => !only || p === only);
 const sizes = [['phone', 390, 844, 4], ['computer', 1440, 900, 1]].filter(([n]) => !phoneOnly || n === 'phone');
 
 const browser = await playwright().chromium.launch();

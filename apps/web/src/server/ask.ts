@@ -19,7 +19,7 @@ import { planTrip } from './agents/travel';
 import { short } from './trace';
 import type { Body } from './body';
 
-// POST /ask { text, history? }: Ghidra, the assistant (M363; "Ask UniVerse", M30, until then; src/lib/ask.ts).
+// POST /ask { text, history? }: Ghidra, the assistant (M422; "Ask UniVerse", M30, until then; src/lib/ask.ts).
 // The request becomes ONE proposed action the person confirms in the chat; this route never changes anything
 // itself. 'my_due', 'my_green', 'my_trips' and 'my_courses' only read the asker's own data and come back as a list
 // ('show'). AI goes through
@@ -113,14 +113,14 @@ async function myGreen(u: SessionUser): Promise<AskPlan> {
     action: 'show',
     say: days ? `Nice work: a ${days}-day streak, and ${r1(kg)} kg of CO₂ saved in all.` : `You’ve saved ${r1(kg)} kg of CO₂ in all. Log an action today to start a streak.`,
     items: [
-      { title: `${r1(kg)} kg CO₂ saved`, sub: `${rows.length} action${rows.length === 1 ? '' : 's'} in all`, href: '/green' },
-      { title: `${r1(week)} kg this week`, sub: 'the last 7 days', href: '/green' },
-      { title: days ? `${days}-day streak` : 'No streak yet', sub: days ? 'log one today to keep it' : 'log one today to start it', href: '/green' },
+      { title: `${r1(kg)} kg CO₂ saved`, sub: `${rows.length} action${rows.length === 1 ? '' : 's'} in all`, href: '/student/life/green' },
+      { title: `${r1(week)} kg this week`, sub: 'the last 7 days', href: '/student/life/green' },
+      { title: days ? `${days}-day streak` : 'No streak yet', sub: days ? 'log one today to keep it' : 'log one today to start it', href: '/student/life/green' },
     ],
   };
 }
 
-/** M365: their trips in Travel, newest first, with their cities and dates. One query. */
+/** M424: their trips in Travel, newest first, with their cities and dates. One query. */
 async function myTrips(u: SessionUser): Promise<AskPlan> {
   const rows = await prisma.travelTripMember.findMany({
     where: { userId: u.id }, take: 20,
@@ -138,7 +138,7 @@ async function myTrips(u: SessionUser): Promise<AskPlan> {
   };
 }
 
-/** M365: the courses they are in (a student) or teach. One query. */
+/** M424: the courses they are in (a student) or teach. One query. */
 async function myCourses(u: SessionUser): Promise<AskPlan> {
   const staff = isStaff(u.role);
   const courses = staff
@@ -151,7 +151,7 @@ async function myCourses(u: SessionUser): Promise<AskPlan> {
   };
 }
 
-/** M366: which of the teacher's courses a quiz is for: the one they named, or their only one; otherwise ask. One query. */
+/** M425: which of the teacher's courses a quiz is for: the one they named, or their only one; otherwise ask. One query. */
 async function quizFor(u: SessionUser, plan: Extract<AskPlan, { action: 'quiz_draft' }>): Promise<AskPlan> {
   if (!isStaff(u.role)) return { action: 'answer', say: 'Only teachers can have Ghidra draft a quiz. I can show what’s due for you instead.' };
   const courses = await prisma.course.findMany({ where: taughtBy(u.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 60 });
@@ -171,7 +171,7 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
     case 'my_trips': return myTrips(u);
     case 'my_courses': return myCourses(u);
     case 'quiz_draft': return quizFor(u, plan);
-    // M374: the app agents, each in src/server/agents.
+    // M433: the app agents, each in src/server/agents.
     case 'research': return research(u, plan.topic);
     case 'social_posts': return socialPosts(u, plan.topic, plan.platforms, plan.count);
     case 'product_help': return support(u, plan.code, plan.question);
@@ -181,9 +181,9 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
 }
 
 /** One request, one reply: the answer, a list of the person's own things, or one action to confirm. The chain's
- *  specialists (src/server/ghidra-chain.ts, M373) use it for each step, so every step has the same checks. */
+ *  specialists (src/server/ghidra-chain.ts, M432) use it for each step, so every step has the same checks. */
 export async function askOne(u: SessionUser, text: string, history: AskTurn[]): Promise<AskPlan & { ai: boolean; note?: string }> {
-  // M370: someone in crisis or in danger gets the safe, human answer first, whatever AI would say (src/lib/ghidra-guard.ts).
+  // M429: someone in crisis or in danger gets the safe, human answer first, whatever AI would say (src/lib/ghidra-guard.ts).
   const g = guard(text);
   if (g) return { action: 'answer', say: guardReply(g), ai: false };
   const local = async (note?: string) => ({ ...(await resolve(u, localPlan(text))), ai: false, ...(note ? { note } : {}) });
@@ -194,7 +194,7 @@ export async function askOne(u: SessionUser, text: string, history: AskTurn[]): 
   const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   if (!out) return local();
   const plan = await resolve(u, cleanPlan(out));
-  // M371: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.
+  // M430: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.
   if (plan.action === 'answer' && isHard(text)) {
     const deep = await thinkHardText(`You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
     if (deep) return { action: 'answer', say: deep.slice(0, 6000), ai: true };
@@ -208,7 +208,7 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   const g = guard(text);
   if (g) return { action: 'answer', say: guardReply(g), ai: false };
   const history = cleanHistory(b.history);
-  // M373: a request with several parts ("… and then …") becomes a short plan of steps, approved together.
+  // M432: a request with several parts ("… and then …") becomes a short plan of steps, approved together.
   if (looksMultiStep(text)) {
     const chain = await askChain(u, text, history);
     if (chain) return chain;
@@ -216,7 +216,7 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   return askOne(u, text, history);
 }
 
-/** M370: POST /ghidra/report { question, answer, reason? }: someone reports one of Ghidra's answers (wrong, unsafe, unkind)
+/** M429: POST /ghidra/report { question, answer, reason? }: someone reports one of Ghidra's answers (wrong, unsafe, unkind)
  *  for the owner console's Moderation. Only what they send; at most 20 a day each. */
 export async function reportAnswer(u: SessionUser, b: Body) {
   const question = short(b.question, 1000), answer = short(b.answer, 6000), reason = short(b.reason, 300);

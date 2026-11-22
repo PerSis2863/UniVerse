@@ -5,7 +5,7 @@ import { withTextModels } from './ai-models';
 // The model comes from the owner's chain (src/server/ai-models.ts): a busy model hands over to
 // the next one.
 
-/** M370: Gemini's own safety filters, set firmly for a platform with students (Google's defaults are looser): anything of
+/** M429: Gemini's own safety filters, set firmly for a platform with students (Google's defaults are looser): anything of
  *  medium harm or worse is blocked, and the feature answers as when AI fails. Used by every call here and by /api/ai. */
 export const SAFETY = ['HARM_CATEGORY_HARASSMENT', 'HARM_CATEGORY_HATE_SPEECH', 'HARM_CATEGORY_SEXUALLY_EXPLICIT', 'HARM_CATEGORY_DANGEROUS_CONTENT']
   .map((category) => ({ category, threshold: 'BLOCK_MEDIUM_AND_ABOVE' }));

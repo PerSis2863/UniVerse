@@ -1,4 +1,4 @@
-// Ghidra (M362): UniVerse's own GPT, run in the browser (on a background thread: ghidra.worker.ts). It was trained from
+// Ghidra (M421): UniVerse's own GPT, run in the browser (on a background thread: ghidra.worker.ts). It was trained from
 // nothing by scripts/ai/train-ghidra.py (nanoGPT's design: a character-level transformer) on UniVerse's own sentences and
 // simple English stories. Nothing is sent anywhere: the weights (public/ai/ghidra.bin, one byte per number with a scale
 // per row) come down once and every letter is worked out on this device.

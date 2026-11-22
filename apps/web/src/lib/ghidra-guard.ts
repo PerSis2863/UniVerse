@@ -1,4 +1,4 @@
-// Ghidra's guardrails (M370; the owner, 22 Nov: "setting guardrails… identify the risks and edge cases… security and user
+// Ghidra's guardrails (M429; the owner, 22 Nov: "setting guardrails… identify the risks and edge cases… security and user
 // experience… adjust over time"). Checked before any AI runs, the same on the server (POST /ask, /api/ai) and on the device
 // (the corner's offline answers), so a person in crisis or in danger always gets the same safe, human answer at once,
 // whatever the AI would have said and even with AI off. Keep the helplines true: check them when this file changes.

@@ -39,7 +39,7 @@ try {
       out.push(`${what}: ${cta}`);
     }
     await ctx.close();
-    for (const path of ['/trace', '/relief', '/green', '/play']) {
+    for (const path of ['/trace', '/relief', '/travel', '/play']) {
       const what = `${path} ${theme}`;
       const ictx = await signedIn(browser, base, 'demo@student.com', { width: 1280, height: 900 });
       await ictx.addInitScript((t) => { try { localStorage.setItem('theme', t); } catch { /* a locked frame */ } }, theme);

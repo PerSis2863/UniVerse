@@ -17,7 +17,7 @@ export interface HelpEntry {
 }
 
 export const HELP: HelpEntry[] = [
-  // ── UniVerse's other apps and Ghidra (M364: the corner assistant answers these instantly, even offline) ──
+  // ── UniVerse's other apps and Ghidra (M423: the corner assistant answers these instantly, even offline) ──
   { id: 'ghidra', q: ['Who is Ghidra?', 'what can Ghidra do', 'what can you do', 'who are you'], tags: 'ghidra assistant ai helper chat bot actions confirm',
     a: 'I’m Ghidra, your UniVerse assistant. Ask what’s due or how you’re doing in Green, tell me what to do (“I cycled 5 km”, “we need water for 4 people”, “open Travel”) and I’ll show you exactly what will happen before anything is done. I answer questions about using UniVerse instantly, even offline.',
     links: [{ label: 'All apps', href: '/hub' }] },

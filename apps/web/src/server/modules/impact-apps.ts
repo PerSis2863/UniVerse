@@ -61,9 +61,9 @@ export default function impactAppsModule(router: Router) {
   const hub = router.controller('hub');
   hub.get('', ({ user }) => hubStats(user));
   hub.get('wallet', ({ user }) => impactWallet(user));
-  // Ghidra, the assistant (M363; Ask UniVerse, M30): proposes one action; the chat confirms it through the app's own routes.
+  // Ghidra, the assistant (M422; Ask UniVerse, M30): proposes one action; the chat confirms it through the app's own routes.
   router.controller('ask').post('', { status: 200 }, ({ user, body }) => askUniverse(user, body ?? {}));
-  // M370: an answer of Ghidra's reported, for the owner console's Moderation.
+  // M429: an answer of Ghidra's reported, for the owner console's Moderation.
   router.controller('ghidra').post('report', ({ user, body }) => reportAnswer(user, body ?? {}));
   // M166: a person's page arrangements on their other devices, when they turn it on (src/server/arrange.ts).
   const arrange = router.controller('arrange');

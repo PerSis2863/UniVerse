@@ -30,20 +30,20 @@ import { totalLabel, type TotalKey } from '@/lib/site-totals';
 
 const PLACES = [{ lat: 50, lon: 4 }, { lat: 30, lon: 118 }, { lat: -3, lon: 36 }, { lat: -12, lon: -56 }, { lat: -34, lon: 151 }];
 /** The app at each place, in PLACES' order. */
-const IDS: AppId[] = ['campus', 'trace', 'relief', 'green', 'travel'];
+const IDS: AppId[] = ['campus', 'trace', 'relief', 'lab', 'travel'];
 /** Three more things each app does (beyond its tagline and line in apps.ts): only what it really does. */
 const DETAILS: Record<AppId, string[]> = {
   campus: ['Assignments and quizzes, graded with rubrics', 'Attendance, the timetable and the calendar', 'Messages between students, teachers and parents'],
   trace: ['Signed codes, and a warning when a label looks copied', 'Live maps of scans, recalls and warranties', 'EU Digital Product Passports'],
   relief: ['Alerts for helpers nearby, never showing where they are', 'A notification when someone answers', 'Organisations with members, supplies and volunteer shifts'],
-  green: ['Streaks, badges and a weekly challenge', 'Teams that act together', 'A map of what was done'],
+  lab: ['MATLAB-style code with matrices and ode45', 'Figures you can save as LaTeX', 'A computer app to download'],
   travel: ['Guides to see, eat and sleep anywhere', 'Day-by-day plans with friends', 'Stays, flights and tours to book'],
 };
 const short = (id: AppId) => appById(id).name.replace('UniVerse ', '');
 
 /** M164: each app's real number from the site's daily totals (none for UniVersity; under 10 isn't sent). */
 const TOTAL: Partial<Record<AppId, [TotalKey, string]>> = {
-  trace: ['scans', 'products checked'], relief: ['helped', 'people helped'], green: ['co2Kg', 'kg of CO₂ saved'],
+  trace: ['scans', 'products checked'], relief: ['helped', 'people helped'],
 };
 
 export function WorldSection({ app, onShow }: { app: AppId; onShow?: (id: AppId) => void }) {

@@ -156,7 +156,7 @@ export default function ownerConsoleModule(router: Router) {
       q<{ org: string | null; n: bigint }>(OPEN_BY_SCHOOL),
       prisma.organization.findMany({ select: { id: true, name: true }, take: 1000 }),
       travelReports(),
-      // M370: Ghidra's answers people reported.
+      // M429: Ghidra's answers people reported.
       prisma.ghidraReport.findMany({ where: { resolvedAt: null }, orderBy: { createdAt: 'desc' }, take: 40, select: { id: true, question: true, answer: true, reason: true, createdAt: true, userId: true } }),
     ]);
     const senders = await prisma.user.findMany({ where: { id: { in: [...new Set([...reports.map((x) => x.senderId), ...travel.map((x) => x.userId), ...ghidra.map((x) => x.userId)])] } }, select: { id: true, name: true, organizationId: true } });
@@ -166,14 +166,14 @@ export default function ownerConsoleModule(router: Router) {
     return {
       bySchool: [
         ...open.map((o) => ({ id: o.org, name: (o.org && school.get(o.org)) || 'No school', open: num(o.n) })),
-        ...(travel.some((t) => !t.hidden) ? [{ id: 'travel', name: 'Travel', open: travel.filter((t) => !t.hidden).length }] : []),
+        ...(travel.some((t) => !t.hidden) ? [{ id: 'travel', name: 'Aether', open: travel.filter((t) => !t.hidden).length }] : []),
         ...(ghidra.length ? [{ id: 'ghidra', name: 'Ghidra', open: ghidra.length }] : []),
       ].sort((a, b) => b.open - a.open),
       items: [
         ...flags.map((f) => ({ kind: 'flag' as const, id: f.id, title: f.kind, severity: f.severity, text: f.excerpt, repeats: f.repeats, at: f.createdAt, person: who(f.sender) })),
         ...reports.map((c) => ({ kind: 'report' as const, id: c.id, title: c.community?.name ?? 'Community', severity: null, text: c.excerpt, reason: c.reason, at: c.createdAt, person: who(sender.get(c.senderId)) })),
         ...listings.map((l) => ({ kind: 'listing' as const, id: l.id, title: l.title, severity: null, text: `${l.reports} report${l.reports === 1 ? '' : 's'} · ${l.status === 'HIDDEN' ? 'hidden' : 'still showing'}`, hidden: l.status === 'HIDDEN', at: l.createdAt, person: who(l.user) })),
-        ...travel.map(({ userId, ...t }) => ({ ...t, severity: null, group: 'Travel', person: who(sender.get(userId)) })),
+        ...travel.map(({ userId, ...t }) => ({ ...t, severity: null, group: 'Aether', person: who(sender.get(userId)) })),
         ...ghidra.map((g) => ({ kind: 'ghidra' as const, id: g.id, title: 'Ghidra answer', severity: null, text: `Asked: ${g.question.slice(0, 300)}\nGhidra: ${g.answer.slice(0, 600)}`, reason: g.reason, at: g.createdAt, group: 'Ghidra', person: who(sender.get(g.userId)) })),
       ].sort((a, b) => +new Date(b.at) - +new Date(a.at)),
     };
@@ -197,7 +197,7 @@ export default function ownerConsoleModule(router: Router) {
       summary = action === 'hide' ? 'Hid a reported campus post' : 'Restored a reported campus post';
     } else if ((params.kind === 'travel-post' || params.kind === 'travel-review') && oneOf(['hide', 'restore'] as const, action)) {
       await moderateTravel(params.kind, params.id, action);
-      const what = params.kind === 'travel-post' ? 'travellers-board note' : 'Travel review';
+      const what = params.kind === 'travel-post' ? 'travellers-board note' : 'Aether review';
       summary = action === 'hide' ? `Hid a reported ${what}` : `Restored a reported ${what}`;
     } else if (params.kind === 'ghidra' && action === 'dismiss') {
       await prisma.ghidraReport.updateMany({ where: { id: params.id, resolvedAt: null }, data: { resolvedAt: new Date() } });

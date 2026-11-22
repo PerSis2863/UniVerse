@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { Flag } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 
-// M370: "Report" under one of Ghidra's answers (wrong, unsafe, unkind): the question and the answer go to the owner
+// M429: "Report" under one of Ghidra's answers (wrong, unsafe, unkind): the question and the answer go to the owner
 // console's Moderation (POST /ghidra/report), so Ghidra's rules can be adjusted over time. Nothing else is sent.
 export function ReportAnswer({ question, answer }: { question: string; answer: string }) {
   const [sent, setSent] = useState(false);

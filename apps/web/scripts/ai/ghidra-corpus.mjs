@@ -1,4 +1,4 @@
-// The text UniVerse Mini (M362) learns from: every sentence UniVerse itself shows people (its pages, help, policies,
+// The text UniVerse Mini (M421) learns from: every sentence UniVerse itself shows people (its pages, help, policies,
 // guides and messages), taken out of the app's own source. UniVerse's own words only, no outside text.
 // From apps/web: node scripts/ai/mini-corpus.mjs <out.txt>   (the file isn't committed: rebuild it any time)
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';

@@ -42,7 +42,7 @@ function studentOrder<Q extends { id: string; pool?: string | null }>(quiz: { id
 }
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins, their school's courses. */
-  /** M366: the same check for routes outside this service (Ghidra's quiz drafts, src/server/quiz-draft.ts). */
+  /** M425: the same check for routes outside this service (Ghidra's quiz drafts, src/server/quiz-draft.ts). */
   async assertCanManage(courseId: string, user: Who) { await this.assertCourseOwner(courseId, user); }
 
   private async assertCourseOwner(courseId: string, user: Who) {

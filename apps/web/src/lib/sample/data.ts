@@ -210,7 +210,7 @@ export function buildSampleDb(me: Me) {
   // M179: each app keeps its own chats (the welcome chat shows in every app).
   conversations.push(
     { id: 'sample-conv-relief', app: 'relief', isGroup: true, isOfficial: false, title: 'Riverside flood volunteers', members: [meCard, people.zoya, people.liam], messages: [] as any[] },
-    { id: 'sample-conv-green', app: 'green', isGroup: false, isOfficial: false, title: people.liam.name, members: [meCard, people.liam], messages: [] as any[] },
+    { id: 'sample-conv-green', app: 'campus', isGroup: false, isOfficial: false, title: people.liam.name, members: [meCard, people.liam], messages: [] as any[] },
     { id: 'sample-conv-play', app: 'campus', isGroup: true, isOfficial: false, title: 'Friday quiz night', members: [meCard, people.aarav, people.zoya], messages: [] as any[] },
   );
   conversations[4].messages.push(msg('sample-conv-relief', people.zoya, 'The shelter on Mill Road needs 20 more blankets by 6 pm. Who can drive?', 25));

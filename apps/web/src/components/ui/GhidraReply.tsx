@@ -15,7 +15,7 @@ import { cleanCode } from '@/lib/trace';
 import { cn } from '@/lib/utils';
 import { ReportAnswer } from '@/components/ui/ReportAnswer';
 
-// One Ghidra reply (M363–M365, src/lib/ask.ts), the same in the hub's chat (components/hub/Ghidra.tsx) and the assistant on
+// One Ghidra reply (M422–M424, src/lib/ask.ts), the same in the hub's chat (components/hub/Ghidra.tsx) and the assistant on
 // every page (AIStudyAssistant): the answer, a list of the person's own things ('show'), or one proposed action with
 // Confirm and Cancel. Confirming calls the app's own route, so its checks run again; nothing happens without the tap.
 
@@ -38,7 +38,7 @@ const label = (p: GhidraPlan) => (p.action === 'chain' ? `Do ${p.steps.filter(pr
 /** The reply's words, list and buttons. `onSettle` hears Confirm (after it worked) or Cancel; `onLeave` a link or page opened. */
 export function GhidraReply({ plan, role, settled, onSettle, onLeave, className, question }: {
   plan: GhidraPlan; role: string; settled: Settled; onSettle: (s: 'done' | 'cancelled') => void; onLeave?: () => void; className?: string;
-  /** The words it answered: with them, an answer can be reported (M370). */
+  /** The words it answered: with them, an answer can be reported (M429). */
   question?: string;
 }) {
   const router = useRouter();
@@ -49,7 +49,7 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
   const act = async (p: GhidraPlan): Promise<string | null> => {
     if (p.action === 'green_log') {
       await api.post('/green/actions', { kind: p.kind, amount: p.amount, note: p.note });
-      toast.success('Logged in Green.', { action: { label: 'Open Green', onClick: () => go('/green') } });
+      toast.success('Logged in Green living.', { action: { label: 'Open Green living', onClick: () => go('/student/life/green') } });
       void mutate('/hub/wallet');
       return null;
     }
@@ -63,20 +63,20 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
     if (p.action === 'trace_check') return `/t/${cleanCode(p.code)}`;
     if (p.action === 'open') return pageHref(p.page, role);
     if (p.action === 'trip_new') {
-      // M365: Travel's own route makes it; the trip's page opens to add its cities.
-      // M375, the Travel Planner: with a place, the trip starts with that city and its days, and opens planning them.
+      // M424: Travel's own route makes it; the trip's page opens to add its cities.
+      // M434, the Travel Planner: with a place, the trip starts with that city and its days, and opens planning them.
       const r = await api.post<{ trip: { id: string } }>('/travel/trips', { name: p.name, startDate: p.startDate, travellers: p.travellers, ...(p.place ? { stop: { guide: p.place, days: p.days ?? 3 } } : {}) });
       toast.success(p.place ? 'Trip made. Planning its days…' : 'Trip made. Add its cities and Ghidra can help plan the days.');
       return `/travel/trip?id=${r.data.trip.id}${p.place ? '&plan=1' : ''}`;
     }
     if (p.action === 'quiz_draft' && p.courseId) {
-      // M366: the quiz route checks the course again and saves a draft only this teacher sees; the editor opens on it.
+      // M425: the quiz route checks the course again and saves a draft only this teacher sees; the editor opens on it.
       const r = await api.post<{ quiz: { id: string }; count: number }>('/quizzes/draft', { courseId: p.courseId, topic: p.topic, count: p.count });
       toast.success(`Draft ready: ${r.data.count} questions. Check each one before you publish.`);
       return `/teacher/quizzes?manage=${r.data.quiz.id}`;
     }
     if (p.action === 'message_draft') {
-      // M365: the draft waits until a chat is picked; it becomes that chat's draft and goes only when they press Send.
+      // M424: the draft waits until a chat is picked; it becomes that chat's draft and goes only when they press Send.
       if (!stashText(p.text)) throw new Error('Couldn’t keep the draft on this device. Copy it, then open Messages.');
       toast('Pick the chat: the draft will be waiting in its box.');
       return inboxFor(role);
@@ -84,7 +84,7 @@ export function GhidraReply({ plan, role, settled, onSettle, onLeave, className,
     return null;
   };
 
-  // M373: a chain's steps run one after another, in order; it stops at the first that fails; the page moves only at
+  // M432: a chain's steps run one after another, in order; it stops at the first that fails; the page moves only at
   // the end, to the last step's place.
   const [stepState, setStepState] = useState<Record<number, 'done' | 'failed'>>({});
   const confirm = async () => {

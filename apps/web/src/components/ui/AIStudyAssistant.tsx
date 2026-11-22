@@ -18,7 +18,7 @@ import { askOnDevice } from '@/lib/ghidra-device';
 import { ReportAnswer } from '@/components/ui/ReportAnswer';
 import { guard, guardReply } from '@/lib/ghidra-guard';
 
-// Ghidra on every page (M364): the corner assistant. A request to do something or to see your own things ("what's due",
+// Ghidra on every page (M423): the corner assistant. A request to do something or to see your own things ("what's due",
 // "I cycled 5 km", "open Travel": src/lib/ask.ts's matcher) goes to Ghidra's actions (POST /ask) and comes back as the
 // same reply as the hub's chat (GhidraReply: nothing happens without a tap). Questions about using UniVerse are answered
 // on the device, instantly, even offline; anything else (study questions) goes to the AI and is kept for offline.
@@ -28,11 +28,11 @@ type Message = {
   role: 'user' | 'assistant';
   content: string;
   /** instant: built-in answer (works offline); saved: an earlier AI answer replayed offline; device: the trained
-   *  Ghidra on this device (M365), when the AI couldn't answer */
+   *  Ghidra on this device (M424), when the AI couldn't answer */
   source?: 'instant' | 'saved' | 'ai' | 'device';
   links?: { label: string; href: string }[];
   related?: HelpEntry[];
-  /** M364: Ghidra's reply to a request (an action to confirm, or a list of the person's own things). */
+  /** M423: Ghidra's reply to a request (an action to confirm, or a list of the person's own things). */
   plan?: GhidraPlan;
   settled?: Settled;
 };
@@ -133,13 +133,13 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     setMessages(prev => [...prev, userMsg]);
     setInputValue('');
 
-    // M370: someone in crisis or in danger: the safe, human answer at once, online or not (src/lib/ghidra-guard.ts).
+    // M429: someone in crisis or in danger: the safe, human answer at once, online or not (src/lib/ghidra-guard.ts).
     const danger = guard(text);
     if (danger) { reply({ content: guardReply(danger), source: 'instant' }); return; }
 
-    // 0. Ghidra's actions (M364): your own things, or something to do, when online.
+    // 0. Ghidra's actions (M423): your own things, or something to do, when online.
     const wish = localPlan(text).action;
-    const several = looksMultiStep(text) && !asksHow(text); // M373: several parts go to Ghidra's planner
+    const several = looksMultiStep(text) && !asksHow(text); // M432: several parts go to Ghidra's planner
     if ((several || wish === 'my_due' || wish === 'my_green' || wish === 'my_trips' || wish === 'my_courses' || (wish !== 'answer' && !asksHow(text))) && (typeof navigator === 'undefined' || navigator.onLine)) {
       setIsTyping(true);
       const history: AskTurn[] = messages.slice(1).slice(-6).filter((m) => m.content).map((m) => ({ who: m.role === 'user' ? 'me' : 'ghidra', text: m.content.slice(0, 400) }));

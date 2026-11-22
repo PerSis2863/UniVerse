@@ -7,9 +7,10 @@ describe('the apps the website shows', () => {
   it('keeps only real apps, in their order', () => {
     expect(parseShownApps('["travel","campus","nope"]')).toEqual(['campus', 'travel']);
     expect(parseShownApps(['relief'])).toEqual(['relief']);
+    expect(parseShownApps(['green', 'trace'])).toEqual(['trace']); // M395: Green was folded into the other apps
   });
   it('shows every app when nothing valid is stored', () => {
-    const all = ['campus', 'trace', 'relief', 'green', 'travel'];
+    const all = ['campus', 'trace', 'relief', 'travel', 'lab'];
     expect(parseShownApps(null)).toEqual(all);
     expect(parseShownApps('not json')).toEqual(all);
     expect(parseShownApps('[]')).toEqual(all);
@@ -21,6 +22,6 @@ describe('the style that hides the other apps', () => {
   it('matches the head script', async () => {
     const { hideCss } = await import('./shown-apps-list');
     expect(hideCss(['relief'])).toBe('[data-uv-app]:not([data-uv-app="relief"]),[data-uv-many]{display:none!important}');
-    expect(hideCss(['campus', 'trace', 'relief', 'green', 'travel'])).toBe('');
+    expect(hideCss(['campus', 'trace', 'relief', 'travel', 'lab'])).toBe('');
   });
 });

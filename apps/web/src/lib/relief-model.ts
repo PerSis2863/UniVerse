@@ -1,7 +1,7 @@
 import { RELIEF_KINDS, URGENCIES, type ReliefKind, type Urgency } from './relief';
 import { BIAS, BUCKETS, SCALE, WEIGHTS } from './relief-model.gen';
 
-// Relief's own AI (M361): a small model UniVerse trained itself, from nothing, with no outside AI service.
+// Relief's own AI (M420): a small model UniVerse trained itself, from nothing, with no outside AI service.
 // It reads a request for help ("SOS water rising, 3 kids on the roof") and says how urgent it is and what
 // kind of help it is. It runs right here (in the browser or the Worker) in well under a millisecond.
 //
@@ -72,7 +72,7 @@ export function readNeed(text: string): NeedReading {
 
 /**
  * A first guess at a need from a text message (M107), for the coordinator to check before it goes on the
- * map: the kind and how urgent (this model, M361), how many people ("family of 5", "3 children") and a
+ * map: the kind and how urgent (this model, M420), how many people ("family of 5", "3 children") and a
  * short title.
  */
 export function guessNeed(text: string): { kind: ReliefKind; people: number; urgency: Urgency; title: string } {

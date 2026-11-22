@@ -48,7 +48,7 @@ try {
     page.on('pageerror', (e) => fail.push(`${width} ${theme}: ${e.message}`));
     for (const b of ['overview', 'ledger', 'suppliers', 'staff', 'planner', 'credits', 'verify', 'report', 'team']) {
       const what = `${b} ${width} ${theme}`;
-      await page.goto(`${base}/green?view=business&b=${b}`, { waitUntil: 'load', timeout: 240_000 });
+      await page.goto(`${base}/trace/carbon?b=${b}`, { waitUntil: 'load', timeout: 240_000 });
       await page.getByRole('group', { name: 'Section' }).waitFor({ timeout: 60_000 }).catch(() => fail.push(`${what}: no sections`));
       await page.waitForTimeout(2200);
       const want = { overview: /Footprint \d{4}/, ledger: /Electricity from the grid/, suppliers: /Check Cotton/, staff: /Copy the survey link/, planner: /What if/, credits: /Renewable claim/, verify: /Check Assurance/, report: /Verified: limited assurance/, team: /The log is whole/ }[b];

@@ -213,7 +213,7 @@ function GrowthCharts({ growth, error, retry }: { growth?: Growth; error: boolea
 const KIND: Record<Item['kind'], { label: string; icon: typeof Flag; actions: { id: string; label: string }[] }> = {
   flag: { label: 'Chat safety flag', icon: ShieldAlert, actions: [{ id: 'reviewed', label: 'Reviewed' }, { id: 'dismiss', label: 'Dismiss' }] },
   report: { label: 'Community report', icon: Flag, actions: [{ id: 'dismiss', label: 'Dismiss' }] },
-  // M370: Ghidra's answers people reported: read them, adjust Ghidra's rules (src/lib/ghidra-guard.ts, its prompts), then Done.
+  // M429: Ghidra's answers people reported: read them, adjust Ghidra's rules (src/lib/ghidra-guard.ts, its prompts), then Done.
   ghidra: { label: 'Reported Ghidra answer', icon: Sparkles, actions: [{ id: 'dismiss', label: 'Done' }] },
   listing: { label: 'Reported campus post', icon: Store, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },
   'travel-post': { label: 'Reported travellers-board note', icon: Plane, actions: [{ id: 'hide', label: 'Hide' }, { id: 'restore', label: 'Restore' }] },

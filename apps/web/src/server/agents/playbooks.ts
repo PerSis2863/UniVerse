@@ -1,4 +1,4 @@
-// The app agents' professional playbooks (M375; the owner, 22 Nov: "train all this agents professionally in there own
+// The app agents' professional playbooks (M434; the owner, 22 Nov: "train all this agents professionally in there own
 // sectors"). The agents run on large models we can't retrain, so they are trained the way a new professional is: the
 // standards of their field, a worked example of good work, and tests of the rules (src/server/agents/agents.test.ts).
 // Each agent's prompt is built from its playbook here; Ghidra's own model (scripts/ai/ghidra2.py) can learn the same

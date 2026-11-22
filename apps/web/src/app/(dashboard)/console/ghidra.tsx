@@ -7,7 +7,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { card } from './shared';
 import type { GhidraMeta } from '@/lib/ghidra';
 
-// Owner console → Server → Usage: try Ghidra (M362), UniVerse's own GPT, trained from nothing (scripts/ai/train-ghidra.py).
+// Owner console → Server → Usage: try Ghidra (M421), UniVerse's own GPT, trained from nothing (scripts/ai/train-ghidra.py).
 // It runs in this browser on a background thread (src/lib/ghidra.worker.ts), started only when Write is pressed.
 
 const STARTS = ['Once upon a time', 'Your class', 'Lily wanted to'];
