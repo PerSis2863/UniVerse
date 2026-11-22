@@ -75,7 +75,7 @@ export const truthy = (v: Value): boolean => {
   return m.d.length > 0 && m.d.every((x) => x !== 0 && !Number.isNaN(x));
 };
 export const at = (m: Mat, i: number, j: number) => m.d[i + j * m.r];
-export const sizeOf = (v: Value): [number, number] => (v.k === 'mat' || v.k === 'cell' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : [1, 1]);
+export const sizeOf = (v: Value): [number, number] => (v.k === 'mat' || v.k === 'cell' ? [v.r, v.c] : v.k === 'str' ? [v.v.length ? 1 : 0, v.v.length] : v.k === 'struct' && v.table ? [tableHeight(v), v.f.size] : [1, 1]);
 
 export function kind(v: Value): string {
   switch (v.k) {

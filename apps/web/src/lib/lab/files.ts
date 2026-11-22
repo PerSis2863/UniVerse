@@ -7,6 +7,7 @@ import { png } from './colormap';
 import { findAll, kid, parseXml } from '@/lib/xml-lite';
 import { writeXlsx } from '@/lib/sheet/xlsx';
 import { keyOf } from '@/lib/sheet/refs';
+import { columnRows, heightOf, isTable, names as colNames, pick, table } from './table';
 import type { CellJSON } from '@/lib/sheet/book';
 
 // UniVerse Lab's files (M383): a store of files kept on the person's device (the window keeps them; the engine sees
@@ -205,10 +206,7 @@ function names(heads: string[]): string[] {
     return k.slice(0, 63);
   });
 }
-export function makeTable(cols: [string, Value][]): Struct {
-  return { k: 'struct', f: new Map(cols), table: true };
-}
-const heightOf = (T: Struct) => { const v = [...T.f.values()][0]; return v ? (v.k === 'cell' ? v.r : v.k === 'mat' ? v.r : 1) : 0; };
+const makeTable = table;
 def('readtable', (a, _n, lab) => {
   const rows = rowsOf(lab, textOf(a[0]), a);
   const width = Math.max(0, ...rows.map((r) => r.length));
@@ -494,3 +492,164 @@ def('copyfile movefile', (a, _n, lab) => { const fs = store(lab), from = textOf(
 BUILTINS.movefile = (a, n, lab) => { BUILTINS.copyfile(a, n, lab); store(lab).remove(textOf(a[0])); return []; };
 def('pwd cd', (_a, nout, lab) => { if (nout > 0) return [str('/lab')]; lab.host.out('/lab (your Lab files)\n'); return []; });
 
+
+// ——— Table tools (M385) ———
+const needTable = (v: Value | undefined, what: string): Struct => { if (!isTable(v)) throw new LabError(`${what} needs a table.`); return v; };
+/** Column names from a name, a cell of names, numbers (positions) or logicals. */
+function pickNames(T: Struct, v: Value | undefined): string[] {
+  const all = colNames(T);
+  if (!v) return [];
+  if (v.k === 'str') return [v.v];
+  if (v.k === 'cell') return v.d.map((x) => textOf(x));
+  const m = toMat(v);
+  return m.logical ? all.filter((_, j) => m.d[j]) : [...m.d].map((k) => { const n = all[k - 1]; if (!n) throw new LabError(`Column ${k} is past the end.`); return n; });
+}
+def('istable', (a) => [{ ...mat(1, 1, [isTable(a[0]) ? 1 : 0]), logical: true }]);
+const sortRowsPlain = BUILTINS.sortrows;
+def('sortrows', (a, n, lab, frame) => {
+  if (!isTable(a[0])) return sortRowsPlain(a, n, lab, frame);
+  // sortrows(T, 'col'), sortrows(T, {'a', 'b'}, {'ascend', 'descend'}), sortrows(T, 'col', 'descend').
+  const T = a[0], h = heightOf(T);
+  const keys = a[1] && !(a[1].k === 'str' && /^(ascend|descend)$/i.test(a[1].v)) ? pickNames(T, a[1]) : [colNames(T)[0]];
+  const dirArg = a.find((v, i) => i > 0 && ((v.k === 'str' && /^(ascend|descend)$/i.test(v.v)) || (v.k === 'cell' && v.d.every((x) => x.k === 'str' && /^(ascend|descend)$/i.test(x.v)))));
+  const dirs = keys.map((_, k) => { const d = dirArg?.k === 'cell' ? textOf(dirArg.d[k] ?? dirArg.d[0]) : dirArg ? textOf(dirArg) : 'ascend'; return /^desc/i.test(d) ? -1 : 1; });
+  const key = (name: string, i: number): number | string => { const col = T.f.get(name); if (!col) throw new LabError(`This table has no column “${name}”.`); return col.k === 'cell' ? textOf(col.d[i]) : col.k === 'mat' ? col.d[i] : 0; };
+  const order = Array.from({ length: h }, (_, i) => i).sort((x, y) => {
+    for (let k = 0; k < keys.length; k++) { const p = key(keys[k], x), q = key(keys[k], y); if (p !== q) return (p < q ? -1 : 1) * dirs[k]; }
+    return x - y;
+  });
+  return [pick(T, order, 'all'), mat(h, 1, order.map((i) => i + 1))];
+});
+for (const [name, fromEnd] of [['head', false], ['tail', true]] as const) {
+  def(name, (a) => {
+    const v = a[0], k = a[1] ? scalar(a[1]) : 8;
+    const h = v.k === 'mat' || v.k === 'cell' ? v.r : isTable(v) ? heightOf(v) : 1, n = Math.max(0, Math.min(h, k));
+    const rows = Array.from({ length: n }, (_, i) => (fromEnd ? h - n + i : i));
+    if (isTable(v)) return [pick(v, rows, 'all')];
+    if (v.k === 'mat' || v.k === 'cell') return [columnRows(v, rows)];
+    return [v];
+  });
+}
+def('summary', (a, nout, lab) => {
+  const T = needTable(a[0], 'summary'), h = heightOf(T);
+  const lines = [`${h} rows, ${T.f.size} columns`, ''];
+  for (const [n, col] of T.f) {
+    if (col.k === 'mat') {
+      const v = [...col.d].filter(Number.isFinite).sort((x, y) => x - y), miss = col.d.length - v.length;
+      const med = v.length ? (v.length % 2 ? v[(v.length - 1) / 2] : (v[v.length / 2 - 1] + v[v.length / 2]) / 2) : NaN;
+      lines.push(`${n}: ${col.logical ? 'logical' : 'numbers'}`, `    Min ${fmt(v[0] ?? NaN)}   Median ${fmt(med)}   Max ${fmt(v[v.length - 1] ?? NaN)}   Mean ${fmt(v.reduce((s, x) => s + x, 0) / (v.length || NaN))}${miss ? `   Missing ${miss}` : ''}`);
+    } else if (col.k === 'cell') {
+      const counts = new Map<string, number>();
+      for (const x of col.d) counts.set(cellText(x), (counts.get(cellText(x)) ?? 0) + 1);
+      const top = [...counts].sort((p, q) => q[1] - p[1]).slice(0, 3).map(([t, c]) => `${t || '(empty)'} ×${c}`).join(', ');
+      lines.push(`${n}: text, ${counts.size} different`, `    Most often: ${top}`);
+    }
+  }
+  if (nout > 0) return [str(lines.join('\n'))];
+  lab.host.out(`${lines.join('\n')}\n`);
+  return [];
+});
+def('addvars', (a) => {
+  // addvars(T, v1, v2, …, 'NewVariableNames', {...}, 'Before' | 'After', name)
+  const T = needTable(a[0], 'addvars'), h = heightOf(T);
+  const ni = a.findIndex((v, i) => i > 0 && v.k === 'str' && /^(newvariablenames|before|after)$/i.test(v.v));
+  const vals = a.slice(1, ni < 0 ? a.length : ni).map((v): Value => (v.k === 'mat' && v.r === 1 && v.c === h && h !== 1 ? mat(h, 1, v.d, v.logical) : v.k === 'cell' && v.r === 1 && v.c === h && h !== 1 ? { ...v, r: h, c: 1 } : v));
+  for (const v of vals) if ((v.k === 'mat' || v.k === 'cell' ? v.r : 1) !== h) throw new LabError(`A new column must have ${h} rows, as the table does.`);
+  const given = pickNames(T, opt(a, 'NewVariableNames'));
+  const newNames = names([...colNames(T), ...vals.map((_, j) => given[j] ?? `Var${T.f.size + j + 1}`)]).slice(T.f.size);
+  const cols = [...T.f], added = vals.map((v, j): [string, Value] => [newNames[j], v]);
+  const before = opt(a, 'Before'), after = opt(a, 'After');
+  const at = before ? colNames(T).indexOf(pickNames(T, before)[0]) : after ? colNames(T).indexOf(pickNames(T, after)[0]) + 1 : cols.length;
+  return [table([...cols.slice(0, at), ...added, ...cols.slice(at)])];
+});
+def('removevars', (a) => { const T = needTable(a[0], 'removevars'), drop = new Set(pickNames(T, a[1])); return [table([...T.f].filter(([n]) => !drop.has(n)))]; });
+def('renamevars', (a) => {
+  const T = needTable(a[0], 'renamevars'), from = pickNames(T, a[1]), to = a[2]?.k === 'cell' ? a[2].d.map((v) => textOf(v)) : a[2] ? [textOf(a[2])] : [];
+  if (from.length !== to.length) throw new LabError('renamevars needs as many new names as old ones.');
+  return [table([...T.f].map(([n, v]) => [from.includes(n) ? to[from.indexOf(n)] : n, v]))];
+});
+def('movevars', (a) => {
+  const T = needTable(a[0], 'movevars'), move = new Set(pickNames(T, a[1]));
+  const rest = [...T.f].filter(([n]) => !move.has(n)), moving = [...T.f].filter(([n]) => move.has(n));
+  const before = opt(a, 'Before'), after = opt(a, 'After');
+  const at = before ? rest.findIndex(([n]) => n === pickNames(T, before)[0]) : after ? rest.findIndex(([n]) => n === pickNames(T, after)[0]) + 1 : rest.length;
+  return [table([...rest.slice(0, at), ...moving, ...rest.slice(at)])];
+});
+const STATS: Record<string, (v: number[]) => number> = {
+  mean: (v) => v.reduce((s, x) => s + x, 0) / v.length, sum: (v) => v.reduce((s, x) => s + x, 0), min: (v) => Math.min(...v), max: (v) => Math.max(...v),
+  median: (v) => { const s = [...v].sort((x, y) => x - y), n = s.length; return n % 2 ? s[(n - 1) / 2] : (s[n / 2 - 1] + s[n / 2]) / 2; },
+  std: (v) => { const m = v.reduce((s, x) => s + x, 0) / v.length; return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, v.length - 1)); },
+  var: (v) => { const m = v.reduce((s, x) => s + x, 0) / v.length; return v.reduce((s, x) => s + (x - m) ** 2, 0) / Math.max(1, v.length - 1); },
+  range: (v) => Math.max(...v) - Math.min(...v), nummissing: () => 0,
+};
+def('groupsummary', (a) => {
+  // groupsummary(T, groupvars, method(s), datavars): one row per group, its count, and each method of each data column.
+  const T = needTable(a[0], 'groupsummary'), h = heightOf(T);
+  const groups = pickNames(T, a[1]);
+  const methods = a[2] ? (a[2].k === 'cell' ? a[2].d.map((v) => textOf(v)) : [textOf(a[2])]).map((m) => m.toLowerCase()) : [];
+  for (const m of methods) if (!STATS[m]) throw new LabError(`groupsummary's methods: ${Object.keys(STATS).join(', ')}.`);
+  const data = a[3] ? pickNames(T, a[3]) : colNames(T).filter((n) => !groups.includes(n) && T.f.get(n)!.k === 'mat');
+  const keyOfRow = (i: number) => JSON.stringify(groups.map((g) => { const c = T.f.get(g)!; return c.k === 'cell' ? textOf(c.d[i]) : c.k === 'mat' ? c.d[i] : ''; }));
+  const byKey = new Map<string, number[]>();
+  for (let i = 0; i < h; i++) { const k = keyOfRow(i); byKey.set(k, [...(byKey.get(k) ?? []), i]); }
+  const keys = [...byKey.keys()].sort();
+  const first = keys.map((k) => byKey.get(k)![0]);
+  const cols: [string, Value][] = groups.map((g) => [g, columnRows(T.f.get(g)!, first)]);
+  cols.push(['GroupCount', mat(keys.length, 1, keys.map((k) => byKey.get(k)!.length))]);
+  for (const m of methods) for (const d of data) {
+    const col = T.f.get(d)!;
+    if (col.k !== 'mat') throw new LabError(`The column “${d}” isn’t numbers.`);
+    cols.push([`${m}_${d}`, mat(keys.length, 1, keys.map((k) => { const v = byKey.get(k)!.map((i) => col.d[i]); return m === 'nummissing' ? v.filter((x) => Number.isNaN(x)).length : STATS[m](v.filter((x) => !Number.isNaN(x))); }))]);
+  }
+  return [table(cols)];
+});
+function joinOn(a: Value[], kind: 'inner' | 'left' | 'outer'): Value[] {
+  const L = needTable(a[0], 'join'), R = needTable(a[1], 'join');
+  const keys = opt(a, 'Keys') ? pickNames(L, opt(a, 'Keys')) : colNames(L).filter((n) => R.f.has(n));
+  if (!keys.length) throw new LabError('The tables share no column to join on: name one with \'Keys\'.');
+  const keyAt = (T: Struct, i: number) => JSON.stringify(keys.map((k) => { const c = T.f.get(k); if (!c) throw new LabError(`Both tables need the key “${k}”.`); return c.k === 'cell' ? textOf(c.d[i]) : c.k === 'mat' ? c.d[i] : ''; }));
+  const rIndex = new Map<string, number[]>();
+  for (let i = 0; i < heightOf(R); i++) { const k = keyAt(R, i); rIndex.set(k, [...(rIndex.get(k) ?? []), i]); }
+  const pairs: [number, number][] = [], usedR = new Set<number>();
+  for (let i = 0; i < heightOf(L); i++) {
+    const m = rIndex.get(keyAt(L, i));
+    if (m) for (const j of m) { pairs.push([i, j]); usedR.add(j); }
+    else if (kind !== 'inner') pairs.push([i, -1]);
+  }
+  if (kind === 'outer') for (let j = 0; j < heightOf(R); j++) if (!usedR.has(j)) pairs.push([-1, j]);
+  const take = (col: Value, rows: number[]): Value => {
+    const safe = rows.map((i) => Math.max(0, i)), got = columnRows(col, safe);
+    // A missing match is NaN (numbers) or empty text.
+    if (got.k === 'mat') rows.forEach((i, q) => { if (i < 0) for (let c = 0; c < got.c; c++) got.d[q + c * got.r] = NaN; });
+    if (got.k === 'cell') rows.forEach((i, q) => { if (i < 0) got.d[q] = str(''); });
+    return got;
+  };
+  const cols: [string, Value][] = [...L.f].map(([n, c]) => [n, take(c, pairs.map(([i]) => i))]);
+  // Keys from the right table fill rows only it has.
+  for (const k of keys) { const c = cols.find(([n]) => n === k)!, rk = take(R.f.get(k)!, pairs.map(([, j]) => j)); pairs.forEach(([i], q) => { if (i < 0) { if (c[1].k === 'mat' && rk.k === 'mat') c[1].d[q] = rk.d[q]; if (c[1].k === 'cell' && rk.k === 'cell') c[1].d[q] = rk.d[q]; } }); }
+  for (const [n, c] of R.f) if (!keys.includes(n)) cols.push([L.f.has(n) ? `${n}_right` : n, take(c, pairs.map(([, j]) => j))]);
+  return [table(cols)];
+}
+def('join', (a) => joinOn(a, 'left'));
+def('innerjoin', (a) => joinOn(a, 'inner'));
+def('outerjoin', (a) => joinOn(a, 'outer'));
+def('cell2table', (a) => {
+  const C = a[0];
+  if (C.k !== 'cell') throw new LabError('cell2table needs a cell array.');
+  const given = pickNamesFree(opt(a, 'VariableNames'));
+  return [table(names(Array.from({ length: C.c }, (_, j) => given[j] ?? `Var${j + 1}`)).map((n, j) => {
+    const items = Array.from({ length: C.r }, (_, i) => C.d[i + j * C.r]);
+    return [n, items.every((x) => x.k === 'mat' && x.d.length === 1) ? mat(C.r, 1, items.map((x) => (x as Mat).d[0])) : { k: 'cell', r: C.r, c: 1, d: items } as Cell];
+  }))];
+});
+const pickNamesFree = (v: Value | undefined) => (v?.k === 'cell' ? v.d.map((x) => textOf(x)) : v ? [textOf(v)] : []);
+def('table2cell', (a) => {
+  const T = needTable(a[0], 'table2cell'), h = heightOf(T), cols = [...T.f.values()];
+  return [{ k: 'cell', r: h, c: cols.length, d: cols.flatMap((c) => Array.from({ length: h }, (_, i): Value => (c.k === 'cell' ? c.d[i] : c.k === 'mat' ? mat(1, 1, [c.d[i]]) : c))) }];
+});
+def('struct2table', (a) => {
+  const S = a[0];
+  if (S.k !== 'struct') throw new LabError('struct2table needs a struct of columns.');
+  return [table([...S.f].map(([n, v]): [string, Value] => [n, v.k === 'mat' && v.r === 1 && v.c > 1 ? mat(v.c, 1, v.d, v.logical) : v]))];
+});
+def('table2struct', (a) => { const T = needTable(a[0], 'table2struct'); return [{ k: 'struct', f: new Map(T.f) }]; });

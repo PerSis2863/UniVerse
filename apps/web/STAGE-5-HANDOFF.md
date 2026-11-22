@@ -10533,3 +10533,25 @@ keyed `.swap` with `data-dir` from their order; a figure glides in when you swit
 live redraw of the same figure doesn't replay it); the command window shows `.lab-busy` while running (a stripe on
 transform only, paused while scrolling, still with Reduce Motion; globals.css). The example `waves.m` (new visitors;
 saved script lists are kept as they were). Not built: controls in the command window, a control for text boxes.
+
+## M385 (22 Nov): UniVerse Lab: table rows and columns
+
+The owner asked for every left-out of M380–M384 (table rows, more than 3 dimensions and integer types, JPEG saving,
+.xls, MATLAB 7.3 files) "and whatever big things you can": M385–M388 take the left-outs, then watch it run,
+notebook pages, Lab in UniVersity, maths libraries (optimisation, control, symbolic), simulations, the computer app.
+`src/lib/lab/table.ts` (pure: imports only values/parse, so interp.ts uses it without a loop): `isTable`, `pick`
+(T(rows, cols)), `contents` (T{…}: one column as itself, several numeric ones side by side, several text ones as a
+cell), `remove` (whole rows or whole columns), `setValues` (T{rows, 'col'} = v), `joinTables` ([T1; T2] same columns,
+[T1, T2] same height, no shared names), `properties` / `renamed` (T.Properties.VariableNames, read and assigned,
+also element by element: `peek` returns the properties so `…VariableNames{1} = 'x'` works). interp.ts: `index()`
+turns a second index of names (text or a cell of text) into column positions; `sizeOf` of a table is [height
+width] (so `end`, size, numel's neighbours follow); getIndex / getCell / setIndex / setCell / concat send tables to
+table.ts; a field set on a table keeps it a table and checks a new column's height (a row of the right length is
+turned into a column); `.Properties` is answered when the table has no such column. files.ts (with the other table
+functions): sortrows on a table (names, several keys, 'ascend' / 'descend' per key; the plain one kept for matrices),
+head / tail (tables, matrices and cells, 8 rows by default), summary (min, median, max, mean, missing; text: how many
+different, the most common), addvars ('NewVariableNames', 'Before', 'After'), removevars, renamevars, movevars,
+groupsummary (methods mean, sum, min, max, median, std, var, range, nummissing; one row per group, sorted, with
+GroupCount), join (left: every left row), innerjoin, outerjoin (missing matches NaN or empty text; same-named
+columns from the right get `_right`), cell2table, table2cell, struct2table, table2struct, istable. Not built: row
+names, categorical and datetime columns, varfun / rowfun, stack / unstack.

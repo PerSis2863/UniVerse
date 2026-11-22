@@ -2,6 +2,7 @@ import { LabError, parse, type Expr, type FnDef, type Stmt } from './parse';
 import { cbinop } from './complex';
 import { cmat, imOf, isComplex, bool, empty, inline, isScalar, kind, mat, num, numel, page, pages, scalar, show, sizeOf, stack, str, toMat, truthy, type Cell, type Fmt, type Fn, type Mat, type Struct, type Value } from './values';
 import { BUILTINS } from './builtins';
+import { colPositions, contents, isTable, joinTables, pick as pickTable, properties, remove as removeRows, renamed, setValues } from './table';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
 
@@ -158,7 +159,15 @@ export class Lab {
       const base = this.peek(t.of, f);
       if (base && base.k !== 'struct' && !(base.k === 'mat' && !base.d.length)) throw new LabError(`Fields only go on structs, not on ${kind(base)}.`);
       const name = typeof t.name === 'string' ? t.name : textOf(this.ev(t.name, f));
-      const s: Struct = { k: 'struct', f: new Map(base?.k === 'struct' ? base.f : []) };
+      if (isTable(base) && name === 'Properties') { this.assign(t.of, renamed(base, v), f); return; }
+      const s: Struct = { k: 'struct', f: new Map(base?.k === 'struct' ? base.f : []), ...(isTable(base) ? { table: true } : {}) };
+      // A table's new column must be as tall as the table (a row of the right length is turned into a column).
+      if (isTable(base) && base.f.size && !(base.f.size === 1 && base.f.has(name))) {
+        const h = sizeOf(base)[0];
+        if (v.k === 'mat' && v.r === 1 && v.c === h && h !== 1) v = mat(h, 1, v.d, v.logical);
+        else if (v.k === 'cell' && v.r === 1 && v.c === h && h !== 1) v = { ...v, r: h, c: 1 };
+        if (sizeOf(v)[0] !== h) throw new LabError(`A new column must have ${h} rows, as the table does.`);
+      }
       s.f.set(name, v);
       this.assign(t.of, s, f);
       return;
@@ -168,7 +177,7 @@ export class Lab {
   /** The current value at an assignment target, or undefined (not made yet, or past the end). */
   private peek(t: Expr, f: Frame): Value | undefined {
     if (t.k === 'id') return f.vars.get(t.name);
-    if (t.k === 'field') { const b = this.peek(t.of, f); const n = typeof t.name === 'string' ? t.name : textOf(this.ev(t.name, f)); return b?.k === 'struct' ? b.f.get(n) : undefined; }
+    if (t.k === 'field') { const b = this.peek(t.of, f); const n = typeof t.name === 'string' ? t.name : textOf(this.ev(t.name, f)); return b?.k === 'struct' ? (isTable(b) && n === 'Properties' && !b.f.has(n) ? properties(b) : b.f.get(n)) : undefined; }
     if (t.k === 'index') {
       const b = this.peek(t.of, f);
       if (!b) return undefined;
@@ -225,7 +234,8 @@ export class Lab {
         const b = this.ev(e.of, f);
         const n = typeof e.name === 'string' ? e.name : textOf(this.ev(e.name, f));
         if (b.k !== 'struct') throw new LabError(`“.${n}” only works on a struct, not on ${kind(b)}.`);
-        if (!b.f.has(n)) throw new LabError(`This struct has no field “${n}”.`);
+        if (isTable(b) && n === 'Properties' && !b.f.has(n)) return [properties(b)];
+        if (!b.f.has(n)) throw new LabError(isTable(b) ? `This table has no column “${n}” (its columns: ${[...b.f.keys()].join(', ')}).` : `This struct has no field “${n}”.`);
         return [b.f.get(n)!];
       }
       case 'index': {
@@ -262,6 +272,8 @@ export class Lab {
     const endHere = n === 1 ? r * c : i === 0 ? r : i === 1 ? c : 1;
     const v = this.withEnd(a, endHere, f);
     if (v.k === 'str' && v.v === ':') return 'all';
+    // A table's columns may be named: T(:, 'Age'), T(:, {'Name', 'Age'}).
+    if (isTable(base) && i === 1 && n === 2) { const cols = colPositions(base, v); if (cols) return cols; }
     const m = toMat(v, 'An index');
     if (m.logical) {
       const out: number[] = [];
@@ -476,6 +488,8 @@ export function inv(A: Mat): Mat {
 
 /** Rows of values side by side, then the rows on top of each other ([a b; c d]). Text joins as text. */
 export function concat(rows: Value[][]): Value {
+  // Tables join as tables: [T1; T2] adds rows, [T1, T2] adds columns.
+  if (rows.flat().length > 1 && rows.flat().every((v) => isTable(v))) return joinTables(rows as Struct[][]);
   // 3D arrays join page by page (a plain matrix joins every page).
   const P = Math.max(...rows.flat().map(pages), 1);
   if (P > 1) {
@@ -527,6 +541,10 @@ export function concat(rows: Value[][]): Value {
 const positions = (idx: Idx, n: number) => (idx === 'all' ? Array.from({ length: n }, (_, i) => i) : idx);
 
 export function getIndex(v: Value, idx: Idx[]): Value {
+  if (v.k === 'struct' && v.table) {
+    if (idx.length !== 2) throw new LabError('Index a table with rows and columns: T(rows, :) or T(:, \'name\').');
+    return pickTable(v, idx[0], idx[1]);
+  }
   if (v.k === 'mat' && v.im) { const re = getIndex({ ...v, im: undefined }, idx) as Mat, im = getIndex(mat(v.r, v.c, v.im), idx) as Mat; return cmat(re.r, re.c, re.d, im.d); }
   if (v.k === 'mat' && (pages(v) > 1 || idx.length >= 3)) {
     const P = pages(v), n = v.r * v.c;
@@ -572,6 +590,10 @@ export function getIndex(v: Value, idx: Idx[]): Value {
   return pick((k) => v.d[k], (rr, cc, items) => ({ ...mat(rr, cc, items), ...(v.logical ? { logical: true } : {}) }));
 }
 function getCell(v: Value, idx: Idx[]): Value[] {
+  if (isTable(v)) {
+    if (idx.length !== 2) throw new LabError('Take values from a table with rows and columns: T{rows, \'name\'}.');
+    return [contents(v, idx[0], idx[1])];
+  }
   if (v.k !== 'cell') throw new LabError(`{ } only works on a cell, not on ${kind(v)} (use ( ) instead).`);
   const sub = getIndex(v, idx) as Cell;
   return sub.d;
@@ -579,6 +601,12 @@ function getCell(v: Value, idx: Idx[]): Value[] {
 
 /** x(idx) = v: grows the matrix when needed (filled with 0), [] deletes, a scalar fills every position. */
 function setIndex(base: Value | undefined, idx: Idx[], v: Value, inPlace: boolean): Value {
+  if (isTable(base)) {
+    if (idx.length !== 2) throw new LabError('Index a table with rows and columns: T(rows, :) = [].');
+    if (v.k === 'mat' && !v.d.length) return removeRows(base, idx[0], idx[1]);
+    if (isTable(v) && idx[1] === 'all' && idx[0] !== 'all') { let t = base; for (const [n, col] of v.f) t = setValues(t, idx[0], [[...t.f.keys()].indexOf(n)], col); return t; }
+    throw new LabError('To change values in a table, use braces: T{rows, \'name\'} = values (or T.name(rows) = values).');
+  }
   if ((base && isComplex(base)) || isComplex(v)) {
     const B = base ? toMat(base) : undefined, V = toMat(v);
     if (!V.d.length) { const re = setIndex(B && { ...B, im: undefined }, idx, V, false) as Mat, im = setIndex(B && mat(B.r, B.c, imOf(B)), idx, V, false) as Mat; return cmat(re.r, re.c, re.d, im.d); }
@@ -678,6 +706,10 @@ function remove(B: Mat, idx: Idx[], text: boolean): Value {
   return text ? str(String.fromCharCode(...out.d)) : out;
 }
 function setCell(base: Value | undefined, idx: Idx[], v: Value): Value {
+  if (isTable(base)) {
+    if (idx.length !== 2) throw new LabError('Change table values with rows and a column: T{rows, \'name\'} = values.');
+    return setValues(base, idx[0], idx[1], v);
+  }
   if (base && base.k !== 'cell' && numel(base) > 0) throw new LabError(`{ } only works on a cell, not on ${kind(base)}.`);
   const b: Cell = base?.k === 'cell' ? base : { k: 'cell', r: 0, c: 0, d: [] };
   return place(b, idx, () => v, 1, () => empty(), (r, c, d) => ({ k: 'cell', r, c, d }), false) as Cell;
