@@ -55,7 +55,7 @@ export function LabAsk({ code, error, onNew, onReplace }: Props) {
       {answer && (
         <div className="space-y-2 rounded-xl border border-zinc-200 bg-white p-3 text-sm dark:border-white/10 dark:bg-white/[0.04]">
           {words && <div className="whitespace-pre-wrap leading-relaxed text-zinc-800 dark:text-zinc-100"><MathText text={words} /></div>}
-          {got && <pre translate="no" className="max-h-72 overflow-auto rounded-lg bg-zinc-50 p-2.5 font-mono text-xs leading-relaxed text-zinc-800 dark:bg-black/30 dark:text-zinc-100">{got}</pre>}
+          {got && <pre translate="no" tabIndex={0} aria-label="The AI’s code" className="max-h-72 overflow-auto rounded-lg bg-zinc-50 p-2.5 font-mono text-xs leading-relaxed text-zinc-800 dark:bg-black/30 dark:text-zinc-100">{got}</pre>}
           {got && (
             <div className="flex flex-wrap gap-2">
               <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" onClick={() => onNew(got)}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />Put in a new script</button>
