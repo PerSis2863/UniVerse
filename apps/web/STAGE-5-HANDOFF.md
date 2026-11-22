@@ -10999,3 +10999,19 @@ hidden), Start again; the drag and lift in numbers and a live chart; the Strouha
 has crossed the tunnel twice. Simulate's tabs: Structures | Heat | Fluids.
 Not built: 3D flow, turbulence models (above ~300 the grid is too coarse; τ is held at 0.505), the shapes from
 Structures, walls above and below, heat carried by the flow.
+
+## M409 (22 Nov): Hyperion installs as its own computer app
+
+The owner, 22 Nov: "we need to make a software not just platform like how these company has made". A web app the
+browser installs as a program (no store, no signing certificate, no cost): `public/hyperion/manifest.json` (its own
+`id` /hyperion so it is a separate app from UniVerse, `scope` and `start_url` /hyperion, standalone or
+window-controls-overlay, violet theme, Code and Simulate shortcuts) and its icons (`public/hyperion/icon-192/512/
+maskable/180.png`: a white Σ on violet, drawn by `scripts/assets/hyperion-icons.mjs` with the shared browser loader).
+`src/app/(dashboard)/hyperion/layout.tsx` (a server layout) sets `metadata.manifest` for every Hyperion page (Next
+merges metadata shallowly: it replaces the site's). The site's service worker covers it. `InstallHyperion.tsx` in
+both pages' top bars: the browser's own install box when `beforeinstallprompt` came; otherwise a small note for the
+browser (Safari: File → Add to Dock; Firefox can't; Chrome/Edge: the address bar's install icon); `appinstalled`
+thanks; hidden in the installed window (`display-mode`) and on phones. Checked with Chrome's DevTools protocol: the
+manifest is read with no errors and no installability errors. A real desktop program (an .exe / .dmg with Electron or
+Tauri) would need code-signing certificates (paid, the owner's accounts): not done; ask first. Note: a file named
+`.webmanifest` at public's root wasn't served by the dev server, so the manifest lives as `manifest.json` in its folder.
