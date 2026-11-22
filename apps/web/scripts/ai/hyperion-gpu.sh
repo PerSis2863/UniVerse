@@ -15,6 +15,15 @@ PER="${PER:-6}"          # requests written for each of Hyperion's functions
 EPOCHS="${EPOCHS:-2}"
 mkdir -p "$WORK" "$OUT"
 cd "$(dirname "$0")/../.."   # apps/web
+# On RunPod the machine switches itself off (stops) when this ends, finished or failed, and after MAX_HOURS at most, so
+# the graphics card can't keep charging while nobody watches. A stopped pod keeps /workspace (the results) and pays only
+# a little for that disk; terminate it once the files are downloaded. STOP_WHEN_DONE=0 keeps it running.
+MAX_HOURS="${MAX_HOURS:-8}"
+if [ -n "${RUNPOD_POD_ID:-}" ] && command -v runpodctl >/dev/null && [ "${STOP_WHEN_DONE:-1}" = 1 ]; then
+  stop_pod() { echo "Switching this machine off (stopped: the results stay in $OUT)."; runpodctl pod stop "$RUNPOD_POD_ID" >/dev/null 2>&1 || runpodctl stop pod "$RUNPOD_POD_ID" >/dev/null 2>&1 || true; }
+  trap stop_pod EXIT
+  (sleep $((MAX_HOURS * 3600)); echo "Safety limit of $MAX_HOURS hours reached."; stop_pod) &
+fi
 H=scripts/ai/hyperion-ai.py
 
 echo "== 1/5 Tools (the graphics card, Node.js for Hyperion's engine, the AI libraries)"
@@ -45,4 +54,4 @@ echo "== 5/5 Saving"
 cp "$WORK/lessons.jsonl" "$OUT/lessons.jsonl"
 ls -la "$OUT"
 echo "Done. Download adapter_model.safetensors, adapter_config.json and score.txt from $OUT (scripts/ai/hyperion-gpu.md, step 5)."
-echo "Then STOP or DELETE this machine: it charges for every hour it is switched on."
+echo "Then TERMINATE this machine (Pods → Terminate): until then its disk is still charged a little."
