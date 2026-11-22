@@ -11208,3 +11208,40 @@ The owner (22 Nov): "just integrate the 64m of minimind and after that start fro
   then `export` (~64 MB in parts under 20 MB; decide repository vs R2) and switch the console card and `askOnDevice` to
   `ghidra2.ts` with a repetition penalty in `answer()`. The working files (adopted and chat states, word-pieces, data)
   are in the session's scratch folder, not the repository: a new session re-runs `adopt` and `sft` (about 40 minutes).
+
+## M435: Hyperion's AI, a coding model with UniVerse's own add-on, trained on code Hyperion really ran (22 Nov)
+
+The owner (22 Nov): "i have added another app which is hyperion … i need to make ai for that one also so help me to
+built this in rtx 4090 and i am ok to work for 10 dollar plan credit". Hyperion came into this branch by merging
+`main` (and this branch's M361–M375 became M420–M434: `main` had used those numbers).
+
+- **The model:** Qwen2.5-Coder 32B Instruct (Apache-2.0), which Workers AI runs as `@cf/qwen/qwen2.5-coder-32b-instruct`
+  and which takes a LoRA add-on (rank ≤ 32, under 300 MB, files `adapter_model.safetensors` and `adapter_config.json`;
+  US$0.66 / 1.00 per million word-pieces in / out). A 4090 trains only the add-on (QLoRA, 4-bit base), which Cloudflare
+  then serves: no model hosting of our own.
+- **Lessons checked by Hyperion itself:** `scripts/ai/hyperion-lab.mts` (started by `hyperion-lab.mjs`, which bundles
+  it with tsx's esbuild: the engine's files import each other in a circle that only loads in ES-module order, and tsx
+  loads `.ts` as CommonJS here; the engine must be imported before `help`) prints Hyperion's 543 functions (`help`),
+  Hyperion AI's instructions (`prompt`) and runs scripts (`run`: one background thread, 5 s each, a runaway loop
+  stopped, figures counted with the real `Graphics`). `scripts/ai/hyperion-ai.py data` has the teacher (the same model,
+  AWQ in vLLM) write `--per` 6 requests per function and two answers each, keeps the answers whose code runs, gives each
+  failure one fix from Hyperion's own error (kept as a fixing lesson), and holds out 25 whole functions for the score.
+  `train` (Unsloth, rank 8 on every layer, ~135 MB, lessons with the SHORT instructions so the add-on learns the
+  functions), `score` (held-out requests through vLLM without and with the add-on: how many answers run), `export`
+  (rank and size checked; `model_type` set, "qwen2" by default: Cloudflare's page names only mistral, gemma and llama,
+  so if the upload is refused try `--model-type llama`).
+- **The kit:** `scripts/ai/hyperion-gpu.sh` (Node 22 if missing, `pnpm install --ignore-scripts`, two venvs with uv:
+  vLLM for data and score, Unsloth for training; each stage skipped once done) and `scripts/ai/hyperion-gpu.md` (the
+  owner's steps, costs: 3–5 hours, US$1.50–3.50 on a 4090, US$2–5 on a 48 GB card; a 32B QLoRA is at the edge of 24 GB,
+  so on "CUDA out of memory" rent a 48 GB card and run it again; the upload with `wrangler ai finetune create … hyperion`
+  from the owner's own computer after `wrangler login`). **Not tried on a real card**: this machine has none.
+- **In Hyperion:** **Ask AI** in the script toolbar (`LabAsk.tsx`): a question, optionally with this script; **Fix the
+  error** when the last run failed (the code and Hyperion's error are sent); the answer's words, its code, Put in a new
+  script / Replace this script / Copy. Nothing runs by itself: the person presses Run. `POST /api/hyperion/ai`
+  (`src/app/api/hyperion/ai/route.ts`): signed in, guardrails, `spendAi`, `logAiUse`; with the owner's opt-in switch
+  **"Hyperion's AI on Cloudflare"** (`hyperion-ai`) Workers AI answers (with `lora: HYPERION_LORA` when that variable
+  names the uploaded add-on, then with the short instructions), otherwise or on failure Gemini with the function list.
+  The owner's AI switch stops it too; it is in the Worker's costly-route rate limit. `src/lib/hyperion-ai.ts` holds the
+  model, the instructions (`HYPERION_SYSTEM`, shared with the kit) and `codeOf`.
+- **Not yet:** a browser check of Ask AI (left until Ghidra 2's training stops using the machine); Simulate (Structures,
+  Heat, Fluids, Circuits) is on `claude/funny-galileo-y4mz9r`, not `main`, so the AI doesn't set up simulations yet.
