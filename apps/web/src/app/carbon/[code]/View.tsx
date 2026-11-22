@@ -31,7 +31,7 @@ export default function View() {
     <main className="min-h-[100dvh] overflow-x-hidden px-4 py-8 sm:py-12" style={{ backgroundColor: 'var(--background)' }}>
       <div className={data?.kind === 'audit' ? 'mx-auto max-w-5xl' : 'mx-auto max-w-xl'}>
         <header className="flex items-center justify-between gap-3">
-          <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><LogoMark className="h-7 w-7" />UniVerse Green</Link>
+          <Link href="/" className="flex items-center gap-2 font-bold text-zinc-900 dark:text-white"><LogoMark className="h-7 w-7" />UniVerse Trace</Link>
           <span className="text-xs text-zinc-500 dark:text-zinc-400">Carbon footprint</span>
         </header>
         <div className="mt-8">
@@ -74,7 +74,7 @@ function SupplierForm({ code, data, onDone }: { code: string; data: Extract<Link
         <label className={`${label} sm:col-span-2`}>How you measured it (optional)<input maxLength={160} value={f.method} onChange={set('method')} placeholder="e.g. GHG Protocol, verified by …" className={field} /></label>
       </div>
       <button type="submit" disabled={busy} className="btn-primary">{data.answered ? 'Send the correction' : 'Send'}</button>
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">Don’t know your footprint yet? <Link href="/green?view=business" className="font-semibold underline">Measure it on UniVerse Green</Link>, then come back.</p>
+      <p className="text-xs text-zinc-500 dark:text-zinc-400">Don’t know your footprint yet? <Link href="/trace/carbon" className="font-semibold underline">Measure it on UniVerse Trace</Link>, then come back.</p>
     </form>
   );
 }
@@ -93,7 +93,7 @@ function Survey({ code, data }: { code: string; data: Extract<Link_, { kind: 'su
     <section className="panel p-6 text-center">
       <Check className="mx-auto h-10 w-10 text-emerald-600" aria-hidden />
       <h1 className="mt-3 text-2xl font-semibold text-zinc-900 dark:text-white">Thank you</h1>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Your commute is about {Math.round(sent).toLocaleString()} kg CO₂ a year. <Link href="/green" className="font-semibold text-emerald-700 underline dark:text-emerald-300">Cut yours with UniVerse Green</Link>.</p>
+      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-300">Your commute is about {Math.round(sent).toLocaleString()} kg CO₂ a year. <Link href="/student/life/green" className="font-semibold text-emerald-700 underline dark:text-emerald-300">Cut yours with UniVerse’s Green living</Link>.</p>
     </section>
   );
   return (

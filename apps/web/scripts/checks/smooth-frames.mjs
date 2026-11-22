@@ -10,7 +10,7 @@ const PAGES = [
   ['/', 'scroll', null],
   ['/student', 'scroll', 'demo@student.com'],
   ['/travel?view=map', 'map', 'demo@student.com'],
-  ['/green?view=places', 'map', 'demo@student.com'],
+  ['/travel?view=green', 'map', 'demo@student.com'],
   ['/relief?view=alerts', 'map', 'demo@student.com'],
   ['/trace/tracking', 'map', 'demo@student.com'],
 ].filter(([p]) => !only || p === only);

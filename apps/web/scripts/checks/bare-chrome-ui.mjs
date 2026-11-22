@@ -6,7 +6,7 @@ import { playwright, signedIn } from '../browser-session.mjs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
-const PAGES = (process.env.PAGES ?? '/travel?view=map,/relief?view=alerts,/green?view=places').split(',');
+const PAGES = (process.env.PAGES ?? '/travel?view=map,/relief?view=alerts,/travel?view=green').split(',');
 const browser = await playwright().chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
 const out = {}, errors = [];
 const state = (page) => page.evaluate(() => {

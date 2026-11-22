@@ -10,8 +10,8 @@ import { splitCode } from './trace';
 /** Pages the assistant may open (the box turns role-specific ones into the person's own address). */
 export const ASK_PAGES = {
   hub: { href: '/hub', label: 'All apps and your Impact Wallet' },
-  green: { href: '/green', label: 'Green: your climate actions' },
-  green_teams: { href: '/green/teams', label: 'Green teams and leaderboard' },
+  green: { href: '/student/life/green', label: 'Green: your climate actions' },
+  green_teams: { href: '/student/life/green?view=teams', label: 'Green teams and leaderboard' },
   relief: { href: '/relief', label: 'Relief: the live map of needs and offers' },
   relief_mine: { href: '/relief/mine', label: 'Your Relief requests and tasks' },
   trace: { href: '/trace', label: 'Trace: your brand console' },

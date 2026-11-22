@@ -13,8 +13,9 @@ describe('UniVerse Play, the bigger games', () => {
     expect(GAME_IDS.length).toBe(13);
     // M224: the three worlds that were Play's own are UniVersity's now (its Games section).
     expect(GAME_IDS.filter((g) => GAMES[g].app === 'campus').length).toBe(5);
-    expect(GAME_IDS.filter((g) => GAMES[g].app === 'trace').length).toBe(2);
-    for (const app of ['relief', 'green']) expect(GAME_IDS.filter((g) => GAMES[g].app === app).length).toBe(3);
+    // M395: Green's three games went to Trace (Recycle Rush) and Relief (Reef Rescue, Ocean Cleanup).
+    expect(GAME_IDS.filter((g) => GAMES[g].app === 'trace').length).toBe(3);
+    expect(GAME_IDS.filter((g) => GAMES[g].app === 'relief').length).toBe(5);
     expect(GAME_IDS.filter((g) => GAMES[g].world).length).toBe(4);
   });
   it('gives everyone the same valley, spreads fire downwind, and keeps a perfect Fire Line under the cap', () => {

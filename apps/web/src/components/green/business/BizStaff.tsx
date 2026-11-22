@@ -29,7 +29,7 @@ export function BizStaff({ org, role, year, onChanged }: SectionProps) {
     <div className="space-y-6">
       <section className="panel p-5" aria-labelledby="staff-h">
         <h3 id="staff-h" className={h3}><Users className={icon} aria-hidden />Staff commuting survey</h3>
-        <p className={`mt-2 max-w-3xl ${muted}`}>Share one link with everyone (by chat or the notice board). It takes 20 seconds and asks nothing about who answers. Signed-in answers count once per person and bring what they saved in their own Green.</p>
+        <p className={`mt-2 max-w-3xl ${muted}`}>Share one link with everyone (by chat or the notice board). It takes 20 seconds and asks nothing about who answers. Signed-in answers count once per person and bring what they saved in their own Green living.</p>
         <div className="mt-4 flex flex-wrap gap-2">
           {data.surveyCode ? (
             <>
@@ -58,7 +58,7 @@ export function BizStaff({ org, role, year, onChanged }: SectionProps) {
           )}
         </section>
         <section className="panel p-5" aria-labelledby="staff-green">
-          <h3 id="staff-green" className={h3}><Leaf className={icon} aria-hidden />What staff saved in their own Green</h3>
+          <h3 id="staff-green" className={h3}><Leaf className={icon} aria-hidden />What staff saved in their own Green living</h3>
           <p className="mt-2 text-3xl font-semibold tabular-nums text-zinc-900 dark:text-white">{kgText(data.greenSaved.kg)}</p>
           <p className={muted}>{data.greenSaved.actions} climate actions in {year} by the {data.linked} {data.linked === 1 ? 'person' : 'people'} who answered while signed in. Shown apart: it’s their own, not the company’s footprint.</p>
         </section>

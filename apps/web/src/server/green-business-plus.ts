@@ -57,7 +57,7 @@ export async function bizCheckout(u: SessionUser, id: string, b: Body, origin: s
   const meta = { greenOrgId: org.id, greenTier: tier };
   const session = await stripe.checkout.sessions.create({
     mode: 'subscription', customer: org.stripeCustomerId ?? undefined, customer_email: org.stripeCustomerId ? undefined : u.email,
-    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: cents, recurring: { interval: 'month' }, product_data: { name: `UniVerse Green ${tier === 'PRO' ? 'Pro' : 'Consultancy'}: ${org.name.slice(0, 60)}` } } }],
+    line_items: [{ quantity: 1, price_data: { currency: 'usd', unit_amount: cents, recurring: { interval: 'month' }, product_data: { name: `UniVerse Trace Carbon ${tier === 'PRO' ? 'Pro' : 'Consultancy'}: ${org.name.slice(0, 60)}` } } }],
     metadata: meta, subscription_data: { metadata: meta },
     success_url: `${origin}/green?view=business&b=team&paid=1`, cancel_url: `${origin}/green?view=business&b=team`,
   });
@@ -169,7 +169,7 @@ export async function inviteVerifier(u: SessionUser, id: string, b: Body) {
   if (!member) await prisma.greenOrgMember.create({ data: { orgId: id, userId: who.id, role: 'verifier' } });
   const v = await prisma.greenVerification.create({ data: { orgId: id, year: Math.round(year), verifierId: who.id, firm }, select: { id: true } });
   await log(id, u.id, 'verification', `Verifier from ${firm} invited for ${Math.round(year)}`);
-  await notify(who.id, { title: `${org.name} asks you to verify its ${Math.round(year)} footprint`, body: `Review the lines, ask questions and sign your statement in UniVerse Green (for ${firm}).`, link: '/green?view=business&b=verify', type: 'info', email: false });
+  await notify(who.id, { title: `${org.name} asks you to verify its ${Math.round(year)} footprint`, body: `Review the lines, ask questions and sign your statement in UniVerse Trace → Carbon (for ${firm}).`, link: '/trace/carbon?b=verify', type: 'info', email: false });
   return v;
 }
 /** POST /green/biz/:id/verifications/:vid/queries { entryId?, question }: the verifier asks. */
@@ -183,7 +183,7 @@ export async function askQuery(u: SessionUser, id: string, vid: string, b: Body)
   if ((await prisma.greenQuery.count({ where: { verificationId: vid } })) >= 300) throw new BadRequestException('300 questions at most.');
   const q = await prisma.greenQuery.create({ data: { orgId: id, verificationId: vid, entryId, question }, select: { id: true } });
   const editors = await prisma.greenOrgMember.findMany({ where: { orgId: id, role: { in: ['owner', 'editor'] } }, select: { userId: true }, take: 20 });
-  for (const e of editors) await notify(e.userId, { title: 'Your verifier has a question', body: question.slice(0, 140), link: '/green?view=business&b=verify', type: 'info', email: false });
+  for (const e of editors) await notify(e.userId, { title: 'Your verifier has a question', body: question.slice(0, 140), link: '/trace/carbon?b=verify', type: 'info', email: false });
   return q;
 }
 /** POST …/queries/:qid/answer { answer } (editors) and …/queries/:qid/close (the verifier). */

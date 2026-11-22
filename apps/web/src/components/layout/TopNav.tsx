@@ -23,7 +23,6 @@ import { LanguageMenu } from './LanguageMenu';
 import { APP_NAV, AppSwitcher, isOn as isOnPath, navFor, signOut, useCurrentApp, type NavItem } from './Sidebar';
 import type { RowTab } from '@/components/ui/TabRow';
 import { reliefSections } from '@/components/relief/ReliefTabs';
-import { greenSections } from '@/components/green/GreenTabs';
 import { traceSections } from '@/components/trace/TraceTabs';
 import { travelSections } from '@/components/travel/TravelTabs';
 
@@ -31,7 +30,7 @@ import { travelSections } from '@/components/travel/TravelTabs';
  *  collaborate are so it stay together and make like this for other apps also"): in an app with its own row of
  *  sections, the bar carries those sections first (the page's row hides itself, `topnav:hidden` in TabRow). */
 function sectionsOf(app: AppId | undefined, path: string, sp: URLSearchParams, owner: boolean): RowTab[] {
-  return app === 'relief' ? reliefSections(path, sp) : app === 'green' ? greenSections(path, sp) : app === 'trace' ? traceSections(path, owner) : app === 'travel' ? travelSections(path, sp) : [];
+  return app === 'relief' ? reliefSections(path, sp) : app === 'trace' ? traceSections(path, owner) : app === 'travel' ? travelSections(path, sp) : [];
 }
 /** An entry is chosen when its owner says so, else by the page it opens. */
 const isOn = (here: string, href?: string, also?: string[], on?: boolean) => on ?? isOnPath(here, href, also);
@@ -45,14 +44,14 @@ const isOn = (here: string, href?: string, also?: string[], on?: boolean) => on 
 // top while the page scrolls, in the same 4 rem the page bar took (things that stick under it still line up).
 // M221 (the owner: "please work on this also"): its entries are dragged into another order, kept with the side
 // menu's (the same `/~menu/<scope>` arrangement, so More follows it too); and on the pages of an app with its
-// own row of sections (Trace, Green, Relief, Travel) the bar leaves out what that row shows.
+// own row of sections (Trace, Relief, Aether) the bar leaves out what that row shows.
 
 const ITEM = 'relative shrink-0 inline-flex items-center gap-1.5 h-9 min-w-0 px-2.5 rounded-lg text-[13.5px] font-medium whitespace-nowrap text-[var(--sidebar-item-color)] dark:text-[var(--sidebar-item-color)] hover:text-[var(--sidebar-item-hover-color)] hover:bg-[var(--sidebar-item-hover-bg)] dark:hover:bg-[var(--sidebar-item-hover-bg)] transition-colors';
 const ON = 'bg-[var(--sidebar-item-active-bg)] dark:bg-[var(--sidebar-item-active-bg)] text-[var(--sidebar-item-active-color)] dark:text-[var(--sidebar-item-active-color)] font-semibold shadow-[0_0_0_1px_var(--hairline),0_1px_2px_rgb(0_0_0/0.06)]';
 const ROW = 'block w-full rounded-lg px-3 py-2 text-start text-[13.5px] text-zinc-700 dark:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/[0.06] focus:bg-zinc-100 dark:focus:bg-white/[0.06] outline-none';
 const GAP = 4;
-/** The apps whose pages have their own row of sections (TraceTabs, GreenTabs, ReliefTabs, TravelTabs). */
-const ROWED = new Set<AppId>(['trace', 'green', 'relief', 'travel']);
+/** The apps whose pages have their own row of sections (TraceTabs, ReliefTabs, TravelTabs). */
+const ROWED = new Set<AppId>(['trace', 'relief', 'travel']);
 
 const groupOn = (here: string, item: NavItem) => !!item.subItems?.some((s) => isOn(here, s.href, s.also) || here.startsWith(s.href + '/'));
 

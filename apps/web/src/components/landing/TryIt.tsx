@@ -1,96 +1,17 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AnimatePresence, m as motion } from 'framer-motion';
-import { Bike, Bus, Car, Check, Droplets, Footprints, HandHeart, Home, Minus, Plus, Recycle, Stethoscope, Sun, Trash2, TreePine, Utensils, type LucideIcon } from 'lucide-react';
+import { Car, Check, Droplets, HandHeart, Home, Stethoscope, Utensils, type LucideIcon } from 'lucide-react';
 import Link from '@/components/ui/Link';
 import { glow, toBase } from '@/components/trace/map/engine';
 import { WorldCanvas, type Box, type Frame } from '@/components/trace/map/WorldCanvas';
-import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from '@/lib/green';
 import { URGENCY_COLOR, URGENCY_LABEL, type Urgency } from '@/lib/relief';
 import { haptic } from '@/lib/haptics';
 import { cn } from '@/lib/utils';
-import { tile, ghost, primary, useCalm } from './bits';
+import { tile, primary, useCalm } from './bits';
 
-// "Try it here" on the landing's Relief and Green tabs (M43): logging a green
-// action and the help map, played in the browser on made-up data. Nothing is sent or saved.
-
-const chip = 'inline-flex items-center gap-1.5 h-9 px-3 rounded-full text-sm font-semibold transition-[background-color,color,box-shadow] duration-150 active:scale-[0.97]';
-
-// ── Green: log an action, see the CO₂ it saves ──
-
-const KIND: Record<GreenKind, { icon: LucideIcon; short: string; start: number; step: number }> = {
-  TREE: { icon: TreePine, short: 'Trees', start: 1, step: 1 },
-  CYCLE: { icon: Bike, short: 'Bike', start: 10, step: 5 },
-  TRANSIT: { icon: Bus, short: 'Bus or train', start: 20, step: 10 },
-  WALK: { icon: Footprints, short: 'Walk', start: 3, step: 1 },
-  RECYCLE: { icon: Recycle, short: 'Recycle', start: 5, step: 1 },
-  SOLAR: { icon: Sun, short: 'Solar', start: 20, step: 10 },
-  MEATFREE: { icon: Utensils, short: 'Meat-free', start: 2, step: 1 },
-  CLEANUP: { icon: Trash2, short: 'Clean-up', start: 3, step: 1 },
-};
-
-export function GreenTry() {
-  const [kind, setKind] = useState<GreenKind>('CYCLE');
-  const [amount, setAmount] = useState(KIND.CYCLE.start);
-  const [log, setLog] = useState<{ id: number; kind: GreenKind; amount: number; kg: number }[]>([]);
-  const f = GREEN_FACTORS[kind], k = KIND[kind];
-  const kg = co2For(kind, amount);
-  const total = Math.round(log.reduce((a, x) => a + x.kg, 0) * 10) / 10;
-
-  const choose = (g: GreenKind) => { setKind(g); setAmount(KIND[g].start); };
-  const add = () => {
-    haptic('success');
-    setLog((l) => [{ id: (l[0]?.id ?? 0) + 1, kind, amount, kg }, ...l].slice(0, 4));
-  };
-
-  return (
-    <div className={`${tile} p-5 sm:p-7 grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6 lg:gap-8`}>
-      <div>
-        <div role="group" aria-label="Action" className="flex flex-wrap gap-2">
-          {GREEN_KINDS.map((g) => {
-            const I = KIND[g].icon, on = g === kind;
-            return (
-              <button key={g} type="button" aria-pressed={on} onClick={() => choose(g)}
-                className={cn(chip, on ? 'bg-emerald-400 text-emerald-950' : 'bg-white/[0.05] text-zinc-200 ring-1 ring-white/10 hover:bg-white/[0.09]')}>
-                <I className="w-4 h-4" aria-hidden />{KIND[g].short}
-              </button>
-            );
-          })}
-        </div>
-        <div className="mt-6 flex items-center gap-3">
-          <button type="button" aria-label={`Less (${f.units})`} onClick={() => setAmount((a) => Math.max(k.step, a - k.step))} className="w-11 h-11 grid place-items-center rounded-full bg-white/[0.06] ring-1 ring-white/10 text-white active:scale-95 transition-transform"><Minus className="w-4 h-4" aria-hidden /></button>
-          <p className="min-w-[7rem] text-center text-2xl font-bold text-white tabular-nums" aria-live="polite">{amount} <span className="text-base font-medium text-zinc-400">{amount === 1 ? f.unit : f.units}</span></p>
-          <button type="button" aria-label={`More (${f.units})`} onClick={() => setAmount((a) => Math.min(f.max, a + k.step))} className="w-11 h-11 grid place-items-center rounded-full bg-white/[0.06] ring-1 ring-white/10 text-white active:scale-95 transition-transform"><Plus className="w-4 h-4" aria-hidden /></button>
-        </div>
-        <p className="mt-6 font-mono text-4xl sm:text-5xl font-light tabular-nums text-emerald-300">−{kg.toLocaleString('en-US')}<span className="ms-2 text-base text-zinc-400">kg CO₂</span></p>
-        <p className="mt-2 text-xs text-zinc-400 max-w-sm">{f.how}.</p>
-        <button type="button" onClick={add} className={`${primary} mt-6`}><Check className="w-4 h-4" aria-hidden />Log it</button>
-      </div>
-      <div className="rounded-3xl bg-white/[0.04] ring-1 ring-white/[0.07] p-5 flex flex-col">
-        <p className="text-sm text-zinc-400">Saved on this visit</p>
-        <p className="mt-1 font-mono text-4xl font-light tabular-nums text-white" aria-live="polite">{total.toLocaleString('en-US')} <span className="text-base text-zinc-400">kg</span></p>
-        <ul className="mt-4 space-y-2 flex-1">
-          <AnimatePresence initial={false}>
-            {log.map((x) => {
-              const I = KIND[x.kind].icon;
-              return (
-                <motion.li key={x.id} layout initial={{ opacity: 0, y: -10, scale: 0.95 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                  className="flex items-center gap-3 rounded-2xl bg-white/[0.05] px-3.5 py-2.5">
-                  <I className="w-4 h-4 text-emerald-300" aria-hidden />
-                  <span className="flex-1 text-sm text-white">{x.amount} {x.amount === 1 ? GREEN_FACTORS[x.kind].unit : GREEN_FACTORS[x.kind].units}</span>
-                  <span className="font-mono text-sm text-emerald-300">−{x.kg} kg</span>
-                </motion.li>
-              );
-            })}
-          </AnimatePresence>
-          {!log.length && <li className="text-sm text-zinc-400">Pick an action and log it.</li>}
-        </ul>
-        {log.length > 0 && <Link href="/register?app=green" className={`${ghost} mt-4 self-start`}>Keep it with an account</Link>}
-      </div>
-    </div>
-  );
-}
+// "Try it here" on the landing's Relief tab (M43; Green's left with Green, M395): the help map, played in the browser
+// on made-up data. Nothing is sent or saved.
 
 // ── Relief: the help map with made-up needs; offer help and watch it reach them ──
 

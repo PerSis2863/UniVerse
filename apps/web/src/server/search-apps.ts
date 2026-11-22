@@ -13,16 +13,20 @@ const DAY = 86_400_000;
 
 /** The apps' own pages people look for by name. */
 export const APP_PAGES: { title: string; words: string; href: string; app: string }[] = [
-  { title: 'Trip planner', words: 'trips plan itinerary holiday travel', href: '/travel/saved', app: 'Travel' },
-  { title: 'Find where to go', words: 'destination ideas where to go budget travel', href: '/travel?view=find', app: 'Travel' },
-  { title: 'Travel map', words: 'map places nearby directions', href: '/travel?view=map', app: 'Travel' },
+  { title: 'Trip planner', words: 'trips plan itinerary holiday travel', href: '/travel/saved', app: 'Aether' },
+  { title: 'Find where to go', words: 'destination ideas where to go budget travel', href: '/travel?view=find', app: 'Aether' },
+  { title: 'Aether map', words: 'map places nearby directions', href: '/travel?view=map', app: 'Aether' },
   { title: 'Scan a product', words: 'scan passport verify fake product trace', href: '/t/demo', app: 'Trace' },
   { title: 'Trace wallet', words: 'points wallet rewards shop', href: '/trace/wallet', app: 'Trace' },
   { title: 'Relief map', words: 'help needs offers emergency relief map', href: '/relief', app: 'Relief' },
   { title: 'Be ready', words: 'emergency plan go bag first aid ready', href: '/relief?view=ready', app: 'Relief' },
-  { title: 'Log a climate action', words: 'green co2 carbon action streak', href: '/green', app: 'Green' },
-  { title: 'Green events', words: 'cleanup events planting green', href: '/green?view=events', app: 'Green' },
-  { title: 'Carbon footprint for a company', words: 'business carbon footprint ghg scope report', href: '/green?view=business', app: 'Green' },
+  // M395: Green's parts in the apps of daily life.
+  { title: 'Log a climate action', words: 'green co2 carbon action streak', href: '/student/life/green', app: 'UniVersity' },
+  { title: 'Community events', words: 'cleanup events planting green community', href: '/relief?view=events', app: 'Relief' },
+  { title: 'Greener journeys', words: 'journey commute train bus bike car flight co2 compare green', href: '/travel?view=journeys', app: 'Aether' },
+  { title: 'Green places', words: 'recycling repair refill bike charging green places map', href: '/travel?view=green', app: 'Aether' },
+  { title: 'Swap & repair', words: 'swap give away repair fix second hand reuse', href: '/trace/swap', app: 'Trace' },
+  { title: 'Carbon footprint for a company', words: 'business carbon footprint ghg scope report', href: '/trace/carbon', app: 'Trace' },
   { title: 'Find a free room', words: 'room free book campus map', href: '/campus-map', app: 'UniVersity' },
   { title: 'Paper exams', words: 'exam paper print versions rubric', href: '/teacher/quizzes', app: 'UniVersity' },
   { title: 'Office hours', words: 'office hours book teacher meeting', href: '/calls', app: 'UniVersity' },
@@ -55,8 +59,8 @@ export async function searchApps(user: SessionUser, q: string): Promise<AppHit[]
     ...products.map((p): AppHit => ({ type: 'product', id: p.id, title: p.name, subtitle: 'Your product', href: '/trace' })),
     ...brands.map((b): AppHit => ({ type: 'brand', id: b.id, title: b.name, subtitle: 'Brand page', href: `/b/${b.slug}` })),
     ...relief.map((r): AppHit => ({ type: 'relief', id: r.id, title: r.title, subtitle: [r.type === 'OFFER' ? 'Offer of help' : 'Help needed', r.place].filter(Boolean).join(' · '), href: '/relief' })),
-    ...events.map((e): AppHit => ({ type: 'green', id: e.id, title: e.title, subtitle: `Green event · ${e.place}`, href: '/green?view=events' })),
-    ...teams.map((t): AppHit => ({ type: 'green', id: t.id, title: t.name, subtitle: 'Your Green team', href: '/green/teams' })),
+    ...events.map((e): AppHit => ({ type: 'green', id: e.id, title: e.title, subtitle: `Community event · ${e.place}`, href: '/relief?view=events' })),
+    ...teams.map((t): AppHit => ({ type: 'green', id: t.id, title: t.name, subtitle: 'Your Green team', href: '/student/life/green?view=teams' })),
     ...pagesFor(q),
   ];
 }

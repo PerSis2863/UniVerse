@@ -49,8 +49,10 @@ describe('class invites', () => {
     expect(homeFor({ role: 'TEACHER' })).toBe('/teacher');
     rememberApp('campus');
     expect(homeFor({ role: 'STUDENT' })).toBe('/student');
-    rememberApp('green');
-    expect(homeFor({ role: 'STUDENT' })).toBe('/green');
+    rememberApp('relief');
+    expect(homeFor({ role: 'STUDENT' })).toBe('/relief');
+    rememberApp('green' as never); // M395: Green was folded into the other apps
+    expect(homeFor({ role: 'STUDENT' })).toBe('/hub');
     expect(homeFor({ role: 'STUDENT' }, 'trace')).toBe('/trace');
     expect(homeFor({ role: 'STUDENT', owner: true })).toBe('/console');
     localStorage.removeItem('uv-last-app');

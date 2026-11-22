@@ -17,7 +17,7 @@ async function axe(page) {
 }
 const browser = await launch();
 const out = { errors: [] };
-const runs = [['demo@admin.com', '/admin/users', 'dark', 1440], ['demo@admin.com', '/admin', 'light', 1024], ['alice@student.com', '/trace/radar', 'dark', 1280], ['alice@student.com', '/green', 'light', 1280], ['alice@student.com', '/travel', 'dark', 1280], ['alice@student.com', '/student', 'light', 390], ['alice@student.com', '/green', 'dark', 390], ['alice@student.com', '/trace', 'light', 390]];
+const runs = [['demo@admin.com', '/admin/users', 'dark', 1440], ['demo@admin.com', '/admin', 'light', 1024], ['alice@student.com', '/trace/radar', 'dark', 1280], ['alice@student.com', '/student/life/green', 'light', 1280], ['alice@student.com', '/travel', 'dark', 1280], ['alice@student.com', '/student', 'light', 390], ['alice@student.com', '/student/life/green', 'dark', 390], ['alice@student.com', '/trace', 'light', 390]];
 for (const [email, path, theme, width] of runs) {
   const phone = width < 600, name = `${path.replaceAll('/', '_')}-${theme}-${width}`, r = (out[name] = {});
   const ctx = await signedIn(browser, base, email, { width, height: phone ? 844 : 900 }, phone ? { isMobile: true, hasTouch: true } : {});

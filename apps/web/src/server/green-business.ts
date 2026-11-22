@@ -342,7 +342,7 @@ export async function addBizMember(u: SessionUser, id: string, b: Body) {
   if ((await prisma.greenOrgMember.count({ where: { orgId: id } })) >= MAX_MEMBERS) throw new BadRequestException(`${MAX_MEMBERS} people at most.`);
   await prisma.greenOrgMember.upsert({ where: { orgId_userId: { orgId: id, userId: who.id } }, create: { orgId: id, userId: who.id, role }, update: { role } });
   await log(id, u.id, 'member', `Someone was given the ${role} role`);
-  if (who.id !== u.id) await notify(who.id, { title: `${org.name} on UniVerse Green`, body: `You can now work on ${org.name}’s carbon footprint (${role}).`, link: '/green?view=business', type: 'info', email: false });
+  if (who.id !== u.id) await notify(who.id, { title: `${org.name} on UniVerse Trace Carbon`, body: `You can now work on ${org.name}’s carbon footprint (${role}).`, link: '/trace/carbon', type: 'info', email: false });
   return { userId: who.id, name: who.name, role };
 }
 /** DELETE /green/biz/:id/members/:uid (its owners, or leaving myself). The last owner stays. */
@@ -633,7 +633,7 @@ export async function answerCarbonLink(raw: string, b: Body, u: SessionUser | nu
     } });
     await log(org.id, null, 'supplier-answer', `${s.name} answered for ${s.year}${kg !== null ? `: our share ${fmtKg(kg)}` : ' (no spend given, so nothing added)'}`);
     const editors = await prisma.greenOrgMember.findMany({ where: { orgId: org.id, role: { in: ['owner', 'editor'] } }, select: { userId: true }, take: 20 });
-    for (const e of editors) await notify(e.userId, { title: `${s.name} sent their emissions`, body: `${org.name}: ${kg !== null ? `${fmtKg(kg)} added to scope 3` : 'add what you spent with them to count it'}.`, link: '/green?view=business', type: 'info', email: false });
+    for (const e of editors) await notify(e.userId, { title: `${s.name} sent their emissions`, body: `${org.name}: ${kg !== null ? `${fmtKg(kg)} added to scope 3` : 'add what you spent with them to count it'}.`, link: '/trace/carbon', type: 'info', email: false });
     return { ok: true };
   }
   if (code.startsWith('C')) {

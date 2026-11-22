@@ -164,13 +164,13 @@ export default function ownerConsoleModule(router: Router) {
     return {
       bySchool: [
         ...open.map((o) => ({ id: o.org, name: (o.org && school.get(o.org)) || 'No school', open: num(o.n) })),
-        ...(travel.some((t) => !t.hidden) ? [{ id: 'travel', name: 'Travel', open: travel.filter((t) => !t.hidden).length }] : []),
+        ...(travel.some((t) => !t.hidden) ? [{ id: 'travel', name: 'Aether', open: travel.filter((t) => !t.hidden).length }] : []),
       ].sort((a, b) => b.open - a.open),
       items: [
         ...flags.map((f) => ({ kind: 'flag' as const, id: f.id, title: f.kind, severity: f.severity, text: f.excerpt, repeats: f.repeats, at: f.createdAt, person: who(f.sender) })),
         ...reports.map((c) => ({ kind: 'report' as const, id: c.id, title: c.community?.name ?? 'Community', severity: null, text: c.excerpt, reason: c.reason, at: c.createdAt, person: who(sender.get(c.senderId)) })),
         ...listings.map((l) => ({ kind: 'listing' as const, id: l.id, title: l.title, severity: null, text: `${l.reports} report${l.reports === 1 ? '' : 's'} · ${l.status === 'HIDDEN' ? 'hidden' : 'still showing'}`, hidden: l.status === 'HIDDEN', at: l.createdAt, person: who(l.user) })),
-        ...travel.map(({ userId, ...t }) => ({ ...t, severity: null, group: 'Travel', person: who(sender.get(userId)) })),
+        ...travel.map(({ userId, ...t }) => ({ ...t, severity: null, group: 'Aether', person: who(sender.get(userId)) })),
       ].sort((a, b) => +new Date(b.at) - +new Date(a.at)),
     };
   });
@@ -193,7 +193,7 @@ export default function ownerConsoleModule(router: Router) {
       summary = action === 'hide' ? 'Hid a reported campus post' : 'Restored a reported campus post';
     } else if ((params.kind === 'travel-post' || params.kind === 'travel-review') && oneOf(['hide', 'restore'] as const, action)) {
       await moderateTravel(params.kind, params.id, action);
-      const what = params.kind === 'travel-post' ? 'travellers-board note' : 'Travel review';
+      const what = params.kind === 'travel-post' ? 'travellers-board note' : 'Aether review';
       summary = action === 'hide' ? `Hid a reported ${what}` : `Restored a reported ${what}`;
     } else throw new BadRequestException('Unknown action.');
     audit(user, { action: 'owner.moderation', summary, targetType: params.kind, targetId: params.id }, req);

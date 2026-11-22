@@ -49,7 +49,7 @@ export function Neighbourhood() {
           <button type="button" className="btn-secondary btn-sm" disabled={busy} onClick={locate}>{busy ? <Loader2 className="w-4 h-4 animate-spin" aria-hidden /> : <LocateFixed className="w-4 h-4" aria-hidden />}Find my neighbourhood</button>
         </>
       ) : !data.enough ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-300">Totals show once {MIN_NEIGHBOURS} people here have joined, so nobody’s own actions stand out. Invite your neighbours to UniVerse Green.</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-300">Totals show once {MIN_NEIGHBOURS} people here have joined, so nobody’s own actions stand out. Invite your neighbours to UniVerse.</p>
       ) : (
         <>
           {data.month && <p className="text-sm text-zinc-700 dark:text-zinc-200"><b className="tabular-nums">{data.month.kg.toLocaleString()} kg</b> CO₂ saved here this month{data.month.lastKg ? <span className="text-zinc-500"> · {data.month.lastKg.toLocaleString()} kg last month</span> : null}</p>}

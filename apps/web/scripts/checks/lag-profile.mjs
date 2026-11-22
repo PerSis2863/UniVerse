@@ -4,7 +4,7 @@
 // (backdrop: the app's scene behind the page). Runs against `local:serve` (or BASE=… for local:dev).
 import { launch, signedIn } from '../browser-session.mjs';
 const base = process.env.BASE ?? 'http://localhost:8787', off = process.env.OFF ?? '';
-const pages = (process.env.PAGES ?? '/,/student,/admin,/student/inbox,/trace,/green').split(',');
+const pages = (process.env.PAGES ?? '/,/student,/admin,/student/inbox,/trace,/student/life/green').split(',');
 const browser = await launch();
 const out = {};
 for (const path of pages) {

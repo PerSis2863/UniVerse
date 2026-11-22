@@ -14,7 +14,7 @@ import { fetcher, heavy } from './shared';
 
 interface Launch { apps: Record<AppId, LaunchApp>; signUps: number; total: { people: number; cameBack: number } }
 
-const WHAT: Record<AppId, string> = { campus: 'enrolled or handed in', trace: 'scanned or joined a brand', relief: 'posted or helped', green: 'logged an action', travel: 'saved a place' };
+const WHAT: Record<AppId, string> = { campus: 'enrolled, handed in or logged a climate action', trace: 'scanned or joined a brand', relief: 'posted or helped', travel: 'saved a place', lab: 'ran code' };
 
 export function LaunchBoard() {
   const { data } = useSWR<Launch>('/owner/launch', fetcher, heavy);

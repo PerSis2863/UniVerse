@@ -39,7 +39,7 @@ async function glide(page) {
 }
 
 // Every app: the glide on its home, and no burst inside the app.
-for (const [email, paths] of Object.entries({ 'demo@student.com': ['/student', '/student/courses', '/travel', '/green', '/relief', '/trace'], 'demo@teacher.com': ['/teacher/courses'] })) {
+for (const [email, paths] of Object.entries({ 'demo@student.com': ['/student', '/student/courses', '/travel', '/student/life/green', '/relief', '/trace'], 'demo@teacher.com': ['/teacher/courses'] })) {
   const ctx = await signedIn(browser, base, email, { width: 1280, height: 800 });
   const page = await ctx.newPage();
   for (const p of paths) {

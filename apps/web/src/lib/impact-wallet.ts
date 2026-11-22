@@ -17,7 +17,8 @@ export function weekly(rows: { at: number; v: number }[], now: number, weeks = W
   return out.map((v) => Math.round(v * 10) / 10);
 }
 
-export interface WalletEvent { app: AppId; at: string; text: string; amount: string }
+/** `href`: where the event opens when not its app's home (a climate action: Student life → Green living, M395). */
+export interface WalletEvent { app: AppId; at: string; text: string; amount: string; href?: string }
 
 /** The newest events across every app. */
 export const newest = (events: WalletEvent[], n = 30) => [...events].sort((a, b) => b.at.localeCompare(a.at)).slice(0, n);

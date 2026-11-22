@@ -10294,3 +10294,549 @@ chosen row, the places' beds bar (now `Fill`) and their "Open" and "yes" badges 
 low, out and closed), the open-needs tick strip (urgent ones dark, the rest light) and the Urgent figure. In the shared
 `QueueCard` (map-ui) the kind's icon is grey and only the **chosen** card wears the app's colour (an urgent one has a
 plain darker hairline; its due label still says so). Checked at 1440 and 390, light and dark: axe clean.
+
+## M374 (21 Nov): UniVerse Lab, part 1: our own engine for the MATLAB / Octave language
+
+The owner, 21 Nov: a link to matlab2tikz ("can we make this into an app… like how matlabs is"), then GNU Octave
+("build this in the matlab app as it is open sources"), then "we build our own octave no need to just copy it" and "i
+need you to build your own matlab and octave together in one app which can be downloaded in the computer". Told once
+that new apps are paused until 5 Dec; the owner chose to go on. **Plan, in stages:** (1) the engine (this item); (2)
+figures and Export to LaTeX (our own version of what matlab2tikz does); (3) the Lab window as a new app (command
+window, variables, script editor, figures); (4) the computer app (Windows, Mac, Linux) built by GitHub Actions on the
+public repo, unsigned at first (signing costs money: **[owner]**), with a download page. Name: **UniVerse Lab** (not
+MATLAB's name or look; no code from MATLAB or GNU Octave, which is GPL: we only follow the language's documented
+behaviour).
+- `src/lib/lab/` (pure TypeScript, no browser APIs, so the web app and the computer app share it):
+  `parse.ts` (the reader: MATLAB's whitespace rules inside [ ], ' as transpose or text by context, comments % # and
+  %{ %}, `...` continuation, command syntax like `hold on`, functions in the script), `values.ts` (column-major
+  matrices, logical, text, cells, structs, handles; "format short / long" printing), `interp.ts` (implicit expansion,
+  indexing with `end`, `:` and masks, growth on assignment and `x(i) = []`, multiple outputs, closures for `@(x)`,
+  `A\b` by pivoted elimination or least squares, `+= ++`, if / for / while / do-until / switch / try), `builtins.ts`
+  (~230 names: making matrices, maths, reductions, find / sort / unique, linear algebra with det, inv, lu, rank, norm,
+  eig for symmetric matrices, polyfit / polyval / roots (real roots), interp1, trapz, integral, fzero, fminbnd, ode45
+  (Dormand–Prince), text and sprintf / fprintf, cells and structs, arrayfun / cellfun, eval, tic / toc, clc / clear /
+  who / whos / format).
+- **Not yet:** complex numbers (said plainly when met), N-D arrays past 2-D, struct arrays, classes, file I/O, input.
+- Errors are plain and specific ("Can’t multiply a 1x2 by a 1x2 matrix: the inner sizes must match (use .* …)",
+  "Did you mean “sin”?"). Long runs ask `host.stopped()` every 20,000 statements (the Stop button).
+- Tests: `src/lib/lab/lab.test.ts` (precedence, matrices, solving, expansion, indexing, control flow, handles,
+  printing, polyfit and ode45, error messages).
+
+## M375 (21 Nov): UniVerse Lab, part 2: figures and Export to LaTeX
+
+`src/lib/lab/plot.ts` (pure; the window gives the interpreter a `Graphics` as `host.graphics`): `plot` (y, x-y,
+several pairs, matrix columns, specs like 'r--o', 'LineWidth' / 'Color' / 'DisplayName' / 'MarkerSize'), `scatter`,
+`bar` (grouped), `stairs`, `stem`, `area`, `histogram` / `hist`, `fplot`, `semilogx` / `semilogy` / `loglog`, `hold`,
+`grid`, `title` / `xlabel` / `ylabel` (with a little TeX: x^2, x_1, \theta), `legend`, `axis` / `xlim` / `ylim`,
+`subplot`, `figure`, `clf`, `close`. `renderSvg(fig, w, h, dark)` draws it (our own palette, not MATLAB's: blue,
+orange, green, purple, red, teal, amber, pink; y rounds out to tidy ticks, x tight for lines; NaN breaks a line).
+`toTikz(fig)` writes pgfplots code (our own matlab2tikz: colours defined, `\addplot` per series with marks, dashes,
+bars, stairs, stems, areas, log axes, legend; subplots as a `groupplot`). ode45 now fills each step with a cubic
+Hermite curve (smooth plots). Checked by eye: a 2×2 figure in light and dark. Tests: `plot.test.ts`.
+
+## M376 (21 Nov): UniVerse Lab, part 3: the Lab app and its window
+
+`lab` is the seventh app (`APPS`, violet #8b5cf6, `/lab`): its icon (Σ), menu (`APP_NAV.lab`), phone tabs, hub card
+(`GET /hub`: "functions built in", a round 250 kept in `hub.ts` so the server never loads the engine; the sample
+answer too), the owner console's launch board (nothing to count: the Lab keeps nothing on the server yet), the
+landing's hero, FAQ, sign-in side, call to action and world section, and its scene (graph paper with curves
+drifting, `backdrop.ts`). **If the owner chose which apps the website shows** (console → Server, M203), Lab stays
+hidden until it's ticked there.
+- `components/lab/LabApp.tsx`: **Variables** (name, value, size; a name goes into the command), the **script editor**
+  (tabs, New, Delete, a name field, Tab indents, Ctrl/⌘+Enter runs; scripts kept on this device, `uv-lab-scripts`;
+  four examples: a first plot, solving A x = b, a damped spring with ode45, a line fit), the **command window**
+  (history with ↑ ↓, Shift+Enter for a new line, errors in red with the script's line, `clc` clears) and the
+  **figure** (tabs for several figures, PNG at 2×, SVG, LaTeX copied). Computers: three columns; phones: a
+  segmented control (Command, Editor, Variables, Figure). Plain look, one accent.
+- `components/lab/lab.worker.ts`: the engine runs in a background worker: the page never freezes; **Stop** ends the
+  worker and starts a new one (the variables are lost, said so). Output comes back in batches (50 ms), figures as SVG
+  in both themes plus their LaTeX, drawn at the panel's real size (ResizeObserver asks again when it changes).
+- Checked at 1440 and 390, light and dark: a command, a solve, a misspelt name ("Did you mean “sin”"), a script with
+  a figure; axe clean.
+- **Next:** the computer app (Windows, Mac, Linux) and a download page; then simulation (structures, heat, fluids,
+  circuits and vibration: the owner chose all four, 21 Nov, after asking for Ansys, which is closed, paid software).
+
+## M377 (21 Nov): UniVerse Lab: complex numbers
+
+The owner, 21 Nov ("have you build all the features…": told honestly no, with the list; then "build all of them"). The
+order agreed in the reply: complex numbers; signals and statistics; 3D plots and images; files; the computer app;
+then simulation (structures, heat, circuits and vibration, fluids); later optimisation, control, symbolic maths and
+block diagrams. Each its own item.
+- `Mat.im` holds the imaginary parts (absent for real matrices; `cmat` drops it when every part is 0). `3i`, `2.5j`,
+  `i` and `j` (variables still win), `complex(a, b)`. `src/lib/lab/complex.ts`: element-wise operators with implicit
+  expansion, matrix product, solve (as a real 2n system), powers, `exp` / `log` / `sqrt`, and `eigvals` (Hessenberg
+  then shifted QR, complex pairs from 2×2 blocks). `'` conjugates, `.'` doesn't. Indexing, growth, deletion and
+  [ ] carry both parts. sqrt / log of negatives and `(-8)^(1/3)` give complex answers as in MATLAB.
+- `eig` of any real matrix (eigenvectors still only for symmetric ones), `roots` from the companion matrix (complex
+  roots now), `abs` / `angle` / `real` / `imag` / `conj` / `isreal` / `iscomplex`, `sum` and `mean` of complex.
+  Every other built-in refuses a complex input with a plain message (`M()` in builtins.ts) rather than dropping the
+  imaginary part. `plot(z)` draws real against imaginary. Printing: `3 + 4i`, `1.0000 + 1.7321i`.
+
+## M378 (21 Nov): UniVerse Lab: signals and statistics
+
+`src/lib/lab/signal.ts` (loaded by `interp.ts` with `import './signal'`, registering into BUILTINS): `fft` / `ifft`
+of any length (radix-2; Bluestein's chirp-z otherwise; along a vector or down columns; padded or cut to n; ifft of a
+symmetric spectrum comes back real), `fftshift` / `ifftshift`, `nextpow2`, `filter` (direct form II transposed),
+`deconv`, `conv2` (full / same / valid), `xcorr` with lags, `freqz`, windows (`hann`, `hamming`, `blackman`,
+`rectwin`), `movmean` / `movsum` / `movmax` / `movmin` / `movmedian` (MATLAB's window rule, shrinking at the ends);
+`cov`, `corrcoef`, `prctile` / `quantile` (MATLAB's (k − 0.5)/n positions), `iqr`, `zscore`, `skewness`,
+`kurtosis`, `range`, `histcounts`, `erf` / `erfc`, `normpdf` / `normcdf` / `norminv`, `exppdf`, `unifpdf`, and
+`spline` with not-a-knot ends (reproduces a cubic; three points give the parabola). Tests in `lab.test.ts`.
+
+## M379 (21 Nov): UniVerse Lab: 3D plots and images
+
+`src/lib/lab/plot3d.ts` (imported by `plot.ts`; the two import each other, which works because neither touches the
+other's values while loading; load `interp.ts` first, as the worker and tests do, or `signal.ts` finds BUILTINS unset)
+and `src/lib/lab/colormap.ts`. Axes gained `grids` (`Grid`: surf / mesh with full r×c x, y, z; image / filled with column
+and row centres), `zlabel`, `zlim`, `view`, `colorbar`, `clim`, `zrange` (contour's colour scale), `revY` (images: row 1
+at the top; `axis ij` / `axis xy`) and `tight` (images and contours sit exactly on their data). Series gained `z`
+(plot3, scatter3), `level` (a contour line coloured from the map when drawn, so `colormap hot` afterwards recolours it),
+`cv` (a colour per point: `scatter(x, y, s, c, 'filled')`) and `filled`. The colour map belongs to the figure
+(`Figure.cmap`, n×3 from 0 to 1), as in MATLAB. Commands: surf / surfc / surface, mesh / meshc / meshz / waterfall
+(a 4th argument is colour data; 'EdgeColor','none', 'FaceAlpha'), plot3, scatter3, contour / contour3 (n levels, a
+vector of levels, [v v], 'LineColor', 'LineWidth', a spec), contourf, imagesc (with [low high]), image (indexes the map),
+pcolor, colorbar, colormap (name, n, or a matrix; returns the map), lab, viridis, plasma, turbo, jet, hot, cool, gray,
+bone, copper, spring, summer, autumn, winter as functions (`jet(64)`; parula opens our own "lab" map: not MATLAB's
+colours), caxis / clim, view (az, el; view(2), view(3)), shading (faceted / flat / interp: interp is drawn flat), peaks,
+rotate3d (does nothing), zlabel, zlim, axis with six limits. `colormap`, `colorbar`, `shading`, `view`, `rotate3d`,
+`caxis` work as command words (`colormap hot`).
+
+Drawing: 3D uses MATLAB's own viewing transform (az from −y, el up), x and y spread over −1…1 and z over −0.8…0.8, the
+three back walls with grid lines, faces sorted far to near (painter's order; at most ~90×90 faces a surface, bigger ones
+sampled), lines and points over the faces; ticks on the front floor edges and on the left vertical edge. A 3D axes takes
+its whole subplot cell (no wide left margin). Images and filled contours are a PNG inside the SVG (`png()` writes
+uncompressed "stored" zlib blocks, no library): images one pixel a value, drawn pixelated; filled contours upsampled
+to ~200 px, bilinear, then banded by level, with dark lines on top. Contour lines: marching squares per cell, saddles
+decided by the cell's middle, a shared edge's crossing always worked out from its lower index (so pieces join exactly),
+zero-length scraps dropped, pieces joined into lines. LaTeX: `view={az}{el}`, `\addplot3[surf, shader=…]` with a scan
+line per column, `matrix plot*` with `point meta=explicit` for images, `colormap={uvmap}{rgb255=…}` from the figure's
+map, `point meta min/max`, `colorbar`, `y dir=reverse`. Sizes: a 60×60 filled contour is ~250 KB of SVG per theme.
+Example script `surface.m` (new visitors only: saved script lists are kept). Not built: lighting, transparency sorting
+between surfaces and lines, interpolated (smooth) shading, quiver, streamlines, isosurfaces, RGB images (the engine
+has no 3D arrays yet), contour labels (clabel).
+
+## M380 (21 Nov): UniVerse Lab: lights, smooth shading, arrows, contour labels
+
+The owner asked for M379's left-outs and "all the other features… which are missing" (next: more plot kinds, N-D arrays
+with full-colour images, files, the computer app, simulations, toolboxes). In `plot3d.ts`: Axes gained `lights` (unit
+directions in the normalised box), `lighting` ('flat' / 'gouraud' / 'none'), `material` [ka kd ks n] and `clabel`;
+Grid gained `smooth`; Series gained `value` (a contour line's level, kept even when contourf blackens it). Lighting:
+Phong's model on each face (ambient + diffuse per light + a white highlight at 0.3 × ks), both sides lit (the normal
+turned to face the eye); flat lighting uses the face's own normal, smooth (shading interp or lighting gouraud) blends
+corner normals (from neighbours, turned to agree before blending) across each face. Smooth shading splits each face
+into up to 4 × 4 smaller ones (about 14,000 faces at most a surface) with blended colours: SVG has no Gouraud fill.
+camlight (right / left / headlight / (daz, del)) sets its direction from the view at the time it's called (MATLAB
+places lights in the scene too, so view() afterwards turns the scene under the light); light('Position', p);
+lightangle(az, el); lighting none / flat / gouraud / phong (phong = gouraud); material shiny / dull / metal / default /
+[ka kd ks n]. camlight, light and lightangle return a number only when asked for one. quiver / quiver3: MATLAB's
+autoscale (the longest arrow 0.9 of the points' spacing; a last number scales, 0 turns it off), heads with α = β = 0.33,
+one Series with NaN breaks. contour / contourf return MATLAB's contour matrix C and a handle 1 when asked; clabel(…)
+and 'ShowText', 'on' write each line's level once at its middle (lines shorter than 60 px skipped), turned along the
+line and kept upright, with a halo in the background colour; pgfplots gets `\node … at (axis cs:x,y)`. In
+`signal.ts`: gradient (central inside, one-sided at the ends; spacing a number or coordinates), del2 (MATLAB's /4,
+straight-line ends), divergence and curl (2D). Shapes: sphere, ellipsoid, cylinder (a radius profile), drawing
+themselves when no outputs are asked. Not built: 3D meshgrid and full-colour images (they need N-D arrays, next),
+per-vertex colour across a whole face in LaTeX (pgfplots draws its own shading), streamline, coneplot.
+
+## M381 (22 Nov): UniVerse Lab: more plot kinds
+
+`src/lib/lab/plot2d.ts` (imported by `plot.ts`, which loads it before its own body runs: a command defined in both
+would end up as plot.ts's, so bars stayed in plot.ts). Kinds: `barh` (Series x = positions, y = lengths; drawn and
+measured sideways) and `fill` (each NaN-separated run a shape; `edge`, `fa` = face alpha). Series gained `err`
+([below, above], errorbar's whiskers with 4 px caps) and `base` (stacked bars: positives and negatives pile
+separately; a series with a base is never grouped). Axes gained `texts`, `refs` (xline / yline across the whole
+axes, with a label), `pie`, `polar`, `twin` and `side` (yyaxis: `Graphics.axes()` returns the twin while the right
+side is chosen; `Graphics.main()` the axes itself, which takes title and xlabel; a new plot keeps hold, twin, side
+and `next`, the colour offset: the right side starts with the second colour), `xticks` / `yticks`, `xtl` / `ytl`
+(tick names), `visible` (axis off). Figure gained `title` (sgtitle, 30 px above the subplots). `drawAxes(ax, box, c,
+cmap, { xr, right })`: yyaxis draws the left side, then the right side over the same x range with only its own y
+numbers and name on the right. Pie (`drawPie`): from the top, counter-clockwise as MATLAB's, a sum under 1 draws a
+part pie, explode pulls a slice out by a tenth, our palette, labels or percentages outside. Polar (`drawPolar`):
+rings at tidy radii, spokes every 30°, radii written along 80°; rlim. boxplot: MATLAB's quartiles ((i − ½)/n
+positions), whiskers to the furthest point within 1.5 × IQR, outliers as red +, built from fill / line / scatter
+series, so it draws and exports with no code of its own; groups by columns, by a group vector, 'Labels'. line, patch,
+rectangle ('Position', 'Curvature', 'FaceColor', 'EdgeColor'), text, xline, yline add to the axes without clearing
+(as in MATLAB); fill clears unless hold. fsurf / fmesh / fcontour / fimplicit call the function once with whole
+matrices, point by point if that fails; fimplicit is the zero contour in one colour; fplot3 takes 300 points.
+LaTeX: `axisTikz` holds one axes (reused for yyaxis's second axis with `axis y line*=right`), `xbar` / `ybar
+stacked`, fills `-- cycle`, error bars (`+-` or `+=`/`-=`), text as `\node`, reference lines from `rel axis cs`,
+`polaraxis` (needs `\usepgfplotslibrary{polar}`, said in the header), pies as plain TikZ wedges (only when the pie
+is the figure's one plot), `hide axis`, xtick / xticklabels, sgtitle as a node above. `yyaxis` and `cla` are command
+words. Not built: legends for the right side of yyaxis, 3D text placement, histogram2, area stacking.
+
+## M382 (22 Nov): UniVerse Lab: 3D arrays and full-colour pictures
+
+`Mat.p` (values.ts): the pages of a 3D array, page after page in `d`; absent for a plain matrix. `mat(r, c, d)` infers
+`p` when `d` holds a whole number of r × c pages, which is why every builtin written as `mat(m.r, m.c, m.d.map(…))`
+keeps the pages with no change; `pages(v)`, `page(m, k)`, `stack(list)` (values.ts) are the helpers; `numel`
+counts pages; `sizeOf` stays [r, c] (most code is 2D). Printing shows `A(:,:,k) =` blocks; the workspace says
+`2x3x4 double`. interp.ts: `zip` broadcasts over three dimensions; `*` and `'` refuse 3D arrays with a plain message
+(`flatOnly`); `[A B]` joins page by page; one or two indices fold the pages into the columns (A(7), A(i, j) with j up
+to c·p), as MATLAB does; three indices read and write (growing rows, columns and pages, `place3`); A(:, :, k) = []
+removes pages; `for` walks the columns of every page. At the end of interp.ts, `ALONG` wraps the column functions
+(sum, prod, mean, median, mode, cum*, any, all, max, min, std, var, diff, sort, flips, rot90, circshift, triu, tril,
+trapz, bounds…): on a 3D array they run page by page; with dim = 3 they run along the pages (each element's values
+across the pages become one column of a p × (r·c) matrix, then back). The wrap is installed once interp.ts has loaded
+builtins.ts and signal.ts, so a column function added later in those files gets it by being listed there; a function
+in plot*.ts is not wrapped. builtins.ts: sizes take a third number (zeros(2, 3, 4), zeros([2 3 4])); size gives
+[r c p] (and [r, c] = size(A) folds pages into c, as MATLAB does), size(A, 3), ndims, length, isvector / ismatrix;
+reshape with 3 sizes or [] (and keeps complex parts now); cat(3, …), squeeze, permute / ipermute, repmat with a
+third count, meshgrid with 3 outputs, ndgrid. Pictures (plot3d.ts): image / imagesc / imshow take r × c × 3 (Grid.rgb,
+0–1; anything over 1 taken as 0–255), imshow also a grey matrix (with [low high] or [] to stretch it), shown pixelated,
+square and without axes; rgb2gray (0.2989 / 0.587 / 0.114), im2double, im2uint8 (values rounded 0–255: there is no
+uint8 type), imresize (bilinear, scale or [rows cols]); LaTeX writes each cell's colour (`mesh/color input=explicit`,
+`[rgb=…]`). Also: every SVG drawing names its clip areas uniquely (`Ink.uid`), so two figures on one page (the light
+and dark copies) never clip each other. Not built: more than three dimensions, integer types (uint8, int16), reading
+picture files (imread comes with files, next).
+
+## M383 (22 Nov): UniVerse Lab: files and tables
+
+`src/lib/lab/files.ts` (the worker and tests import it; it registers its builtins). `FileStore` is the engine's
+folder (`Host.files`): `load` takes the window's files (not reported back), `put` / `remove` are code's writes
+(`takeChanges()` after each run tells the window what to keep or forget), names are plain (`clean`: no `..`, no
+leading `/`, under 120 characters), 50 MB a file. The window (`LabApp.tsx` Files panel, `lab-files.ts`) keeps files
+in IndexedDB `uv-lab` / `files` on the device only (never uploaded), sends them to the worker on start and after Stop,
+and decodes pictures itself (`createImageBitmap` → RGBA `pixels`, since the engine can't wait for the browser's
+decoder), so imread reads any picture the browser can open; imwrite writes PNG (with its pixels). Delimited text:
+`splitRows` (comma, tab, semicolon or spaces, quotes), header rows of text skipped by readmatrix (`numbers`), gaps
+NaN (csvread / dlmread give 0, as MATLAB's old ones do). Excel: `xlsxRows` reads a sheet's cells with formulas'
+saved results (fflate's unzipSync, `xml-lite`; 'Sheet' by name or number); writing goes through the spreadsheets
+app's `writeXlsx` and fflate's zipSync. .mat: our own level-5 reader and writer (`readMat`, `writeMat`): doubles
+(complex too), logicals, text, cells, single structs (tables saved as structs), 3D arrays; reads every number type
+as doubles, miCOMPRESSED parts (unzlibSync), and the short element form; refuses sparse, objects, struct arrays and
+v7.3 (HDF5) plainly. save / load: all variables or named ones, -ascii and .txt / .csv as numbers, load into the
+caller's workspace (the frame) or as a struct when an output is asked for; a text file loads as one variable named
+after the file. Tables: a `Struct` with `table: true` (columns as fields: numbers as column vectors, text as cell
+columns; headings made into valid names, "Height (cm)" → Height_cm), printed as rows (the first 20); T.col works,
+T(rows, :) does not yet. Text files: fopen (r, w, a) / fprintf(fid, …) (1 and 2 are the command window) / fgetl /
+fgets / feof / frewind / fscanf (the numbers left) / fclose (writes on close). The reader (parse.ts) now reads
+MATLAB's command style properly: a command word starting a statement takes the rest of the line as words
+(`word` tokens: `save data.mat x y`, `load 'my file.csv'`), unless = or ( follows; new command words: save, load,
+type, dir, ls, delete, cd, pwd. The Files list is `data-no-motion` (the motion layer counted file sizes up).
+Not built: T(rows, :) indexing, readtable's options beyond 'Sheet' / 'Delimiter' / 'ReadVariableNames', JPEG
+writing, folders.
+
+## M384 (22 Nov): UniVerse Lab: live controls and a smoother window
+
+The owner asked for features "unique and different from others" and "ultra smooth"; offered four, they chose all:
+live controls (this), watch it run (M385), notebook pages (M386), Lab in UniVersity (M387); the computer app,
+simulations and toolboxes stay queued after them. `src/lib/lab/controls.ts`: `controlsOf(code)` finds
+`name = value; % slider 0 10` (also `slider(0, 10, 0.5)`, `slider 0:0.5:10`, or none: 0 to twice the value),
+`% toggle` (true / false / 0 / 1) and `% menu a b c` (the value joins the options); `setControl` rewrites only the
+value's characters (a number to its step's decimals). LabApp: a "Live controls" group under the script's name
+(LiveControl: range input with its value, a switch with role="switch", a select); moving one edits the script and
+runs it as a 'live' run: no ">> run" line and no printed output (figures and variables show the change; an error is
+printed once until it changes). Runs never overlap: `busyNow` (a ref, so the worker's message handler sees it) and
+`queued` keep only the newest code while one runs; `run` sits above `start` (the compiler lint refuses a use before
+its declaration). Scripts are saved 250 ms after the last change (a slider sends many). Smoother: phone tabs are a
+keyed `.swap` with `data-dir` from their order; a figure glides in when you switch to it (`.swap` keyed by its id; a
+live redraw of the same figure doesn't replay it); the command window shows `.lab-busy` while running (a stripe on
+transform only, paused while scrolling, still with Reduce Motion; globals.css). The example `waves.m` (new visitors;
+saved script lists are kept as they were). Not built: controls in the command window, a control for text boxes.
+
+## M385 (22 Nov): UniVerse Lab: table rows and columns
+
+The owner asked for every left-out of M380–M384 (table rows, more than 3 dimensions and integer types, JPEG saving,
+.xls, MATLAB 7.3 files) "and whatever big things you can": M385–M388 take the left-outs, then watch it run,
+notebook pages, Lab in UniVersity, maths libraries (optimisation, control, symbolic), simulations, the computer app.
+`src/lib/lab/table.ts` (pure: imports only values/parse, so interp.ts uses it without a loop): `isTable`, `pick`
+(T(rows, cols)), `contents` (T{…}: one column as itself, several numeric ones side by side, several text ones as a
+cell), `remove` (whole rows or whole columns), `setValues` (T{rows, 'col'} = v), `joinTables` ([T1; T2] same columns,
+[T1, T2] same height, no shared names), `properties` / `renamed` (T.Properties.VariableNames, read and assigned,
+also element by element: `peek` returns the properties so `…VariableNames{1} = 'x'` works). interp.ts: `index()`
+turns a second index of names (text or a cell of text) into column positions; `sizeOf` of a table is [height
+width] (so `end`, size, numel's neighbours follow); getIndex / getCell / setIndex / setCell / concat send tables to
+table.ts; a field set on a table keeps it a table and checks a new column's height (a row of the right length is
+turned into a column); `.Properties` is answered when the table has no such column. files.ts (with the other table
+functions): sortrows on a table (names, several keys, 'ascend' / 'descend' per key; the plain one kept for matrices),
+head / tail (tables, matrices and cells, 8 rows by default), summary (min, median, max, mean, missing; text: how many
+different, the most common), addvars ('NewVariableNames', 'Before', 'After'), removevars, renamevars, movevars,
+groupsummary (methods mean, sum, min, max, median, std, var, range, nummissing; one row per group, sorted, with
+GroupCount), join (left: every left row), innerjoin, outerjoin (missing matches NaN or empty text; same-named
+columns from the right get `_right`), cell2table, table2cell, struct2table, table2struct, istable. Not built: row
+names, categorical and datetime columns, varfun / rowfun, stack / unstack.
+
+## M386 (22 Nov): UniVerse Lab: number types and any number of dimensions
+
+`src/lib/lab/types.ts` (pure): `NumClass` (int8 … uint64, single), `castOne` / `cast` (round halves away from zero,
+hold at the type's ends, NaN → 0; single through Math.fround; `cast(m, undefined)` is back to double), `resultClass`
+(an integer type wins over double and single; two different integer types refuse), `unitValues` (picture values
+0–1 by type: uint8 / 255, uint16 / 65535, other integers by their range, doubles over 1 as 0–255). `Mat.cls` holds
+the type; numbers stay doubles that are whole and in range. interp.ts: `binop` works a typed pair out in doubles
+then casts (comparisons stay logical); unary minus and transpose keep the type; getIndex / setIndex / concat keep it
+(an assigned value takes the array's type; the first typed value in [a b] wins, as MATLAB joins). `call()`: a class
+name at the end of a maker (zeros, ones, eye, rand, randn, randi, inf, nan, cast; MAKERS) or 'like', x makes that
+type; functions in KEEP_TYPE (abs, round…, mod, min, max, sort, flips, reshape, sum, prod, cumsum, diff, unique…)
+give back the first argument's type (sum saturates, as MATLAB's does); other functions give doubles. builtins.ts:
+int8 … uint64 / single / double / cast as conversions, class from `kind`, isinteger, isfloat, isa (numeric, float,
+integer, a type), intmax / intmin (a type name or 'like' a value), idivide ('fix', 'round', 'floor', 'ceil'; the old
+plain one removed), bitand / bitor / bitxor / bitshift / bitget (BigInt, so 64 bits stay exact), dec2bin, bin2dec,
+dec2hex, hex2dec. imread returns uint8 and imshow / image / im2double / imwrite read types through `unitValues`;
+.mat files write and read each type (`TYPED`, `CLASS_OF` in files.ts). Dimensions: `Mat.nd` holds the sizes past the
+second when there are more than three (their product is `p`, so every page-by-page path still works);
+`dimsOf` / `pageLabel` (values.ts) print `A(:,:,1,2) =`; sizes take any count (`sizesOf`, `extra` in builtins.ts);
+size, ndims, length, reshape, squeeze (drops every size of 1), permute / ipermute (any order of any number of
+dimensions, by strides), cat(4, …); `pagePlaces` (interp.ts) turns indices past the second into page numbers (fewer
+indices than dimensions fold the last ones together); A(i, j, k, l) = v changes values in place (no growing past
+three dimensions); zip and the page-by-page column functions keep `nd`; `call()` keeps `nd` on a same-sized result
+except for RESHAPERS. Not built: growing or deleting parts of arrays past three dimensions, functions along
+dimension 4 and up, integer types inside complex numbers.
+
+## M387 (22 Nov): UniVerse Lab: JPEG and BMP saving, old Excel files
+
+`src/lib/lab/jpeg.ts`: `encodeJpeg(w, h, rgba, quality)`, our own baseline JPEG from ITU T.81: RGB → YCbCr (no
+subsampling, 4:4:4), 8 × 8 blocks through a plain separable DCT (edges repeat the last pixel), the standard's example
+quantisation tables scaled IJG-style by the quality (75 by default), and Huffman tables built from the picture's own
+symbol counts by Annex K.2 (two passes; a reserved symbol keeps any code from being all ones; codes folded to 16
+bits), so no fixed code tables are copied; byte stuffing after 0xFF; JFIF APP0, one DQT, SOF0, one DHT with four
+tables, SOS. Checked by an independent decoder (Python's PIL, while building): every colour within 1 at quality 90.
+`encodeBmp`: 24-bit, rows bottom up, padded to 4 bytes. imwrite takes .png, .jpg / .jpeg ('Quality', n) and .bmp;
+the file keeps the exact pixels for imread (a decoder would give back near the same). `src/lib/lab/xls.ts`:
+`readXls(bytes)` → every sheet's name and rows of text: the compound file ([MS-CFB]: header, DIFAT, FAT, directory,
+the mini stream for streams under the cutoff), then BIFF8 records ([MS-XLS]): BOUNDSHEET (sheet positions), SST
+with its CONTINUE records (`Pieces`: a string whose characters run into the next record restarts with a flags byte,
+8-bit or 16-bit), and each sheet's LABELSST, NUMBER, RK, MULRK, LABEL, BOOLERR and FORMULA (the saved result; text
+results from the next STRING record). Files older than Excel 97 (BIFF5) are refused plainly. files.ts `rowsOf` reads
+.xls (or the compound-file signature) with 'Sheet' by name or number. Fixtures `src/lib/lab/fixtures/small.xls`
+(mini stream) and `big.xls` (600 rows, shared text over CONTINUE records), made with Python's xlwt while building.
+Not built: WebP and GIF writing, dates in .xls cells (they come in as Excel's day numbers), .xls writing.
+
+## M388 (22 Nov): UniVerse Lab: MATLAB 7.3 .mat files
+
+The owner, 22 Nov (mid-work): "make this seriously… add more than 20 features… dont stop working until i say… start
+the work after the limit reset… everything ultra smooth". A send_later reminder ("Keep building UniVerse Lab") brings
+the session back after an hour or a stop; re-arm it before ending a turn. The queue after M388 (task list): M389
+editor, M390 variable viewer, M391 help and function browser, M392 watch it run, M393 animations, M394 optimisation,
+M395 control systems, M396 statistics and machine learning, M397 signal processing, M398 image processing, M399
+symbolic maths, M400 notebook pages, M401 publish a report, M402–M405 simulations (structures, heat, circuits and
+vibration, fluids), M406 Lab in UniVersity, M407 sparse, ODE and interpolation extras, M408 the computer app.
+`src/lib/lab/hdf5.ts`: `H5File` reads HDF5 from the spec: superblocks 0–3 (found at 0, 512, 1024…; addresses count
+from the superblock, as the library itself does when a user block such as MATLAB's 512-byte header comes first),
+object headers 1 and 2 with continuations (v2 continuation blocks: "OCHK" + messages + checksum), attributes 1–3,
+dataspaces, datatypes (fixed-point, float, string, reference, compound with v1–v3 members), groups as symbol
+tables (v1 B-tree type 0 → SNOD → local heap names) or link messages (a link-info message with a fractal heap,
+i.e. dense storage past 8 links in the newest layout, is refused plainly), layouts 1–4 (compact, contiguous; chunked
+through a v1 B-tree type 1; v4's newer chunk indexes refused), filters deflate (fflate), shuffle, Fletcher-32.
+files.ts `fromH5` / `readMat73`: MATLAB_class labels the type; sizes are stored reversed (the data order is then
+MATLAB's own); char is UTF-16 codes; complex is a compound of real / imag; cells are object references (read through
+`deref`); a struct is a group of fields (struct arrays, stored as references per field, are named as skipped);
+MATLAB_empty datasets hold the empty array's sizes; MATLAB_sparse groups (data, ir, jc) are made full (up to 50
+million values). `readMat` picks 7.3 by the header text or the HDF5 signature at 512; load prints "Not loaded…"
+for what it skipped. Saving stays level 5 (MATLAB reads it; `save -v7.3` writes the same). Fixtures
+`fixtures/v73.mat` (older layout, compressed 100 × 500 in 50 × 40 chunks, every kind above) and `v73-new.mat`
+(superblock 2, v2 headers, link messages), made with h5py the way MATLAB lays files out, while building.
+
+## M389 (22 Nov): UniVerse Lab: a real code editor
+
+`src/components/lab/LabEditor.tsx` (CodeMirror 6, already used by the code rooms; @codemirror/language, autocomplete,
+lint, search and @lezer/highlight added as direct dependencies at the versions the lockfile already had: no new
+packages). Made once (first props through a ref); later changes arrive by effects: outside code changes (a live
+control, the example) replace only the changed middle (the cursor stays), `dark` and the label reconfigure
+compartments, `namesVersion` re-colours once the engine's function names arrive, `error` sets a lint diagnostic on
+that line (red wavy underline and a gutter dot; cleared when the code changes). Ctrl / Cmd + Enter runs at
+Prec.highest (CodeMirror's own Mod-Enter inserts a blank line). The scroll area is tabIndex −1 and the content 0
+(axe: scrollable-region-focusable). Keyed by the open script, so each has its own undo history. `matlab-lang.ts`:
+our own StreamLanguage (keywords, %{ %} blocks, % and # comments, `...`, text vs the transpose quote by whether a
+value came before, numbers with i / j, operators, built-in names from `builtinNames`), an indent service (one step in
+after if / for / while / switch / try / function, out for end / else / case / catch, re-indented as you type them),
+our own colours in both themes (violet keywords, blue functions, green text, grey comments, amber numbers), and a
+completion source (variables, the script's own assignments, keywords, functions with `describe` for a line of help:
+filled by M391). The worker posts `{ names }` (every builtin) on start. Command window: Tab finishes the word to the
+longest common start (functions, variables; file names inside quotes) or lists the choices. A live run repeating
+the last error prints nothing. Not built: code folding by blocks (fold markers come from indentation only), a
+debugger (M392).
+
+## M390 (22 Nov): UniVerse Lab: the variable viewer
+
+`src/lib/lab/inspect.ts` (pure): `resolve(root, name, steps)` walks fields and cell items (`Step`), giving the value
+and its MATLAB expression (`c{2,2}.m`); `view(value, page, from)` → a `View`: a grid (a window of 200 rows × 40
+columns from `from`, one page; Min / Max / Mean and how many aren't numbers over every page; complex isn't editable),
+a struct's fields, a cell's items, a table's rows (200 at a time) or text. The worker answers `{ inspect }` with
+`{ view }` (size with every dimension, kind); the Variables list now shows a 3D array's full size (`dimsOf`).
+`VariableViewer.tsx`: the site's `Sheet` (a dialog on computers, a bottom sheet on phones); a breadcrumb back up the
+path; the grid is role="grid" with one focusable cell (arrows move; Enter, F2, typing a digit or a double click edits;
+Escape cancels); an edit runs `expr(i, j[, k]) = value;` in the command window (so it shows, can be undone by hand and
+errors are explained there); page and window arrows; Plot (`plot` for a vector, `imagesc` + colorbar for a matrix, in
+a new figure), Copy (tab-separated, for spreadsheets), Put in the command. LabApp keeps the open path in `looking`
+and asks again after every run, so the viewer follows changes; clicking a variable's name opens it (Put in the
+command does what the click used to). Note for browser checks: in development, Next's "N" badge covers the bottom-left
+of a phone sheet (press its buttons with the keyboard).
+
+## M391 (22 Nov): UniVerse Lab: help for every function
+
+`src/lib/lab/help.ts` (pure data, also loaded by the window): one line per function, `name | how to call it | what it
+does`, under `# Section` headings (17 sections); `HELP`, `SECTIONS`, `helpFor(name)` (the line, the forms and up to 8
+others of its section), `lookFor(words)`. `help-commands.ts` registers help / doc / lookfor (the worker and tests
+import it; `lookfor` is a command word). `help.test.ts` fails when a function has no help line: a new builtin needs
+one. The editor's suggestions show the help (`describe` in LabApp) and `hoverTooltip` shows it when the pointer
+rests on a name (`.cm-lab-help`). `FunctionBrowser.tsx`: a Sheet with a search box (words match the name or the
+help), section chips, up to 300 rows; choosing one puts its first form (`firstForm`: commas inside brackets don't
+split) in the command window. The Functions button sits in the command window's header.
+
+## M392 (22 Nov): UniVerse Lab is now Hyperion
+
+The owner, 22 Nov: "the app name should be Hyperion". Every name people see: `APPS` (name 'Hyperion', path
+`/hyperion`: the page moved to `src/app/(dashboard)/hyperion`, page routes regenerated), the side menu and phone tabs,
+the top bar, the landing (FAQ, hero text, the sign-up panel's "Open Hyperion."), the engine's messages ("Hyperion
+can't read…", `ver`, `version`, `help`), the LaTeX header ("% Made with Hyperion"), the .mat header ("Platform:
+Hyperion"), `pwd` (/hyperion). The colour map is `hyperion` (`lab`, `parula`, `default` open it; `hyperion(n)` has
+a help line). Unchanged on purpose: the internal app id `lab` (`AppId`, `html[data-app="lab"]`, stored rows), the code's
+folders (`src/lib/lab`, `src/components/lab`), the device storage keys (`uv-lab-scripts`, IndexedDB `uv-lab`), so
+nothing people kept is lost. Not live yet, so the old /lab address needs no redirect. In notes and code comments from
+here on, the app is Hyperion; older notes say UniVerse Lab. A stale `.next/dev/types` after moving a page breaks
+`pnpm typecheck`: delete that folder (it is the development server's, not committed).
+
+## M393 (22 Nov): Hyperion: watch it run
+
+The owner, 22 Nov (during this item): "change the name of travel app to aether and remove the green app completely and
+add this to all the section of other apps where it is the part of the daily life… in hyperion app add 20 more
+features… big features which are unique and different from the internet… combine 2 features into one… dont stop
+working until i say". Next: M394 Travel → Aether, M395 Green removed (its everyday parts moved into the other apps),
+then 20 big Hyperion features.
+Engine: `Host.trace(at, vars, depth)` before every statement (interp `exec`), and again at the loop's own line on every
+pass after the first (`for`, `while`), as a debugger shows it. `src/lib/lab/trace.ts`: `Recorder` keeps per step the
+line, the call depth, what it printed, the variables of its own frame as one-line summaries (only when something
+changed; a function's last step keeps the function's variables, not the caller's), the names it changed and which
+figure copy shows (figures copied with structuredClone when they changed, within a budget of 3 million numbers);
+the first 5000 steps (`MAX_STEPS`), the run itself goes to the end. `varsAt`, `printedUpTo` rebuild a step's view.
+Worker: `{ watch, id }` runs with a recorder (printing goes to it, not the log), answers `{ trace }` then the usual
+`{ done }`; `{ traceFig }` renders a copy at the panel's size. Window: Watch (beside Run, in the name row now: the
+script tabs have their own row); the playback bar (start, back, play / pause, forward, next breakpoint or the end, a
+step slider, step / line / depth, speed 1–32 a second, stop watching) plays on a timer (`playing`, `at`, `speed`,
+`breakpoints` as the effect's dependencies) and pauses on a breakpoint; the editor lights the line (`traceLine`
+StateField, scrolled into view only when it leaves the screen) and draws breakpoints in their own gutter
+(`renderEmptyElements`, so any line's slot takes a click); Variables show the step's variables with changed rows
+marked; the command window shows what was printed up to the step (everything also goes to the log for afterwards);
+the Figure shows the step's copy. Editing the code ends the playback. Not built: watching commands typed in the
+command window, conditions on breakpoints.
+
+## M394 (22 Nov): Travel is now Aether
+
+The owner, 22 Nov: "change the name of travel app to aether". `APPS` name 'Aether'; the Topbar title, the section
+row's label, Spotlight's result groups, the owner console's Moderation group and report wording, the app search
+entries ("Aether map"), the trip invite share text, the family journey page (`/journey/<code>`: brand and footer).
+Kept on purpose: the addresses `/travel…` and `/journey/<code>` (live, and family links are already shared), the
+app id `travel`, the code's names (`components/travel`, `travel-*.ts`, API `/travel/…`), and the ordinary word
+"travel" in text (a green tip's "Travel" area, "your travel in numbers"). New notes and comments call the app Aether.
+
+## M395 (22 Nov): Green folded into the other apps
+
+The owner, 22 Nov: "remove the green app completely and add this to all the section of other apps where it is the part
+of the daily life". Green is no longer an app (`APPS`, `AppId`, menus, phone tabs, the landing's tab, hero, try-it and
+closing card, the sign-in picture, the hub's planet, the backdrop's aurora, the owner console's launch row). Its parts
+now live where they belong in daily life (`src/lib/green-home.ts` holds the map):
+- **UniVersity → Student life → Green living** (`/student/life/green`, a tab in `LIFE_TABS` and the student menu's
+  Campus group): My impact (`GreenApp`), Footprint, Goals, Tips, Teams (`GreenTeams`, the old teams page as a
+  component), and a "More green in your apps" card. Its `GreenTabs` row passes `keep` to `TabRow` (UniVersity has no
+  sections in the top bar, so the row must not hide on computers).
+- **Aether**: Journeys (`/travel?view=journeys`, `GreenJourney`) and Green places (`/travel?view=green`, `GreenPlaces`).
+- **Relief**: Community events (`/relief?view=events`, `GreenEvents`).
+- **Trace**: Swap & repair (`/trace/swap`, `SwapBoard`) and Carbon (`/trace/carbon`, `GreenBusiness`: Green → Business);
+  the auditor's public page `/carbon/[code]` is Trace's (its `paths`, share card, wording).
+Kept on purpose: the code's names (`components/green`, `src/server/green*.ts`, `green_*` tables) and the API
+`/api/green/…`, so nothing on the server or in the database changes. `/green` and `/green/teams` are small pages
+(`GreenMoved`) that send people on with `greenHome` (old links, bookmarks, notifications already sent; other query
+parts such as `&b=verify` are kept). New links point straight at the new homes. A stored `'green'` (last app, chosen
+app, a chat's app, the owner's shown-apps list) falls back through `knownApp` / `parseShownApps` / `lastApp`. Climate
+actions in the Impact Wallet are UniVersity's events with `href` to Green living (`WalletEvent.href`, new); the
+console's launch board counts them with UniVersity. Green's three games went to Trace (Recycle Rush) and Relief (Reef
+Rescue, Ocean Cleanup). Also fixed: `appHome` sent Hyperion to `/lab` (gone since M392); it now uses the app's first
+address. The hub no longer runs Green's two totals queries.
+
+## M396 (22 Nov): Hyperion symbolic maths, set as real maths
+
+The owner, 22 Nov: "in hyperion app add 20 more features… big features which are unique… combine 2 features into one".
+The first: our own computer algebra system joined to typeset output. `src/lib/lab/sym.ts` is the core: expression trees
+(`N`) kept in one tidy form by their constructors (`add`, `mul`, `pow`, `fn`: flattened, like terms and like powers
+gathered, exact fractions with a decimal fallback past 2^53, known values of sin/cos at multiples of pi/12, exp/log
+pairs), `print` (MATLAB's way: `x^2 + 2*x + 1`, `x/2`, `2^(1/2)`, `2i`) and `latex`, `evalC` (complex numbers),
+`diff`, `expand`, `polyOf` / `fromPoly`, `numden`. `sym-calc.ts`: `factorList` (common factors, rational roots,
+difference of squares), `together`, `simplify` (tries forms and keeps the smallest that equals the original at three
+points), `integrate` (table for linear arguments, derivative-divides substitution, by parts, partial fractions with
+linear and one irreducible quadratic factor; `definite` falls back to adaptive Simpson), `solveFor` (polynomials:
+exact to degree 2, rational roots, then Durand–Kerner decimals; inverting sin/cos/exp/log/powers; a sign-change scan
+as the last resort), `solveSystem` (linear by `gauss`, else substitution), `limitOf` (direct, l'Hôpital, 1/x for
+infinity, exp-log for powers, one-sided signs, a numeric last resort with `nice` fractions), `taylor`.
+`sym-lab.ts` puts it in the language: the value kind `sym` (`values.ts` `Sym`: r × c of `N`, column by column),
+`symBinop` / `symConcat` / `symNeg` / `symTranspose` / indexing (interp.ts), `fromNumber` (MATLAB's sym: short
+fraction, pi fraction, square root, exact fraction, decimal), `symCall` (a call with a symbolic argument, or one of the
+symbolic-only names, goes to `SYM`), and the functions: syms (command syntax), sym, diff, int, solve, subs, simplify,
+expand, factor, collect, simplifyFraction, numden, limit, taylor, symsum, vpa, latex, pretty, symvar, coeffs,
+sym2poly, poly2sym, jacobian, hessian, gradient, lhs, rhs, isolate, isAlways, assume (accepted, not used),
+matlabFunction (code made element by element and parsed into a handle), det / inv / eig of symbolic matrices,
+elementwise sin/exp/…, and fplot/fsurf/fmesh/fcontour/fimplicit of formulas. A symbolic result's display carries
+`\u0001 LaTeX \u0002 plain \u0003` (`symShown`); `LabText` sets it with KaTeX as MathML (no style sheet), `plainOf`
+gives the plain text. `toMat` turns a symbolic value with no letters into numbers, otherwise its error names them.
+Help: a "Symbolic maths" section. Example script `symbolic.m` (with a live slider on a formula's plot). Not built:
+symbolic functions `syms f(x)` and dsolve, assumptions, `piecewise`, vpa past double precision, factoring polynomials
+without rational roots above degree 2, integrals needing special functions.
+
+## M397 (22 Nov): Hyperion notebook pages and reports
+
+The second of the owner's 20 big features: a script read as a page and published from the same place. `src/lib/lab/notebook.ts`:
+`notebookOf` splits a script into sections at `%% Title` lines; `%` lines (and `%{ … %}` blocks) are a section's text,
+the rest its code (a section's whole body runs, comments included). Text is a little Markdown (**bold**, *italic*,
+`code`, `* ` lists) with maths between `$…$` and `$$…$$`; `textHtml` escapes everything and sets formulas through the
+`math` callback (`mathml` in `LabText.tsx`: KaTeX to MathML, trust off; `useKatex` loads it once); a `$$…$$` formula
+stands between paragraphs (never a block inside `<p>`). `reportHtml` writes a standalone page (text, code, output with
+typeset results, figures as SVG data URLs, print styles); `reportTex` a LaTeX document (listings, verbatim output with
+`\[…\]` for typeset results, the figures' pgfplots code). The window (`LabNotebook.tsx`, a Code / Notebook switch in the
+editor's name row, per script): Run all, a Run per section, Report (HTML) and LaTeX report downloads. LabApp runs sections
+one after another in the same workspace (`runNotes` / `nextNote`, `noteQueue`; `from: 'note'` sends printed text to
+`noteBuf`, not the command window); a section's results are kept by its code (`noteKey`), so an edited section starts
+afresh; an error stops the rest. The worker's `done` now lists the figures a run drew (`drawn`), so a section shows only
+its own. In the notebook view a live control runs every section again (queued as `NOTE_ALL` while busy). Trap: copy the
+section's text out of `noteBuf` before `setNoteOuts` (the next section clears it before React applies the update).
+Example script `notebook.m`. Not built: editing inside the notebook view (writing stays in Code), images in the text,
+running a section from the Code view (Ctrl+Enter runs the script).
+
+## M398 (22 Nov): Hyperion share by link and QR
+
+The third of the owner's 20 big features: a script travels inside its own link, and the link shows as a QR code a class
+can scan off the board. `src/lib/lab/share.ts`: `shareFragment` packs `{n: name, c: code, v: 'code' | 'note'}` as JSON,
+deflate-raw (`CompressionStream`), URL-safe base64, behind `s=h1.` after the `#` (browsers never send the fragment to a
+server: nothing is stored on ours); `readShare` unpacks with a 400 KB ceiling (a crafted link can't blow up), checks
+the shape, and `cleanName` keeps names to letters, digits, `_ . -` ending in `.m`. Window: Share in the editor's name
+row opens a row with the link (made again as the code, its sliders or its view change), Copy, its length (a warning past
+8,000 characters) and the QR code; "Show it big" fills the screen with it (for a projector). Opening a link shows a
+banner (Open it / Not now; nothing runs by itself); Open it adds the script under a free name, opens it (as a page when
+it was shared as one) and clears the `#` from the address. Also: `src/lib/qr.ts` now goes to version 40 at level M
+(2,331 bytes; it stopped at version 15, 412): the standard's tables for blocks and error codewords, alignment positions
+computed (`alignPositions`, version 32's step 26), 13-bit counts for alphanumeric past version 26; `qr-big.test.ts`
+reads codes back with jsQR at every size. Not built: links that point at a stored copy (they would need the server),
+sharing data files with a script (only the code travels).
+
+## M399 (22 Nov): Hyperion code checker and Explain
+
+The fourth of the owner's 20 big features: a checker that reads the code without running it, joined with plain-English
+explanations of every line. `src/lib/lab/lint.ts` `lintScript(src, isFn)` → `{ problems, prog }`: a parse error where it
+is; a name read before it has a value and isn't a function (with "Did you mean …" and a fix when a defined name is within
+two letters); inside a loop, a read under an if is let pass (it may be last pass's value), so `total = total + k` is
+caught without false alarms; a variable that hides a function (info); a loop line that prints every pass (fix: add `;`
+before any comment, `codeEnd`); an array grown in a loop it wasn't made before (info); `==` on text (use strcmp) and on
+decimals (info); code after return / break / continue; inside functions, values never used afterwards (scripts are
+skipped, their variables live on in the workspace). `syms`, `load` and `eval` stop the "no value" check where they make
+names it can't see. `src/lib/lab/explain.ts` `explainScript(src, prog, isFn)` → line → sentence: assignments ("x: …"),
+calls (the help line of the function, then the values given for its parameters, read from the help syntax), loops,
+conditions, commands, function headers; `exprText` writes an expression back as code. Editor (`LabEditor.tsx`):
+CodeMirror's `linter` (450 ms after typing stops) carries the checker and the last run's error (`forceLinting` when either
+changes); fixes are the diagnostics' actions; Explain (a toggle in the name row, Code view) shows each line's sentence as a
+block widget under it (`notes` field, `explainer` plugin 400 ms after typing), and wraps long lines meanwhile. `isFn` is
+the help's names plus the engine's (`builtinNames`). Not built: checks across files, type checking, fixes for the
+text and decimal comparisons (only the advice).
+
+## M400 (22 Nov): Hyperion Time it (a heat map of the code, with speed advice)
+
+The fifth of the owner's 20 big features: a profiler joined with the code checker's advice. `src/lib/lab/profile.ts`:
+`Profiler` hangs on the interpreter's trace hook (the one Watch uses): each statement's start gives the time since the
+last one to the line before, and counts the line (a loop's line counts each pass), so a line's time is its own time
+(calls into functions go to the function's lines); `finish` gives `{ lines, total }`. `hotLines` picks the lines with at
+least 5% of the time (at most 3) and gives each a tip: the checker's "grows" or "prints" problem on that line, drawing or
+writing text inside a loop, many passes (do it on whole arrays), or a heavy function. Worker: `{ profile: code }` runs
+with a profiler and sends `{ profiled }` before `done`. Window: "Time it" (Code view) beside Watch; a row with the total
+and the slow lines (a press puts the cursor on the line: `jump`), and a bar beside every line in its own gutter
+(`heatField`, length and strength by its share of the slowest line, the time and count in its title); kept while the
+code is unchanged (`prof.code`). The first timing showed the engine's own slowness: `x(k) = …` growing an array in a loop
+copied it element by element through a general path; `place` now copies whole columns into a zeroed `Float64Array`, and
+the number case skips a second copy (20,000 passes: 11.8 s → 0.66 s). Not built: time spent inside built-in functions
+broken down, comparing two timed runs.

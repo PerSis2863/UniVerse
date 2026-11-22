@@ -44,7 +44,7 @@ describe('offline classroom relay (D17)', () => {
     expect(readBack('https://universeimpact.com/verify/abc?x=1')).toBe('https://universeimpact.com/verify/abc?x=1');
     const long = 'x'.repeat(400);
     expect(readBack(long)).toBe(long);
-    expect(() => encodeQr('x'.repeat(500))).toThrow();
+    expect(() => encodeQr('x'.repeat(2400))).toThrow(); // past version 40 at level M (M398; it was version 15)
   });
 
   it('packs, cuts into frames and comes back together in any order, signed', () => {

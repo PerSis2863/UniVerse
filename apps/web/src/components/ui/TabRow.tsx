@@ -10,10 +10,11 @@ import { cn } from '@/lib/utils';
 
 export interface RowTab { href: string; label: string; icon: LucideIcon; on: boolean }
 
-export function TabRow({ label, glide, tabs }: { label: string; glide: string; tabs: RowTab[] }) {
+/** `keep`: a row inside a page of a menu without sections in the top bar (Student life → Green living, M395) stays shown. */
+export function TabRow({ label, glide, tabs, keep }: { label: string; glide: string; tabs: RowTab[]; keep?: boolean }) {
   return (
     // M370: on a computer whose menu is the bar across the top, these sections are in that bar (TopNav), so not here.
-    <nav aria-label={label} className="-mx-1 overflow-x-auto scrollbar-none topnav:hidden">
+    <nav aria-label={label} className={cn('-mx-1 overflow-x-auto scrollbar-none', !keep && 'topnav:hidden')}>
       <ul className="flex gap-1 px-1 min-w-max">
         {tabs.map((t) => (
           <li key={t.href} className="relative">

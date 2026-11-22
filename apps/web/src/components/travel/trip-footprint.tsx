@@ -22,7 +22,7 @@ export function TripFootprint({ tripId, stops, travellers, onChange }: { tripId:
   const pick = async (stopId: string, mode: TravelMode) => {
     try {
       const { data } = await api.patch<{ green: { kg: number } | null }>(`/travel/trips/${tripId}/stops/${stopId}`, { mode, green: mode === 'train' });
-      if (data.green) toast.success(`Logged in Green: about ${kg(data.green.kg)} of CO₂ saved by taking the train.`);
+      if (data.green) toast.success(`Logged in Green living: about ${kg(data.green.kg)} of CO₂ saved by taking the train.`);
     } catch (e) { toast.error(errorMessage(e, 'Couldn’t save that.')); }
     onChange();
   };
@@ -55,7 +55,7 @@ export function TripFootprint({ tripId, stops, travellers, onChange }: { tripId:
               </li>
             ))}
           </ol>
-          <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">Picking the train adds it to your <Link href="/green" className="underline">Green actions</Link>. Factors: UK government conversion factors (2024), rounded.</p>
+          <p className="mt-3 text-xs text-zinc-500 dark:text-zinc-400">Picking the train adds it to your <Link href="/student/life/green" className="underline">Green actions</Link>. Factors: UK government conversion factors (2024), rounded.</p>
         </>
       )}
     </section>

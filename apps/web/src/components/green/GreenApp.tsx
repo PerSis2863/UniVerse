@@ -121,7 +121,7 @@ export function GreenApp() {
   const sharePass = async () => {
     setAsk(null);
     const p = data ? greenPass(data.totals) : null;
-    const text = p ? `I'm a ${p.tier} on UniVerse Green: ${fmt(data!.totals.kg)} kg of CO₂ saved so far.` : 'I log my climate actions on UniVerse Green.';
+    const text = p ? `I'm a ${p.tier} on UniVerse: ${fmt(data!.totals.kg)} kg of CO₂ saved so far.` : 'I log my climate actions on UniVerse.';
     const url = `${location.origin}/green`;
     try {
       if (navigator.share) await navigator.share({ title: 'My Green Pass', text, url });
@@ -165,7 +165,7 @@ export function GreenApp() {
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-white">My impact</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{data ? `Everyone on Green has saved ${fmt(data.community.kg)} kg of CO₂ in ${fmt(data.community.actions)} actions, ${fmt(data.community.people)} people so far.` : ' '}</p>
+          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">{data ? `Everyone on UniVerse has saved ${fmt(data.community.kg)} kg of CO₂ in ${fmt(data.community.actions)} action${data.community.actions === 1 ? '' : 's'} by ${fmt(data.community.people)} ${data.community.people === 1 ? 'person' : 'people'} so far.` : ' '}</p>
         </div>
         <button type="button" onClick={() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })} className="btn-primary inline-flex items-center gap-2"><Plus className="h-4 w-4" aria-hidden />Log an action</button>
       </div>
@@ -256,7 +256,7 @@ export function GreenApp() {
               <div className="mt-3 flex flex-wrap items-center gap-2">
                 <p className="me-auto text-xs text-zinc-600 dark:text-zinc-300">Confirmed actions only.{c.waiting > 0 ? ` ${fmt(c.waiting)} ${c.unit} wait for a teammate.` : ''}</p>
                 <button type="button" onClick={() => tryAgain(c.kind)} className="btn-secondary btn-sm">Log for it</button>
-                {c.team === null && <Link href="/green/teams" className="btn-ghost btn-sm">Join a team</Link>}
+                {c.team === null && <Link href="/student/life/green?view=teams" className="btn-ghost btn-sm">Join a team</Link>}
               </div>
             </section>
           )}
@@ -287,7 +287,7 @@ export function GreenApp() {
               ))}
             </ol>
           )}
-          <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">kg of CO₂ saved, by the factors in Green’s methods (DEFRA, EPA, Our World in Data).</p>
+          <p className="mt-3 text-xs text-zinc-600 dark:text-zinc-300">kg of CO₂ saved, by the factors in Green living’s methods (DEFRA, EPA, Our World in Data).</p>
           <dl className="mt-auto grid grid-cols-2 gap-3 border-t border-zinc-100 pt-4 sm:grid-cols-4 dark:border-white/[0.06]">
             {[['30 days', `${fmt(month30)} kg`], ['Best day', best ? `${fmt(best.kg)} kg` : '–'], ['Days active', `${active} of 30`], ['Per active day', active ? `${fmt(Math.round((month30 / active) * 10) / 10)} kg` : '–']].map(([k, v]) => (
               <div key={k}><dt className="text-xs text-zinc-600 dark:text-zinc-300">{k}</dt><dd className="mt-0.5 text-lg font-semibold tabular-nums text-zinc-900 dark:text-white">{v}</dd></div>
@@ -383,7 +383,7 @@ function TeamProofs({ onDone }: { onDone: () => void }) {
         <h2 id="proofs-h" className="font-bold text-zinc-900 dark:text-white flex items-center gap-2"><ShieldCheck className="w-4 h-4 text-emerald-500" aria-hidden />Confirm your teammates’ actions</h2>
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-300">Look at the photo. If it shows what they logged, confirm it: only confirmed actions count for challenges and leaderboards.</p>
         {!data ? <div className="mt-3 h-24 skeleton rounded-xl" /> : data.teams === 0 ? (
-          <Link href="/green/teams" className="btn-secondary btn-sm mt-3 inline-flex">Join or start a team</Link>
+          <Link href="/student/life/green?view=teams" className="btn-secondary btn-sm mt-3 inline-flex">Join or start a team</Link>
         ) : data.proofs.length === 0 ? <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">Nothing waiting. New photos from your teams show here.</p> : (
           <ul className="mt-3 space-y-3 lg:flex-1 lg:min-h-0 lg:overflow-y-auto lg:pe-1">
             {data.proofs.map((p) => { const f = GREEN_FACTORS[p.kind]; return (
@@ -528,7 +528,7 @@ export function GreenMap() {
         <h2 id="gmap-h" className="font-bold text-zinc-900 dark:text-white flex-1">Everyone’s actions</h2>
         <span className="text-xs text-zinc-500">{fmt(cells.reduce((a, c) => a + c.kg, 0))} kg CO₂ in the last 90 days</span>
       </div>
-      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse Green" homeBox={WORLD} dark={dark} live={false} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
+      <WorldCanvas ref={mapRef} label="Map of climate actions logged on UniVerse" homeBox={WORLD} dark={dark} live={false} draw={draw} onPoint={onPoint} className="w-full h-[46vh] min-h-[320px]">
         <MapButtons className="absolute end-3 top-3 z-10" items={[{ label: 'Zoom in', icon: Plus, onClick: () => mapRef.current?.zoomBy(1.8) }, { label: 'Zoom out', icon: Minus, onClick: () => mapRef.current?.zoomBy(1 / 1.8) }, { label: 'See everything', icon: Globe2, onClick: () => mapRef.current?.home() }]} />
         <AnimatePresence>
           {hover && hc && (
@@ -545,7 +545,7 @@ export function GreenMap() {
         {data && cells.length === 0 && (
           <div className="absolute inset-x-3 bottom-3 sm:inset-x-auto sm:start-3 sm:w-[420px] rounded-2xl bg-white dark:bg-[#111113] p-4 shadow-xl border border-zinc-200/70 dark:border-white/10">
             <p className="text-sm text-zinc-700 dark:text-zinc-200">No actions on the map yet. Log one with “Put it on the shared map” and yours is the first light. It glows brighter as friends join.</p>
-            <InviteButton app="green" text="I’m logging my climate actions on UniVerse Green and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
+            <InviteButton app="campus" text="I’m logging my climate actions on UniVerse and seeing the CO₂ I save. Join me:" label="Invite friends" className="mt-3 flex-wrap" />
           </div>
         )}
       </WorldCanvas>
