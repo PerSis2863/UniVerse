@@ -10645,3 +10645,19 @@ filled by M391). The worker posts `{ names }` (every builtin) on start. Command 
 longest common start (functions, variables; file names inside quotes) or lists the choices. A live run repeating
 the last error prints nothing. Not built: code folding by blocks (fold markers come from indentation only), a
 debugger (M392).
+
+## M390 (22 Nov): UniVerse Lab: the variable viewer
+
+`src/lib/lab/inspect.ts` (pure): `resolve(root, name, steps)` walks fields and cell items (`Step`), giving the value
+and its MATLAB expression (`c{2,2}.m`); `view(value, page, from)` → a `View`: a grid (a window of 200 rows × 40
+columns from `from`, one page; Min / Max / Mean and how many aren't numbers over every page; complex isn't editable),
+a struct's fields, a cell's items, a table's rows (200 at a time) or text. The worker answers `{ inspect }` with
+`{ view }` (size with every dimension, kind); the Variables list now shows a 3D array's full size (`dimsOf`).
+`VariableViewer.tsx`: the site's `Sheet` (a dialog on computers, a bottom sheet on phones); a breadcrumb back up the
+path; the grid is role="grid" with one focusable cell (arrows move; Enter, F2, typing a digit or a double click edits;
+Escape cancels); an edit runs `expr(i, j[, k]) = value;` in the command window (so it shows, can be undone by hand and
+errors are explained there); page and window arrows; Plot (`plot` for a vector, `imagesc` + colorbar for a matrix, in
+a new figure), Copy (tab-separated, for spreadsheets), Put in the command. LabApp keeps the open path in `looking`
+and asks again after every run, so the viewer follows changes; clicking a variable's name opens it (Put in the
+command does what the click used to). Note for browser checks: in development, Next's "N" badge covers the bottom-left
+of a phone sheet (press its buttons with the keyboard).

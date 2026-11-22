@@ -7,7 +7,8 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
-import type { FigOut, FileIn, FromLab, ToLab, VarRow } from './lab.worker';
+import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
+import { VariableViewer, type Shown } from './VariableViewer';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
@@ -54,6 +55,8 @@ export function LabApp() {
   const setTab = (t: Tab | ((old: Tab) => Tab)) => setTabNow((old) => { const n = typeof t === 'function' ? t(old) : t; if (n !== old) setTabDir(TABS.indexOf(n) > TABS.indexOf(old) ? 'next' : 'back'); return n; });
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
   const [namesVersion, setNamesVersion] = useState(0);
+  const [shown, setShown] = useState<Shown | null>(null);
+  const looking = useRef<Inspect | null>(null);
   const [codeError, setCodeError] = useState<{ line: number; message: string } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
@@ -88,6 +91,7 @@ export function LabApp() {
       if ('out' in m) { if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
+      if ('view' in m) { if (looking.current) setShown(m.view); return; }
       const p = pending.current;
       const errText = m.error ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
       if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
@@ -106,6 +110,8 @@ export function LabApp() {
       pending.current = null;
       busyNow.current = false;
       setBusy(false);
+      // An open variable viewer follows the change (an edit made in it, or any other run).
+      if (looking.current) w.postMessage({ inspect: looking.current } satisfies ToLab);
       // The newest position of a control, if it moved while that run was going.
       const next = queued.current;
       if (next !== null) { queued.current = null; run(next, 'live'); }
@@ -138,6 +144,8 @@ export function LabApp() {
     listFiles();
     toast.success(added.length === 1 ? `${added[0].name} is ready: use it by name, like readmatrix('${added[0].name}').` : `${added.length} files are ready.`);
   };
+  /** The variable viewer: open a variable (or a part of it), go further in, page through. */
+  const inspect = (q: Inspect | null) => { looking.current = q; if (!q) { setShown(null); return; } worker.current?.postMessage({ inspect: q } satisfies ToLab); };
   const removeFile = (name: string) => {
     if (!confirm(`Delete ${name} from your Lab files?`)) return;
     fileData.current.delete(name); void forget(name);
@@ -279,7 +287,7 @@ export function LabApp() {
             <tbody>
               {vars.map((v) => (
                 <tr key={v.name} className="border-t border-zinc-100 dark:border-white/[0.06]">
-                  <td className="px-3 py-1.5"><button type="button" className="font-mono font-semibold text-zinc-900 hover:underline dark:text-white" onClick={() => { setCmd((c) => c + v.name); setTab('command'); }} title={`${v.cls}: put ${v.name} in the command`}>{v.name}</button></td>
+                  <td className="px-3 py-1.5"><button type="button" className="font-mono font-semibold text-zinc-900 hover:underline dark:text-white" onClick={() => inspect({ name: v.name, steps: [], page: 0, from: [0, 0] })} title={`${v.cls}: open ${v.name}`}>{v.name}</button></td>
                   <td className="max-w-[12rem] truncate px-2 py-1.5 font-mono text-zinc-700 dark:text-zinc-200" title={v.value}>{v.value}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">{v.size}</td>
                 </tr>
@@ -331,6 +339,11 @@ export function LabApp() {
     </section>
   );
 
+  const viewer = shown && (
+    <VariableViewer shown={shown} busy={busy} onAsk={inspect} onClose={() => inspect(null)} onRun={(code) => run(code, 'cmd')}
+      onInsert={(expr) => { setCmd((c) => c + expr); setTab('command'); inspect(null); }} />
+  );
+
   return (
     <div className={cn('relative flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[30rem] flex-col gap-3', dragging && 'rounded-2xl outline-2 outline-offset-4 outline-blue-600 outline-dashed')}
       onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
@@ -348,6 +361,7 @@ export function LabApp() {
           <div key={tab} className="swap min-h-0 flex-1" data-dir={tabDir}>{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
         </>
       )}
+      {viewer}
     </div>
   );
 }
