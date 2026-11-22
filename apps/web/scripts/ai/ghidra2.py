@@ -10,7 +10,11 @@
 #   python3 scripts/ai/ghidra2.py chat --out DIR/chat.jsonl --oasst oasst1.parquet  questions and answers to learn
 #   python3 scripts/ai/ghidra2.py pretrain --dir DIR --preset small --steps N text1.txt text2.txt
 #   python3 scripts/ai/ghidra2.py sft --dir DIR --steps N                           learn to chat (needs pretrain)
-#   python3 scripts/ai/ghidra2.py export --dir DIR --to public/ai                   ghidra2.bin + ghidra2.json
+#   python3 scripts/ai/ghidra2.py export --dir DIR --to public/ai                   ghidra2-*.bin + ghidra2.json
+# Or start from MiniMind-3's own trained model (64 M, Apache-2.0, Qwen3's design; the owner, 22 Nov: "integrate the 64m of
+# minimind and after that start from there") instead of pretraining, then teach it to chat as Ghidra:
+#   python3 scripts/ai/ghidra2.py adopt --hf MINIMIND3_FOLDER --dir DIR           (its config, weights, word-pieces)
+#   python3 scripts/ai/ghidra2.py chat --out DIR/chat.jsonl --oasst oasst1.parquet && python3 scripts/ai/ghidra2.py sft --dir DIR --steps N
 # Long runs: --until N stops after step N, the next run with the same command carries on (DIR/state-*.pt).
 import argparse, json, math, os, time
 from pathlib import Path
@@ -52,17 +56,21 @@ def ffn_size(d): return 64 * math.ceil(int(8 * d / 3) / 64)
 class Block(nn.Module):
     def __init__(s, c):
         super().__init__()
-        d, h, kv = c['dim'], c['heads'], c['kv']; hd = d // h
+        d, h, kv = c['dim'], c['heads'], c['kv']; hd = c.get('head_dim') or d // h
         s.h, s.kv, s.hd = h, kv, hd
         s.attn_norm, s.mlp_norm = RMSNorm(d), RMSNorm(d)
         s.wq, s.wk, s.wv, s.wo = nn.Linear(d, h * hd, bias=False), nn.Linear(d, kv * hd, bias=False), nn.Linear(d, kv * hd, bias=False), nn.Linear(h * hd, d, bias=False)
-        f = ffn_size(d)
+        s.qk = bool(c.get('qk_norm'))  # Qwen3 (MiniMind-3): each head's query and key normalised before turning
+        if s.qk: s.q_norm, s.k_norm = RMSNorm(hd), RMSNorm(hd)
+        f = c.get('ffn') or ffn_size(d)
         s.w1, s.w3, s.w2 = nn.Linear(d, f, bias=False), nn.Linear(d, f, bias=False), nn.Linear(f, d, bias=False)
     def forward(s, x, cos, sin):
         B, T, _ = x.shape
         y = s.attn_norm(x)
-        q = s.wq(y).view(B, T, s.h, s.hd).transpose(1, 2)
-        k = s.wk(y).view(B, T, s.kv, s.hd).transpose(1, 2)
+        q = s.wq(y).view(B, T, s.h, s.hd)
+        k = s.wk(y).view(B, T, s.kv, s.hd)
+        if s.qk: q, k = s.q_norm(q), s.k_norm(k)
+        q, k = q.transpose(1, 2), k.transpose(1, 2)
         v = s.wv(y).view(B, T, s.kv, s.hd).transpose(1, 2)
         q, k = rotate(q, cos, sin), rotate(k, cos, sin)
         k, v = k.repeat_interleave(s.h // s.kv, dim=1), v.repeat_interleave(s.h // s.kv, dim=1)
@@ -82,7 +90,7 @@ class GPT(nn.Module):
             if p.dim() == 2: nn.init.normal_(p, 0, 0.02 / (math.sqrt(2 * c['layers']) if n.endswith(('wo.weight', 'w2.weight')) else 1))
     def forward(s, idx, targets=None):
         T = idx.shape[1]
-        cos, sin = rope(T, s.c['dim'] // s.c['heads'], device=idx.device)
+        cos, sin = rope(T, s.c.get('head_dim') or s.c['dim'] // s.c['heads'], theta=s.c.get('theta', 1e6), device=idx.device)
         x = s.tok(idx)
         for b in s.blocks: x = b(x, cos, sin)
         logits = s.norm(x) @ s.tok.weight.T  # the output shares the input's table
@@ -92,7 +100,9 @@ class GPT(nn.Module):
         """Every weight in the order the browser reads them (src/lib/ghidra2.ts)."""
         out = [('tok', s.tok.weight)]
         for i, b in enumerate(s.blocks):
-            out += [(f'b{i}.attn_norm', b.attn_norm.weight), (f'b{i}.wq', b.wq.weight), (f'b{i}.wk', b.wk.weight), (f'b{i}.wv', b.wv.weight), (f'b{i}.wo', b.wo.weight),
+            out += [(f'b{i}.attn_norm', b.attn_norm.weight), (f'b{i}.wq', b.wq.weight), (f'b{i}.wk', b.wk.weight), (f'b{i}.wv', b.wv.weight)]
+            if b.qk: out += [(f'b{i}.q_norm', b.q_norm.weight), (f'b{i}.k_norm', b.k_norm.weight)]
+            out += [(f'b{i}.wo', b.wo.weight),
                     (f'b{i}.mlp_norm', b.mlp_norm.weight), (f'b{i}.w1', b.w1.weight), (f'b{i}.w3', b.w3.weight), (f'b{i}.w2', b.w2.weight)]
         return out + [('norm', s.norm.weight)]
 
@@ -117,6 +127,37 @@ def cmd_tokenizer(a):
     t.train_from_iterator(sample(), vocab_size=a.vocab, min_frequency=2, special_tokens=SPECIAL)
     t.save(str(out / 'tokenizer.json'))
     print(f'{t.get_vocab_size()} word-pieces → {out / "tokenizer.json"}')
+
+
+# ─── Starting from MiniMind-3 ──────────────────────────────────────────────────────────────────────
+HF_NAMES = {'attn_norm': 'input_layernorm', 'wq': 'self_attn.q_proj', 'wk': 'self_attn.k_proj', 'wv': 'self_attn.v_proj', 'q_norm': 'self_attn.q_norm',
+            'k_norm': 'self_attn.k_norm', 'wo': 'self_attn.o_proj', 'mlp_norm': 'post_attention_layernorm', 'w1': 'mlp.gate_proj', 'w3': 'mlp.up_proj', 'w2': 'mlp.down_proj'}
+
+@torch.no_grad()
+def cmd_adopt(a):
+    import shutil
+    from safetensors.torch import load_file
+    src, d = Path(a.hf), Path(a.dir); d.mkdir(parents=True, exist_ok=True)
+    hf = json.loads((src / 'config.json').read_text())
+    assert hf.get('model_type') == 'qwen3' and hf.get('tie_word_embeddings'), 'expected a Qwen3-style model with tied tables'
+    c = dict(layers=hf['num_hidden_layers'], dim=hf['hidden_size'], heads=hf['num_attention_heads'], kv=hf['num_key_value_heads'], head_dim=hf['head_dim'],
+             ffn=hf['intermediate_size'], vocab=hf['vocab_size'], qk_norm=True, theta=hf['rope_theta'], chat='qwen', block=768, batch=8, lr=1e-4)
+    model = GPT(c)
+    w = {k: v.float() for k, v in load_file(src / 'model.safetensors').items()}
+    model.tok.weight.copy_(w['model.embed_tokens.weight']); model.norm.weight.copy_(w['model.norm.weight'])
+    for i, b in enumerate(model.blocks):
+        for ours, theirs in HF_NAMES.items(): getattr(b, ours).weight.copy_(w[f'model.layers.{i}.{theirs}.weight'])
+    shutil.copy(src / 'tokenizer.json', d / 'tokenizer.json')
+    torch.save({'model': model.state_dict(), 'opt': None, 'step': 0, 'config': c, 'from': 'jingyaogong/minimind-3 (Apache-2.0)'}, d / 'state-pretrain.pt')
+    try:  # the same numbers as the original, when its library is here
+        from transformers import AutoModelForCausalLM
+        ref = AutoModelForCausalLM.from_pretrained(src, dtype=torch.float32).eval()
+        ids = torch.tensor([load_tok(d).encode('<|im_start|>user\nHello!<|im_end|>\n').ids])
+        diff = (ref(ids).logits - model(ids)[0]).abs().max().item()
+        print(f'matches MiniMind-3 to within {diff:.5f}')
+        assert diff < 1e-3, 'the copy does not match the original'
+    except ImportError: print('(transformers not installed: comparison skipped)')
+    print(f'adopted {sum(p.numel() for p in model.parameters()):,} numbers from {src} → {d}')
 
 
 # ─── Questions and answers to learn (the chat stage) ───────────────────────────────────────────────
@@ -153,31 +194,43 @@ def pretrain_data(a, tok, d):
     cache = d / 'pretrain.bin'
     if not cache.exists():
         eot = tok.token_to_id('<|endoftext|>')
-        with open(cache, 'wb') as out:
+        tmp = cache.with_suffix('.tmp')
+        with open(tmp, 'wb') as out:
             for spec in a.texts:
                 path, _, times = spec.partition(':')
                 text = Path(path).read_text(encoding='utf-8', errors='ignore')
                 docs = [x.strip() for x in text.split('<|endoftext|>')] if '<|endoftext|>' in text else [text]
-                ids = []
+                del text
+                keep, n = [], 0  # a text counted more than once is small: kept to write again; a big one streams to disk
                 for i in range(0, len(docs), 2000):
-                    for e in tok.encode_batch([x for x in docs[i:i + 2000] if x]): ids += e.ids + [eot]
-                arr = np.array(ids, dtype=np.uint16)
-                for _ in range(int(times or 1)): out.write(arr.tobytes())
-                print(f'  {path}: {len(arr):,} word-pieces ×{times or 1}', flush=True)
+                    ids = [t for e in tok.encode_batch([x for x in docs[i:i + 2000] if x]) for t in e.ids + [eot]]
+                    arr = np.array(ids, dtype=np.uint16); n += len(arr)
+                    out.write(arr.tobytes())
+                    if int(times or 1) > 1: keep.append(arr)
+                for _ in range(int(times or 1) - 1):
+                    for arr in keep: out.write(arr.tobytes())
+                print(f'  {path}: {n:,} word-pieces ×{times or 1}', flush=True)
+        tmp.replace(cache)
     data = np.memmap(cache, dtype=np.uint16, mode='r')
     split = int(len(data) * 0.99)
     return data[:split], data[split:]
 
-def chat_data(tok, d, block):
-    """Each pair as <|user|>question<|end|><|ghidra|>answer<|end|>; the model learns only the answer part."""
-    u, g, e = (tok.token_to_id(x) for x in ('<|user|>', '<|ghidra|>', '<|end|>'))
+def chat_data(tok, d, block, chat='ghidra'):
+    """Each pair in the model's chat shape (ours: <|user|>question<|end|><|ghidra|>answer<|end|>; MiniMind-3's: Qwen's
+    <|im_start|>user … <|im_end|> <|im_start|>assistant, an empty thinking block, the answer, <|im_end|>); the model
+    learns only the answer part."""
     rows = []
     for line in open(d / 'chat.jsonl', encoding='utf-8'):
         p = json.loads(line)
-        q, ans = tok.encode(p['q']).ids, tok.encode(' ' + p['a']).ids
-        x = [u] + q + [e, g] + ans + [e]
+        if chat == 'qwen':
+            head = tok.encode(f"<|im_start|>user\n{p['q']}<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n").ids
+            ans = tok.encode(p['a']).ids + [tok.token_to_id('<|im_end|>')]
+        else:
+            u, g, e = (tok.token_to_id(x) for x in ('<|user|>', '<|ghidra|>', '<|end|>'))
+            head, ans = [u] + tok.encode(p['q']).ids + [e, g], tok.encode(' ' + p['a']).ids + [e]
+        x = head + ans
         if len(x) > block + 1: continue
-        mask = [0] * (len(q) + 3) + [1] * (len(ans) + 1)
+        mask = [0] * len(head) + [1] * len(ans)
         rows += [(x, mask)] * p.get('w', 1)
     order = np.random.default_rng(7).permutation(len(rows))
     rows = [rows[i] for i in order]
@@ -207,7 +260,7 @@ def train(a, stage):
         start = None
     else:  # the chat stage carries on from the pretrained model
         start = torch.load(d / 'state-pretrain.pt', map_location='cpu', weights_only=False)
-        c = start['config']
+        c = dict(start['config'])
     if stage == 'sft': c['lr'] = c['lr'] / 3  # the chat stage nudges what pretraining learned, gently
     for k in ('batch', 'lr', 'block'):
         if getattr(a, k, None): c[k] = getattr(a, k)
@@ -221,10 +274,11 @@ def train(a, stage):
     first = 1
     if state_file.exists():  # carry on exactly where the last run stopped
         s = torch.load(state_file, map_location='cpu', weights_only=False)
-        model.load_state_dict(s['model']); opt.load_state_dict(s['opt']); first = s['step'] + 1
+        model.load_state_dict(s['model']); first = s['step'] + 1
+        if s['opt']: opt.load_state_dict(s['opt'])
         print(f'resumed {stage} at step {s["step"]}', flush=True)
     if stage == 'pretrain': train_d, val_d = pretrain_data(a, tok, d)
-    else: train_d, val_d = chat_data(tok, d, c['block'])
+    else: train_d, val_d = chat_data(tok, d, c['block'], c.get('chat', 'ghidra'))
     pad = tok.token_to_id('<|endoftext|>')
     get = (lambda dd: batch_lm(dd, c, dev)) if stage == 'pretrain' else (lambda dd: batch_chat(dd, c, dev, pad))
     amp = torch.autocast('cuda', dtype=torch.bfloat16) if dev == 'cuda' else torch.autocast('cpu', enabled=False)
@@ -274,19 +328,26 @@ def cmd_export(a):
         else: blob = w.numpy().astype('<f4').tobytes()
         blob += b'\0' * (-len(blob) % 4)
         shapes.append([n, list(w.shape), at]); blobs.append(blob); at += len(blob)
-    prompt = '<|user|>What is UniVerse?<|end|><|ghidra|>'
+    chat = s['config'].get('chat', 'ghidra')
+    prompt = '<|im_start|>user\nWhat is UniVerse?<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n' if chat == 'qwen' else '<|user|>What is UniVerse?<|end|><|ghidra|>'
     ids = tok.encode(prompt).ids
     logits, _ = model(torch.tensor([ids]))
     to = Path(a.to); to.mkdir(parents=True, exist_ok=True)
-    (to / 'ghidra2.bin').write_bytes(b''.join(blobs))
+    # In parts of at most 20 MB (the website's host serves files of up to 25 MB): ghidra2-0.bin, ghidra2-1.bin…
+    whole = b''.join(blobs); PART = 20 * 1024 * 1024
+    for old in to.glob('ghidra2*.bin'): old.unlink()
+    parts = [whole[i:i + PART] for i in range(0, len(whole), PART)]
+    for i, part in enumerate(parts): (to / f'ghidra2-{i}.bin').write_bytes(part)
     tj = json.loads((d / 'tokenizer.json').read_text(encoding='utf-8'))
-    meta = {'name': 'Ghidra 2', 'stage': stage, 'steps': s['step'], 'params': sum(p.numel() for p in model.parameters()),
-            **{k: s['config'][k] for k in ('layers', 'dim', 'heads', 'kv', 'vocab', 'block')}, 'ffn': ffn_size(s['config']['dim']), 'theta': 1e6,
+    c = s['config']
+    meta = {'name': 'Ghidra 2', 'stage': stage, 'steps': s['step'], 'params': sum(p.numel() for p in model.parameters()), 'from': s.get('from'),
+            **{k: c[k] for k in ('layers', 'dim', 'heads', 'kv', 'vocab', 'block')}, 'ffn': c.get('ffn') or ffn_size(c['dim']), 'theta': c.get('theta', 1e6),
+            'headDim': c.get('head_dim') or c['dim'] // c['heads'], 'qkNorm': bool(c.get('qk_norm')), 'chat': chat, 'parts': [len(p) for p in parts],
             'vocabMap': tj['model']['vocab'], 'merges': [m if isinstance(m, str) else ' '.join(m) for m in tj['model']['merges']],
-            'special': {t: tok.token_to_id(t) for t in SPECIAL}, 'shapes': shapes,
+            'special': {x['content']: x['id'] for x in tj['added_tokens']}, 'shapes': shapes,
             'check': {'prompt': prompt, 'ids': ids, 'logits': [round(x, 3) for x in logits[0, -1, :8].tolist()], 'text': 'Hello, world! Héllo 123', 'textIds': tok.encode('Hello, world! Héllo 123').ids}}
     (to / 'ghidra2.json').write_text(json.dumps(meta, ensure_ascii=False))
-    print(f'exported the {stage} model (step {s["step"]}): {at / 1e6:.1f} MB → {to}')
+    print(f'exported the {stage} model (step {s["step"]}): {at / 1e6:.1f} MB in {len(parts)} parts → {to}')
 
 
 ap = argparse.ArgumentParser()
@@ -298,9 +359,11 @@ for name in ('pretrain', 'sft'):
     p.add_argument('--every', type=int, default=500); p.add_argument('--batch', type=int); p.add_argument('--lr', type=float); p.add_argument('--block', type=int)
     p.add_argument('--no-compile', action='store_true')
     if name == 'pretrain': p.add_argument('--preset', choices=PRESETS, default='small'); p.add_argument('texts', nargs='+')
+p = sub.add_parser('adopt'); p.add_argument('--hf', required=True); p.add_argument('--dir', required=True)
 p = sub.add_parser('export'); p.add_argument('--dir', required=True); p.add_argument('--to', required=True); p.add_argument('--pretrained', action='store_true')
 a = ap.parse_args()
 if a.cmd == 'tokenizer': cmd_tokenizer(a)
 elif a.cmd == 'chat': cmd_chat(a)
+elif a.cmd == 'adopt': cmd_adopt(a)
 elif a.cmd in ('pretrain', 'sft'): train(a, a.cmd)
 else: cmd_export(a)
