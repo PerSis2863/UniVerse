@@ -3,7 +3,8 @@
 // Cancel leaves it undone, New chat clears it. Nothing is saved. Axe at 1280 (dark) and 390 (light, a touch phone),
 // no sideways scroll, no page errors. M364: the corner assistant is Ghidra on every page (the student home): "What's due
 // this week?" comes back as Ghidra's reply, "How do I log a climate action?" stays an instant built-in answer. M365: "What
-// trips do I have?" lists them, "Plan a trip to Jaipur for 3 of us" proposes Make the trip (cancelled).
+// trips do I have?" lists them, "Plan a trip to Jaipur for 3 of us" proposes Make the trip (cancelled). M366: a teacher's
+// "Make a quiz on fractions for CS101" finds the course and proposes Write the quiz (cancelled).
 //   BASE=http://localhost:3000 SHOTS=<folder> node scripts/checks/ghidra-assistant-ui.mjs
 import { createRequire } from 'node:module';
 import { launch, signedIn } from '../browser-session.mjs';
@@ -67,7 +68,25 @@ try {
     r.cornerAxe = await page.evaluate(async () => (await window.axe.run({ include: [['div.ai-fab']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] } })).violations.filter((v) => v.impact === 'serious' || v.impact === 'critical').map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(' | ')}`));
     await ctx.close();
   }
+  // M366: a teacher asks for a quiz; Ghidra finds the course and proposes Write the quiz (cancelled: nothing written).
+  {
+    const ctx = await signedIn(browser, base, 'tara@teacher.com', { width: 1280, height: 900 });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(`teacher: ${e.message.slice(0, 160)}`));
+    await page.goto(`${base}/hub`, { waitUntil: 'load', timeout: 180_000 });
+    const box = page.locator('section[aria-labelledby="ghidra-h"]');
+    await box.getByLabel('Ask Ghidra').fill('Make a quiz on fractions for CS101');
+    await box.getByRole('button', { name: 'Ask', exact: true }).click();
+    await box.getByText('Ghidra is thinking…').waitFor({ state: 'detached', timeout: 30_000 });
+    const r = (out.teacher = {});
+    r.reply = (await box.locator('ol > li').last().innerText()).replace(/\s+/g, ' ');
+    r.write = await box.getByRole('button', { name: 'Write the quiz' }).isVisible();
+    await box.getByRole('button', { name: 'Cancel' }).click();
+    await ctx.close();
+  }
 } finally { await browser.close(); }
 console.log(JSON.stringify({ out, errors }, null, 1));
-const bad = Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !/(trip)/i.test(r.trips) || !/Jaipur/.test(r.tripNew) || !r.makeTrip || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
+const teacher = out.teacher;
+delete out.teacher;
+const bad = !teacher?.write || !/CS101/.test(teacher.reply) || Object.values(out).some((r) => !/(to finish|Nothing is due|not in a course)/.test(r.due) || !/(CO₂|climate action)/.test(r.green) || !r.proposes || !r.cancelled || r.turns !== 3 || !/(trip)/i.test(r.trips) || !/Jaipur/.test(r.tripNew) || !r.makeTrip || !r.cleared || r.axe.length || r.sideways || !r.cornerDue || !r.cornerHowTo || r.cornerAxe.length) || errors.length;
 process.exit(bad ? 1 : 0);

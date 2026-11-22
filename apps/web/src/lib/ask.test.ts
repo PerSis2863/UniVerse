@@ -43,4 +43,12 @@ describe('Ghidra, the assistant (Ask UniVerse until M363)', () => {
     expect(cleanPlan({ action: 'message_draft', text: '' }).action).toBe('answer');
     expect((cleanPlan({ action: 'message_draft', text: 'a'.repeat(5000) }) as { text: string }).text.length).toBe(1000);
   });
+  it('M366: a teacher’s quiz draft, with the course left for the server to find', () => {
+    expect(localPlan('Make a quiz on fractions for MATH7')).toMatchObject({ action: 'quiz_draft', topic: 'fractions', course: 'MATH7', count: 5 });
+    expect(localPlan('write a quiz with 8 questions about the water cycle')).toMatchObject({ action: 'quiz_draft', topic: 'the water cycle', count: 8, course: null });
+    expect(localPlan('what quizzes are due').action).toBe('my_due');
+    const p = cleanPlan({ action: 'quiz_draft', topic: 'photosynthesis', count: 99, courseId: 'someone-elses-course' });
+    expect(p).toMatchObject({ action: 'quiz_draft', topic: 'photosynthesis', count: 5 });
+    expect((p as { courseId?: string }).courseId).toBeUndefined(); // only the server sets the course, from the teacher's own
+  });
 });

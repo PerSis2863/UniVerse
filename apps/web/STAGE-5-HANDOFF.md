@@ -10299,3 +10299,41 @@ The owner (22 Nov): "yes continue with round 3".
 - Left for a later round: a quiz draft for teachers (UniVerse has no quiz-writing route yet: it needs its own item).
 - Tests: `src/lib/ask.test.ts` (the new matches; `trip_new` and `message_draft` checked field by field). Browser check:
   `scripts/checks/ghidra-assistant-ui.mjs` (trips listed, Make the trip proposed and cancelled; answers awaited, not timed).
+
+## M366: Ghidra drafts quizzes for teachers (22 Nov)
+
+The owner (22 Nov): "yes build the quiz drafts for teachers".
+
+- **The route:** `POST /quizzes/draft { courseId, topic, count? }` (`modules/quizzes.ts`, teachers and admins only),
+  checked first with the quiz page's own rule (`QuizzesService.assertCanManage`: the course's teacher, a co-teacher, or an
+  admin of that school), then `src/server/quiz-draft.ts`: AI only within `spendAi` and the owner's AI switch; 3–15
+  multiple-choice questions (default 5); **every question checked** (`checkQuestions`: a real question, four different
+  options, the right one among them; anything off is dropped, fewer than two good ones is refused); saved as a **DRAFT**
+  (students never see drafts) with the description "Drafted by Ghidra. Check every question and answer before
+  publishing", questions as `CHOICE` rows in nines (D1's limit), as `paperToQuiz` (M324) does.
+- **In Ghidra:** `quiz_draft { topic, count, course }` (AI, or the matcher: "make a quiz on fractions for MATH7", "write
+  a quiz with 8 questions about the water cycle"). The server picks the course from the ones the teacher teaches (the
+  one named, or their only one; otherwise it lists them and asks); `cleanPlan` never takes a course from AI. **Write
+  the quiz** calls the route and opens the draft in the quiz editor (`/teacher/quizzes?manage=<id>` now opens a quiz).
+  Students asking get "Only teachers can…".
+- Tests: `src/server/quiz-draft.test.ts` (the question check), `src/lib/ask.test.ts` (the matcher; a course id from AI
+  dropped). Browser check: the teacher part of `scripts/checks/ghidra-assistant-ui.mjs` (Write the quiz proposed for
+  CS101, cancelled; locally there is no AI key, so writing itself is covered by the unit test).
+
+## M367: Ghidra answers anything (22 Nov)
+
+The owner (22 Nov): "make sure ghidra needs to be like normal ai like how claude, gemini and chatgpt are… so people can ask
+anything and ghidra can do different kind of task". Told plainly: the small model trained here (M362) can't become that
+by training on this machine (its size, not its training time, is the limit); what people meet as Ghidra can, with the
+big model behind it, as a general assistant.
+
+- **`api/ai/route.ts`** (the corner's general answers): Ghidra as a general-purpose assistant: any topic, writing and
+  editing, summaries, translation, ideas, plans, maths step by step, code; plain text (lists as "- " lines, code between
+  backtick lines) since the chat shows text, not Markdown; never inventing the person's own data (it points them to "what's
+  due", "my courses", "my trips"); suitable for students; schoolwork: help them learn rather than hand over work to submit;
+  harmful requests refused kindly; health, legal, money: general information and a qualified person; danger: the
+  emergency number first. Asked what runs it, it says UniVerse's AI uses Google's models, as the privacy policy explains
+  (it never claims to be another company's assistant).
+- **`POST /ask`** (the hub's chat): an `answer` is now the whole answer (up to 6,000 characters, 2,000 tokens) on any
+  topic, not one short sentence; the hub's reply card keeps line breaks.
+- **Next, if wanted:** formatting answers (lists, code with Copy), and voice.

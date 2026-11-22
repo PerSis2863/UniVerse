@@ -42,6 +42,9 @@ export type AskPlan =
   | { action: 'my_due' | 'my_green' | 'my_trips' | 'my_courses'; say: string }
   | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; say: string }
   | { action: 'message_draft'; text: string; say: string }
+  /** M366: a teacher's quiz draft. `course` is what they said; the server fills `courseId` and `courseName` from the
+   *  courses they teach (never from AI), and the draft route checks access again. */
+  | { action: 'quiz_draft'; topic: string; count: number; course: string | null; courseId?: string; courseName?: string; say: string }
   | { action: 'show'; say: string; items: ShowItem[] }
   | { action: 'answer'; say: string };
 
@@ -58,8 +61,8 @@ const one = <T extends string>(list: readonly T[], v: unknown): T | null => (typ
 /** Checks a proposed action field by field (AI answers are untrusted); anything off becomes an answer. */
 export function cleanPlan(raw: unknown): AskPlan {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const say = str(r.say, 600);
-  const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, your courses, your trips and how you’re doing in Green, log a climate action, post on Relief, start a trip, draft a message, check a product code, or open a page. Try “What’s due this week?”' };
+  const say = str(r.say, r.action === 'answer' ? 6000 : 600); // M367: an answer may be a whole explanation
+  const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, your courses, your trips and how you’re doing in Green, log a climate action, post on Relief, start a trip, draft a message or (for teachers) a quiz, check a product code, or open a page. Try “What’s due this week?”' };
   if (r.action === 'green_log') {
     const kind = one(GREEN_KINDS, r.kind), amount = num(r.amount);
     if (!kind || !(amount > 0) || amount > GREEN_FACTORS[kind].max) return fallback;
@@ -86,6 +89,11 @@ export function cleanPlan(raw: unknown): AskPlan {
     if (name.length < 3) return fallback;
     return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, say: say || `Make a trip: ${name}.` };
   }
+  if (r.action === 'quiz_draft') {
+    const topic = str(r.topic, 160), count = Math.round(num(r.count));
+    if (topic.length < 2) return fallback;
+    return { action: 'quiz_draft', topic, count: count >= 3 && count <= 15 ? count : 5, course: str(r.course, 80) || null, say };
+  }
   if (r.action === 'message_draft') {
     const text = str(r.text, 1000);
     return text.length >= 2 ? { action: 'message_draft', text, say: say || 'Here’s a draft. Choose the chat to send it to.' } : fallback;
@@ -105,6 +113,8 @@ export function localPlan(text: string): AskPlan {
   const t = text.trim();
   const code = t.split(/\s+/).find((w) => splitCode(w));
   if (code) return cleanPlan({ action: 'trace_check', code });
+  const quiz = /\b(?:make|create|write|draft|give me|set)\b.*?\bquiz\b(?:.*?\b(\d{1,2})\s+questions?\b)?.*?\b(?:on|about)\s+(.+?)(?:\s+for\s+([\p{L}\p{N}][\p{L}\p{N} -]{0,40}))?[.!?]?$/iu.exec(t);
+  if (quiz) return cleanPlan({ action: 'quiz_draft', topic: quiz[2], count: Number(quiz[1] ?? 5), course: quiz[3] ?? null });
   if (/\b(due|homework|assignments?|deadlines?|hand in|quiz(zes)?)\b/i.test(t) && !/\b(open|go to|take me)\b/i.test(t)) return cleanPlan({ action: 'my_due' });
   if (/\b(streak|co2|co₂|carbon|how am i doing|my green|saved)\b/i.test(t) && !/\b(i |we )(cycled|walked|recycled|planted)/i.test(t)) return cleanPlan({ action: 'my_green' });
   if (/\b(my trips?|trips)\b/i.test(t) && /\b(what|which|list|how many|upcoming|planned|have)\b/i.test(t)) return cleanPlan({ action: 'my_trips' });

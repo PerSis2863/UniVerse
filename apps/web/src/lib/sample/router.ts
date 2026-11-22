@@ -2501,6 +2501,7 @@ function ghidraSample(plan: AskPlan): AskPlan {
     { title: 'Rajasthan with friends', sub: `from ${day(24)} · Jaipur, Udaipur · 6 days`, href: '/travel' },
     { title: 'Weekend in Lisbon', sub: 'no date yet · Lisbon · 2 days', href: '/travel' },
   ] };
+  if (plan.action === 'quiz_draft') return { ...plan, courseId: 'sample-course', courseName: 'Maths 7 (MATH7)', say: `Write a ${plan.count}-question quiz on ${plan.topic} for Maths 7? It’ll be a draft only you can see until you publish it.` };
   if (plan.action === 'my_courses') return { action: 'show', say: 'You’re in 3 courses:', items: [
     { title: 'Geography of cities', sub: 'GEO101', href: '/student/courses' },
     { title: 'Maths 7', sub: 'MATH7', href: '/student/courses' },
@@ -2518,6 +2519,7 @@ const WRITE: [string, RegExp, (c: Ctx) => Result][] = [
   ['DELETE', /^\/api\/collab\/saves$/, () => { notice(); return ok({ ok: true }); }],
   ['POST', /^\/play\/scores$/, ({ body }) => { notice(); const score = Math.max(0, Math.round(Number((body as { score?: unknown })?.score) || 0)); return ok({ score, best: score, newBest: score > 0 }); }],
   ['POST', /^\/play\/rooms(\/[^/]+\/ticket)?$/, () => fail('Playing with others needs the real app. Exit sample mode to open or join a room.', 400)],
+  ['POST', /^\/quizzes\/draft$/, () => { notice(); return fail('Sample mode: Ghidra writes quizzes in the real app. Exit sample mode to draft one.', 400); }],
   ['POST', /^\/ask$/, ({ body }) => ok({ ...ghidraSample(localPlan(String((body as { text?: unknown })?.text ?? ''))), ai: false })],
   ['POST', /^\/api\/campus\/events\/[^/]+\/buy$/, () => fail('Sample mode: no money is taken. Exit sample mode to buy a real ticket.', 400)],
   ['POST', /^\/api\/campus\/elections\/[^/]+\/vote$/, () => { notice(); return ok({ receipt: 'SAMP-LE00-RCPT' }); }],

@@ -29,24 +29,25 @@ const SYSTEM = [
   '- my_trips: they ask which trips they have or are planning in Travel.',
   '- my_courses: they ask which courses they are in or teach.',
   '- trip_new: they want to plan a new trip. name is short, like "Trip to Jaipur"; startDate YYYY-MM-DD only if they said when (assume the next such date); travellers is how many people.',
+  '- quiz_draft: a teacher wants a quiz written. topic is what it is about; count how many questions (default 5); course the course code or name if they said one.',
   '- message_draft: they want to tell or message someone. text is the message itself, written as they would send it, in their language; never claim it was sent (they choose the chat and press Send).',
   `- green_log: they did a climate action. kind is one of ${GREEN_KINDS.map((k) => `${k} (${GREEN_FACTORS[k].units})`).join(', ')}; amount is how many of that unit.`,
   `- relief_post: they need help (type NEED) or offer it (type OFFER). kind is one of ${RELIEF_KINDS.join(', ')}; title is a short line in their words; people is how many people; urgency LOW, MEDIUM, HIGH or CRITICAL.`,
   '- trace_check: they gave a product code to check.',
   `- open: they want a page. page is one of ${Object.keys(ASK_PAGES).join(', ')}.`,
-  '- answer: anything else: a short, friendly answer about how to do it in UniVerse (never invent their data, marks or dates).',
+  '- answer: anything else, on any topic, like a general-purpose assistant: answer it fully and helpfully in "say" (explain, write, translate, plan, solve step by step, code in fenced blocks). Never invent their own data, marks or dates. Keep it suitable for students; refuse harmful requests kindly.',
   'If someone is in danger, answer that UniVerse is not an emergency service and they should call the local emergency number first (112 in Europe and India, 911 in North America), and offer relief_post.',
-  'Always fill "say": one plain sentence telling them what will happen, or the answer. Be warm and brief.',
+  'Always fill "say": for an action, one plain sentence telling them what will happen; for an answer, the whole answer in plain text (lists as lines starting with "- ", no ** or # marks). Be warm.',
   MATH_RULE,
 ].join('\n');
 
 const SCHEMA = {
   type: 'OBJECT',
   properties: {
-    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
+    action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
     say: { type: 'STRING' }, kind: { type: 'STRING' }, amount: { type: 'NUMBER' }, note: { type: 'STRING' },
     type: { type: 'STRING' }, title: { type: 'STRING' }, people: { type: 'NUMBER' }, urgency: { type: 'STRING' },
-    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' },
+    code: { type: 'STRING' }, page: { type: 'STRING' }, name: { type: 'STRING' }, startDate: { type: 'STRING' }, travellers: { type: 'NUMBER' }, text: { type: 'STRING' }, topic: { type: 'STRING' }, count: { type: 'NUMBER' }, course: { type: 'STRING' },
   },
   required: ['action', 'say'],
 };
@@ -139,6 +140,18 @@ async function myCourses(u: SessionUser): Promise<AskPlan> {
   };
 }
 
+/** M366: which of the teacher's courses a quiz is for: the one they named, or their only one; otherwise ask. One query. */
+async function quizFor(u: SessionUser, plan: Extract<AskPlan, { action: 'quiz_draft' }>): Promise<AskPlan> {
+  if (!isStaff(u.role)) return { action: 'answer', say: 'Only teachers can have Ghidra draft a quiz. I can show what’s due for you instead.' };
+  const courses = await prisma.course.findMany({ where: taughtBy(u.id, ['CO_TEACHER']), select: { id: true, code: true, name: true }, orderBy: { code: 'asc' }, take: 60 });
+  if (!courses.length) return { action: 'show', say: 'You don’t teach a course yet. Choose New course to start one.', items: [] };
+  const said = (plan.course ?? '').toLowerCase().trim();
+  const named = said ? courses.filter((c) => c.code.toLowerCase() === said || c.name.toLowerCase().includes(said) || said.includes(c.code.toLowerCase())) : [];
+  const course = named.length === 1 ? named[0] : courses.length === 1 ? courses[0] : null;
+  if (!course) return { action: 'show', say: `Which course is it for? Say it again with the course, like “a quiz on ${plan.topic} for ${courses[0].code}”. You teach:`, items: courses.slice(0, 12).map((c) => ({ title: c.name, sub: c.code, href: null })) };
+  return { ...plan, courseId: course.id, courseName: `${course.name} (${course.code})`, say: `Write a ${plan.count}-question quiz on ${plan.topic} for ${course.name}? It’ll be a draft only you can see until you publish it.` };
+}
+
 /** A read action answered from the person's own data; any other plan as it is. */
 async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
   switch (plan.action) {
@@ -146,6 +159,7 @@ async function resolve(u: SessionUser, plan: AskPlan): Promise<AskPlan> {
     case 'my_green': return myGreen(u);
     case 'my_trips': return myTrips(u);
     case 'my_courses': return myCourses(u);
+    case 'quiz_draft': return quizFor(u, plan);
     default: return plan;
   }
 }
@@ -159,6 +173,6 @@ export async function askUniverse(u: SessionUser, b: Body): Promise<AskPlan & { 
   if (!spend.ok) return local(spend.message);
   const history = cleanHistory(b.history);
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
-  const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 400, true).catch(() => null);
+  const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   return out ? { ...(await resolve(u, cleanPlan(out))), ai: true } : local();
 }

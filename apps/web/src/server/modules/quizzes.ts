@@ -6,6 +6,7 @@ import { CreateQuizDto, UpdateQuizDto, validate } from '../dto';
 import { recordStudy } from '../streaks';
 import { str } from '../body';
 import { createPaper, getPaper, listPapers, paperToQuiz, postPaper, removePaper, saveMarks } from '../exam-papers';
+import { draftQuiz } from '../quiz-draft';
 
 const quizzes = new QuizzesService();
 
@@ -13,6 +14,13 @@ export default function quizzesModule(router: Router) {
   const r = router.controller('quizzes');
 
   r.post('', { roles: ['ADMIN', 'TEACHER'] }, ({ body, user }) => quizzes.create(validate<CreateQuizDto>(CreateQuizDto, body), user));
+  // M366: Ghidra drafts a quiz in a course the asker may manage (checked first, the same way as creating one by hand).
+  r.post('draft', { roles: ['ADMIN', 'TEACHER'] }, async ({ body, user }) => {
+    const courseId = str((body ?? {}).courseId);
+    if (!courseId) throw new BadRequestException('Choose the course.');
+    await quizzes.assertCanManage(courseId, user);
+    return draftQuiz(user, body ?? {});
+  });
   r.get('', ({ user }) => quizzes.findAll(user));
   r.get<{ id: string }>(':id', ({ params, user }) => quizzes.findOne(params.id, user));
   r.patch<{ id: string }>(':id', { roles: ['ADMIN', 'TEACHER'] }, ({ params, body, user }) => quizzes.update(params.id, validate<UpdateQuizDto>(UpdateQuizDto, body), user));
