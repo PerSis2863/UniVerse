@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { Lab } from './interp';
 import './plot';
 import './files';
+import './ml-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

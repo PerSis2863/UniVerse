@@ -294,7 +294,7 @@ export function renderSvg(f: Figure, width: number, height: number, dark = false
     const col = (p - 1) % f.cols, rowi = Math.floor((p - 1) / f.cols), y0 = head + rowi * ch;
     // 3D axes, pies and polar plots keep their labels inside, so they take the whole cell.
     const three = is3d(ax), round = !!ax.pie || ax.polar, top = ax.title ? 34 : 16, right = ax.twin ? 52 : 0;
-    const box: Box = three || round ? { x: col * cw + 12, y: y0 + top, w: cw - 24 - (ax.colorbar ? 56 : 0), h: ch - top - 8 } : { x: col * cw + 58, y: y0 + top, w: cw - 58 - 18 - right - (ax.colorbar ? 64 : 0), h: ch - top - (ax.xlabel ? 52 : 34) };
+    const box: Box = three || round ? { x: col * cw + 12, y: y0 + top, w: cw - 24 - (ax.colorbar ? 56 : 0), h: ch - top - 8 } : { x: col * cw + 58 + namePad(ax), y: y0 + top, w: cw - 58 - namePad(ax) - 18 - right - (ax.colorbar ? 64 : 0), h: ch - top - (ax.xlabel ? 52 : 34) };
     if (box.w < 40 || box.h < 40) continue;
     const c: Ink = { ink, soft, line, bg, uid: `f${++drawings}` };
     if (ax.pie) parts.push(drawPie(ax, box, c));
@@ -350,6 +350,8 @@ export function outward(lo: number, hi: number): [number, number] {
 }
 const barWidth = (x: number[]) => (x.length > 1 ? Math.min(...x.slice(1).map((v, i) => v - x[i]).filter((d) => d > 0)) : 1);
 
+/** Room for long y tick names (yticklabels, such as a confusion chart's classes), beyond what numbers need. */
+const namePad = (ax: Axes) => (ax.ytl ? Math.max(0, Math.max(0, ...ax.ytl.map((t) => t.length)) * 6.3 - 32) : 0);
 function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][], o: { xr?: [number, number]; right?: boolean } = {}): string {
   const e = extent(ax);
   const [x0, x1] = o.xr ?? e.x, [y0, y1] = e.y;
@@ -431,7 +433,7 @@ function drawAxes(ax: Axes, b: Box, c: Ink, cmap: number[][], o: { xr?: [number,
     const edge = o.right ? bx + w : bx, inward = o.right ? -5 : 5;
     yt.forEach((t, i) => { if (t >= y0 - 1e-12 && t <= y1 + 1e-12) out.push(`<line x1="${edge}" y1="${Y(t)}" x2="${edge + inward}" y2="${Y(t)}" stroke="${c.soft}"/><text x="${o.right ? edge + 7 : edge - 7}" y="${Y(t) + 4}" fill="${c.soft}" font-size="11" text-anchor="${o.right ? 'start' : 'end'}">${tickText(t, i, ax.logy, ax.ytl)}</text>`); });
     if (main && ax.xlabel) out.push(`<text x="${bx + w / 2}" y="${by + h + 38}" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.xlabel))}</text>`);
-    if (ax.ylabel) out.push(`<text transform="translate(${o.right ? edge + 46 : edge - 44} ${by + h / 2}) rotate(${o.right ? 90 : -90})" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.ylabel))}</text>`);
+    if (ax.ylabel) out.push(`<text transform="translate(${o.right ? edge + 46 : edge - 44 - namePad(ax)} ${by + h / 2}) rotate(${o.right ? 90 : -90})" fill="${c.ink}" font-size="12" text-anchor="middle">${esc(tex(ax.ylabel))}</text>`);
   }
   if (ax.title) out.push(`<text x="${bx + w / 2}" y="${by - 12}" fill="${c.ink}" font-size="14" font-weight="600" text-anchor="middle">${esc(tex(ax.title))}</text>`);
   if (ax.colorbar && main) out.push(colorbarSvg({ x: bx + w + 14, y: by, w: 14, h }, cmap, c0, c1, c));

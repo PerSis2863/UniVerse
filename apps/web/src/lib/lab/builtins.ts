@@ -48,9 +48,20 @@ const fill = (args: Value[], fn: (i: number) => number) => {
 def('zeros', (a) => [fill(a, () => 0)]);
 def('ones', (a) => [fill(a, () => 1)]);
 def('eye', (a) => { const [r, c] = dims(a); return [eye(r, c)]; });
-def('rand', (a) => [fill(a, () => Math.random())]);
-def('randn', (a) => [fill(a, () => { let u = 0, v = 0; while (u === 0) u = Math.random(); while (v === 0) v = Math.random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); })]);
-def('randi', (a) => { need(a, 1, 'randi'); const lim = M(a[0]); const [lo, hi] = lim.d.length > 1 ? [lim.d[0], lim.d[1]] : [1, lim.d[0]]; return [fill(a.slice(1), () => lo + Math.floor(Math.random() * (hi - lo + 1)))]; });
+/** Where random numbers come from: the browser's own until rng(seed) makes them repeatable (mulberry32, M416). */
+let draw: () => number = Math.random;
+export const random = () => draw();
+def('rand', (a) => [fill(a, () => random())]);
+def('randn', (a) => [fill(a, () => { let u = 0, v = 0; while (u === 0) u = random(); while (v === 0) v = random(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v); })]);
+def('randi', (a) => { need(a, 1, 'randi'); const lim = M(a[0]); const [lo, hi] = lim.d.length > 1 ? [lim.d[0], lim.d[1]] : [1, lim.d[0]]; return [fill(a.slice(1), () => lo + Math.floor(random() * (hi - lo + 1)))]; });
+def('randperm', (a) => {
+  need(a, 1, 'randperm');
+  const n = Math.floor(M(a[0]).d[0]), k = a[1] ? Math.floor(M(a[1]).d[0]) : n;
+  if (!(n >= 0) || !(k >= 0) || k > n) throw new LabError('randperm(n, k) needs 0 ≤ k ≤ n.');
+  const p = Array.from({ length: n }, (_, i) => i + 1);
+  for (let i = 0; i < k; i++) { const j = i + Math.floor(random() * (n - i)); [p[i], p[j]] = [p[j], p[i]]; }
+  return [mat(1, k, p.slice(0, k))];
+});
 def('linspace', (a) => { need(a, 2, 'linspace'); const x = S(a[0], 'The start'), y = S(a[1], 'The end'), n = S(a[2], 'n', 100); return [row(Array.from({ length: n }, (_, i) => (n === 1 ? y : x + ((y - x) * i) / (n - 1))))]; });
 def('logspace', (a) => { const x = S(a[0], 'The start'), y = S(a[1], 'The end'), n = S(a[2], 'n', 50); return [row(Array.from({ length: n }, (_, i) => 10 ** (n === 1 ? y : x + ((y - x) * i) / (n - 1))))]; });
 def('colon', (a) => [range(S(a[0], 'The start'), a.length > 2 ? S(a[1], 'The step') : 1, S(a[a.length - 1], 'The end'))]);
@@ -608,7 +619,14 @@ def('isvarname', (a) => [bool(/^[A-Za-z]\w*$/.test(textOf(a[0])))]);
 def('eval evalin', (a, _n, lab) => { try { lab.run(textOf(a[a.length > 1 && a[0].k === 'str' && /^(base|caller)$/.test(a[0].v) ? 1 : 0])); } catch (e) { if (a[1] && a[0].k === 'str' && !/^(base|caller)$/.test(a[0].v)) lab.run(textOf(a[1])); else throw e; } return []; });
 def('input keyboard', () => { throw new LabError('input isn’t available yet: set the value in the script instead.'); });
 def('pause drawnow beep more pkg close', () => []);
-def('rng', () => []);
+def('rng', (a) => {
+  const s = a[0];
+  if (!s) return [];
+  if (s.k === 'str' && s.v === 'shuffle') { draw = Math.random; return []; }
+  let t = s.k === 'str' ? 0 : Math.floor(M(s).d[0]) >>> 0;
+  draw = () => { t = (t + 0x6d2b79f5) | 0; let r = Math.imul(t ^ (t >>> 15), 1 | t); r ^= r + Math.imul(r ^ (r >>> 7), 61 | r); return ((r ^ (r >>> 14)) >>> 0) / 4294967296; };
+  return [];
+});
 def('version', () => [str('Hyperion 1.0')]);
 def('ver', (_a, _n, lab) => { lab.host.out('Hyperion 1.0: our own engine for the MATLAB and Octave language.\n'); return []; });
 def('help doc', (a, _n, lab) => { const n = a[0] ? textOf(a[0]) : ''; lab.host.out(n ? (BUILTINS[n] ? `${n} is a built-in function of Hyperion.\n` : `No help found for “${n}”.\n`) : 'Type code and press Enter. Try: x = linspace(0, 2*pi); plot(x, sin(x))\n'); return []; });

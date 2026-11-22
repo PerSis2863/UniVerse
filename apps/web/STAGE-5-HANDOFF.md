@@ -11151,3 +11151,40 @@ algebraic loop, blowing up and being cut short, `readDiagram`. Not built: subsys
 discrete blocks (unit delay, zero-order hold), lookup tables, a variable-step solver, physical modelling (mechanical
 and electrical parts as blocks), running a diagram from a script.
 
+## M416 (22 Nov): Hyperion toolbox, machine learning
+
+The "AI and data" wave's first toolbox. `src/lib/lab/ml.ts` holds the methods on plain arrays (rows are examples,
+classes 0-based), with no language imports so the learner window (next) can use them: `knn`, `growTree` (CART grown
+level by level: Gini for classes, squared error for numbers; `maxSplits`, `minLeaf`, `minParent`; splits at midpoints
+between neighbouring values) and `treeLeaf`, `fitNB` / `nbPosterior` (Gaussian; a feature constant within a class gets a
+hair of spread), `fitLDA` / `ldaPosterior` (pooled covariance; a tiny ridge if singular), `fitSVM` / `svmScore` (SMO with
+the maximal violating pair and the analytic pair update; the offset from the free support vectors; at most 2,500 rows,
+50,000 steps, `converged` says if it settled), `autoScale`, `linearFit` (normal equations through `inverse`; standard
+errors, t and two-sided p from `betainc` / `tPValue`, R², adjusted R²), `logisticFit` (IRLS; z and p), `kmeans`
+(k-means++ then Lloyd, best of `replicates`, an emptied cluster takes the farthest row), `dbscan`, `symEigen` (cyclic
+Jacobi) and `pca` (each component's largest coefficient made positive), `folds` (stratified, shuffled), `confusion`,
+`roc`. `ml-lab.ts` puts them in the language (imported by `lab.worker.ts`, the help test and `ml.test.ts`; it imports
+`./files` first so it can wrap `load`): fitcknn, fitctree, fitcnb, fitcdiscr, fitcsvm (two classes; the second class
+is the positive one), fitcecoc (one SVM per pair, hinge-loss decoding; `templateSVM` for their settings), fitrtree,
+fitlm, fitglm ('normal' or 'binomial'); predict ([label, score]), loss, resubLoss, resubPredict; crossval ('KFold',
+'Holdout', 'Leaveout', 'CVPartition'; also as an option of every fit), kfoldLoss, kfoldPredict, cvpartition, training,
+test; confusionmat, confusionchart (imagesc with counts, class names as ticks, "n% right"), gscatter, kmeans, dbscan,
+pca, perfcurve. A model is a plain struct: `Type` (ClassificationKNN, ClassificationTree…), PredictorNames,
+ResponseName, ClassNames, NumObservations, what it learnt (CutPredictor/CutPoint/Children/ClassProbability, Mu/Sigma/
+Prior, Alpha/SupportVectors/Bias/Beta, Coefficients as a table, Rsquared…) and its data `X`, `Y`, so predict and
+crossval need nothing hidden; `SETTINGS` lists the fields crossval reads back to learn the same way again. Data come
+as (X, Y) or (table, 'Response' or 'y ~ a + b'); labels are numbers, true/false or a cell of text (classes sorted as
+unique sorts them, answers given back in the labels' own kind); rows with a gap are left out. `load fisheriris` gives
+Fisher's iris flowers (`iris.ts`, public domain, stored as tenths; a file of that name wins). `rng(seed)` now seeds a
+mulberry32 generator used by rand, randn, randi and the new randperm (`random` in builtins.ts; `rng('shuffle')` goes
+back to the browser's own); before it did nothing. Plots: `namePad` in plot.ts makes room for long y tick names and
+moves the y label out with them. Example `learn.m`. Tests (`ml.test.ts`): iris's column means, 1-NN with no mistakes,
+the tree's 2.45 / 1.75 splits and a 2-split tree's 6 errors, LDA's 3 errors and naive Bayes' 6, an SVM's widest gap
+(w = (1, 0), b = −1) and a radial one around a circle, exact least squares and t p-values, logistic regression against
+a 2 × 2 table's log odds and standard error, k-means' 78.851, PCA's 92.46 / 5.31 / 1.71 / 0.52 %, DBSCAN, stratified
+folds, ROC areas, and in the language: tree predictions, 5-fold kNN, the confusion matrix and chart, fitcsvm and
+fitcecoc, fitlm from a table, fitglm's probabilities, kmeans, pca, cvpartition, repeatable rng, plain-word errors. Not
+built: the learner window (M417, next), neural networks, ensembles (bagged trees, boosting), hyperparameter search,
+feature selection, hierarchical clustering, Gaussian mixtures, other distances for kNN, multinomial logistic
+regression, model display as MATLAB's summary text.
+

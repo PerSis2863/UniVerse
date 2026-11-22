@@ -94,7 +94,8 @@ eye | eye(n), eye(r, c) | The identity matrix.
 rand | rand(r, c) | Random numbers between 0 and 1.
 randn | randn(r, c) | Random numbers from the normal distribution.
 randi | randi(max, r, c), randi([lo hi], r, c) | Random whole numbers.
-rng | rng(seed) | Sets where random numbers start (the same seed, the same numbers).
+rng | rng(seed), rng('default'), rng('shuffle') | Sets where random numbers start (the same seed, the same numbers); 'shuffle' makes them unrepeatable again.
+randperm | randperm(n), randperm(n, k) | The numbers 1 to n in a random order (or k of them).
 true | true(r, c) | Logical ones.
 false | false(r, c) | Logical zeros.
 linspace | linspace(a, b, n) | n evenly spaced numbers from a to b (100 by default).
@@ -364,7 +365,7 @@ csvwrite | csvwrite(file, A) | Saves numbers as CSV.
 dlmread | dlmread(file, delim, r0, c0) | Numbers from delimited text.
 dlmwrite | dlmwrite(file, A, delim) | Saves numbers as delimited text.
 save | save file.mat, save(file, 'a', 'b'), save file.txt -ascii | Saves variables (MATLAB's .mat format).
-load | load file.mat, S = load(file) | Loads variables (.mat versions 5 to 7.3, or numbers from text).
+load | load file.mat, S = load(file), load fisheriris | Loads variables (.mat versions 5 to 7.3, or numbers from text); load fisheriris gives Fisher’s iris flowers (meas, species) to learn from.
 fileread | fileread(file) | A file's text.
 readlines | readlines(file) | A file's lines as a cell.
 writelines | writelines(lines, file) | Saves lines of text.
@@ -575,6 +576,35 @@ bode | bode(G), [mag, phase, w] = bode(G) | Magnitude (dB) and phase (°) agains
 margin | margin(G), [Gm, Pm, Wcg, Wcp] = margin(G) | Gain and phase margins and where they are.
 nyquist | nyquist(G) | The frequency response drawn in the complex plane, with −1 marked.
 rlocus | rlocus(G), [r, K] = rlocus(G) | Where the closed loop's poles go as the gain rises.
+
+# Machine learning
+fitcknn | fitcknn(X, Y, 'NumNeighbors', k, 'Standardize', true) | A k-nearest-neighbour classifier: a row's class is the commonest among its k nearest training rows. X has a row per example; Y its labels (numbers or a cell of text). A table and its label column work too: fitcknn(T, 'Species').
+fitctree | fitctree(X, Y, 'MaxNumSplits', n, 'MinLeafSize', m) | A decision tree for classes: yes/no questions on one predictor at a time (CutPredictor, CutPoint, Children).
+fitcnb | fitcnb(X, Y) | Naive Bayes: each class's predictors as independent bell curves (Mu, Sigma, Prior).
+fitcdiscr | fitcdiscr(X, Y) | Linear discriminant analysis: classes as bell-shaped clouds sharing one spread.
+fitcsvm | fitcsvm(X, Y, 'KernelFunction', 'rbf', 'KernelScale', 'auto', 'BoxConstraint', C) | A support vector machine separating two classes by the widest gap ('linear', 'rbf' or 'polynomial').
+fitcecoc | fitcecoc(X, Y, 'Learners', templateSVM(…)) | Three or more classes from one SVM per pair of classes.
+templateSVM | templateSVM('KernelFunction', 'rbf', …) | The settings for fitcecoc's SVMs.
+fitrtree | fitrtree(X, y) | A decision tree that predicts numbers (each leaf's mean).
+fitlm | fitlm(X, y), fitlm(T, 'y ~ x1 + x2') | A linear regression: Coefficients (estimates, standard errors, t and p values), Rsquared, RMSE.
+fitglm | fitglm(X, y, 'Distribution', 'binomial') | A generalised linear model: 'normal' (as fitlm) or 'binomial' (logistic regression; predict gives probabilities).
+predict | [label, score] = predict(model, X) | What a model says for new rows (labels and each class's score, or numbers).
+loss | loss(model, X, Y) | How wrong a model is on rows with known answers: the share misclassified, or the mean squared error.
+resubLoss | resubLoss(model) | The loss on the model's own training rows (optimistic: cross-validate for an honest one).
+resubPredict | resubPredict(model) | The model's predictions for its own training rows.
+crossval | crossval(model, 'KFold', k), crossval(model, 'Holdout', 0.2) | Learns again k times, each time predicting the part it didn't see; every fitc…/fitr… also takes 'KFold', k.
+kfoldLoss | kfoldLoss(cvmodel) | The cross-validated loss: an honest estimate of the error on new data.
+kfoldPredict | kfoldPredict(cvmodel) | Each row's prediction from the model that didn't see it.
+cvpartition | cvpartition(n or Y, 'KFold', k), cvpartition(Y, 'HoldOut', p) | A split of the rows for testing (by class when given labels).
+training | training(c, i) | The rows (true/false) a partition trains on in its i-th split.
+test | test(c, i) | The rows (true/false) a partition tests on in its i-th split.
+confusionmat | [C, order] = confusionmat(Ytrue, Ypred) | Counts of each true class (rows) against each predicted class (columns).
+confusionchart | confusionchart(Ytrue, Ypred), confusionchart(C, names) | The confusion matrix drawn, with counts and the share right.
+gscatter | gscatter(x, y, groups) | A scatter plot coloured by group, with a legend.
+kmeans | [idx, C, sumd, D] = kmeans(X, k, 'Replicates', r) | k clusters by k-means (k-means++ starts; the best of r tries).
+dbscan | [idx, core] = dbscan(X, epsilon, minpts) | Clusters of dense rows; -1 marks noise.
+pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
+perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 
 # Running code
 help | help name | Help for a function.
