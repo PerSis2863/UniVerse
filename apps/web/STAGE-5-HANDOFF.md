@@ -10581,3 +10581,22 @@ indices than dimensions fold the last ones together); A(i, j, k, l) = v changes 
 three dimensions); zip and the page-by-page column functions keep `nd`; `call()` keeps `nd` on a same-sized result
 except for RESHAPERS. Not built: growing or deleting parts of arrays past three dimensions, functions along
 dimension 4 and up, integer types inside complex numbers.
+
+## M387 (22 Nov): UniVerse Lab: JPEG and BMP saving, old Excel files
+
+`src/lib/lab/jpeg.ts`: `encodeJpeg(w, h, rgba, quality)`, our own baseline JPEG from ITU T.81: RGB → YCbCr (no
+subsampling, 4:4:4), 8 × 8 blocks through a plain separable DCT (edges repeat the last pixel), the standard's example
+quantisation tables scaled IJG-style by the quality (75 by default), and Huffman tables built from the picture's own
+symbol counts by Annex K.2 (two passes; a reserved symbol keeps any code from being all ones; codes folded to 16
+bits), so no fixed code tables are copied; byte stuffing after 0xFF; JFIF APP0, one DQT, SOF0, one DHT with four
+tables, SOS. Checked by an independent decoder (Python's PIL, while building): every colour within 1 at quality 90.
+`encodeBmp`: 24-bit, rows bottom up, padded to 4 bytes. imwrite takes .png, .jpg / .jpeg ('Quality', n) and .bmp;
+the file keeps the exact pixels for imread (a decoder would give back near the same). `src/lib/lab/xls.ts`:
+`readXls(bytes)` → every sheet's name and rows of text: the compound file ([MS-CFB]: header, DIFAT, FAT, directory,
+the mini stream for streams under the cutoff), then BIFF8 records ([MS-XLS]): BOUNDSHEET (sheet positions), SST
+with its CONTINUE records (`Pieces`: a string whose characters run into the next record restarts with a flags byte,
+8-bit or 16-bit), and each sheet's LABELSST, NUMBER, RK, MULRK, LABEL, BOOLERR and FORMULA (the saved result; text
+results from the next STRING record). Files older than Excel 97 (BIFF5) are refused plainly. files.ts `rowsOf` reads
+.xls (or the compound-file signature) with 'Sheet' by name or number. Fixtures `src/lib/lab/fixtures/small.xls`
+(mini stream) and `big.xls` (600 rows, shared text over CONTINUE records), made with Python's xlwt while building.
+Not built: WebP and GIF writing, dates in .xls cells (they come in as Excel's day numbers), .xls writing.

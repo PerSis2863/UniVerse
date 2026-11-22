@@ -4,6 +4,8 @@ import { mat, numel, pages, scalar, str, toMat, type Cell, type Mat, type Struct
 import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { png } from './colormap';
+import { encodeBmp, encodeJpeg } from './jpeg';
+import { readXls } from './xls';
 import { cast, unitValues, type NumClass } from './types';
 import { findAll, kid, parseXml } from '@/lib/xml-lite';
 import { writeXlsx } from '@/lib/sheet/xlsx';
@@ -127,7 +129,13 @@ function xlsxRows(bytes: Uint8Array, sheet?: Value): string[][] {
 function rowsOf(lab: Lab, name: string, a: Value[] = []): string[][] {
   const fs = store(lab), f = fs.get(name);
   if (ext(name) === 'xlsx' || (f.bytes[0] === 0x50 && f.bytes[1] === 0x4b)) return xlsxRows(f.bytes, opt(a, 'Sheet'));
-  if (ext(name) === 'xls') throw new LabError('Old Excel files (.xls) can’t be read: save it as .xlsx in Excel first.');
+  if (ext(name) === 'xls' || (f.bytes[0] === 0xd0 && f.bytes[1] === 0xcf)) {
+    // An old Excel file (M387): the sheet by name or number, the first by default.
+    const sheets = readXls(f.bytes), want = opt(a, 'Sheet');
+    const s = want === undefined ? sheets[0] : want.k === 'str' ? sheets.find((x) => x.name === want.v) : sheets[scalar(want) - 1];
+    if (!s) throw new LabError(`There’s no sheet ${want && want.k === 'str' ? `called “${want.v}”` : want ? scalar(want) : ''} (the sheets: ${sheets.map((x) => x.name).join(', ')}).`);
+    return s.rows;
+  }
   const d = opt(a, 'Delimiter');
   return splitRows(fs.text(name), d ? textOf(d).replace('\\t', '\t') : undefined);
 }
@@ -443,7 +451,8 @@ def('imread', (a, _n, lab) => {
 });
 def('imwrite', (a, _n, lab) => {
   const I = toMat(a[0]), name = textOf(a[1]);
-  if (ext(name) !== 'png') throw new LabError('imwrite saves PNG pictures here: name the file something.png.');
+  const kind = ext(name);
+  if (!['png', 'jpg', 'jpeg', 'bmp'].includes(kind)) throw new LabError('imwrite saves PNG, JPEG or BMP pictures: name the file something.png, .jpg or .bmp.');
   const P = pages(I), h = I.r, w = I.c, n = h * w;
   if (P !== 1 && P !== 3) throw new LabError('imwrite saves a grey picture (a matrix) or a colour one (rows × columns × 3).');
   const unit = unitValues(I);
@@ -452,7 +461,9 @@ def('imwrite', (a, _n, lab) => {
     const s = y + x * h, o = (y * w + x) * 4, ch = (q: number) => Math.round(Math.max(0, Math.min(255, unit[s + (P === 3 ? q : 0) * n] * 255)));
     rgba[o] = ch(0); rgba[o + 1] = ch(1); rgba[o + 2] = ch(2); rgba[o + 3] = 255;
   }
-  const bytes = Uint8Array.from(atob(png(w, h, rgba).split(',')[1]), (ch) => ch.charCodeAt(0));
+  // JPEG (M387): imwrite(I, 'a.jpg', 'Quality', 90); its pixels are what a decoder would give back, near enough.
+  const q = opt(a, 'Quality');
+  const bytes = kind === 'png' ? Uint8Array.from(atob(png(w, h, rgba).split(',')[1]), (ch) => ch.charCodeAt(0)) : kind === 'bmp' ? encodeBmp(w, h, rgba) : encodeJpeg(w, h, rgba, q ? scalar(q) : 75);
   store(lab).put(name, { bytes, pixels: { w, h, rgba } });
   return [];
 });
