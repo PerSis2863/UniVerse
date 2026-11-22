@@ -10936,3 +10936,23 @@ the owner shows: `ComputerOnly` (`components/lab/ComputerOnly.tsx`) wraps both H
 made for computers" with the link (copied or sent whole, a shared script's #s=… included); nothing of the engine
 downloads on a phone. Removed: LabApp's phone tabs (`tab`, the Segmented parts row) and the Simulate bench's phone
 column. A person whose chosen app is Hyperion and signs in on a phone lands on that note (it links to the hub).
+
+## M406 (22 Nov): Hyperion Simulate, Vibration
+
+The second analysis on the same study (the owner's Ansys ask: Ansys calls it modal). `src/lib/sim/modal.ts`:
+`solveModes(mesh, material, t, supports, count)`: the stiffness from `assemble` (now shared with `solveStatic`, as is
+`heldBy`), a consistent mass matrix (6-point Dunavant rule; masses in tonnes so K/M is 1/s²), held unknowns emptied
+(`Skyline.fix(rows, 0)` for M), K factored once, then shift-invert Lanczos on K⁻¹M in the M inner product with full
+reorthogonalisation (twice), checked every 4 steps until the wanted Ritz pairs' residuals are under 1e-9 (at most
+160 steps); `symEig` (Jacobi) for the small tridiagonal matrix. Each mode: frequency (Hz), its shape scaled to a
+largest movement of 1 (sign so the largest part is positive), and the share of free mass moving in x and y (effective
+mass / total). `Skyline.mul` (a product before factoring). Tests: a cantilever's first two frequencies against
+Euler–Bernoulli (0.96–1.01 and 0.9–1.01: the shear in a real plate lowers the second), ~61 % of its mass in mode 1,
+and a bar's stretching mode at c / 4L (its sides held in y, so E / (1 − ν²): the solver was right and the first test
+wrong). Speed: medium meshes 60–200 ms, the finest lug 2.1 s. Window: Solution has "Stress and bending" and
+"Vibration" (`analysis`, sent to the worker; loads aren't drawn there); the toolbar's Mode picker; the canvas takes a
+generic `Shown` (movement, values, name, `reverse` for the safety factor, `swing` for a mode: animated both ways, no
+true size, no Min flag); details: the first frequency in words with the motor speed (×60), a table (mode, frequency,
+mass x / y, the nearest note: `noteOf`), "Hear mode n" (a struck sine at its frequency, 20 Hz–16 kHz, Web Audio).
+Not built: free-free modes (a part held nowhere), modes with the loads' stiffening (prestress), damping and the
+response to a shaking (harmonic response).

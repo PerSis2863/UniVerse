@@ -2,16 +2,16 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Trash2, TriangleAlert, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Trash2, TriangleAlert, Volume2, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import { TEMPLATES } from '@/lib/sim/part';
 import { MATERIALS, peak, type Load, type SupportKind } from '@/lib/sim/structure';
-import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, partOf, readModel, startModel, SUPPORT_NAMES, verdict, type Field, type Model } from '@/lib/sim/model';
+import { edgeGroups, FIELDS, LOAD_NAMES, modelProblem, newId, noteOf, partOf, readModel, startModel, SUPPORT_NAMES, verdict, type Field, type Model } from '@/lib/sim/model';
 import type { Fineness } from '@/lib/sim/mesh';
-import { SimCanvas, type SimView } from './SimCanvas';
+import { SimCanvas, type Shown, type SimView } from './SimCanvas';
 import type { FromSim, ToSim } from './sim.worker';
 
 // Hyperion Simulate → Structures (M404): the workbench, laid out like engineering software. On the left the outline of
@@ -34,6 +34,9 @@ export function StructureBench() {
   const [deform, setDeform] = useState<'auto' | 'true' | 'none'>('auto');
   const [showMesh, setShowMesh] = useState(false);
   const [playing, setPlaying] = useState(false);
+  // M406: what is solved: stress and bending under the loads, or the part's natural vibrations (and which one is shown).
+  const [analysis, setAnalysis] = useState<'static' | 'modal'>('static');
+  const [modeAt, setModeAt] = useState(0);
   const worker = useRef<Worker | null>(null), seq = useRef(0), waiting = useRef<Model | null>(null), running = useRef(false), keepTimer = useRef(0);
   const view = useRef<SimView>(null);
 
@@ -48,7 +51,7 @@ export function StructureBench() {
     if (running.current) { waiting.current = m; return; }
     running.current = true;
     setBusy(true);
-    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m) } satisfies ToSim);
+    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m), analysis } satisfies ToSim);
   });
   useEffect(() => {
     const w = new Worker(new URL('./sim.worker.ts', import.meta.url));
@@ -63,12 +66,13 @@ export function StructureBench() {
     return () => w.terminate();
   }, []);
   // Solve again whenever the study changes (a short pause first while typing).
-  useEffect(() => { const t = window.setTimeout(() => send(model), 120); return () => clearTimeout(t); }, [model]);
+  useEffect(() => { const t = window.setTimeout(() => send(model), 120); return () => clearTimeout(t); }, [model, analysis]);
 
   const { part, edges } = useMemo(() => partOf(model), [model]);
   const groups = useMemo(() => edgeGroups(edges), [edges]);
   const problem = modelProblem(model);
-  const result = out?.result ?? null, mesh = out?.mesh ?? null;
+  const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null;
+  const mode = modal?.modes[Math.min(modeAt, modal.modes.length - 1)] ?? null;
   const material = MATERIALS.find((m) => m.id === model.material) ?? MATERIALS[0];
   const tpl = TEMPLATES.find((t) => t.id === model.template) ?? TEMPLATES[0];
   const maxVm = result ? peak(result.vm).value : 0, maxU = result ? peak(result.u).value : 0;
@@ -95,6 +99,18 @@ export function StructureBench() {
   const remove = (id: string) => { setModel((m) => ({ ...m, supports: m.supports.filter((s) => s.id !== id), loads: m.loads.filter((l) => l.id !== id) })); setSel({ k: 'solution' }); };
   /** A force for a table: 0 when it is only rounding (a millionth of the loads). */
   const force = (v: number) => { const scale = result ? Math.max(1, Math.abs(result.applied.fx), Math.abs(result.applied.fy)) : 1; return Math.abs(v) < scale * 1e-6 ? '0' : (+v.toPrecision(5)).toLocaleString(); };
+  const fmtHz = (f: number) => (f >= 1000 ? `${(f / 1000).toPrecision(4)} kHz` : `${f.toPrecision(4)} Hz`);
+  /** The mode as a sound: a struck note at its frequency, dying away like a ringing part. */
+  const ring = (f: number) => {
+    try {
+      const ctx = new AudioContext(), o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
+      o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t); g.gain.exponentialRampToValueAtTime(0.18, t + 0.01); g.gain.exponentialRampToValueAtTime(0.0001, t + 2.2);
+      o.connect(g).connect(ctx.destination);
+      o.start(t); o.stop(t + 2.3);
+      o.onended = () => { void ctx.close(); };
+    } catch { toast.error('This browser can’t play sound here.'); }
+  };
   const download = (name: string, body: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const csv = () => {
     if (!result || !mesh) return;
@@ -142,10 +158,16 @@ export function StructureBench() {
         <input type="checkbox" checked={model.gravity} onChange={(e) => setModel((m) => ({ ...m, gravity: e.target.checked }))} className="h-4 w-4 accent-violet-600" />
         <Weight className="h-3.5 w-3.5 text-zinc-500" aria-hidden />Its own weight (gravity, down)
       </label>
-      <button type="button" className={cn(item, 'mt-1', isSel('solution') && on)} aria-current={isSel('solution') || undefined} onClick={() => setSel({ k: 'solution' })}>
-        {result ? <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden />}
-        <span className="flex-1">Solution</span><span className="text-xs font-normal tabular-nums text-zinc-500 dark:text-zinc-400">{busy ? 'solving…' : result && out ? `${Math.round(out.ms.mesh + out.ms.solve)} ms` : 'not solved'}</span>
-      </button>
+      <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
+      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity]] as const).map(([a, name, Icon]) => {
+        const here = analysis === a, solved = here && (a === 'static' ? !!result : !!modal);
+        return (
+          <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a === 'modal' && !still) setPlaying(true); }}>
+            {solved ? <Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : here && !busy ? <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden /> : <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}
+            <span className="flex-1">{name}</span><span className="text-xs font-normal tabular-nums text-zinc-500 dark:text-zinc-400">{!here ? '' : busy ? 'solving…' : solved && out ? `${Math.round(out.ms.mesh + out.ms.solve)} ms` : 'not solved'}</span>
+          </button>
+        );
+      })}
     </nav>
   );
 
@@ -259,6 +281,44 @@ export function StructureBench() {
       );
     }
   }
+  if (!details && analysis === 'modal') {
+    const audible = (f: number) => f >= 20 && f <= 16_000;
+    details = (
+      <div className="space-y-3">
+        {problem ? <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{problem}</p>
+          : out?.error ? <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p>
+            : modal?.modes[0] && <p className="rounded-lg bg-violet-50 p-2.5 text-xs leading-relaxed text-violet-950 dark:bg-violet-950/40 dark:text-violet-100">Its lowest natural frequency is <b>{fmtHz(modal.modes[0].freq)}</b>: shaking at that rate (a motor at {Math.round(modal.modes[0].freq * 60).toLocaleString()} turns a minute) makes it swing hardest. Keep what drives it well away from these numbers.</p>}
+        {modal && modal.modes.length > 0 && (
+          <div>
+            <table className="w-full text-xs tabular-nums">
+              <thead className="text-zinc-500 dark:text-zinc-400"><tr><th className="py-1 text-start font-medium">Mode</th><th className="py-1 text-end font-medium">Frequency</th><th className="py-1 text-end font-medium" title="Share of the mass that moves sideways">Mass x</th><th className="py-1 text-end font-medium" title="Share of the mass that moves up and down">Mass y</th><th className="py-1 text-end font-medium">Note</th></tr></thead>
+              <tbody>
+                {modal.modes.map((md, i) => {
+                  const note = noteOf(md.freq);
+                  return (
+                    <tr key={i} onClick={() => setModeAt(i)} className={cn('cursor-pointer border-t border-zinc-100 dark:border-white/[0.06]', i === modeAt ? 'bg-violet-100/70 dark:bg-violet-900/40' : 'hover:bg-zinc-50 dark:hover:bg-white/[0.04]')}>
+                      <td className="py-1"><button type="button" className="font-medium text-zinc-900 hover:underline dark:text-white" aria-pressed={i === modeAt} onClick={() => setModeAt(i)}>{i + 1}</button></td>
+                      <td className="py-1 text-end font-mono">{fmtHz(md.freq)}</td>
+                      <td className="py-1 text-end font-mono">{Math.round(md.massX * 100)}%</td>
+                      <td className="py-1 text-end font-mono">{Math.round(md.massY * 100)}%</td>
+                      <td className="py-1 text-end font-mono">{note ? note.name : '–'}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+            <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Mass x, y: how much of the part moves with the mode, sideways or up and down; a big share means it is easy to set off. Loads don’t change these numbers.</p>
+          </div>
+        )}
+        {mode && (
+          <div className="flex flex-wrap gap-1">
+            <button type="button" className={small} disabled={!audible(mode.freq)} title={audible(mode.freq) ? undefined : 'Too high or too low to hear'} onClick={() => ring(mode.freq)}><Volume2 className="h-3.5 w-3.5" aria-hidden />Hear mode {Math.min(modeAt, modal!.modes.length - 1) + 1}{noteOf(mode.freq) ? ` (${noteOf(mode.freq)!.name})` : ''}</button>
+            <button type="button" className={small} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />Picture (PNG)</button>
+          </div>
+        )}
+      </div>
+    );
+  }
   if (!details) {
     details = (
       <div className="space-y-3">
@@ -295,27 +355,39 @@ export function StructureBench() {
   const picking = sel.k === 'support' || sel.k === 'load';
   const chosenEdges = picking ? ((sel.k === 'support' ? model.supports : model.loads).find((x) => x.id === sel.id)?.edges ?? []) : [];
   const fieldInfo = FIELDS.find((f) => f.id === field)!;
+  const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
+  const shown: Shown | null = problem ? null : analysis === 'static'
+    ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' } : null)
+    : (mode && modeShape ? { ux: mode.ux, uy: mode.uy, values: modeShape, name: `Mode ${Math.min(modeAt, modal!.modes.length - 1) + 1}, ${fmtHz(mode.freq)}: how far each point swings (largest = 1)`, unit: '', swing: true } : null);
   const graphic = (
     <section className="panel flex min-h-[22rem] flex-1 flex-col overflow-hidden p-0" aria-label="Graphics">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10">
-        <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
-          <select value={field} onChange={(e) => setField(e.target.value as Field)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
-            {FIELDS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
-          </select>
-        </label>
-        <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Bent shape
+        {analysis === 'static' ? (
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
+            <select value={field} onChange={(e) => setField(e.target.value as Field)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
+              {FIELDS.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </label>
+        ) : (
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Mode
+            <select value={modeAt} onChange={(e) => setModeAt(Number(e.target.value))} disabled={!modal?.modes.length} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
+              {(modal?.modes ?? []).map((md, i) => <option key={i} value={i}>{i + 1}: {fmtHz(md.freq)}</option>)}
+            </select>
+          </label>
+        )}
+        {analysis === 'static' && <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Bent shape
           <select value={deform} onChange={(e) => setDeform(e.target.value as typeof deform)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
             <option value="auto">Made visible</option><option value="true">True size</option><option value="none">Not bent</option>
           </select>
-        </label>
+        </label>}
         <button type="button" className={small} aria-pressed={showMesh} onClick={() => setShowMesh((v) => !v)}><Grid3x3 className="h-3.5 w-3.5" aria-hidden />Mesh</button>
-        <button type="button" className={small} disabled={!result || deform === 'none'} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
+        <button type="button" className={small} disabled={!shown || (analysis === 'static' && deform === 'none')} aria-pressed={playing} onClick={() => setPlaying((p) => !p)}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Stop' : 'Animate'}</button>
         {busy && <span className="ms-auto text-xs text-zinc-500 dark:text-zinc-400">solving…</span>}
       </div>
       <div className="relative min-h-0 flex-1">
-        <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} result={problem ? null : result} field={field} deform={deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
-          supports={model.supports} loads={model.loads} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
-          label={result ? `${tpl.name}: ${fieldInfo.name} from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : `${tpl.name}: not solved yet`} />
+        <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis === 'modal' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
+          supports={model.supports} loads={analysis === 'static' ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
+          label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />
       </div>
       {picking && <p className="border-t border-zinc-200/80 px-3 py-1.5 text-xs text-violet-800 dark:border-white/10 dark:text-violet-200">Press an edge in the picture to add it to {letterOf(sel.id)} or take it away.</p>}
     </section>

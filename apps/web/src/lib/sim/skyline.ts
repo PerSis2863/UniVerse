@@ -48,14 +48,25 @@ export class Skyline {
     this.a[this.start[j] + i - this.first[j]] += v;
   }
   diag(j: number) { return this.a[this.start[j] + j - this.first[j]]; }
-  /** Holds a value at 0: its row and column emptied and 1 on the diagonal. */
-  fix(rows: Uint8Array) {
+  /** Holds a value at 0: its row and column emptied and `diag` (1) on the diagonal (0 for a mass matrix). */
+  fix(rows: Uint8Array, diag = 1) {
     const { n, first, start, a } = this;
     for (let j = 0; j < n; j++) {
       const fj = first[j], sj = start[j];
-      if (rows[j]) { for (let i = fj; i < j; i++) a[sj + i - fj] = 0; a[sj + j - fj] = 1; continue; }
+      if (rows[j]) { for (let i = fj; i < j; i++) a[sj + i - fj] = 0; a[sj + j - fj] = diag; continue; }
       for (let i = fj; i < j; i++) if (rows[i]) a[sj + i - fj] = 0;
     }
+  }
+  /** The matrix times x (before `factor`: it reads the matrix itself). */
+  mul(x: Float64Array): Float64Array {
+    const { n, first, start, a } = this, y = new Float64Array(n);
+    for (let j = 0; j < n; j++) {
+      const fj = first[j], sj = start[j], xj = x[j];
+      let s = 0;
+      for (let i = fj; i < j; i++) { const v = a[sj + i - fj]; y[i] += v * xj; s += v * x[i]; }
+      y[j] += s + a[sj + j - fj] * xj;
+    }
+    return y;
   }
   /** L·D·Lᵀ in place. Throws when the part can still move (a pivot vanishes). */
   factor() {

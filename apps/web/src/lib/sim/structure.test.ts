@@ -112,3 +112,43 @@ describe('Hyperion Simulate: colour bands and the kept study (M404)', () => {
     expect(studyOf(startModel('hook')).loads[0]).toMatchObject({ kind: 'bearing', F: 20_000, angle: 90 });
   });
 });
+
+describe('Hyperion Simulate: vibration (M406)', () => {
+  it('a cantilever’s first two frequencies are beam theory’s (1.875² and 4.694² · √(EI/ρAL⁴) / 2π)', async () => {
+    const { solveModes } = await import('./modal');
+    const { mesh, byName } = build('beam', { L: 200, H: 20 });
+    const r = solveModes(mesh, steel, 10, [{ id: 'fix', kind: 'fixed', edges: byName('Left end') }], 4);
+    const EI = steel.E * ((10 * 20 ** 3) / 12), rhoA = steel.rho * 1e-12 * 200, k = Math.sqrt(EI / (rhoA * 200 ** 4)) / (2 * Math.PI);
+    const f1 = 1.875104 ** 2 * k, f2 = 4.694091 ** 2 * k;
+    expect(r.modes[0].freq / f1).toBeGreaterThan(0.96);
+    expect(r.modes[0].freq / f1).toBeLessThan(1.01);
+    expect(r.modes[1].freq / f2).toBeGreaterThan(0.9);
+    expect(r.modes[1].freq / f2).toBeLessThan(1.01);
+    // The first mode swings up and down; about 61 % of a cantilever's mass moves with it.
+    expect(r.modes[0].massY).toBeGreaterThan(0.55);
+    expect(r.modes[0].massY).toBeLessThan(0.66);
+    expect(r.modes[0].massX).toBeLessThan(0.01);
+    // In order, lowest first.
+    for (let i = 1; i < r.modes.length; i++) expect(r.modes[i].freq).toBeGreaterThanOrEqual(r.modes[i - 1].freq);
+  });
+  it('a bar held at one end rings along its length at c / 4L (sides held: E / (1 − ν²))', async () => {
+    const { solveModes } = await import('./modal');
+    const { mesh, byName } = build('beam', { L: 400, H: 10 });
+    // Held so it can't bend: the long sides slide along x only… then only stretching modes are left.
+    const r = solveModes(mesh, steel, 1, [{ id: 'a', kind: 'fixed', edges: byName('Left end') }, { id: 'b', kind: 'slideX', edges: [...byName('Top'), ...byName('Bottom')] }], 1);
+    // Its sides held in y can't narrow as it stretches, which stiffens it to E / (1 − ν²).
+    const c = Math.sqrt(steel.E / (1 - steel.nu ** 2) / (steel.rho * 1e-12)), expected = c / (4 * 400);
+    expect(r.modes[0].freq / expected).toBeGreaterThan(0.99);
+    expect(r.modes[0].freq / expected).toBeLessThan(1.02);
+  });
+});
+
+describe('Hyperion Simulate: the note a mode rings at (M406)', () => {
+  it('names the nearest note and how far off it is', async () => {
+    const { noteOf } = await import('./model');
+    expect(noteOf(440)).toEqual({ name: 'A4', cents: 0 });
+    expect(noteOf(261.63)).toMatchObject({ name: 'C4' });
+    expect(noteOf(405.1)).toMatchObject({ name: 'G♯4' });
+    expect(noteOf(5)).toBeNull();
+  });
+});

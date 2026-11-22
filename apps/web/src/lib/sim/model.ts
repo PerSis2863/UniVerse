@@ -109,3 +109,11 @@ export function verdict(maxVm: number, yieldMPa: number, material: string): { te
   if (sf < 1.5) return { text: `Too close: the highest stress, ${+maxVm.toPrecision(3)} MPa, is near ${material}’s limit (${yieldMPa} MPa): a safety factor of ${f}. Designs usually want 1.5 to 3.`, ok: false };
   return { text: `It holds: the highest stress is ${+maxVm.toPrecision(3)} MPa, ${material} takes ${yieldMPa} MPa, a safety factor of ${f}.`, ok: true };
 }
+
+/** The musical note nearest a frequency ("G♯4", and how many cents off), for a vibration mode one can hear. */
+export function noteOf(f: number): { name: string; cents: number } | null {
+  if (!(f >= 16 && f <= 20_000)) return null;
+  const n = 12 * Math.log2(f / 440) + 69, k = Math.round(n);
+  const names = ['C', 'C♯', 'D', 'D♯', 'E', 'F', 'F♯', 'G', 'G♯', 'A', 'A♯', 'B'];
+  return { name: `${names[((k % 12) + 12) % 12]}${Math.floor(k / 12) - 1}`, cents: Math.round((n - k) * 100) };
+}

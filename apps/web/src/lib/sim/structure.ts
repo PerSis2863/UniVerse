@@ -40,7 +40,7 @@ export interface StaticResult {
   massKg: number; dofs: number; profile: number;
 }
 
-const G = [[1 / 6, 1 / 6], [2 / 3, 1 / 6], [1 / 6, 2 / 3]];
+export const G = [[1 / 6, 1 / 6], [2 / 3, 1 / 6], [1 / 6, 2 / 3]];
 const NODE_AT = [[0, 0], [1, 0], [0, 1], [0.5, 0], [0.5, 0.5], [0, 0.5]];
 
 /** The 6 shape functions and their slopes at (ξ, η). */
@@ -53,7 +53,7 @@ function shape(xi: number, eta: number) {
   };
 }
 /** Slopes in x and y at (ξ, η) of element e, and the area factor (det J). */
-function slopes(mesh: Mesh, e: number, xi: number, eta: number) {
+export function slopes(mesh: Mesh, e: number, xi: number, eta: number) {
   const s = shape(xi, eta), t = mesh.tri;
   let j11 = 0, j12 = 0, j21 = 0, j22 = 0;
   for (let i = 0; i < 6; i++) { const n = t[e * 6 + i], x = mesh.x[n], y = mesh.y[n]; j11 += s.dxi[i] * x; j12 += s.dxi[i] * y; j21 += s.deta[i] * x; j22 += s.deta[i] * y; }
@@ -131,8 +131,9 @@ export function nodalLoads(mesh: Mesh, study: Study) {
   return { fx, fy };
 }
 
-export function solveStatic(mesh: Mesh, study: Study): StaticResult {
-  const nn = mesh.x.length, ne = mesh.tri.length / 6, m = study.material, t = study.thickness;
+/** The whole part's stiffness matrix (and each element's, for the inner forces afterwards). */
+export function assemble(mesh: Mesh, m: Material, t: number) {
+  const nn = mesh.x.length, ne = mesh.tri.length / 6;
   const { pos, first } = numbering(mesh), K = new Skyline(2 * nn, first);
   const dof = (node: number, c: number) => 2 * pos[node] + c;
   const ks = new Float64Array(ne * 144);
@@ -145,6 +146,23 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
       K.add(di, dj, k[i * 12 + j]);
     }
   }
+  return { K, pos, first, dof, ks, area };
+}
+
+/** The unknowns the supports hold (1), and which support holds each (for its reaction). */
+export function heldBy(mesh: Mesh, supports: Support[], dof: (node: number, c: number) => number) {
+  const n = 2 * mesh.x.length, held = new Uint8Array(n), owner = new Int32Array(n).fill(-1);
+  supports.forEach((s, si) => {
+    for (const id of s.edges) for (const node of mesh.nodes.get(id) ?? []) {
+      for (const c of s.kind === 'fixed' ? [0, 1] : s.kind === 'slideX' ? [1] : [0]) { const d = dof(node, c); held[d] = 1; if (owner[d] < 0) owner[d] = si; }
+    }
+  });
+  return { held, owner };
+}
+
+export function solveStatic(mesh: Mesh, study: Study): StaticResult {
+  const nn = mesh.x.length, ne = mesh.tri.length / 6, m = study.material, t = study.thickness;
+  const { K, dof, ks, area } = assemble(mesh, m, t);
   // Loads (the edges' forces and the part's own weight, straight down).
   const { fx, fy } = nodalLoads(mesh, study);
   if (study.gravity) {
@@ -157,12 +175,7 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
   const f = new Float64Array(2 * nn);
   for (let n = 0; n < nn; n++) { f[dof(n, 0)] = fx[n]; f[dof(n, 1)] = fy[n]; }
   // Supports: each held unknown belongs to the first support that holds it (for its reaction).
-  const held = new Uint8Array(2 * nn), owner = new Int32Array(2 * nn).fill(-1);
-  study.supports.forEach((s, si) => {
-    for (const id of s.edges) for (const n of mesh.nodes.get(id) ?? []) {
-      for (const c of s.kind === 'fixed' ? [0, 1] : s.kind === 'slideX' ? [1] : [0]) { const d = dof(n, c); held[d] = 1; if (owner[d] < 0) owner[d] = si; }
-    }
-  });
+  const { held, owner } = heldBy(mesh, study.supports, dof);
   if (!held.some((v) => v)) throw new Error('Add a support first: a part held nowhere just flies away.');
   K.fix(held);
   for (let d = 0; d < f.length; d++) if (held[d]) f[d] = 0;

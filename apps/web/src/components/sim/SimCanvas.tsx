@@ -4,8 +4,7 @@ import { useEffect, useEffectEvent, useImperativeHandle, useMemo, useReducer, us
 import { Maximize, Minus, Plus } from 'lucide-react';
 import { bandColors, bandPaths, levels, legendNum, BANDS } from '@/lib/sim/contour';
 import type { Edge, Part, Pt } from '@/lib/sim/part';
-import type { Load, StaticResult, Support } from '@/lib/sim/structure';
-import { FIELDS, type Field } from '@/lib/sim/model';
+import type { Load, Support } from '@/lib/sim/structure';
 import type { MeshOut } from './sim.worker';
 
 // Hyperion Simulate (M404): the graphics window. The part (light grey), its mesh, the result in bands of colour on the
@@ -13,8 +12,16 @@ import type { MeshOut } from './sim.worker';
 // buttons zoom, dragging moves it, a press on an edge picks it, the pointer reads the value under it.
 
 export interface SimView { png: () => Promise<Blob | null> }
+/** What is drawn on the part: how it moves (mm, or a mode's shape) and a value per node in colour. */
+export interface Shown {
+  ux: Float64Array; uy: Float64Array; values: Float64Array; name: string; unit: string;
+  /** Low is the danger (a safety factor): the colours turn round. */
+  reverse?: boolean;
+  /** A vibration mode: it swings both ways when animated, and isn't drawn at true size. */
+  swing?: boolean;
+}
 interface Props {
-  part: Part; edges: Edge[]; mesh: MeshOut | null; result: StaticResult | null; field: Field;
+  part: Part; edges: Edge[]; mesh: MeshOut | null; shown: Shown | null;
   deform: 'auto' | 'true' | 'none'; showMesh: boolean; playing: boolean;
   supports: Support[]; loads: Load[]; chosen: string[]; picking: boolean; onPick: (edgeId: string) => void;
   dark: boolean; label: string; ref?: Ref<SimView>;
@@ -35,7 +42,7 @@ const distSeg = (px: number, py: number, [ax, ay]: Pt, [bx, by]: Pt) => {
   return Math.hypot(px - ax - t * dx, py - ay - t * dy);
 };
 
-export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, playing, supports, loads, chosen, picking, onPick, dark, label, ref }: Props) {
+export function SimCanvas({ part, edges, mesh, shown, deform, showMesh, playing, supports, loads, chosen, picking, onPick, dark, label, ref }: Props) {
   const box = useRef<HTMLDivElement>(null), canvas = useRef<HTMLCanvasElement>(null);
   const view = useRef({ s: 1, ox: 0, oy: 0, fitted: '' });
   const [size, setSize] = useState({ w: 0, h: 0 });
@@ -44,17 +51,18 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
   const [hoverEdge, setHoverEdge] = useState<string | null>(null);
   const [, redraw] = useReducer((x: number) => x + 1, 0);
   const phase = useRef(1);
+  const swing = !!shown?.swing;
   const drag = useRef<{ x: number; y: number; ox: number; oy: number; moved: boolean } | null>(null);
   const lineMap = useMemo(() => edgeLines(part, edges), [part, edges]);
   const lines = { current: lineMap };
 
-  const values = result ? result[field] : null;
-  const fieldInfo = FIELDS.find((f) => f.id === field)!;
-  const maxU = result ? Math.max(...result.u) : 0;
+  const values = shown?.values ?? null, result = shown;
+  const fieldInfo = { name: shown?.name ?? '', unit: shown?.unit ?? '' };
+  const maxU = useMemo(() => { if (!shown) return 0; let m = 0; for (let i = 0; i < shown.ux.length; i++) m = Math.max(m, Math.hypot(shown.ux[i], shown.uy[i])); return m; }, [shown]);
   const xs = part.outer.kind === 'poly' ? part.outer.pts.map((p) => p[0]) : [0], ys = part.outer.kind === 'poly' ? part.outer.pts.map((p) => p[1]) : [0];
   const span = Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys)) || 1;
   const autoScale = maxU > 0 ? (0.07 * span) / maxU : 1;
-  const scale = !result || deform === 'none' ? 0 : deform === 'true' ? 1 : autoScale;
+  const scale = !result || deform === 'none' ? 0 : deform === 'true' && !shown?.swing ? 1 : autoScale;
 
   // A narrow window gets the legend as a strip along the bottom; a wide one beside the part.
   const compact = size.w < 560;
@@ -94,7 +102,7 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
       const n = mesh.x.length, sx = new Float32Array(n), sy = new Float32Array(n);
       for (let i = 0; i < n; i++) { sx[i] = X(mesh.x[i] + (result ? k * result.ux[i] : 0)); sy[i] = Y(mesh.y[i] + (result ? k * result.uy[i] : 0)); }
       if (values) {
-        const lv = levels(Math.min(...values), Math.max(...values)), cols = bandColors(field === 'safety');
+        const lv = levels(Math.min(...values), Math.max(...values)), cols = bandColors(shown?.reverse);
         bandPaths(mesh.tri, sx, sy, values, lv).forEach((p, b) => { g.fillStyle = cols[b]; g.fill(p); g.strokeStyle = cols[b]; g.lineWidth = 0.6; g.stroke(p); });
       } else {
         const p = new Path2D();
@@ -191,8 +199,8 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
       const flag = (n: number, text: string, bg: string) => badge(X(mesh.x[n] + k * result.ux[n]), Y(mesh.y[n] + k * result.uy[n]) - 14, text, bg);
       let lo = 0, hi = 0;
       for (let i = 1; i < values.length; i++) { if (values[i] < values[lo]) lo = i; if (values[i] > values[hi]) hi = i; }
-      flag(lo, `Min ${legendNum(values[lo])}`, field === 'safety' ? '#dc2626' : '#1d4ed8');
-      flag(hi, `Max ${legendNum(values[hi])}`, field === 'safety' ? '#1d4ed8' : '#dc2626');
+      if (!shown?.swing) flag(lo, `Min ${legendNum(values[lo])}`, shown?.reverse ? '#dc2626' : '#1d4ed8');
+      flag(hi, `Max ${legendNum(values[hi])}`, shown?.reverse ? '#1d4ed8' : '#dc2626');
     }
   });
 
@@ -202,10 +210,11 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
     if (!playing) { phase.current = 1; return; }
     let raf = 0;
     const t0 = performance.now();
-    const tick = (t: number) => { phase.current = 0.5 - 0.5 * Math.cos(((t - t0) / 1400) * Math.PI * 2); draw(); raf = requestAnimationFrame(tick); };
+    // A load: bending in and back out; a vibration mode: swinging both ways.
+    const tick = (t: number) => { const a = ((t - t0) / 1400) * Math.PI * 2; phase.current = swing ? Math.sin(a) : 0.5 - 0.5 * Math.cos(a); draw(); raf = requestAnimationFrame(tick); };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [playing]);
+  }, [playing, swing]);
 
   useImperativeHandle(ref, () => ({ png: () => new Promise((res) => { if (!canvas.current) { res(null); return; } canvas.current.toBlob((b) => res(b), 'image/png'); }) }), []);
 
@@ -239,7 +248,7 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
   });
 
   const unit = fieldInfo.unit ? ` ${fieldInfo.unit}` : '';
-  const lv = values ? levels(Math.min(...values), Math.max(...values)) : null, cols = bandColors(field === 'safety');
+  const lv = values ? levels(Math.min(...values), Math.max(...values)) : null, cols = bandColors(shown?.reverse);
   const btn = 'inline-flex h-8 w-8 items-center justify-center rounded-lg bg-white/90 text-zinc-700 shadow-sm ring-1 ring-zinc-200 hover:bg-white dark:bg-zinc-800/90 dark:text-zinc-100 dark:ring-white/10';
   return (
     <div ref={box} className="relative h-full min-h-[18rem] w-full touch-none select-none overflow-hidden" data-no-arrange data-no-motion>
@@ -268,7 +277,7 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
         onPointerLeave={() => { showTip(null); setHoverEdge(null); }} />
       {values && lv && compact && (
         <div className="pointer-events-none absolute inset-x-2 bottom-2 rounded-lg bg-white/90 px-2 py-1.5 text-[11px] leading-tight text-zinc-800 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/90 dark:text-zinc-100 dark:ring-white/10">
-          <p className="truncate font-semibold">{fieldInfo.name}{fieldInfo.unit && <span className="font-normal text-zinc-500 dark:text-zinc-400"> ({fieldInfo.unit})</span>}{scale > 0 && <span className="font-normal text-zinc-500 dark:text-zinc-400"> · bent ×{scale >= 10 ? Math.round(scale).toLocaleString() : +scale.toPrecision(2)}</span>}</p>
+          <p className="truncate font-semibold">{fieldInfo.name}{fieldInfo.unit && <span className="font-normal text-zinc-500 dark:text-zinc-400"> ({fieldInfo.unit})</span>}{scale > 0 && !swing && <span className="font-normal text-zinc-500 dark:text-zinc-400"> · bent ×{scale >= 10 ? Math.round(scale).toLocaleString() : +scale.toPrecision(2)}</span>}</p>
           <div className="mt-1 flex items-center gap-1.5 font-mono tabular-nums">
             <span>{legendNum(lv[0])}</span>
             <span className="flex h-2.5 flex-1 overflow-hidden rounded-sm" aria-hidden>{cols.map((c) => <span key={c} className="flex-1" style={{ background: c }} />)}</span>
@@ -287,7 +296,7 @@ export function SimCanvas({ part, edges, mesh, result, field, deform, showMesh, 
               </li>
             ))}
           </ul>
-          {scale > 0 && <p className="mt-1 text-zinc-500 dark:text-zinc-400">Shape bent ×{scale >= 10 ? Math.round(scale).toLocaleString() : +scale.toPrecision(2)}</p>}
+          {scale > 0 && !swing && <p className="mt-1 text-zinc-500 dark:text-zinc-400">Shape bent ×{scale >= 10 ? Math.round(scale).toLocaleString() : +scale.toPrecision(2)}</p>}
         </div>
       )}
       <div ref={tip} hidden className="pointer-events-none absolute z-10 rounded-md bg-zinc-900/90 px-2 py-1 font-mono text-[11px] text-white" />
