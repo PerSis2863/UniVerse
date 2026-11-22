@@ -10490,3 +10490,23 @@ professional is (standards, a worked example, real data, tests); Ghidra's own mo
   (`stop: { guide, days }`) and opens `/travel/trip?id=…&plan=1`, which starts "Plan my days" by itself (`TravelTrip.tsx`).
   The matcher knows "plan 3 days in Jaipur for 2 of us".
 - Tests: `agents/agents.test.ts`, `agents/support-travel.test.ts` (21 with the chain and Ghidra's).
+
+## M369: MiniMind-3 adopted as Ghidra 2, its chat stage trained (22 Nov, in progress)
+
+The owner (22 Nov): "just integrate the 64m of minimind and after that start from there".
+
+- **`ghidra2.py adopt`** loads MiniMind-3 (64 M, Apache-2.0; Qwen3's design: RMSNorm, rotary θ 1e6, 8 query and 4
+  key/value heads of 96, q/k norms, SwiGLU 2,432, its own 6,400 word-pieces, tied output) into Ghidra 2's model and checks
+  it gives MiniMind's own scores (`to_hf` turns it back into the transformers model for generating and scoring). The chat
+  shape is MiniMind's (`<|im_start|>user … <|im_end|>`, an empty `<think>` block before plain answers).
+- **Chat stage:** `sft --from pretrain` for 1,500 steps on 3,450 rows (Ghidra's UniVerse questions plus oasst1), val
+  loss 1.9–2.1 (noisy, a small val set). Asked by hand: who it is, Relief, joining a course, the emergency answer and
+  "capital of France" all right. **Weak:** open writing (an email) repeats a word; a repetition penalty (1.15, no
+  repeated 4-grams) stops the loop but it then rambles and invents. A 64 M model can't write freely: big answers stay
+  with Gemini / DeepSeek, Ghidra 2 is the on-device backup for UniVerse's own questions. `ghidra2.py` can now be imported
+  (its commands run only under `__main__`).
+- **Next:** score on GSM8K (`score --stage sft --n 100`), the `think` stage (`--data chat.jsonl,reason.jsonl`, GSM8K's
+  worked answers in `<think>`), fewer epochs on the UniVerse questions and writing lessons from the agents' playbooks,
+  then `export` (~64 MB in parts under 20 MB; decide repository vs R2) and switch the console card and `askOnDevice` to
+  `ghidra2.ts` with a repetition penalty in `answer()`. The working files (adopted and chat states, word-pieces, data)
+  are in the session's scratch folder, not the repository: a new session re-runs `adopt` and `sft` (about 40 minutes).
