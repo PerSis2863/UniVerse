@@ -389,12 +389,12 @@ def cmd_score(a):
     d = Path(a.dir); tok = load_tok(d)
     s = torch.load(d / f'state-{a.stage}.pt', map_location='cpu', weights_only=False)
     model = GPT(s['config']); model.load_state_dict({k.replace('_orig_mod.', ''): v for k, v in s['model'].items()})
-    hf = to_hf(model)
+    hf = to_hf(model).to(device())  # on the graphics card when there is one
     probs = gsm8k(a.gsm8k)[: a.n]
     right, shown = 0, 0
     for q, _, final in probs:
         prompt = f"<|im_start|>user\n{q}<|im_end|>\n<|im_start|>assistant\n<think>\n"
-        ids = torch.tensor([tok.encode(prompt).ids])
+        ids = torch.tensor([tok.encode(prompt).ids], device=hf.device)
         out = hf.generate(ids, max_new_tokens=a.tokens, do_sample=False, eos_token_id=tok.token_to_id('<|im_end|>'), pad_token_id=tok.token_to_id('<|endoftext|>'))
         text = tok.decode(out[0, ids.shape[1]:].tolist(), skip_special_tokens=False)
         ok = final_number(text) == final
