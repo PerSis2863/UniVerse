@@ -12424,3 +12424,16 @@ console, Messages, Collaborate and Settings. Scope is now `/` (start and `id` st
 app from UniVerse's own, `public/manifest.json`); `src/lib/hyperion-manifest.test.ts`. An installed app picks up the new
 manifest when the browser next checks it (on launch, usually within a day); reinstalling applies it at once.
 
+## M450: Hyperion as a real computer app, offered (23 Nov)
+
+The owner (23 Nov): "i need the hyperion to be a proper app like we download from the internet like for windows, linux,
+and mac os compatible". The computer app (M412, `desktop/hyperion`, Electron) was already built and published by the
+"Hyperion desktop" workflow (release `hyperion-latest`: Hyperion-Setup.exe, Hyperion-mac.dmg, Hyperion-linux.AppImage,
+updated 23 Nov 13:34 by the other session), but `InstallHyperion` showed the downloads only with
+`NEXT_PUBLIC_HYPERION_DOWNLOADS=1`, which was never set, and hid itself inside the browser-installed app. Now the
+downloads come first (the visitor's own system highlighted), with the browser's install as the second choice; inside the
+browser-installed app the button reads "Get the computer app"; only the computer app itself hides it. The Mac target is
+`universal` (Apple chips and Intel; the macos-latest runner built Apple chips only). Unsigned until the owner buys
+certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
+for the universal Mac build.
+
