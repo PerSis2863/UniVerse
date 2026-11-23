@@ -12414,3 +12414,13 @@ problem with lb and ub)), ReannealInterval, HybridFcn for both ('fminsearch', 'f
 patternsearch only without linear or nonlinear constraints; kept only when it improves). Tests in optim.test.ts. Not
 built: patternsearch's other search functions (Nelder–Mead, GA), cached polls, the 'TolBind'/'ScaleMesh' options,
 simulannealbnd's custom AcceptanceFcn.
+
+## M449: the installed Hyperion app keeps the whole site inside it (23 Nov)
+
+The owner (23 Nov, a screenshot of the installed Hyperion app in Brave showing a bar with https://www.universeimpact.com
+and a close button over the owner console): "why it is showing after the app download like this". The bar is the
+browser's out-of-scope bar: `public/hyperion/manifest.json` had `scope: /hyperion`, and Hyperion's top bar links to the
+console, Messages, Collaborate and Settings. Scope is now `/` (start and `id` still `/hyperion`, so it stays a separate
+app from UniVerse's own, `public/manifest.json`); `src/lib/hyperion-manifest.test.ts`. An installed app picks up the new
+manifest when the browser next checks it (on launch, usually within a day); reinstalling applies it at once.
+

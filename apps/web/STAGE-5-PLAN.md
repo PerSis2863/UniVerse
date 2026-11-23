@@ -1904,6 +1904,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M445 | Ghidra's exam, run three ways (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | Console → Health → Ghidra's exam (live site, 5/10/20 per skill; 0259); our own model scored on a rented card: **80%** (1,815 of 2,258); the owner's own run with `--ask-key` (`scripts/ai/ghidra-exam.md`). The live Gemini score waits on the owner's console run. |
 | M447 | Ghidra's add-on, step 4 (23 Nov) | **Training** (branch `claude/youthful-fermi-sbdtcp`) | `scripts/ai/ghidra-gpu.sh` on a rented A100 80 GB: the teacher's new material, lessons kept only if they pass the rules, the add-on, the exam with and without it (`wins.json`). Hyperion's questions cover the toolboxes; the kit's engine now loads them. |
 | M448 | The owner console shows the paid Cloudflare plan (23 Nov) | **Done** | The plan card read only the old `WORKERS_PAID` name, not `CF_PLAN=paid`: it showed the free plan's daily meters. Now `workersPaid()`. |
+| M449 | The installed Hyperion app keeps the whole site inside it (23 Nov) | **Done** | Its manifest's scope was `/hyperion`, so the console, Messages, Collaborate and Settings showed the browser's out-of-app bar (address and ✕). Scope `/`, start and id still `/hyperion`. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
