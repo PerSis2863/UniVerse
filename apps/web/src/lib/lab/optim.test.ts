@@ -4,6 +4,7 @@ import { Graphics, legendSeries } from './plot';
 import { toMat } from './values';
 import './optim-lab';
 import * as op from './optim';
+import * as ox from './optim-more';
 
 const run = (code: string) => { let out = ''; const graphics = new Graphics(); const lab = new Lab({ out: (t) => { out += t; }, graphics }); lab.run(code); return { out, graphics, d: (n: string) => [...toMat(lab.vars.get(n)!).d] }; };
 const rosen = (x: number[]) => 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2;
@@ -123,4 +124,60 @@ describe('several goals at once (M440)', () => {
     expect(r.graphics.figures.length).toBe(1);
     expect(() => run('gamultiobj(@(x) [x, -x], 1)')).toThrow(/bounds/);
   }, 30_000);
+});
+
+describe('Hyperion optimisation (M441): the rarer solvers', () => {
+  it('Brent finds roots and minima to full accuracy', () => {
+    const z = ox.brentZero((x) => Math.cos(x) - x, 0, 1);
+    expect(Math.abs(z.x - 0.7390851332151607)).toBeLessThan(1e-14);
+    expect(z.evals).toBeLessThan(15);
+    const m = ox.brentMin((x) => x ** 3 - 2 * x, 0, 2, 1e-10);
+    expect(Math.abs(m.x - Math.sqrt(2 / 3))).toBeLessThan(1e-8);
+    const r = run("[x, fx, flag, out] = fzero(@(x) x^3 - 2*x - 5, 2); [m, fm] = fminbnd(@(x) (x-1)^2 + 3, -4, 9); y = fzero(@sin, 3);");
+    expect(Math.abs(r.d('x')[0] - 2.0945514815423265)).toBeLessThan(1e-13);
+    expect(r.d('flag')[0]).toBe(1);
+    expect(Math.abs(r.d('m')[0] - 1)).toBeLessThan(1e-4);
+    expect(Math.abs(r.d('y')[0] - Math.PI)).toBeLessThan(1e-14);
+  });
+
+  it('lsqnonneg: Lawson–Hanson matches the one-column answer; lsqlin keeps its constraints', () => {
+    const C = [[0.0372, 0.2869], [0.6861, 0.7071], [0.6233, 0.6245], [0.6344, 0.617]], d = [0.8587, 0.1781, 0.0747, 0.8405];
+    const r = ox.nnls(C, d), c2 = C.map((row) => row[1]);
+    expect(r.x[0]).toBe(0);
+    expect(Math.abs(r.x[1] - c2.reduce((s, v, i) => s + v * d[i], 0) / c2.reduce((s, v) => s + v * v, 0))).toBeLessThan(1e-12);
+    expect(Math.abs(r.x[1] - 0.6929)).toBeLessThan(1e-4);
+    expect(r.lambda[0]).toBeGreaterThan(0);
+    const q = run('x = lsqlin(eye(2), [2; 2], [1 1], 1); y = lsqlin([1 0; 0 1; 1 1], [1; 2; 4], [], [], [], [], [0 0], [1.5 1.5]);');
+    close(q.d('x'), [0.5, 0.5], 1e-5);
+    close(q.d('y'), [1.5, 1.5], 1e-5);
+  });
+
+  it('fminimax and fgoalattain: MATLAB’s example and a symmetric trade-off', () => {
+    // MATLAB's fminimax example: the largest of five functions is smallest at (4, 4).
+    const r = run(`f = @(x) [2*x(1)^2 + x(2)^2 - 48*x(1) - 40*x(2) + 304, -x(1)^2 - 3*x(2)^2, x(1) + 3*x(2) - 18, -x(1) - x(2), x(1) + x(2) - 8];
+      [x, fval, maxf] = fminimax(f, [0.1 0.1]);
+      [g, gv, gam] = fgoalattain(@(x) [x^2, (x-2)^2], 0, [0 0], [1 1]);
+      [h, hv, hgam] = fgoalattain(@(x) [x^2, (x-2)^2], 0, [1 4], [1 4]);`);
+    close(r.d('x'), [4, 4], 1e-3);
+    expect(Math.abs(r.d('maxf')[0])).toBeLessThan(1e-3);
+    close(r.d('g'), [1], 1e-4);
+    expect(Math.abs(r.d('gam')[0] - 1)).toBeLessThan(1e-4);
+    // Goals 1 and 4, weighted alike: both missed by the same share, x = 2/3 makes them 4/9 and 16/9 (γ = −5/9).
+    close(r.d('h'), [2 / 3], 1e-4);
+    expect(Math.abs(r.d('hgam')[0] + 5 / 9)).toBeLessThan(1e-4);
+  });
+
+  it('patternsearch finds Rosenbrock’s floor and keeps a nonlinear constraint; simulannealbnd escapes Rastrigin’s dips', () => {
+    const p = ox.patternSearch(rosen, [-1.2, 1], [-Infinity, -Infinity], [Infinity, Infinity], { maxEvals: 200_000, meshTol: 1e-9 });
+    close(p.x, [1, 1], 1e-3);
+    const r = run(`[x, f] = patternsearch(@(x) (x(1)-2)^2 + (x(2)-1)^2, [0 0], [], [], [], [], [], [], @(x) deal(x(1)^2 + x(2)^2 - 1, []));
+      [b] = patternsearch(@(x) (x(1)-3)^2 + x(2)^2, [0 0], [], [], [], [], [-1 -1], [1 1]);`);
+    close(r.d('x'), [2 / Math.sqrt(5), 1 / Math.sqrt(5)], 1e-3);
+    close(r.d('b'), [1, 0], 1e-5);
+    seed = 11;
+    const ras = (x: number[]) => 20 + x.reduce((s, v) => s + v * v - 10 * Math.cos(2 * Math.PI * v), 0);
+    const a = ox.anneal(ras, [3.2, -2.8], [-5, -5], [5, 5], rand);
+    expect(a.f).toBeLessThan(ras([3, -3]) - 10);
+    expect(a.flag).toBe(1);
+  });
 });

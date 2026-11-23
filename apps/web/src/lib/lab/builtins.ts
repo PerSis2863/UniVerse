@@ -500,33 +500,6 @@ def('integral quad quadgk', (a, _n, lab) => {
   const f = (x: number) => scalar(lab.callFn(fn, [num(x)])[0], 'The function’s value');
   return [num(adaptiveSimpson(f, lo, hi, 1e-10, 50))];
 });
-def('fzero', (a, _n, lab) => {
-  const f = (x: number) => scalar(lab.callFn(a[0], [num(x)])[0], 'The function’s value');
-  const g = M(a[1]);
-  let lo: number, hi: number;
-  if (g.d.length >= 2) [lo, hi] = [g.d[0], g.d[1]];
-  else {
-    // Widen around the guess until the sign changes.
-    const x0 = g.d[0]; let dx = x0 === 0 ? 0.02 : Math.abs(x0) / 50; lo = x0; hi = x0;
-    for (let k = 0; k < 200 && Math.sign(f(lo)) === Math.sign(f(hi)); k++) { lo = x0 - dx; hi = x0 + dx; dx *= 1.6; }
-  }
-  let flo = f(lo), fhi = f(hi);
-  if (Math.sign(flo) === Math.sign(fhi) && flo !== 0 && fhi !== 0) throw new LabError('fzero couldn’t find where the function changes sign: try another starting point or an interval [a b].');
-  for (let k = 0; k < 200 && hi - lo > 1e-15 * (1 + Math.abs(lo)); k++) {
-    const mid = (lo + hi) / 2, fm = f(mid);
-    if (fm === 0) { lo = hi = mid; break; }
-    if (Math.sign(fm) === Math.sign(flo)) { lo = mid; flo = fm; } else { hi = mid; fhi = fm; }
-  }
-  return [num((lo + hi) / 2), num(f((lo + hi) / 2))];
-});
-def('fminbnd', (a, _n, lab) => {
-  const f = (x: number) => scalar(lab.callFn(a[0], [num(x)])[0]);
-  let lo = S(a[1], 'The lower limit'), hi = S(a[2], 'The upper limit');
-  const g = (Math.sqrt(5) - 1) / 2;
-  for (let k = 0; k < 200 && hi - lo > 1e-12; k++) { const c = hi - g * (hi - lo), d = lo + g * (hi - lo); if (f(c) < f(d)) hi = d; else lo = c; }
-  const x = (lo + hi) / 2;
-  return [num(x), num(f(x))];
-});
 def('ode45 ode23', (a, nout, lab) => {
   // Dormand–Prince 5(4) with adaptive steps: [t, y] = ode45(@(t, y) ..., [t0 tf], y0).
   const span = M(a[1]).d, y0 = [...M(a[2]).d];

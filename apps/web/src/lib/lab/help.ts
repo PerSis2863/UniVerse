@@ -249,8 +249,8 @@ cumtrapz | cumtrapz(x, y) | Running area.
 integral | integral(f, a, b) | Integral of a function from a to b.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
-fzero | fzero(f, x0) | Where f is zero, near x0 (or between [a b]).
-fminbnd | [x, fx] = fminbnd(f, a, b) | Where f is smallest between a and b.
+fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes.
+fminbnd | [x, fval, flag, output] = fminbnd(f, a, b, options) | Where f is smallest between a and b, by Brent's method (golden sections and parabolas; options TolX, 1e-4 by default).
 ode45 | [t, y] = ode45(f, [t0 t1], y0) | Solves y' = f(t, y) (Dormand–Prince, adaptive steps).
 ode23 | [t, y] = ode23(f, [t0 t1], y0) | Solves y' = f(t, y) (lower order, for rougher problems).
 gradient | gradient(F, h), [fx, fy] = gradient(F) | Slopes on a grid; gradient(f, [x, y]) of a formula: its derivatives by each letter.
@@ -637,6 +637,12 @@ ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A ge
 particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
 gamultiobj | [x, fval] = gamultiobj(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | Several goals at once (fun gives a row of them): the best trade-offs, the Pareto front, by a genetic algorithm (NSGA-II), each point then polished onto the true front (options HybridFcn 'none' skips that). Bounds are needed. Drawn without outputs.
 paretosearch | [x, fval] = paretosearch(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | The Pareto front point by point (options ParetoSetSize, 30 by default): each pushed as far as it goes along its own direction from the best values. Drawn without outputs.
+lsqnonneg | [x, resnorm, residual, flag, output, lambda] = lsqnonneg(C, d) | C*x as close to d as it can be with every x ≥ 0 (Lawson and Hanson's active set): amounts, concentrations, mixtures that can't go negative.
+lsqlin | [x, resnorm, residual, flag, output] = lsqlin(C, d, A, b, Aeq, beq, lb, ub, x0, options) | Least squares C*x ≈ d with linear constraints and bounds.
+fminimax | [x, fval, maxfval, flag, output] = fminimax(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | Makes the largest of several values (fun gives a row) as small as it can: the worst case at its best.
+fgoalattain | [x, fval, attainfactor, flag, output] = fgoalattain(fun, x0, goal, weight, A, b, Aeq, beq, lb, ub, nonlcon, options) | Gets each of several values to its goal, every one missing (or beating) it by the same share of its weight; a negative attainfactor means every goal is beaten. Weight 0 makes a goal a hard limit; abs(goal) is the usual weight.
+patternsearch | [x, fval, flag, output] = patternsearch(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | Direct search without slopes: tries a step each way along every axis, doubling the step after a win and halving it after a miss (options MeshTolerance, 1e-6 by default). Works on rough or jumpy functions; constraints through an augmented Lagrangian.
+simulannealbnd | [x, fval, flag, output] = simulannealbnd(fun, x0, lb, ub, options) | Simulated annealing: random steps that sometimes go uphill, less often as it cools, so it can climb out of small dips to find a deeper one (options InitialTemperature, 100 by default). Random: rng(n) first to repeat a run.
 optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
 optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
 

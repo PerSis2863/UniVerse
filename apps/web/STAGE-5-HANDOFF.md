@@ -11589,3 +11589,19 @@ points (every constraint call re-runs the goals in the interpreter); Nelder–Me
 Example goals.m. Tests in `optim.test.ts`. Not built: goal attainment and minimax (M441), more than 3 goals drawn,
 the hypervolume measure.
 
+## M441 (23 Nov): Hyperion toolbox, the rarer solvers
+
+The owner's list of 23 Nov, item 2. `src/lib/lab/optim-more.ts` (pure): `brentZero` (zeroin) and `bracket` (fzero's
+widening by √2 around one guess), `brentMin` (fminbnd: golden sections plus parabolas), `nnls` (Lawson–Hanson active
+set, normal equations of the passive columns), `lsqlin` (½‖Cx − d‖² through `augLag` with its exact gradient),
+`goalAttain` (an extra variable γ, F(x) − w·γ ≤ goal as nonlinear constraints; fminimax is goal 0, weight 1),
+`patternSearch` (GPS, ±each axis, opportunistic, mesh ×2 / ×0.5, never polls outside the bounds) and `anneal` (step √T
+in a random direction, T0·0.95^k, k halved every 100 accepted points, a step past a bound lands between the point and
+the bound, stops when the best moves less than tolFun over 500·n iterations). `optim.ts` `augLag` takes an `inner`
+solver (`Inner`): patternsearch handles linear and nonlinear constraints as the inner solver of the same augmented
+Lagrangian. fzero and fminbnd moved from `builtins.ts` into `optim-lab.ts` (they now return flag and output and take
+options). New options `InitialTemperature`, `MeshTolerance`. Example solvers.m (a Rastrigin start slider: fminsearch
+stuck at ~18, annealing ~2, pattern search 0). Tests in `optim.test.ts`. Not built: fzero's complex roots,
+patternsearch's other polls (GSS, MADS) and search steps, simulannealbnd's gradient-based reannealing and custom
+annealing functions, lsqlin's interior-point and sparse C.
+
