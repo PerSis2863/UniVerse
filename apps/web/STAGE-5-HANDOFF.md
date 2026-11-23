@@ -12482,3 +12482,25 @@ compartments against Dormand–Prince on the equations, the bolus steady state a
 the window τ = ln(MTC/MEC)/k with dose V(MTC − MEC), saturating = linear at low levels. Not built: population PK
 (mixed effects), fitting a model to measured levels (use lsqcurvefit on `pkSimulate`'s output), PD (effect) models,
 three compartments, lag times.
+
+## M494 (23 Nov): Hyperion toolbox, DNA and protein tools (sciences and industries, 3 of 14)
+
+`bio.ts` (pure) and `bio-lab.ts`. Sequences: `complement` (ambiguity letters too, case kept), `reverseComplement`,
+`gcContent`, `counts` (U as T), `translate` (the standard code as one 64-letter string in TCAG order; unknown codons
+'X', stops '*'), `orfs` (ATG to the first stop in frame, six frames; positions in the original's coordinates, start >
+stop on the reverse strand; the stop codon in the span, not the protein; longest first). Alignment, `align`: Gotoh's
+three matrices (M a pair, X a letter of a against a gap, Y the other way) with a pointer matrix each (P* = 3 marks
+where a local alignment starts), so the traceback never guesses from floating-point equalities; global or local;
+BLOSUM62 for proteins, +5/−4 (−2 against N) for DNA; gap = open + (L − 1) × extend (MATLAB's defaults 8 and 8 kept).
+Trees: `distance` (p, Jukes–Cantor; gaps skipped), `upgma` (size-weighted average, heights half the distance),
+`neighborJoin` (Saitou–Nei Q matrix; the result is unrooted Newick with three branches at the top, drawn rooted at
+the last join), `treeLayout` (elbow lines, leaves 1…n down the y axis). Language: MATLAB's `seqcomplement`,
+`seqrcomplement`, `seqreverse`, `basecount`, `nt2aa` ('Frame', 'all' a cell), `nwalign`, `swalign` ([score,
+alignment, start, identity]; the alignment a three-line text, since the engine's text has one row), `seqpdist` (a
+pdist row or 'SquareForm'; unequal lengths aligned first), `seqlinkage` ('average' only), `seqneighjoin`; our own
+`gcContent`, `findORFs` (a table) and `plottree` (MATLAB's trees are phytree objects; ours are structs with Type
+'phytree', Newick, Names, Parent, Length). Example `dna.m`: human β-globin, its ORF, the sickle-cell change GAG→GTG
+found by swalign, a five-species tree. Tests: textbook translations, ORFs on both strands, Durbin's HEAGAWGHEE pair
+(the score recomputed from the alignment), a local match and one long affine gap, Wikipedia's UPGMA and
+neighbour-joining examples. Not built: multiple alignment (profiles, ClustalW-style), reading FASTA/GenBank files
+(fastaread), other genetic codes, BLAST-style database search, maximum-likelihood trees, PAM and other matrices.

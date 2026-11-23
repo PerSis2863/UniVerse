@@ -16,4 +16,18 @@ pkSimulate | [t, C] = pkSimulate(m, dose, 'Route', 'oral', 'Every', 12, 'Doses',
 pkSteadyState | s = pkSteadyState(m, dose, tau, 'Route', 'oral') | After many doses every tau hours: Cmax, Cmin, Cavg (F·dose / (CL·tau)), the accumulation and the hours to reach 90% (TimeTo90), with the profile t, C.
 pkDosingWindow | w = pkDosingWindow(m, MEC, MTC, 'Route', 'oral') | The longest interval and its dose that keep the steady state between the lowest level that works and the highest that is safe, and a practical interval (4, 6, 8, 12, 24 h…) with its dose. Drawn and explained without outputs.
 pkNCA | p = pkNCA(t, C, dose, 'Tail', 3) | Non-compartmental analysis of measured levels after one dose: Cmax, Tmax, AUClast, AUCinf, LambdaZ, HalfLife, CL, Vz and MRT.
+# DNA and proteins
+seqcomplement | c = seqcomplement(seq) | The complementary strand (A↔T, C↔G, and the ambiguity letters), same direction.
+seqrcomplement | r = seqrcomplement(seq) | The reverse complement: the other strand read 5′ to 3′.
+seqreverse | r = seqreverse(seq) | The sequence backwards.
+basecount | c = basecount(seq) | How many A, C, G, T (U counted as T) and other letters: a struct.
+gcContent | g = gcContent(seq) | The share of G and C among the bases (0 to 1).
+nt2aa | p = nt2aa(seq, 'Frame', 1) | Translates DNA or RNA to a protein by the standard genetic code ('*' a stop, 'X' unknown); 'Frame', 'all' gives the three frames in a cell.
+findORFs | t = findORFs(seq, 'MinLength', 30) | Open reading frames (ATG to a stop) on both strands, longest first: a table of Strand, Frame, Start, Stop, Length and Protein. Printed without outputs.
+nwalign | [score, alignment, start, identity] = nwalign(a, b, 'GapOpen', 8, 'ExtendGap', 2, 'Alphabet', 'AA') | Global alignment (Needleman–Wunsch, affine gaps): BLOSUM62 for proteins, +5/−4 for DNA. The alignment is three lines ('|' same, ':' similar). Printed without outputs.
+swalign | [score, alignment, start, identity] = swalign(a, b, …) | Local alignment (Smith–Waterman): the best-matching stretch of each and where it starts.
+seqpdist | D = seqpdist(seqs, 'Method', 'jukes-cantor', 'SquareForm', true) | Distances between the sequences in a cell ('jukes-cantor' or 'p-distance'; unequal lengths are aligned first): a row as pdist, or the square matrix.
+seqlinkage | tree = seqlinkage(D, 'average', names) | A UPGMA tree from distances: a struct with its Newick text. Drawn without outputs.
+seqneighjoin | tree = seqneighjoin(D, 'equivar', names) | A neighbour-joining tree from distances (unequal rates allowed). Drawn without outputs.
+plottree | plottree(tree) | Draws a tree from seqlinkage or seqneighjoin, the leaves named.
 `;

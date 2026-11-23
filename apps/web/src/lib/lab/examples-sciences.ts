@@ -49,4 +49,22 @@ sat = pkModel('V', 50, 'Vmax', 25, 'Km', 4);
 [t2, c2] = pkSimulate(sat, 260, 'Every', 12, 'Doses', 14, 'Route', 'oral');
 figure; plot(t1, c1, t2, c2); legend('200 mg', '260 mg'); xlabel('Hours'); ylabel('mg/L'); title('Saturating elimination'); grid on
 ` },
+  { name: 'dna.m', code: `% DNA and proteins: read a gene, translate it, compare it, and draw a family tree
+gene = ['ATGGTGCACCTGACTCCTGAGGAGAAGTCTGCCGTTACTGCCCTGTGGGGCAAGGTGAACGTGGATGAAGTTGGTGGTGAGGCCCTGGGCAGGCTGCTGGTGGTCTACCCTTGGACCCAGAGGTTCTTTGAGTCCTTTGGGGATCTGTCCACTCCTGATGCTGTTATGGGCAACCCTAAGGTGAAGGCTCATGGCAAGAAAGTGCTCGGTGCCTTTAGTGATGGCCTGGCTCACCTGGACAACCTCAAGGGCACCTTTGCCACACTGAGTGAGCTGCACTGTGACAAGCTGCACGTGGATCCTGAGAACTTCAGGCTCCTGGGCAACGTGCTGGTCTGTGTGCTGGCCCATCACTTTGGCAAAGAATTCACCCCACCAGTGCAGGCTGCCTATCAGAAAGTGGTGGCTGGTGTGGCTAATGCCCTGGCCCACAAGTATCACTAA'];
+fprintf('%d bases, %.1f%% GC\\n', numel(gene), 100*gcContent(gene))
+protein = nt2aa(gene)                         % human beta-globin (haemoglobin's beta chain)
+findORFs(gene, 'MinLength', 100)
+% Sickle-cell disease is one letter: GAG (glutamate) becomes GTG (valine) in codon 7
+sickle = gene; sickle(20) = 'T';
+swalign(nt2aa(gene), nt2aa(sickle))
+% Compare the start of the protein across species (made-up but realistic variants) and draw a tree
+seqs = {'MVHLTPEEKSAVTALWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAF', ...
+        'MVHLTPEEKNAVTTLWGKVNVDEVGGEALGRLLVVYPWTQRFFESFGDLSSPDAVMGNPKVKAHGKKVLGAF', ...
+        'MVHLSGEEKSAVTALWGKVNVEEVGGEALGRLLVVYPWTQRFFESFGDLSTPDAVMGNPKVKAHGKKVLGAF', ...
+        'MVQLSGEEKAAVLALWDKVNEEEVGGEALGRLLVVYPWTQRFFDSFGDLSNPGAVMGNPKVKAHGKKVLHSF', ...
+        'MVHWTAEEKQLITGLWGKVNVADCGAEALARLLIVYPWTQRFFASFGNLSSPTAILGNPMVRAHGKKVLTSF'};
+names = {'Human', 'Chimp', 'Mouse', 'Chicken', 'Frog'};
+D = seqpdist(seqs, 'Method', 'p-distance');
+seqneighjoin(D, 'equivar', names)
+` },
 ];

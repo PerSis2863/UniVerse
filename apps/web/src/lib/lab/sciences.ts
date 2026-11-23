@@ -2,3 +2,4 @@
 // the help test import this one file.
 import './epi-lab';
 import './pk-lab';
+import './bio-lab';
