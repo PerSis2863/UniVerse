@@ -307,7 +307,7 @@ export function LabApp() {
   useEffect(() => {
     boot();
     runner.current = new LangRunner((e) => onLangEvent(e));
-    return () => { worker.current?.terminate(); runner.current?.stop(); };
+    return () => { worker.current?.terminate(); runner.current?.dispose(); };
   }, []);
   useEffect(() => { logBox.current?.scrollTo({ top: logBox.current.scrollHeight }); }, [log]);
 

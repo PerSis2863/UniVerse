@@ -23,3 +23,12 @@ export function langOf(name: string): LangInfo {
 
 /** A short form of a value for the variables panel: at most n characters on one line. */
 export const oneLine = (s: string, n = 60) => { const t = s.replace(/\s+/g, ' ').trim(); return t.length > n ? `${t.slice(0, n - 1)}…` : t; };
+
+/** The packages an R script asks for: library(x), require(x), requireNamespace("x"), x::f (R's own left out). */
+export function packagesIn(code: string): string[] {
+  const out = new Set<string>();
+  for (const m of code.matchAll(/\b(?:library|require|requireNamespace)\s*\(\s*["']?([A-Za-z][\w.]*)["']?/g)) out.add(m[1]);
+  for (const m of code.matchAll(/\b([A-Za-z][\w.]*):::?[A-Za-z_.]/g)) out.add(m[1]);
+  for (const base of ['base', 'stats', 'utils', 'graphics', 'grDevices', 'methods', 'datasets', 'tools', 'grid', 'splines', 'parallel', 'compiler', 'tcltk', 'stats4', 'webr']) out.delete(base);
+  return [...out].slice(0, 20);
+}

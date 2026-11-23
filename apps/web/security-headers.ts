@@ -24,18 +24,14 @@ const FILES_ORIGIN = (() => {
 // in connect-src for the Google sign-in script's own ping (otherwise every sign-in page logs a block).
 // Frames: sign-in, maps and, for watching a video together in a call (Stage 4 · 4.8), YouTube's
 // privacy-enhanced player (driven by messages, so no YouTube script runs here; thumbnails from i.ytimg.com).
-// Hyperion's Python and R (M444–M445): Pyodide and webR load in their own background threads from their own folders only
-// (a path, not the whole of jsDelivr, which also serves anyone's packages); R's packages come from repo.r-wasm.org.
-const LANG_CODE = 'https://cdn.jsdelivr.net/pyodide/v0.29.5/full/ https://webr.r-wasm.org/v0.6.0/';
-const LANG_DATA = `${LANG_CODE} https://repo.r-wasm.org/`;
 const csp = `
     default-src 'self';
-    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://static.cloudflareinsights.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/ ${LANG_CODE};
+    script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'${process.env.NODE_ENV === 'production' ? '' : " 'unsafe-eval'"} https://static.cloudflareinsights.com https://apis.google.com https://www.google.com/recaptcha/ https://www.gstatic.com/recaptcha/;
     script-src-attr 'none';
     style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
     img-src 'self' blob: data: ${FILES_ORIGIN} https://i.ytimg.com https://images.unsplash.com https://ui-avatars.com https://lh3.googleusercontent.com https://*.googleusercontent.com https://covers.openlibrary.org https://commons.wikimedia.org https://upload.wikimedia.org https://thumb.wikimedia.org https://tiles.openfreemap.org https://elevation-tiles-prod.s3.amazonaws.com https://tiles.maps.eox.at https://panoramax.openstreetmap.fr https://panoramax.ign.fr https://panoramax.mapcomplete.org https://panoramax-storage-public-fast.s3.gra.perf.cloud.ovh.net https://gibs.earthdata.nasa.gov https://tile.waymarkedtrails.org;
     font-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com;
-    connect-src 'self' ${FILES_ORIGIN} https://eu.i.posthog.com https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://apis.google.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://generativelanguage.googleapis.com https://tiles.openfreemap.org https://elevation-tiles-prod.s3.amazonaws.com https://tiles.maps.eox.at https://api.panoramax.xyz https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://gibs.earthdata.nasa.gov https://tile.waymarkedtrails.org https://nominatim.openstreetmap.org https://photon.komoot.io https://date.nager.at ${LANG_DATA};
+    connect-src 'self' ${FILES_ORIGIN} https://eu.i.posthog.com https://*.r2.cloudflarestorage.com https://cloudflareinsights.com ${process.env.NODE_ENV === 'production' ? '' : 'http://localhost:* ws://localhost:*'} https://*.googleapis.com https://apis.google.com https://securetoken.googleapis.com https://identitytoolkit.googleapis.com https://*.firebaseapp.com https://*.firebase.com wss://*.firebaseio.com https://firebaseinstallations.googleapis.com wss://generativelanguage.googleapis.com https://tiles.openfreemap.org https://elevation-tiles-prod.s3.amazonaws.com https://tiles.maps.eox.at https://api.panoramax.xyz https://routing.openstreetmap.de https://valhalla1.openstreetmap.de https://gibs.earthdata.nasa.gov https://tile.waymarkedtrails.org https://nominatim.openstreetmap.org https://photon.komoot.io https://date.nager.at;
     media-src 'self' blob: ${FILES_ORIGIN} https://*.r2.cloudflarestorage.com;
     object-src 'none';
     worker-src 'self' blob:;
@@ -69,4 +65,26 @@ export const securityHeaders = [
   // No Flash / Acrobat cross-domain policy files.
   { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+];
+
+// Hyperion's sealed runner for Python and R (M445c, public/sandbox/run.html): the Code window frames it with
+// sandbox="allow-scripts" (an opaque origin, nothing of the site's reachable), so it may have what Pyodide's and webR's
+// WebAssembly loaders need (eval) while everything else stays shut: their own versioned folders only (not the whole of
+// jsDelivr, which serves anyone's packages), R's package repository, and only Hyperion may frame it. The same text is in
+// public/_headers for the static file on Cloudflare (sandbox-headers.test.ts keeps them equal).
+export const SANDBOX_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net/pyodide/v0.29.5/full/ https://webr.r-wasm.org/v0.6.0/",
+  'worker-src blob:',
+  'connect-src blob: data: https://cdn.jsdelivr.net/pyodide/v0.29.5/full/ https://webr.r-wasm.org/v0.6.0/ https://repo.r-wasm.org/',
+  'img-src blob: data:',
+  "style-src 'unsafe-inline'",
+  "frame-ancestors 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+export const sandboxHeaders = [
+  { key: 'Content-Security-Policy', value: SANDBOX_CSP },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'no-referrer' },
 ];

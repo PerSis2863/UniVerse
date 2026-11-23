@@ -11724,3 +11724,25 @@ onChange. After: typing 0 long tasks, worst frame 67 ms at ×4. Rule for code th
 it out. Left as is (×4 numbers, ≈ a quarter at ×1): opening a page 200–280 ms of hydration, switching scripts ~200 ms
 (a new CodeMirror), the first figure ~170 ms. Headless Chromium paints in software, so paint-heavy numbers here are
 worse than on a real computer's graphics chip.
+
+## M445c (23 Nov): Python and R run in a sealed frame
+
+Found during M445b's measuring: on the production build R never started (webR's Emscripten loader uses eval, which the
+site's policy rightly refuses), and the M444/M445 design was unsafe: Pyodide ran in a worker of the site's own origin
+and webR in the page, so a script shared by link could reach the origin's IndexedDB (Firebase keeps its sign-in there)
+and call the API as the person (Pyodide's `js` module, webR's `eval_js`). Now: `public/sandbox/run.html` (static, plain
+JS: Pyodide in a blob worker of the frame, webR on the frame's own thread with its own worker; the Python worker's code
+is its `pythonWorker` function turned into a blob) is framed by `LangRunner` (`lang-runner.ts`; `py.worker.ts` and
+`r-runner.ts` are gone) with `sandbox="allow-scripts"` and never allow-same-origin: an opaque origin. Messages: the frame
+reads only `e.source === parent`, the page only `e.source === frame.contentWindow`, every field type-checked and capped
+(20 figures of ≤ 8 MB, 500 variables); the page sends {id, lang, code, files, packages} (`packagesIn` moved to
+langs.ts, computed by the page); only the newest id is listened to; Stop removes the frame (both workspaces). Policies:
+`SANDBOX_CSP` in security-headers.ts (default none; script: inline, eval, wasm-eval, blob and the two versioned folders;
+worker blob; connect blob, data, the folders and repo.r-wasm.org; frame-ancestors 'self'), sent by next.config for
+`/sandbox/*` (excluded from the site's rules) and by `public/_headers` for Cloudflare's static file under both
+`/sandbox/run` and `/sandbox/run.html` (production redirects .html to the bare path; `sandbox-headers.test.ts` keeps the
+text equal); the site's own CSP is back without Pyodide, webR or eval. Checked in a browser: Python in the frame sees
+origin `null`; IndexedDB, the site's API and example.com all throw. Measured on the production build: loading and
+running Python and R, 0 long tasks at CPU ×1 (first loads ~30 s and ~60 s through this container's proxy; cached after).
+Test harnesses: `signedIn`'s init script touches localStorage in every frame, so a sealed frame logs "Access is denied"
+from the harness, not from the app. Version bumps: the folder in run.html, `SANDBOX_CSP` and `_headers` together.

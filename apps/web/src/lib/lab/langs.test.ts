@@ -14,7 +14,7 @@ describe('Hyperion languages (M444)', () => {
 
 describe('Hyperion’s R (M445)', () => {
   it('finds the packages a script asks for, leaving out R’s own', async () => {
-    const { packagesIn } = await import('@/components/lab/r-runner');
+    const { packagesIn } = await import('./langs');
     expect(packagesIn("library(ggplot2)\nrequire('dplyr')\nx <- tidyr::pivot_longer(d)\nstats::sd(1:3)\nlibrary(stats)")).toEqual(['ggplot2', 'dplyr', 'tidyr']);
   });
 });

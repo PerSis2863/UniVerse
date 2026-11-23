@@ -1,51 +1,69 @@
-import type { LangInfo } from '@/lib/lab/langs';
-import type { FromPy, ToPy } from './py.worker';
-import type { RRunner } from './r-runner';
+import { oneLine, packagesIn, type LangInfo } from '@/lib/lab/langs';
 
-// Hyperion's other languages (M444–): one runner per language, each in its own background thread (Python, R) or in the
-// computer app (Julia, C++, Rust). The Code window hands it a script and gets back what it printed, its error and line,
-// its figures (SVG) and its variables.
+// Hyperion's other languages (M444–): Python and R run in a sealed frame (public/sandbox/run.html, M445c), an iframe
+// with sandbox="allow-scripts" and no allow-same-origin: an opaque origin of its own, so a script (one shared by link
+// too) can't read the site's storage, cookies or sign-in, or call its API as the person. This side sends it a script
+// and Hyperion's files, and turns what comes back into the Code window's text, error and line, figures and variables;
+// only messages from that frame are read, and every field is checked. Julia, C++ and Rust run in the computer app.
 
 export interface LangVar { name: string; size: string; cls: string; value: string }
 export type LangEvent = { status: string } | { out: string; err?: boolean } | { done: true; error?: string; line?: number; figs: string[]; vars: LangVar[] };
 export interface LangFile { name: string; bytes: Uint8Array }
 
-export class LangRunner {
-  private py: Worker | null = null;
-  private seq = 0;
-  private rr: RRunner | null = null;
-  constructor(private on: (e: LangEvent) => void) {}
+const RUNNER = '/sandbox/run.html';
+const str = (v: unknown, max = 200_000) => (typeof v === 'string' ? v.slice(0, max) : '');
 
-  private python() {
-    if (this.py) return this.py;
-    const w = new Worker(new URL('./py.worker.ts', import.meta.url));
-    w.onmessage = (e: MessageEvent<FromPy>) => {
-      const m = e.data;
-      if ('done' in m) this.on({ done: true, error: m.error, line: m.line, figs: m.figs, vars: m.vars });
-      else this.on(m);
-    };
-    w.onerror = () => { this.on({ done: true, error: 'Python stopped unexpectedly. Run again to start it afresh.', figs: [], vars: [] }); this.stop(); };
-    return (this.py = w);
+export class LangRunner {
+  private frame: HTMLIFrameElement | null = null;
+  private ready: Promise<void> | null = null;
+  private onReady: (() => void) | null = null;
+  private seq = 0;
+  private current = 0;
+  private readonly listen = (e: MessageEvent) => {
+    if (!this.frame || e.source !== this.frame.contentWindow) return;
+    const m = e.data as Record<string, unknown> | null;
+    if (!m || typeof m !== 'object') return;
+    if (m.ready === true) { this.onReady?.(); return; }
+    if (m.id !== this.current) return;
+    if (typeof m.status === 'string') this.on({ status: str(m.status, 300) });
+    else if (typeof m.out === 'string') this.on({ out: str(m.out), err: m.err === true });
+    else if (m.done === true) {
+      const figs = (Array.isArray(m.figs) ? m.figs : []).filter((f): f is string => typeof f === 'string').slice(0, 20).map((f) => f.slice(0, 8_000_000));
+      const vars = (Array.isArray(m.vars) ? m.vars : []).slice(0, 500).flatMap((r) => (Array.isArray(r) && r.length >= 4 ? [{ name: str(r[0], 80), size: str(r[1], 40), cls: str(r[2], 40), value: oneLine(str(r[3], 400)) }] : []));
+      this.on({ done: true, error: typeof m.error === 'string' && m.error ? str(m.error, 4000) : undefined, line: typeof m.line === 'number' && m.line > 0 ? Math.floor(m.line) : undefined, figs, vars });
+    }
+  };
+
+  constructor(private on: (e: LangEvent) => void) { window.addEventListener('message', this.listen); }
+
+  private open(): Promise<void> {
+    if (this.ready && this.frame) return this.ready;
+    const f = document.createElement('iframe');
+    f.src = RUNNER;
+    f.setAttribute('sandbox', 'allow-scripts');
+    f.title = 'Hyperion’s sealed runner for Python and R';
+    f.setAttribute('aria-hidden', 'true');
+    f.tabIndex = -1;
+    f.style.cssText = 'position:fixed;width:0;height:0;border:0;visibility:hidden;pointer-events:none';
+    this.ready = new Promise<void>((resolve, reject) => {
+      const t = window.setTimeout(() => reject(new Error('the runner didn’t start')), 30_000);
+      this.onReady = () => { clearTimeout(t); resolve(); };
+    });
+    document.body.appendChild(f);
+    this.frame = f;
+    return this.ready;
   }
 
   run(lang: LangInfo, code: string, files: LangFile[]) {
-    if (lang.id === 'python') {
-      const w = this.python();
-      if (files.length) w.postMessage({ upload: files.map((f) => ({ name: f.name, bytes: f.bytes })) } satisfies ToPy);
-      w.postMessage({ run: code, id: ++this.seq } satisfies ToPy);
-      return;
-    }
-    if (lang.id === 'r') {
-      // R's code is only fetched the first time an R script runs.
-      void (async () => {
-        if (!this.rr) { const { RRunner } = await import('./r-runner'); this.rr ??= new RRunner(this.on); }
-        await this.rr.run(code, files);
-      })().catch((err) => this.on({ done: true, error: err instanceof Error ? err.message : String(err), figs: [], vars: [] }));
-      return;
-    }
-    this.on({ done: true, error: `${lang.name} isn't ready in Hyperion yet.`, figs: [], vars: [] });
+    if (lang.id !== 'python' && lang.id !== 'r') { this.on({ done: true, error: `${lang.name} isn't ready in Hyperion yet.`, figs: [], vars: [] }); return; }
+    const id = (this.current = ++this.seq);
+    this.open().then(() => {
+      this.frame?.contentWindow?.postMessage({ id, lang: lang.id, code, files: files.map((f) => ({ name: f.name, bytes: f.bytes })), packages: lang.id === 'r' ? packagesIn(code) : [] }, '*');
+    }, (err: unknown) => { this.stop(); this.on({ done: true, error: `${lang.name} couldn't start: ${err instanceof Error ? err.message : String(err)}.`, figs: [], vars: [] }); });
   }
 
-  /** Stop: the language's thread ends (its workspace with it); the next run starts it again. */
-  stop() { this.py?.terminate(); this.py = null; this.rr?.stop(); }
+  /** Stop: the frame goes, and Python's and R's workspaces with it; the next run starts afresh. */
+  stop() { this.frame?.remove(); this.frame = null; this.ready = null; this.onReady = null; this.current = 0; }
+
+  dispose() { this.stop(); window.removeEventListener('message', this.listen); }
 }
