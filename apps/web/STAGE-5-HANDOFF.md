@@ -11428,3 +11428,20 @@ is ±fs/2). Also `ind2sub` and `sub2ind` in builtins.ts (they were missing). Tes
 arrays and beamforming, angle of arrival (MUSIC), clutter, tracking (Kalman, data association), FMCW radar, SAR, peak
 grouping after CFAR (a target can light 2–3 cells). Next: item 6 of the owner's list, machines and vehicles (M430).
 
+## M430 (23 Nov): Hyperion Circuits, a real transistor and power readouts
+
+The owner, 23 Nov, after M429's report: "please build all of these" (every item left out of M424–M429: a three-legged
+transistor, efficiency and losses, regulated converters, inverters and motor drives, battery ageing and temperature, the
+sun's path, wind-farm wakes, lopsided faults, transformer taps, grid stability, converter imperfections, radar arrays,
+direction finding, tracking, clutter, FMCW, grouping detections). Queue: M430–M439, one item each.
+`circuit.ts`: Part `M` (drain a, source b, gate g; `vth`, `k`, `lambda`), `mosfet()` (square law, triode and saturation,
+swapped ends when Vds < 0, with gm and gds for Newton), stamped as gds plus a gm controlled source, the body diode from
+source to drain through the shared `diode()` and `junctions()`, gate steps limited to 2 V per Newton step; `power(p)` is
+Vab × I(a→b) for every part (sources negative when giving). `schematic.ts`: item `M` (its value is the threshold), its
+gate dot by `gatePoint` (two grid steps left of the middle, going drain → source), `MOS_K` 20 A/V² (≈ 6 mΩ on at 10 V);
+examples `mosfet-boost`, `mosfet-switch`. `CircuitBench.tsx`: the symbol with its gate lead (`local()` puts the gate dot
+in the symbol's frame), energy summed every step and averaged over each screen's time (`energy` ref) into
+`PowerReadout`. Trap: changing the screen's time rebuilds the circuit (the board changes), so the readout first shows the
+start-up; that's why charging coils and capacitors get their own line and the efficiency leaves them out. Not built:
+p-channel and bipolar transistors, gate charge and switching losses (the switch is instant), thermal limits.
+

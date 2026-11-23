@@ -16,9 +16,35 @@ export type Part =
   /** A diode, anode a, cathode b. */
   | { id: string; kind: 'D'; a: string; b: string }
   /** A switch driven by a PWM signal (a MOSFET with its gate driver, M424): on for `duty` of each period at `freq` Hz. */
-  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number };
+  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number }
+  /** An n-channel MOSFET (M430): drain a, source b, gate g. It turns on above its threshold `vth` (volts); `k` (A/V²)
+   * sets how hard (the on-resistance is about 1 / (k (Vgs − Vth))); `lambda` (1/V) lets the current rise a little
+   * with Vds when saturated. A body diode runs from source to drain, as in every power MOSFET. */
+  | { id: string; kind: 'M'; a: string; b: string; g: string; vth: number; k: number; lambda: number };
+
+/** The square-law MOSFET: drain current and its slopes (gm = ∂I/∂Vgs, gds = ∂I/∂Vds) for Vds ≥ 0; for Vds < 0 the
+ * drain and source swap roles (the device is symmetric). */
+export function mosfet(vgs: number, vds: number, vth: number, k: number, lambda: number): { id: number; gm: number; gds: number } {
+  if (vds < 0) {
+    // With the ends swapped: Vgs' = Vgd = Vgs − Vds, Vds' = −Vds, and the current flows the other way.
+    const r = mosfet(vgs - vds, -vds, vth, k, lambda);
+    return { id: -r.id, gm: -r.gm, gds: r.gm + r.gds };
+  }
+  const vov = vgs - vth;
+  if (vov <= 0) return { id: 0, gm: 0, gds: 0 };
+  if (vds < vov) {
+    // Triode: I = k (Vov Vds − Vds²/2)(1 + λVds).
+    const f = 1 + lambda * vds, q = vov * vds - (vds * vds) / 2;
+    return { id: k * q * f, gm: k * vds * f, gds: k * ((vov - vds) * f + q * lambda) };
+  }
+  // Saturated: I = k/2 Vov² (1 + λVds).
+  return { id: (k / 2) * vov * vov * (1 + lambda * vds), gm: k * vov * (1 + lambda * vds), gds: (k / 2) * vov * vov * lambda };
+}
 
 const IS = 1e-14, VT = 0.025852, VCRIT = VT * Math.log(VT / (Math.SQRT2 * IS)), GMIN = 1e-12;
+const diodeI = (v: number) => IS * (Math.exp(Math.min(v / VT, 80)) - 1);
+/** The pn junctions in a circuit, as [anode, cathode]: each diode, and each MOSFET's body diode. */
+const junctions = (parts: Part[]) => parts.flatMap((p): [string, string][] => (p.kind === 'D' ? [[p.a, p.b]] : p.kind === 'M' ? [[p.b, p.a]] : []));
 
 /** A switch's resistance: 10 mΩ on, 10 MΩ off. */
 export const RON = 0.01, ROFF = 1e7;
@@ -66,7 +92,7 @@ export class Circuit {
   private first = true;
   constructor(readonly parts: Part[]) {
     const names = new Set<string>();
-    for (const p of parts) { names.add(p.a); names.add(p.b); }
+    for (const p of parts) { names.add(p.a); names.add(p.b); if (p.kind === 'M') names.add(p.g); }
     names.delete('0');
     this.nodes = [...names].sort();
     this.nodes.forEach((n, i) => this.index.set(n, i));
@@ -74,7 +100,11 @@ export class Circuit {
     for (const p of parts) if (p.kind === 'V' || p.kind === 'L') this.branch.set(p.id, k++);
     this.size = k;
     this.x = new Float64Array(k);
+    this.pn = junctions(parts);
+    this.nonlinear = parts.some((p) => p.kind === 'D' || p.kind === 'M');
   }
+  private readonly pn: [string, string][];
+  private readonly nonlinear: boolean;
   private at = (node: string) => (node === '0' ? -1 : this.index.get(node)!);
   /** The voltage of a node now. */
   v(node: string) { const i = this.at(node); return i < 0 ? 0 : this.x[i] ?? 0; }
@@ -86,8 +116,11 @@ export class Circuit {
     if (p.kind === 'C') return this.ic.get(p.id) ?? 0;
     if (p.kind === 'I') return -p.value;
     if (p.kind === 'S') return vd / (switchOn(p, this.t) ? RON : ROFF);
-    return IS * (Math.exp(Math.min(vd / VT, 80)) - 1);
+    if (p.kind === 'M') return mosfet(this.v(p.g) - this.v(p.b), vd, p.vth, p.k, p.lambda).id - diodeI(-vd);
+    return diodeI(vd);
   }
+  /** The power a part takes in now (W): positive for what it uses or stores, negative for what it gives (a source). */
+  power(p: Part) { return (this.v(p.a) - this.v(p.b)) * this.current(p); }
 
   /** One solve of the linearised circuit; mode: the DC operating point or a step of h seconds. */
   private solve(h: number | null, trap: boolean): Float64Array {
@@ -98,6 +131,12 @@ export class Circuit {
       const g = (a: number, b: number, G: number) => { if (a >= 0) A[a][a] += G; if (b >= 0) A[b][b] += G; if (a >= 0 && b >= 0) { A[a][b] -= G; A[b][a] -= G; } };
       const inj = (a: number, b: number, I: number) => { if (a >= 0) z[a] += I; if (b >= 0) z[b] -= I; };
       for (let i = 0; i < this.nodes.length; i++) A[i][i] += GMIN;
+      // A pn junction (anode a, cathode b): Shockley's law, linearised at the guess.
+      const diode = (a: number, b: number) => {
+        const vd = (a >= 0 ? guess[a] : 0) - (b >= 0 ? guess[b] : 0), e = Math.exp(Math.min(vd / VT, 80));
+        const id = IS * (e - 1), gd = (IS / VT) * e + GMIN;
+        g(a, b, gd); inj(a, b, -(id - gd * vd));
+      };
       for (const p of this.parts) {
         const a = this.at(p.a), b = this.at(p.b);
         const vPrev = (a >= 0 ? prev[a] : 0) - (b >= 0 ? prev[b] : 0);
@@ -118,21 +157,32 @@ export class Circuit {
             const R = (trap ? 2 : 1) * p.value / h;
             A[k][k] -= R; z[k] = -R * prev[k] - (trap ? vPrev : 0);
           }
-        } else {
-          // Diode: Shockley's law, linearised at the guess.
-          const vd = (a >= 0 ? guess[a] : 0) - (b >= 0 ? guess[b] : 0), e = Math.exp(Math.min(vd / VT, 80));
-          const id = IS * (e - 1), gd = (IS / VT) * e + GMIN;
-          g(a, b, gd); inj(a, b, -(id - gd * vd));
-        }
+        } else if (p.kind === 'M') {
+          // The channel, linearised at the guess: I(d→s) ≈ I₀ + gm (Vgs − Vgs₀) + gds (Vds − Vds₀).
+          const gi = this.at(p.g), vg = gi >= 0 ? guess[gi] : 0, vdd = (a >= 0 ? guess[a] : 0), vs = (b >= 0 ? guess[b] : 0);
+          const m = mosfet(vg - vs, vdd - vs, p.vth, p.k, p.lambda);
+          g(a, b, m.gds + GMIN);
+          // gm (Vg − Vs) leaving the drain and entering the source.
+          if (a >= 0) { if (gi >= 0) A[a][gi] += m.gm; if (b >= 0) A[a][b] -= m.gm; }
+          if (b >= 0) { if (gi >= 0) A[b][gi] -= m.gm; A[b][b] += m.gm; }
+          inj(a, b, -(m.id - m.gm * (vg - vs) - m.gds * (vdd - vs)));
+          diode(b, a);
+        } else diode(a, b);
       }
       const x = solveDense(A, z);
       if (!x) throw new CircuitError('The circuit can’t be solved: a voltage source or a coil is shorted by a wire, or two sources fight each other.');
-      if (!this.parts.some((p) => p.kind === 'D')) return x;
-      // Limit each diode's voltage change (SPICE's pnjlim) and stop once nothing moves.
+      if (!this.nonlinear) return x;
+      // Limit each junction's voltage change (SPICE's pnjlim), and each gate's to 2 V a step (as fetlim does), and
+      // stop once nothing moves.
       let moved = 0;
       for (const p of this.parts) {
-        if (p.kind !== 'D') continue;
-        const a = this.at(p.a), b = this.at(p.b);
+        if (p.kind !== 'M') continue;
+        const gi = this.at(p.g), si = this.at(p.b), at = (v: Float64Array, i: number) => (i >= 0 ? v[i] : 0);
+        const dv = at(x, gi) - at(x, si) - (at(guess, gi) - at(guess, si));
+        if (Math.abs(dv) > 2) { const scale = 2 / Math.abs(dv); for (let i = 0; i < n; i++) x[i] = guess[i] + (x[i] - guess[i]) * scale; }
+      }
+      for (const [pa, pb] of this.pn) {
+        const a = this.at(pa), b = this.at(pb);
         const vOld = (a >= 0 ? guess[a] : 0) - (b >= 0 ? guess[b] : 0), vNew = (a >= 0 ? x[a] : 0) - (b >= 0 ? x[b] : 0);
         if (vNew > VCRIT && Math.abs(vNew - vOld) > 2 * VT) {
           const lim = vOld > 0 ? vOld + VT * Math.log(Math.max(1e-12, 1 + (vNew - vOld) / VT)) : VT * Math.log(Math.max(1e-12, vNew / VT));

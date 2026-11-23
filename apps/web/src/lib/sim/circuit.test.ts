@@ -116,3 +116,41 @@ describe('power electronics (M424)', () => {
     expect(r.v).toBeLessThan(9.6);
   });
 });
+
+describe('the transistor (M430)', () => {
+  it('its slopes match its current (square law, both directions)', async () => {
+    const { mosfet } = await import('./circuit');
+    for (const [vgs, vds] of [[3, 0.5], [3, 5], [5, -0.4], [1, 2], [4, 1.99]]) {
+      const m = mosfet(vgs, vds, 2, 0.5, 0.02), h = 1e-6;
+      expect(m.gm).toBeCloseTo((mosfet(vgs + h, vds, 2, 0.5, 0.02).id - mosfet(vgs - h, vds, 2, 0.5, 0.02).id) / (2 * h), 5);
+      expect(m.gds).toBeCloseTo((mosfet(vgs, vds + h, 2, 0.5, 0.02).id - mosfet(vgs, vds - h, 2, 0.5, 0.02).id) / (2 * h), 5);
+    }
+    expect(mosfet(1, 5, 2, 1, 0).id).toBe(0); // off below its threshold
+  });
+  it('a common-source stage: 4 mA through 1 kΩ leaves 6 V on the drain; power adds up to zero', () => {
+    const parts: Part[] = [
+      { id: 'vdd', kind: 'V', a: 'vdd', b: '0', value: 10, wave: 'dc', freq: 0 }, { id: 'rd', kind: 'R', a: 'vdd', b: 'd', value: 1000 },
+      { id: 'vg', kind: 'V', a: 'g', b: '0', value: 3, wave: 'dc', freq: 0 }, { id: 'm', kind: 'M', a: 'd', b: '0', g: 'g', vth: 1, k: 2e-3, lambda: 0 },
+    ];
+    const c = new Circuit(parts).dc();
+    expect(c.v('d')).toBeCloseTo(6, 4);
+    expect(c.current(parts[3])).toBeCloseTo(4e-3, 6);
+    // Tellegen: what the sources give is what the rest takes.
+    expect(parts.reduce((s, p) => s + c.power(p), 0)).toBeCloseTo(0, 9);
+    expect(c.power(parts[0])).toBeCloseTo(-0.04, 6);
+  });
+  it('a boost converter with a real transistor gives about Vin/(1 − D), and its losses are small', async () => {
+    const { netlist, EXAMPLES } = await import('./schematic');
+    const board = EXAMPLES.find((e) => e.id === 'mosfet-boost')!.make(), net = netlist(board), c = new Circuit(net.parts);
+    expect(net.parts.find((p) => p.kind === 'M')).toMatchObject({ g: '10,7', b: '0' });
+    while (c.t < 0.03) c.step(board.dt);
+    let v = 0, n = 0;
+    const e: Record<string, number> = {};
+    while (c.t < 0.032) { c.step(board.dt); v += c.v(net.probes[1].node); n++; for (const p of net.parts) e[p.kind + p.id] = (e[p.kind + p.id] ?? 0) + c.power(p); }
+    expect(v / n).toBeGreaterThan(8.9); expect(v / n).toBeLessThan(9.6);
+    const avg = (k: string) => Object.entries(e).filter(([id]) => id.startsWith(k)).reduce((s, [, x]) => s + x / n, 0);
+    const input = -Object.entries(e).filter(([id]) => id.startsWith('V')).map(([, x]) => x / n).reduce((s, x) => s + x, 0), load = avg('R');
+    expect(load / input).toBeGreaterThan(0.85); expect(load / input).toBeLessThan(1);
+    expect(avg('M')).toBeGreaterThan(0); expect(avg('M')).toBeLessThan(0.05 * input);
+  });
+});

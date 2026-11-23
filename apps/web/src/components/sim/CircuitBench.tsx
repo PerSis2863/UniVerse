@@ -6,7 +6,7 @@ import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import { Circuit, parseSi, si, type Wave } from '@/lib/sim/circuit';
-import { EXAMPLES, NAMES, netlist, newItem, readBoard, UNITS, type Board, type Item, type ItemKind, type Mark } from '@/lib/sim/schematic';
+import { EXAMPLES, gatePoint, NAMES, netlist, newItem, readBoard, UNITS, type Board, type Item, type ItemKind, type Mark } from '@/lib/sim/schematic';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Circuits (M410): a drawing board and an oscilloscope. Pick a part, drag from one dot to another
@@ -18,14 +18,26 @@ const G = 26, COLS = 34, ROWS = 15, PAD = 18;
 type Tool = 'select' | ItemKind | 'ground' | 'probe';
 const TOOLS: { id: Tool; label: string; glyph: string }[] = [
   { id: 'select', label: 'Select', glyph: '' }, { id: 'wire', label: 'Wire', glyph: '—' }, { id: 'R', label: 'Resistor', glyph: 'R' }, { id: 'C', label: 'Capacitor', glyph: 'C' },
-  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' },
+  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' }, { id: 'M', label: 'Transistor (MOSFET)', glyph: 'M' },
   { id: 'ground', label: 'Ground', glyph: '⏚' }, { id: 'probe', label: 'Probe', glyph: 'P' },
 ];
 const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [2e-4, 5e-4, 1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
 
 /** A part's drawing along the x axis from 0 to len (its leads to the ends), turned into place by the caller. */
-function Symbol({ it, len }: { it: Item; len: number }) {
+function Symbol({ it, len, gate }: { it: Item; len: number; gate?: [number, number] }) {
   const m = len / 2, s = 'currentColor';
+  // A transistor (M430): drain and source leads meet the channel; the gate plate beside it, its lead to the gate dot.
+  if (it.kind === 'M' && gate) {
+    const [gx, gy] = gate;
+    return (
+      <>
+        <polyline points={`0,0 ${m - 10},0 ${m - 10},8`} fill="none" stroke={s} strokeWidth={1.6} /><polyline points={`${m + 10},8 ${m + 10},0 ${len},0`} fill="none" stroke={s} strokeWidth={1.6} />
+        <line x1={m - 14} y1={8} x2={m + 14} y2={8} stroke={s} strokeWidth={2.4} /><line x1={m - 12} y1={15} x2={m + 12} y2={15} stroke={s} strokeWidth={2} />
+        <polyline points={`${m},15 ${m},${(15 + gy) / 2} ${gx},${(15 + gy) / 2} ${gx},${gy}`} fill="none" stroke={s} strokeWidth={1.6} />
+        <path d={`M${m + 10},2 l-5,-3 v6 z`} fill={s} />
+      </>
+    );
+  }
   const lead = (a: number, b: number) => <><line x1={0} y1={0} x2={a} y2={0} stroke={s} strokeWidth={1.6} /><line x1={b} y1={0} x2={len} y2={0} stroke={s} strokeWidth={1.6} /></>;
   if (it.kind === 'R') return <>{lead(m - 18, m + 18)}<polyline points={`${m - 18},0 ${m - 15},-6 ${m - 9},6 ${m - 3},-6 ${m + 3},6 ${m + 9},-6 ${m + 15},6 ${m + 18},0`} fill="none" stroke={s} strokeWidth={1.6} strokeLinejoin="round" /></>;
   if (it.kind === 'C') return <>{lead(m - 4, m + 4)}<line x1={m - 4} y1={-10} x2={m - 4} y2={10} stroke={s} strokeWidth={2.2} /><line x1={m + 4} y1={-10} x2={m + 4} y2={10} stroke={s} strokeWidth={2.2} /></>;
@@ -57,7 +69,7 @@ export function CircuitBench() {
   const [drag, setDrag] = useState<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
   const [running, setRunning] = useState(!still);
   // What the oscilloscope shows: a copy of the samples, taken each frame (the samples themselves live in a ref).
-  const [shot, setShot] = useState<{ of: unknown; t: number[]; v: number[][] }>({ of: null, t: [], v: [] });
+  const [shot, setShot] = useState<{ of: unknown; t: number[]; v: number[][]; power?: Map<string, number> }>({ of: null, t: [], v: [] });
   const [valueText, setValueText] = useState<Record<string, string>>({});
   const svg = useRef<SVGSVGElement>(null), keepTimer = useRef(0);
   const setBoard = (f: (b: Board) => Board) => setBoardNow((b) => {
@@ -76,7 +88,9 @@ export function CircuitBench() {
   }, [net]);
   const scope = useRef<{ t: number[]; v: number[][] }>({ t: [], v: [] });
   const [failed, setFailed] = useState<string | null>(null);
-  useEffect(() => { scope.current = { t: [], v: net.probes.map(() => []) }; }, [net, board.dt, board.window]);
+  // Each part's energy over the screen's time, and the average power of the last full screen (M430).
+  const energy = useRef<{ e: Map<string, number>; span: number; last?: Map<string, number> }>({ e: new Map(), span: 0 });
+  useEffect(() => { scope.current = { t: [], v: net.probes.map(() => []) }; energy.current = { e: new Map(), span: 0 }; }, [net, board.dt, board.window]);
   useEffect(() => {
     const c = built.c;
     if (!c || !running) return;
@@ -90,6 +104,9 @@ export function CircuitBench() {
         const until = performance.now() + 6;
         for (let k = 0; k < perFrame && (k % 8 || performance.now() < until); k++) {
           c.step(board.dt);
+          const en = energy.current;
+          for (const p of net.parts) en.e.set(p.id, (en.e.get(p.id) ?? 0) + c.power(p) * board.dt);
+          if ((en.span += board.dt) >= board.window) { en.last = new Map([...en.e].map(([id, j]) => [id, j / en.span])); en.e = new Map(); en.span = 0; }
           if (++count % every === 0) {
             const s = scope.current;
             s.t.push(c.t); net.probes.forEach((p, i) => { (s.v[i] ??= []).push(c.v(p.node)); });
@@ -100,7 +117,7 @@ export function CircuitBench() {
       const sc = scope.current;
       // The picture is redrawn about 30 times a second (the stepping goes on every frame): half the drawing work.
       const now = performance.now();
-      if (now - drawn >= 30) { drawn = now; setShot({ of: c, t: [...sc.t], v: sc.v.map((a) => [...a]) }); }
+      if (now - drawn >= 30) { drawn = now; setShot({ of: c, t: [...sc.t], v: sc.v.map((a) => [...a]), power: energy.current.last }); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -164,11 +181,17 @@ export function CircuitBench() {
   const setItem = (id: string, patch: Partial<Item>) => setBoard((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
   const part = sel && c ? net.parts.find((p) => p.id === sel.id) : undefined;
   const across = sel ? nodeV(sel.x1, sel.y1) - nodeV(sel.x2, sel.y2) : 0, through = part && c ? c.current(part) : 0;
-  const describe = (it: Item) => (it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
+  const describe = (it: Item) => (it.kind === 'M' ? `on above ${si(it.value, 'V')}` : it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
   const X = (gx: number) => PAD + gx * G, Y = (gy: number) => PAD + gy * G;
+  /** A transistor's gate dot in its own drawing's frame (along the part, then across). */
+  const local = (it: Item): [number, number] => {
+    const gp = gatePoint(it), dx = X(it.x2) - X(it.x1), dy = Y(it.y2) - Y(it.y1), len = Math.hypot(dx, dy) || 1, ux = dx / len, uy = dy / len, rx = X(gp.x) - X(it.x1), ry = Y(gp.y) - Y(it.y1);
+    return [rx * ux + ry * uy, -rx * uy + ry * ux];
+  };
 
   // Oscilloscope.
   // Samples of an older circuit (before the last change) aren't shown.
+  const power = shot.of === c ? shot.power : undefined;
   const s = shot.of === c ? shot : { t: [] as number[], v: [] as number[][] }, tNow = c?.t ?? 0, t0 = tNow - board.window;
   const vScope = Math.max(0.1, ...s.v.flat().map(Math.abs));
   const nice = (v: number) => { const p = 10 ** Math.floor(Math.log10(v)); return [1, 2, 5, 10].map((k) => k * p).find((k) => k >= v) ?? v; };
@@ -201,8 +224,8 @@ export function CircuitBench() {
               </div>
             )}
             {sel && sel.kind !== 'wire' && sel.kind !== 'D' && sel.kind !== 'S' && (
-              <label className={label}>{sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
-                <input value={valueText[sel.id] ?? si(sel.value, '').trim()} onChange={(e) => { setValueText((v) => ({ ...v, [sel.id]: e.target.value })); const n = parseSi(e.target.value); if (n !== null && (n > 0 || sel.kind === 'V' || sel.kind === 'I')) setItem(sel.id, { value: n }); }}
+              <label className={label}>{sel.kind === 'M' ? 'Turns on above (gate to source)' : sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
+                <input value={valueText[sel.id] ?? si(sel.value, '').trim()} onChange={(e) => { setValueText((v) => ({ ...v, [sel.id]: e.target.value })); const n = parseSi(e.target.value); if (n !== null && (n > 0 || sel.kind === 'V' || sel.kind === 'I' || (sel.kind === 'M' && n >= 0))) setItem(sel.id, { value: n }); }}
                   onBlur={() => setValueText((v) => { const next = { ...v }; delete next[sel.id]; return next; })} className={ui.input} />
               </label>
             )}
@@ -218,6 +241,7 @@ export function CircuitBench() {
             <button type="button" className={cn(small, 'text-red-700 dark:text-red-400')} onClick={() => remove(chosen!)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
           </div>
         )}
+        {power && <PowerReadout power={power} items={board.items} describe={describe} chosen={chosen} />}
         <div className="grid grid-cols-2 gap-2">
           <label className={label}>Time step
             <select value={board.dt} onChange={(e) => setBoard((b) => ({ ...b, dt: Number(e.target.value) }))} className="input mt-1 w-full">{STEPS.map((v) => <option key={v} value={v}>{si(v, 's')}</option>)}</select>
@@ -251,7 +275,7 @@ export function CircuitBench() {
                 <g key={it.id} role="button" tabIndex={0} aria-label={`${NAMES[it.kind]} ${text}`} onPointerDown={(e) => { if (tool === 'select') { e.stopPropagation(); setChosen(it.id); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChosen(it.id); } }} className="cursor-pointer outline-none">
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />
                   <g transform={`translate(${x1} ${y1}) rotate(${ang})`} style={{ color: colour ?? (on ? '#7c3aed' : dark ? '#e4e4e7' : '#27272a') }}>
-                    {it.kind === 'wire' ? <line x1={0} y1={0} x2={len} y2={0} stroke={on ? '#7c3aed' : colour} strokeWidth={on ? 3 : 2.4} strokeLinecap="round" /> : <Symbol it={it} len={len} />}
+                    {it.kind === 'wire' ? <line x1={0} y1={0} x2={len} y2={0} stroke={on ? '#7c3aed' : colour} strokeWidth={on ? 3 : 2.4} strokeLinecap="round" /> : <Symbol it={it} len={len} gate={it.kind === 'M' ? local(it) : undefined} />}
                   </g>
                   {text && <text x={(x1 + x2) / 2 + (vertical ? 16 : 0)} y={(y1 + y2) / 2 + (vertical ? 4 : -16)} fontSize={11} textAnchor={vertical ? 'start' : 'middle'} className="fill-zinc-600 dark:fill-zinc-300">{text}</text>}
                 </g>
@@ -286,6 +310,32 @@ export function CircuitBench() {
           </svg>
         </div>
       </section>
+    </div>
+  );
+}
+
+/** Average power over the last screen's time (M430): what the sources give, what each part uses, what is still going
+ * into coils and capacitors (while a circuit starts up), and the efficiency: the resistors' share of what is used. */
+function PowerReadout({ power, items, describe, chosen }: { power: Map<string, number>; items: Item[]; describe: (it: Item) => string; chosen: string | null }) {
+  const of = (k: ItemKind[]) => items.filter((it) => k.includes(it.kind) && power.has(it.id));
+  const given = -of(['V', 'I']).reduce((s, it) => s + (power.get(it.id) ?? 0), 0), used = of(['R', 'D', 'S', 'M']).map((it) => ({ it, w: power.get(it.id) ?? 0 })).sort((a, b) => b.w - a.w);
+  const load = used.filter((u) => u.it.kind === 'R').reduce((s, u) => s + u.w, 0), lost = used.filter((u) => u.it.kind !== 'R').reduce((s, u) => s + u.w, 0);
+  const stored = of(['L', 'C']).reduce((s, it) => s + (power.get(it.id) ?? 0), 0);
+  if (!(given > 1e-12)) return null;
+  return (
+    <div className="space-y-1.5 rounded-lg border border-zinc-200 p-3 text-xs dark:border-white/10" aria-label="Power">
+      <p className="flex items-baseline justify-between gap-2"><span className="text-[13px] font-semibold text-zinc-900 dark:text-white">Power</span><span className="text-zinc-500 dark:text-zinc-400">average over the screen</span></p>
+      <p className="flex justify-between font-mono tabular-nums text-zinc-800 dark:text-zinc-100"><span className="font-sans">From the sources</span>{si(given, 'W')}</p>
+      <ul className="space-y-0.5">
+        {used.slice(0, 8).map(({ it, w }) => (
+          <li key={it.id} className={cn('flex justify-between gap-2 font-mono tabular-nums', it.id === chosen ? 'font-semibold text-violet-800 dark:text-violet-300' : 'text-zinc-700 dark:text-zinc-200')}>
+            <span className="truncate font-sans">{NAMES[it.kind]} {describe(it)}</span><span>{si(w, 'W')}</span>
+          </li>
+        ))}
+      </ul>
+      {Math.abs(stored) > 0.02 * given && <p className="flex justify-between text-zinc-600 dark:text-zinc-300"><span>{stored > 0 ? 'Still charging coils and capacitors' : 'Given back by coils and capacitors'}</span><span className="font-mono tabular-nums">{si(Math.abs(stored), 'W')}</span></p>}
+      {lost > 0 && load > 0 && <p className="flex justify-between border-t border-zinc-200/80 pt-1.5 text-zinc-800 dark:border-white/10 dark:text-zinc-100"><span>Efficiency <span className="text-zinc-500 dark:text-zinc-400">(load ÷ load and losses)</span></span><span className="font-mono font-semibold tabular-nums">{Math.round((1000 * load) / (load + lost)) / 10}%</span></p>}
+      {lost > 0 && <p className="flex justify-between text-zinc-600 dark:text-zinc-300"><span>Lost in diodes, switches, transistors</span><span className="font-mono tabular-nums">{si(lost, 'W')}</span></p>}
     </div>
   );
 }
