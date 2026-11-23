@@ -91,3 +91,28 @@ describe('Hyperion Simulate: the drawing board (M410)', () => {
     expect(readBoard({ items: [{ kind: 'R', x1: 1, y1: 1, x2: 3, y2: 1 }, { kind: 'bomb' }], marks: [] }).items).toHaveLength(1);
   });
 });
+
+describe('power electronics (M424)', () => {
+  const average = async (id: string, settle: number, span: number) => {
+    const { netlist, EXAMPLES } = await import('./schematic');
+    const { Circuit } = await import('./circuit');
+    const board = EXAMPLES.find((e) => e.id === id)!.make(), net = netlist(board), c = new Circuit(net.parts);
+    const out = net.probes[1].node, coil = net.parts.find((p) => p.kind === 'L')!;
+    while (c.t < settle) c.step(board.dt);
+    let sum = 0, n = 0, iMin = Infinity, iMax = -Infinity;
+    while (c.t < settle + span) { c.step(board.dt); sum += c.v(out); n++; const i = c.current(coil); iMin = Math.min(iMin, i); iMax = Math.max(iMax, i); }
+    return { v: sum / n, ripple: iMax - iMin };
+  };
+  it('a buck converter gives about D·Vin less the diode’s share; the coil’s ripple is (Vin − Vout)·D/(L·f)', async () => {
+    const r = await average('buck', 0.02, 0.002);
+    // 0.5 × 12 V, less about 0.8 V of diode drop for the half of each period it carries the current.
+    expect(r.v).toBeGreaterThan(5.4);
+    expect(r.v).toBeLessThan(5.8);
+    expect(Math.abs(r.ripple / (((12 - r.v) * 0.5) / (100e-6 * 50_000)) - 1)).toBeLessThan(0.1);
+  });
+  it('a boost converter gives about Vin/(1 − D) less the diode drop', async () => {
+    const r = await average('boost', 0.03, 0.002);
+    expect(r.v).toBeGreaterThan(8.9);
+    expect(r.v).toBeLessThan(9.6);
+  });
+});

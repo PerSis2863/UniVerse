@@ -14,9 +14,15 @@ export type Part =
   /** A current source pushing `value` amps out at a (into the circuit), back in at b. */
   | { id: string; kind: 'I'; a: string; b: string; value: number }
   /** A diode, anode a, cathode b. */
-  | { id: string; kind: 'D'; a: string; b: string };
+  | { id: string; kind: 'D'; a: string; b: string }
+  /** A switch driven by a PWM signal (a MOSFET with its gate driver, M424): on for `duty` of each period at `freq` Hz. */
+  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number };
 
 const IS = 1e-14, VT = 0.025852, VCRIT = VT * Math.log(VT / (Math.SQRT2 * IS)), GMIN = 1e-12;
+
+/** A switch's resistance: 10 mΩ on, 10 MΩ off. */
+export const RON = 0.01, ROFF = 1e7;
+export const switchOn = (p: Extract<Part, { kind: 'S' }>, t: number) => ((t * p.freq) % 1 + 1) % 1 < p.duty;
 
 export function sourceAt(p: Extract<Part, { kind: 'V' }>, t: number) {
   if (p.wave === 'sine') return p.value * Math.sin(2 * Math.PI * p.freq * t);
@@ -79,6 +85,7 @@ export class Circuit {
     if (p.kind === 'V' || p.kind === 'L') return this.x[this.branch.get(p.id)!];
     if (p.kind === 'C') return this.ic.get(p.id) ?? 0;
     if (p.kind === 'I') return -p.value;
+    if (p.kind === 'S') return vd / (switchOn(p, this.t) ? RON : ROFF);
     return IS * (Math.exp(Math.min(vd / VT, 80)) - 1);
   }
 
@@ -100,6 +107,7 @@ export class Circuit {
           const G = (trap ? 2 : 1) * p.value / h, Ieq = G * vPrev + (trap ? this.ic.get(p.id) ?? 0 : 0);
           g(a, b, G); inj(a, b, Ieq);
         } else if (p.kind === 'I') inj(a, b, p.value);
+        else if (p.kind === 'S') g(a, b, 1 / (switchOn(p, h === null ? this.t : this.t + h) ? RON : ROFF));
         else if (p.kind === 'V' || p.kind === 'L') {
           const k = this.branch.get(p.id)!;
           if (a >= 0) { A[a][k] += 1; A[k][a] += 1; }

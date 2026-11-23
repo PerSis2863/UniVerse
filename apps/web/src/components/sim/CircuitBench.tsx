@@ -18,10 +18,10 @@ const G = 26, COLS = 34, ROWS = 15, PAD = 18;
 type Tool = 'select' | ItemKind | 'ground' | 'probe';
 const TOOLS: { id: Tool; label: string; glyph: string }[] = [
   { id: 'select', label: 'Select', glyph: '' }, { id: 'wire', label: 'Wire', glyph: '—' }, { id: 'R', label: 'Resistor', glyph: 'R' }, { id: 'C', label: 'Capacitor', glyph: 'C' },
-  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' },
+  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' },
   { id: 'ground', label: 'Ground', glyph: '⏚' }, { id: 'probe', label: 'Probe', glyph: 'P' },
 ];
-const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
+const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [2e-4, 5e-4, 1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
 
 /** A part's drawing along the x axis from 0 to len (its leads to the ends), turned into place by the caller. */
 function Symbol({ it, len }: { it: Item; len: number }) {
@@ -31,6 +31,8 @@ function Symbol({ it, len }: { it: Item; len: number }) {
   if (it.kind === 'C') return <>{lead(m - 4, m + 4)}<line x1={m - 4} y1={-10} x2={m - 4} y2={10} stroke={s} strokeWidth={2.2} /><line x1={m + 4} y1={-10} x2={m + 4} y2={10} stroke={s} strokeWidth={2.2} /></>;
   if (it.kind === 'L') return <>{lead(m - 18, m + 18)}<path d={`M${m - 18},0 ${Array(4).fill('a4.5,5 0 0 1 9,0').join(' ')}`} fill="none" stroke={s} strokeWidth={1.6} /></>;
   if (it.kind === 'D') return <>{lead(m - 8, m + 8)}<polygon points={`${m - 8},-8 ${m - 8},8 ${m + 6},0`} fill={s} /><line x1={m + 7} y1={-8} x2={m + 7} y2={8} stroke={s} strokeWidth={2} /></>;
+  // A switch (M424): two contacts and a blade, drawn open; its PWM drives it.
+  if (it.kind === 'S') return <>{lead(m - 12, m + 12)}<circle cx={m - 12} cy={0} r={2.2} fill={s} /><circle cx={m + 12} cy={0} r={2.2} fill={s} /><line x1={m - 12} y1={0} x2={m + 10} y2={-10} stroke={s} strokeWidth={1.8} strokeLinecap="round" /></>;
   if (it.kind === 'V' || it.kind === 'I') {
     return (
       <>{lead(m - 12, m + 12)}<circle cx={m} cy={0} r={12} fill="none" stroke={s} strokeWidth={1.6} />
@@ -43,6 +45,9 @@ function Symbol({ it, len }: { it: Item; len: number }) {
   }
   return <line x1={0} y1={0} x2={len} y2={0} stroke={s} strokeWidth={2} />;
 }
+
+/** The board's grid of dots: drawn once, the same element every frame. */
+const DOTS = <path d={Array.from({ length: (COLS + 1) * (ROWS + 1) }, (_, k) => `M${PAD + (k % (COLS + 1)) * G - 1.3},${PAD + Math.floor(k / (COLS + 1)) * G}a1.3,1.3 0 1 0 2.6,0a1.3,1.3 0 1 0 -2.6,0`).join('')} className="fill-zinc-300 dark:fill-zinc-700" />;
 
 export function CircuitBench() {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
@@ -77,10 +82,13 @@ export function CircuitBench() {
     if (!c || !running) return;
     let raf = 0;
     const perWindow = board.window / board.dt, perFrame = Math.max(1, Math.min(4000, Math.round(perWindow / 120))), every = Math.max(1, Math.round(perWindow / 600));
-    let count = 0;
+    let count = 0, drawn = 0;
     const tick = () => {
       try {
-        for (let k = 0; k < perFrame; k++) {
+        // At most ~6 ms of stepping a frame, so the page keeps 60 frames a second however heavy the circuit
+        // (a switching converter's diode can need many Newton steps); the simulation then runs a little slower.
+        const until = performance.now() + 6;
+        for (let k = 0; k < perFrame && (k % 8 || performance.now() < until); k++) {
           c.step(board.dt);
           if (++count % every === 0) {
             const s = scope.current;
@@ -90,7 +98,9 @@ export function CircuitBench() {
         }
       } catch (e) { setFailed(e instanceof Error ? e.message : String(e)); setRunning(false); return; }
       const sc = scope.current;
-      setShot({ of: c, t: [...sc.t], v: sc.v.map((a) => [...a]) });
+      // The picture is redrawn about 30 times a second (the stepping goes on every frame): half the drawing work.
+      const now = performance.now();
+      if (now - drawn >= 30) { drawn = now; setShot({ of: c, t: [...sc.t], v: sc.v.map((a) => [...a]) }); }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
@@ -154,7 +164,7 @@ export function CircuitBench() {
   const setItem = (id: string, patch: Partial<Item>) => setBoard((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
   const part = sel && c ? net.parts.find((p) => p.id === sel.id) : undefined;
   const across = sel ? nodeV(sel.x1, sel.y1) - nodeV(sel.x2, sel.y2) : 0, through = part && c ? c.current(part) : 0;
-  const describe = (it: Item) => (it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
+  const describe = (it: Item) => (it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
   const X = (gx: number) => PAD + gx * G, Y = (gy: number) => PAD + gy * G;
 
   // Oscilloscope.
@@ -184,7 +194,13 @@ export function CircuitBench() {
         {(sel || selMark) && (
           <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-white/10" aria-live="polite">
             <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">{sel ? NAMES[sel.kind] : selMark!.kind === 'ground' ? 'Ground' : 'Probe'}</p>
-            {sel && sel.kind !== 'wire' && sel.kind !== 'D' && (
+            {sel?.kind === 'S' && (
+              <div className="grid grid-cols-2 gap-2">
+                <label className={label}>Frequency (Hz)<input type="number" min={1} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0 && n <= 1e7) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>
+                <label className={label}>On for (%)<input type="number" min={0} max={100} step="any" value={Math.round(sel.value * 1000) / 10} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 100) setItem(sel.id, { value: n / 100 }); }} className={ui.input} /></label>
+              </div>
+            )}
+            {sel && sel.kind !== 'wire' && sel.kind !== 'D' && sel.kind !== 'S' && (
               <label className={label}>{sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
                 <input value={valueText[sel.id] ?? si(sel.value, '').trim()} onChange={(e) => { setValueText((v) => ({ ...v, [sel.id]: e.target.value })); const n = parseSi(e.target.value); if (n !== null && (n > 0 || sel.kind === 'V' || sel.kind === 'I')) setItem(sel.id, { value: n }); }}
                   onBlur={() => setValueText((v) => { const next = { ...v }; delete next[sel.id]; return next; })} className={ui.input} />
@@ -226,7 +242,7 @@ export function CircuitBench() {
           : !net.grounded && board.items.length > 0 && <p className="border-b border-zinc-200/80 bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:border-white/10 dark:bg-amber-950/40 dark:text-amber-200">Add a ground (⏚) somewhere: the voltages are measured from it.</p>}
         <div className="min-h-0 flex-1 overflow-auto p-2">
           <svg ref={svg} viewBox={`0 0 ${COLS * G + 2 * PAD} ${ROWS * G + 2 * PAD}`} className={cn('h-auto w-full touch-none select-none', tool === 'select' ? 'cursor-default' : 'cursor-crosshair')} role="group" aria-label={`Circuit board: ${board.items.length} parts and wires`} onPointerDown={down} onPointerMove={move} onPointerUp={up} data-no-motion>
-            {Array.from({ length: (COLS + 1) * (ROWS + 1) }, (_, k) => <circle key={k} cx={X(k % (COLS + 1))} cy={Y(Math.floor(k / (COLS + 1)))} r={1.3} className="fill-zinc-300 dark:fill-zinc-700" />)}
+            {DOTS}
             {board.items.map((it) => {
               const x1 = X(it.x1), y1 = Y(it.y1), x2 = X(it.x2), y2 = Y(it.y2), len = Math.hypot(x2 - x1, y2 - y1), ang = (Math.atan2(y2 - y1, x2 - x1) * 180) / Math.PI;
               const on = it.id === chosen, colour = it.kind === 'wire' ? volt(nodeV(it.x1, it.y1)) : undefined;

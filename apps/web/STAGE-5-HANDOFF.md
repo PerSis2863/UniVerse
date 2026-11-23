@@ -11334,3 +11334,18 @@ outputs). The model struct keeps Mean, Covariance, NoiseVariance, CurrentTime, T
 Tests (`maint.test.ts`). Not built: spectral kurtosis and the kurtogram, time-synchronous averaging, order analysis,
 similarity and survival models, a Diagnostic Feature Designer window.
 
+## M424 (23 Nov): Hyperion Simulate, power electronics in Circuits
+
+`circuit.ts`: part kind 'S' (`duty`, `freq`): a PWM-driven switch, `RON` 10 mΩ on / `ROFF` 10 MΩ off, stamped as a
+conductance at the step's end time (`switchOn(p, t)`); `current` uses the same. `schematic.ts`: item kind 'S' (its
+`value` is the duty 0–1, `freq` defaults to 50 kHz), NAMES/UNITS/DEFAULTS, `readBoard` keeps it (freq ≤ 10 MHz),
+examples 'buck' (12 V, 50 kHz, 50%, 100 µH, 100 µF, 10 Ω) and 'boost' (5 V, same switch, 20 Ω). Trap: a wire joins
+only its two ends, so a ground line under several parts must be split at each part (the first layout left the diode
+and capacitor floating). `CircuitBench.tsx`: the S tool and symbol, Frequency and "On for (%)" fields, the 200 µs and
+500 µs screen widths; smoothness: stepping limited to ~6 ms a frame (checked every 8 steps), the picture redrawn about
+30 times a second (`drawn`), and the dot grid one memoised path (`DOTS`) instead of 560 circles. Measured: worst frame
+17 ms (was 50–83 ms) while the buck and boost ran. Tests (`circuit.test.ts`): buck 5.4–5.8 V and ripple within 10% of
+(Vin − Vout)·D/(L·f); boost 8.9–9.6 V. Not built: a three-terminal MOSFET with a gate node, gate drivers, losses and
+efficiency readouts, closed-loop (feedback-controlled) converters, inverters and motor drives. Trapezoidal ringing is
+visible at the switch node right after each edge (cosmetic).
+
