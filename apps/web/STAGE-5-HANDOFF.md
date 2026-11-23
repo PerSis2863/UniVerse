@@ -11265,3 +11265,56 @@ The owner (22 Nov): "continue with the thinking training", then "do all this tra
   cache's install list (before this, every visitor's device would have downloaded the models when the app installed).
 - **Not yet:** Ghidra 2 in the console card and as the corner's backup (`ghidra-device.ts` still uses the old letter
   model: switch to `loadGhidra2` + `answer()` on a worker, download on first use with a size warning).
+
+## M436: Hyperion's AI, the first real run and the fixes it showed (23 Nov)
+
+The owner (22–23 Nov): "rent the card for Hyperion's AI… i want this ai to become really good", then "take a good graphic
+card". RunPod is connected to this session (the `runpod` tools: `create-pod`, `exec-pod`, `pod-action`); the owner's
+RunPod secrets `cloudflare_token` (Workers AI: Edit) and `github_token` exist; the Cloudflare account id is
+`bca3b10cbbada3e393ff886f9f1b3439` (not a secret; give pods `CLOUDFLARE_ACCOUNT_ID`, the token can't list accounts).
+
+- **Run 1** (A100 80 GB, community, $1.39/h, ~1 h 45 min, ~$2.50): 5,414 requests (PER=10), 4,459 answers ran first
+  time, 440 fixed → 4,899 lessons; Unsloth packs short lessons into rows (4,674 lessons → 1,050 rows, nothing lost);
+  264 steps, loss 2.0 → 0.18. **Score 120 → 120 of 150 on held-out functions** (the add-on was active: 149 of 150 answers
+  changed; on seen requests 129 → 140). Why: a quarter of the failures were Hyperion's own (the training engine started
+  without `files.ts`, so `cell2table`, `csvread`, `readtable` looked unknown, and `gca`, `intersect`, `flip`,
+  `linsolve` didn't exist), a third were requests about data never given (`data`, `sensor_data`).
+- **Fixes:** `hyperion-lab.mts` gives each run a `FileStore` and loads `help-commands` (as the window); Hyperion gains
+  `intersect`, `union`, `setdiff` (numbers or text cells), `flip`, `linsolve`, `gca` and `set(gca, 'XLim'|'YLim'|'ZLim'|
+  '*Grid', …)` (other properties accepted, a `shortcut:`); `HYPERION_SYSTEM` asks for example data (and writing a file
+  before reading it); the score also holds back 150 requests about learnt functions (`held-seen.jsonl`), saves every
+  answer (`score-answers.json`), and the add-on is exported in bf16 (269 → ~135 MB). Kit fixes: uv installs with
+  `--python` (Ubuntu 24.04 refuses system installs); score lines no longer stuck in grep's buffer.
+- **Pod traps:** RunPod's `/workspace` in EU-SE-1 is network storage (mfs): cloning or `pnpm install` there crawls, so
+  keep code and venvs on the container disk (`WORK=/root/hyperion-ai`, `UV_CACHE_DIR`) and only models and results on
+  `/workspace`; a restart wipes the container disk (Node.js too). A stopped community pod can lose its card ("not enough
+  free GPUs"): then rent a new one. `pkill -f <x>` inside `exec-pod` kills its own shell (kill by pid). The kits switch
+  the pod off when they end (`runpodctl`, wrapped on the run-2 pod so the agents kit could follow).
+- **Run 2:** an A40 48 GB (secure, $0.59/h; no A100/H100 free), pod `mjk9dtu1pksktk`, started 01:13 UTC 23 Nov; results
+  below when in.
+
+## M437: the app agents' own AI (23 Nov)
+
+The owner (23 Nov): "train the ai so that it can work in different sectors of ai like different apps has like customer
+support, travel planner or itenary planner and other ai model which is needed in the website".
+
+- **Model:** Cloudflare's catalog no longer tags Mistral Small 3.1, Gemma 3 or Llama 3.1 8B as taking add-ons (only
+  `qwen2.5-coder-32b-instruct` and the old 7B / vision ones), so the agents' add-on is a second LoRA for Qwen2.5-Coder
+  32B (a strong general model too), served the same way as Hyperion's.
+- **The agents:** each agent's instructions and answer shape now live in `playbooks.ts` `AGENTS` (Gemini schema),
+  `jsonSchema` (to JSON Schema) and `jsonRule` (the JSON line); `agents/own-model.ts` `agentJson(kind, prompt, max)`
+  uses Workers AI with `lora: AGENTS_LORA` and `response_format: json_schema` when the owner's opt-in switch
+  **"Agents' own AI on Cloudflare"** (`agents-ai`) is on, and falls back to Gemini on failure or a missing field.
+  Research, Social, Support and Travel call it.
+- **The kit:** `scripts/ai/agents-ai.py` (`data`, `score`; train / export / upload are `hyperion-ai.py`'s, which now
+  takes a row's own `system`, `--prefix`, `--var`, `--question`), `agents-lab.mts` (prints `AGENTS` for Python through
+  `run-ts.mjs`, shared with `hyperion-lab.mjs`), `agents-gpu.sh` (tools shared in `gpu-tools.sh`, `VENVS` reuses
+  Hyperion's). Requests: invented products with and without recalls plus buyers' messages (refund demands, safety, a
+  password offered…), trips to the map's towns of 150,000+ people (the travel agent's exact request), Wikipedia sources
+  fetched like `findSources`, invented brands / charities / schools with platforms. Teacher: Qwen2.5 32B Instruct AWQ.
+  Rules (`check`): support (only given numbers, a recall first, no promise, never asks for a secret, ≤130 words), travel
+  (3–5 tips, no prices or clock times), research (≥2 citations, only to sources given, every point cited, no markdown),
+  posts (the platforms asked, X ≤ 280, no invented numbers or green claims). 40 requests per agent held back; the score
+  prints passes per agent before and after.
+- **Not covered yet:** the other ~45 AI features (tutor, quizzes, marking, translation…) still use Gemini's prompts
+  directly; each could join `AGENTS` with its own rules the same way.

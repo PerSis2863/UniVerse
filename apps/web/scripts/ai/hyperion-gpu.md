@@ -94,3 +94,15 @@ files, send Claude its message.
 Each question to Hyperion's AI is paid to Cloudflare at the model's price (US$0.66 per million word-pieces in, US$1.00
 per million out): about **US$0.001 a question**, so US$1 is roughly 1,000 questions, after Workers AI's free daily
 amount. It is off until you turn on its switch in the owner console.
+
+## The agents' add-on (Customer Support, Travel Planner, Research, Social posts)
+
+The same card can train a second add-on for the website's agents (M437): `bash scripts/ai/agents-gpu.sh` from
+`apps/web` (on a machine that just ran Hyperion's kit, `VENVS=<its work folder>` reuses the tools). It makes about 3,900
+requests from real data, keeps only answers that pass each agent's rules, trains, prints the score per agent before and
+after, and uploads to Cloudflare as `agents-…`. Then set **AGENTS_LORA** in Cloudflare to the printed name and turn on
+**"Agents' own AI on Cloudflare"** (console → Server). About 2–3 hours on a 48 GB card (US$1–2 on an A40).
+
+**On RunPod, use the machine's own disk for code:** in some places `/workspace` is network storage, very slow with many
+small files. Clone UniVerse into `/root` and start with `WORK=/root/hyperion-ai`; the models and the results still go to
+`/workspace`.
