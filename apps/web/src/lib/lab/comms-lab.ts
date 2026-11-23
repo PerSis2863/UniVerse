@@ -38,7 +38,7 @@ def('awgn', (a) => {
   const [re, im] = cm.awgn([...m.d], m.im ? [...m.im] : null, snr, random, measured);
   return [im ? cmat(m.r, m.c, re, im) : mat(m.r, m.c, re)];
 });
-const bitsFor = (a: Mat, b: Mat) => Math.max(1, Math.ceil(Math.log2(Math.max(1, ...a.d, ...b.d) + 1)));
+const bitsFor = (a: Mat, b: Mat) => Math.max(1, Math.ceil(Math.log2(Math.max(1, a.d.reduce((m, v) => Math.max(m, v), 0), b.d.reduce((m, v) => Math.max(m, v), 0)) + 1)));
 def('biterr', (a) => {
   const x = toMat(a[0]), y = toMat(a[1] ?? num(0));
   if (x.d.length !== y.d.length) throw new LabError('biterr compares two lists of the same length.');

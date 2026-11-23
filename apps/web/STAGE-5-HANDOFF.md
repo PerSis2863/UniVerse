@@ -11393,3 +11393,23 @@ Monte Carlo BER within 15% of theory for BPSK, QPSK and 16-QAM. Rule: awgn uses 
 `rng(seed)` repeats a run. Not built: OFDM, channel coding (convolutional, Viterbi, LDPC), fading channels, filters
 for pulse shaping (raised cosine), FSK; radar and image processing come next (M428).
 
+## M428 (23 Nov): Hyperion toolbox, image processing
+
+The owner's list, item 5, second part. `src/lib/lab/image.ts` (pure, one grey `Plane` {r, c, d} column-major at a
+time): `filter` (correlation, its centre at floor((size − 1)/2) like MATLAB's; `conv` turns the kernel half a circle;
+borders zero / a number / replicate / symmetric / circular through `wrap`), and a kernel that is a column times a row
+(Gaussian, box) runs as two 1-D passes (`factor`, `pass`): same answers, 10× faster; the kernels (average, gaussian,
+disk by area inside the circle, sobel, prewitt, laplacian, log, unsharp), `median`, `gradientEdges` (MATLAB's rule: cut
+at 4 × the mean squared gradient, thinned along the stronger direction), `canny` (high cut leaves 70% of pixels below,
+low = 0.4 × high; ties in thinning go one way so a step gives one line), `otsu`, `adaptive` (Bradley's local mean, our own
+mapping of Sensitivity: × (1 + 0.3 (0.5 − s))), `strel` shapes (an exact disk, not MATLAB's approximated one), `erode`
+/ `dilate` (outside the picture ignored), `label` (numbered in column order, as MATLAB does), `regions` (MATLAB's
+second-moment ellipse with the 1/12 term), `fillHoles` (4-connected background), `areaOpen`, `equalise` (the classic CDF
+over 256 levels, not MATLAB's 64-bin target), `stretchLimits`, `psnr`, `ssim` (11 × 11, σ 1.5), `phantom` (modified
+Shepp–Logan), `checkerboard`. `image-lab.ts`: the 36 language functions; uint8/uint16 pictures keep their type (`back`),
+logical in gives logical out for the shape operations; `regionprops` returns a table (no struct arrays in the engine).
+Fix on the way: `unitValues` (types.ts) and a few new spots used `Math.max(...big array)`, which overflows the stack
+on a big picture; never spread a picture's values into a call. Tests (`image.test.ts`). Not built: geometric transforms
+beyond imresize (imrotate, imwarp), Hough lines, watershed, colour spaces (rgb2hsv, rgb2lab), image registration,
+deep-learning segmentation; radar (range and Doppler, pulse compression) is next (M429).
+

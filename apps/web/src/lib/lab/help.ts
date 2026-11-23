@@ -688,6 +688,43 @@ qfunc | q = qfunc(x) | The standard normal's upper tail, Q(x).
 int2bit | b = int2bit(x, n) | Whole numbers to n bits each (most significant first), as one column.
 bit2int | x = bit2int(b, n) | Bits back to whole numbers, n bits each.
 scatterplot | scatterplot(y) | Draws complex points as a constellation: in-phase across, quadrature up.
+
+# Image processing
+fspecial | h = fspecial('gaussian', 5, 1) | A ready-made kernel: 'average', 'gaussian', 'disk', 'sobel', 'prewitt', 'laplacian', 'log', 'unsharp'.
+imfilter | J = imfilter(I, h, 'replicate', 'conv') | Filters a picture with a kernel (correlation, or 'conv'); the border is 0, a number, 'replicate', 'symmetric' or 'circular'. Colour pictures page by page; uint8 stays uint8.
+imgaussfilt | J = imgaussfilt(I, sigma, 'FilterSize', n) | A Gaussian blur (sigma 0.5 unless given).
+medfilt2 | J = medfilt2(I, [m n], 'symmetric') | The median of each neighbourhood: takes out salt-and-pepper specks and keeps edges.
+imsharpen | J = imsharpen(I, 'Radius', 1, 'Amount', 0.8) | Sharpens by adding back the difference from a blurred copy.
+imgradient | [Gmag, Gdir] = imgradient(I) | The gradient's size and direction (degrees) by the Sobel kernel.
+imgradientxy | [Gx, Gy] = imgradientxy(I) | The gradient across and down, by the Sobel kernel.
+edge | [BW, t] = edge(I, 'canny', [low high], sigma) | Edges as a logical picture: 'sobel' and 'prewitt' (a cut on the gradient, thinned) or 'canny' (smoothing, thinning and two cuts joined by hysteresis).
+graythresh | t = graythresh(I) | Otsu's threshold (0 to 1): the cut that best separates dark from light.
+imbinarize | BW = imbinarize(I, t) | Black and white: above Otsu's threshold, a given one, or 'adaptive' (each pixel against its neighbourhood; 'Sensitivity' 0 to 1).
+strel | se = strel('disk', 3) | A shape for the operations below: 'disk', 'square', 'rectangle', 'diamond', 'line' (length, angle), or a matrix of 1s and 0s.
+imerode | J = imerode(I, se) | Erosion: the smallest value under the shape (shrinks white).
+imdilate | J = imdilate(I, se) | Dilation: the largest value under the shape (grows white).
+imopen | J = imopen(I, se) | Erosion then dilation: takes away bits smaller than the shape.
+imclose | J = imclose(I, se) | Dilation then erosion: closes gaps smaller than the shape.
+imtophat | J = imtophat(I, se) | The picture less its opening: small bright details (and evens out uneven light).
+imbothat | J = imbothat(I, se) | The closing less the picture: small dark details.
+bwlabel | [L, n] = bwlabel(BW, 8) | Numbers each group of joined white pixels (4 or 8 neighbours).
+bwareaopen | BW2 = bwareaopen(BW, p) | Removes groups of fewer than p pixels.
+imfill | BW2 = imfill(BW, 'holes') | Fills holes: black that can't be reached from the edge.
+bwperim | P = bwperim(BW) | The outline of each white shape.
+regionprops | t = regionprops(BW, 'Area', 'Centroid') | Measures each shape, as a table: Area, Centroid, BoundingBox, MajorAxisLength, MinorAxisLength, Eccentricity, Orientation, EquivDiameter ('basic' or 'all').
+label2rgb | RGB = label2rgb(L, 'jet') | Colours each numbered shape for showing; the background white.
+imoverlay | RGB = imoverlay(I, BW, [1 0 0]) | The picture with a mask painted on in a colour.
+imhist | [counts, x] = imhist(I, n) | The histogram of brightness (256 bins); drawn without outputs.
+histeq | J = histeq(I) | Histogram equalisation: spreads the brightness evenly.
+imadjust | J = imadjust(I, [low high], [low2 high2], gamma) | Stretches contrast: by default the darkest and brightest 1% to black and white.
+stretchlim | lim = stretchlim(I, tol) | The limits imadjust stretches between.
+imnoise | J = imnoise(I, 'gaussian', m, v) | Adds noise: 'gaussian' (mean, variance), 'salt & pepper' (share of pixels), 'speckle'. rng repeats it.
+imcomplement | J = imcomplement(I) | The negative.
+imcrop | J = imcrop(I, [x y width height]) | A rectangle of the picture (x across, y down).
+psnr | [p, snr] = psnr(A, ref, peak) | The peak signal-to-noise ratio in dB against a reference.
+ssim | [s, map] = ssim(A, ref) | Structural similarity (1 when the same), and its map.
+phantom | P = phantom(n) | The Shepp–Logan head, a standard test picture (n × n, 256 unless given).
+checkerboard | C = checkerboard(n, p, q) | A checkerboard test picture of n-pixel squares.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
