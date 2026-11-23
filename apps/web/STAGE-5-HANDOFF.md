@@ -12155,3 +12155,31 @@ The owner (23 Nov), offered three ways to run the exam's first time: "need to do
 - **Next:** the owner runs the console exam once (10 per skill, about 195 requests on the site's key) for the live
   score; then step 3 (👍 / 👎).
 
+## M447 (in progress): Ghidra's add-on, step 4 (23 Nov)
+
+The owner (23 Nov): "I have added another 10 euro in the account so please start next process", then "Check the hyperion
+app as a lot things are added and pushed in github so that you can train ghidra accordingly". (Another session's branch
+used M446 for Hyperion's computer app running Julia, C++ and Rust; this branch's commit titled "M446 (in progress)" is
+part of M447.)
+
+- **The kit** (`scripts/ai/ghidra-gpu.sh`, `ghidra-ai.py`; the exam command's `--lessons requests|mark`, `--salt`,
+  `--material`): the teacher (Qwen2.5-72B, AWQ) writes new material (passages with questions, products, names; towns from
+  `destinations.json` not in the exam), the exam's papers make other questions from it (`questions(skill, paper, salt)`,
+  `swapMaterial`), never one the exam asks; two answers each, the first that passes its skill's rules is a lesson
+  (no Gemini answers: Google's terms); `hyperion-ai.py train --seq 4096`; the exam with and without the add-on
+  (`exam-base`, `exam-ghidra`, `wins.json`: skills it does better); upload as `ghidra-<date>` (`GHIDRA_LORA`).
+- **Hyperion**: the kit's engine (`hyperion-lab.mts`) now loads the eight toolboxes the window loads (`lab.worker.ts`);
+  without them toolbox code failed there (so M440's 94% never covered toolboxes). The Hyperion paper gained 13 toolbox
+  question kinds (92 questions), each checked to run in the newest engine; `HYPERION_FROM=<branch>` trains on an
+  unmerged branch's engine (`claude/funny-galileo-y4mz9r` this time).
+- **Running**: RunPod pod `p1l0yv2lj9hn4u` (A100 80GB PCIe, Secure, US$2.09/h, from 12:34 UTC; stops itself at the end
+  or after 4 h). Results land in `/workspace/ghidra-ai-out` on its volume.
+- **Not yet**: the brain's per-skill routing to `GHIDRA_LORA` (only skills in `wins.json`) comes once the scores exist.
+
+## M448: the owner console shows the paid Cloudflare plan (23 Nov)
+
+The owner (23 Nov, a screenshot of "Cloudflare free plan · today"): "please change it to paid plan in owner console".
+The account is on Workers Paid since 22 Oct and `wrangler.jsonc` sets `CF_PLAN=paid`, but the console's plan card
+(`/owner/server` and `/owner/overview` in `modules/owner.ts`) decided `paid` from the older `WORKERS_PAID` alone, so
+it showed the free plan's daily meters. Both now use `workersPaid()` (`src/lib/plan-limits.ts`), like the spending guard.
+
