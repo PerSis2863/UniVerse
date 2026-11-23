@@ -131,7 +131,8 @@ function hyperionTask(r: Rand, i: number): [string, Rule[]] {
   const median = sorted.length % 2 ? sorted[(sorted.length - 1) / 2] : (sorted[sorted.length / 2 - 1] + sorted[sorted.length / 2]) / 2;
   const n = r.int(5, 12), a = r.int(1, 6), b = r.int(1, 6), c1 = r.int(2, 9), c2 = r.int(2, 9);
   const vec = `[${v.join(' ')}]`;
-  switch (i % 10) {
+  const k = r.int(2, 6), z = r.pick([0, 1, 1.5, 1.96, -1]), PHI: Record<number, number> = { 0: 0.5, 1: 0.8413, 1.5: 0.9332, 1.96: 0.975, '-1': 0.1587 };
+  switch (i % 23) {
     case 0: return [`Compute and print the mean of ${vec}.`, [runs, ['prints the wrong mean', shows([sum / v.length])]]];
     case 1: return [`Print the median of the numbers ${v.join(', ')}.`, [runs, ['prints the wrong median', shows([median])]]];
     case 2: return [`Write a script that prints the factorial of ${n}.`, [runs, ['prints the wrong factorial', shows([[...Array(n).keys()].reduce((s, k) => s * (k + 1), 1)])]]];
@@ -141,13 +142,27 @@ function hyperionTask(r: Rand, i: number): [string, Rule[]] {
     case 6: return [`Print the sum of the integers from 1 to ${n * 10} using a loop.`, [runs, ['wrong sum', shows([(n * 10 * (n * 10 + 1)) / 2])]]];
     case 7: return [`Make a ${a + 1}x${a + 1} matrix of ones times ${b}, then print the sum of all its elements.`, [runs, ['wrong sum', shows([(a + 1) * (a + 1) * b])]]];
     case 8: return [`Plot the bar chart of ${vec} and print its largest value.`, [runs, ['no figure', (c: CodeRun) => c.figures > 0], ['wrong maximum', shows([Math.max(...v)])]]];
+    // The toolboxes (M447: Hyperion's newer engine, every one checked to run there)
+    case 10: return [`Find the positive root of x^2 - ${n * 3 + 2} = 0 numerically and print it.`, [runs, ['wrong root', shows([Math.sqrt(n * 3 + 2)])]]];
+    case 11: return [`Find where (x - ${a + 2})^2 + 1 is smallest for x between 0 and 10, and print that x.`, [runs, ['wrong minimum', shows([a + 2])]]];
+    case 12: return [`Make the transfer function ${c1}/(s + ${b}) and print its DC gain.`, [runs, ['wrong DC gain', shows([c1 / b])]]];
+    case 13: { const f = [10, 25, 40, 50, 100, 120][i % 6]; return [`Sample a ${f} Hz sine wave at 1000 Hz for one second, take its FFT and print the frequency of the biggest peak.`, [runs, ['wrong peak frequency', shows([f])]]]; }
+    case 14: return [`Fit a straight line to x = 1:10 and y = ${a}*x + ${b} and print the slope and the intercept.`, [runs, ['wrong line', shows([a, b])]]];
+    case 15: return [`Integrate x^2 from 0 to ${a + 1} numerically and print the result.`, [runs, ['wrong integral', shows([Number(fmt((a + 1) ** 3 / 3))])]]];
+    case 16: return [`Load Fisher's iris data and print how many flowers and how many species it has.`, [runs, ['wrong counts', shows([150, 3])]]];
+    case 17: return [`Using symbolic maths, differentiate x^${k} and print the derivative's value at x = 2.`, [runs, ['wrong derivative', shows([k * 2 ** (k - 1)])]]];
+    case 18: return [`Solve dy/dt = -${b}*y with y(0) = 1 from t = 0 to 1 with an ODE solver and print y at t = 1.`, [runs, ['wrong ODE result', shows([Number(fmt(Math.exp(-b)))])]]];
+    case 19: return [`Maximise x + y with 0 <= x <= ${a} and 0 <= y <= ${b} as a linear program and print x and y.`, [runs, ['wrong optimum', shows([a, b])]]];
+    case 20: return [`Print the standard normal cumulative probability at z = ${z}, to 4 decimals.`, [runs, ['wrong probability', shows([PHI[z]])]]];
+    case 21: return [`Solve A*x = b for A = [2 1 1; 1 3 2; 1 0 0] and b = [${2 * a + b + c1}; ${a + 3 * b + 2 * c1}; ${a}], and print x.`, [runs, ['wrong solution', shows([a, b, c1])]]];
+    case 22: return [`Make a sine wave of amplitude ${a + 1} at 10 Hz, sampled at 1000 Hz for one second, and print its RMS value.`, [runs, ['wrong RMS', shows([(a + 1) / Math.SQRT2])]]];
     default: return [`Print the standard deviation (sample, like std) of ${vec}, rounded to 4 decimals.`, [runs, ['wrong standard deviation', shows([Number(fmt(Math.sqrt(v.reduce((s, x) => s + (x - sum / v.length) ** 2, 0) / (v.length - 1))))])]]];
   }
 }
 /** Hyperion's paper. The system text needs the function list, which is read once (hyperionRich is async). */
 export async function hyperionPaper(): Promise<Paper> {
   const system = await hyperionRich();
-  return { n: 60, ask: (r, i) => { const [prompt, rules] = hyperionTask(r, i); return { mode: 'code', system, prompt, maxTokens: 1400, rules }; } };
+  return { n: 92, ask: (r, i) => { const [prompt, rules] = hyperionTask(r, i); return { mode: 'code', system, prompt, maxTokens: 1400, rules }; } };
 }
 
 // ——— Bills ———

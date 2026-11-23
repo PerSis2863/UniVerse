@@ -19,6 +19,10 @@ mkdir -p "$WORK" "$OUT" "$VENVS"
 cd "$(dirname "$0")/../.."   # apps/web
 G=scripts/ai/ghidra-ai.py; H=scripts/ai/hyperion-ai.py
 
+# HYPERION_FROM=<branch>: Hyperion's engine (src/lib/lab) from that branch, so Ghidra learns functions not merged yet.
+if [ -n "${HYPERION_FROM:-}" ]; then
+  git fetch -q --depth 1 origin "$HYPERION_FROM" && git checkout FETCH_HEAD -- src/lib/lab && echo "Hyperion's engine from $HYPERION_FROM"
+fi
 echo "== 1/6 Tools"
 source scripts/ai/gpu-tools.sh
 MEM=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1)
