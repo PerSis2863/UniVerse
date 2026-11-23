@@ -236,4 +236,36 @@ y = [5.30 5.28 5.10 4.70 4.45 4.25 4.22 4.25 4.50 4.45]/100;
 figure; nelsonSiegelFit(t, y)
 figure; zeroCurve([0.051 0.047 0.0445 0.043 0.0425 0.0423 0.0424], 1)
 ` },
+  { name: 'portfolio.m', code: `% Finance: build a portfolio, measure its risk, test a strategy (a teaching example, not investment advice)
+rng(11)
+% Three made-up assets: bonds, shares, emerging markets (a year of 252 days, five years)
+n = 5*252; market = randn(n, 1);           % one shared market factor makes shares and emerging markets move together
+R = [0.04/252 + 0.05/sqrt(252)*(0.1*market + randn(n, 1)), ...
+     0.08/252 + 0.16/sqrt(252)*(0.8*market + 0.6*randn(n, 1)), ...
+     0.11/252 + 0.24/sqrt(252)*(0.7*market + 0.7*randn(n, 1))];
+[m, C] = ewstats(R);
+mA = m*252; CA = C*252;                     % yearly
+efficientFrontier(mA, CA, 30)
+rf = 0.02;
+[w, ret, risk, sharpe] = maxSharpe(mA, CA, rf);
+fprintf('Best Sharpe (%.2f): %.0f%% bonds, %.0f%% shares, %.0f%% emerging; %.1f%% return, %.1f%% risk\\n', sharpe, 100*w, 100*ret, 100*risk)
+% Risk of that portfolio: one day at 99%
+r = R * w;
+[v1, e1] = valueAtRisk(r, 0.99);
+[v2, e2] = valueAtRisk(r, 0.99, 'Method', 'normal');
+fprintf('1-day 99%% VaR on 1,000,000: historical %.0f (ES %.0f), normal %.0f (ES %.0f)\\n', 1e6*v1, 1e6*e1, 1e6*v2, 1e6*e2)
+t = varBacktest(r, v2, 0.99)
+% Volatility comes in spells: GARCH
+x = garchSim(2000, 2e-6, 0.09, 0.89);
+figure; garchFit(x)
+% A trend-following rule against buy and hold
+P = ret2tick(0.0003 + garchSim(2000, 2e-6, 0.09, 0.89), 'StartPrice', 100);
+fast = 20;   % slider 5 60
+figure; backtestStrategy(P, fast, 120)
+[dd, at] = maxdrawdown(P);
+fprintf('Buy and hold fell %.0f%% at worst\\n', 100*dd)
+% Climate transition risk, plainly: a carbon price of 100 a tonne on three holdings
+[loss, share, total] = carbonStress([4e6 3e6 3e6], [2000 800 100], 100, 'PassThrough', 0.3);
+fprintf('Carbon at 100/t: %.0f%%, %.0f%%, %.0f%% of each holding; %.1f%% of the portfolio\\n', 100*share, 100*total)
+` },
 ];

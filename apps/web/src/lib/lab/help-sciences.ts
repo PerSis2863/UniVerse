@@ -121,4 +121,20 @@ bondDuration | [mac, mod, conv] = bondDuration(face, coupon, years, yield, f) | 
 zeroCurve | [zero, df, t] = zeroCurve(par, f) | Zero rates and discount factors bootstrapped from par yields at 1/f, 2/f, … years. Drawn without outputs.
 nelsonSiegel | y = nelsonSiegel([b0 b1 b2 tau], t) | The Nelson–Siegel yield curve at maturities t.
 nelsonSiegelFit | [p, rmse] = nelsonSiegelFit(t, y) | Fits a Nelson–Siegel curve to yields at maturities t. Drawn without outputs.
+# Finance: portfolios and risk
+tick2ret | R = tick2ret(P, [], 'continuous') | Returns from prices (each column a series): simple (P2/P1 − 1) or continuous (log).
+ret2tick | P = ret2tick(R, 'StartPrice', 100, 'Method', 'continuous') | Prices from returns.
+ewstats | [mu, C] = ewstats(R) | Each column's mean return and the covariance of the columns.
+portstats | [risk, ret] = portstats(mu, C, W) | Each portfolio's risk (standard deviation) and expected return; W has a row of weights per portfolio.
+portvrisk | VaR = portvrisk(ret, risk, 0.05, value) | A normal value at risk: the loss exceeded with that probability.
+maxdrawdown | [dd, idx] = maxdrawdown(P) | The deepest fall from a peak (a fraction) and where it started and ended.
+efficientFrontier | [risk, ret, W] = efficientFrontier(mu, C, n, 'LongOnly', true) | Markowitz's efficient frontier: the least risk for each return, n points, the weights a row each. Drawn with the single assets without outputs.
+maxSharpe | [w, ret, risk, sharpe] = maxSharpe(mu, C, rf, 'LongOnly', true) | The portfolio with the best return over the risk-free rate per unit of risk (the tangency portfolio).
+valueAtRisk | [VaR, ES] = valueAtRisk(r, 0.99, 'Method', 'historical') | Value at risk and expected shortfall of returns as positive losses: 'historical', 'normal' or 'cornishfisher' (skew and fat tails).
+varBacktest | t = varBacktest(r, VaR, 0.99) | Checks a VaR model against what happened: the days lost beyond VaR against the expected number, Kupiec's test and its p-value (reject below 0.05).
+garchFit | g = garchFit(r) | A GARCH(1,1) volatility model by maximum likelihood: Omega, Alpha, Beta, the long-run volatility and the daily sigma. Drawn without outputs.
+garchSim | r = garchSim(n, omega, alpha, beta) | Returns from a GARCH(1,1) model: calm and stormy spells.
+ewmaVol | s = ewmaVol(r, 0.94) | RiskMetrics' exponentially weighted volatility, day by day.
+backtestStrategy | b = backtestStrategy(P, 20, 100, 'Cost', 0.001) | A moving-average crossover (in the market while the short average is above the long) against buy and hold: CAGR, volatility, Sharpe, drawdown and trades. Drawn without outputs.
+carbonStress | [loss, share, total] = carbonStress(values, emissions, price, 'PassThrough', 0.3, 'Rate', 0.08) | A carbon-price shock: each holding's extra yearly cost valued forever at the rate, as a loss of its value.
 `;

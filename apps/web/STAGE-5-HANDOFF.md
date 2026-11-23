@@ -12661,3 +12661,27 @@ errors, par bonds at 100, a zero's duration = maturity, duration + convexity pre
 bonds repricing to 1, Nelson–Siegel recovering a known curve. Not built: day counts and real dates (settlement,
 accrued interest), stochastic volatility (Heston), local volatility, interest-rate trees (Hull–White, BDT), credit
 spreads, exotic payoffs beyond these three.
+
+## M502 (23 Nov): Hyperion toolbox, finance: portfolios and risk (sciences and industries, 11 of 14)
+
+`risk.ts` (pure; uses `ncdf`/`npdf` from fin.ts and `nelderMead`/`solve` from optim.ts) and `risk-lab.ts`.
+`minRisk` is a primal active-set method on the KKT system (2 C_FF w_F − δ1 − γμ_F = 0, 1'w = 1, μ'w = target): the
+most negative weight leaves the free set; an asset at zero whose multiplier is negative rejoins; shorts allowed solves
+once. `frontier` (from the least-risk portfolio to the best single return long-only; a target only a corner reaches can
+be singular and is skipped), `maxSharpe` (200 frontier points, then a golden-section on the target), `ninv` (Acklam +
+one Newton step, 1e-12), `var_` (historical with interpolated quantile and the mean of the tail; normal; Cornish–Fisher
+with skew and excess kurtosis), `kupiec` (POF likelihood ratio, χ²₁ p-value), `garchFit` (normal likelihood; ω = e^p0,
+α + β = 0.9999·logistic, β's share logistic, so α + β < 1 always; Nelder–Mead twice; the variance starts at the
+sample's), `garchSim`, `ewma`, `maxDrawdown`, `backtestMA` (position decided on the previous close: no look-ahead;
+a cost on each switch), `carbonStress` (yearly emissions × price × (1 − pass-through) as a perpetuity at the rate,
+capped at the holding's value: a transparent basic, no scenario data invented). Language: MATLAB's `tick2ret`,
+`ret2tick`, `ewstats` (no decay factor), `portstats`, `portvrisk`, `maxdrawdown`; our own `efficientFrontier`,
+`maxSharpe`, `valueAtRisk`, `varBacktest`, `garchFit`, `garchSim`, `ewmaVol`, `backtestStrategy`, `carbonStress`
+(MATLAB's are Portfolio, varbacktest and garch objects). There is no `chol` in the engine (the example builds correlated
+returns from a market factor instead). Example `portfolio.m`. Tests: the least-risk portfolio's equal marginal risks,
+long-only weights ≥ 0 summing to 1 on a rising frontier, a corner target, the two-asset tangency closed form and its
+Sharpe √(e'C⁻¹e), normal VaR/ES formulas against 200,000 draws and the historical estimate, ninv(0.975), Kupiec
+accept/reject, GARCH recovering α 0.08, β 0.9 and the long-run volatility, returns and prices round trip, drawdown,
+a back-test with one trade, the carbon stress by hand. Not built: Black–Litterman, CVaR optimisation, transaction-cost
+or cardinality constraints, multivariate GARCH and copulas, credit risk (PD, LGD), NGFS climate scenarios with real
+data (the owner would need to choose a data source).

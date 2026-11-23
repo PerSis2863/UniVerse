@@ -10,3 +10,4 @@ import './geo-lab';
 import './biosig-lab';
 import './medimg-lab';
 import './fin-lab';
+import './risk-lab';
