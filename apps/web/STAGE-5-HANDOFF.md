@@ -11322,5 +11322,9 @@ support, travel planner or itenary planner and other ai model which is needed in
   (3–5 tips, no prices or clock times), research (≥2 citations, only to sources given, every point cited, no markdown),
   posts (the platforms asked, X ≤ 280, no invented numbers or green claims). 40 requests per agent held back; the score
   prints passes per agent before and after.
+- **Renting next time (the owner, 23 Nov: "next time rent like that you can connect with no problems"):** keep the
+  results on a RunPod **network volume** (any card in that data centre can open it), not the pod's own disk: after the
+  agents run ended, the stopped pod's A40 was rented to someone else and the score couldn't be read until it freed. Also
+  print the score lines to RunPod's container log (`> /proc/1/fd/1`) so they can be read while the pod is off.
 - **Not covered yet:** the other ~45 AI features (tutor, quizzes, marking, translation…) still use Gemini's prompts
   directly; each could join `AGENTS` with its own rules the same way.

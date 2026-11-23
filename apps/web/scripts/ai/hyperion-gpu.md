@@ -103,6 +103,10 @@ requests from real data, keeps only answers that pass each agent's rules, trains
 after, and uploads to Cloudflare as `agents-…`. Then set **AGENTS_LORA** in Cloudflare to the printed name and turn on
 **"Agents' own AI on Cloudflare"** (console → Server). About 2–3 hours on a 48 GB card (US$1–2 on an A40).
 
+**On RunPod, keep the results on a network volume** (Storage → Network volume, in the same data centre as the card, then
+attach it at `/workspace`): a stopped machine can lose its card to another customer, and then its own disk can't be read
+until a card frees; a network volume opens from any machine there.
+
 **On RunPod, use the machine's own disk for code:** in some places `/workspace` is network storage, very slow with many
 small files. Clone UniVerse into `/root` and start with `WORK=/root/hyperion-ai`; the models and the results still go to
 `/workspace`.
