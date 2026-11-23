@@ -11349,3 +11349,18 @@ and capacitor floating). `CircuitBench.tsx`: the S tool and symbol, Frequency an
 efficiency readouts, closed-loop (feedback-controlled) converters, inverters and motor drives. Trapezoidal ringing is
 visible at the switch node right after each edge (cosmetic).
 
+## M425 (23 Nov): Hyperion toolbox, batteries, solar and wind
+
+`energy.ts` (pure): `ocv` (an NMC cell's open-circuit voltage from a table at state of charge 0, 0.1 … 1, linear
+between), `dOcv`, `simulateCell(cell, I, dt, soc0)` (one RC pair stepped exactly: a = e^(−dt/R1C1); charge by Coulomb
+counting; + current discharges), `socEkf` (an extended Kalman filter on [soc, v1]: correct with the voltage, then
+predict; Q 1e-7, R 1e-4, P₀ 0.1), `pack` (as one big cell), `pvCurrent` (single-diode model by Newton; Iph and Voc
+scaled by irradiance and temperature, I0 from Voc), `pvCurve` (open circuit by bisection, the maximum power point by a
+golden-section search), `windPower` (½ρAC_p v³, cut-in, rated, cut-out), `windYear` (energy over a Weibull pdf in
+0.01 m/s steps; the mean wind c·Γ(1 + 1/k)). Language (`energy-lab.ts`, loaded by the worker and the help test):
+batteryCell, batteryPack (keeps its `Cell`; simulated as one cell carrying I/p, voltage × s), batteryOCV,
+batterySimulate (drawn without outputs), socEstimate, pvModule, pvCurve (drawn with two y axes), windTurbine (Cp above
+Betz's 16/27 refused), windPower, windAEP. Example `energy.m`. Tests (`energy.test.ts`). Not built: temperature and
+ageing in the cell, two RC pairs and fitting cell parameters from test data, cell balancing in packs, solar position
+and a day's yield, wake losses in wind farms, power systems (load flow, faults) and mixed-signal (ADC, DAC, PLL).
+

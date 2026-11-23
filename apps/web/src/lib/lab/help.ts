@@ -654,6 +654,18 @@ linearDegradationModel | mdl = linearDegradationModel | Wear that grows in a str
 fit | mdl = fit(mdl, {[t1 y1], [t2 y2], …}) | Learns a degradation model from past machines' histories ([time value] each, or tables).
 update | mdl = update(mdl, [t y]) | The model after seeing one machine's readings so far.
 predictRUL | [rul, ci, pdf] = predictRUL(mdl, [t y], threshold) | The remaining useful life: when the level will reach the threshold, a 90% range and the spread of possible times.
+
+# Energy: batteries, solar and wind
+batteryCell | c = batteryCell('Capacity', 5, 'R0', 0.012, 'R1', 0.008, 'C1', 2500) | A lithium-ion cell as an equivalent circuit: its open-circuit voltage by state of charge, a series resistance and one RC pair (capacity in Ah, ohms, farads).
+batteryPack | p = batteryPack(cell, s, p) | s cells in series and p strings in parallel (voltage × s, capacity × p); NominalVoltage and EnergykWh.
+batteryOCV | batteryOCV(soc) | The cell's open-circuit voltage at a state of charge from 0 to 1.
+batterySimulate | [v, soc] = batterySimulate(battery, I, dt, soc0) | The terminal voltage and state of charge under a current (A, + discharging) sampled every dt seconds. Without outputs, drawn.
+socEstimate | soc = socEstimate(battery, I, v, dt, guess) | The state of charge from currents and measured voltages by an extended Kalman filter: it corrects a wrong first guess.
+pvModule | m = pvModule('Isc', 9, 'Voc', 37.5, 'Ns', 60, 'Rs', 0.25, 'Rsh', 300) | A solar module by the single-diode model (short-circuit current, open-circuit voltage, cells in series, resistances).
+pvCurve | [V, I, P, mpp] = pvCurve(module, G, T) | The current and power against voltage at irradiance G (W/m²) and cell temperature T (°C), and the maximum power point. Without outputs, drawn.
+windTurbine | w = windTurbine('Diameter', 100, 'RatedPower', 2.5e6, 'CutIn', 3, 'CutOut', 25, 'Cp', 0.45) | A wind turbine (metres, watts, m/s; Cp at most Betz's 0.593).
+windPower | windPower(turbine, v) | Its power (W) at each wind speed: ½ρAC_p v³, held at rated, nothing outside cut-in to cut-out.
+windAEP | [MWh, cf, meanWind] = windAEP(turbine, k, c) | A year's energy and the capacity factor over Weibull winds (shape k; k = 2 is Rayleigh; scale c in m/s).
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
