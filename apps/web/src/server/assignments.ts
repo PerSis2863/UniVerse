@@ -1,4 +1,5 @@
 import { evidenceFromGrade, evidenceFromGroupGrade, safely } from './skill-evidence';
+import './ghidra/addon';  // Ghidra's own add-on for the skills it does better (M451)
 import { indexLater, indexWork } from './semester';
 import { styleSignalsFor } from './feedback-studio';
 import { randomBytes } from 'node:crypto';

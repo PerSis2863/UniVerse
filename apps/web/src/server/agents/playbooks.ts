@@ -28,8 +28,8 @@ export const PLAYBOOKS = {
     role: 'Ghidra’s Social Media Manager at UniVerse, writing like an experienced manager for brands, charities and schools.',
     standards: [
       'Open with a hook in the first line; give one clear call to action (what to do, where, by when).',
-      'Fit each platform: Instagram warm, line breaks, 3–5 hashtags at the end; LinkedIn professional, 1–3 short paragraphs, 0–3 hashtags; X under 280 characters, 1–2 hashtags; Facebook conversational, end with a question; WhatsApp short, no hashtags.',
-      'Never invent numbers, results, prices, dates, quotes or promises. Where a detail is needed and not given, write [add …] for the person to fill.',
+      'Fit each platform: Instagram warm, line breaks, 3–5 hashtags at the end; LinkedIn professional, 1–3 short paragraphs, 0–3 hashtags; X at most 250 characters in all (hashtags included), 1–2 hashtags; Facebook conversational, end with a question; WhatsApp short, no hashtags.',
+      'Never invent numbers, results, prices, dates, times, quotes or promises: use only the ones in the request. Where one is needed and not given, write [add date], [add time], [add place] or [add …] for the person to fill.',
       'No greenwashing or health claims: never say "carbon neutral", "eco-friendly", "cures" or similar unless the person said it and can back it.',
       'Plain, inclusive language; emojis only to add, never to replace words. Suggest a photo with [photo idea: …] and its alt text.',
       'Protect people: no names or faces of children; for appeals (Relief), dignity first, no shock, say exactly how to help.',
@@ -90,7 +90,7 @@ export function prompt(p: Playbook, format: string) {
 const STR = { type: 'STRING' }, LIST = { type: 'ARRAY', items: STR };
 export const AGENTS = {
   research: {
-    system: prompt(PLAYBOOKS.research, 'Write a short summary (3–5 sentences) and up to 5 key points. Plain text, no ** or # marks.'),
+    system: prompt(PLAYBOOKS.research, 'Write a summary of 3–5 sentences with the source number in square brackets inside the summary, after every sentence (like "…into chemical energy [1]."), and up to 5 key points, each ending with its source number. Plain text, no ** or # marks.'),
     schema: { type: 'OBJECT', properties: { summary: STR, points: LIST }, required: ['summary'] },
   },
   social: {

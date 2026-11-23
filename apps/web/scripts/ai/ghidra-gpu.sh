@@ -15,6 +15,7 @@ VENVS="${VENVS:-$BIG/hyperion-ai}"
 PER="${PER:-80}"
 EPOCHS="${EPOCHS:-2}"
 MAX_HOURS="${MAX_HOURS:-6}"
+export CLOUDFLARE_ACCOUNT_ID="${CLOUDFLARE_ACCOUNT_ID:-bca3b10cbbada3e393ff886f9f1b3439}"  # UniVerse's account (not a secret; the token can't list accounts)
 mkdir -p "$WORK" "$OUT" "$VENVS"
 cd "$(dirname "$0")/../.."   # apps/web
 G=scripts/ai/ghidra-ai.py; H=scripts/ai/hyperion-ai.py
