@@ -11364,3 +11364,17 @@ Betz's 16/27 refused), windPower, windAEP. Example `energy.m`. Tests (`energy.te
 ageing in the cell, two RC pairs and fitting cell parameters from test data, cell balancing in packs, solar position
 and a day's yield, wake losses in wind farms, power systems (load flow, faults) and mixed-signal (ADC, DAC, PLL).
 
+## M426 (23 Nov): Hyperion toolbox, power systems and mixed-signal
+
+`grid.ts` (pure; complex numbers as [re, im] pairs): `ybus` (π lines, half the charging at each end), `loadFlow` (polar
+Newton–Raphson with the analytic Jacobian; one slack; PV buses hold V; P, Q injections; line flows from both ends,
+losses their sum; `converged`), `threePhaseFault` (source reactances to ground in Ybus, Zbus by complex Gauss–Jordan,
+I = V/Z_kk, bus voltages V − Z_ik·I), `adc` (mid-tread codes 0…2ᴺ−1 over [lo, hi], each code's centre), `dac`, `snrOf`,
+`pll` (type II: an ideal sin(Δφ) detector, PI filter Kp = 2ζωn, Ki = ωn², an oscillator; bandwidth in Hz is ωn/2π).
+Language (`grid-lab.ts`, loaded by the worker and the help test): powerflow(buses [type P Q V angle°], lines [from to r
+x b]; MATPOWER's type numbers 3/2/1; buses from 1), shortcircuit(n, lines, sources [bus x], k), adc, dac, snr(signal,
+noise), pll(fin, fs, n, 'Bandwidth', 'Damping', 'FreeRun') (drawn without outputs). Example `grid.m` (uses `table`, so
+it runs in the worker where files.ts is loaded). Tests (`grid.test.ts`). Not built: unbalanced faults (symmetrical
+components), transformers with taps, generator limits, dynamics and stability, INL/DNL and sigma-delta converters,
+charge-pump PLL models; item 5 next (signals, comms and sensing).
+

@@ -666,6 +666,14 @@ pvCurve | [V, I, P, mpp] = pvCurve(module, G, T) | The current and power against
 windTurbine | w = windTurbine('Diameter', 100, 'RatedPower', 2.5e6, 'CutIn', 3, 'CutOut', 25, 'Cp', 0.45) | A wind turbine (metres, watts, m/s; Cp at most Betz's 0.593).
 windPower | windPower(turbine, v) | Its power (W) at each wind speed: ½ρAC_p v³, held at rated, nothing outside cut-in to cut-out.
 windAEP | [MWh, cf, meanWind] = windAEP(turbine, k, c) | A year's energy and the capacity factor over Weibull winds (shape k; k = 2 is Rayleigh; scale c in m/s).
+
+# Power systems and mixed-signal
+powerflow | r = powerflow(buses, lines) | A load flow by Newton–Raphson: buses as rows [type P Q V angle] (type 3 slack, 2 generator, 1 load; P, Q injections in per unit), lines as rows [from to r x b]; gives V, AngleDeg, P, Q, LineFlows, Losses.
+shortcircuit | f = shortcircuit(n, lines, sources, k) | A bolted three-phase fault at bus k: the fault current (per unit) and every bus's voltage during it; sources as rows [bus x].
+adc | [codes, xq] = adc(x, bits, [lo hi]) | An analogue-to-digital converter: each sample's code and the value it stands for (its quantisation noise sets SNR ≈ 6.02·bits + 1.76 dB).
+dac | v = dac(codes, bits, [lo hi]) | A digital-to-analogue converter: codes back to values.
+snr | snr(signal, noise) | The signal-to-noise ratio in dB.
+pll | [f, err] = pll(fin, fs, n, 'Bandwidth', 50, 'Damping', 0.707) | A phase-locked loop following an input frequency (a number, or one per sample): the oscillator's frequency and the phase error. Without outputs, drawn.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
