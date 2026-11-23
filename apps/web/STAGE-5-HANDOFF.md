@@ -11626,3 +11626,19 @@ Welch, Hann, 50 % overlap, with coherence), `modalfit` (peak picking, half-power
 kurtogram), `tsa` (turns between pulses stretched alike; 'NumRotations'), `orderspectrum` (resampled at even angle).
 Example vibration.m. Not built: prestress (loads stiffening the modes), damping per mode or Rayleigh damping, random
 vibration (PSD), response spectra, modal shapes from `modalfit`, the LSCE/LSRF fit methods.
+
+## M442b (23 Nov): Hyperion fills the screen, with rounder corners
+
+The owner, 23 Nov, with a screenshot of Simulate: "there is a lot of gap here so please fill the area properly and make it
+look good and round corners everywhere in the hyperion website and also same do for the downloaded app". The empty row
+was the page's `Topbar` holding only Install Hyperion: with the menu across the top it now sits in `TopNav` (loaded with
+`dynamic` only when `appFor(path)` is `lab`), and `HyperionTopbar` passes it to the page's bar only with the side menu.
+Pages pad `px-3 pb-3 pt-2 sm:px-5 sm:pb-4`; heights: Code `100dvh − 6rem`, Learn `− 6.25rem`, Simulate's benches `− 9rem`
+(their tabs row), so each window ends ~16 px above the bottom at 900 px. Structures' outline may take 55 % of the side.
+Fluids: the tunnel box keeps its own shape (`aspect-ratio` NX / NY, at most 72 %) with 12 px inside it, and the colour
+key and the forces (numbers, a larger chart, the note) fill the strip under it instead of the sidebar. Rounded by
+`roundRect` clips: Learn's decision regions (10 px), the tunnel (12 px); CodeMirror's active line 6 px. A probe of every
+visible element in Hyperion's pages found nothing else square (the heat plate's corners are the part's own shape).
+Computer app 1.0.1: `preload.js` exposes `window.hyperionDesktop` ({ app, platform }; nothing that reaches the
+computer), `InstallHyperion` hides itself there; `roundedCorners: true`. The installers need rebuilding (GitHub →
+Actions → Hyperion desktop) for the marker; everything else reaches the app with the website.

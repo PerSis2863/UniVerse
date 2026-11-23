@@ -423,11 +423,11 @@ export function StructureBench() {
   );
   const side = (
     <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col overflow-hidden p-0" aria-label="Study">
-      <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
+      <div className="max-h-[55%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3" aria-live="polite" data-no-motion>{details}</div>
       {sel.k !== 'solution' && <div className="border-t border-zinc-200/80 p-2 dark:border-white/10"><button type="button" className={cn(small, 'w-full justify-center')} onClick={() => setSel({ k: 'solution' })}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Back to the results</button></div>}
     </aside>
   );
   // Computers only (M405): the study on the left, the graphics window filling the rest.
-  return <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
+  return <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
 }

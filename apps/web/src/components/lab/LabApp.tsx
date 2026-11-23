@@ -712,7 +712,7 @@ export function LabApp() {
   );
 
   return (
-    <div className={cn('relative flex h-[calc(100dvh-10.5rem+var(--bare-gain,0px))] min-h-[30rem] flex-col gap-3', dragging && 'rounded-2xl outline-2 outline-offset-4 outline-blue-600 outline-dashed')}
+    <div className={cn('relative flex h-[calc(100dvh-6rem+var(--bare-gain,0px))] min-h-[30rem] flex-col gap-3', dragging && 'rounded-2xl outline-2 outline-offset-4 outline-blue-600 outline-dashed')}
       onDragOver={(e) => { if (e.dataTransfer.types.includes('Files')) { e.preventDefault(); setDragging(true); } }}
       onDragLeave={(e) => { if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDragging(false); }}
       onDrop={(e) => { if (!e.dataTransfer.files.length) return; e.preventDefault(); setDragging(false); void addFiles(e.dataTransfer.files); }}>

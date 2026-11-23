@@ -23,7 +23,9 @@ function open() {
   win = new BrowserWindow({
     ...b, minWidth: 1100, minHeight: 700, title: 'Hyperion', backgroundColor: '#f1f2f4', show: false,
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: true },
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: true, preload: path.join(__dirname, 'preload.js') },
+    // Rounded window corners where the system offers them (macOS; Windows 11 rounds every window).
+    roundedCorners: true,
   });
   // A browser's own name (some sign-in pages refuse unknown app windows).
   win.webContents.setUserAgent(win.webContents.getUserAgent().replace(/\sElectron\/\S+/, '').replace(/\shyperion-desktop\/\S+/, ''));

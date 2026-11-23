@@ -99,7 +99,7 @@ const look = (dark: boolean) => EditorView.theme({
   '.cm-scroller': { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace', lineHeight: '1.65' },
   '.cm-content': { padding: '10px 0', caretColor: dark ? '#e4e4e7' : '#18181b' },
   '.cm-gutters': { backgroundColor: 'transparent', border: 'none', color: dark ? '#8b8b94' : '#71717a' },
-  '.cm-activeLine': { backgroundColor: dark ? 'rgba(255,255,255,0.045)' : 'rgba(24,24,27,0.035)' },
+  '.cm-activeLine': { backgroundColor: dark ? 'rgba(255,255,255,0.045)' : 'rgba(24,24,27,0.035)', borderRadius: '6px' },
   '.cm-activeLineGutter': { backgroundColor: 'transparent', color: dark ? '#e4e4e7' : '#18181b' },
   '&.cm-focused': { outline: 'none' },
   '.cm-cursor': { borderLeftColor: dark ? '#e4e4e7' : '#18181b', borderLeftWidth: '2px' },

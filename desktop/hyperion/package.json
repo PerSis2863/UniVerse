@@ -1,7 +1,7 @@
 {
   "name": "hyperion-desktop",
   "productName": "Hyperion",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Hyperion by UniVerse: maths, code and engineering simulation, as a computer app.",
   "private": true,
   "main": "main.js",
@@ -25,6 +25,7 @@
     },
     "files": [
       "main.js",
+      "preload.js",
       "offline.html",
       "assets/icon.png"
     ],
