@@ -53,14 +53,14 @@ export function controlsOf(code: string): Control[] {
   return out;
 }
 
+/** How many decimals a slider's step needs (0.25 → 2). */
+export const stepDecimals = (step: number) => { for (let d = 0; d < 10; d++) { const s = step * 10 ** d; if (Math.abs(s - Math.round(s)) < 1e-6) return d; } return 10; };
+
 /** The script with a control's value replaced (a number written to its step's decimals). */
 export function setControl(code: string, c: Control, v: number | boolean | string): string {
   let lit: string;
   if (c.kind === 'toggle') lit = v ? 'true' : 'false';
   else if (c.kind === 'menu') lit = `'${String(v).replace(/'/g, '')}'`;
-  else {
-    const dec = Math.max(0, Math.min(10, -Math.floor(Math.log10(c.step) + 1e-9)));
-    lit = String(+Number(v).toFixed(dec));
-  }
+  else lit = String(+Number(v).toFixed(stepDecimals(c.step)));
   return code.slice(0, c.from) + lit + code.slice(c.to);
 }

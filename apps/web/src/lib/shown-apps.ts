@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useSyncExternalStore } from 'react';
 import { APPS, type AppId, type ImpactApp } from './apps';
+import { useDesktop } from './use-desktop';
 import { ALL_APP_IDS, hideCss, parseShownApps, SHOWN_KEY } from './shown-apps-list';
 
 // Which apps the website shows (M203, the owner: "when i want to show only one app then it should
@@ -57,5 +58,10 @@ export function useShownApps(): ImpactApp[] {
     checked = true;
     fetch('/api/core/site/apps', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((d: { apps?: unknown } | null) => { if (d) setShownApps(d.apps); }).catch(() => { checked = false; });
   }, []);
-  return useMemo(() => APPS.filter((a) => ids.includes(a.id)), [ids]);
+  // An app for computers only (Hyperion, M405) isn't listed on phones and tablets (unless it is the only one shown).
+  const desktop = useDesktop(true);
+  return useMemo(() => {
+    const shown = APPS.filter((a) => ids.includes(a.id)), here = shown.filter((a) => desktop || !a.desktopOnly);
+    return here.length ? here : shown;
+  }, [ids, desktop]);
 }

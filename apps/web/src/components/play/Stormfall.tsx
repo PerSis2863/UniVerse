@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState, useSyncExternalStore } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { useDesktop } from '@/lib/use-desktop';
 import useSWR from 'swr';
 import { ArrowRight, Crosshair, Expand, Gauge, Keyboard, Loader2, Monitor, MousePointer2 } from 'lucide-react';
 import Link from '@/components/ui/Link';
@@ -22,10 +23,6 @@ const BASE = '/games/stormfall/stormfall';
 /** The download, for the intro (the four build files together, compressed). */
 export const STORMFALL_MB = 58;
 
-const DESKTOP = '(hover: hover) and (pointer: fine) and (min-width: 1024px)';
-const subscribe = (cb: () => void) => { const m = window.matchMedia(DESKTOP); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); };
-/** True on a computer with a mouse and a wide screen (false while rendering on the server). */
-export const useDesktop = () => useSyncExternalStore(subscribe, () => window.matchMedia(DESKTOP).matches, () => false);
 
 /** The card on /play, shown only on computers. */
 export function StormfallCard() {

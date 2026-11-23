@@ -1,4 +1,5 @@
-// Languages chat messages can be translated into (ISO 639-1 code → English name, own name).
+// Languages chat messages can be translated into (ISO 639-1 code → English name, own name). Of India's languages only
+// Hindi, and not Urdu (the owner, 22 Nov, M403); a message written in another one is still named (Intl).
 export const LANGUAGES: Record<string, { name: string; native: string }> = {
   en: { name: 'English', native: 'English' },
   fr: { name: 'French', native: 'Français' },
@@ -14,14 +15,10 @@ export const LANGUAGES: Record<string, { name: string; native: string }> = {
   ru: { name: 'Russian', native: 'Русский' },
   tr: { name: 'Turkish', native: 'Türkçe' },
   nl: { name: 'Dutch', native: 'Nederlands' },
-  bn: { name: 'Bengali', native: 'বাংলা' },
-  ta: { name: 'Tamil', native: 'தமிழ்' },
-  te: { name: 'Telugu', native: 'తెలుగు' },
-  mr: { name: 'Marathi', native: 'मराठी' },
-  ur: { name: 'Urdu', native: 'اردو' },
   pl: { name: 'Polish', native: 'Polski' },
   sw: { name: 'Swahili', native: 'Kiswahili' },
   id: { name: 'Indonesian', native: 'Bahasa Indonesia' },
 };
 export const isLanguage = (x: unknown): x is string => typeof x === 'string' && Object.hasOwn(LANGUAGES, x);
-export const languageName = (code: string) => (isLanguage(code) ? LANGUAGES[code].name : undefined) ?? (code === 'und' ? 'another language' : code.toUpperCase());
+const named = (code: string) => { try { return new Intl.DisplayNames(['en'], { type: 'language' }).of(code); } catch { return undefined; } };
+export const languageName = (code: string) => (isLanguage(code) ? LANGUAGES[code].name : undefined) ?? (code === 'und' ? 'another language' : named(code) ?? code.toUpperCase());

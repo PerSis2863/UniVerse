@@ -3197,3 +3197,9 @@ html.reduce-motion .map-panel { transition-property: opacity; }
 @keyframes lab-busy { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
 html[data-scrolling] .lab-busy > span { animation-play-state: paused; }
 @media (prefers-reduced-motion: reduce) { .lab-busy > span { animation: none; width: 100%; opacity: 0.5; } }
+
+/* Hyperion is for computers only (M405, the owner, 22 Nov): its tabs and links are hidden on phones and tablets from the
+   first paint (the same test as src/lib/use-desktop.ts, turned round). */
+@media (hover: none), (pointer: coarse), (max-width: 1023.98px) {
+  [data-uv-app="lab"] { display: none !important; }
+}

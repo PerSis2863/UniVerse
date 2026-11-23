@@ -2,17 +2,16 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
-import { useMedia } from '@/lib/use-media';
 import { cn } from '@/lib/utils';
 import type { FigOut, FileIn, FromLab, Inspect, ToLab, VarRow } from './lab.worker';
 import { LabText } from './LabText';
 import { LabNotebook, type NoteOut } from './LabNotebook';
 import { notebookOf } from '@/lib/lab/notebook';
 import { readShare, shareFragment, type Shared } from '@/lib/lab/share';
-import { hotLines, timeText, type Profile } from '@/lib/lab/profile';
+import { compared, hotLines, timeText, type Profile } from '@/lib/lab/profile';
 import { lintScript } from '@/lib/lab/lint';
 import { QrCode } from '@/components/ui/QrCode';
 import { VariableViewer, type Shown } from './VariableViewer';
@@ -22,6 +21,8 @@ import { printedUpTo, varsAt, type TraceStep } from '@/lib/lab/trace';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
+import { FRAME_H, FRAME_W, LabSweep, type Sweep } from './LabSweep';
+import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
 import { builtinNames } from './matlab-lang';
 
 // M376: Hyperion's window: the command window, a script editor, the variables and the figures, like a desktop
@@ -30,9 +31,7 @@ import { builtinNames } from './matlab-lang';
 // Phones get the same parts as tabs.
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
-type Tab = 'command' | 'editor' | 'variables' | 'files' | 'figure';
-const TABS: Tab[] = ['command', 'editor', 'variables', 'files', 'figure'];
-type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile';
+type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -46,6 +45,21 @@ const EXAMPLES: Script[] = [
   { name: 'waves.m', code: "% Live controls: drag them and the figure follows\nfreq = 2;        % slider 0.5 8\ndamping = 0.3;   % slider 0 1\nshape = 'sine';  % menu sine square sawtooth\nshowEnvelope = true; % toggle\nt = linspace(0, 10, 600);\nswitch shape\n  case 'sine', y = sin(2*pi*freq*t/5);\n  case 'square', y = sign(sin(2*pi*freq*t/5));\n  otherwise, y = 2*mod(freq*t/5, 1) - 1;\nend\ny = y .* exp(-damping*t);\nplot(t, y); hold on\nif showEnvelope, plot(t, exp(-damping*t), '--', t, -exp(-damping*t), '--'); end\nhold off; ylim([-1.2 1.2]); grid on\ntitle(sprintf('%s wave, f = %.1f', shape, freq))\n" },
   { name: 'notebook.m', code: "%% Projectile motion\n% Press **Notebook** above to read this script as a page. A ball thrown at speed $v_0$\n% and angle $\\theta$ lands after $$t = \\frac{2 v_0 \\sin\\theta}{g}$$ and travels $x = v_0 \\cos\\theta \\, t$.\nv0 = 20;      % slider 5 40\ntheta = 45;   % slider 10 80\ng = 9.81;\nt = 2*v0*sind(theta)/g\nx = v0*cosd(theta)*t\n\n%% The path\n% Height against distance; move the sliders and every part runs again.\ntt = linspace(0, t, 100);\nplot(v0*cosd(theta)*tt, v0*sind(theta)*tt - g*tt.^2/2); grid on\nxlabel('distance (m)'); ylabel('height (m)')\n\n%% The exact answer\n% With symbols the distance is a formula; the longest throw is at $45^\\circ$.\nsyms v a\ndistance = simplify(v^2*sin(2*a)/g)\n" },
   { name: 'symbolic.m', code: "% Exact maths with symbols: answers are set as real maths\nsyms x\nf = x^3 - 6*x^2 + 11*x - 6\ndf = diff(f)\nr = solve(f == 0, x)\narea = int(f, 0, 1)\none = simplify(sin(x)^2 + cos(x)^2)\nseries = taylor(exp(x), x, 'Order', 5)\na = 1;   % slider -3 3\nfplot(f + a*x, [0 4]); grid on\ntitle('f(x) + a x')\n" },
+  { name: 'control.m', code: "% Control systems: a plant, a PID controller and the closed loop\ns = tf('s');\nG = 1/(s^2 + 0.6*s + 1)        % the plant: a lightly damped mass on a spring\nKp = 2;   % slider 0 10\nKi = 1;   % slider 0 5\nKd = 0.8; % slider 0 3\nC = pid(Kp, Ki, Kd, 0.05);\nT = feedback(C*G, 1);\ninfo = stepinfo(T)\nstep(G, T, 20); legend('plant alone', 'with PID')\nfigure; margin(C*G)\n" },
+  { name: 'optim.m', code: "% Optimisation: three ways down Rosenbrock's banana-shaped valley to its floor at (1, 1)\nf = @(x) 100*(x(2) - x(1)^2)^2 + (1 - x(1))^2;\n[X, Y] = meshgrid(linspace(-2, 2, 120), linspace(-1, 3, 120));\ncontour(X, Y, log(1 + 100*(Y - X.^2).^2 + (1 - X).^2), 25); hold on\n[x1, ~, ~, o1] = fminsearch(f, [-1.5 2]);\n[x2, ~, ~, o2] = fminunc(f, [-1.5 2], optimoptions('fminunc', 'Display', 'off'));\ncircle = @(x) deal(x(1)^2 + x(2)^2 - 1.5, []);   % stay inside a circle\n[x3, ~, ~, o3] = fmincon(f, [-1.5 2], [], [], [], [], [], [], circle, optimset('Display', 'off'));\nplot(o1.path(:,1), o1.path(:,2), '.-', o2.path(:,1), o2.path(:,2), 'o-', o3.path(:,1), o3.path(:,2), 'x-')\nplot(1, 1, 'k*'); hold off\nlegend('valley', 'fminsearch', 'fminunc', 'fmincon (in the circle)')\ntitle(sprintf('Steps: fminsearch %d, fminunc %d, fmincon %d', o1.iterations, o2.iterations, o3.iterations))\n" },
+  { name: 'maintenance.m', code: "% Predictive maintenance: when will this machine need fixing?\nrng(2)\n% Ten past machines, run until their vibration level passed 30 (wear that grows exponentially).\nfleet = cell(1, 10);\nfor k = 1:10\n  t = (0:80)'; theta = 0.5*exp(0.1*randn); beta = 0.08 + 0.005*randn;\n  fleet{k} = [t, 1 + theta*exp(beta*t + 0.03*randn(size(t)))];\nend\nmdl = fit(exponentialDegradationModel('Phi', 1), fleet);\n% A new machine, watched for 30 days so far.\nt = (0:30)'; seen = [t, 1 + 0.6*exp(0.085*t + 0.03*randn(size(t)))];\n[rul, ci] = predictRUL(mdl, seen, 30);\nfprintf('About %.0f more days (90%%: %.0f to %.0f)\\n', rul, ci(1), ci(2))\nhold on\nfor k = 1:10, plot(fleet{k}(:,1), fleet{k}(:,2), 'Color', [0.75 0.75 0.75]); end\nplot(seen(:,1), seen(:,2), 'LineWidth', 2)\nyline(30, '--', 'failure level'); xline(30 + rul, ':', 'predicted failure')\nhold off; xlabel('Days'); ylabel('Vibration level'); title('Remaining useful life')\n% A sudden change in a signal, and a bearing's defect frequencies.\nfigure; findchangepts([randn(1, 200) 3 + randn(1, 150)])\n[~, info] = bearingFaultBands(25, 9, 7.94, 39.04); info.Centers'\n" },
+  { name: 'energy.m', code: "% Energy: an electric car's battery, a solar roof and a wind turbine\ncell = batteryCell('Capacity', 5);\npack = batteryPack(cell, 96, 4)               % 96 in series, 4 strings: about 355 V, 7 kWh\nI = repmat([20*ones(1, 120) 80*ones(1, 60)], 1, 10);   % cruising, then climbing, for half an hour\n[v, soc] = batterySimulate(pack, I, 1, 0.9);\nguess = socEstimate(pack, I, v + 0.2*randn(size(v)), 1, 0.5);   % the gauge starts 40% wrong\nt = (0:numel(I) - 1)/60;\nplot(t, 100*soc, t, 100*guess, '--'); legend('true charge', 'Kalman estimate'); xlabel('Minutes'); ylabel('Charge (%)')\nfigure; pvCurve(pvModule, 900, 45)                    % a module on a sunny, hot roof\nturbine = windTurbine('Diameter', 120, 'RatedPower', 3e6);\n[MWh, cf] = windAEP(turbine, 2, 8);\nfprintf('A 3 MW turbine in 7 m/s average wind: %.0f MWh a year (capacity factor %.0f%%)\\n', MWh, 100*cf)\n" },
+  { name: 'grid.m', code: "% Power systems: three towns on a small grid, and what a short circuit does\n%      type   P     Q    V     angle     (3 slack, 2 generator, 1 load; per unit)\nbus = [3     0     0    1.02  0;\n       2     0.4   0    1.01  0;\n       1    -1.2  -0.5  1     0];\n%      from to  r     x     b\nlines = [1  2   0.02  0.08  0.02;\n         2  3   0.03  0.10  0.02;\n         1  3   0.025 0.09  0.02];\nr = powerflow(bus, lines);\ndisp(table((1:3)', r.V, r.AngleDeg, 'VariableNames', {'Bus', 'V', 'Angle'}))\nfprintf('Losses: %.1f%% of the load\\n', 100*r.Losses/1.2)\nf = shortcircuit(3, lines, [1 0.15; 2 0.2], 3);\nfprintf('A fault at the town: %.1f pu of current; the other buses sag to %.2f and %.2f pu\\n', f.FaultCurrent, f.BusVoltages(1), f.BusVoltages(2))\n% Converters: more bits, less noise (about 6 dB a bit).\nx = 0.99*sin(2*pi*(0:4999)/123.4); bits = 4:2:16;\nfor k = 1:numel(bits), [~, xq] = adc(x, bits(k)); s(k) = snr(x, xq - x); end\nplot(bits, s, 'o-', bits, 6.02*bits + 1.76, '--'); legend('measured', '6.02 N + 1.76'); xlabel('Bits'); ylabel('SNR (dB)')\nfigure; pll([1000*ones(1, 5000) 1100*ones(1, 20000)], 50e3, 25000)\n" },
+  { name: 'comms.m', code: "% Wireless: 16-QAM over a noisy channel, and its bit errors against theory\nrng(1)\nM = 16; k = log2(M); n = 20000;\nx = randi([0 M-1], n, 1);\ny = qammod(x, M, 'UnitAveragePower', true);\nsnr = 14;   % slider 4 24\nr = awgn(y, snr, 'measured');\nscatterplot(r); title(sprintf('16-QAM at %d dB', snr))\n[~, ber] = biterr(x, qamdemod(r, M, 'UnitAveragePower', true));\nfprintf('Bit errors: %.2g\\n', ber)\n% The whole curve: simulated against the textbook formula\nEbN0 = 0:1:10; sim = zeros(size(EbN0));\nfor i = 1:numel(EbN0)\n  z = awgn(y, EbN0(i) + 10*log10(k), 'measured');\n  [~, sim(i)] = biterr(x, qamdemod(z, M, 'UnitAveragePower', true));\nend\nfigure; semilogy(EbN0, sim, 'o', EbN0, berawgn(EbN0, 'qam', M), '-', EbN0, berawgn(EbN0, 'psk', 2), '--')\nlegend('16-QAM simulated', '16-QAM theory', 'BPSK theory'); xlabel('Eb/N0 (dB)'); ylabel('Bit-error rate'); grid on\n" },
+  { name: 'images.m', code: "% Image processing: find and measure the shapes in a scan\nrng(3)\nI = phantom(256);\nJ = imnoise(I, 'salt & pepper', 0.04);\nK = medfilt2(J);                       % the median takes the specks out\nfprintf('Quality: %.1f dB noisy, %.1f dB cleaned\\n', psnr(J, I), psnr(K, I))\nsubplot(2, 2, 1); imshow(J); title('Noisy scan')\nsubplot(2, 2, 2); imshow(K); title('Median filtered')\ns = 2;   % slider 1 4\nE = edge(K, 'canny', [], s);\nsubplot(2, 2, 3); imshow(E); title(sprintf('Canny edges, sigma %g', s))\nBW = imbinarize(K, 0.25);              % the bright parts inside the head\nBW = bwareaopen(imopen(BW, strel('disk', 1)), 20);\n[L, n] = bwlabel(BW);\nsubplot(2, 2, 4); imshow(label2rgb(L)); title(sprintf('%d shapes', n))\ndisp(regionprops(L, 'Area', 'Centroid', 'Eccentricity'))\n" },
+  { name: 'radar.m', code: "% Radar: how far, how fast, and how strong\nrng(5)\nfc = 10e9; lambda = freq2wavelen(fc);              % an X-band radar, 3 cm waves\nsnr1 = radareqsnr(lambda, 20e3, 50e3, 10e-6, 'Gain', 30, 'RCS', 2);\nfprintf('One pulse from a 2 m\u00b2 plane at 20 km: %.1f dB\\n', snr1)\nfprintf('Farthest range at 13 dB: %.1f km\\n', radareqrng(lambda, 13, 50e3, 10e-6, 'Gain', 30, 'RCS', 2)/1e3)\nfs = 20e6; prf = 5e3; B = 10e6;\nw = lfmpulse(B, 10e-6, fs);                        % a 10 \u00b5s chirp: 15 m resolution\nfprintf('Range resolution: %.0f m\\n', bw2rangeres(B))\nspeed = 30;   % slider -60 60\ntargets = [6000 speed 1; 9000 -45 0.7; 9030 10 0.5];\nx = radarecho(w, fs, prf, 64, fc, targets, 'SNR', -5);  % buried in noise before compression\nrangedoppler(x, w, fs, prf, fc)\ny = abs(pulsecompress(x(:, 1), w)).^2;\n[det, th] = cfar(y, 3, 20, 1e-5);\nr = time2range((0:numel(y)-1)'/fs);\nfigure; plot(r/1e3, pow2db(y), r/1e3, pow2db(th), '--'); hold on\nplot(r(det)/1e3, pow2db(y(det)), 'o'); hold off\nlegend('Compressed echo', 'CFAR threshold', 'Detections'); xlabel('Range (km)'); ylabel('Power (dB)')\n" },
+  { name: 'battery.m', code: "% Batteries: heat in the cold and in the heat, and how they wear out\nc = batteryCell('Capacity', 5);                 % a 5 Ah cell\nair = 0;   % slider -20 40\nI = 15*ones(1, 900);                            % 15 A (3C) for 15 minutes\n[v, soc, T] = batterySimulate(c, I, 1, 1, 'Ambient', air);\nfprintf('At %d \u00b0C: starts at %.2f V, ends %.1f \u00b0C warmer\\n', air, v(1), T(end) - T(1))\nbatterySimulate(c, I, 1, 1, 'Ambient', air)\n% Wear: a year of daily 80% cycles at three temperatures\nfor tempC = [15 25 40]\n  a = batteryAge(c, 'Cycles', 365, 'DoD', 0.8, 'CRate', 1, 'Temperature', tempC, 'Years', 1);\n  fprintf('%d \u00b0C: %.1f%% health after a year (%.1f%% from cycling, %.1f%% from time), resistance \u00d7%.2f\\n', tempC, 100*a.SOH, 100*a.CycleLoss, 100*a.CalendarLoss, a.ResistanceGrowth)\nend\nfigure; batteryLife(c, 'DoD', 0.8, 'CRate', 1, 'Temperature', 25)\n" },
+  { name: 'sunwind.m', code: "% The sun through the day, and wind turbines shading each other\nm = pvModule;\ntilt = 28;   % slider 0 90\n[P, h, wh] = pvDay(m, 28.6, 77.2, [2026 3 20], 'TimeZone', 5.5, 'Tilt', tilt);\nfprintf('Delhi, 20 March, tilted %d\u00b0: %.2f kWh from one module\\n', tilt, wh/1000)\npvDay(m, 28.6, 77.2, [2026 3 20], 'TimeZone', 5.5, 'Tilt', tilt)\n% A 3 \u00d7 3 farm, rows 5 diameters (500 m) apart, the wind from the west\nt = windTurbine('Diameter', 100);\n[x, y] = meshgrid(0:500:1000, 0:500:1000);\nxy = [x(:) y(:)];\nfigure; windFarm(t, xy, 9, 270)\nf = windFarm(t, xy, 9, 255);    % turn the wind 15\u00b0: fewer turbines in each other's way\nfprintf('From 270\u00b0: %.1f%%, from 255\u00b0: %.1f%% of the unshaded power\\n', 100*windFarm(t, xy, 9, 270).Efficiency, 100*f.Efficiency)\n[aep, loss] = windFarmAEP(t, xy, 2, 8, 0:30:330, ones(1, 12));\nfprintf('A year: %.0f MWh, %.1f%% lost to wakes\\n', aep, 100*loss)\n" },
+  { name: 'faults.m', code: "% Faults on one or two wires, and a transformer holding a town's voltage\n% A generator (bus 1) feeds a town (bus 3) through a transformer (line 1) and a line (line 2)\nsrc = [1 0.2 0.2 0.05];                         % [bus x1 x2 x0], solidly grounded\nlines = [1 2 0 0.1 0 0.1; 2 3 0.02 0.15 0 0.45];  % [from to r x b x0]\nkinds = {'3P', 'LG', 'LL', 'LLG'};\nfor i = 1:4\n  f = shortcircuit(3, lines, src, 3, 'Type', kinds{i});\n  fprintf('%-3s fault at the town: %.2f pu; phase voltages at the generator %s\\n', kinds{i}, f.FaultCurrent, mat2str(round(f.BusVoltages(1, :)*100)/100))\nend\n% The town's load sags its voltage; the tap changer moves until it's back near 1.00 pu\nload_ = 0.6;   % slider 0.1 0.9\nbus = [3 0 0 1.0 0; 1 0 0 1 0; 1 -load_ -0.5*load_ 1 0];\np0 = powerflow(bus, [1 2 0 0.1 0 1; 2 3 0.02 0.15 0 1]);\np = powerflow(bus, [1 2 0 0.1 0 1; 2 3 0.02 0.15 0 1], 'TapControl', [1 3 1.0]);\nfprintf('Town without the tap changer: %.3f pu; with it: %.3f pu (tap %.4f)\\n', p0.V(3), p.V(3), p.Taps(1))\nbar([p0.V p.V]); legend('Fixed tap', 'Tap changer'); xlabel('Bus'); ylabel('Voltage (pu)'); ylim([0.8 1.05])\n" },
+  { name: 'stability.m', code: "% How a grid sways after a fault: does every generator stay in step?\n% One machine against a strong grid (H = 5 s, 0.8 pu on its shaft, a line that can carry 2 pu)\nclearAt = 0.2;   % slider 0.05 0.4\nswing(5, 0.8, 2, 'During', 0, 'After', 2, 'Clear', clearAt, 'Frequency', 60)\n[tcr, dcr] = criticalclearing(5, 0.8, 2, 0, 2, 60);\nfprintf('The fault must be cleared within %.3f s (by %.1f\u00b0)\\n', tcr, dcr)\nfigure; criticalclearing(5, 0.8, 2, 0, 2, 60)\n% Three generators, three towns; a fault at bus 6 cleared by tripping line 7\nbus = [3 0 0 1.04 0; 2 1.63 0 1.025 0; 2 0.85 0 1.025 0; 1 -1.25 -0.5 1 0; 1 -0.9 -0.3 1 0; 1 -1 -0.35 1 0];\nlines = [1 4 0.01 0.085 0.176; 1 5 0.017 0.092 0.158; 4 6 0.032 0.161 0.306; 5 6 0.039 0.17 0.358; 2 4 0.0085 0.072 0.149; 3 5 0.0119 0.1008 0.209; 2 6 0.03 0.12 0.2];\ngens = [1 23.64 0.0608; 2 6.4 0.1198; 3 3.01 0.1813];   % [bus H xd']\nfigure; transientstability(bus, lines, gens, 6, clearAt, 'Trip', 7)\n" },
+  { name: 'converters.m', code: "% A real converter: what its flaws cost, and how sigma-delta wins bits back\nrng(4); N = 8192; fs = 1e6;\nx = 0.999*sin(2*pi*127*(0:N-1)/N);              % a sine at 15.5 kHz, 127 whole cycles\n[~, ideal] = adc(x, 12, [-1 1]);\njitter = 2;   % slider 0 20\n[~, real] = adc(x, 12, [-1 1], 'INL', 0.4, 'Noise', 0.3, 'Jitter', jitter*1e-9, 'Fs', fs);\na = adcmetrics(ideal, fs); b = adcmetrics(real, fs);\nfprintf('Ideal 12 bits: ENOB %.2f, SINAD %.1f dB\\n', a.ENOB, a.SINAD)\nfprintf('With its flaws (%g ns of jitter): ENOB %.2f, SFDR %.1f dB\\n', jitter, b.ENOB, b.SFDR)\nadcmetrics(real, fs)\n% INL and DNL from a sine's histogram\nxs = 1.02*sin(2*pi*3163*(0:399999)/4e5 + 0.1);\ncodes = adc(xs, 8, [-1 1], 'INL', 0.3);\nfigure; inldnl(codes, 8)\n% A second-order sigma-delta: one bit at 64 times the rate gives about 12 bits\n[bits, y] = sigmadelta(0.5*sin(2*pi*17*(0:64*4200-1)/(64*4096)), 64, 2);\nm = adcmetrics(y(end-4095:end), 1);\nfprintf('Sigma-delta, 1 bit, 64 times oversampled: SNR %.1f dB, about %.1f bits\\n', m.SNR, (m.SNR - 1.76)/6.02)\n" },
+  { name: 'arrays.m', code: "% Antenna arrays: steer a beam, then find where signals come from\npos = (0:9)*0.5;                         % 10 elements, half a wavelength apart\nsteer = 25;   % slider -60 60\nw = steervec(pos, steer).*hamming(10);   % point the beam, taper it for lower side lobes\narraypattern(pos, w)\n% Two transmitters only 7\u00b0 apart: the swept beam blurs them, MUSIC splits them\nrng(7)\n[X, Rtrue] = sensorsig(pos, 300, [10 17], 0.1);\nR = X'*X/300;\nfigure; az = -90:0.1:90;\nplot(az, spatialspectrum(R, pos, az, 'Method', 'beamscan'), az, spatialspectrum(R, pos, az, 'Method', 'mvdr'), az, spatialspectrum(R, pos, az, 'Method', 'music', 'NumSignals', 2))\nlegend('Beam scan', 'MVDR', 'MUSIC'); xlabel('Azimuth (\u00b0)'); ylabel('dB'); ylim([-40 2]); grid on\nfprintf('MUSIC finds them at %s\u00b0\\n', mat2str(round(musicdoa(R, 2)*10)/10))\n" },
+  { name: 'learn.m', code: "% Machine learning: Fisher's iris flowers\nrng(1)                              % the same folds every run\nload fisheriris                     % meas: 150 flowers x 4 measurements (cm); species: their names\nk = 5;   % slider 1 15\nknn = fitcknn(meas, species, 'NumNeighbors', k);\ncv = crossval(knn, 'KFold', 5);\nfprintf('%d nearest neighbours: %.1f%% right on flowers they never saw\\n', k, 100*(1 - kfoldLoss(cv)))\nconfusionchart(species, kfoldPredict(cv))\nfigure; gscatter(meas(:,3), meas(:,4), species); xlabel('Petal length (cm)'); ylabel('Petal width (cm)')\ntree = fitctree(meas(:,3:4), species);\nlabel = predict(tree, [4.8 1.6])\nfigure; [~, score, ~, ~, explained] = pca(meas);\ngscatter(score(:,1), score(:,2), species); title(sprintf('The first two components: %.0f%% of the spread', sum(explained(1:2))))\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
@@ -57,7 +71,7 @@ const QR_MAX = 2300;
 const noteKey = (script: number, code: string) => `${script}\u0000${code}`;
 
 export function LabApp() {
-  const dark = useDarkMode(), wide = useMedia('(min-width: 1024px)');
+  const dark = useDarkMode();
   const kept = useSyncExternalStore(() => () => {}, () => { try { return localStorage.getItem(KEEP) ?? ''; } catch { return ''; } }, () => '');
   const [scripts, setScripts] = useState<Script[] | null>(null);
   const list = scripts ?? (kept ? read() : EXAMPLES);
@@ -70,9 +84,6 @@ export function LabApp() {
   const [cmd, setCmd] = useState('');
   const [hist, setHist] = useState<string[]>([]);
   const [hi, setHi] = useState(-1);
-  const [tab, setTabNow] = useState<Tab>('command');
-  const [tabDir, setTabDir] = useState<'next' | 'back'>('next');
-  const setTab = (t: Tab | ((old: Tab) => Tab)) => setTabNow((old) => { const n = typeof t === 'function' ? t(old) : t; if (n !== old) setTabDir(TABS.indexOf(n) > TABS.indexOf(old) ? 'next' : 'back'); return n; });
   const [files, setFiles] = useState<{ name: string; size: number }[]>([]);
   const [namesVersion, setNamesVersion] = useState(0);
   const [shown, setShown] = useState<Shown | null>(null);
@@ -95,9 +106,14 @@ export function LabApp() {
   const [sharing, setSharing] = useState(false);
   const [link, setLink] = useState<{ url: string; error?: string } | null>(null);
   const [bigQr, setBigQr] = useState(false);
-  // Time it (M400): the last timed run of a script (shown while its code is unchanged) and a line to jump to.
-  const [prof, setProf] = useState<(Profile & { script: number; code: string }) | null>(null);
+  // Time it (M400): each script's last two timed runs (the newest shown while its code is unchanged, compared with the
+  // one before it, M401) and a line to jump to.
+  const [profs, setProfs] = useState<Record<number, (Profile & { code: string })[]>>({});
   const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
+  // Sweep (M402): a slider run through its range (the film and its table), and the form that starts one.
+  const [sweep, setSweep] = useState<Sweep | null>(null);
+  const [sweepAsk, setSweepAsk] = useState<{ name: string; from: string; to: string; n: number } | null>(null);
+  const sweepUrls = useRef<string[]>([]);
   const [dragging, setDragging] = useState(false);
   const fileData = useRef(new Map<string, FileIn>());
   const picker = useRef<HTMLInputElement>(null);
@@ -152,7 +168,13 @@ export function LabApp() {
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }
-      if ('profiled' in m) { const p = pending.current; if (p) setProf({ script: watchingScript.current, code: p.code, ...m.profiled }); return; }
+      if ('sweepFrame' in m) {
+        const { index, frame } = m.sweepFrame, url = (svg: string) => { if (!svg) return ''; const u = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); sweepUrls.current.push(u); return u; };
+        const shown = { ...frame, lightUrl: url(frame.light), darkUrl: url(frame.dark) };
+        setSweep((s) => { if (!s) return s; const frames = [...s.frames]; frames[index] = shown; return { ...s, frames }; });
+        return;
+      }
+      if ('profiled' in m) { const p = pending.current, at = watchingScript.current; if (p) setProfs((all) => ({ ...all, [at]: [...(all[at] ?? []).slice(-1), { code: p.code, ...m.profiled }] })); return; }
       if ('trace' in m) {
         // The recorded run: played back from its first step; everything it printed also goes to the log, for afterwards.
         const all = printedUpTo(m.trace.steps, m.trace.steps.length - 1);
@@ -162,6 +184,7 @@ export function LabApp() {
         return;
       }
       const p = pending.current;
+      if (p?.from === 'sweep') setSweep((s) => (s ? { ...s, done: true } : s));
       if (p?.from === 'note') {
         // Taken now: the next section's run clears the buffer before React applies this update.
         const at = noteNow.current, out: NoteOut = { text: noteBuf.current, error: m.error, figs: (m.figs ?? []).filter((f) => m.drawn.includes(f.id)) };
@@ -182,7 +205,7 @@ export function LabApp() {
       }
       if (m.files.length) listFiles();
       // Figures only come back when a run changed them (null: keep what's shown).
-      if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; if (m.figs.length) setTab((t) => (t === 'editor' && p?.from === 'script' ? 'figure' : t)); }
+      if (m.figs) { setFigs(m.figs); setCurrent(m.current); asked.current = ''; }
       pending.current = null;
       busyNow.current = false;
       setBusy(false);
@@ -249,6 +272,7 @@ export function LabApp() {
   const stop = () => {
     worker.current?.terminate(); start();
     setBusy(false); setVars([]); pending.current = null; busyNow.current = false; queued.current = null;
+    setSweep((s) => (s ? { ...s, done: true } : s));
     print({ k: 'err', t: 'Stopped. The variables were cleared (the engine was restarted).\n' });
   };
   /** Tab in the command window: finish the word (functions, variables, files), or list what it could be. */
@@ -288,7 +312,7 @@ export function LabApp() {
     const ro = new ResizeObserver(() => { clearTimeout(t); t = window.setTimeout(ask, 120); });
     ro.observe(el); ask();
     return () => { ro.disconnect(); clearTimeout(t); };
-  }, [figId, tab, wide]);
+  }, [figId]);
   const svg = fig ? (dark ? fig.dark : fig.light) : '';
   const download = (name: string, body: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const png = async () => {
@@ -306,7 +330,12 @@ export function LabApp() {
   const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
   const controls = controlsOf(script.code);
   const noteSecs = noteView[open] ? notebookOf(script.code) : null;
-  const timed = prof && prof.script === open && prof.code === script.code ? prof : null;
+  const runs = profs[open] ?? [], latest = runs[runs.length - 1];
+  const timed = latest && latest.code === script.code ? latest : null;
+  const before = timed && runs.length > 1 ? runs[runs.length - 2] : null;
+  const vs = timed && before ? compared(timed.total, before.total) : null;
+  /** The functions that took the most of their own time (M401). */
+  const fnRows = (timed?.fns ?? []).filter((f) => f.self > 0).slice(0, 10);
   // Worked out once per timed run (not on every render: the editor redraws its bars when this changes).
   const { hot, heat } = useMemo(() => {
     if (!timed) return { hot: null, heat: null };
@@ -337,12 +366,34 @@ export function LabApp() {
     save([...list, { name, code: incoming.code }]);
     setOpen(at);
     setNoteView((v) => ({ ...v, [at]: incoming.view === 'note' }));
-    setTab('editor');
     setIncoming(null);
     window.history.replaceState(null, '', window.location.pathname + window.location.search);
   };
   const dismissShared = () => { setIncoming(null); window.history.replaceState(null, '', window.location.pathname + window.location.search); };
   const runAllSections = () => runNotes(script.code, open);
+  // ——— Sweep ———
+  const sliders = controls.filter((c) => c.kind === 'slider');
+  const askSweep = () => setSweepAsk((a) => (a ? null : sliders[0] ? { name: sliders[0].name, from: String(sliders[0].min), to: String(sliders[0].max), n: 12 } : null));
+  const dropSweep = () => { for (const u of sweepUrls.current) URL.revokeObjectURL(u); sweepUrls.current = []; setSweep(null); };
+  useEffect(() => () => { for (const u of sweepUrls.current) URL.revokeObjectURL(u); }, []);
+  const startSweep = () => {
+    const c = sliders.find((x) => x.name === sweepAsk?.name);
+    if (!c || !sweepAsk || busyNow.current || !worker.current) return;
+    const values = sweepValues(c, Number(sweepAsk.from), Number(sweepAsk.to), sweepAsk.n);
+    if (values.length < 2) { toast.error('Give two different numbers for where the sweep starts and ends.'); return; }
+    dropSweep();
+    const id = ++seq.current;
+    pending.current = { id, code: script.code, from: 'sweep' };
+    busyNow.current = true;
+    setBusy(true);
+    setSweep({ script: open, scriptName: script.name, name: c.name, values, frames: [], done: false });
+    setSweepAsk(null);
+    print({ k: 'in', t: `>> sweep ${c.name} from ${values[0]} to ${values[values.length - 1]} (${values.length} runs) in ${script.name}` });
+    worker.current.postMessage({ sweep: { codes: sweepCodes(script.code, c, values), values, w: FRAME_W, h: FRAME_H }, id } satisfies ToLab);
+  };
+  /** "Use this value": the slider goes to a frame's value and the script runs with it. */
+  const sweepSlider = sweep && sweep.script === open ? sliders.find((c) => c.name === sweep.name) : undefined;
+  const takeSwept = (v: number) => { if (sweepSlider) live(sweepSlider, v); };
   /** A control moved: its value is written into the script, which runs again (the newest position wins). */
   const live = (c: Control, v: number | boolean | string) => {
     const code = setControl(script.code, c, v);
@@ -484,8 +535,10 @@ export function LabApp() {
         <div role="group" aria-label="Time per line" className="space-y-1.5 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-200">
             <Gauge className="h-3.5 w-3.5 text-violet-600 dark:text-violet-300" aria-hidden />
-            <span className="flex-1">Ran in <b className="font-mono tabular-nums">{timeText(timed.total)}</b>{hot.length ? '. The slowest lines (darker bars beside the code):' : ': no line stands out.'}</span>
-            <button type="button" className={iconBtn} aria-label="Hide the times" onClick={() => setProf(null)}><X className="h-4 w-4" aria-hidden /></button>
+            <span className="flex-1">Ran in <b className="font-mono tabular-nums">{timeText(timed.total)}</b>
+              {vs?.text && <>, <b className={vs.better ? 'text-emerald-700 dark:text-emerald-400' : vs.better === false ? 'text-amber-700 dark:text-amber-400' : ''}>{vs.text}</b> than the time before ({timeText(before!.total)})</>}
+              {hot.length ? '. The slowest lines (darker bars beside the code):' : ': no line stands out.'}</span>
+            <button type="button" className={iconBtn} aria-label="Hide the times" onClick={() => setProfs((all) => ({ ...all, [open]: [] }))}><X className="h-4 w-4" aria-hidden /></button>
           </div>
           {hot.length > 0 && (
             <ul className="space-y-1">
@@ -499,13 +552,65 @@ export function LabApp() {
               ))}
             </ul>
           )}
+          {fnRows.length > 0 && (
+            <details className="text-xs text-zinc-700 dark:text-zinc-200">
+              <summary className="cursor-pointer select-none rounded px-2 py-1 font-medium hover:bg-zinc-100 dark:hover:bg-white/[0.06]">Time inside functions</summary>
+              <div className="mt-1 max-h-48 overflow-auto" tabIndex={0} role="region" aria-label="Time inside functions">
+                <table className="w-full text-start tabular-nums">
+                  <thead className="text-zinc-500 dark:text-zinc-400"><tr>
+                    <th className="px-2 py-1 text-start font-medium">Function</th><th className="px-2 py-1 text-end font-medium">Calls</th>
+                    <th className="px-2 py-1 text-end font-medium">Own time</th><th className="px-2 py-1 text-end font-medium">With what it calls</th>
+                    {before && <th className="px-2 py-1 text-end font-medium">Own time before</th>}
+                  </tr></thead>
+                  <tbody>
+                    {fnRows.map((f) => (
+                      <tr key={f.name} className="border-t border-zinc-200/70 dark:border-white/[0.06]">
+                        <td className="px-2 py-1 font-mono" translate="no">{f.name}</td>
+                        <td className="px-2 py-1 text-end font-mono">{f.calls.toLocaleString()}</td>
+                        <td className="px-2 py-1 text-end font-mono">{timeText(f.self)}</td>
+                        <td className="px-2 py-1 text-end font-mono">{timeText(f.total)}</td>
+                        {before && <td className="px-2 py-1 text-end font-mono">{(() => { const b = before.fns?.find((x) => x.name === f.name); return b ? timeText(b.self) : '–'; })()}</td>}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          )}
         </div>
       )}
       {controls.length > 0 && (
         <div role="group" aria-label="Live controls" className="flex flex-wrap items-center gap-x-5 gap-y-2 border-b border-zinc-200/80 px-3 py-2 dark:border-white/10" data-no-motion>
           {controls.map((c) => <LiveControl key={`${c.name}-${c.kind}`} c={c} onChange={(v) => live(c, v)} />)}
+          {sliders.length > 0 && <button type="button" className={cn(btn, sweepAsk && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-expanded={!!sweepAsk} onClick={askSweep} title="Run the script for every step of a slider: a film of the figures and a table of the results"><Film className="h-3.5 w-3.5" aria-hidden />Sweep</button>}
         </div>
       )}
+      {sweepAsk && sliders.length > 0 && (() => {
+        const c = sliders.find((x) => x.name === sweepAsk.name) ?? sliders[0];
+        const field = 'w-20 rounded-lg border border-zinc-200 bg-white px-2 py-1 font-mono text-[13px] tabular-nums dark:border-white/15 dark:bg-white/[0.06]';
+        return (
+          <form role="group" aria-label="Sweep a slider" className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-zinc-200/80 bg-violet-50/60 px-3 py-2 text-xs text-zinc-700 dark:border-white/10 dark:bg-violet-950/30 dark:text-zinc-200" data-no-motion
+            onSubmit={(e) => { e.preventDefault(); startSweep(); }}>
+            <label className="inline-flex items-center gap-1.5">Sweep
+              {sliders.length > 1 ? (
+                <select value={c.name} onChange={(e) => { const n = sliders.find((x) => x.name === e.target.value)!; setSweepAsk({ ...sweepAsk, name: n.name, from: String(n.min), to: String(n.max) }); }} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 font-mono text-[13px] dark:border-white/15 dark:bg-white/[0.06]">
+                  {sliders.map((x) => <option key={x.name} value={x.name}>{x.name}</option>)}
+                </select>
+              ) : <b className="font-mono text-[13px]" translate="no">{c.name}</b>}
+            </label>
+            <label className="inline-flex items-center gap-1.5">from<input type="number" inputMode="decimal" step="any" value={sweepAsk.from} onChange={(e) => setSweepAsk({ ...sweepAsk, from: e.target.value })} className={field} /></label>
+            <label className="inline-flex items-center gap-1.5">to<input type="number" inputMode="decimal" step="any" value={sweepAsk.to} onChange={(e) => setSweepAsk({ ...sweepAsk, to: e.target.value })} className={field} /></label>
+            <label className="inline-flex items-center gap-1.5">in
+              <select value={sweepAsk.n} onChange={(e) => setSweepAsk({ ...sweepAsk, n: Number(e.target.value) })} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] dark:border-white/15 dark:bg-white/[0.06]">
+                {[6, 12, 24, MAX_FRAMES].map((n) => <option key={n} value={n}>{n} runs</option>)}
+              </select>
+            </label>
+            <button type="submit" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy}><Play className="h-3.5 w-3.5" aria-hidden />Start</button>
+            <button type="button" className={btn} onClick={() => setSweepAsk(null)}>Cancel</button>
+            <span className="w-full text-zinc-600 dark:text-zinc-300">Each run starts afresh with {c.name} set to the next value; its figure becomes a frame and the numbers it leaves go in a table.</span>
+          </form>
+        );
+      })()}
       {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
           onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
         vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn} heat={heat} jump={jump}
@@ -564,7 +669,7 @@ export function LabApp() {
           {files.map((f) => (
             <li key={f.name} className="flex items-center gap-2 border-t border-zinc-100 px-3 py-1.5 text-[13px] first:border-t-0 dark:border-white/[0.06]">
               <FileIcon className="h-3.5 w-3.5 shrink-0 text-zinc-500" aria-hidden />
-              <button type="button" className="min-w-0 flex-1 truncate text-start font-mono text-zinc-900 hover:underline dark:text-white" title={`Put '${f.name}' in the command`} onClick={() => { setCmd((c) => `${c}'${f.name}'`); setTab('command'); }} translate="no">{f.name}</button>
+              <button type="button" className="min-w-0 flex-1 truncate text-start font-mono text-zinc-900 hover:underline dark:text-white" title={`Put '${f.name}' in the command`} onClick={() => { setCmd((c) => `${c}'${f.name}'`); }} translate="no">{f.name}</button>
               <span className="shrink-0 tabular-nums text-xs text-zinc-500 dark:text-zinc-400">{sizeText(f.size)}</span>
               <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-900 dark:hover:bg-white/[0.08] dark:hover:text-white" aria-label={`Download ${f.name}`} onClick={() => { const d = fileData.current.get(f.name); if (d) download(f.name, d.bytes as BlobPart, 'application/octet-stream'); }}><Download className="h-3.5 w-3.5" aria-hidden /></button>
               <button type="button" className="rounded p-1 text-zinc-500 hover:bg-zinc-100 hover:text-red-700 dark:hover:bg-white/[0.08] dark:hover:text-red-400" aria-label={`Delete ${f.name}`} onClick={() => removeFile(f.name)}><Trash2 className="h-3.5 w-3.5" aria-hidden /></button>
@@ -579,16 +684,18 @@ export function LabApp() {
     <section className={cn(panel, 'h-full')} aria-label="Figure">
       <div className={cn(head, 'flex-wrap')}>
         <span>Figure</span>
-        {figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
-        <span className="ms-auto flex flex-wrap gap-1">
+        {!(sweep && !watching) && figs.length > 1 && figs.map((f) => <button key={f.id} type="button" aria-pressed={f.id === fig?.id} onClick={() => setCurrent(f.id)} className={cn('rounded-md px-2 py-0.5 text-xs', f.id === fig?.id ? 'bg-zinc-100 font-semibold dark:bg-white/[0.1]' : 'font-normal text-zinc-500')}>{f.id}</button>)}
+        {sweep && !watching ? <span className="ms-auto text-xs font-normal text-zinc-500 dark:text-zinc-400" translate="no">Sweep of {sweep.name} in {sweep.scriptName}</span> : <span className="ms-auto flex flex-wrap gap-1">
           <button type="button" className={btn} disabled={!fig} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />PNG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => fig && download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml')}><Download className="h-3.5 w-3.5" aria-hidden />SVG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => void copyTex()}><Copy className="h-3.5 w-3.5" aria-hidden />LaTeX</button>
-        </span>
+        </span>}
       </div>
       {watching && figIndex >= 0 ? (
         traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
-      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : fig ? (
+      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : sweep ? (
+        <LabSweep sweep={sweep} dark={dark} onClose={dropSweep} onUse={sweepSlider ? takeSwept : null} onDownload={download} />
+      ) : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
         <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
       ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Figures appear here. Try plot(1:10) in the command window.</p>}
@@ -597,7 +704,7 @@ export function LabApp() {
 
   const viewer = shown && (
     <VariableViewer shown={shown} busy={busy} onAsk={inspect} onClose={() => inspect(null)} onRun={(code) => run(code, 'cmd')}
-      onInsert={(expr) => { setCmd((c) => c + expr); setTab('command'); inspect(null); }} />
+      onInsert={(expr) => { setCmd((c) => c + expr); inspect(null); }} />
   );
 
   return (
@@ -613,18 +720,12 @@ export function LabApp() {
           <button type="button" className={btn} onClick={dismissShared}>Not now</button>
         </div>
       )}
-      {wide ? (
-        <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
-          <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
-          <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
-          {figure}
-        </div>
-      ) : (
-        <>
-          <Segmented<Tab> label="Hyperion part" value={tab} onChange={setTab} segments={[{ value: 'command', label: 'Command' }, { value: 'editor', label: 'Editor' }, { value: 'variables', label: 'Variables' }, { value: 'files', label: 'Files' }, { value: 'figure', label: 'Figure' }]} />
-          <div key={tab} className="swap min-h-0 flex-1" data-dir={tabDir}>{tab === 'command' ? command : tab === 'editor' ? editor : tab === 'variables' ? variables : tab === 'files' ? fileList : figure}</div>
-        </>
-      )}
+      {/* Computers only (M405): variables and files, the editor over the command window, the figure. */}
+      <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
+        <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
+        <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
+        {figure}
+      </div>
       {viewer}
       {bigQr && link?.url && (
         // Big enough to scan from the back of a room (a projector, a shared screen).
@@ -636,7 +737,7 @@ export function LabApp() {
           </div>
         </div>
       )}
-      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); setTab('command'); }} />}
+      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); }} />}
     </div>
   );
 }

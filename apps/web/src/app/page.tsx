@@ -63,7 +63,7 @@ const FAQ: Record<AppId | 'all', { q: string; a: string }[]> = {
   all: [
     { q: 'What is UniVerse Impact?', a: 'UniVersity, a calm place for a school’s classes, grades and messages, plus four newer apps for products, help, climate and games. One account opens them all.' },
     { q: 'What does Lab mean?', a: 'A new app that is still finding its first people. It works; expect it to change.' },
-    { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs on any phone or computer and speaks 13 languages.' },
+    { q: 'Does it work on phones and in other languages?', a: 'Yes. It installs on any phone or computer and speaks 8 languages.' },
   ],
   campus: [
     { q: 'Is UniVersity free to use?', a: 'Yes, students never pay. Their school sets it up.' },

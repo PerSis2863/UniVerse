@@ -1,0 +1,25 @@
+{
+  "name": "Hyperion",
+  "short_name": "Hyperion",
+  "description": "Maths, code and engineering simulation: Hyperion by UniVerse.",
+  "id": "/hyperion",
+  "start_url": "/hyperion",
+  "scope": "/hyperion",
+  "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone"],
+  "background_color": "#f1f2f4",
+  "theme_color": "#7c3aed",
+  "orientation": "any",
+  "categories": ["education", "productivity", "developer"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    { "src": "/hyperion/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/hyperion/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/hyperion/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Code", "url": "/hyperion", "icons": [{ "src": "/hyperion/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Simulate", "url": "/hyperion/simulate", "icons": [{ "src": "/hyperion/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

@@ -160,7 +160,7 @@ function everyFeature() {
   // The corners the branches leave free: who it's for, what every page does, where things live, cost.
   const corners: [number, number, number, string, string][] = [
     [60, 80, 360, `Who uses it\n\n${bullets('Students (always free)', 'Teachers and teaching assistants', 'School admins, one school or many', 'Parents, mentors and alumni', 'The owner (you)')}`, C.parent],
-    [1800, 80, 360, `On every page\n\n${bullets('13 languages, 2 read right to left', 'Light and dark, Reduce Motion', 'Works on a patchy connection', 'Installs as an app on any phone')}`, C.student],
+    [1800, 80, 360, `On every page\n\n${bullets('8 languages, Arabic read right to left', 'Light and dark, Reduce Motion', 'Works on a patchy connection', 'Installs as an app on any phone')}`, C.student],
     [60, 1460, 250, `Where things live\n${bullets('D1 database, R2 files', 'Durable Objects: live rooms', 'Firebase: sign-in')}`, C.tech],
     [1800, 1460, 250, `What it costs to run\n${bullets('Workers Paid: $5 a month', 'A guard pauses at 90%', 'AI with daily allowances')}`, C.tech],
   ];
@@ -489,7 +489,7 @@ function glossary() {
   const words: [string, string][] = [
     ['Worker', 'A small server Cloudflare runs close to each user'], ['D1', 'Cloudflare’s database (SQLite)'], ['R2', 'Cloudflare’s file storage'],
     ['Durable Object', 'A live room everyone in a chat or board shares'], ['OpenNext', 'Turns the Next.js app into a Worker'], ['Prisma', 'How the code talks to the database'],
-    ['PWA', 'A website that installs like an app'], ['Passkey', 'Sign in with the phone’s lock: no password'], ['RTL', 'Right to left, for Arabic and Urdu'],
+    ['PWA', 'A website that installs like an app'], ['Passkey', 'Sign in with the phone’s lock: no password'], ['RTL', 'Right to left, for Arabic'],
     ['FSRS', 'The schedule that decides when a flashcard comes back'], ['KaTeX', 'Draws maths and chemistry properly'], ['LTI', 'How other school systems plug in'],
     ['Common Cartridge', 'A course packed in one file, for other systems'], ['GIFT and QTI', 'Question file formats from other quiz tools'], ['Polygon', 'Where certificate fingerprints are anchored'],
   ];
