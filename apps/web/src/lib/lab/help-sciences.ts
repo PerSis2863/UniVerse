@@ -42,4 +42,18 @@ arrhenius | k = arrhenius(A, Ea, T) | Arrhenius' law k = A exp(−Ea/(R T)): Ea 
 arrheniusFit | [A, Ea, R2] = arrheniusFit(T, k) | A and Ea from rate constants at several temperatures (a straight line of ln k against 1/T). Drawn without outputs.
 chemEquilibrium | [c, extent, names] = chemEquilibrium('N2 + 3 H2 <-> 2 NH3', K, c0) | The equilibrium of one or more reactions (K = Π c^ν for each), from the starting concentrations.
 acidPH | pH = acidPH(Ka, C) | A weak acid's pH at concentration C (mol/L), water's own ions included (Ka = Inf for a strong acid).
+# Neuroscience
+hodgkinHuxley | [t, V, gates, spikes] = hodgkinHuxley(I, T, 'Start', 10, 'Stop', 90) | Hodgkin and Huxley's squid axon for T ms: a current I (µA/cm²) from 'Start' to 'Stop' ms (or one value per 0.01 ms step); gates are m, h, n. Drawn without outputs.
+lifNeuron | [t, V, spikes] = lifNeuron(I, T, 'Tau', 10, 'R', 10, 'Threshold', -50, 'Reset', -65, 'Refractory', 2) | A leaky integrate-and-fire neuron (mV, ms, nA with R in MΩ), spike times exact within each step. Drawn without outputs.
+lifRate | f = lifRate(I, …) | The integrate-and-fire neuron's firing rate (Hz) for each steady current: 1/(t_ref + τ ln((RI + rest − reset)/(RI + rest − θ))).
+izhikevich | [t, V, spikes, u] = izhikevich(I, T, 'Type', 'CH') | Izhikevich's neuron: 'RS' regular, 'IB' bursting, 'CH' chattering, 'FS' fast, 'LTS' low-threshold, 'TC' thalamic, 'RZ' resonator, or 'Params', [a b c d]. Drawn without outputs.
+izhNetwork | s = izhNetwork(800, 200, 1000) | Izhikevich's random network of excitatory and inhibitory neurons for T ms (1 ms steps): spikes as rows [time neuron]. A raster without outputs.
+lifNetwork | [s, V] = lifNetwork(W, I, T, 'Noise', 1, 'Delay', 1) | Integrate-and-fire neurons wired by W (W(i, j) mV that a spike of j adds to i after the delay), each with its current: spikes [time neuron] and the first five voltages. A raster without outputs.
+poissonSpikes | s = poissonSpikes(rate, T, n, 'DeadTime', 2) | Random (Poisson) spike times at rate Hz over T ms: a row, or for n trains rows [time train].
+spikeTimes | s = spikeTimes(V, t, threshold) | The times V crosses the threshold upwards (0 mV unless given), between samples.
+isiStats | s = isiStats(spikes) | Inter-spike intervals: MeanISI (ms), CV (1 Poisson-like, 0 a clock), Rate (Hz) and the ISI list.
+fanoFactor | F = fanoFactor(spikes, T, window) | The variance of the spike count over its mean in windows of that many ms.
+psth | [rate, edges] = psth(spikes, T, bin, trials) | Peri-stimulus time histogram in Hz (spikes from many trials or neurons as [time trial] rows). Drawn without outputs.
+rasterPlot | rasterPlot(spikes, T) | A dot for every spike, neuron by neuron (spikes as [time neuron] rows).
+spikeXcorr | [counts, lags] = spikeXcorr(a, b, maxLag, bin) | The cross-correlogram of two spike trains: how often b fires at each lag after a. Drawn without outputs.
 `;

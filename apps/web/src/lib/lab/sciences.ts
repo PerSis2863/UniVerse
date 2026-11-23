@@ -4,3 +4,4 @@ import './epi-lab';
 import './pk-lab';
 import './bio-lab';
 import './chem-lab';
+import './neuro-lab';

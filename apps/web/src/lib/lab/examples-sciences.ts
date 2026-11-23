@@ -92,4 +92,27 @@ figure; arrheniusFit(T, k)
 fprintf('%s: %.3f mol/L\\n', names{1}, c(1), names{2}, c(2), names{3}, c(3))
 fprintf('Vinegar (0.8 M acetic acid): pH %.2f\\n', acidPH(1.8e-5, 0.8))
 ` },
+  { name: 'neurons.m', code: `% Neuroscience: how a neuron fires, and how many of them talk
+% 1. Hodgkin and Huxley's squid axon: a current pulse from 10 to 90 ms
+I = 10;   % slider 0 30
+hodgkinHuxley(I, 100, 'Start', 10, 'Stop', 90)
+% 2. The simplest model: integrate and fire. More current, faster firing (and the formula agrees)
+currents = linspace(1, 5, 30);
+figure; plot(currents, lifRate(currents), 'LineWidth', 2); grid on
+xlabel('Current (nA)'); ylabel('Firing rate (Hz)'); title('Integrate-and-fire: rate against current')
+% 3. One equation, many personalities
+figure
+types = {'RS', 'IB', 'CH', 'FS'};
+for k = 1:4
+  subplot(4, 1, k); izhikevich(10, 300, 'Type', types{k}, 'Start', 20)
+end
+% 4. A thousand neurons: 800 excitatory, 200 inhibitory; watch the rhythms appear
+rng(3)
+s = izhNetwork(800, 200, 1000);
+figure; rasterPlot(s, 1000)
+figure; psth(s, 1000, 5)
+% 5. Is a train random? A Poisson train's CV is near 1, a regular one's near 0
+st = isiStats(poissonSpikes(20, 60000));
+fprintf('Poisson train: %.1f Hz, CV %.2f\\n', st.Rate, st.CV)
+` },
 ];

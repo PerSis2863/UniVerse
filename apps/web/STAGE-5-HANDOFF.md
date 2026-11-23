@@ -12525,3 +12525,23 @@ step now has a floor of 1e-10 × the span, and both solvers' "step too small" te
 bimolecular and coupled equilibria, acetic acid pH 2.87. Not built: non-isothermal reactors (energy balances, runaway),
 reactors with pressure drop or changing volume, Langmuir–Hinshelwood or other non-mass-action rate laws, activity
 coefficients, polyprotic acids and buffers, a periodic table and molar masses.
+
+## M496 (23 Nov): Hyperion toolbox, neuroscience (sciences and industries, 5 of 14)
+
+`neuro.ts` (pure; randomness passed in) and `neuro-lab.ts`. `hodgkinHuxley`: the 1952 squid axon with the modern
+voltage convention (rest −65 mV, ENa 50, EK −77, EL −54.387), RK4 at 0.01 ms, the rate functions' 0/0 points
+replaced by their limits, spike times at upward 0 mV crossings (interpolated). `lif`: the exact exponential step
+between inputs and the crossing time solved inside the step, so spike times and the firing rate match `lifRate`'s
+formula 1/(t_ref + τ ln((RI + rest − reset)/(RI + rest − θ))) to 6 digits; the refractory time is carried across steps
+(`quiet`). `izhikevich`: the 2003 model with v in two half steps as in the paper, named types RS, IB, CH, FS, LTS, TC,
+RZ. `izhNetwork`: the paper's network (excitatory c = −65 + 15r², d = 8 − 6r²; inhibitory a = 0.02 + 0.08r, b = 0.25 −
+0.05r; weights 0.5·rand and −rand; thalamic noise 5 and 2 × randn) at 1 ms. `lifNetwork`: W(i, j) mV added to i
+when j fires, after a delay (a ring of steps), noise σ√dt. Spike trains: `spikeTimes`, `poisson` (with dead time),
+`isiStats` (CV), `fano`, `psth` (Hz), `crossCorrelogram`. A spike list is rows [time neuron] everywhere (ms).
+Language (our own names): `hodgkinHuxley`, `lifNeuron`, `lifRate`, `izhikevich`, `izhNetwork`, `lifNetwork`,
+`poissonSpikes`, `spikeTimes`, `isiStats`, `fanoFactor`, `psth`, `rasterPlot`, `spikeXcorr`; a current is a number with
+'Start'/'Stop' or one value per step. Example `neurons.m`. Tests: HH rests at −65, fires 64–72 Hz at 10 µA/cm² and
+not at 2; LIF against its formula at four currents; Izhikevich RS adapts, FS is faster, CH bursts; a network's spikes
+in range; Poisson CV ≈ 1 and Fano ≈ 1, a clock 0; the correlogram's peak at the lag; one neuron driving another.
+Not built: cable and multi-compartment neurons, synaptic conductances with their own time course (synapses are
+instant voltage jumps), plasticity (STDP), spike sorting from recordings, reading electrophysiology files.

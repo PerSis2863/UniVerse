@@ -1872,6 +1872,7 @@ checkpoints; merge only when the owner says "merge". **Next migration: `0171`.**
 | M493 | Hyperion: pharmacokinetics (sciences and industries, 2 of 14) | **Done** (on `claude/hyperion-sciences-industries`) | `pkModel` (one or two compartments, oral, saturating), `pkSimulate` (bolus, infusion, oral schedules), `pkSteadyState`, `pkDosingWindow`, `pkNCA`; the example `dosing.m`. |
 | M494 | Hyperion: DNA and protein tools (sciences and industries, 3 of 14) | **Done** (on `claude/hyperion-sciences-industries`) | Complements, GC, `nt2aa`, `findORFs`, `nwalign` and `swalign` (affine gaps, BLOSUM62), `seqpdist`, `seqlinkage` (UPGMA), `seqneighjoin`, `plottree`; the example `dna.m`. |
 | M495 | Hyperion: chemistry and chemical engineering (sciences and industries, 4 of 14) | **Done** (on `claude/hyperion-sciences-industries`) | `ode15s`, `ode23s`, `odeset` (a stiff Rosenbrock solver, checked on Robertson's problem), `kineticsSim` from text mechanisms, `batchReactor`, `pfrReactor`, `cstrReactor`, `arrhenius`, `arrheniusFit`, `chemEquilibrium`, `acidPH`; the example `reactors.m`. |
+| M496 | Hyperion: neuroscience (sciences and industries, 5 of 14) | **Done** (on `claude/hyperion-sciences-industries`) | `hodgkinHuxley`, `lifNeuron`, `lifRate`, `izhikevich` (seven firing types), `izhNetwork`, `lifNetwork`, `poissonSpikes`, `spikeTimes`, `isiStats`, `fanoFactor`, `psth`, `rasterPlot`, `spikeXcorr`; the example `neurons.m`. |
 
 ### Hyperion toolboxes (the owner, 22 Nov: "need to build all of these in the downloaded app… work on this seriously")
 
