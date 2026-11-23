@@ -11705,3 +11705,22 @@ a line from `<text>:N:`; the variables from one R call (`ls`, dim or length, cla
 r_demo.R. Test: `packagesIn` in langs.test.ts. Not built: interrupting R without losing the workspace (needs
 SharedArrayBuffer and cross-origin isolation, which would break the site's other embeds), Shiny, files written by R saved
 back, plots sized to the panel.
+
+## M445b (23 Nov): Hyperion measured precisely; the editor's typing fixed (a site-wide fix in `Segmented`)
+
+The owner, 23 Nov: "make sure everything is ultra smooth and fast check it precisely". Measured on `local:build` +
+`local:serve` (the dev server is unoptimised) with a Playwright script: per step the main thread's long tasks (>50 ms,
+PerformanceObserver) and every frame (rAF deltas; >34 ms is a visible stutter), at 1440 × 900, CPU ×1 and ×4 (CDP
+`Emulation.setCPUThrottlingRate`). At ×1: no long task in any step (open each page, idle, switch scripts, run, type,
+Vibration, Shaking, Heat, Fluids live, Circuits live, Blocks, Learn, Machine health, its views and data). At ×4 the
+one real problem was typing in the editor: 13 long tasks, frames up to 117 ms. A CPU profile with call stacks showed
+framer-motion's layout projection (`willUpdate → updateScroll`, forced layout) under `getSnapshotBeforeUpdate`: the
+Code/Notebook `Segmented` thumb (`layoutId`) re-rendered with LabApp on every keystroke and measured the page each time
+(the live wind tunnel's settings re-render 4× a second did the same). `Segmented` is now an outer component that keeps
+the newest `onChange` in a ref (a stable callback) around a `memo`'d view compared by value, label, size, class and its
+segments (plain-text labels and icons by value; JSX ones always redraw), so a skipped redraw can never keep an old
+onChange. After: typing 0 long tasks, worst frame 67 ms at ×4. Rule for code that builds on it: any framer-motion
+`layout`/`layoutId` element must not sit in a component that re-renders per keystroke or per frame; memo it or move
+it out. Left as is (×4 numbers, ≈ a quarter at ×1): opening a page 200–280 ms of hydration, switching scripts ~200 ms
+(a new CodeMirror), the first figure ~170 ms. Headless Chromium paints in software, so paint-heavy numbers here are
+worse than on a real computer's graphics chip.
