@@ -12437,3 +12437,28 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+
+## M492 (23 Nov): Hyperion toolbox, epidemics (sciences and industries, 1 of 14)
+
+The owner, 23 Nov ("help me to build what is left… as another agent didnt build", with MathWorks' solutions page): the
+Hyperion list's group 7, sciences and industries, is M492–M505 on `claude/hyperion-sciences-industries` (two other
+sessions build signals and capabilities, M472–M481, and machines and vehicles, M482–M491, on their own branches).
+**Shared files for the whole group, so the three branches merge cleanly:** `sciences.ts` (imports every `*-lab.ts`
+of the group; the worker and `help.test.ts` import only it), `help-sciences.ts` (`SCIENCES_HELP`, appended to help.ts's
+TEXT by one line), `examples-sciences.ts` (`SCIENCE_EXAMPLES`, spread into LabApp's EXAMPLES by one line; its test
+runs every example), `sci-kit.ts` (def, call, rows, `options` for name–value pairs, `record` for result structs,
+`lines` for a labelled plot) and `sci-num.ts` (pure: `rk4Grid` on an output grid with an `onStep` hook for doses and
+spikes, `rk45` Dormand–Prince, `ros23` the Rosenbrock 2(3) stiff method behind ode23s, `jacobian`, `sample`, `root`).
+A new toolbox of the group adds its import to `sciences.ts`, its help block and its example, nothing more shared.
+Epidemics, `epi.ts` (pure) and `epi-lab.ts`: `sir`, `seir`, `sirAge` (contact matrix C(i, j), state [S… I… R…]), all
+RK4 at 0.05 day reported daily, with `'Intervention'` rows [from to cut], `'Vaccinate'` (share of S a day) from
+`'VaccineFrom'`, `'Mu'`; the third output is the day's new infections (a hidden cumulative compartment differenced).
+`epiR0` (β/γ, or the spectral radius of K_ij = β C_ij N_i / (γ N_j) by power iteration), `epiFinalSize`
+(z = 1 − e^(−R0 z)), `herdImmunity`, `fitEpidemic` (β, γ, I0 on log scale by Levenberg–Marquardt against
+log(1 + cases), nine starts on a 0.25-day step, polished at 0.05; SEIR's first infected are put in I, not E: seeding E
+made a true SEIR fit land in a false valley), `epiRt` (the renewal equation with a discretised gamma serial interval,
+gamma prior 1 and 5 as Cori et al., normal-approximated 95% band). Names are our own (MATLAB builds these in
+SimBiology as objects). Tests: final size 0.9405 at R0 3 and 0.7968 at 2, the peak at S = N/R0, conservation,
+next-generation R0 for mixed and separate groups, fits recovering β and R0, R_t = e^r for steady growth, the stiff
+solver on a 1000:1 problem in under 400 steps. Not built: stochastic (Gillespie) outbreaks, spatial spread, deaths and
+hospital beds as compartments, fitting with confidence intervals.

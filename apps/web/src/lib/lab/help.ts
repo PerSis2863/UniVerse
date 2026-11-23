@@ -1,6 +1,7 @@
 // Hyperion's help (M391): a line for every function, grouped as a person looks for them. `help name` and `doc
 // name` print it, the editor shows it beside suggestions and on hover, the function browser lists it. Written for
 // this Lab (what our own functions do), in plain words.
+import { SCIENCES_HELP } from './help-sciences';
 
 const TEXT = `
 # Numbers and arithmetic
@@ -837,7 +838,7 @@ export const HELP = new Map<string, Entry>();
 export const SECTIONS: string[] = [];
 {
   let section = '';
-  for (const line of TEXT.split('\n')) {
+  for (const line of (TEXT + SCIENCES_HELP).split('\n')) {
     if (line.startsWith('# ')) { section = line.slice(2); SECTIONS.push(section); continue; }
     const m = /^(\S+) \| (.+?) \| (.+)$/.exec(line);
     if (m) HELP.set(m[1], { name: m[1], syntax: m[2], text: m[3], section });
