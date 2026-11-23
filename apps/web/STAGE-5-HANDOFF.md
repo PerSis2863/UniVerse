@@ -12569,3 +12569,19 @@ them (`FinalizationRegistry` with a count per id); a matrix uploaded as an opera
 comment). Unary minus, indexing and anything else need gather first (a clear error says so). WebGPU is in Chrome and
 Edge (desktop), not yet in Firefox or Safari by default: there gpuArray is still correct, just not faster. Browser
 check: `scripts/checks/hyperion-gpu-ui.mjs` (launches Chromium with its software WebGPU adapter, so it runs anywhere).
+
+## M479 (23 Nov): Hyperion, discrete-event simulation (Simulate → Queues and queuesim)
+
+Built both as a Simulate bench and a toolbox: a process is easiest to describe by clicking stations together and
+watching it run, and experiments (many seeds, a sweep of servers) are scripts. The engine `src/lib/sim/des.ts`:
+next-event time advance with a binary heap (ties in scheduling order), a seeded generator (mulberry32), distributions
+(exponential, constant, uniform, normal truncated at 0, Erlang), stations with c servers, an optional queue capacity
+(turned away when full) and FIFO queues, routing by a probability matrix (the rest leave; a straight line by default),
+a warm-up left out of the statistics, time-weighted queue length and utilisation, waits, throughput, work in progress, a
+timeline of up to ~600 snapshots and the first 60 entities' journeys; `mmc` is Erlang C. The bench
+`src/components/sim/QueuesBench.tsx` (a new kind in `SimulateApp`) reruns on every change on the page's thread (capped
+at 50,000 arrivals: milliseconds), plays the timeline with requestAnimationFrame only while playing. The language
+(`des-lab.ts`): `queuesim(arrivals, {{name, servers, service, capacity?}…}, T, 'Seed', 'Warmup', 'Route')` and
+`mmcqueue(λ, μ, c)`; MATLAB's SimEvents block diagrams aren't here. Browser check: `scripts/checks/hyperion-queues-ui.mjs`.
+Not built: priorities, other queue orders (LIFO, shortest job), resources shared between stations, schedules (staff by
+hour), batching.

@@ -367,6 +367,10 @@ gpuDeviceCount | n = gpuDeviceCount | 1 when WebGPU found a graphics chip, else 
 isgpuarray | tf = isgpuarray(x) | True for a gpuArray.
 existsOnGPU | tf = existsOnGPU(x) | True for a gpuArray.
 
+# Discrete-event simulation
+queuesim | r = queuesim({'exp', 2}, {{'Desk', 2, {'exp', 3}}, {'Pay', 1, {'const', 1}}}, 480, 'Seed', 1) | Runs entities through a line of stations (name, servers, service time; a 4th number caps the queue) for that long: r.Stations (busy share, waits, queues), r.MeanTimeInSystem, r.Throughput, r.Time and r.Queue over the run. Times are a mean (exponential) or {'exp', m}, {'const', v}, {'uniform', lo, hi}, {'normal', m, sd}, {'erlang', m, k}; 'Route', P sends entities from station i to j with probability P(i, j); 'Warmup', t leaves out the start. Drawn without outputs. Simulate → Queues is the same without code.
+mmcqueue | q = mmcqueue(lambda, mu, c) | Erlang's exact M/M/c answers: q.Rho (busy share), q.PWait, q.Lq and q.Wq (queue length and wait), q.L and q.W (in the system).
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).
