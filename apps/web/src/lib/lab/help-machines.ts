@@ -35,7 +35,7 @@ checkCollision | [hit, gap, selfPairs, obstacleHits] = checkCollision(r, q, 'Sph
 cubicpolytraj | [q, qd, qdd] = cubicpolytraj(wpts, tpts, t, 'VelocityBoundaryCondition', V) | A cubic piece between each pair of waypoints (one column each, at times tpts), sampled at t: still at every waypoint unless speeds are given.
 quinticpolytraj | [q, qd, qdd] = quinticpolytraj(wpts, tpts, t) | Quintic pieces: speeds and accelerations both chosen at each waypoint (0 unless given), for smoother starts and stops.
 trapveltraj | [q, qd, qdd, t] = trapveltraj(wpts, n, 'PeakVelocity', v, 'Acceleration', a) | Trapezoidal speed through the waypoints: speed up, cruise, slow down, stopping at each; n samples. Without limits each segment takes 1 s.
-robotMap | [map, res] = robotMap('warehouse') | A map to plan on: 'warehouse', 'rooms' or 'maze' (1 = blocked, res cells a metre).
+robotMap | [map, res] = robotMap('warehouse') | A map to plan on: 'warehouse', 'rooms', 'maze' or 'parking' (1 = blocked, res cells a metre).
 inflateMap | m = inflateMap(map, radius, res) | Grows every wall by radius metres, so a robot that size can be planned as a point.
 astarGrid | [path, info] = astarGrid(map, start, goal, 'Resolution', res, 'Connectivity', 8) | The shortest way over the grid by A* (positions in metres [x y], origin bottom-left). Drawn without outputs.
 rrtPlan | [path, info] = rrtPlan(map, start, goal, 'Resolution', res, 'Star', true, 'MaxIterations', 3000) | A way by a rapidly-exploring random tree; 'Star' keeps rewiring it shorter (RRT*). 'MaxConnectionDistance', 'GoalBias', 'Seed'. Drawn with the tree without outputs.
@@ -43,6 +43,8 @@ shortenPath | p = shortenPath(path, map, res) | Cuts the corners a straight line
 diffdriveStep | pose = diffdriveStep(pose, v, w, dt) | A differential-drive robot after dt seconds at speed v and turn rate w (pose [x y heading]).
 purePursuit | [v, w, target] = purePursuit(pose, path, lookahead, speed) | The turn that curves the robot onto the point of the path lookahead metres ahead.
 followPath | [poses, t] = followPath(path, 'LookAhead', 0.8, 'Speed', 0.6, 'MaxTurnRate', 2, 'Map', map, 'Resolution', res) | Drives a differential-drive robot along the path by pure pursuit; drawn (on the map if given) without outputs.
+dubinsPath | [poses, len, word] = dubinsPath(start, goal, R) | The shortest forward-only way for a car with turning radius R between two poses [x y heading]: three pieces (left, straight, right arcs), e.g. 'LSR'. Drawn without outputs.
+hybridAstar | [poses, info] = hybridAstar(map, start, goal, 'Resolution', res, 'MinTurningRadius', 5, 'CarLength', 4.5, 'CarWidth', 1.8, 'Reverse', true) | A route a car can drive (arcs no tighter than its turning radius, forwards and backwards) between poses at its rear axle: rows [x y heading direction], direction −1 when reversing. robotMap('parking') is a car park to try it in. Drawn without outputs.
 
 # Robot sensing
 lidarSim | [ranges, angles] = lidarSim(map, pose, 'Resolution', res, 'Beams', 180, 'MaxRange', 8, 'FieldOfView', 2*pi, 'Noise', 0.02) | A lidar's scan from a pose [x y heading] on a map (each beam to the first wall, max range if none). Drawn with its beams without outputs.

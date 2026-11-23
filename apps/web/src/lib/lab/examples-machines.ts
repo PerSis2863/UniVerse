@@ -48,6 +48,11 @@ p = astarGrid(grown, [2 2], [23 23], 'Resolution', res);
 p = shortenPath(p, grown, res);
 lookahead = 1;   % slider 0.3 3
 figure; followPath(p, 'LookAhead', lookahead, 'Speed', 0.8, 'Map', map, 'Resolution', res)
+% A car can't turn on the spot: the shortest forward-only way between two poses (a Dubins path)
+figure; dubinsPath([0 0 0], [12 4 pi], 3)
+% Parking: Hybrid A* drives arcs forwards and backwards and reverses into the empty bay
+[park, r] = robotMap('parking');
+figure; hybridAstar(park, [3 10 0], [18.9 3.2 pi/2], 'Resolution', r)
 ` },
   { name: 'robot_sensing.m', code: `% Robot sensing: a lidar, finding where you are, and building a map as you go
 [map, res] = robotMap('rooms');

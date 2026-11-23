@@ -4,6 +4,7 @@ import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as mo from './robot-motion';
 import { fromRows } from './robot-lab';
+import { parkingMap } from './car-path';
 
 // Hyperion's robot motion in the language (M483): cubicpolytraj, quinticpolytraj, trapveltraj (MATLAB's names and
 // shapes: waypoints one column each), robotMap, inflateMap, astarGrid, rrtPlan, shortenPath, diffdriveStep,
@@ -70,8 +71,8 @@ export function drawMap(lab: Lab, g: mo.Grid) {
 }
 def('robotMap', (a) => {
   const name = a[0] ? textOf(a[0]).toLowerCase() : '';
-  if (!['maze', 'warehouse', 'rooms'].includes(name)) throw new LabError("robotMap knows 'maze', 'warehouse' and 'rooms'.");
-  const g = mo.sampleMap(name);
+  if (!['maze', 'warehouse', 'rooms', 'parking'].includes(name)) throw new LabError("robotMap knows 'maze', 'warehouse', 'rooms' and 'parking'.");
+  const g = name === 'parking' ? parkingMap() : mo.sampleMap(name);
   return [gridMat(g), num(g.res)];
 });
 def('inflateMap', (a) => {

@@ -6,6 +6,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
 import { pathLength, sampleMap, type Grid, type Pose } from '@/lib/lab/robot-motion';
+import { CAR, parkingMap } from '@/lib/lab/car-path';
 import { ui } from './bench-ui';
 import type { FromMachines, Method, ToMachines } from './machines.worker';
 
@@ -13,15 +14,16 @@ import type { FromMachines, Method, ToMachines } from './machines.worker';
 // goal, and a planner: A* over the cells, RRT (a random tree, the first way found) or RRT* (the tree keeps rewiring
 // towards the shortest). The map is grown by the robot's radius first (the light band), the corners a straight line
 // can cut are cut, and a differential-drive robot drives it by pure pursuit. Planning runs on a background thread
-// (machines.worker.ts); the drawing is one canvas.
+// (machines.worker.ts); the drawing is one canvas. M483b: Car plans for a car that can't turn on the spot (Hybrid A*:
+// arcs forwards and backwards, start and goal headings), with a car park whose empty bay it reverses into.
 
-type MapName = 'warehouse' | 'rooms' | 'maze' | 'empty';
+type MapName = 'warehouse' | 'rooms' | 'maze' | 'empty' | 'parking';
 type Tool = 'wall' | 'erase' | 'start' | 'goal';
-const MAPS: { value: MapName; label: string }[] = [{ value: 'warehouse', label: 'Warehouse' }, { value: 'rooms', label: 'Rooms' }, { value: 'maze', label: 'Maze' }, { value: 'empty', label: 'Empty' }];
-const METHODS: { value: Method; label: string }[] = [{ value: 'astar', label: 'A*' }, { value: 'rrt', label: 'RRT' }, { value: 'rrtstar', label: 'RRT*' }];
+const MAPS: { value: MapName; label: string }[] = [{ value: 'warehouse', label: 'Warehouse' }, { value: 'rooms', label: 'Rooms' }, { value: 'maze', label: 'Maze' }, { value: 'empty', label: 'Empty' }, { value: 'parking', label: 'Car park' }];
+const METHODS: { value: Method; label: string }[] = [{ value: 'astar', label: 'A*' }, { value: 'rrt', label: 'RRT' }, { value: 'rrtstar', label: 'RRT*' }, { value: 'car', label: 'Car' }];
 const TOOLS: { value: Tool; label: string }[] = [{ value: 'wall', label: 'Wall' }, { value: 'erase', label: 'Erase' }, { value: 'start', label: 'Start' }, { value: 'goal', label: 'Goal' }];
-const ENDS: Record<MapName, [[number, number], [number, number]]> = { warehouse: [[2, 2], [23, 23]], rooms: [[3, 3], [22, 22]], maze: [[1.25, 1.25], [23.75, 23.75]], empty: [[2, 2], [23, 23]] };
-const mapOf = (n: MapName): Grid => (n === 'empty' ? { rows: 50, cols: 50, cells: new Uint8Array(2500), res: 2 } : sampleMap(n));
+const ENDS: Record<MapName, [[number, number], [number, number]]> = { warehouse: [[2, 2], [23, 23]], rooms: [[3, 3], [22, 22]], maze: [[1.25, 1.25], [23.75, 23.75]], empty: [[2, 2], [23, 23]], parking: [[3, 10], [18.9, 3.2]] };
+const mapOf = (n: MapName): Grid => (n === 'parking' ? parkingMap() : n === 'empty' ? { rows: 50, cols: 50, cells: new Uint8Array(2500), res: 2 } : sampleMap(n));
 
 export function PlannerBench() {
   const dark = useDarkMode(), still = useMedia('(prefers-reduced-motion: reduce)');
@@ -33,6 +35,8 @@ export function PlannerBench() {
   const [tool, setTool] = useState<Tool>('wall');
   const [radius, setRadius] = useState(0.4);
   const [look, setLook] = useState(1);
+  // The car's start and goal headings (degrees).
+  const [heads, setHeads] = useState<[number, number]>([0, 90]);
   const [out, setOut] = useState<FromMachines | null>(null);
   const [busy, setBusy] = useState(false);
   const [frame, setFrame] = useState(-1);
@@ -47,19 +51,20 @@ export function PlannerBench() {
   const plan = useEffectEvent(() => {
     if (!worker.current) return;
     setBusy(true); cancelAnimationFrame(raf.current);
-    worker.current.postMessage({ id: ++seq.current, plan: { grid, start, goal, method, radius, look, speed: 0.8 } } satisfies ToMachines);
+    worker.current.postMessage({ id: ++seq.current, plan: { grid, start, goal, method, radius, look, speed: 0.8, heads: [(heads[0] * Math.PI) / 180, (heads[1] * Math.PI) / 180] } } satisfies ToMachines);
   });
   // Plans again as the map, the ends or the choices change (a short pause while painting).
-  useEffect(() => { const t = window.setTimeout(plan, 150); return () => clearTimeout(t); }, [grid, start, goal, method, radius, look]);
+  useEffect(() => { const t = window.setTimeout(plan, 150); return () => clearTimeout(t); }, [grid, start, goal, method, radius, look, heads]);
 
-  const choose = (n: MapName) => { setMapName(n); setGrid(mapOf(n)); setStart(ENDS[n][0]); setGoal(ENDS[n][1]); };
+  const choose = (n: MapName) => { setMapName(n); setGrid(mapOf(n)); setStart(ENDS[n][0]); setGoal(ENDS[n][1]); if (n === 'parking') { setMethod('car'); setHeads([0, 90]); } };
   const drive = () => {
     if (!out?.drive.length) return;
     cancelAnimationFrame(raf.current);
     if (still) { setFrame(out.drive.length - 1); return; }
-    const t0 = performance.now(), n = out.drive.length;
-    // Four times real speed (each pose is 0.05 s apart).
-    const tick = (t: number) => { const k = Math.min(n - 1, Math.floor(((t - t0) / 1000) * 80)); setFrame(k); if (k < n - 1) raf.current = requestAnimationFrame(tick); };
+    const n = out.drive.length, rate = out.back ? 24 : 80;
+    let t0 = 0;
+    // Four times real speed for the robot (each pose is 0.05 s apart); the car's poses are a quarter metre apart.
+    const tick = (t: number) => { t0 ||= t; const k = Math.min(n - 1, Math.floor(((t - t0) / 1000) * rate)); setFrame(k); if (k < n - 1) raf.current = requestAnimationFrame(tick); };
     raf.current = requestAnimationFrame(tick);
   };
 
@@ -67,9 +72,11 @@ export function PlannerBench() {
   const draw = useEffectEvent(() => {
     const c = canvas.current, b = box.current;
     if (!c || !b) return;
-    const dpr = Math.min(2, window.devicePixelRatio || 1), size = Math.min(b.clientWidth, b.clientHeight);
+    // The canvas takes the map's own shape, as large as fits (size: the longer side).
+    const dpr = Math.min(2, window.devicePixelRatio || 1), m = Math.max(grid.rows, grid.cols), size = Math.min(((b.clientWidth - 24) * m) / grid.cols, ((b.clientHeight - 24) * m) / grid.rows);
     if (size <= 0) return;
-    c.style.width = `${size}px`; c.style.height = `${size}px`; c.width = Math.round(size * dpr); c.height = Math.round(size * dpr);
+    const W = (size * grid.cols) / m, Hh = (size * grid.rows) / m;
+    c.style.width = `${W}px`; c.style.height = `${Hh}px`; c.width = Math.round(W * dpr); c.height = Math.round(Hh * dpr);
     const ctx = c.getContext('2d')!;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const g = grid, cell = size / Math.max(g.rows, g.cols), X = (x: number) => x * g.res * cell, Y = (y: number) => (g.rows - y * g.res) * cell;
@@ -89,12 +96,24 @@ export function PlannerBench() {
       ctx.stroke();
     }
     const line = (p: [number, number][], colour: string, w: number, dash: number[] = []) => { if (p.length < 2) return; ctx.strokeStyle = colour; ctx.lineWidth = w; ctx.setLineDash(dash); ctx.beginPath(); p.forEach(([x, y], k) => (k ? ctx.lineTo(X(x), Y(y)) : ctx.moveTo(X(x), Y(y)))); ctx.stroke(); ctx.setLineDash([]); };
-    if (out) { line(out.plan.path, dark ? 'rgba(196,181,253,0.7)' : 'rgba(124,58,237,0.45)', 2, [5, 4]); line(out.smooth, dark ? '#a78bfa' : '#7c3aed', 3); }
-    if (out && frame >= 0) line(out.drive.slice(0, frame + 1).map((p) => [p[0], p[1]]), '#f59e0b', 2.5);
+    if (out?.back) {
+      // The car's route: forwards in violet, backwards in orange.
+      for (let k = 1; k < out.smooth.length; k++) line([out.smooth[k - 1], out.smooth[k]], out.back[k] ? '#f59e0b' : dark ? '#a78bfa' : '#7c3aed', 3);
+    } else if (out) { line(out.plan.path, dark ? 'rgba(196,181,253,0.7)' : 'rgba(124,58,237,0.45)', 2, [5, 4]); line(out.smooth, dark ? '#a78bfa' : '#7c3aed', 3); }
+    if (out && frame >= 0 && !out.back) line(out.drive.slice(0, frame + 1).map((p) => [p[0], p[1]]), '#f59e0b', 2.5);
+    // A car: its outline at a pose (the pose is the rear axle).
+    const carAt = ([x, y, th]: Pose, fill: string, stroke: string) => {
+      const c = Math.cos(th), sn = Math.sin(th), w = CAR.width / 2, b = -0.9, f = CAR.length - 0.9;
+      ctx.beginPath(); [[b, -w], [f, -w], [f, w], [b, w]].forEach(([u, v], k) => { const px = X(x + u * c - v * sn), py = Y(y + u * sn + v * c); if (k) ctx.lineTo(px, py); else ctx.moveTo(px, py); }); ctx.closePath();
+      ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 2; ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(X(x + (f - 0.6) * c), Y(y + (f - 0.6) * sn)); ctx.lineTo(X(x + f * c), Y(y + f * sn)); ctx.stroke();
+    };
+    if (method === 'car') { const r = (h: number) => (h * Math.PI) / 180; carAt([...start, r(heads[0])], 'rgba(22,163,74,0.18)', '#16a34a'); carAt([...goal, r(heads[1])], 'rgba(220,38,38,0.15)', '#dc2626'); }
     const dot = ([x, y]: [number, number], colour: string) => { ctx.fillStyle = colour; ctx.beginPath(); ctx.arc(X(x), Y(y), Math.max(5, cell * 0.8), 0, Math.PI * 2); ctx.fill(); };
     dot(start, '#16a34a'); dot(goal, '#dc2626');
     const pose: Pose | undefined = out && frame >= 0 ? out.drive[frame] : undefined;
-    if (pose) {
+    if (pose && out?.back) carAt(pose, 'rgba(245,158,11,0.85)', '#000');
+    else if (pose) {
       // The robot: a disc of its radius with a nose showing where it faces.
       const [x, y, th] = pose, rr = Math.max(radius * g.res * cell, 5);
       ctx.fillStyle = '#f59e0b'; ctx.beginPath(); ctx.arc(X(x), Y(y), rr, 0, Math.PI * 2); ctx.fill();
@@ -132,7 +151,7 @@ export function PlannerBench() {
   return (
     <div className="flex h-[calc(100dvh-12rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Planner settings" data-no-motion>
-        <div className="space-y-2"><span className={label}>Map</span><Segmented<MapName> label="Map" value={mapName} onChange={choose} segments={MAPS} /></div>
+        <label className={label}>Map<select aria-label="Map" value={mapName} onChange={(e) => choose(e.target.value as MapName)} className={`${ui.select} mt-1 w-full`}>{MAPS.map((m) => <option key={m.value} value={m.value}>{m.label}</option>)}</select></label>
         <div className="space-y-2">
           <span className={label}>The mouse places</span>
           <Segmented<Tool> label="The mouse places" value={tool} onChange={setTool} segments={TOOLS} />
@@ -141,12 +160,22 @@ export function PlannerBench() {
         <div className="space-y-2">
           <span className={label}>Planner</span>
           <Segmented<Method> label="Planner" value={method} onChange={setMethod} segments={METHODS} />
-          <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{method === 'astar' ? 'A* looks at the cells nearest the goal first (the blue ones) and finds the shortest way over the grid.' : method === 'rrt' ? 'RRT grows a random tree into the free space and stops at the first way it finds: quick, but wandering.' : 'RRT* keeps growing and rewiring its tree, so the way keeps getting shorter.'}</p>
+          <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">{method === 'astar' ? 'A* looks at the cells nearest the goal first (the blue ones) and finds the shortest way over the grid.' : method === 'rrt' ? 'RRT grows a random tree into the free space and stops at the first way it finds: quick, but wandering.' : method === 'rrtstar' ? 'RRT* keeps growing and rewiring its tree, so the way keeps getting shorter.' : 'Car: a route a car can really drive, reversing where it must.'}</p>
         </div>
-        {range('Robot radius', radius, 0, 1.2, 0.05, ' m', setRadius)}
-        {range('Look-ahead (pure pursuit)', look, 0.3, 3, 0.1, ' m', setLook)}
+        {method === 'car' ? (
+          <>
+            {range('Start heading', heads[0], -180, 180, 5, '°', (n) => setHeads((h) => [n, h[1]]))}
+            {range('Goal heading', heads[1], -180, 180, 5, '°', (n) => setHeads((h) => [h[0], n]))}
+            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">A car 4.5 m long that turns no tighter than 5 m. Hybrid A* drives short arcs forwards and backwards (orange) and finishes with the shortest forward curve (a Dubins path) when one fits.</p>
+          </>
+        ) : (
+          <>
+            {range('Robot radius', radius, 0, 1.2, 0.05, ' m', setRadius)}
+            {range('Look-ahead (pure pursuit)', look, 0.3, 3, 0.1, ' m', setLook)}
+          </>
+        )}
         <button type="button" className="btn-primary btn-sm" disabled={!found} onClick={drive}><Play className="h-4 w-4" aria-hidden />Drive it</button>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">robotMap</span>, <span className="font-mono">astarGrid</span>, <span className="font-mono">rrtPlan</span>, <span className="font-mono">shortenPath</span>, <span className="font-mono">followPath</span> (example: robot_motion.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">robotMap</span>, <span className="font-mono">astarGrid</span>, <span className="font-mono">rrtPlan</span>, <span className="font-mono">shortenPath</span>, <span className="font-mono">followPath</span>, <span className="font-mono">hybridAstar</span>, <span className="font-mono">dubinsPath</span> (example: robot_motion.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The map">
         <div ref={box} className="flex min-h-0 flex-1 items-center justify-center p-3">
@@ -158,9 +187,9 @@ export function PlannerBench() {
         <div className="grid grid-cols-4 gap-4 border-t border-zinc-200/80 px-4 py-3 text-xs dark:border-white/10" aria-live="polite">
           {([
             [<Route key="r" className="h-3.5 w-3.5" aria-hidden />, 'Path', found ? `${pathLength(out!.smooth).toFixed(2)} m` : busy ? '…' : 'No way through'],
-            [null, method === 'astar' ? 'Cells looked at' : 'Tree nodes', out ? out.plan.explored.toLocaleString() : '…'],
+            [null, method === 'astar' ? 'Cells looked at' : method === 'car' ? 'Poses tried' : 'Tree nodes', out ? out.plan.explored.toLocaleString() : '…'],
             [null, 'Planning time', out ? `${out.ms.toFixed(1)} ms` : '…'],
-            [<Navigation key="n" className="h-3.5 w-3.5" aria-hidden />, 'Drive', out?.drive.length ? `${((out.drive.length - 1) * 0.05).toFixed(1)} s at 0.8 m/s` : '–'],
+            [<Navigation key="n" className="h-3.5 w-3.5" aria-hidden />, out?.back ? 'Reversing' : 'Drive', out?.back ? `${(out.back.filter(Boolean).length / 4).toFixed(1)} m` : out?.drive.length ? `${((out.drive.length - 1) * 0.05).toFixed(1)} s at 0.8 m/s` : '–'],
           ] as const).map(([icon, k, v]) => <div key={k}><p className="flex items-center gap-1 font-semibold text-zinc-500 dark:text-zinc-400">{icon}{k}</p><p className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{v}</p></div>)}
         </div>
       </section>

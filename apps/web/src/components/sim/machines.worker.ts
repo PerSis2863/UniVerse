@@ -1,15 +1,16 @@
 /// <reference lib="webworker" />
 import { astar, followPath, inflate, rrt, sampleMap, shortcut, type Grid, type Plan, type Pose } from '@/lib/lab/robot-motion';
 import { mcl, simulateRun, slam } from '@/lib/lab/robot-sense';
+import { hybridAstar } from '@/lib/lab/car-path';
 
 // Hyperion Simulate → Machines (M483–): the heavier jobs off the page's thread. Planning: the map grown by the robot's
 // radius, then A*, RRT or RRT*, the corners cut, and the drive along it by pure pursuit. Sensing (M484): a run across a
 // map, Monte Carlo localisation from nowhere and SLAM, with what each step looked like for the replay.
 
-export type Method = 'astar' | 'rrt' | 'rrtstar';
+export type Method = 'astar' | 'rrt' | 'rrtstar' | 'car';
 export interface SenseOut { id: number; sense: true; map: Grid; truth: Pose[]; odom: Pose[]; est: Pose[]; spread: number[]; particles: Float32Array[]; scans: number[][]; angles: number[]; maxR: number; slamPoses: Pose[]; snaps: { k: number; p: Uint8Array }[]; slamMap: { rows: number; cols: number; res: number; x0: number; y0: number }; ms: number }
-export type ToMachines = { id: number; sense: { map: 'rooms' | 'warehouse'; particles: number; odomNoise: number; seed: number } } | { id: number; plan: { grid: Grid; start: [number, number]; goal: [number, number]; method: Method; radius: number; look: number; speed: number } };
-export interface FromMachines { id: number; plan: Plan; smooth: [number, number][]; inflated: Uint8Array; drive: Pose[]; ms: number }
+export type ToMachines = { id: number; sense: { map: 'rooms' | 'warehouse'; particles: number; odomNoise: number; seed: number } } | { id: number; plan: { grid: Grid; start: [number, number]; goal: [number, number]; method: Method; radius: number; look: number; speed: number; heads?: [number, number] } };
+export interface FromMachines { id: number; plan: Plan; smooth: [number, number][]; inflated: Uint8Array; drive: Pose[]; ms: number; back?: boolean[] }
 
 self.onmessage = (e: MessageEvent<ToMachines>) => {
   const t0 = performance.now();
@@ -28,6 +29,13 @@ self.onmessage = (e: MessageEvent<ToMachines>) => {
     return;
   }
   const { id, plan: p } = e.data;
+  if (p.method === 'car') {
+    // M483b: a car (4.5 × 1.8 m, 5 m turning radius) by Hybrid A*: its route is already drivable, reversing included.
+    const h = p.heads ?? [0, 0], r = hybridAstar(p.grid, [...p.start, h[0]], [...p.goal, h[1]]);
+    const path = r.poses.map((q) => [q[0], q[1]] as [number, number]);
+    (self as unknown as Worker).postMessage({ id, plan: { path, cost: r.length, explored: r.expansions, edges: r.tree }, smooth: path, inflated: new Uint8Array(p.grid.cells.length), drive: r.poses, back: r.reverse, ms: performance.now() - t0 } satisfies FromMachines);
+    return;
+  }
   const g = inflate(p.grid, p.radius);
   const plan = p.method === 'astar' ? astar(g, p.start, p.goal) : rrt(g, p.start, p.goal, { star: p.method === 'rrtstar', iterations: p.method === 'rrtstar' ? 4000 : 3000 });
   const smooth = plan.path.length ? shortcut(g, plan.path) : [];

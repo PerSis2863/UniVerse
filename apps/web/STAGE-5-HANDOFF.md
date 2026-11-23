@@ -12550,3 +12550,21 @@ the arm is chosen from a list (five no longer fit as segments), Two arms with Le
 (12 cm, movable), the touching links red and a line naming them. Tests in `robot.test.ts` (each tip's Jacobian by finite
 differences and zero on the other arm, forward/inverse dynamics on the tree, mirrored gravity torques, capsule
 distances). Not built: meshes as collision shapes (capsules only), planning around obstacles in joint space, URDF files.
+
+## M483b (23 Nov): Hyperion car-style route planning (Dubins paths and Hybrid A*)
+
+M483's left-out. `src/lib/lab/car-path.ts` (pure): `dubins` (the six words in the normalised α, β, d form; every
+candidate is driven out with `drive` and kept only if it really ends at the goal, which guards the formulas' branches;
+the shortest wins), `arc` (exact arcs), `clearance` (robot-sense's chamfer distance field with a blocked border, so the
+map's edge is a wall), `carFree` (three discs of half the width + 10 cm along the car from the rear axle, each a look-up
+in the clearance), `hybridAstar` (poses keyed on a ≥ 0.5 m grid and 36 headings; moves of 1 m on five curvatures
+(±1/R, ±0.5/R, 0) forwards and, by default, backwards, reversing costing 2× and each change of direction 3 m; guided
+by the distance to the goal round the walls (Dijkstra on the map with the car's half-width kept clear), plus the Dubins
+length when it may not reverse; a Dubins shot tried every 8 nodes and near the goal; ends within a key cell and a
+heading bin), `parkingMap` (30 × 20 m, two rows of ten 2.6 m bays, bay 7 at the bottom empty). Speed trap: checking the
+car cell by cell made 30 s searches; the clearance look-up and the coarser key grid brought parking to ~2–3 s (in the
+worker). Language in `car-path-lab.ts`: `dubinsPath` (MATLAB has dubinsConnection), `hybridAstar` (plannerHybridAStar;
+rows [x y heading direction], −1 reversing; outlines every 3 m when drawn), `robotMap('parking')`. Window: Path planner
+→ Car (Hybrid A*), Map is a list now with Car park, start and goal headings, the car's outlines, forwards violet and
+backwards orange, Drive it moves the car. The canvas takes the map's shape. Tests in `car-path.test.ts`. Not built:
+Reeds–Shepp curves as the final shot (it uses forward-only Dubins), trailers, smoothing the route afterwards.
