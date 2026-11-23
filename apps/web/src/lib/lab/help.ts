@@ -676,8 +676,8 @@ windFarm | f = windFarm(turbine, xy, v, dir, 'Decay', 0.075) | Turbines at rows 
 windFarmAEP | [MWh, loss] = windFarmAEP(turbine, xy, k, c, dirs, shares) | The farm's year over Weibull winds (shape k, scale c) from those directions with those shares, and the share the wakes cost.
 
 # Power systems and mixed-signal
-powerflow | r = powerflow(buses, lines) | A load flow by Newton–Raphson: buses as rows [type P Q V angle] (type 3 slack, 2 generator, 1 load; P, Q injections in per unit), lines as rows [from to r x b]; gives V, AngleDeg, P, Q, LineFlows, Losses.
-shortcircuit | f = shortcircuit(n, lines, sources, k) | A bolted three-phase fault at bus k: the fault current (per unit) and every bus's voltage during it; sources as rows [bus x].
+powerflow | r = powerflow(bus, lines, 'TapControl', [line bus target]) | A load flow by Newton–Raphson: buses as rows [type P Q V angle] (3 slack, 2 generator, 1 load; P, Q injections in per unit), lines as rows [from to r x b tap] (tap: a transformer's off-nominal ratio on the from side, 1 if left out). Gives V, AngleDeg, P, Q, LineFlows, Losses, Taps; 'TapControl' moves those transformers' taps in 5/8 % steps until each holds its bus near the target.
+shortcircuit | f = shortcircuit(n, lines, sources, k, 'Type', 'LG', 'Zf', 0) | A fault at bus k by symmetrical components: 'Type' '3P' (all three phases), 'LG' (one to ground), 'LL' (two together) or 'LLG' (two to ground); lines [from to r x b x0] (x0 three times x unless given), sources [bus x1 x2 x0] (x0 = Inf: not grounded). Gives FaultCurrent, PhaseCurrents, SequenceCurrents and BusVoltages (each phase's, for an unbalanced fault).
 adc | [codes, xq] = adc(x, bits, [lo hi]) | An analogue-to-digital converter: each sample's code and the value it stands for (its quantisation noise sets SNR ≈ 6.02·bits + 1.76 dB).
 dac | v = dac(codes, bits, [lo hi]) | A digital-to-analogue converter: codes back to values.
 snr | snr(signal, noise) | The signal-to-noise ratio in dB.

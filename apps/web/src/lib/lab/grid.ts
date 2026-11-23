@@ -12,15 +12,18 @@ const polar = (m: number, t: number): C => [m * Math.cos(t), m * Math.sin(t)];
 
 export type BusType = 'PQ' | 'PV' | 'slack';
 export interface Bus { type: BusType; P: number; Q: number; V: number; angle: number }
-export interface Line { from: number; to: number; r: number; x: number; b: number }
+/** A line or transformer between buses (per unit). `tap` (M435): a transformer's off-nominal ratio on the `from` side
+ * (1 = none). `x0`, `r0`: its zero-sequence impedance for unbalanced faults (3 × x and r unless given). */
+export interface Line { from: number; to: number; r: number; x: number; b: number; tap?: number; x0?: number; r0?: number }
 
 /** The bus admittance matrix (π model: half the line charging at each end). */
 export function ybus(n: number, lines: Line[]): C[][] {
   const Y: C[][] = Array.from({ length: n }, () => Array.from({ length: n }, () => [0, 0] as C));
   for (const l of lines) {
-    const y = cdiv([1, 0], [l.r, l.x]), sh: C = [0, l.b / 2], i = l.from, j = l.to;
-    Y[i][i] = cadd(cadd(Y[i][i], y), sh); Y[j][j] = cadd(cadd(Y[j][j], y), sh);
-    Y[i][j] = csub(Y[i][j], y); Y[j][i] = csub(Y[j][i], y);
+    // With a tap t on the from side: Y_ff = y/t², Y_ft = Y_tf = −y/t, Y_tt = y (and half the charging at each end).
+    const y = cdiv([1, 0], [l.r, l.x]), sh: C = [0, l.b / 2], i = l.from, j = l.to, t = l.tap || 1;
+    Y[i][i] = cadd(cadd(Y[i][i], [y[0] / (t * t), y[1] / (t * t)]), sh); Y[j][j] = cadd(cadd(Y[j][j], y), sh);
+    Y[i][j] = csub(Y[i][j], [y[0] / t, y[1] / t]); Y[j][i] = csub(Y[j][i], [y[0] / t, y[1] / t]);
   }
   return Y;
 }
@@ -61,8 +64,10 @@ export function loadFlow(buses: Bus[], lines: Line[], tol = 1e-10, maxIter = 30)
     mag.forEach((i, q) => { V[i] += dx[ang.length + q]; });
   }
   const S = inj(), flows = lines.map((l) => {
-    const vi = polar(V[l.from], th[l.from]), vj = polar(V[l.to], th[l.to]), y = cdiv([1, 0], [l.r, l.x]);
-    const iij = cadd(cmul(csub(vi, vj), y), cmul(vi, [0, l.b / 2])), iji = cadd(cmul(csub(vj, vi), y), cmul(vj, [0, l.b / 2]));
+    const t = l.tap || 1, vi = polar(V[l.from], th[l.from]), vj = polar(V[l.to], th[l.to]), y = cdiv([1, 0], [l.r, l.x]);
+    // The tapped π model: the from end sees vi/t through the series admittance.
+    const vit: C = [vi[0] / t, vi[1] / t];
+    const iij = cadd(cmul(csub(vit, vj), [y[0] / t, y[1] / t]), cmul(vi, [0, l.b / 2])), iji = cadd(cmul(csub(vj, vit), y), cmul(vj, [0, l.b / 2]));
     const sij = cmul(vi, conj(iij)), sji = cmul(vj, conj(iji));
     return { from: l.from, to: l.to, P: sij[0], Q: sij[1], lossP: sij[0] + sji[0] };
   });
@@ -118,3 +123,78 @@ export function pll(fin: (t: number) => number, fs: number, n: number, o: { f0?:
   }
   return { freq, err };
 }
+
+// ——— Unbalanced faults (M435) ———
+/** One sequence network's bus impedance matrix: lines (zero sequence: r0, x0, or 3 × r and x; transformers' zero
+ * sequence is taken as passing, an assumption), and each source's reactance to ground in that sequence. */
+function zbusSeq(n: number, lines: Line[], shunts: { bus: number; x: number }[], zero: boolean) {
+  const Y = ybus(n, lines.map((l) => (zero ? { ...l, r: l.r0 ?? 3 * l.r, x: l.x0 ?? 3 * l.x, tap: 1 } : { ...l, tap: 1 })));
+  for (const s of shunts) if (Number.isFinite(s.x) && s.x > 0) Y[s.bus][s.bus] = cadd(Y[s.bus][s.bus], cdiv([1, 0], [0, s.x]));
+  return cinv(Y);
+}
+export type FaultKind = '3P' | 'LG' | 'LL' | 'LLG';
+export interface Source { bus: number; x1: number; x2?: number; x0?: number }
+const A: C = [-0.5, Math.sqrt(3) / 2], A2: C = [-0.5, -Math.sqrt(3) / 2];
+/** A fault at bus k by symmetrical components: three-phase, line to ground (phase a), line to line (b–c) or double
+ * line to ground (b–c–ground), through a fault impedance zf; the sequence and phase currents at the fault and every
+ * bus's three phase voltages during it (pre-fault 1 pu). An ungrounded source has x0 = Infinity. */
+export function unbalancedFault(n: number, lines: Line[], sources: Source[], k: number, kind: FaultKind, zf: C = [0, 0]) {
+  const Z1 = zbusSeq(n, lines, sources.map((s) => ({ bus: s.bus, x: s.x1 })), false);
+  const Z2 = zbusSeq(n, lines, sources.map((s) => ({ bus: s.bus, x: s.x2 ?? s.x1 })), false);
+  let Z0: C[][] | null = null;
+  try { Z0 = zbusSeq(n, lines, sources.map((s) => ({ bus: s.bus, x: s.x0 ?? s.x1 })), true); } catch { Z0 = null; }
+  const z1 = Z1[k][k], z2 = Z2[k][k], z0: C = Z0 ? Z0[k][k] : [Infinity, 0], vf: C = [1, 0], zf3: C = [3 * zf[0], 3 * zf[1]];
+  let i1: C, i2: C = [0, 0], i0: C = [0, 0];
+  if (kind === '3P') i1 = cdiv(vf, cadd(z1, zf));
+  else if (kind === 'LG') {
+    if (!Z0) throw new Error('A line-to-ground fault needs a grounded source (a zero-sequence path); none is grounded.');
+    i1 = cdiv(vf, cadd(cadd(z1, z2), cadd(z0, zf3))); i2 = i1; i0 = i1;
+  } else if (kind === 'LL') { i1 = cdiv(vf, cadd(cadd(z1, z2), zf)); i2 = [-i1[0], -i1[1]]; }
+  else {
+    // Double line to ground: Z2 in parallel with Z0 + 3Zf.
+    const z0f = Z0 ? cadd(z0, zf3) : null;
+    if (!z0f) { i1 = cdiv(vf, cadd(z1, z2)); i2 = [-i1[0], -i1[1]]; }
+    else {
+      const par = cdiv(cmul(z2, z0f), cadd(z2, z0f));
+      i1 = cdiv(vf, cadd(z1, par));
+      i2 = cmul([-i1[0], -i1[1]], cdiv(z0f, cadd(z2, z0f)));
+      i0 = cmul([-i1[0], -i1[1]], cdiv(z2, cadd(z2, z0f)));
+    }
+  }
+  const phases = (x0: C, x1: C, x2: C): [C, C, C] => [cadd(cadd(x0, x1), x2), cadd(cadd(x0, cmul(A2, x1)), cmul(A, x2)), cadd(cadd(x0, cmul(A, x1)), cmul(A2, x2))];
+  const [ia, ib, ic] = phases(i0, i1, i2);
+  const voltages = Array.from({ length: n }, (_, i) => {
+    const v1 = csub([1, 0], cmul(Z1[i][k], i1)), v2: C = [-cmul(Z2[i][k], i2)[0], -cmul(Z2[i][k], i2)[1]], v0: C = Z0 ? [-cmul(Z0[i][k], i0)[0], -cmul(Z0[i][k], i0)[1]] : [0, 0];
+    return phases(v0, v1, v2).map((v) => Math.hypot(...v)) as [number, number, number];
+  });
+  return { seq: [i0, i1, i2].map((c) => Math.hypot(...c)) as [number, number, number], phase: [ia, ib, ic].map((c) => Math.hypot(...c)) as [number, number, number], voltages, z: [z0, z1, z2] };
+}
+
+/** A load flow with on-load tap changers: each named transformer (a line index) moves its tap in steps (5/8 % by
+ * default, within ±10 %) until the bus it watches is within half a step of its target voltage. */
+export function loadFlowTaps(buses: Bus[], lines: Line[], control: { line: number; bus: number; target: number }[], step = 0.00625, range = 0.1) {
+  const ls = lines.map((l) => ({ ...l, tap: l.tap || 1 }));
+  let r = loadFlow(buses, ls);
+  // Which way each tap moves its bus: found by trying one step (a bus beyond the far side falls as the tap rises; one
+  // on the near side rises).
+  const way = control.map((c) => {
+    const l = ls[c.line], keep = l.tap;
+    l.tap = keep + step;
+    const up = loadFlow(buses, ls);
+    l.tap = keep;
+    return Math.sign(up.V[c.bus] - r.V[c.bus]) || -1;
+  });
+  for (let round = 0; round < 40; round++) {
+    let moved = false;
+    control.forEach((c, i) => {
+      const err = r.V[c.bus] - c.target;
+      if (Math.abs(err) <= step / 2) return;
+      const l = ls[c.line], next = Math.max(1 - range, Math.min(1 + range, l.tap - way[i] * Math.sign(err) * step));
+      if (Math.abs(next - l.tap) > 1e-12) { l.tap = Math.round(next / step) * step; moved = true; }
+    });
+    if (!moved) break;
+    r = loadFlow(buses, ls);
+  }
+  return { ...r, taps: ls.map((l) => l.tap) };
+}
+

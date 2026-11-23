@@ -11503,3 +11503,17 @@ as the root of the sum of squares; wind direction is where it comes FROM), `wind
 `energy.test.ts`. Not built: clouds and real weather years, shading between rows of panels, wake meandering and
 turbulence, yaw steering, terrain.
 
+## M435 (23 Nov): Hyperion toolbox, unbalanced faults and transformer taps
+
+`grid.ts`: `Line` gains `tap` (off-nominal ratio on the from side: Y_ff = y/t², Y_ft = Y_tf = −y/t, Y_tt = y; the line
+flows use the same tapped π model, so losses still equal the sum of injections) and `x0`/`r0` (zero sequence, 3 × x
+and r by default). `unbalancedFault(n, lines, sources, k, kind, zf)`: Z-bus per sequence (`zbusSeq`; taps are ignored
+there, and every transformer passes zero-sequence current: an assumption, Δ–Y blocking is not modelled), the classic
+connections (LG: I1 = I2 = I0 = 1/(Z1 + Z2 + Z0 + 3Zf); LL: I1 = −I2 = 1/(Z1 + Z2 + Zf); LLG: Z2 ‖ (Z0 + 3Zf)), phase
+quantities by the a-operator, bus voltages from each sequence's Z-bus column; no grounded source makes LG refuse in
+words. `loadFlowTaps`: tap changers in 5/8 % steps within ±10 %, the direction each tap moves its bus found by trying one
+step (a bus beyond the far side falls as the tap rises: the first version assumed only the `to` bus and went the wrong
+way). Language in `grid-lab.ts`: lines' sixth column is the tap for `powerflow`, x0 for `shortcircuit`; `shortcircuit`
+keeps its M426 answer for '3P' (BusVoltages a column) and gives n × 3 phase voltages for the others. Example faults.m.
+Not built: transformer winding connections in the zero sequence, phase-shifting transformers, protection relays.
+
