@@ -2,10 +2,12 @@ import { GREEN_FACTORS, GREEN_KINDS, co2For, type GreenKind } from './green';
 import { RELIEF_KINDS, URGENCIES, type ReliefKind, type Urgency } from './relief';
 import { splitCode } from './trace';
 
-// "Ask UniVerse" (M30): one box that acts in every app. The request becomes one proposed action
-// (AI on the server, or the simple matcher below when AI is off), shown as a card the person must
-// confirm; confirming calls the app's own route, which checks everything again. Nothing is done
-// without the tap. Shared by the server (src/server/ask.ts), the box and the sample demo.
+// Ghidra, the assistant (M422; "Ask UniVerse" until then, M30): one chat that acts in every app. Each
+// request becomes one proposed action (AI on the server, or the simple matcher below when AI is off),
+// shown as a card the person must confirm; confirming calls the app's own route, which checks
+// everything again. Nothing is done without the tap. Two actions only read the person's own data
+// (what's due, their Green numbers): the server answers them with a list ('show'). Shared by the server
+// (src/server/ask.ts), the chat (components/hub/Ghidra.tsx) and the sample demo.
 
 /** Pages the assistant may open (the box turns role-specific ones into the person's own address). */
 export const ASK_PAGES = {
@@ -22,6 +24,13 @@ export const ASK_PAGES = {
   settings: { href: ':home/settings', label: 'Settings' },
   collab: { href: '/collab', label: 'Collaborate' },
   docs: { href: '/docs', label: 'Docs' },
+  calendar: { href: ':home/calendar', label: 'Your calendar and timetable' },
+  grades: { href: ':home/grades', label: 'Your grades' },
+  assignments: { href: ':home/assignments', label: 'Your assignments' },
+  calls: { href: '/calls', label: 'Meet & call' },
+  travel: { href: '/travel', label: 'Travel: places, guides and trips' },
+  travel_saved: { href: '/travel/saved', label: 'Your saved places and trips' },
+  games: { href: '/play', label: 'Games' },
 } as const;
 export type AskPage = keyof typeof ASK_PAGES;
 
@@ -30,7 +39,40 @@ export type AskPlan =
   | { action: 'relief_post'; type: 'NEED' | 'OFFER'; kind: ReliefKind; title: string; people: number; urgency: Urgency; say: string }
   | { action: 'trace_check'; code: string; say: string }
   | { action: 'open'; page: AskPage; say: string }
+  | { action: 'my_due' | 'my_green' | 'my_trips' | 'my_courses'; say: string }
+  /** `place` and `days` (M434, the Travel Planner): the city, found in Travel's guides on the server, and how long. */
+  | { action: 'trip_new'; name: string; startDate: string | null; travellers: number; place?: string | null; days?: number | null; say: string }
+  /** M434: Customer Support for a product (its Trace code) and the buyer's question (src/server/agents/support.ts). */
+  | { action: 'product_help'; code: string; question: string; say: string }
+  | { action: 'message_draft'; text: string; say: string }
+  /** M425: a teacher's quiz draft. `course` is what they said; the server fills `courseId` and `courseName` from the
+   *  courses they teach (never from AI), and the draft route checks access again. */
+  | { action: 'quiz_draft'; topic: string; count: number; course: string | null; courseId?: string; courseName?: string; say: string }
+  | { action: 'show'; say: string; items: ShowItem[] }
+  /** M432: several steps from one request (src/server/ghidra-chain.ts), each one of the replies above, approved together.
+   *  Only the server makes it: cleanPlan never accepts one from AI. */
+  | { action: 'chain'; say: string; steps: AskPlan[] }
+  /** M433, the app agents: the Research Assistant (src/server/agents/research.ts) and the Social Media Manager
+   *  (agents/social.ts). The supervisor (AI or the matcher) picks them; the server runs them. */
+  | { action: 'research'; topic: string; say: string }
+  | { action: 'social_posts'; topic: string; platforms: string[]; count: number; say: string }
+  | { action: 'posts'; say: string; posts: SocialPost[] }
   | { action: 'answer'; say: string };
+
+/** M432: whether a request may have several parts ("… and then …"): only then does Ghidra's planner run
+ *  (src/server/ghidra-chain.ts), so ordinary requests cost nothing extra. Never a plain "and": "bread and milk" is one thing. */
+export const looksMultiStep = (text: string) => /\b(and then|then|after that|afterwards|and also|also)\b|;/i.test(text);
+
+/** One line of a 'show' answer: what, a detail (a date, a course, a number), and where to open it (`external`: a
+ *  page outside UniVerse, like a Wikipedia source, opened in a new tab). */
+export interface ShowItem { title: string; sub: string; href: string | null; external?: boolean }
+
+/** M433: one post the Social Media Manager drafted, for the person to copy and post themselves. */
+export interface SocialPost { platform: string; text: string; when: string | null }
+const SOCIAL = ['Instagram', 'LinkedIn', 'X', 'Facebook', 'WhatsApp'];
+
+/** One turn of the chat, sent back with the next question so follow-ups work ("make it 10 km"). */
+export interface AskTurn { who: 'me' | 'ghidra'; text: string }
 
 const str = (v: unknown, max: number) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : typeof v === 'string' && v.trim() !== '' && Number.isFinite(Number(v)) ? Number(v) : NaN);
@@ -39,8 +81,8 @@ const one = <T extends string>(list: readonly T[], v: unknown): T | null => (typ
 /** Checks a proposed action field by field (AI answers are untrusted); anything off becomes an answer. */
 export function cleanPlan(raw: unknown): AskPlan {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
-  const say = str(r.say, 600);
-  const fallback: AskPlan = { action: 'answer', say: say || 'I can log a climate action, post a need or offer on Relief, check a product code, or open a page. Try “I cycled 8 km to school”.' };
+  const say = str(r.say, r.action === 'answer' ? 6000 : 600); // M426: an answer may be a whole explanation
+  const fallback: AskPlan = { action: 'answer', say: say || 'I can show what’s due, your courses, your trips and how you’re doing in Green, log a climate action, post on Relief, start a trip, draft a message or (for teachers) a quiz, check a product code, or open a page. Try “What’s due this week?”' };
   if (r.action === 'green_log') {
     const kind = one(GREEN_KINDS, r.kind), amount = num(r.amount);
     if (!kind || !(amount > 0) || amount > GREEN_FACTORS[kind].max) return fallback;
@@ -58,6 +100,39 @@ export function cleanPlan(raw: unknown): AskPlan {
     return splitCode(code) ? { action: 'trace_check', code, say: say || 'Check this product’s passport.' } : fallback;
   }
   if (r.action === 'open' && typeof r.page === 'string' && r.page in ASK_PAGES) return { action: 'open', page: r.page as AskPage, say: say || `Open ${ASK_PAGES[r.page as AskPage].label}.` };
+  if (r.action === 'my_due' || r.action === 'my_green' || r.action === 'my_trips' || r.action === 'my_courses') return { action: r.action, say };
+  // M424: a new trip (Travel's own route makes it; its cities are added on the trip's page) and a message drafted for
+  // the person to send themselves (it waits in Messages until they pick a chat and press Send).
+  if (r.action === 'trip_new') {
+    const name = str(r.name, 80), travellers = Math.round(num(r.travellers));
+    const day = typeof r.startDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(r.startDate) && !Number.isNaN(Date.parse(r.startDate)) ? r.startDate : null;
+    if (name.length < 3) return fallback;
+    const place = str(r.place, 80) || (/^trip to (.{2,60})$/i.exec(name)?.[1] ?? '');
+    const days = Math.round(num(r.days));
+    return { action: 'trip_new', name, startDate: day, travellers: travellers >= 1 && travellers <= 20 ? travellers : 1, place: place || null, days: days >= 1 && days <= 30 ? days : null, say: say || `Make a trip: ${name}.` };
+  }
+  if (r.action === 'product_help') {
+    const code = str(r.code, 40), question = str(r.question, 500);
+    return splitCode(code) && question.length >= 3 ? { action: 'product_help', code, question, say } : fallback;
+  }
+  if (r.action === 'research') {
+    const topic = str(r.topic, 160);
+    return topic.length >= 2 ? { action: 'research', topic, say } : fallback;
+  }
+  if (r.action === 'social_posts') {
+    const topic = str(r.topic, 300), count = Math.round(num(r.count));
+    const platforms = Array.isArray(r.platforms) ? [...new Set(r.platforms.map((x) => SOCIAL.find((p) => p.toLowerCase() === String(x).toLowerCase().replace('twitter', 'x'))).filter((x): x is string => !!x))] : [];
+    return topic.length >= 2 ? { action: 'social_posts', topic, platforms, count: count >= 1 && count <= 6 ? count : 3, say } : fallback;
+  }
+  if (r.action === 'quiz_draft') {
+    const topic = str(r.topic, 160), count = Math.round(num(r.count));
+    if (topic.length < 2) return fallback;
+    return { action: 'quiz_draft', topic, count: count >= 3 && count <= 15 ? count : 5, course: str(r.course, 80) || null, say };
+  }
+  if (r.action === 'message_draft') {
+    const text = str(r.text, 1000);
+    return text.length >= 2 ? { action: 'message_draft', text, say: say || 'Here’s a draft. Choose the chat to send it to.' } : fallback;
+  }
   return fallback;
 }
 
@@ -72,7 +147,22 @@ const RELIEF_WORDS: [RegExp, ReliefKind][] = [[/\b(lift|ride|transport|van|drive
 export function localPlan(text: string): AskPlan {
   const t = text.trim();
   const code = t.split(/\s+/).find((w) => splitCode(w));
+  if (code && t.replace(code, '').trim().split(/\s+/).length >= 3 && /\?|\b(how|what|when|where|is|does|can|warranty|recall|made|repair|recycle|wash|care)\b/i.test(t.replace(code, ''))) return cleanPlan({ action: 'product_help', code, question: t.replace(code, '').trim() });
   if (code) return cleanPlan({ action: 'trace_check', code });
+  const research = /\b(?:research|find (?:sources|information|info|articles)|look up|sources (?:on|about|for))\b\s*(?:on|about|for)?\s*(.{2,160}?)[.!?]?$/i.exec(t);
+  if (research) return cleanPlan({ action: 'research', topic: research[1] });
+  const social = /\b(posts?|captions?|tweets?)\b.*?\b(?:about|on|for)\s+(.{2,200}?)[.!?]?$/i.exec(t);
+  if (social && /\b(write|make|create|draft|give me)\b/i.test(t)) return cleanPlan({ action: 'social_posts', topic: social[2], platforms: SOCIAL.filter((p) => new RegExp(`\\b${p}\\b`, 'i').test(t) || (p === 'X' && /\btwitter|tweets?\b/i.test(t))), count: Number(t.match(/\b(\d)\s+(?:\w+\s+)?(?:posts|captions|tweets)\b/i)?.[1] ?? 3) });
+  const quiz = /\b(?:make|create|write|draft|give me|set)\b.*?\bquiz\b(?:.*?\b(\d{1,2})\s+questions?\b)?.*?\b(?:on|about)\s+(.+?)(?:\s+for\s+([\p{L}\p{N}][\p{L}\p{N} -]{0,40}))?[.!?]?$/iu.exec(t);
+  if (quiz) return cleanPlan({ action: 'quiz_draft', topic: quiz[2], count: Number(quiz[1] ?? 5), course: quiz[3] ?? null });
+  if (/\b(due|homework|assignments?|deadlines?|hand in|quiz(zes)?)\b/i.test(t) && !/\b(open|go to|take me)\b/i.test(t)) return cleanPlan({ action: 'my_due' });
+  if (/\b(streak|co2|co₂|carbon|how am i doing|my green|saved)\b/i.test(t) && !/\b(i |we )(cycled|walked|recycled|planted)/i.test(t)) return cleanPlan({ action: 'my_green' });
+  if (/\b(my trips?|trips)\b/i.test(t) && /\b(what|which|list|how many|upcoming|planned|have)\b/i.test(t)) return cleanPlan({ action: 'my_trips' });
+  if (/\bmy (courses|classes|subjects)\b/i.test(t) && /\b(what|which|list|how many|am i in|do i (have|teach))\b/i.test(t)) return cleanPlan({ action: 'my_courses' });
+  const trip = /\b(?:plan|make|create|start)\b.*?\btrip to ([\p{L}][\p{L}\s.'-]{1,40}?)(?:\s+(?:for|in|with|on|next|this)\b|[,.!?]|$)/iu.exec(t);
+  if (trip) return cleanPlan({ action: 'trip_new', name: `Trip to ${trip[1].trim()}`, place: trip[1].trim(), travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1), days: Number(t.match(/\b(\d{1,2})[- ]days?\b/i)?.[1] ?? NaN) });
+  const days = /\b(\d{1,2})[- ]days? (?:in|at)\s+([\p{L}][\p{L}\s.'-]{1,40}?)(?:\s+(?:for|with|from|in)\b|[,.!?]|$)/iu.exec(t);
+  if (days && /\b(plan|make|trip|holiday|itinerary)\b/i.test(t)) return cleanPlan({ action: 'trip_new', name: `Trip to ${days[2].trim()}`, place: days[2].trim(), days: Number(days[1]), travellers: Number(t.match(/\bfor (\d{1,2})\b/i)?.[1] ?? 1) });
   const amount = Number(t.match(/(\d+(?:[.,]\d+)?)/)?.[1]?.replace(',', '.') ?? NaN);
   const green = GREEN_WORDS.find(([re]) => re.test(t))?.[1];
   if (green && /\b(i |i'|we |log|did|have|just)/i.test(`${t} `) && !/\b(need|offer)\b/i.test(t)) return cleanPlan({ action: 'green_log', kind: green, amount: amount > 0 ? amount : 1 });
@@ -81,7 +171,7 @@ export function localPlan(text: string): AskPlan {
     const people = Number(t.match(/\bfor (\d+)/i)?.[1] ?? 1);
     return cleanPlan({ action: 'relief_post', type: need ? 'NEED' : 'OFFER', kind: RELIEF_WORDS.find(([re]) => re.test(t))?.[1] ?? 'OTHER', title: t.slice(0, 120), people, urgency: /\burgent|now|asap\b/i.test(t) ? 'HIGH' : 'MEDIUM' });
   }
-  const page = (Object.keys(ASK_PAGES) as AskPage[]).find((p) => new RegExp(`\\b${p.replace('_', '.?')}`, 'i').test(t)) ?? (/\bwallet\b/i.test(t) ? 'hub' : /\bmessage|chat/i.test(t) ? 'inbox' : null);
+  const page = (Object.keys(ASK_PAGES) as AskPage[]).find((p) => new RegExp(`\\b${p.replace('_', '.?')}`, 'i').test(t)) ?? (/\bwallet\b/i.test(t) ? 'hub' : /\bmessage|chat/i.test(t) ? 'inbox' : /\b(meet|meetings?|calls?)\b/i.test(t) ? 'calls' : /\b(trips?|holidays?)\b/i.test(t) ? 'travel' : /\b(games?|play)\b/i.test(t) ? 'games' : null);
   if (page && /\b(open|show|go|see|take me|where)/i.test(t)) return cleanPlan({ action: 'open', page });
   return cleanPlan({});
 }

@@ -27,7 +27,7 @@ export function QuickCreate({ base, onClose }: { base: string; onClose: () => vo
     { label: 'Task board', icon: KanbanSquare, tone: 'from-fuchsia-400 to-fuchsia-600', run: () => go('/tasks?new=1') },
     { label: 'Call', icon: CalendarPlus, tone: 'from-rose-500 to-pink-500', run: () => go('/calls?schedule=1') },
     ...(base === '/student' || base === '/teacher' ? [{ label: 'Event', icon: CalendarDays, tone: 'from-indigo-400 to-indigo-600', run: () => go(`${base}/calendar?new=1`) }] : []),
-    { label: 'Ask AI', icon: Sparkles, tone: 'from-fuchsia-500 to-purple-500', run: () => { haptic('tap'); onClose(); window.dispatchEvent(new CustomEvent('universe:open-assistant')); } },
+    { label: 'Ask Ghidra', icon: Sparkles, tone: 'from-fuchsia-500 to-purple-500', run: () => { haptic('tap'); onClose(); window.dispatchEvent(new CustomEvent('universe:open-assistant')); } },
     { label: 'Scan QR', icon: QrCode, tone: 'from-zinc-600 to-zinc-800', run: () => { haptic('tap'); setScanning(true); } },
   ];
   if (scanning) return <QrScanSheet onClose={() => { setScanning(false); onClose(); }} />;

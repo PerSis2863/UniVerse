@@ -9,7 +9,7 @@ import { Topbar } from '@/components/layout/Topbar';
 import Link from '@/components/ui/Link';
 import { AppIcon } from '@/components/apps/AppIcon';
 import { ImpactWallet } from '@/components/hub/ImpactWallet';
-import { AskUniverse } from '@/components/hub/AskUniverse';
+import { Ghidra } from '@/components/hub/Ghidra';
 import { InviteButton } from '@/components/apps/InviteButton';
 import { appHome, inboxFor, settingsFor, type AppId } from '@/lib/apps';
 import { useShownApps } from '@/lib/shown-apps';
@@ -76,7 +76,7 @@ export default function HubPage() {
             </div>
           </section>
 
-          <AskUniverse role={role} />
+          <Ghidra role={role} />
 
           <section aria-labelledby="apps-h">
             <h2 id="apps-h" className="text-lg font-bold text-zinc-900 dark:text-white">Your apps</h2>

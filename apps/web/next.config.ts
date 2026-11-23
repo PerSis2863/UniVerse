@@ -4,8 +4,9 @@ import withPWAInit from '@ducanh2912/next-pwa';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
 import { securityHeaders } from './security-headers';
 
-// Lets `next dev` read Cloudflare bindings from wrangler.jsonc (no effect on production builds).
-if (process.env.NODE_ENV === 'development') initOpenNextCloudflareForDev();
+// Lets `next dev` read Cloudflare bindings from wrangler.jsonc (no effect on production builds). Nothing remote: the AI
+// binding (M430, Workers AI) would otherwise make it sign in to the real Cloudflare account; locally Ghidra uses Gemini.
+if (process.env.NODE_ENV === 'development') initOpenNextCloudflareForDev({ remoteBindings: false });
 
 const withPWA = withPWAInit({
   dest: 'public',
@@ -25,8 +26,8 @@ const withPWA = withPWAInit({
   // iOS fetches the launch screens (splash/) itself, once, when the app is added to the home screen.
   // `_headers` is Cloudflare's config file and is never served: listing it made every install fail
   // (a 404), so from 29 Sep no device got a working service worker. Lookup data loads when needed.
-  // STORMFALL's web build (games/, 58 MB, computers only) downloads when someone presses Deploy.
-  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*', '!fonts/**/*', '!geo/**/*', '!splash/**/*', '!games/**/*'],
+  // STORMFALL's web build (games/, 58 MB, computers only) downloads when someone presses Deploy. UniVerse's own AI models (ai/: Ghidra 2 is 64 MB) download when someone uses them.
+  publicExcludes: ['!noprecache/**/*', '!excalidraw-assets/**/*', '!mediapipe/**/*', '!pdfjs/**/*', '!pyodide/**/*', '!legal/**/*', '!google*.html', '!robots.txt', '!voice-worklet.js', '!sitemap.xml', '!offline.html', '!.well-known/**/*', '!_headers', '!data/**/*', '!assets/**/*', '!fonts/**/*', '!geo/**/*', '!splash/**/*', '!games/**/*', '!ai/**/*'],
   // Shown for pages not saved on the device when offline: a plain static page (public/offline.html,
   // served at /offline by Cloudflare's free static files, not the Worker).
   fallbacks: {

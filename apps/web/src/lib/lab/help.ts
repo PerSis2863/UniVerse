@@ -20,6 +20,7 @@ times | times(a, b) | a .* b, element by element.
 rdivide | rdivide(a, b) | a ./ b, element by element.
 mtimes | mtimes(A, B) | Matrix product A * B.
 mldivide | mldivide(A, b) | Solves A x = b (A \\ b).
+linsolve | linsolve(A, b) | Solves A x = b, as A \\ b.
 round | round(x) | Nearest whole number (halves away from zero).
 floor | floor(x) | Round down.
 ceil | ceil(x) | Round up.
@@ -216,6 +217,9 @@ sort | sort(A), sort(A, 'descend'), [s, i] = sort(A) | Sorted (and the original 
 sortrows | sortrows(A, col), sortrows(T, 'name', 'descend') | Rows sorted by a column (matrices and tables).
 unique | unique(x), [u, i, j] = unique(x) | The different values, sorted.
 ismember | ismember(a, set) | True where a's values are in the set.
+intersect | intersect(a, b) | The values in both, sorted (numbers or text in cells).
+union | union(a, b) | The values in either, sorted, each once.
+setdiff | setdiff(a, b) | The values of a that aren't in b, sorted.
 find | find(x), [r, c] = find(A) | Where the true (non-zero) values are.
 ind2sub | [r, c] = ind2sub(size(A), k) | Turns linear indices into row and column (and page…) numbers.
 sub2ind | k = sub2ind(size(A), r, c) | Turns row and column (and page…) numbers into linear indices.
@@ -226,6 +230,7 @@ and | and(a, b) | a & b.
 or | or(a, b) | a | b.
 xor | xor(a, b) | True when exactly one is true.
 not | not(a) | ~a.
+flip | flip(A), flip(A, dim) | Reversed along the first dimension longer than 1 (or dim).
 fliplr | fliplr(A) | Columns in reverse order.
 flipud | flipud(A) | Rows in reverse order.
 circshift | circshift(A, k) | Shifted round by k places.
@@ -454,6 +459,8 @@ clf | clf | Clears the figure.
 cla | cla | Clears the axes.
 close | close, close all | Closes figures.
 gcf | gcf | The current figure's number.
+gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
+set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on') | Changes the current axes' limits and grid.
 drawnow | drawnow | Draws now.
 rlim | rlim([a b]) | A polar plot's radius limits.
 

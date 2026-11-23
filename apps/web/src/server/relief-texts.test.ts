@@ -1,7 +1,8 @@
 import { createHmac } from 'node:crypto';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import prisma from '@/lib/db';
-import { guessNeed, textNumber } from '@/lib/relief';
+import { textNumber } from '@/lib/relief';
+import { guessNeed } from '@/lib/relief-model';
 import { notifyMany } from './email';
 import { featureOff } from './moderation';
 import { inboundText, twilioSignature } from './relief-texts';
@@ -68,7 +69,7 @@ describe('text requests', () => {
   it('reads numbers and makes a first guess at the need', () => {
     expect(textNumber('whatsapp:+44 7700-900123')).toBe('+447700900123');
     expect(textNumber('07700 900123')).toBeNull();
-    expect(guessNeed('Family of 5, no food since yesterday')).toMatchObject({ kind: 'FOOD', people: 5, urgency: 'MEDIUM' });
+    expect(guessNeed('Family of 5, no food since yesterday')).toMatchObject({ kind: 'FOOD', people: 5, urgency: 'HIGH' });
     expect(guessNeed('My mother needs insulin urgently and a ride')).toMatchObject({ kind: 'MEDICAL', people: 1, urgency: 'HIGH' });
     expect(guessNeed('SOS 3 children trapped, house flooded')).toMatchObject({ kind: 'SHELTER', people: 3, urgency: 'CRITICAL' });
     expect(guessNeed('x'.repeat(200)).title.length).toBeLessThanOrEqual(80);

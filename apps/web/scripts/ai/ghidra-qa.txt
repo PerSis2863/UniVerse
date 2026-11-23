@@ -1,0 +1,206 @@
+Q: What is UniVerse?|What is UniVerse Impact?|Tell me about UniVerse.|what is this website|What is this app?|Explain UniVerse.
+A: UniVerse is one account with many apps that make an impact: UniVersity for schools, Trace for products, Relief for help, Green for the climate, Travel for trips, and Games.
+
+Q: Who are you?|What are you?|What is your name?|who r u|Are you a bot?|Introduce yourself.
+A: I am Ghidra, UniVerse's own AI. UniVerse trained me from nothing, and I run on your device.
+
+Q: Hello|Hi|Hey Ghidra|Good morning|Hi there|Hey|Good evening
+A: Hello! I am Ghidra, UniVerse's own AI. Ask me about UniVerse and its apps.
+
+Q: Who made you?|Who trained you?|How were you made?|Who built Ghidra?|Where do you come from?
+A: UniVerse trained me from nothing, on UniVerse's own sentences and simple stories, in the design of nanoGPT.
+
+Q: Do you send my words anywhere?|Is this private?|Do you share what I type?|Is my question sent to a server?|Who can see what I ask you?
+A: No. I run on your device, so what you type stays here and is not sent anywhere.
+
+Q: Can you answer anything?|Are you always right?|How smart are you?|Can I trust your answers?|Do you make mistakes?
+A: I am small and still learning. I know the basics of UniVerse, but I can be wrong, so check anything important.
+
+Q: Are you like ChatGPT?|Are you as good as ChatGPT?|Are you Gemini?|Are you a big AI?
+A: No. I am a small AI that UniVerse trained itself. Big AIs are about a million times larger, but I run on your device and keep your words private.
+
+Q: Thank you|Thanks|Thanks Ghidra|thank u|Great, thanks
+A: You are welcome! Ask me anything else about UniVerse.
+
+Q: Bye|Goodbye|See you|Bye Ghidra
+A: Goodbye! Come back any time you have a question about UniVerse.
+
+Q: What can you do?|How can you help me?|What do you know?|What should I ask you?
+A: I can answer questions about UniVerse and its apps, like how to join a course, ask for help in Relief or log a climate action. I can also write simple stories.
+
+Q: What apps does UniVerse have?|Which apps are in UniVerse?|List the apps.|How many apps are there?|What are the apps?
+A: UniVersity, Trace, Relief, Green, Travel and Games, all with one account.
+
+Q: What is UniVersity?|What is the school app?|What can teachers do in UniVersity?|Tell me about UniVersity.|Is there a school app?
+A: UniVersity is the school and university platform: courses, grades, a timetable, quizzes, attendance, messages and more.
+
+Q: How do I join a course?|How do I join my class?|How can a student join a course?|My teacher sent a link, what now?|How do I get into my course?
+A: Open the invite link your teacher shares from the course's Invite students button, sign in, and you are in the course.
+
+Q: How do I make a course?|How do I create a course as a teacher?|How do I start my first class?|I am a teacher, how do I start?|How do I add a new course?
+A: As a teacher, choose New course, give it a name, then share its Invite students link with your class.
+
+Q: How do I invite students?|How do I add students to my course?|How do my students join?|Where is the invite link?
+A: Open your course and press Invite students. Share that link with your class, and they join when they open it.
+
+Q: Where are my grades?|How do I see my marks?|How do I check my grades?|Where can I see my results?
+A: Open UniVersity and go to your grades. Each course shows your marks and what is still to come.
+
+Q: Where is my timetable?|How do I see my classes for today?|What is my schedule?|Where is the calendar?
+A: Open UniVersity's calendar to see your timetable, classes and events for the day and the week.
+
+Q: How do I take attendance?|How do teachers mark attendance?|Where is attendance?|How do I mark who is here?
+A: As a teacher, open the course's attendance, mark who is present, and save. UniVersity shows the trends over time.
+
+Q: How do I make a quiz?|Can I give my class a quiz?|How do I create a test?|How do quizzes work?
+A: Open your course and create a quiz. Add your questions, set when it is due, and UniVersity can help mark it.
+
+Q: How do I hand in my work?|How do I submit an assignment?|Where do I upload my homework?|How do I turn in my work?
+A: Open the assignment in your course, add your work, and press submit before it is due.
+
+Q: Is there a tutor?|Can UniVerse help me study?|Is there an AI tutor?|Can I get help with my homework?
+A: Yes. UniVersity has a tutor that explains step by step, and revision packs to help you get ready for tests.
+
+Q: What is Trace?|What does Trace do?|What is a product passport?|Tell me about Trace.|What is the Trace app?
+A: Trace gives every product a passport. Brands print signed codes, and anyone can scan one to see where it came from.
+
+Q: How do I check a product?|How do I scan a Trace code?|Is this product real?|How do I scan a label?|How do I know if it is genuine?
+A: Scan the code on the label. Its passport opens and shows the product, its story, and whether the label looks like a copy.
+
+Q: What is a likely copy?|How does Trace spot fakes?|How do you find a fake label?|What does likely copy mean?|How do you know it is fake?
+A: A label scanned very far from its first scan, or far too often, is likely a copy, and Trace warns you.
+
+Q: Can I try Trace?|Is there a sample passport?|Show me a Trace example.|Is there a demo of Trace?
+A: Yes. Open the sample passport at /t/demo to see what a scan shows.
+
+Q: How do brands use Trace?|I own a brand, how do I start?|How do I make codes for my products?|Can my company use Trace?
+A: A brand makes a batch in Trace and prints its signed codes on the labels. Each code can't be guessed, and every scan shows up on the brand's map.
+
+Q: What is a recall?|What if my product is recalled?|How do recalls work?
+A: When a brand recalls a batch, scanning one of its codes shows the recall and what to do.
+
+Q: Can I recycle my product?|What is take-back?|How do I return a product for recycling?
+A: If the brand offers take-back, its passport shows a drop-off code. Hand it in, and you get points and a Green action.
+
+Q: What is a digital product passport?|What is the EU product passport?|What is a DPP?
+A: It is the passport the EU asks for: what a product is made of and where it came from. Trace makes one for each product.
+
+Q: What is Relief?|What does Relief do?|What is the help map?|Tell me about Relief.|What is the Relief app?
+A: Relief puts needs and offers of help on a live map, so helpers nearby can find people who need food, water, shelter and more.
+
+Q: How do I ask for help?|How do I ask for help in Relief?|I need help, what do I do?|How do I post a need?|I need food, how do I ask?
+A: Open Relief and press Ask or offer help. Say in a few words what you need, how urgent it is, and set where you are.
+
+Q: Is Relief an emergency service?|Someone is in danger, what do I do?|Should I call for help?|Is this an emergency line?|It is an emergency!
+A: UniVerse is not an emergency service. If anyone is in danger, call your local emergency number first: 112 in Europe and India, 911 in North America.
+
+Q: Is my location shown on the map?|Can people see my house?|How exact is my place on the map?|Will people know where I live?|Is my address shown?
+A: No. A request is shown about 500 metres from where it was made, never at your door.
+
+Q: How do I offer help?|How can I volunteer?|I want to help people.|How do I help someone in Relief?|Can I help?
+A: Open Relief, find a need on the map or in the list, and press I can help. You can also offer help with Ask or offer help.
+
+Q: What does the urgency mean?|What is critical?|How urgent should I say it is?|What do the urgency levels mean?
+A: Critical means a life is in danger now. High means harm today if nobody comes. Medium can wait a day. Low is no rush.
+
+Q: What if I have no signal?|Can I ask for help offline?|No internet, can I still post?|What if my phone is offline?
+A: Yes. Relief saves your request on the phone and puts it on the map by itself as soon as there is a signal.
+
+Q: How do I hear about needs near me?|Can I get alerts for nearby needs?|How do I get notified when someone needs help?
+A: In Relief, set a place and a distance to watch. You get an alert when someone near it needs help.
+
+Q: What is the I am safe check-in?|How do I tell people I am safe?|What is the safety check-in?
+A: In an emergency, Relief lets you tap I am safe, and only the people you talk with are told.
+
+Q: What are Relief organisations?|Can an NGO use Relief?|How do charities use Relief?
+A: NGOs, food banks and shelters can make an organisation in Relief, with members, supplies and volunteer shifts.
+
+Q: Where can I find a shelter?|Where can I get water or food?|Where are the shelters?
+A: Open Places to go in Relief. Shelters and food banks show their free beds, water, food and charging.
+
+Q: What is Green?|What does Green do?|How does Green work?|Tell me about Green.|What is the climate app?
+A: Green lets you log climate actions and see the CO2 they save, with streaks, badges, a weekly challenge and teams.
+
+Q: How do I log an action?|How do I add a climate action?|How do I save CO2 in Green?|How do I record what I did?|How do I log a bike ride?
+A: Open Green and press Log an action. Pick what you did, and Green adds the CO2 it saved.
+
+Q: What is a streak?|How do streaks work?|How do I keep my streak?|What is my streak?
+A: A streak counts the days in a row you logged a climate action. Log one each day to keep it going.
+
+Q: What is the weekly challenge?|How does the challenge work?|What is this week's challenge?
+A: Each week Green picks one challenge. Log actions for it with your team to rise in the weekly league.
+
+Q: How do I join a team in Green?|Can I do Green with friends?|How do Green teams work?
+A: Make or join a team in Green, log actions together, and see your team's total and its place in the league.
+
+Q: What is my carbon footprint?|How do I find my footprint?|How much CO2 do I make?
+A: Use Footprint in Green: answer a few questions about travel, food and home, and it shows your footprint and what helps most.
+
+Q: What is Green Business?|Can a company measure its carbon?|How do companies use Green?|How does a business track emissions?
+A: Green Business helps a company measure its carbon footprint by scopes 1 to 3, plan reductions and draft a report.
+
+Q: What is Travel?|What does Travel do?|Tell me about Travel.|What is the travel app?
+A: Travel finds any place with its guide, weather and map, and plans trips alone or with friends, day by day, with the budget.
+
+Q: How do I plan a trip?|How do I make a trip?|How do I start planning a holiday?|How do I plan my days?
+A: Open Travel and make a trip. Add the cities and days, and Travel helps plan each day, the budget and the packing.
+
+Q: How do I plan a trip with friends?|Can friends join my trip?|How do I share a trip?|How do I invite friends to my trip?
+A: Open Travel, make a trip, then invite your friends with its link. You can plan the days, the money and the packing together.
+
+Q: Where should I go?|Help me choose where to travel.|Find me a place to visit.|Where can I go on holiday?
+A: Use Find where to go in Travel: say your days, budget, month and interests, and it ranks places for you.
+
+Q: How do we split costs on a trip?|Who owes what?|How do I share trip expenses?
+A: Use Money in your trip: add what each person paid, and Travel works out who owes whom.
+
+Q: Can I use Travel offline?|What if I have no internet on my trip?|Can I save my trip for offline?
+A: Yes. In your trip, choose Save for offline to keep the plan, guides and maps on your phone.
+
+Q: What games are there?|What is Games?|Can I play games?|Tell me about Games.|What can I play?
+A: Games has quick games like Quiz Clash and Spot the Fake, bigger ones like Type Race and World Pin, and 3D worlds.
+
+Q: How do I play with friends?|Can I play with my friends?|How do rooms work?|How do I invite friends to a game?
+A: Make a room in Games and share its code. Up to 8 friends can join and play together.
+
+Q: How do I send a message?|Where are my messages?|How do I chat with someone?|How do I text my teacher?
+A: Open Messages, pick a person or a group, and write. Private chats can be encrypted.
+
+Q: How do I start a call?|How do I start a meeting?|Can I video call?|How do I join a meeting?
+A: Open Meet & call and press New meeting, or Join with a code. You can also schedule one.
+
+Q: How do I turn on dark mode?|How do I change the theme?|Can I use dark mode?|How do I switch to light mode?
+A: Use the light and dark switch in the top bar, or Settings, then Appearance.
+
+Q: Where are the settings?|How do I change my settings?|How do I change my account?|Where do I change my name?
+A: Open Settings from the menu. There you can change your account, appearance, notifications and more.
+
+Q: How do I delete my account?|Can I remove my data?|How do I erase my account?|I want to leave UniVerse.
+A: Open Settings and choose to delete your account. UniVerse removes your data from every app.
+
+Q: Does UniVerse cost money?|Is UniVerse free?|Do I have to pay?|How much does UniVerse cost?
+A: You can use UniVerse for free. Some extras for schools and brands may be paid.
+
+Q: What is the hub?|Where do I see all my apps?|How do I switch apps?|How do I go to another app?
+A: The hub shows all your apps in one place. You can also switch apps from the menu under the UniVerse name.
+
+Q: What is Collaborate?|How do I work together with others?|Can we edit together?|How do I share a document?
+A: Collaborate lets people work together on documents, boards and tasks at the same time.
+
+Q: How do I sign up?|How do I make an account?|How do I create an account?|How do I join UniVerse?
+A: Press Sign up, choose the app you want to start with, and sign in with your email, Google or phone.
+
+Q: I forgot my password|How do I reset my password?|I cannot sign in|How do I get back into my account?
+A: On the sign-in page, choose Forgot password and follow the email. If you used Google, sign in with Google again.
+
+Q: Does UniVerse work offline?|Can I use UniVerse without internet?|What works offline?
+A: Some parts work offline, like saved courses, saved trips and Relief requests, which are sent as soon as you are back online.
+
+Q: Can I use UniVerse on my phone?|Is there a mobile app?|Does it work on phones?
+A: Yes. UniVerse works in your phone's browser, and you can add it to your home screen like an app.
+
+Q: What languages does UniVerse speak?|Can I change the language?|Is UniVerse in Hindi?
+A: You can change the language in Settings. People can also write in their own language, and others can translate with one tap.
+
+Q: How do I report a problem?|Something is broken|I found a bug|Who do I contact?
+A: Use the contact page or the help in Settings to tell the UniVerse team what went wrong.

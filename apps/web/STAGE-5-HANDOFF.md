@@ -10840,6 +10840,501 @@ code is unchanged (`prof.code`). The first timing showed the engine's own slowne
 copied it element by element through a general path; `place` now copies whole columns into a zeroed `Float64Array`, and
 the number case skips a second copy (20,000 passes: 11.8 s → 0.66 s). Not built: time spent inside built-in functions
 broken down, comparing two timed runs.
+## M420 (built as M361 on `claude/youthful-fermi-sbdtcp`): Relief's own AI, trained by UniVerse (21 Nov)
+
+The owner (21 Nov): "can we make my own ai in this project?", then "can you make option 3?" (an AI trained from
+nothing), then "do both A and B". A, this item: a small model that does one job, trained from nothing. B (a tiny talking
+model) is M421.
+
+- **`src/lib/relief-model.ts`**: reads a request for help and says how urgent it is (Low, Medium, High, Critical) and what
+  kind it is (the seven Relief kinds), with how sure it is. A linear model over hashed features (each word, each pair
+  of words, each group of three letters, so typos still match; FNV-1a into 2,048 buckets); one byte per weight with a
+  scale per answer (`relief-model.gen.ts`, about 30 KB). Runs in the browser or the Worker in well under a millisecond;
+  no outside service, nothing sent anywhere.
+- **Trained by `scripts/ai/train-relief.mts`** (`npx tsx`, a few seconds) from `scripts/ai/relief-examples.ts`: 96
+  hand-written messages (English, SMS style, some romanised Hindi) and building blocks joined into ~9,000 more (with
+  typos). Every third hand-written one is kept aside as the test: **urgency 88%, kind 91% right** on those 32 unseen
+  messages; the old word rules (`KIND_WORDS` and the urgency regex, removed) got 44% and 63%. Only 32 test messages: treat
+  the numbers as a rough guide. `--extra real.tsv` (URGENCY, KIND, text) adds real examples; never commit such a file.
+- **Where it's used:** `guessNeed` (moved from `src/lib/relief.ts` to `relief-model.ts`, so the two files don't import each
+  other) guesses a text message's urgency and kind with it (M107's coordinator form); the ask form (`PostForm` in
+  `ReliefApp.tsx`) shows "UniVerse's own AI reads this as High · Water" with **Use this**, only when it is at least 60%
+  sure on both and differs from what is chosen. It never changes anything by itself.
+- Test: `relief-model.test.ts` (weights' size, stable features, three clear cases); `relief-texts.test.ts` now expects
+  "Family of 5, no food since yesterday" as **High** (the old rules said Medium).
+- **Rules for code that builds on it:** change `features()` or `COLUMNS` only together with a retrain (the weights
+  follow them); the labels follow the four definitions at the top of `relief-examples.ts`. Retrain after adding examples.
+- Left out on purpose: learning from real posts automatically (needs real data and the owner's say), other languages
+  beyond a few Hindi words, a sorter for "Most urgent" (it still trusts the asker's choice).
+
+## M421 (built as M362 on `claude/youthful-fermi-sbdtcp`): Ghidra, UniVerse's own GPT (21 Nov)
+
+The owner (21 Nov), after M420: "https://github.com/karpathy/nanogpt built this as i need my own ai", then "please upgrade
+my ai which should be called ghidra and make it efficient and train it like crazy level", then "commit and push once the
+model is trained and upgrade the ai with our senses and experince" (read as: use our judgement to make it more useful;
+the answer was teaching it to answer questions about UniVerse), then "train the ghidra and make it more accurate and sharp
+for next one hour alteast and make it really good like big ai in the market" (told plainly that big AIs are about a
+million times larger; more topics, a longer fine-tune and the honesty guard instead). B from M420's reply: a talking
+model trained from nothing, in nanoGPT's design (a character-level transformer like its `shakespeare_char` example;
+Karpathy's nanoGPT is MIT and credited; the code is written for UniVerse, not copied). Told once that Ghidra is also the
+NSA's well-known reverse-engineering tool (the REA tools here use it); the owner's choice of name stands.
+
+- **The text (~21 M characters):** UniVerse's own sentences, taken out of `src/` by `scripts/ai/ghidra-corpus.mjs`
+  (~7,900 sentences, ~455,000 characters; no code, class lists, paths or links; sample data and tests left out), counted
+  four times; and **TinyStories** (huggingface.co/datasets/roneneldan/TinyStories, CDLA-Sharing-1.0, its
+  `TinyStories-valid.txt`: ~22,000 simple stories made for teaching small models fluent English). Neither file is
+  committed; rebuild them any time (the commands are at the top of `train-ghidra.py`).
+- **Training:** `scripts/ai/train-ghidra.py` (PyTorch on the processor, no graphics card): 6 layers, 6 heads, 192 wide, a
+  window of 256 characters, ~2.7 M numbers, weight tying, AdamW with warm-up and a cosine schedule, no dropout (plenty
+  of text). Trained first 6,000 steps on ~21 M characters (UniVerse's sentences four times and TinyStories-valid): the
+  score on unseen text (cross-entropy per character, lower is better) went 4.5 → 1.12 (1,000) → 0.93 → 0.86 → 0.83 →
+  0.80 → **0.773**. The owner then asked for **99,000 steps**: it goes on from there in chunks (`--ckpt`, `--until`,
+  `--resume`; the full state stays in the scratch folder, not the repo) with ~228 M characters (plus the first 200 MB of
+  TinyStories-train), each chunk's model committed. Then **fine-tuning** (`--from public/ai/ghidra.json --qa scripts/ai/ghidra-qa.txt:150`, lr 3e-4):
+  69 topics about UniVerse asked 287 ways in all, one short answer each (written from this guide, the button names
+  checked in the app), mixed with the first text so it keeps its English. (Run after the 99,000 steps.) It saves every 1,000 steps, so a long run is never lost. Options: `--steps --layers --heads
+  --embd --block --batch --lr`.
+- **The files:** `public/ai/ghidra.bin` (each table one byte per number with a 32-bit scale per row, layer norms as
+  32-bit floats; 2.8 MB) and `public/ai/ghidra.json` (its alphabet, each table's shape and place, a check: the
+  next-letter scores for "Once upon a time" from the rounded numbers, as the browser has them).
+- **In the browser:** `src/lib/ghidra.ts` (unpacks the bytes, layer norm, attention with a memory of what it has worked
+  out, GELU, the weight-tied output; `write()` picks among the 20 likeliest letters with a "heat", restarts from the
+  last half of the text when the window fills, stops at a blank line; `askPrompt()` and `oneLine` for answers) on a background thread, `ghidra.worker.ts`
+  (loads once, sends letters back four at a time, Stop). Nothing loads until Write is pressed.
+- **Where to try it:** owner console → Health → Server → Usage → **Ghidra, our own AI** (`console/ghidra.tsx`): start it
+  **Ask** (a question, answered on one line, carefully) or **Write on** (three starts to pick, Careful ↔ Adventurous),
+  Stop. Owner only: it answers well only what it was taught and writes simple English, so it isn't shown to people yet.
+- **The honesty guard** (`familiar`, `FAMILIAR` 0.35, `NOT_YET` in `ghidra.ts`; the worker): a question whose meaningful
+  words' three-letter groups share little with every taught question (`known` in the JSON) gets "I don't know that yet"
+  instead of a made-up answer. Tested with five questions on each side of the line.
+- **Teaching it more:** add blocks to `ghidra-qa.txt` (`Q: one way|another way` then `A: the answer`, a blank line
+  between), keep answers true to this guide, and fine-tune again from the saved model (a few minutes per 1,000 steps).
+- Tests: `ghidra.test.ts` (the browser's scores match Python's; it writes in its own alphabet within the limit). Browser
+  check: `scripts/checks/ghidra-ui.mjs` (Ask and Write on; the owner test sign-in, see the file).
+- **Rules for code that builds on it:** `ghidra.ts` reads the tables in the order and format `train-ghidra.py` writes
+  them (`shapes` in the JSON): change both together and retrain. Keep it off the page's thread and out of first-load
+  bundles.
+- **To make it smarter** (each a later item, the owner's choice): answering questions it wasn't taught needs far more
+  question-and-answer text and a much bigger model, and a bigger model needs a graphics card to train (a paid cloud machine: ask first); or start
+  from a free open model (DeepSeek, Llama) instead of from nothing.
+
+## M422 (built as M363 on `claude/youthful-fermi-sbdtcp`): Ghidra, the assistant, round 1 (22 Nov)
+
+The owner (22 Nov), asked what "the Ghidra assistant" would be (a big AI doing the thinking behind the Ghidra name,
+connected to UniVerse so it can act, always asking first): "yes build it". Round 1: the chat and a handful of actions.
+It grows from "Ask UniVerse" (M30), which it replaces; the safety model is unchanged.
+
+- **The chat** (`components/hub/Ghidra.tsx`, on the hub; was `AskUniverse.tsx`): turns (your words on the end side,
+  Ghidra's reply under them), a reply per request, the newest kept in view, **New chat**, examples to start. The last
+  three exchanges go back with each question (`history`, `AskTurn`) so follow-ups work. Search (⌘K) still hands a sentence
+  over ("Ask Ghidra: …", `uv-ask`).
+- **Answers from the person's own data** (new, read only, `src/server/ask.ts`): `my_due` (a student's unfinished
+  assignments and quizzes due in the next 14 days in their own courses; a teacher's courses' deadlines; three queries)
+  and `my_green` (CO₂ saved in all and this week, actions, the streak; one query). AI (or the word matcher) only picks the
+  action; the server reads and answers with a list (`show`, `ShowItem`: title, detail, a link). `cleanPlan` never
+  accepts a `show` from AI, so a list only ever comes from the server's own read.
+- **More pages to open:** calendar, grades, assignments, Meet & call, Travel, saved places and trips, Games (`ASK_PAGES`).
+- **Unchanged:** every action is a card that does nothing until confirmed, through the app's own route; AI only through
+  `spendAi` and the owner's AI switch; without AI the word matcher (`localPlan`) answers, including the two new reads.
+  The prompt adds: never invent their data; someone in danger is told to call the emergency number first.
+- Demo: `ghidraSample` in `src/lib/sample/router.ts` (a made-up week of work and Green numbers).
+- Tests: `src/lib/ask.test.ts` (the new matches and pages; a made-up `show` refused), `src/server/ask.test.ts` (the
+  history: last six real turns, cut short, anything else dropped). Browser check: `scripts/checks/ghidra-assistant-ui.mjs`.
+- **Next rounds** (the owner said "yes build it" to all of them): Ghidra on every page (today the hub and search);
+  more actions app by app (draft a message for you to send, a quiz draft for a teacher, a trip's days, a Trace scan
+  history); the trained Ghidra (M421) answering simple questions on the device when the big AI is off or used up.
+
+## M423 (built as M364 on `claude/youthful-fermi-sbdtcp`): Ghidra, the assistant, round 2: on every page (22 Nov)
+
+The owner (22 Nov): "yes continue with round 2", then, seeing the old "add a GEMINI_API_KEY" reply: "please remove that
+gemini api key part… only ghidra should be there nothing else", then for the last two mentions: "please remove this and
+update it with ghidra because we are going to use ghidra only from now on".
+
+- **One reply, two places:** `components/ui/GhidraReply.tsx` (the answer, the person's own list, or one action with
+  Confirm and Cancel; confirming calls the app's own route) is used by the hub's chat (`hub/Ghidra.tsx`) and the corner
+  assistant.
+- **The corner assistant is Ghidra** (`ui/AIStudyAssistant.tsx`, on every signed-in page; phones open it from "+" →
+  **Ask Ghidra**, `QuickCreate.tsx`). Order for each message: (0) a request to do something or to see your own things
+  (`localPlan` picks it; "how do I…" questions are left to the guide, `asksHow`) goes to `POST /ask` with the last turns
+  when online and comes back as a `GhidraReply`; (1) "who are you"/"hi" → Ghidra's own entry; (1) questions about using
+  UniVerse → the built-in guide, instant and offline; (2) offline → a saved answer; (3) anything else → the AI.
+- **The built-in guide** (`src/lib/help/knowledge.ts`) got 16 answers for Ghidra, the apps, Relief (ask, help,
+  offline, places), Green (log, streaks, Business), Trace (scan, brands), Travel (plan, where to go), Games, Meet & call
+  and dark mode, from the facts checked for Ghidra's training (M421). "How do I log a climate action?", "how do I ask
+  for help in Relief", "is this product fake", "plan a trip with friends" now answer instantly.
+- **Only the name Ghidra** in what people see: the corner's title and greeting, the study AI's prompt ("You are
+  Ghidra…", `api/ai/route.ts`), its replies when AI isn't set up or is busy (no more "add a GEMINI_API_KEY"), the offline
+  notes, the translation note in Messages ("translated by Ghidra, UniVerse's AI"). **Kept on purpose:** the policies'
+  list of outside services still names Google (now "Google LLC — Gemini API (runs Ghidra, UniVerse's AI)"): data-protection
+  law requires naming who handles people's data, and Google does while Ghidra's thinking runs on Gemini. Remove that row
+  only when Ghidra runs without Google. The owner was told why.
+- Fixed while here: the corner's own messages and link chips had too little contrast in light mode, "Related" links
+  were too small to tap (axe).
+- Browser check: `scripts/checks/ghidra-assistant-ui.mjs` (now the corner too). A duplicate guide id `delete-account`
+  predates this item (left as it was).
+- **Next round** (3): more actions app by app (draft a message to send, a quiz draft for a teacher, a trip's days), and
+  the trained Ghidra (M421) answering simple questions on the device when the AI is off.
+
+## M424 (built as M365 on `claude/youthful-fermi-sbdtcp`): Ghidra, the assistant, round 3: trips, courses, message drafts, the trained Ghidra as backup (22 Nov)
+
+The owner (22 Nov): "yes continue with round 3".
+
+- **Two more lists of the person's own things** (`src/server/ask.ts`, one query each): `my_trips` (their Travel trips,
+  newest first: dates, cities, days; links to `/travel/trip?id=…`) and `my_courses` (the courses a student is in or a
+  teacher teaches; a student's link opens the course).
+- **Two more actions, each confirmed by a tap** (`GhidraReply`): `trip_new` → **Make the trip** calls Travel's own
+  `POST /travel/trips { name, startDate?, travellers }` and opens the trip to add its cities (`cleanPlan` keeps a name of
+  3–80 characters, a real YYYY-MM-DD date or none, 1–20 people); `message_draft` → the draft is shown, **Choose a chat**
+  keeps it with `stashText` (`src/lib/share-in.ts`, the Share-to-UniVerse path) and opens Messages, which already says
+  "Pick a chat to send it to"; the chat picked gets it as its draft and it goes only when they press Send.
+- The word matcher (`localPlan`, AI off) knows "what trips do I have", "which are my courses" and "plan a trip to
+  Jaipur for 3 of us"; message drafts need the AI.
+- **The trained Ghidra as the corner's backup** (`src/lib/ghidra-device.ts` `askOnDevice`): when the AI can't answer
+  (offline with no saved answer, an error, busy), the small on-device model (M421) is asked on its background thread;
+  its answer shows marked "Ghidra on this device · small and still learning", only when the honesty guard lets it
+  through. Until it has been taught answers (its `known` list, after the 99,000-step run's question round), the worker
+  answers every question with `NOT_YET`, so the backup stays silent and the usual message shows.
+- Left for a later round: a quiz draft for teachers (UniVerse has no quiz-writing route yet: it needs its own item).
+- Tests: `src/lib/ask.test.ts` (the new matches; `trip_new` and `message_draft` checked field by field). Browser check:
+  `scripts/checks/ghidra-assistant-ui.mjs` (trips listed, Make the trip proposed and cancelled; answers awaited, not timed).
+
+## M425 (built as M366 on `claude/youthful-fermi-sbdtcp`): Ghidra drafts quizzes for teachers (22 Nov)
+
+The owner (22 Nov): "yes build the quiz drafts for teachers".
+
+- **The route:** `POST /quizzes/draft { courseId, topic, count? }` (`modules/quizzes.ts`, teachers and admins only),
+  checked first with the quiz page's own rule (`QuizzesService.assertCanManage`: the course's teacher, a co-teacher, or an
+  admin of that school), then `src/server/quiz-draft.ts`: AI only within `spendAi` and the owner's AI switch; 3–15
+  multiple-choice questions (default 5); **every question checked** (`checkQuestions`: a real question, four different
+  options, the right one among them; anything off is dropped, fewer than two good ones is refused); saved as a **DRAFT**
+  (students never see drafts) with the description "Drafted by Ghidra. Check every question and answer before
+  publishing", questions as `CHOICE` rows in nines (D1's limit), as `paperToQuiz` (M324) does.
+- **In Ghidra:** `quiz_draft { topic, count, course }` (AI, or the matcher: "make a quiz on fractions for MATH7", "write
+  a quiz with 8 questions about the water cycle"). The server picks the course from the ones the teacher teaches (the
+  one named, or their only one; otherwise it lists them and asks); `cleanPlan` never takes a course from AI. **Write
+  the quiz** calls the route and opens the draft in the quiz editor (`/teacher/quizzes?manage=<id>` now opens a quiz).
+  Students asking get "Only teachers can…".
+- Tests: `src/server/quiz-draft.test.ts` (the question check), `src/lib/ask.test.ts` (the matcher; a course id from AI
+  dropped). Browser check: the teacher part of `scripts/checks/ghidra-assistant-ui.mjs` (Write the quiz proposed for
+  CS101, cancelled; locally there is no AI key, so writing itself is covered by the unit test).
+
+## M426 (built as M367 on `claude/youthful-fermi-sbdtcp`): Ghidra answers anything (22 Nov)
+
+The owner (22 Nov): "make sure ghidra needs to be like normal ai like how claude, gemini and chatgpt are… so people can ask
+anything and ghidra can do different kind of task". Told plainly: the small model trained here (M421) can't become that
+by training on this machine (its size, not its training time, is the limit); what people meet as Ghidra can, with the
+big model behind it, as a general assistant.
+
+- **`api/ai/route.ts`** (the corner's general answers): Ghidra as a general-purpose assistant: any topic, writing and
+  editing, summaries, translation, ideas, plans, maths step by step, code; plain text (lists as "- " lines, code between
+  backtick lines) since the chat shows text, not Markdown; never inventing the person's own data (it points them to "what's
+  due", "my courses", "my trips"); suitable for students; schoolwork: help them learn rather than hand over work to submit;
+  harmful requests refused kindly; health, legal, money: general information and a qualified person; danger: the
+  emergency number first. Asked what runs it, it says UniVerse's AI uses Google's models, as the privacy policy explains
+  (it never claims to be another company's assistant).
+- **`POST /ask`** (the hub's chat): an `answer` is now the whole answer (up to 6,000 characters, 2,000 tokens) on any
+  topic, not one short sentence; the hub's reply card keeps line breaks.
+- **Next, if wanted:** formatting answers (lists, code with Copy), and voice.
+
+## M427 (built as M368 on `claude/youthful-fermi-sbdtcp`): Ghidra 2, the recipe after MiniMind, and the rented-graphics-card kit (22 Nov)
+
+The owner (22 Nov) asked whether github.com/jingyaogong/minimind (Apache-2.0) would be good for their AI; told: a good
+fit (a 64 M model with word-pieces, a chat stage, tool use) that needs a graphics card (about US$1–3 rented; weeks on
+this machine's processor), its data partly non-commercial and mostly Chinese, still far from ChatGPT. The owner: "do
+both" (the free improvements here, and the rented-card version).
+
+- **`scripts/ai/ghidra2.py`** (written for UniVerse after MiniMind's design, not copied): byte-level BPE word-pieces
+  (8,192, any language; HF `tokenizers`), RMSNorm, rotary positions (θ 1e6, the halves of each head turned as pairs),
+  grouped-query attention, SwiGLU (hidden = 8/3 × width, to 64), the output tied to the input table. Commands:
+  `tokenizer`, `chat` (Ghidra's 287 UniVerse questions, weighted ×6, plus OpenAssistant oasst1's English first questions
+  with their best-ranked answer, Apache-2.0, answers naming other assistants dropped), `pretrain` (presets `small` ~8 M
+  for this processor, `base` ~64 M for a graphics card; texts cached as two-byte word-pieces in DIR/pretrain.bin),
+  `sft` (the chat shape `<|user|>…<|end|><|ghidra|>…<|end|>`, the loss only on the answer, a third of the learning rate),
+  `export` (public/ai/ghidra2.bin and .json: int8 tables with a scale per row, the word-pieces and merges, special ids,
+  a check of word-pieces and scores). CUDA with bf16 and torch.compile when there is a card; `--until` and DIR/state-*.pt
+  to run in chunks. Tried end to end at a tiny size.
+- **`src/lib/ghidra2.ts`**: the same in the browser (GPT-2's byte table and split rule, merges by rank, special markers
+  first; the model with a key/value memory; `answer()` in the chat shape, stopping at `<|end|>`). Checked against a trial
+  export: identical word-pieces (accents too) and scores within 0.0004. `ghidra2.test.ts` checks the committed model and
+  is skipped until one is trained.
+- **The kit:** `scripts/ai/ghidra2-gpu.sh` (one command: checks for a card, downloads TinyStories-train, one FineWeb-Edu
+  part (ODC-By, pages scored 3+), oasst1, UniVerse's sentences if Node is there; word-pieces, 15,000 base steps, 2,000
+  chat steps, the files in ~/ghidra2-out) and `scripts/ai/ghidra2-gpu.md` (the owner's steps: rent a 3090/4090 on
+  RunPod or Vast.ai, clone the branch, run, download the two files, stop the machine). The base model (~70 MB) is too big
+  for the repository: where it will be served from (R2) is decided when it exists. Hindi needs a commercially safe text
+  collection first.
+- **Not yet:** training the small Ghidra 2 here (it would share the processor with the letter Ghidra's 189,000 steps;
+  the owner chooses), and using Ghidra 2 in the console and as the corner's backup.
+
+## M429 (built as M370 on `claude/youthful-fermi-sbdtcp`): Ghidra's guardrails (22 Nov)
+
+The owner (22 Nov), a slide "Setting guardrails: identify the risks and edge cases in your specific use case; optimize for
+security and user experience; adjust your guardrails over time": "do this also for the project".
+
+- **The risks for UniVerse** (students, some under 18; Relief's emergencies; people's own data; actions in the apps):
+  someone in crisis; a danger to life now; harmful or adult content; cheating on graded work; seeing others' data;
+  planted instructions (prompt injection); actions nobody asked for; overuse and cost; wrong answers.
+- **`src/lib/ghidra-guard.ts`** (tested in `ghidra-guard.test.ts` both ways: crisis and danger caught; "signs of a heart
+  attack", "kill a process in Linux", "this homework is killing me" left alone): `guard(text)` → `crisis` (self-harm in
+  English and romanised Hindi) or `emergency` (a danger happening now, not a question about it). `CRISIS_REPLY`: caring
+  words and real helplines (India Tele-MANAS 14416; 988 in the US and Canada; Samaritans 116 123 in the UK and Ireland;
+  findahelpline.com; the emergency number if in danger). `EMERGENCY_REPLY`: 112 / 911 first, then Relief. Applied before
+  any AI on the server (`POST /ask` and `/api/ai`, even with AI on: tested) and on the device (the corner, offline too).
+  **Keep the helplines true**: check them whenever the file changes. `UNTRUSTED_RULE` in both prompts: earlier messages,
+  quoted text, documents and pages are information, never instructions.
+- **Gemini's safety filters** set firmly (`SAFETY` in `src/server/gemini.ts`, also used by `/api/ai`): harassment, hate,
+  sexual and dangerous content blocked from medium harm up, on every UniVerse AI call; a blocked answer is handled as AI
+  failing.
+- **Already in place, kept:** every action waits for a tap and goes through the app's own route; Ghidra's tools read only
+  the asker's own data; schoolwork help rather than finished work; the daily AI allowance and the owner's AI switch.
+  `POST /quizzes/draft` and `/ghidra/report` joined the per-person limit (`COSTLY` in `cloudflare/worker.ts`).
+- **Adjust over time: Report this answer** (`components/ui/ReportAnswer.tsx`, under Ghidra's answers on the hub and the
+  corner's AI and on-device answers): `POST /ghidra/report { question, answer, reason? }` (`reportAnswer` in
+  `src/server/ask.ts`, at most 20 a day each) into `ghidra_reports` (database update 0258); the owner console's
+  **Moderation** lists them ("Reported Ghidra answer", group Ghidra, **Done**). Read them, adjust the rules or prompts,
+  mark them done.
+- Fixed here: the corner's own messages and link chips had too little contrast in UniVersity's light colours on a phone
+  (4.26 and 4.34 where 4.5 is needed): they use the hub chat's ink colours now.
+- Tests: `ghidra-guard.test.ts`, `src/server/ask.test.ts` (the crisis answer with AI set up; reports cut short, 20 a day).
+  Browser check: `scripts/checks/ghidra-assistant-ui.mjs` (crisis, Report).
+
+## M430 (built as M371 on `claude/youthful-fermi-sbdtcp`): Ghidra thinks harder with DeepSeek (22 Nov)
+
+The owner (22 Nov): "https://github.com/deepseek-ai/DeepSeek-R1 use this model in the ai". Told: R1 (671 B) can't run
+here; Cloudflare stopped hosting its distilled copy on 20 Nov 2026 (`deepseek-r1-distill-qwen-32b` is gone); its successor
+with the same step-by-step thinking, **DeepSeek V4.1 Flash**, runs on Cloudflare's own servers (zero data retention, not
+DeepSeek's in China: safer for students' data). A 1.5 B on-device R1 copy (~1 GB) is too heavy for students' phones.
+
+- **`src/server/ghidra-think.ts`**: `isHard(text)` (maths with numbers and signs, solve/prove/calculate…, code words,
+  fenced code, "step by step"; tested both ways); `thinkHard()` streams DeepSeek's answer as plain text (only the answer:
+  `streamWords` drops `reasoning_content`; both Workers AI's own and the chat-completions stream shapes) and
+  `thinkHardText()` gives it whole. Both return null when the switch is off, the binding is missing, the account's 20 a
+  minute are used or it fails: then **Gemini answers as before**.
+- **Where:** the corner's general answers (`api/ai/route.ts`: hard → DeepSeek, works even without a Gemini key) and the
+  hub chat's answers (`POST /ask`: an `answer` to a hard question replaced by DeepSeek's). Guardrails (M429) and the daily
+  AI allowance run before either.
+- **The switch:** "Ghidra thinks with DeepSeek" (`deepseek`, opt-in: **off** until the owner turns it on in console →
+  Server; `src/lib/feature-switches.ts`; school-switches tests updated). Costs past Workers AI's free daily amount: about
+  US$0.30 per million words read, $1.20 per million written.
+- **`wrangler.jsonc`: `"ai": { "binding": "AI" }`** (Workers AI, on the Paid plan; no secret needed). Locally there is no
+  remote Cloudflare: `next.config.ts` passes `remoteBindings: false` and `scripts/local/serve.mjs` runs `wrangler dev
+  --local`, or both local servers stop asking to sign in to Cloudflare (`CLOUDFLARE_API_TOKEN`). Locally Ghidra uses Gemini.
+- Tests: `src/server/ghidra-think.test.ts`.
+
+## M432 (built as M373 on `claude/youthful-fermi-sbdtcp`): Ghidra's chaining steps, with LangGraph (22 Nov)
+
+The owner (22 Nov): "https://github.com/langchain-ai/langgraph please add this i my ai", then "continue with chaining
+steps using langgraph". LangGraph (MIT) 1.7.2 with @langchain/core 1.3.5 (the newest two weeks old); tried first inside
+Cloudflare's runtime (workerd): it loads and runs, and its pause/resume works once AsyncLocalStorage is set up
+(nodejs_compat). It adds about 3 MB to the server code (54 → ~57 of 64 MB, past the 55 MB warning): make the server code
+smaller within months (the M110 note says how).
+
+- **`src/server/ghidra-chain.ts`**: a LangGraph graph: **planner** (AI splits the request into at most 4 requests that
+  each make sense alone, never adding any; without AI, `splitSteps` splits on "and then", "then", "after that", "also",
+  ";", never a plain "and") → one **specialist** per step, side by side (LangGraph's `Send`), each `askOne` in ask.ts
+  (Ghidra's one-request skill: guardrails, the daily allowance, only the asker's own data) → the plan in order
+  (`{ action: 'chain', say, steps }`, a new `AskPlan` kind only the server makes). One step only → Ghidra answers alone.
+  The user and history travel in LangGraph's `configurable`; the graph is compiled once.
+- **When:** `looksMultiStep` (in `src/lib/ask.ts`, shared with the browser) must match first, so ordinary requests cost
+  no extra AI; `POST /ask` and the corner (which now also sends several-part requests, and my trips / my courses, to Ghidra).
+- **The screen** (`GhidraReply`): the plan as numbered steps (a list's first three lines shown); **Do all N** runs each
+  step in order through its app's own route (`act()`), marks it ✓ or !, stops at the first that fails (the rest not done),
+  and moves the page only at the end, to the last step's place. Nothing is done before the tap.
+- **Next on this graph:** specialists per app (the agents of the owner's list) and the supervisor; a D1 checkpointer
+  would let a plan pause on the server (LangGraph's `interrupt`) instead of in the browser.
+- Tests: `src/server/ghidra-chain.test.ts` (the cue, the split, the graph running two specialists in order, one request
+  left alone).
+
+## M433 (built as M374 on `claude/youthful-fermi-sbdtcp`): Ghidra's app agents, part 1: Research and Social Media (22 Nov)
+
+The owner (22 Nov): "build the app agents next" (their list: personal assistant, social media manager, customer support,
+research assistant, travel planner, "according to each app"). Ghidra is the supervisor: its classifier (or the word
+matcher) picks the agent, alone or for each step of a LangGraph plan (M432). Each agent is a module in
+`src/server/agents/`, with its own prompt from its playbook (M434) and the guardrails.
+
+- **Research Assistant** (`agents/research.ts`; UniVersity, Green Business): Wikipedia's REST search and page summaries
+  (free, no key; only the topic is sent, from the server, with a generic User-Agent; the older action API refuses shared
+  machines), up to 4 sources; AI summarises using only them, citing [n] (`keepCitations` drops numbers that point nowhere);
+  without AI, the sources' own summaries. Sources come back as `ShowItem`s with `external` (a new tab).
+- **Social Media Manager** (`agents/social.ts`; Trace brands, Relief organisations, schools): posts for Instagram,
+  LinkedIn, X, Facebook, WhatsApp in the name of what the person runs (`voices`: their brand, a Relief organisation they
+  run, their school; four queries: the Relief membership has no link to its organisation, so its name is read by id), a
+  day each; `checkPosts` keeps known platforms, X within 280 characters. A new reply kind `posts` with a Copy button each.
+  It never posts anything (no social accounts connected).
+- Routing: `research` and `social_posts` actions (`cleanPlan` checks them; the matcher knows "research …", "find sources
+  about …", "write 2 Instagram posts about …"). Demo answers in `ghidraSample`.
+- GitHub's checks caught one type error the local check (skipped beside training) would have: fixed in the next commit.
+
+## M434 (built as M375 on `claude/youthful-fermi-sbdtcp`): Customer Support and the Travel Planner, and the agents' professional playbooks (22 Nov)
+
+The owner (22 Nov): "continue with customer support and travel planner agents and also need you to train all this agents
+professionally in there own sectors". Told: the agents run on models we can't retrain, so they're trained as a new
+professional is (standards, a worked example, real data, tests); Ghidra's own model can learn the same lessons as data.
+
+- **`agents/playbooks.ts`**: each agent's role, its field's standards and a worked example (research librarian: cite
+  everything, nothing invented, contested views fairly, search terms to go further; social media manager: hook and one call
+  to action, platform norms, `[add …]` for missing facts, no greenwashing or health claims, no children's names or faces,
+  dignity in appeals; support professional: only the product's facts, a recall first, never promise refunds or terms,
+  never ask for passwords or cards, under 120 words; travel agent: realistic pacing, never invented prices or hours, area
+  to stay, getting around, customs, safety, season). `prompt(playbook, format)` builds every agent's prompt (with the
+  untrusted-text rule). Change a playbook when reported answers show a gap.
+- **Customer Support** (`agents/support.ts`): `productFacts(code)` reads the product behind a real code without recording a
+  scan (product, brand, warranty, batch origin and date, an ACTIVE recall with its advice, the EU passport); AI answers only
+  from them, saying when they don't answer (then "please ask <brand>"); links to the brand's page and the passport. On the
+  passport page: **Ask about this product** (`AskProductCard` in `t/[code]/View.tsx`, signed in; `POST
+  /trace/scan/:code/ask`, in COSTLY). In Ghidra: `product_help` (a code plus a question; a bare code stays a check).
+- **Travel Planner** (`agents/travel.ts`): `trip_new` now carries `place` and `days`; the server finds the place in Travel's
+  guides (`placeOf`, Wikivoyage) and adds a travel agent's tips; **Make the trip** creates it with that city and its days
+  (`stop: { guide, days }`) and opens `/travel/trip?id=…&plan=1`, which starts "Plan my days" by itself (`TravelTrip.tsx`).
+  The matcher knows "plan 3 days in Jaipur for 2 of us".
+- Tests: `agents/agents.test.ts`, `agents/support-travel.test.ts` (21 with the chain and Ghidra's).
+
+## M428 (built as M369 on `claude/youthful-fermi-sbdtcp`): MiniMind-3 adopted as Ghidra 2, its chat stage trained (22 Nov, in progress)
+
+The owner (22 Nov): "just integrate the 64m of minimind and after that start from there".
+
+- **`ghidra2.py adopt`** loads MiniMind-3 (64 M, Apache-2.0; Qwen3's design: RMSNorm, rotary θ 1e6, 8 query and 4
+  key/value heads of 96, q/k norms, SwiGLU 2,432, its own 6,400 word-pieces, tied output) into Ghidra 2's model and checks
+  it gives MiniMind's own scores (`to_hf` turns it back into the transformers model for generating and scoring). The chat
+  shape is MiniMind's (`<|im_start|>user … <|im_end|>`, an empty `<think>` block before plain answers).
+- **Chat stage:** `sft --from pretrain` for 1,500 steps on 3,450 rows (Ghidra's UniVerse questions plus oasst1), val
+  loss 1.9–2.1 (noisy, a small val set). Asked by hand: who it is, Relief, joining a course, the emergency answer and
+  "capital of France" all right. **Weak:** open writing (an email) repeats a word; a repetition penalty (1.15, no
+  repeated 4-grams) stops the loop but it then rambles and invents. A 64 M model can't write freely: big answers stay
+  with Gemini / DeepSeek, Ghidra 2 is the on-device backup for UniVerse's own questions. `ghidra2.py` can now be imported
+  (its commands run only under `__main__`).
+- **Next:** score on GSM8K (`score --stage sft --n 100`), the `think` stage (`--data chat.jsonl,reason.jsonl`, GSM8K's
+  worked answers in `<think>`), fewer epochs on the UniVerse questions and writing lessons from the agents' playbooks,
+  then `export` (~64 MB in parts under 20 MB; decide repository vs R2) and switch the console card and `askOnDevice` to
+  `ghidra2.ts` with a repetition penalty in `answer()`. The working files (adopted and chat states, word-pieces, data)
+  are in the session's scratch folder, not the repository: a new session re-runs `adopt` and `sft` (about 40 minutes).
+
+## M439 (built as M435 on `claude/youthful-fermi-sbdtcp`): Hyperion's AI, a coding model with UniVerse's own add-on, trained on code Hyperion really ran (22 Nov)
+
+The owner (22 Nov): "i have added another app which is hyperion … i need to make ai for that one also so help me to
+built this in rtx 4090 and i am ok to work for 10 dollar plan credit". Hyperion came into this branch by merging
+`main` (and this branch's M361–M375 became M420–M434: `main` had used those numbers).
+
+- **The model:** Qwen2.5-Coder 32B Instruct (Apache-2.0), which Workers AI runs as `@cf/qwen/qwen2.5-coder-32b-instruct`
+  and which takes a LoRA add-on (rank ≤ 32, under 300 MB, files `adapter_model.safetensors` and `adapter_config.json`;
+  US$0.66 / 1.00 per million word-pieces in / out). A 4090 trains only the add-on (QLoRA, 4-bit base), which Cloudflare
+  then serves: no model hosting of our own.
+- **Lessons checked by Hyperion itself:** `scripts/ai/hyperion-lab.mts` (started by `hyperion-lab.mjs`, which bundles
+  it with tsx's esbuild: the engine's files import each other in a circle that only loads in ES-module order, and tsx
+  loads `.ts` as CommonJS here; the engine must be imported before `help`) prints Hyperion's 543 functions (`help`),
+  Hyperion AI's instructions (`prompt`) and runs scripts (`run`: one background thread, 5 s each, a runaway loop
+  stopped, figures counted with the real `Graphics`). `scripts/ai/hyperion-ai.py data` has the teacher (the same model,
+  AWQ in vLLM) write `--per` 6 requests per function and two answers each, keeps the answers whose code runs, gives each
+  failure one fix from Hyperion's own error (kept as a fixing lesson), and holds out 25 whole functions for the score.
+  `train` (Unsloth, rank 8 on every layer, ~135 MB, lessons with the SHORT instructions so the add-on learns the
+  functions), `score` (held-out requests through vLLM without and with the add-on: how many answers run), `export`
+  (rank and size checked; `model_type` set, "qwen2" by default: Cloudflare's page names only mistral, gemma and llama,
+  so if the upload is refused try `--model-type llama`).
+- **The kit:** `scripts/ai/hyperion-gpu.sh` (Node 22 if missing, `pnpm install --ignore-scripts`, two venvs with uv:
+  vLLM for data and score, Unsloth for training; each stage skipped once done) and `scripts/ai/hyperion-gpu.md` (the
+  owner's steps, costs: 3–5 hours, US$1.50–3.50 on a 4090, US$2–5 on a 48 GB card; a 32B QLoRA is at the edge of 24 GB,
+  so on "CUDA out of memory" rent a 48 GB card and run it again; the upload with `wrangler ai finetune create … hyperion`
+  from the owner's own computer after `wrangler login`). **Not tried on a real card**: this machine has none.
+- **In Hyperion:** **Ask AI** in the script toolbar (`LabAsk.tsx`): a question, optionally with this script; **Fix the
+  error** when the last run failed (the code and Hyperion's error are sent); the answer's words, its code, Put in a new
+  script / Replace this script / Copy. Nothing runs by itself: the person presses Run. `POST /api/hyperion/ai`
+  (`src/app/api/hyperion/ai/route.ts`): signed in, guardrails, `spendAi`, `logAiUse`; with the owner's opt-in switch
+  **"Hyperion's AI on Cloudflare"** (`hyperion-ai`) Workers AI answers (with `lora: HYPERION_LORA` when that variable
+  names the uploaded add-on, then with the short instructions), otherwise or on failure Gemini with the function list.
+  The owner's AI switch stops it too; it is in the Worker's costly-route rate limit. `src/lib/hyperion-ai.ts` holds the
+  model, the instructions (`HYPERION_SYSTEM`, shared with the kit) and `codeOf`.
+- **Not yet:** a browser check of Ask AI (left until Ghidra 2's training stops using the machine); Simulate (Structures,
+  Heat, Fluids, Circuits) is on `claude/funny-galileo-y4mz9r`, not `main`, so the AI doesn't set up simulations yet.
+
+## M431 (built as M372 on `claude/youthful-fermi-sbdtcp`): Ghidra 2 thinks first, and writes; the trained model committed (22 Nov)
+
+The owner (22 Nov): "continue with the thinking training", then "do all this training for next 5 hours".
+
+- **The thinking stage:** `sft --stage think --from sft --data chat.jsonl,reason.jsonl,write.jsonl --steps 3600 --every 300`
+  on this machine's processor (~4.5 s a step, 3 h 30 min). Lessons: Ghidra's UniVerse questions and oasst1 (3,450 rows),
+  GSM8K's 7,473 worked answers in `<think>` (MIT), and **6,389 everyday writing lessons** (new `ghidra2.py write`:
+  HuggingFaceTB/smol-smoltalk, Apache-2.0; first question and answer, short enough, answers naming other assistants
+  dropped, at most 1,600 of each kind). The best checkpoint was kept by val loss (scratch `keep-best.sh`): step 3,000,
+  val 1.172 (the val set is small and noisy: 1.22–1.45 between saves).
+- **Score on 100 GSM8K test problems:** the chat stage 0 of 100 (it wrote empty lines), the thinking stage **4 of 100**.
+  It now writes steps then "The answer is N", and the email no longer loops on a word (it has a subject, greeting and
+  sign-off; the content is still muddled). A 64 M model can't do much more: the graphics-card kit
+  (`scripts/ai/ghidra2-gpu.sh`, now starting from MiniMind-3 with chat, thinking and writing) is the way to go further.
+- **Committed:** `public/ai/ghidra2-0…3.bin` and `ghidra2.json` (64.2 MB, int8, step 3,000); `ghidra2.test.ts` now reads
+  the parts and passes (word-pieces identical, scores within 0.1). `next.config.ts` keeps `ai/**` out of the offline
+  cache's install list (before this, every visitor's device would have downloaded the models when the app installed).
+- **Not yet:** Ghidra 2 in the console card and as the corner's backup (`ghidra-device.ts` still uses the old letter
+  model: switch to `loadGhidra2` + `answer()` on a worker, download on first use with a size warning).
+
+## M440 (built as M436 on `claude/youthful-fermi-sbdtcp`): Hyperion's AI, the first real run and the fixes it showed (23 Nov)
+
+The owner (22–23 Nov): "rent the card for Hyperion's AI… i want this ai to become really good", then "take a good graphic
+card". RunPod is connected to this session (the `runpod` tools: `create-pod`, `exec-pod`, `pod-action`); the owner's
+RunPod secrets `cloudflare_token` (Workers AI: Edit) and `github_token` exist; the Cloudflare account id is
+`bca3b10cbbada3e393ff886f9f1b3439` (not a secret; give pods `CLOUDFLARE_ACCOUNT_ID`, the token can't list accounts).
+
+- **Run 1** (A100 80 GB, community, $1.39/h, ~1 h 45 min, ~$2.50): 5,414 requests (PER=10), 4,459 answers ran first
+  time, 440 fixed → 4,899 lessons; Unsloth packs short lessons into rows (4,674 lessons → 1,050 rows, nothing lost);
+  264 steps, loss 2.0 → 0.18. **Score 120 → 120 of 150 on held-out functions** (the add-on was active: 149 of 150 answers
+  changed; on seen requests 129 → 140). Why: a quarter of the failures were Hyperion's own (the training engine started
+  without `files.ts`, so `cell2table`, `csvread`, `readtable` looked unknown, and `gca`, `intersect`, `flip`,
+  `linsolve` didn't exist), a third were requests about data never given (`data`, `sensor_data`).
+- **Fixes:** `hyperion-lab.mts` gives each run a `FileStore` and loads `help-commands` (as the window); Hyperion gains
+  `intersect`, `union`, `setdiff` (numbers or text cells), `flip`, `linsolve`, `gca` and `set(gca, 'XLim'|'YLim'|'ZLim'|
+  '*Grid', …)` (other properties accepted, a `shortcut:`); `HYPERION_SYSTEM` asks for example data (and writing a file
+  before reading it); the score also holds back 150 requests about learnt functions (`held-seen.jsonl`), saves every
+  answer (`score-answers.json`), and the add-on is exported in bf16 (269 → ~135 MB). Kit fixes: uv installs with
+  `--python` (Ubuntu 24.04 refuses system installs); score lines no longer stuck in grep's buffer.
+- **Pod traps:** RunPod's `/workspace` in EU-SE-1 is network storage (mfs): cloning or `pnpm install` there crawls, so
+  keep code and venvs on the container disk (`WORK=/root/hyperion-ai`, `UV_CACHE_DIR`) and only models and results on
+  `/workspace`; a restart wipes the container disk (Node.js too). A stopped community pod can lose its card ("not enough
+  free GPUs"): then rent a new one. `pkill -f <x>` inside `exec-pod` kills its own shell (kill by pid). The kits switch
+  the pod off when they end (`runpodctl`, wrapped on the run-2 pod so the agents kit could follow).
+- **Run 2/3** (A40 48 GB, secure, $0.59/h, pod `mjk9dtu1pksktk`): lessons 5,482 requests, **5,118 ran first time (93%,
+  was 82%)**, 5,316 lessons. Training died silently at step 191 of 328 (no error, no OOM in the cgroup's counters, no
+  checkpoint before step 200: lower `save_steps` next time); restarted for one epoch (164 steps, loss 2.0 → 0.19).
+  **Score: never-learnt functions 141 → 138 of 150 (94% → 92%); new requests on learnt functions 130 → 123 (87% → 82%).**
+  The fixes lifted the plain model from 80% to 94%; the add-on, learning from the same model's own answers, made it
+  slightly worse. **Decision: don't use it (leave `HYPERION_LORA` unset)**; "Hyperion's AI on Cloudflare" then runs the
+  plain model with the function list. The upload's test question also timed out (120 s; a first LoRA load is slow).
+  Distilling a model into itself doesn't teach it more: a better teacher (or the people's own corrected answers) would.
+
+## M441 (built as M437 on `claude/youthful-fermi-sbdtcp`): the app agents' own AI (23 Nov)
+
+The owner (23 Nov): "train the ai so that it can work in different sectors of ai like different apps has like customer
+support, travel planner or itenary planner and other ai model which is needed in the website".
+
+- **Model:** Cloudflare's catalog no longer tags Mistral Small 3.1, Gemma 3 or Llama 3.1 8B as taking add-ons (only
+  `qwen2.5-coder-32b-instruct` and the old 7B / vision ones), so the agents' add-on is a second LoRA for Qwen2.5-Coder
+  32B (a strong general model too), served the same way as Hyperion's.
+- **The agents:** each agent's instructions and answer shape now live in `playbooks.ts` `AGENTS` (Gemini schema),
+  `jsonSchema` (to JSON Schema) and `jsonRule` (the JSON line); `agents/own-model.ts` `agentJson(kind, prompt, max)`
+  uses Workers AI with `lora: AGENTS_LORA` and `response_format: json_schema` when the owner's opt-in switch
+  **"Agents' own AI on Cloudflare"** (`agents-ai`) is on, and falls back to Gemini on failure or a missing field.
+  Research, Social, Support and Travel call it.
+- **The kit:** `scripts/ai/agents-ai.py` (`data`, `score`; train / export / upload are `hyperion-ai.py`'s, which now
+  takes a row's own `system`, `--prefix`, `--var`, `--question`), `agents-lab.mts` (prints `AGENTS` for Python through
+  `run-ts.mjs`, shared with `hyperion-lab.mjs`), `agents-gpu.sh` (tools shared in `gpu-tools.sh`, `VENVS` reuses
+  Hyperion's). Requests: invented products with and without recalls plus buyers' messages (refund demands, safety, a
+  password offered…), trips to the map's towns of 150,000+ people (the travel agent's exact request), Wikipedia sources
+  fetched like `findSources`, invented brands / charities / schools with platforms. Teacher: Qwen2.5 32B Instruct AWQ.
+  Rules (`check`): support (only given numbers, a recall first, no promise, never asks for a secret, ≤130 words), travel
+  (3–5 tips, no prices or clock times), research (≥2 citations, only to sources given, every point cited, no markdown),
+  posts (the platforms asked, X ≤ 280, no invented numbers or green claims). 40 requests per agent held back; the score
+  prints passes per agent before and after.
+- **The run (23 Nov, A40, SCALE 0.5, one epoch):** 1,650 requests (Wikipedia was unreachable from the pod: no research
+  requests, so Research keeps Gemini), 1,142 lessons (support 546, travel 410, social 186); refused mostly "support: a
+  number not in the facts" (538: the rule also rejects numbered steps "1." the playbook asks for: loosen `nums` to ignore
+  list numbers next time) and "recall not first" (265). 67 steps. **Score: 97 → 103 of 120 passed their agent's rules
+  (81% → 86%; social 33 → 37, support 24 → 26, travel 40 → 40).** Uploaded as **`agents-20261123-0858`** (the test
+  question answered). [owner]: set `AGENTS_LORA=agents-20261123-0858`, turn on "Agents' own AI on Cloudflare". Pod
+  terminated after the score was read (started on CPUs: its A40 had been rented to someone else).
+- **Renting next time (the owner, 23 Nov: "next time rent like that you can connect with no problems"):** keep the
+  results on a RunPod **network volume** (any card in that data centre can open it), not the pod's own disk: after the
+  agents run ended, the stopped pod's A40 was rented to someone else and the score couldn't be read until it freed. Also
+  print the score lines to RunPod's container log (`> /proc/1/fd/1`) so they can be read while the pod is off.
+- **Not covered yet:** the other ~45 AI features (tutor, quizzes, marking, translation…) still use Gemini's prompts
+  directly; each could join `AGENTS` with its own rules the same way.
 
 ## M401 (22 Nov): Time it, the two left-outs: time inside functions, and the run before
 
