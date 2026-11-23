@@ -11544,3 +11544,16 @@ moves: don't go back to it), `sigmaDelta` (1-bit, first or second order, a sinc^
 converters.m. Tests in `grid.test.ts`. Not built: DAC glitches and settling, pipelined/SAR architectures, multi-bit or
 higher-order sigma-delta and its stability, best-fit (rather than end-point) INL.
 
+## M438 (23 Nov): Hyperion toolbox, antenna arrays and direction finding
+
+`src/lib/lab/arrays.ts` (pure): positions in wavelengths ([x, y, z]; a row in the language is a line along y; `ula`
+is centred), `steer` (exp(+j2π p·u), azimuth from x so 0° is broadside to a line along y), `pattern` (|wᴴa| in dB),
+`beamwidth` (between −3 dB points), `sensorSignals` (complex Gaussian sources and noise; the true covariance
+E[x xᴴ]), `covariance`, `spectrum` (beam scan aᴴRa/N², MVDR 1/(aᴴR⁻¹a), MUSIC through the 2N × 2N real form of R with
+ml.ts's `symEigen`: each complex eigenvector appears twice, so the noise subspace is its 2(N − K) smallest), `peaks`
+(parabola-refined). Convention trap: in the language `X'*X/ns` must be the covariance, so `sensorsig` hands back the
+snapshots conjugated (rows are snapshots); `musicdoa` assumes a line of equally spaced elements (a common phase per
+angle doesn't change any spectrum, so centring doesn't matter). Language in `radar-lab.ts`. Example arrays.m. Tests in
+`radar.test.ts`. Not built: adaptive beamformers over time (LMS, RLS), elevation scans, ESPRIT, coherent sources
+(spatial smoothing), mutual coupling. Next: M439 (tracking, clutter, FMCW, grouping detections).
+

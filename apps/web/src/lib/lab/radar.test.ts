@@ -77,3 +77,38 @@ describe('Hyperion radar (M429)', () => {
     expect([s.d('a')[0], s.d('b')[0], s.d('d')[0]]).toEqual([1, 3, 3]);
   });
 });
+
+describe('antenna arrays and direction finding (M438)', () => {
+  let seed = 11;
+  const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  it('patterns: an 8-element line’s beam is 0.886λ/(Nd) wide, its first side lobe −12.8 dB; steering moves it; a taper lowers the side lobes', async () => {
+    const ar = await import('./arrays');
+    const pos = ar.ula(8), azs = Array.from({ length: 18001 }, (_, i) => -90 + i * 0.01), p = ar.pattern(pos, ar.steer(pos, 0), azs);
+    expect(ar.beamwidth(azs, p)).toBeCloseTo((0.886 / 4) * (180 / Math.PI), 0);
+    expect(Math.max(...p.filter((_, i) => Math.abs(azs[i]) > 16))).toBeCloseTo(-12.8, 1);
+    const p30 = ar.pattern(pos, ar.steer(pos, 30), azs);
+    expect(azs[p30.indexOf(0)]).toBeCloseTo(30, 6);
+    const w = ar.steer(pos, 0), ham = pos.map((_, k) => 0.54 - 0.46 * Math.cos((2 * Math.PI * k) / 7));
+    const ph = ar.pattern(pos, { re: w.re.map((v, k) => v * ham[k]), im: w.im.map((v, k) => v * ham[k]) }, azs);
+    expect(Math.max(...ph.filter((_, i) => Math.abs(azs[i]) > 30))).toBeLessThan(-22);
+  });
+  it('direction finding: MUSIC and MVDR split two sources 7° apart that the scanned beam can’t', async () => {
+    const ar = await import('./arrays');
+    const pos = ar.ula(10), { X, R: Rtrue } = ar.sensorSignals(pos, 400, [{ az: 0, power: 1 }, { az: 7, power: 1 }], 0.1, rand), R = ar.covariance(X), g = Array.from({ length: 1801 }, (_, i) => -90 + i * 0.1);
+    const music = ar.peaks(g, ar.spectrum(R, pos, g, 'music', 2), 2), mvdr = ar.peaks(g, ar.spectrum(R, pos, g, 'mvdr'), 2), scan = ar.peaks(g, ar.spectrum(R, pos, g, 'beamscan'), 2);
+    expect(Math.abs(music[0])).toBeLessThan(0.5); expect(Math.abs(music[1] - 7)).toBeLessThan(0.5);
+    expect(Math.abs(mvdr[0])).toBeLessThan(1); expect(Math.abs(mvdr[1] - 7)).toBeLessThan(1);
+    expect(scan.some((x) => x > 1 && x < 6)).toBe(true); // one merged peak in between
+    // With the true covariance MUSIC is exact.
+    expect(ar.peaks(g, ar.spectrum(Rtrue, pos, g, 'music', 2), 2).map((x) => Math.round(x * 100) / 100)).toEqual([0, 7]);
+  });
+  it('in the language', () => {
+    const r = run("rng(3); pos = (0:9)*0.5;\na = steervec(pos, [0 30]);\nn = size(a); m = abs(a(1,2));\n[X, Rt] = sensorsig(pos, 500, [-20 25], 0.05);\nR = X'*X/500;\ndoa = musicdoa(R, 2);\nP = spatialspectrum(R, pos, -90:0.5:90, 'Method', 'mvdr');\np = arraypattern(pos, steervec(pos, 25).*hamming(10), -90:0.1:90);\n[~, k] = max(p); beam = -90 + (k-1)*0.1;\narraypattern(pos, steervec(pos, 25))\nfigure; spatialspectrum(R, pos, 'Method', 'music', 'NumSignals', 2)");
+    expect(r.d('n')).toEqual([10, 2]); expect(r.d('m')[0]).toBeCloseTo(1, 12);
+    expect(Math.abs(r.d('doa')[0] + 20)).toBeLessThan(0.5); expect(Math.abs(r.d('doa')[1] - 25)).toBeLessThan(0.5);
+    expect(r.d('P').length).toBe(361);
+    expect(r.d('beam')[0]).toBeCloseTo(25, 0);
+    expect(r.graphics.figures.length).toBe(2);
+    expect(() => run('musicdoa(eye(4), 4)')).toThrow(/1 to N/);
+  });
+});

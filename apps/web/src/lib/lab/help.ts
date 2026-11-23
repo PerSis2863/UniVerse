@@ -764,6 +764,11 @@ pulsecompress | y = pulsecompress(x, w) | The matched filter: each column correl
 rangedoppler | [M, range, speed] = rangedoppler(x, w, fs, prf, fc) | The range–Doppler map in dB (pulse compression, then a windowed FFT across pulses). Drawn without outputs.
 cfar | [det, th] = cfar(power, guard, train, pfa) | Cell-averaging CFAR: each cell against its neighbours' mean, for a false-alarm rate pfa (down each column).
 ambgfun | [A, delay, doppler] = ambgfun(w, fs) | The ambiguity function: how a pulse answers every delay and Doppler shift. Drawn without outputs.
+steervec | a = steervec(pos, ang) | Steering vectors: the phase a plane wave from each angle puts on each element (one column per angle). pos in wavelengths: a row (a line along y) or 3 rows [x; y; z]; ang a row of azimuths or 2 rows [az; el] (degrees, 0 = broadside).
+sensorsig | [X, R] = sensorsig(pos, ns, ang, noise, 'Power', p) | ns snapshots (rows) of what the elements receive from far sources at those angles in noise of that power; X'*X/ns estimates the covariance, R is the true one.
+arraypattern | p = arraypattern(pos, w, az) | The array's response (dB) at each azimuth for weights w (uniform if left out): steer with w = steervec(pos, 30), lower the side lobes with .*hamming(N). Drawn without outputs, with the beam's width.
+spatialspectrum | P = spatialspectrum(R, pos, az, 'Method', 'music', 'NumSignals', 2) | Power by direction from a covariance: 'beamscan' (the beam swept across), 'mvdr' (Capon) or 'music' (the noise subspace: sharpest). Drawn without outputs, with its peaks.
+musicdoa | doa = musicdoa(R, nsig, 'ScanAngles', az, 'ElementSpacing', 0.5) | The directions (degrees) of nsig signals by MUSIC, for a line of equally spaced elements.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
