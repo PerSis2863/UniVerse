@@ -12810,3 +12810,27 @@ machine only, not committed): every supported file identical or within 1 level (
 the 4:2:2 film within 3. Committed tests use `fixtures/dicom-compressed.json` (made with libjpeg-turbo and pydicom's
 RLE encoder: lossless with three predictors, a 4:2:0 colour JPEG, a two-frame lossless and an RLE DICOM). Not built:
 JPEG-LS, JPEG 2000, palette colour, DICOMDIR, enhanced multi-frame's per-frame headers.
+
+## M508 (23 Nov): Hyperion Learn → Sciences, a point-and-click window for every science toolbox
+
+The owner was asked which toolbox should get a window first and answered "all of them". One window serves all 14:
+`src/lib/lab/sci-apps.ts` describes each toolbox as data (`SciApp`: fields of kind num / menu / toggle / text, each
+optionally shown only `when` another field allows, and `script(values)` that writes a Hyperion script). `clean` keeps
+numbers in range, menus to their options and text to its allowed letters before any value reaches a script (nothing
+typed can leave a number or a quoted string). Scripts print their results as `= Label | value` lines (`resultsOf`);
+anything else they print shows under "What it printed". `SciencesApp.tsx` (Learn's third tab, `LearnTabs`) runs the
+script in its own `lab.worker.ts` (prefixed `close('all'); clear;`), the newest values winning while a run goes (a
+queue of one), and shows the run's current figure (light or dark SVG), the result cards, and the script (Copy, Open in
+Code through `shareFragment`). The chosen toolbox is remembered for the visit (sessionStorage `uv-sci-app`).
+
+Windows: epidemics (SIR/SEIR, vaccination, a lockdown), drug dosing (levels, the best schedule), DNA (one-letter
+changes, reading frames, a family tree), chemistry (series reactions, CSTR against PFR, Arrhenius), neurons (HH, LIF,
+Izhikevich), physics (throw, pendulum, double pendulum, slits), geoscience (locate a quake, a lit landscape, distance on
+the globe), ECG (monitor, beat-to-beat rate, EEG bands), medical imaging (window, three planes, measure a range),
+pricing (option price and delta against the spot, a bond against its yield), portfolios (frontier, VaR, a trend rule,
+a carbon price), maths for class (tangent, Riemann sums, Newton, Taylor), materials (junction, MOSFET, tensile,
+fatigue), farms and power (irrigation, dispatch, LCOE). `sci-apps.test.ts` runs every view with its starting values
+(each prints results; each but reading frames draws). Values checked by hand: Wood and Wollenberg's dispatch (393, 335,
+122 MW at 9.148), the junction's 0.80 V, the Riemann exact integral, Newton to √2. The pk "best schedule" view takes
+about 2 s (pkDosingWindow's search). Not built: a window per toolbox beyond these views, files in the window (the
+window's worker has none of the person's files; scripts in Code do).
