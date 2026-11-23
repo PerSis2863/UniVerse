@@ -11413,3 +11413,18 @@ on a big picture; never spread a picture's values into a call. Tests (`image.tes
 beyond imresize (imrotate, imwarp), Hough lines, watershed, colour spaces (rgb2hsv, rgb2lab), image registration,
 deep-learning segmentation; radar (range and Doppler, pulse compression) is next (M429).
 
+## M429 (23 Nov): Hyperion toolbox, radar
+
+The owner's list, item 5, third part. `src/lib/lab/radar.ts` (pure): `radarSnr` (Pt τ Gt Gr λ² σ / ((4π)³ R⁴ k Ts L),
+gains and loss in dB; defaults 20 dB, 1 m², 290 K, 0 dB like MATLAB's), its inverses `radarRange` and `radarPower`, `lfm`
+(a baseband chirp −B/2…B/2 centred on the pulse), `echoes` (stop-and-hop: each pulse sees the target at R + v·t, delay
+rounded to a sample, phase −4πR/λ; speed + going away, so Doppler = −2v/λ; complex noise against a unit echo), `compress`
+(the matched filter by FFT correlation, the peak at the delay's sample), `rangeDoppler` (compress each pulse, Hamming
+across the pulses, FFT, zero Doppler in the middle, dB), `cfar` (cell-averaging, α = N(pfa^(−1/N) − 1)), `ambiguity`
+(|χ| normalised to 1 at the origin, Doppler on an FFT grid over ±fs/2), `chirp` (linear, quadratic, logarithmic).
+`radar-lab.ts`: the language functions; `lfmpulse`, `radarecho`, `pulsecompress`, `rangedoppler`, `cfar` are our own
+names (MATLAB does these with System objects, which the engine doesn't have). `ambgfun` ignores a PRF (the Doppler grid
+is ±fs/2). Also `ind2sub` and `sub2ind` in builtins.ts (they were missing). Tests (`radar.test.ts`). Not built: antenna
+arrays and beamforming, angle of arrival (MUSIC), clutter, tracking (Kalman, data association), FMCW radar, SAR, peak
+grouping after CFAR (a target can light 2–3 cells). Next: item 6 of the owner's list, machines and vehicles (M430).
+

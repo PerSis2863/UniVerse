@@ -367,6 +367,26 @@ def('min', (a, n) => extreme(a, n, (x, y) => x < y));
 def('bounds', (a) => [extreme([a[0]], 1, (x, y) => x < y)[0], extreme([a[0]], 1, (x, y) => x > y)[0]]);
 
 // ——— Finding and sorting ———
+def('ind2sub', (a, nout) => {
+  // [r, c, …] = ind2sub(size, k): linear indices into subscripts (the last output takes the rest of the dimensions).
+  const sz = [...M(a[0]).d], k = M(a[1]), outs = Math.max(1, nout), dims = sz.slice(0, outs - 1).concat(sz.slice(outs - 1).reduce((p, v) => p * v, 1));
+  const total = sz.reduce((p, v) => p * v, 1);
+  return dims.map((_, q) => mat(k.r, k.c, [...k.d].map((x) => {
+    if (!(Number.isInteger(x) && x >= 1 && x <= total)) throw new LabError(`Index ${x} is outside an array of ${total} elements.`);
+    let rest = x - 1;
+    for (let p = 0; p < q; p++) rest = Math.floor(rest / dims[p]);
+    return (rest % dims[q]) + 1;
+  })));
+});
+def('sub2ind', (a) => {
+  const sz = [...M(a[0]).d], subs = a.slice(1).map((v) => M(v)), n = subs[0]?.d.length ?? 0;
+  if (!subs.length) throw new LabError('sub2ind needs the size and the subscripts: sub2ind(size(A), r, c).');
+  return [mat(subs[0].r, subs[0].c, Array.from({ length: n }, (_, i) => {
+    let k = 0, stride = 1;
+    subs.forEach((s, q) => { const v = s.d[s.d.length === 1 ? 0 : i], lim = q < subs.length - 1 ? sz[q] : sz.slice(q).reduce((p, x) => p * x, 1); if (!(Number.isInteger(v) && v >= 1 && v <= lim)) throw new LabError(`Subscript ${v} is out of range.`); k += (v - 1) * stride; stride *= sz[q] ?? 1; });
+    return k + 1;
+  }))];
+});
 def('find', (a, nout) => {
   const m = M(a[0]), lim = a[1] ? S(a[1], 'n') : Infinity;
   const ks: number[] = [];

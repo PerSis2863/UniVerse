@@ -217,6 +217,8 @@ sortrows | sortrows(A, col), sortrows(T, 'name', 'descend') | Rows sorted by a c
 unique | unique(x), [u, i, j] = unique(x) | The different values, sorted.
 ismember | ismember(a, set) | True where a's values are in the set.
 find | find(x), [r, c] = find(A) | Where the true (non-zero) values are.
+ind2sub | [r, c] = ind2sub(size(A), k) | Turns linear indices into row and column (and page…) numbers.
+sub2ind | k = sub2ind(size(A), r, c) | Turns row and column (and page…) numbers into linear indices.
 nnz | nnz(x) | How many non-zero values.
 any | any(x, dim) | True when any value is true.
 all | all(x, dim) | True when every value is true.
@@ -725,6 +727,31 @@ psnr | [p, snr] = psnr(A, ref, peak) | The peak signal-to-noise ratio in dB agai
 ssim | [s, map] = ssim(A, ref) | Structural similarity (1 when the same), and its map.
 phantom | P = phantom(n) | The Shepp–Logan head, a standard test picture (n × n, 256 unless given).
 checkerboard | C = checkerboard(n, p, q) | A checkerboard test picture of n-pixel squares.
+
+# Radar
+physconst | c = physconst('LightSpeed') | Physical constants: 'LightSpeed', 'Boltzmann', 'EarthRadius'.
+pow2db | db = pow2db(p) | A power ratio in decibels (10 log₁₀).
+db2pow | p = db2pow(db) | Decibels back to a power ratio.
+mag2db | db = mag2db(a) | An amplitude ratio in decibels (20 log₁₀).
+db2mag | a = db2mag(db) | Decibels back to an amplitude ratio.
+freq2wavelen | lambda = freq2wavelen(f, c) | The wavelength of a frequency (light's speed unless c is given).
+wavelen2freq | f = wavelen2freq(lambda, c) | The frequency of a wavelength.
+range2time | t = range2time(r, c) | The round-trip time to a range.
+time2range | r = time2range(t, c) | The range of a round-trip time.
+speed2dop | fd = speed2dop(v, lambda) | The Doppler shift of a speed (one way: use 2v for a radar's echo).
+dop2speed | v = dop2speed(fd, lambda) | The speed of a Doppler shift (one way).
+rangeres2bw | B = rangeres2bw(dr, c) | The bandwidth for a range resolution, c / 2Δr.
+bw2rangeres | dr = bw2rangeres(B, c) | The range resolution of a bandwidth.
+radareqsnr | snr = radareqsnr(lambda, R, Pt, tau, 'Gain', G, 'RCS', rcs, 'Ts', T, 'Loss', L) | The radar equation: one pulse's SNR (dB) from a target at range R (gain 20 dB, RCS 1 m², 290 K, no loss unless given).
+radareqrng | R = radareqrng(lambda, snr, Pt, tau, …) | The farthest range that still gives that SNR.
+radareqpow | Pt = radareqpow(lambda, R, snr, tau, …) | The peak power needed for that SNR at range R.
+chirp | y = chirp(t, f0, t1, f1, 'linear', phi) | A swept cosine from f0 at 0 to f1 at t1: 'linear', 'quadratic' or 'logarithmic'.
+lfmpulse | w = lfmpulse(B, T, fs) | A linear-FM (chirp) radar pulse: bandwidth B over T seconds, complex, at sample rate fs.
+radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses.
+pulsecompress | y = pulsecompress(x, w) | The matched filter: each column correlated with the pulse, a target's peak at its delay.
+rangedoppler | [M, range, speed] = rangedoppler(x, w, fs, prf, fc) | The range–Doppler map in dB (pulse compression, then a windowed FFT across pulses). Drawn without outputs.
+cfar | [det, th] = cfar(power, guard, train, pfa) | Cell-averaging CFAR: each cell against its neighbours' mean, for a false-alarm rate pfa (down each column).
+ambgfun | [A, delay, doppler] = ambgfun(w, fs) | The ambiguity function: how a pulse answers every delay and Doppler shift. Drawn without outputs.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
