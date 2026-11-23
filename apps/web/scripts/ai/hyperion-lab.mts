@@ -14,6 +14,8 @@ import { isMainThread, parentPort, Worker } from 'node:worker_threads';
 import { Lab } from '../../src/lib/lab/interp';  // first: the engine's own files load in this order
 import { HELP } from '../../src/lib/lab/help';
 import { Graphics } from '../../src/lib/lab/plot';
+import { FileStore } from '../../src/lib/lab/files';  // tables and files (cell2table, readtable, csvread…), as Hyperion's window has
+import '../../src/lib/lab/help-commands';
 import { HYPERION_SYSTEM } from '../../src/lib/hyperion-ai';
 
 const LIMIT = 5000;
@@ -22,7 +24,7 @@ type Result = { ok: boolean; out: string; error: string; figures: number };
 function run(code: string): Result {
   let out = '';
   const graphics = new Graphics();
-  const lab = new Lab({ out: (t) => { if (out.length < 2000) out += t; }, graphics });
+  const lab = new Lab({ out: (t) => { if (out.length < 2000) out += t; }, graphics, files: new FileStore() });
   try {
     lab.run(code);
     return { ok: true, out: out.slice(0, 2000), error: '', figures: graphics.figures.length };

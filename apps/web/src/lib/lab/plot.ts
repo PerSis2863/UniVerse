@@ -252,6 +252,20 @@ def('close', (a, _n, lab) => {
 });
 def('gcf', (_a, _n, lab) => [mat(1, 1, [gfx(lab).current?.id ?? gfx(lab).figure().id])]);
 def('drawnow', () => []);
+def('gca', (_a, _n, lab) => [mat(1, 1, [gfx(lab).current?.id ?? gfx(lab).figure().id])]);
+def('set', (a, _n, lab) => {
+  // set(gca, 'XLim', [0 10], 'YGrid', 'on', …): limits and grids change the current axes.
+  // shortcut: other properties (FontSize, LineWidth…) are accepted and change nothing yet.
+  const ax = gfx(lab).axes();
+  for (let i = 1; i + 1 < a.length; i += 2) {
+    const k = a[i].k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '', v = a[i + 1];
+    if (k === 'xlim' || k === 'ylim' || k === 'zlim') { const x = vec(v); ax[k] = [x[0], x[1]]; }
+    else if (k === 'xgrid' || k === 'ygrid' || k === 'zgrid') ax.grid = onOff([v], true);
+  }
+  gfx(lab).changed();
+  return [];
+});
+
 
 // ——— Drawing: ticks, then SVG ———
 

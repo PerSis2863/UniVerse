@@ -48,7 +48,8 @@ echo "== 3/5 Training the add-on ($EPOCHS rounds over the lessons)"
 [ -s "$WORK/lora/adapter_model.safetensors" ] || "$WORK/train/bin/python" $H train --dir "$WORK" --epochs "$EPOCHS"
 
 echo "== 4/5 Score: of requests it never saw, how many answers run in Hyperion"
-"$WORK/vllm/bin/python" $H score --dir "$WORK" | tee "$OUT/score.txt" | grep -E "answers ran" || true
+"$WORK/vllm/bin/python" $H score --dir "$WORK" | tee "$OUT/score.txt" | grep --line-buffered -E "answers ran|^-- " || true
+cp "$WORK/score-answers.json" "$OUT/" 2>/dev/null || true   # every test answer, with Hyperion's error when it failed
 
 echo "== 5/5 Saving"
 "$WORK/vllm/bin/python" $H export --dir "$WORK" --to "$OUT"

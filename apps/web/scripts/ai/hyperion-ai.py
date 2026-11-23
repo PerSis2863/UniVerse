@@ -65,6 +65,8 @@ def cmd_data(a):
         reqs += [{'fn': f['name'], 'q': q} for q in got[: a.per]]
     random.Random(7).shuffle(reqs)
     held = set(random.Random(7).sample(sorted({r['fn'] for r in reqs}), 25))  # 25 whole functions held out: the score is on requests it never saw
+    # and 150 requests about functions it does learn (closer to real use: people ask about every function)
+    held_q = set(random.Random(8).sample([i for i, r in enumerate(reqs) if r['fn'] not in held], 150))
     print(f'{len(reqs)} requests for {len(funcs)} functions', flush=True)
     # 2. answers (two tries each), run in Hyperion
     answers = chat(llm, [[{'role': 'system', 'content': rich}, {'role': 'user', 'content': r['q']}] for r in reqs], temp=0.6, n=2)
@@ -76,7 +78,7 @@ def cmd_data(a):
         first.setdefault(i, (t, res))
         if i in done: continue
         if code_of(t) and res['ok']:
-            done.add(i); lessons.append({**reqs[i], 'a': t.strip(), 'kind': 'answer'})
+            done.add(i); lessons.append({**reqs[i], 'a': t.strip(), 'kind': 'answer', 'i': i})
     for i, (t, res) in first.items():
         if i not in done and code_of(t): failed.append((i, t, res['error']))
     print(f'answers that ran: {len(done)} of {len(reqs)}; fixing {len(failed)}', flush=True)
@@ -86,12 +88,14 @@ def cmd_data(a):
     fixed = run_all([code_of(o[0]) or '' for o in fixes])
     for (i, _, _), q, o, res in zip(failed, fix_q, fixes, fixed):
         if code_of(o[0]) and res['ok']:
-            lessons.append({'fn': reqs[i]['fn'], 'q': q, 'a': o[0].strip(), 'kind': 'fix'})
+            lessons.append({'fn': reqs[i]['fn'], 'q': q, 'a': o[0].strip(), 'kind': 'fix', 'i': i})
     with open(d / 'lessons.jsonl', 'w', encoding='utf-8') as fh:
-        for x in lessons: fh.write(json.dumps({**x, 'held': x['fn'] in held}, ensure_ascii=False) + '\n')
+        for x in lessons: fh.write(json.dumps({**x, 'held': x['fn'] in held or x['i'] in held_q}, ensure_ascii=False) + '\n')
     with open(d / 'held.jsonl', 'w', encoding='utf-8') as fh:
         for r in reqs:
             if r['fn'] in held: fh.write(json.dumps(r, ensure_ascii=False) + '\n')
+    with open(d / 'held-seen.jsonl', 'w', encoding='utf-8') as fh:
+        for i in sorted(held_q): fh.write(json.dumps(reqs[i], ensure_ascii=False) + '\n')
     (d / 'system.txt').write_text(system, encoding='utf-8')
     print(f'{len(lessons)} lessons ({sum(x["kind"] == "fix" for x in lessons)} of them fixes) → {d / "lessons.jsonl"}', flush=True)
 
@@ -121,15 +125,21 @@ def cmd_score(a):
     from vllm import LLM, SamplingParams
     from vllm.lora.request import LoRARequest
     d = Path(a.dir); system = (d / 'system.txt').read_text(encoding='utf-8')
-    held = [json.loads(l) for l in open(d / 'held.jsonl', encoding='utf-8')][: a.n]
     llm = LLM(TEACHER, max_model_len=4096, gpu_memory_utilization=0.9, enable_lora=True, max_lora_rank=32, enforce_eager=True)
-    msgs = [[{'role': 'system', 'content': system}, {'role': 'user', 'content': r['q']}] for r in held]
     sp = SamplingParams(temperature=0, max_tokens=900)
-    for name, lora in (('before (no add-on)', None), ('after (with the add-on)', LoRARequest('hyperion', 1, str(d / 'lora')))):
-        outs = [o.outputs[0].text for o in llm.chat(msgs, sp, lora_request=lora, use_tqdm=True)]
-        res = run_all([code_of(t) or '' for t in outs])
-        ran = sum(bool(code_of(t)) and r['ok'] for t, r in zip(outs, res))
-        print(f'{name}: {ran} of {len(held)} answers ran in Hyperion ({100 * ran / max(1, len(held)):.0f}%)', flush=True)
+    saved = {}
+    for title, file in (('functions it never learnt', 'held.jsonl'), ('new requests about functions it learnt', 'held-seen.jsonl')):
+        if not (d / file).exists(): continue
+        held = [json.loads(l) for l in open(d / file, encoding='utf-8')][: a.n]
+        msgs = [[{'role': 'system', 'content': system}, {'role': 'user', 'content': r['q']}] for r in held]
+        print(f'-- {title}', flush=True)
+        for name, lora in (('before (no add-on)', None), ('after (with the add-on)', LoRARequest('hyperion', 1, str(d / 'lora')))):
+            outs = [o.outputs[0].text for o in llm.chat(msgs, sp, lora_request=lora, use_tqdm=True)]
+            res = run_all([code_of(t) or '' for t in outs])
+            ran = sum(bool(code_of(t)) and r['ok'] for t, r in zip(outs, res))
+            saved[f'{file}:{name}'] = [{'q': r['q'], 'a': t, 'ok': bool(code_of(t)) and z['ok'], 'error': z['error']} for r, t, z in zip(held, outs, res)]
+            print(f'{name}: {ran} of {len(held)} answers ran in Hyperion ({100 * ran / max(1, len(held)):.0f}%)', flush=True)
+    (d / 'score-answers.json').write_text(json.dumps(saved, ensure_ascii=False), encoding='utf-8')
 
 def cmd_export(a):
     import shutil
@@ -139,7 +149,12 @@ def cmd_export(a):
     cfg['model_type'] = a.model_type  # Cloudflare asks for this field (see scripts/ai/hyperion-gpu.md, step 6)
     cfg['base_model_name_or_path'] = 'Qwen/Qwen2.5-Coder-32B-Instruct'
     (to / 'adapter_config.json').write_text(json.dumps(cfg, indent=2))
-    shutil.copy(src / 'adapter_model.safetensors', to / 'adapter_model.safetensors')
+    try:  # bf16: half the size of the float32 the trainer saves, the same answers
+        import torch
+        from safetensors.torch import load_file, save_file
+        save_file({k: v.to(torch.bfloat16) for k, v in load_file(str(src / 'adapter_model.safetensors')).items()}, str(to / 'adapter_model.safetensors'))
+    except ImportError:
+        shutil.copy(src / 'adapter_model.safetensors', to / 'adapter_model.safetensors')
     mb = (to / 'adapter_model.safetensors').stat().st_size / 1e6
     assert mb < 300, f'{mb:.0f} MB: Cloudflare takes under 300 MB (train with a smaller --rank)'
     print(f'→ {to}: adapter_model.safetensors ({mb:.0f} MB) and adapter_config.json')
