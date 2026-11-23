@@ -6,6 +6,7 @@ import { cast, isNumClass, resultClass, type NumClass } from './types';
 import { colPositions, contents, isTable, joinTables, pick as pickTable, properties, remove as removeRows, renamed, setValues } from './table';
 // The functions in other files add themselves to BUILTINS when loaded (M378).
 import './signal';
+import { isLti, ltiBinop, ltiNeg } from './control';
 import { symBinop, symCall, symConcat, symNeg, symTranspose } from './sym-lab';
 import { ZERO as ZERO_SYM } from './sym';
 
@@ -26,6 +27,8 @@ export interface Host {
   files?: unknown;
   /** Watch it run (M393): told before each statement where it is (a place in the code) and the variables it sees. */
   trace?(at: number, vars: Map<string, Value>, depth: number): void;
+  /** Time it (M401): told when a function (built-in or the script's own) starts and finishes. */
+  fnTimer?: { enter(name: string): void; leave(): void };
 }
 
 class Flow { constructor(readonly kind: 'break' | 'continue' | 'return') {} }
@@ -225,6 +228,7 @@ export class Lab {
       }
       case 'un': {
         const a = this.ev(e.a, f);
+        if (isLti(a) && e.op !== '~') return [e.op === '-' ? ltiNeg(a) : a];
         if (a.k === 'sym' && e.op !== '~') return [e.op === '-' ? symNeg(a) : a];
         if (e.op === '+') return [toMat(a)];
         if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
@@ -315,6 +319,12 @@ export class Lab {
   // ——— Calls ———
   /** A function by name: one written in the script, else a built-in. */
   call(name: string, args: Value[], nout: number, f?: Frame): Value[] {
+    const timer = this.host.fnTimer;
+    if (!timer) return this.callNow(name, args, nout, f);
+    timer.enter(name);
+    try { return this.callNow(name, args, nout, f); } finally { timer.leave(); }
+  }
+  private callNow(name: string, args: Value[], nout: number, f?: Frame): Value[] {
     const user = this.fns.get(name);
     if (user) return this.callUser(user, args, nout, f?.depth ?? 0);
     if (name === 'nargin' && f) return [num(f.nargin)];
@@ -372,6 +382,7 @@ export class Lab {
   // ——— Operators ———
   binop(op: string, a: Value, b: Value): Value {
     // Symbolic maths (M396): exact, with letters; back to numbers when neither side has any.
+    if (isLti(a) || isLti(b)) { const r = ltiBinop(op, a, b); if (r) return r; }
     if (a.k === 'sym' || b.k === 'sym') { const r = symBinop(op, a, b); if (r) return r; }
     if ((op === '==' || op === '~=') && a.k === 'str' && b.k === 'str' && a.v.length !== b.v.length && a.v.length !== 1 && b.v.length !== 1) throw new LabError('To compare texts of different lengths use strcmp(a, b).');
     const A = toMat(a, 'The left side'), B = toMat(b, 'The right side');

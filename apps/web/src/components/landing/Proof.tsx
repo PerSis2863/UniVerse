@@ -68,8 +68,8 @@ export function Proof() {
         <div className="mt-14 grid grid-cols-1 md:grid-cols-3 gap-10 border-t border-white/[0.06] pt-10">
           <Reveal>
             <p className="text-xs text-zinc-400">languages</p>
-            <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={13} /></p>
-            <p className="mt-2 text-xs text-zinc-400">including two that read right to left</p>
+            <p className="mt-2 text-6xl font-bold tracking-tight text-white"><CountUp to={8} /></p>
+            <p className="mt-2 text-xs text-zinc-400">including Arabic, read right to left</p>
             <div className="mt-6"><Wave /></div>
           </Reveal>
           <Reveal delay={0.08}>

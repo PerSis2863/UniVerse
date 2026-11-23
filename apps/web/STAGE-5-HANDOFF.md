@@ -11209,7 +11209,7 @@ The owner (22 Nov): "just integrate the 64m of minimind and after that start fro
   `ghidra2.ts` with a repetition penalty in `answer()`. The working files (adopted and chat states, word-pieces, data)
   are in the session's scratch folder, not the repository: a new session re-runs `adopt` and `sft` (about 40 minutes).
 
-## M435: Hyperion's AI, a coding model with UniVerse's own add-on, trained on code Hyperion really ran (22 Nov)
+## M439 (built as M435 on `claude/youthful-fermi-sbdtcp`): Hyperion's AI, a coding model with UniVerse's own add-on, trained on code Hyperion really ran (22 Nov)
 
 The owner (22 Nov): "i have added another app which is hyperion … i need to make ai for that one also so help me to
 built this in rtx 4090 and i am ok to work for 10 dollar plan credit". Hyperion came into this branch by merging
@@ -11266,7 +11266,7 @@ The owner (22 Nov): "continue with the thinking training", then "do all this tra
 - **Not yet:** Ghidra 2 in the console card and as the corner's backup (`ghidra-device.ts` still uses the old letter
   model: switch to `loadGhidra2` + `answer()` on a worker, download on first use with a size warning).
 
-## M436: Hyperion's AI, the first real run and the fixes it showed (23 Nov)
+## M440 (built as M436 on `claude/youthful-fermi-sbdtcp`): Hyperion's AI, the first real run and the fixes it showed (23 Nov)
 
 The owner (22–23 Nov): "rent the card for Hyperion's AI… i want this ai to become really good", then "take a good graphic
 card". RunPod is connected to this session (the `runpod` tools: `create-pod`, `exec-pod`, `pod-action`); the owner's
@@ -11299,7 +11299,7 @@ RunPod secrets `cloudflare_token` (Workers AI: Edit) and `github_token` exist; t
   plain model with the function list. The upload's test question also timed out (120 s; a first LoRA load is slow).
   Distilling a model into itself doesn't teach it more: a better teacher (or the people's own corrected answers) would.
 
-## M437: the app agents' own AI (23 Nov)
+## M441 (built as M437 on `claude/youthful-fermi-sbdtcp`): the app agents' own AI (23 Nov)
 
 The owner (23 Nov): "train the ai so that it can work in different sectors of ai like different apps has like customer
 support, travel planner or itenary planner and other ai model which is needed in the website".
@@ -11335,3 +11335,720 @@ support, travel planner or itenary planner and other ai model which is needed in
   print the score lines to RunPod's container log (`> /proc/1/fd/1`) so they can be read while the pod is off.
 - **Not covered yet:** the other ~45 AI features (tutor, quizzes, marking, translation…) still use Gemini's prompts
   directly; each could join `AGENTS` with its own rules the same way.
+
+## M401 (22 Nov): Time it, the two left-outs: time inside functions, and the run before
+
+The owner, 22 Nov, after M400's "left out" (time inside built-in functions, comparing two timed runs): "work on this".
+The interpreter's `Host` has `fnTimer` (`{ enter(name), leave() }`): `call` wraps `callNow` with it only while it is set
+(the worker sets `host.fnTimer = profiler` for a timed run and deletes it after, so normal runs pay nothing). `Profiler`
+keeps a stack of running functions: a function's own time leaves out the calls inside it; its total counts once for a
+function calling itself; `finish` adds `fns` (by own time). Window: each script keeps its last two timed runs
+(`profs`); the newest (while the code is unchanged) shows "N× faster / slower than the time before" (`compared`, ±10%
+is "about the same") and "Time inside functions": a table (built-ins and the script's own functions: calls, own time,
+with what it calls, and the own time in the run before, matched by name, so it survives edits). Not built: anonymous
+functions (@(x) …) as rows of their own (their calls inside are counted).
+
+## M402 (22 Nov): Hyperion Sweep (a slider's range as a film and a table)
+
+The sixth of the owner's 20 big features (two ideas in one: a parameter study and an animation). `src/lib/lab/sweep.ts`:
+`sweepValues(c, from, to, n)` (2–48 values, the ends as typed, the rest on the slider's steps, repeats dropped),
+`sweepCodes` (one script per value, the literal written exactly), `sweepColumns` (every real scalar the runs left that
+changes, at most 8, with the frames of its largest and smallest value and where it changes sign), `findings` (those in
+sentences), `sweepCsv`. `src/lib/lab/gif.ts`: GIF89a written from the spec: `PaletteMaker` (15-bit bins, the 256 most
+used, averaged; other colours to the nearest, remembered per bin), `indexPixels`, `GifWriter` (a global table, the
+NETSCAPE loop, a frame's delay, LZW with the 12-bit table restarted when full); the tests read it back with their own
+decoder, pixel for pixel. Worker: `{ sweep: { codes, values, w, h } }` runs each script in a fresh `Lab` with its own
+`Graphics` (the shared files store; output thrown away), posts `{ sweepFrame }` per run (the current figure as SVG in
+both themes at 640×480, the scalars, the error with its line), then a normal `done`. Window: a Sweep button after the
+live controls opens a form (which slider, from, to, 6/12/24/48 runs); the figure panel shows `LabSweep.tsx` (frames as
+blob-URL images, freed on close or a new sweep; play, step, a frame slider, speed; it plays once done unless Reduce
+Motion; a strip of thumbnails; Save as GIF, drawn on a canvas from the light frames a frame at a time with a pause
+between; Table as CSV; "Use theta = 42" sets the slider and runs). Also fixed: a slider's step such as 0.25 wrote one
+decimal (0.25 became 0.3): `stepDecimals` counts the step's own decimals. Not built: sweeping menus and switches, two
+sliders at once (a grid).
+
+## M403 (22 Nov): languages: Hindi kept, the other Indian languages and Urdu removed
+
+The owner, 22 Nov: "keep hindi and remove all the other indian language and also remove the urdu from pakistan i dont
+want it". `src/lib/i18n.ts` `LANGUAGES` (the screens' languages) and `src/lib/languages.ts` `LANGUAGES` (what chat,
+parents' messages, oral checks, documents and captions translate into) no longer have ur, bn, ta, te, mr; `Language`
+lost them. Arabic is now the only right-to-left language: `RTL_LANGUAGES` comes from `LANGUAGES` (`dir: 'rtl'`), and
+the head script (`LANGUAGE_SCRIPT`) only applies a saved language that is still offered. `store/language.ts`: a saved
+language no longer offered goes back to English on load. Every server check already used `isLanguage` /
+`isAppLanguage`, so a stored `translateTo` or parent language of one of them now counts as none (no translation) and
+the AI translator refuses to draft them; their saved screen translations stay in `ui_translations` unused.
+`languageName` names any code through `Intl.DisplayNames` ("Translated from Urdu" still reads well). Test:
+`src/lib/languages-offered.test.ts`. "Urdu" as a subject of study (`options/academic.ts`) stays.
+
+## M404 (22 Nov): Hyperion Simulate, Structures
+
+The owner, 22 Nov: "where are the ansys software features i cant see it ?" (agreed on 21 Nov, not built until now: said
+so) and "we need to make a software not just platform like how these company has made so make things like that".
+Hyperion's menu now has **Code** (`/hyperion`) and **Simulate** (`/hyperion/simulate`; `Sidebar.tsx` `lab`, phone tabs
+in `app-tabs.ts`). Our own finite-element code, from the textbook method (no outside library):
+- `src/lib/sim/part.ts`: a flat part = an outline (`Loop`: polygon or circle) and holes; edges (`L{loop}S{side}`, a
+  circle `L{loop}`) with names; four ready-made parts with sizes (`TEMPLATES`: cantilever beam, plate with a hole,
+  L-bracket, lifting lug); `partProblem` (holes outside, too few corners).
+- `mesh.ts`: boundary sampled every h; inside a triangle lattice kept 0.55 h from the boundary; Bowyer–Watson
+  `delaunay`; triangles kept when their middle and every side's middle are inside; a boundary piece the triangles
+  skip is split and meshed again (up to 6 passes); then 6-node triangles (mid-side nodes on the circle for round
+  holes). `elementSize` = the longer side over 12/22/36/56 and at most the shorter (or the bracket's arm) over
+  2/4/6/8. Speed: up to ~10,000 nodes, meshed in ~0.1 s.
+- `skyline.ts`: reverse Cuthill–McKee numbering, a skyline matrix, L·D·Lᵀ in place (`MechanismError` when a pivot
+  vanishes: "the part isn't held firmly"), `fix` for held unknowns. The finest lug (~19,000 unknowns) solves in ~0.8 s.
+- `structure.ts`: plane stress, 3-point Gauss, `MATERIALS` (8, E / ν / density / yield), supports (fixed, slides
+  along x or y), loads (`force` spread by length, `pressure` normal to the edge × thickness, `bearing`: a pin pulled
+  one way pressing cos-weighted on that side of the hole, `gravity`), stresses at each element's nodes averaged
+  (x, y, shear, von Mises, principal), safety factor (yield / von Mises, at most 15), reactions per support
+  (inner forces at held unknowns minus the loads there), mass.
+- Tests (`structure.test.ts`) against textbook answers: the patch test (an evenly pulled bar: exact σ and stretch),
+  a cantilever (tip PL³/3EI within 2–4 %, σ = Mc/I within 5 %), a small hole in a wide plate (×2.85–3.4, Kirsch's
+  3), a part held nowhere or free to slide refused, its own weight carried by the support; colour bands add up.
+- `contour.ts`: 9 bands blue → red (reversed for the safety factor), each 6-node triangle as 4, cut along the band
+  limits, one `Path2D` per band (9 fills a frame). `model.ts`: what is kept (`uv-sim-structure`, read back safely by
+  `readModel`), each shape's usual supports and loads (`STARTS`), `verdict` in plain words.
+- `components/sim/sim.worker.ts` meshes (kept while only supports, loads or material change) and solves off the
+  page's thread; `StructureBench.tsx`: an outline (geometry, material, mesh, supports A…, loads B…, own weight,
+  solution) and its details; every change solves again after 120 ms (the newest change wins). `SimCanvas.tsx`: the
+  part, mesh (curved sides), bands on the bent shape (shown ×N, true size or not bent; Animate breathes it, not with
+  Reduce Motion), the outline dashed, supports in blue (hatches or rollers) and loads in red arrows with letters, Max
+  and Min flagged, a press on an edge adds it to the chosen support or load (also by ticks in the details), the value
+  under the pointer written into a label (no redraw), wheel or buttons zoom, drag moves; the legend beside the part,
+  a strip along the bottom when narrow. PNG and CSV downloads. Numbers in the side panel opt out of the count-up.
+Not built: 3D parts, contact, plasticity (it says "fails" past yield rather than following it), drawing your own
+outline (only the four shapes' sizes), units other than mm / N. Next: vibration (the same mesh: natural frequencies
+and mode shapes), heat, fluids, circuits, and installing Hyperion as its own computer app.
+
+## M405 (22 Nov): Hyperion on computers only
+
+The owner, 22 Nov: "no need to build hyperion on phone it should be available on computer only". A computer is
+`(hover: hover) and (pointer: fine) and (min-width: 1024px)` (`src/lib/use-desktop.ts`: `DESKTOP`, `useDesktop(server)`,
+shared with STORMFALL, whose copy went). `APPS` entries may be `desktopOnly` (Hyperion is); `useShownApps` leaves them
+out on phones and tablets (unless it is the only app shown; `useDesktop(true)` so a computer's first render lists it),
+so the app switcher, top bar, hub, landing tabs, wallet and Messages' app list lose it there; `globals.css` hides
+`[data-uv-app="lab"]` there from the first paint. `ShownAppsGuard` doesn't send a phone away from a computer-only app
+the owner shows: `ComputerOnly` (`components/lab/ComputerOnly.tsx`) wraps both Hyperion pages and says "Hyperion is
+made for computers" with the link (copied or sent whole, a shared script's #s=… included); nothing of the engine
+downloads on a phone. Removed: LabApp's phone tabs (`tab`, the Segmented parts row) and the Simulate bench's phone
+column. A person whose chosen app is Hyperion and signs in on a phone lands on that note (it links to the hub).
+
+## M406 (22 Nov): Hyperion Simulate, Vibration
+
+The second analysis on the same study (the owner's Ansys ask: Ansys calls it modal). `src/lib/sim/modal.ts`:
+`solveModes(mesh, material, t, supports, count)`: the stiffness from `assemble` (now shared with `solveStatic`, as is
+`heldBy`), a consistent mass matrix (6-point Dunavant rule; masses in tonnes so K/M is 1/s²), held unknowns emptied
+(`Skyline.fix(rows, 0)` for M), K factored once, then shift-invert Lanczos on K⁻¹M in the M inner product with full
+reorthogonalisation (twice), checked every 4 steps until the wanted Ritz pairs' residuals are under 1e-9 (at most
+160 steps); `symEig` (Jacobi) for the small tridiagonal matrix. Each mode: frequency (Hz), its shape scaled to a
+largest movement of 1 (sign so the largest part is positive), and the share of free mass moving in x and y (effective
+mass / total). `Skyline.mul` (a product before factoring). Tests: a cantilever's first two frequencies against
+Euler–Bernoulli (0.96–1.01 and 0.9–1.01: the shear in a real plate lowers the second), ~61 % of its mass in mode 1,
+and a bar's stretching mode at c / 4L (its sides held in y, so E / (1 − ν²): the solver was right and the first test
+wrong). Speed: medium meshes 60–200 ms, the finest lug 2.1 s. Window: Solution has "Stress and bending" and
+"Vibration" (`analysis`, sent to the worker; loads aren't drawn there); the toolbar's Mode picker; the canvas takes a
+generic `Shown` (movement, values, name, `reverse` for the safety factor, `swing` for a mode: animated both ways, no
+true size, no Min flag); details: the first frequency in words with the motor speed (×60), a table (mode, frequency,
+mass x / y, the nearest note: `noteOf`), "Hear mode n" (a struck sine at its frequency, 20 Hz–16 kHz, Web Audio).
+Not built: free-free modes (a part held nowhere), modes with the loads' stiffening (prestress), damping and the
+response to a shaking (harmonic response).
+
+## M407 (22 Nov): Hyperion Simulate, Heat
+
+The third piece of the owner's Ansys ask (thermal). `src/lib/sim/heat.ts` `solveHeat(mesh, study)`: one temperature
+per node of the same 6-node mesh (its own RCM numbering and skyline); conduction k·t·∇N∇Nᵀ (3-point), both faces'
+air 2h·N·Nᵀ and heat made inside Q·t·N (6-point), edge conditions on the quadratic boundary pieces (flux q·t·l·
+[1/6, 2/3, 1/6], convection h·t·l·[4 2 −1; 2 16 2; −1 2 4]/30 and its h·T∞ part), held temperatures by moving
+K·(held values) to the right; steady (one solve) or over time by backward Euler ((C/Δt + K) factored once, ≤ 200
+steps, each a frame). Results: temperatures (each frame), heat flow |−k∇T| in W/m² averaged at nodes, the watts
+through each held-temperature condition (K·T − loads there, from the matrix kept before holding). Units: inputs in
+°C, W/m², W/(m²·K), W/m³, s; inside mm (k×1e-3, per m² ×1e-6, per m³ ×1e-9, ρc ×1e-9). Materials gained k and c.
+Tests: a bar between 100 and 0 °C (straight line, k·A·ΔT/L watts each way), an aluminium fin with air on its faces
+(cosh formula at the tip), heat made in an insulated part over time (T0 + Q·t/(ρc) everywhere), nothing cooling it
+refused. `heat-model.ts`: kept as `uv-sim-heat` (`readHeat` safe), each shape's start (the plate's hole a 120 °C pipe
+with air on the sides; steel, 3 mm), `heatProblem`. `HeatBench.tsx` (the same layout as Structures; shared parts
+moved to `bench-ui.tsx`: `ui` styles, `NumField`, `EdgeTicks`); `SimCanvas` gained `marks` (coloured edges with a
+letter: held temperature orange, heat in red, air blue); `SimulateApp.tsx`: Structures | Heat (kept for the visit).
+Not built: temperatures that change with time at an edge, radiation, contact between parts, thermal stress (the
+temperatures as a load on Structures: a good next step).
+
+## M408 (22 Nov): Hyperion Simulate, Fluids (a wind tunnel)
+
+The fourth piece of the owner's Ansys ask (Fluent's kind of picture). `src/lib/sim/flow.ts` `Tunnel`: lattice
+Boltzmann D2Q9, one relaxation time (BGK), pull-and-collide in one pass; inflow: the equilibrium at U = 0.08 in the
+first column; outflow: the last column copied; top and bottom wrap round; the shape's cells (inside its outline,
+`shapeOutline`: a cylinder, a NACA 4-digit wing at 2.5 D chord turned about its quarter chord, a square, a plate)
+bounce packets back halfway, and the momentum they give it is the force (Cd, Cl = 2F / (U²D), D the cells across).
+ν from Re = U·D/ν, τ kept ≥ 0.505. The shape sits 0.37 cells off the middle (a perfectly symmetric start never starts
+swaying). Speed: a fast path for cells with open water all round (fully unrolled; the slow path's array
+destructuring had made the whole loop slow): ~30 M cells/s, ~700 steps/s at 300×150. `field` gives speed (× U),
+pressure coefficient, or vorticity (× D/U); `velocity` bilinear for particles; `swingRate` (upward mean crossings)
+for the Strouhal number. Tests: a cylinder at Re 20 (Cd 1.9–3.6, no lift, nothing runs away), a wing at ±8° lifts
+up and down, the NACA thickness, swing counting; measured by hand: a cylinder at Re 100 sheds at St 0.195–0.20 with
+Cd ≈ 1.8 (the neighbours above and below raise both a little from the open-flow 0.165 and 1.35).
+`components/sim/flow.worker.ts`: steps for ~20 ms at a time, keeps Cd and Cl every 10 steps (the last 600), moves
+1,400 tracer particles (respawned at the inflow when they leave, enter the shape, or after 9,000 steps); a frame goes
+out only after the page drew the last one (`drawn`), its arrays transferred. `FlowBench.tsx`: shape, angle, wing
+thickness and camber (its NACA name), the Reynolds number (10–300), Speed / Pressure / Swirl (smooth colour ramps,
+blue–white–red for signed ones), particles, Pause (it starts paused with Reduce Motion, and pauses while the tab is
+hidden), Start again; the drag and lift in numbers and a live chart; the Strouhal number and a sentence once the flow
+has crossed the tunnel twice. Simulate's tabs: Structures | Heat | Fluids.
+Not built: 3D flow, turbulence models (above ~300 the grid is too coarse; τ is held at 0.505), the shapes from
+Structures, walls above and below, heat carried by the flow.
+
+## M409 (22 Nov): Hyperion installs as its own computer app
+
+The owner, 22 Nov: "we need to make a software not just platform like how these company has made". A web app the
+browser installs as a program (no store, no signing certificate, no cost): `public/hyperion/manifest.json` (its own
+`id` /hyperion so it is a separate app from UniVerse, `scope` and `start_url` /hyperion, standalone or
+window-controls-overlay, violet theme, Code and Simulate shortcuts) and its icons (`public/hyperion/icon-192/512/
+maskable/180.png`: a white Σ on violet, drawn by `scripts/assets/hyperion-icons.mjs` with the shared browser loader).
+`src/app/(dashboard)/hyperion/layout.tsx` (a server layout) sets `metadata.manifest` for every Hyperion page (Next
+merges metadata shallowly: it replaces the site's). The site's service worker covers it. `InstallHyperion.tsx` in
+both pages' top bars: the browser's own install box when `beforeinstallprompt` came; otherwise a small note for the
+browser (Safari: File → Add to Dock; Firefox can't; Chrome/Edge: the address bar's install icon); `appinstalled`
+thanks; hidden in the installed window (`display-mode`) and on phones. Checked with Chrome's DevTools protocol: the
+manifest is read with no errors and no installability errors. A real desktop program (an .exe / .dmg with Electron or
+Tauri) would need code-signing certificates (paid, the owner's accounts): not done; ask first. Note: a file named
+`.webmanifest` at public's root wasn't served by the dev server, so the manifest lives as `manifest.json` in its folder.
+
+## M410 (22 Nov): Hyperion Simulate, Circuits
+
+The owner's Ansys ask, electronics. `src/lib/sim/circuit.ts`: `Circuit` by modified nodal analysis: node voltages plus
+a current per voltage source and coil; resistors stamp conductance; capacitors and coils step by the trapezoidal rule
+(the first step backward Euler), each capacitor's current kept for the next step; coils are a branch (shorted at DC);
+sources DC, sine (peak, Hz) or square (0 to V); current sources; diodes by Shockley (Is 1e-14, Vt 25.85 mV) with
+Newton and SPICE's pnjlim voltage limiting; GMIN to ground on every node; `solveDense` (partial pivoting; singular →
+`CircuitError` "a source or a coil is shorted…"); `dc()`; `current(part)` a → b inside it; `si` / `parseSi` (4.7k,
+10u, 2m). `schematic.ts`: the board (items between grid points, ground and probe marks, time step, window), `netlist`
+(union-find over points; wires join; ground is "0"; a source's first end is +), four `EXAMPLES`, `readBoard` (safe).
+Tests: a divider, RC charging (to 2 decimals at τ), RLC ringing period and first overshoot, a diode's ~0.7 V and
+blocking, a low-pass at 1/(2πRC) passing 1/√2, a shorted coil refused, the board's wiring and every example running.
+`CircuitBench.tsx`: tools (select, wire, R, C, L, V, I, D, ground, probe; drag between dots along a row or column;
+Delete removes, Escape back to select), the chosen part's value (SI text), source kind and frequency, its voltage and
+current now; time step and window; Run (not with Reduce Motion), Start again, Start from, Clear. Runs from rest at
+t = 0 (a capacitor is seen charging), steps a window in ~2 s (≤ 4,000 steps a frame), ~600 samples a window;
+wires coloured by voltage (green +, red −); the oscilloscope (V/div and time/div). The board is `role="group"` (its
+parts are buttons). Not built: transistors and op-amps, switches, AC sweeps (Bode plots), moving the drawn parts.
+
+## M411 (22 Nov): Hyperion Simulate, draw your own part shape
+
+The owner, 22 Nov, after M409's "left out": "PLEASE DO THIS" (3D parts, drawing your own shape, signed installers;
+this is the second). `part.ts`: `CustomShape` (corners in mm, round holes), `CUSTOM_START` (an L with a hole),
+`customPart`, `shapeOf(part)` (a ready-made part's outline and round holes as a drawing: the same sides in the same
+order, so `L0S#` ids and the supports and loads on them carry over), `selfCrossing` (any two non-neighbouring sides
+crossing) and `partProblem` now refuses a crossing outline or two corners in one place; limits 60 corners, 10 holes.
+`model.ts`: `Model.custom`, `templateInfo(id)` ("Your own shape", no sizes), `isTemplate`, `readCustom` (numbers only,
+within ±100 m, holes with a radius, at least 3 corners or the start shape), `partOf` builds the custom part (sides named
+Side 1…, holes Hole 1…), `STARTS.custom`; the same in `heat-model.ts`; the worker's mesh key includes the drawing.
+`ShapeSketch.tsx` (in both benches' Geometry details, above the thickness): an SVG fitted to the shape (frozen while
+dragging so it doesn't move under the pointer), a grid at a tidy step with the axes darker, corners as handles
+(dragged, snapped to half a step; focusable: arrows nudge, Delete removes, at least 3), a press on a side inserts a
+corner there (elsewhere after the last), holes' centres dragged; lists of corners and holes as number fields; a
+crossing outline turns red with a note. Tests: the start shape meshes and its support carries the load; crossing
+refused; the lug drawn keeps its edge ids; odd saved drawings cleaned. Not built: arcs and fillets as sides, holes of
+any shape, importing a drawing (DXF), sizes as dimensions between features.
+
+## M412 (22 Nov): Hyperion's computer app (Windows, Mac and Linux installers)
+
+The owner, 22 Nov: "a signed desktop installer… PLEASE DO THIS", then "we need to build all of these in the downloaded
+app". `desktop/hyperion/` (outside the pnpm workspace, so the website's build never installs Electron): `main.js`
+opens `https://universeimpact.com/hyperion` (`HYPERION_URL` for a local copy) in a window of its own (bounds kept,
+one copy at a time), context isolation, sandbox, no Node in the page; same-site links stay, sign-in pages (Firebase,
+Google, Microsoft, Apple) open in a small window, anything else in the normal browser; the camera, microphone,
+clipboard and notifications only for the site; its user agent without "Electron" (some sign-in pages refuse it);
+/login and /register get `?app=lab` (Hyperion's tab); File → Code (Ctrl/⌘ 1), Simulate (2); `offline.html` with Try
+again. `package.json`: Electron 45.2.3 and electron-builder 26.18.1 (both over two weeks old), NSIS / dmg / AppImage
+named `Hyperion-Setup.exe`, `Hyperion-mac.dmg`, `Hyperion-linux.AppImage`; `package-lock.json` committed. Checked here:
+the AppImage builds (126 MB) and, run under Xvfb against the local site, opens Hyperion's sign-in in its window.
+`.github/workflows/hyperion-desktop.yml` (manual: Actions → Hyperion desktop → Run; on main only once merged): builds
+on Windows, Mac and Linux runners (free: the repository is public), signs when the owner's secrets exist (Windows
+`HYPERION_WIN_CERT…`, Mac `HYPERION_MAC_CERT…`, notarisation with `HYPERION_APPLE_…`), uploads them, and with
+"publish" puts them on the release `hyperion-latest`. Hyperion's Install button lists the downloads once
+`NEXT_PUBLIC_HYPERION_DOWNLOADS=1` is set ([owner]). Also fixed: "13 languages" on the sign-in page, the landing's
+proof numbers and FAQ and the guide (8 since M403; "Arabic, read right to left"), with a test in
+`languages-offered.test.ts`. The owner's full MATLAB list is now the roadmap in STAGE-5-PLAN.md ("Hyperion toolboxes").
+Not built: an offline copy of Hyperion inside the app (it needs the site), auto-update (it is always the site's newest).
+
+## M413 (22 Nov): Hyperion Simulate, 3D parts
+
+The owner, 22 Nov ("3D parts… PLEASE DO THIS"). `src/lib/sim/solid.ts`: `extrude(mesh, t, layers)` stacks the flat
+mesh's corner nodes in layers through the thickness (z centred on 0), cuts each prism into three tetrahedra by the
+lowest node number (Dompierre et al.: rotate the prism so its lowest node is first, then pick the split from the face
+opposite it, so neighbours agree on every shared face), turns any inside-out tetrahedron round, adds the 6 middle
+nodes (10-node tetrahedra), finds the outside (faces used once, turned outwards) and gives each edge its side faces
+(two different flat nodes among a face's corners, matched to the edge's boundary pieces). `solveSolid`: 3D isotropic
+elasticity (Lamé λ, μ; 4-point rule), the skyline solver with RCM, loads on side faces (a uniform push on a 6-node
+face goes a third to each middle node: force by area, pressure along the outward normal, bolt loads cos-weighted),
+gravity, supports (fixed holds x, y, z; sliding holds y or x and z, as the part can't leave its plane), reactions from
+the elements touching a support (stiffness recomputed for those only), stresses at each element's nodes averaged
+(x, y, z, von Mises), safety factor, mass. Tests: the tetrahedra fill the solid exactly and its outside's area is the
+box's; a solid cantilever within 0.97–1.04 of PL³/3EI with no twist; checked by hand: every shape's 3D movement within
+~1 % of the flat model's. The worker (`solidOf`): the flat mesh at 1.6× the size (finest uses fine's), 2–4 layers, at
+most ~21,000 unknowns (coarser until it fits; the finest lug was 22 s before the cap); kept while only loads change.
+`Sim3DView.tsx`: three.js (loaded only for 3D), the outside as 4 small triangles per face, values as a texture
+coordinate into a 9-pixel band texture with nearest sampling (crisp bands), lit (ambient + two lights), bent ×N (or
+true size), animated, the mesh lines, the unbent outline (EdgesGeometry), OrbitControls (render on change), a legend,
+back-to-first-view, PNG. `Model.dim` ('2d' | '3d', Geometry → "Model it as"); the bench's summary, verdict, reactions
+and CSV read the 3D result (`res`); 3D shows displacement, x / y stress, von Mises and the safety factor. Not built:
+3D vibration and heat (they use the flat model), supports or loads on the flat faces, parts not of one thickness
+(holes through part of it, ribs), contact.
+
+## M414 (22 Nov): Hyperion toolbox, control systems
+
+The first toolbox from the owner's MATLAB list ("need to build all of these in the downloaded app"). Transfer functions
+are a value: a `Struct` with `lti: true` and fields `num`, `den` (rows, highest power first, the denominator made monic)
+and `Ts` (0: continuous). `values.ts` shows one as a fraction over dashes with "Continuous-time transfer function."
+(`lti-text.ts`: `polyText`, `tfText`, `tfInline`, kept apart so values.ts needn't load the toolbox), its kind is `tf`.
+`interp.ts` sends `+ - * / ^` (and unary minus) with a transfer function to `ltiBinop` / `ltiNeg` (`control.ts`, also
+imported there for its functions): products and quotients of polynomials, sums over one denominator (the same
+denominator kept as is), whole powers. `control.ts`: tf (tf('s')), zpk, ss (SISO; the characteristic polynomial from
+eig, the numerator fitted through n + 1 points of C adj(sI − A) B), pid (Kp + Ki/s + Kd s/(Tf s + 1)), feedback (sign),
+series, parallel, minreal (pole–zero pairs within tol), pole, zero, tzero, dcgain, isstable, damp, stepinfo; time
+responses in the controllable canonical form stepped exactly ([[A B];[0 0]]·h through `expm`, scaling and squaring
+with Padé 6): step, impulse, lsim (an auto span: six slowest time constants, or 20 / the fastest pole if unstable);
+frequency: bode (unwrapped phase, started where the textbook draws it: −90° per integrator, −180° for a negative
+gain), margin (first crossings on 6,000 log-spaced points refined by bisection: |H| = 1, and Im H = 0 for −180°),
+nyquist (with its mirror and −1), rlocus (branches matched to the nearest root gain by gain). Plots go through the
+plot functions (subplot, semilogx, hold, title…). Help: a "Control systems" section (the help test needs a line for
+every function). Example `control.m` (a plant, a PID with sliders for Kp, Ki, Kd, the closed loop's stepinfo, steps
+and margins): dragging a slider is the PID tuner; Sweep studies a gain. Tests (`control.test.ts`): arithmetic and
+feedback exact, minreal, a 2nd-order step's overshoot, peak and settling time, a 1st-order step exact at τ, Bode
+−3 dB / −45° and an integrator's −90°, 1/(s(s+1)(s+2)) with a gain margin of 6 at √2 rad/s, pid, poles, ss, six plots.
+Not built: many inputs and outputs (MIMO), discrete time (c2d, z-transforms), delays, a PID auto-tuner, LQR and
+observers, the block-diagram simulator (next).
+
+## M415 (22 Nov): Hyperion Simulate, Blocks (block diagrams)
+
+Model-based design from the owner's list: Simulate's fifth tab, **Blocks** (`SimulateApp.tsx`, `BlocksBench.tsx`,
+`blocks.worker.ts`, `src/lib/sim/blocks.ts`). A `Diagram` is blocks (`id`, `kind`, `x`, `y`, settings `p`), wires (an
+output to one input; an output may feed many, an input takes one: a new wire replaces the old) and `stop`, `dt`.
+`KINDS` lists every block: name, library group, inputs (a sum has one per sign, a scope 1–4), outputs, settings with
+their defaults. `simulate` gives each block its states (an integrator 1, a PID 2: the integral and the filtered
+derivative `N (e − x)`, a transfer function its order, in the controllable canonical form `canon` with its direct
+part `D`), orders the blocks so one is worked out after those feeding it directly (a block whose output needs its
+input this instant: not sources, integrators, scopes or a strictly proper transfer function), refuses a loop of those
+as an "algebraic loop" in words, and steps every state with 4th-order Runge–Kutta, recording ~2,000 samples for the
+scopes (unwired scope inputs are NaN, drawn as nothing). At most `MAX_STEPS` = 200,000 steps (`capped` says it was
+cut); a value going infinite stops with "the model blew up at t = …". `readDiagram` reads a kept diagram safely
+(kinds known, settings typed, signs only + and −, wires only between blocks there, 120 blocks and 400 wires at most).
+The page: the library as buttons by group (a click adds the block at the first free spot), blocks dragged on a
+760 × 340 board snapped to 10 (arrows move the chosen one), wiring by dragging from the output dot (dropped on an
+input, or on a block: its first free input), each input's source also a select in the panel (the keyboard way);
+wires are routed as across–down–across, round above when they'd cross a block, round underneath when they go back
+(feedback), each in its own lane. Runs go to the worker 220 ms after the model changes (moving a block doesn't count,
+`logic`); each Scope is a plot with its traces' final and peak values. Kept in localStorage `uv-sim-blocks`. A
+block's picture (`Glyph`) sits outside its button, so its name is the button's name (axe's label rule). Examples:
+cruise control (PI on 1/(1000 s + 50), the force limited to ±5,000 N: the overshoot is the integrator winding up
+while the force is held), a damped mass on a spring (two integrators, two gains), a first-order loop. Tests
+(`blocks.test.ts`): the loop's 1 − e^(−2t), the spring against its exact damped answer, 1/(s+1) and (s+2)/(s+1),
+a second-order overshoot, the cruise control settling and the saturation holding, a PID's derivative of a ramp, the
+algebraic loop, blowing up and being cut short, `readDiagram`. Not built: subsystems (a block made of blocks),
+discrete blocks (unit delay, zero-order hold), lookup tables, a variable-step solver, physical modelling (mechanical
+and electrical parts as blocks), running a diagram from a script.
+
+## M416 (22 Nov): Hyperion toolbox, machine learning
+
+The "AI and data" wave's first toolbox. `src/lib/lab/ml.ts` holds the methods on plain arrays (rows are examples,
+classes 0-based), with no language imports so the learner window (next) can use them: `knn`, `growTree` (CART grown
+level by level: Gini for classes, squared error for numbers; `maxSplits`, `minLeaf`, `minParent`; splits at midpoints
+between neighbouring values) and `treeLeaf`, `fitNB` / `nbPosterior` (Gaussian; a feature constant within a class gets a
+hair of spread), `fitLDA` / `ldaPosterior` (pooled covariance; a tiny ridge if singular), `fitSVM` / `svmScore` (SMO with
+the maximal violating pair and the analytic pair update; the offset from the free support vectors; at most 2,500 rows,
+50,000 steps, `converged` says if it settled), `autoScale`, `linearFit` (normal equations through `inverse`; standard
+errors, t and two-sided p from `betainc` / `tPValue`, R², adjusted R²), `logisticFit` (IRLS; z and p), `kmeans`
+(k-means++ then Lloyd, best of `replicates`, an emptied cluster takes the farthest row), `dbscan`, `symEigen` (cyclic
+Jacobi) and `pca` (each component's largest coefficient made positive), `folds` (stratified, shuffled), `confusion`,
+`roc`. `ml-lab.ts` puts them in the language (imported by `lab.worker.ts`, the help test and `ml.test.ts`; it imports
+`./files` first so it can wrap `load`): fitcknn, fitctree, fitcnb, fitcdiscr, fitcsvm (two classes; the second class
+is the positive one), fitcecoc (one SVM per pair, hinge-loss decoding; `templateSVM` for their settings), fitrtree,
+fitlm, fitglm ('normal' or 'binomial'); predict ([label, score]), loss, resubLoss, resubPredict; crossval ('KFold',
+'Holdout', 'Leaveout', 'CVPartition'; also as an option of every fit), kfoldLoss, kfoldPredict, cvpartition, training,
+test; confusionmat, confusionchart (imagesc with counts, class names as ticks, "n% right"), gscatter, kmeans, dbscan,
+pca, perfcurve. A model is a plain struct: `Type` (ClassificationKNN, ClassificationTree…), PredictorNames,
+ResponseName, ClassNames, NumObservations, what it learnt (CutPredictor/CutPoint/Children/ClassProbability, Mu/Sigma/
+Prior, Alpha/SupportVectors/Bias/Beta, Coefficients as a table, Rsquared…) and its data `X`, `Y`, so predict and
+crossval need nothing hidden; `SETTINGS` lists the fields crossval reads back to learn the same way again. Data come
+as (X, Y) or (table, 'Response' or 'y ~ a + b'); labels are numbers, true/false or a cell of text (classes sorted as
+unique sorts them, answers given back in the labels' own kind); rows with a gap are left out. `load fisheriris` gives
+Fisher's iris flowers (`iris.ts`, public domain, stored as tenths; a file of that name wins). `rng(seed)` now seeds a
+mulberry32 generator used by rand, randn, randi and the new randperm (`random` in builtins.ts; `rng('shuffle')` goes
+back to the browser's own); before it did nothing. Plots: `namePad` in plot.ts makes room for long y tick names and
+moves the y label out with them. Example `learn.m`. Tests (`ml.test.ts`): iris's column means, 1-NN with no mistakes,
+the tree's 2.45 / 1.75 splits and a 2-split tree's 6 errors, LDA's 3 errors and naive Bayes' 6, an SVM's widest gap
+(w = (1, 0), b = −1) and a radial one around a circle, exact least squares and t p-values, logistic regression against
+a 2 × 2 table's log odds and standard error, k-means' 78.851, PCA's 92.46 / 5.31 / 1.71 / 0.52 %, DBSCAN, stratified
+folds, ROC areas, and in the language: tree predictions, 5-fold kNN, the confusion matrix and chart, fitcsvm and
+fitcecoc, fitlm from a table, fitglm's probabilities, kmeans, pca, cvpartition, repeatable rng, plain-word errors. Not
+built: the learner window (M417, next), neural networks, ensembles (bagged trees, boosting), hyperparameter search,
+feature selection, hierarchical clustering, Gaussian mixtures, other distances for kNN, multinomial logistic
+regression, model display as MATLAB's summary text.
+
+## M417 (22 Nov): Hyperion toolbox, neural networks
+
+The owner, 22 Nov, of M416's left-outs: "please do this and continue your work and also make everything ultra smooth"
+(neural networks, ensembles, automatic tuning, tree-style clustering: M417–M420, then the Learner window). `ml-net.ts`
+(pure): `trainNet(X, y, rand, { layers, act, lambda, iterLimit, K })` (K classes with a softmax and mean cross-entropy, or
+K = 0 for numbers with half the mean squared error; Lambda/2·Σw² on weights only), parameters in one Float64Array
+(`layout`: each layer's out × in weights row by row, then its biases), Glorot-uniform starts from the seeded random
+numbers, L-BFGS (15 steps of memory, the two-loop recursion, a steepest-descent restart when the direction isn't
+downhill, Armijo backtracking, a pair kept only when sᵀy > 1e-10), stops on gradient 1e-6, loss change 1e-6 (relative),
+step 1e-6 or the iteration limit (`reason`); `lossGrad` is exported for the gradient check; `netPredictor` packs the
+weights once and returns a row → output function (use it for many rows: decision regions). In the language
+(`ml-lab.ts`): fitcnet / fitrnet with LayerSizes (default 10), Activations ('relu'), Lambda (0), IterationLimit (1000),
+Standardize (false); the model keeps LayerWeights (cell of out × in matrices), LayerBiases, TrainingHistory (a table:
+Iteration, TrainingLoss), ConvergenceInfo; `SETTINGS` lists them so crossval learns the same way. Training runs in
+Hyperion's worker like every script, so the window stays smooth. Tests (`ml-net.test.ts`): analytic against numeric
+gradients for four activations with and without Lambda, XOR, iris (≤ 2 wrong), a sine wave (RMSE < 0.02), fitcnet with
+two layers and its history, 5-fold cross-validation, fitrnet, a wrong activation explained.
+
+## M418 (22 Nov): Hyperion toolbox, ensembles
+
+`growTree` (ml.ts) now takes row weights `w` (weighted Gini / squared error: boosting), `vars` predictors picked at random
+per split with `rand` (random forests) and `rows` (a bootstrap sample, repeats allowed), and records each split's
+impurity drop in `gain` (`importance(t, p)`). `fitEnsemble(X, y, rand, { method, cycles, K, maxSplits, minLeaf, vars,
+learnRate })`: 'bag' (bootstrap trees, full depth by default, minLeaf 1 for classes and 5 for numbers; out-of-bag scores
+and `oobCurve`, the OOB error after each tree), 'adaboostm1' (two classes), 'adaboostm2' (any number; the SAMME rule,
+log((1 − err)/err) + log(K − 1): named after MATLAB's method so scripts carry over, but it is SAMME, said in help),
+'lsboost' (numbers: each tree, 10 splits by default, fits the residual, scaled by LearnRate); `ensembleOut` gives class
+shares (bag: averaged probabilities; boosting: weighted votes) or the number. Language: fitcensemble (default
+AdaBoostM1 for two classes, AdaBoostM2 for more, 100 cycles, LearnRate 1), fitrensemble (LSBoost), TreeBagger(n, X, Y,
+'Method', …) (sqrt(p) predictors per split for classes, p/3 for numbers), templateTree, oobError, oobLoss,
+predictorImportance (also on fitctree / fitrtree models: `PredictorImportance` is now a tree field, the drops per
+predictor over the rows, divided by the number of splits). An ensemble keeps `Trained` (a cell of plain tree structs:
+CutPredictorIndex, CutPoint, Children, ClassProbability or NodeMean), LearnerWeights, Init, its settings (`SETTINGS`
+lists them for crossval). `treeOf` now gives only the shape (pred, cut, left, right). Tests (in `ml-net.test.ts`): bagged
+iris OOB < 8%, TreeBagger's 80-point OOB curve and petal importance, prediction, 5-fold CV; AdaBoostM1 on two noisy
+rings beating two stumps, AdaBoostM2 on iris, LSBoost on a sine, AdaBoostM1 refusing three classes.
+
+## M419 (22 Nov): Hyperion toolbox, automatic tuning
+
+`ml-tune.ts` (pure): `tune(vars, objective, rand, { evals, method, divisions, seeds, onEval })`. A `TuneVar` is real,
+integer or categorical, on a straight or log scale; `encode` / `decode` map settings to the unit box (a category is a
+slice of [0, 1]). 'bayesopt' (default): 4 random seed points, then a Gaussian process (`gp`: squared-exponential, its
+length from {0.05 … 1} by the marginal likelihood, the objective standardised, 1e-4 noise) and the next point where
+`expectedImprovement` is largest among 1,000 random points and 500 small steps around the best; 'gridsearch'
+(`divisions` per real axis, every category, shuffled, at most `evals`); 'randomsearch'. A point already tried isn't
+tried again; a failed or non-finite objective counts as the worst seen + 1. In the language (`ml-lab.ts`): every
+fitc…/fitr… takes 'OptimizeHyperparameters' ('auto', 'all', 'none' or a cell of names; `TUNABLE` holds each kind's
+settings and ranges, `auto` marking MATLAB's default set) and 'HyperparameterOptimizationOptions' (a struct:
+MaxObjectiveEvaluations 30, Optimizer, KFold 5 or Holdout, NumGridDivisions 10, ShowPlots, Verbose). Each try is the
+out-of-fold error on one partition made once (`outOfFold`, now shared with crossval, and `partitionFor`), log(1 + MSE)
+for numbers; the model is learnt on all rows with the best settings and keeps `HyperparameterOptimizationResults` (a
+table: the settings tried and their Objective). `search` prints a table of tries and the best, and draws "Min objective
+vs. number of tries". `optimizableVariable` and `bayesopt(fun, vars or {vars}, 'MaxObjectiveEvaluations', n,
+'Verbose', 0, 'PlotFcn', [])`: fun gets a one-row table; the result has XAtMinObjective, MinObjective, XTrace,
+ObjectiveTrace. Naive Bayes, discriminant and linear models have nothing to tune (said in words). Tests (in
+`ml-net.test.ts`).
+
+## M420 (22 Nov): Hyperion toolbox, tree-style (hierarchical) clustering
+
+`ml-cluster.ts` (pure): `pdist(X, metric, p)` (MATLAB's pair order (1,2), (1,3)…; seuclidean divides by each column's
+variance; correlation centres each row), `rowsFor(len)`, `linkage(D, method)` (a full n × n matrix, each row's nearest
+live neighbour kept and refreshed only when its neighbour was joined or the new group comes nearer; Lance–Williams
+updates; centroid, median and Ward on squared distances, heights reported plain; rows of Z: the smaller group number
+first; at most `MAX_ROWS` = 2,000 rows), `clusterMax`, `clusterCutoff(Z, c, by)` (a join counts when it and every join
+under it are at most c; `by` swaps the heights for inconsistency coefficients), `inconsistent(Z, depth)`, `cophenet`,
+`dendrogramLayout(Z, p, threshold)` (leaves in the tree's order, at most p of them, each join a ∏, joins inside a group
+of the cut at the threshold coloured by that group, the rest grey; `leafOf` gives each row's shown leaf). Groups are
+numbered by their first row (MATLAB's numbering differs: compare groupings, not numbers). In the language: pdist,
+squareform, linkage (rows or pdist's list), cluster ('MaxClust', or 'Cutoff' with 'Criterion' 'inconsistent' (default)
+or 'distance', 'Depth'), clusterdata, inconsistent, cophenet, dendrogram (P = 30, 'ColorThreshold' (default 70% of the
+top; 'off'), 'Labels'; one plot series per colour with NaN gaps; x ticks the rows or "(k)" for a group; outputs
+[H (empty), T, perm]). Tests (in `ml-net.test.ts`): hand-worked heights for single, complete, average, centroid and Ward,
+cutting both ways, cophenetic distances, the layout's colours and collapsing, iris by Ward in the language.
+
+## M421 (22 Nov): Hyperion Learn, the learner window
+
+`/hyperion/learn` (`src/app/(dashboard)/hyperion/learn/page.tsx`, ComputerOnly like the rest of Hyperion; "Learn" in
+Sidebar's lab menu and app-tabs, `BrainCircuit`). Engine `src/lib/lab/learn.ts` (pure, tested in `learn.test.ts`):
+`irisData`, `madeData(kind, n, noise, seed)` (moons, circles, blobs, spirals, xor; `seeded` LCG), `csvColumns` / `csvData`
+(header row; ',' ';' or tab; numeric columns can be predictors; at most 5,000 rows and 20 classes), `LEARNERS` (each:
+name, detail, `fit(X, y, K, rand)` → a scorer giving one score per class, the matching Hyperion call `code(K)`,
+`twoOnly` for logistic regression; kNN, SVM and the net standardise; the SVM is one-vs-one radial with the kernel scale
+from `autoScale`; the net is 10 relu units, 300 L-BFGS steps; the forest 60 bagged trees with √p predictors per split;
+boosting 50 AdaBoost rounds), `crossValidate(id, data, k)` (stratified folds, out-of-fold classes, accuracy, confusion),
+`regionGrid(id, data, xi, yi, 200, 150)` (the model learnt on those two predictors, each cell's class and certainty),
+`scriptFor(id, data, k)` (the data as Hyperion code: `load fisheriris`, the made-up shape's formula with rng(1), or
+readtable for a CSV; then the fit, crossval and confusionchart; tested by running each). `learn.worker.ts` runs jobs;
+the page (`LearnApp.tsx`) keeps two workers (cross-validation, regions) through `useLatestWorker`: a new job while one
+runs terminates and replaces the worker, so changes never queue; results stream per model (`results.job` guards stale
+ones). The picture is one canvas (DPR up to 2, ResizeObserver): the region grid put into an OffscreenCanvas and
+scaled up smoothly (each class's colour, fainter where unsure), the points, the chosen model's out-of-fold mistakes
+ringed. Model rows are radio buttons with a `<Fill>` bar and the time; the confusion matrix is a table (blue diagonal,
+red mistakes, ink text: no white text on light fills, axe). Settings kept in localStorage `uv-learn` (a CSV isn't
+kept). "Open in Code" goes to `/hyperion#` + `shareFragment(...)` (the Code window's shared-script prompt). Measured
+in the browser: worst frame 17 ms (an odd 33 ms in development) while all nine models trained.
+
+## M422 (22 Nov): Hyperion toolbox, optimisation
+
+`optim.ts` (pure, every solver returns { x, f, iterations, evals, path, flag, message }): `nelderMead` (MATLAB's start:
+5% along each axis, 0.00025 for a zero; reflection 1, expansion 2, contraction ½, shrink ½; TolX and TolFun 1e-4,
+200n steps), `numGrad` (central differences), `bfgs` (inverse-Hessian BFGS, the first step scaled to length ≤ 1,
+Armijo backtracking, updates only when sᵀy > 0; with lb/ub a variable held at a bound that the gradient pushes out
+is frozen and steps are projected into the box), `augLag` (fmincon/quadprog: A x ≤ b, Aeq x = beq, bounds and
+nonlcon's [c, ceq] as an augmented Lagrangian, ρ from 10 ×10 when the violation doesn't fall by 4, each round by the
+bound-projected BFGS; every inner step goes in `path`; `violation`), `linprog` (two-phase simplex in a dense tableau
+with Bland's rule; free variables split, a finite upper bound becomes a row; MATLAB's default bounds: none; flags 1,
+−2 infeasible, −3 unbounded), `intlinprog` (depth-first branch and bound, 20,000 nodes), `levenbergMarquardt`
+(lsqnonlin, lsqcurvefit, fsolve; forward-difference Jacobian; damping ×10 / ÷10), `solve`, `ga` (tournaments, blend
+crossover, shrinking mutation, 5% elite, stop after 50 generations without improvement; constraints as a 1e6
+penalty), `particleswarm` (Clerc's constriction 0.7298 / 1.49445, stop when the best moves < 1e-6 over 20
+iterations). Language (`optim-lab.ts`, loaded by the worker and the help test): the solvers with MATLAB's argument
+order and outputs ([x, fval, exitflag, output]; lsq*: [x, resnorm, residual, exitflag, output]); `optimset` /
+`optimoptions` (aliases TolX → StepTolerance and so on, an unknown name explained); Display ('notify' for fminsearch,
+'final' for the rest: one line; 'iter' a table); PlotFcns @optimplotfval / @optimplotx draw after the run;
+SpecifyObjectiveGradient takes [f, g] from the function. `output.path` (a row per iterate) is ours, for drawing.
+plot.ts: `legendSeries` (a contour's level lines count once in a legend, SVG and LaTeX via `forget plot`). Example
+`optim.m`. Tests (`optim.test.ts`): Rosenbrock by both, fmincon's disc example, linear, bound and equality limits,
+linprog's example, infeasible and unbounded, intlinprog's example and a knapsack, curve fitting, a system, Rastrigin by
+ga, a sphere by the swarm, the same in the language with MATLAB's examples, Display 'iter' and the plot, plain-word
+errors, the legend. Not built: interior-point and SQP choices, Hessians, multi-objective (gamultiobj, Pareto fronts),
+surrogate optimisation, simulated annealing, problem-based optimisation (optimproblem).
+
+## M423 (22 Nov): Hyperion toolbox, predictive maintenance
+
+`maint.ts` (pure; imports `dft` from signal.ts): `analytic` (FFT, negative frequencies zeroed, positive doubled, the
+Nyquist bin kept), `envelope` (the analytic signal's size around the mean), `envspectrum(x, fs)` (the envelope's
+one-sided amplitude spectrum: { f, p }), `bearingFrequencies(fr, nb, db, dp, β)` (BPFO, BPFI, FTF, BSF), `changePoints(x,
+{ stat, max, penalty, minDistance })` (costs from running sums in constant time: 'mean' squared error, 'rms' and 'std'
+Gaussian log-likelihood, 'linear' a fitted line's squared error; `max` changes exactly by dynamic programming,
+O(k·n²); `penalty` by optimal partitioning; indices 0-based where each new segment starts), `cusum` (sums of the drift
+past ±mshift·σ/2, an alarm at climit·σ), `monotonicity`, `trendability` (the weakest |correlation| between members cut
+to the shortest), `prognosability`, and degradation models: `fitDegradation('exponential' | 'linear', members, phi)`
+(each member's line through log(y − φ) or y against t; the prior is their mean and covariance, the noise their mean
+residual variance), `updateDegradation` (conjugate Bayesian linear regression of intercept and slope), `remainingLife`
+(the crossing of the threshold from the mean, and 4,000 draws through the Cholesky factor for a 90% range; Infinity
+when the slope isn't rising). Language (`maint-lab.ts`, loaded by the worker and the help test): rms, peak2peak,
+peak2rms (per column for a matrix), hilbert (complex), envelope ([up, lo]), envspectrum, bearingFaultBands ([FB ±5%,
+info]), findchangepts ('Statistic', 'MaxNumChanges', 'MinThreshold', 'MinDistance'; 1-based; drawn without outputs, an
+exact search refused past n²·k = 2e8), cusum (drawn without outputs), monotonicity / trendability / prognosability (a
+cell of vectors or a column each), exponentialDegradationModel / linearDegradationModel ('Phi', 'LifeTimeVariable',
+'DataVariables'), fit (a cell of [t y] matrices or tables; `fit` is only this here: other uses are told to use polyfit
+or lsqcurvefit), update, predictRUL(mdl, [readings,] threshold) → [rul, ci, pdf table] (prints a line without
+outputs). The model struct keeps Mean, Covariance, NoiseVariance, CurrentTime, Theta, Beta. Example `maintenance.m`.
+Tests (`maint.test.ts`). Not built: spectral kurtosis and the kurtogram, time-synchronous averaging, order analysis,
+similarity and survival models, a Diagnostic Feature Designer window.
+
+## M424 (23 Nov): Hyperion Simulate, power electronics in Circuits
+
+`circuit.ts`: part kind 'S' (`duty`, `freq`): a PWM-driven switch, `RON` 10 mΩ on / `ROFF` 10 MΩ off, stamped as a
+conductance at the step's end time (`switchOn(p, t)`); `current` uses the same. `schematic.ts`: item kind 'S' (its
+`value` is the duty 0–1, `freq` defaults to 50 kHz), NAMES/UNITS/DEFAULTS, `readBoard` keeps it (freq ≤ 10 MHz),
+examples 'buck' (12 V, 50 kHz, 50%, 100 µH, 100 µF, 10 Ω) and 'boost' (5 V, same switch, 20 Ω). Trap: a wire joins
+only its two ends, so a ground line under several parts must be split at each part (the first layout left the diode
+and capacitor floating). `CircuitBench.tsx`: the S tool and symbol, Frequency and "On for (%)" fields, the 200 µs and
+500 µs screen widths; smoothness: stepping limited to ~6 ms a frame (checked every 8 steps), the picture redrawn about
+30 times a second (`drawn`), and the dot grid one memoised path (`DOTS`) instead of 560 circles. Measured: worst frame
+17 ms (was 50–83 ms) while the buck and boost ran. Tests (`circuit.test.ts`): buck 5.4–5.8 V and ripple within 10% of
+(Vin − Vout)·D/(L·f); boost 8.9–9.6 V. Not built: a three-terminal MOSFET with a gate node, gate drivers, losses and
+efficiency readouts, closed-loop (feedback-controlled) converters, inverters and motor drives. Trapezoidal ringing is
+visible at the switch node right after each edge (cosmetic).
+
+## M425 (23 Nov): Hyperion toolbox, batteries, solar and wind
+
+`energy.ts` (pure): `ocv` (an NMC cell's open-circuit voltage from a table at state of charge 0, 0.1 … 1, linear
+between), `dOcv`, `simulateCell(cell, I, dt, soc0)` (one RC pair stepped exactly: a = e^(−dt/R1C1); charge by Coulomb
+counting; + current discharges), `socEkf` (an extended Kalman filter on [soc, v1]: correct with the voltage, then
+predict; Q 1e-7, R 1e-4, P₀ 0.1), `pack` (as one big cell), `pvCurrent` (single-diode model by Newton; Iph and Voc
+scaled by irradiance and temperature, I0 from Voc), `pvCurve` (open circuit by bisection, the maximum power point by a
+golden-section search), `windPower` (½ρAC_p v³, cut-in, rated, cut-out), `windYear` (energy over a Weibull pdf in
+0.01 m/s steps; the mean wind c·Γ(1 + 1/k)). Language (`energy-lab.ts`, loaded by the worker and the help test):
+batteryCell, batteryPack (keeps its `Cell`; simulated as one cell carrying I/p, voltage × s), batteryOCV,
+batterySimulate (drawn without outputs), socEstimate, pvModule, pvCurve (drawn with two y axes), windTurbine (Cp above
+Betz's 16/27 refused), windPower, windAEP. Example `energy.m`. Tests (`energy.test.ts`). Not built: temperature and
+ageing in the cell, two RC pairs and fitting cell parameters from test data, cell balancing in packs, solar position
+and a day's yield, wake losses in wind farms, power systems (load flow, faults) and mixed-signal (ADC, DAC, PLL).
+
+## M426 (23 Nov): Hyperion toolbox, power systems and mixed-signal
+
+`grid.ts` (pure; complex numbers as [re, im] pairs): `ybus` (π lines, half the charging at each end), `loadFlow` (polar
+Newton–Raphson with the analytic Jacobian; one slack; PV buses hold V; P, Q injections; line flows from both ends,
+losses their sum; `converged`), `threePhaseFault` (source reactances to ground in Ybus, Zbus by complex Gauss–Jordan,
+I = V/Z_kk, bus voltages V − Z_ik·I), `adc` (mid-tread codes 0…2ᴺ−1 over [lo, hi], each code's centre), `dac`, `snrOf`,
+`pll` (type II: an ideal sin(Δφ) detector, PI filter Kp = 2ζωn, Ki = ωn², an oscillator; bandwidth in Hz is ωn/2π).
+Language (`grid-lab.ts`, loaded by the worker and the help test): powerflow(buses [type P Q V angle°], lines [from to r
+x b]; MATPOWER's type numbers 3/2/1; buses from 1), shortcircuit(n, lines, sources [bus x], k), adc, dac, snr(signal,
+noise), pll(fin, fs, n, 'Bandwidth', 'Damping', 'FreeRun') (drawn without outputs). Example `grid.m` (uses `table`, so
+it runs in the worker where files.ts is loaded). Tests (`grid.test.ts`). Not built: unbalanced faults (symmetrical
+components), transformers with taps, generator limits, dynamics and stability, INL/DNL and sigma-delta converters,
+charge-pump PLL models; item 5 next (signals, comms and sensing).
+
+## M427 (23 Nov): Hyperion toolbox, wireless communications
+
+The owner's list, item 5 (signals, comms and sensing), first part. `src/lib/lab/comms.ts` (pure): M-PSK with Gray labels
+(`pskmod` puts symbol s at the point whose Gray code is s, so neighbours differ by one bit), square M-QAM (the symbol's
+high bits pick the in-phase level, the low bits the quadrature, each axis Gray coded; `unit` scales to average power 1),
+`awgn` (noise power from the measured signal power, or 1), `biterr`, `qfunc`/`erfc`, `berTheory` (BPSK/QPSK exact, M-PSK
+and M-QAM the nearest-neighbour approximations). `comms-lab.ts`: pskmod, pskdemod, qammod, qamdemod ('UnitAveragePower'),
+awgn (x, snr, 'measured'; complex values through `cmat`), biterr (bits per symbol from the largest value unless given),
+symerr, berawgn (EbN0, 'psk'|'qam', M), qfunc, int2bit, bit2int (columns, most significant bit first), scatterplot.
+Loaded in `lab.worker.ts` after grid-lab, help under "# Wireless communications", example comms.m (a slider for the SNR,
+the BER curve against theory on `semilogy`). Tests (`comms.test.ts`): round trips, Gray neighbours, unit power,
+Monte Carlo BER within 15% of theory for BPSK, QPSK and 16-QAM. Rule: awgn uses the seeded `random` from builtins, so
+`rng(seed)` repeats a run. Not built: OFDM, channel coding (convolutional, Viterbi, LDPC), fading channels, filters
+for pulse shaping (raised cosine), FSK; radar and image processing come next (M428).
+
+## M428 (23 Nov): Hyperion toolbox, image processing
+
+The owner's list, item 5, second part. `src/lib/lab/image.ts` (pure, one grey `Plane` {r, c, d} column-major at a
+time): `filter` (correlation, its centre at floor((size − 1)/2) like MATLAB's; `conv` turns the kernel half a circle;
+borders zero / a number / replicate / symmetric / circular through `wrap`), and a kernel that is a column times a row
+(Gaussian, box) runs as two 1-D passes (`factor`, `pass`): same answers, 10× faster; the kernels (average, gaussian,
+disk by area inside the circle, sobel, prewitt, laplacian, log, unsharp), `median`, `gradientEdges` (MATLAB's rule: cut
+at 4 × the mean squared gradient, thinned along the stronger direction), `canny` (high cut leaves 70% of pixels below,
+low = 0.4 × high; ties in thinning go one way so a step gives one line), `otsu`, `adaptive` (Bradley's local mean, our own
+mapping of Sensitivity: × (1 + 0.3 (0.5 − s))), `strel` shapes (an exact disk, not MATLAB's approximated one), `erode`
+/ `dilate` (outside the picture ignored), `label` (numbered in column order, as MATLAB does), `regions` (MATLAB's
+second-moment ellipse with the 1/12 term), `fillHoles` (4-connected background), `areaOpen`, `equalise` (the classic CDF
+over 256 levels, not MATLAB's 64-bin target), `stretchLimits`, `psnr`, `ssim` (11 × 11, σ 1.5), `phantom` (modified
+Shepp–Logan), `checkerboard`. `image-lab.ts`: the 36 language functions; uint8/uint16 pictures keep their type (`back`),
+logical in gives logical out for the shape operations; `regionprops` returns a table (no struct arrays in the engine).
+Fix on the way: `unitValues` (types.ts) and a few new spots used `Math.max(...big array)`, which overflows the stack
+on a big picture; never spread a picture's values into a call. Tests (`image.test.ts`). Not built: geometric transforms
+beyond imresize (imrotate, imwarp), Hough lines, watershed, colour spaces (rgb2hsv, rgb2lab), image registration,
+deep-learning segmentation; radar (range and Doppler, pulse compression) is next (M429).
+
+## M429 (23 Nov): Hyperion toolbox, radar
+
+The owner's list, item 5, third part. `src/lib/lab/radar.ts` (pure): `radarSnr` (Pt τ Gt Gr λ² σ / ((4π)³ R⁴ k Ts L),
+gains and loss in dB; defaults 20 dB, 1 m², 290 K, 0 dB like MATLAB's), its inverses `radarRange` and `radarPower`, `lfm`
+(a baseband chirp −B/2…B/2 centred on the pulse), `echoes` (stop-and-hop: each pulse sees the target at R + v·t, delay
+rounded to a sample, phase −4πR/λ; speed + going away, so Doppler = −2v/λ; complex noise against a unit echo), `compress`
+(the matched filter by FFT correlation, the peak at the delay's sample), `rangeDoppler` (compress each pulse, Hamming
+across the pulses, FFT, zero Doppler in the middle, dB), `cfar` (cell-averaging, α = N(pfa^(−1/N) − 1)), `ambiguity`
+(|χ| normalised to 1 at the origin, Doppler on an FFT grid over ±fs/2), `chirp` (linear, quadratic, logarithmic).
+`radar-lab.ts`: the language functions; `lfmpulse`, `radarecho`, `pulsecompress`, `rangedoppler`, `cfar` are our own
+names (MATLAB does these with System objects, which the engine doesn't have). `ambgfun` ignores a PRF (the Doppler grid
+is ±fs/2). Also `ind2sub` and `sub2ind` in builtins.ts (they were missing). Tests (`radar.test.ts`). Not built: antenna
+arrays and beamforming, angle of arrival (MUSIC), clutter, tracking (Kalman, data association), FMCW radar, SAR, peak
+grouping after CFAR (a target can light 2–3 cells). Next: item 6 of the owner's list, machines and vehicles (M430).
+
+## M430 (23 Nov): Hyperion Circuits, a real transistor and power readouts
+
+The owner, 23 Nov, after M429's report: "please build all of these" (every item left out of M424–M429: a three-legged
+transistor, efficiency and losses, regulated converters, inverters and motor drives, battery ageing and temperature, the
+sun's path, wind-farm wakes, lopsided faults, transformer taps, grid stability, converter imperfections, radar arrays,
+direction finding, tracking, clutter, FMCW, grouping detections). Queue: M430–M439, one item each.
+`circuit.ts`: Part `M` (drain a, source b, gate g; `vth`, `k`, `lambda`), `mosfet()` (square law, triode and saturation,
+swapped ends when Vds < 0, with gm and gds for Newton), stamped as gds plus a gm controlled source, the body diode from
+source to drain through the shared `diode()` and `junctions()`, gate steps limited to 2 V per Newton step; `power(p)` is
+Vab × I(a→b) for every part (sources negative when giving). `schematic.ts`: item `M` (its value is the threshold), its
+gate dot by `gatePoint` (two grid steps left of the middle, going drain → source), `MOS_K` 20 A/V² (≈ 6 mΩ on at 10 V);
+examples `mosfet-boost`, `mosfet-switch`. `CircuitBench.tsx`: the symbol with its gate lead (`local()` puts the gate dot
+in the symbol's frame), energy summed every step and averaged over each screen's time (`energy` ref) into
+`PowerReadout`. Trap: changing the screen's time rebuilds the circuit (the board changes), so the readout first shows the
+start-up; that's why charging coils and capacitors get their own line and the efficiency leaves them out. Not built:
+p-channel and bipolar transistors, gate charge and switching losses (the switch is instant), thermal limits.
+
+## M431 (23 Nov): Hyperion Circuits, converters that hold their own voltage
+
+`circuit.ts`: a PWM switch Part may carry `hold` ({ node, target, gain, soft, max }; defaults `HOLD`: gain 150 a second,
+2 ms soft start, duty ≤ 0.9); `regulate()` runs at the start of every step piece and, once per period, moves the duty
+by gain × (error ÷ target) ÷ freq (the target's sign decides which way); `dutyOf(p)` is the duty now. Exact switching,
+which the regulation needed: `step(h)` splits the step at every switch edge (`nextEdge`, looked for from just after
+now), ignores edges within a millionth of the step of either end, sets the clock to each piece's end exactly, and makes
+the piece after any switch flips backward Euler (`swState`, `first`). Traps found on the way, keep them fixed: (1) a
+switch tested only at step ends rounds its duty to whole steps (5% jumps at 20 steps a period); (2) averaging a
+switch's conductance over a step is wrong (a partly-on step acts fully on); (3) rounding left the time grid 0.1 ps off,
+so each period got a ~1e-13 s step: the trapezoidal rule's companion values blow up there and a steady output broke
+into a ±0.4 V oscillation after ~120 ms (`circuit.test.ts` "stays steady for a long run" guards it). `schematic.ts`:
+items carry `hold` and `sense` (a probe's id), kept by `readBoard`; examples `reg-buck`, `reg-boost`. `CircuitBench`:
+"Hold a voltage", Volts, At (a probe), the duty it has set. Not built: current-mode control, a load you can switch while
+it runs (changing a part rebuilds the circuit), compensator design (the gain is fixed).
+
+## M432 (23 Nov): Hyperion Circuits, inverters and motor drives
+
+`circuit.ts`: a switch Part may carry `sine` ({ m, f, phase }: each period's duty is ½(1 + m·sin(2πf·t₀ + phase)) at the
+period's start, regular-sampled PWM, set in `regulate()` like a hold) and `invert` (on whenever the plain switch would be
+off; `isOn(p, t)` is the one place that answers "on?"). Part `Mo` (a DC motor): a branch like a coil, v = r·i + l·di/dt
++ k·ω (the coil by backward Euler, ω from the last step), and after each step the shaft J dω/dt = k·i − fric·ω − load
+(the load acts like friction: only against turning, so a stalled motor doesn't spin backwards); `speedOf(p)`.
+`schematic.ts`: items carry `ac` (the sine's Hz), `depth`, `invert` (kept by `readBoard`); kind `Mo` (value = load
+torque) with `MOTOR` (1 Ω, 5 mH, 0.1 V·s/rad, 1e-4 kg·m²); examples `inverter` (a half bridge on ±24 V into 2 mH, 10 µF,
+10 Ω) and `motor` (a buck into the motor with a freewheel diode). `CircuitBench`: "It switches" (a set share, to hold a
+voltage, following a sine), AC frequency and depth, Opposite; the motor's symbol (its M drawn as lines, counter-turned:
+an SVG <text> in a role=button broke axe's label-content-name-mismatch even with aria-hidden), rpm in "Now". Not built:
+three-phase inverters, AC (induction and synchronous) motors, dead time between a pair, field-oriented control.
+
+## M433 (23 Nov): Hyperion toolbox, battery ageing and temperature
+
+`src/lib/lab/battery.ts` (pure, on top of energy.ts's `Cell`): `cellAt` (R0 and R1 by Arrhenius at 19 kJ/mol, about ×2
+at 0 °C; C1 the other way so the RC time stays; capacity −0.4% a degree below 25 °C, at most half), `simulateThermal`
+(the same equivalent circuit as `simulateCell`, re-evaluated at the cell's temperature every step; heat I²R0 + v1²/R1;
+one lumped mass, 70 g × 1000 J/kg·K, cooled at 0.05 W/K), `cycleLoss` (Wang et al. 2011, LiFePO4: B(C)·exp(−(31700 −
+370.3C)/RT)·Ah^0.55 with Ah = cycles × depth × 2.2, B between their four fits), `calendarLoss` (0.15%·√days at 25 °C
+and half charge, Arrhenius 50 kJ/mol, × (0.6 + 0.8·SOC): our own simple model, say so if asked), `ageCell` (losses
+add; resistance grows by 1 + 2 × loss), `cycleLife` (bisection to the end of life, shelf time from cycles a day).
+`energy-lab.ts`: `batterySimulate` takes 'Ambient' / 'Temperature' / 'Cooling' and then returns T as a third output and
+draws a third panel; `batteryAge` returns a struct with the aged cell in `Cell`; `batteryLife`. Example battery.m.
+Tests in `energy.test.ts`. Not built: lithium plating when charging cold, thermal runaway, cell-to-cell spread in a pack,
+a thermal model with a core and a surface.
+
+## M434 (23 Nov): Hyperion toolbox, the sun through the day and wind-farm wakes
+
+`src/lib/lab/renew.ts` (pure): `julianDay`, `sunPosition` (NOAA's spreadsheet equations: elevation, azimuth clockwise
+from north, declination, equation of time; local clock hour and a time zone in hours), `clearSky` (Meinel's
+1353 × 0.7^(AM^0.678) with Kasten–Young's air mass, diffuse a tenth), `onPanel` (direct on the face + isotropic sky +
+ground at albedo 0.2), `pvDay` (energy.ts's `pvCurve` at each 15 minutes' sunshine and NOCT-45 cell temperature; the
+panel tilts by the latitude and faces the equator unless told), `overlap` (two circles' shared area), `thrust` (Ct from
+the turbine's own Cp at that wind: Cp = 4a(1 − a)², Ct = 4a(1 − a)), `windFarm` (Jensen: turbines taken upwind first,
+each wake (1 − √(1 − Ct))(R/(R + kx))² × the rotor's overlap × its own wind's share of the free wind, wakes combined
+as the root of the sum of squares; wind direction is where it comes FROM), `windFarmYear`. Language in energy-lab.ts
+(`sunPosition`, `pvDay`, `windFarm`, `windFarmAEP`; dates are [y m d] or a datenum). Example sunwind.m. Tests in
+`energy.test.ts`. Not built: clouds and real weather years, shading between rows of panels, wake meandering and
+turbulence, yaw steering, terrain.
+
+## M435 (23 Nov): Hyperion toolbox, unbalanced faults and transformer taps
+
+`grid.ts`: `Line` gains `tap` (off-nominal ratio on the from side: Y_ff = y/t², Y_ft = Y_tf = −y/t, Y_tt = y; the line
+flows use the same tapped π model, so losses still equal the sum of injections) and `x0`/`r0` (zero sequence, 3 × x
+and r by default). `unbalancedFault(n, lines, sources, k, kind, zf)`: Z-bus per sequence (`zbusSeq`; taps are ignored
+there, and every transformer passes zero-sequence current: an assumption, Δ–Y blocking is not modelled), the classic
+connections (LG: I1 = I2 = I0 = 1/(Z1 + Z2 + Z0 + 3Zf); LL: I1 = −I2 = 1/(Z1 + Z2 + Zf); LLG: Z2 ‖ (Z0 + 3Zf)), phase
+quantities by the a-operator, bus voltages from each sequence's Z-bus column; no grounded source makes LG refuse in
+words. `loadFlowTaps`: tap changers in 5/8 % steps within ±10 %, the direction each tap moves its bus found by trying one
+step (a bus beyond the far side falls as the tap rises: the first version assumed only the `to` bus and went the wrong
+way). Language in `grid-lab.ts`: lines' sixth column is the tap for `powerflow`, x0 for `shortcircuit`; `shortcircuit`
+keeps its M426 answer for '3P' (BusVoltages a column) and gives n × 3 phase voltages for the others. Example faults.m.
+Not built: transformer winding connections in the zero sequence, phase-shifting transformers, protection relays.
+
+## M436 (23 Nov): Hyperion toolbox, grid stability
+
+`src/lib/lab/stability.ts` (pure, on grid.ts's `loadFlow` and `ybus`): `swing` (SMIB, (2H/ωs)δ'' = Pm − Pmax·sin δ − Dω,
+RK4 at 1 ms, the fault's network taken at each step's start; unstable once δ passes 180°), `criticalAngle` (the general
+equal-area formula with during- and after-fault Pmax), `criticalTime` (bisection on the simulation to 1 ms; there is no
+closed form unless the fault passes nothing), `transient` (the classical model: E' behind x'd from the load flow's
+currents, loads as constant admittances conj(S)/|V|², a generator bus keeps no load unless its injection is negative,
+Kron reduction to the internal nodes with a 1e7 shunt for a bolted fault and the tripped line left out after, Pm set to
+the pre-fault Pe so it starts exactly at rest, unstable when an angle leaves the centre of inertia by more than 180°).
+Language in `grid-lab.ts`: `swing`, `criticalclearing`, `transientstability` (gens [bus H xd' D]; buses and lines as for
+`powerflow`). Example stability.m. Tests in `grid.test.ts`. Not built: governors and exciters (AVR, PSS), detailed
+generator models (subtransient, saturation), frequency response after losing a generator, voltage stability (PV curves).
+
+## M437 (23 Nov): Hyperion toolbox, converter imperfections
+
+`src/lib/lab/convert.ts` (pure): `realAdc` (code edges at lo + k·LSB each moved by `inl` × N(0,1) LSB and kept in
+order, offset and noise in LSB, gain about the range's middle, jitter as v + v'·τ with the slope by central differences;
+the code by binary search over the edges), `adcMetrics` (4-term Blackman–Harris, ±4 bins for the tone and each
+harmonic, harmonics folded into the band, DC dropped; SINAD → ENOB = (SINAD − 1.76)/6.02), `inlDnl` (IEEE 1241's
+code-density test: edges T_k = −cos(π·count below k / n), then against the line through the first and last edges; the
+first version estimated the sine from the end codes and fitted p per code, which skews every code when an end edge
+moves: don't go back to it), `sigmaDelta` (1-bit, first or second order, a sinc^(order+1) decimator of length osr).
+`convert.ts` imports `dft` from signal.ts, which needs the engine loaded first: a test of it imports './interp' (or a
+*-lab file) before it. Language in `grid-lab.ts`: `adc` options, `adcmetrics`, `inldnl`, `sigmadelta`. Example
+converters.m. Tests in `grid.test.ts`. Not built: DAC glitches and settling, pipelined/SAR architectures, multi-bit or
+higher-order sigma-delta and its stability, best-fit (rather than end-point) INL.
+
+## M438 (23 Nov): Hyperion toolbox, antenna arrays and direction finding
+
+`src/lib/lab/arrays.ts` (pure): positions in wavelengths ([x, y, z]; a row in the language is a line along y; `ula`
+is centred), `steer` (exp(+j2π p·u), azimuth from x so 0° is broadside to a line along y), `pattern` (|wᴴa| in dB),
+`beamwidth` (between −3 dB points), `sensorSignals` (complex Gaussian sources and noise; the true covariance
+E[x xᴴ]), `covariance`, `spectrum` (beam scan aᴴRa/N², MVDR 1/(aᴴR⁻¹a), MUSIC through the 2N × 2N real form of R with
+ml.ts's `symEigen`: each complex eigenvector appears twice, so the noise subspace is its 2(N − K) smallest), `peaks`
+(parabola-refined). Convention trap: in the language `X'*X/ns` must be the covariance, so `sensorsig` hands back the
+snapshots conjugated (rows are snapshots); `musicdoa` assumes a line of equally spaced elements (a common phase per
+angle doesn't change any spectrum, so centring doesn't matter). Language in `radar-lab.ts`. Example arrays.m. Tests in
+`radar.test.ts`. Not built: adaptive beamformers over time (LMS, RLS), elevation scans, ESPRIT, coherent sources
+(spatial smoothing), mutual coupling. Next: M439 (tracking, clutter, FMCW, grouping detections).
+

@@ -1,0 +1,70 @@
+{
+  "name": "hyperion-desktop",
+  "productName": "Hyperion",
+  "version": "1.0.0",
+  "description": "Hyperion by UniVerse: maths, code and engineering simulation, as a computer app.",
+  "private": true,
+  "main": "main.js",
+  "author": "UniVerse Impact",
+  "license": "UNLICENSED",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.2.3",
+    "electron-builder": "26.18.1"
+  },
+  "build": {
+    "appId": "com.universeimpact.hyperion",
+    "productName": "Hyperion",
+    "copyright": "UniVerse Impact",
+    "directories": {
+      "output": "dist",
+      "buildResources": "assets"
+    },
+    "files": [
+      "main.js",
+      "offline.html",
+      "assets/icon.png"
+    ],
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.education",
+      "hardenedRuntime": true,
+      "artifactName": "Hyperion-mac.${ext}"
+    },
+    "win": {
+      "target": [
+        "nsis"
+      ],
+      "artifactName": "Hyperion-Setup.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Hyperion"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "Education",
+      "artifactName": "Hyperion-linux.${ext}",
+      "syncDesktopName": true
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "PerSis2863",
+        "repo": "UniVerse",
+        "releaseType": "release"
+      }
+    ]
+  },
+  "repository": "github:PerSis2863/UniVerse",
+  "desktopName": "hyperion.desktop"
+}

@@ -95,7 +95,8 @@ eye | eye(n), eye(r, c) | The identity matrix.
 rand | rand(r, c) | Random numbers between 0 and 1.
 randn | randn(r, c) | Random numbers from the normal distribution.
 randi | randi(max, r, c), randi([lo hi], r, c) | Random whole numbers.
-rng | rng(seed) | Sets where random numbers start (the same seed, the same numbers).
+rng | rng(seed), rng('default'), rng('shuffle') | Sets where random numbers start (the same seed, the same numbers); 'shuffle' makes them unrepeatable again.
+randperm | randperm(n), randperm(n, k) | The numbers 1 to n in a random order (or k of them).
 true | true(r, c) | Logical ones.
 false | false(r, c) | Logical zeros.
 linspace | linspace(a, b, n) | n evenly spaced numbers from a to b (100 by default).
@@ -220,6 +221,8 @@ intersect | intersect(a, b) | The values in both, sorted (numbers or text in cel
 union | union(a, b) | The values in either, sorted, each once.
 setdiff | setdiff(a, b) | The values of a that aren't in b, sorted.
 find | find(x), [r, c] = find(A) | Where the true (non-zero) values are.
+ind2sub | [r, c] = ind2sub(size(A), k) | Turns linear indices into row and column (and page…) numbers.
+sub2ind | k = sub2ind(size(A), r, c) | Turns row and column (and page…) numbers into linear indices.
 nnz | nnz(x) | How many non-zero values.
 any | any(x, dim) | True when any value is true.
 all | all(x, dim) | True when every value is true.
@@ -369,7 +372,7 @@ csvwrite | csvwrite(file, A) | Saves numbers as CSV.
 dlmread | dlmread(file, delim, r0, c0) | Numbers from delimited text.
 dlmwrite | dlmwrite(file, A, delim) | Saves numbers as delimited text.
 save | save file.mat, save(file, 'a', 'b'), save file.txt -ascii | Saves variables (MATLAB's .mat format).
-load | load file.mat, S = load(file) | Loads variables (.mat versions 5 to 7.3, or numbers from text).
+load | load file.mat, S = load(file), load fisheriris | Loads variables (.mat versions 5 to 7.3, or numbers from text); load fisheriris gives Fisher’s iris flowers (meas, species) to learn from.
 fileread | fileread(file) | A file's text.
 readlines | readlines(file) | A file's lines as a cell.
 writelines | writelines(lines, file) | Saves lines of text.
@@ -558,6 +561,225 @@ matlabFunction | matlabFunction(f) | A function handle that works out f (element
 assume | assume(cond) | Accepted and noted; this Lab doesn’t use assumptions yet.
 assumeAlso | assumeAlso(cond) | Accepted and noted, as assume.
 nthroot | nthroot(x, n) | The real n-th root.
+
+# Control systems
+tf | tf(num, den), tf('s') | A transfer function from its numerator and denominator (highest power first); tf('s') is s itself, so (s + 1)/(s^2 + 2*s + 1) works.
+zpk | zpk(zeros, poles, gain) | A transfer function from its zeros, poles and gain.
+ss | ss(A, B, C, D) | A system from state-space matrices (one input, one output), shown as its transfer function.
+pid | pid(Kp, Ki, Kd, Tf) | A PID controller: Kp + Ki/s + Kd·s/(Tf·s + 1).
+feedback | feedback(G, H, sign) | The closed loop G/(1 + G·H) (sign −1, the usual; +1 for positive feedback).
+series | series(G, H) | G and H one after the other (G·H).
+parallel | parallel(G, H) | G and H side by side (G + H).
+minreal | minreal(G) | Cancels poles and zeros that are the same.
+pole | pole(G) | The poles (roots of the denominator).
+zero | zero(G) | The zeros (roots of the numerator).
+tzero | tzero(G) | The zeros (as zero).
+dcgain | dcgain(G) | The steady value for a step of 1 (G at s = 0).
+isstable | isstable(G) | True when every pole is in the left half-plane.
+damp | damp(G) | Each pole's natural frequency and damping.
+stepinfo | stepinfo(G) | Rise time, settling time (2 %), overshoot (%), peak and peak time, steady state.
+step | step(G), step(G, T), [y, t] = step(G) | The response to a step of 1, drawn or returned.
+impulse | impulse(G), [y, t] = impulse(G) | The response to an impulse.
+lsim | lsim(G, u, t) | The response to any input u at times t.
+bode | bode(G), [mag, phase, w] = bode(G) | Magnitude (dB) and phase (°) against frequency.
+margin | margin(G), [Gm, Pm, Wcg, Wcp] = margin(G) | Gain and phase margins and where they are.
+nyquist | nyquist(G) | The frequency response drawn in the complex plane, with −1 marked.
+rlocus | rlocus(G), [r, K] = rlocus(G) | Where the closed loop's poles go as the gain rises.
+
+# Machine learning
+fitcknn | fitcknn(X, Y, 'NumNeighbors', k, 'Standardize', true) | A k-nearest-neighbour classifier: a row's class is the commonest among its k nearest training rows. X has a row per example; Y its labels (numbers or a cell of text). A table and its label column work too: fitcknn(T, 'Species').
+fitctree | fitctree(X, Y, 'MaxNumSplits', n, 'MinLeafSize', m) | A decision tree for classes: yes/no questions on one predictor at a time (CutPredictor, CutPoint, Children).
+fitcnb | fitcnb(X, Y) | Naive Bayes: each class's predictors as independent bell curves (Mu, Sigma, Prior).
+fitcdiscr | fitcdiscr(X, Y) | Linear discriminant analysis: classes as bell-shaped clouds sharing one spread.
+fitcsvm | fitcsvm(X, Y, 'KernelFunction', 'rbf', 'KernelScale', 'auto', 'BoxConstraint', C) | A support vector machine separating two classes by the widest gap ('linear', 'rbf' or 'polynomial').
+fitcecoc | fitcecoc(X, Y, 'Learners', templateSVM(…)) | Three or more classes from one SVM per pair of classes.
+templateSVM | templateSVM('KernelFunction', 'rbf', …) | The settings for fitcecoc's SVMs.
+fitcnet | fitcnet(X, Y, 'LayerSizes', [10 10], 'Activations', 'relu', 'Lambda', 0, 'Standardize', true) | A neural network for classes: fully connected hidden layers ('relu', 'tanh', 'sigmoid' or 'none'), trained by L-BFGS (LayerWeights, LayerBiases, TrainingHistory, ConvergenceInfo).
+fitrnet | fitrnet(X, y, 'LayerSizes', 10, …) | A neural network that predicts numbers.
+fitcensemble | fitcensemble(X, Y, 'Method', 'Bag', 'NumLearningCycles', 100) | Many decision trees voting: 'Bag' (each on a random resample; with NumVariablesToSample, a random forest), 'AdaBoostM1' (two classes) or 'AdaBoostM2' (several, by the SAMME rule), each tree on the rows the others got wrong.
+fitrensemble | fitrensemble(X, y, 'Method', 'LSBoost', 'LearnRate', 0.1) | Trees adding up to a number: 'LSBoost' (each small tree fits what is still missed) or 'Bag' (the trees' average).
+TreeBagger | TreeBagger(100, X, Y, 'Method', 'classification') | A random forest: trees on random resamples, each split looking at a few random predictors; oobError shows the error as trees are added.
+templateTree | templateTree('MaxNumSplits', 1, 'MinLeafSize', 5) | The settings of an ensemble's trees ('Learners', templateTree(…)).
+oobError | oobError(B) | A random forest's out-of-bag error after 1, 2, … trees (each row judged by the trees that didn't see it).
+oobLoss | oobLoss(ens) | A bagged ensemble's out-of-bag error: an honest estimate without cross-validation.
+predictorImportance | predictorImportance(model) | How much each predictor helped a tree or an ensemble of trees (the drop in impurity its splits gave).
+fitrtree | fitrtree(X, y) | A decision tree that predicts numbers (each leaf's mean).
+fitlm | fitlm(X, y), fitlm(T, 'y ~ x1 + x2') | A linear regression: Coefficients (estimates, standard errors, t and p values), Rsquared, RMSE.
+fitglm | fitglm(X, y, 'Distribution', 'binomial') | A generalised linear model: 'normal' (as fitlm) or 'binomial' (logistic regression; predict gives probabilities).
+predict | [label, score] = predict(model, X) | What a model says for new rows (labels and each class's score, or numbers).
+loss | loss(model, X, Y) | How wrong a model is on rows with known answers: the share misclassified, or the mean squared error.
+resubLoss | resubLoss(model) | The loss on the model's own training rows (optimistic: cross-validate for an honest one).
+resubPredict | resubPredict(model) | The model's predictions for its own training rows.
+crossval | crossval(model, 'KFold', k), crossval(model, 'Holdout', 0.2) | Learns again k times, each time predicting the part it didn't see; every fitc…/fitr… also takes 'KFold', k.
+kfoldLoss | kfoldLoss(cvmodel) | The cross-validated loss: an honest estimate of the error on new data.
+kfoldPredict | kfoldPredict(cvmodel) | Each row's prediction from the model that didn't see it.
+cvpartition | cvpartition(n or Y, 'KFold', k), cvpartition(Y, 'HoldOut', p) | A split of the rows for testing (by class when given labels).
+training | training(c, i) | The rows (true/false) a partition trains on in its i-th split.
+test | test(c, i) | The rows (true/false) a partition tests on in its i-th split.
+confusionmat | [C, order] = confusionmat(Ytrue, Ypred) | Counts of each true class (rows) against each predicted class (columns).
+confusionchart | confusionchart(Ytrue, Ypred), confusionchart(C, names) | The confusion matrix drawn, with counts and the share right.
+gscatter | gscatter(x, y, groups) | A scatter plot coloured by group, with a legend.
+kmeans | [idx, C, sumd, D] = kmeans(X, k, 'Replicates', r) | k clusters by k-means (k-means++ starts; the best of r tries).
+dbscan | [idx, core] = dbscan(X, epsilon, minpts) | Clusters of dense rows; -1 marks noise.
+pdist | D = pdist(X, 'euclidean') | The distance between every pair of rows, as one row ('euclidean', 'squaredeuclidean', 'seuclidean', 'cityblock', 'chebychev', 'minkowski', 'cosine', 'correlation', 'hamming').
+squareform | S = squareform(D) | pdist's list as a square matrix of distances, or the matrix back as the list.
+linkage | Z = linkage(X, 'ward'), linkage(D, 'average') | Tree-style clustering: joins the two nearest groups again and again ('single', 'complete', 'average', 'weighted', 'centroid', 'median', 'ward'); each row of Z: the two groups joined and their distance.
+cluster | T = cluster(Z, 'MaxClust', k), cluster(Z, 'Cutoff', c, 'Criterion', 'distance') | Cuts the tree into groups: k of them, or below a height (or below an inconsistency, the default for Cutoff).
+clusterdata | T = clusterdata(X, 'Linkage', 'ward', 'MaxClust', 3) | pdist, linkage and cluster in one step.
+cophenet | [c, d] = cophenet(Z, D) | How faithfully the tree keeps the distances: the correlation between them and the heights where pairs first join.
+inconsistent | inconsistent(Z, depth) | Each join's height against the joins just below it: mean, spread, count and the inconsistency coefficient.
+dendrogram | [H, T, perm] = dendrogram(Z, 30, 'ColorThreshold', t, 'Labels', names) | Draws the tree: at most 30 leaves (deeper groups shown as one), groups below 70% of the top height in colours.
+
+# Optimisation
+fminsearch | [x, fval, flag, output] = fminsearch(fun, x0, options) | The smallest value of a function by the Nelder–Mead simplex (no slopes needed). output.path holds every step, to draw.
+fminunc | [x, fval, flag, output] = fminunc(fun, x0, options) | The smallest value by BFGS (a quasi-Newton method using slopes, measured or given with 'SpecifyObjectiveGradient').
+fmincon | x = fmincon(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | The smallest value with limits: A·x ≤ b, Aeq·x = beq, lb ≤ x ≤ ub and nonlcon(x) giving [c, ceq] with c ≤ 0, ceq = 0 (an augmented Lagrangian).
+linprog | [x, fval, flag] = linprog(f, A, b, Aeq, beq, lb, ub) | The best of a linear cost f·x under linear limits, by the simplex method (flag −2: impossible; −3: no bottom).
+intlinprog | x = intlinprog(f, intcon, A, b, Aeq, beq, lb, ub) | As linprog, with the variables listed in intcon whole numbers (branch and bound).
+quadprog | x = quadprog(H, f, A, b, Aeq, beq, lb, ub) | The smallest ½xᵀHx + fᵀx under linear limits.
+lsqnonlin | [x, resnorm, residual] = lsqnonlin(fun, x0, lb, ub) | The x making fun(x)'s entries as small as possible (sum of squares), by Levenberg–Marquardt.
+lsqcurvefit | p = lsqcurvefit(@(p, x) model, p0, xdata, ydata, lb, ub) | Fits a model's parameters to data by least squares.
+fsolve | x = fsolve(fun, x0) | Solves a system F(x) = 0 (as many equations as wanted).
+ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A genetic algorithm: a population that breeds and mutates towards the best, for bumpy functions with many dips.
+particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
+optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
+optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
+
+# Predictive maintenance
+rms | rms(x) | The root mean square: a signal's typical size (for a matrix, each column's).
+peak2peak | peak2peak(x) | The distance from the lowest value to the highest.
+peak2rms | peak2rms(x) | The crest factor: the largest size against the RMS (impacts from a failing bearing raise it).
+hilbert | z = hilbert(x) | The analytic signal x + i·H{x}: its size abs(z) is the envelope, its angle the phase.
+envelope | [up, lo] = envelope(x) | The upper and lower envelopes, from the Hilbert transform.
+envspectrum | [p, f] = envspectrum(x, fs) | The spectrum of the envelope: a bearing's damage shows as peaks at its defect frequencies. Without outputs, drawn.
+bearingFaultBands | [FB, info] = bearingFaultBands(fr, nb, db, dp, beta) | A bearing's defect frequencies (outer race BPFO, inner race BPFI, cage FTF, ball spin BSF) from the shaft speed (Hz), the number of balls, the ball and pitch diameters and the contact angle; FB is a ±5% band around each.
+findchangepts | i = findchangepts(x, 'Statistic', 'mean', 'MaxNumChanges', k, 'MinThreshold', c) | Where a signal changes ('mean', 'rms', 'std' or 'linear'): the k best changes exactly, or every change worth more than c. Without outputs, drawn.
+cusum | [iupper, ilower] = cusum(x, climit, mshift, tmean, tdev) | Cumulative sums that catch a small, lasting drift above or below the target mean.
+monotonicity | monotonicity(members) | 1 when a feature only rises (or only falls) over each machine's life; members is a cell of vectors or a column each.
+trendability | trendability(members) | How alike the members' paths are (the weakest correlation between two).
+prognosability | prognosability(members) | How alike the machines' values at failure are, against how far each travelled.
+exponentialDegradationModel | mdl = exponentialDegradationModel('Phi', phi) | Wear that grows like phi + θ·e^(βt): fit it to past machines, update it on one, predict its remaining life.
+linearDegradationModel | mdl = linearDegradationModel | Wear that grows in a straight line.
+fit | mdl = fit(mdl, {[t1 y1], [t2 y2], …}) | Learns a degradation model from past machines' histories ([time value] each, or tables).
+update | mdl = update(mdl, [t y]) | The model after seeing one machine's readings so far.
+predictRUL | [rul, ci, pdf] = predictRUL(mdl, [t y], threshold) | The remaining useful life: when the level will reach the threshold, a 90% range and the spread of possible times.
+
+# Energy: batteries, solar and wind
+batteryCell | c = batteryCell('Capacity', 5, 'R0', 0.012, 'R1', 0.008, 'C1', 2500) | A lithium-ion cell as an equivalent circuit: its open-circuit voltage by state of charge, a series resistance and one RC pair (capacity in Ah, ohms, farads).
+batteryPack | p = batteryPack(cell, s, p) | s cells in series and p strings in parallel (voltage × s, capacity × p); NominalVoltage and EnergykWh.
+batteryOCV | batteryOCV(soc) | The cell's open-circuit voltage at a state of charge from 0 to 1.
+batterySimulate | [v, soc, T] = batterySimulate(b, I, dt, soc0, 'Ambient', 25, 'Temperature', 25, 'Cooling', 0.05) | Runs a cell or pack under a current (A, + discharging) every dt seconds: its voltage and state of charge; with 'Ambient', 'Temperature' or 'Cooling' (W/K) it also warms as it works (its resistance and capacity follow the temperature) and gives its temperature. Drawn without outputs.
+socEstimate | soc = socEstimate(battery, I, v, dt, guess) | The state of charge from currents and measured voltages by an extended Kalman filter: it corrects a wrong first guess.
+batteryAge | a = batteryAge(b, 'Cycles', 1000, 'DoD', 0.8, 'CRate', 1, 'Temperature', 25, 'Years', 2, 'StorageSOC', 0.5) | How a cell wears: capacity lost to cycling (Wang et al.'s model) and to time (√time, faster when warm or kept full), its state of health, the resistance grown, and the aged cell (a.Cell).
+batteryLife | [cycles, years] = batteryLife(b, 'DoD', 0.8, 'CRate', 1, 'Temperature', 25, 'CyclesPerDay', 1, 'EndOfLife', 0.8) | Cycles (and years) until the state of health falls to 80%; drawn without outputs, beside the same use 15 °C cooler and warmer.
+pvModule | m = pvModule('Isc', 9, 'Voc', 37.5, 'Ns', 60, 'Rs', 0.25, 'Rsh', 300) | A solar module by the single-diode model (short-circuit current, open-circuit voltage, cells in series, resistances).
+pvCurve | [V, I, P, mpp] = pvCurve(module, G, T) | The current and power against voltage at irradiance G (W/m²) and cell temperature T (°C), and the maximum power point. Without outputs, drawn.
+windTurbine | w = windTurbine('Diameter', 100, 'RatedPower', 2.5e6, 'CutIn', 3, 'CutOut', 25, 'Cp', 0.45) | A wind turbine (metres, watts, m/s; Cp at most Betz's 0.593).
+windPower | windPower(turbine, v) | Its power (W) at each wind speed: ½ρAC_p v³, held at rated, nothing outside cut-in to cut-out.
+windAEP | [MWh, cf, meanWind] = windAEP(turbine, k, c) | A year's energy and the capacity factor over Weibull winds (shape k; k = 2 is Rayleigh; scale c in m/s).
+sunPosition | [elevation, azimuth] = sunPosition(lat, lon, [y m d], hours, tz) | Where the sun is (degrees above the horizon, and clockwise from north) at local clock hours in time zone tz (hours from UTC), by NOAA's equations.
+pvDay | [P, hours, Wh] = pvDay(module, lat, lon, [y m d], 'Tilt', 30, 'Azimuth', 180, 'TimeZone', tz, 'Air', 25) | A module through a clear day: the sun on its tilted face, its cells' temperature and its power every 15 minutes, and the day's energy. Drawn without outputs.
+windFarm | f = windFarm(turbine, xy, v, dir, 'Decay', 0.075) | Turbines at rows [x y] (m, x east) with the wind at v m/s from dir degrees: each one's wind and power with the others' wakes (the Jensen model), and the farm's share of its unshaded power. Drawn without outputs.
+windFarmAEP | [MWh, loss] = windFarmAEP(turbine, xy, k, c, dirs, shares) | The farm's year over Weibull winds (shape k, scale c) from those directions with those shares, and the share the wakes cost.
+
+# Power systems and mixed-signal
+powerflow | r = powerflow(bus, lines, 'TapControl', [line bus target]) | A load flow by Newton–Raphson: buses as rows [type P Q V angle] (3 slack, 2 generator, 1 load; P, Q injections in per unit), lines as rows [from to r x b tap] (tap: a transformer's off-nominal ratio on the from side, 1 if left out). Gives V, AngleDeg, P, Q, LineFlows, Losses, Taps; 'TapControl' moves those transformers' taps in 5/8 % steps until each holds its bus near the target.
+shortcircuit | f = shortcircuit(n, lines, sources, k, 'Type', 'LG', 'Zf', 0) | A fault at bus k by symmetrical components: 'Type' '3P' (all three phases), 'LG' (one to ground), 'LL' (two together) or 'LLG' (two to ground); lines [from to r x b x0] (x0 three times x unless given), sources [bus x1 x2 x0] (x0 = Inf: not grounded). Gives FaultCurrent, PhaseCurrents, SequenceCurrents and BusVoltages (each phase's, for an unbalanced fault).
+swing | [t, delta, omega] = swing(H, Pm, Pmax, 'During', 0, 'After', Pmax, 'Clear', 0.1, 'Damping', 0, 'Frequency', 50, 'Time', 3) | One generator against a strong grid (the swing equation): its rotor angle (degrees) and speed after a fault cleared at 'Clear' seconds; 'During' and 'After' are the most power the network carries in each. Drawn without outputs, with the critical clearing time.
+criticalclearing | [tcr, deltacr] = criticalclearing(H, Pm, Pmax, during, after, f) | The longest a fault can last (seconds) and the angle by which it must be cleared (the equal-area criterion) for the machine to stay in step. Drawn without outputs: the power–angle curves.
+transientstability | s = transientstability(bus, lines, gens, k, tc, 'Trip', line, 'Time', 3) | Many generators [bus H xd' D] after a fault at bus k cleared at tc seconds (tripping a line if asked): the classical model on the load flow's starting point, the network reduced to the generators, their rotor angles from the centre of inertia, and whether they stay together. Drawn without outputs.
+adc | [codes, xq] = adc(x, bits, [lo hi], 'Offset', 0, 'Gain', 0, 'INL', 0, 'Noise', 0, 'Jitter', 0, 'Fs', fs) | An N-bit converter over [lo hi]: each sample's code and the value it stands for. A real one's flaws as name–value pairs: 'Offset' and 'Noise' in LSB, 'Gain' a share (0.01 = 1 %), 'INL' the spread of each code edge in LSB, 'Jitter' the sampling clock's wobble in seconds (with the sample rate 'Fs').
+dac | v = dac(codes, bits, [lo hi]) | A digital-to-analogue converter: codes back to values.
+snr | snr(signal, noise) | The signal-to-noise ratio in dB.
+pll | [f, err] = pll(fin, fs, n, 'Bandwidth', 50, 'Damping', 0.707) | A phase-locked loop following an input frequency (a number, or one per sample): the oscillator's frequency and the phase error. Without outputs, drawn.
+adcmetrics | m = adcmetrics(y, fs) | A converter's sine test from its samples (IEEE 1241, a Blackman–Harris window): SNR, SINAD, THD, SFDR (dB) and ENOB (bits); drawn without outputs as the spectrum.
+inldnl | [inl, dnl] = inldnl(codes, bits) | Integral and differential nonlinearity (LSB) of every code from a sine slightly beyond full scale (the code-density test). Drawn without outputs.
+sigmadelta | [bits, y] = sigmadelta(x, osr, order) | A sigma-delta modulator (order 1 or 2) on x in −1…1 sampled osr times faster than needed: the 1-bit stream, and the signal back at the slower rate through a sinc filter.
+
+# Wireless communications
+pskmod | y = pskmod(symbols, M, phase) | Phase-shift keying: each whole number 0 to M−1 to a point on the unit circle, Gray coded (neighbours differ by one bit).
+pskdemod | s = pskdemod(y, M, phase) | Back from PSK points to symbols: the nearest angle.
+qammod | y = qammod(symbols, M, 'UnitAveragePower', true) | Square QAM (M = 4, 16, 64, 256…): the points on a grid, Gray coded on each axis; unit average power when asked.
+qamdemod | s = qamdemod(y, M, 'UnitAveragePower', true) | Back from QAM points to symbols: the nearest grid point.
+awgn | y = awgn(x, snr, 'measured') | Adds white Gaussian noise at an SNR in dB, against the signal's measured power (or 1).
+biterr | [n, ratio] = biterr(a, b, k) | The bits that differ between two lists of k-bit symbols, and their share.
+symerr | [n, ratio] = symerr(a, b) | The symbols that differ, and their share.
+berawgn | ber = berawgn(EbN0dB, 'psk'|'qam', M) | The textbook bit-error rate over white noise at Eb/N0 in dB, to compare a simulation against.
+qfunc | q = qfunc(x) | The standard normal's upper tail, Q(x).
+int2bit | b = int2bit(x, n) | Whole numbers to n bits each (most significant first), as one column.
+bit2int | x = bit2int(b, n) | Bits back to whole numbers, n bits each.
+scatterplot | scatterplot(y) | Draws complex points as a constellation: in-phase across, quadrature up.
+
+# Image processing
+fspecial | h = fspecial('gaussian', 5, 1) | A ready-made kernel: 'average', 'gaussian', 'disk', 'sobel', 'prewitt', 'laplacian', 'log', 'unsharp'.
+imfilter | J = imfilter(I, h, 'replicate', 'conv') | Filters a picture with a kernel (correlation, or 'conv'); the border is 0, a number, 'replicate', 'symmetric' or 'circular'. Colour pictures page by page; uint8 stays uint8.
+imgaussfilt | J = imgaussfilt(I, sigma, 'FilterSize', n) | A Gaussian blur (sigma 0.5 unless given).
+medfilt2 | J = medfilt2(I, [m n], 'symmetric') | The median of each neighbourhood: takes out salt-and-pepper specks and keeps edges.
+imsharpen | J = imsharpen(I, 'Radius', 1, 'Amount', 0.8) | Sharpens by adding back the difference from a blurred copy.
+imgradient | [Gmag, Gdir] = imgradient(I) | The gradient's size and direction (degrees) by the Sobel kernel.
+imgradientxy | [Gx, Gy] = imgradientxy(I) | The gradient across and down, by the Sobel kernel.
+edge | [BW, t] = edge(I, 'canny', [low high], sigma) | Edges as a logical picture: 'sobel' and 'prewitt' (a cut on the gradient, thinned) or 'canny' (smoothing, thinning and two cuts joined by hysteresis).
+graythresh | t = graythresh(I) | Otsu's threshold (0 to 1): the cut that best separates dark from light.
+imbinarize | BW = imbinarize(I, t) | Black and white: above Otsu's threshold, a given one, or 'adaptive' (each pixel against its neighbourhood; 'Sensitivity' 0 to 1).
+strel | se = strel('disk', 3) | A shape for the operations below: 'disk', 'square', 'rectangle', 'diamond', 'line' (length, angle), or a matrix of 1s and 0s.
+imerode | J = imerode(I, se) | Erosion: the smallest value under the shape (shrinks white).
+imdilate | J = imdilate(I, se) | Dilation: the largest value under the shape (grows white).
+imopen | J = imopen(I, se) | Erosion then dilation: takes away bits smaller than the shape.
+imclose | J = imclose(I, se) | Dilation then erosion: closes gaps smaller than the shape.
+imtophat | J = imtophat(I, se) | The picture less its opening: small bright details (and evens out uneven light).
+imbothat | J = imbothat(I, se) | The closing less the picture: small dark details.
+bwlabel | [L, n] = bwlabel(BW, 8) | Numbers each group of joined white pixels (4 or 8 neighbours).
+bwareaopen | BW2 = bwareaopen(BW, p) | Removes groups of fewer than p pixels.
+imfill | BW2 = imfill(BW, 'holes') | Fills holes: black that can't be reached from the edge.
+bwperim | P = bwperim(BW) | The outline of each white shape.
+regionprops | t = regionprops(BW, 'Area', 'Centroid') | Measures each shape, as a table: Area, Centroid, BoundingBox, MajorAxisLength, MinorAxisLength, Eccentricity, Orientation, EquivDiameter ('basic' or 'all').
+label2rgb | RGB = label2rgb(L, 'jet') | Colours each numbered shape for showing; the background white.
+imoverlay | RGB = imoverlay(I, BW, [1 0 0]) | The picture with a mask painted on in a colour.
+imhist | [counts, x] = imhist(I, n) | The histogram of brightness (256 bins); drawn without outputs.
+histeq | J = histeq(I) | Histogram equalisation: spreads the brightness evenly.
+imadjust | J = imadjust(I, [low high], [low2 high2], gamma) | Stretches contrast: by default the darkest and brightest 1% to black and white.
+stretchlim | lim = stretchlim(I, tol) | The limits imadjust stretches between.
+imnoise | J = imnoise(I, 'gaussian', m, v) | Adds noise: 'gaussian' (mean, variance), 'salt & pepper' (share of pixels), 'speckle'. rng repeats it.
+imcomplement | J = imcomplement(I) | The negative.
+imcrop | J = imcrop(I, [x y width height]) | A rectangle of the picture (x across, y down).
+psnr | [p, snr] = psnr(A, ref, peak) | The peak signal-to-noise ratio in dB against a reference.
+ssim | [s, map] = ssim(A, ref) | Structural similarity (1 when the same), and its map.
+phantom | P = phantom(n) | The Shepp–Logan head, a standard test picture (n × n, 256 unless given).
+checkerboard | C = checkerboard(n, p, q) | A checkerboard test picture of n-pixel squares.
+
+# Radar
+physconst | c = physconst('LightSpeed') | Physical constants: 'LightSpeed', 'Boltzmann', 'EarthRadius'.
+pow2db | db = pow2db(p) | A power ratio in decibels (10 log₁₀).
+db2pow | p = db2pow(db) | Decibels back to a power ratio.
+mag2db | db = mag2db(a) | An amplitude ratio in decibels (20 log₁₀).
+db2mag | a = db2mag(db) | Decibels back to an amplitude ratio.
+freq2wavelen | lambda = freq2wavelen(f, c) | The wavelength of a frequency (light's speed unless c is given).
+wavelen2freq | f = wavelen2freq(lambda, c) | The frequency of a wavelength.
+range2time | t = range2time(r, c) | The round-trip time to a range.
+time2range | r = time2range(t, c) | The range of a round-trip time.
+speed2dop | fd = speed2dop(v, lambda) | The Doppler shift of a speed (one way: use 2v for a radar's echo).
+dop2speed | v = dop2speed(fd, lambda) | The speed of a Doppler shift (one way).
+rangeres2bw | B = rangeres2bw(dr, c) | The bandwidth for a range resolution, c / 2Δr.
+bw2rangeres | dr = bw2rangeres(B, c) | The range resolution of a bandwidth.
+radareqsnr | snr = radareqsnr(lambda, R, Pt, tau, 'Gain', G, 'RCS', rcs, 'Ts', T, 'Loss', L) | The radar equation: one pulse's SNR (dB) from a target at range R (gain 20 dB, RCS 1 m², 290 K, no loss unless given).
+radareqrng | R = radareqrng(lambda, snr, Pt, tau, …) | The farthest range that still gives that SNR.
+radareqpow | Pt = radareqpow(lambda, R, snr, tau, …) | The peak power needed for that SNR at range R.
+chirp | y = chirp(t, f0, t1, f1, 'linear', phi) | A swept cosine from f0 at 0 to f1 at t1: 'linear', 'quadratic' or 'logarithmic'.
+lfmpulse | w = lfmpulse(B, T, fs) | A linear-FM (chirp) radar pulse: bandwidth B over T seconds, complex, at sample rate fs.
+radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses.
+pulsecompress | y = pulsecompress(x, w) | The matched filter: each column correlated with the pulse, a target's peak at its delay.
+rangedoppler | [M, range, speed] = rangedoppler(x, w, fs, prf, fc) | The range–Doppler map in dB (pulse compression, then a windowed FFT across pulses). Drawn without outputs.
+cfar | [det, th] = cfar(power, guard, train, pfa) | Cell-averaging CFAR: each cell against its neighbours' mean, for a false-alarm rate pfa (down each column).
+ambgfun | [A, delay, doppler] = ambgfun(w, fs) | The ambiguity function: how a pulse answers every delay and Doppler shift. Drawn without outputs.
+steervec | a = steervec(pos, ang) | Steering vectors: the phase a plane wave from each angle puts on each element (one column per angle). pos in wavelengths: a row (a line along y) or 3 rows [x; y; z]; ang a row of azimuths or 2 rows [az; el] (degrees, 0 = broadside).
+sensorsig | [X, R] = sensorsig(pos, ns, ang, noise, 'Power', p) | ns snapshots (rows) of what the elements receive from far sources at those angles in noise of that power; X'*X/ns estimates the covariance, R is the true one.
+arraypattern | p = arraypattern(pos, w, az) | The array's response (dB) at each azimuth for weights w (uniform if left out): steer with w = steervec(pos, 30), lower the side lobes with .*hamming(N). Drawn without outputs, with the beam's width.
+spatialspectrum | P = spatialspectrum(R, pos, az, 'Method', 'music', 'NumSignals', 2) | Power by direction from a covariance: 'beamscan' (the beam swept across), 'mvdr' (Capon) or 'music' (the noise subspace: sharpest). Drawn without outputs, with its peaks.
+musicdoa | doa = musicdoa(R, nsig, 'ScanAngles', az, 'ElementSpacing', 0.5) | The directions (degrees) of nsig signals by MUSIC, for a line of equally spaced elements.
+pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
+perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
+optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.
+bayesopt | r = bayesopt(@(t) loss(t.x, t.y), [vars], 'MaxObjectiveEvaluations', 30) | Finds the settings with the smallest value by Bayesian optimisation (a Gaussian process and expected improvement): r.XAtMinObjective, r.MinObjective. Every fitc…/fitr… also tunes itself: fitcsvm(X, Y, 'OptimizeHyperparameters', 'auto') tries settings by their 5-fold error ('HyperparameterOptimizationOptions', struct('MaxObjectiveEvaluations', 30, 'Optimizer', 'bayesopt' or 'gridsearch' or 'randomsearch')).
 
 # Running code
 help | help name | Help for a function.

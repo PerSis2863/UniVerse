@@ -47,6 +47,6 @@ export function unitValues(m: Mat): number[] {
   if (m.cls === 'uint8') return v.map((t) => t / 255);
   if (m.cls === 'uint16') return v.map((t) => t / 65535);
   if (isInt(m.cls)) { const [lo, hi] = RANGE[m.cls]; return v.map((t) => (t - lo) / (hi - lo)); }
-  const top = Math.max(...v.filter(Number.isFinite), 0);
+  const top = v.reduce((m, t) => (Number.isFinite(t) && t > m ? t : m), 0);
   return top > 1 ? v.map((t) => t / 255) : v;
 }

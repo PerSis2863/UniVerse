@@ -19,6 +19,8 @@ export interface ImpactApp {
   color: string;
   /** Addresses that belong to the app. */
   paths: string[];
+  /** Shown only on computers (M405: Hyperion). */
+  desktopOnly?: true;
 }
 
 export const APPS: ImpactApp[] = [
@@ -52,7 +54,7 @@ export const APPS: ImpactApp[] = [
     // computer"): our own engine for the MATLAB / Octave language (src/lib/lab), figures, LaTeX export; a computer app too.
     id: 'lab', name: 'Hyperion', tagline: 'Maths, matrices, plots and simulation', color: '#8b5cf6',
     impact: 'Run MATLAB-style code in the browser or on your computer.',
-    paths: ['/hyperion'],
+    paths: ['/hyperion'], desktopOnly: true,
   },
 ];
 
