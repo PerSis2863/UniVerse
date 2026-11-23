@@ -681,10 +681,13 @@ shortcircuit | f = shortcircuit(n, lines, sources, k, 'Type', 'LG', 'Zf', 0) | A
 swing | [t, delta, omega] = swing(H, Pm, Pmax, 'During', 0, 'After', Pmax, 'Clear', 0.1, 'Damping', 0, 'Frequency', 50, 'Time', 3) | One generator against a strong grid (the swing equation): its rotor angle (degrees) and speed after a fault cleared at 'Clear' seconds; 'During' and 'After' are the most power the network carries in each. Drawn without outputs, with the critical clearing time.
 criticalclearing | [tcr, deltacr] = criticalclearing(H, Pm, Pmax, during, after, f) | The longest a fault can last (seconds) and the angle by which it must be cleared (the equal-area criterion) for the machine to stay in step. Drawn without outputs: the power–angle curves.
 transientstability | s = transientstability(bus, lines, gens, k, tc, 'Trip', line, 'Time', 3) | Many generators [bus H xd' D] after a fault at bus k cleared at tc seconds (tripping a line if asked): the classical model on the load flow's starting point, the network reduced to the generators, their rotor angles from the centre of inertia, and whether they stay together. Drawn without outputs.
-adc | [codes, xq] = adc(x, bits, [lo hi]) | An analogue-to-digital converter: each sample's code and the value it stands for (its quantisation noise sets SNR ≈ 6.02·bits + 1.76 dB).
+adc | [codes, xq] = adc(x, bits, [lo hi], 'Offset', 0, 'Gain', 0, 'INL', 0, 'Noise', 0, 'Jitter', 0, 'Fs', fs) | An N-bit converter over [lo hi]: each sample's code and the value it stands for. A real one's flaws as name–value pairs: 'Offset' and 'Noise' in LSB, 'Gain' a share (0.01 = 1 %), 'INL' the spread of each code edge in LSB, 'Jitter' the sampling clock's wobble in seconds (with the sample rate 'Fs').
 dac | v = dac(codes, bits, [lo hi]) | A digital-to-analogue converter: codes back to values.
 snr | snr(signal, noise) | The signal-to-noise ratio in dB.
 pll | [f, err] = pll(fin, fs, n, 'Bandwidth', 50, 'Damping', 0.707) | A phase-locked loop following an input frequency (a number, or one per sample): the oscillator's frequency and the phase error. Without outputs, drawn.
+adcmetrics | m = adcmetrics(y, fs) | A converter's sine test from its samples (IEEE 1241, a Blackman–Harris window): SNR, SINAD, THD, SFDR (dB) and ENOB (bits); drawn without outputs as the spectrum.
+inldnl | [inl, dnl] = inldnl(codes, bits) | Integral and differential nonlinearity (LSB) of every code from a sine slightly beyond full scale (the code-density test). Drawn without outputs.
+sigmadelta | [bits, y] = sigmadelta(x, osr, order) | A sigma-delta modulator (order 1 or 2) on x in −1…1 sampled osr times faster than needed: the 1-bit stream, and the signal back at the slower rate through a sinc filter.
 
 # Wireless communications
 pskmod | y = pskmod(symbols, M, phase) | Phase-shift keying: each whole number 0 to M−1 to a point on the unit circle, Gray coded (neighbours differ by one bit).

@@ -1,13 +1,15 @@
 import { LabError } from './parse';
-import { BUILTINS, type Builtin } from './builtins';
+import { BUILTINS, random, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as g from './grid';
 import * as st from './stability';
+import * as cv from './convert';
 
 // Hyperion's power systems and mixed-signal in the language (M426): powerflow, shortcircuit, adc, dac, snr, pll; M435:
 // transformer taps (a sixth line column, and 'TapControl' to hold voltages), unbalanced faults ('Type' LG, LL, LLG);
-// M436: swing, criticalclearing, transientstability.
+// M436: swing, criticalclearing, transientstability; M437: adc's flaws ('Offset', 'Gain', 'INL', 'Noise', 'Jitter'),
+// adcmetrics, inldnl, sigmadelta.
 // Buses as rows [type P Q V angle] (type 3 slack, 2 generator (PV), 1 load (PQ), as MATPOWER numbers them; P, Q
 // injections in per unit, angle in degrees) and lines as rows [from to r x b] (buses numbered from 1).
 
@@ -73,9 +75,15 @@ def('shortcircuit', (a) => {
 });
 const range = (v: Value | undefined): [number, number] => { if (!v) return [-1, 1]; const m = toMat(v).d; return [m[0], m[1]]; };
 def('adc', (a) => {
-  const x = toMat(a[0], 'The signal'), bits = Math.round(toMat(a[1] ?? num(8)).d[0]), [lo, hi] = range(a[2]);
+  const x = toMat(a[0], 'The signal'), bits = Math.round(toMat(a[1] ?? num(8)).d[0]), [lo, hi] = range(a[2] && a[2].k === 'mat' ? a[2] : undefined);
   if (!(bits >= 1 && bits <= 24) || !(hi > lo)) throw new LabError('adc(x, bits, [lo hi]): 1 to 24 bits and a range with lo < hi.');
-  const r = g.adc([...x.d], bits, lo, hi);
+  // M437: a real converter's flaws as name–value pairs ('Offset' and 'Noise' in LSB, 'Gain' a share, 'INL' each code
+  // edge's spread in LSB, 'Jitter' in seconds with the sample rate 'Fs').
+  const from = a[2] && a[2].k === 'mat' ? 3 : 2, o = named(a, from, ['offset', 'gain', 'inl', 'noise', 'jitter', 'fs'], 'adc');
+  if (!Object.keys(o).length) { const r = g.adc([...x.d], bits, lo, hi); return [mat(x.r, x.c, r.codes), mat(x.r, x.c, r.values)]; }
+  if (o.jitter && !(o.fs > 0)) throw new LabError("Jitter needs the sample rate: 'Fs', 1e6.");
+  if (bits > 20 && o.inl) throw new LabError('INL is modelled up to 20 bits (one edge per code).');
+  const r = cv.realAdc([...x.d], bits, lo, hi, o, random);
   return [mat(x.r, x.c, r.codes), mat(x.r, x.c, r.values)];
 });
 def('dac', (a) => {
@@ -166,5 +174,34 @@ def('transientstability', (a, nout, lab) => {
   call(lab, 'xlabel', str('Time (s)')); call(lab, 'ylabel', str('Rotor angle from the centre of inertia (°)')); call(lab, 'grid', str('on'));
   call(lab, 'title', str(`${r.stable ? 'Stays together' : 'Loses step'}: fault at bus ${fault + 1}, cleared at ${clear} s`));
   return [];
+});
+
+// ——— Converter imperfections (M437) ———
+def('adcmetrics', (a, nout, lab) => {
+  const y = [...toMat(a[0] ?? num(NaN), 'The samples').d], fs = a[1] ? toMat(a[1]).d[0] : 1;
+  if (y.length < 64) throw new LabError('adcmetrics needs at least 64 samples of a sine (a few thousand is better).');
+  if (!(fs > 0)) throw new LabError('The sample rate must be positive.');
+  const m = cv.adcMetrics(y, fs);
+  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['SNR', num(m.snr)], ['SINAD', num(m.sinad)], ['THD', num(m.thd)], ['SFDR', num(m.sfdr)], ['ENOB', num(m.enob)], ['Frequency', num(m.freq)]]) } satisfies Struct];
+  call(lab, 'plot', row(m.freqs), row(m.spectrum)); call(lab, 'ylim', row([Math.max(-160, Math.min(...m.spectrum.filter(Number.isFinite))), 5]));
+  call(lab, 'xlabel', str(fs === 1 ? 'Frequency (cycles a sample)' : 'Frequency (Hz)')); call(lab, 'ylabel', str('dB below the signal')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`SNR ${m.snr.toFixed(1)} dB · SINAD ${m.sinad.toFixed(1)} dB · SFDR ${m.sfdr.toFixed(1)} dB · ENOB ${m.enob.toFixed(2)} bits`));
+  return [];
+});
+def('inldnl', (a, nout, lab) => {
+  const c = [...toMat(a[0] ?? num(NaN), 'The codes').d], bits = Math.round(toMat(a[1] ?? num(NaN)).d[0]);
+  if (!(bits >= 2 && bits <= 16)) throw new LabError('inldnl needs the codes of a sine slightly beyond full scale and the bits (2 to 16).');
+  const r = cv.inlDnl(c, bits), k = row(r.inl.map((_, i) => i));
+  if (nout > 0) return [row(r.inl), row(r.dnl)];
+  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', k, row(r.dnl)); call(lab, 'ylabel', str('DNL (LSB)')); call(lab, 'grid', str('on')); call(lab, 'title', str(`Worst DNL ${Math.max(...r.dnl.map(Math.abs)).toFixed(2)} LSB, worst INL ${Math.max(...r.inl.map(Math.abs)).toFixed(2)} LSB`));
+  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', k, row(r.inl)); call(lab, 'ylabel', str('INL (LSB)')); call(lab, 'xlabel', str('Code')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('sigmadelta', (a) => {
+  const x = [...toMat(a[0] ?? num(NaN), 'The signal').d], osr = Math.round(toMat(a[1] ?? num(64)).d[0]), order = Math.round(a[2] ? toMat(a[2]).d[0] : 1);
+  if (!(osr >= 2 && osr <= 4096) || (order !== 1 && order !== 2)) throw new LabError('sigmadelta(x, osr, order): an oversampling ratio from 2 to 4096 and order 1 or 2.');
+  if (x.some((v) => Math.abs(v) > 1)) throw new LabError('A sigma-delta modulator takes a signal from −1 to 1 (it overloads beyond).');
+  const r = cv.sigmaDelta(x, order as 1 | 2, osr);
+  return [row(r.bits), row(r.decimated)];
 });
 

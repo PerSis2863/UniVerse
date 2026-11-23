@@ -129,3 +129,49 @@ describe('grid stability (M436)', () => {
     expect(() => run('swing(5, 2, 1)')).toThrow(/Pmax/);
   });
 });
+
+describe('converter imperfections (M437)', () => {
+  let seed = 3;
+  const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  it('an ideal 10-bit converter: SINAD 6.02N + 1.76 dB, ENOB 10; jitter costs −20·log(2πfσ)', async () => {
+    const cv = await import('./convert');
+    const N = 8192, fs = 1e6, x = Array.from({ length: N }, (_, n) => 0.999 * Math.sin((2 * Math.PI * 127 * n) / N));
+    const ideal = cv.adcMetrics(cv.realAdc(x, 10, -1, 1, {}, rand).values, fs);
+    expect(ideal.sinad).toBeCloseTo(61.96, 0); expect(ideal.enob).toBeCloseTo(10, 1);
+    expect(ideal.freq).toBeCloseTo((127 * fs) / N, 6);
+    const fin = (127 * fs) / N, j = cv.adcMetrics(cv.realAdc(x, 16, -1, 1, { jitter: 5e-9, fs }, rand).values, fs);
+    expect(Math.abs(j.snr - -20 * Math.log10(2 * Math.PI * fin * 5e-9))).toBeLessThan(0.5);
+    // Uneven code edges add spurs: the spurious-free range falls.
+    expect(cv.adcMetrics(cv.realAdc(x, 10, -1, 1, { inl: 0.5 }, rand).values, fs).sfdr).toBeLessThan(ideal.sfdr);
+  });
+  it('INL and DNL from a sine’s histogram match the edges it was built with', async () => {
+    const cv = await import('./convert');
+    const xs = Array.from({ length: 2_000_000 }, (_, n) => 1.02 * Math.sin((2 * Math.PI * 7919 * n) / 2_000_000 + 0.1));
+    const q = cv.realAdc(xs, 6, -1, 1, { inl: 0.2 }, rand), d = cv.inlDnl(q.codes, 6), L = 64;
+    const e = q.edges.map((x, k) => (x - (-1 + (k + 1) * q.lsb)) / q.lsb), ep = e.map((x, k) => x - (e[0] + ((e[L - 2] - e[0]) * k) / (L - 2)));
+    // Counting noise (about 20,000 samples a code) leaves a few hundredths of an LSB.
+    for (let k = 2; k < L - 2; k++) expect(Math.abs(d.inl[k] - (ep[k - 1] + ep[k]) / 2)).toBeLessThan(0.03);
+    const ideal = cv.inlDnl(cv.realAdc(xs, 6, -1, 1, {}, rand).codes, 6);
+    expect(Math.max(...ideal.dnl.map(Math.abs))).toBeLessThan(0.02);
+  });
+  it('a sigma-delta modulator: about 9 dB more for each doubling of oversampling (first order), 15 dB (second)', async () => {
+    const cv = await import('./convert');
+    const snr = (order: 1 | 2, osr: number) => {
+      const n = 4200 * osr, x = Array.from({ length: n }, (_, i) => 0.5 * Math.sin((2 * Math.PI * 17 * i) / (4096 * osr)));
+      return cv.adcMetrics(cv.sigmaDelta(x, order, osr).decimated.slice(-4096), 1).snr;
+    };
+    const g1 = snr(1, 128) - snr(1, 64), g2 = snr(2, 128) - snr(2, 64);
+    expect(g1).toBeGreaterThan(6); expect(g1).toBeLessThan(11);
+    expect(g2).toBeGreaterThan(12); expect(g2).toBeLessThan(18);
+    expect(snr(2, 64)).toBeGreaterThan(snr(1, 64) + 15);
+  });
+  it('in the language', () => {
+    const r = run("rng(1); N = 4096; x = 0.999*sin(2*pi*101*(0:N-1)/N);\n[c, y] = adc(x, 12, [-1 1]);\nm = adcmetrics(y, 1e6); e0 = m.ENOB;\n[c2, y2] = adc(x, 12, [-1 1], 'Noise', 2);\ne1 = adcmetrics(y2, 1e6).ENOB;\nxs = 1.02*sin(2*pi*7919*(0:399999)/400000 + 0.1);\n[cs] = adc(xs, 6, [-1 1], 'INL', 0.2);\n[inl, dnl] = inldnl(cs, 6);\n[b, d] = sigmadelta(0.5*sin(2*pi*(0:65535)/4096), 64, 2);\nadcmetrics(y2, 1e6)\nfigure; inldnl(cs, 6)");
+    expect(r.d('e0')[0]).toBeCloseTo(12, 0);
+    expect(r.d('e1')[0]).toBeLessThan(r.d('e0')[0] - 1);
+    expect(r.d('inl').length).toBe(64);
+    expect(new Set(r.d('b'))).toEqual(new Set([1, -1]));
+    expect(r.graphics.figures.length).toBe(2);
+    expect(() => run("adc(1:3, 8, [-1 1], 'Jitter', 1e-9)")).toThrow(/Fs/);
+  });
+});

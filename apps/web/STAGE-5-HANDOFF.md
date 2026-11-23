@@ -11530,3 +11530,17 @@ Language in `grid-lab.ts`: `swing`, `criticalclearing`, `transientstability` (ge
 `powerflow`). Example stability.m. Tests in `grid.test.ts`. Not built: governors and exciters (AVR, PSS), detailed
 generator models (subtransient, saturation), frequency response after losing a generator, voltage stability (PV curves).
 
+## M437 (23 Nov): Hyperion toolbox, converter imperfections
+
+`src/lib/lab/convert.ts` (pure): `realAdc` (code edges at lo + k·LSB each moved by `inl` × N(0,1) LSB and kept in
+order, offset and noise in LSB, gain about the range's middle, jitter as v + v'·τ with the slope by central differences;
+the code by binary search over the edges), `adcMetrics` (4-term Blackman–Harris, ±4 bins for the tone and each
+harmonic, harmonics folded into the band, DC dropped; SINAD → ENOB = (SINAD − 1.76)/6.02), `inlDnl` (IEEE 1241's
+code-density test: edges T_k = −cos(π·count below k / n), then against the line through the first and last edges; the
+first version estimated the sine from the end codes and fitted p per code, which skews every code when an end edge
+moves: don't go back to it), `sigmaDelta` (1-bit, first or second order, a sinc^(order+1) decimator of length osr).
+`convert.ts` imports `dft` from signal.ts, which needs the engine loaded first: a test of it imports './interp' (or a
+*-lab file) before it. Language in `grid-lab.ts`: `adc` options, `adcmetrics`, `inldnl`, `sigmadelta`. Example
+converters.m. Tests in `grid.test.ts`. Not built: DAC glitches and settling, pipelined/SAR architectures, multi-bit or
+higher-order sigma-delta and its stability, best-fit (rather than end-point) INL.
+
