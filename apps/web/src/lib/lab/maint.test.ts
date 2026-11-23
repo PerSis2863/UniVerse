@@ -4,6 +4,7 @@ import { Graphics } from './plot';
 import { toMat } from './values';
 import './maint-lab';
 import * as pm from './maint';
+import { kurtogram as vbKg, spectralKurtosis as vbSk } from './vib';
 
 const run = (code: string) => { let out = ''; const graphics = new Graphics(); const lab = new Lab({ out: (t) => { out += t; }, graphics }); lab.run(code); return { out, graphics, d: (n: string) => [...toMat(lab.vars.get(n)!).d] }; };
 let seed = 11;
@@ -85,5 +86,60 @@ describe('Hyperion predictive maintenance (M423): in the language', () => {
     expect(r.graphics.figures.length).toBe(2);
     expect(() => run('predictRUL(exponentialDegradationModel, 10)')).toThrow(/Fit the model/);
     expect(() => run("fit(exponentialDegradationModel('Phi', 5), {[0 1; 1 2], [0 1; 1 3]})")).toThrow(/above Phi/);
+  });
+});
+
+describe('Hyperion vibration analysis (M463)', () => {
+  it('modalfrf and modalfit find a mass on a spring’s frequency and damping from noise in, response out', () => {
+    // A one-mode system (fn 50 Hz, ζ 2 %) driven by white noise, simulated exactly per sample by its digital twin.
+    const r = run([
+      'rng(3); fs = 1000; n = 2^16; fn = 50; z = 0.02;',
+      'w = 2*pi*fn; wd = w*sqrt(1-z^2); T = 1/fs; r = exp(-z*w*T);',
+      'a = [1 -2*r*cos(wd*T) r^2]; b = [0 r*sin(wd*T)/wd*T*w^2 0];',
+      'x = randn(n, 1); y = filter(b, a, x);',
+      '[H, f, c] = modalfrf(x, y, fs, 4096);',
+      '[fn1, dr] = modalfit(H, f, fs, 1);',
+    ].join('\n'));
+    expect(r.d('fn1')[0]).toBeCloseTo(50, 0);
+    expect(r.d('dr')[0]).toBeGreaterThan(0.015);
+    expect(r.d('dr')[0]).toBeLessThan(0.026);
+    // Noise-free: the coherence is 1 near the resonance.
+    expect(r.d('c')[205]).toBeGreaterThan(0.95);
+  });
+  it('spectral kurtosis and the kurtogram find the band where impacts ring', () => {
+    // Steady noise everywhere plus decaying 3 kHz bursts ten times a second.
+    const fs = 20000, n = 20000, x: number[] = [];
+    for (let k = 0; k < n; k++) x.push(0.3 * gauss());
+    for (let start = 500; start < n; start += 2000) for (let k = 0; k < 300 && start + k < n; k++) x[start + k] += 3 * Math.exp(-k / 40) * Math.sin((2 * Math.PI * 3000 * k) / fs);
+    const sk = vbSk(x, fs, 128), top = sk.f[sk.sk.indexOf(Math.max(...sk.sk))];
+    expect(Math.abs(top - 3000)).toBeLessThan(500);
+    const kg = vbKg(x, fs, 7);
+    expect(Math.abs(kg.fc - 3000)).toBeLessThan(800);
+    expect(kg.max).toBeGreaterThan(2);
+  });
+  it('tsa keeps what turns with the shaft; orderspectrum keeps an order in place through a run-up', () => {
+    const r = run([
+      'rng(1); fs = 2000; t = (0:1/fs:10-1/fs)\';',
+      'x = sin(2*pi*5*t) + 2*randn(size(t));',     // 5 Hz = 300 rpm, deeply buried in noise
+      '[ta, tt, rpm] = tsa(x, fs, 0:0.2:10);',
+      'rpm2 = linspace(600, 1800, numel(t))\';',
+      'ang = cumsum(rpm2/60)/fs;',
+      'y = sin(2*pi*3*ang);',                          // order 3 while the speed triples
+      '[s, o] = orderspectrum(y, fs, rpm2);',
+      '[~, k] = max(s); top = o(k);',
+    ].join('\n'));
+    expect(r.d('rpm')[0]).toBeCloseTo(300, 6);
+    const ta = r.d('ta'), amp = Math.max(...ta) - Math.min(...ta);
+    // Averaging 50 turns cuts noise of 2 to about 0.28: the sine's 2 peak-to-peak stands out.
+    expect(amp).toBeGreaterThan(1.6);
+    expect(amp).toBeLessThan(3.6);
+    expect(r.d('top')[0]).toBeCloseTo(3, 1);
+    expect(Math.max(...r.d('s'))).toBeGreaterThan(0.8);
+  });
+  it('draws without outputs and explains mistakes', () => {
+    const r = run('x = randn(1, 4096);\npkurtosis(x, 1000)\nfigure; kurtogram(x, 1000, 5)\nfigure; modalfrf(x, x, 1000, 256)');
+    expect(r.graphics.figures.length).toBe(3);
+    expect(() => run('modalfrf(1:10, 1:9, 100, 4)')).toThrow(/same number/);
+    expect(() => run('tsa(1:100, 10, 5)')).toThrow(/two pulses/);
   });
 });

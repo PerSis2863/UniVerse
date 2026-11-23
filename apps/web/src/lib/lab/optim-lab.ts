@@ -2,11 +2,14 @@ import { LabError } from './parse';
 import { BUILTINS, random, type Builtin } from './builtins';
 import type { Lab } from './interp';
 import { textOf } from './interp';
-import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
+import { cmat, mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as op from './optim';
+import * as om from './optim-multi';
+import * as ox from './optim-more';
 
 // Hyperion's optimisation toolbox in the language (M422): fminsearch, fminunc, fmincon, linprog, intlinprog,
-// quadprog, lsqnonlin, lsqcurvefit, fsolve, ga, particleswarm, optimset and optimoptions. Display 'iter' prints each
+// quadprog, lsqnonlin, lsqcurvefit, fsolve, ga, particleswarm, optimset and optimoptions; the rarer ones (M462): fzero,
+// fminbnd, lsqlin, lsqnonneg, fminimax, fgoalattain, patternsearch, simulannealbnd. Display 'iter' prints each
 // step, 'PlotFcns', 'optimplotfval' draws the objective by iteration, and every output struct also carries `path` (a
 // row per iterate) so the way the solver went can be drawn over a contour.
 
@@ -22,9 +25,10 @@ const ALIASES: Record<string, string> = {
   tolx: 'steptolerance', steptolerance: 'steptolerance', tolfun: 'functiontolerance', functiontolerance: 'functiontolerance', optimalitytolerance: 'optimalitytolerance',
   maxiter: 'maxiterations', maxiterations: 'maxiterations', maxfunevals: 'maxfunctionevaluations', maxfunctionevaluations: 'maxfunctionevaluations',
   display: 'display', plotfcns: 'plotfcns', plotfcn: 'plotfcns', gradobj: 'specifyobjectivegradient', specifyobjectivegradient: 'specifyobjectivegradient',
-  populationsize: 'populationsize', maxgenerations: 'maxgenerations', swarmsize: 'swarmsize',
+  populationsize: 'populationsize', maxgenerations: 'maxgenerations', swarmsize: 'swarmsize', hybridfcn: 'hybridfcn', paretosetsize: 'paretosetsize', initialtemperature: 'initialtemperature', meshtolerance: 'meshtolerance', tolmesh: 'meshtolerance',
+  pollmethod: 'pollmethod', usecompletepoll: 'usecompletepoll', completepoll: 'usecompletepoll', searchfcn: 'searchfcn', searchmethod: 'searchfcn', meshexpansionfactor: 'meshexpansionfactor', meshexpansion: 'meshexpansionfactor', meshcontractionfactor: 'meshcontractionfactor', meshcontraction: 'meshcontractionfactor', initialmeshsize: 'initialmeshsize', temperaturefcn: 'temperaturefcn', annealingfcn: 'annealingfcn', reannealinterval: 'reannealinterval',
 };
-const NAMES: Record<string, string> = { steptolerance: 'StepTolerance', functiontolerance: 'FunctionTolerance', optimalitytolerance: 'OptimalityTolerance', maxiterations: 'MaxIterations', maxfunctionevaluations: 'MaxFunctionEvaluations', display: 'Display', plotfcns: 'PlotFcns', specifyobjectivegradient: 'SpecifyObjectiveGradient', populationsize: 'PopulationSize', maxgenerations: 'MaxGenerations', swarmsize: 'SwarmSize' };
+const NAMES: Record<string, string> = { steptolerance: 'StepTolerance', functiontolerance: 'FunctionTolerance', optimalitytolerance: 'OptimalityTolerance', maxiterations: 'MaxIterations', maxfunctionevaluations: 'MaxFunctionEvaluations', display: 'Display', plotfcns: 'PlotFcns', specifyobjectivegradient: 'SpecifyObjectiveGradient', populationsize: 'PopulationSize', maxgenerations: 'MaxGenerations', swarmsize: 'SwarmSize', hybridfcn: 'HybridFcn', paretosetsize: 'ParetoSetSize', initialtemperature: 'InitialTemperature', meshtolerance: 'MeshTolerance', pollmethod: 'PollMethod', usecompletepoll: 'UseCompletePoll', searchfcn: 'SearchFcn', meshexpansionfactor: 'MeshExpansionFactor', meshcontractionfactor: 'MeshContractionFactor', initialmeshsize: 'InitialMeshSize', temperaturefcn: 'TemperatureFcn', annealingfcn: 'AnnealingFcn', reannealinterval: 'ReannealInterval' };
 function makeOptions(a: Value[]): Struct {
   const f = new Map<string, Value>();
   let i = 0;
@@ -167,4 +171,177 @@ def('particleswarm', (a, _n, lab) => {
   const n = Math.round(toMat(a[1]).d[0]), o = readOptions(a[4], 'final'), w = watcher(lab, o, ' Iteration  F-count   Best f(x)');
   const r = op.particleswarm(objective(lab, a[0], [1, n]), n, random, { lb: vec(a[2], 'lb'), ub: vec(a[3], 'ub'), size: o.pop, iters: o.maxIter, onIter: w.onIter });
   return [mat(1, n, r.x), num(r.f), num(r.flag), finish(lab, o, r, w, 'particle swarm', 'particleswarm')];
+});
+
+// ——— Several goals at once (M461) ———
+/** A function giving a row of goals for a row of variables. */
+function goals(lab: Lab, fn: Value, n: number): om.MultiFn {
+  if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError('The goals must be a function giving a row of numbers, like @(x) [x(1)^2, (x(1)-2)^2].');
+  return (x) => [...toMat(lab.callFn(fn, [mat(1, n, x)])[0], 'The goals').d];
+}
+const frontOut = (P: { x: number[]; f: number[] }[], n: number) => [matRows(P.map((p) => p.x), n), matRows(P.map((p) => p.f), P[0]?.f.length ?? 0)];
+const drawFront = (lab: Lab, P: { f: number[] }[], name: string) => {
+  const m = P[0]?.f.length ?? 0;
+  if (m === 2) call(lab, 'plot', mat(1, P.length, P.map((p) => p.f[0])), mat(1, P.length, P.map((p) => p.f[1])), str('o'));
+  else if (m >= 3) call(lab, 'plot3', mat(1, P.length, P.map((p) => p.f[0])), mat(1, P.length, P.map((p) => p.f[1])), mat(1, P.length, P.map((p) => p.f[2])), str('o'));
+  call(lab, 'xlabel', str('Goal 1')); call(lab, 'ylabel', str('Goal 2')); if (m >= 3) call(lab, 'zlabel', str('Goal 3'));
+  call(lab, 'grid', str('on')); call(lab, 'title', str(`${name}: ${P.length} best trade-offs (the Pareto front)`));
+};
+def('gamultiobj', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError('gamultiobj needs the goals and the number of variables: gamultiobj(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const n = Math.round(toMat(a[1]).d[0]), k = constraintsOf(lab, a, 2, n, [1, n], a[8]), o = readOptions(a[9], 'off');
+  if (!k.lb?.length || !k.ub?.length || k.lb.some((v, i) => !(Number.isFinite(v) && Number.isFinite(k.ub![i]) && k.ub![i] > v))) throw new LabError('gamultiobj needs finite bounds lb and ub for every variable.');
+  const f = goals(lab, a[0], n), rough = om.nsga2(f, n, k.lb, k.ub, random, { pop: o.pop, gens: o.gens, violation: (x) => om.violation(k, x) });
+  // Polished onto the true front point by point (MATLAB's hybrid step) unless options say 'HybridFcn', 'none'.
+  const hy = a[9] && a[9].k === 'struct' ? a[9].f.get('HybridFcn') : undefined, P = hy && hy.k === 'str' && /^none$/i.test(hy.v) ? rough : om.polish(f, n, { ...k, lb: k.lb, ub: k.ub }, rough);
+  if (!P.length) throw new LabError('No point kept every constraint: loosen them or widen the bounds.');
+  if (nout === 0) { drawFront(lab, P, 'Genetic algorithm (NSGA-II)'); return []; }
+  return [...frontOut(P, n), num(1)];
+});
+def('paretosearch', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError('paretosearch needs the goals and the number of variables: paretosearch(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const n = Math.round(toMat(a[1]).d[0]), k = constraintsOf(lab, a, 2, n, [1, n], a[8]), s = a[9] && a[9].k === 'struct' ? a[9] : null;
+  if (!k.lb?.length || !k.ub?.length) throw new LabError('paretosearch needs bounds lb and ub for every variable.');
+  const size = s?.f.get('ParetoSetSize') ? Math.round(toMat(s.f.get('ParetoSetSize')!).d[0]) : 30;
+  const P = om.paretoSearch(goals(lab, a[0], n), n, { ...k, lb: k.lb, ub: k.ub }, random, Math.max(2, Math.min(200, size)));
+  if (!P.length) throw new LabError('No point kept every constraint: loosen them or widen the bounds.');
+  if (nout === 0) { drawFront(lab, P, 'Pareto search'); return []; }
+  return [...frontOut(P, n), num(1)];
+});
+
+
+// ——— The rarer solvers (M462) ———
+const scalarFn = (lab: Lab, fn: Value, what = 'The function') => {
+  if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError(`${what} must be a function of one number, like @(x) cos(x) - x.`);
+  return (x: number) => { const v = toMat(lab.callFn(fn, [num(x)])[0], what); if (v.d.length !== 1) throw new LabError(`${what} must give one number.`); return v.d[0]; };
+};
+const scalarOut = (r: ox.Scalar, algorithm: string, extra: [string, Value][] = []): Struct => ({ k: 'struct', f: new Map<string, Value>([['iterations', num(r.iterations)], ['funcCount', num(r.evals)], ['algorithm', str(algorithm)], ['message', str(r.message)], ...extra]) });
+def('fzero', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError('fzero needs a function and a starting point or an interval: fzero(@(x) cos(x) - x, 1) or fzero(f, [0 2]).');
+  const g = toMat(a[1], 'The starting point'), o = readOptions(a[2], 'notify');
+  // M471: a complex start looks for a complex root (Muller's method), as no sign change can show one.
+  if (g.im && g.d.length === 1 && g.im[0] !== 0) {
+    const fn = a[0];
+    if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError('fzero needs a function, like @(z) z^2 + 1.');
+    const fc = (z: ox.C): ox.C => { const v = toMat(lab.callFn(fn, [cmat(1, 1, [z[0]], [z[1]])])[0], 'The function'); if (v.d.length !== 1) throw new LabError('The function must give one number.'); return [v.d[0], v.im ? v.im[0] : 0]; };
+    const r = ox.muller(fc, [g.d[0], g.im[0]], o.tolX ?? 1e-14, o.maxIter ?? 200);
+    if (o.display === 'iter' || o.display === 'final') lab.host.out(`${r.message} z = ${+r.z[0].toPrecision(10)} ${r.z[1] < 0 ? '-' : '+'} ${+Math.abs(r.z[1]).toPrecision(10)}i\n`);
+    const z = Math.abs(r.z[1]) <= 1e-14 * (1 + Math.abs(r.z[0])) ? num(r.z[0]) : cmat(1, 1, [r.z[0]], [r.z[1]]);
+    return [z, cmat(1, 1, [r.f[0]], [r.f[1]]), num(r.flag), scalarOut({ x: r.z[0], f: Math.hypot(...r.f), iterations: r.iterations, evals: r.evals, flag: r.flag, message: r.message }, 'Muller’s method (complex)')];
+  }
+  const f = scalarFn(lab, a[0]);
+  let lo: number, hi: number, found = 0;
+  if (g.d.length >= 2) [lo, hi] = [g.d[0], g.d[1]];
+  else {
+    const b = ox.bracket(f, g.d[0]);
+    if (!b) throw new LabError(`fzero couldn’t find where the function changes sign near ${g.d[0]}: try another starting point or an interval [a b].`);
+    ({ a: lo, b: hi, evals: found } = b);
+  }
+  const r = ox.brentZero(f, lo, hi, o.tolX ?? 2.220446049250313e-16, o.maxIter ?? 400);
+  if (r.flag === -6) throw new LabError(`fzero needs the function to change sign between ${lo} and ${hi}: f is ${+f(lo).toPrecision(4)} and ${+f(hi).toPrecision(4)} there.`);
+  if (o.display === 'iter' || o.display === 'final') lab.host.out(`${r.message} x = ${+r.x.toPrecision(10)}\n`);
+  return [num(r.x), num(r.f), num(r.flag), scalarOut({ ...r, evals: r.evals + found }, 'bisection, interpolation (Brent)', [['intervaliterations', num(found ? Math.round((found - 1) / 2) : 0)], ['bracketx', mat(1, 2, [lo, hi])]])];
+});
+def('fminbnd', (a, _n, lab) => {
+  if (a.length < 3) throw new LabError('fminbnd needs a function and the ends of the interval: fminbnd(@(x) x.^3 - 2*x, 0, 2).');
+  const f = scalarFn(lab, a[0]), lo = toMat(a[1], 'The lower end').d[0], hi = toMat(a[2], 'The upper end').d[0], o = readOptions(a[3], 'notify');
+  if (!(hi > lo)) throw new LabError('fminbnd’s upper end must be above its lower end.');
+  const r = ox.brentMin(f, lo, hi, o.tolX ?? 1e-4, o.maxIter ?? 500);
+  if (o.display === 'iter' || o.display === 'final') lab.host.out(`${r.message} x = ${+r.x.toPrecision(8)}\n`);
+  return [num(r.x), num(r.f), num(r.flag), scalarOut(r, 'golden section search, parabolic interpolation (Brent)')];
+});
+def('lsqnonneg', (a) => {
+  if (a.length < 2) throw new LabError('lsqnonneg needs C and d: x = lsqnonneg(C, d) makes C*x as close to d as it can with every x ≥ 0.');
+  const C = rows(a[0], 'C'), d = vec(a[1], 'd');
+  if (C.length !== d.length) throw new LabError(`C has ${C.length} rows, so d needs ${C.length} entries.`);
+  const r = ox.nnls(C, d), n = r.x.length;
+  return [mat(n, 1, r.x), num(r.resnorm), mat(d.length, 1, r.residual), num(1), { k: 'struct', f: new Map<string, Value>([['iterations', num(r.iterations)], ['algorithm', str('active-set (Lawson–Hanson)')], ['message', str('The non-negative least-squares answer.')]]) } satisfies Struct, mat(n, 1, r.lambda)];
+});
+def('lsqlin', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError('lsqlin needs C and d: lsqlin(C, d, A, b, Aeq, beq, lb, ub, x0, options).');
+  const C = rows(a[0], 'C'), d = vec(a[1], 'd'), n = C[0]?.length ?? 0;
+  if (C.length !== d.length) throw new LabError(`C has ${C.length} rows, so d needs ${C.length} entries.`);
+  const k = constraintsOf(lab, a, 2, n, [n, 1]), o = readOptions(a[9], 'final');
+  const r = ox.lsqlin(C, d, k, isEmpty(a[8]) ? undefined : vec(a[8], 'x0'));
+  return [mat(n, 1, r.x), num(r.f), mat(d.length, 1, r.residual), num(r.flag), finish(lab, o, r, { fs: [] }, 'augmented Lagrangian (exact gradient)', 'lsqlin')];
+});
+function attain(lab: Lab, fn: Value, x0: Mat, goal: number[] | null, weight: number[] | null, k: op.Constraints, o: Read, solver: string) {
+  const shape = shapeOf(x0);
+  if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError(`${solver} needs a function giving a row of goals, like @(x) [x(1)^2, (x(1)-2)^2].`);
+  const F: om.MultiFn = (x) => [...toMat(lab.callFn(fn, [mat(shape[0], shape[1], x)])[0], 'The goals').d];
+  const m = F([...x0.d]).length, g = goal ?? new Array(m).fill(0), w = weight ?? new Array(m).fill(1);
+  if (g.length !== m || w.length !== m) throw new LabError(`The function gives ${m} goals, so goal and weight need ${m} entries each.`);
+  const r = ox.goalAttain(F, [...x0.d], g, w, k);
+  return { r, F, output: finish(lab, o, r, { fs: [] }, 'goal attainment by an augmented Lagrangian', solver) };
+}
+def('fminimax', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError('fminimax needs a function giving several values and a starting point: fminimax(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const x0 = toMat(a[1], 'The starting point'), shape = shapeOf(x0), k = constraintsOf(lab, a, 2, x0.d.length, shape, a[8]), o = readOptions(a[9], 'final');
+  const { r, output } = attain(lab, a[0], x0, null, null, k, o, 'fminimax');
+  return [out(x0, r.x), mat(1, r.fval.length, r.fval), num(Math.max(...r.fval)), num(r.flag), output];
+});
+def('fgoalattain', (a, _n, lab) => {
+  if (a.length < 4) throw new LabError('fgoalattain needs a function, a starting point, the goals and their weights: fgoalattain(fun, x0, goal, weight, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const x0 = toMat(a[1], 'The starting point'), shape = shapeOf(x0), k = constraintsOf(lab, a, 4, x0.d.length, shape, a[10]), o = readOptions(a[11], 'final');
+  const goal = vec(a[2], 'goal'), weight = vec(a[3], 'weight');
+  if (weight.some((v) => v < 0)) throw new LabError('The weights can’t be negative (0 makes a goal a hard limit; abs(goal) is the usual choice).');
+  const { r, output } = attain(lab, a[0], x0, goal, weight, k, o, 'fgoalattain');
+  return [out(x0, r.x), mat(1, r.fval.length, r.fval), num(r.gamma), num(r.flag), output];
+});
+// ——— Pattern search's and annealing's choices (M471) ———
+const optOf = (s: Struct | null, name: string) => s?.f.get(name);
+const optNum = (s: Struct | null, name: string) => { const v = optOf(s, name); return v && !isEmpty(v) ? toMat(v).d[0] : undefined; };
+const optName = (v: Value | undefined) => (!v ? '' : v.k === 'str' ? v.v : v.k === 'fn' ? v.name ?? '' : '').toLowerCase().replace(/^@/, '');
+const POLLS: Record<string, ox.Poll> = { gpspositivebasis2n: 'gps2n', gpspositivebasisnp1: 'gpsnp1', gsspositivebasis2n: 'gss2n', gsspositivebasisnp1: 'gssnp1', madspositivebasis2n: 'mads2n', madspositivebasisnp1: 'madsnp1' };
+const POLL_NAMES: Record<ox.Poll, string> = { gps2n: 'GPS positive basis 2N', gpsnp1: 'GPS positive basis N+1', gss2n: 'GSS positive basis 2N', gssnp1: 'GSS positive basis N+1', mads2n: 'MADS positive basis 2N', madsnp1: 'MADS positive basis N+1' };
+function patternOpts(s: Struct | null): Omit<ox.PatternOpts, 'onStep' | 'maxEvals'> {
+  const pm = optName(optOf(s, 'PollMethod')), poll = pm ? POLLS[pm] : 'gps2n';
+  if (!poll) throw new LabError('PollMethod is GPSPositiveBasis2N, GPSPositiveBasisNp1, GSSPositiveBasis2N, GSSPositiveBasisNp1, MADSPositiveBasis2N or MADSPositiveBasisNp1.');
+  const cp = optOf(s, 'UseCompletePoll'), sf = optName(optOf(s, 'SearchFcn'));
+  if (sf && !['searchlhs', 'none', '[]'].includes(sf)) throw new LabError("SearchFcn here is 'searchlhs' (a Latin hypercube before the first poll) or none.");
+  return { meshTol: optNum(s, 'MeshTolerance'), poll, complete: !!cp && (cp.k === 'str' ? /^(on|true)$/i.test(cp.v) : toMat(cp).d[0] !== 0), search: sf === 'searchlhs' ? 'lhs' : 'none', mesh0: optNum(s, 'InitialMeshSize'), expand: optNum(s, 'MeshExpansionFactor'), contract: optNum(s, 'MeshContractionFactor'), rand: random };
+}
+/** The hybrid finish (HybridFcn): a local solver from the best point found, within the bounds. */
+function hybrid(s: Struct | null, f: op.Fn, r: op.Result, lb: number[], ub: number[]): op.Result {
+  const h = optName(optOf(s, 'HybridFcn'));
+  if (!h || h === 'none' || h === '[]') return r;
+  const bounded = lb.some(Number.isFinite) || ub.some(Number.isFinite);
+  const next = h === 'fminsearch' && !bounded ? op.nelderMead(f, r.x)
+    : h === 'fminsearch' || h === 'fmincon' ? op.augLag(f, r.x, { lb, ub })
+      : h === 'fminunc' ? op.bfgs(f, r.x, bounded ? { lb, ub } : {})
+        : h === 'patternsearch' ? ox.patternSearch(f, r.x, lb, ub, { meshTol: 1e-8 })
+          : null;
+  if (!next) throw new LabError("HybridFcn is 'fminsearch', 'fminunc', 'fmincon' or 'patternsearch'.");
+  if (!(next.f <= r.f)) return r;
+  return { ...next, path: [...r.path, ...next.path], evals: r.evals + next.evals, iterations: r.iterations + next.iterations, message: `${r.message} Then ${h} polished it.` };
+}
+
+def('patternsearch', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError('patternsearch needs a function and a starting point: patternsearch(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const x0 = toMat(a[1], 'The starting point'), shape = shapeOf(x0), k = constraintsOf(lab, a, 2, x0.d.length, shape, a[8]), o = readOptions(a[9], 'final'), w = watcher(lab, o, ' Iteration  F-count   f(x)');
+  const s = a[9] && a[9].k === 'struct' ? a[9] : null, po = patternOpts(s);
+  let step = 0;
+  const inner: op.Inner = (f, x, lb, ub, onStep) => ox.patternSearch(f, x, lb, ub, { ...po, maxEvals: o.maxEvals, onStep: (y, fy, evals) => { onStep(y); w.onIter(++step, y, fy, evals); } });
+  const fn = objective(lab, a[0], shape), plain = !k.A && !k.Aeq && !k.nonlcon;
+  let r = op.augLag(fn, [...x0.d], k, { inner });
+  if (plain) r = hybrid(s, fn, r, k.lb ?? [], k.ub ?? []);
+  return [out(x0, r.x), num(r.f), num(r.flag), finish(lab, o, r, w, `${po.poll?.startsWith('mads') ? 'mesh adaptive direct search' : po.poll?.startsWith('gss') ? 'generating set search' : 'generalised pattern search'} (${POLL_NAMES[po.poll ?? 'gps2n']}${po.complete ? ', complete poll' : ''}${po.search === 'lhs' ? ', Latin hypercube search' : ''})`, 'patternsearch')];
+});
+def('simulannealbnd', (a, _n, lab) => {
+  if (a.length < 2) throw new LabError('simulannealbnd needs a function and a starting point: simulannealbnd(fun, x0, lb, ub, options).');
+  const x0 = toMat(a[1], 'The starting point'), shape = shapeOf(x0), lb = vec(a[2], 'lb'), ub = vec(a[3], 'ub'), o = readOptions(a[4], 'final'), w = watcher(lab, o, ' Iteration  F-count   Best f(x)');
+  if ((lb.length && lb.length !== x0.d.length) || (ub.length && ub.length !== x0.d.length)) throw new LabError(`lb and ub need ${x0.d.length} entries (or [] for none).`);
+  const s = a[4] && a[4].k === 'struct' ? a[4] : null, T0 = optNum(s, 'InitialTemperature') ?? 100;
+  // M471: MATLAB's temperature and step choices, or the person's own functions (given what MATLAB gives them).
+  const tf = optOf(s, 'TemperatureFcn'), af = optOf(s, 'AnnealingFcn'), tn = optName(tf), an = optName(af);
+  const SCHED: Record<string, ox.Schedule> = { temperatureexp: 'exp', temperaturefast: 'fast', temperatureboltz: 'boltz' };
+  const STEP: Record<string, ox.Stepper> = { annealingfast: 'fast', annealingboltz: 'boltz' };
+  const kStruct = (k: number[], T?: number[], x?: number[], fx?: number): Value => ({ k: 'struct', f: new Map<string, Value>([['k', mat(k.length, 1, k)], ...(T ? [['temperature', mat(T.length, 1, T)] as [string, Value]] : []), ...(x ? [['x', out(x0, x)] as [string, Value]] : []), ...(fx !== undefined ? [['fval', num(fx)] as [string, Value]] : [])]) });
+  const problem: Value = { k: 'struct', f: new Map<string, Value>([['lb', mat(1, lb.length, lb)], ['ub', mat(1, ub.length, ub)]]) };
+  const temperature: ox.Schedule = !tf ? 'exp' : SCHED[tn] ?? (tf.k === 'fn' ? (kk: number[]) => { const v = toMat(lab.callFn(tf, [kStruct(kk), s!])[0], 'TemperatureFcn').d; return kk.map((_, i) => v[Math.min(i, v.length - 1)]); } : (() => { throw new LabError("TemperatureFcn is 'temperatureexp', 'temperaturefast', 'temperatureboltz' or your own function."); })());
+  const step: ox.Stepper = !af ? 'fast' : STEP[an] ?? (af.k === 'fn' ? (xx: number[], T: number[]) => { const v = toMat(lab.callFn(af, [kStruct([], T, xx), problem])[0], 'AnnealingFcn').d; if (v.length !== xx.length) throw new LabError(`AnnealingFcn must give a point of ${xx.length} numbers.`); return [...v]; } : (() => { throw new LabError("AnnealingFcn is 'annealingfast', 'annealingboltz' or your own function."); })());
+  const fn = objective(lab, a[0], shape);
+  let r = ox.anneal(fn, [...x0.d], lb, ub, random, { T0, maxEvals: o.maxEvals, tolFun: o.tolFun, temperature, step, reanneal: optNum(s, 'ReannealInterval'), onIter: w.onIter });
+  r = hybrid(s, fn, r, lb, ub);
+  return [out(x0, r.x), num(r.f), num(r.flag), finish(lab, o, r, w, `simulated annealing (${typeof temperature === 'string' ? `temperature${temperature}` : 'your temperature'}, ${typeof step === 'string' ? `annealing${step}` : 'your annealing'}, reannealing)`, 'simulannealbnd')];
 });

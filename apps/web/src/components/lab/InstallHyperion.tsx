@@ -20,7 +20,8 @@ const DOWNLOADS = process.env.NEXT_PUBLIC_HYPERION_DOWNLOADS === '1'
 const subscribe = (cb: () => void) => { const m = window.matchMedia(STANDALONE); m.addEventListener('change', cb); return () => m.removeEventListener('change', cb); };
 
 export function InstallHyperion() {
-  const installed = useSyncExternalStore(subscribe, () => window.matchMedia(STANDALONE).matches, () => true);
+  // Installed: the browser's app window, or Hyperion's computer app (its preload sets `hyperionDesktop`).
+  const installed = useSyncExternalStore(subscribe, () => window.matchMedia(STANDALONE).matches || 'hyperionDesktop' in window, () => true);
   const desktop = useDesktop();
   const [prompt, setPrompt] = useState<InstallPrompt | null>(null);
   const [help, setHelp] = useState(false);

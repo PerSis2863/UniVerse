@@ -254,8 +254,8 @@ cumtrapz | cumtrapz(x, y) | Running area.
 integral | integral(f, a, b) | Integral of a function from a to b.
 quad | quad(f, a, b) | Integral (older name).
 quadgk | quadgk(f, a, b) | Integral (older name).
-fzero | fzero(f, x0) | Where f is zero, near x0 (or between [a b]).
-fminbnd | [x, fx] = fminbnd(f, a, b) | Where f is smallest between a and b.
+fzero | [x, fval, flag, output] = fzero(f, x0, options) | Where f is zero, near x0 (or between [a b]), by Brent's method: safe bisection with faster interpolation steps. A single x0 is widened until the sign changes. A complex x0 (fzero(@(z) z^2 + 4, 1i)) finds a complex root by Muller's method.
+fminbnd | [x, fval, flag, output] = fminbnd(f, a, b, options) | Where f is smallest between a and b, by Brent's method (golden sections and parabolas; options TolX, 1e-4 by default).
 ode45 | [t, y] = ode45(f, [t0 t1], y0) | Solves y' = f(t, y) (Dormand–Prince, adaptive steps).
 ode23 | [t, y] = ode23(f, [t0 t1], y0) | Solves y' = f(t, y) (lower order, for rougher problems).
 gradient | gradient(F, h), [fx, fy] = gradient(F) | Slopes on a grid; gradient(f, [x, y]) of a formula: its derivatives by each letter.
@@ -642,7 +642,15 @@ lsqcurvefit | p = lsqcurvefit(@(p, x) model, p0, xdata, ydata, lb, ub) | Fits a 
 fsolve | x = fsolve(fun, x0) | Solves a system F(x) = 0 (as many equations as wanted).
 ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A genetic algorithm: a population that breeds and mutates towards the best, for bumpy functions with many dips.
 particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
-optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
+gamultiobj | [x, fval] = gamultiobj(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | Several goals at once (fun gives a row of them): the best trade-offs, the Pareto front, by a genetic algorithm (NSGA-II), each point then polished onto the true front (options HybridFcn 'none' skips that). Bounds are needed. Drawn without outputs.
+paretosearch | [x, fval] = paretosearch(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | The Pareto front point by point (options ParetoSetSize, 30 by default): each pushed as far as it goes along its own direction from the best values. Drawn without outputs.
+lsqnonneg | [x, resnorm, residual, flag, output, lambda] = lsqnonneg(C, d) | C*x as close to d as it can be with every x ≥ 0 (Lawson and Hanson's active set): amounts, concentrations, mixtures that can't go negative.
+lsqlin | [x, resnorm, residual, flag, output] = lsqlin(C, d, A, b, Aeq, beq, lb, ub, x0, options) | Least squares C*x ≈ d with linear constraints and bounds.
+fminimax | [x, fval, maxfval, flag, output] = fminimax(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | Makes the largest of several values (fun gives a row) as small as it can: the worst case at its best.
+fgoalattain | [x, fval, attainfactor, flag, output] = fgoalattain(fun, x0, goal, weight, A, b, Aeq, beq, lb, ub, nonlcon, options) | Gets each of several values to its goal, every one missing (or beating) it by the same share of its weight; a negative attainfactor means every goal is beaten. Weight 0 makes a goal a hard limit; abs(goal) is the usual weight.
+patternsearch | [x, fval, flag, output] = patternsearch(fun, x0, A, b, Aeq, beq, lb, ub, nonlcon, options) | Direct search without slopes: tries a step each way along every axis, doubling the step after a win and halving it after a miss. Options: MeshTolerance (1e-6), PollMethod (GPSPositiveBasis2N, GPSPositiveBasisNp1, GSSPositiveBasis2N/Np1: stops on bounds, MADSPositiveBasis2N/Np1: random directions each poll), UseCompletePoll, SearchFcn 'searchlhs' (a Latin hypercube first), InitialMeshSize, MeshExpansionFactor, MeshContractionFactor, HybridFcn. Works on rough or jumpy functions; constraints through an augmented Lagrangian.
+simulannealbnd | [x, fval, flag, output] = simulannealbnd(fun, x0, lb, ub, options) | Simulated annealing: random steps that sometimes go uphill, less often as it cools, so it can climb out of small dips to find a deeper one. Options: InitialTemperature (100), TemperatureFcn ('temperatureexp', 'temperaturefast', 'temperatureboltz' or @(optimValues, options) …), AnnealingFcn ('annealingfast', 'annealingboltz' or @(optimValues, problem) …), ReannealInterval (100: temperatures raised by the gradient), HybridFcn ('fminsearch', 'fminunc', 'fmincon', 'patternsearch'). Random: rng(n) first to repeat a run.
+optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize, and each solver's own (see patternsearch, simulannealbnd).
 optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
 
 # Predictive maintenance
@@ -663,6 +671,12 @@ linearDegradationModel | mdl = linearDegradationModel | Wear that grows in a str
 fit | mdl = fit(mdl, {[t1 y1], [t2 y2], …}) | Learns a degradation model from past machines' histories ([time value] each, or tables).
 update | mdl = update(mdl, [t y]) | The model after seeing one machine's readings so far.
 predictRUL | [rul, ci, pdf] = predictRUL(mdl, [t y], threshold) | The remaining useful life: when the level will reach the threshold, a 90% range and the spread of possible times.
+modalfrf | [frf, f, coh] = modalfrf(x, y, fs, window, noverlap) | A structure's frequency response from a hammer or shaker test: the H1 estimate (Welch's averages of output against input) and the coherence. Without outputs, drawn.
+modalfit | [fn, dr] = modalfit(frf, f, fs, mnum, 'FreqRange', [lo hi]) | The natural frequencies and damping ratios of the mnum tallest peaks (peak picking; damping from the half-power width).
+pkurtosis | [sk, f] = pkurtosis(x, fs, window) | The spectral kurtosis: high in the band where a damaged bearing's impacts ring, near 0 for steady noise.
+kurtogram | [K, f, w, fc, wc, bw] = kurtogram(x, fs, level) | The spectral kurtosis for windows of 8 to 2^(level+2) samples: the best band's centre fc and width bw, to filter before an envelope spectrum.
+tsa | [ta, t, rpm] = tsa(x, fs, tPulse, 'NumRotations', 1) | Time-synchronous averaging: the turns between tachometer pulses stretched alike and averaged, so only what turns with the shaft is left.
+orderspectrum | [spec, order] = orderspectrum(x, fs, rpm) | The spectrum against orders (cycles per shaft turn), the signal resampled at even steps of angle so a run-up keeps each order in one place.
 
 # Energy: batteries, solar and wind
 batteryCell | c = batteryCell('Capacity', 5, 'R0', 0.012, 'R1', 0.008, 'C1', 2500) | A lithium-ion cell as an equivalent circuit: its open-circuit voltage by state of charge, a series resistance and one RC pair (capacity in Ah, ohms, farads).
@@ -766,7 +780,7 @@ radareqrng | R = radareqrng(lambda, snr, Pt, tau, …) | The farthest range that
 radareqpow | Pt = radareqpow(lambda, R, snr, tau, …) | The peak power needed for that SNR at range R.
 chirp | y = chirp(t, f0, t1, f1, 'linear', phi) | A swept cosine from f0 at 0 to f1 at t1: 'linear', 'quadratic' or 'logarithmic'.
 lfmpulse | w = lfmpulse(B, T, fs) | A linear-FM (chirp) radar pulse: bandwidth B over T seconds, complex, at sample rate fs.
-radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses.
+radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses. 'Clutter', 30 adds ground clutter that much above the noise.
 pulsecompress | y = pulsecompress(x, w) | The matched filter: each column correlated with the pulse, a target's peak at its delay.
 rangedoppler | [M, range, speed] = rangedoppler(x, w, fs, prf, fc) | The range–Doppler map in dB (pulse compression, then a windowed FFT across pulses). Drawn without outputs.
 cfar | [det, th] = cfar(power, guard, train, pfa) | Cell-averaging CFAR: each cell against its neighbours' mean, for a false-alarm rate pfa (down each column).
@@ -776,6 +790,12 @@ sensorsig | [X, R] = sensorsig(pos, ns, ang, noise, 'Power', p) | ns snapshots (
 arraypattern | p = arraypattern(pos, w, az) | The array's response (dB) at each azimuth for weights w (uniform if left out): steer with w = steervec(pos, 30), lower the side lobes with .*hamming(N). Drawn without outputs, with the beam's width.
 spatialspectrum | P = spatialspectrum(R, pos, az, 'Method', 'music', 'NumSignals', 2) | Power by direction from a covariance: 'beamscan' (the beam swept across), 'mvdr' (Capon) or 'music' (the noise subspace: sharpest). Drawn without outputs, with its peaks.
 musicdoa | doa = musicdoa(R, nsig, 'ScanAngles', az, 'ElementSpacing', 0.5) | The directions (degrees) of nsig signals by MUSIC, for a line of equally spaced elements.
+mtifilter | y = mtifilter(x, 2) | Moving-target indication: each pulse less the one before (2) or the two-step difference (3), across the columns; still ground clutter cancels, movers stay.
+groupdetections | p = groupdetections(det, power) | One detection per group of neighbouring hits, at the strongest: indices for a vector, rows [row col] for a matrix (a range–Doppler map).
+fmcwbeat | x = fmcwbeat(B, T, fs, fc, chirps, [range speed amp], 'SNR', 20) | A car radar's (FMCW) beat signal: each chirp sweeps B Hz in T seconds; samples down, chirps across.
+fmcwrangedoppler | [M, range, speed] = fmcwrangedoppler(x, B, T, fs, fc) | The FMCW range–Doppler map in dB (an FFT down each chirp and across the chirps). Drawn without outputs.
+trackkalman | X = trackkalman(Z, dt, 'ProcessNoise', q, 'MeasurementNoise', r) | A constant-velocity Kalman filter on measured positions [x y] (NaN rows: missed): rows [x y vx vy]. Drawn without outputs.
+trackmulti | t = trackmulti(scans, dt, 'MeasurementNoise', r, 'Gate', 9.21, 'Confirm', 3, 'Drop', 4) | Many targets from a cell array of scans (each rows [x y], false alarms included): tracks gated, paired nearest first, started, confirmed and dropped; a table of the confirmed tracks (Scan, Track, X, Y, VX, VY). Drawn without outputs.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.

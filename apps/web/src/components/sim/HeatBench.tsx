@@ -294,7 +294,7 @@ export function HeatBench() {
     </section>
   );
   return (
-    <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+    <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col overflow-hidden p-0" aria-label="Study">
         <div className="max-h-[50%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
         <div className="min-h-0 flex-1 overflow-y-auto p-3" aria-live="polite" data-no-motion>{details}</div>

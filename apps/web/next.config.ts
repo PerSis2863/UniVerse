@@ -2,7 +2,7 @@ import path from 'node:path';
 import type { NextConfig } from 'next';
 import withPWAInit from '@ducanh2912/next-pwa';
 import { initOpenNextCloudflareForDev } from '@opennextjs/cloudflare';
-import { securityHeaders } from './security-headers';
+import { sandboxHeaders, securityHeaders } from './security-headers';
 
 // Lets `next dev` read Cloudflare bindings from wrangler.jsonc (no effect on production builds). Nothing remote: the AI
 // binding (M430, Workers AI) would otherwise make it sign in to the real Cloudflare account; locally Ghidra uses Gemini.
@@ -149,9 +149,11 @@ const nextConfig: NextConfig = {
     const csp = securityHeaders.filter((h) => h.key === 'Content-Security-Policy');
     const rest = securityHeaders.filter((h) => h.key !== 'Content-Security-Policy');
     return [
-      { source: '/:path*', headers: rest },
+      // Everything but Hyperion's sealed runner (M469), which sends its own policy below.
+      { source: '/((?!sandbox/).*)', headers: rest },
       // Uploaded files and certificate pages send their own, stricter policy.
-      { source: '/((?!api/files/|api/core/impact/certificates/).*)', headers: csp },
+      { source: '/((?!api/files/|api/core/impact/certificates/|sandbox/).*)', headers: csp },
+      { source: '/sandbox/:path*', headers: sandboxHeaders },
     ];
   },
 };

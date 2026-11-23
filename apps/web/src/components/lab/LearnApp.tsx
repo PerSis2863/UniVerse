@@ -149,9 +149,12 @@ export function LearnApp() {
       const off = new OffscreenCanvas(showRegion.w, showRegion.h);
       off.getContext('2d')!.putImageData(img, 0, 0);
       g.imageSmoothingEnabled = true; g.imageSmoothingQuality = 'high';
+      // Rounded like every Hyperion surface (the owner, 23 Nov: "round corners everywhere").
+      g.save(); g.beginPath(); g.roundRect(L, T, pw, ph, 10); g.clip();
       g.drawImage(off, L, T, pw, ph);
+      g.restore();
     }
-    g.strokeStyle = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)'; g.lineWidth = 1; g.strokeRect(L, T, pw, ph);
+    g.strokeStyle = dark ? 'rgba(255,255,255,0.18)' : 'rgba(0,0,0,0.15)'; g.lineWidth = 1; g.beginPath(); g.roundRect(L + 0.5, T + 0.5, pw - 1, ph - 1, 10); g.stroke();
     g.fillStyle = dark ? '#d4d4d8' : '#52525b'; g.font = '11px Inter, system-ui, sans-serif';
     for (let i = 0; i <= 4; i++) {
       const vx = xr[0] + ((xr[1] - xr[0]) * i) / 4, vy = yr[0] + ((yr[1] - yr[0]) * i) / 4;
@@ -187,7 +190,7 @@ export function LearnApp() {
   const conf = chosenResult && 'confusion' in chosenResult ? chosenResult.confusion : null;
 
   return (
-    <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+    <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Learn settings" data-no-motion>
         <label className={label}>Data
           <select value={s.source} onChange={(e) => { const v = e.target.value as Source; if (v === 'csv' && !csv) { document.getElementById('learn-file')?.click(); return; } set({ source: v, xi: v === 'iris' ? 2 : 0, yi: v === 'iris' ? 3 : 1 }); }} className="input mt-1 w-full">

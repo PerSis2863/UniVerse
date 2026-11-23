@@ -112,3 +112,49 @@ describe('antenna arrays and direction finding (M438)', () => {
     expect(() => run('musicdoa(eye(4), 4)')).toThrow(/1 to N/);
   });
 });
+
+describe('clutter, FMCW, grouping and tracking (M460)', () => {
+  let seed = 5;
+  const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  const g = () => { let u = 0; while (!u) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };
+  it('FMCW: two cars found at their range (c/2B = 0.5 m cells) and speed; grouped into one detection each', async () => {
+    const tk = await import('./tracking');
+    const b = tk.fmcwBeat(300e6, 40e-6, 10e6, 77e9, 128, [{ range: 30, speed: 5, amp: 1 }, { range: 60, speed: -10, amp: 1 }], 0, rand);
+    const m = tk.fmcwMap(b.re, b.im, b.rows, b.cols, 300e6, 40e-6, 10e6, 77e9), top = Math.max(...m.map);
+    expect(m.range[1]).toBeCloseTo(0.5, 3);
+    const found = tk.groupDetections(Float64Array.from(m.map, (v) => (v > top - 6 ? 1 : 0)), m.map, m.rows, m.cols).map(([r, c]) => [m.range[r], m.speed[c]]).sort((x, y) => x[0] - y[0]);
+    expect(found).toHaveLength(2);
+    expect(Math.abs(found[0][0] - 30)).toBeLessThan(0.5); expect(Math.abs(found[0][1] - 5)).toBeLessThan(0.4);
+    expect(Math.abs(found[1][0] - 60)).toBeLessThan(0.5); expect(Math.abs(found[1][1] + 10)).toBeLessThan(0.4);
+  });
+  it('a three-pulse canceller takes still clutter away (over 60 dB at zero speed)', async () => {
+    const tk = await import('./tracking');
+    const w = rd.lfm(5e6, 5e-6, 10e6), cube = rd.echoes(w, 10e6, 10e3, 64, 10e9, [{ range: 3000, speed: 20, amp: 1 }], 0, rand, 30);
+    const f = tk.mti(cube.re, cube.im, cube.rows, cube.cols, 3);
+    const zero = (r: ReturnType<typeof rd.rangeDoppler>) => { const k = r.speed.reduce((b, s, i) => (Math.abs(s) < Math.abs(r.speed[b]) ? i : b), 0); let s = 0; for (let i = 100; i < r.rows; i++) s += 10 ** (r.map[i + k * r.rows] / 10); return 10 * Math.log10(s); };
+    expect(zero(rd.rangeDoppler(cube, w, 10e6, 10e3, 10e9)) - zero(rd.rangeDoppler({ rows: cube.rows, cols: f.cols, re: f.re, im: f.im }, w, 10e6, 10e3, 10e9))).toBeGreaterThan(60);
+  });
+  it('a Kalman filter beats the raw measurements; the tracker keeps two targets and drops false alarms quickly', async () => {
+    const tk = await import('./tracking');
+    const truth = Array.from({ length: 100 }, (_, k) => [k * 10, 500 - k * 5]), Z = truth.map(([x, y]) => [x + 10 * g(), y + 10 * g()] as [number, number]);
+    const X = tk.kalmanTrack(Z, 1, 0.1, 10), rmse = (a: number[][]) => Math.sqrt(a.slice(20).reduce((s, v, k) => s + (v[0] - truth[k + 20][0]) ** 2 + (v[1] - truth[k + 20][1]) ** 2, 0) / 160);
+    expect(rmse(X)).toBeLessThan(0.6 * rmse(Z));
+    expect(Math.abs(X[99][2] - 10)).toBeLessThan(1.5); expect(Math.abs(X[99][3] + 5)).toBeLessThan(1.5);
+    const scans: [number, number][][] = Array.from({ length: 60 }, (_, k) => [[k * 20 + 5 * g(), k * 10 + 5 * g()], [k * 20 + 5 * g(), 600 - k * 10 + 5 * g()], ...Array.from({ length: 3 }, (): [number, number] => [rand() * 1200, rand() * 600])]);
+    const out = tk.multiTrack(scans, 1, { q: 1, r: 5, vmax: 40 }), ids = [...new Set(out.map((o) => o.id))], len = (id: number) => out.filter((o) => o.id === id).length;
+    const long = ids.filter((id) => len(id) > 40);
+    expect(long).toHaveLength(2);
+    expect(ids.filter((id) => len(id) <= 40).every((id) => len(id) < 10)).toBe(true);
+    // Each long track stays on its own target (they cross at scan 30).
+    for (const id of long) { const pts = out.filter((o) => o.id === id), up = pts[pts.length - 1].y > 300; expect(pts.every((p) => Math.abs(p.y - (up ? p.scan - 1 : 60 - (p.scan - 1)) * 10) < 40)).toBe(true); }
+  }, 20_000);
+  it('in the language', () => {
+    const r = run("rng(2); x = fmcwbeat(300e6, 40e-6, 10e6, 77e9, 64, [30 5 1; 60 -10 1], 'SNR', 0);\n[M, rr, ss] = fmcwrangedoppler(x, 300e6, 40e-6, 10e6, 77e9);\nP = groupdetections(M > max(M(:)) - 6, M);\nn = size(P, 1);\nw = lfmpulse(5e6, 5e-6, 10e6); e = radarecho(w, 10e6, 10e3, 16, 10e9, [3000 20 1], 'Clutter', 30);\nm = mtifilter(e, 2); c = size(m, 2);\nd = groupdetections([0 1 1 0 0 1 0], [0 2 5 0 0 3 0]);\nt = (0:49)'; Z = [t*10 + randn(50,1)*5, 300 - t*4 + randn(50,1)*5];\nX = trackkalman(Z, 1, 'ProcessNoise', 0.1, 'MeasurementNoise', 5);\ntr = trackmulti({[0 0; 100 100], [10 5; 100 95], [20 10; 100 90], [30 15; 100 85], [40 20; 100 80]}, 1, 'MeasurementNoise', 2);\nk = numel(tr.Track);\nfmcwrangedoppler(x, 300e6, 40e-6, 10e6, 77e9)\nfigure; trackkalman(Z, 1)");
+    expect(r.d('n')).toEqual([2]);
+    expect(r.d('c')).toEqual([15]);
+    expect(r.d('d')).toEqual([3, 6]);
+    expect(r.d('X').length).toBe(200);
+    expect(r.d('k')[0]).toBeGreaterThanOrEqual(4);
+    expect(r.graphics.figures.length).toBe(2);
+  });
+});

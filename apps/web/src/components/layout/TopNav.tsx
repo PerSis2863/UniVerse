@@ -1,6 +1,7 @@
 'use client';
 
 import { useLayoutEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Bell, ChevronDown, Link2, LogOut, MoreHorizontal, RotateCcw, Search } from 'lucide-react';
 import useSWR from 'swr';
@@ -25,6 +26,10 @@ import type { RowTab } from '@/components/ui/TabRow';
 import { reliefSections } from '@/components/relief/ReliefTabs';
 import { traceSections } from '@/components/trace/TraceTabs';
 import { travelSections } from '@/components/travel/TravelTabs';
+
+// Hyperion's "Install Hyperion" sits in this bar on its pages (the owner, 23 Nov: "there is a lot of gap here"): no row of
+// its own above the window. Loaded only when Hyperion is open.
+const InstallHyperion = dynamic(() => import('@/components/lab/InstallHyperion').then((m) => m.InstallHyperion), { ssr: false });
 
 /** M370 (the owner, 20 Nov: "please add live map, most urgent, matches, alert and other up there where message and
  *  collaborate are so it stay together and make like this for other apps also"): in an app with its own row of
@@ -234,6 +239,7 @@ export function TopNav() {
 
       {/* The tools every page had in its own bar. */}
       <div className="shrink-0 flex items-center gap-1">
+        {own === 'lab' && <div className="me-1"><InstallHyperion /></div>}
         <ArrangeButton />
         <button type="button" data-tour="search" onClick={openCommandPalette} aria-label="Search" title="Search (Ctrl K)" className="w-9 h-9 grid place-items-center rounded-full text-[var(--sidebar-item-color)] hover:bg-[var(--sidebar-item-hover-bg)]">
           <Search className="w-[18px] h-[18px]" strokeWidth={2.1} />

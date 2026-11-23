@@ -66,3 +66,25 @@ export const securityHeaders = [
   { key: 'X-Permitted-Cross-Domain-Policies', value: 'none' },
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
 ];
+
+// Hyperion's sealed runner for Python and R (M469, public/sandbox/run.html): the Code window frames it with
+// sandbox="allow-scripts" (an opaque origin, nothing of the site's reachable), so it may have what Pyodide's and webR's
+// WebAssembly loaders need (eval) while everything else stays shut: their own versioned folders only (not the whole of
+// jsDelivr, which serves anyone's packages), R's package repository, and only Hyperion may frame it. The same text is in
+// public/_headers for the static file on Cloudflare (sandbox-headers.test.ts keeps them equal).
+export const SANDBOX_CSP = [
+  "default-src 'none'",
+  "script-src 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' blob: https://cdn.jsdelivr.net/pyodide/v0.29.5/full/ https://webr.r-wasm.org/v0.6.0/",
+  'worker-src blob:',
+  'connect-src blob: data: https://cdn.jsdelivr.net/pyodide/v0.29.5/full/ https://webr.r-wasm.org/v0.6.0/ https://repo.r-wasm.org/',
+  'img-src blob: data:',
+  "style-src 'unsafe-inline'",
+  "frame-ancestors 'self'",
+  "base-uri 'none'",
+  "form-action 'none'",
+].join('; ');
+export const sandboxHeaders = [
+  { key: 'Content-Security-Policy', value: SANDBOX_CSP },
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'Referrer-Policy', value: 'no-referrer' },
+];

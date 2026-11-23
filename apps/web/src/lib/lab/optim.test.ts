@@ -4,6 +4,7 @@ import { Graphics, legendSeries } from './plot';
 import { toMat } from './values';
 import './optim-lab';
 import * as op from './optim';
+import * as ox from './optim-more';
 
 const run = (code: string) => { let out = ''; const graphics = new Graphics(); const lab = new Lab({ out: (t) => { out += t; }, graphics }); lab.run(code); return { out, graphics, d: (n: string) => [...toMat(lab.vars.get(n)!).d] }; };
 const rosen = (x: number[]) => 100 * (x[1] - x[0] ** 2) ** 2 + (1 - x[0]) ** 2;
@@ -91,5 +92,144 @@ describe('Hyperion optimisation (M422): in the language', () => {
   it('a contour counts once in a legend (the paths drawn over it keep their own entries)', () => {
     const r = run("[X, Y] = meshgrid(-2:0.2:2); contour(X, Y, X.^2 + Y.^2, 8); hold on; plot([0 1], [0 1]); legend('bowl', 'line')");
     expect(legendSeries([...r.graphics.figures[0].axes.values()][0])).toHaveLength(2);
+  });
+});
+
+describe('several goals at once (M461)', () => {
+  let seed = 5;
+  const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  it('NSGA-II finds the ZDT1 front (f2 = 1 − √f1) end to end; Schaffer’s front is x in [0, 2]', async () => {
+    const om = await import('./optim-multi');
+    const zdt = (x: number[]) => { const g = 1 + (9 * x.slice(1).reduce((p, q) => p + q, 0)) / (x.length - 1); return [x[0], g * (1 - Math.sqrt(x[0] / g))]; };
+    const z = om.nsga2(zdt, 10, new Array(10).fill(0), new Array(10).fill(1), rand, { pop: 100, gens: 250 });
+    expect(Math.sqrt(z.reduce((s, p) => s + (p.f[1] - (1 - Math.sqrt(p.f[0]))) ** 2, 0) / z.length)).toBeLessThan(0.01);
+    expect(Math.min(...z.map((p) => p.f[0]))).toBeLessThan(0.01); expect(Math.max(...z.map((p) => p.f[0]))).toBeGreaterThan(0.95);
+    const s = om.nsga2((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, [-5], [5], rand, { pop: 60, gens: 80 });
+    expect(s.every((p) => p.x[0] > -0.01 && p.x[0] < 2.01)).toBe(true);
+    // A constraint (x ≥ 1) cuts the front to [1, 2].
+    const c = om.nsga2((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, [-5], [5], rand, { pop: 40, gens: 60, violation: (x) => Math.max(0, 1 - x[0]) });
+    expect(Math.min(...c.map((p) => p.x[0]))).toBeGreaterThan(0.999);
+  }, 30_000);
+  it('Pareto search puts every point exactly on the front', async () => {
+    const om = await import('./optim-multi');
+    const P = om.paretoSearch((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, { lb: [-5], ub: [5] }, rand, 20);
+    expect(P.length).toBeGreaterThan(15);
+    for (const p of P) expect(p.f[1]).toBeCloseTo((Math.sqrt(p.f[0]) - 2) ** 2, 5);
+  }, 30_000);
+  it('in the language', () => {
+    const r = run("rng(1); f = @(x) [x(1)^2 + x(2)^2, (x(1)-1)^2 + (x(2)-1)^2];\n[x, fv] = gamultiobj(f, 2, [], [], [], [], [-2 -2], [2 2], [], optimoptions('gamultiobj', 'PopulationSize', 60, 'MaxGenerations', 200));\ngap = max(fv(:,2) - 2*(1 - sqrt(fv(:,1)/2)).^2);\n[xp, fp] = paretosearch(f, 2, [], [], [], [], [-2 -2], [2 2]);\nn = size(fp, 1);\ngamultiobj(@(x) [x^2, (x-2)^2], 1, [], [], [], [], -5, 5)");
+    // The front of two squared distances: on the segment from (0, 0) to (1, 1), f2 = 2(1 − √(f1/2))².
+    expect(r.d('gap')[0]).toBeLessThan(0.02);
+    expect(r.d('n')[0]).toBeGreaterThan(10);
+    expect(r.graphics.figures.length).toBe(1);
+    expect(() => run('gamultiobj(@(x) [x, -x], 1)')).toThrow(/bounds/);
+  }, 30_000);
+});
+
+describe('Hyperion optimisation (M462): the rarer solvers', () => {
+  it('Brent finds roots and minima to full accuracy', () => {
+    const z = ox.brentZero((x) => Math.cos(x) - x, 0, 1);
+    expect(Math.abs(z.x - 0.7390851332151607)).toBeLessThan(1e-14);
+    expect(z.evals).toBeLessThan(15);
+    const m = ox.brentMin((x) => x ** 3 - 2 * x, 0, 2, 1e-10);
+    expect(Math.abs(m.x - Math.sqrt(2 / 3))).toBeLessThan(1e-8);
+    const r = run("[x, fx, flag, out] = fzero(@(x) x^3 - 2*x - 5, 2); [m, fm] = fminbnd(@(x) (x-1)^2 + 3, -4, 9); y = fzero(@sin, 3);");
+    expect(Math.abs(r.d('x')[0] - 2.0945514815423265)).toBeLessThan(1e-13);
+    expect(r.d('flag')[0]).toBe(1);
+    expect(Math.abs(r.d('m')[0] - 1)).toBeLessThan(1e-4);
+    expect(Math.abs(r.d('y')[0] - Math.PI)).toBeLessThan(1e-14);
+  });
+
+  it('lsqnonneg: Lawson–Hanson matches the one-column answer; lsqlin keeps its constraints', () => {
+    const C = [[0.0372, 0.2869], [0.6861, 0.7071], [0.6233, 0.6245], [0.6344, 0.617]], d = [0.8587, 0.1781, 0.0747, 0.8405];
+    const r = ox.nnls(C, d), c2 = C.map((row) => row[1]);
+    expect(r.x[0]).toBe(0);
+    expect(Math.abs(r.x[1] - c2.reduce((s, v, i) => s + v * d[i], 0) / c2.reduce((s, v) => s + v * v, 0))).toBeLessThan(1e-12);
+    expect(Math.abs(r.x[1] - 0.6929)).toBeLessThan(1e-4);
+    expect(r.lambda[0]).toBeGreaterThan(0);
+    const q = run('x = lsqlin(eye(2), [2; 2], [1 1], 1); y = lsqlin([1 0; 0 1; 1 1], [1; 2; 4], [], [], [], [], [0 0], [1.5 1.5]);');
+    close(q.d('x'), [0.5, 0.5], 1e-5);
+    close(q.d('y'), [1.5, 1.5], 1e-5);
+  });
+
+  it('fminimax and fgoalattain: MATLAB’s example and a symmetric trade-off', () => {
+    // MATLAB's fminimax example: the largest of five functions is smallest at (4, 4).
+    const r = run(`f = @(x) [2*x(1)^2 + x(2)^2 - 48*x(1) - 40*x(2) + 304, -x(1)^2 - 3*x(2)^2, x(1) + 3*x(2) - 18, -x(1) - x(2), x(1) + x(2) - 8];
+      [x, fval, maxf] = fminimax(f, [0.1 0.1]);
+      [g, gv, gam] = fgoalattain(@(x) [x^2, (x-2)^2], 0, [0 0], [1 1]);
+      [h, hv, hgam] = fgoalattain(@(x) [x^2, (x-2)^2], 0, [1 4], [1 4]);`);
+    close(r.d('x'), [4, 4], 1e-3);
+    expect(Math.abs(r.d('maxf')[0])).toBeLessThan(1e-3);
+    close(r.d('g'), [1], 1e-4);
+    expect(Math.abs(r.d('gam')[0] - 1)).toBeLessThan(1e-4);
+    // Goals 1 and 4, weighted alike: both missed by the same share, x = 2/3 makes them 4/9 and 16/9 (γ = −5/9).
+    close(r.d('h'), [2 / 3], 1e-4);
+    expect(Math.abs(r.d('hgam')[0] + 5 / 9)).toBeLessThan(1e-4);
+  });
+
+  it('patternsearch finds Rosenbrock’s floor and keeps a nonlinear constraint; simulannealbnd escapes Rastrigin’s dips', () => {
+    const p = ox.patternSearch(rosen, [-1.2, 1], [-Infinity, -Infinity], [Infinity, Infinity], { maxEvals: 200_000, meshTol: 1e-9 });
+    close(p.x, [1, 1], 1e-3);
+    const r = run(`[x, f] = patternsearch(@(x) (x(1)-2)^2 + (x(2)-1)^2, [0 0], [], [], [], [], [], [], @(x) deal(x(1)^2 + x(2)^2 - 1, []));
+      [b] = patternsearch(@(x) (x(1)-3)^2 + x(2)^2, [0 0], [], [], [], [], [-1 -1], [1 1]);`);
+    close(r.d('x'), [2 / Math.sqrt(5), 1 / Math.sqrt(5)], 1e-3);
+    close(r.d('b'), [1, 0], 1e-5);
+    seed = 11;
+    const ras = (x: number[]) => 20 + x.reduce((s, v) => s + v * v - 10 * Math.cos(2 * Math.PI * v), 0);
+    const a = ox.anneal(ras, [3.2, -2.8], [-5, -5], [5, 5], rand);
+    expect(a.f).toBeLessThan(ras([3, -3]) - 10);
+    expect(a.flag).toBe(1);
+  });
+});
+
+describe('Hyperion optimisation: complex roots and the rarer solvers’ choices (M471)', () => {
+  it('Muller’s method finds complex roots, and fzero takes a complex start', () => {
+    const r = ox.muller(([a, b]) => [a * a - b * b + 1, 2 * a * b], [0.5, 0.5]);
+    expect(Math.abs(r.z[0])).toBeLessThan(1e-12);
+    expect(Math.abs(Math.abs(r.z[1]) - 1)).toBeLessThan(1e-12);
+    // z³ = 8 from near the upper root −1 + √3 i.
+    const c = ox.muller(([a, b]) => { const re = a * a * a - 3 * a * b * b - 8, im = 3 * a * a * b - b * b * b; return [re, im]; }, [-1.2, 1.5]);
+    expect(Math.hypot(c.z[0] + 1, c.z[1] - Math.sqrt(3))).toBeLessThan(1e-10);
+    const l = new Lab({ out: () => {}, graphics: new Graphics() });
+    l.run('z = fzero(@(z) z^2 + 4, 0.3 + 1i);\nw = fzero(@(x) x^2 - 2, 0.5 + 0.1i);');
+    const z = toMat(l.vars.get('z')!), w = toMat(l.vars.get('w')!);
+    expect(Math.abs(z.d[0])).toBeLessThan(1e-10);
+    expect(Math.abs((z.im?.[0] ?? 0) - 2)).toBeLessThan(1e-10);
+    // A real root reached from a complex start comes back real.
+    expect(w.im).toBeFalsy();
+    expect(Math.abs(w.d[0] - Math.SQRT2)).toBeLessThan(1e-10);
+  });
+  it('every poll method reaches a bowl’s floor; GSS lands on a bound; MADS with a complete poll and a Latin hypercube works', () => {
+    const bowl = (x: number[]) => (x[0] - 1) ** 2 + 4 * (x[1] + 2) ** 2;
+    for (const poll of ['gps2n', 'gpsnp1', 'gss2n', 'gssnp1', 'mads2n', 'madsnp1'] as const) {
+      seed = 5;
+      const r = ox.patternSearch(bowl, [3, 3], [-5, -5], [5, 5], { poll, rand, meshTol: 1e-8, maxEvals: 20_000 });
+      close(r.x, [1, -2], 1e-3);
+    }
+    const g = ox.patternSearch((x) => (x[0] - 7) ** 2, [0], [-1], [5.3], { poll: 'gss2n' });
+    expect(g.x[0]).toBeCloseTo(5.3, 12);
+    seed = 9;
+    const m = ox.patternSearch(bowl, [4, 4], [-5, -5], [5, 5], { poll: 'mads2n', complete: true, search: 'lhs', rand });
+    close(m.x, [1, -2], 1e-3);
+    const r = run(`o = optimoptions('patternsearch', 'PollMethod', 'MADSPositiveBasisNp1', 'UseCompletePoll', true, 'SearchFcn', 'searchlhs');
+      x = patternsearch(@(x) (x(1)-1)^2 + (x(2)-2)^2, [0 0], [], [], [], [], [-3 -3], [3 3], [], o);`);
+    close(r.d('x'), [1, 2], 1e-3);
+    expect(() => run("patternsearch(@(x) x^2, 1, [], [], [], [], [], [], [], optimoptions('patternsearch', 'PollMethod', 'Spiral'))")).toThrow(/PollMethod is/);
+  });
+  it('annealing’s temperature and step choices, your own functions, and a hybrid finish', () => {
+    const ras = (x: number[]) => 20 + x.reduce((s, v) => s + v * v - 10 * Math.cos(2 * Math.PI * v), 0);
+    for (const [temperature, step] of [['exp', 'fast'], ['fast', 'fast'], ['boltz', 'boltz']] as const) {
+      seed = 21;
+      const a = ox.anneal(ras, [3.2, -2.8], [-5, -5], [5, 5], rand, { temperature, step });
+      expect(a.f).toBeLessThan(ras([3, -3]));
+    }
+    const r = run(`rng(4)
+      bowl = @(x) (x(1)-1)^2 + (x(2)+1)^2;
+      o = optimoptions('simulannealbnd', 'TemperatureFcn', @(v, opts) 50 ./ v.k, 'AnnealingFcn', @(v, p) v.x + 0.1*randn(size(v.x)), 'HybridFcn', 'fminsearch');
+      [x, f] = simulannealbnd(bowl, [3 3], [-5 -5], [5 5], o);
+      [y, g] = simulannealbnd(bowl, [3 3], [-5 -5], [5 5], optimoptions('simulannealbnd', 'TemperatureFcn', 'temperatureboltz', 'AnnealingFcn', 'annealingboltz', 'ReannealInterval', 50));`);
+    close(r.d('x'), [1, -1], 1e-4);
+    expect(r.d('f')[0]).toBeLessThan(1e-8);
+    expect(r.d('g')[0]).toBeLessThan(0.5); // annealing alone is rough; the hybrid finish above is what makes it exact
   });
 });

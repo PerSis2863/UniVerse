@@ -79,8 +79,10 @@ export function FlowBench() {
     const g = cv.getContext('2d')!;
     g.setTransform(dpr, 0, 0, dpr, 0, 0);
     g.clearRect(0, 0, W, H);
-    const s = Math.min(W / NX, H / NY), ox = (W - NX * s) / 2, oy = (H - NY * s) / 2;
+    const s = Math.min((W - 24) / NX, (H - 24) / NY), ox = (W - NX * s) / 2, oy = (H - NY * s) / 2;
     g.imageSmoothingEnabled = true;
+    // The tunnel's picture with rounded corners (the owner, 23 Nov: "round corners everywhere"); particles stay inside it.
+    g.save(); g.beginPath(); g.roundRect(ox, oy, NX * s, NY * s, 12); g.clip();
     g.drawImage(c, ox, oy, NX * s, NY * s);
     const X = (x: number) => ox + x * s, Y = (y: number) => oy + (NY - y) * s;
     g.fillStyle = dark ? '#52525b' : '#9ca3af'; g.strokeStyle = dark ? '#e4e4e7' : '#27272a'; g.lineWidth = 1.2;
@@ -89,6 +91,7 @@ export function FlowBench() {
       g.fillStyle = view === 'speed' ? 'rgba(255,255,255,0.85)' : dark ? 'rgba(255,255,255,0.8)' : 'rgba(24,24,27,0.75)';
       for (let i = 0; i < fr.particles.length; i += 2) g.fillRect(X(fr.particles[i]) - 0.8, Y(fr.particles[i + 1]) - 0.8, 1.6, 1.6);
     }
+    g.restore();
   });
   useEffect(() => {
     const w = new Worker(new URL('./flow.worker.ts', import.meta.url));
@@ -139,7 +142,7 @@ export function FlowBench() {
   );
 
   return (
-    <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+    <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Wind tunnel settings" data-no-motion>
         <div className="space-y-2">
           <span className={label}>Shape</span>
@@ -167,31 +170,35 @@ export function FlowBench() {
           <button type="button" className={small} onClick={() => setPaused((p) => !p)}>{paused ? <Play className="h-3.5 w-3.5" aria-hidden /> : <Pause className="h-3.5 w-3.5" aria-hidden />}{paused ? 'Run' : 'Pause'}</button>
           <button type="button" className={small} onClick={() => setModel((m) => ({ ...m }))}><RotateCcw className="h-3.5 w-3.5" aria-hidden />Start again</button>
         </div>
-        <div className="space-y-2 border-t border-zinc-200/80 pt-3 dark:border-white/10" aria-live="polite">
-          <p className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400"><Wind className="h-3.5 w-3.5" aria-hidden />Forces on the shape</p>
-          <dl className="grid grid-cols-3 gap-2 text-xs">
-            {[['Drag (Cd)', Number.isFinite(cd) ? cd.toFixed(2) : '…'], ['Lift (Cl)', Number.isFinite(cl) ? cl.toFixed(2) : '…'], ['Strouhal', st ? st.toFixed(3) : '–']].map(([k, val]) => <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{val}</dd></div>)}
-          </dl>
-          {h && h.cd.length > 1 && (
-            <svg viewBox="0 0 300 60" preserveAspectRatio="none" className="h-16 w-full rounded-md bg-zinc-50 dark:bg-white/[0.04]" role="img" aria-label="Drag (red) and lift (blue) over time">
-              {chart(h.cd, '#dc2626')}{chart(h.cl, '#2563eb')}
-            </svg>
-          )}
-          <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
-            {settling ? 'The flow is still settling: the numbers firm up after a few seconds.' : st ? `The wake sways: lift swings ${clRange.toFixed(2)} each way and back about every ${(1 / st).toFixed(1)} sizes of travel (Strouhal ${st.toFixed(2)}; a cylinder’s is about 0.2).` : 'The flow has settled into a steady pattern.'}
-            {info && ` Steps run: ${(stats?.steps ?? 0).toLocaleString()}.`}
-          </p>
-        </div>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="Wind tunnel">
-        <div ref={box} className="relative min-h-0 flex-1">
+        {/* The tunnel at its own shape, as large as fits; under it the colour key and the live forces fill the rest (the
+            owner, 23 Nov: "there is a lot of gap here, fill the area properly"). */}
+        <div ref={box} className="relative max-h-[72%] w-full shrink-0" style={{ aspectRatio: `${NX} / ${NY}` }}>
           <canvas ref={canvas} role="img" aria-label={`Wind tunnel: flow past a ${model.shape.kind === 'airfoil' ? 'wing' : model.shape.kind} at Reynolds number ${model.re}, showing ${v.name}`} className="absolute inset-0 h-full w-full" />
+          {paused && <p className={cn('absolute end-4 top-4 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-white')}>Paused</p>}
         </div>
-        <div className="pointer-events-none absolute bottom-2 start-2 w-56 rounded-lg bg-white/90 px-2 py-1.5 text-[11px] text-zinc-800 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900/90 dark:text-zinc-100 dark:ring-white/10">
-          <p className="font-semibold">{v.name}</p>
-          <div className="mt-1 flex items-center gap-1.5 font-mono tabular-nums"><span>{v.lo}</span><span className="h-2.5 flex-1 rounded-sm" style={{ background: gradient }} aria-hidden /><span>{v.hi}</span></div>
+        <div className="flex min-h-0 flex-1 gap-4 border-t border-zinc-200/80 px-4 py-3 dark:border-white/10">
+          <div className="w-56 shrink-0 text-[11px] text-zinc-800 dark:text-zinc-100">
+            <p className="font-semibold">{v.name}</p>
+            <div className="mt-1 flex items-center gap-1.5 font-mono tabular-nums"><span>{v.lo}</span><span className="h-2.5 flex-1 rounded-full" style={{ background: gradient }} aria-hidden /><span>{v.hi}</span></div>
+          </div>
+          <div className="flex min-w-0 flex-1 flex-col gap-2" aria-live="polite">
+            <p className="flex items-center gap-1.5 text-xs font-semibold text-zinc-500 dark:text-zinc-400"><Wind className="h-3.5 w-3.5" aria-hidden />Forces on the shape</p>
+            <dl className="grid grid-cols-3 gap-2 text-xs">
+              {[['Drag (Cd)', Number.isFinite(cd) ? cd.toFixed(2) : '…'], ['Lift (Cl)', Number.isFinite(cl) ? cl.toFixed(2) : '…'], ['Strouhal', st ? st.toFixed(3) : '–']].map(([k, val]) => <div key={k}><dt className="text-zinc-500 dark:text-zinc-400">{k}</dt><dd className="font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{val}</dd></div>)}
+            </dl>
+            {h && h.cd.length > 1 && (
+              <svg viewBox="0 0 300 60" preserveAspectRatio="none" className="min-h-16 w-full flex-1 rounded-xl bg-zinc-50 dark:bg-white/[0.04]" role="img" aria-label="Drag (red) and lift (blue) over time">
+                {chart(h.cd, '#dc2626')}{chart(h.cl, '#2563eb')}
+              </svg>
+            )}
+            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">
+              {settling ? 'The flow is still settling: the numbers firm up after a few seconds.' : st ? `The wake sways: lift swings ${clRange.toFixed(2)} each way and back about every ${(1 / st).toFixed(1)} sizes of travel (Strouhal ${st.toFixed(2)}; a cylinder’s is about 0.2).` : 'The flow has settled into a steady pattern.'}
+              {info && ` Steps run: ${(stats?.steps ?? 0).toLocaleString()}.`}
+            </p>
+          </div>
         </div>
-        {paused && <p className={cn('absolute end-2 top-2 rounded-md bg-zinc-900/80 px-2 py-1 text-xs text-white')}>Paused</p>}
       </section>
     </div>
   );

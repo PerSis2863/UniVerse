@@ -2,7 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Trash2, TriangleAlert, Volume2, Weight } from 'lucide-react';
+import { Activity, Anchor, ArrowDown, Box, CheckCircle2, Download, Grid3x3, Image as ImageIcon, Layers, Pause, Play, RotateCcw, Trash2, TriangleAlert, Volume2, Waves, Weight } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
@@ -15,7 +15,9 @@ import type { Fineness } from '@/lib/sim/mesh';
 import { SimCanvas, type Shown, type SimView } from './SimCanvas';
 import { Sim3DView } from './Sim3DView';
 import { EdgeTicks, NumField, ui } from './bench-ui';
-import type { FromSim, ToSim } from './sim.worker';
+import { HarmonicPanel } from './HarmonicPanel';
+import { HARMONIC_START } from '@/lib/sim/modal';
+import type { Analysis, FromSim, ToSim } from './sim.worker';
 
 // Hyperion Simulate → Structures (M404): the workbench, laid out like engineering software. On the left the outline of
 // the study (the part, its material, the mesh, the supports, the loads, the solution) and the details of what is
@@ -38,8 +40,11 @@ export function StructureBench() {
   const [showMesh, setShowMesh] = useState(false);
   const [playing, setPlaying] = useState(false);
   // M406: what is solved: stress and bending under the loads, or the part's natural vibrations (and which one is shown).
-  const [analysis, setAnalysis] = useState<'static' | 'modal'>('static');
+  // M463: or the part shaken steadily over a range of frequencies (harmonic response), shown at one of them.
+  const [analysis, setAnalysis] = useState<Analysis>('static');
   const [modeAt, setModeAt] = useState(0);
+  const [atHz, setAtHz] = useState<number | undefined>(undefined);
+  const [hShow, setHShow] = useState<'swing' | 'vm'>('swing');
   const worker = useRef<Worker | null>(null), seq = useRef(0), waiting = useRef<Model | null>(null), running = useRef(false), keepTimer = useRef(0);
   const view = useRef<SimView>(null);
 
@@ -54,7 +59,7 @@ export function StructureBench() {
     if (running.current) { waiting.current = m; return; }
     running.current = true;
     setBusy(true);
-    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m), analysis } satisfies ToSim);
+    worker.current.postMessage({ id: ++seq.current, model: m, solve: !modelProblem(m, analysis === 'modal'), analysis, harmonic: m.harmonic ?? HARMONIC_START, at: atHz } satisfies ToSim);
   });
   useEffect(() => {
     const w = new Worker(new URL('./sim.worker.ts', import.meta.url));
@@ -69,12 +74,12 @@ export function StructureBench() {
     return () => w.terminate();
   }, []);
   // Solve again whenever the study changes (a short pause first while typing).
-  useEffect(() => { const t = window.setTimeout(() => send(model), 120); return () => clearTimeout(t); }, [model, analysis]);
+  useEffect(() => { const t = window.setTimeout(() => send(model), 120); return () => clearTimeout(t); }, [model, analysis, atHz]);
 
   const { part, edges } = useMemo(() => partOf(model), [model]);
   const groups = useMemo(() => edgeGroups(edges), [edges]);
-  const problem = modelProblem(model);
-  const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null;
+  const problem = modelProblem(model, analysis === 'modal');
+  const result = out?.result ?? null, mesh = out?.mesh ?? null, modal = out?.modal ?? null, shaken = analysis === 'harmonic' ? out?.harmonic ?? null : null;
   // M413: a solid (3D) part's stress and bending; vibration still uses the flat model.
   const is3d = model.dim === '3d' && analysis === 'static', solidRes = out?.solidResult ?? null, solid3 = out?.solid ?? null;
   const res = is3d ? solidRes : result;
@@ -167,10 +172,10 @@ export function StructureBench() {
         <Weight className="h-3.5 w-3.5 text-zinc-500" aria-hidden />Its own weight (gravity, down)
       </label>
       <div className="px-2 pt-2 text-xs font-semibold text-zinc-500 dark:text-zinc-400">Solution</div>
-      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity]] as const).map(([a, name, Icon]) => {
-        const here = analysis === a, solved = here && (a === 'static' ? !!res : !!modal);
+      {([['static', 'Stress and bending', CheckCircle2], ['modal', 'Vibration', Activity], ['harmonic', 'Shaking', Waves]] as const).map(([a, name, Icon]) => {
+        const here = analysis === a, solved = here && (a === 'static' ? !!res : a === 'modal' ? !!modal : !!shaken);
         return (
-          <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a === 'modal' && !still) setPlaying(true); }}>
+          <button key={a} type="button" className={cn(item, 'ps-4', isSel('solution') && here && on)} aria-current={(isSel('solution') && here) || undefined} onClick={() => { setAnalysis(a); setSel({ k: 'solution' }); if (a !== 'static' && !still) setPlaying(true); }}>
             {solved ? <Icon className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" aria-hidden /> : here && !busy ? <TriangleAlert className="h-4 w-4 shrink-0 text-amber-600 dark:text-amber-400" aria-hidden /> : <Icon className="h-4 w-4 shrink-0 text-zinc-400" aria-hidden />}
             <span className="flex-1">{name}</span><span className="text-xs font-normal tabular-nums text-zinc-500 dark:text-zinc-400">{!here ? '' : busy ? 'solving…' : solved && out ? `${Math.round(out.ms.mesh + out.ms.solve)} ms` : 'not solved'}</span>
           </button>
@@ -308,6 +313,7 @@ export function StructureBench() {
               </tbody>
             </table>
             <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">Mass x, y: how much of the part moves with the mode, sideways or up and down; a big share means it is easy to set off. Loads don’t change these numbers.</p>
+            {modal.rigid > 0 && <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{model.supports.some((s) => s.edges.length) ? 'The supports don’t hold it firmly' : 'Held nowhere (a free part, as if hanging on soft springs)'}: it can also move as a whole in {modal.rigid} {modal.rigid === 1 ? 'way' : 'ways'} at 0 Hz, left out of the table.</p>}
           </div>
         )}
         {mode && (
@@ -316,6 +322,16 @@ export function StructureBench() {
             <button type="button" className={small} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />Picture (PNG)</button>
           </div>
         )}
+      </div>
+    );
+  }
+  if (!details && analysis === 'harmonic') {
+    details = (
+      <div className="space-y-3">
+        {problem ? <p className="rounded-lg bg-amber-50 p-2.5 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">{problem}</p>
+          : out?.error && <p className="rounded-lg bg-red-50 p-2.5 text-xs text-red-800 dark:bg-red-950/40 dark:text-red-300">{out.error}</p>}
+        <HarmonicPanel h={model.harmonic ?? HARMONIC_START} onChange={(h) => setModel((m) => ({ ...m, harmonic: h }))} out={shaken} onPick={setAtHz} loads={model.loads.length} />
+        {shaken && <button type="button" className={small} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />Picture (PNG)</button>}
       </div>
     );
   }
@@ -362,6 +378,7 @@ export function StructureBench() {
   const modeShape = useMemo(() => (mode ? Float64Array.from(mode.ux, (x, i) => Math.hypot(x, mode.uy[i])) : null), [mode]);
   const shown: Shown | null = problem ? null : analysis === 'static'
     ? (result ? { ux: result.ux, uy: result.uy, values: result[field], name: fieldInfo.name, unit: fieldInfo.unit, reverse: field === 'safety' } : null)
+    : analysis === 'harmonic' ? (shaken ? { ux: shaken.ux, uy: shaken.uy, values: shaken[hShow], name: `Shaken at ${fmtHz(shaken.hz)}: ${hShow === 'vm' ? 'the highest stress over a cycle' : 'how far each point swings'}`, unit: hShow === 'vm' ? 'MPa' : 'mm', swing: true } : null)
     : (mode && modeShape ? { ux: mode.ux, uy: mode.uy, values: modeShape, name: `Mode ${Math.min(modeAt, modal!.modes.length - 1) + 1}, ${fmtHz(mode.freq)}: how far each point swings (largest = 1)`, unit: '', swing: true } : null);
   const graphic = (
     <section className="panel flex min-h-[22rem] flex-1 flex-col overflow-hidden p-0" aria-label="Graphics">
@@ -370,6 +387,12 @@ export function StructureBench() {
           <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
             <select value={fieldNow} onChange={(e) => setField(e.target.value as Field)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
               {fields.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+            </select>
+          </label>
+        ) : analysis === 'harmonic' ? (
+          <label className="inline-flex items-center gap-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-300">Show
+            <select value={hShow} onChange={(e) => setHShow(e.target.value as typeof hShow)} className="rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[13px] text-zinc-900 dark:border-white/15 dark:bg-white/[0.06] dark:text-white">
+              <option value="swing">Movement</option><option value="vm">Stress (von Mises, highest over a cycle)</option>
             </select>
           </label>
         ) : (
@@ -391,8 +414,8 @@ export function StructureBench() {
       <div className="relative min-h-0 flex-1">
         {is3d ? (solid3 ? <Sim3DView ref={view} solid={solid3} shown={shown3} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still} dark={dark} deform={deform}
           label={shown3 ? `${tpl.name} as a solid: ${shown3.name} from ${+Math.min(...shown3.values).toPrecision(3)} to ${+Math.max(...shown3.values).toPrecision(3)} ${shown3.unit}` : `${tpl.name} as a solid: not solved yet`} />
-          : <div className="grid h-full place-items-center text-[13px] text-zinc-500 dark:text-zinc-400">Making the solid…</div>) : <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis === 'modal' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
-          supports={model.supports} loads={analysis === 'static' ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
+          : <div className="grid h-full place-items-center text-[13px] text-zinc-500 dark:text-zinc-400">Making the solid…</div>) : <SimCanvas ref={view} part={part} edges={edges} mesh={mesh} shown={shown} deform={analysis !== 'static' ? 'auto' : deform} showMesh={showMesh || sel.k === 'mesh'} playing={playing && !still}
+          supports={model.supports} loads={analysis === 'static' || (analysis === 'harmonic' && (model.harmonic ?? HARMONIC_START).drive === 'loads') ? model.loads : []} chosen={chosenEdges} picking={picking} onPick={toggleEdge} dark={dark}
           label={shown ? `${tpl.name}: ${shown.name}${analysis === 'static' && result ? ` from ${+Math.min(...result[field]).toPrecision(3)} to ${+Math.max(...result[field]).toPrecision(3)} ${fieldInfo.unit}` : ''}` : `${tpl.name}: not solved yet`} />}
       </div>
       {picking && <p className="border-t border-zinc-200/80 px-3 py-1.5 text-xs text-violet-800 dark:border-white/10 dark:text-violet-200">Press an edge in the picture to add it to {letterOf(sel.id)} or take it away.</p>}
@@ -400,11 +423,11 @@ export function StructureBench() {
   );
   const side = (
     <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col overflow-hidden p-0" aria-label="Study">
-      <div className="max-h-[45%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
+      <div className="max-h-[55%] shrink-0 overflow-y-auto border-b border-zinc-200/80 p-2 dark:border-white/10" data-no-motion>{outline}</div>
       <div className="min-h-0 flex-1 overflow-y-auto p-3" aria-live="polite" data-no-motion>{details}</div>
       {sel.k !== 'solution' && <div className="border-t border-zinc-200/80 p-2 dark:border-white/10"><button type="button" className={cn(small, 'w-full justify-center')} onClick={() => setSel({ k: 'solution' })}><CheckCircle2 className="h-3.5 w-3.5" aria-hidden />Back to the results</button></div>}
     </aside>
   );
   // Computers only (M405): the study on the left, the graphics window filling the rest.
-  return <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
+  return <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">{side}{graphic}</div>;
 }
