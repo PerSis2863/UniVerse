@@ -12562,3 +12562,14 @@ testing my ai also it was so much slow and not providing answer properly". The l
   base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
+
+## M476: the light/dark switch slower and smoother (23 Nov)
+
+The owner, 23 Nov: switching between light and dark "is fast so make it slow and it should be ultra smooth".
+`applyTheme` (`src/lib/theme.ts`): the circle reveal from the tapped switch now lasts 1100 ms with
+`cubic-bezier(0.65, 0, 0.25, 1)` (starts gently, settles softly). The crossfade without a tap point (the command
+palette) is 800 ms, scoped to `html.theme-fading` in `globals.css` so ordinary page morphs keep 320 ms. Only the
+snapshot's `clip-path` / `opacity` animate (the page itself is frozen behind the View Transition, `.theme-fading *`
+has no transitions). Measured in a browser without a graphics chip, the circle and a plain fade drop the same frames,
+so the cost is that browser's software drawing, not the effect; the one long frame at the start is the page restyling
+to the new theme, before the animation begins.
