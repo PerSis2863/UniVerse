@@ -7,6 +7,7 @@ import './optim-lab';
 import './maint-lab';
 import './energy-lab';
 import './grid-lab';
+import './comms-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

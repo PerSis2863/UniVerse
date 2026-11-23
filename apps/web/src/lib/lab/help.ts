@@ -674,6 +674,20 @@ adc | [codes, xq] = adc(x, bits, [lo hi]) | An analogue-to-digital converter: ea
 dac | v = dac(codes, bits, [lo hi]) | A digital-to-analogue converter: codes back to values.
 snr | snr(signal, noise) | The signal-to-noise ratio in dB.
 pll | [f, err] = pll(fin, fs, n, 'Bandwidth', 50, 'Damping', 0.707) | A phase-locked loop following an input frequency (a number, or one per sample): the oscillator's frequency and the phase error. Without outputs, drawn.
+
+# Wireless communications
+pskmod | y = pskmod(symbols, M, phase) | Phase-shift keying: each whole number 0 to M−1 to a point on the unit circle, Gray coded (neighbours differ by one bit).
+pskdemod | s = pskdemod(y, M, phase) | Back from PSK points to symbols: the nearest angle.
+qammod | y = qammod(symbols, M, 'UnitAveragePower', true) | Square QAM (M = 4, 16, 64, 256…): the points on a grid, Gray coded on each axis; unit average power when asked.
+qamdemod | s = qamdemod(y, M, 'UnitAveragePower', true) | Back from QAM points to symbols: the nearest grid point.
+awgn | y = awgn(x, snr, 'measured') | Adds white Gaussian noise at an SNR in dB, against the signal's measured power (or 1).
+biterr | [n, ratio] = biterr(a, b, k) | The bits that differ between two lists of k-bit symbols, and their share.
+symerr | [n, ratio] = symerr(a, b) | The symbols that differ, and their share.
+berawgn | ber = berawgn(EbN0dB, 'psk'|'qam', M) | The textbook bit-error rate over white noise at Eb/N0 in dB, to compare a simulation against.
+qfunc | q = qfunc(x) | The standard normal's upper tail, Q(x).
+int2bit | b = int2bit(x, n) | Whole numbers to n bits each (most significant first), as one column.
+bit2int | x = bit2int(b, n) | Bits back to whole numbers, n bits each.
+scatterplot | scatterplot(y) | Draws complex points as a constellation: in-phase across, quadrature up.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.

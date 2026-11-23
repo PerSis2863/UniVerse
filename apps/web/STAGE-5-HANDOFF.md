@@ -11378,3 +11378,18 @@ it runs in the worker where files.ts is loaded). Tests (`grid.test.ts`). Not bui
 components), transformers with taps, generator limits, dynamics and stability, INL/DNL and sigma-delta converters,
 charge-pump PLL models; item 5 next (signals, comms and sensing).
 
+## M427 (23 Nov): Hyperion toolbox, wireless communications
+
+The owner's list, item 5 (signals, comms and sensing), first part. `src/lib/lab/comms.ts` (pure): M-PSK with Gray labels
+(`pskmod` puts symbol s at the point whose Gray code is s, so neighbours differ by one bit), square M-QAM (the symbol's
+high bits pick the in-phase level, the low bits the quadrature, each axis Gray coded; `unit` scales to average power 1),
+`awgn` (noise power from the measured signal power, or 1), `biterr`, `qfunc`/`erfc`, `berTheory` (BPSK/QPSK exact, M-PSK
+and M-QAM the nearest-neighbour approximations). `comms-lab.ts`: pskmod, pskdemod, qammod, qamdemod ('UnitAveragePower'),
+awgn (x, snr, 'measured'; complex values through `cmat`), biterr (bits per symbol from the largest value unless given),
+symerr, berawgn (EbN0, 'psk'|'qam', M), qfunc, int2bit, bit2int (columns, most significant bit first), scatterplot.
+Loaded in `lab.worker.ts` after grid-lab, help under "# Wireless communications", example comms.m (a slider for the SNR,
+the BER curve against theory on `semilogy`). Tests (`comms.test.ts`): round trips, Gray neighbours, unit power,
+Monte Carlo BER within 15% of theory for BPSK, QPSK and 16-QAM. Rule: awgn uses the seeded `random` from builtins, so
+`rng(seed)` repeats a run. Not built: OFDM, channel coding (convolutional, Viterbi, LDPC), fading channels, filters
+for pulse shaping (raised cosine), FSK; radar and image processing come next (M428).
+

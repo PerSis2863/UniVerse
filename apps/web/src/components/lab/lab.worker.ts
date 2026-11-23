@@ -11,6 +11,7 @@ import '@/lib/lab/optim-lab';
 import '@/lib/lab/maint-lab';
 import '@/lib/lab/energy-lab';
 import '@/lib/lab/grid-lab';
+import '@/lib/lab/comms-lab';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
