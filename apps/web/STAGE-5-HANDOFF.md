@@ -11461,3 +11461,17 @@ items carry `hold` and `sense` (a probe's id), kept by `readBoard`; examples `re
 "Hold a voltage", Volts, At (a probe), the duty it has set. Not built: current-mode control, a load you can switch while
 it runs (changing a part rebuilds the circuit), compensator design (the gain is fixed).
 
+## M432 (23 Nov): Hyperion Circuits, inverters and motor drives
+
+`circuit.ts`: a switch Part may carry `sine` ({ m, f, phase }: each period's duty is ½(1 + m·sin(2πf·t₀ + phase)) at the
+period's start, regular-sampled PWM, set in `regulate()` like a hold) and `invert` (on whenever the plain switch would be
+off; `isOn(p, t)` is the one place that answers "on?"). Part `Mo` (a DC motor): a branch like a coil, v = r·i + l·di/dt
++ k·ω (the coil by backward Euler, ω from the last step), and after each step the shaft J dω/dt = k·i − fric·ω − load
+(the load acts like friction: only against turning, so a stalled motor doesn't spin backwards); `speedOf(p)`.
+`schematic.ts`: items carry `ac` (the sine's Hz), `depth`, `invert` (kept by `readBoard`); kind `Mo` (value = load
+torque) with `MOTOR` (1 Ω, 5 mH, 0.1 V·s/rad, 1e-4 kg·m²); examples `inverter` (a half bridge on ±24 V into 2 mH, 10 µF,
+10 Ω) and `motor` (a buck into the motor with a freewheel diode). `CircuitBench`: "It switches" (a set share, to hold a
+voltage, following a sine), AC frequency and depth, Opposite; the motor's symbol (its M drawn as lines, counter-turned:
+an SVG <text> in a role=button broke axe's label-content-name-mismatch even with aria-hidden), rpm in "Now". Not built:
+three-phase inverters, AC (induction and synchronous) motors, dead time between a pair, field-oriented control.
+

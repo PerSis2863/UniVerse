@@ -18,13 +18,13 @@ const G = 26, COLS = 34, ROWS = 15, PAD = 18;
 type Tool = 'select' | ItemKind | 'ground' | 'probe';
 const TOOLS: { id: Tool; label: string; glyph: string }[] = [
   { id: 'select', label: 'Select', glyph: '' }, { id: 'wire', label: 'Wire', glyph: '—' }, { id: 'R', label: 'Resistor', glyph: 'R' }, { id: 'C', label: 'Capacitor', glyph: 'C' },
-  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' }, { id: 'M', label: 'Transistor (MOSFET)', glyph: 'M' },
+  { id: 'L', label: 'Coil', glyph: 'L' }, { id: 'V', label: 'Voltage source', glyph: 'V' }, { id: 'I', label: 'Current source', glyph: 'I' }, { id: 'D', label: 'Diode', glyph: 'D' }, { id: 'S', label: 'Switch (PWM)', glyph: 'S' }, { id: 'M', label: 'Transistor (MOSFET)', glyph: 'M' }, { id: 'Mo', label: 'Motor (DC)', glyph: '⊛' },
   { id: 'ground', label: 'Ground', glyph: '⏚' }, { id: 'probe', label: 'Probe', glyph: 'P' },
 ];
 const STEPS = [1e-6, 5e-6, 1e-5, 5e-5, 1e-4, 1e-3], WINDOWS = [2e-4, 5e-4, 1e-3, 3e-3, 0.01, 0.03, 0.06, 0.1, 0.3, 1];
 
 /** A part's drawing along the x axis from 0 to len (its leads to the ends), turned into place by the caller. */
-function Symbol({ it, len, gate }: { it: Item; len: number; gate?: [number, number] }) {
+function Symbol({ it, len, gate, ang = 0 }: { it: Item; len: number; gate?: [number, number]; ang?: number }) {
   const m = len / 2, s = 'currentColor';
   // A transistor (M430): drain and source leads meet the channel; the gate plate beside it, its lead to the gate dot.
   if (it.kind === 'M' && gate) {
@@ -45,6 +45,8 @@ function Symbol({ it, len, gate }: { it: Item; len: number; gate?: [number, numb
   if (it.kind === 'D') return <>{lead(m - 8, m + 8)}<polygon points={`${m - 8},-8 ${m - 8},8 ${m + 6},0`} fill={s} /><line x1={m + 7} y1={-8} x2={m + 7} y2={8} stroke={s} strokeWidth={2} /></>;
   // A switch (M424): two contacts and a blade, drawn open; its PWM drives it.
   if (it.kind === 'S') return <>{lead(m - 12, m + 12)}<circle cx={m - 12} cy={0} r={2.2} fill={s} /><circle cx={m + 12} cy={0} r={2.2} fill={s} /><line x1={m - 12} y1={0} x2={m + 10} y2={-10} stroke={s} strokeWidth={1.8} strokeLinecap="round" /></>;
+  // A motor (M432): a circle with M, its leads to the ends.
+  if (it.kind === 'Mo') return <>{lead(m - 13, m + 13)}<circle cx={m} cy={0} r={13} fill="none" stroke={s} strokeWidth={1.6} /><polyline points={`${m - 5},5 ${m - 5},-5 ${m},1.5 ${m + 5},-5 ${m + 5},5`} fill="none" stroke={s} strokeWidth={1.6} strokeLinejoin="round" transform={`rotate(${-ang} ${m} 0)`} /></>;
   if (it.kind === 'V' || it.kind === 'I') {
     return (
       <>{lead(m - 12, m + 12)}<circle cx={m} cy={0} r={12} fill="none" stroke={s} strokeWidth={1.6} />
@@ -181,7 +183,7 @@ export function CircuitBench() {
   const setItem = (id: string, patch: Partial<Item>) => setBoard((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
   const part = sel && c ? net.parts.find((p) => p.id === sel.id) : undefined;
   const across = sel ? nodeV(sel.x1, sel.y1) - nodeV(sel.x2, sel.y2) : 0, through = part && c ? c.current(part) : 0;
-  const describe = (it: Item) => (it.kind === 'M' ? `on above ${si(it.value, 'V')}` : it.kind === 'S' && it.hold ? `holds ${si(it.hold, 'V')} · ${si(it.freq, 'Hz')}` : it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
+  const describe = (it: Item) => (it.kind === 'Mo' ? `load ${si(it.value, 'N·m')}` : it.kind === 'S' && it.ac ? `${si(it.freq, 'Hz')} · sine ${si(it.ac, 'Hz')}${it.invert ? ' · opposite' : ''}` : it.kind === 'M' ? `on above ${si(it.value, 'V')}` : it.kind === 'S' && it.hold ? `holds ${si(it.hold, 'V')} · ${si(it.freq, 'Hz')}` : it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
   const X = (gx: number) => PAD + gx * G, Y = (gy: number) => PAD + gy * G;
   /** A transistor's gate dot in its own drawing's frame (along the part, then across). */
   const local = (it: Item): [number, number] => {
@@ -221,13 +223,22 @@ export function CircuitBench() {
               <>
                 <div className="grid grid-cols-2 gap-2">
                   <label className={label}>Frequency (Hz)<input type="number" min={1} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0 && n <= 1e7) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>
-                  {sel.hold ? <p className={label}>On for (%)<span className="mt-1 block py-1.5 font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{part?.kind === 'S' && c ? `${(c.dutyOf(part) * 100).toFixed(1)}%` : '–'}</span></p>
+                  {sel.hold || sel.ac ? <p className={label}>On for (%)<span className="mt-1 block py-1.5 font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{part?.kind === 'S' && c ? `${(c.dutyOf(part) * 100).toFixed(1)}%` : '–'}</span></p>
                     : <label className={label}>On for (%)<input type="number" min={0} max={100} step="any" value={Math.round(sel.value * 1000) / 10} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 100) setItem(sel.id, { value: n / 100 }); }} className={ui.input} /></label>}
                 </div>
-                {/* M431: the switch can hold a voltage itself, reading a probe once a period. */}
-                <label className="flex items-center gap-2 text-xs text-zinc-800 dark:text-zinc-100">
-                  <input type="checkbox" checked={!!sel.hold} disabled={!net.probes.length} onChange={(e) => setItem(sel.id, e.target.checked ? { hold: 5, sense: net.probes[net.probes.length - 1].id } : { hold: undefined, sense: undefined })} />
-                  Hold a voltage {net.probes.length ? <span className="text-zinc-500 dark:text-zinc-400">(sets its own on-time)</span> : <span className="text-zinc-500 dark:text-zinc-400">(add a probe first)</span>}
+                {/* M431: the switch can hold a voltage itself, reading a probe once a period; M432: or follow a sine
+                    (an inverter), or be the opposite half of a pair. */}
+                <label className={label}>It switches
+                  <select value={sel.hold ? 'hold' : sel.ac ? 'sine' : 'fixed'} onChange={(e) => {
+                    const v = e.target.value;
+                    if (v === 'hold' && net.probes.length) setItem(sel.id, { hold: 5, sense: net.probes[net.probes.length - 1].id, ac: undefined });
+                    else if (v === 'sine') setItem(sel.id, { ac: 50, depth: 0.8, hold: undefined, sense: undefined });
+                    else setItem(sel.id, { hold: undefined, sense: undefined, ac: undefined });
+                  }} className="input mt-1 w-full">
+                    <option value="fixed">On for a set share of each period</option>
+                    <option value="hold" disabled={!net.probes.length}>To hold a voltage{net.probes.length ? '' : ' (add a probe first)'}</option>
+                    <option value="sine">Following a sine (an inverter)</option>
+                  </select>
                 </label>
                 {!!sel.hold && (
                   <div className="grid grid-cols-2 gap-2">
@@ -237,10 +248,20 @@ export function CircuitBench() {
                     </label>
                   </div>
                 )}
+                {!!sel.ac && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className={label}>AC frequency (Hz)<input type="number" min={0.1} step="any" value={sel.ac} onChange={(e) => { const n = Number(e.target.value); if (n > 0 && n <= sel.freq / 4) setItem(sel.id, { ac: n }); }} className={ui.input} /></label>
+                    <label className={label}>Depth (%)<input type="number" min={0} max={100} step="any" value={Math.round((sel.depth ?? 0.8) * 100)} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 100) setItem(sel.id, { depth: n / 100 }); }} className={ui.input} /></label>
+                  </div>
+                )}
+                <label className="flex items-center gap-2 text-xs text-zinc-800 dark:text-zinc-100">
+                  <input type="checkbox" checked={!!sel.invert} onChange={(e) => setItem(sel.id, { invert: e.target.checked || undefined })} />
+                  Opposite <span className="text-zinc-500 dark:text-zinc-400">(on whenever its pair is off)</span>
+                </label>
               </>
             )}
             {sel && sel.kind !== 'wire' && sel.kind !== 'D' && sel.kind !== 'S' && (
-              <label className={label}>{sel.kind === 'M' ? 'Turns on above (gate to source)' : sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
+              <label className={label}>{sel.kind === 'M' ? 'Turns on above (gate to source)' : sel.kind === 'Mo' ? 'Load it turns against' : sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
                 <input value={valueText[sel.id] ?? si(sel.value, '').trim()} onChange={(e) => { setValueText((v) => ({ ...v, [sel.id]: e.target.value })); const n = parseSi(e.target.value); if (n !== null && (n > 0 || sel.kind === 'V' || sel.kind === 'I' || (sel.kind === 'M' && n >= 0))) setItem(sel.id, { value: n }); }}
                   onBlur={() => setValueText((v) => { const next = { ...v }; delete next[sel.id]; return next; })} className={ui.input} />
               </label>
@@ -253,7 +274,7 @@ export function CircuitBench() {
                 {sel.wave !== 'dc' && <label className={label}>Frequency (Hz)<input type="number" min={0.01} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>}
               </div>
             )}
-            {sel && sel.kind !== 'wire' && c && <p className="font-mono text-xs tabular-nums text-zinc-700 dark:text-zinc-200">Now: {si(across, 'V')} across, {si(through, 'A')} through</p>}
+            {sel && sel.kind !== 'wire' && c && <p className="font-mono text-xs tabular-nums text-zinc-700 dark:text-zinc-200">Now: {si(across, 'V')} across, {si(through, 'A')} through{part?.kind === 'Mo' ? `, ${Math.round((c.speedOf(part) * 60) / (2 * Math.PI))} rpm` : ''}</p>}
             <button type="button" className={cn(small, 'text-red-700 dark:text-red-400')} onClick={() => remove(chosen!)}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
           </div>
         )}
@@ -291,7 +312,7 @@ export function CircuitBench() {
                 <g key={it.id} role="button" tabIndex={0} aria-label={`${NAMES[it.kind]} ${text}`} onPointerDown={(e) => { if (tool === 'select') { e.stopPropagation(); setChosen(it.id); } }} onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setChosen(it.id); } }} className="cursor-pointer outline-none">
                   <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="transparent" strokeWidth={14} />
                   <g transform={`translate(${x1} ${y1}) rotate(${ang})`} style={{ color: colour ?? (on ? '#7c3aed' : dark ? '#e4e4e7' : '#27272a') }}>
-                    {it.kind === 'wire' ? <line x1={0} y1={0} x2={len} y2={0} stroke={on ? '#7c3aed' : colour} strokeWidth={on ? 3 : 2.4} strokeLinecap="round" /> : <Symbol it={it} len={len} gate={it.kind === 'M' ? local(it) : undefined} />}
+                    {it.kind === 'wire' ? <line x1={0} y1={0} x2={len} y2={0} stroke={on ? '#7c3aed' : colour} strokeWidth={on ? 3 : 2.4} strokeLinecap="round" /> : <Symbol it={it} len={len} ang={ang} gate={it.kind === 'M' ? local(it) : undefined} />}
                   </g>
                   {text && <text x={(x1 + x2) / 2 + (vertical ? 16 : 0)} y={(y1 + y2) / 2 + (vertical ? 4 : -16)} fontSize={11} textAnchor={vertical ? 'start' : 'middle'} className="fill-zinc-600 dark:fill-zinc-300">{text}</text>}
                 </g>
@@ -334,8 +355,9 @@ export function CircuitBench() {
  * into coils and capacitors (while a circuit starts up), and the efficiency: the resistors' share of what is used. */
 function PowerReadout({ power, items, describe, chosen }: { power: Map<string, number>; items: Item[]; describe: (it: Item) => string; chosen: string | null }) {
   const of = (k: ItemKind[]) => items.filter((it) => k.includes(it.kind) && power.has(it.id));
-  const given = -of(['V', 'I']).reduce((s, it) => s + (power.get(it.id) ?? 0), 0), used = of(['R', 'D', 'S', 'M']).map((it) => ({ it, w: power.get(it.id) ?? 0 })).sort((a, b) => b.w - a.w);
-  const load = used.filter((u) => u.it.kind === 'R').reduce((s, u) => s + u.w, 0), lost = used.filter((u) => u.it.kind !== 'R').reduce((s, u) => s + u.w, 0);
+  const given = -of(['V', 'I']).reduce((s, it) => s + (power.get(it.id) ?? 0), 0), used = of(['R', 'Mo', 'D', 'S', 'M']).map((it) => ({ it, w: power.get(it.id) ?? 0 })).sort((a, b) => b.w - a.w);
+  const isLoad = (k: ItemKind) => k === 'R' || k === 'Mo';
+  const load = used.filter((u) => isLoad(u.it.kind)).reduce((s, u) => s + u.w, 0), lost = used.filter((u) => !isLoad(u.it.kind)).reduce((s, u) => s + u.w, 0);
   const stored = of(['L', 'C']).reduce((s, it) => s + (power.get(it.id) ?? 0), 0);
   if (!(given > 1e-12)) return null;
   return (

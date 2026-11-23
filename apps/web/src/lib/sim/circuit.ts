@@ -16,7 +16,10 @@ export type Part =
   /** A diode, anode a, cathode b. */
   | { id: string; kind: 'D'; a: string; b: string }
   /** A switch driven by a PWM signal (a MOSFET with its gate driver, M424): on for `duty` of each period at `freq` Hz. */
-  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number; hold?: Hold }
+  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number; hold?: Hold; sine?: SinePwm; invert?: boolean }
+  /** A DC motor (M432): armature resistance `r` (Ω) and inductance `l` (H), back-EMF and torque constant `k` (V·s/rad =
+   * N·m/A), inertia `j` (kg·m²), friction `fric` (N·m·s/rad) and a load torque `load` (N·m) against its turning. */
+  | { id: string; kind: 'Mo'; a: string; b: string; r: number; l: number; k: number; j: number; fric: number; load: number }
   /** An n-channel MOSFET (M430): drain a, source b, gate g. It turns on above its threshold `vth` (volts); `k` (A/V²)
    * sets how hard (the on-resistance is about 1 / (k (Vgs − Vth))); `lambda` (1/V) lets the current rise a little
    * with Vds when saturated. A body diode runs from source to drain, as in every power MOSFET. */
@@ -61,6 +64,9 @@ export function nextEdge(freq: number, duty: number, t: number) {
  * target ramped up over `soft` seconds so the start doesn't overshoot; the duty stays within 0 … `max`. */
 export interface Hold { node: string; target: number; gain: number; soft: number; max: number }
 export const HOLD = { gain: 150, soft: 2e-3, max: 0.9 };
+/** Sine PWM (M432, an inverter's switch): each period's duty is ½(1 + m·sin(2πft + phase)), so the average voltage
+ * follows a sine of `f` Hz; `invert` makes a switch the other half of a pair (on whenever its partner is off). */
+export interface SinePwm { m: number; f: number; phase: number }
 
 export function sourceAt(p: Extract<Part, { kind: 'V' }>, t: number) {
   if (p.wave === 'sine') return p.value * Math.sin(2 * Math.PI * p.freq * t);
@@ -109,7 +115,7 @@ export class Circuit {
     this.nodes = [...names].sort();
     this.nodes.forEach((n, i) => this.index.set(n, i));
     let k = this.nodes.length;
-    for (const p of parts) if (p.kind === 'V' || p.kind === 'L') this.branch.set(p.id, k++);
+    for (const p of parts) if (p.kind === 'V' || p.kind === 'L' || p.kind === 'Mo') this.branch.set(p.id, k++);
     this.size = k;
     this.x = new Float64Array(k);
     this.pn = junctions(parts);
@@ -124,10 +130,10 @@ export class Circuit {
   current(p: Part): number {
     const vd = this.v(p.a) - this.v(p.b);
     if (p.kind === 'R') return vd / p.value;
-    if (p.kind === 'V' || p.kind === 'L') return this.x[this.branch.get(p.id)!];
+    if (p.kind === 'V' || p.kind === 'L' || p.kind === 'Mo') return this.x[this.branch.get(p.id)!];
     if (p.kind === 'C') return this.ic.get(p.id) ?? 0;
     if (p.kind === 'I') return -p.value;
-    if (p.kind === 'S') return vd / (switchOn(p, this.t - this.lastH / 2, this.dutyOf(p)) ? RON : ROFF);
+    if (p.kind === 'S') return vd / (this.isOn(p, this.t - this.lastH / 2) ? RON : ROFF);
     if (p.kind === 'M') return mosfet(this.v(p.g) - this.v(p.b), vd, p.vth, p.k, p.lambda).id - diodeI(-vd);
     return diodeI(vd);
   }
@@ -135,14 +141,25 @@ export class Circuit {
   private held = new Map<string, { duty: number; period: number }>();
   private lastH = 0;
   private swState = new Map<string, boolean>();
-  /** A switch's duty now (its own, or what its controller has set). */
-  dutyOf(p: Extract<Part, { kind: 'S' }>) { return p.hold ? this.held.get(p.id)?.duty ?? 0 : p.duty; }
+  /** A switch's duty now (its own, or what its controller or its sine has set). */
+  dutyOf(p: Extract<Part, { kind: 'S' }>) { return p.hold || p.sine ? this.held.get(p.id)?.duty ?? (p.sine ? 0.5 : 0) : p.duty; }
+  /** Whether a switch is on at time t (an inverted one is on when its partner would be off). */
+  isOn(p: Extract<Part, { kind: 'S' }>, t: number) { return switchOn(p, t, this.dutyOf(p)) !== !!p.invert; }
+  /** Each motor's speed now (rad/s). */
+  private speeds = new Map<string, number>();
+  speedOf(p: Part) { return this.speeds.get(p.id) ?? 0; }
   /** Each regulated switch, at the start of a new period, reads its node and moves its duty. */
   private regulate() {
     for (const p of this.parts) {
-      if (p.kind !== 'S' || !p.hold) continue;
+      if (p.kind !== 'S' || !(p.hold || p.sine)) continue;
       const period = Math.floor(this.t * p.freq + 1e-9), st = this.held.get(p.id) ?? { duty: 0, period: -1 };
-      if (period !== st.period) {
+      if (period !== st.period && p.sine) {
+        // Sampled at the start of each period (regular-sampled sine PWM).
+        const s = p.sine;
+        st.duty = Math.max(0, Math.min(1, 0.5 * (1 + s.m * Math.sin(2 * Math.PI * s.f * (period / p.freq) + s.phase))));
+        st.period = period;
+        this.held.set(p.id, st);
+      } else if (period !== st.period && p.hold) {
         const h = p.hold, target = h.target * Math.min(1, this.t / h.soft), sign = Math.sign(h.target) || 1;
         const e = (sign * (target - this.v(h.node))) / Math.max(1e-9, Math.abs(h.target));
         st.duty = Math.max(0, Math.min(h.max, st.duty + (h.gain * e) / p.freq));
@@ -178,8 +195,15 @@ export class Circuit {
           const G = (trap ? 2 : 1) * p.value / h, Ieq = G * vPrev + (trap ? this.ic.get(p.id) ?? 0 : 0);
           g(a, b, G); inj(a, b, Ieq);
         } else if (p.kind === 'I') inj(a, b, p.value);
-        else if (p.kind === 'S') g(a, b, 1 / (switchOn(p, h === null ? this.t : this.t + h / 2, this.dutyOf(p)) ? RON : ROFF));
-        else if (p.kind === 'V' || p.kind === 'L') {
+        else if (p.kind === 'S') g(a, b, 1 / (this.isOn(p, h === null ? this.t : this.t + h / 2) ? RON : ROFF));
+        else if (p.kind === 'Mo') {
+          // A motor's winding: v = r·i + l·di/dt + k·ω, the coil by backward Euler (ω from the last step).
+          const k = this.branch.get(p.id)!, e = p.k * this.speedOf(p);
+          if (a >= 0) { A[a][k] += 1; A[k][a] += 1; }
+          if (b >= 0) { A[b][k] -= 1; A[k][b] -= 1; }
+          const R = p.r + (h === null ? 0 : p.l / h);
+          A[k][k] -= R; z[k] = e - (h === null ? 0 : (p.l / h) * prev[k]);
+        } else if (p.kind === 'V' || p.kind === 'L') {
           const k = this.branch.get(p.id)!;
           if (a >= 0) { A[a][k] += 1; A[k][a] += 1; }
           if (b >= 0) { A[b][k] -= 1; A[k][b] -= 1; }
@@ -246,7 +270,7 @@ export class Circuit {
       // Right after a switch flips, one backward-Euler step (as SPICE does at a breakpoint) so nothing rings.
       for (const p of this.parts) {
         if (p.kind !== 'S') continue;
-        const on = switchOn(p, (this.t + next) / 2, this.dutyOf(p));
+        const on = this.isOn(p, (this.t + next) / 2);
         if (this.swState.get(p.id) !== on) { if (this.swState.has(p.id)) this.first = true; this.swState.set(p.id, on); }
       }
       this.advance(next - this.t);
@@ -266,6 +290,13 @@ export class Circuit {
       this.ic.set(p.id, trap ? ((2 * p.value) / h) * (v1 - v0) - (this.ic.get(p.id) ?? 0) : (p.value / h) * (v1 - v0));
     }
     this.x = x; this.t += h; this.first = false; this.lastH = h;
+    // Each motor's shaft: J dω/dt = k·i − fric·ω − load (the load only once it turns, as friction does).
+    for (const p of this.parts) {
+      if (p.kind !== 'Mo') continue;
+      const w = this.speedOf(p), i = x[this.branch.get(p.id)!], drive = p.k * i - p.fric * w;
+      const load = Math.abs(w) > 1e-6 ? Math.sign(w) * p.load : Math.sign(drive) * Math.min(Math.abs(drive), p.load);
+      this.speeds.set(p.id, w + (h * (drive - load)) / p.j);
+    }
     return this;
   }
 }

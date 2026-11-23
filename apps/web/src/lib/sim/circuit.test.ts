@@ -192,3 +192,36 @@ describe('converters that hold their voltage (M431)', () => {
     expect(b.items[0]).toMatchObject({ hold: 5, sense: 'p1' }); expect(b.items[1].hold).toBeUndefined();
   });
 });
+
+describe('inverters and motor drives (M432)', () => {
+  const run = async (id: string, until: number) => {
+    const { netlist, EXAMPLES } = await import('./schematic');
+    const board = EXAMPLES.find((e) => e.id === id)!.make(), net = netlist(board), c = new Circuit(net.parts);
+    while (c.t < until) c.step(board.dt);
+    return { c, net, board };
+  };
+  it('an inverter: two switches take turns, and the filtered output is a 50 Hz sine of about 0.8 × 24 V', async () => {
+    const { c, net, board } = await run('inverter', 0.06);
+    const [top, bottom] = net.parts.filter((p) => p.kind === 'S') as Extract<Part, { kind: 'S' }>[];
+    for (const t of [0.06001, 0.06004, 0.06007]) expect(c.isOn(top, t)).toBe(!c.isOn(bottom, t));
+    const out = net.probes[1].node, v: number[] = [], ts: number[] = [];
+    while (c.t < 0.1) { c.step(board.dt); v.push(c.v(out)); ts.push(c.t); }
+    // Fit a 50 Hz sine (least squares on sin and cos): its amplitude, and how little is left over.
+    let ss = 0, cc = 0, sc = 0, vs = 0, vc = 0;
+    ts.forEach((t, i) => { const s = Math.sin(2 * Math.PI * 50 * t), q = Math.cos(2 * Math.PI * 50 * t); ss += s * s; cc += q * q; sc += s * q; vs += v[i] * s; vc += v[i] * q; });
+    const det = ss * cc - sc * sc, A = (vs * cc - vc * sc) / det, B = (vc * ss - vs * sc) / det, amp = Math.hypot(A, B);
+    const rest = Math.sqrt(ts.reduce((s, t, i) => s + (v[i] - A * Math.sin(2 * Math.PI * 50 * t) - B * Math.cos(2 * Math.PI * 50 * t)) ** 2, 0) / ts.length);
+    // The LC filter (2 mH, 10 µF into 10 Ω) passes 50 Hz with a small gain and phase shift.
+    expect(amp).toBeGreaterThan(18); expect(amp).toBeLessThan(21);
+    expect(rest / amp).toBeLessThan(0.05);
+  }, 60_000);
+  it('a DC motor driven at half duty from 24 V settles near (12 V − r·i)/k', async () => {
+    const { c, net } = await run('motor', 0.15);
+    const m = net.parts.find((p) => p.kind === 'Mo')!;
+    // The load 0.05 N·m needs i = 0.5 A; the back-EMF is then 12 − 0.5 − the diode's share ≈ 11 V: ~110 rad/s.
+    const w = c.speedOf(m);
+    expect(w).toBeGreaterThan(100); expect(w).toBeLessThan(118);
+    const { MOTOR } = await import('./schematic');
+    expect(MOTOR.k * c.current(m)).toBeGreaterThan(0.04); // the torque ≈ the load
+  }, 60_000);
+});
