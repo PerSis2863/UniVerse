@@ -5,7 +5,7 @@
 // from the textbook methods.
 
 import { C, type Rand } from './radar';
-import { dft } from './signal';
+import { dft } from './fft';
 import { label } from './image';
 
 /** One detection per group of neighbouring hits, at the group's strongest cell: a vector's runs, or a matrix's

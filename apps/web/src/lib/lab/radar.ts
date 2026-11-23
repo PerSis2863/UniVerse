@@ -3,7 +3,7 @@
 // train of pulses, the range–Doppler map, a cell-averaging CFAR detector and the ambiguity function. Our own code from
 // the textbook formulas (stop-and-hop targets; ranges and speeds are along the line of sight).
 
-import { dft } from './signal';
+import { dft } from './fft';
 
 export const C = 299_792_458;
 export const K_BOLTZMANN = 1.380649e-23;

@@ -190,7 +190,7 @@ export function LearnApp() {
   const conf = chosenResult && 'confusion' in chosenResult ? chosenResult.confusion : null;
 
   return (
-    <div className="flex h-[calc(100dvh-6.25rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+    <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Learn settings" data-no-motion>
         <label className={label}>Data
           <select value={s.source} onChange={(e) => { const v = e.target.value as Source; if (v === 'csv' && !csv) { document.getElementById('learn-file')?.click(); return; } set({ source: v, xi: v === 'iris' ? 2 : 0, yi: v === 'iris' ? 3 : 1 }); }} className="input mt-1 w-full">

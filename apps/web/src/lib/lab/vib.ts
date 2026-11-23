@@ -1,4 +1,4 @@
-import { dft } from './signal';
+import { dft } from './fft';
 
 // Hyperion's vibration analysis (M442, the owner, 23 Nov: "more advanced vibration analysis"): what a test rig and a
 // maintenance engineer read from measured vibration. A structure's frequency response from a hammer or shaker test

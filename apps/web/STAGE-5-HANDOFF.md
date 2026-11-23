@@ -11642,3 +11642,28 @@ visible element in Hyperion's pages found nothing else square (the heat plate's 
 Computer app 1.0.1: `preload.js` exposes `window.hyperionDesktop` ({ app, platform }; nothing that reaches the
 computer), `InstallHyperion` hides itself there; `roundedCorners: true`. The installers need rebuilding (GitHub →
 Actions → Hyperion desktop) for the marker; everything else reaches the app with the website.
+
+## M443 (23 Nov): Hyperion Learn → Machine health, a point-and-click maintenance window
+
+The owner's list of 23 Nov, item 4 (a Diagnostic Feature Designer of our own). Learn has two tabs (`LearnTabs.tsx`,
+sessionStorage `uv-learn-tab`): Classify (M421) and Machine health (`HealthApp.tsx`, loaded on first use). Engine
+`src/lib/lab/health.ts` (pure, run in `health.worker.ts`): `lifeFleet` (8 bearings, a recording of 4,096 samples at
+10 kHz every 2 days until each fails on day 36–60; 25 Hz shaft and 2×, noise, outer-race impacts at BPFO ringing at 3
+kHz whose size grows exponentially from ~0.08 to ~1.4), `faultFleet` (healthy, imbalance 1×, misalignment 2× and 3×,
+bearing impacts; 20 each), `fileFleet` (the person's files, one recording each from the first column of numbers, at most
+400 files of 5 MB, grouped by the name up to the first _ or -; sample rate and shaft speed typed in; kind 'faults'),
+`featureValues` (11 time features, spectral centroid and dominant frequency, 1×/2×/3× amplitudes when the speed is
+known, the envelope spectrum at BPFO/BPFI when the bearing is, the highest spectral kurtosis), `rank` (life: the mean of
+monotonicity, trendability, prognosability; faults: η² of the one-way ANOVA, F kept in `parts`), `lifeTest` (an
+exponential model from the other machines with φ just under the smallest value, a falling feature turned round, the
+threshold the training machines' mean last value, updated with each reading of the test machine; predictions capped at
+3 × its life). Trap: `health-meta.ts` holds `FEATURES` and `healthScript` with no imports, because importing health.ts
+into the page pulled `maint.ts → signal.ts → builtins` and hit the language's import cycle ("Cannot access BUILTINS
+before initialization"); for the same reason the FFT moved to `fft.ts` (pure) and every pure method imports `dft` from
+there, not from signal.ts. The window: three panels filling the screen (settings and feature ticks; the recording as
+signal, spectrum or envelope spectrum over the chosen feature by machine or by kind; the ranking, top 6 with Show all,
+then the remaining-life test or a by-kind table), charts as SVG that stretch with the panel (`vector-effect`,
+dots as zero-length round-capped strokes). Features (CSV) for Classify; Open in Code writes `healthScript` (a small
+fleet made in the language, the feature, monotonicity, a fitted model and `predictRUL`). Tests in `health.test.ts`.
+Not built: features of features (rolling windows), time-synchronous signals in the window, a classifier trained inside
+the window (the CSV goes to Classify), similarity and survival models, saving a session.
