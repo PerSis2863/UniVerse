@@ -5,3 +5,4 @@ import './pk-lab';
 import './bio-lab';
 import './chem-lab';
 import './neuro-lab';
+import './physics-lab';

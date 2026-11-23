@@ -33,27 +33,38 @@ export function rk4Grid(f: Deriv, grid: number[], y0: number[], h: number, onSte
 const errNorm = (e: number[], y: number[], yn: number[], rtol: number, atol: number) =>
   Math.max(...e.map((v, i) => Math.abs(v) / (atol + rtol * Math.max(Math.abs(y[i]), Math.abs(yn[i])))), 0);
 
-/** Dormand–Prince 5(4) with step control; every accepted step is reported. */
-export function rk45(f: Deriv, t0: number, tf: number, y0: number[], rtol = 1e-6, atol = 1e-9, maxSteps = 200_000): OdeOut {
+/** Dormand–Prince 5(4) with step control. With `o.at` (rising times inside [t0, tf]) steps are shortened to land on
+ * each of them and only those are reported (no interpolation error); otherwise every accepted step is. */
+export function rk45(f: Deriv, t0: number, tf: number, y0: number[], rtol = 1e-6, atol = 1e-9, maxSteps = 200_000, o: { at?: number[]; maxStep?: number } = {}): OdeOut {
   const A = [[], [1 / 5], [3 / 40, 9 / 40], [44 / 45, -56 / 15, 32 / 9], [19372 / 6561, -25360 / 2187, 64448 / 6561, -212 / 729], [9017 / 3168, -355 / 33, 46732 / 5247, 49 / 176, -5103 / 18656], [35 / 384, 0, 500 / 1113, 125 / 192, -2187 / 6784, 11 / 84]];
   const C = [0, 1 / 5, 3 / 10, 4 / 5, 8 / 9, 1, 1], E = [71 / 57600, 0, -71 / 16695, 71 / 1920, -17253 / 339200, 22 / 525, -1 / 40];
   const dir = Math.sign(tf - t0) || 1;
   let t = t0, y = y0.slice(), h = dir * Math.min(Math.abs(tf - t0) / 100, 0.1 * Math.max(1e-3, Math.abs(tf - t0))), evals = 1, failed = 0, steps = 0;
   let k0 = f(t, y);
-  const out: OdeOut = { t: [t], y: [y.slice()], steps: 0, evals: 0, failed: 0 };
+  const at = o.at, out: OdeOut = at ? { t: [], y: [], steps: 0, evals: 0, failed: 0 } : { t: [t], y: [y.slice()], steps: 0, evals: 0, failed: 0 };
+  let next = 0;
+  if (at) while (next < at.length && Math.abs(at[next] - t) <= 1e-12 * Math.max(1, Math.abs(t))) { out.t.push(at[next]); out.y.push(y.slice()); next++; }
+  const hmax = o.maxStep ?? Infinity;
   while (dir * (tf - t) > 1e-12 * Math.max(1, Math.abs(tf)) && steps + failed < maxSteps) {
-    if (dir * (t + h - tf) > 0) h = tf - t;
+    if (Math.abs(h) > hmax) h = dir * hmax;
+    const stop = at && next < at.length ? at[next] : tf;
+    const clipped = dir * (t + h - stop) >= 0;
+    const hTry = h;
+    if (clipped) h = stop - t;
     const K = [k0];
     for (let s = 1; s < 7; s++) K.push(f(t + C[s] * h, y.map((v, i) => v + h * A[s].reduce((acc, a, j) => acc + a * K[j][i], 0))));
     evals += 6;
     const yn = y.map((v, i) => v + h * A[6].reduce((acc, a, j) => acc + a * K[j][i], 0));
     const err = errNorm(y.map((_, i) => h * E.reduce((acc, e, j) => acc + e * K[j][i], 0)), y, yn, rtol, atol);
     if (err <= 1) {
-      t += h; y = yn; k0 = K[6]; steps++;
-      out.t.push(t); out.y.push(y.slice());
+      t = clipped ? stop : t + h; y = yn; k0 = K[6]; steps++;
+      if (!at) { out.t.push(t); out.y.push(y.slice()); }
+      else if (clipped && next < at.length) { out.t.push(at[next]); out.y.push(y.slice()); next++; }
     } else failed++;
     const fac = err === 0 ? 5 : Math.min(5, Math.max(0.2, 0.9 * err ** -0.2));
     h *= Number.isFinite(fac) ? fac : 0.2;
+    // A step shortened only to land on an output time doesn't shrink the next one.
+    if (clipped && err <= 1) h = dir * Math.max(Math.abs(h), Math.abs(hTry));
     if (Math.abs(h) < 16 * Number.EPSILON * Math.max(Math.abs(t), 1e-3 * Math.abs(tf - t0))) throw new Error('The step size became too small: the problem may be stiff (try ode15s).');
   }
   out.steps = steps; out.evals = evals; out.failed = failed;

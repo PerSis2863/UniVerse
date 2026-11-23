@@ -12545,3 +12545,25 @@ not at 2; LIF against its formula at four currents; Izhikevich RS adapts, FS is 
 in range; Poisson CV ≈ 1 and Fano ≈ 1, a clock 0; the correlogram's peak at the lag; one neuron driving another.
 Not built: cable and multi-compartment neurons, synaptic conductances with their own time course (synapses are
 instant voltage jumps), plasticity (STDP), spike sorting from recordings, reading electrophysiology files.
+
+## M497 (23 Nov): Hyperion toolbox, physics (sciences and industries, 6 of 14)
+
+`physics.ts` (pure, SI) and `physics-lab.ts`. Mechanics: `projectile` (quadratic drag k = ½ρCdA/m, from a height;
+the landing found by bisection on a re-integration of the last step), `ellipticK` (AGM) and `pendulumPeriod`
+(4√(L/g)K(sin θ0/2)), `pendulum` (θ'' = −(g/L) sin θ − bθ'), `doublePendulum` (the Lagrangian equations for unequal
+masses and rods, energy returned as a check), `nbody` (velocity Verlet, softening, positions every k-th step),
+`chargedParticle` (the Boris push). Waves: `pluckedString` (Fourier series of the triangle, b_n = 2hL² sin(nπp/L) /
+(n²π²p(L − p))), `slits` (single-slit envelope × the N-slit grating term, normalised to 1 at the centre),
+`waveField` (Σ A cos(kr − ωt + φ)/√(r/λ), 2D spreading). Fields: `pointCharges` (Coulomb, NaN inside a small core
+when drawing). **sci-num.ts `rk45` gained `{ at, maxStep }`:** with `at` the steps are shortened to land exactly on
+the asked-for times (no interpolation; a step shortened only for that doesn't shrink the next), which the pendulums
+and the projectile use; `sample` (linear) is still what ode15s uses for given times. Language (our own names):
+`projectile`, `pendulum`, `pendulumPeriod`, `doublePendulum`, `nbody`, `chargedParticle`, `stringWave`, `slitPattern`,
+`waveField`, `efield`. **Animation:** the engine's `drawnow` and `pause` do nothing (a script runs to its end, then
+draws), so every drawing takes the moment to show ('At', t, or t itself for the waves): a `% slider` on t moves it and
+Sweep (M402) films it as a GIF; `physics.m` is built that way. Tests: drag-free range, height and time; a horizontal
+throw from 10 m; K(0) = π/2; T(90°)/T0 = 1.180340599 and the simulated period agreeing; the double pendulum's energy
+to 1e-6; the Earth's year round the Sun with energy to 1e-6; the cyclotron radius and the E×B drift E/B; the plucked
+string's shape, its mirror at half a period and return at a whole one; two-slit maxima and minima; a point charge's
+V and E and a dipole's 2kp/r³. Not built: rigid bodies and collisions, 3D field lines (streamlines), magnetism of
+currents (Biot–Savart), optics with lenses, relativity, quantum wells; real-time animation inside a running script.

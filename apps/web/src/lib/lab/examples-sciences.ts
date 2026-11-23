@@ -115,4 +115,24 @@ figure; psth(s, 1000, 5)
 st = isiStats(poissonSpikes(20, 60000));
 fprintf('Poisson train: %.1f Hz, CV %.2f\\n', st.Rate, st.CV)
 ` },
+  { name: 'physics.m', code: `% Physics: throws, swings, orbits, waves and fields
+% Drag the time slider, or press Sweep on it to film the motion as a GIF.
+t = 0.8;   % slider 0 4
+subplot(2, 2, 1); projectile(25, 50, 'Drag', 0.01, 'At', t)
+subplot(2, 2, 2); doublePendulum(1, 1, 120, -10, 4, 'At', t)
+subplot(2, 2, 3); stringWave(0.65, 260, 0.2, 0.004, t/1000); title('A guitar string, 1/1000 of the time')
+subplot(2, 2, 4); waveField([-1 0; 1 0], 0.5, 1, linspace(-4, 4, 120), linspace(-3, 3, 90), t)
+% How much longer a big swing takes than the school formula says
+fprintf('A 1 m pendulum from 10°: %.4f s; from 90°: %.4f s (formula: %.4f s)\\n', pendulumPeriod(1, 10), pendulumPeriod(1, 90), 2*pi*sqrt(1/9.81))
+% The Earth and Mars round the Sun for two years (SI units)
+M = 1.989e30; AU = 1.496e11; G = 6.674e-11;
+P = [0 0; AU 0; 1.524*AU 0];
+V = [0 0; 0 sqrt(G*M/AU); 0 sqrt(G*M/(1.524*AU))];
+figure; nbody([M 5.97e24 6.42e23], P, V, 2*3.156e7, 3600)
+% An electron spirals along a magnetic field
+figure; chargedParticle(-1.602e-19, 9.109e-31, [0 0 0], [0 0 1e-3], [0 0 0], [1e6 0 2e5], 2e-7, 1e-11)
+% Light through two slits, and the field of a dipole
+figure; subplot(1, 2, 1); slitPattern(633e-9, 0.25e-3, 0.05e-3, 2, 1.5)
+subplot(1, 2, 2); efield([-0.5 0 1e-9; 0.5 0 -1e-9], linspace(-2, 2, 61), linspace(-1.5, 1.5, 45))
+` },
 ];

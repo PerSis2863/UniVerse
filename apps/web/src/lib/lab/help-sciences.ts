@@ -56,4 +56,15 @@ fanoFactor | F = fanoFactor(spikes, T, window) | The variance of the spike count
 psth | [rate, edges] = psth(spikes, T, bin, trials) | Peri-stimulus time histogram in Hz (spikes from many trials or neurons as [time trial] rows). Drawn without outputs.
 rasterPlot | rasterPlot(spikes, T) | A dot for every spike, neuron by neuron (spikes as [time neuron] rows).
 spikeXcorr | [counts, lags] = spikeXcorr(a, b, maxLag, bin) | The cross-correlogram of two spike trains: how often b fires at each lag after a. Drawn without outputs.
+# Physics
+projectile | [x, y, t, info] = projectile(v0, angle, 'Drag', k, 'Gravity', 9.81, 'Height', h0, 'At', t) | A throw from the ground (or a height): drag k = ½ρ Cd A/m (1/m) slows it by k|v|v. info has Range, MaxHeight, FlightTime and ImpactSpeed. Drawn without outputs (beside the drag-free path), the ball at time 'At'.
+pendulum | [t, theta, omega] = pendulum(L, theta0, T, 'Damping', b, 'Spin', w0, 'At', t) | A pendulum without the small-angle shortcut (degrees out). Drawn without outputs beside the shortcut; with 'At' the pendulum itself at that moment.
+pendulumPeriod | T = pendulumPeriod(L, theta0, g) | The exact period from rest at theta0 degrees: 4√(L/g) K(sin(θ0/2)), longer than 2π√(L/g) for big swings.
+doublePendulum | [t, angles, E] = doublePendulum(L1, L2, theta1, theta2, T, 'Masses', [m1 m2], 'At', t) | Two pendulums hung end to end: chaos (a tiny change in the start, a different motion). Drawn at 'At' with the path so far.
+nbody | [t, X, E] = nbody(m, P, V, T, dt, 'G', G, 'Softening', eps, 'At', t) | Bodies under each other's gravity by velocity Verlet (the energy stays bounded): P and V a row per body (2 or 3 columns, SI). X has a row per time, [x1 y1 x2 y2 …]. Drawn without outputs.
+chargedParticle | [t, r] = chargedParticle(q, m, E, B, r0, v0, T, dt) | A charge moving through uniform electric and magnetic fields (the Boris push): circles, helices, drifts. Drawn in 3D without outputs.
+stringWave | [x, y] = stringWave(L, c, pluck, h, t, 'Modes', 200, 'Damping', g) | A guitar string plucked at pluck (0–1 of its length) to height h, at time t, by its Fourier modes. Put t on a slider and Sweep it to watch it move.
+slitPattern | [I, x] = slitPattern(lambda, d, width, N, D, x) | The light on a screen D away from N slits of that width, d apart (Fraunhofer): fringes inside the single-slit envelope. Drawn without outputs.
+waveField | Z = waveField(sources, lambda, f, x, y, t) | Ripples from point sources (rows [x y amplitude phase]) at time t: where they add and cancel. Drawn without outputs.
+efield | [Ex, Ey, V] = efield(charges, x, y) | The electric field and potential of point charges (rows [x y q], coulombs, metres) on a grid. Drawn without outputs: equipotentials and the field's direction.
 `;
