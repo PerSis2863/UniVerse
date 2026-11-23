@@ -127,14 +127,15 @@ const classNotes: Paper = {
   ask(r) {
     const ps = r.some(PASSAGES.filter((p) => p.code === courseOf(r).code), 2);
     const lines = transcript(r, ps.length ? ps : [courseOf(r)]);
-    const ts = new Set(lines.map((l) => l.t));
+    const ts = new Set(lines.map((l) => l.t)), taught = lines.slice(1).reduce((n, l) => n + wordCount(l.text), 0);
     const prompt = `Course: ${ps[0]?.course ?? 'Course'}\nClass length: ${Math.floor(lines.at(-1)!.t / 60) + 1}:00\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · Teacher · ${l.text}`).join('\n')}`;
     return json(NOTES_SYSTEM, NOTES_SCHEMA, prompt, [
       ['quiz not 5 questions of 4 options', (a: O) => list(a.quiz).length === 5 && list(a.quiz).every((q) => Array.isArray(q.options) && q.options.length === 4)],
       ['quiz answer not one of its options', (a: O) => list(a.quiz).every((q) => (q.options as string[]).includes(str(q.answer)))],
       ['a time not in the transcript', (a: O) => [...list(a.keyMoments), ...list(a.chapters), ...list(a.reexplain)].every((m) => ts.has(Number(m.t)))],
       ['practice answer out of range', (a: O) => list(a.practice).every((q) => Number(q.answer) >= 0 && Number(q.answer) < list([q.options].flat()).length)],
-      ['recap not 220–320 words', (a: O) => { const w = wordCount(str(a.recap)); return w >= 180 && w <= 370; }],
+      // A short class gets a shorter recap (its instructions: about two thirds of what was taught); 220–320 from 20 minutes.
+      ['recap too short or long for the class', (a: O) => { const w = wordCount(str(a.recap)), long = lines.at(-1)!.t >= 1200; return w <= 370 && w >= (long ? 180 : Math.min(180, taught * 0.4)); }],
       ['an invented number', (a: O) => !newNumbers(`${str(a.summary)} ${str(a.recap)}`, prompt, 12).length],
     ], 8000);
   },

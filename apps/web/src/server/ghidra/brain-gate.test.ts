@@ -12,7 +12,7 @@ const SRC = fileURLToPath(new URL('../..', import.meta.url));
 const ALLOWED: Record<string, string> = {
   'server/gemini.ts': 'Gemini itself',
   'server/ghidra/brain.ts': 'Ghidra’s brain',
-  'app/api/ai/route.ts': 'the chat on every page streams Gemini with the same SAFETY settings (it is Ghidra’s assistant skill)',
+  'app/api/ai/route.ts': 'the chat on every page streams Gemini through geminiFetch: the same SAFETY settings and quick thinking (it is Ghidra’s assistant skill)',
 };
 
 function files(dir: string): string[] {
@@ -25,9 +25,9 @@ describe('Ghidra, the one AI', () => {
     const bad = all.filter(([f, s]) => /from '(?:\.\.?\/)+gemini'|from '@\/server\/gemini'/.test(s) && !ALLOWED[f]).map(([f]) => f);
     expect(bad).toEqual([]);
   });
-  it('the chat route uses only the safety settings from gemini.ts', () => {
+  it('the chat route uses only geminiFetch from gemini.ts (its safety settings and quick thinking)', () => {
     const s = all.find(([f]) => f === 'app/api/ai/route.ts')?.[1] ?? '';
-    expect(s).toMatch(/import \{ SAFETY \} from '@\/server\/gemini'/);
+    expect(s).toMatch(/import \{ geminiFetch \} from '@\/server\/gemini'/);
   });
   it('every skill a call names is in the list', () => {
     const named = all.flatMap(([, s]) => [...s.matchAll(/\bghidra(?:Json|JsonImage|Text|FileText|AudioText)(?:<[^(]*>)?\('([a-z-]+)'/g)].map((m) => m[1]));

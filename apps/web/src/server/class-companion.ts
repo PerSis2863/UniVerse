@@ -50,7 +50,7 @@ export const SYSTEM = [
   'quiz: exactly 5 multiple-choice questions, each with 4 options, and answer = the exact text of the correct option. Test understanding, not trivia.',
   'If the transcript is too short or empty of teaching content, return short honest content (e.g. a one-sentence summary) and fewer items.',
   'chapters: 4 to 10 chapters splitting the whole class into its parts, in order, each with t = the seconds value of the line where it starts (the first one at the first line) and a short title.',
-  'recap: a recap a student can read in about two minutes (220 to 320 words): what was taught, in order, with the key points and examples, in plain sentences.',
+  'recap: the longest part, in 2 to 4 paragraphs: what was taught, in order, with the key points and examples, in plain sentences. For a class of 20 minutes or more, 220 to 320 words (about two minutes of reading); for a shorter class, about two thirds as many words as were taught, never padded with anything not said.',
   'practice: exactly 5 practice questions for students (different from the quiz), each with 4 options, answer = the index (0 to 3) of the correct option, explain = one or two sentences on why it is right, and t = the seconds value where that point was explained in the class.',
   'reexplain (for the teacher only): when a "Class pulse" is given (how many students tapped "I\'m lost" or "Got it" over time), 0 to 4 topics worth re-explaining next class, where many students were lost: t = the seconds where the confusion started, topic = what to go over again, why = one short sentence on what seemed unclear, from what was being said at that moment. Leave it empty when there is no pulse or no clear confusion.',
 ].join(' ');

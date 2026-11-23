@@ -5,7 +5,7 @@ import { logAiUse } from '@/server/ai-receipts';
 import { withTextModels } from '@/server/ai-models';
 import { MATH_RULE } from '@/lib/tutor-rules';
 import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
-import { SAFETY } from '@/server/gemini';
+import { geminiFetch } from '@/server/gemini';
 import { isHard, thinkHard } from '@/server/ghidra-think';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
@@ -39,19 +39,12 @@ function plainTextStream(text: string) {
 }
 
 async function callGemini(model: string, apiKey: string, contents: unknown) {
-  return fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
-        contents,
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
-        safetySettings: SAFETY,
-      }),
-    },
-  );
+  // M453: least thinking (it was eating the 1,024-token answer and the first seconds), the full answer's room.
+  return geminiFetch(model, apiKey, 'streamGenerateContent?alt=sse', {
+    contents,
+    systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+    generationConfig: { temperature: 0.7, maxOutputTokens: 2048 },
+  });
 }
 
 export async function POST(req: NextRequest) {
