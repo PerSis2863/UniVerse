@@ -90,7 +90,7 @@ export function GhidraExamPanel() {
             <span>{run.status === 'DONE' ? 'Finished' : run.status === 'STOPPED' ? 'Stopped' : going ? 'Asking' : 'Paused'} · {Math.min(run.cursor, run.total)} of {run.total} questions · started {formatDistanceToNow(new Date(run.startedAt), { addSuffix: true })}</span>
             {asked > 0 && <span className={cn('ms-auto font-semibold tabular-nums', tone(Math.round((100 * passed) / asked)))}>{Math.round((100 * passed) / asked)}% passed</span>}
           </div>
-          <div className="h-1.5 rounded-full bg-zinc-200/70 dark:bg-white/10 overflow-hidden"><Fill value={run.total ? run.cursor / run.total : 0} quick /></div>
+          <div className="h-1.5 rounded-full bg-zinc-200/70 dark:bg-white/10 overflow-hidden"><Fill value={run.total ? run.cursor / run.total : 0} quick className="rounded-full bg-indigo-500" /></div>
         </div>
       )}
 

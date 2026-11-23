@@ -12128,3 +12128,30 @@ The owner (23 Nov): "go for Step 2" (the plan in `STAGE-5-PLAN.md`, "Ghidra, the
   skill in `skills.ts` fails `exam.test.ts` until it has a paper; a feature's instruction text stays exported (the exam
   imports it).
 
+## M445: Ghidra's exam, run three ways (23 Nov)
+
+The owner (23 Nov), offered three ways to run the exam's first time: "need to do all 1 to 3 so start working on it".
+
+- **1. The owner console** (Console → Health → Ghidra's exam, `console/ghidra-exam.tsx`, `src/server/ghidra/exam-run.ts`,
+  routes `GET/POST /owner/ghidra-exam` in the owner module; database update **0259**: `ghidra_exam_runs`,
+  `ghidra_exam_answers`). The owner picks 5, 10 or 20 questions per skill; the panel asks 6 at a time
+  (`POST {action:'step'}`) while it stays open, so no request runs long; closing it pauses the run (Continue). The cursor
+  is claimed with a conditional `updateMany` (no D1 transactions), so two tabs never ask the same questions. Through
+  Ghidra's own brain (Gemini) on the site's key; answers kept cut to 2,000 characters. The four skills that need a
+  picture, a voice or Hyperion's engine are left to the command. Checked: `scripts/checks/ghidra-exam-ui.mjs` (built
+  Worker, `--ai-placeholder --test-secret --owner-test`; the demo admin gets 404; axe at 390/1280, light/dark).
+- **2. Our own model, scored**: Qwen2.5-Coder-32B-Instruct (AWQ; the base Cloudflare runs for the agents and Hyperion,
+  without the add-on, which lives only on Cloudflare) on a rented A100 40 GB (RunPod, community, US$1.00/h; about
+  US$0.74 in all; the pod is deleted). 2,258 questions in 12 minutes. **80% (1,815 of 2,258).** Lowest: research 0%
+  (cites only in the points, never in the summary), class-notes 0% (recaps of 60–80 words, 220–320 asked),
+  impact-rooms 0% (names the student it was told not to), health 38%, passport 50% (CV summary not in the first
+  person), syllabus 62%, daily-brief 62%, boards 67%, social 67% (invents dates and times instead of [add …]). Full
+  marks: travel, oral, student-work, grading, course-skills, group-work, support-plans, safety, meetings. The failures
+  read were real; no rule changed after the run. These are what step 4's lessons should teach first.
+- **3. The owner's own computer**: `node scripts/ai/ghidra-exam.mjs --ask-key --per 10` asks for the Gemini key hidden
+  and keeps it only in memory; the steps in plain words are `scripts/ai/ghidra-exam.md`.
+- **Rule fixes from the trial**: identity now catches only "I am / as / made by …" claims (the health check is meant
+  to say "ask Claude to fix"); a model that can't see pictures gets "not asked", not "failed".
+- **Next:** the owner runs the console exam once (10 per skill, about 195 requests on the site's key) for the live
+  score; then step 3 (👍 / 👎).
+

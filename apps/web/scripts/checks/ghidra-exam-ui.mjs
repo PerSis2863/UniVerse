@@ -83,7 +83,7 @@ try {
   }
   await browser.close();
   console.log('ui', JSON.stringify(ui));
-  failed = !(api.owner && api.demoAdminHidden === 404 && api.start[0] === 200 && api.start[1] === 'RUNNING' && api.twoSteps[0] === 12 && api.twoSteps[1] === 12 && api.badAction === 400 && ui.progressed && ui.stopped && ui.table > 0
+  failed = !(api.owner && api.demoAdminHidden === 404 && api.start[0] === 201 && api.start[1] === 'RUNNING' && api.twoSteps[0] === 12 && api.twoSteps[1] === 12 && api.badAction === 400 && ui.progressed && ui.stopped && ui.table > 0
     && Object.entries(ui).every(([k2, v]) => !k2.startsWith('axe') || !v.length) && Object.entries(ui).every(([k2, v]) => !k2.startsWith('sideways') || !v));
 } catch (e) {
   console.error(e); failed = true;
