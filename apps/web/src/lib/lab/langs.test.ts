@@ -18,3 +18,13 @@ describe('Hyperion’s R (M445)', () => {
     expect(packagesIn("library(ggplot2)\nrequire('dplyr')\nx <- tidyr::pivot_longer(d)\nstats::sd(1:3)\nlibrary(stats)")).toEqual(['ggplot2', 'dplyr', 'tidyr']);
   });
 });
+
+describe('Julia, C++ and Rust in the computer app (M446)', () => {
+  it('finds the line of the first error a compiler names', async () => {
+    const { errorLine } = await import('@/components/lab/lang-runner');
+    expect(errorLine('cpp', "main.cpp: In function 'int main()':\nmain.cpp:7:20: error: 'x' was not declared")).toBe(7);
+    expect(errorLine('rust', 'error[E0425]: cannot find value `x`\n --> main.rs:3:5\n')).toBe(3);
+    expect(errorLine('julia', 'ERROR: LoadError: UndefVarError\nin expression starting at /tmp/h/main.jl:4')).toBe(4);
+    expect(errorLine('cpp', 'all fine')).toBeUndefined();
+  });
+});

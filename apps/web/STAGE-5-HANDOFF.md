@@ -11746,3 +11746,24 @@ origin `null`; IndexedDB, the site's API and example.com all throw. Measured on 
 running Python and R, 0 long tasks at CPU ×1 (first loads ~30 s and ~60 s through this container's proxy; cached after).
 Test harnesses: `signedIn`'s init script touches localStorage in every frame, so a sealed frame logs "Access is denied"
 from the harness, not from the app. Version bumps: the folder in run.html, `SANDBOX_CSP` and `_headers` together.
+
+## M446 (23 Nov): Hyperion's computer app runs Julia, C++ and Rust
+
+The languages, part 3. `desktop/hyperion/runner.js` (plain Node, tested directly): `tools()` (`--version` of julia, g++
+then clang++, rustc, with a PATH that adds ~/.cargo/bin, ~/.juliaup/bin, Homebrew and MSYS2, as desktop-started apps
+don't get the shell's PATH), `run(lang, code, onOut)` (≤ 1 MB of code; a `mkdtemp` folder; Julia `--startup-file=no`;
+C++ `-std=c++17 -O2`; Rust `-O --edition 2021`; build ≤ 2 min, run ≤ 5 min, output ≤ 2 MB then killed; one at a time;
+the folder removed), `stop()`, `howTo(lang)` (install steps per system). `main.js`: `ipcMain.handle` for
+`hyperion:tools`, `hyperion:run`, `hyperion:stop`, each refused unless the sender is the window's own webContents, its
+main frame and Hyperion's origin (`trusted`); a missing tool returns its install steps without asking; otherwise
+`dialog.showMessageBox` asks before a program runs, remembered per sha256 of language + code for the visit, or for the
+whole language until Hyperion closes when the person ticks the box; output streams back as `hyperion:out`. `preload.js`
+exposes `hyperionDesktop.{app, platform, tools, run, stop, onOutput}` (main frame only: Electron doesn't run preloads in
+subframes). Website: `LangRunner.native` uses the bridge when present (status line, streamed output, `errorLine` for
+main.cpp:L:C error / --> main.rs:L:C / main.jl:L), and in a browser explains that these need the computer app. App
+1.1.0 (menu File → Learn too; `runner.js` in the package's files). Tested in the real Electron app under xvfb with
+Playwright's `_electron` (the dialog answered by replacing `dialog.showMessageBox` from the main process): C++ and Rust
+ran, Julia (not installed here) gave its steps without asking, a Rust error marked line 2, `hyperionDesktop` is
+undefined inside the sealed frame. Not built: Julia's plots and variables (text only), several files per program,
+Cargo crates, input from the keyboard while a program runs, a debugger. [owner]: GitHub → Actions → "Hyperion desktop"
+→ Run workflow with "publish" ticked, so the downloads have 1.1.0.
