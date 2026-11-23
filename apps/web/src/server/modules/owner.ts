@@ -20,6 +20,7 @@ import { aiModels, LIVE_MODELS, saveModels, TEXT_MODELS } from '../ai-models';
 import { repairSetup, startRepair } from '../repair-agents';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
+import { examState, startExam, stepExam, stopExam } from '../ghidra/exam-run';
 import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 import { oneOf, strings } from '../body';
@@ -749,6 +750,16 @@ export default function ownerModule(router: Router) {
 
   // The Health check tab: security and error checks, ranked and explained by AI.
   r.get('health', ({ query }) => healthCheck(query.fresh === '1'));
+
+  // ── Ghidra's exam (M445): a run asked a few questions at a time while the console is open ──
+  r.get('ghidra-exam', () => examState());
+  r.post('ghidra-exam', ({ body }) => {
+    const b = (body ?? {}) as Record<string, unknown>;
+    if (b.action === 'start') return startExam(b.per);
+    if (b.action === 'step') return stepExam(b.id);
+    if (b.action === 'stop') return stopExam(b.id);
+    throw new BadRequestException('Start, step or stop?');
+  });
 
   // Putting an earlier version live needs CF_ADMIN_TOKEN and an emailed code each time.
   r.post('cloudflare/code', async ({ user }) => {

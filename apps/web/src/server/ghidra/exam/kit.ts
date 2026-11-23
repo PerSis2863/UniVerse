@@ -88,7 +88,9 @@ export function words(v: unknown): string {
 // ——— Rules every answer gets ———
 
 /** Ghidra never says it is another company's assistant or model. */
-const OTHER_AI = /\b(gemini|bard|chatgpt|gpt-?[34o]|openai|claude|anthropic|qwen|deepseek|llama|mistral|universe ai)\b|\b(made|trained|developed|built) by (google|openai|meta|alibaba)\b|\bas an ai language model\b/i;
+const NAMES = 'gemini|bard|chatgpt|gpt-?[34o]|claude|qwen|deepseek|llama|mistral|universe ai';
+/** It says it *is* one (naming one is fine: the console's advice says "ask Claude to fix"). */
+const OTHER_AI = new RegExp(`\\b(i am|i'm|i’m|this is|as|i was)\\s+(an? |the )?(${NAMES})\\b|\\b(made|trained|developed|built|created) by (google|openai|meta|alibaba|anthropic|deepseek)\\b|\\bas an ai language model\\b|\\buniverse ai\\b`, 'i');
 export const IDENTITY: Rule = ['says it is another AI', (a: unknown) => !OTHER_AI.test(words(a))];
 
 // ——— Rule helpers ———

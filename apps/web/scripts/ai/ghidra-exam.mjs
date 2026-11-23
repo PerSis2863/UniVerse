@@ -1,8 +1,9 @@
 // Ghidra's exam: every skill's questions (src/server/ghidra/exam), asked with the website's own instructions, and the
 // score card: how many answers passed their rules, per skill, and which rules failed most. From apps/web:
 //
-//   node scripts/ai/ghidra-exam.mjs                       ask Ghidra as the website does (its brain: Gemini; needs
-//                                                         GEMINI_API_KEY in the shell, the owner's own key)
+//   node scripts/ai/ghidra-exam.mjs --ask-key             ask Ghidra as the website does (its brain: Gemini); asks for
+//                                                         the owner's Gemini key, hidden, never saved (or set
+//                                                         GEMINI_API_KEY in the shell). Steps: ghidra-exam.md
 //   node scripts/ai/ghidra-exam.mjs --via openai --url URL --model M [--key-env NAME]
 //                                                         ask any OpenAI-style model instead: UniVerse's own on a rented
 //                                                         card (vLLM) or Cloudflare's Workers AI

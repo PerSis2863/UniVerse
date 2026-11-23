@@ -26,10 +26,28 @@ if (flag('help') || !['site', 'openai'].includes(via)) {
   console.log(readFileSync(join(WEB, 'scripts/ai/ghidra-exam.mjs'), 'utf8').split('\n').filter((l) => l.startsWith('//')).join('\n'));
   process.exit(0);
 }
+/** --ask-key: the Gemini key typed in this terminal, hidden as it is typed, kept only in this run's memory. */
+async function askKey(): Promise<string> {
+  process.stdout.write('Paste your Gemini API key (it stays hidden, and is never saved), then press Enter: ');
+  const stdin = process.stdin;
+  stdin.setRawMode?.(true);
+  stdin.resume();
+  let key = '';
+  for await (const chunk of stdin) {
+    for (const ch of String(chunk)) {
+      if (ch === '\r' || ch === '\n') { stdin.setRawMode?.(false); stdin.pause(); process.stdout.write('\n'); return key.trim(); }
+      if (ch === '\u0003') process.exit(130);
+      key = ch === '\u007f' ? key.slice(0, -1) : key + ch;
+    }
+  }
+  return key.trim();
+}
+if (flag('ask-key')) process.env.GEMINI_API_KEY = await askKey();
+
 const unknown = only.filter((s) => !(s in SKILLS));
 if (unknown.length) { console.error(`Not skills: ${unknown.join(', ')}`); process.exit(1); }
 if (!rescore && via === 'site' && !process.env.GEMINI_API_KEY) {
-  console.error('The website’s brain needs GEMINI_API_KEY in this shell (the owner’s own key; it is never saved). Or use --via openai.');
+  console.error('Ghidra’s brain needs a Gemini key: run again with --ask-key and paste it when asked (it is never saved). Or use --via openai.');
   process.exit(1);
 }
 
@@ -95,6 +113,7 @@ async function answer(skill: SkillId, ask: Ask): Promise<{ got: unknown; kept: u
   const image = ask.mode === 'image' ? await picture(ask.html!) : undefined;
   if (via === 'openai') {
     const t = await openai(ask, image);
+    if (image && t === null) return { got: undefined, kept: 'not asked: this model can’t read pictures' };
     if (ask.mode !== 'code') return { got: t, kept: t };
     const code = codeIn(t ?? ''); const run = code ? await hyperion().run(code) : null;
     return { got: t && { code, ...run }, kept: t };
