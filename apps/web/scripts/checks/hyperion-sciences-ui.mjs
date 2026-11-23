@@ -22,12 +22,14 @@ try {
     const names = theme === 'dark' ? Object.keys(EXPECT) : ['teach.m', 'ctscan.m'];
     for (const name of names) {
       await page.getByRole('tab', { name }).click({ timeout: 120_000 });
-      const log = page.getByRole('log', { name: 'Output' }), before = (await log.innerText()).length;
-      await page.getByRole('button', { name: 'Run', exact: true }).click();
-      const ok = await page.waitForFunction(([want, from]) => { const t = document.querySelector('[aria-label="Output"]')?.textContent ?? ''; return t.slice(from).includes(want) || /\n?Error|isn’t a variable/.test(t.slice(from)); }, [EXPECT[name], before], { timeout: 120_000 }).then(() => true, () => false);
+      const log = page.getByRole('log', { name: 'Output' }), before = (await log.innerText()).length, runBtn = page.getByRole('button', { name: 'Run', exact: true });
+      await runBtn.click();
+      // The run is over when Run can be pressed again (and something new was printed).
+      await page.waitForTimeout(300);
+      const ok = await page.waitForFunction(() => { const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.trim() === 'Run'); return b && !b.disabled; }, null, { timeout: 180_000 }).then(() => true, () => false);
       const text = (await log.innerText()).slice(before);
       r.ran[name] = ok && text.includes(EXPECT[name]) && !/isn’t a variable|Error:/.test(text) ? 'ok' : `FAILED: ${text.slice(-300)}`;
-      if (name === 'teach.m') r.mathsSet = (await page.locator('[aria-label="Output"] .katex').count()) > 5;
+      if (name === 'teach.m') r.mathsSet = await page.locator('[aria-label="Output"] math').first().waitFor({ timeout: 20_000 }).then(async () => (await page.locator('[aria-label="Output"] math').count()) > 5, () => false);
       if (shots && (name === 'teach.m' || name === 'ecg.m' || name === 'ctscan.m')) await page.screenshot({ path: `${shots}/sciences-${name.replace('.m', '')}-${theme}-${width}.png` });
     }
     r.figure = (await page.getByRole('region', { name: 'Figure' }).or(page.locator('section[aria-label="Figure"]')).locator('svg, img').count()) > 0;

@@ -12762,3 +12762,9 @@ plot was empty (0 A at 0 V; now left out), the epidemic example's fit drew nothi
 root line hid under the y axis (a little room on the left), the dosing window's top line sat on the frame (more head
 room), PSTH counted only the neurons that fired (now the highest neuron number), shorter "mV" labels for stacked
 neuron traces, the MOSFET title's threshold rounded.
+
+**Checked in a browser (23 Nov):** `scripts/checks/hyperion-sciences-ui.mjs` on a local build runs all 14 examples from
+their tabs in the engine's thread (each must print its line, no error), checks the maths-teaching steps are set as maths
+(MathML) and a figure shows; axe clean at 1280 dark and 1024 light, no sideways scroll, no page errors. It found one
+accessibility fault, fixed: a wide maths line in the command window (a matrix step) scrolls sideways but couldn't take
+the keyboard's focus (`LabText`'s maths span now has `tabIndex={0}`).
