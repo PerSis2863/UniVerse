@@ -89,6 +89,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <script dangerouslySetInnerHTML={{ __html: appHeadScript }} />
         {/* The Karma look's face, before the stylesheet asks for it */}
         <link rel="preload" href="/fonts/inter/inter-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
+        <link rel="preload" href="/fonts/shantell-sans/shantell-sans-latin.woff2" as="font" type="font/woff2" crossOrigin="" />
         {/* PWA: iOS touch icon */}
         <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png?v=2" />
       </head>

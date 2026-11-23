@@ -18,7 +18,7 @@ export function DashHead({ name }: { name?: string | null }) {
   return (
     <div className="min-w-0">
       <p className="text-[13px] font-medium text-zinc-500 dark:text-zinc-400">{d ? d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' }) : ' '}</p>
-      <p className="mt-0.5 text-[22px] font-semibold leading-tight tracking-[-0.015em] text-zinc-900 sm:text-2xl dark:text-white">
+      <p className="display-face mt-0.5 text-[22px] font-semibold leading-tight text-zinc-900 sm:text-2xl dark:text-white">
         {greeting}{first ? <>, <span translate="no">{first}</span></> : null}
       </p>
     </div>

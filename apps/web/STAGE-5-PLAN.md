@@ -1906,6 +1906,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M448 | The owner console shows the paid Cloudflare plan (23 Nov) | **Done** | The plan card read only the old `WORKERS_PAID` name, not `CF_PLAN=paid`: it showed the free plan's daily meters. Now `workersPaid()`. |
 | M449 | The installed Hyperion app keeps the whole site inside it (23 Nov) | **Done** | Its manifest's scope was `/hyperion`, so the console, Messages, Collaborate and Settings showed the browser's out-of-app bar (address and ✕). Scope `/`, start and id still `/hyperion`. |
 | M450 | Hyperion as a real computer app, offered (23 Nov) | **Done** | The installers (hyperion-latest) were published but hidden behind `NEXT_PUBLIC_HYPERION_DOWNLOADS`; the Install button now offers Windows, Mac and Linux first (the visitor's own system first), also in the browser-installed app; the Mac build is universal. |
+| M452 | The owner's handwritten style for headings (23 Nov) | **Done** (branch) | Shantell Sans (OFL, self-hosted, 116 KB) for h1–h3, card titles, the homes' greeting and the key word; Inter for everything read or pressed; documents keep Inter. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

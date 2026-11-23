@@ -12437,3 +12437,20 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+## M452: the owner's handwritten style for headings (23 Nov)
+
+The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
+in a rounded handwritten face over clean body text): "please use this writing style across the whole project both of
+them were it is needed". Told once that new looks are paused until 5 Dec; asked where and which face: "Big headings
+everywhere" and **Shantell Sans** (of Itim, Mali, Shantell Sans, Comic Neue shown side by side).
+
+- `public/fonts/shantell-sans/` (latin and latin-ext, variable weight 300–800, OFL.txt), `@font-face` and
+  `--font-display` in `globals.css`, preloaded in `layout.tsx`. h1–h3 (so `CardHead` titles too) use it at natural
+  spacing; h4–h6 and everything read or pressed stay Inter (`--font-sans`). `.accent-word` (`<Accent>`) now uses the same
+  face (no serif italic); the Instrument Serif files stay for the UniVersity scene's study signs (`backdrop.ts`).
+- `.display-face` for big headings that aren't headings in the markup (the homes' greeting, `DashHead`).
+- People's own writing keeps Inter headings: `:where(.doc-prose, .ProseMirror, [contenteditable="true"])`. OpenDyslexic
+  (Settings) wins over it for headings too.
+- Checked in a browser (dev): landing, student, teacher and hub at 1280 and 390, light and dark; every visible h1–h3
+  in Shantell Sans, no sideways scroll. Non-Latin scripts (Hindi, Arabic) fall back to Inter / the system font.
+
