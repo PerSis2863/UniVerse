@@ -36,7 +36,12 @@
       "mcp__runpod__list-secrets",
       "mcp__runpod__describe-tool",
       "mcp__runpod__search-concepts",
-      "mcp__Cloudflare_Developer_Platform__search_cloudflare_documentation"
+      "mcp__Cloudflare_Developer_Platform__search_cloudflare_documentation",
+      "mcp__runpod__create-pod",
+      "mcp__runpod__pod-action",
+      "mcp__claude-code-remote__send_later",
+      "mcp__claude-code-remote__delete_trigger",
+      "mcp__claude-code-remote__list_triggers"
     ]
   }
 }
