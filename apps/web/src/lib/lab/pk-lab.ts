@@ -48,6 +48,7 @@ def('pkSimulate', (a, nout, lab) => {
     const [lo, hi] = nums(o.get('Window'), "The window [lowest highest]");
     call(lab, 'hold', str('on')); call(lab, 'plot', row([0, end]), row([lo, lo]), str('--'), row([0, end]), row([hi, hi]), str('--')); call(lab, 'hold', str('off'));
     labels.push('Lowest that works', 'Highest that is safe');
+    call(lab, 'ylim', row([0, 1.12 * Math.max(hi, ...c)]));
   }
   call(lab, 'legend', ...labels.map(str)); call(lab, 'xlabel', str('Hours')); call(lab, 'ylabel', str('Concentration (mg/L)'));
   call(lab, 'title', str(`${doses.length} × ${amount} mg ${r.route}${doses.length > 1 && !times ? ` every ${every} h` : ''}`)); call(lab, 'grid', str('on'));
@@ -75,7 +76,7 @@ def('pkDosingWindow', (a, nout, lab) => {
     const s = pk.steadyState(m, { amount: w.practical.dose, ...r }, w.practical.tau), t = [0, 1, 2, 3].flatMap((k) => s.t.map((x) => x + k * w.practical!.tau)), c = [0, 1, 2, 3].flatMap(() => s.c);
     call(lab, 'plot', row(t), row(c), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
     call(lab, 'plot', row([0, t[t.length - 1]]), row([mec, mec]), str('--'), row([0, t[t.length - 1]]), row([mtc, mtc]), str('--')); call(lab, 'hold', str('off'));
-    call(lab, 'legend', str('Steady state'), str('MEC'), str('MTC')); call(lab, 'xlabel', str('Hours')); call(lab, 'ylabel', str('Concentration (mg/L)'));
+    call(lab, 'ylim', row([0, 1.12 * Math.max(mtc, ...c)])); call(lab, 'legend', str('Steady state'), str('MEC'), str('MTC')); call(lab, 'xlabel', str('Hours')); call(lab, 'ylabel', str('Concentration (mg/L)'));
     call(lab, 'title', str(`${w.practical.dose.toPrecision(3)} mg every ${w.practical.tau} h`)); call(lab, 'grid', str('on'));
   }
   return [];

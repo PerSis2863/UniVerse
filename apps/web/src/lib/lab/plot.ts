@@ -126,7 +126,8 @@ function seriesFrom(args: Value[], lab: Lab, kind: Kind): Series[] {
     const [X, Y] = !second && first.im ? [mat(first.r, first.c, first.d), mat(first.r, first.c, first.im)] : second ? [first, second] : [mat(first.r === 1 || first.c === 1 ? 1 : first.r, first.r === 1 || first.c === 1 ? first.d.length : 1, Array.from({ length: first.r === 1 || first.c === 1 ? first.d.length : first.r }, (_, k) => k + 1)), first];
     i += second ? 2 : 1;
     const spec: Value[] = [];
-    while (i < args.length && args[i].k === 'str' && !(args[i + 1] && args[i + 1].k !== 'str' && isPairName(args[i]))) { spec.push(args[i]); i++; if (spec.length) break; }
+    // A pair name starts the name–value pairs whatever its value is ('Color', 'r' or '#2563eb' included, M504's fix).
+    while (i < args.length && args[i].k === 'str' && !(args[i + 1] && isPairName(args[i]))) { spec.push(args[i]); i++; if (spec.length) break; }
     const columns = Y.r === 1 || Y.c === 1 ? [[...Y.d]] : Array.from({ length: Y.c }, (_, j) => [...Y.d.subarray(j * Y.r, j * Y.r + Y.r)]);
     const xs = X.r === 1 || X.c === 1 ? [...X.d] : null;
     columns.forEach((ys, j) => {

@@ -18,7 +18,7 @@ fprintf('Peak: %.0f thousand without, %.0f thousand with the lockdown\\n', max(y
 rng(2)
 [~, ~, truth] = seir(0.45, 0.2, 0.15, [N-20 0 20 0], 80);
 cases = max(0, round(truth + 0.1*sqrt(truth).*randn(size(truth))));
-figure; f = fitEpidemic(cases, N, 'Model', 'SEIR', 'Sigma', 0.2)
+figure; fitEpidemic(cases, N, 'Model', 'SEIR', 'Sigma', 0.2)   % draws the fit and prints beta, gamma and R0
 figure; epiRt(cases, 6, 3)                 % the reproduction number day by day
 % Children, adults and the old mix differently
 C = [12 4 1; 4 9 2; 1 2 4];               % daily contacts by age group

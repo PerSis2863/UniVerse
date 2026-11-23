@@ -19,7 +19,7 @@ function current(v: Value | undefined, o: Map<string, Value>, T: number, dt: num
 }
 const span = (v: Value | undefined, dt: number) => { const T = need(v, 'The time (ms)'); if (!(T > 0 && T / dt <= 2e6)) throw new LabError('The time must be positive and at most 2 million steps.'); return T; };
 function trace(lab: Lab, t: ArrayLike<number>, V: ArrayLike<number>, title: string, spikes: number[]) {
-  call(lab, 'plot', row(t), row(V)); call(lab, 'xlabel', str('Time (ms)')); call(lab, 'ylabel', str('Membrane voltage (mV)'));
+  call(lab, 'plot', row(t), row(V)); call(lab, 'xlabel', str('Time (ms)')); call(lab, 'ylabel', str('mV'));
   call(lab, 'title', str(`${title}: ${spikes.length} spike${spikes.length === 1 ? '' : 's'}${spikes.length > 1 ? `, ${nr.isiStats(spikes).rate.toFixed(1)} Hz` : ''}`)); call(lab, 'grid', str('on'));
 }
 
@@ -112,7 +112,7 @@ const timesOf = (v: Value | undefined) => { const m = toMat(v ?? num(NaN), 'The 
 def('psth', (a, nout, lab) => {
   const s = timesOf(a[0]), T = need(a[1], 'The time (ms)'), bin = need(a[2], 'The bin width (ms)');
   if (!(bin > 0 && T / bin <= 1e5)) throw new LabError('The bin width must be positive and at most 100,000 bins.');
-  const trials = a[3] ? need(a[3], 'The trials') : s.ids.length ? new Set(s.ids).size : 1, r = nr.psth(s.t, trials, T, bin);
+  const trials = a[3] ? need(a[3], 'The trials') : s.ids.length ? Math.max(...s.ids) : 1, r = nr.psth(s.t, trials, T, bin);
   if (nout > 0) return [row(r.rate), row(r.edges)];
   call(lab, 'bar', row(r.edges.slice(0, -1).map((e) => e + bin / 2)), row(r.rate), num(1)); call(lab, 'xlabel', str('Time (ms)')); call(lab, 'ylabel', str('Rate (Hz)'));
   call(lab, 'title', str(`PSTH, ${bin} ms bins, ${trials} train${trials === 1 ? '' : 's'}`)); call(lab, 'grid', str('on'));

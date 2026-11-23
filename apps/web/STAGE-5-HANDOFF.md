@@ -12753,3 +12753,12 @@ up and down times), transmission losses in dispatch, hourly solar and wind (M434
 **Group 7 (M492–M505) is complete.** No point-and-click window was added: every toolbox draws its own figure and every
 example has live sliders (and Sweep for films), which covered what a window would have given; a window remains possible
 later (Learn's pattern, M421/M465) if the owner wants one for a particular toolbox.
+
+**M505 follow-up (23 Nov): every example's figures rendered and looked at** (46 figures, `renderSvg` to PNG). Fixed:
+`plot(x, y, 'Color', '#22c55e')` (and 'Color', 'r') read the pair's name as a line spec and drew circle markers: the
+engine only treated a pair name as a pair when a number followed it (plot.ts `seriesFrom`, one line; a regression test
+in `examples-sciences.test.ts`). This touched every chart in the app that passes a colour by text. Also: the diode's log
+plot was empty (0 A at 0 V; now left out), the epidemic example's fit drew nothing (it asked for an output), a tree's
+root line hid under the y axis (a little room on the left), the dosing window's top line sat on the frame (more head
+room), PSTH counted only the neurons that fired (now the highest neuron number), shorter "mV" labels for stacked
+neuron traces, the MOSFET title's threshold rounded.

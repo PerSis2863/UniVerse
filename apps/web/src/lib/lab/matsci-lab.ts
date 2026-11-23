@@ -33,7 +33,7 @@ def('diodeIV', (a, nout, lab) => {
   if (!(Is > 0 && n >= 1 && Rs >= 0)) throw new LabError("'Is' > 0, 'n' ≥ 1, 'Rs' ≥ 0.");
   const I = mat(V.r, V.c, [...V.d].map((v) => ms.diodeCurrent(v, Is, n, Rs, T)));
   if (nout > 0) return [I];
-  call(lab, 'semilogy', row(V.d), row([...I.d].map((v) => Math.abs(v)))); call(lab, 'xlabel', str('Voltage (V)')); call(lab, 'ylabel', str('|Current| (A)')); call(lab, 'grid', str('on'));
+  call(lab, 'semilogy', row(V.d), row([...I.d].map((v) => (v === 0 ? NaN : Math.abs(v))))); // 0 A has no place on a log scale call(lab, 'xlabel', str('Voltage (V)')); call(lab, 'ylabel', str('|Current| (A)')); call(lab, 'grid', str('on'));
   call(lab, 'title', str(`Diode: Is ${Is.toExponential(1)} A, n ${n}, Rs ${Rs} Ω`));
   return [];
 });
@@ -50,7 +50,7 @@ def('mosfetIV', (a, nout, lab) => {
   vgs.forEach((g, i) => { call(lab, 'plot', row(vds), row(Id[i].map((v) => v * 1000)), str('LineWidth'), num(1.5)); if (!i) call(lab, 'hold', str('on')); });
   call(lab, 'plot', row(vds), row(vds.map((d) => 500 * k * d * d)), str('k:')); call(lab, 'hold', str('off'));
   call(lab, 'legend', ...vgs.map((g) => str(`V_GS = ${g} V`)), str('Edge of saturation')); call(lab, 'xlabel', str('V_DS (V)')); call(lab, 'ylabel', str('I_D (mA)')); call(lab, 'grid', str('on'));
-  call(lab, 'title', str(`MOSFET, V_th ${vth} V`));
+  call(lab, 'title', str(`MOSFET, V_th ${+vth.toFixed(3)} V`));
   return [];
 });
 

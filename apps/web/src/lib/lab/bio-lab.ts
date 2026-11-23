@@ -93,7 +93,8 @@ function drawTree(lab: Lab, t: bio.Tree, title: string) {
   const L = bio.treeLayout(t);
   call(lab, 'plot', row(L.lx), row(L.ly), str('LineWidth'), num(1.5));
   call(lab, 'yticks', row(L.order.map((_, i) => i + 1))); call(lab, 'yticklabels', { k: 'cell', r: 1, c: L.order.length, d: L.order.map((k) => str(t.names[k])) });
-  call(lab, 'ylim', row([0.5, L.order.length + 0.5])); call(lab, 'xlabel', str('Distance from the root')); call(lab, 'title', str(title));
+  const far = Math.max(...L.x) || 1;
+  call(lab, 'xlim', row([-0.04 * far, 1.08 * far])); call(lab, 'ylim', row([0.5, L.order.length + 0.5])); call(lab, 'xlabel', str('Distance from the root')); call(lab, 'title', str(title));
 }
 function tree(a: Value[], nout: number, lab: Lab, name: string, nj: boolean) {
   const D = square(a[0]);
