@@ -759,7 +759,7 @@ radareqrng | R = radareqrng(lambda, snr, Pt, tau, …) | The farthest range that
 radareqpow | Pt = radareqpow(lambda, R, snr, tau, …) | The peak power needed for that SNR at range R.
 chirp | y = chirp(t, f0, t1, f1, 'linear', phi) | A swept cosine from f0 at 0 to f1 at t1: 'linear', 'quadratic' or 'logarithmic'.
 lfmpulse | w = lfmpulse(B, T, fs) | A linear-FM (chirp) radar pulse: bandwidth B over T seconds, complex, at sample rate fs.
-radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses.
+radarecho | x = radarecho(w, fs, prf, n, fc, [range speed amp], 'SNR', 10) | Echoes of moving targets (one row each; speed + going away) over n pulses: range samples × pulses. 'Clutter', 30 adds ground clutter that much above the noise.
 pulsecompress | y = pulsecompress(x, w) | The matched filter: each column correlated with the pulse, a target's peak at its delay.
 rangedoppler | [M, range, speed] = rangedoppler(x, w, fs, prf, fc) | The range–Doppler map in dB (pulse compression, then a windowed FFT across pulses). Drawn without outputs.
 cfar | [det, th] = cfar(power, guard, train, pfa) | Cell-averaging CFAR: each cell against its neighbours' mean, for a false-alarm rate pfa (down each column).
@@ -769,6 +769,12 @@ sensorsig | [X, R] = sensorsig(pos, ns, ang, noise, 'Power', p) | ns snapshots (
 arraypattern | p = arraypattern(pos, w, az) | The array's response (dB) at each azimuth for weights w (uniform if left out): steer with w = steervec(pos, 30), lower the side lobes with .*hamming(N). Drawn without outputs, with the beam's width.
 spatialspectrum | P = spatialspectrum(R, pos, az, 'Method', 'music', 'NumSignals', 2) | Power by direction from a covariance: 'beamscan' (the beam swept across), 'mvdr' (Capon) or 'music' (the noise subspace: sharpest). Drawn without outputs, with its peaks.
 musicdoa | doa = musicdoa(R, nsig, 'ScanAngles', az, 'ElementSpacing', 0.5) | The directions (degrees) of nsig signals by MUSIC, for a line of equally spaced elements.
+mtifilter | y = mtifilter(x, 2) | Moving-target indication: each pulse less the one before (2) or the two-step difference (3), across the columns; still ground clutter cancels, movers stay.
+groupdetections | p = groupdetections(det, power) | One detection per group of neighbouring hits, at the strongest: indices for a vector, rows [row col] for a matrix (a range–Doppler map).
+fmcwbeat | x = fmcwbeat(B, T, fs, fc, chirps, [range speed amp], 'SNR', 20) | A car radar's (FMCW) beat signal: each chirp sweeps B Hz in T seconds; samples down, chirps across.
+fmcwrangedoppler | [M, range, speed] = fmcwrangedoppler(x, B, T, fs, fc) | The FMCW range–Doppler map in dB (an FFT down each chirp and across the chirps). Drawn without outputs.
+trackkalman | X = trackkalman(Z, dt, 'ProcessNoise', q, 'MeasurementNoise', r) | A constant-velocity Kalman filter on measured positions [x y] (NaN rows: missed): rows [x y vx vy]. Drawn without outputs.
+trackmulti | t = trackmulti(scans, dt, 'MeasurementNoise', r, 'Gate', 9.21, 'Confirm', 3, 'Drop', 4) | Many targets from a cell array of scans (each rows [x y], false alarms included): tracks gated, paired nearest first, started, confirmed and dropped; a table of the confirmed tracks (Scan, Track, X, Y, VX, VY). Drawn without outputs.
 pca | [coeff, score, latent, tsquared, explained, mu] = pca(X) | Principal components: the directions of most spread, the rows in them, and each one's share of the variance.
 perfcurve | [fpr, tpr, T, AUC] = perfcurve(labels, scores, positive) | The ROC curve of scores and the area under it.
 optimizableVariable | optimizableVariable('x', [lo hi], 'Type', 'integer', 'Transform', 'log') | A setting for bayesopt to search: real, integer or categorical ({'a', 'b'}), on a straight or log scale.

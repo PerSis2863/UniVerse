@@ -4,11 +4,14 @@ import { textOf, type Lab } from './interp';
 import { cmat, mat, num, str, toMat, type Mat, type Value } from './values';
 import * as rd from './radar';
 import * as ar from './arrays';
+import * as tk from './tracking';
+import { table } from './table';
 
 // Hyperion's radar in the language (M429): physconst, pow2db, db2pow, mag2db, db2mag, freq2wavelen, wavelen2freq,
 // range2time, time2range, speed2dop, dop2speed, rangeres2bw, bw2rangeres, radareqsnr, radareqrng, radareqpow, chirp,
 // lfmpulse, radarecho, pulsecompress, rangedoppler, cfar, ambgfun; M438: steervec, sensorsig, arraypattern,
-// spatialspectrum, musicdoa.
+// spatialspectrum, musicdoa; M439: radarecho's 'Clutter', mtifilter, groupdetections, fmcwbeat, fmcwrangedoppler,
+// trackkalman, trackmulti.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 0, lab);
@@ -86,9 +89,13 @@ def('radarecho', (a) => {
   if (T.c < 2) throw new LabError('Each target is a row [range speed] or [range speed amplitude].');
   if ((fs / prf) * pulses > 4e6) throw new LabError('That data cube is too big (over 4 million samples): fewer pulses or a lower sample rate.');
   const targets = Array.from({ length: T.r }, (_, i) => ({ range: T.d[i], speed: T.d[i + T.r], amp: T.c > 2 ? T.d[i + 2 * T.r] : 1 }));
-  let snr = 20;
-  for (let i = 6; i + 1 < a.length; i += 2) if (a[i].k === 'str' && /^snr$/i.test((a[i] as { v: string }).v)) snr = toMat(a[i + 1]).d[0];
-  const r = rd.echoes(wave, fs, prf, pulses, fc, targets, snr, random);
+  let snr = 20, clutter: number | undefined;
+  for (let i = 6; i + 1 < a.length; i += 2) {
+    const k = a[i].k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '';
+    if (k === 'snr') snr = toMat(a[i + 1]).d[0]; else if (k === 'clutter') clutter = toMat(a[i + 1]).d[0];
+    else throw new LabError("radarecho's options are 'SNR' and 'Clutter' (the ground's clutter-to-noise ratio, dB).");
+  }
+  const r = rd.echoes(wave, fs, prf, pulses, fc, targets, snr, random, clutter);
   return [cmat(r.rows, r.cols, r.re, r.im)];
 });
 def('pulsecompress', (a) => {
@@ -207,5 +214,86 @@ def('musicdoa', (a) => {
   if (!(k >= 1 && k < N)) throw new LabError('The number of signals is 1 to N − 1.');
   const pos = ar.ula(N, d);
   return [row(ar.peaks(az, ar.spectrum(R, pos, az, 'music', k), k))];
+});
+
+// ——— Clutter, FMCW, grouping, tracking (M439) ———
+const cx = (v: Value | undefined, what: string) => { const m = toMat(v ?? num(NaN), what); return { m, re: Float64Array.from(m.d), im: m.im ? Float64Array.from(m.im) : new Float64Array(m.d.length) }; };
+def('mtifilter', (a) => {
+  const { m, re, im } = cx(a[0], 'The echoes'), order = Math.round(a[1] ? toMat(a[1]).d[0] : 2);
+  if (order !== 2 && order !== 3) throw new LabError('mtifilter(x, 2) or (x, 3): a two- or three-pulse canceller.');
+  if (m.c < order) throw new LabError(`The echoes need at least ${order} pulses (columns).`);
+  const r = tk.mti(re, im, m.r, m.c, order);
+  return [cmat(m.r, r.cols, r.re, r.im)];
+});
+def('groupdetections', (a) => {
+  const D = toMat(a[0] ?? num(NaN), 'The detections'), P = a[1] ? toMat(a[1], 'The power') : D;
+  if (P.d.length !== D.d.length) throw new LabError('The power must be the same size as the detections.');
+  const g = tk.groupDetections(D.d, P.d, D.r, D.c);
+  // A vector gives indices; a matrix gives [row col] rows (1-based).
+  if (D.r === 1 || D.c === 1) return [row(g.map(([r, c]) => r + c * D.r + 1))];
+  const out = mat(g.length, 2);
+  g.forEach(([r, c], i) => { out.d[i] = r + 1; out.d[i + g.length] = c + 1; });
+  return [out];
+});
+def('fmcwbeat', (a) => {
+  if (a.length < 6) throw new LabError("fmcwbeat needs the sweep's bandwidth, its time, the sample rate, the carrier, the number of chirps and the targets [range speed amp]: fmcwbeat(300e6, 40e-6, 10e6, 77e9, 128, [30 5 1]).");
+  const [B, T, fs, fc] = [0, 1, 2, 3].map((i) => toMat(a[i]).d[0]), chirps = Math.round(toMat(a[4]).d[0]), Tg = toMat(a[5], 'The targets');
+  if (!(B > 0 && T > 0 && fs > 0 && fc > 0 && chirps >= 1)) throw new LabError('The bandwidth, sweep time, sample rate and carrier must be positive.');
+  if (T * fs * chirps > 4e6) throw new LabError('That is over 4 million samples: fewer chirps or a lower sample rate.');
+  if (Tg.c < 2) throw new LabError('Each target is a row [range speed] or [range speed amplitude].');
+  let snr = 20;
+  for (let i = 6; i + 1 < a.length; i += 2) if (a[i].k === 'str' && /^snr$/i.test((a[i] as { v: string }).v)) snr = toMat(a[i + 1]).d[0];
+  const r = tk.fmcwBeat(B, T, fs, fc, chirps, Array.from({ length: Tg.r }, (_, i) => ({ range: Tg.d[i], speed: Tg.d[i + Tg.r], amp: Tg.c > 2 ? Tg.d[i + 2 * Tg.r] : 1 })), snr, random);
+  return [cmat(r.rows, r.cols, r.re, r.im)];
+});
+def('fmcwrangedoppler', (a, nout, lab) => {
+  if (a.length < 5) throw new LabError('fmcwrangedoppler needs the beat signal, the bandwidth, the sweep time, the sample rate and the carrier.');
+  const { m, re, im } = cx(a[0], 'The beat signal'), [B, T, fs, fc] = [1, 2, 3, 4].map((i) => toMat(a[i]).d[0]);
+  const r = tk.fmcwMap(re, im, m.r, m.c, B, T, fs, fc), M = mat(r.rows, r.cols, r.map);
+  if (nout > 0) return [M, mat(r.rows, 1, r.range), row(r.speed)];
+  call(lab, 'imagesc', row(r.speed), mat(r.rows, 1, r.range), M); call(lab, 'axis', str('xy'));
+  call(lab, 'xlabel', str('Speed (m/s, + going away)')); call(lab, 'ylabel', str('Range (m)')); call(lab, 'title', str('FMCW range–Doppler map (dB)')); call(lab, 'colorbar');
+  return [];
+});
+const tune = (a: Value[], from: number, names: Record<string, string>, what: string) => {
+  const o: Record<string, number> = {};
+  for (let i = from; i < a.length; i += 2) {
+    const k = a[i]?.k === 'str' ? names[(a[i] as { v: string }).v.toLowerCase()] : undefined;
+    if (!k) throw new LabError(`${what} takes ${Object.keys(names).map((x) => `'${x}'`).join(', ')}.`);
+    o[k] = toMat(a[i + 1] ?? num(NaN)).d[0];
+    if (!(o[k] > 0)) throw new LabError(`${k} must be positive.`);
+  }
+  return o;
+};
+const NAMES = { processnoise: 'q', measurementnoise: 'r', gate: 'gate', confirm: 'confirm', drop: 'drop', maxspeed: 'vmax' };
+def('trackkalman', (a, nout, lab) => {
+  const Z = toMat(a[0] ?? num(NaN), 'The measurements');
+  if (Z.c !== 2) throw new LabError('The measurements are rows [x y] (NaN where the target was missed).');
+  const dt = toMat(a[1] ?? num(1)).d[0], o = tune(a, 2, NAMES, 'trackkalman');
+  const z = Array.from({ length: Z.r }, (_, i): [number, number] => [Z.d[i], Z.d[i + Z.r]]), X = tk.kalmanTrack(z, dt, o.q ?? 1, o.r ?? 1, o.vmax ?? 100);
+  const out = mat(X.length, 4);
+  X.forEach((x, i) => x.forEach((v, j) => { out.d[i + j * X.length] = v; }));
+  if (nout > 0) return [out];
+  call(lab, 'plot', row(z.map((p) => p[0])), row(z.map((p) => p[1])), str('.')); call(lab, 'hold', str('on'));
+  call(lab, 'plot', row(X.map((x) => x[0])), row(X.map((x) => x[1]))); call(lab, 'hold', str('off'));
+  call(lab, 'legend', str('Measured'), str('Kalman filter')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('x (m)')); call(lab, 'ylabel', str('y (m)'));
+  return [];
+});
+def('trackmulti', (a, nout, lab) => {
+  const C = a[0];
+  if (!C || C.k !== 'cell') throw new LabError('trackmulti needs a cell array of scans, each a matrix of detections [x y]: trackmulti({[1 2; 5 6], [1.5 2.5]}, dt).');
+  const scans = C.d.map((v): [number, number][] => { const m = toMat(v); if (m.d.length && m.c !== 2) throw new LabError('Each scan is rows [x y].'); return Array.from({ length: m.d.length ? m.r : 0 }, (_, i) => [m.d[i], m.d[i + m.r]]); });
+  const dt = toMat(a[1] ?? num(1)).d[0], o = tune(a, 2, NAMES, 'trackmulti');
+  if (scans.reduce((s, x) => s + x.length, 0) > 200_000) throw new LabError('Up to 200,000 detections in all.');
+  const r = tk.multiTrack(scans, dt, o), col_ = (f: (x: (typeof r)[number]) => number) => mat(r.length, 1, r.map(f));
+  const t = table([['Scan', col_((x) => x.scan)], ['Track', col_((x) => x.id)], ['X', col_((x) => x.x)], ['Y', col_((x) => x.y)], ['VX', col_((x) => x.vx)], ['VY', col_((x) => x.vy)]]);
+  if (nout > 0) return [t];
+  const all = scans.flat();
+  call(lab, 'plot', row(all.map((p) => p[0])), row(all.map((p) => p[1])), str('.')); call(lab, 'hold', str('on'));
+  const ids = [...new Set(r.map((x) => x.id))];
+  for (const id of ids) { const pts = r.filter((x) => x.id === id); call(lab, 'plot', row(pts.map((p) => p.x)), row(pts.map((p) => p.y)), str('-')); }
+  call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('x (m)')); call(lab, 'ylabel', str('y (m)'));
+  call(lab, 'title', str(`${ids.length} confirmed tracks from ${all.length} detections`));
+  return [];
 });
 

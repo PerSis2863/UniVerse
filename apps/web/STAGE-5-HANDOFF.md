@@ -11557,3 +11557,18 @@ angle doesn't change any spectrum, so centring doesn't matter). Language in `rad
 `radar.test.ts`. Not built: adaptive beamformers over time (LMS, RLS), elevation scans, ESPRIT, coherent sources
 (spatial smoothing), mutual coupling. Next: M439 (tracking, clutter, FMCW, grouping detections).
 
+## M439 (23 Nov): Hyperion toolbox, tracking, clutter, car radar and grouped detections
+
+The last of the owner's "please build all of these" list (M430–M439). `radar.ts` `echoes(..., clutterDb)`: a Rayleigh
+scatterer in every range cell past the pulse, 1 % of its power wandering by an AR(1) at ρ 0.95. `src/lib/lab/tracking.ts`
+(pure): `groupDetections` (image.ts's `label`, 8-connected, the strongest cell of each), `mti` (binomial cancellers down
+the slow-time columns), `fmcwBeat` (complex beat at 2BR/(cT) + 2v/λ with the range moving during and between chirps),
+`fmcwMap` (Hann both ways; positive beats only; range k·fs/N·cT/2B, speed from the chirp-to-chirp phase), `kalmanTrack`
+(state [x vx y vy], white-acceleration Q, started at the first measurement with velocity uncertainty vmax), `multiTrack`
+(χ²₂ 99 % gate 9.21, confirmed tracks pick first then nearest pairs (greedy GNN, not Hungarian), confirm after 3 hits,
+drop tentative after 2 misses and confirmed after 4). Language in `radar-lab.ts`; `trackmulti` takes a cell array of
+scans and returns a table. Example tracking.m. Tests in `radar.test.ts`. Not built: JPDA/MHT, IMM for manoeuvres,
+tracks in range–angle (polar) coordinates, FMCW angle from several receivers. Next (the owner, 23 Nov): multi-objective
+optimisation, rarer solver choices, advanced vibration analysis, a point-and-click maintenance window, then Python, R,
+Julia and C++/Rust in Hyperion and its computer app (M440–).
+

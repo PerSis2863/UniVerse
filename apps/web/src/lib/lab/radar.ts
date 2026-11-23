@@ -31,8 +31,22 @@ export function lfm(B: number, T: number, fs: number): [Float64Array, Float64Arr
 /** Echoes from targets over a train of pulses: a fast-time (range) × slow-time (pulse) complex matrix, column-major.
  * Each target at range R + v·t (v > 0 going away) returns the pulse delayed by 2R/c with the carrier's phase −4πR/λ,
  * plus complex white noise of power 1 / 10^(snr/10) against a unit echo. */
-export function echoes(wave: [Float64Array, Float64Array], fs: number, prf: number, pulses: number, fc: number, targets: { range: number; speed: number; amp: number }[], snrDb: number, rand: Rand) {
+export function echoes(wave: [Float64Array, Float64Array], fs: number, prf: number, pulses: number, fc: number, targets: { range: number; speed: number; amp: number }[], snrDb: number, rand: Rand, clutterDb?: number) {
   const rows = Math.max(wave[0].length, Math.floor(fs / prf)), lambda = C / fc, re = new Float64Array(rows * pulses), im = new Float64Array(rows * pulses);
+  if (clutterDb !== undefined) {
+    // M439: ground clutter, a still scatterer in every range cell past the pulse (Rayleigh, of clutter-to-noise ratio
+    // clutterDb against the noise), with 1 % of its power slowly wandering (wind on trees: ρ = 0.95 pulse to pulse).
+    const L = wave[0].length, sd = Math.sqrt(lin(clutterDb - snrDb) / 2), g = () => { let u = 0; while (!u) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };
+    for (let k = L; k < rows; k++) {
+      const cr = sd * g(), ci = sd * g();
+      let ur = g(), ui = g();
+      for (let m = 0; m < pulses; m++) {
+        ur = 0.95 * ur + Math.sqrt(1 - 0.95 * 0.95) * g(); ui = 0.95 * ui + Math.sqrt(1 - 0.95 * 0.95) * g();
+        const ar_ = cr * (Math.sqrt(0.99) + 0.1 * ur / Math.SQRT2) - ci * (0.1 * ui / Math.SQRT2), ai = ci * (Math.sqrt(0.99) + 0.1 * ur / Math.SQRT2) + cr * (0.1 * ui / Math.SQRT2);
+        for (let i = 0; i < L && k + i < rows; i++) { re[k + i + m * rows] += wave[0][i] * ar_ - wave[1][i] * ai; im[k + i + m * rows] += wave[0][i] * ai + wave[1][i] * ar_; }
+      }
+    }
+  }
   for (let m = 0; m < pulses; m++) for (const t of targets) {
     const R = t.range + t.speed * (m / prf), d = Math.round((2 * R / C) * fs), ph = (-4 * Math.PI * R) / lambda, cr = t.amp * Math.cos(ph), ci = t.amp * Math.sin(ph);
     for (let i = 0; i < wave[0].length; i++) {
