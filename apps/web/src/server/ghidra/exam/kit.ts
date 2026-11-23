@@ -44,12 +44,13 @@ export class Rand {
   chance(p: number) { return this.next() < p; }
 }
 
-/** The questions of one paper, the same on every run (the seed is the skill's name). */
-export function questions(skill: string, paper: Paper): Ask[] {
-  let seed = 7;
+/** The questions of one paper, the same on every run (the seed is the skill's name). `salt` other than 0 gives a
+ *  different set from the same paper: the lessons for Ghidra's add-on (scripts/ai/ghidra-ai.py), never the exam's. */
+export function questions(skill: string, paper: Paper, salt = 0, n = paper.n): Ask[] {
+  let seed = 7 + salt * 7919;
   for (const ch of skill) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0;
   const r = new Rand(seed);
-  return Array.from({ length: paper.n }, (_, i) => paper.ask(r, i));
+  return Array.from({ length: n }, (_, i) => paper.ask(r, i));
 }
 
 // ——— Reading answers ———

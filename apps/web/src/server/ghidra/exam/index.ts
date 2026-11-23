@@ -1,3 +1,5 @@
+import { jsonSchema } from '../../agents/playbooks';
+import { asGhidra } from '../brain';
 import { SKILLS, type SkillId } from '../skills';
 import { fits, IDENTITY, jsonIn, questions, type Ask, type CodeRun, type Paper } from './kit';
 import { APP_PAPERS, hyperionPaper } from './papers-apps';
@@ -38,4 +40,10 @@ export function mark(ask: Ask, answer: unknown): string[] {
 export function codeIn(reply: string) {
   const blocks = [...reply.matchAll(/```[a-z]*\n([\s\S]*?)```/gi)].map((m) => m[1]);
   return (blocks.length ? blocks.join('\n') : reply).trim();
+}
+
+/** The instructions a model without a schema option gets (UniVerse's own model, the exam's `--via openai`, the lessons):
+ *  Ghidra's, the job's, and for JSON the line asking for one object matching the schema. */
+export function plainSystem(ask: Ask) {
+  return asGhidra(ask.system) + (ask.schema ? `\nReply with only one JSON object, no other text, matching this JSON Schema: ${JSON.stringify(jsonSchema(ask.schema))}` : '');
 }

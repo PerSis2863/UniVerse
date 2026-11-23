@@ -5,8 +5,10 @@ import { appendFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } fr
 import { createRequire } from 'node:module';
 import { join } from 'node:path';
 import { createInterface } from 'node:readline';
-import { codeIn, mark, papers, questions, SKILL_IDS, type Ask, type CodeRun } from '../../src/server/ghidra/exam';
-import { asGhidra, ghidraAudioText, ghidraJson, ghidraJsonImage, ghidraText } from '../../src/server/ghidra/brain';
+import { codeIn, mark, papers, plainSystem, questions, SKILL_IDS, type Ask, type CodeRun } from '../../src/server/ghidra/exam';
+import { jsonIn } from '../../src/server/ghidra/exam/kit';
+import { swapMaterial } from '../../src/server/ghidra/exam/material';
+import { ghidraAudioText, ghidraJson, ghidraJsonImage, ghidraText } from '../../src/server/ghidra/brain';
 import { jsonSchema } from '../../src/server/agents/playbooks';
 import { SKILLS, type SkillId } from '../../src/server/ghidra/skills';
 
@@ -20,6 +22,7 @@ const only = opt('skills') ? (opt('skills').split(',') as SkillId[]) : SKILL_IDS
 const per = Number(opt('per', '0')) || Infinity;
 const jobs = Number(opt('jobs', '4')) || 4;
 const rescore = opt('rescore');
+const lessons = opt('lessons');  // 'requests' or 'mark': the lessons for Ghidra's add-on (scripts/ai/ghidra-ai.py)
 const out = rescore || opt('out') || join(WEB, 'exam-runs', new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-'));
 
 if (flag('help') || !['site', 'openai'].includes(via)) {
@@ -46,7 +49,7 @@ if (flag('ask-key')) process.env.GEMINI_API_KEY = await askKey();
 
 const unknown = only.filter((s) => !(s in SKILLS));
 if (unknown.length) { console.error(`Not skills: ${unknown.join(', ')}`); process.exit(1); }
-if (!rescore && via === 'site' && !process.env.GEMINI_API_KEY) {
+if (!rescore && !lessons && via === 'site' && !process.env.GEMINI_API_KEY) {
   console.error('Ghidra’s brain needs a Gemini key: run again with --ask-key and paste it when asked (it is never saved). Or use --via openai.');
   process.exit(1);
 }
@@ -55,9 +58,8 @@ if (!rescore && via === 'site' && !process.env.GEMINI_API_KEY) {
 
 const url = opt('url').replace(/\/$/, ''), model = opt('model'), key = process.env[opt('key-env', 'OPENAI_API_KEY')] ?? '';
 async function openai(ask: Ask, image?: string): Promise<string | null> {
-  const rule = ask.schema ? `\nReply with only one JSON object, no other text, matching this JSON Schema: ${JSON.stringify(jsonSchema(ask.schema))}` : '';
   const user = image ? [{ type: 'text', text: ask.prompt }, { type: 'image_url', image_url: { url: `data:image/png;base64,${image}` } }] : ask.prompt;
-  const body: Record<string, unknown> = { model, messages: [{ role: 'system', content: asGhidra(ask.system) + rule }, { role: 'user', content: user }], max_tokens: ask.maxTokens ?? 1500, temperature: 0 };
+  const body: Record<string, unknown> = { model, messages: [{ role: 'system', content: plainSystem(ask) }, { role: 'user', content: user }], max_tokens: ask.maxTokens ?? 1500, temperature: 0 };
   if (ask.schema) body.response_format = { type: 'json_schema', json_schema: { name: 'answer', schema: jsonSchema(ask.schema) } };
   for (let tryNo = 0; tryNo < 4; tryNo++) {
     const res = await fetch(`${url}/chat/completions`, { method: 'POST', headers: { 'content-type': 'application/json', ...(key ? { authorization: `Bearer ${key}` } : {}) }, body: JSON.stringify(body) }).catch(() => null);
@@ -110,16 +112,17 @@ async function answer(skill: SkillId, ask: Ask): Promise<{ got: unknown; kept: u
     const t = await ghidraAudioText(skill, wav, 'audio/wav');
     return { got: t, kept: t };
   }
-  const image = ask.mode === 'image' ? await picture(ask.html!) : undefined;
+  const image = ask.mode === 'image' ? await picture(ask.html!).catch(() => null) : undefined;
+  if (image === null) return { got: undefined, kept: 'not asked: no browser here to draw the picture' };
   if (via === 'openai') {
-    const t = await openai(ask, image);
+    const t = await openai(ask, image ?? undefined);
     if (image && t === null) return { got: undefined, kept: 'not asked: this model can’t read pictures' };
     if (ask.mode !== 'code') return { got: t, kept: t };
     const code = codeIn(t ?? ''); const run = code ? await hyperion().run(code) : null;
     return { got: t && { code, ...run }, kept: t };
   }
   if (ask.mode === 'json') { const v = await ghidraJson(skill, ask.system, ask.prompt, ask.schema!, ask.maxTokens, ask.lite); return { got: v, kept: v }; }
-  if (ask.mode === 'image') { const v = await ghidraJsonImage(skill, ask.system, ask.prompt, { mimeType: 'image/png', data: image! }, ask.schema!, ask.maxTokens); return { got: v, kept: v }; }
+  if (ask.mode === 'image') { const v = await ghidraJsonImage(skill, ask.system, ask.prompt, { mimeType: 'image/png', data: image as string }, ask.schema!, ask.maxTokens); return { got: v, kept: v }; }
   const t = await ghidraText(skill, ask.system, ask.prompt, ask.maxTokens, ask.lite);
   if (ask.mode !== 'code') return { got: t, kept: t };
   const code = codeIn(t ?? ''); const run = code ? await hyperion().run(code) : null;
@@ -130,6 +133,38 @@ async function answer(skill: SkillId, ask: Ask): Promise<{ got: unknown; kept: u
 
 interface Row { skill: SkillId; i: number; failed: string[]; skipped?: string; answer: unknown; run?: unknown }
 const all = await papers();
+
+// ——— Lessons for Ghidra's add-on (scripts/ai/ghidra-ai.py): other questions from the same papers (--salt), on other
+// material (--material FILE, written by the teacher), never one the exam asks. `requests` prints them; `mark` reads the
+// teacher's answers ({id, answer} per line on stdin) and prints which rules each failed. Pictures and recordings are left out.
+if (lessons) {
+  const salt = Number(opt('salt', '1')) || 1, n = Number(opt('per', '80')) || 80;
+  if (opt('material')) swapMaterial(JSON.parse(readFileSync(opt('material'), 'utf8')));
+  const exam = new Set(only.flatMap((skill) => questions(skill, all[skill]).map((q) => `${skill}|${q.prompt}`)));
+  const asks = new Map<string, { skill: SkillId; ask: Ask }>();
+  for (const skill of only) {
+    questions(skill, all[skill], salt, n).forEach((ask, i) => {
+      if (ask.mode === 'image' || ask.mode === 'audio' || exam.has(`${skill}|${ask.prompt}`)) return;
+      asks.set(`${skill}:${salt}:${i}`, { skill, ask });
+    });
+  }
+  if (lessons === 'requests') {
+    for (const [id, { skill, ask }] of asks) process.stdout.write(JSON.stringify({ id, skill, mode: ask.mode, system: plainSystem(ask), prompt: ask.prompt, maxTokens: ask.maxTokens ?? 1500 }) + '\n');
+  } else {
+    for await (const line of createInterface({ input: process.stdin })) {
+      if (!line.trim()) continue;
+      const { id, answer } = JSON.parse(line) as { id: string; answer: string };
+      const q = asks.get(id);
+      if (!q) continue;
+      let got: unknown = answer;
+      if (q.ask.mode === 'code') { const code = codeIn(answer ?? ''); got = code ? { code, ...(await hyperion().run(code)) } : null; }
+      const failed = mark(q.ask, got);
+      const clean = q.ask.mode === 'json' ? JSON.stringify(jsonIn(answer ?? '')) : (answer ?? '').trim();
+      process.stdout.write(JSON.stringify({ id, failed, clean }) + '\n');
+    }
+  }
+  process.exit(0);
+}
 const rows: Row[] = [];
 if (rescore) {
   // Saved answers, marked again with today's rules (no model asked). Code answers are run again.

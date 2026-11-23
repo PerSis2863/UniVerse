@@ -93,3 +93,10 @@ export const CHAT_LINES = [
   'Hugo: who is presenting the intro?', 'Mira: I’ll do the intro, Hugo does the results', 'Kofi: link to the doc: https://docs.example.edu/report',
   'Asha: let’s vote on the topic tonight', 'Jonas: I vote for renewable energy', 'Elif: same, renewable energy',
 ];
+
+/** Other material in place of this file's (the lessons for Ghidra's add-on use passages, products, places and names the
+ *  exam never shows, so the score after training stays honest). The lists are refilled in place. */
+export function swapMaterial(m: { passages?: Passage[]; products?: Product[]; cities?: string[]; first?: string[] }) {
+  const swap = <T,>(to: T[], from?: T[]) => { if (from?.length) to.splice(0, to.length, ...from); };
+  swap(PASSAGES, m.passages); swap(PRODUCTS, m.products); swap(CITIES, m.cities); swap(FIRST, m.first);
+}
