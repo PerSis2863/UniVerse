@@ -22,6 +22,7 @@ import { printedUpTo, varsAt, type TraceStep } from '@/lib/lab/trace';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
+import { LabToolstrip, LAYOUT_START, type Layout } from './LabToolstrip';
 import { LabAsk } from './LabAsk';
 import { FRAME_H, FRAME_W, LabSweep, type Sweep } from './LabSweep';
 import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
@@ -38,7 +39,8 @@ const OTHER_FIG = 1_000_000;
 // Phones get the same parts as tabs.
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
-type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
+/** 'tool': a line the toolstrip runs (M472): like a command, but always in Hyperion's own engine. */
+type From = 'cmd' | 'tool' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -125,6 +127,10 @@ export function LabApp() {
   // one before it, M401) and a line to jump to.
   const [profs, setProfs] = useState<Record<number, (Profile & { code: string })[]>>({});
   const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
+  // The toolstrip (M472): which panels show and the code's text size, kept on this device; the help browser's search.
+  const [layout, setLayoutNow] = useState<Layout>(() => { try { const v = JSON.parse(localStorage.getItem('uv-lab-layout') ?? 'null') as Partial<Layout> | null; return { ...LAYOUT_START, ...(v && typeof v === 'object' ? { side: v.side !== false, figure: v.figure !== false, codeSize: [12, 13, 15, 17].includes(Number(v.codeSize)) ? Number(v.codeSize) : 13 } : {}) }; } catch { return LAYOUT_START; } });
+  const setLayout = (l: Layout) => { setLayoutNow(l); try { localStorage.setItem('uv-lab-layout', JSON.stringify(l)); } catch { /* private mode */ } };
+  const [helpQuery, setHelpQuery] = useState('');
   // Sweep (M402): a slider run through its range (the film and its table), and the form that starts one.
   const [sweep, setSweep] = useState<Sweep | null>(null);
   const [sweepAsk, setSweepAsk] = useState<{ name: string; from: string; to: string; n: number } | null>(null);
@@ -177,7 +183,7 @@ export function LabApp() {
     busyNow.current = true;
     setBusy(true);
     if (from === 'note') noteBuf.current = '';
-    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
+    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' || from === 'tool' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
     else if (from === 'profile') { watchingScript.current = open; worker.current.postMessage({ profile: code, id } satisfies ToLab); }
     else worker.current.postMessage({ run: code, id } satisfies ToLab);
@@ -231,11 +237,11 @@ export function LabApp() {
         // Later sections usually need this one: an error stops the rest.
         if (m.error) noteQueue.current = [];
       }
-      const errText = m.error && p?.from !== 'note' ? `Error${p?.from !== 'cmd' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
+      const errText = m.error && p?.from !== 'note' ? `Error${p?.from !== 'cmd' && p?.from !== 'tool' && m.at !== undefined && p ? ` (line ${lineOf(p.code, m.at)})` : ''}: ${m.error}\n` : '';
       if (m.error && !(p?.from === 'live' && errText === lastLiveError.current)) print({ k: 'err', t: errText });
       lastLiveError.current = errText; // a live run repeating the same error stays quiet
       // A script's error is marked on its line in the editor (until the code changes).
-      setCodeError(m.error && p && p.from !== 'cmd' && p.from !== 'note' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
+      setCodeError(m.error && p && p.from !== 'cmd' && p.from !== 'tool' && p.from !== 'note' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
       setVars(m.vars); setVarsFrom('MATLAB');
       // Files the code wrote or deleted: kept on this device (or forgotten).
       for (const f of m.files) {
@@ -789,10 +795,20 @@ export function LabApp() {
         </div>
       )}
       {/* Computers only (M405): variables and files, the editor over the command window, the figure. */}
-      <div className="grid min-h-0 flex-1 grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)] gap-3">
-        <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>
+      <LabToolstrip busy={busy} matlab={mat} varsAreMatlab={varsFrom === 'MATLAB'} vars={vars} scripts={list} open={open} examples={EXAMPLES} layout={layout} onLayout={setLayout}
+        onNew={(id) => { const l = LANGS.find((x) => x.id === id)!; save([...list, { name: `untitled${list.length + 1}${l.ext}`, code: l.starter }]); setOpen(list.length); }}
+        onOpenFiles={(fs) => { void Promise.all([...fs].slice(0, 20).filter((f) => f.size <= 1_000_000).map(async (f) => ({ name: f.name.replace(/[^\w.-]/g, '_'), code: await f.text() }))).then((got) => { if (!got.length) return; save([...list, ...got]); setOpen(list.length + got.length - 1); }); }}
+        onJump={(k, line) => { setOpen(k); setNoteView((nv) => ({ ...nv, [k]: false })); setJump((j) => ({ line, n: (j?.n ?? 0) + 1 })); }}
+        onImport={() => picker.current?.click()} onCommand={(code) => run(code, 'tool')} onClearLog={() => setLog([])}
+        onAnalyze={() => { const probs = lintScript(script.code, isFn).problems; print({ k: 'in', t: `>> analyse ${script.name}` }); print({ k: 'out', t: probs.length ? `${probs.map((q) => `Line ${lineOf(script.code, q.from)}: ${q.message}`).join('\n')}\n` : 'No problems found.\n' }); }}
+        onRun={() => run(script.code, 'script')} onTime={() => run(script.code, 'profile')} onWatch={() => run(script.code, 'watch')} onStop={stop}
+        onHelp={(q) => { setHelpQuery(q); setBrowsing(true); }}
+        onExample={(i) => { const e = EXAMPLES[i]; save([...list, { name: list.some((x) => x.name === e.name) ? e.name.replace(/(\.\w+)$/, `_copy$1`) : e.name, code: e.code }]); setOpen(list.length); }} />
+      <div className={cn('grid min-h-0 flex-1 gap-3', layout.side && layout.figure ? 'grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)]' : layout.side ? 'grid-cols-[16rem_minmax(0,1fr)]' : layout.figure ? 'grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]' : 'grid-cols-1')}
+        style={{ '--lab-code': `${layout.codeSize}px` } as React.CSSProperties}>
+        {layout.side && <div className="grid min-h-0 grid-rows-[minmax(0,1.3fr)_minmax(0,1fr)] gap-3">{variables}{fileList}</div>}
         <div className="grid min-h-0 grid-rows-[minmax(0,1.1fr)_minmax(0,1fr)] gap-3">{editor}{command}</div>
-        {figure}
+        {layout.figure && figure}
       </div>
       {viewer}
       {bigQr && link?.url && (
@@ -805,7 +821,7 @@ export function LabApp() {
           </div>
         </div>
       )}
-      {browsing && <FunctionBrowser onClose={() => setBrowsing(false)} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); }} />}
+      {browsing && <FunctionBrowser initial={helpQuery} onClose={() => { setBrowsing(false); setHelpQuery(''); }} onPick={(syntax) => { setBrowsing(false); setCmd(syntax); }} />}
     </div>
   );
 }

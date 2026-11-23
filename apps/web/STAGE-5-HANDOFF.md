@@ -12477,3 +12477,21 @@ everywhere" and **Shantell Sans** (of Itim, Mali, Shantell Sans, Comic Neue show
   next step), behind the switch `ghidra-addon` (off), `GHIDRA_LORA`, and the paid-AI limit (`spendCloudAi(null)`, the
   site's count). JSON answers must have every required field or Gemini answers. Tests: `addon.test.ts`.
 
+## M472 (23 Nov): Hyperion's toolstrip
+
+The owner, 23 Nov, with a screenshot of a desktop maths program's tabbed ribbon: "my other agent didnt add all these
+tools in the hyperion website and downloaded app". `LabToolstrip.tsx` (our own look and words, not a copy): tabs Home,
+Plots, Apps (`role="tablist"`), a "Search help" box (opens `FunctionBrowser` with its new `initial` query), a fold
+button (localStorage `uv-lab-strip`). Home's groups: File (New script: a `Menu` of `LANGS` with their starters; Open:
+up to 20 files of ≤ 1 MB as new scripts; Find in scripts: `findInScripts`, a hit opens the script at its line through
+`jump`; Compare: `lineDiff`, an LCS line diff of the open script against another, in `src/lib/lab/diff.ts` with tests),
+Data (Import = the Files picker; Save / Load workspace = `save('workspace.mat')` / `load(…)`; Clear = `clear`), Code
+(Run, Analyse code = `lintScript` printed to the command window, Run and time, Run step by step, Stop, Clear commands),
+Simulate, Environment (Layout: Variables and Files, Figure, put back; Preferences: code text size 12–17 px through
+`--lab-code`, which LabEditor's theme now reads; LabApp keeps both in localStorage `uv-lab-layout` and changes its grid's
+columns), Resources (Help, Examples: a copy of any example, Learn). Plots: "Draw … against …" from Hyperion's own numeric
+variables (not another language's) and 18 kinds (matrix-only kinds need a matrix), each running `figure; <cmd>`. Apps:
+Simulate's benches and Learn's tabs, chosen through their sessionStorage keys (`uv-sim-kind`, `uv-learn-tab`). The
+toolstrip's lines run as `From` 'tool': like a command but always in the MATLAB engine, never marking the editor's
+lines. The shared `Menu`/`Popover` trigger keeps its 32 px height and padding unless given `bare` classes. Not built:
+the ribbon's other programs' extras (Set Path, Parallel, Add-Ons, Community), a current-folder bar (Files is it).
