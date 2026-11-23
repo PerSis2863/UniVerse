@@ -12585,3 +12585,23 @@ at 50,000 arrivals: milliseconds), plays the timeline with requestAnimationFrame
 `mmcqueue(λ, μ, c)`; MATLAB's SimEvents block diagrams aren't here. Browser check: `scripts/checks/hyperion-queues-ui.mjs`.
 Not built: priorities, other queue orders (LIFO, shortest job), resources shared between stations, schedules (staff by
 hour), batching.
+
+## M480 (23 Nov): Hyperion, C code generation and fixed point
+
+`src/lib/lab/codegen.ts` (`generate(fns, entry, argTypes)`): walks a function's syntax tree with the types the example
+inputs fix (class and r×c; every variable keeps one size: growing arrays, ranges in indexes, cells, text, structs,
+function handles, recursion and changed array inputs are refused with the function's name and the reason). Scalars are
+C locals; arrays fixed-size, column-major (`x[(i-1) + (j-1)*r]`); element-wise array expressions become one loop;
+a matrix product, a transpose or a matrix literal inside one is made first into a temporary (`tN`); reductions of
+vectors (sum, prod, mean, min, max) are hoisted before the statement. Whole-number classes compute in double and go
+through `sat_<class>()` (rounding halves away from zero, clamping, NaN → 0: MATLAB's rules). `fprintf` becomes printf
+(%d → %.0f). Outputs: one scalar → the return value; otherwise out-parameters (scalars by pointer: the body is written
+on a local name and the uses rewritten to `(*name)`). Other functions of the script become `static` functions,
+specialised per set of input types. `codegen-lab.ts`: `codegen('name', {examples})` writes `name.c` / `name.h` to
+Hyperion's files (MATLAB Coder's `codegen name -args {…}` command form isn't read). `codegen.test.ts` compiles the C with
+the machine's `cc -std=c99 -Wall -Werror` and compares with the engine (skipped where there is no compiler).
+**Fixed point**: `fixed.ts` (round to nearest with halves up, saturate, best-precision fraction length, MATLAB's
+full-precision word growth for sums and products, bits and hex by BigInt) and `fi` in `codegen-lab.ts`: a `Struct` with
+`fi: true` (Value, Signed, WordLength, FractionLength; `kind` embedded.fi, its own display and `sizeOf`); arithmetic
+through `opHooks.binop`, now a chain (gpu-lab and codegen-lab each pass on what isn't theirs). Not built: fixed-point C
+(generate on intN types from `storedInteger` instead), fimath settings (other rounding and overflow modes), HDL / VHDL.

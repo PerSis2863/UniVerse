@@ -38,7 +38,7 @@ export interface Host {
 /** break / continue / return, and 'pause' (M477: a run waiting for parallel work, resumed by parallel-lab.ts). */
 export class Flow { constructor(readonly kind: 'break' | 'continue' | 'return' | 'pause') {} }
 /** M477: a parfor at a script's top level may be run on other workers (parallel-lab.ts sets this). */
-/** M478: arithmetic for gpuArray values (gpu-lab.ts sets it). */
+/** M478: arithmetic for gpuArray values (gpu-lab.ts sets it); M480: and fixed-point fi values (fixed-lab.ts). */
 export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null } = { binop: null };
 export const parHook: { parfor: ((lab: Lab, st: Extract<Stmt, { s: 'for' }>, vars: Map<string, Value>) => boolean) | null } = { parfor: null };
 interface Frame { vars: Map<string, Value>; nargin: number; nargout: number; depth: number }
@@ -395,7 +395,7 @@ export class Lab {
   // ——— Operators ———
   binop(op: string, a: Value, b: Value): Value {
     // M478: values that do their own arithmetic (gpuArray) answer first.
-    if ((a.k === 'struct' && a.gpu) || (b.k === 'struct' && b.gpu)) { const r = opHooks.binop?.(op, a, b); if (r) return r; }
+    if ((a.k === 'struct' && (a.gpu || a.fi)) || (b.k === 'struct' && (b.gpu || b.fi))) { const r = opHooks.binop?.(op, a, b); if (r) return r; }
     // Symbolic maths (M396): exact, with letters; back to numbers when neither side has any.
     if (isLti(a) || isLti(b)) { const r = ltiBinop(op, a, b); if (r) return r; }
     if (a.k === 'sym' || b.k === 'sym') { const r = symBinop(op, a, b); if (r) return r; }

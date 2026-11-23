@@ -371,6 +371,16 @@ existsOnGPU | tf = existsOnGPU(x) | True for a gpuArray.
 queuesim | r = queuesim({'exp', 2}, {{'Desk', 2, {'exp', 3}}, {'Pay', 1, {'const', 1}}}, 480, 'Seed', 1) | Runs entities through a line of stations (name, servers, service time; a 4th number caps the queue) for that long: r.Stations (busy share, waits, queues), r.MeanTimeInSystem, r.Throughput, r.Time and r.Queue over the run. Times are a mean (exponential) or {'exp', m}, {'const', v}, {'uniform', lo, hi}, {'normal', m, sd}, {'erlang', m, k}; 'Route', P sends entities from station i to j with probability P(i, j); 'Warmup', t leaves out the start. Drawn without outputs. Simulate → Queues is the same without code.
 mmcqueue | q = mmcqueue(lambda, mu, c) | Erlang's exact M/M/c answers: q.Rho (busy share), q.PWait, q.Lq and q.Wq (queue length and wait), q.L and q.W (in the system).
 
+# Embedded code and fixed point
+codegen | codegen('myfilter', {zeros(1, 64), 0.5}) | Turns a function of the script into plain C99 (myfilter.c and myfilter.h in Hyperion's files): the example inputs fix every size and type (double, single, int8 … uint64, logical); loops, if, while, switch, element-wise maths, the matrix product, sum / prod / mean / min / max of vectors, sqrt, exp, sin… and calls to the script's other functions. No memory is allocated while it runs; arrays are stored column by column. What can't become fixed-size C is refused with the reason. With an output, gives a struct with the C and H texts.
+fi | a = fi(v, signed, wordLength, fractionLength) | A fixed-point number, as an embedded chip or FPGA holds it: rounded to the nearest step of 2^-fractionLength and held in range (fi(v) is signed 16-bit with the best fraction length). + − .* * grow the word so nothing is lost; a.WordLength, a.FractionLength.
+storedInteger | n = storedInteger(a) | The whole numbers a fi value is stored as (what the chip holds).
+bin | s = bin(a) | A fi value's stored bits, most significant first (two's complement).
+hex | s = hex(a) | A fi value's stored bits in hexadecimal.
+numerictype | t = numerictype(a) | A fi value's sign, word length and fraction length, as text.
+upperbound | u = upperbound(a) | The largest value a fi type can hold.
+lowerbound | l = lowerbound(a) | The smallest value a fi type can hold.
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).

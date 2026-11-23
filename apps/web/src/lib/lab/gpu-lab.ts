@@ -56,7 +56,9 @@ function operand(v: Value): { g: G.Gm; key: string } {
 }
 const wrap = <T,>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof LabError) throw e; throw new LabError((e as Error).message); } };
 
+const before = opHooks.binop;
 opHooks.binop = (op, a, b) => {
+  if (!isGpu(a) && !isGpu(b)) return before?.(op, a, b) ?? null;
   const A = operand(a), B = operand(b), scalar = A.g.r * A.g.c === 1 || B.g.r * B.g.c === 1;
   const key = `${op}|${A.key}|${B.key}`;
   if (op === '*') return remember(key, () => wrap(() => (scalar ? G.elementwise('.*', A.g, B.g) : G.matmul(A.g, B.g))));
