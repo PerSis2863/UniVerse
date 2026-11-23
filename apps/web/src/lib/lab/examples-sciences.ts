@@ -268,4 +268,20 @@ fprintf('Buy and hold fell %.0f%% at worst\\n', 100*dd)
 [loss, share, total] = carbonStress([4e6 3e6 3e6], [2000 800 100], 100, 'PassThrough', 0.3);
 fprintf('Carbon at 100/t: %.0f%%, %.0f%%, %.0f%% of each holding; %.1f%% of the portfolio\\n', 100*share, 100*total)
 ` },
+  { name: 'teach.m', code: `% Maths teaching: worked examples step by step, and graphs to explore in class
+syms x
+diffSteps(x^2*sin(x))
+diffSteps(exp(3*x^2))
+intSteps(3*x^2 + cos(x), x, 0, pi)
+solveSteps(2*x^2 - 3*x - 2 == 0, x)
+rrefSteps([2 1 -1 8; -3 -1 2 -11; -2 1 2 -3])     % a 3 x 3 system, augmented
+eigSteps([4 1; 2 3])
+% Graphs: move the sliders
+x0 = 1;     % slider -3 3
+tangentLine(@(t) t.^3 - 2*t, x0, [-3 3])
+strips = 8; % slider 1 60
+figure; riemannSum(@(t) exp(-t.^2), 0, 2, strips, 'Method', 'left')
+figure; newtonSteps(@(t) cos(t) - t, 1, 5)
+figure; taylorPlot(cos(x), 0, [2 4 8], [-7 7])
+` },
 ];

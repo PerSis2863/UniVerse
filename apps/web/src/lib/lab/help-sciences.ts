@@ -137,4 +137,15 @@ garchSim | r = garchSim(n, omega, alpha, beta) | Returns from a GARCH(1,1) model
 ewmaVol | s = ewmaVol(r, 0.94) | RiskMetrics' exponentially weighted volatility, day by day.
 backtestStrategy | b = backtestStrategy(P, 20, 100, 'Cost', 0.001) | A moving-average crossover (in the market while the short average is above the long) against buy and hold: CAGR, volatility, Sharpe, drawdown and trades. Drawn without outputs.
 carbonStress | [loss, share, total] = carbonStress(values, emissions, price, 'PassThrough', 0.3, 'Rate', 0.08) | A carbon-price shock: each holding's extra yearly cost valued forever at the rate, as a loss of its value.
+# Maths teaching
+diffSteps | [d, steps] = diffSteps(f, x) | A derivative worked step by step, each rule named (sum, constant multiple, power, product, quotient, chain, the table), set as real maths. syms x first.
+intSteps | [F, steps] = intSteps(f, x, a, b) | An integral worked step by step (linearity, the power rule, the table, a checked substitution), with limits F(b) − F(a).
+solveSteps | [x, steps] = solveSteps(eqn, x) | An equation solved step by step: linear ones by moving terms, quadratics by the formula with the discriminant.
+rrefSteps | [R, steps, rank] = rrefSteps(A) | Gauss–Jordan elimination with exact fractions, every row operation shown with the matrix after it.
+detSteps | [d, steps] = detSteps(A) | A determinant by elimination: the product of the pivots, the sign flipped per swap.
+eigSteps | [lambda, steps] = eigSteps(A) | Eigenvalues by the characteristic polynomial det(A − λI) (up to 4 × 4).
+tangentLine | tangentLine(@(x) f, x0, [a b]) | A curve with its tangent at x0 and the tangent's equation; put x0 on a slider and watch it slide.
+riemannSum | [S, exact] = riemannSum(@(x) f, a, b, n, 'Method', 'mid') | Strips under a curve ('left', 'right', 'mid', 'trap') against the integral. Drawn without outputs.
+newtonSteps | x = newtonSteps(@(x) f, x0, n) | Newton's method step by step: a table of x and f(x) and the tangents drawn down to the axis.
+taylorPlot | taylorPlot(f, x0, [1 3 5], [a b]) | A function (symbolic) with its Taylor polynomials about x0 of the given orders.
 `;

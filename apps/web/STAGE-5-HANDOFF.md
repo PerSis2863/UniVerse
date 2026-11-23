@@ -12685,3 +12685,25 @@ accept/reject, GARCH recovering α 0.08, β 0.9 and the long-run volatility, ret
 a back-test with one trade, the carbon stress by hand. Not built: Black–Litterman, CVaR optimisation, transaction-cost
 or cardinality constraints, multivariate GARCH and copulas, credit risk (PD, LGD), NGFS climate scenarios with real
 data (the owner would need to choose a data source).
+
+## M503 (23 Nov): Hyperion toolbox, maths teaching (sciences and industries, 12 of 14)
+
+`teach.ts` (pure, on the symbolic `N` of sym.ts) and `teach-lab.ts`. Every step is `{ rule, tex, plain }`; the
+language prints "Step k, rule:" then the maths between `TEX_OPEN`/`TEX_MID`/`TEX_CLOSE`, so the command window sets it
+as real maths and copying keeps the plain text. `diffSteps` walks the expression: constant, the variable, the sum
+rule, the constant multiple rule (constant factors pulled out), the quotient rule (when a product has a factor with a
+negative numeric power), the product rule (first factor against the rest), the power rule and the chain rule with it,
+the exponential rule, the table (derivatives read from sym.ts's own `diff` of f(_u), so the table is never duplicated),
+and a final `simplify`. `intSteps`: constants, linearity, constant multiples, the power rule and ∫1/x = ln|x| by hand,
+otherwise `integrate` from sym-calc.ts with its result checked by differentiating back (the rule then says so), and
+F(b) − F(a) with limits. `solveSteps`: linear (move and divide), quadratic (a, b, c, the discriminant, its sign, the
+formula, the roots; one root when Δ = 0), otherwise `solveFor`. `rrefSteps` (exact fractions; swap, scale, clear the
+column; rank, pivots, the determinant from the pivots and swaps), `eigSteps` (A − λI, its determinant by cofactors,
+its roots). Language (our own names): `diffSteps`, `intSteps`, `solveSteps`, `rrefSteps`, `detSteps`, `eigSteps`, and
+graphs for a class through function handles: `tangentLine`, `riemannSum` (left, right, mid, trap against `integral`),
+`newtonSteps` (a table and the tangents), `taylorPlot` (exact derivatives at the centre). Sliders and Sweep animate them
+(example `teach.m`). Tests: product, chain and quotient rules named and agreeing with `diff`, linearity and a definite
+integral of 9, a linear and a quadratic equation, complex roots flagged, the classic 3 × 3 system to (2, 3, −1), a
+determinant with a swap, eigenvalues 1 and 3, the language run end to end. Not built: limits with L'Hôpital steps,
+integration by parts shown as steps (the integrator does it silently), proofs, differential equations step by step,
+exercises with checking of a student's own answer.
