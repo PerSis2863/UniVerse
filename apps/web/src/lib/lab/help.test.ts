@@ -11,6 +11,7 @@ import './comms-lab';
 import './image-lab';
 import './radar-lab';
 import './filters-lab';
+import './audio-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

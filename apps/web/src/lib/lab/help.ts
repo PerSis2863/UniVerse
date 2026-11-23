@@ -295,6 +295,14 @@ designfilt | d = designfilt('lowpassiir', 'FilterOrder', 8, 'HalfPowerFrequency'
 pwelch | [pxx, f] = pwelch(x, window, noverlap, nfft, fs) | Welch's power spectral density (averaged, windowed periodograms); drawn without outputs.
 spectrogram | [s, f, t, p] = spectrogram(x, window, noverlap, nfft, fs) | The short-time Fourier transform: how the spectrum changes over time; drawn as a picture without outputs.
 
+# Test and measurement
+audioread | [y, fs] = audioread('take.wav', [first last]) | Reads a WAV file from Hyperion's files: one column per channel, −1 … 1, and its sample rate (Signals → Audio records them).
+audiowrite | audiowrite('out.wav', y, fs, 'BitsPerSample', 24) | Writes a WAV file (8, 16, 24 or 32-bit; 64 for floats); one column per channel.
+audioinfo | info = audioinfo('take.wav') | A WAV file's sample rate, channels, length and bits.
+sound | sound(y, fs) | Plays samples (−1 … 1) through the speakers.
+soundsc | soundsc(y, fs) | Plays samples scaled so the loudest is full volume.
+thd | r = thd(x, fs, n) | Total harmonic distortion in dB against the fundamental (harmonics 2 … n, 6 unless given).
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).

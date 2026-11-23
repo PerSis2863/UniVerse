@@ -78,6 +78,14 @@ const EXAMPLES: Script[] = [
   { name: 'r_demo.R', code: "# R inside Hyperion, with ggplot2: nothing to install (the first run loads R and the package)\nlibrary(ggplot2)\n\n# A linear model of the cars data that comes with R\nfit <- lm(dist ~ speed, data = cars)\nprint(round(coef(fit), 2))\ncat('R squared:', round(summary(fit)$r.squared, 3), '\\n')\n\nprint(\n  ggplot(cars, aes(speed, dist)) +\n    geom_point(colour = 'steelblue') +\n    geom_smooth(method = 'lm', formula = y ~ x, colour = 'firebrick') +\n    labs(title = 'Stopping distance against speed', x = 'Speed (mph)', y = 'Distance (ft)')\n)\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
+/** sound / soundsc from a script (M473): played here, as the engine's thread has no speakers. */
+function playSound(channels: Float32Array[], fs: number) {
+  try {
+    const ctx = new AudioContext(), buf = ctx.createBuffer(channels.length, channels[0].length, fs);
+    channels.forEach((c, i) => buf.copyToChannel(Float32Array.from(c), i));
+    const src = ctx.createBufferSource(); src.buffer = buf; src.connect(ctx.destination); src.onended = () => void ctx.close(); src.start();
+  } catch { /* no audio here */ }
+}
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
 /** A control moved in the notebook view while something ran: run every section of this script, afterwards. */
 const NOTE_ALL = '\u0000notes\u0000';
@@ -206,6 +214,7 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      if ('sound' in m) { playSound(m.sound.channels, m.sound.fs); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }

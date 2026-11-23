@@ -12459,3 +12459,23 @@ examples for this branch live in `src/components/lab/examples-signals.ts` (sprea
 branches don't edit the same lines) and every one runs in `examples-signals.test.ts`. Browser check:
 `scripts/checks/hyperion-signals-ui.mjs` (TABS=… names the tabs to open). Not built: second-order sections (`sos`),
 `zplane`, `iirnotch`, filter quantisation, MATLAB's filterDesigner's import/export.
+
+## M473 (23 Nov): Hyperion, test and measurement (the microphone, a tone generator, recording, data logging)
+
+Signals → **Audio** (`src/components/lab/AudioBench.tsx`, a lazily loaded tab of `SignalsTabs`). Web Audio only, free
+and on the computer: the input is the microphone (`getUserMedia` with echoCancellation, noiseSuppression and
+autoGainControl off, so the real sound is measured; the site's Permissions-Policy already allows `microphone=(self)`)
+or a generator (OscillatorNode, or a looping buffer of white noise) → a gain → an AnalyserNode (8192 points, −140 … 0
+dB) and, for the generator only and when ticked, the speakers (never the microphone: it would howl). A canvas scope
+(triggered on the first rising zero crossing) and a log-frequency spectrum are drawn by requestAnimationFrame only
+while running; readings (level dBFS, the strongest frequency refined by a parabola, THD) come from `src/lib/lab/audio.ts`.
+**Recording is lossless**: an AudioWorklet (`public/hyperion/pcm-tap.js`, a static file because the CSP's script-src
+has no blob:) posts the samples in blocks of 4096; they are written as a 24-bit WAV with `keep()` into Hyperion's files
+(IndexedDB, `lab-files.ts`) and Open in Code reads it with `audioread`. The data logger keeps up to 100,000 readings
+(CSV download, or a CSV in Hyperion's files read with `readtable`). In the language (`audio-lab.ts`): `audioread`
+(with a sample range), `audiowrite` ('BitsPerSample' 8/16/24/32, 64 for floats), `audioinfo`, `sound` / `soundsc`
+(the engine's worker has no speakers: a new optional `Host.sound` posts `{ sound }` and `LabApp`'s `playSound` plays it),
+`thd` (dB). WAV reading takes PCM and float, WAVE_FORMAT_EXTENSIBLE, any channel count. The browser check
+(`hyperion-signals-ui.mjs`) uses the generator (no microphone in the test browser). Not built: two-channel inputs,
+choosing the input device, calibration to sound pressure (dB SPL needs a calibrated microphone), MATLAB's
+audioDeviceReader/audioPlayer objects (System objects the engine doesn't have).

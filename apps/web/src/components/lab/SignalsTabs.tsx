@@ -2,12 +2,15 @@
 
 import { useState } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
+import dynamic from 'next/dynamic';
 import { FilterDesigner } from './FilterDesigner';
 
-// Hyperion Signals' windows (M472–): the Filter designer. The one in use is remembered for the visit.
-type Tab = 'filters';
+// Hyperion Signals' windows (M472–): the Filter designer, Audio (M473). The one in use is remembered for the visit.
+type Tab = 'filters' | 'audio';
 const KEEP = 'uv-signals-tab';
-const TABS: { value: Tab; label: string }[] = [{ value: 'filters', label: 'Filter designer' }];
+const TABS: { value: Tab; label: string }[] = [{ value: 'filters', label: 'Filter designer' }, { value: 'audio', label: 'Audio' }];
+const skeleton = <div className="h-[calc(100dvh-12rem)] min-h-[32rem] rounded-[var(--radius-card)] skeleton" aria-busy="true" />;
+const AudioBench = dynamic(() => import('./AudioBench').then((m) => m.AudioBench), { ssr: false, loading: () => skeleton });
 
 export function SignalsTabs() {
   const [tab, setTabNow] = useState<Tab>(() => { try { const v = sessionStorage.getItem(KEEP); return TABS.some((t) => t.value === v) ? (v as Tab) : 'filters'; } catch { return 'filters'; } });
@@ -16,6 +19,7 @@ export function SignalsTabs() {
     <div className="space-y-3">
       <Segmented<Tab> label="Signals" value={tab} onChange={setTab} segments={TABS} />
       {tab === 'filters' && <FilterDesigner />}
+      {tab === 'audio' && <AudioBench />}
     </div>
   );
 }

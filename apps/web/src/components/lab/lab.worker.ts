@@ -15,6 +15,7 @@ import '@/lib/lab/comms-lab';
 import '@/lib/lab/image-lab';
 import '@/lib/lab/radar-lab';
 import '@/lib/lab/filters-lab';
+import '@/lib/lab/audio-lab';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
@@ -39,6 +40,7 @@ export type FromLab =
   | { done: number; error?: string; at?: number; vars: VarRow[]; figs: FigOut[] | null; current: number | null; files: FileOut[]; drawn: number[] }
   | { fig: FigOut }
   | { names: string[] }
+  | { sound: { channels: Float32Array[]; fs: number } }
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
   | { profiled: Profile }
@@ -62,6 +64,7 @@ const host: Host = {
   graphics,
   files,
   now: () => performance.now(),
+  sound: (channels, fs) => { flush(); postMessage({ sound: { channels, fs } } satisfies FromLab); },
 };
 const lab = new Lab(host);
 let size = { w: 720, h: 520 };
