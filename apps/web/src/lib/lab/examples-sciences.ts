@@ -312,4 +312,40 @@ est = krigeGrade(xy, grade, [X(:) Y(:)], [0.08 1.1 60]);
 figure; contourf(X, Y, reshape(est, size(X)), 12); colorbar; hold on
 plot(xy(:, 1), xy(:, 2), 'k^'); hold off; axis equal; title('Kriged grade (g/t)')
 ` },
+  { name: 'farm_energy.m', code: `% Agriculture and energy: water for a crop, the cheapest feed, and power stations sharing a load
+% 1. Reference evapotranspiration for a summer in Punjab (made-up but typical weather)
+rng(8); days = 120;
+Tmin = 24 + 3*randn(1, days); Tmax = Tmin + 10 + 2*rand(1, days);
+ET0 = et0PM(Tmin, Tmax, 55, 2, NaN, 230, 30.9, 120 + (1:days), 'Sunshine', 9);
+fprintf('ET0: %.1f mm a day on average\\n', mean(ET0))
+% 2. Maize: its crop coefficient, the rain, and when to irrigate
+kc = kcCurve([0.3 1.2 0.5], [20 35 40 25]);
+rain = 25*(rand(1, days) < 0.06);
+taw = 140;   % slider 60 200
+w = soilWaterBalance(ET0, rain, kc, 'TAW', taw, 'p', 0.55);
+soilWaterBalance(ET0, rain, kc, 'TAW', taw, 'p', 0.55)
+% ... and what water stress would cost without irrigation
+dry = soilWaterBalance(ET0, rain, kc, 'TAW', taw, 'p', 0.55, 'Irrigate', false);
+g1 = cropGrowth(Tmin, Tmax, 22*ones(1, days)); g0 = cropGrowth(Tmin, Tmax, 22*ones(1, days), 'Ks', dry.Ks);
+fprintf('%d irrigations (%.0f mm): %.1f t/ha against %.1f t/ha rain-fed\\n', w.Events, w.TotalIrrigation, g1.Yield, g0.Yield)
+% 3. Process optimisation (M422): the cheapest cattle feed that meets protein and energy needs
+%     maize   soymeal  wheat bran   (per kg)
+cost    = [0.22    0.45     0.18];
+protein = [0.09    0.44     0.15];     % kg protein per kg
+energy  = [13.5    12.5     10.0];     % MJ per kg
+% at least 16% protein and 12 MJ/kg, at most 50% bran, the mix adds up to 1 kg
+x = linprog(cost, -[protein; energy], -[0.16; 12], [1 1 1], 1, [0 0 0], [1 1 0.5]);
+fprintf('Feed: %.0f%% maize, %.0f%% soymeal, %.0f%% bran at %.3f a kg\\n', 100*x, cost*x)
+% 4. How much water pays: yield response to irrigation (a made-up curve), price and pumping cost
+profit = @(I) -(180*(1 - exp(-I/250)) * 22 - 0.9*I);   % I in mm; yield value minus pumping
+best = fminbnd(profit, 0, 800);
+fprintf('Most profitable seasonal irrigation: %.0f mm\\n', best)
+% 5. Three power stations sharing 850 MW at the least cost (equal incremental cost)
+[P, lambda] = economicDispatch([7.92 7.85 7.97], [0.001562 0.00194 0.00482], [150 100 50], [600 400 200], 850);
+fprintf('Dispatch: %.0f, %.0f, %.0f MW at %.3f per MWh at the margin\\n', P, lambda)
+demand = 400:25:1200;
+[Pd, lam] = economicDispatch([7.92 7.85 7.97], [0.001562 0.00194 0.00482], [150 100 50], [600 400 200], demand);
+figure; area(demand, Pd); legend('Unit 1', 'Unit 2', 'Unit 3'); xlabel('Demand (MW)'); ylabel('Output (MW)'); title('Who runs as demand grows'); grid on
+fprintf('Solar farm LCOE: %.3f a kWh\\n', lcoe(8e5, 1.5e4, 1.6e6, 0.07, 25, 'Degradation', 0.005))
+` },
 ];

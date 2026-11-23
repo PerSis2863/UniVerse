@@ -3,6 +3,7 @@ import { Lab } from './interp';
 import { Graphics } from './plot';
 import './sciences';
 import './image-lab';
+import './optim-lab';
 import { SCIENCE_EXAMPLES } from './examples-sciences';
 import { FileStore } from './files';
 

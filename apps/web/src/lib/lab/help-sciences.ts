@@ -163,4 +163,11 @@ minerDamage | [D, repeats] = minerDamage(c, 'steel', 'Scale', 1) | Miner's rule:
 variogramExp | [h, gamma, pairs] = variogramExp(xy, v, lag, nlags) | The experimental semivariogram of samples (rows [x y]) in distance bins. Drawn without outputs.
 krigeGrade | [est, var] = krigeGrade(xy, v, query, [nugget sill range]) | Ordinary kriging of grades at the query places with a spherical variogram: the estimate and its variance.
 idwGrade | est = idwGrade(xy, v, query, p) | Inverse distance weighting (power p, 2 unless given).
+# Agriculture and energy production
+et0PM | ET0 = et0PM(Tmin, Tmax, RH, u2, Rs, elevation, latitude, day, 'Sunshine', n) | FAO-56 Penman–Monteith reference evapotranspiration (mm/day): °C, RH a mean % or [RHmin RHmax], wind at 2 m (m/s), Rs in MJ/m²/day (NaN to use sunshine hours), the day of the year.
+kcCurve | kc = kcCurve([ini mid end], [ini dev mid late]) | FAO-56's crop coefficient day by day through the four growth stages.
+soilWaterBalance | w = soilWaterBalance(ET0, rain, kc, 'TAW', 120, 'p', 0.5, 'Irrigate', true) | The root zone's daily water balance (FAO-56): depletion, stress Ks, crop water use, irrigation whenever the readily available water runs out, drainage. Drawn without outputs.
+cropGrowth | g = cropGrowth(Tmin, Tmax, Rs, 'Tbase', 10, 'GDD', 1600, 'RUE', 3, 'HI', 0.5, 'Ks', ks) | A crop on degree-days and intercepted light, slowed by water stress Ks: leaf area, biomass and the yield (t/ha). Drawn without outputs.
+economicDispatch | [P, lambda] = economicDispatch(b, c, Pmin, Pmax, demand) | Power stations with costs a + bP + cP² sharing a demand at the least cost: each unit's output (MW) and the system's incremental cost λ.
+lcoe | c = lcoe(capex, opex, energy, rate, years, 'Degradation', 0.005) | The levelised cost of energy: capital plus the present value of yearly costs, over the present value of yearly energy.
 `;

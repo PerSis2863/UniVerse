@@ -12731,3 +12731,25 @@ with, Basquin round trip, Goodman shortening life, ASTM E1049's own example (ran
 1, ½), Miner on one cycle, kriging exact at data with zero variance, IDW at a sample. Not built: carrier transport
 (drift–diffusion), MOS capacitance curves, heterojunctions, plasticity in 3D, crack growth (Paris law), strain-life
 (Coffin–Manson), block models and ore reserve classification.
+
+## M505 (23 Nov): Hyperion toolbox, agriculture and energy production (sciences and industries, 14 of 14)
+
+`agri.ts` (pure) and `agri-lab.ts`. `et0` is FAO-56 equation 6 step by step (pressure from elevation, γ, Δ, es from
+Tmax and Tmin, ea from RHmin/RHmax or a mean, Ra and daylight from latitude and day, Rs measured or Ångström from
+sunshine, Rso, Rns at albedo 0.23, Rnl), checked against FAO-56 example 18 (Brussels, 6 July: Ra 41.09, Rs 22.07,
+ea 1.409, Rn 13.28, ET0 3.9); `kcCurve` (the four stages, straight lines between); `waterBalance` (FAO-56 chapter 8:
+depletion, Ks below RAW, rain beyond field capacity drains, irrigation back to field capacity the day depletion passes
+RAW, an application efficiency); `cropGrowth` (degree-days over a base; LAI an S-curve peaking at 35% of the thermal
+time and dying back over the last quarter; RUE × ½Rs × (1 − e^(−k·LAI)) × Ks; harvest index); `dispatch` (bisection on
+λ with every unit clamped to its limits; null when the demand is outside the fleet's range), checked against Wood and
+Wollenberg's example 3A (λ 9.148; 393.2, 334.6, 122.2 MW); `lcoe` with panel degradation. Language (our own names):
+`et0PM`, `kcCurve`, `soilWaterBalance`, `cropGrowth`, `economicDispatch` (many demands at once: a row per demand),
+`lcoe`. The "process optimisation examples using M422" are in `farm_energy.m`: a least-cost feed by `linprog` and the
+most profitable irrigation by `fminbnd`. The examples' test now also loads image-lab and optim-lab (the worker loads
+every toolbox; the test must too when an example uses another toolbox's functions). Not built: crop models of the
+AquaCrop / DSSAT kind (phenology stages, nitrogen), soil layers and capillary rise, unit commitment (start-ups, minimum
+up and down times), transmission losses in dispatch, hourly solar and wind (M434 has those).
+
+**Group 7 (M492–M505) is complete.** No point-and-click window was added: every toolbox draws its own figure and every
+example has live sliders (and Sweep for films), which covered what a window would have given; a window remains possible
+later (Learn's pattern, M421/M465) if the owner wants one for a particular toolbox.
