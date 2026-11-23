@@ -804,6 +804,7 @@ export function LabApp() {
         onRun={() => run(script.code, 'script')} onTime={() => run(script.code, 'profile')} onWatch={() => run(script.code, 'watch')} onStop={stop}
         onHelp={(q) => { setHelpQuery(q); setBrowsing(true); }}
         onDownload={() => download(script.name, script.code, 'text/plain')}
+        hasFigure={!!fig} onFigurePng={() => void png()} onFigureSvg={() => { if (fig) download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml'); }} onFigureTex={() => void copyTex()}
         notebook={!!noteView[open]} onNotebook={() => setNoteView((nv) => ({ ...nv, [open]: !nv[open] }))}
         explain={explainOn} onExplain={() => setExplainOn((v) => !v)}
         onExample={(i) => { const e = EXAMPLES[i]; save([...list, { name: list.some((x) => x.name === e.name) ? e.name.replace(/(\.\w+)$/, `_copy$1`) : e.name, code: e.code }]); setOpen(list.length); }} />

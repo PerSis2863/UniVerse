@@ -7,6 +7,7 @@ import {
   Eye, FileCode, FileDown, FileInput, FilePlus, FolderOpen, GitCompareArrows, GraduationCap, Grid3x3, Image as ImageIcon, Layers, Mountain, PanelsTopLeft, Play, Save, ScanSearch,
   Search, Settings2, Sigma, Square, SquareTerminal, Thermometer, Timer, Wind, Workflow,
   Download, Variable, List, NotebookPen, Lightbulb, PanelTop, Pin, PinOff, Grid2x2, Palette, Maximize2, Ratio, Heading, MoveHorizontal, MoveVertical, Tags, XSquare,
+  Box as Cube, Rotate3d, Brush, Sparkles, Hash, Dices, SquareDot, Table2, ArrowRightLeft, Divide, Superscript, Crosshair, Minus, Grid3x3 as GridIcon, Rows3, Shapes, CircleDot,
   Calculator, TrendingUp, AudioWaveform, Spline, ArrowDownUp, Ruler, Shuffle, BarChart, Infinity as InfinityIcon, Gauge, Cpu, Radio, Radar, Zap, Battery, ScanEye, FunctionSquare,
 } from 'lucide-react';
 import { Menu, Popover } from '@/components/ui/Menu';
@@ -21,7 +22,7 @@ import { findInScripts, lineDiff } from '@/lib/lab/diff';
 // the layout and preferences, help, examples and Learn. Plots: a gallery that draws the chosen variables. Apps:
 // Hyperion's windows. A search box for help at the end of the tab row. It folds away to one row.
 
-type Tab = 'home' | 'plots' | 'analyse' | 'apps';
+type Tab = 'home' | 'plots' | 'figure' | 'analyse' | 'maths' | 'apps';
 export interface Layout { side: boolean; figure: boolean; codeSize: number }
 export const LAYOUT_START: Layout = { side: true, figure: true, codeSize: 13 };
 
@@ -52,6 +53,8 @@ interface Props {
   onDownload: () => void;
   notebook: boolean; onNotebook: () => void;
   explain: boolean; onExplain: () => void;
+  /** The figure panel's own saving: a picture, a drawing, LaTeX. */
+  hasFigure: boolean; onFigurePng: () => void; onFigureSvg: () => void; onFigureTex: () => void;
 }
 
 const KEEP = 'uv-lab-strip';
@@ -62,16 +65,18 @@ const iconSmall = 'h-3 w-3 shrink-0 text-violet-600 dark:text-violet-300';
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div role="group" aria-label={label} className="flex shrink-0 flex-col border-e border-zinc-200/80 px-1.5 last:border-e-0 dark:border-white/10">
-      <div className="flex min-h-[2.9rem] items-start gap-0">{children}</div>
+    <div role="group" aria-label={label} className="flex flex-auto shrink-0 flex-col items-center border-e border-zinc-200/80 px-1.5 last:border-e-0 dark:border-white/10">
+      <div className="flex min-h-[2.9rem] items-start justify-center gap-0">{children}</div>
       <div className="text-center text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">{label}</div>
     </div>
   );
 }
 /** The shared menu button's own size and padding taken off, so a menu looks like the strip's other buttons. */
 const bare = 'h-auto min-w-0 p-0 items-start justify-start hover:bg-transparent dark:hover:bg-transparent';
-const Stack = ({ children }: { children: ReactNode }) => <div className="flex w-[7.6rem] flex-col gap-0">{children}</div>;
+const Stack = ({ children }: { children: ReactNode }) => <div className="flex w-max flex-col gap-0">{children}</div>;
 
+/** A list in columns of n. */
+const chunk = <T,>(xs: readonly T[], n: number): T[][] => Array.from({ length: Math.ceil(xs.length / n) }, (_, i) => xs.slice(i * n, i * n + n));
 /** MATLAB text in quotes (a quote inside doubled). */
 const q = (t: string) => `'${t.replace(/'/g, "''")}'`;
 /** A tool that asks for one line first (a title, a variable), then runs. */
@@ -102,6 +107,7 @@ const PLOTS: { name: string; icon: ReactNode; cmd: (y: string, x: string) => str
   { name: 'Histogram', icon: <ChartColumn className={iconBig} aria-hidden />, cmd: (y) => `histogram(${y})` },
   { name: 'Pie', icon: <ChartPie className={iconBig} aria-hidden />, cmd: (y) => `pie(${y})` },
   { name: 'Box plot', icon: <Box className={iconBig} aria-hidden />, cmd: (y) => `boxplot(${y})` },
+  { name: 'Log–log', icon: <ChartLine className={iconBig} aria-hidden />, cmd: (y, x) => (x ? `loglog(${x}, ${y})` : `loglog(${y})`) },
   { name: 'Log scale', icon: <ChartLine className={iconBig} aria-hidden />, cmd: (y, x) => (x ? `semilogy(${x}, ${y})` : `semilogy(${y})`) },
   { name: 'Polar', icon: <Compass className={iconBig} aria-hidden />, cmd: (y, x) => `polarplot(${x || `linspace(0, 2*pi, numel(${y}))`}, ${y})` },
   { name: 'Surface', icon: <Mountain className={iconBig} aria-hidden />, cmd: (y) => `surf(${y})`, matrix: true },
@@ -133,7 +139,7 @@ export function LabToolstrip(p: Props) {
   const diff = useMemo(() => (compareWith >= 0 ? lineDiff(p.scripts[compareWith].code, p.scripts[p.open]?.code ?? '') : []), [compareWith, p.scripts, p.open]);
   const go = (path: string, key: string, value: string) => { try { sessionStorage.setItem(key, value); } catch { /* private mode */ } router.push(path); };
 
-  const tabs: { id: Tab; label: string }[] = [{ id: 'home', label: 'Home' }, { id: 'plots', label: 'Plots' }, { id: 'analyse', label: 'Analyse' }, { id: 'apps', label: 'Apps' }];
+  const tabs: { id: Tab; label: string }[] = [{ id: 'home', label: 'Home' }, { id: 'plots', label: 'Plots' }, { id: 'figure', label: 'Figure' }, { id: 'analyse', label: 'Analyse' }, { id: 'maths', label: 'Maths' }, { id: 'apps', label: 'Apps' }];
   const home = (
     <>
       <Group label="File">
@@ -259,12 +265,12 @@ export function LabToolstrip(p: Props) {
         {varPicker}
       </Group>
       <Group label="Draw">
-        <div className="flex gap-0.5">
+        <div className="grid grid-flow-col grid-rows-3 gap-x-0.5">
           {PLOTS.map((k) => {
             const ok = !!y && !p.busy && (!k.matrix || yMatrix);
             return (
-              <button key={k.name} type="button" className={big} disabled={!ok} title={y ? `figure; ${k.cmd(y, x)}` : undefined} onClick={() => p.onCommand(`figure; ${k.cmd(y, x)}`)}>
-                {k.icon}{k.name}
+              <button key={k.name} type="button" className={small} disabled={!ok} title={y ? `figure; ${k.cmd(y, x)}` : undefined} onClick={() => p.onCommand(`figure; ${k.cmd(y, x)}`)}>
+                <span className="[&>svg]:h-3 [&>svg]:w-3">{k.icon}</span>{k.name}
               </button>
             );
           })}
@@ -286,6 +292,74 @@ export function LabToolstrip(p: Props) {
           <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('axis equal')}><Ratio className={iconSmall} aria-hidden />Equal axes</button>
         </Stack>
       </Group>
+      <Group label="3D and colour">
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('view(3)')}><Rotate3d className={iconSmall} aria-hidden />3D view</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('view(2)')}><Cube className={iconSmall} aria-hidden />From above</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('shading interp')}><Brush className={iconSmall} aria-hidden />Smooth shading</button>
+        </Stack>
+        <Stack>
+          {(['viridis', 'turbo', 'hot'] as const).map((m) => <button key={m} type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`colormap ${m}`)}><Palette className={iconSmall} aria-hidden />Colours: {m}</button>)}
+        </Stack>
+      </Group>
+    </>
+  );
+
+  const maths = (
+    <>
+      <Group label="Quick maths">
+        <Stack>
+          <Ask label="Calculate" icon={<Calculator className={iconSmall} aria-hidden />} placeholder="sqrt(2) * pi / 4" disabled={p.busy} onRun={(t) => p.onCommand(`ans = ${t}`)} />
+          <Ask label="Solve f(x) = 0" icon={<Crosshair className={iconSmall} aria-hidden />} placeholder="cos(x) - x" hint="Written with x; it looks near x = 1." disabled={p.busy} onRun={(t) => p.onCommand(`x0 = fzero(@(x) ${t}, 1)`)} />
+          <Ask label="Polynomial roots" icon={<Superscript className={iconSmall} aria-hidden />} placeholder="1 -6 11 -6" hint="Its coefficients, highest power first." disabled={p.busy} onRun={(t) => p.onCommand(`r = roots([${t}])`)} />
+        </Stack>
+        <Stack>
+          <Ask label="Integrate" icon={<ChartArea className={iconSmall} aria-hidden />} placeholder="x.^2, 0, 3" hint="f(x), from, to." disabled={p.busy} onRun={(t) => { const [f, a, b] = t.split(','); p.onCommand(`I = integral(@(x) ${f}, ${a ?? 0}, ${b ?? 1})`); }} />
+          <Ask label="Plot a function" icon={<ChartLine className={iconSmall} aria-hidden />} placeholder="sin(x) ./ x" hint="Written with x, drawn from −10 to 10." disabled={p.busy} onRun={(t) => p.onCommand(`figure; fplot(@(x) ${t}, [-10 10]); grid on`)} />
+          <Ask label="Surface of f(x, y)" icon={<Mountain className={iconSmall} aria-hidden />} placeholder="sin(x) .* cos(y)" disabled={p.busy} onRun={(t) => p.onCommand(`figure; fsurf(@(x, y) ${t})`)} />
+        </Stack>
+      </Group>
+      <Group label="New matrix">
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('M = magic(4)')}><Hash className={iconSmall} aria-hidden />Magic square</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('R = rand(4)')}><Dices className={iconSmall} aria-hidden />Random 4 × 4</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('I = eye(4)')}><SquareDot className={iconSmall} aria-hidden />Identity</button>
+        </Stack>
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('t = linspace(0, 10, 101)')}><Rows3 className={iconSmall} aria-hidden />Evenly spaced</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('[X, Y] = meshgrid(-2:0.1:2)')}><GridIcon className={iconSmall} aria-hidden />Grid X, Y</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('N = randn(1, 1000)')}><Shapes className={iconSmall} aria-hidden />Normal noise</button>
+        </Stack>
+      </Group>
+      <Group label="Numbers">
+        <Stack>
+          <Ask label="Primes up to" icon={<Hash className={iconSmall} aria-hidden />} placeholder="100" disabled={p.busy} onRun={(t) => p.onCommand(`P = primes(${t})`)} />
+          <Ask label="Factorial" icon={<Superscript className={iconSmall} aria-hidden />} placeholder="10" disabled={p.busy} onRun={(t) => p.onCommand(`ans = factorial(${t})`)} />
+          <Ask label="Combinations" icon={<Dices className={iconSmall} aria-hidden />} placeholder="10, 3" hint="n, then how many to choose." disabled={p.busy} onRun={(t) => p.onCommand(`ans = nchoosek(${t})`)} />
+        </Stack>
+        <Stack>
+          <Ask label="Greatest common divisor" icon={<Divide className={iconSmall} aria-hidden />} placeholder="84, 36" disabled={p.busy} onRun={(t) => p.onCommand(`ans = gcd(${t})`)} />
+          <Ask label="Least common multiple" icon={<Hash className={iconSmall} aria-hidden />} placeholder="4, 6" disabled={p.busy} onRun={(t) => p.onCommand(`ans = lcm(${t})`)} />
+          <Ask label="Remainder" icon={<Divide className={iconSmall} aria-hidden />} placeholder="17, 5" hint="a, then what to divide by." disabled={p.busy} onRun={(t) => p.onCommand(`ans = mod(${t})`)} />
+        </Stack>
+      </Group>
+    </>
+  );
+
+  const figureTab = (
+    <>
+      <Group label="Axes">
+        <Stack>
+          <Ask label="X limits" icon={<MoveHorizontal className={iconSmall} aria-hidden />} placeholder="0 10" hint="From and to." disabled={p.busy} onRun={(t) => p.onCommand(`xlim([${t}])`)} />
+          <Ask label="Y limits" icon={<MoveVertical className={iconSmall} aria-hidden />} placeholder="-1 1" disabled={p.busy} onRun={(t) => p.onCommand(`ylim([${t}])`)} />
+          <Ask label="Z limits" icon={<Cube className={iconSmall} aria-hidden />} placeholder="0 5" disabled={p.busy} onRun={(t) => p.onCommand(`zlim([${t}])`)} />
+        </Stack>
+        <Stack>
+          <Ask label="X tick marks" icon={<Ruler className={iconSmall} aria-hidden />} placeholder="0:2:10" disabled={p.busy} onRun={(t) => p.onCommand(`xticks(${t})`)} />
+          <Ask label="Y tick marks" icon={<Ruler className={cn(iconSmall, 'rotate-90')} aria-hidden />} placeholder="-1:0.5:1" disabled={p.busy} onRun={(t) => p.onCommand(`yticks(${t})`)} />
+          <Ask label="Title over all plots" icon={<Heading className={iconSmall} aria-hidden />} placeholder="Results" disabled={p.busy} onRun={(t) => p.onCommand(`sgtitle(${q(t)})`)} />
+        </Stack>
+      </Group>
       <Group label="Labels">
         <Stack>
           <Ask label="Title" icon={<Heading className={iconSmall} aria-hidden />} placeholder="Temperature over a day" disabled={p.busy} onRun={(t) => p.onCommand(`title(${q(t)})`)} />
@@ -295,6 +369,28 @@ export function LabToolstrip(p: Props) {
         <Stack>
           <Ask label="Legend" icon={<Tags className={iconSmall} aria-hidden />} placeholder="data, fit" hint="The lines' names, separated by commas." disabled={p.busy} onRun={(t) => p.onCommand(`legend(${t.split(',').map((x) => q(x.trim())).join(', ')})`)} />
         </Stack>
+      </Group>
+      <Group label="Lines and layout">
+        <Stack>
+          <Ask label="Horizontal line at" icon={<Minus className={iconSmall} aria-hidden />} placeholder="0.5" disabled={p.busy} onRun={(t) => p.onCommand(`yline(${t}, '--')`)} />
+          <Ask label="Vertical line at" icon={<Minus className={cn(iconSmall, 'rotate-90')} aria-hidden />} placeholder="3" disabled={p.busy} onRun={(t) => p.onCommand(`xline(${t}, '--')`)} />
+          <Ask label="Text on the figure" icon={<Sparkles className={iconSmall} aria-hidden />} placeholder="2, 0.5, peak here" hint="x, y, then the words." disabled={p.busy} onRun={(t) => { const [a, b, ...w] = t.split(','); p.onCommand(`text(${a}, ${b}, ${q(w.join(',').trim())})`); }} />
+        </Stack>
+        <Stack>
+          <Ask label="Grid of plots" icon={<Table2 className={iconSmall} aria-hidden />} placeholder="2 2 1" hint="Rows, columns, which one to draw in next." disabled={p.busy} onRun={(t) => p.onCommand(`subplot(${t.trim().split(/[\s,]+/).join(', ')})`)} />
+          <button type="button" className={small} disabled={p.busy || !x || !y} onClick={() => p.onCommand(`figure; plot3(${x}, ${y}, 1:numel(${y})); grid on`)} title="Draws the chosen variable against the other, rising through 3D"><CircleDot className={iconSmall} aria-hidden />3D line</button>
+          <button type="button" className={small} disabled={p.busy || !x || !y} onClick={() => p.onCommand(`figure; scatter3(${x}, ${y}, 1:numel(${y})); grid on`)}><ChartScatter className={iconSmall} aria-hidden />3D points</button>
+        </Stack>
+      </Group>
+      <Group label="More colours">
+        <Stack>
+          {(['jet', 'gray', 'parula'] as const).map((m) => <button key={m} type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`colormap ${m}`)}><Palette className={iconSmall} aria-hidden />Colours: {m === 'parula' ? 'usual' : m}</button>)}
+        </Stack>
+      </Group>
+      <Group label="Save the figure">
+        <button type="button" className={big} disabled={!p.hasFigure} onClick={p.onFigurePng}><ImageIcon className={iconBig} aria-hidden />Picture (PNG)</button>
+        <button type="button" className={big} disabled={!p.hasFigure} onClick={p.onFigureSvg}><Download className={iconBig} aria-hidden />Drawing (SVG)</button>
+        <button type="button" className={big} disabled={!p.hasFigure} onClick={p.onFigureTex}><FileCode className={iconBig} aria-hidden />LaTeX</button>
       </Group>
     </>
   );
@@ -325,14 +421,44 @@ export function LabToolstrip(p: Props) {
           )) : <p className="px-2 py-2 text-[11px] text-zinc-500 dark:text-zinc-400">Make a variable first (Home → New variable), then pick it here.</p>}
         </div>
       </Group>
+      {y && (
+        <>
+          <Group label="Matrix">
+            <Stack>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`${y}_t = ${y}.'`)}><ArrowRightLeft className={iconSmall} aria-hidden />Transpose</button>
+              <button type="button" className={small} disabled={p.busy || !yMatrix} onClick={() => p.onCommand(`${y}_inv = inv(${y})`)}><Divide className={iconSmall} aria-hidden />Inverse</button>
+              <button type="button" className={small} disabled={p.busy || !yMatrix} onClick={() => p.onCommand(`d = det(${y})`)}><Hash className={iconSmall} aria-hidden />Determinant</button>
+            </Stack>
+            <Stack>
+              <button type="button" className={small} disabled={p.busy || !yMatrix} onClick={() => p.onCommand(`e = eig(${y})`)}><Sparkles className={iconSmall} aria-hidden />Eigenvalues</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`r = rank(${y})`)}><Rows3 className={iconSmall} aria-hidden />Rank</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`n = norm(${y})`)}><Ruler className={iconSmall} aria-hidden />Norm (size)</button>
+            </Stack>
+          </Group>
+          <Group label="Signal">
+            <Stack>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`[${y}_up, ${y}_lo] = envelope(${y}(:)); figure; plot(${y}(:)); hold on; plot(${y}_up); plot(${y}_lo); hold off; legend('signal', 'upper', 'lower')`)}><AudioWaveform className={iconSmall} aria-hidden />Envelope</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`[c, lags] = xcorr(${y}(:) - mean(${y}(:))); figure; plot(lags, c); title('Autocorrelation (repeats show as peaks)')`)}><ChartLine className={iconSmall} aria-hidden />Autocorrelation</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`${y}_z = zscore(${y})`)}><Ruler className={iconSmall} aria-hidden />Standardise (z)</button>
+            </Stack>
+            <Stack>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`fprintf('skewness %g, kurtosis %g\\n', skewness(${y}(:)), kurtosis(${y}(:)))`)}><ChartBar className={iconSmall} aria-hidden />Shape of spread</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`${y}_max = movmax(${y}, 9); figure; plot(${y}); hold on; plot(${y}_max); hold off; legend('data', 'moving max')`)}><TrendingUp className={iconSmall} aria-hidden />Moving max</button>
+              <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand(`${y}_unique = unique(${y})`)}><Shapes className={iconSmall} aria-hidden />Unique values</button>
+            </Stack>
+          </Group>
+        </>
+      )}
     </>
   );
 
   const apps = (
     <>
       <Group label="Simulate">
-        {([['structures', 'Structures', Box], ['heat', 'Heat', Thermometer], ['fluids', 'Fluids', Wind], ['circuits', 'Circuits', CircuitBoard], ['blocks', 'Blocks', Workflow]] as const).map(([id, name, Icon]) => (
-          <button key={id} type="button" className={big} onClick={() => go('/hyperion/simulate', 'uv-sim-kind', id)}><Icon className={iconBig} aria-hidden />{name}</button>
+        {chunk([['structures', 'Structures', Box], ['heat', 'Heat', Thermometer], ['fluids', 'Fluids', Wind], ['circuits', 'Circuits', CircuitBoard], ['blocks', 'Blocks', Workflow]] as const, 3).map((col) => (
+          <Stack key={col[0][0]}>
+            {col.map(([id, name, Icon]) => <button key={id} type="button" className={small} onClick={() => go('/hyperion/simulate', 'uv-sim-kind', id)}><Icon className={iconSmall} aria-hidden />{name}</button>)}
+          </Stack>
         ))}
       </Group>
       <Group label="Learn">
@@ -340,10 +466,11 @@ export function LabToolstrip(p: Props) {
         <button type="button" className={big} onClick={() => go('/hyperion/learn', 'uv-learn-tab', 'health')}><Activity className={iconBig} aria-hidden />Machine health</button>
       </Group>
       <Group label="Toolbox starters">
-        {([['symbolic.m', 'Symbolic maths', FunctionSquare], ['control.m', 'Control', Gauge], ['optim.m', 'Optimise', InfinityIcon], ['learn.m', 'Machine learning', Cpu], ['images.m', 'Images', ScanEye], ['vibration.m', 'Vibration', AudioWaveform], ['comms.m', 'Wireless', Radio], ['radar.m', 'Radar', Radar], ['energy.m', 'Energy', Battery], ['grid.m', 'Power grid', Zap], ['python_demo.py', 'Python', FileCode], ['r_demo.R', 'R', FileCode]] as const).map(([file, name, Icon]) => {
-          const i = p.examples.findIndex((e) => e.name === file);
-          return i < 0 ? null : <button key={file} type="button" className={big} onClick={() => p.onExample(i)} title={`Opens ${file}, a working example to start from`}><Icon className={iconBig} aria-hidden />{name}</button>;
-        })}
+        {chunk(([['symbolic.m', 'Symbolic maths', FunctionSquare], ['control.m', 'Control', Gauge], ['optim.m', 'Optimise', InfinityIcon], ['learn.m', 'Machine learning', Cpu], ['images.m', 'Images', ScanEye], ['vibration.m', 'Vibration', AudioWaveform], ['comms.m', 'Wireless', Radio], ['radar.m', 'Radar', Radar], ['energy.m', 'Energy', Battery], ['grid.m', 'Power grid', Zap], ['surface.m', 'Surfaces', Mountain], ['spring.m', 'Equations of motion', Activity], ['fit.m', 'Curve fitting', TrendingUp], ['waves.m', 'Live sliders', AudioWaveform], ['notebook.m', 'Notebook', NotebookPen], ['maintenance.m', 'Maintenance', Gauge], ['battery.m', 'Batteries', Battery], ['sunwind.m', 'Sun and wind', Wind], ['faults.m', 'Grid faults', Zap], ['stability.m', 'Grid stability', Activity], ['converters.m', 'Converters', CircuitBoard], ['arrays.m', 'Antenna arrays', Radio], ['tracking.m', 'Tracking', Radar], ['goals.m', 'Several goals', InfinityIcon], ['solvers.m', 'Solvers', Calculator], ['python_demo.py', 'Python', FileCode], ['r_demo.R', 'R', FileCode]] as const).filter(([file]) => p.examples.some((e) => e.name === file)), 3).map((col) => (
+          <Stack key={col[0][0]}>
+            {col.map(([file, name, Icon]) => <button key={file} type="button" className={small} onClick={() => p.onExample(p.examples.findIndex((e) => e.name === file))} title={`Opens ${file}, a working example to start from`}><Icon className={iconSmall} aria-hidden />{name}</button>)}
+          </Stack>
+        ))}
       </Group>
       <Group label="In this window">
         <button type="button" className={big} onClick={() => p.onHelp('')}><Sigma className={iconBig} aria-hidden />Functions</button>
@@ -375,7 +502,7 @@ export function LabToolstrip(p: Props) {
       </div>
       {!folded && (
         <div id="lab-strip-panel" role="tabpanel" aria-labelledby={`lab-tab-${tab}`} className="flex items-stretch overflow-x-auto px-0.5 py-1 [scrollbar-width:thin]">
-          {tab === 'home' ? home : tab === 'plots' ? plots : tab === 'analyse' ? analyse : apps}
+          {tab === 'home' ? home : tab === 'plots' ? plots : tab === 'figure' ? figureTab : tab === 'analyse' ? analyse : tab === 'maths' ? maths : apps}
         </div>
       )}
     </section>

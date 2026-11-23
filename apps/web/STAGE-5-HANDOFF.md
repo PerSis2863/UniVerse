@@ -12508,3 +12508,18 @@ variable (`varPicker`, shared with Plots): statistics, fit a line, a cubic, spec
 total, sort, counts, correlation (needs "against"), range: each one line in the engine, results as new variables
 (`<name>_smooth`, `p_<name>`…); Apps → Toolbox starters (12 examples opened as copies). Trap: commands are template
 literals inside TS, so MATLAB's `\n` must be written `\\n` there (one Statistics run failed on a real line break).
+
+## M474 (23 Nov): Hyperion's toolstrip with no gaps: six full tabs
+
+The owner, 23 Nov: "just dont leave gap there add more tools and functions there". Six tabs, each measured to fill a
+1440-wide window exactly without scrolling (`#lab-strip-panel` scrollWidth = clientWidth): Home (File with Download
+script, Data, Code, Simulate, Environment, Resources), Plots (Variables, a 3-row gallery of 19 kinds with Log–log,
+Figure, 3D and colour), Figure (Axes: x/y/z limits, tick marks, a title over all plots; Labels; Lines and layout:
+horizontal and vertical lines, text, a grid of plots, 3D line and points; More colours; Save the figure: PNG, SVG,
+LaTeX through LabApp's figure functions), Analyse (Variables, Calculate, Matrix: transpose, inverse, determinant,
+eigenvalues, rank, norm; Signal: envelope, autocorrelation, standardise, shape of spread, moving max, unique values),
+Maths (Quick maths: calculate, solve f(x) = 0, polynomial roots, integrate, plot a function, a surface of f(x, y); New
+matrix: magic, random, identity, evenly spaced, grid, normal noise; Numbers: primes, factorial, combinations, gcd, lcm,
+remainder), Apps (Simulate's benches, Learn, 27 toolbox starters, Functions, Import). Layout: `Stack` columns are
+`w-max`, groups `flex-auto` with centred contents, so a tab's groups spread across the width. Only functions the engine
+has (checked against help.ts; findpeaks, svd, saveas, butter and similar aren't there yet).
