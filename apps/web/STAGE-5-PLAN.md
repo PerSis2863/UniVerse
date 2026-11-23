@@ -1914,6 +1914,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M482 | Robot arms | **Done** | DH arms (four ready: six-axis, SCARA, 3-link, 2-link), forward and inverse kinematics, the Jacobian, dynamics by recursive Newton–Euler (mass matrix, gravity, Coriolis, forward dynamics), rotations; Simulate → Machines → Robot arm: a 3D arm with a slider a joint and Reach a point. Tested against the textbook two-link arm. |
 | M483 | Robot motion | **Done** | Cubic, quintic and trapezoidal trajectories; maps (warehouse, rooms, maze) with A*, RRT and RRT*, corners cut; a differential-drive robot following by pure pursuit; Simulate → Machines → Path planner (draw walls, place the ends, Drive it). |
 | M484 | Robot sensing | **Done** | A simulated lidar, Monte Carlo localisation (finds the robot from nowhere), occupancy mapping and a simple SLAM (~0.25 m off where odometry drifts 2–3 m); Simulate → Machines → Sensing replays a run. |
+| M485 | Mechatronics | **Done** | DC motors as transfer functions for the control toolbox and as simulations with a load; a brushless (PMSM) motor under field-oriented control in the dq frame, its gains tuned; Clarke and Park; gearboxes; encoders. Example motors.m. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

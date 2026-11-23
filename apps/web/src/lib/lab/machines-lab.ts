@@ -2,3 +2,4 @@
 import './robot-lab';
 import './robot-motion-lab';
 import './robot-sense-lab';
+import './motor-lab';

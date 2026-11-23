@@ -57,4 +57,22 @@ figure; slamGrid(run)
 odometryMiss = norm(run.Odometry(end, 1:2) - run.True(end, 1:2))
 slamMiss = norm(poses(end, 1:2) - run.True(end, 1:2))
 ` },
+  { name: 'motors.m', code: `% Mechatronics: a DC motor with a speed controller, and a brushless motor under field-oriented control
+m = dcmotor();                         % a small 24 V motor
+G = dcmotorTF(m)                       % speed per volt, as a transfer function
+kp = 0.02;   % slider 0.005 0.1
+C = pid(kp, 2);                        % a PI controller
+T = feedback(C*G, 1);
+step(100*T, 0.2); title('Speed (rad/s) for a 100 rad/s request')
+% The same motor driven straight at 24 V, a load from 0.1 s
+figure; dcmotorSim(m, 24, 0.2, 'Load', 0.02, 'LoadAt', 0.1)
+% A 1 kW brushless servo: speed up to 100 rad/s, then 2 N·m of load at 0.15 s
+p = pmsm();
+figure; focSim(p, 100, 0.3, 'Load', 2, 'LoadAt', 0.15)
+s = focSim(p, 100, 0.3, 'Load', 2, 'LoadAt', 0.15);
+fprintf('Torque current at the end: %.2f A (2 N·m / %.2f N·m/A)\\n', s.Iq(end), p.TorqueConstant)
+% A 10:1 gearbox at 90 percent efficiency, and a 500-line encoder on a shaft turning at 5 rad/s
+[Jm, bm, Tm] = gearReflect(0.05, 0.01, 8, 10, 0.9)
+t = (0:0.001:0.1)'; [counts, ang, w] = encoderSim(t, 5*t, 500, 10); w(end)
+` },
 ];

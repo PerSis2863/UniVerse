@@ -12513,3 +12513,22 @@ then replayed 3 × real time): particles closing in on the known map, and the SL
 the odometry's. Tests in `robot-sense.test.ts`. Example robot_sensing.m. Not built: loop closure and pose-graph
 optimisation, landmark (EKF) SLAM, 3D lidar, KLD-adaptive particle counts, the warehouse map's symmetry is left as a
 lesson (the filter can settle in the wrong aisle).
+
+## M485 (23 Nov): Hyperion toolbox, mechatronics
+
+`src/lib/lab/motor.ts` (pure): a DC motor (`DC_DEFAULT` a small 24 V motor; `dcSpeedTf` K / ((Ls + R)(Js + b) + K²);
+`dcSimulate` RK4 with steps a twentieth of the faster time constant, voltage and load as functions of time), the Clarke
+and Park transforms (amplitude-invariant), a PMSM in the rotor's dq frame (`PMSM_DEFAULT` a 1 kW-class servo: 4 pole
+pairs, 0.3 N·m/A, 48 V, 20 A), `focTune` (current PIs Kp = Lω, Ki = Rω cancelling the winding's pole; speed PI
+Kp = Jω/Kt, Ki = Kpω/4), `focSimulate` (a 50 kHz controller: speed PI with the torque current held within Imax and its
+integrator stopped while held, current PIs with the cross terms fed forward, the voltage kept inside the hexagon's
+circle Vdc/√3; semi-implicit Euler; id* = 0, no field weakening), `gearReflect`, `encoder` (4 counts a line, speed by the
+M method over a window). Language in `motor-lab.ts` (motors are structs where MATLAB uses Simscape and Motor Control
+Blockset blocks): `dcmotor`, `dcmotorTF` ('speed', 'position', 'current': a transfer function from the control toolbox,
+M414, so `step`, `bode`, `pid`, `feedback` work on it), `dcmotorSim`, `pmsm`, `focTune`, `focSim` (a table; numbers or
+@(t) handles sampled every 0.1 ms), `clarke`, `invclarke`, `park`, `invpark`, `gearReflect`, `encoderSim`. The DC
+motor's parameters are the same as Circuits' motor (M432: r, l, k, j, fric) so a motor drawn there can be studied here.
+Tests in `motor.test.ts` (steady speed and current by hand, dq of balanced phases, FOC holding speed with
+i_q = T/Kt). Example motors.m. No window of its own: the control toolbox and Circuits (M432) already give the
+point-and-click side. Not built: field weakening and MTPA for salient motors, six-step (trapezoidal) BLDC commutation,
+space-vector PWM inside the motor model, stepper motors, motor heating.

@@ -49,4 +49,18 @@ robotRun | run = robotRun(map, path, 'Resolution', res, 'Beams', 90, 'OdometryNo
 mclLocalize | [poses, info] = mclLocalize(map, run, 'Resolution', res, 'Particles', 5000, 'Start', pose) | Monte Carlo localisation (a particle filter): where the robot is from its odometry and scans. Without 'Start' it begins knowing nothing (particles everywhere). Drawn without outputs.
 slamGrid | [M, poses, origin] = slamGrid(run, 'Resolution', 4) | SLAM: builds the map and corrects the poses together, each scan matched to the map so far. M: the chance each cell is blocked (row 1 at the top), origin [x y] of its corner. Also slamGrid(odometry, scans, angles).
 buildMap | [M, origin] = buildMap(scans, poses, angles, res, maxRange) | An occupancy map from scans taken at known poses (log-odds: free along each beam, blocked where it ends).
+
+# Mechatronics
+dcmotor | m = dcmotor('R', 1.2, 'L', 0.6e-3, 'K', 0.05, 'J', 2e-5, 'B', 1e-5) | A DC motor as a struct (a small 24 V motor unless given): resistance, inductance, motor constant (V·s/rad = N·m/A), inertia, friction.
+dcmotorTF | G = dcmotorTF(m, 'speed') | The motor as a transfer function from voltage: 'speed', 'position' or 'current'; use it with step, bode, pid and feedback.
+dcmotorSim | [t, w, i, theta] = dcmotorSim(m, V, T, 'Load', TL, 'LoadAt', t0) | The motor driven by V volts (a number or @(t) …) for T seconds, a load torque from t0. Drawn without outputs.
+pmsm | p = pmsm('PolePairs', 4, 'FluxLinkage', 0.05, 'Rs', 0.2, 'Ld', 5e-4, 'Lq', 5e-4, 'Vdc', 48, 'Imax', 20) | A permanent-magnet synchronous motor (also a BLDC driven with sine waves) as a struct, with its torque constant, most torque and base speed.
+focTune | g = focTune(p, 'CurrentBandwidth', 500, 'SpeedBandwidth', 20) | Gains for field-oriented control: current PIs that cancel the winding's pole, a speed PI (bandwidths in Hz).
+focSim | s = focSim(p, wRef, T, 'Load', TL, 'LoadAt', t0, 'Gains', g) | The PMSM under field-oriented control (i_d held at 0) following a speed (rad/s, a number or @(t) …): a table of speed, i_d, i_q, voltages, torque and phase currents. Drawn without outputs.
+clarke | ab = clarke(abc) | Three phases (rows [a b c]) to the two-axis α–β frame (amplitude kept).
+invclarke | abc = invclarke(ab) | α–β back to three phases.
+park | dq = park(ab, theta) | α–β into the rotor's d–q frame at angle theta (radians, one or one a row).
+invpark | ab = invpark(dq, theta) | d–q back to α–β.
+gearReflect | [J, b, T] = gearReflect(J, b, T, N, efficiency) | A load behind a gearbox of ratio N as the motor sees it: inertia and damping over N², torque over N·efficiency.
+encoderSim | [counts, angle, speed] = encoderSim(t, theta, lines, window) | A quadrature encoder (4 counts a line): its counts, the angle they say, and the speed from counts over a window of samples.
 `;

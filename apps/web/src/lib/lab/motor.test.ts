@@ -1,0 +1,54 @@
+import { describe, expect, it } from 'vitest';
+import { Lab } from './interp';
+import { Graphics } from './plot';
+import { toMat } from './values';
+import './plot3d';
+import './machines-lab';
+import * as mo from './motor';
+
+describe('Hyperion mechatronics (M485)', () => {
+  it('the DC motor settles at V·K / (R b + K²), its current at the load torque over K', () => {
+    const m = mo.DC_DEFAULT, r = mo.dcSimulate(m, () => 24, 0.2, (t) => (t > 0.1 ? 0.02 : 0));
+    const wNoLoad = (24 * m.k) / (m.r * m.b + m.k * m.k), at = r.t.findIndex((t) => t >= 0.099);
+    expect(r.w[at]).toBeCloseTo(wNoLoad, 1);
+    // With 0.02 N·m: ω = (V K − R T) / (R b + K²); i = (T + b ω) / K.
+    const wLoad = (24 * m.k - m.r * 0.02) / (m.r * m.b + m.k * m.k);
+    expect(r.w[r.w.length - 1]).toBeCloseTo(wLoad, 1);
+    expect(r.i[r.i.length - 1]).toBeCloseTo((0.02 + m.b * wLoad) / m.k, 3);
+    const [n, d] = mo.dcSpeedTf(m);
+    expect(n[0] / d[2]).toBeCloseTo(wNoLoad / 24, 12);
+  });
+  it('Clarke and Park: balanced phases become steady d and q', () => {
+    const th = 0.7, I = 5, phi = 0.3;
+    const [al, be] = mo.clarke(I * Math.cos(th + phi), I * Math.cos(th + phi - (2 * Math.PI) / 3), I * Math.cos(th + phi + (2 * Math.PI) / 3));
+    const [d, q] = mo.park(al, be, th);
+    expect(d).toBeCloseTo(I * Math.cos(phi), 12); expect(q).toBeCloseTo(I * Math.sin(phi), 12);
+    const back = mo.invClarke(...mo.invPark(d, q, th));
+    expect(back[0]).toBeCloseTo(I * Math.cos(th + phi), 12);
+  });
+  it('field-oriented control reaches the speed, keeps i_d at 0 and carries the load with i_q = T / Kt', () => {
+    const m = mo.PMSM_DEFAULT, r = mo.focSimulate(m, () => 100, 0.4, (t) => (t > 0.2 ? 2 : 0));
+    const at = r.t.findIndex((t) => t >= 0.19), kt = 1.5 * m.p * m.psi;
+    expect(r.w[at]).toBeCloseTo(100, 0);
+    expect(Math.abs(r.id[r.id.length - 1])).toBeLessThan(0.05);
+    expect(r.w[r.w.length - 1]).toBeCloseTo(100, 0);
+    expect(r.iq[r.iq.length - 1]).toBeCloseTo((2 + m.b * 100) / kt, 1);
+    expect(Math.max(...r.iq)).toBeLessThanOrEqual(m.imax + 1e-6);
+  });
+  it('a gearbox divides inertia by N², an encoder counts 4 a line', () => {
+    expect(mo.gearReflect(0.5, 0.1, 10, 10, 0.9)).toEqual({ j: 0.005, b: 0.001, torque: 10 / 9 });
+    const e = mo.encoder([0, 0.01, 0.02], [0, Math.PI, 2 * Math.PI], 100);
+    expect(e.counts).toEqual([0, 200, 400]);
+    expect(e.speed[2]).toBeCloseTo(100 * Math.PI, 9);
+  });
+  it('in the language: a motor for the control toolbox, and a drive', () => {
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("m = dcmotor('K', 0.05); G = dcmotorTF(m); g = dcgain(G); T = feedback(pid(0.01, 0.5) * G, 1); y = dcgain(T); p = pmsm(); s = focSim(p, 100, 0.2); w = s.Speed(end); x = clarke([1 -0.5 -0.5]); [Jr, br, Tr] = gearReflect(0.5, 0.1, 10, 10);");
+    const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
+    expect(d('g')[0]).toBeCloseTo(0.05 / (1.2 * 1e-5 + 0.0025), 6);
+    expect(d('y')[0]).toBeCloseTo(1, 9);
+    expect(d('w')[0]).toBeCloseTo(100, 0);
+    expect(d('x')).toEqual([1, 0]);
+    expect(d('Jr')).toEqual([0.005]);
+  });
+});
