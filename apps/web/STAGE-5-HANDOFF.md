@@ -12615,3 +12615,26 @@ wander and hum, HRV time measures by hand and HF ≫ LF for breathing-paced RR, 
 2:1 compression 20 dB over gives 10 dB over, unity hearing aid passes through. Not built: arrhythmia
 classification, reading real ECG files (WFDB/EDF), 12-lead views, SpO₂ from red and infrared light, EEG artefact
 removal (ICA), feedback cancellation and noise reduction in the hearing aid, audiogram fitting rules (NAL, DSL).
+
+## M500 (23 Nov): Hyperion toolbox, medical imaging (sciences and industries, 9 of 14)
+
+`medimg.ts` (pure) and `medimg-lab.ts`. For learning, not diagnosis. `readDicom`: Part 10 (preamble + DICM, group
+0002 always explicit, then the transfer syntax decides) or a bare implicit-VR file; only implicit and explicit VR
+little-endian (compressed or big-endian syntaxes are refused by name, encapsulated pixel data too); sequences of
+undefined length and their items are skipped (`skipUndefined` / `walk(…, inItem)`); only the tags in `TAGS` are read
+into `info` (geometry, rescale, window, modality, date, description): **patient identifiers are never read**; 8, 16 or
+32-bit, one sample a pixel, frames as pages. `writeDicom`: explicit VR LE, 16-bit stored values (signed when any value
+is negative), the meta group's length computed first, a random 2.25 UID. `windowed` is DICOM's linear VOI rule;
+`WINDOWS` the usual presets. `headPhantom` (whole HU: skull, brain with a texture, ventricles, a 70 HU lesion),
+`regionGrow` (6-connected, tolerance from the seed's value, iterative stack), `largestComponent` (6-connected).
+Language: MATLAB's `dicominfo`, `dicomread` (int16/uint16 by PixelRepresentation, as MATLAB), `dicomwrite`,
+`dicomreadVolume` (ours takes a cell of names or the start of the names, not a folder; rescale applied: HU; sorted by
+ImagePositionPatient z, else InstanceNumber; returns [dy dx dz]); our own `ctWindow`, `headPhantom`, `orthoSlices`
+(axial, coronal, sagittal at true proportions via imagesc's x/y in mm), `regionGrow`, `segmentHU` (mask and mL).
+Files go through the window's `FileStore` (Files panel), so a person's own uncompressed .dcm uploads open directly.
+Example `ctscan.m` (writes 40 slices, reads them back, four windows, three planes, a lesion and the skull measured,
+`bwlabel` from M428). Tests: write/read round trip with every header field, an old implicit file with a nested
+undefined-length sequence, refusing junk, the windowing rule, the phantom's skull as one component, region growing
+staying outside the head, a series round trip in the language to 0 HU. Not built: compressed DICOM (JPEG, JPEG 2000,
+RLE: needs decoders), DICOMDIR and folders, multi-frame enhanced objects, RGB ultrasound, 3D volume rendering,
+registration, MRI-specific tools.

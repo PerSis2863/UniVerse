@@ -95,4 +95,14 @@ eegBandPower | [p, rel] = eegBandPower(x, fs) | Delta, theta, alpha, beta and ga
 patientMonitor | patientMonitor(ecg, fs, 'SpO2', 98, 'Resp', 15, 'BP', [120 80]) | A bedside-monitor-style view of the last 6 seconds: the ECG with its heart rate, a pleth wave and breathing. For learning, not diagnosis.
 wdrc | y = wdrc(x, fs, threshold, ratio, 'Attack', 0.005, 'Release', 0.05, 'Gain', 10) | Wide dynamic range compression: above the threshold (dB re full scale) loudness grows 1/ratio as fast.
 hearingAid | y = hearingAid(x, fs, 'Edges', [500 1000 2000 4000], 'Gains', [5 10 20 25 30], 'Threshold', -30, 'Ratio', 2) | A multi-band hearing aid: each band its own gain, all compressed. Drawn without outputs.
+# Medical imaging (for learning, not diagnosis)
+dicominfo | info = dicominfo('slice1.dcm') | A DICOM file's header: modality, size, pixel spacing, slice position, rescale and window values (patient identifiers are left out).
+dicomread | I = dicomread('slice1.dcm') | A DICOM file's pixels as stored (int16 or uint16; frames as pages). Uncompressed little-endian files only.
+dicomwrite | dicomwrite(I, 'slice1.dcm', 'Modality', 'CT', 'RescaleIntercept', -1024, 'PixelSpacing', [0.5 0.5], 'ImagePositionPatient', [0 0 z]) | Saves a greyscale image as a DICOM file (16-bit stored values) in Files.
+dicomreadVolume | [V, spacing] = dicomreadVolume('slice') | Every slice*.dcm file (or a cell of names) as one volume in Hounsfield units (rescale applied), sorted by position, with [dy dx dz] in mm.
+ctWindow | J = ctWindow(I, 'lung'), ctWindow(I, centre, width) | CT values seen through a window (0 to 1): 'brain', 'subdural', 'stroke', 'soft', 'abdomen', 'liver', 'lung', 'mediastinum', 'bone'. Drawn without outputs.
+headPhantom | [V, spacing] = headPhantom(n, slices) | A made-up head CT in Hounsfield units (skull, brain, ventricles and a small lesion) to practise on.
+orthoSlices | orthoSlices(V, [row col page], spacing, 'Window', 'brain') | Axial, coronal and sagittal slices through a point of a volume, at their true proportions.
+regionGrow | mask = regionGrow(V, [row col page], tol) | The connected region around a seed whose values are within tol of the seed's (6-connected in 3D).
+segmentHU | [mask, mL] = segmentHU(V, [low high], 'Largest', true, 'Spacing', [dy dx dz]) | Voxels between two HU values (the largest connected part by default) and their volume in millilitres.
 `;

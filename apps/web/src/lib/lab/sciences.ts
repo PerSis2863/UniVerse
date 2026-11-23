@@ -8,3 +8,4 @@ import './neuro-lab';
 import './physics-lab';
 import './geo-lab';
 import './biosig-lab';
+import './medimg-lab';

@@ -181,4 +181,30 @@ fs2 = 16000; tt = (0:fs2-1)/fs2;
 sound = (0.02 + 0.5*(tt > 0.5)) .* sin(2*pi*1500*tt);
 figure; hearingAid(sound, fs2, 'Gains', [5 10 20 25 30], 'Threshold', -30, 'Ratio', 3)
 ` },
+  { name: 'ctscan.m', code: `% Medical imaging: a CT series as DICOM files, windows, slices and a measurement (for learning, not diagnosis)
+[V, sp] = headPhantom(128, 40);            % a made-up head in Hounsfield units, spacing in mm
+% Save it as 40 DICOM slices (stored values = HU + 1024), as a scanner would, then read them back
+for k = 1:size(V, 3)
+  dicomwrite(V(:, :, k) + 1024, sprintf('head%02d.dcm', k), 'Modality', 'CT', 'RescaleIntercept', -1024, ...
+    'PixelSpacing', sp(1:2), 'SliceThickness', sp(3), 'ImagePositionPatient', [0 0 (k-1)*sp(3)], 'InstanceNumber', k);
+end
+info = dicominfo('head20.dcm')
+[W, spacing] = dicomreadVolume('head');
+% The same slice through four windows
+s = W(:, :, 26);
+names = {'brain', 'subdural', 'bone', 'lung'};
+for k = 1:4
+  subplot(2, 2, k); ctWindow(s, names{k}); title(names{k})
+end
+slice = 26;   % slider 1 40
+figure; orthoSlices(W, [64 64 slice], spacing, 'Window', 'brain')
+% Find the bright lesion: grow a region from a point inside it, and measure it
+[mask, mL] = segmentHU(W, [60 90], 'Spacing', spacing);
+fprintf('Lesion: %.2f mL (%d voxels)\\n', mL, nnz(mask))
+[skull, skullmL] = segmentHU(W, [500 3000], 'Spacing', spacing);
+fprintf('Skull: %.0f mL\\n', skullmL)
+% With the 2D image tools (M428): label what is above the brain window in one slice
+L = bwlabel(ctWindow(s, 'brain') > 0.9);
+fprintf('Bright regions in slice 26: %d\\n', max(L(:)))
+` },
 ];
