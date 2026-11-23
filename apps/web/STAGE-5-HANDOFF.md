@@ -11767,3 +11767,23 @@ ran, Julia (not installed here) gave its steps without asking, a Rust error mark
 undefined inside the sealed frame. Not built: Julia's plots and variables (text only), several files per program,
 Cargo crates, input from the keyboard while a program runs, a debugger. [owner]: GitHub → Actions → "Hyperion desktop"
 → Run workflow with "publish" ticked, so the downloads have 1.1.0.
+
+## M447 (23 Nov): Hyperion, the solvers' left-out choices
+
+The rest of M441's "not built". `optim-more.ts`: `muller(f, z0)` (complex numbers as [re, im]; a parabola through the
+last three points, the root nearer the newest; it starts off the real line so it finds complex roots; flag 1 when
+|Δz| ≤ tol·(1 + |z|)); `fzero` uses it when x0 is complex (a root with a negligible imaginary part comes back real;
+output.algorithm "Muller's method (complex)"). `patternSearch` options `poll` ('gps2n' | 'gpsnp1' | 'gss2n' | 'gssnp1' |
+'mads2n' | 'madsnp1': GSS cuts a step that would cross a bound to land on it, MADS polls a fresh random orthonormal basis
+from a Householder reflection each time with mesh ×4 / ÷4), `complete`, `search: 'lhs'` (15n Latin-hypercube points
+before the first poll, ±1 around the start where a bound is missing), `mesh0`, `expand`, `contract`, `rand`. `anneal`:
+per-variable annealing parameters k, `temperature` ('exp' T0·0.95^k, 'fast' T0/k, 'boltz' T0/ln k, or a function of k),
+`step` ('fast': as far as T, now MATLAB's default, was √T; 'boltz': √T; or a function of x and T), reannealing every
+`reanneal` accepted points by k_i = log(T0/T_i · max s / s_i) from a central-difference gradient (only ever raising a
+temperature), acceptance against the largest temperature. Language (`optim-lab.ts`): options PollMethod,
+UseCompletePoll, SearchFcn, InitialMeshSize, MeshExpansionFactor, MeshContractionFactor, TemperatureFcn, AnnealingFcn
+(names or @ functions: TemperatureFcn(optimValues with k, options), AnnealingFcn(optimValues with x and temperature,
+problem with lb and ub)), ReannealInterval, HybridFcn for both ('fminsearch', 'fminunc', 'fmincon', 'patternsearch'; for
+patternsearch only without linear or nonlinear constraints; kept only when it improves). Tests in optim.test.ts. Not
+built: patternsearch's other search functions (Nelder–Mead, GA), cached polls, the 'TolBind'/'ScaleMesh' options,
+simulannealbnd's custom AcceptanceFcn.

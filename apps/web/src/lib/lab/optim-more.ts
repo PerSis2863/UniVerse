@@ -1,9 +1,11 @@
-import { augLag, type Constraints, type Fn, type Rand, type Result } from './optim';
+import { augLag, numGrad, type Constraints, type Fn, type Rand, type Result } from './optim';
 import type { MultiFn } from './optim-multi';
 
 // Hyperion's rarer solvers (M441), pure: Brent's root finder and minimiser (fzero, fminbnd), non-negative and
 // constrained linear least squares (lsqnonneg, lsqlin), goal attainment and minimax (fgoalattain, fminimax), pattern
-// search and simulated annealing (patternsearch, simulannealbnd).
+// search and simulated annealing (patternsearch, simulannealbnd). M447: complex roots (Muller), pattern search's other
+// polls (GPS N+1, GSS, MADS), complete polling and a Latin-hypercube search; annealing's temperature and step choices,
+// gradient-based reannealing and the person's own functions.
 
 const EPS = 2.220446049250313e-16;
 const dot = (a: number[], b: number[]) => a.reduce((s, v, i) => s + v * b[i], 0);
@@ -52,6 +54,37 @@ export function bracket(f: (x: number) => number, x0: number): { a: number; b: n
 }
 
 /** Brent's minimiser on [a, b]: golden sections, parabolic steps when they fall inside and shrink enough. */
+/** A complex number as [re, im]. */
+export type C = [number, number];
+const cAdd = (a: C, b: C): C => [a[0] + b[0], a[1] + b[1]], cSub = (a: C, b: C): C => [a[0] - b[0], a[1] - b[1]];
+const cMul = (a: C, b: C): C => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+const cDiv = (a: C, b: C): C => { const d = b[0] * b[0] + b[1] * b[1] || 1e-300; return [(a[0] * b[0] + a[1] * b[1]) / d, (a[1] * b[0] - a[0] * b[1]) / d]; };
+const cAbs = (a: C) => Math.hypot(a[0], a[1]);
+const cSqrt = (a: C): C => { const r = cAbs(a), re = Math.sqrt((r + a[0]) / 2), im = Math.sqrt(Math.max(0, (r - a[0]) / 2)); return [re, a[1] < 0 ? -im : im]; };
+
+/**
+ * A root of a function of a complex number by Muller's method (M447): a parabola through the last three points, the
+ * step to its root nearer the newest point. From a real start it steps off the real line, so it finds complex roots
+ * that a sign change never shows. Returns flag 1 when |Δz| ≤ tol·(1 + |z|), 0 at the iteration limit.
+ */
+export function muller(f: (z: C) => C, z0: C, tol = 1e-14, maxIter = 200) {
+  const h = 0.1 * (1 + cAbs(z0));
+  let x0: C = [z0[0] - h, z0[1] - 0.25 * h], x1: C = [z0[0] + h, z0[1] + 0.3 * h], x2: C = z0;
+  let f0 = f(x0), f1 = f(x1), f2 = f(x2), evals = 3, k = 0;
+  for (; k < maxIter; k++) {
+    if (cAbs(f2) === 0) break;
+    const h1 = cSub(x1, x0), h2 = cSub(x2, x1), d1 = cDiv(cSub(f1, f0), h1), d2 = cDiv(cSub(f2, f1), h2);
+    const a = cDiv(cSub(d2, d1), cAdd(h2, h1)), b = cAdd(cMul(a, h2), d2);
+    const disc = cSqrt(cSub(cMul(b, b), cMul([4, 0], cMul(a, f2))));
+    const plus = cAdd(b, disc), minus = cSub(b, disc), den = cAbs(plus) > cAbs(minus) ? plus : minus;
+    const dz: C = cAbs(den) > 0 ? cDiv(cMul([-2, 0], f2), den) : [h, h];
+    x0 = x1; f0 = f1; x1 = x2; f1 = f2; x2 = cAdd(x2, dz); f2 = f(x2); evals++;
+    if (cAbs(dz) <= tol * (1 + cAbs(x2))) { k++; break; }
+  }
+  const ok = cAbs(f2) === 0 || k < maxIter;
+  return { z: x2, f: f2, iterations: k, evals, flag: ok ? 1 : 0, message: ok ? 'Muller’s method converged to a root.' : 'Stopped at the iteration limit.' };
+}
+
 export function brentMin(f: (x: number) => number, a: number, b: number, tolX = 1e-4, maxIter = 500): Scalar {
   const g = (3 - Math.sqrt(5)) / 2;
   let x = a + g * (b - a), w = x, v = x, fx = f(x), fw = fx, fv = fx, d = 0, e = 0, evals = 1, k = 0;
@@ -157,46 +190,103 @@ export function goalAttain(F: MultiFn, x0: number[], goal: number[], weight: num
 /** Generalised pattern search: poll ±each axis (opportunistic), double the mesh after a success, halve it after a
  * failure. Bounds are kept by never polling outside them. As the inner solver of the augmented Lagrangian it handles
  * linear and nonlinear constraints too. */
-export function patternSearch(f: Fn, x0: number[], lb: number[], ub: number[], o: { meshTol?: number; maxEvals?: number; onStep?: (x: number[], f: number, evals: number) => void } = {}): Result {
-  const n = x0.length, meshTol = o.meshTol ?? 1e-6, maxEvals = o.maxEvals ?? 2000 * n;
-  let x = x0.map((v, i) => clamp(v, lb[i] ?? -Infinity, ub[i] ?? Infinity)), fx = f(x), mesh = 1, evals = 1, iterations = 0;
+export type Poll = 'gps2n' | 'gpsnp1' | 'gss2n' | 'gssnp1' | 'mads2n' | 'madsnp1';
+export interface PatternOpts {
+  meshTol?: number; maxEvals?: number; onStep?: (x: number[], f: number, evals: number) => void;
+  /** M447: the poll's directions; complete polling (every direction, then the best); a Latin-hypercube search of 15n
+   *  points before the first poll; the mesh's start, growth and shrink (MADS: ×4 and ÷4 unless given). */
+  poll?: Poll; complete?: boolean; search?: 'none' | 'lhs'; mesh0?: number; expand?: number; contract?: number; rand?: Rand;
+}
+/** Random orthonormal directions (a Householder reflection of a random unit vector): MADS's directions change every poll. */
+function randomBasis(n: number, rand: Rand): number[][] {
+  const v = Array.from({ length: n }, () => rand() * 2 - 1), len = Math.hypot(...v) || 1;
+  const u = v.map((x) => x / len);
+  return Array.from({ length: n }, (_, j) => Array.from({ length: n }, (_, i) => (i === j ? 1 : 0) - 2 * u[i] * u[j]));
+}
+/** Generalised pattern search within bounds (M441; more polls M447). GPS polls ±each axis (2N) or each axis and
+ * −(1, …, 1) (N+1); GSS polls the same but a step that would cross a bound stops on it; MADS polls a fresh random
+ * orthonormal basis each time. Opportunistic (the first better point) unless complete; the mesh grows after a success
+ * and shrinks after a failure. */
+export function patternSearch(f: Fn, x0: number[], lb: number[], ub: number[], o: PatternOpts = {}): Result {
+  const n = x0.length, meshTol = o.meshTol ?? 1e-6, maxEvals = o.maxEvals ?? 2000 * n, poll = o.poll ?? 'gps2n', mads = poll.startsWith('mads');
+  const expand = o.expand ?? (mads ? 4 : 2), contract = o.contract ?? (mads ? 0.25 : 0.5), rand = o.rand ?? Math.random;
+  const lo = (i: number) => lb[i] ?? -Infinity, hi = (i: number) => ub[i] ?? Infinity;
+  let x = x0.map((v, i) => clamp(v, lo(i), hi(i))), fx = f(x), mesh = o.mesh0 ?? 1, evals = 1, iterations = 0;
   const path = [x.slice()];
+  // The search step: a Latin hypercube in the bounds (or ±1 around the start where a bound is missing).
+  if (o.search === 'lhs') {
+    const m = 15 * n, cols = Array.from({ length: n }, () => { const p = Array.from({ length: m }, (_, k) => k); for (let k = m - 1; k > 0; k--) { const r = Math.floor(rand() * (k + 1)); [p[k], p[r]] = [p[r], p[k]]; } return p; });
+    for (let k = 0; k < m && evals < maxEvals; k++) {
+      const y = x.map((v, i) => { const a = Number.isFinite(lo(i)) ? lo(i) : v - 1, b = Number.isFinite(hi(i)) ? hi(i) : v + 1; return a + ((cols[i][k] + rand()) / m) * (b - a); });
+      const fy = f(y); evals++;
+      if (fy < fx) { x = y; fx = fy; }
+    }
+    path.push(x.slice());
+  }
   while (mesh > meshTol && evals < maxEvals) {
     iterations++;
-    let won = false;
-    for (let j = 0; j < 2 * n && !won; j++) {
-      const i = j >> 1, y = x.slice();
-      y[i] += j & 1 ? -mesh : mesh;
-      if (y[i] < (lb[i] ?? -Infinity) || y[i] > (ub[i] ?? Infinity)) continue;
+    const B = mads ? randomBasis(n, rand) : Array.from({ length: n }, (_, j) => Array.from({ length: n }, (_, i) => (i === j ? 1 : 0)));
+    const dirs = poll.endsWith('2n') ? B.flatMap((d) => [d, d.map((v) => -v)]) : [...B, B.reduce((s, d) => s.map((v, i) => v - d[i]), new Array(n).fill(0))];
+    let best: number[] | null = null, fBest = fx;
+    for (const d of dirs) {
+      let t = mesh;
+      if (poll.startsWith('gss')) for (let i = 0; i < n; i++) { if (d[i] > 0 && Number.isFinite(hi(i))) t = Math.min(t, (hi(i) - x[i]) / d[i]); if (d[i] < 0 && Number.isFinite(lo(i))) t = Math.min(t, (lo(i) - x[i]) / d[i]); }
+      if (!(t > 0)) continue;
+      const y = x.map((v, i) => v + t * d[i]);
+      if (y.some((v, i) => v < lo(i) || v > hi(i))) continue;
       const fy = f(y); evals++;
-      if (fy < fx) { x = y; fx = fy; won = true; }
+      if (fy < fBest) { best = y; fBest = fy; if (!o.complete) break; }
+      if (evals >= maxEvals) break;
     }
-    mesh *= won ? 2 : 0.5;
-    if (won) { path.push(x.slice()); o.onStep?.(x, fx, evals); }
+    if (best) { x = best; fx = fBest; mesh *= expand; path.push(x.slice()); o.onStep?.(x, fx, evals); } else mesh *= contract;
   }
   const ok = mesh <= meshTol;
   return { x, f: fx, iterations, evals, path, flag: ok ? 1 : 0, message: ok ? 'The mesh became smaller than its tolerance.' : 'Stopped at the limit of function evaluations.' };
 }
 
-/** Simulated annealing within bounds: random steps of size √T in a random direction, worse points kept with
- * probability 1/(1 + exp(Δ/T)), the temperature T0·0.95^k, reheated (k halved) every 100 accepted points, stopping
- * when the best value moves less than tolFun over stall iterations. */
-export function anneal(f: Fn, x0: number[], lb: number[], ub: number[], rand: Rand, o: { T0?: number; maxEvals?: number; stall?: number; tolFun?: number; onIter?: (k: number, x: number[], f: number, evals: number) => void } = {}): Result {
+export type Schedule = 'exp' | 'fast' | 'boltz' | ((k: number[]) => number[]);
+export type Stepper = 'fast' | 'boltz' | ((x: number[], T: number[], rand: Rand) => number[]);
+/** The temperature per variable from its annealing parameter k (MATLAB's temperatureexp, temperaturefast,
+ * temperatureboltz), or the person's own function. */
+const temps = (s: Schedule, T0: number, k: number[]) => (typeof s === 'function' ? s(k) : k.map((ki) => (s === 'fast' ? T0 / Math.max(1, ki) : s === 'boltz' ? T0 / Math.log(Math.max(Math.E, ki)) : T0 * 0.95 ** ki)));
+/** k back from a temperature (for reannealing). */
+const kOf = (s: Schedule, T0: number, T: number) => (s === 'fast' ? T0 / T : s === 'boltz' ? Math.exp(T0 / T) : Math.log(T / T0) / Math.log(0.95));
+
+/** Simulated annealing within bounds (M441; MATLAB's choices M447): each step goes in a random direction, as far as the
+ * temperature (annealingfast) or its square root (annealingboltz) per variable, or where the person's own function
+ * says; worse points are kept with probability 1/(1 + exp(Δ/max T)); every ReannealInterval accepted points the
+ * temperatures are raised by the gradient's sizes (k_i = log(T0/T_i · max s / s_i)), so variables the function barely
+ * changes with get larger steps; it stops when the best value moves less than tolFun over stall iterations. */
+export function anneal(f: Fn, x0: number[], lb: number[], ub: number[], rand: Rand, o: { T0?: number; maxEvals?: number; stall?: number; tolFun?: number; temperature?: Schedule; step?: Stepper; reanneal?: number; onIter?: (k: number, x: number[], f: number, evals: number) => void } = {}): Result {
   const n = x0.length, T0 = o.T0 ?? 100, maxEvals = o.maxEvals ?? 3000 * n, stall = o.stall ?? 500 * n, tolFun = o.tolFun ?? 1e-6;
+  const schedule = o.temperature ?? 'exp', stepper = o.step ?? 'fast', every = Math.max(1, Math.round(o.reanneal ?? 100));
   const lo = (i: number) => lb[i] ?? -Infinity, hi = (i: number) => ub[i] ?? Infinity;
   const gauss = () => Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
-  let x = x0.map((v, i) => clamp(v, lo(i), hi(i))), fx = f(x), best = x.slice(), fBest = fx, evals = 1, k = 0, accepted = 0, since = 0, fMark = fx, iter = 0;
+  let x = x0.map((v, i) => clamp(v, lo(i), hi(i))), fx = f(x), best = x.slice(), fBest = fx, evals = 1, accepted = 0, since = 0, fMark = fx, iter = 0;
+  const k = new Array<number>(n).fill(0);
   const path = [x.slice()];
   while (evals < maxEvals && since < stall) {
-    iter++; k++;
-    const T = T0 * 0.95 ** k, step = Math.sqrt(T), dir = x.map(gauss), len = Math.hypot(...dir) || 1;
+    iter++;
+    for (let i = 0; i < n; i++) k[i]++;
+    const T = temps(schedule, T0, k).map((t) => Math.max(t, 1e-300));
+    let y: number[];
+    if (typeof stepper === 'function') y = stepper(x.slice(), T, rand);
+    else {
+      const dir = x.map(gauss), len = Math.hypot(...dir) || 1;
+      y = x.map((v, i) => v + (stepper === 'boltz' ? Math.sqrt(T[i]) : T[i]) * (dir[i] / len));
+    }
     // A step past a bound lands at a random place between the point and that bound (MATLAB's way).
-    const y = x.map((v, i) => { const t = v + (step * dir[i]) / len; return t < lo(i) ? v + rand() * (lo(i) - v) : t > hi(i) ? v + rand() * (hi(i) - v) : t; });
+    y = y.map((t, i) => (!Number.isFinite(t) ? x[i] : t < lo(i) ? x[i] + rand() * (lo(i) - x[i]) : t > hi(i) ? x[i] + rand() * (hi(i) - x[i]) : t));
     const fy = f(y); evals++;
     const delta = fy - fx;
-    if (delta <= 0 || rand() < 1 / (1 + Math.exp(Math.min(700, delta / Math.max(T, 1e-300))))) {
+    if (delta <= 0 || rand() < 1 / (1 + Math.exp(Math.min(700, delta / Math.max(...T))))) {
       x = y; fx = fy; accepted++;
-      if (accepted % 100 === 0) k = Math.floor(k / 2);
+      if (accepted % every === 0 && typeof schedule !== 'function') {
+        // Reannealing: the temperatures raised by the gradient's sizes at the current point.
+        const s = numGrad(f, x).map(Math.abs), smax = Math.max(...s);
+        evals += 2 * n;
+        for (let i = 0; i < n; i++) if (s[i] > 0 && smax > 0) { const ki = Math.log((T0 / T[i]) * (smax / s[i])); if (Number.isFinite(ki)) k[i] = Math.max(0, Math.min(ki, kOf(schedule, T0, T[i]))); }
+      }
     }
     if (fx < fBest) { best = x.slice(); fBest = fx; path.push(best.slice()); }
     if (fMark - fBest > tolFun) { fMark = fBest; since = 0; } else since++;

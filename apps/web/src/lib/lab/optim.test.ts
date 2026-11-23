@@ -181,3 +181,55 @@ describe('Hyperion optimisation (M441): the rarer solvers', () => {
     expect(a.flag).toBe(1);
   });
 });
+
+describe('Hyperion optimisation: complex roots and the rarer solvers’ choices (M447)', () => {
+  it('Muller’s method finds complex roots, and fzero takes a complex start', () => {
+    const r = ox.muller(([a, b]) => [a * a - b * b + 1, 2 * a * b], [0.5, 0.5]);
+    expect(Math.abs(r.z[0])).toBeLessThan(1e-12);
+    expect(Math.abs(Math.abs(r.z[1]) - 1)).toBeLessThan(1e-12);
+    // z³ = 8 from near the upper root −1 + √3 i.
+    const c = ox.muller(([a, b]) => { const re = a * a * a - 3 * a * b * b - 8, im = 3 * a * a * b - b * b * b; return [re, im]; }, [-1.2, 1.5]);
+    expect(Math.hypot(c.z[0] + 1, c.z[1] - Math.sqrt(3))).toBeLessThan(1e-10);
+    const l = new Lab({ out: () => {}, graphics: new Graphics() });
+    l.run('z = fzero(@(z) z^2 + 4, 0.3 + 1i);\nw = fzero(@(x) x^2 - 2, 0.5 + 0.1i);');
+    const z = toMat(l.vars.get('z')!), w = toMat(l.vars.get('w')!);
+    expect(Math.abs(z.d[0])).toBeLessThan(1e-10);
+    expect(Math.abs((z.im?.[0] ?? 0) - 2)).toBeLessThan(1e-10);
+    // A real root reached from a complex start comes back real.
+    expect(w.im).toBeFalsy();
+    expect(Math.abs(w.d[0] - Math.SQRT2)).toBeLessThan(1e-10);
+  });
+  it('every poll method reaches a bowl’s floor; GSS lands on a bound; MADS with a complete poll and a Latin hypercube works', () => {
+    const bowl = (x: number[]) => (x[0] - 1) ** 2 + 4 * (x[1] + 2) ** 2;
+    for (const poll of ['gps2n', 'gpsnp1', 'gss2n', 'gssnp1', 'mads2n', 'madsnp1'] as const) {
+      seed = 5;
+      const r = ox.patternSearch(bowl, [3, 3], [-5, -5], [5, 5], { poll, rand, meshTol: 1e-8, maxEvals: 20_000 });
+      close(r.x, [1, -2], 1e-3);
+    }
+    const g = ox.patternSearch((x) => (x[0] - 7) ** 2, [0], [-1], [5.3], { poll: 'gss2n' });
+    expect(g.x[0]).toBeCloseTo(5.3, 12);
+    seed = 9;
+    const m = ox.patternSearch(bowl, [4, 4], [-5, -5], [5, 5], { poll: 'mads2n', complete: true, search: 'lhs', rand });
+    close(m.x, [1, -2], 1e-3);
+    const r = run(`o = optimoptions('patternsearch', 'PollMethod', 'MADSPositiveBasisNp1', 'UseCompletePoll', true, 'SearchFcn', 'searchlhs');
+      x = patternsearch(@(x) (x(1)-1)^2 + (x(2)-2)^2, [0 0], [], [], [], [], [-3 -3], [3 3], [], o);`);
+    close(r.d('x'), [1, 2], 1e-3);
+    expect(() => run("patternsearch(@(x) x^2, 1, [], [], [], [], [], [], [], optimoptions('patternsearch', 'PollMethod', 'Spiral'))")).toThrow(/PollMethod is/);
+  });
+  it('annealing’s temperature and step choices, your own functions, and a hybrid finish', () => {
+    const ras = (x: number[]) => 20 + x.reduce((s, v) => s + v * v - 10 * Math.cos(2 * Math.PI * v), 0);
+    for (const [temperature, step] of [['exp', 'fast'], ['fast', 'fast'], ['boltz', 'boltz']] as const) {
+      seed = 21;
+      const a = ox.anneal(ras, [3.2, -2.8], [-5, -5], [5, 5], rand, { temperature, step });
+      expect(a.f).toBeLessThan(ras([3, -3]));
+    }
+    const r = run(`rng(4)
+      bowl = @(x) (x(1)-1)^2 + (x(2)+1)^2;
+      o = optimoptions('simulannealbnd', 'TemperatureFcn', @(v, opts) 50 ./ v.k, 'AnnealingFcn', @(v, p) v.x + 0.1*randn(size(v.x)), 'HybridFcn', 'fminsearch');
+      [x, f] = simulannealbnd(bowl, [3 3], [-5 -5], [5 5], o);
+      [y, g] = simulannealbnd(bowl, [3 3], [-5 -5], [5 5], optimoptions('simulannealbnd', 'TemperatureFcn', 'temperatureboltz', 'AnnealingFcn', 'annealingboltz', 'ReannealInterval', 50));`);
+    close(r.d('x'), [1, -1], 1e-4);
+    expect(r.d('f')[0]).toBeLessThan(1e-8);
+    expect(r.d('g')[0]).toBeLessThan(0.5); // annealing alone is rough; the hybrid finish above is what makes it exact
+  });
+});
