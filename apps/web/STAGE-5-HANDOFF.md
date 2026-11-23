@@ -12523,3 +12523,18 @@ matrix: magic, random, identity, evenly spaced, grid, normal noise; Numbers: pri
 remainder), Apps (Simulate's benches, Learn, 27 toolbox starters, Functions, Import). Layout: `Stack` columns are
 `w-max`, groups `flex-auto` with centred contents, so a tab's groups spread across the width. Only functions the engine
 has (checked against help.ts; findpeaks, svd, saveas, butter and similar aren't there yet).
+
+## M475: Hyperion finds peaks, SVD and filters; a smooth toolstrip (23 Nov)
+
+The owner, 23 Nov: add finding peaks, SVD and filter design, "make everything ultra smooth", smooth animations on every tool.
+- `src/lib/lab/dsp.ts` (maths, tested in `dsp.test.ts` against MATLAB's numbers) and `dsp-lab.ts` (the language
+  functions, imported by `lab.worker.ts` and `help.test.ts`): `findpeaks`, `svd`, `butter`, `filtfilt`, `lowpass`,
+  `highpass`, `bandpass` (Butterworth order 8, 4 per side of a band, run both ways so no lag; fs optional). Help entries
+  in `help.ts`. `findpeaks`' widths are 0 for now (shortcut: half-height widths not computed).
+- Toolstrip: Analyse → Matrix → SVD; Signal → Find peaks, Low-pass, High-pass ('Range' left out so Analyse fits 1440 px).
+- Smoothness: `LabToolstrip` keeps the latest props in a ref and hands a memo'd `ToolstripView` only data props plus a
+  stable `act(name, …args)`: never pass a callback prop into the view directly, or typing re-renders the whole strip.
+  All six panes stay mounted (`hidden`); the shown one slides in by `el.animate` (transform, opacity, 260 ms); the tab
+  underline moves by `transform`; a pressed tool's icon pops (skipped with Reduce Motion); fold is a grid-rows ease
+  with `inert`. Measured on the production build: at normal CPU 0 long tasks and 0 slow frames for typing, tabs, tools,
+  menus and fold; at 4× slower CPU typing costs the same with the strip folded, so what's left is the editor's own.
