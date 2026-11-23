@@ -5,6 +5,8 @@ import { FileStore } from './files';
 import { toMat } from './values';
 import './sciences';
 import * as mi from './medimg';
+import { decodeJpeg, decodeRle } from './dicom-codecs';
+import FIX from './fixtures/dicom-compressed.json';
 
 const run = (code: string) => { let out = ''; const graphics = new Graphics(); const lab = new Lab({ out: (t) => { out += t; }, graphics, files: new FileStore() }); lab.run(code); return { out, graphics, lab, d: (n: string) => [...toMat(lab.vars.get(n)!).d] }; };
 
@@ -60,5 +62,43 @@ describe('Hyperion medical imaging (M500)', () => {
     expect(r.lab.vars.get('c')).toEqual({ k: 'str', v: 'uint16' });
     expect(r.d('mL')[0]).toBeGreaterThan(10);
     expect(r.graphics.figures.length).toBe(1);
+  });
+});
+
+describe('Hyperion compressed DICOM (M507)', () => {
+  // Made with libjpeg-turbo and pydicom's RLE encoder (fixtures/dicom-compressed.json): a 16 × 12 12-bit ramp with noise.
+  const fx = FIX as Record<string, string | number[]>, b64 = (k: string) => Uint8Array.from(atob(fx[k] as string), (ch) => ch.charCodeAt(0));
+  const g16 = fx.g16 as number[];
+  it('decodes lossless JPEG with predictors 1, 4 and 7 exactly', () => {
+    for (const k of ['ll1', 'll4', 'll7']) {
+      const j = decodeJpeg(b64(k));
+      expect([j.width, j.height, j.precision, j.lossless]).toEqual([16, 12, 12, true]);
+      expect([...j.planes[0]]).toEqual(g16);
+    }
+  });
+  it('decodes a baseline 4:2:0 colour JPEG as libjpeg does (within two levels)', () => {
+    const j = decodeJpeg(b64('rgb')), ref = fx.rgb_ref as number[];
+    let worst = 0;
+    for (let i = 0; i < 16 * 12; i++) for (let s = 0; s < 3; s++) worst = Math.max(worst, Math.abs(j.planes[s][i] - ref[i * 3 + s]));
+    expect(worst).toBeLessThanOrEqual(2);
+  });
+  it('reads a two-frame lossless DICOM and an RLE one through dicomread', () => {
+    const fs = new FileStore();
+    fs.load('ll.dcm', { bytes: b64('dcm_ll') }); fs.load('rle.dcm', { bytes: b64('dcm_rle') });
+    const lab = new Lab({ out: () => {}, graphics: new Graphics(), files: fs });
+    lab.run("A = dicomread('ll.dcm'); B = dicomread('rle.dcm'); s = size(A); c = class(B);");
+    const A = toMat(lab.vars.get('A')!), B = toMat(lab.vars.get('B')!);
+    expect([A.r, A.c, A.p]).toEqual([12, 16, 2]);
+    expect(A.d[0 + 0 * 12]).toBe(g16[0]);
+    expect(A.d[3 + 5 * 12]).toBe(g16[3 * 16 + 5]); // row 3, column 5 (frame 1)
+    expect(A.d[12 * 16 + 3 + 5 * 12]).toBe(g16[(11 - 3) * 16 + 5]); // frame 2 is upside down
+    expect(B.d[7 + 9 * 12]).toBe(g16[7 * 16 + 9]);
+  });
+  it('decodes RLE PackBits runs and literals, most significant byte first', () => {
+    // Two segments (16 bits): high bytes = a run of three 1s and a literal 2; low bytes = four literals.
+    const head = new Uint8Array(64), dv = new DataView(head.buffer);
+    dv.setUint32(0, 2, true); dv.setUint32(4, 64, true); dv.setUint32(8, 68, true);
+    const planes = decodeRle(new Uint8Array([...head, 0xfe, 1, 0x00, 2, 3, 0, 255, 3, 4]), 2, 2, 16, 1);
+    expect([...planes[0]]).toEqual([256, 511, 259, 516]);
   });
 });

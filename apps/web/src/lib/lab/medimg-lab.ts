@@ -13,11 +13,12 @@ import { call, def, need, nums, options, optNum, optText, record, row } from './
 
 const files = (lab: Lab): FileStore => { const s = (lab.host as { files?: unknown }).files; if (!(s instanceof FileStore)) throw new LabError('Files aren’t available here.'); return s; };
 const read = (lab: Lab, name: string) => { try { return mi.readDicom(files(lab).get(name).bytes); } catch (e) { if (e instanceof mi.DicomError) throw new LabError(`${name}: ${e.message}`); throw e; } };
-/** Stored values (row by row) as a column-major matrix, one page per frame. */
+/** Stored values (row by row) as a column-major matrix: rows × cols × frames, or rows × cols × 3 × frames for colour (M507). */
 function asMatrix(d: mi.DicomImage): Mat {
-  const n = d.rows * d.cols, out = new Float64Array(n * d.frames);
-  for (let f = 0; f < d.frames; f++) for (let i = 0; i < d.rows; i++) for (let j = 0; j < d.cols; j++) out[f * n + i + j * d.rows] = d.pixels[f * n + i * d.cols + j];
-  return mat(d.rows, d.cols, out);
+  const n = d.rows * d.cols, pages = d.frames * d.samples, out = new Float64Array(n * pages);
+  for (let f = 0; f < pages; f++) for (let i = 0; i < d.rows; i++) for (let j = 0; j < d.cols; j++) out[f * n + i + j * d.rows] = d.pixels[f * n + i * d.cols + j];
+  const m = mat(d.rows, d.cols, out);
+  return d.samples > 1 && d.frames > 1 ? { ...m, nd: [d.samples, d.frames] } : m;
 }
 const infoValue = (d: mi.DicomImage) => record(Object.entries(d.info).map(([k, v]) => [k, typeof v === 'number' ? v : typeof v === 'string' ? v : row(v)] as [string, number | string | Mat]));
 
@@ -50,7 +51,7 @@ def('dicomreadVolume', (a, _n, lab) => {
   if (!names.length) throw new LabError("dicomreadVolume needs a cell of .dcm file names, or the start of their names ('slice' reads slice*.dcm).");
   if (names.length > 2000) throw new LabError('dicomreadVolume reads up to 2,000 slices.');
   const sl = names.map((n) => ({ n, d: read(lab, n) })), r = sl[0].d.rows, c = sl[0].d.cols;
-  if (sl.some((s) => s.d.rows !== r || s.d.cols !== c || s.d.frames !== 1)) throw new LabError('Every slice must be one frame of the same size.');
+  if (sl.some((s) => s.d.rows !== r || s.d.cols !== c || s.d.frames !== 1 || s.d.samples !== 1)) throw new LabError('Every slice must be one greyscale frame of the same size.');
   const z = (s: (typeof sl)[0]) => { const p = s.d.info.ImagePositionPatient; return Array.isArray(p) && p.length === 3 ? p[2] : Number(s.d.info.InstanceNumber ?? 0); };
   sl.sort((p, q) => z(p) - z(q));
   const out = new Float64Array(r * c * sl.length);

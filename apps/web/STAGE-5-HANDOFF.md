@@ -12787,3 +12787,26 @@ knows are applied: a bare `'Visible'` would otherwise read as a line spec); `ani
 `addpoints(h, x, y[, z])`, `clearpoints(h)`. The example `animate.m` (a pendulum and its angle growing) is in the
 examples list. Tests in `plot.test.ts` (M506). Not built: `getframe` / `movie` / `VideoWriter` (Sweep's GIF film covers
 saving a film), `set` on other objects (text, surfaces), `delete(h)`.
+
+## M507 (23 Nov): Hyperion reads compressed DICOM
+
+M500 left out compressed scans. `dicom-codecs.ts` (pure, written from the standards): `decodeRle` (PS3.5 annex G:
+PackBits segments, most significant byte first, any samples and 8/16/32 bits) and `decodeJpeg` (T.81: baseline and
+extended sequential Huffman, 8 or 12 bits, any sampling factors, interleaved or one-component scans, restart markers;
+lossless process 14, predictors 1–7, point transform, up to 16 bits, components not subsampled). Colour in a DCT JPEG:
+an Adobe APP14 decides, then component ids R, G, B (no change), then JFIF (YCbCr), then the DICOM photometric (`ybr`);
+lossless syntaxes never transform. Subsampled chroma is stretched by centred linear steps (libjpeg's "fancy"
+upsampling), which brought a 4:2:2 ultrasound film from 15 levels off libjpeg to 3 (the rest is libjpeg's integer IDCT).
+
+`readDicom` (medimg.ts) now: reads the meta group, then by transfer syntax: deflated (fflate `inflateSync` on the rest),
+explicit big-endian (`le` flag; 8-bit pixels in a big-endian OW element are swapped in pairs), files without a meta
+header (explicit or implicit guessed from the first element's VR), encapsulated pixel data (basic offset table and
+fragments → frames by the table, one fragment a frame, all for one frame, or JPEG start markers), RGB / YBR_FULL /
+YBR_FULL_422 colour (3 samples, planar or not; YBR turned into RGB), 1-bit, signed values within BitsStored.
+`DicomImage.samples` is new; `pixels` is frame by frame, sample by sample. `dicomread` gives rows × cols × 3 for colour
+(× frames as a 4D array, `nd: [3, F]`); `dicomreadVolume` refuses colour. JPEG-LS, JPEG 2000, HTJ2K and MPEG are
+refused by name. Checked against 27 of pydicom's test files (decoded by pydicom, libjpeg-turbo and imagecodecs, on this
+machine only, not committed): every supported file identical or within 1 level (12-bit extended, colour baseline),
+the 4:2:2 film within 3. Committed tests use `fixtures/dicom-compressed.json` (made with libjpeg-turbo and pydicom's
+RLE encoder: lossless with three predictors, a 4:2:0 colour JPEG, a two-frame lossless and an RLE DICOM). Not built:
+JPEG-LS, JPEG 2000, palette colour, DICOMDIR, enhanced multi-frame's per-frame headers.

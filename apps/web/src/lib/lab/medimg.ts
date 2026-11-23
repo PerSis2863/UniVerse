@@ -1,17 +1,31 @@
 // Hyperion's medical imaging (M500, the owner's list, group 7 and MathWorks' medical devices): reading and writing
-// DICOM files in the browser (Part 10, little-endian, implicit or explicit VR, uncompressed pixels; sequences skipped),
+// DICOM files in the browser (Part 10, implicit or explicit VR, little- or big-endian, deflated, uncompressed or RLE /
+// JPEG compressed pixels since M507; sequences skipped),
 // stored values turned into Hounsfield units by the rescale slope and intercept, CT windowing with the usual presets,
 // slices of a volume, region growing and the largest connected part of a threshold in 3D, and a made-up head phantom
 // to practise on. For learning, not diagnosis. Pure: no language values here.
 
-export interface DicomImage { info: Record<string, string | number | number[]>; rows: number; cols: number; frames: number; pixels: Float64Array; signed: boolean; bits: number }
+import { inflateSync } from 'fflate';
+import { CodecError, decodeJpeg, decodeRle } from './dicom-codecs';
 
-const IMPLICIT = '1.2.840.10008.1.2', EXPLICIT = '1.2.840.10008.1.2.1';
+/** `pixels` holds stored values, sample by sample: frame f, sample s of pixel i (row by row) is at
+ * (f · samples + s) · rows · cols + i. Colour images (RGB, or YBR turned into RGB) have 3 samples. */
+export interface DicomImage { info: Record<string, string | number | number[]>; rows: number; cols: number; frames: number; samples: number; pixels: Float64Array; signed: boolean; bits: number }
+
+const IMPLICIT = '1.2.840.10008.1.2', EXPLICIT = '1.2.840.10008.1.2.1', DEFLATED = '1.2.840.10008.1.2.1.99', BIG = '1.2.840.10008.1.2.2';
+/** The compressed transfer syntaxes Hyperion decodes (M507), by kind. */
+const CODEC: Record<string, 'rle' | 'jpeg'> = {
+  '1.2.840.10008.1.2.5': 'rle', '1.2.840.10008.1.2.4.50': 'jpeg', '1.2.840.10008.1.2.4.51': 'jpeg', '1.2.840.10008.1.2.4.57': 'jpeg', '1.2.840.10008.1.2.4.70': 'jpeg',
+};
+const UNSUPPORTED: Record<string, string> = {
+  '1.2.840.10008.1.2.4.80': 'JPEG-LS', '1.2.840.10008.1.2.4.81': 'JPEG-LS', '1.2.840.10008.1.2.4.90': 'JPEG 2000', '1.2.840.10008.1.2.4.91': 'JPEG 2000',
+  '1.2.840.10008.1.2.4.201': 'HTJ2K', '1.2.840.10008.1.2.4.202': 'HTJ2K', '1.2.840.10008.1.2.4.203': 'HTJ2K', '1.2.840.10008.1.2.4.100': 'MPEG-2 video', '1.2.840.10008.1.2.4.102': 'MPEG-4 video', '1.2.840.10008.1.2.4.103': 'MPEG-4 video',
+};
 const LONG_VR = new Set(['OB', 'OD', 'OF', 'OL', 'OW', 'SQ', 'UC', 'UN', 'UR', 'UT', 'OV', 'SV', 'UV']);
 const TAGS: Record<string, [string, 'str' | 'us' | 'ds' | 'is' | 'ul']> = {
   '00080060': ['Modality', 'str'], '00080020': ['StudyDate', 'str'], '0008103E': ['SeriesDescription', 'str'], '00180050': ['SliceThickness', 'ds'],
   '00200013': ['InstanceNumber', 'is'], '00200032': ['ImagePositionPatient', 'ds'], '00201041': ['SliceLocation', 'ds'],
-  '00280002': ['SamplesPerPixel', 'us'], '00280004': ['PhotometricInterpretation', 'str'], '00280008': ['NumberOfFrames', 'is'],
+  '00280002': ['SamplesPerPixel', 'us'], '00280004': ['PhotometricInterpretation', 'str'], '00280006': ['PlanarConfiguration', 'us'], '00280008': ['NumberOfFrames', 'is'],
   '00280010': ['Rows', 'us'], '00280011': ['Columns', 'us'], '00280030': ['PixelSpacing', 'ds'], '00280100': ['BitsAllocated', 'us'],
   '00280101': ['BitsStored', 'us'], '00280103': ['PixelRepresentation', 'us'], '00281050': ['WindowCenter', 'ds'], '00281051': ['WindowWidth', 'ds'],
   '00281052': ['RescaleIntercept', 'ds'], '00281053': ['RescaleSlope', 'ds'], '00020010': ['TransferSyntaxUID', 'str'],
@@ -19,26 +33,32 @@ const TAGS: Record<string, [string, 'str' | 'us' | 'ds' | 'is' | 'ul']> = {
 
 export class DicomError extends Error {}
 
-/** Reads a DICOM file's header fields (patient identifiers are left out) and its pixels as stored values. */
-export function readDicom(bytes: Uint8Array): DicomImage {
-  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), info: DicomImage['info'] = {};
+/** Reads a DICOM file's header fields (patient identifiers are left out) and its pixels as stored values: little- or
+ * big-endian, implicit or explicit VR, deflated, uncompressed or compressed by RLE or JPEG (baseline, extended,
+ * lossless; M507). */
+export function readDicom(input: Uint8Array): DicomImage {
+  let bytes = input;
+  let dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength), le = true;
+  const info: DicomImage['info'] = {};
   let p = 0;
   const part10 = bytes.length > 132 && String.fromCharCode(...bytes.subarray(128, 132)) === 'DICM';
   if (part10) p = 132;
-  let syntax = part10 ? EXPLICIT : IMPLICIT, pixel: [number, number] | null = null;
+  let syntax = part10 ? EXPLICIT : IMPLICIT, pixel: [number, number] | null = null, fragments: Uint8Array[] | null = null, pixelVr = '';
+  const offsets: number[] = [];
+  const u16 = (o: number) => dv.getUint16(o, le), u32 = (o: number) => dv.getUint32(o, le);
   const text = (o: number, n: number) => new TextDecoder('latin1').decode(bytes.subarray(o, o + n)).replace(/[\0 ]+$/, '').trim();
   const value = (key: string, o: number, n: number) => {
     const t = TAGS[key];
-    if (!t) return;
-    if (t[1] === 'us') info[t[0]] = dv.getUint16(o, true);
-    else if (t[1] === 'ul') info[t[0]] = dv.getUint32(o, true);
+    if (!t || n === 0) return;
+    if (t[1] === 'us') info[t[0]] = u16(o);
+    else if (t[1] === 'ul') info[t[0]] = u32(o);
     else if (t[1] === 'str') info[t[0]] = text(o, n);
     else { const v = text(o, n).split('\\').map(Number); info[t[0]] = v.length === 1 ? v[0] : v; }
   };
   /** Skips the items of a sequence of undefined length; returns the offset after its delimiter. */
   const skipUndefined = (o: number, explicit: boolean): number => {
     while (o + 8 <= bytes.length) {
-      const g = dv.getUint16(o, true), e = dv.getUint16(o + 2, true), len = dv.getUint32(o + 4, true);
+      const g = u16(o), e = u16(o + 2), len = u32(o + 4);
       o += 8;
       if (g === 0xfffe && e === 0xe0dd) return o;
       if (g === 0xfffe && e === 0xe000) { if (len === 0xffffffff) o = walk(o, explicit, true); else o += len; continue; }
@@ -46,46 +66,154 @@ export function readDicom(bytes: Uint8Array): DicomImage {
     }
     return o;
   };
-  /** Reads elements from o; inside an item, stops after its delimiter. */
-  function walk(o: number, explicit: boolean, inItem: boolean): number {
+  /** Encapsulated pixel data: the basic offset table, then the fragments, to the sequence delimiter. */
+  const encapsulated = (o: number): number => {
+    fragments = [];
+    let first = true;
     while (o + 8 <= bytes.length) {
-      const g = dv.getUint16(o, true), e = dv.getUint16(o + 2, true), key = `${g.toString(16).padStart(4, '0')}${e.toString(16).padStart(4, '0')}`.toUpperCase();
-      if (g === 0xfffe) { const len = dv.getUint32(o + 4, true); o += 8; if (e === 0xe00d) return o; o += len === 0xffffffff ? 0 : len; continue; }
-      const ex = g === 0x0002 ? true : explicit;
+      const g = dv.getUint16(o, true), e = dv.getUint16(o + 2, true), len = dv.getUint32(o + 4, true);
+      o += 8;
+      if (g === 0xfffe && e === 0xe0dd) return o;
+      if (g !== 0xfffe || e !== 0xe000 || o + len > bytes.length) throw new DicomError('The compressed pixel data is malformed.');
+      if (first) { for (let k = 0; k + 4 <= len; k += 4) offsets.push(dv.getUint32(o + k, true)); first = false; }
+      else fragments.push(bytes.subarray(o, o + len));
+      o += len;
+    }
+    return o;
+  };
+  /** Reads elements from o; inside an item, stops after its delimiter. Group 0002 is always explicit little-endian. */
+  function walk(o: number, explicit: boolean, inItem: boolean, metaOnly = false): number {
+    while (o + 8 <= bytes.length) {
+      const g0 = dv.getUint16(o, true);
+      if (metaOnly && g0 !== 0x0002) return o;
+      const meta = g0 === 0x0002, keepLe = le;
+      if (meta) le = true;
+      const g = u16(o), e = u16(o + 2), key = `${g.toString(16).padStart(4, '0')}${e.toString(16).padStart(4, '0')}`.toUpperCase();
+      if (g === 0xfffe) { const len = u32(o + 4); o += 8; le = keepLe; if (e === 0xe00d) return o; o += len === 0xffffffff ? 0 : len; continue; }
+      const ex = meta ? true : explicit;
       let vr = '', len: number;
       if (ex) {
         vr = String.fromCharCode(bytes[o + 4], bytes[o + 5]);
-        if (LONG_VR.has(vr)) { len = dv.getUint32(o + 8, true); o += 12; } else { len = dv.getUint16(o + 6, true); o += 8; }
-      } else { len = dv.getUint32(o + 4, true); o += 8; }
+        if (LONG_VR.has(vr)) { len = u32(o + 8); o += 12; } else { len = u16(o + 6); o += 8; }
+      } else { len = u32(o + 4); o += 8; }
       if (key === '7FE00010' && !inItem) {
-        if (len === 0xffffffff) throw new DicomError('These pixels are compressed (encapsulated JPEG, JPEG 2000 or RLE): Hyperion reads uncompressed DICOM only.');
-        pixel = [o, len]; o += len; continue;
+        if (len === 0xffffffff) { o = encapsulated(o); le = keepLe; continue; }
+        pixel = [o, len]; pixelVr = vr; o += len; le = keepLe; continue;
       }
-      if (len === 0xffffffff) { o = skipUndefined(o, ex); continue; }
+      if (len === 0xffffffff) { o = skipUndefined(o, ex); le = keepLe; continue; }
       if (o + len > bytes.length) throw new DicomError('The file ends in the middle of an element: it may be cut short.');
       if (!inItem) value(key, o, len);
       if (key === '00020010') syntax = text(o, len).replace(/\0/g, '');
       o += len;
-      if (g === 0x0002 && (bytes.length <= o + 2 || dv.getUint16(o, true) !== 0x0002)) explicit = syntax !== IMPLICIT;
+      le = meta ? keepLe : le;
     }
     return o;
   }
   if (part10) {
-    walk(p, true, false);
-    if (syntax !== IMPLICIT && syntax !== EXPLICIT) throw new DicomError(`This file's transfer syntax (${syntax}) is compressed or big-endian: Hyperion reads uncompressed little-endian DICOM only.`);
-  } else walk(p, false, false);
-  const rows = Number(info.Rows), cols = Number(info.Columns), bits = Number(info.BitsAllocated ?? 16), frames = Number(info.NumberOfFrames ?? 1) || 1, spp = Number(info.SamplesPerPixel ?? 1);
-  if (!pixel || !(rows > 0 && cols > 0)) throw new DicomError('No image in this file (no pixel data, or no rows and columns).');
-  if (spp !== 1) throw new DicomError('Hyperion reads greyscale DICOM (one sample a pixel).');
-  if (bits !== 8 && bits !== 16 && bits !== 32) throw new DicomError(`${bits}-bit pixels aren't supported (8, 16 or 32).`);
-  const [po, plen] = pixel as [number, number], n = rows * cols * frames, signed = Number(info.PixelRepresentation ?? 0) === 1;
-  if (plen < (n * bits) / 8) throw new DicomError('The pixel data is shorter than rows × columns × frames.');
-  const px = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    const o = po + (i * bits) / 8;
-    px[i] = bits === 8 ? (signed ? dv.getInt8(o) : dv.getUint8(o)) : bits === 16 ? (signed ? dv.getInt16(o, true) : dv.getUint16(o, true)) : signed ? dv.getInt32(o, true) : dv.getUint32(o, true);
+    p = walk(p, true, false, true);
+    if (UNSUPPORTED[syntax]) throw new DicomError(`This file is compressed with ${UNSUPPORTED[syntax]}, which Hyperion can't decode yet (it reads uncompressed, deflated, RLE and JPEG baseline, extended and lossless DICOM).`);
+    if (syntax === DEFLATED) {
+      let rest: Uint8Array;
+      try { rest = inflateSync(bytes.subarray(p)); } catch { throw new DicomError('The deflated part of this file couldn’t be opened.'); }
+      const joined = new Uint8Array(p + rest.length);
+      joined.set(bytes.subarray(0, p)); joined.set(rest, p);
+      bytes = joined; dv = new DataView(bytes.buffer);
+    }
+    if (syntax === BIG) le = false;
+    else if (![IMPLICIT, EXPLICIT, DEFLATED].includes(syntax) && !CODEC[syntax]) throw new DicomError(`This file's transfer syntax (${syntax}) isn't one Hyperion reads.`);
+    walk(p, syntax !== IMPLICIT, false);
+  } else {
+    // No meta header: guess implicit or explicit from the first element (a VR is two capital letters).
+    const vr = String.fromCharCode(bytes[4], bytes[5]);
+    walk(0, /^[A-Z]{2}$/.test(vr) && (LONG_VR.has(vr) || /^(AE|AS|AT|CS|DA|DS|DT|FL|FD|IS|LO|LT|PN|SH|SL|SS|ST|TM|UI|UL|US)$/.test(vr)), false);
   }
-  return { info, rows, cols, frames, pixels: px, signed, bits };
+  const rows = Number(info.Rows), cols = Number(info.Columns), bits = Number(info.BitsAllocated ?? 16), frames = Number(info.NumberOfFrames ?? 1) || 1, spp = Number(info.SamplesPerPixel ?? 1);
+  if ((!pixel && !fragments) || !(rows > 0 && cols > 0)) throw new DicomError('No image in this file (no pixel data, or no rows and columns).');
+  if (spp !== 1 && spp !== 3) throw new DicomError(`${spp} samples a pixel aren't supported (1 for greyscale, 3 for colour).`);
+  if (bits !== 1 && bits !== 8 && bits !== 16 && bits !== 32) throw new DicomError(`${bits}-bit pixels aren't supported (8, 16 or 32).`);
+  const photo = String(info.PhotometricInterpretation ?? 'MONOCHROME2').toUpperCase(), signed = Number(info.PixelRepresentation ?? 0) === 1, stored = Number(info.BitsStored ?? bits);
+  if (photo === 'PALETTE COLOR') throw new DicomError('Palette-colour DICOM isn’t supported yet.');
+  const n = rows * cols, px = new Float64Array(n * spp * frames);
+  /** Stored bits → a signed value when the pixel representation says so (two's complement in BitsStored bits). */
+  const sign = (v: number) => (signed && stored < 32 && v >= 2 ** (stored - 1) ? v - 2 ** stored : v);
+  if (fragments) {
+    const frags = fragments as Uint8Array[], kind = CODEC[syntax];
+    if (!kind) throw new DicomError('This file’s pixels are compressed but its transfer syntax says they aren’t.');
+    const perFrame = framesOf(frags, offsets, frames, kind);
+    perFrame.forEach((buf, f) => {
+      let planes: Float64Array[];
+      try {
+        if (kind === 'rle') planes = decodeRle(buf, rows, cols, bits, spp);
+        else {
+          const j = decodeJpeg(buf, { colourTransform: syntax === '1.2.840.10008.1.2.4.57' || syntax === '1.2.840.10008.1.2.4.70' ? false : undefined, ybr: /^YBR/.test(photo) });
+          if (j.width !== cols || j.height !== rows || j.planes.length !== spp) throw new DicomError(`A JPEG frame is ${j.width} × ${j.height} with ${j.planes.length} components; the header says ${cols} × ${rows} with ${spp}.`);
+          planes = j.planes;
+        }
+      } catch (e) { if (e instanceof CodecError) throw new DicomError(e.message); throw e; }
+      planes.forEach((pl, s) => { const at = (f * spp + s) * n; for (let i = 0; i < n; i++) px[at + i] = sign(pl[i]); });
+    });
+    if (kind === 'rle' && spp === 3 && /^YBR_FULL$/.test(photo)) ybrToRgb(px, n, frames, bits);
+  } else {
+    const [po, plen] = pixel as unknown as [number, number];
+    if (bits === 1) {
+      if (plen * 8 < n * frames) throw new DicomError('The pixel data is shorter than rows × columns × frames.');
+      for (let i = 0; i < n * frames; i++) px[i] = (bytes[po + (i >> 3)] >> (i & 7)) & 1;
+    } else {
+      if (photo === 'YBR_FULL_422' && spp === 3) {
+        // Two pixels share their colour: Y1 Y2 Cb Cr (PS3.3 C.7.6.3.1.2), 8 bits.
+        if (bits !== 8 || cols % 2 || plen < 2 * n * frames) throw new DicomError('This YBR_FULL_422 image isn’t 8-bit with an even width.');
+        for (let f = 0; f < frames; f++) for (let i = 0; i < n; i += 2) {
+          const o = po + f * 2 * n + i * 2, at = f * 3 * n;
+          px[at + i] = bytes[o]; px[at + i + 1] = bytes[o + 1];
+          px[at + n + i] = px[at + n + i + 1] = bytes[o + 2]; px[at + 2 * n + i] = px[at + 2 * n + i + 1] = bytes[o + 3];
+        }
+        ybrToRgb(px, n, frames, 8);
+        return { info, rows, cols, frames, samples: 3, pixels: px, signed: false, bits: 8 };
+      }
+      if (plen < (n * spp * frames * bits) / 8) throw new DicomError('The pixel data is shorter than rows × columns × frames.');
+      const planar = Number(info.PlanarConfiguration ?? 0) === 1, B = bits / 8;
+      for (let f = 0; f < frames; f++) for (let s = 0; s < spp; s++) for (let i = 0; i < n; i++) {
+        const k = f * n * spp + (planar ? s * n + i : i * spp + s), o = po + k * B;
+        // 8-bit values in a big-endian OW element are swapped in pairs.
+        const v = B === 1 ? dv.getUint8(!le && pixelVr === 'OW' ? (o - po) % 2 ? o - 1 : o + 1 : o) : B === 2 ? dv.getUint16(o, le) : dv.getUint32(o, le);
+        px[(f * spp + s) * n + i] = sign(v);
+      }
+      if (spp === 3 && photo === 'YBR_FULL') ybrToRgb(px, n, frames, bits);
+    }
+  }
+  return { info, rows, cols, frames, samples: spp, pixels: px, signed, bits: bits === 1 ? 8 : bits };
+}
+
+/** The fragments of encapsulated pixel data grouped into frames: by the offset table when there is one, one fragment a
+ * frame when the counts match, everything for one frame, or (JPEG) a new frame at each start-of-image marker. */
+function framesOf(frags: Uint8Array[], offsets: number[], frames: number, kind: 'rle' | 'jpeg'): Uint8Array[] {
+  const join = (list: Uint8Array[]) => { if (list.length === 1) return list[0]; const out = new Uint8Array(list.reduce((a, b) => a + b.length, 0)); let o = 0; for (const x of list) { out.set(x, o); o += x.length; } return out; };
+  if (frags.length === frames) return frags;
+  if (frames === 1) return [join(frags)];
+  if (offsets.length === frames) {
+    const starts: number[] = []; let at = 0;
+    frags.forEach((fr) => { starts.push(at); at += fr.length + 8; });
+    return offsets.map((off, k) => join(frags.filter((_, i) => starts[i] >= off && (k + 1 >= offsets.length || starts[i] < offsets[k + 1]))));
+  }
+  if (kind === 'jpeg') {
+    const groups: Uint8Array[][] = [];
+    for (const fr of frags) { if (fr[0] === 0xff && fr[1] === 0xd8) groups.push([fr]); else if (groups.length) groups[groups.length - 1].push(fr); }
+    if (groups.length === frames) return groups.map(join);
+  }
+  throw new DicomError(`The compressed pixel data has ${frags.length} fragments for ${frames} frames, and no way to tell them apart.`);
+}
+/** Full-range YCbCr → RGB, in place (DICOM's YBR_FULL). */
+function ybrToRgb(px: Float64Array, n: number, frames: number, bits: number) {
+  const top = 2 ** bits - 1, half = (top + 1) / 2;
+  for (let f = 0; f < frames; f++) {
+    const o = f * 3 * n;
+    for (let i = 0; i < n; i++) {
+      const y = px[o + i], b = px[o + n + i] - half, r = px[o + 2 * n + i] - half;
+      px[o + i] = Math.max(0, Math.min(top, Math.round(y + 1.402 * r)));
+      px[o + n + i] = Math.max(0, Math.min(top, Math.round(y - 0.344136 * b - 0.714136 * r)));
+      px[o + 2 * n + i] = Math.max(0, Math.min(top, Math.round(y + 1.772 * b)));
+    }
+  }
 }
 
 /** Writes a greyscale image (row-major values, already stored values) as an explicit-VR little-endian DICOM file. */

@@ -97,7 +97,7 @@ wdrc | y = wdrc(x, fs, threshold, ratio, 'Attack', 0.005, 'Release', 0.05, 'Gain
 hearingAid | y = hearingAid(x, fs, 'Edges', [500 1000 2000 4000], 'Gains', [5 10 20 25 30], 'Threshold', -30, 'Ratio', 2) | A multi-band hearing aid: each band its own gain, all compressed. Drawn without outputs.
 # Medical imaging (for learning, not diagnosis)
 dicominfo | info = dicominfo('slice1.dcm') | A DICOM file's header: modality, size, pixel spacing, slice position, rescale and window values (patient identifiers are left out).
-dicomread | I = dicomread('slice1.dcm') | A DICOM file's pixels as stored (int16 or uint16; frames as pages). Uncompressed little-endian files only.
+dicomread | I = dicomread('slice1.dcm') | A DICOM file's pixels as stored (int16 or uint16; frames as pages; colour as rows × columns × 3). Reads uncompressed, deflated, big-endian, RLE and JPEG (baseline, 12-bit extended, lossless) files; not JPEG-LS or JPEG 2000.
 dicomwrite | dicomwrite(I, 'slice1.dcm', 'Modality', 'CT', 'RescaleIntercept', -1024, 'PixelSpacing', [0.5 0.5], 'ImagePositionPatient', [0 0 z]) | Saves a greyscale image as a DICOM file (16-bit stored values) in Files.
 dicomreadVolume | [V, spacing] = dicomreadVolume('slice') | Every slice*.dcm file (or a cell of names) as one volume in Hounsfield units (rescale applied), sorted by position, with [dy dx dz] in mm.
 ctWindow | J = ctWindow(I, 'lung'), ctWindow(I, centre, width) | CT values seen through a window (0 to 1): 'brain', 'subdural', 'stroke', 'soft', 'abdomen', 'liver', 'lung', 'mediastinum', 'bone'. Drawn without outputs.
