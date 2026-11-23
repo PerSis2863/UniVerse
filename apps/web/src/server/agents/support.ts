@@ -5,12 +5,11 @@ import { unitDpp } from '@/lib/dpp';
 import { formatCode } from '@/lib/trace';
 import { spendAi } from '../ai-budget';
 import { featureOff } from '../moderation';
-import { geminiJson } from '../gemini';
 import { short, unitOf } from '../trace';
 import { BadRequestException } from '../http';
 import type { Body } from '../body';
 import { guard, guardReply } from '@/lib/ghidra-guard';
-import { PLAYBOOKS, prompt } from './playbooks';
+import { agentJson } from './own-model';
 
 // Ghidra's Customer Support (M434, one of the owner's app agents, 22 Nov): a buyer asks about the product in their hand
 // (its Trace passport), and Ghidra answers ONLY from that product's facts: the brand's description and story, the
@@ -39,9 +38,6 @@ export async function productFacts(code: string): Promise<{ facts: string; brand
   return { facts: lines.join('\n'), brand: { name: brand?.name ?? 'the brand', slug: brand?.slug ?? null }, code: formatCode(unit.id) };
 }
 
-const SYSTEM = prompt(PLAYBOOKS.support, 'Reply with the answer, and whether the facts fully answered it (answered: true or false).');
-const SCHEMA = { type: 'OBJECT', properties: { answer: { type: 'STRING' }, answered: { type: 'BOOLEAN' } }, required: ['answer', 'answered'] };
-
 export async function support(u: SessionUser, code: string, question: string): Promise<AskPlan> {
   const g = guard(question);
   if (g) return { action: 'answer', say: guardReply(g) };
@@ -54,7 +50,7 @@ export async function support(u: SessionUser, code: string, question: string): P
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) return { action: 'show', say: `I can’t answer questions right now. The passport has the product’s facts, and ${f.brand.name} can help.`, items: links };
   const spend = await spendAi(u);
   if (!spend.ok) return { action: 'show', say: spend.message ?? 'You’ve used today’s AI allowance.', items: links };
-  const out = await geminiJson<{ answer?: unknown; answered?: unknown }>(SYSTEM, `Product facts:\n${f.facts}\n\nThe buyer asks: ${question}`, SCHEMA, 600, true).catch(() => null);
+  const out = await agentJson<{ answer?: unknown; answered?: unknown }>('support', `Product facts:\n${f.facts}\n\nThe buyer asks: ${question}`, 600).catch(() => null);
   const answer = typeof out?.answer === 'string' ? out.answer.trim().slice(0, 1500) : '';
   if (!answer) return { action: 'show', say: `I couldn’t answer that just now. ${f.brand.name} can help.`, items: links };
   return { action: 'show', say: out?.answered === false ? `${answer}\n\nFor this, please ask ${f.brand.name}.` : answer, items: links };

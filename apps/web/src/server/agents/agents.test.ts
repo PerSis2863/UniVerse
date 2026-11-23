@@ -41,3 +41,16 @@ describe('Ghidra’s app agents (M433)', () => {
     expect(posts[0].text.length).toBeLessThanOrEqual(281);
   });
 });
+
+describe('the agents’ own model (M437)', () => {
+  it('turns Gemini’s schema into JSON Schema and reads JSON out of a reply', async () => {
+    const { jsonSchema, jsonRule } = await import('./playbooks');
+    expect(jsonSchema({ type: 'OBJECT', properties: { tips: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['tips'] }))
+      .toEqual({ type: 'object', properties: { tips: { type: 'array', items: { type: 'string' } } }, required: ['tips'] });
+    expect(jsonRule('travel')).toContain('"tips"');
+    const { jsonOf } = await import('./own-model');
+    expect(jsonOf({ response: 'Sure! {"tips": ["a"]} ' })).toEqual({ tips: ['a'] });
+    expect(jsonOf({ response: { answer: 'x', answered: true } })).toEqual({ answer: 'x', answered: true });
+    expect(jsonOf({ response: 'no json here' })).toBeNull();
+  });
+});

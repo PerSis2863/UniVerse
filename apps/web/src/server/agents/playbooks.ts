@@ -83,3 +83,38 @@ export function prompt(p: Playbook, format: string) {
     UNTRUSTED_RULE,
   ].join('\n');
 }
+
+/** What each agent is asked for and the shape of its answer (Gemini's schema style), shared by the agents, by their
+ *  own model on Cloudflare (own-model.ts) and by the training kit (scripts/ai/agents-ai.py), so all three use the
+ *  same words. */
+const STR = { type: 'STRING' }, LIST = { type: 'ARRAY', items: STR };
+export const AGENTS = {
+  research: {
+    system: prompt(PLAYBOOKS.research, 'Write a short summary (3–5 sentences) and up to 5 key points. Plain text, no ** or # marks.'),
+    schema: { type: 'OBJECT', properties: { summary: STR, points: LIST }, required: ['summary'] },
+  },
+  social: {
+    system: prompt(PLAYBOOKS.social, 'Write one post per platform asked (or as many as asked), each with a suggested day like "Monday".'),
+    schema: { type: 'OBJECT', properties: { posts: { type: 'ARRAY', items: { type: 'OBJECT', properties: { platform: STR, text: STR, when: STR }, required: ['platform', 'text'] } } }, required: ['posts'] },
+  },
+  support: {
+    system: prompt(PLAYBOOKS.support, 'Reply with the answer, and whether the facts fully answered it (answered: true or false).'),
+    schema: { type: 'OBJECT', properties: { answer: STR, answered: { type: 'BOOLEAN' } }, required: ['answer', 'answered'] },
+  },
+  travel: {
+    system: prompt(PLAYBOOKS.travel, 'Give at most 5 tips, each one line starting with "- ".'),
+    schema: { type: 'OBJECT', properties: { tips: LIST }, required: ['tips'] },
+  },
+};
+export type AgentKind = keyof typeof AGENTS;
+
+/** Gemini's schema (type: 'OBJECT') as standard JSON Schema (type: 'object'), for models that take JSON Schema. */
+export function jsonSchema(s: unknown): unknown {
+  if (Array.isArray(s)) return s.map(jsonSchema);
+  if (!s || typeof s !== 'object') return s;
+  return Object.fromEntries(Object.entries(s).map(([k, v]) => [k, k === 'type' && typeof v === 'string' ? v.toLowerCase() : k === 'required' ? v : jsonSchema(v)]));
+}
+
+/** The line that asks a model without a schema option for JSON only (training and the own model use the same). */
+export const jsonRule = (kind: AgentKind) => `Reply with only one JSON object, no other text, matching this JSON Schema: ${JSON.stringify(jsonSchema(AGENTS[kind].schema))}`;
+

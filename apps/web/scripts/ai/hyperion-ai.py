@@ -34,11 +34,11 @@ def code_of(answer):  # as codeOf in src/lib/hyperion-ai.ts
     blocks = re.findall(r'```(?:matlab|octave|m)?[^\S\n]*\n([\s\S]*?)```', answer, re.I)
     return blocks[-1].strip() if blocks else None
 
-def teacher(max_len=4096):
+def teacher(max_len=4096, model=TEACHER):
     from vllm import LLM
     import torch
     mem = torch.cuda.get_device_properties(0).total_memory / 2**30
-    return LLM(TEACHER, max_model_len=max_len, gpu_memory_utilization=0.92 if mem < 40 else 0.85, enforce_eager=mem < 40)
+    return LLM(model, max_model_len=max_len, gpu_memory_utilization=0.92 if mem < 40 else 0.85, enforce_eager=mem < 40)
 
 def chat(llm, prompts, temp=0.7, max_tokens=900, n=1):
     from vllm import SamplingParams
@@ -103,15 +103,15 @@ def cmd_train(a):
     from unsloth import FastLanguageModel  # first: it patches the libraries below
     from datasets import Dataset
     from trl import SFTConfig, SFTTrainer
-    d = Path(a.dir); system = (d / 'system.txt').read_text(encoding='utf-8')
+    d = Path(a.dir); system = (d / 'system.txt').read_text(encoding='utf-8') if (d / 'system.txt').exists() else ''
     rows = [json.loads(l) for l in open(d / 'lessons.jsonl', encoding='utf-8')]
-    rows = [r for r in rows if not r['held']]
+    rows = [r for r in rows if not r['held']]  # a row's own instructions (the agents kit) win over system.txt
     model, tok = FastLanguageModel.from_pretrained(STUDENT, max_seq_length=a.seq, load_in_4bit=True)
     # rank 8 on every layer: about 135 MB, inside Cloudflare's limits (rank 32 or less, under 300 MB)
     model = FastLanguageModel.get_peft_model(model, r=a.rank, lora_alpha=2 * a.rank, lora_dropout=0,
                                              target_modules=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj'],
                                              use_gradient_checkpointing='unsloth', random_state=7)
-    text = [tok.apply_chat_template([{'role': 'system', 'content': system}, {'role': 'user', 'content': r['q']}, {'role': 'assistant', 'content': r['a']}], tokenize=False) for r in rows]
+    text = [tok.apply_chat_template([{'role': 'system', 'content': r.get('system') or system}, {'role': 'user', 'content': r['q']}, {'role': 'assistant', 'content': r['a']}], tokenize=False) for r in rows]
     trainer = SFTTrainer(model=model, tokenizer=tok, train_dataset=Dataset.from_dict({'text': text}),
                          args=SFTConfig(dataset_text_field='text', max_seq_length=a.seq, per_device_train_batch_size=1, gradient_accumulation_steps=8,
                                         num_train_epochs=a.epochs, learning_rate=1e-4, warmup_ratio=0.03, lr_scheduler_type='cosine', logging_steps=10,
@@ -180,7 +180,7 @@ def cmd_upload(a):
     def one(name, model_type):
         cfg = json.loads((src / 'adapter_config.json').read_text()); cfg['model_type'] = model_type
         tmp = src / f'adapter_config.{model_type}.json'; tmp.write_text(json.dumps(cfg, indent=2))
-        r = requests.post(f'{CF}/accounts/{account}/ai/finetunes', headers=h, json={'model': MODEL, 'name': name, 'description': "UniVerse's Hyperion add-on"}, timeout=60).json()
+        r = requests.post(f'{CF}/accounts/{account}/ai/finetunes', headers=h, json={'model': MODEL, 'name': name, 'description': f"UniVerse's {getattr(a, 'prefix', None) or 'hyperion'} add-on"}, timeout=60).json()
         if not r.get('success'): return f'could not create {name}: {r.get("errors")}'
         fid = r['result']['id']
         for remote, local in (('adapter_model.safetensors', src / 'adapter_model.safetensors'), ('adapter_config.json', tmp)):
@@ -189,17 +189,18 @@ def cmd_upload(a):
             if not u.get('success'): return f'could not upload {remote} to {name}: {u.get("errors")}'
         time.sleep(20)
         t = requests.post(f'{CF}/accounts/{account}/ai/run/{MODEL}', headers=h, timeout=120,
-                          json={'messages': [{'role': 'user', 'content': 'Write Hyperion code that prints the sum of 1 to 10.'}], 'lora': name, 'max_tokens': 200}).json()
+                          json={'messages': [{'role': 'user', 'content': getattr(a, 'question', None) or 'Write Hyperion code that prints the sum of 1 to 10.'}], 'lora': name, 'max_tokens': 200}).json()
         if not t.get('success'): return f'{name} was uploaded, but a test question failed: {t.get("errors")}'
         answer = t['result'].get('response') if isinstance(t['result'], dict) else t['result']
         print(f'Test question answered by "{name}":\n{str(answer)[:400]}', flush=True)
         return None
     stamp = time.strftime('%Y%m%d-%H%M')
-    for name, model_type in ((f'hyperion-{stamp}', a.model_type), (f'hyperion-{stamp}-llama', 'llama')):
+    prefix, var = getattr(a, 'prefix', None) or 'hyperion', getattr(a, 'var', None) or 'HYPERION_LORA'
+    for name, model_type in ((f'{prefix}-{stamp}', a.model_type), (f'{prefix}-{stamp}-llama', 'llama')):
         err = one(name, model_type)
         if not err:
-            (src / 'cloudflare.txt').write_text(f'HYPERION_LORA={name}\n')
-            print(f'UPLOADED. In Cloudflare, set the variable HYPERION_LORA to: {name}', flush=True); return
+            (src / 'cloudflare.txt').write_text(f'{var}={name}\n')
+            print(f'UPLOADED. In Cloudflare, set the variable {var} to: {name}', flush=True); return
         print(f'Try with model_type "{model_type}": {err}', flush=True)
     raise SystemExit('The upload to Cloudflare did not work: the files are still on this machine (scripts/ai/hyperion-gpu.md step 6)')
 
@@ -209,6 +210,7 @@ if __name__ == '__main__':
     p = sub.add_parser('train'); p.add_argument('--dir', required=True); p.add_argument('--epochs', type=float, default=2); p.add_argument('--rank', type=int, default=8); p.add_argument('--seq', type=int, default=1536)
     p = sub.add_parser('score'); p.add_argument('--dir', required=True); p.add_argument('--n', type=int, default=150)
     p = sub.add_parser('upload'); p.add_argument('--from', dest='src', required=True); p.add_argument('--model-type', default='qwen2')
+    p.add_argument('--prefix', default='hyperion'); p.add_argument('--var', default='HYPERION_LORA'); p.add_argument('--question')
     p = sub.add_parser('export'); p.add_argument('--dir', required=True); p.add_argument('--to', required=True); p.add_argument('--model-type', default='qwen2')
     a = ap.parse_args()
     {'data': cmd_data, 'train': cmd_train, 'score': cmd_score, 'export': cmd_export, 'upload': cmd_upload}[a.cmd](a)
