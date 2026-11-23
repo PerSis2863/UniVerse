@@ -12466,3 +12466,25 @@ as Sim3DView, z up, planar arms turned so gravity points down): sliders per join
 glides there in 0.5 s, at once with Reduce Motion), tool pose, manipulability and the gravity torques as `<Fill>` bars.
 Browser check `scripts/checks/hyperion-machines-ui.mjs` (axe at 1280, light and dark). Example robot_arm.m. Not built:
 trees with branches (only serial chains), collision checking, joint friction and motor inertia, modified DH, URDF files.
+
+## M483 (23 Nov): Hyperion toolbox, robot motion
+
+`src/lib/lab/robot-motion.ts` (pure): `polyTraj` (cubic or quintic pieces per segment from positions, speeds and for
+quintic accelerations at each waypoint; 0 by default as MATLAB's), `trapTraj` (each segment speeds up, cruises, slows
+and stops; with a peak speed and an acceleration the slowest axis sets the segment's time, a triangle when it can't
+reach the peak; without them 1 s with thirds), maps (`Grid`: rows from the top, metres from the bottom-left corner,
+`res` cells a metre; `sampleMap` 'warehouse', 'rooms' (doors 7 cells wide and furniture different in each room, so
+M484's localisation can tell them apart), 'maze' (seeded recursive backtracker, corridors 1 m)), `inflate` (a disc),
+`lineFree` (quarter-cell steps), `astar` (binary heap, octile heuristic, no cutting blocked corners; returns the cells
+looked at), `rrt` (seeded; RRT stops at the first way, RRT* chooses the cheapest parent within 2 steps and rewires,
+pushing the saving down to descendants), `shortcut`, `driveStep` (exact arcs), `purePursuit` (the circle–segment
+intersection ahead of the closest point; turns on the spot when the target is behind), `followPath`. Language in
+`robot-motion-lab.ts`: `cubicpolytraj`, `quinticpolytraj`, `trapveltraj` (MATLAB's names and shapes), and our own
+names where MATLAB uses objects: a map is a logical matrix with its resolution (binaryOccupancyMap), `robotMap`,
+`inflateMap`, `astarGrid` (plannerAStarGrid), `rrtPlan` (plannerRRT / plannerRRTStar), `shortenPath`, `diffdriveStep`
+(differentialDriveKinematics), `purePursuit` (controllerPurePursuit), `followPath`; `show(map, res)` draws a map (the
+arm's `show` is kept for structs). Window: Machines → **Path planner** (`PlannerBench.tsx`, planning in
+`machines.worker.ts`): draw walls or erase with the mouse (a 2 × 2 brush), place the start and goal, A* / RRT / RRT*,
+the robot's radius (the light band), the cells looked at or the tree, the cut path, Drive it (pure pursuit, 4 × real
+time). Tests in `robot-motion.test.ts`. Example robot_motion.m. Not built: Hybrid A* and car-like (Reeds–Shepp) paths,
+3D maps, dynamic obstacles, model-predictive control, trajectory time-scaling under torque limits.

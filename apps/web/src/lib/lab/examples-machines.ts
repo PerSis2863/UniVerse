@@ -23,4 +23,23 @@ f = @(t, x) [x(3:4); forwardDynamics(two, x(1:2)', x(3:4)', [0 0])'];
 [t, x] = ode45(f, [0 3], [0; 0; 0; 0]);
 figure; plot(t, x(:, 1), t, x(:, 2)); legend('shoulder', 'elbow'); xlabel('t (s)'); ylabel('angle (rad)'); grid on
 ` },
+  { name: 'robot_motion.m', code: `% Robot motion: smooth joint moves, planning through a warehouse, and driving the path
+% A joint moving 0 -> 90 deg -> 45 deg: cubic and quintic pieces, and a trapezoid with limits
+t = 0:0.01:4;
+[q3, qd3] = cubicpolytraj([0 90 45], [0 2 4], t);
+[q5, qd5] = quinticpolytraj([0 90 45], [0 2 4], t);
+subplot(1, 2, 1); plot(t, qd3, t, qd5); legend('cubic', 'quintic'); title('Speed (deg/s)'); grid on
+[qt, qdt, ~, tt] = trapveltraj([0 90 45], 400, 'PeakVelocity', 80, 'Acceleration', 120);
+subplot(1, 2, 2); plot(tt, qdt); title('Trapezoid: speed (deg/s)'); grid on
+% Plan across a warehouse for a robot 0.4 m in radius
+[map, res] = robotMap('warehouse');
+grown = inflateMap(map, 0.4, res);
+figure; astarGrid(grown, [2 2], [23 23], 'Resolution', res)
+figure; rrtPlan(grown, [2 2], [23 23], 'Resolution', res, 'Star', true)
+% Cut the corners and drive it by pure pursuit
+p = astarGrid(grown, [2 2], [23 23], 'Resolution', res);
+p = shortenPath(p, grown, res);
+lookahead = 1;   % slider 0.3 3
+figure; followPath(p, 'LookAhead', lookahead, 'Speed', 0.8, 'Map', map, 'Resolution', res)
+` },
 ];

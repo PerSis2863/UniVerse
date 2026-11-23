@@ -1912,6 +1912,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M449 | The installed Hyperion app keeps the whole site inside it (23 Nov) | **Done** | Its manifest's scope was `/hyperion`, so the console, Messages, Collaborate and Settings showed the browser's out-of-app bar (address and ✕). Scope `/`, start and id still `/hyperion`. |
 | M450 | Hyperion as a real computer app, offered (23 Nov) | **Done** | The installers (hyperion-latest) were published but hidden behind `NEXT_PUBLIC_HYPERION_DOWNLOADS`; the Install button now offers Windows, Mac and Linux first (the visitor's own system first), also in the browser-installed app; the Mac build is universal. |
 | M482 | Robot arms | **Done** | DH arms (four ready: six-axis, SCARA, 3-link, 2-link), forward and inverse kinematics, the Jacobian, dynamics by recursive Newton–Euler (mass matrix, gravity, Coriolis, forward dynamics), rotations; Simulate → Machines → Robot arm: a 3D arm with a slider a joint and Reach a point. Tested against the textbook two-link arm. |
+| M483 | Robot motion | **Done** | Cubic, quintic and trapezoidal trajectories; maps (warehouse, rooms, maze) with A*, RRT and RRT*, corners cut; a differential-drive robot following by pure pursuit; Simulate → Machines → Path planner (draw walls, place the ends, Drive it). |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

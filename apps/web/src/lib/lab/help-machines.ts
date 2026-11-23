@@ -29,4 +29,17 @@ rotm2axang | v = rotm2axang(R) | A rotation as [x y z angle].
 rotx | R = rotx(deg) | A turn about x, in degrees.
 roty | R = roty(deg) | A turn about y, in degrees.
 rotz | R = rotz(deg) | A turn about z, in degrees.
+
+# Robot motion
+cubicpolytraj | [q, qd, qdd] = cubicpolytraj(wpts, tpts, t, 'VelocityBoundaryCondition', V) | A cubic piece between each pair of waypoints (one column each, at times tpts), sampled at t: still at every waypoint unless speeds are given.
+quinticpolytraj | [q, qd, qdd] = quinticpolytraj(wpts, tpts, t) | Quintic pieces: speeds and accelerations both chosen at each waypoint (0 unless given), for smoother starts and stops.
+trapveltraj | [q, qd, qdd, t] = trapveltraj(wpts, n, 'PeakVelocity', v, 'Acceleration', a) | Trapezoidal speed through the waypoints: speed up, cruise, slow down, stopping at each; n samples. Without limits each segment takes 1 s.
+robotMap | [map, res] = robotMap('warehouse') | A map to plan on: 'warehouse', 'rooms' or 'maze' (1 = blocked, res cells a metre).
+inflateMap | m = inflateMap(map, radius, res) | Grows every wall by radius metres, so a robot that size can be planned as a point.
+astarGrid | [path, info] = astarGrid(map, start, goal, 'Resolution', res, 'Connectivity', 8) | The shortest way over the grid by A* (positions in metres [x y], origin bottom-left). Drawn without outputs.
+rrtPlan | [path, info] = rrtPlan(map, start, goal, 'Resolution', res, 'Star', true, 'MaxIterations', 3000) | A way by a rapidly-exploring random tree; 'Star' keeps rewiring it shorter (RRT*). 'MaxConnectionDistance', 'GoalBias', 'Seed'. Drawn with the tree without outputs.
+shortenPath | p = shortenPath(path, map, res) | Cuts the corners a straight line can cut without touching a wall.
+diffdriveStep | pose = diffdriveStep(pose, v, w, dt) | A differential-drive robot after dt seconds at speed v and turn rate w (pose [x y heading]).
+purePursuit | [v, w, target] = purePursuit(pose, path, lookahead, speed) | The turn that curves the robot onto the point of the path lookahead metres ahead.
+followPath | [poses, t] = followPath(path, 'LookAhead', 0.8, 'Speed', 0.6, 'MaxTurnRate', 2, 'Map', map, 'Resolution', res) | Drives a differential-drive robot along the path by pure pursuit; drawn (on the map if given) without outputs.
 `;
