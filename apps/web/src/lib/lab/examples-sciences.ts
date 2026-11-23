@@ -135,4 +135,30 @@ figure; chargedParticle(-1.602e-19, 9.109e-31, [0 0 0], [0 0 1e-3], [0 0 0], [1e
 figure; subplot(1, 2, 1); slitPattern(633e-9, 0.25e-3, 0.05e-3, 2, 1.5)
 subplot(1, 2, 2); efield([-0.5 0 1e-9; 0.5 0 -1e-9], linspace(-2, 2, 61), linspace(-1.5, 1.5, 45))
 ` },
+  { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
+rng(4)
+stations = [0 0; 90 15; 35 100; -60 70];       % km east and north
+quake = [30 40];                               % where it really was (the script pretends not to know)
+tp = zeros(1, 4);
+for k = 1:4
+  d = norm(stations(k, :) - quake);
+  [x, t] = seismogram(d, 100, 60, 'Origin', 2);
+  tp(k) = pickArrival(x, 100);                 % STA/LTA, then the AIC picker
+end
+subplot(1, 2, 1); pickArrival(x, 100)
+subplot(1, 2, 2); q = locateQuake(stations, tp);
+locateQuake(stations, tp)
+fprintf('Found at (%.1f, %.1f) km, %.1f km from the truth\\n', q.X, q.Y, norm([q.X q.Y] - quake))
+fprintf('S arrived 8 s after P: %.0f km away. 2 mm on a Wood-Anderson at 120 km: magnitude %.1f\\n', spDistance(8), localMagnitude(2, 120))
+% On the globe: Delhi to Tokyo
+d = distance(28.61, 77.21, 35.68, 139.69, wgs84Ellipsoid);
+fprintf('Delhi to Tokyo: %.0f km, setting off at %.0f degrees\\n', d/1000, azimuth(28.61, 77.21, 35.68, 139.69))
+[E, N, zone] = ll2utm(28.61, 77.21);
+fprintf('Delhi in UTM zone %dN: %.0f E, %.0f N\\n', zone, E, N)
+% A landscape: contours and the sun on its slopes
+Z = fractalTerrain(7, 'Roughness', 0.85, 'Relief', 1500);
+figure; subplot(1, 2, 1); contour(Z, 16); axis equal; title('Contours')
+sunFrom = 315;   % slider 0 360
+subplot(1, 2, 2); hillshade(Z, 30, 'Azimuth', sunFrom)
+` },
 ];

@@ -67,4 +67,23 @@ stringWave | [x, y] = stringWave(L, c, pluck, h, t, 'Modes', 200, 'Damping', g) 
 slitPattern | [I, x] = slitPattern(lambda, d, width, N, D, x) | The light on a screen D away from N slits of that width, d apart (Fraunhofer): fringes inside the single-slit envelope. Drawn without outputs.
 waveField | Z = waveField(sources, lambda, f, x, y, t) | Ripples from point sources (rows [x y amplitude phase]) at time t: where they add and cancel. Drawn without outputs.
 efield | [Ex, Ey, V] = efield(charges, x, y) | The electric field and potential of point charges (rows [x y q], coulombs, metres) on a grid. Drawn without outputs: equipotentials and the field's direction.
+# Geoscience
+seismogram | [x, t, tp, ts] = seismogram(dist, fs, T, 'Vp', 6, 'Vs', 3.5, 'Noise', 0.02) | A made-up seismogram dist km from a quake: P and S waves (Ricker wavelets and their codas) in noise, with their true arrival times. Drawn without outputs.
+staLta | r = staLta(x, fs, sta, lta) | The short-term over long-term average of a trace's energy (0.5 s and 10 s unless given): it jumps when a wave arrives.
+pickArrival | t = pickArrival(x, fs, 'STA', 0.5, 'LTA', 10, 'On', 4) | The first arrival's time (s): STA/LTA finds it, the AIC picker places it. Drawn without outputs.
+locateQuake | q = locateQuake(stations, tp, 'Vp', 6, 'Depth', true) | The epicentre (X, Y km), OriginTime and RMS misfit from P arrival times at stations [x y] km (Geiger's method); 'Depth' also finds the depth. Drawn with the distance circles without outputs.
+spDistance | d = spDistance(tsp, vp, vs) | The distance (km) to a quake from its S − P time: tsp·vp·vs/(vp − vs).
+localMagnitude | ML = localMagnitude(amp, dist) | Richter's local magnitude from a Wood–Anderson amplitude (mm) at a distance (km), by Hutton and Boore.
+distance | d = distance(lat1, lon1, lat2, lon2, ellipsoid) | The great-circle angle (degrees) between points; with a radius (e.g. 6371) the length in its units; with [a e] (wgs84Ellipsoid) the length on the ellipsoid (Vincenty).
+azimuth | az = azimuth(lat1, lon1, lat2, lon2) | The bearing from the first point to the second, degrees clockwise from north.
+reckon | [lat, lon] = reckon(lat, lon, arclen, az) | Where you arrive going arclen degrees along a great circle at bearing az.
+deg2km | km = deg2km(deg, R) | Degrees of arc to kilometres on the Earth (or a sphere of radius R).
+km2deg | deg = km2deg(km, R) | Kilometres to degrees of arc.
+wgs84Ellipsoid | e = wgs84Ellipsoid | The WGS84 ellipsoid as [semimajor axis (m), eccentricity].
+mapProject | [x, y] = mapProject(lat, lon, 'mercator', 'Origin', [lat0 lon0], 'Radius', R) | Map projections: 'mercator', 'equirectangular', 'lambert' (equal-area) and 'orthographic' (the far side NaN).
+ll2utm | [E, N, zone] = ll2utm(lat, lon, zone) | Latitude and longitude to UTM eastings and northings (m) on WGS84.
+utm2ll | [lat, lon] = utm2ll(E, N, zone, 'south') | UTM back to latitude and longitude.
+fractalTerrain | Z = fractalTerrain(k, 'Roughness', 0.8, 'Relief', 1000) | A made-up landscape of (2^k + 1)² heights (the diamond-square method). Drawn as a contour map without outputs.
+slopeAspect | [slope, aspect] = slopeAspect(Z, cell) | Each cell's slope (degrees) and the way it faces (degrees from north); rows run north to south.
+hillshade | H = hillshade(Z, cell, 'Azimuth', 315, 'Altitude', 45) | How brightly the sun lights each cell (0 to 1): relief made visible. Drawn without outputs.
 `;

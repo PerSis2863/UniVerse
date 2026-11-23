@@ -6,3 +6,4 @@ import './bio-lab';
 import './chem-lab';
 import './neuro-lab';
 import './physics-lab';
+import './geo-lab';

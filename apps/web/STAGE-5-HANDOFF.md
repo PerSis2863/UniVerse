@@ -12567,3 +12567,27 @@ to 1e-6; the Earth's year round the Sun with energy to 1e-6; the cyclotron radiu
 string's shape, its mirror at half a period and return at a whole one; two-slit maxima and minima; a point charge's
 V and E and a dipole's 2kp/r³. Not built: rigid bodies and collisions, 3D field lines (streamlines), magnetism of
 currents (Biot–Savart), optics with lenses, relativity, quantum wells; real-time animation inside a running script.
+
+## M498 (23 Nov): Hyperion toolbox, geoscience (sciences and industries, 7 of 14)
+
+`geo.ts` (pure; randomness passed in) and `geo-lab.ts`. Seismic: `seismogram` (P and S as Ricker wavelets with
+decaying codas, amplitude falling with distance, noise), `staLta` (trailing windows on cumulative energy), `aicPick`
+(Maeda's AIC by running sums, O(n)), `pick` (STA/LTA's first trigger, then AIC over the 2 s before and 0.5 s after),
+`locate` (Geiger's method by `levenbergMarquardt` from optim.ts, epicentre and origin time, depth bounded 0–700 km when
+asked), `spDistance`, `localMagnitude` (Hutton–Boore anchored at 1 mm, 100 km = ML 3). Globe: `arc` (haversine),
+`bearing`, `destination`, `vincenty` (inverse, on [a e]; NaN when it fails to converge near antipodes). Projections:
+`project` (spherical Mercator, equirectangular, Lambert azimuthal equal-area, orthographic with the far side NaN; x, y
+in sphere radii) and UTM by Krüger's series to n³ (`toUtm`, `fromUtm`; ~1 mm round trip; the northing on the central
+meridian equals k0 × the WGS84 meridian arc to 0.1 mm). Terrain: `fractalTerrain` (diamond-square), `slopeAspect`
+(rows north to south, aspect the way the slope faces, clockwise from north), `hillshade`. Language: MATLAB's Mapping
+Toolbox names `distance` (degrees; a radius gives length; [a e] gives Vincenty), `azimuth`, `reckon`, `deg2km`,
+`km2deg`, `wgs84Ellipsoid` (a vector [a e], not MATLAB's object); our own `seismogram`, `staLta`, `pickArrival`,
+`locateQuake`, `spDistance`, `localMagnitude`, `mapProject`, `ll2utm`, `utm2ll`, `fractalTerrain`, `slopeAspect`,
+`hillshade`. **Merge watch:** `distance`, `azimuth` and `reckon` are general names; the machines-and-vehicles branch
+(aerospace, M482–M491) may define geodesy functions too: a later registration silently wins, so check for duplicate
+`def(` names and help lines when the branches meet. Example `quake.m`. Tests: a P pick within 0.15 s, a quake located
+to 1e-4 km (and its depth), S−P distance, ML 3 anchor, haversine and London–Paris, bearings, destination round trip,
+Vincenty's Flinders Peak–Buninyong 54,972.271 m, Mercator, Lambert's radius-2 disc, UTM meridian arc and round trips
+(north and south), slope and aspect of planes, flat hillshade = sin(altitude). Not built: travel times through a
+layered Earth (only a uniform speed), focal mechanisms, real map data (coastlines, DEM files: GeoTIFF reading),
+gravity and magnetic surveys, well logs.
