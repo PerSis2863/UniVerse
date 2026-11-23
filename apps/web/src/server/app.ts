@@ -1,4 +1,5 @@
 import { Router } from './router';
+import './ghidra/addon';  // Ghidra's own add-on for the skills it does better (M451)
 import auth from './modules/auth';
 import users from './modules/users';
 import courses from './modules/courses';

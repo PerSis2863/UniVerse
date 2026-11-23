@@ -12437,3 +12437,43 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+## M452: the owner's handwritten style for headings (23 Nov)
+
+The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
+in a rounded handwritten face over clean body text): "please use this writing style across the whole project both of
+them were it is needed". Told once that new looks are paused until 5 Dec; asked where and which face: "Big headings
+everywhere" and **Shantell Sans** (of Itim, Mali, Shantell Sans, Comic Neue shown side by side).
+
+- `public/fonts/shantell-sans/` (latin and latin-ext, variable weight 300–800, OFL.txt), `@font-face` and
+  `--font-display` in `globals.css`, preloaded in `layout.tsx`. h1–h3 (so `CardHead` titles too) use it at natural
+  spacing; h4–h6 and everything read or pressed stay Inter (`--font-sans`). `.accent-word` (`<Accent>`) now uses the same
+  face (no serif italic); the Instrument Serif files stay for the UniVersity scene's study signs (`backdrop.ts`).
+- `.display-face` for big headings that aren't headings in the markup (the homes' greeting, `DashHead`).
+- People's own writing keeps Inter headings: `:where(.doc-prose, .ProseMirror, [contenteditable="true"])`. OpenDyslexic
+  (Settings) wins over it for headings too.
+- Checked in a browser (dev): landing, student, teacher and hub at 1280 and 390, light and dark; every visible h1–h3
+  in Shantell Sans, no sideways scroll. Non-Latin scripts (Hindi, Arabic) fall back to Inter / the system font.
+
+## M447 (results) and M451: Ghidra's add-on scored and wired in (23 Nov)
+
+- **The run** (pod `p1l0yv2lj9hn4u`, A100 80GB, 12:34–15:44 UTC, about US$6.70): the teacher's material (96 passages,
+  40 products, 80 towns, 30 names); 2,698 questions, two answers each; **2,224 lessons** kept (none for class-notes,
+  research, meetings, careers' outlines, impact-rooms: the teacher fails those rules too); 2 epochs (loss ~0.55; Unsloth
+  packed the lessons into ~400 rows of 4,096 tokens); the exam without / with: **1,844 → 1,938 of 2,290 (81% → 85%)**.
+  Higher: boards 67→70, carbon 95→98, careers 70→100, daily-brief 62→100, health 36→84, hyperion 90→95, parents 82→92,
+  passport 50→94, quiz-draft 88→95, quiz-marking 73→88, semester 97→100, study-plan 74→90, support 92→93, syllabus
+  62→96, translate 90→92, tutor 99→100, whisper 98→100. Lower: reading-level 92→58, concepts 90→72, school-insights
+  90→82, social 67→58. Still 0% either way: research (cites in the points, not the summary), class-notes (recaps 60–80
+  words), impact-rooms (names the student): their instructions need work, not training.
+- **Upload**: the script's own upload failed ("the token reaches 0 Cloudflare accounts"): the pod had no
+  `CLOUDFLARE_ACCOUNT_ID` (the M441 note says to give it; `ghidra-gpu.sh` should pass it next time). Uploaded by hand
+  from the pod started on CPUs: **`ghidra-20261123-1827`**, a test question answered through it.
+- **Traps:** the pod stopped itself at the end and its GPU was taken at once, so the results were stuck until the owner
+  started it on CPUs (RunPod console → "Start Pod using CPUs"): rent with a network volume next time. Killing the
+  safety timer's `sleep` was safe here; do it the same way (a new `sleep` armed first).
+- **M451**: `ghidra/addon.ts` registers the add-on with the brain (`setOwnModel`, a slot in `brain.ts`; loaded with the
+  API from `app.ts` and `assignments.ts`); only `ADDON_SKILLS` (`addon-skills.ts`, the 17 above) go to it, skipping
+  skills with their own path (hyperion, support keep `HYPERION_LORA` / `AGENTS_LORA`; moving them to `GHIDRA_LORA` is a
+  next step), behind the switch `ghidra-addon` (off), `GHIDRA_LORA`, and the paid-AI limit (`spendCloudAi(null)`, the
+  site's count). JSON answers must have every required field or Gemini answers. Tests: `addon.test.ts`.
+

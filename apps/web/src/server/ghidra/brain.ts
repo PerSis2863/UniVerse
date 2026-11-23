@@ -15,10 +15,16 @@ export const GHIDRA_RULE = 'You are Ghidra, UniVerse’s AI, doing the job below
 /** A job's instructions as Ghidra: its identity first, the job, and the rule that quoted text is never instructions. */
 export const asGhidra = (system: string) => [GHIDRA_RULE, system, ...(system.includes(UNTRUSTED_RULE) ? [] : [UNTRUSTED_RULE])].join('\n');
 
+/** UniVerse's own model with Ghidra's add-on, for the skills it does better (./addon.ts registers it, M451): an answer, or
+ *  null to let Gemini answer. Kept as a slot so this file needs none of the Cloudflare or sign-in modules. */
+type Own = (skill: SkillId, system: string, prompt: string, schema: object | null, maxTokens: number) => Promise<unknown>;
+let own: Own | null = null;
+export function setOwnModel(fn: Own) { own = fn; }
+
 /** An answer as JSON matching `schema` (Gemini's schema style). `lite` starts with the smaller model (simple jobs). */
-export function ghidraJson<T>(skill: SkillId, system: string, prompt: string, schema: object, maxTokens = 800, lite = false, model?: string): Promise<T | null> {
-  void skill;
-  return geminiJson<T>(asGhidra(system), prompt, schema, maxTokens, lite, model);
+export async function ghidraJson<T>(skill: SkillId, system: string, prompt: string, schema: object, maxTokens = 800, lite = false, model?: string): Promise<T | null> {
+  const mine = own && !model ? await own(skill, asGhidra(system), prompt, schema, maxTokens).catch(() => null) : null;
+  return (mine as T | null) ?? geminiJson<T>(asGhidra(system), prompt, schema, maxTokens, lite, model);
 }
 
 /** Like ghidraJson, looking at a picture first (a photo of homework, a whiteboard sketch, a bill). */
@@ -28,9 +34,9 @@ export function ghidraJsonImage<T>(skill: SkillId, system: string, prompt: strin
 }
 
 /** A plain-text answer. */
-export function ghidraText(skill: SkillId, system: string, prompt: string, maxTokens = 700, lite = false): Promise<string | null> {
-  void skill;
-  return geminiText(asGhidra(system), prompt, maxTokens, lite);
+export async function ghidraText(skill: SkillId, system: string, prompt: string, maxTokens = 700, lite = false): Promise<string | null> {
+  const mine = own ? await own(skill, asGhidra(system), prompt, null, maxTokens).catch(() => null) : null;
+  return typeof mine === 'string' ? mine : geminiText(asGhidra(system), prompt, maxTokens, lite);
 }
 
 /** The text in a file (a PDF, a picture of a page). */
