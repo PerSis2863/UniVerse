@@ -1,5 +1,6 @@
 import type { LangInfo } from '@/lib/lab/langs';
 import type { FromPy, ToPy } from './py.worker';
+import type { RRunner } from './r-runner';
 
 // Hyperion's other languages (M444–): one runner per language, each in its own background thread (Python, R) or in the
 // computer app (Julia, C++, Rust). The Code window hands it a script and gets back what it printed, its error and line,
@@ -12,6 +13,7 @@ export interface LangFile { name: string; bytes: Uint8Array }
 export class LangRunner {
   private py: Worker | null = null;
   private seq = 0;
+  private rr: RRunner | null = null;
   constructor(private on: (e: LangEvent) => void) {}
 
   private python() {
@@ -33,9 +35,17 @@ export class LangRunner {
       w.postMessage({ run: code, id: ++this.seq } satisfies ToPy);
       return;
     }
+    if (lang.id === 'r') {
+      // R's code is only fetched the first time an R script runs.
+      void (async () => {
+        if (!this.rr) { const { RRunner } = await import('./r-runner'); this.rr ??= new RRunner(this.on); }
+        await this.rr.run(code, files);
+      })().catch((err) => this.on({ done: true, error: err instanceof Error ? err.message : String(err), figs: [], vars: [] }));
+      return;
+    }
     this.on({ done: true, error: `${lang.name} isn't ready in Hyperion yet.`, figs: [], vars: [] });
   }
 
   /** Stop: the language's thread ends (its workspace with it); the next run starts it again. */
-  stop() { this.py?.terminate(); this.py = null; }
+  stop() { this.py?.terminate(); this.py = null; this.rr?.stop(); }
 }

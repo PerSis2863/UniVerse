@@ -11,3 +11,10 @@ describe('Hyperion languages (M444)', () => {
     expect(oneLine('x'.repeat(80), 10)).toBe(`${'x'.repeat(9)}…`);
   });
 });
+
+describe('Hyperion’s R (M445)', () => {
+  it('finds the packages a script asks for, leaving out R’s own', async () => {
+    const { packagesIn } = await import('@/components/lab/r-runner');
+    expect(packagesIn("library(ggplot2)\nrequire('dplyr')\nx <- tidyr::pivot_longer(d)\nstats::sd(1:3)\nlibrary(stats)")).toEqual(['ggplot2', 'dplyr', 'tidyr']);
+  });
+});

@@ -11689,3 +11689,19 @@ repo.r-wasm.org. Testing here: the environment's network allows cdn.jsdelivr.net
 (added 23 Nov); Playwright needs `proxy: { server: process.env.https_proxy }` to reach them. A version bump means
 changing both `PYODIDE` and `LANG_CODE`. Not built: micropip (PyPI packages beyond Pyodide's), files written by Python
 saved back to Hyperion, plt.show() windows, interrupting a running Python loop without losing the workspace.
+
+## M445 (23 Nov): Hyperion runs R, with ggplot2
+
+The languages, part 2. `r-runner.ts` (`RRunner`, imported by `LangRunner` only when an R script first runs): webR
+**0.6.0** imported with `webpackIgnore` from `https://webr.r-wasm.org/v0.6.0/` (`WEBR`; keep it and `LANG_CODE` in
+security-headers.ts in step), `ChannelType.PostMessage` (no cross-origin isolation needed; it can't interrupt a
+running loop: Stop closes R and the workspace), started once a visit. Before each run: Hyperion's files to
+`/home/web_user`, the packages in `packagesIn(code)` (library, require, requireNamespace, pkg::; R's own left out; at
+most 20) installed from repo.r-wasm.org when `requireNamespace` says they're missing, and for a ggplot2 script
+`theme_grey(base_size = 16)` set once (its 11 pt text was unreadable in the panel). A `Shelter` runs the script with
+`captureR` (autoprint, streams, graphics 640 × 460 at pointsize 16); each captured ImageBitmap becomes a PNG inside an
+SVG (`asSvg`, so PNG/SVG downloads and the picture-only display work as for Python); errors lose their "Error:" and take
+a line from `<text>:N:`; the variables from one R call (`ls`, dim or length, class, the first line of `str`). Example
+r_demo.R. Test: `packagesIn` in langs.test.ts. Not built: interrupting R without losing the workspace (needs
+SharedArrayBuffer and cross-origin isolation, which would break the site's other embeds), Shiny, files written by R saved
+back, plots sized to the panel.
