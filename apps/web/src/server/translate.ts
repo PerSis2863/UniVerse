@@ -17,14 +17,14 @@ export interface Translation { text: string; from: string; same: boolean }
 
 const MAX_BATCH = 20;
 const MAX_CHARS = 2000; // per message
-const SYSTEM = `You translate chat messages between students, teachers and NGO staff on UniVerse, a university platform.
+export const SYSTEM = `You translate chat messages between students, teachers and NGO staff on UniVerse, a university platform.
 For each message: detect its language (ISO 639-1 code) and translate it into the target language.
 Keep the meaning, tone and informality. Keep emoji, URLs, @mentions, numbers, names, and the chat formatting
 markers *bold*, _italic_, ~strike~ and \`code\` exactly as they are. Don't add notes or explanations.
 If a message is already in the target language (or has no words to translate, e.g. only emoji or a link),
 return an empty translation for it.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     items: {
@@ -161,11 +161,11 @@ export async function translateDraft(text: string, to: string, who: AiUser): Pro
   return { text: r.text || text, from: r.lang };
 }
 
-const CAPTION_SYSTEM = `You translate live captions from a university class (automatic speech recognition: expect missing
+export const CAPTION_SYSTEM = `You translate live captions from a university class (automatic speech recognition: expect missing
 words and small mistakes). Translate each line into the target language so a student can follow the class.
 Keep it short and natural, keep names, numbers and technical terms. Don't add notes. If a line is already
 in the target language, return it unchanged.`;
-const CAPTION_SCHEMA = {
+export const CAPTION_SCHEMA = {
   type: 'OBJECT',
   properties: { items: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, text: { type: 'STRING' } }, required: ['id', 'text'] } } },
   required: ['items'],

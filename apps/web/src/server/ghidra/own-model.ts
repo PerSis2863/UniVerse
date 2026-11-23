@@ -58,7 +58,7 @@ async function agentOnCloudflare(who: SessionUser | null, kind: AgentKind, promp
 }
 
 /** Hyperion's instructions with the list of its functions (the model without the add-on needs the list). */
-const hyperionRich = async () => `${HYPERION_SYSTEM}\nThe functions Hyperion has (use no others): ${[...HELP.keys()].join(', ')}.`;
+export const hyperionRich = async () => `${HYPERION_SYSTEM}\nThe functions Hyperion has (use no others): ${[...HELP.keys()].join(', ')}.`;
 
 /** Code for Hyperion: Qwen2.5-Coder on Cloudflare when the owner switched "Hyperion's AI on Cloudflare" on (with the
  *  add-on when HYPERION_LORA names one: it knows the functions, so it gets the short instructions), otherwise and on

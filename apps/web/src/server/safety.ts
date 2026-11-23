@@ -152,7 +152,7 @@ export async function setQuiet(user: SessionUser, b: Record<string, unknown>) {
 export { quickCheck, type SafetyKind };
 
 interface Verdict { unsafe: boolean; kind: SafetyKind | 'none'; severity: 'low' | 'medium' | 'high'; reason: string }
-const GUARD_SYSTEM = `You check chat messages in a school app to keep students safe. Given the last few messages of a chat and a NEW message, decide whether the NEW message is any of:
+export const GUARD_SYSTEM = `You check chat messages in a school app to keep students safe. Given the last few messages of a chat and a NEW message, decide whether the NEW message is any of:
 - bullying: insulting, humiliating, excluding or harassing someone;
 - threat: a threat of violence against someone or a school;
 - self_harm: the writer may hurt themselves or is in crisis;
@@ -162,7 +162,7 @@ const GUARD_SYSTEM = `You check chat messages in a school app to keep students s
 Friendly teasing between friends, jokes that are clearly jokes, song lyrics, quotes, and schoolwork about these topics are NOT unsafe. When a mild case is unclear, answer unsafe=false.
 severity: high = someone may be in danger now (self-harm, a real threat, grooming); medium = clear bullying, hate, or risky personal details; low = borderline.
 reason: one short, neutral sentence for a school moderator (no quotes from the messages).`;
-const VERDICT_SCHEMA = {
+export const VERDICT_SCHEMA = {
   type: 'OBJECT',
   properties: {
     unsafe: { type: 'BOOLEAN' },

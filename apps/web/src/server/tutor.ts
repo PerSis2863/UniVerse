@@ -150,7 +150,7 @@ export function tutorClosed(a: Access): string | null {
 /** Whether AI can be used at all: a key, and not switched off by the owner. */
 export const aiOn = async () => !!process.env.GEMINI_API_KEY && !(await featureOff('ai'));
 
-const ASK_SYSTEM = `You are the AI tutor for a university course on UniVerse. Answer the student's question using ONLY the numbered course passages provided.
+export const ASK_SYSTEM = `You are the AI tutor for a university course on UniVerse. Answer the student's question using ONLY the numbered course passages provided.
 Rules:
 - Cite the passages you used inline with their numbers in square brackets, like [1] or [2][3], right after the sentence they support.
 - If the passages don't contain the answer, say so plainly (set "grounded" to false) and suggest what to ask the teacher or where to look; don't make things up. You may add one short general hint, clearly marked as not from the course.
@@ -158,6 +158,12 @@ Rules:
 - Answer in the same language as the question. Keep it under 250 words. Use short paragraphs or bullet points; plain text, no markdown headings.`;
 
 type TutorAnswer = { answer: string | null; grounded?: boolean; citations: { n: number; title: string; sourceId: string; excerpt: string }[]; reason: 'no-sources' | 'unavailable' | 'limit' | null; message?: string; saved?: boolean };
+
+export const ASK_TUTOR_SCHEMA = {
+  type: 'OBJECT',
+  properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } } },
+  required: ['answer', 'grounded', 'used'],
+};
 
 /**
  * A first question (no conversation before it) gets the same answer for everyone in the course,
@@ -180,11 +186,7 @@ export async function askTutor(a: Access, question: string, history: { role: 'us
   const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[] }>('tutor', 
     `${ASK_SYSTEM}\n${how}`,
     `Course: ${a.courseCode} — ${a.courseName}\n\nCourse passages:\n${cite(found) || '(none matched)'}\n\n${context ? `Conversation so far:\n${context}\n\n` : ''}Student's question: ${question.slice(0, 1500)}`,
-    {
-      type: 'OBJECT',
-      properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } } },
-      required: ['answer', 'grounded', 'used'],
-    },
+    ASK_TUTOR_SCHEMA,
     1500,
   );
   if (!out) return { answer: null, reason: 'unavailable', citations: [] };
@@ -205,18 +207,22 @@ function pick(sources: { id: string; title: string; text: string }[], topic: str
   return all.filter((_, i) => i % step === 0).slice(0, k).map((p, i) => ({ ...p, n: i + 1 }));
 }
 
+export const PRACTICE_QUESTIONS_SCHEMA = {
+  type: 'OBJECT',
+  properties: { questions: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'INTEGER' }, explanation: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['question', 'options', 'answer', 'explanation', 'source'] } } },
+  required: ['questions'],
+};
+
+export const practiceSystem = (count: number) => `You write practice questions for university students from course passages. Make ${count} multiple-choice questions that test understanding (not trivia), each with 4 plausible options and exactly one correct answer. The explanation says why the answer is right, in one or two sentences. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`;
+
 export async function practiceQuestions(a: Access, topic: string, count = 5) {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { questions: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
   const out = await ghidraJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>('tutor', 
-    `You write practice questions for university students from course passages. Make ${count} multiple-choice questions that test understanding (not trivia), each with 4 plausible options and exactly one correct answer. The explanation says why the answer is right, in one or two sentences. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`,
+    practiceSystem(count),
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
-    {
-      type: 'OBJECT',
-      properties: { questions: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'INTEGER' }, explanation: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['question', 'options', 'answer', 'explanation', 'source'] } } },
-      required: ['questions'],
-    },
+    PRACTICE_QUESTIONS_SCHEMA,
     2500,
   );
   if (!out?.questions) return { questions: null, reason: 'unavailable' as const };
@@ -227,18 +233,22 @@ export async function practiceQuestions(a: Access, topic: string, count = 5) {
   return { questions, reason: null };
 }
 
+export const MAKE_FLASHCARDS_SCHEMA = {
+  type: 'OBJECT',
+  properties: { cards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['front', 'back', 'source'] } } },
+  required: ['cards'],
+};
+
+export const flashcardSystem = (count: number) => `You make study flashcards from course passages. Make up to ${count} cards: the front is a short question or term, the back a short, precise answer (max 40 words). Cover the key ideas, one idea per card. "source" is the passage number. Use the language of the passages. ${MATH_RULE}`;
+
 export async function makeFlashcards(a: Access, topic: string, count = 10) {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { cards: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
   const out = await ghidraJson<{ cards: { front: string; back: string; source: number }[] }>('tutor', 
-    `You make study flashcards from course passages. Make up to ${count} cards: the front is a short question or term, the back a short, precise answer (max 40 words). Cover the key ideas, one idea per card. "source" is the passage number. Use the language of the passages. ${MATH_RULE}`,
+    flashcardSystem(count),
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
-    {
-      type: 'OBJECT',
-      properties: { cards: { type: 'ARRAY', items: { type: 'OBJECT', properties: { front: { type: 'STRING' }, back: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['front', 'back', 'source'] } } },
-      required: ['cards'],
-    },
+    MAKE_FLASHCARDS_SCHEMA,
     2000,
   );
   if (!out?.cards) return { cards: null, reason: 'unavailable' as const };

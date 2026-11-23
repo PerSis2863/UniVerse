@@ -30,13 +30,13 @@ export function splitSteps(text: string): string[] {
     .map((s) => s.trim().replace(/^[,.\s]+|[,.\s]+$/g, '')).filter((s) => s.length >= 3).slice(0, MAX_STEPS);
 }
 
-const PLANNER = [
+export const PLANNER = [
   'You split one request to UniVerse\'s assistant into the separate requests it contains, in the order they should happen.',
   `At most ${MAX_STEPS}. Each one must make sense alone: repeat what it needs from the others (a place, a number, a name).`,
   'If it is really one request, return it alone. Never add steps the person did not ask for.',
   UNTRUSTED_RULE,
 ].join('\n');
-const PLANNER_SCHEMA = { type: 'OBJECT', properties: { steps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['steps'] };
+export const PLANNER_SCHEMA = { type: 'OBJECT', properties: { steps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['steps'] };
 
 /** The planner: AI when it's on and allowed, otherwise the joining words. */
 async function plan(u: SessionUser, text: string): Promise<string[]> {

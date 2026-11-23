@@ -40,7 +40,7 @@ export interface Practice { question: string; options: string[]; answer: number;
 export interface PulsePoint { t: number; lost: number; got: number; total: number }
 const MAX_PULSE = 2000;
 
-const SYSTEM = [
+export const SYSTEM = [
   'You turn the transcript of a university class into a study pack for the students who attended (or missed) it.',
   'The transcript comes from automatic captions: expect missing words and mistakes, and ignore small talk, greetings and technical problems ("can you hear me").',
   'Write in the language the class was taught in. Be accurate: only use what was said in the class; never invent facts, dates or numbers.',
@@ -55,7 +55,7 @@ const SYSTEM = [
   'reexplain (for the teacher only): when a "Class pulse" is given (how many students tapped "I\'m lost" or "Got it" over time), 0 to 4 topics worth re-explaining next class, where many students were lost: t = the seconds where the confusion started, topic = what to go over again, why = one short sentence on what seemed unclear, from what was being said at that moment. Leave it empty when there is no pulse or no clear confusion.',
 ].join(' ');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     summary: { type: 'STRING' },
@@ -313,13 +313,13 @@ export interface PackText {
   chapters: { t: number; title: string }[]; recap: string; practice: Practice[];
 }
 
-const TR_SYSTEM = [
+export const TR_SYSTEM = [
   'You translate a study pack made from a university class into the target language, for a student who reads that language best.',
   'Translate every text field faithfully; keep technical terms (add the original term in brackets when it helps), names, numbers, formulas and code unchanged.',
   'Keep the same number of items in the same order, and copy every t value unchanged.',
   'from: the ISO 639-1 code of the language the pack is written in.',
 ].join(' ');
-const TR_SCHEMA = {
+export const TR_SCHEMA = {
   type: 'OBJECT',
   properties: {
     from: { type: 'STRING' },

@@ -1888,6 +1888,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
    (Arduino and serial), reports (done in M397), deployment (share links M398, the computer app M412).
 | M442 | A daily limit on paid AI (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | 25 questions a person and 400 for the site each day on the paid Cloudflare models; past them Gemini answers, so nobody is cut off. Changeable in console → Server → AI use today. |
 | M443 | Ghidra, the one AI, step 1: skills, one brain, the RunPod-style opening (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | Every AI job is a Ghidra skill answered through one brain (60 calls moved, a test stops new direct Gemini calls); people see only the name Ghidra; the corner chat opens with suggestions over one question box. |
+| M444 | Ghidra, the one AI, step 2: the exam (23 Nov) | **Built; the starting score waits on its first run** (branch `claude/youthful-fermi-sbdtcp`) | 43 skills, 50–80 questions each (2,500 in all) with pass / fail rules, asked with each job's own instructions; `node scripts/ai/ghidra-exam.mjs` prints the score card (by the website's brain or any OpenAI-style model; pictures, recordings and Hyperion's code included). |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
@@ -1901,8 +1902,9 @@ guardrails (`ghidra-guard.ts`); Ghidra sees and does only what the person may; a
 1. **Skills and the brain** (free, M443 done; the jobs' instruction texts move into the list with step 2): one list (`src/server/ghidra/skills.ts`), one brain (`src/server/ghidra/brain.ts`)
    that every AI call goes through (nothing else imports `gemini.ts`, a test fails a break); the agents' and Hyperion's
    own-model paths inside it; the old AI names in screens become Ghidra. Done when every AI feature answers through it.
-2. **One exam** (free): 50–150 questions per skill with pass / fail rules, one command prints Ghidra's score card
-   (the agents' rules first; loosen support's `nums` for numbered steps). Done when every skill has a starting score.
+2. **One exam** (free; M444 built): 50–150 questions per skill with pass / fail rules, one command prints Ghidra's score card
+   (the agents' rules first; loosen support's `nums` for numbered steps). Done when every skill has a starting score:
+   built (`src/server/ghidra/exam`, `scripts/ai/ghidra-exam.mjs`); the first run, which gives the starting scores, is next.
 3. **👍 / 👎 on every answer** (free): "What was wrong?", "Better answer"; no names, emails or phone numbers; kept 90
    days; each person deletes theirs in Settings; each skill's rating in the console. Done when ratings come in.
 4. **Ghidra's add-on** (paid, ~US$10–20, [owner] yes first): a stronger open teacher (Qwen2.5-72B) writes lessons per

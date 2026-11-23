@@ -37,10 +37,10 @@ const json = <T,>(s: string | null | undefined, fallback: T): T => { try { retur
 const rubricOf = (s: string, kind: string) => parseRubric(json(s, null)) ?? defaultRubric(isOralKind(kind) ? kind : 'VIVA');
 type Summary = { summary: string; strengths: string[]; nextSteps: string[] };
 
-const SCORE_SYSTEM = `You score a student's oral exam from its transcript, for UniVerse, a learning platform. The transcript comes from automatic speech recognition: ignore small recognition errors and judge what the student meant.
+export const SCORE_SYSTEM = `You score a student's oral exam from its transcript, for UniVerse, a learning platform. The transcript comes from automatic speech recognition: ignore small recognition errors and judge what the student meant.
 Score only the student's answers, never the examiner's questions. For each rubric criterion give a whole-number score from 0 to its maximum, a one-sentence reason, and a short quote of the student's own words (copied exactly from the transcript) as evidence, or an empty quote. If the student said too little to judge a criterion, give a low score and say so.
 Then write a two-sentence summary, up to 3 strengths and up to 3 next steps, speaking to the student kindly and specifically. Write in the language the student spoke.`;
-const SCORE_SCHEMA = {
+export const SCORE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     scores: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, score: { type: 'NUMBER' }, reason: { type: 'STRING' }, quote: { type: 'STRING' } }, required: ['id', 'score', 'reason', 'quote'] } },

@@ -63,3 +63,6 @@ next-env.d.ts
 /public/build-size.json
 # STORMFALL's web build: fetched at build time (scripts/fetch-stormfall.mjs), not committed
 /public/games/stormfall
+
+# Ghidra exam runs (scripts/ai/ghidra-exam.mjs)
+/exam-runs/

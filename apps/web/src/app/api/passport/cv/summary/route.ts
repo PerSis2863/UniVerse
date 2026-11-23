@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { route } from '@/server/assignments';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
 import { ghidraJson } from '@/server/ghidra/brain';
+import { CV_SUMMARY_SCHEMA, CV_SUMMARY_SYSTEM } from '@/server/ghidra/jobs';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { getOrCreatePassport } from '@/server/passport';
@@ -29,9 +30,9 @@ export const POST = (req: Request) => route(req, async (user) => {
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
     const out = await ghidraJson<{ summary: string }>('passport', 
-      'You write a 2–3 sentence ATS-friendly professional summary for a student CV. Use only the facts given. First person ("I"). No buzzwords, no invented employers or grades.',
+      CV_SUMMARY_SYSTEM,
       `Student: ${user.name}\nFacts:\n${facts}`,
-      { type: 'OBJECT', properties: { summary: { type: 'STRING' } }, required: ['summary'] },
+      CV_SUMMARY_SCHEMA,
       350, true,
     );
     summary = out?.summary?.replace(/\s+/g, ' ').trim().slice(0, 500);

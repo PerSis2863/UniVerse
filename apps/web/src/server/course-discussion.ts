@@ -247,10 +247,12 @@ export async function threadAction(courseId: string, threadId: string, user: Ses
   return result;
 }
 
-const SUGGEST_SYSTEM = `You help a university teacher answer a student's question on the course discussion board. Draft a reply the teacher will check and edit before posting.
+export const SUGGEST_SYSTEM = `You help a university teacher answer a student's question on the course discussion board. Draft a reply the teacher will check and edit before posting.
 Use ONLY the numbered course passages provided. Cite the passages you used like [1] or [2] right after the sentence they support.
 If the passages don't cover it, say so in "grounded": false and write a short honest draft that points the student to where to look or says the teacher will follow up; don't make things up.
 Explain simply, step by step. Guide rather than hand over a graded answer. Same language as the question. Under 200 words, plain text, no headings.`;
+
+export const SUGGEST_ANSWER_SCHEMA = { type: 'OBJECT', properties: { draft: { type: 'STRING' }, grounded: { type: 'BOOLEAN' } }, required: ['draft', 'grounded'] };
 
 /** POST /api/courses/:id/discussion/:threadId/suggest — an AI draft answer for the teacher (never posted by itself). */
 export async function suggestAnswer(courseId: string, threadId: string, user: SessionUser) {
@@ -265,7 +267,7 @@ export async function suggestAnswer(courseId: string, threadId: string, user: Se
   const out = await ghidraJson<{ draft: string; grounded: boolean }>('discussion', 
     SUGGEST_SYSTEM,
     `Course: ${v.course.code} — ${v.course.name}\n\nCourse passages:\n${text}\n\nStudent's question: ${t.title}\n${t.body.slice(0, 2000)}`,
-    { type: 'OBJECT', properties: { draft: { type: 'STRING' }, grounded: { type: 'BOOLEAN' } }, required: ['draft', 'grounded'] },
+    SUGGEST_ANSWER_SCHEMA,
     900,
   );
   if (!out?.draft) throw new HttpException('The AI couldn’t draft an answer this time. Try again, or write one yourself.', 503);

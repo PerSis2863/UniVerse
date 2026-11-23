@@ -71,8 +71,8 @@ export async function removeBill(u: SessionUser, id: string) {
   return greenHome(u);
 }
 
-const SYSTEM = 'You read a household energy bill. Give what it is for (ELECTRICITY, GAS, OIL or LPG), the month it covers (YYYY-MM, the end of the period if it spans two), the amount used and its unit (kWh, m3 or L). Use the amount used, never the price. If it shows several kinds, give the main one.';
-const SCHEMA = { type: 'OBJECT', properties: { kind: { type: 'STRING' }, month: { type: 'STRING' }, amount: { type: 'NUMBER' }, unit: { type: 'STRING' } }, required: ['kind', 'amount'] };
+export const SYSTEM = 'You read a household energy bill. Give what it is for (ELECTRICITY, GAS, OIL or LPG), the month it covers (YYYY-MM, the end of the period if it spans two), the amount used and its unit (kWh, m3 or L). Use the amount used, never the price. If it shows several kinds, give the main one.';
+export const SCHEMA = { type: 'OBJECT', properties: { kind: { type: 'STRING' }, month: { type: 'STRING' }, amount: { type: 'NUMBER' }, unit: { type: 'STRING' } }, required: ['kind', 'amount'] };
 const IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'application/pdf'];
 
 /** POST /green/home/read { image: { mimeType, data } }: what a bill's photo says, to fill the form (not saved). */

@@ -144,6 +144,10 @@ async function ai(user: SessionUser) {
   if (!spend.ok) throw new HttpException(spend.message, 429);
 }
 
+export const SUGGEST_CONCEPTS_SCHEMA = { type: 'object', properties: { concepts: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, parent: { type: 'string' } }, required: ['name', 'description'] } } }, required: ['concepts'] };
+
+export const SUGGEST_CONCEPTS_SYSTEM = 'You map what a course teaches into 8 to 16 concepts a student can master one by one: short names (2–5 words), a one-sentence description of what mastering it means, and optionally a broader concept from the same list as parent (at most two levels). In the order they are usually taught. Plain words, no numbering.';
+
 /** POST /api/courses/:id/concepts/suggest: a proposed concept list from the course (not saved: the teacher picks). */
 export async function suggestConcepts(user: SessionUser, courseId: string) {
   const a = await access(user, courseId, true);
@@ -164,15 +168,19 @@ export async function suggestConcepts(user: SessionUser, courseId: string) {
     existing.length ? `Already listed (don't repeat): ${existing.map((c) => c.name).join(', ')}` : '',
   ].filter(Boolean).join('\n');
   const out = await ghidraJson<{ concepts: { name: string; description: string; parent?: string }[] }>('concepts', 
-    'You map what a course teaches into 8 to 16 concepts a student can master one by one: short names (2–5 words), a one-sentence description of what mastering it means, and optionally a broader concept from the same list as parent (at most two levels). In the order they are usually taught. Plain words, no numbering.',
+    SUGGEST_CONCEPTS_SYSTEM,
     prompt,
-    { type: 'object', properties: { concepts: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, parent: { type: 'string' } }, required: ['name', 'description'] } } }, required: ['concepts'] },
+    SUGGEST_CONCEPTS_SCHEMA,
     1500,
   );
   if (!out?.concepts?.length) throw new HttpException('The AI couldn’t suggest concepts this time. Try again, or add them yourself.', 503);
   const taken = new Set(existing.map((c) => c.name.toLowerCase()));
   return { concepts: out.concepts.filter((c) => c.name && !taken.has(c.name.toLowerCase())).slice(0, 20).map((c) => ({ name: c.name.slice(0, 80), description: (c.description ?? '').slice(0, 300), parent: c.parent?.slice(0, 80) || undefined })) };
 }
+
+export const SUGGEST_TAGS_SCHEMA = { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { n: { type: 'integer' }, concepts: { type: 'array', items: { type: 'integer' } } }, required: ['n', 'concepts'] } } }, required: ['items'] };
+
+export const SUGGEST_TAGS_SYSTEM = 'For each numbered item (a quiz question or a rubric criterion), list the numbers of the concepts it tests: usually one, at most three. Use only concept numbers from the list. Leave an item out if no concept fits.';
 
 /** POST /api/courses/:id/concepts/suggest-tags { quizId | assignmentId }: which concepts each item tests (not saved). */
 export async function suggestTags(user: SessionUser, courseId: string, b: Record<string, unknown>) {
@@ -192,9 +200,9 @@ export async function suggestTags(user: SessionUser, courseId: string, b: Record
   if (!items.length) return { items: [] };
   await ai(user);
   const out = await ghidraJson<{ items: { n: number; concepts: number[] }[] }>('concepts', 
-    'For each numbered item (a quiz question or a rubric criterion), list the numbers of the concepts it tests: usually one, at most three. Use only concept numbers from the list. Leave an item out if no concept fits.',
+    SUGGEST_TAGS_SYSTEM,
     `Concepts:\n${concepts.map((c, i) => `${i + 1}. ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n')}\n\nItems:\n${items.map((it, i) => `${i + 1}. ${it.text}`).join('\n')}`,
-    { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { n: { type: 'integer' }, concepts: { type: 'array', items: { type: 'integer' } } }, required: ['n', 'concepts'] } } }, required: ['items'] },
+    SUGGEST_TAGS_SCHEMA,
     1200,
   );
   if (!out?.items) throw new HttpException('The AI couldn’t suggest tags this time. Try again, or tag them yourself.', 503);

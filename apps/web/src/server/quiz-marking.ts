@@ -88,9 +88,11 @@ export async function changeAccepted(quizId: string, user: SessionUser, b: Recor
   return { accepted: next, rescored: await rescore(quizId) };
 }
 
-const SYSTEM = `You help a teacher mark short quiz answers. You get a question, the answers the teacher accepts, and students' answers that didn't match exactly.
+export const SYSTEM = `You help a teacher mark short quiz answers. You get a question, the answers the teacher accepts, and students' answers that didn't match exactly.
 For each student answer, say whether it means the same as an accepted answer and would be marked right by a fair teacher (spelling slips, synonyms, an equivalent wording). Be strict about facts: a different or partly wrong answer is not right.
 Return "same": the numbers of the answers that are right, each with a short reason (under 12 words).`;
+
+export const SUGGEST_ACCEPTED_SCHEMA = { type: 'OBJECT', properties: { same: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['n', 'reason'] } } }, required: ['same'] };
 
 /** POST /api/quizzes/:id/short-answers/suggest { questionId } — which wrong answers the AI thinks are right. */
 export async function suggestAccepted(quizId: string, user: SessionUser, b: Record<string, unknown>) {
@@ -104,7 +106,7 @@ export async function suggestAccepted(quizId: string, user: SessionUser, b: Reco
   const out = await ghidraJson<{ same: { n: number; reason: string }[] }>('quiz-marking', 
     SYSTEM,
     `Question: ${q.question.slice(0, 1000)}\nAccepted: ${(metaOf(q).accepted ?? []).join(' | ').slice(0, 1000)}\nStudent answers:\n${wrong.map((w, i) => `${i + 1}. ${w.answer}`).join('\n')}`,
-    { type: 'OBJECT', properties: { same: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['n', 'reason'] } } }, required: ['same'] },
+    SUGGEST_ACCEPTED_SCHEMA,
     800,
   );
   const suggestions = (out?.same ?? []).flatMap((s) => {

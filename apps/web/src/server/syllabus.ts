@@ -44,11 +44,21 @@ async function teacherOf(courseId: string, user: SessionUser) {
   return a.course;
 }
 
-const SYSTEM = `You help a university teacher plan a course. Draft a syllabus the teacher will edit.
+export const SYSTEM = `You help a university teacher plan a course. Draft a syllabus the teacher will edit.
 Give one module per week, in teaching order, each with a short title (no "Week n:" prefix), a one-sentence summary of what students learn, and 3–5 topics (short phrases).
 Give 4–6 learning outcomes, each starting with a verb students can show ("Write…", "Explain…", "Compare…").
 Give 4–6 skills the course builds, as an employer would list them: 1–4 words each.
 Match the level asked for. Use the language of the course title. Plain text, no numbering.`;
+
+export const DRAFT_SYLLABUS_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    outcomes: { type: 'ARRAY', items: { type: 'STRING' } },
+    skills: { type: 'ARRAY', items: { type: 'STRING' } },
+    modules: { type: 'ARRAY', items: { type: 'OBJECT', properties: { title: { type: 'STRING' }, summary: { type: 'STRING' }, topics: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['title', 'summary', 'topics'] } },
+  },
+  required: ['outcomes', 'skills', 'modules'],
+};
 
 /** POST /api/courses/:id/syllabus/draft { level, weeks, notes? } (one AI request). */
 export async function draftSyllabus(courseId: string, user: SessionUser, b: Record<string, unknown>) {
@@ -64,15 +74,7 @@ export async function draftSyllabus(courseId: string, user: SessionUser, b: Reco
   const out = await ghidraJson<SyllabusDraft>('syllabus', 
     SYSTEM,
     `Course: ${course.code} — ${course.name}\nDepartment: ${full?.department ?? 'not given'}\nDescription: ${full?.description ?? 'not given'}\nLevel: ${LEVEL_TEXT[level]}\nWeeks: ${weeks}${notes ? `\nThe teacher adds: ${notes}` : ''}`,
-    {
-      type: 'OBJECT',
-      properties: {
-        outcomes: { type: 'ARRAY', items: { type: 'STRING' } },
-        skills: { type: 'ARRAY', items: { type: 'STRING' } },
-        modules: { type: 'ARRAY', items: { type: 'OBJECT', properties: { title: { type: 'STRING' }, summary: { type: 'STRING' }, topics: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['title', 'summary', 'topics'] } },
-      },
-      required: ['outcomes', 'skills', 'modules'],
-    },
+    DRAFT_SYLLABUS_SCHEMA,
     3000,
   );
   const draft = cleanDraft(out);

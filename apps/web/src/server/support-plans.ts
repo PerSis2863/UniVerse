@@ -74,13 +74,13 @@ export async function weakTopics(studentId: string, courseId: string): Promise<s
   return [...new Set(out)].slice(0, 10);
 }
 
-const SYSTEM = [
+export const SYSTEM = [
   'You write a short, kind study plan from a teacher to one university student, to help them get back on track in a course.',
   'Tone: warm, practical, encouraging, like a good tutor. Never use words such as "at risk", "struggling", "failing", "warning", "flagged", "concern" or "behind": the student must feel supported, not judged.',
   'intro: 1–2 sentences addressed to the student by first name. steps: 3–5 concrete actions for the next 7 days, each with a short title (under 8 words), one sentence of detail and realistic minutes (15–90). Base them on the weak topics given; if none, use good general study habits for the course (reviewing notes, practice questions, office hours).',
   'closing: one sentence inviting them to reply or come to office hours. Use the course\'s language. Do not invent grades, dates or facts.',
 ].join(' ');
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     intro: { type: 'STRING' },

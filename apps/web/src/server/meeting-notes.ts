@@ -26,7 +26,7 @@ import { indexLater, indexMeeting } from './semester';
 export interface ActionItem { text: string; who: string; due: string }
 interface Notes { title: string; summary: string; decisions: string[]; actions: ActionItem[]; chapters: { t: number; title: string }[] }
 
-const SYSTEM = [
+export const SYSTEM = [
   'You write the notes of a call between students, teachers or staff on UniVerse (a meeting, a study session, a project call), from its automatic captions: expect missing words and mistakes, and ignore small talk, greetings and technical problems ("can you hear me").',
   'Write in the language the call was held in. Only use what was said; never invent facts, names, dates or numbers.',
   'title: a short title for the call (at most 8 words). summary: 2 to 4 sentences on what was discussed.',
@@ -35,7 +35,7 @@ const SYSTEM = [
   'chapters: 2 to 8 parts of the call in order, each with t = the seconds value of the line where it starts and a short title (fewer for a short call).',
 ].join(' ');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     title: { type: 'STRING' },

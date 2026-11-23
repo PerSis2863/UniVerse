@@ -16,7 +16,7 @@ import type { Body } from './body';
 
 export interface DraftQuestion { question: string; options: string[]; answer: number }
 
-const SYSTEM = [
+export const SYSTEM = [
   'You are Ghidra, UniVerse\'s assistant, writing a short multiple-choice quiz for a teacher.',
   'Each question: clear, one idea, suitable for the topic and level; exactly four options, one right, the others plausible',
   'but clearly wrong to someone who knows the topic; no "all of the above"; answer is the 0-based index of the right option.',
@@ -24,7 +24,7 @@ const SYSTEM = [
   MATH_RULE,
 ].join('\n');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     title: { type: 'STRING' },

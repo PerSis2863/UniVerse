@@ -248,12 +248,12 @@ export async function runMetric(viewer: Parameters<typeof schoolsOf>[0], id: Met
 
 type Pick = { metric: MetricId | 'none'; days?: number; order?: Order; department?: string };
 
-const SYSTEM = `You map a school administrator's question to one measure from a fixed list. Answer with the measure's id, or "none" when no measure answers it (for example a question about one named person, money, or anything not listed). Never invent measures.
+export const SYSTEM = `You map a school administrator's question to one measure from a fixed list. Answer with the measure's id, or "none" when no measure answers it (for example a question about one named person, money, or anything not listed). Never invent measures.
 days: the time window the question means (this week 7, this month 30, this term 90, six months 180, this year 365); leave it out when the question doesn't say. For inactive_students_by_department, days is how long since students last opened UniVerse.
 order: "lowest" when the question wants the smallest values first (lowest, worst, fewest, least, fastest), "highest" for the largest first (highest, best, most, slowest). Leave it out when the question doesn't say.
 department: one of the listed departments, copied exactly, only when the question names it.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     metric: { type: 'STRING', enum: [...METRICS.map((m) => m.id), 'none'] },

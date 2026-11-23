@@ -298,8 +298,8 @@ interface CallReport {
   method: string; issuedAt: string; issuedBy: string;
 }
 const reportSub = (projectId: string, callId: string) => `${publicAppUrl()}/impact/${projectId}#report-${callId}`;
-const NARRATIVE_SCHEMA = { type: 'OBJECT', properties: { headline: { type: 'STRING' }, narrative: { type: 'STRING' } }, required: ['headline', 'narrative'] };
-const NARRATIVE_SYSTEM = 'You write short monthly reports for the sponsors of a volunteering project run by a school with an NGO. Use only the facts given. Never invent numbers, names or outcomes, and never name students. Warm, plain, factual English. headline: one sentence, at most 14 words. narrative: 2 short paragraphs, at most 110 words in all.';
+export const NARRATIVE_SCHEMA = { type: 'OBJECT', properties: { headline: { type: 'STRING' }, narrative: { type: 'STRING' } }, required: ['headline', 'narrative'] };
+export const NARRATIVE_SYSTEM = 'You write short monthly reports for the sponsors of a volunteering project run by a school with an NGO. Use only the facts given. Never invent numbers, names or outcomes, and never name students. Warm, plain, factual English. headline: one sentence, at most 14 words. narrative: 2 short paragraphs, at most 110 words in all.';
 
 /** POST /api/impact-rooms/calls/:cid/report: staff make (or remake) the report for sponsors after the call. */
 export async function makeCallReport(cid: string, user: SessionUser) {

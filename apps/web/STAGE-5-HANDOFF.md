@@ -12095,3 +12095,36 @@ it and start step 1"; while it was built: "in 2nd photo how the runpod ai chat i
 - **Not yet in step 1:** the jobs' own instruction texts still sit in their feature files (only the agents' and
   Hyperion's are shared); moving them into the skills list comes with step 2's exam, which needs them in one place.
   The skill id isn't recorded anywhere yet (`void skill`): step 3's 👍 / 👎 keeps ratings per skill.
+
+## M444: Ghidra, the one AI, step 2: the exam (23 Nov)
+
+The owner (23 Nov): "go for Step 2" (the plan in `STAGE-5-PLAN.md`, "Ghidra, the one AI").
+
+- **Each job's instructions are shared, not copied.** Every skill's system text and answer shape is now a named export
+  beside its code (`SYSTEM`, `SCHEMA`, `practiceSystem(count)`, `uiSystem(name)`…; inline ones were lifted out unchanged),
+  and the jobs asked from page routes (chat helpers, course skills, the passport's two) moved to
+  `src/server/ghidra/jobs.ts` (a Next.js route file may export only its handlers). The exam imports these, so it always
+  asks what the website asks. One wording fix: the chat's `/ask` no longer said "You are UniVerse AI".
+- **The exam** (`src/server/ghidra/exam/`): `kit.ts` (a question, its rules, a seeded dice so every run asks the same
+  questions, the shape check, `numbers`/`newNumbers`, a small language guess), `material.ts` (16 course passages with
+  questions and the words a right answer uses, products with and without recalls, cities, chats), and three papers
+  (`papers-apps.ts`: the four agents with the training kit's rules, support's numbers loosened for numbered steps,
+  booking, Hyperion, bills, Relief reports; `papers-learning.ts`: UniVersity; `papers-shared.ts`: the assistant, Messages,
+  translation, documents, boards, meetings, the brief, voice, the console). 43 skills, 50–80 questions each. Every
+  answer also gets **shape** (its schema) and **identity** (never another company's AI). `exam.test.ts` checks every
+  skill has a paper, papers don't repeat themselves, and the rules pass good answers and fail bad ones.
+- **The command** (`scripts/ai/ghidra-exam.mjs`, its usage in its header): `--via site` asks through Ghidra's own brain
+  (Gemini; needs `GEMINI_API_KEY` in the shell), `--via openai --url … --model …` asks any OpenAI-style model (vLLM on a
+  rented card, Workers AI's `/ai/v1`); `--skills`, `--per`, `--jobs`, `--rescore DIR` (mark saved answers again after a
+  rule changes). Pictures (bills) are drawn by the installed Chromium, recordings spoken by ffmpeg's flite voice
+  (word error rate ≤ 25%), Hyperion's replies run in Hyperion's engine (`hyperion-lab.mjs run`). Results go to
+  `exam-runs/<date>/` (not committed): `answers.jsonl`, `card.txt`, `card.json`.
+- `run-ts.mjs` gained `{ app: true }`: the website's server files bundle with the database client stubbed, `.wasm`
+  empty, `require`/`__dirname` defined, Playwright left outside (it is global).
+- **Not done yet:** the starting score. Nothing here can call a model for free (no key in this container, by the
+  rules), so the first run needs the owner's go: see the M444 reply's options. After it, read the most-failed rules in
+  `card.txt`; a rule that fails good answers is fixed and the run re-marked with `--rescore`, not asked again.
+- **Traps:** a paper's question must be the same on every run (seeded by the skill id: never use `Math.random`); a new
+  skill in `skills.ts` fails `exam.test.ts` until it has a paper; a feature's instruction text stays exported (the exam
+  imports it).
+

@@ -27,7 +27,7 @@ import type { Body } from './body';
 // matcher answers. Every field AI returns is checked again (cleanPlan). The last few turns come along so follow-ups
 // work; they are the person's own words and Ghidra's replies, cut short, and only shape this one answer.
 
-const SYSTEM = [
+export const SYSTEM = [
   'You are Ghidra, the assistant of UniVerse Impact: one account with several apps: UniVersity (school), Trace (product',
   'passports), Relief (needs and offers of help on a map), Green (climate actions), Travel (places, guides and trips) and Games.',
   'Turn the person\'s latest request into exactly one action. Earlier turns are only context for follow-ups. Actions:',
@@ -52,7 +52,7 @@ const SYSTEM = [
   MATH_RULE,
 ].join('\n');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'research', 'social_posts', 'product_help', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },

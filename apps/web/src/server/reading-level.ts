@@ -48,7 +48,7 @@ Keep every fact, number, date, name, formula, piece of code, link and instructio
 Write in ${lang ? `${LANGUAGES[lang].name} (${lang})` : 'the same language as the original'}.
 ${quiz ? QUIZ : TERMS}`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     items: {

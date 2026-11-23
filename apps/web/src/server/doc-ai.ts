@@ -13,7 +13,7 @@ import { docRights } from './docs';
 // the document here: the app shows the answer next to the original and the writer decides.
 // The same text and action within a week is answered from the saved answer, at no cost.
 
-const SYSTEM: Record<DocAiAction, string> = {
+export const SYSTEM: Record<DocAiAction, string> = {
   improve: 'You improve a student\'s writing: clearer, better structured and more natural, keeping the meaning, facts, tone and language. Reply with only the improved text, no comments or quotes.',
   shorten: 'You shorten text: keep every important point, cut repetition and filler, roughly half as long. Same language. Reply with only the shorter text.',
   grammar: 'You correct spelling, grammar and punctuation only. Do not rephrase or change the style or meaning. Same language. Reply with only the corrected text.',

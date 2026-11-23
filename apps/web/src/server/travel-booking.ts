@@ -12,8 +12,8 @@ import { ghidraJson } from './ghidra/brain';
 // the stay's days. Not saved; the person checks it before anything is made. One AI request, within the day's
 // allowance and the owner's AI switch.
 
-const SYSTEM = 'You read a hotel or holiday-rental booking confirmation. Give the place to stay\'s name, its street address, the town or city it is in (as a travel guide would name it, in English), the check-in and check-out dates (YYYY-MM-DD) and the number of guests. Leave out anything the text does not say. Ignore prices, card numbers and names of people.';
-const SCHEMA = { type: 'OBJECT', properties: { hotel: { type: 'STRING' }, address: { type: 'STRING' }, city: { type: 'STRING' }, checkIn: { type: 'STRING' }, checkOut: { type: 'STRING' }, guests: { type: 'NUMBER' } } };
+export const SYSTEM = 'You read a hotel or holiday-rental booking confirmation. Give the place to stay\'s name, its street address, the town or city it is in (as a travel guide would name it, in English), the check-in and check-out dates (YYYY-MM-DD) and the number of guests. Leave out anything the text does not say. Ignore prices, card numbers and names of people.';
+export const SCHEMA = { type: 'OBJECT', properties: { hotel: { type: 'STRING' }, address: { type: 'STRING' }, city: { type: 'STRING' }, checkIn: { type: 'STRING' }, checkOut: { type: 'STRING' }, guests: { type: 'NUMBER' } } };
 const line = (v: unknown, n: number) => (typeof v === 'string' && v.trim() ? v.replace(/\s+/g, ' ').trim().slice(0, n) : null);
 
 /** POST /travel/booking/read { text }: what a booking confirmation says. */

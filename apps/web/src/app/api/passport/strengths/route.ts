@@ -2,6 +2,7 @@ import prisma from '@/lib/db';
 import { route } from '@/server/assignments';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
 import { ghidraJson } from '@/server/ghidra/brain';
+import { STRENGTHS_SCHEMA, STRENGTHS_SYSTEM } from '@/server/ghidra/jobs';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { getOrCreatePassport } from '@/server/passport';
@@ -22,9 +23,9 @@ export const POST = (req: Request) => route(req, async (user) => {
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
     const out = await ghidraJson<{ paragraph: string }>('passport', 
-      'You write the short "strengths" paragraph of a student\'s public skills passport, for employers. Use only the evidence given; never invent experience, employers, grades or numbers. 2–3 sentences, third person, warm but factual, no superlatives, no bullet points. Mention the strongest skills and what backs them.',
+      STRENGTHS_SYSTEM,
       `Student: ${user.name}\nEvidence (skill: pieces, best level; examples):\n${facts}`,
-      { type: 'OBJECT', properties: { paragraph: { type: 'STRING' } }, required: ['paragraph'] },
+      STRENGTHS_SCHEMA,
       400, true,
     );
     paragraph = out?.paragraph?.replace(/\s+/g, ' ').trim().slice(0, 700);

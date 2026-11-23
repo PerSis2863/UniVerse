@@ -226,11 +226,15 @@ export async function searchSemester(user: SessionUser, q: string, kindsRaw: unk
   return { results: found.map(({ body: _b, ...r }) => { void _b; return { ...r, link: r.link.replace('{portal}', portal) }; }), pending };
 }
 
-const ASK_SYSTEM = `You help a student find things in their own semester on UniVerse: what was said in their classes, study packs, course materials, their documents, their graded work and feedback, and notes of calls they were in.
+export const ASK_SYSTEM = `You help a student find things in their own semester on UniVerse: what was said in their classes, study packs, course materials, their documents, their graded work and feedback, and notes of calls they were in.
 Answer using ONLY the numbered passages. Cite them inline with their numbers in square brackets, like [1] or [2][3], right after the sentence they support.
 If the passages don't answer the question, say so plainly (grounded: false) and suggest where to look. Never make things up.
 Answer in the language of the question, in under 200 words, in short paragraphs or bullet points, plain text.
 ${MATH_RULE}`;
+
+export const ASK_SEMESTER_SCHEMA = {
+  type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['answer', 'grounded', 'used'],
+};
 
 /** POST /api/semester { q, kinds }: an AI answer from the best passages, with citations (one AI request). */
 export async function askSemester(user: SessionUser, q: string, kindsRaw: unknown) {
@@ -242,9 +246,7 @@ export async function askSemester(user: SessionUser, q: string, kindsRaw: unknow
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const passages = found.map((f, i) => `[${i + 1}] (${f.title}${f.day ? `, ${f.day}` : ''})\n${f.body}`).join('\n\n');
-  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[] }>('semester', ASK_SYSTEM, `Passages:\n${passages}\n\nQuestion: ${question}`, {
-    type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['answer', 'grounded', 'used'],
-  }, 1200);
+  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[] }>('semester', ASK_SYSTEM, `Passages:\n${passages}\n\nQuestion: ${question}`, ASK_SEMESTER_SCHEMA, 1200);
   if (!out) throw new HttpException('Couldn’t get an answer right now. Please try again.', 502);
   const used = new Set([...(out.used ?? []), ...[...out.answer.matchAll(/\[(\d+)\]/g)].map((m) => Number(m[1]))]);
   const portal = portalOf(user.role);

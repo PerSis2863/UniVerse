@@ -29,7 +29,7 @@ const REUSE_MS = 15 * 60_000;
 const TOPICS_MS = 20 * 60_000;
 const HOUR = 3_600_000;
 
-const SYSTEM = `You are the quiet teaching assistant in a live university class on UniVerse. A student asks you privately during the class.
+export const SYSTEM = `You are the quiet teaching assistant in a live university class on UniVerse. A student asks you privately during the class.
 Answer from the numbered course passages and from what was said in the class in the last minutes (from automatic captions: expect missing words). Rules:
 - Be short: at most 120 words, plain sentences, no headings. The student is listening to the class at the same time.
 - Cite course passages you used with their numbers in square brackets, like [1]. Say "in class" when you rely on what was said.
@@ -38,6 +38,8 @@ Answer from the numbered course passages and from what was said in the class in 
 - "topic": two to four words naming the course concept the question is about (like "base case" or "for loops"), in the language of the class; empty if the question isn't about the class.`;
 
 type Citation = { n: number; title: string };
+
+export const TA_ANSWER_SCHEMA = { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] };
 
 /**
  * The TA's answer to one question, from the course's materials and what was said lately (a class
@@ -53,7 +55,7 @@ export async function taAnswer(course: { id: string; code: string; name: string 
       `What was said in the class in the last minutes:\n${heard.length ? heardText(heard) : '(no captions: the live transcript isn’t on)'}`,
       `The student's question: ${question}`,
     ].join('\n\n'),
-    { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] },
+    TA_ANSWER_SCHEMA,
     600,
     true,
   );

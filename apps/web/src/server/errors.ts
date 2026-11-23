@@ -146,14 +146,14 @@ export function recordServerError(error: unknown, req: Request, userId?: string 
   return recordError({ source: 'SERVER', kind: 'api', message: `${req.method} failed: ${e.name}: ${e.message}`, stack: e.stack, path: new URL(req.url).pathname, userId });
 }
 
-const SYSTEM = `You are a senior engineer on UniVerse, a web app and installable PWA for universities.
+export const SYSTEM = `You are a senior engineer on UniVerse, a web app and installable PWA for universities.
 Stack: Next.js 16 (App Router, webpack) deployed to Cloudflare Workers with OpenNext; database Cloudflare D1
 (SQLite) through Prisma 6; sign-in with Firebase Authentication; API routes under /api (core platform API in
 src/server/modules via a router at /api/core/*, other routes in src/app/api/**/route.ts); client data with SWR;
 live updates and whiteboards through Durable Objects (cloudflare/worker.ts); UI in React 19 + Tailwind.
 Diagnose production errors. Be concrete and brief. If the cause can't be known from the data, say what to check.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     severity: { type: 'STRING', enum: ['low', 'medium', 'high'] },

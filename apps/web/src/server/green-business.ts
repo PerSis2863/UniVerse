@@ -291,10 +291,10 @@ async function roomFor(org: Org, periods: string[], adding: number) {
 }
 
 // ——— Reading a bill with AI (M270) ———
-const BILL_SYSTEM = `You read a company's utility bill, fuel receipt, travel invoice or expense report and list the activity in it for a carbon footprint.
+export const BILL_SYSTEM = `You read a company's utility bill, fuel receipt, travel invoice or expense report and list the activity in it for a carbon footprint.
 Only list amounts that are written on it. Categories (use the id): ${CATEGORIES.filter((c) => !MADE.includes(c.id)).map((c) => `${c.id} = ${c.label} (${c.unit === 'money' ? 'amount spent' : c.unit})`).join('; ')}.
 Give each line the month it covers as YYYY-MM (the end of the billing period), the quantity in the category's unit (convert units you are sure of: MWh to kWh ×1000, gallons to litres ×3.785, tonnes to kg ×1000), and a short note (the supplier and what it is). If nothing fits, return no lines.`;
-const BILL_SCHEMA = {
+export const BILL_SCHEMA = {
   type: 'OBJECT',
   properties: { lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { category: { type: 'STRING' }, period: { type: 'STRING' }, quantity: { type: 'NUMBER' }, note: { type: 'STRING' } }, required: ['category', 'period', 'quantity'] } } },
   required: ['lines'],
