@@ -1908,6 +1908,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M450 | Hyperion as a real computer app, offered (23 Nov) | **Done** | The installers (hyperion-latest) were published but hidden behind `NEXT_PUBLIC_HYPERION_DOWNLOADS`; the Install button now offers Windows, Mac and Linux first (the visitor's own system first), also in the browser-installed app; the Mac build is universal. |
 | M451 | The brain asks Ghidra's add-on for the skills it does better (23 Nov) | **Done** (branch) | `ghidra/addon.ts` + `addon-skills.ts` (17 skills), behind "Ghidra's own add-on" (off) and `GHIDRA_LORA`; Gemini for everything else and on any failure. |
 | M452 | The owner's handwritten style for headings (23 Nov) | **Done** (branch) | Shantell Sans (OFL, self-hosted, 116 KB) for h1–h3, card titles, the homes' greeting and the key word; Inter for everything read or pressed; documents keep Inter. |
+| M453 | Ghidra quicker and with whole answers; the weak skills' instructions (23 Nov) | **Done** (branch) | Gemini's thinking kept low and every answer given 1,024+ tokens (`quickThinking`, `geminiFetch`; retried without on a 400); research cites in the summary, social's X 250 and [add …], sponsor reports never name people, class recaps fit the class (the exam's rule too: 0% → 96% re-marked). |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 
