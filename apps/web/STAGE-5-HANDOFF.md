@@ -12437,3 +12437,32 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+## M482 (23 Nov): Hyperion toolbox, robot arms
+
+The owner's list, group 6 (machines and vehicles), first item. `src/lib/lab/robot.ts` (pure, no imports): arms as
+standard DH tables (`Link`: a, alpha, d, theta, 'R' or 'P', mass, centre of mass in the link's own frame, principal
+inertias, limits), `frames` / `fkine` (4 × 4 row-major), `jacobian` (6 × n, [ω; v] in the base frame, as MATLAB's
+geometricJacobian), `ikine` (damped least squares, Levenberg–Marquardt with an adaptive λ, joints clamped to their
+limits, up to 6 random restarts; weights orientation first), `rne` (recursive Newton–Euler worked entirely in the base
+frame: forward pass for ω, α and each link's origin and centre accelerations, gravity as a base acceleration of −g;
+backward pass for forces and moments about each joint's origin), `massMatrix` (columns from unit accelerations),
+`gravityTorque`, `velocityProduct`, `forwardDynamics` (M \ (τ − bias)), `manipulability`, the rotations (eul2rotm
+'ZYX' / 'XYZ' / 'ZYZ', axis–angle) and four ready arms (`ARMS`: twolink with 1 kg at each tip in a vertical plane,
+gravity −y; planar3; sixaxis with the PUMA 560's published DH table on a 0.67 m pedestal and rounded masses; scara with
+a sliding quill). Language in `robot-lab.ts`: an arm is a plain struct (Type 'robot', DH, Joints 'RRP', Mass, CoM,
+Inertia, Limits, Gravity) where MATLAB has a rigidBodyTree object; `loadrobot`, `robotDH`, `getTransform`,
+`geometricJacobian`, `robotIK` (our name: MATLAB's inverseKinematics is a System object), `massMatrix`, `gravityTorque`,
+`velocityProduct`, `inverseDynamics`, `forwardDynamics`, `manipulability`, `show`, `robotWorkspace`, and
+eul2rotm / rotm2eul / eul2tform / tform2eul / trvec2tform / tform2trvec / rotm2tform / tform2rotm / axang2rotm /
+rotm2axang / rotx / roty / rotz (degrees). Tests in `robot.test.ts` against the textbook two-link arm (M, g and the
+Coriolis terms by hand), the Jacobian by finite differences, forward dynamics undoing inverse dynamics, IK round trips.
+
+How the branch is laid out (for M483–M491 and for merging): the shared files only gained one line each. Help for the
+whole group is in `help-machines.ts` (appended to help.ts's TEXT), the example scripts in `examples-machines.ts`
+(spread at the end of LabApp's EXAMPLES; `machines.test.ts` runs every one), the registrations in `machines-lab.ts`
+(imported by lab.worker.ts and help.test.ts). The window is Simulate → **Machines** (`MachinesBench.tsx`, one tab per
+toolbox, sessionStorage `uv-sim-machine`); its first tab **Robot arm** (`ArmBench.tsx`, `ArmView.tsx`: three.js set up
+as Sim3DView, z up, planar arms turned so gravity points down): sliders per joint, "Reach a point" (robotIK, the arm
+glides there in 0.5 s, at once with Reduce Motion), tool pose, manipulability and the gravity torques as `<Fill>` bars.
+Browser check `scripts/checks/hyperion-machines-ui.mjs` (axe at 1280, light and dark). Example robot_arm.m. Not built:
+trees with branches (only serial chains), collision checking, joint friction and motor inertia, modified DH, URDF files.

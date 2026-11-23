@@ -1898,6 +1898,11 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 8. **Capabilities**: C code from scripts (embedded code generation), parallel computing (workers, `parfor`), GPU
    computing (WebGPU), discrete-event simulation, unit tests and checks for scripts (verification), hardware support
    (Arduino and serial), reports (done in M397), deployment (share links M398, the computer app M412).
+
+#### Machines and vehicles, group 6 (M482–M491, branch `claude/hyperion-machines-vehicles`)
+
+| Item | What | State | Notes |
+|---|---|---|---|
 | M442 | A daily limit on paid AI (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | 25 questions a person and 400 for the site each day on the paid Cloudflare models; past them Gemini answers, so nobody is cut off. Changeable in console → Server → AI use today. |
 | M443 | Ghidra, the one AI, step 1: skills, one brain, the RunPod-style opening (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | Every AI job is a Ghidra skill answered through one brain (60 calls moved, a test stops new direct Gemini calls); people see only the name Ghidra; the corner chat opens with suggestions over one question box. |
 | M444 | Ghidra, the one AI, step 2: the exam (23 Nov) | **Built; the starting score waits on its first run** (branch `claude/youthful-fermi-sbdtcp`) | 43 skills, 50–80 questions each (2,500 in all) with pass / fail rules, asked with each job's own instructions; `node scripts/ai/ghidra-exam.mjs` prints the score card (by the website's brain or any OpenAI-style model; pictures, recordings and Hyperion's code included). |
@@ -1906,6 +1911,7 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 | M448 | The owner console shows the paid Cloudflare plan (23 Nov) | **Done** | The plan card read only the old `WORKERS_PAID` name, not `CF_PLAN=paid`: it showed the free plan's daily meters. Now `workersPaid()`. |
 | M449 | The installed Hyperion app keeps the whole site inside it (23 Nov) | **Done** | Its manifest's scope was `/hyperion`, so the console, Messages, Collaborate and Settings showed the browser's out-of-app bar (address and ✕). Scope `/`, start and id still `/hyperion`. |
 | M450 | Hyperion as a real computer app, offered (23 Nov) | **Done** | The installers (hyperion-latest) were published but hidden behind `NEXT_PUBLIC_HYPERION_DOWNLOADS`; the Install button now offers Windows, Mac and Linux first (the visitor's own system first), also in the browser-installed app; the Mac build is universal. |
+| M482 | Robot arms | **Done** | DH arms (four ready: six-axis, SCARA, 3-link, 2-link), forward and inverse kinematics, the Jacobian, dynamics by recursive Newton–Euler (mass matrix, gravity, Coriolis, forward dynamics), rotations; Simulate → Machines → Robot arm: a 3D arm with a slider a joint and Reach a point. Tested against the textbook two-link arm. |
 
 ### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
 

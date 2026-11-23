@@ -2,6 +2,8 @@
 // name` print it, the editor shows it beside suggestions and on hover, the function browser lists it. Written for
 // this Lab (what our own functions do), in plain words.
 
+import { MACHINES_HELP } from './help-machines';
+
 const TEXT = `
 # Numbers and arithmetic
 abs | abs(x) | Absolute value; the size of a complex number.
@@ -830,7 +832,7 @@ pkg | pkg load | (Every package is already loaded.)
 nargin | nargin | How many inputs the function was given.
 nargout | nargout | How many outputs were asked for.
 exist | exist('name') | 1 a variable, 2 a file, 5 a function, 0 nothing.
-`;
+` + MACHINES_HELP;
 
 export interface Entry { name: string; syntax: string; text: string; section: string }
 export const HELP = new Map<string, Entry>();

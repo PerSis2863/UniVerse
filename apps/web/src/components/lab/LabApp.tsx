@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
+import { MACHINE_EXAMPLES } from '@/lib/lab/examples-machines';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
 import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
@@ -74,6 +75,7 @@ const EXAMPLES: Script[] = [
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
   { name: 'python_demo.py', code: "# Python inside Hyperion: NumPy, SciPy, Pandas and Matplotlib, nothing to install (the first run loads them)\nimport numpy as np\nimport pandas as pd\nfrom scipy import integrate, optimize\nimport matplotlib.pyplot as plt\n\n# A damped spring, solved by SciPy\ndef spring(t, y):\n    return [y[1], -4 * y[0] - 0.5 * y[1]]\n\nsol = integrate.solve_ivp(spring, [0, 20], [1, 0], max_step=0.05)\nplt.plot(sol.t, sol.y[0])\nplt.xlabel('t (s)'); plt.ylabel('x (m)'); plt.title('A damped spring (SciPy)')\n\n# Where cos(x) = x\nprint('cos(x) = x at', optimize.brentq(lambda x: np.cos(x) - x, 0, 1))\n\n# A small table with Pandas\ndf = pd.DataFrame({'day': range(1, 8), 'steps': np.random.default_rng(1).integers(3000, 12000, 7)})\nprint(df.describe().round(1))\n" },
   { name: 'r_demo.R', code: "# R inside Hyperion, with ggplot2: nothing to install (the first run loads R and the package)\nlibrary(ggplot2)\n\n# A linear model of the cars data that comes with R\nfit <- lm(dist ~ speed, data = cars)\nprint(round(coef(fit), 2))\ncat('R squared:', round(summary(fit)$r.squared, 3), '\\n')\n\nprint(\n  ggplot(cars, aes(speed, dist)) +\n    geom_point(colour = 'steelblue') +\n    geom_smooth(method = 'lm', formula = y ~ x, colour = 'firebrick') +\n    labs(title = 'Stopping distance against speed', x = 'Speed (mph)', y = 'Distance (ft)')\n)\n" },
+  ...MACHINE_EXAMPLES,
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
