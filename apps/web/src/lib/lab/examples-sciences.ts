@@ -26,4 +26,27 @@ Ng = [2e5 6e5 2e5];
 figure; sirAge(0.015, C, 0.1, Ng, [5 5 0], 250)
 fprintf('R0 by age groups: %.2f\\n', epiR0(0.015, 0.1, C, Ng))
 ` },
+  { name: 'dosing.m', code: `% Pharmacokinetics: how much of a drug, how often (a teaching example, not medical advice)
+% A drug with clearance 4 L/h, volume 40 L (half-life about 7 h), taken by mouth (ka 1/h, 85% absorbed)
+m = pkModel('CL', 4, 'V', 40, 'ka', 1, 'F', 0.85)
+dose = 400;   % slider 100 800
+every = 8;    % slider 4 24
+pkSimulate(m, dose, 'Route', 'oral', 'Every', every, 'Doses', 10, 'Window', [5 15])
+s = pkSteadyState(m, dose, every, 'Route', 'oral');
+fprintf('Steady state: %.1f to %.1f mg/L (mean %.1f), %.1f times the first dose, reached in %.0f h\\n', s.Cmin, s.Cmax, s.Cavg, s.Accumulation, s.TimeTo90)
+figure; pkDosingWindow(m, 5, 15, 'Route', 'oral')
+% A second compartment: the quick fall, then the slow one
+m2 = pkModel('CL', 4, 'V', 20, 'Q', 8, 'V2', 60);
+[t, C] = pkSimulate(m2, 500, 'Hours', 48);
+figure; semilogy(t, C); grid on; xlabel('Hours'); ylabel('mg/L (log scale)'); title('Two compartments after an IV dose')
+% What the lab measured after one dose: area, half-life, clearance
+ts = [0.5 1 2 4 6 8 12 24];
+Cs = interp1(t, C, ts) .* (1 + 0.03*randn(size(ts)));
+p = pkNCA(ts, Cs, 500)
+% A saturating drug: double the dose, far more than double the level
+sat = pkModel('V', 50, 'Vmax', 25, 'Km', 4);
+[t1, c1] = pkSimulate(sat, 200, 'Every', 12, 'Doses', 14, 'Route', 'oral');
+[t2, c2] = pkSimulate(sat, 260, 'Every', 12, 'Doses', 14, 'Route', 'oral');
+figure; plot(t1, c1, t2, c2); legend('200 mg', '260 mg'); xlabel('Hours'); ylabel('mg/L'); title('Saturating elimination'); grid on
+` },
 ];

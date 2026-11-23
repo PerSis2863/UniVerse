@@ -12462,3 +12462,23 @@ SimBiology as objects). Tests: final size 0.9405 at R0 3 and 0.7968 at 2, the pe
 next-generation R0 for mixed and separate groups, fits recovering β and R0, R_t = e^r for steady growth, the stiff
 solver on a 1000:1 problem in under 400 steps. Not built: stochastic (Gillespie) outbreaks, spatial spread, deaths and
 hospital beds as compartments, fitting with confidence intervals.
+
+## M493 (23 Nov): Hyperion toolbox, pharmacokinetics (sciences and industries, 2 of 14)
+
+`pk.ts` (pure) and `pk-lab.ts`. A linear model is its disposition as exponential modes (`modes`: one compartment
+A = 1/V, λ = CL/V; two compartments α and β from k10, k12, k21 with A_α = (α − k21)/(V(α − β))), so every route has
+a closed form (`single`: bolus Σ A e^(−λt); infusion R Σ A/λ (1 − e^(−λt)) then decaying; oral F D Σ A ka/(ka − λ)
+(e^(−λt) − e^(−ka t)), with the ka = λ limit) and a schedule is a sum of single doses (`simulate`). Saturating
+elimination ('Vmax', 'Km', one compartment plus the gut) is solved by RK4 mark to mark (asked times, doses, infusion
+ends) so a bolus lands at its time; a time asked for at a dose reads after it. `steadyState` sums doses until the
+slowest mode is e^−30 down (at most 100,000); `dosingWindow` bisects the interval whose steady-state peak ÷ trough
+equals MTC ÷ MEC, then picks the longest practical interval (1, 2, 3, 4, 6, 8, 12, 24, 48, 72, 168 h) and a dose aimed
+at the window's geometric middle; `nca` is linear-up log-down AUC and AUMC, λz from the last points after the peak.
+Language: `pkModel` (a struct, Type 'pkModel', with Rates and HalfLife), `pkSimulate` ('Route', 'Duration', 'Every',
+'Doses', 'Times', 'Hours', 'Step', 'Window'), `pkSteadyState`, `pkDosingWindow`, `pkNCA` (our own names; SimBiology's
+are objects). Units are the person's (mg, L, h by default). The example `dosing.m` says it is teaching, not medical
+advice. Tests: the textbook formulas (bolus, infusion end, oral Tmax = ln(ka/k)/(ka − k), AUC = F D/CL), two
+compartments against Dormand–Prince on the equations, the bolus steady state and accumulation 1/(1 − e^(−kτ)),
+the window τ = ln(MTC/MEC)/k with dose V(MTC − MEC), saturating = linear at low levels. Not built: population PK
+(mixed effects), fitting a model to measured levels (use lsqcurvefit on `pkSimulate`'s output), PD (effect) models,
+three compartments, lag times.
