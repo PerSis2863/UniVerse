@@ -28,6 +28,8 @@ class Pause extends Flow {
   constructor(readonly wait: () => Promise<void>, readonly rerun: boolean) { super('pause'); }
 }
 const topLevel = new WeakSet<Stmt>();
+/** M478: stops the run until `wait` is done, then runs this top-level statement again (gather on the GPU). */
+export const pauseFor = (wait: () => Promise<void>) => new Pause(wait, true);
 
 // ——— What a parfor body does to each variable ———
 const rootOf = (e: Expr): string | null => (e.k === 'id' ? e.name : e.k === 'index' ? rootOf(e.of) : (e as { k: string; of?: Expr }).k === 'field' ? rootOf((e as unknown as { of: Expr }).of) : null);

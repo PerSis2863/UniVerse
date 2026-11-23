@@ -359,6 +359,14 @@ cancel | cancel(F) | Forgets futures (their results are dropped).
 parpool | p = parpool(4) | How many of the pool's workers parfor uses (the pool starts itself; p.NumWorkers).
 gcp | p = gcp | The pool: p.NumWorkers (gcp('nocreate') is empty when there is none).
 
+# GPU computing
+gpuArray | G = gpuArray(A) | Puts a matrix on the graphics chip (WebGPU, single precision; on the CPU where there is none): + − .* ./ .^, * (the matrix product), exp, sqrt, abs, sin, cos, tanh, log, sum and transpose work on it; anything else needs gather first.
+gather | A = gather(G) | Brings a gpuArray's numbers back (the run pauses while they come, then that statement runs again; plain values pass through).
+gpuDevice | d = gpuDevice | The graphics chip in use: d.Name, d.Available, d.Precision.
+gpuDeviceCount | n = gpuDeviceCount | 1 when WebGPU found a graphics chip, else 0.
+isgpuarray | tf = isgpuarray(x) | True for a gpuArray.
+existsOnGPU | tf = existsOnGPU(x) | True for a gpuArray.
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).

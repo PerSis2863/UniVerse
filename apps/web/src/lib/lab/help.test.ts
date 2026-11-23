@@ -15,6 +15,7 @@ import './audio-lab';
 import './serial-lab';
 import './verify-lab';
 import './parallel-lab';
+import './gpu-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

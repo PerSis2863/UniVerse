@@ -20,6 +20,8 @@ import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
 import { reportText, runScriptTests, testReports, type TestReport } from '@/lib/lab/verify-lab';
 import '@/lib/lab/help-commands';
 import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@/lib/lab/parallel-lab';
+import '@/lib/lab/gpu-lab';
+import { initGpu } from '@/lib/lab/gpu';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
 import { Profiler, type Profile } from '@/lib/lab/profile';
@@ -100,6 +102,8 @@ class WorkerPool implements Pool {
 }
 const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
 if (typeof Worker !== 'undefined' && cores > 2) parallel.pool = new WorkerPool(Math.min(8, cores - 1));
+// M478: the graphics chip, asked for once (asynchronously) so gpuArray finds it ready.
+void initGpu();
 testReports.onReport = (r) => postMessage({ tested: r } satisfies FromLab);
 let size = { w: 720, h: 520 };
 // The editor colours and suggests the engine's functions (M389).

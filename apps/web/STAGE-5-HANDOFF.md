@@ -12553,3 +12553,19 @@ Learn and health workers, 2 cores or fewer) parfeval runs the call at once and p
 (`WorkerPool` in `lab.worker.ts`) starts on first use and stays; Stop ends it with the engine. Browser check:
 `scripts/checks/hyperion-parallel-ui.mjs`. Not built: spmd, distributed arrays, parfor's sliced inputs (the whole
 workspace is sent), backgroundPool, afterEach / afterAll.
+
+## M478 (23 Nov): Hyperion, GPU computing (gpuArray and gather on WebGPU)
+
+`src/lib/lab/gpu.ts` (WebGPU: `initGpu` asks for an adapter once, from `lab.worker.ts` at start; WGSL compute shaders for
+the tiled matrix product, element-wise ops with scalar broadcasting, unary maths, column sums and transpose; column-major
+f32 buffers; `readBack` copies to a MAP_READ buffer and awaits `mapAsync`; with no device every op runs on the CPU in
+double precision, and a matrix made before the device was ready moves to it on first use, `onDevice`) and `gpu-lab.ts`.
+A gpuArray is a `Struct` with `gpu: true` (fields Size, Where, ID; `kind` says gpuArray, `sizeOf` its size, `show` a
+one-line summary): the engine's `binop` asks `opHooks.binop` first when either side is one, and `exp`, `sqrt`, `abs`,
+`sin`, `cos`, `tanh`, `log`, `sum`, `transpose`, `ctranspose`, `numel` are wrapped. **gather** throws
+`pauseFor(readBack)` (M477's pause, re-running the statement), so every operation is **memoised** by (op, operand ids,
+scalar values): the re-run gets the same handles and finds the numbers back. Buffers are freed when no handle refers to
+them (`FinalizationRegistry` with a count per id); a matrix uploaded as an operand keeps its buffer (a `shortcut:`
+comment). Unary minus, indexing and anything else need gather first (a clear error says so). WebGPU is in Chrome and
+Edge (desktop), not yet in Firefox or Safari by default: there gpuArray is still correct, just not faster. Browser
+check: `scripts/checks/hyperion-gpu-ui.mjs` (launches Chromium with its software WebGPU adapter, so it runs anywhere).
