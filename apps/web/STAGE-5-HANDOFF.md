@@ -12538,3 +12538,27 @@ The owner, 23 Nov: add finding peaks, SVD and filter design, "make everything ul
   underline moves by `transform`; a pressed tool's icon pops (skipped with Reduce Motion); fold is a grid-rows ease
   with `inert`. Measured on the production build: at normal CPU 0 long tasks and 0 slow frames for typing, tabs, tools,
   menus and fold; at 4× slower CPU typing costs the same with the strip folded, so what's left is the editor's own.
+## M453: Ghidra quicker and with whole answers; the weak skills' instructions (23 Nov)
+
+The owner (23 Nov): "merge and after that work on [the 0% skills and the ones the add-on made worse]… when i was
+testing my ai also it was so much slow and not providing answer properly". The live `error_reports` and
+`ghidra_reports` had nothing about AI, so it wasn't failing loudly.
+
+- **The cause found:** the newer Gemini models (the chain starts at 3.6 Flash) think before answering, and thinking
+  counts against `maxOutputTokens`. Our jobs ask for 200–800 tokens (the chat 1,024): answers came back cut or empty
+  (JSON that won't parse → null → "couldn't…"), after seconds of thinking; the corner chat then fell back to the tiny
+  on-device model. **Fix** (`src/server/gemini.ts`): `quickThinking(model, body)` asks Gemini 3 for `thinkingLevel: low`,
+  2.5 Flash for `thinkingBudget: 0`, and gives every answer at least 1,024 tokens; `geminiFetch` sends it and, on a 400
+  (a model that refuses the setting), sends the plain request. Every call (`call`) and the streaming chat
+  (`api/ai/route.ts`, now 2,048 tokens) go through it; `brain-gate.test.ts` checks the chat imports only `geminiFetch`;
+  `gemini.test.ts`. **Not verified against Gemini itself** (no key here): the owner's console exam run shows it.
+- **The weak skills:** research's format asks for the source number inside the summary after every sentence (the rule
+  needs two there; both models cited only in the points); social: X at most 250 characters, dates, times and numbers
+  only from the request, else [add date] / [add time]; sponsor reports: highlights may name people, so "a student", "a
+  volunteer" or "the team" instead; class recaps: 220–320 words from a 20-minute class, about two thirds of what was
+  taught for a shorter one (the instructions already said short classes get short content). The exam's recap rule now
+  matches (the exam's classes are a few minutes): this morning's answers re-marked, class-notes **0% → 96%**.
+- **Not changed:** reading-level, concepts, school-insights and social stay off the add-on (ADDON_SKILLS); their
+  base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
+  wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
+
