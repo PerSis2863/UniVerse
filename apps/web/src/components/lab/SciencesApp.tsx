@@ -57,7 +57,7 @@ export function SciencesApp() {
   const runNow = useEffectEvent(() => send(code));
   useEffect(() => { const t = setTimeout(() => runNow(), 120); return () => clearTimeout(t); }, [code]);
 
-  const pick = (next: string) => { setAppId(next); setFig(null); setText(''); setError(null); try { sessionStorage.setItem(KEEP, next); } catch { /* private mode */ } };
+  const pick = (next: string) => { if (next === app.id) return; setAppId(next); setFig(null); setText(''); setError(null); try { sessionStorage.setItem(KEEP, next); } catch { /* private mode */ } };
   const set = (key: string, x: number | string | boolean) => setValues((all) => ({ ...all, [app.id]: { ...v, [key]: x } }));
   const results = resultsOf(text), printed = otherText(text);
   const openInCode = async () => router.push(`/hyperion#${await shareFragment({ name: `${app.id}.m`, code, view: 'code' })}`);

@@ -12834,3 +12834,10 @@ fatigue), farms and power (irrigation, dispatch, LCOE). `sci-apps.test.ts` runs 
 122 MW at 9.148), the junction's 0.80 V, the Riemann exact integral, Newton to √2. The pk "best schedule" view takes
 about 2 s (pkDosingWindow's search). Not built: a window per toolbox beyond these views, files in the window (the
 window's worker has none of the person's files; scripts in Code do).
+
+**M508 checked in a browser (23 Nov):** `scripts/checks/hyperion-windows-ui.mjs` on a local build: all 14 windows show a
+figure and result cards, a slider (R0, by keyboard) changes the results, axe clean at 1280 dark and 1024 light, no
+sideways scroll, no page errors; animate.m (M506) showed 20 different frames while it ran. Fixed from it: pressing the
+toolbox already open wiped its results (`pick` now ignores it); the pendulum in animate.m was drawn in black, invisible
+in dark mode (an orange line now). Open in Code lands on Code's "Someone shared … Open it" banner, as Machine health's
+does.
