@@ -12500,3 +12500,20 @@ the device's state and new lines, between runs) and a script's writes go out thr
 return the last report; writes happen as the script runs. MATLAB's serialport and arduino objects are plain structs
 here. Not built: two devices at once, binary protocols beyond Firmata (I2C, SPI, Servo libraries' extras), USB (WebUSB is
 off by the site's policy), Bluetooth, an Arduino compiler/uploader (upload sketches with the Arduino IDE).
+
+## M475 (23 Nov): Hyperion, the Internet of Things (channels, write keys, live dashboards)
+
+Signals → **IoT** (`IotBench.tsx`). Database update **0260** (`iot_channels`, `iot_entries`; 0259 was already M445's on
+main). Server: `src/server/iot.ts`, the platform API module `src/server/modules/iot.ts` (registered in `app.ts`), so the
+routes are `/api/core/iot/…`: `GET/POST channels`, `PATCH/DELETE channels/:id`, `POST channels/:id/key`,
+`GET channels/:id/entries?after=&limit=` (owner only, `own()` checks `userId`), and the public `POST`/`GET
+write/:key` (listed in `route-gates.test.ts`'s PUBLIC_MODULE: the key is the password, as Trace's carrier key). The write
+key (20 characters, about 100 bits) is returned once; only its SHA-256 (`keyHash`, unique) and its first 4 characters are
+kept. Fields are numbers through `num()` (±1e15), field1…field8 (or f1…f8); one reading a second claimed with a
+conditional `updateMany` (no transactions in D1); every 200th insert trims the channel to its newest 20,000. Each reading
+`publish`es a refresh of `/iot/channels/<id>*` to the owner's tabs (the window also refreshes every 20 s when live
+updates are off). Sample answers in `src/lib/sample/iot.ts`; erased with the account (`account-deletion.ts`). The
+simulated device posts from the browser to the same public address every 2 s (making a new key if none is in memory).
+Not built: public (shared) channels, alerts on a threshold, reading a channel from a script (the engine runs scripts
+without waiting on the network: Open in Code saves the readings as a CSV in Hyperion's files), MQTT (browsers can't
+open raw TCP; HTTPS only).

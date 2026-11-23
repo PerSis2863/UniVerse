@@ -134,6 +134,8 @@ const PUBLIC_MODULE: Record<string, string> = {
   'trace POST carry/:key/arrive': 'a shipment’s carrier page: the carrier key is the password',
   'trace POST carry/:key/reading': 'a sensor’s reading: the carrier key is the password',
   'trace GET public/:slug': 'a brand’s public page',
+  'iot POST write/:key': 'a device’s reading (M475): the channel’s write key is the password (kept only as its hash); one a second',
+  'iot GET write/:key': 'the same for the smallest boards, which can only open an address (M475): the write key is the password',
   'trace GET dpp/:gtin': 'a product’s EU Digital Product Passport (public by design)',
   'impact-apps GET link/:code': 'Green → Business share links (M271–M274): the unguessable code a company gave a supplier, its staff or an auditor; the company’s name and footprint, never emails or phones',
   'impact-apps POST link/:code': 'a supplier’s emissions or one anonymous commute answer, by the unguessable code in its link (M271–M272); capped per company and year',

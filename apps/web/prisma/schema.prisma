@@ -428,6 +428,7 @@ model User {
   @@index([organizationId])
   @@map("users")
   ghidraReports GhidraReport[]
+  iotChannels   IotChannel[]
 }
 
 // ─── BILLING / ORGANIZATION SUBSCRIPTIONS ─────────────────────────────────
@@ -8509,4 +8510,42 @@ model GhidraExamAnswer {
 
   @@index([runId, skill])
   @@map("ghidra_exam_answers")
+}
+
+/// M475: Hyperion Signals → IoT: a person's device channels; the write key is kept only as its SHA-256.
+model IotChannel {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  fields      String     @default("[]")
+  keyHash     String     @unique
+  keyHint     String
+  entries     Int        @default(0)
+  lastEntryAt DateTime?
+  createdAt   DateTime   @default(now())
+  readings    IotEntry[]
+
+  @@index([userId])
+  @@map("iot_channels")
+}
+
+/// M475: one reading a device sent: up to 8 numbers.
+model IotEntry {
+  id        Int        @id @default(autoincrement())
+  channelId String
+  channel   IotChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  at        DateTime   @default(now())
+  f1        Float?
+  f2        Float?
+  f3        Float?
+  f4        Float?
+  f5        Float?
+  f6        Float?
+  f7        Float?
+  f8        Float?
+
+  @@index([channelId, id])
+  @@map("iot_entries")
 }

@@ -6,7 +6,7 @@ import { launch, signedIn } from '../browser-session.mjs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
-const TABS = (process.env.TABS ?? 'Filter designer,Audio,Devices').split(',');
+const TABS = (process.env.TABS ?? 'Filter designer,Audio,Devices,IoT').split(',');
 const browser = await launch();
 const out = {}, errors = [];
 const axe = async (page) => { await page.addScriptTag({ path: AXE }); return page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`)); };
@@ -67,6 +67,19 @@ try {
         await page.waitForTimeout(500);
         r.a0 = await page.locator('[data-pin="A0"]').innerText();
         r.d13 = await page.getByRole('button', { name: 'High (on)' }).count();
+      }
+      if (tab === 'IoT' && theme === 'light') page.on('dialog', (d) => void d.accept());
+      if (tab === 'IoT') {
+        // A channel, its key shown once, the simulated device's readings arriving through the public address.
+        const nameBox = page.getByLabel('Name');
+        await nameBox.fill(`Check ${theme} ${Date.now() % 100000}`);
+        await page.getByRole('button', { name: 'Make the channel' }).click();
+        await page.locator('[data-write-key]').waitFor({ timeout: 20_000 });
+        r.key = /^[A-Z2-9]{20}$/.test(await page.locator('[data-write-key]').innerText());
+        await page.getByRole('button', { name: 'Start a simulated device' }).click();
+        await page.waitForFunction(() => [...document.querySelectorAll('[data-field]')].some((e) => e.textContent !== '–'), null, { timeout: 30_000 });
+        r.reading = await page.locator('[data-field]').first().innerText();
+        await page.getByRole('button', { name: 'Stop the simulated device' }).click();
       }
       if (shots) await page.screenshot({ path: `${shots}/signals-${tab.replace(/\W+/g, '-')}-${theme}.png` });
       r[tab] = await axe(page);
