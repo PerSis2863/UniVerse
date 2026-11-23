@@ -7,7 +7,7 @@ import { cleanRule, groupQuestions, MATH_RULE, tutorOff, type TutorMode } from '
 import { words } from '@/lib/text-search';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
-import { geminiJson, geminiJsonImage } from './gemini';
+import { ghidraJson, ghidraJsonImage } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException } from './http';
 import { indexClassSession } from './semester';
 import { aiOn, tutorClosed, type Access } from './tutor';
@@ -35,7 +35,7 @@ const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'ima
 const MAX_PHOTO = 5_600_000; // base64 characters, about 4 MB
 interface Homework { readable: boolean; problem: string; topic: string; hints: string[]; answer: string }
 
-const homeworkSystem = (a: Access) => `You are a patient tutor for the course ${a.courseCode} "${a.courseName}". The student sends a photo of a homework problem.
+export const homeworkSystem = (a: Access) => `You are a patient tutor for the course ${a.courseCode} "${a.courseName}". The student sends a photo of a homework problem.
 - "problem": the problem exactly as written in the photo (its own language). If there's no readable problem in the photo, set "readable" to false and leave the rest empty.
 - "topic": the topic in a few words.
 - "hints": three hints that get gradually stronger. The first only points to the idea or method to use; the second sets up the first step; the third does most of the work and leaves the last step to the student. A hint never gives the final answer. Under 60 words each.
@@ -52,6 +52,12 @@ const firstStep = (ref: string, h: Homework, a: Access, mode: TutorMode) => ({
   answerAllowed: !a.rule.hintsOnly && mode !== 'hints',
 });
 
+export const HOMEWORK_PHOTO_SCHEMA = {
+  type: 'OBJECT',
+  properties: { readable: { type: 'BOOLEAN' }, problem: { type: 'STRING' }, topic: { type: 'STRING' }, hints: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'STRING' } },
+  required: ['readable', 'problem', 'topic', 'hints', 'answer'],
+};
+
 /** POST { image: { mimeType, data } }: reads the problem and gives the first hint (one AI request; the same photo again is free). */
 export async function homeworkPhoto(a: Access, user: SessionUser, b: Record<string, unknown>, mode: TutorMode) {
   await assertTutorOpen(a);
@@ -65,11 +71,7 @@ export async function homeworkPhoto(a: Access, user: SessionUser, b: Record<stri
   if (saved) return firstStep(ref, saved, a, mode);
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
-  const out = await geminiJsonImage<Homework>(homeworkSystem(a), 'The photo of the homework problem.', { mimeType, data }, {
-    type: 'OBJECT',
-    properties: { readable: { type: 'BOOLEAN' }, problem: { type: 'STRING' }, topic: { type: 'STRING' }, hints: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'STRING' } },
-    required: ['readable', 'problem', 'topic', 'hints', 'answer'],
-  }, 2000);
+  const out = await ghidraJsonImage<Homework>('tutor', homeworkSystem(a), 'The photo of the homework problem.', { mimeType, data }, HOMEWORK_PHOTO_SCHEMA, 2000);
   if (!out) throw new HttpException('The tutor couldn’t look at the photo right now. Please try again.', 503);
   const h: Homework = {
     readable: out.readable !== false && !!out.problem?.trim(),
@@ -133,6 +135,14 @@ export async function classPassages(courseId: string, topic: string, k = 8): Pro
   return found.map((p) => ({ ...p, at: p.at == null ? null : Number(p.at) }));
 }
 
+export const PRACTICE_FROM_CLASSES_SCHEMA = {
+  type: 'OBJECT',
+  properties: { questions: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'INTEGER' }, explanation: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['question', 'options', 'answer', 'explanation', 'source'] } } },
+  required: ['questions'],
+};
+
+export const classPracticeSystem = (count: number) => `You write practice questions for students from what their teacher said in class. Make ${count} multiple-choice questions that test understanding of what was taught (not trivia about the class itself), each with 4 plausible options and exactly one correct answer, and a one- or two-sentence explanation. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`;
+
 /** POST practice { from: 'classes' }: questions from what was said in class, each linked to its moment (one AI request). */
 export async function practiceFromClasses(a: Access, user: SessionUser, topic: string, count: number) {
   await assertTutorOpen(a);
@@ -142,14 +152,10 @@ export async function practiceFromClasses(a: Access, user: SessionUser, topic: s
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'study', detail: `Practice from the classes${topic.trim() ? `: ${topic}` : ''}`, courseId: a.courseId });
   const cite = ps.map((p, i) => `[${i + 1}] (${p.title})\n${p.body}`).join('\n\n');
-  const out = await geminiJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>(
-    `You write practice questions for students from what their teacher said in class. Make ${count} multiple-choice questions that test understanding of what was taught (not trivia about the class itself), each with 4 plausible options and exactly one correct answer, and a one- or two-sentence explanation. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`,
+  const out = await ghidraJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>('tutor', 
+    classPracticeSystem(count),
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nFrom the classes:\n${cite}`,
-    {
-      type: 'OBJECT',
-      properties: { questions: { type: 'ARRAY', items: { type: 'OBJECT', properties: { question: { type: 'STRING' }, options: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'INTEGER' }, explanation: { type: 'STRING' }, source: { type: 'INTEGER' } }, required: ['question', 'options', 'answer', 'explanation', 'source'] } } },
-      required: ['questions'],
-    },
+    PRACTICE_FROM_CLASSES_SCHEMA,
     2500,
   );
   if (!out?.questions) throw new HttpException('Couldn’t make questions right now. Please try again.', 503);

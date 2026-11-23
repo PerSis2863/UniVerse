@@ -8,7 +8,7 @@ import { afterSend } from './chat-notify';
 import { cleanTranscript, type TranscriptLine } from './class-companion';
 import { channelSendCheck } from './communities';
 import { notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { chatMuted, featureOff } from './moderation';
 import { groupAccess } from './spaces';
@@ -26,7 +26,7 @@ import { indexLater, indexMeeting } from './semester';
 export interface ActionItem { text: string; who: string; due: string }
 interface Notes { title: string; summary: string; decisions: string[]; actions: ActionItem[]; chapters: { t: number; title: string }[] }
 
-const SYSTEM = [
+export const SYSTEM = [
   'You write the notes of a call between students, teachers or staff on UniVerse (a meeting, a study session, a project call), from its automatic captions: expect missing words and mistakes, and ignore small talk, greetings and technical problems ("can you hear me").',
   'Write in the language the call was held in. Only use what was said; never invent facts, names, dates or numbers.',
   'title: a short title for the call (at most 8 words). summary: 2 to 4 sentences on what was discussed.',
@@ -35,7 +35,7 @@ const SYSTEM = [
   'chapters: 2 to 8 parts of the call in order, each with t = the seconds value of the line where it starts and a short title (fewer for a short call).',
 ].join(' ');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     title: { type: 'STRING' },
@@ -80,7 +80,7 @@ async function makeNotes(lines: TranscriptLine[], callTitle: string, durationSec
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const prompt = `Call: ${callTitle}\nToday: ${new Date().toISOString().slice(0, 10)}\nLength: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`;
-  return cleanNotes(await geminiJson<Partial<Notes>>(SYSTEM, prompt, SCHEMA, 3000), durationSec);
+  return cleanNotes(await ghidraJson<Partial<Notes>>('meetings', SYSTEM, prompt, SCHEMA, 3000), durationSec);
 }
 
 const noteData = (n: Notes) => ({ status: 'READY', title: n.title, summary: n.summary, decisions: JSON.stringify(n.decisions), actions: JSON.stringify(n.actions), chapters: JSON.stringify(n.chapters) });

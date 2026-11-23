@@ -27,18 +27,18 @@ export function LabAsk({ code, error, onNew, onReplace }: Props) {
         body: JSON.stringify(fix && error ? { question, code, error: `line ${error.line}: ${error.message}` } : { question, code: withScript ? code : undefined }),
       });
       const j = (await res.json().catch(() => ({}))) as { answer?: string; error?: string };
-      if (!res.ok || !j.answer) toast.error(j.error ?? 'Hyperion’s AI can’t answer right now.');
+      if (!res.ok || !j.answer) toast.error(j.error ?? 'Ghidra can’t answer right now.');
       else setAnswer(j.answer);
-    } catch { toast.error('Hyperion’s AI can’t be reached. Check the connection.'); }
+    } catch { toast.error('Ghidra can’t be reached. Check the connection.'); }
     setBusy(false);
   };
 
   const got = answer ? codeOf(answer) : null;
   const words = answer ? answer.replace(/```[\s\S]*?```/g, '').trim() : '';
   return (
-    <div role="group" aria-label="Ask Hyperion’s AI" className="space-y-2 border-b border-zinc-200/80 px-3 py-3 dark:border-white/10" data-no-motion>
+    <div role="group" aria-label="Ask Ghidra" className="space-y-2 border-b border-zinc-200/80 px-3 py-3 dark:border-white/10" data-no-motion>
       <form className="flex flex-wrap items-start gap-2" onSubmit={(e) => { e.preventDefault(); void ask(false); }}>
-        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={2} maxLength={6000} aria-label="Your question for Hyperion’s AI"
+        <textarea value={question} onChange={(e) => setQuestion(e.target.value)} rows={2} maxLength={6000} aria-label="Your question for Ghidra"
           placeholder="e.g. Plot a damped sine wave and find where it first drops below 0.1"
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void ask(false); } }}
           className="input min-h-[2.75rem] min-w-[14rem] flex-1 resize-y text-sm" />

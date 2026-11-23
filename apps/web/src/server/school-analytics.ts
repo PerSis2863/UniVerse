@@ -5,7 +5,7 @@ import {
   type MetricHelp, type MetricId, type MetricParams, type MetricResult, type MetricRow, type Order,
 } from '@/lib/school-metrics';
 import { cachedAi, sameQuestion, saveAi, spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
 import { schoolSql, schoolsOf, type SchoolIds } from './school-scope';
@@ -248,12 +248,12 @@ export async function runMetric(viewer: Parameters<typeof schoolsOf>[0], id: Met
 
 type Pick = { metric: MetricId | 'none'; days?: number; order?: Order; department?: string };
 
-const SYSTEM = `You map a school administrator's question to one measure from a fixed list. Answer with the measure's id, or "none" when no measure answers it (for example a question about one named person, money, or anything not listed). Never invent measures.
+export const SYSTEM = `You map a school administrator's question to one measure from a fixed list. Answer with the measure's id, or "none" when no measure answers it (for example a question about one named person, money, or anything not listed). Never invent measures.
 days: the time window the question means (this week 7, this month 30, this term 90, six months 180, this year 365); leave it out when the question doesn't say. For inactive_students_by_department, days is how long since students last opened UniVerse.
 order: "lowest" when the question wants the smallest values first (lowest, worst, fewest, least, fastest), "highest" for the largest first (highest, best, most, slowest). Leave it out when the question doesn't say.
 department: one of the listed departments, copied exactly, only when the question names it.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     metric: { type: 'STRING', enum: [...METRICS.map((m) => m.id), 'none'] },
@@ -288,7 +288,7 @@ export async function askSchool(user: SessionUser, question: string): Promise<Me
       const spend = await spendAi(user);
       if (spend.ok) {
         const measures = METRICS.map((m) => `- ${m.id}: ${m.title}. ${m.about}${m.range === 'window' ? ` Usual window ${m.days} days.` : ''}${m.department ? ' Can narrow to one department.' : ''}`).join('\n');
-        const out = await geminiJson<Pick>(SYSTEM, `Measures:\n${measures}\n\nDepartments: ${list.join(', ') || 'none yet'}\n\nQuestion: ${text}`, SCHEMA, 150, true);
+        const out = await ghidraJson<Pick>('school-insights', SYSTEM, `Measures:\n${measures}\n\nDepartments: ${list.join(', ') || 'none yet'}\n\nQuestion: ${text}`, SCHEMA, 150, true);
         if (validPick(out)) {
           pick = out;
           via = 'ai';

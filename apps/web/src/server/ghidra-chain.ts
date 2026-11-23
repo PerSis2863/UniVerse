@@ -6,7 +6,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import type { AskPlan, AskTurn } from '@/lib/ask';
 import { spendAi } from './ai-budget';
 import { featureOff } from './moderation';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { short } from './trace';
 import { UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { askOne } from './ask';
@@ -30,18 +30,18 @@ export function splitSteps(text: string): string[] {
     .map((s) => s.trim().replace(/^[,.\s]+|[,.\s]+$/g, '')).filter((s) => s.length >= 3).slice(0, MAX_STEPS);
 }
 
-const PLANNER = [
+export const PLANNER = [
   'You split one request to UniVerse\'s assistant into the separate requests it contains, in the order they should happen.',
   `At most ${MAX_STEPS}. Each one must make sense alone: repeat what it needs from the others (a place, a number, a name).`,
   'If it is really one request, return it alone. Never add steps the person did not ask for.',
   UNTRUSTED_RULE,
 ].join('\n');
-const PLANNER_SCHEMA = { type: 'OBJECT', properties: { steps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['steps'] };
+export const PLANNER_SCHEMA = { type: 'OBJECT', properties: { steps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['steps'] };
 
 /** The planner: AI when it's on and allowed, otherwise the joining words. */
 async function plan(u: SessionUser, text: string): Promise<string[]> {
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(u)).ok) {
-    const out = await geminiJson<{ steps?: unknown }>(PLANNER, text, PLANNER_SCHEMA, 400, true).catch(() => null);
+    const out = await ghidraJson<{ steps?: unknown }>('assistant', PLANNER, text, PLANNER_SCHEMA, 400, true).catch(() => null);
     const steps = Array.isArray(out?.steps) ? out.steps.map((x) => short(x, 200) ?? '').filter((x) => x.length >= 3).slice(0, MAX_STEPS) : null;
     if (steps?.length) return steps;
   }

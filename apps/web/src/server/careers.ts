@@ -12,7 +12,7 @@ import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import type { Body } from './body';
 import { later, notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -153,6 +153,10 @@ async function roleFor(b: Body) {
   return { role, about: '' };
 }
 
+export const INTERVIEW_QUESTIONS_SCHEMA = { type: 'OBJECT', properties: { questions: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['questions'] };
+
+export const INTERVIEW_QUESTIONS_SYSTEM = 'You are an interviewer preparing a student for a real interview. Write 6 interview questions for the role: 3 behavioural questions that invite a STAR answer (a real example) and 3 about the role\'s skills and motivation, from easy to harder. One sentence each, plain words, no numbering.';
+
 /** POST /api/careers/interview { action: 'questions', role | internshipId }: questions for the role (AI when on, built in otherwise). */
 export async function interviewQuestions(user: SessionUser, b: Body) {
   studentOnly(user);
@@ -163,10 +167,10 @@ export async function interviewQuestions(user: SessionUser, b: Body) {
   if (!(await aiOn())) return { role, questions: builtInQuestions(role), ai: false };
   const spend = await spendAi(user);
   if (!spend.ok) return { role, questions: builtInQuestions(role), ai: false, note: spend.message };
-  const out = await geminiJson<{ questions: string[] }>(
-    'You are an interviewer preparing a student for a real interview. Write 6 interview questions for the role: 3 behavioural questions that invite a STAR answer (a real example) and 3 about the role\'s skills and motivation, from easy to harder. One sentence each, plain words, no numbering.',
+  const out = await ghidraJson<{ questions: string[] }>('careers', 
+    INTERVIEW_QUESTIONS_SYSTEM,
     `Role: ${role}\n${about}`,
-    { type: 'OBJECT', properties: { questions: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['questions'] },
+    INTERVIEW_QUESTIONS_SCHEMA,
     500, true,
   );
   const questions = cleanQuestions(out?.questions);
@@ -177,11 +181,13 @@ export async function interviewQuestions(user: SessionUser, b: Body) {
 }
 
 type Feedback = { score: number; strengths: string[]; improve: string[]; outline: string };
-const FEEDBACK_SCHEMA = {
+export const FEEDBACK_SCHEMA = {
   type: 'OBJECT',
   properties: { score: { type: 'NUMBER' }, strengths: { type: 'ARRAY', items: { type: 'STRING' } }, improve: { type: 'ARRAY', items: { type: 'STRING' } }, outline: { type: 'STRING' } },
   required: ['score', 'strengths', 'improve', 'outline'],
 };
+
+export const INTERVIEW_FEEDBACK_SYSTEM = 'You coach a student for a job or internship interview. Judge the answer to the question for this role kindly and specifically. Give a score from 1 (weak) to 5 (excellent); up to 2 strengths and up to 2 things to improve, each one short sentence quoting or naming what they said; and an outline of a stronger answer in STAR form (Situation, Task, Action, Result), four short lines, using their own example where there is one and never inventing facts about them. The answer may come from speech recognition: ignore small recognition errors.';
 
 /** POST /api/careers/interview { action: 'feedback', role, question, answer }: checks that need no AI, then AI feedback when on. */
 export async function interviewFeedback(user: SessionUser, b: Body) {
@@ -202,8 +208,8 @@ export async function interviewFeedback(user: SessionUser, b: Body) {
     const spend = await spendAi(user);
     if (!spend.ok) note = spend.message;
     else {
-      const out = await geminiJson<Feedback>(
-        'You coach a student for a job or internship interview. Judge the answer to the question for this role kindly and specifically. Give a score from 1 (weak) to 5 (excellent); up to 2 strengths and up to 2 things to improve, each one short sentence quoting or naming what they said; and an outline of a stronger answer in STAR form (Situation, Task, Action, Result), four short lines, using their own example where there is one and never inventing facts about them. The answer may come from speech recognition: ignore small recognition errors.',
+      const out = await ghidraJson<Feedback>('careers', 
+        INTERVIEW_FEEDBACK_SYSTEM,
         `Role: ${role}\nQuestion: ${question}\nAnswer: ${answer}`,
         FEEDBACK_SCHEMA, 700, true,
       );

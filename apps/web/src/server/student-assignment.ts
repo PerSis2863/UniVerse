@@ -5,7 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { logAiUse } from './ai-receipts';
 import { spendAi } from './ai-budget';
 import { later, notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 
 // The student side of assignments (Stage 5 · B3.5): a signed receipt for each hand-in, the rubric in
@@ -58,9 +58,11 @@ export async function verifyReceipt(code: string, user: SessionUser) {
 interface Help { key: string; criteria: { id: string; plain: string; great: string; weak: string }[] }
 const cut = (v: unknown, n: number) => (typeof v === 'string' ? v.replace(/\s+/g, ' ').trim().slice(0, n) : '');
 
-const SYSTEM = `You explain a teacher's grading rubric to students in plain, friendly words, so they know what to aim for.
+export const SYSTEM = `You explain a teacher's grading rubric to students in plain, friendly words, so they know what to aim for.
 For each criterion (use its id): "plain": what it means in one or two short sentences a 14-year-old understands; "great": what a top answer does for it; "weak": the most common way answers lose marks on it.
 Don't change or add criteria, don't give the answer to the assignment, and don't promise grades. Use the language of the rubric.`;
+
+export const RUBRIC_HELP_SCHEMA = { type: 'OBJECT', properties: { criteria: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, plain: { type: 'STRING' }, great: { type: 'STRING' }, weak: { type: 'STRING' } }, required: ['id', 'plain', 'great', 'weak'] } } }, required: ['criteria'] };
 
 /** POST /api/assignments/:id/rubric-help — the explanation, made once (one AI request) and kept for everyone. */
 export async function rubricHelp(assignmentId: string, user: SessionUser) {
@@ -77,10 +79,10 @@ export async function rubricHelp(assignmentId: string, user: SessionUser) {
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'rubric', detail: assignment.title, courseId: assignment.courseId });
-  const out = await geminiJson<{ criteria: { id: string; plain: string; great: string; weak: string }[] }>(
+  const out = await ghidraJson<{ criteria: { id: string; plain: string; great: string; weak: string }[] }>('student-work', 
     SYSTEM,
     `Assignment: ${assignment.title}\nInstructions: ${assignment.instructions.slice(0, 3000)}\nRubric:\n${rubric.map((r) => `- id ${r.id}: ${r.criterion} (${r.points} points)${r.description ? `: ${r.description}` : ''}`).join('\n')}`,
-    { type: 'OBJECT', properties: { criteria: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, plain: { type: 'STRING' }, great: { type: 'STRING' }, weak: { type: 'STRING' } }, required: ['id', 'plain', 'great', 'weak'] } } }, required: ['criteria'] },
+    RUBRIC_HELP_SCHEMA,
     1500,
   );
   const byId = new Map((out?.criteria ?? []).map((c) => [c.id, c]));

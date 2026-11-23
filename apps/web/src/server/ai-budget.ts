@@ -7,8 +7,12 @@ import { featureOff } from './moderation';
 // saved and handed out without asking AI. The owner sets the limits in owner console → Server and
 // is never limited. Days are UTC days.
 
-export interface AiLimits { student: number; staff: number; site: number }
-export const DEFAULT_AI_LIMITS: AiLimits = { student: 20, staff: 50, site: 1000 };
+// M442: questions answered by the paid models on Cloudflare (the agents' and Hyperion's add-ons, DeepSeek) have their own
+// daily limits, per person (`cloud`) and for the whole site (`cloudSite`): past either, Gemini answers instead, so
+// nobody is refused. 25 a person and 400 for the site keep the bill near US$0.50 a day at most past Workers AI's free
+// 10,000 Neurons (about 80 questions) a day.
+export interface AiLimits { student: number; staff: number; site: number; cloud: number; cloudSite: number }
+export const DEFAULT_AI_LIMITS: AiLimits = { student: 20, staff: 50, site: 1000, cloud: 25, cloudSite: 400 };
 
 const today = () => new Date().toISOString().slice(0, 10);
 
@@ -27,7 +31,8 @@ export function parseLimits(raw: string | null | undefined): AiLimits {
   try {
     const v = raw ? (JSON.parse(raw) as Partial<AiLimits>) : {};
     const n = (x: unknown, d: number) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? Math.floor(x) : d);
-    return { student: n(v.student, DEFAULT_AI_LIMITS.student), staff: n(v.staff, DEFAULT_AI_LIMITS.staff), site: n(v.site, DEFAULT_AI_LIMITS.site) };
+    return { student: n(v.student, DEFAULT_AI_LIMITS.student), staff: n(v.staff, DEFAULT_AI_LIMITS.staff), site: n(v.site, DEFAULT_AI_LIMITS.site),
+      cloud: n(v.cloud, DEFAULT_AI_LIMITS.cloud), cloudSite: n(v.cloudSite, DEFAULT_AI_LIMITS.cloudSite) };
   } catch {
     return { ...DEFAULT_AI_LIMITS };
   }
@@ -68,6 +73,28 @@ export async function spendAi(who: Who): Promise<AiSpend> {
     ...ids.flatMap((id) => [day, id]),
   );
   return { ok: true, left: who ? Math.max(0, perPerson - used(who.id) - 1) : null, message: '' };
+}
+
+/**
+ * Counts one question to a paid model on Cloudflare (M442) if this person and the site have any left today: false means
+ * "use Gemini instead". Kept in ai_usage under `cf:<id>` and `cf:*`. The owner has no personal limit but counts toward
+ * the site's.
+ */
+export async function spendCloudAi(who: Who): Promise<boolean> {
+  const day = today();
+  const limits = await aiLimits();
+  const ids = who ? [`cf:${who.id}`, 'cf:*'] : ['cf:*'];
+  const rows = await prisma.$queryRawUnsafe<{ userId: string; calls: number }[]>(
+    `SELECT "userId", "calls" FROM "ai_usage" WHERE "day" = ? AND "userId" IN (${ids.map(() => '?').join(', ')})`, day, ...ids,
+  );
+  const used = (id: string) => Number(rows.find((r) => r.userId === id)?.calls ?? 0);
+  if (used('cf:*') >= limits.cloudSite) return false;
+  if (who && !who.owner && used(`cf:${who.id}`) >= limits.cloud) return false;
+  await prisma.$executeRawUnsafe(
+    `INSERT INTO "ai_usage" ("day", "userId", "calls") VALUES ${ids.map(() => '(?, ?, 1)').join(', ')} ON CONFLICT ("day", "userId") DO UPDATE SET "calls" = "calls" + 1`,
+    ...ids.flatMap((id) => [day, id]),
+  );
+  return true;
 }
 
 /** Whether the site still has AI left today, without counting a request. */

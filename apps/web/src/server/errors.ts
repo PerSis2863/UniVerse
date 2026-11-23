@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { ownerEmailList } from '@/lib/owner-emails';
 import { unsupportedBrowser, unsupportedNote } from '@/lib/browser-support';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { APP_URL, escapeHtml, sendEmail } from './email';
 
 // Automatic error monitoring. Browsers (src/lib/error-monitor.ts → POST /api/errors) and the server
@@ -146,14 +146,14 @@ export function recordServerError(error: unknown, req: Request, userId?: string 
   return recordError({ source: 'SERVER', kind: 'api', message: `${req.method} failed: ${e.name}: ${e.message}`, stack: e.stack, path: new URL(req.url).pathname, userId });
 }
 
-const SYSTEM = `You are a senior engineer on UniVerse, a web app and installable PWA for universities.
+export const SYSTEM = `You are a senior engineer on UniVerse, a web app and installable PWA for universities.
 Stack: Next.js 16 (App Router, webpack) deployed to Cloudflare Workers with OpenNext; database Cloudflare D1
 (SQLite) through Prisma 6; sign-in with Firebase Authentication; API routes under /api (core platform API in
 src/server/modules via a router at /api/core/*, other routes in src/app/api/**/route.ts); client data with SWR;
 live updates and whiteboards through Durable Objects (cloudflare/worker.ts); UI in React 19 + Tailwind.
 Diagnose production errors. Be concrete and brief. If the cause can't be known from the data, say what to check.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     severity: { type: 'STRING', enum: ['low', 'medium', 'high'] },
@@ -188,7 +188,7 @@ export async function diagnoseErrors(opts: { ids?: string[]; limit?: number; mod
       `Message: ${r.message}`,
       r.stack ? `Stack:\n${r.stack.slice(0, 2500)}` : 'No stack trace.',
     ].filter(Boolean).join('\n');
-    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA, 800, true, opts.model);
+    const out = await ghidraJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>('diagnose', SYSTEM, prompt, SCHEMA, 800, true, opts.model);
     if (!out) continue;
     await prisma.errorReport.update({
       where: { id: r.id },

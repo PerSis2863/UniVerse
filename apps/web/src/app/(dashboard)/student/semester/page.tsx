@@ -8,9 +8,9 @@ import { SemesterSearch } from '@/components/tutor/SemesterSearch';
 export default function SemesterPage() {
   return (
     <>
-      <Topbar title="AI tutor" subtitle="Search and ask across your whole semester, with sources" />
+      <Topbar title="Ghidra tutor" subtitle="Search and ask across your whole semester, with sources" />
       <SectionTabs tabs={STUDENT_BOARD_TABS} />
-      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="AI tutor mode" />
+      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="Ghidra tutor mode" />
       <SemesterSearch />
     </>
   );

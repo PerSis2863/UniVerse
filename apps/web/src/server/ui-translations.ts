@@ -3,7 +3,7 @@ import { isAppLanguage, languageInfo, type Language } from '@/lib/i18n';
 import { CHUNKS, cleanChunk } from '@/lib/ui-dictionary';
 import type { User } from '@prisma/client';
 import { BadRequestException, HttpException } from './http';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { spendAi } from './ai-budget';
 import { featureOff } from './moderation';
 
@@ -67,6 +67,13 @@ export async function saveChunk(rawLang: unknown, chunk: number, body: unknown) 
   return { ok: true, count, reviewed: clean.r.length };
 }
 
+export const TRANSLATE_BATCH_SCHEMA = { type: 'object', properties: { translations: { type: 'array', items: { type: 'string' } } }, required: ['translations'] };
+
+export const uiSystem = (name: string) =>
+  `You translate the user interface of UniVerse, an app for schools and universities (students, teachers, parents), from English into ${name}. ` +
+  'Translate each item on its own, short and natural like a well-made app in that language (buttons stay short). Keep placeholders such as {0} and {1} exactly, ' +
+  'keep emoji, symbols (· … → %), numbers, URLs and the names UniVerse, Google, Microsoft, Stripe unchanged. Return exactly one translation per item, in the same order.';
+
 /**
  * POST …/i18n/translate { lang, strings }: up to 80 pieces of screen text, translated by the AI
  * (owner only; counted like any AI use). Places such as {0} are kept.
@@ -79,12 +86,10 @@ export async function translateBatch(user: User, b: Record<string, unknown>) {
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const { name } = languageInfo(lang);
-  const res = await geminiJson<{ translations: string[] }>(
-    `You translate the user interface of UniVerse, an app for schools and universities (students, teachers, parents), from English into ${name}. ` +
-      'Translate each item on its own, short and natural like a well-made app in that language (buttons stay short). Keep placeholders such as {0} and {1} exactly, ' +
-      'keep emoji, symbols (· … → %), numbers, URLs and the names UniVerse, Google, Microsoft, Stripe unchanged. Return exactly one translation per item, in the same order.',
+  const res = await ghidraJson<{ translations: string[] }>('translate', 
+    uiSystem(name),
     JSON.stringify(strings),
-    { type: 'object', properties: { translations: { type: 'array', items: { type: 'string' } } }, required: ['translations'] },
+    TRANSLATE_BATCH_SCHEMA,
     8000,
   );
   if (!res || !Array.isArray(res.translations) || res.translations.length !== strings.length) {

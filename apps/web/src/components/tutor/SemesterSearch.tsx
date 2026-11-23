@@ -107,7 +107,7 @@ export function SemesterSearch() {
             {searching && <Loader2 className="w-4 h-4 animate-spin text-zinc-400" />}
           </label>
           <button type="submit" disabled={asking || q.trim().length < 3} className="btn-primary btn-lg">
-            {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}Ask AI
+            {asking ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}Ask Ghidra
           </button>
         </form>
         <div className="flex flex-wrap gap-1.5" role="group" aria-label="What to include">

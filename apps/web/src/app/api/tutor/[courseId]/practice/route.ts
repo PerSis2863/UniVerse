@@ -16,7 +16,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   if (!a) return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
   const closed = tutorClosed(a);
   if (closed) return NextResponse.json({ error: closed, code: 'tutor-off' }, { status: 423 });
-  if (!(await aiOn())) return NextResponse.json({ error: 'The AI tutor isn’t available right now.' }, { status: 503 });
+  if (!(await aiOn())) return NextResponse.json({ error: 'The Ghidra tutor isn’t available right now.' }, { status: 503 });
   const b = await req.json().catch(() => ({}));
   const count = Math.min(10, Math.max(3, Number(b.count) || 5));
   if (b.from === 'classes') {

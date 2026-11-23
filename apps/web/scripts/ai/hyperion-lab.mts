@@ -15,6 +15,16 @@ import { Lab } from '../../src/lib/lab/interp';  // first: the engine's own file
 import { HELP } from '../../src/lib/lab/help';
 import { Graphics } from '../../src/lib/lab/plot';
 import { FileStore } from '../../src/lib/lab/files';  // tables and files (cell2table, readtable, csvread…), as Hyperion's window has
+// The toolboxes, as Hyperion's window loads them (src/components/lab/lab.worker.ts): without them code using fzero, fitcknn,
+// load fisheriris… failed here though it runs on the site.
+import '../../src/lib/lab/ml-lab';
+import '../../src/lib/lab/optim-lab';
+import '../../src/lib/lab/maint-lab';
+import '../../src/lib/lab/energy-lab';
+import '../../src/lib/lab/grid-lab';
+import '../../src/lib/lab/comms-lab';
+import '../../src/lib/lab/image-lab';
+import '../../src/lib/lab/radar-lab';
 import '../../src/lib/lab/help-commands';
 import { HYPERION_SYSTEM } from '../../src/lib/hyperion-ai';
 

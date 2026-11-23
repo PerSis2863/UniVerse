@@ -4,7 +4,7 @@ import { MATH_RULE } from '@/lib/tutor-rules';
 import { spendAi } from './ai-budget';
 import { BadRequestException, HttpException } from './http';
 import { featureOff } from './moderation';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { short } from './trace';
 import type { Body } from './body';
 
@@ -16,7 +16,7 @@ import type { Body } from './body';
 
 export interface DraftQuestion { question: string; options: string[]; answer: number }
 
-const SYSTEM = [
+export const SYSTEM = [
   'You are Ghidra, UniVerse\'s assistant, writing a short multiple-choice quiz for a teacher.',
   'Each question: clear, one idea, suitable for the topic and level; exactly four options, one right, the others plausible',
   'but clearly wrong to someone who knows the topic; no "all of the above"; answer is the 0-based index of the right option.',
@@ -24,7 +24,7 @@ const SYSTEM = [
   MATH_RULE,
 ].join('\n');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     title: { type: 'STRING' },
@@ -57,7 +57,7 @@ export async function draftQuiz(u: SessionUser, b: Body) {
   const spend = await spendAi(u);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const course = await prisma.course.findUnique({ where: { id: courseId }, select: { name: true, code: true } });
-  const out = await geminiJson<{ title?: unknown; questions?: unknown }>(SYSTEM, `Course: ${course?.name ?? ''} (${course?.code ?? ''})\nTopic: ${topic}\nQuestions: ${count}`, SCHEMA, 3000).catch(() => null);
+  const out = await ghidraJson<{ title?: unknown; questions?: unknown }>('quiz-draft', SYSTEM, `Course: ${course?.name ?? ''} (${course?.code ?? ''})\nTopic: ${topic}\nQuestions: ${count}`, SCHEMA, 3000).catch(() => null);
   const questions = checkQuestions(out?.questions, count);
   if (questions.length < 2) throw new BadRequestException('Ghidra couldn’t write good questions on that. Try a clearer topic.');
   const title = (short(out?.title, 120) || `Quiz: ${topic}`).slice(0, 200);

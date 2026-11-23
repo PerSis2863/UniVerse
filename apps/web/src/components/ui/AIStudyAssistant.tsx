@@ -3,7 +3,7 @@
 import { MathText } from '@/components/ui/MathText';
 import { useState, useRef, useEffect } from 'react';
 import { m as motion, AnimatePresence } from 'framer-motion';
-import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight } from 'lucide-react';
+import { Bot, X, Send, Sparkles, User, Minimize2, Zap, WifiOff, ArrowUpRight, ArrowUp, SquarePen } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAiStore } from '@/store/ai';
 import { useAuthStore } from '@/store/auth';
@@ -79,9 +79,9 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
   const { isChatbotEnabled } = useAiStore();
   const role = useAuthStore((st) => st.user?.role) as Role | undefined;
   const guardian = useAuthStore((st) => st.user?.role === 'GUARDIAN');
-  const [messages, setMessages] = useState<Message[]>([
-    { id: '1', role: 'assistant', content: "Hi, I'm Ghidra! Ask what's due or how you're doing, tell me what to do in any app (you'll see it before anything happens), or ask how to do anything on UniVerse: I answer that instantly, even offline. Study questions are welcome too." }
-  ]);
+  // The owner, 23 Nov (RunPod's assistant): Ghidra opens as a few suggestions over one question box, no greeting; the
+  // conversation window appears once something is asked.
+  const [messages, setMessages] = useState<Message[]>([]);
   const [online, setOnline] = useState(true);
   useEffect(() => {
     const update = () => setOnline(navigator.onLine);
@@ -90,7 +90,14 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     window.addEventListener('offline', update);
     return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update); };
   }, []);
-  const quick = ['What’s due this week?', ...suggestions(role, 2).map((h) => h.q[0]), 'Explain Big O notation'];
+  const quick = ['What’s due this week?', ...suggestions(role, 1).map((h) => h.q[0]), 'Explain a topic step by step'];
+  const launcher = isOpen && messages.length === 0;
+  useEffect(() => {
+    if (!launcher) return;
+    const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsOpen(false); };
+    window.addEventListener('keydown', esc);
+    return () => window.removeEventListener('keydown', esc);
+  }, [launcher]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -142,7 +149,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
     const several = looksMultiStep(text) && !asksHow(text); // M432: several parts go to Ghidra's planner
     if ((several || wish === 'my_due' || wish === 'my_green' || wish === 'my_trips' || wish === 'my_courses' || (wish !== 'answer' && !asksHow(text))) && (typeof navigator === 'undefined' || navigator.onLine)) {
       setIsTyping(true);
-      const history: AskTurn[] = messages.slice(1).slice(-6).filter((m) => m.content).map((m) => ({ who: m.role === 'user' ? 'me' : 'ghidra', text: m.content.slice(0, 400) }));
+      const history: AskTurn[] = messages.slice(-6).filter((m) => m.content).map((m) => ({ who: m.role === 'user' ? 'me' : 'ghidra', text: m.content.slice(0, 400) }));
       try {
         const plan = (await api.post<GhidraPlan>('/ask', { text, history })).data;
         reply({ content: plan.say, plan });
@@ -241,7 +248,49 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
   return (
     <div className={cn("ai-fab fixed above-tabbar end-[max(1rem,env(safe-area-inset-right))] lg:end-6 z-[30] flex flex-col items-end gap-2 transition-[transform,opacity] duration-300 ease-[cubic-bezier(0.22,1,0.36,1)]", tucked && !isOpen && "translate-y-24 opacity-0 pointer-events-none lg:translate-y-0 lg:opacity-100 lg:pointer-events-auto")}>
       <AnimatePresence>
-        {!isOpen && (
+        {launcher && (
+          <motion.div
+            key="launcher"
+            initial="out" animate="in" exit="out"
+            variants={{ in: { transition: { staggerChildren: 0.04 } }, out: { transition: { duration: 0.12 } } }}
+            className="flex flex-col items-end gap-2"
+          >
+            <button type="button" aria-label="Close Ghidra" tabIndex={-1} onClick={() => setIsOpen(false)} className="fixed inset-0 -z-10 cursor-default" />
+            {quick.map((q) => (
+              <motion.button
+                key={q}
+                type="button"
+                variants={{ out: { opacity: 0, y: 8, transition: { duration: 0.12 } }, in: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } } }}
+                onClick={() => handleSend(q)}
+                className="max-w-[calc(100vw-2rem)] truncate rounded-xl border border-zinc-200 bg-white px-4 py-2.5 text-sm font-medium text-zinc-800 shadow-sm transition-colors hover:border-indigo-500/50 hover:text-zinc-950 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:text-white"
+              >
+                {q}
+              </motion.button>
+            ))}
+            <motion.form
+              variants={{ out: { opacity: 0, y: 8, transition: { duration: 0.12 } }, in: { opacity: 1, y: 0, transition: { duration: 0.22, ease: [0.22, 1, 0.36, 1] } } }}
+              onSubmit={(e) => { e.preventDefault(); handleSend(); }}
+              className="flex w-[min(26rem,calc(100vw-2rem))] items-center gap-2 rounded-xl border-2 border-indigo-500/40 bg-white p-1.5 ps-4 shadow-lg focus-within:border-indigo-500 dark:bg-zinc-900"
+            >
+              <input
+                autoFocus
+                type="text"
+                value={inputValue}
+                onChange={(e) => setInputValue(e.target.value)}
+                placeholder={online ? 'Ask Ghidra anything' : 'Ask how to use UniVerse'}
+                aria-label="Message Ghidra"
+                className="min-w-0 flex-1 border-0 bg-transparent p-0 text-sm shadow-none outline-none focus-visible:shadow-none! focus-visible:outline-none text-zinc-900 outline-none placeholder:text-zinc-500 dark:text-white dark:placeholder:text-zinc-400"
+              />
+              <button type="submit" aria-label="Send" disabled={!inputValue.trim()} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500 text-white transition-colors hover:bg-indigo-600 disabled:opacity-50">
+                <ArrowUp className="h-4 w-4" />
+              </button>
+            </motion.form>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {(!isOpen || launcher) && (
           <motion.div
             initial={{ scale: 0.85, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
@@ -251,32 +300,37 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
             // tab bar has no "+", so they keep the button.
             className={cn('flex flex-col items-end gap-2', !button ? 'hidden' : !guardian && 'max-lg:hidden')}
           >
-            {/* Dismiss Button - only shows on hover or mobile */}
-            <button 
+            {/* Hide Ghidra (computers; only while closed) */}
+            {!isOpen && <button 
               onClick={() => setIsDismissed(true)}
               aria-label="Hide Ghidra"
               className="hidden lg:flex w-7 h-7 rounded-full bg-zinc-800/80 backdrop-blur text-zinc-400 hover:text-white items-center justify-center shadow-lg transition-colors border border-zinc-700/50"
               title="Hide Ghidra"
             >
               <X className="w-4 h-4" />
-            </button>
+            </button>}
 
               <motion.button
                 initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1, transition: { type: 'spring', stiffness: 300, damping: 20 } }}
                 exit={{ scale: 0.85, opacity: 0 }}
                 whileHover={{ scale: 1.05 }}
-                onClick={() => setIsOpen(true)}
+                onClick={() => setIsOpen(!launcher)}
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
-            aria-label="Open Ghidra, your assistant"
+            aria-label={launcher ? 'Close Ghidra' : 'Open Ghidra, your assistant'}
+            aria-expanded={isOpen}
             className="w-12 h-12 lg:w-14 lg:h-14 rounded-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500 text-white shadow-xl flex items-center justify-center relative overflow-hidden group active:scale-[0.95]"
           >
             {/* Glow effect */}
             <div className="absolute inset-0 bg-white/20 blur-md rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
             
             <AnimatePresence mode="wait">
-              {isHovered ? (
+              {launcher ? (
+                <motion.div key="close" initial={{ opacity: 0, rotate: -45 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, rotate: 45 }}>
+                  <X className="w-6 h-6" />
+                </motion.div>
+              ) : isHovered ? (
                 <motion.div key="sparkles" initial={{ opacity: 0, rotate: -45 }} animate={{ opacity: 1, rotate: 0 }} exit={{ opacity: 0, rotate: 45 }}>
                   <Sparkles className="w-6 h-6" />
                 </motion.div>
@@ -293,7 +347,7 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
       </AnimatePresence>
 
       <AnimatePresence>
-        {isOpen && (
+        {isOpen && !launcher && (
           <motion.div
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1, transition: { type: 'spring', stiffness: 350, damping: 25 } }}
@@ -316,12 +370,19 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
                   </p>
                 </div>
               </div>
+              <div className="flex items-center gap-1">
+              <button aria-label="New chat" title="New chat" onClick={() => setMessages([])}
+                className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
+              >
+                <SquarePen className="w-4 h-4" />
+              </button>
               <button aria-label="Minimize" 
                 onClick={() => setIsOpen(false)}
                 className="p-2 rounded-xl hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 transition-colors"
               >
                 <Minimize2 className="w-4 h-4" />
               </button>
+              </div>
             </div>
 
             {/* Chat Area */}
@@ -402,21 +463,6 @@ export function AIStudyAssistant({ button = true }: { button?: boolean }) {
               )}
               <div ref={messagesEndRef} />
             </div>
-
-            {/* Suggestions */}
-            {messages.length === 1 && (
-              <div className="px-4 pb-2 flex flex-wrap gap-2">
-                {quick.map((s, i) => (
-                  <button 
-                    key={i}
-                    onClick={() => handleSend(s)}
-                    className="text-[11px] font-medium px-3 py-1.5 rounded-full border border-indigo-500/20 bg-indigo-500/5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-500/10 transition-colors whitespace-nowrap"
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-            )}
 
             {/* Input */}
             <div className="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800">

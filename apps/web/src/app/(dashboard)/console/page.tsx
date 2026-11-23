@@ -34,6 +34,7 @@ const ChatsPanel = dynamic(() => import('./chats').then((m) => m.ChatsPanel), { 
 const ComposeDialog = dynamic(() => import('./chats').then((m) => m.ComposeDialog), { ssr: false, loading: Wait });
 const DatabasePanel = dynamic(() => import('./database').then((m) => m.DatabasePanel), { ssr: false, loading: Wait });
 const HealthPanel = dynamic(() => import('./health').then((m) => m.HealthPanel), { ssr: false, loading: Wait });
+const GhidraExamPanel = dynamic(() => import('./ghidra-exam').then((m) => m.GhidraExamPanel), { ssr: false, loading: Wait });
 const HealthNumbersPanel = dynamic(() => import('./health-numbers').then((m) => m.HealthNumbersPanel), { ssr: false, loading: Wait });
 const ModerationPanel = dynamic(() => import('./schools').then((m) => m.ModerationPanel), { ssr: false, loading: Wait });
 const SchoolsPanel = dynamic(() => import('./schools').then((m) => m.SchoolsPanel), { ssr: false, loading: Wait });
@@ -127,7 +128,7 @@ export default function OwnerConsole() {
         ) : tab === 'languages' ? (
           <LanguagesPanel />
         ) : tab === 'health' ? (
-          <HealthPanel />
+          <div className="space-y-6"><HealthPanel /><GhidraExamPanel /></div>
         ) : tab === 'numbers' ? (
           <HealthNumbersPanel />
         ) : tab === 'calls' ? (

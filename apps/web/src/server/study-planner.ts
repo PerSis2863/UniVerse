@@ -1,4 +1,4 @@
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import type { StudentProgress } from './student-progress';
 
 // The AI study planner: a 7-day plan from a student's grades and what's due. The plan is saved per
@@ -25,7 +25,7 @@ export function localDay(todayParam: string | null, tzParam: string | null): { t
 const addDays = (day: string, n: number) => new Date(Date.parse(day) + n * 86_400_000).toISOString().slice(0, 10);
 const weekday = (day: string) => new Date(`${day}T12:00:00Z`).toLocaleDateString('en-US', { weekday: 'long', timeZone: 'UTC' });
 
-const SYSTEM = `You are a friendly study coach for a university student. Make a realistic 7-day study plan.
+export const SYSTEM = `You are a friendly study coach for a university student. Make a realistic 7-day study plan.
 Rules:
 - Give more time to courses with lower grades, and to work that is due soon. Prepare for each deadline on the days BEFORE it is due, never after.
 - 1 to 3 blocks a day. Weekdays at most about 150 minutes in total, weekends at most about 120. Each block 20 to 90 minutes. A light day is fine.
@@ -37,7 +37,7 @@ Rules:
 - Use plain, simple English. Don't invent courses, grades or deadlines.
 - Return exactly the 7 dates given, in order.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     summary: { type: 'STRING' },
@@ -90,7 +90,7 @@ export async function makeStudyPlan(p: StudentProgress, today: string, tz: strin
     ...(due.length ? due : ['- Nothing due. Plan steady review, focusing on the weakest courses.']),
   ].join('\n');
 
-  const out = await geminiJson<{ summary?: unknown; days?: unknown }>(SYSTEM, prompt, SCHEMA, 3000);
+  const out = await ghidraJson<{ summary?: unknown; days?: unknown }>('study-plan', SYSTEM, prompt, SCHEMA, 3000);
   if (!out || !Array.isArray(out.days)) return null;
 
   // Keep the plan to the 7 dates asked for, with sensible numbers, whatever the model sent.

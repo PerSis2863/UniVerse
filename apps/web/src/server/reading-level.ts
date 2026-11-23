@@ -6,7 +6,7 @@ import { materialSections } from '@/lib/material-sections';
 import { LANGUAGES, isLanguage } from '@/lib/languages';
 import { cleanTerms, isLevel, parseTerms, type Leveled, type Level, type Term } from '@/lib/reading-level';
 import { AiLimitError, requireAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { readable, type TextKind } from './text-translate';
@@ -48,7 +48,7 @@ Keep every fact, number, date, name, formula, piece of code, link and instructio
 Write in ${lang ? `${LANGUAGES[lang].name} (${lang})` : 'the same language as the original'}.
 ${quiz ? QUIZ : TERMS}`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     items: {
@@ -73,7 +73,7 @@ const isQuiz = (key: string) => key.startsWith('quiz-question:');
 async function rewrite(items: { id: string; text: string }[], level: Level, lang: string, quiz: boolean) {
   const out = new Map<string, Leveled>();
   const chars = items.reduce((n, i) => n + i.text.length, 0);
-  const got = await geminiJson<{ items: { id: string; text: string; terms: unknown }[] }>(system(level, lang, quiz), `Texts (JSON):\n${JSON.stringify(items)}`, SCHEMA, Math.min(8192, Math.max(1500, Math.round(chars / 1.5))), true);
+  const got = await ghidraJson<{ items: { id: string; text: string; terms: unknown }[] }>('reading-level', system(level, lang, quiz), `Texts (JSON):\n${JSON.stringify(items)}`, SCHEMA, Math.min(8192, Math.max(1500, Math.round(chars / 1.5))), true);
   for (const r of got?.items ?? []) {
     if (!items.some((i) => i.id === r.id) || typeof r.text !== 'string' || !r.text.trim()) continue;
     const text = r.text.trim();

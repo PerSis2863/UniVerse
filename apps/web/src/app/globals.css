@@ -21,6 +21,10 @@
    older looks' tokens below are overridden there. */
 @font-face { font-family: 'Inter'; src: url('/fonts/inter/inter-latin.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Inter'; src: url('/fonts/inter/inter-latin-ext.woff2') format('woff2'); font-weight: 100 900; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+/* M452 (the owner, 23 Nov: "please use this writing style across the whole project"): Shantell Sans, a rounded
+   handwritten face (OFL), for the big headings; everything read or pressed stays in Inter. */
+@font-face { font-family: 'Shantell Sans'; src: url('/fonts/shantell-sans/shantell-sans-latin.woff2') format('woff2'); font-weight: 300 800; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: 'Shantell Sans'; src: url('/fonts/shantell-sans/shantell-sans-latin-ext.woff2') format('woff2'); font-weight: 300 800; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif/instrument-serif-italic-latin.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
 @font-face { font-family: 'Instrument Serif'; src: url('/fonts/instrument-serif/instrument-serif-italic-latin-ext.woff2') format('woff2'); font-style: italic; font-weight: 400; font-display: swap; unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF; }
 @theme {
@@ -33,7 +37,7 @@
   /* Tint for text and icons: a lighter indigo on dark backgrounds so it stays readable. */
   --color-tint-text: var(--tint-text);
   --color-secondary: #32ade6;
-  --font-display: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-display: "Shantell Sans", "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
   --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
 
 
@@ -299,14 +303,17 @@ html:not(.dark) {
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  /* SF Pro Display for titles, tracked tighter the bigger they get (like iOS large titles). */
+  /* M452: the big headings (h1–h3) in the handwritten display face, at their natural spacing; small headings (h4–h6)
+     stay in Inter with the body, like everything read or pressed. */
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    font-family: var(--font-sans);
     color: inherit;
     letter-spacing: -0.015em;
     text-wrap: balance; /* lines of a heading about the same length */
   }
-  h1 { letter-spacing: -0.022em; }
+  h1, h2, h3 { font-family: var(--font-display); letter-spacing: 0; }
+  /* People's own writing (documents, lessons, anything being edited) keeps its headings in the text face. */
+  :where(.doc-prose, .ProseMirror, [contenteditable="true"]) :is(h1, h2, h3) { font-family: var(--font-sans); letter-spacing: -0.015em; }
   p { text-wrap: pretty; } /* no single word left alone on the last line */
 
   /* Under body, not on every element: a bare ::selection (it matches <html> too) makes Chrome work
@@ -1418,7 +1425,7 @@ html.high-contrast .panel, html.high-contrast .card { border-color: var(--separa
 /* A dyslexia-friendly font (OpenDyslexic, self-hosted under SIL OFL 1.1; downloaded only when on). */
 @font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-400-normal.woff2') format('woff2'); font-weight: 400; font-display: swap; }
 @font-face { font-family: 'OpenDyslexic'; src: url('/fonts/opendyslexic/opendyslexic-latin-700-normal.woff2') format('woff2'); font-weight: 600 900; font-display: swap; }
-html.dyslexic-font body, html.dyslexic-font :is(input, textarea, select, button) { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; letter-spacing: 0.02em; word-spacing: 0.08em; }
+html.dyslexic-font body, html.dyslexic-font :is(input, textarea, select, button, h1, h2, h3, .accent-word) { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; letter-spacing: 0.02em; word-spacing: 0.08em; }
 html.dyslexic-font :is(p, li) { line-height: 1.7; }
 /* Underline links: every link in text is underlined, not only shown by colour. */
 html.underline-links :is(p, li, td, span, label) a, html.underline-links a.text-indigo-500, html.underline-links a.text-indigo-600 { text-decoration: underline; text-underline-offset: 0.18em; }
@@ -2558,7 +2565,10 @@ html.dark .ins-cell :is(svg, .ins-pop) { color: #6ea2f8; }
 :root:is([data-app="trace"], [data-app="relief"]).dark :is(.bg-indigo-500, .bg-indigo-600, .bg-violet-600, .bg-purple-600, .bg-pink-500, .bg-primary) .text-white { color: #0b0c0d; }
 .dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400, .bg-aqua-300, .bg-aqua-400):not([class*="/"]), .dark :is(.bg-indigo-300, .bg-indigo-400, .bg-pink-400) .text-white { color: #0b0c0d; }
 /* The headline's key word in an italic serif (the recording's "themselves."), in both themes. */
-.accent-word { font-family: 'Instrument Serif', Georgia, 'Times New Roman', serif; font-style: italic; font-weight: 400; letter-spacing: -0.01em; }
+.accent-word { font-family: var(--font-display); font-style: normal; letter-spacing: 0; }  /* M452: the key word in the headings' own face */
+/* M452: a big heading that isn't an h1–h3 (the homes' greeting) in the headings' face. */
+.display-face { font-family: var(--font-display); letter-spacing: 0; }
+html.dyslexic-font .display-face { font-family: 'OpenDyslexic', var(--font-sans, system-ui), sans-serif; }
 html.dark :is(h1, h2, h3):has(.accent-word) { color: var(--text-primary); }
 
 /* Wallet cards (hub): flat finishes, no sway. */

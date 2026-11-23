@@ -141,7 +141,7 @@ function PackView({ pack, onBack }: { pack: Pack; onBack: () => void }) {
         {tab === 'news' && (pack.board.announcements.length ? pack.board.announcements.map((a) => (
           <article key={a.id} className="p-4"><h3 className="font-medium text-zinc-900 dark:text-white">{a.title}</h3><p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-line mt-1">{a.body}</p><p className="text-xs text-zinc-500 mt-1">{new Date(a.createdAt).toLocaleDateString()} · {a.author.name}</p></article>
         )) : <p className="p-4 text-sm text-zinc-500">No announcements.</p>)}
-        {tab === 'cards' && (pack.cards.length ? <Cards cards={pack.cards} /> : <p className="p-4 text-sm text-zinc-500">No flashcards for this course. Make some with the AI tutor.</p>)}
+        {tab === 'cards' && (pack.cards.length ? <Cards cards={pack.cards} /> : <p className="p-4 text-sm text-zinc-500">No flashcards for this course. Make some with the Ghidra tutor.</p>)}
         {tab === 'reading' && (pack.board.readings.length ? pack.board.readings.map((r) => (
           <div key={r.id} className="p-4"><p className="text-sm font-medium text-zinc-900 dark:text-white">{r.title}</p>{r.description && <p className="text-xs text-zinc-500 mt-0.5">{r.description}</p>}</div>
         )) : <p className="p-4 text-sm text-zinc-500">No readings.</p>)}

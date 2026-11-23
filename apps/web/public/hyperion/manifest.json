@@ -4,7 +4,7 @@
   "description": "Maths, code and engineering simulation: Hyperion by UniVerse.",
   "id": "/hyperion",
   "start_url": "/hyperion",
-  "scope": "/hyperion",
+  "scope": "/",
   "display": "standalone",
   "display_override": ["window-controls-overlay", "standalone"],
   "background_color": "#f1f2f4",

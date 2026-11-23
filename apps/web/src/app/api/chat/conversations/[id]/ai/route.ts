@@ -3,7 +3,8 @@ import { getSystemUser, membership, visibleTo } from '@/lib/chat';
 import { route } from '@/server/assignments';
 import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
-import { geminiJson, geminiText } from '@/server/gemini';
+import { ghidraJson, ghidraText } from '@/server/ghidra/brain';
+import { CHAT_ASK_SYSTEM, CHAT_CATCHUP_SYSTEM, CHAT_REPLIES_SCHEMA, CHAT_REPLIES_SYSTEM, chatRewriteSystem } from '@/server/ghidra/jobs';
 import { BadRequestException, HttpException, NotFoundException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { publishChat } from '@/server/realtime';
@@ -47,8 +48,8 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
       if (others.length < 3) return { summary: null, count: others.length };
       const spend = await spendAi(user);
       if (!spend.ok) throw new HttpException(spend.message, 429);
-      const summary = await geminiText(
-        'You summarise a group chat for a student or teacher who missed it. Write 2–5 short bullet points ("- ") with what matters: decisions, questions for them, dates, tasks, links mentioned. Use the chat\'s language. No preamble.',
+      const summary = await ghidraText('chat', 
+        CHAT_CATCHUP_SYSTEM,
         transcript(lines), 400,
       );
       if (!summary) throw new HttpException('Couldn’t summarise right now. Try again in a moment.', 503);
@@ -60,9 +61,9 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
       if (!lines.some((l) => l.who !== 'Me')) return { replies: [] };
       const spend = await spendAi(user);
       if (!spend.ok) throw new HttpException(spend.message, 429);
-      const out = await geminiJson<{ replies: string[] }>(
-        'Suggest three short, natural replies (under 12 words each) that "Me" could send next in this chat, in the language "Me" uses. Vary them: e.g. agree, ask, decline politely.',
-        transcript(lines), { type: 'object', properties: { replies: { type: 'array', items: { type: 'string' } } }, required: ['replies'] }, 200, true,
+      const out = await ghidraJson<{ replies: string[] }>('chat', 
+        CHAT_REPLIES_SYSTEM,
+        transcript(lines), CHAT_REPLIES_SCHEMA, 200, true,
       );
       return { replies: (out?.replies ?? []).map((r) => r.slice(0, 120)).slice(0, 3) };
     }
@@ -73,8 +74,8 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
       if (!text || !how) throw new BadRequestException('Type a message to rewrite first.');
       const spend = await spendAi(user);
       if (!spend.ok) throw new HttpException(spend.message, 429);
-      const out = await geminiText(
-        `Rewrite this chat message ${how}. Keep its meaning, its language, names, numbers, links and @mentions. Reply with only the rewritten message: no quotes, no notes.`,
+      const out = await ghidraText('chat', 
+        chatRewriteSystem(how),
         text, 400,
       );
       if (!out) throw new HttpException('Couldn’t rewrite it right now. Try again in a moment.', 503);
@@ -89,8 +90,8 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
       if (!spend.ok) throw new HttpException(spend.message, 429);
       await logAiUse(user.id, { kind: 'chat', detail: question }); // the person's own record (Stage 5 · D12)
       const lines = await recent(id, user.id, { take: 20 });
-      const answer = await geminiText(
-        'You are UniVerse AI, a helpful study assistant inside a university chat. Answer the question clearly and briefly (under 150 words), using the recent chat for context when relevant. If it is about facts you are unsure of, say so. Use the question\'s language.',
+      const answer = await ghidraText('chat', 
+        CHAT_ASK_SYSTEM,
         `Recent chat:\n${transcript(lines)}\n\nQuestion from ${user.name.split(' ')[0]}: ${question}`, 500,
       );
       if (!answer) throw new HttpException('Couldn’t answer right now. Try again in a moment.', 503);

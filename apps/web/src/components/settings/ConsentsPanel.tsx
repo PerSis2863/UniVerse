@@ -56,7 +56,7 @@ const CONSENT_DETAILS = {
   },
   DPDP_AI_PROCESSING: {
     title: 'AI Processing & Personalization (India DPDP Act)',
-    shortDesc: 'Consent to automated learning recommendations, career matching, and personalized AI tutor analysis.',
+    shortDesc: 'Consent to automated learning recommendations, career matching, and personalized Ghidra tutor analysis.',
     longDesc: 'Under Section 6 of India\'s Digital Personal Data Protection Act 2023, you can grant or withdraw permission for automated algorithmic processing. This powers personalized study schedules, adaptive quiz recommendations, and smart course advising without impacting standard coursework.',
     lastUpdated: 'Oct 12, 2026',
   },

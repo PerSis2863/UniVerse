@@ -2,7 +2,7 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from './http';
 import { groupAccess, groupPeople } from './spaces';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { spendAi } from './ai-budget';
 import { featureOff } from './moderation';
 import { notify, notifyMany } from './email';
@@ -319,6 +319,26 @@ export async function planView(groupId: string, user: SessionUser) {
   };
 }
 
+export const MAKE_PLAN_SCHEMA = {
+  type: 'object',
+  properties: {
+    tasks: {
+      type: 'array',
+      items: {
+        type: 'object',
+        properties: {
+          title: { type: 'string' }, notes: { type: 'string' }, priority: { type: 'string', enum: [...PRIORITIES] },
+          estimateHours: { type: 'number' }, requiredSkills: { type: 'array', items: { type: 'string' } }, dueDaysFromStart: { type: 'number' },
+        },
+        required: ['title', 'notes', 'priority', 'estimateHours', 'requiredSkills', 'dueDaysFromStart'],
+      },
+    },
+  },
+  required: ['tasks'],
+};
+
+export const MAKE_PLAN_SYSTEM = 'You plan student group projects. Split the brief into 4 to 6 balanced, concrete tasks a student team can each own. Keep titles short. Spread due days across the time available.';
+
 /** Makes (or remakes) the group's draft plan from a brief. */
 export async function makePlan(groupId: string, user: SessionUser, input: { title?: unknown; brief?: unknown; targetDueDate?: unknown; courseId?: unknown }) {
   await member(groupId, user);
@@ -345,26 +365,10 @@ export async function makePlan(groupId: string, user: SessionUser, input: { titl
   let aiUsed = false;
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(user)).ok) {
     const skills = [...new Set(members.flatMap((m) => m.skills.map((s) => s.name)))].slice(0, 40);
-    const ai = await geminiJson<{ tasks: unknown }>(
-      'You plan student group projects. Split the brief into 4 to 6 balanced, concrete tasks a student team can each own. Keep titles short. Spread due days across the time available.',
+    const ai = await ghidraJson<{ tasks: unknown }>('group-work', 
+      MAKE_PLAN_SYSTEM,
       `Project: ${title}\nDays available: ${targetDays}\nTeam size: ${members.length}\nSkills in the team: ${skills.join(', ') || 'not listed'}\n<brief>\n${brief.replace(/<\/?brief>/gi, '')}\n</brief>`,
-      {
-        type: 'object',
-        properties: {
-          tasks: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                title: { type: 'string' }, notes: { type: 'string' }, priority: { type: 'string', enum: [...PRIORITIES] },
-                estimateHours: { type: 'number' }, requiredSkills: { type: 'array', items: { type: 'string' } }, dueDaysFromStart: { type: 'number' },
-              },
-              required: ['title', 'notes', 'priority', 'estimateHours', 'requiredSkills', 'dueDaysFromStart'],
-            },
-          },
-        },
-        required: ['tasks'],
-      },
+      MAKE_PLAN_SCHEMA,
       1200,
     ).catch(() => null);
     const drafts = cleanAiTasks(ai?.tasks, targetDays);

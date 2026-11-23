@@ -5,7 +5,7 @@ import { MATH_RULE } from '@/lib/tutor-rules';
 import { cleanPack, joinSources, outlinePack, type RevisionPack } from '@/lib/revision-pack';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { str, strings, type Body } from './body';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { notifyMany } from './email';
@@ -21,12 +21,12 @@ const clip = (v: unknown, n: number) => (str(v) ?? '').replace(/\s+/g, ' ').trim
 const read = (s: string): RevisionPack => { try { return cleanPack(JSON.parse(s)); } catch { return cleanPack(null); } };
 const titles = (s: string) => { try { const v = JSON.parse(s); return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []; } catch { return []; } };
 
-const SYSTEM = `You make a revision pack for students before an exam, ONLY from the course material given (never add topics it doesn't cover).
+export const SYSTEM = `You make a revision pack for students before an exam, ONLY from the course material given (never add topics it doesn't cover).
 Give a short overview (2–3 sentences), then 3–10 topics in teaching order. Each topic: a title, a summary in plain words (3–5 sentences), 3–6 key points a student must remember, and up to 6 key terms with their meaning.
 Then 8–20 practice questions across the topics, exam style, each with a model answer (2–5 sentences) and the topic it tests. Then a checklist of 5–12 "I can…" lines.
 Use the language of the material. ${MATH_RULE}`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     overview: { type: 'STRING' },
@@ -77,7 +77,7 @@ export async function makePack(u: SessionUser, b: Body) {
     const spend = await spendAi(u);
     if (spend.ok) {
       await logAiUse(u.id, { kind: 'revision', detail: title, courseId });
-      pack = cleanPack(await geminiJson<unknown>(SYSTEM, `Course: ${a.course.code} — ${a.course.name}\n\n${joinSources(all)}`, SCHEMA, 6000));
+      pack = cleanPack(await ghidraJson<unknown>('revision', SYSTEM, `Course: ${a.course.code} — ${a.course.name}\n\n${joinSources(all)}`, SCHEMA, 6000));
       usedAi = pack.topics.length > 0;
     }
   }
