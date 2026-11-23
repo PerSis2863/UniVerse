@@ -1,10 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { Lab } from './interp';
-import { inline } from './values';
+import { inline, type Mat } from './values';
 
 const run = (code: string) => { let out = ''; const lab = new Lab({ out: (t) => { out += t; } }); lab.run(code); return { out, lab, v: (n: string) => inline(lab.vars.get(n)!, { long: true }) }; };
 
 describe('Hyperion: the language (M374)', () => {
+  it('has the set functions, flip and linsolve the AI reached for (M436)', () => {
+    const r = run("i = intersect([3 1 2 5], [5 2 9]); u = union([3 1], [2 3]); d = setdiff([1 2 3 4], [2 4]); f = flip([1 2 3]); g = flip([1; 2]); x = linsolve([2 0; 0 4], [2; 8]);");
+    expect([r.v('i'), r.v('u'), r.v('d'), r.v('f'), r.v('g'), r.v('x')]).toEqual(['[2 5]', '[1 2 3]', '[1 3]', '[3 2 1]', '2x1 double', '2x1 double']);
+    expect([...(r.lab.vars.get('g') as Mat).d, ...(r.lab.vars.get('x') as Mat).d]).toEqual([2, 1, 1, 2]);
+  });
   it('does arithmetic with MATLAB’s precedence', () => {
     expect(run('x = -2^2 + 3*4/2;').v('x')).toBe('2');
     expect(run('x = 2^-1;').v('x')).toBe('0.500000000000000');

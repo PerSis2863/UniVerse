@@ -34,7 +34,7 @@ export function lfm(B: number, T: number, fs: number): [Float64Array, Float64Arr
 export function echoes(wave: [Float64Array, Float64Array], fs: number, prf: number, pulses: number, fc: number, targets: { range: number; speed: number; amp: number }[], snrDb: number, rand: Rand, clutterDb?: number) {
   const rows = Math.max(wave[0].length, Math.floor(fs / prf)), lambda = C / fc, re = new Float64Array(rows * pulses), im = new Float64Array(rows * pulses);
   if (clutterDb !== undefined) {
-    // M439: ground clutter, a still scatterer in every range cell past the pulse (Rayleigh, of clutter-to-noise ratio
+    // M460: ground clutter, a still scatterer in every range cell past the pulse (Rayleigh, of clutter-to-noise ratio
     // clutterDb against the noise), with 1 % of its power slowly wandering (wind on trees: ρ = 0.95 pulse to pulse).
     const L = wave[0].length, sd = Math.sqrt(lin(clutterDb - snrDb) / 2), g = () => { let u = 0; while (!u) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };
     for (let k = L; k < rows; k++) {

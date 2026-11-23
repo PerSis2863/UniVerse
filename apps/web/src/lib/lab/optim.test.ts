@@ -95,7 +95,7 @@ describe('Hyperion optimisation (M422): in the language', () => {
   });
 });
 
-describe('several goals at once (M440)', () => {
+describe('several goals at once (M461)', () => {
   let seed = 5;
   const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
   it('NSGA-II finds the ZDT1 front (f2 = 1 − √f1) end to end; Schaffer’s front is x in [0, 2]', async () => {
@@ -126,7 +126,7 @@ describe('several goals at once (M440)', () => {
   }, 30_000);
 });
 
-describe('Hyperion optimisation (M441): the rarer solvers', () => {
+describe('Hyperion optimisation (M462): the rarer solvers', () => {
   it('Brent finds roots and minima to full accuracy', () => {
     const z = ox.brentZero((x) => Math.cos(x) - x, 0, 1);
     expect(Math.abs(z.x - 0.7390851332151607)).toBeLessThan(1e-14);
@@ -182,7 +182,7 @@ describe('Hyperion optimisation (M441): the rarer solvers', () => {
   });
 });
 
-describe('Hyperion optimisation: complex roots and the rarer solvers’ choices (M447)', () => {
+describe('Hyperion optimisation: complex roots and the rarer solvers’ choices (M471)', () => {
   it('Muller’s method finds complex roots, and fzero takes a complex start', () => {
     const r = ox.muller(([a, b]) => [a * a - b * b + 1, 2 * a * b], [0.5, 0.5]);
     expect(Math.abs(r.z[0])).toBeLessThan(1e-12);

@@ -2,7 +2,7 @@
 import { envspectrum } from '@/lib/lab/maint';
 import { faultFleet, featuresFor, featureTable, fileFleet, lifeFleet, lifeTest, rank, spectrum, type Fleet, type LifeTest, type Rank } from '@/lib/lab/health';
 
-// Hyperion Learn → Machine health (M443): the fleet is made (or read) and its features computed here, off the page's
+// Hyperion Learn → Machine health (M465): the fleet is made (or read) and its features computed here, off the page's
 // thread; the page asks for one recording's picture or a remaining-life test as the person points at them.
 
 export type Source = { kind: 'life' | 'faults'; seed: number } | { kind: 'files'; files: { name: string; text: string }[]; fs: number; fr: number };

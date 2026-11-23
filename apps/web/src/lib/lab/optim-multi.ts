@@ -1,4 +1,4 @@
-// Hyperion's optimisation with several goals at once (M440, the owner: "optimising several goals at once"): NSGA-II
+// Hyperion's optimisation with several goals at once (M461, the owner: "optimising several goals at once"): NSGA-II
 // (Deb et al. 2002: fast non-dominated sorting, crowding distance, simulated binary crossover and polynomial mutation,
 // constraints by Deb's feasibility rules) for a spread of best trade-offs (the Pareto front), and a Pareto search that
 // walks the front point by point (a Chebyshev scalarisation per direction, each point solved by Nelder–Mead from

@@ -9,7 +9,7 @@ import * as vb from './vib';
 // Hyperion's predictive maintenance toolbox in the language (M423): rms, peak2peak, peak2rms, hilbert, envelope,
 // envspectrum, bearingFaultBands, findchangepts, cusum, monotonicity, trendability, prognosability, and degradation
 // models (exponentialDegradationModel, linearDegradationModel, fit, update, predictRUL) for remaining useful life.
-// M442, vibration analysis: modalfrf, modalfit, pkurtosis, kurtogram, tsa, orderspectrum.
+// M463, vibration analysis: modalfrf, modalfit, pkurtosis, kurtogram, tsa, orderspectrum.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 0, lab);
@@ -151,7 +151,7 @@ def('predictRUL', (a, nout, lab) => {
   } catch (e) { if (e instanceof LabError) throw e; throw new LabError((e as Error).message); }
 });
 
-// ——— Vibration analysis (M442) ———
+// ——— Vibration analysis (M463) ———
 const scalar = (v: Value | undefined, what: string) => { if (!v) throw new LabError(`${what} is missing.`); const m = toMat(v, what); if (m.d.length !== 1 || m.im) throw new LabError(`${what} must be one real number.`); return m.d[0]; };
 const fail = (e: unknown): never => { if (e instanceof LabError) throw e; throw new LabError((e as Error).message); };
 /** A window given as a length or as its values. */

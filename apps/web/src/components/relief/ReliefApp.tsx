@@ -10,14 +10,15 @@ import useSWR from 'swr';
 import { AnimatePresence, m as motion, useReducedMotion } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import { toast } from 'sonner';
-import { AlertTriangle, BadgeCheck, Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
+import { AlertTriangle, BadgeCheck, Car, Check, Crosshair, Droplets, Globe2, HandHeart, Home, Loader2, LocateFixed, MapPin, MessageSquare, Minus, Package, Plus, Shirt, Siren, Sparkles, Stethoscope, Undo2, Users, Utensils, X } from 'lucide-react';
 import { api, errorMessage } from '@/lib/api';
 import { celebrate } from '@/lib/celebrate';
 import { authedJson } from '@/lib/authed-fetch';
 import { inboxFor } from '@/lib/apps';
 import { fetcher } from '@/lib/fetcher';
 import { distanceM } from '@/lib/attendance-rules';
-import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, STOCK_LABEL, SKILLS, SKILL_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, guessNeed, needScore, runsOrg, type Place, type ReliefKind, type Skill, type Urgency } from '@/lib/relief';
+import { RELIEF_KINDS, RELIEF_KIND_LABEL, RELIEF_ORG_KIND_LABEL, STOCK_LABEL, SKILLS, SKILL_LABEL, URGENCIES, URGENCY_COLOR, URGENCY_LABEL, needScore, runsOrg, type Place, type ReliefKind, type Skill, type Urgency } from '@/lib/relief';
+import { guessNeed, readNeed } from '@/lib/relief-model';
 import { useDarkMode } from '@/lib/use-dark';
 import { useNow } from '@/lib/use-now';
 import { useAuthStore } from '@/store/auth';
@@ -489,6 +490,14 @@ export function PostCard({ p, now, here, onChange, extra }: { p: ReliefPost; now
 }
 
 function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f: Draft) => void; at: { lat: number; lng: number } | null; onPick: () => void; onClose: () => void; onDone: (p: ReliefPost | null) => void }) {
+  // M420: Relief's own AI (src/lib/relief-model.ts, trained by UniVerse itself, nothing sent anywhere) suggests the
+  // urgency and kind from the words, only when it's fairly sure and differs from what is chosen; the person decides.
+  const said = `${f.title} ${f.details}`.trim();
+  const ai = useMemo(() => {
+    if (f.type !== 'NEED' || said.length < 10) return null;
+    const r = readNeed(said);
+    return (r.urgency !== f.urgency || r.kind !== f.kind) && r.urgencySure >= 0.6 && r.kindSure >= 0.6 ? r : null;
+  }, [said, f.type, f.urgency, f.kind]);
   const [where, setWhere] = useState(at);
   // Coordinators can post in their organisation's name (M106).
   const { data: orgs } = useSWR<{ orgs: { id: string; name: string; role: string }[] }>('/relief/orgs', fetcher);
@@ -541,6 +550,13 @@ function PostForm({ f, setF, at, onPick, onClose, onDone }: { f: Draft; setF: (f
         <label className="mt-4 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">In a few words</span><input required maxLength={120} value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} className="input mt-1" placeholder={f.type === 'NEED' ? 'Food for a family of 5' : 'I can drive supplies on weekends'} /></label>
         <label className="mt-3 block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">Details (optional)</span><textarea rows={3} maxLength={1000} value={f.details} onChange={(e) => setF({ ...f, details: e.target.value })} className="input mt-1 resize-y" placeholder="What exactly, when, anything a helper should know. Don’t write your address: say it in a message." /></label>
         <p className="mt-1 text-xs text-zinc-500">Write in your own language: helpers can translate it into theirs with one tap.</p>
+        {ai && (
+          <p className="mt-2 flex flex-wrap items-center gap-2 rounded-2xl bg-[var(--fill)] p-3 text-xs text-zinc-700 dark:text-zinc-200" aria-live="polite">
+            <Sparkles className="h-4 w-4 shrink-0 text-orange-500" aria-hidden />
+            <span className="min-w-0 flex-1">UniVerse’s own AI reads this as <strong className="font-semibold">{URGENCY_LABEL[ai.urgency]} · {RELIEF_KIND_LABEL[ai.kind]}</strong></span>
+            <button type="button" onClick={() => setF({ ...f, urgency: ai.urgency, kind: ai.kind })} className="btn-secondary btn-sm">Use this</button>
+          </p>
+        )}
         <div className="mt-3 grid grid-cols-2 gap-3">
           <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">{f.type === 'NEED' ? 'How many people' : 'How many people it can help'}</span><input type="number" min={1} max={10000} value={f.people} onChange={(e) => setF({ ...f, people: e.target.value })} className="input mt-1" /></label>
           {f.type === 'NEED' && <label className="block"><span className="text-xs font-medium text-zinc-600 dark:text-zinc-300">How urgent</span><select value={f.urgency} onChange={(e) => setF({ ...f, urgency: e.target.value as Urgency })} className="input mt-1">{URGENCIES.map((u) => <option key={u} value={u}>{URGENCY_LABEL[u]}</option>)}</select></label>}

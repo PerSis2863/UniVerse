@@ -10,7 +10,7 @@ import { table } from './table';
 // Hyperion's radar in the language (M429): physconst, pow2db, db2pow, mag2db, db2mag, freq2wavelen, wavelen2freq,
 // range2time, time2range, speed2dop, dop2speed, rangeres2bw, bw2rangeres, radareqsnr, radareqrng, radareqpow, chirp,
 // lfmpulse, radarecho, pulsecompress, rangedoppler, cfar, ambgfun; M438: steervec, sensorsig, arraypattern,
-// spatialspectrum, musicdoa; M439: radarecho's 'Clutter', mtifilter, groupdetections, fmcwbeat, fmcwrangedoppler,
+// spatialspectrum, musicdoa; M460: radarecho's 'Clutter', mtifilter, groupdetections, fmcwbeat, fmcwrangedoppler,
 // trackkalman, trackmulti.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -216,7 +216,7 @@ def('musicdoa', (a) => {
   return [row(ar.peaks(az, ar.spectrum(R, pos, az, 'music', k), k))];
 });
 
-// ——— Clutter, FMCW, grouping, tracking (M439) ———
+// ——— Clutter, FMCW, grouping, tracking (M460) ———
 const cx = (v: Value | undefined, what: string) => { const m = toMat(v ?? num(NaN), what); return { m, re: Float64Array.from(m.d), im: m.im ? Float64Array.from(m.im) : new Float64Array(m.d.length) }; };
 def('mtifilter', (a) => {
   const { m, re, im } = cx(a[0], 'The echoes'), order = Math.round(a[1] ? toMat(a[1]).d[0] : 2);

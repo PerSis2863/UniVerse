@@ -11,7 +11,7 @@ import { extrude, solveSolid, type SolidMesh, type SolidResult } from '@/lib/sim
 // kept while only supports, loads or the material change (no new mesh needed).
 
 export type Analysis = 'static' | 'modal' | 'harmonic';
-/** M442: for 'harmonic', the sweep's settings and the frequency to show the part at (Hz; the strongest peak when absent). */
+/** M463: for 'harmonic', the sweep's settings and the frequency to show the part at (Hz; the strongest peak when absent). */
 export type ToSim = { id: number; model: Model; solve: boolean; analysis: Analysis; harmonic?: Harmonic; at?: number } | { id: number; heat: HeatModel; solve: boolean };
 export interface HarmonicOut { sweep: HarmonicResult; hz: number; ux: Float64Array; uy: Float64Array; swing: Float64Array; vm: Float64Array }
 export interface MeshOut { x: Float64Array; y: Float64Array; tri: Uint32Array; corners: number; segs: Record<string, [number, number, number][]>; minAngle: number }
@@ -36,7 +36,7 @@ function solidOf(model: Model): SolidMesh {
 }
 
 let kept: { key: string; mesh: Mesh } | null = null;
-/** The modes for a harmonic sweep (M442): kept while only the loads or the sweep's settings change. */
+/** The modes for a harmonic sweep (M463): kept while only the loads or the sweep's settings change. */
 let keptBasis: { key: string; basis: Basis } | null = null;
 
 self.onmessage = (e: MessageEvent<ToSim>) => {

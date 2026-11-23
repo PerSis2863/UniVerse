@@ -42,6 +42,9 @@ function studentOrder<Q extends { id: string; pool?: string | null }>(quiz: { id
 }
 export class QuizzesService {
   /** Teachers may only manage quizzes for their own courses; admins, their school's courses. */
+  /** M425: the same check for routes outside this service (Ghidra's quiz drafts, src/server/quiz-draft.ts). */
+  async assertCanManage(courseId: string, user: Who) { await this.assertCourseOwner(courseId, user); }
+
   private async assertCourseOwner(courseId: string, user: Who) {
     const course = await prisma.course.findUnique({ where: { id: courseId }, select: { teacherId: true, teacher: { select: { organizationId: true } }, staff: { where: { userId: user.id, role: 'CO_TEACHER' }, select: { id: true }, take: 1 } } });
     if (!course) throw new NotFoundException('Course not found');

@@ -113,7 +113,7 @@ describe('antenna arrays and direction finding (M438)', () => {
   });
 });
 
-describe('clutter, FMCW, grouping and tracking (M439)', () => {
+describe('clutter, FMCW, grouping and tracking (M460)', () => {
   let seed = 5;
   const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
   const g = () => { let u = 0; while (!u) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };

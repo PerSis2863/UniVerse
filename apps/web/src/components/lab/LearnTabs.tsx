@@ -5,7 +5,7 @@ import dynamic from 'next/dynamic';
 import { Segmented } from '@/components/ui/Segmented';
 import { LearnApp } from './LearnApp';
 
-// Hyperion Learn's two windows: Classify (M421, models compared on data) and Machine health (M443, the owner, 23 Nov:
+// Hyperion Learn's two windows: Classify (M421, models compared on data) and Machine health (M465, the owner, 23 Nov:
 // "a point-and-click maintenance window"). The one in use is remembered for the visit.
 type Tab = 'classify' | 'health';
 const KEEP = 'uv-learn-tab';

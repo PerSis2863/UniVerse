@@ -1,4 +1,4 @@
-// Hyperion's computer app (M412, M446): tells the page it is running inside the app (so it hides "Install Hyperion"),
+// Hyperion's computer app (M412, M470): tells the page it is running inside the app (so it hides "Install Hyperion"),
 // and lets Hyperion's own page run Julia, C++ and Rust with the tools installed on this computer. main.js answers only
 // Hyperion's own site in the window's main frame, and asks the person before a program runs.
 const { contextBridge, ipcRenderer } = require('electron');

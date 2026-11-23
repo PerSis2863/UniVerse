@@ -13,7 +13,7 @@ import { python } from '@codemirror/lang-python';
 import { cpp } from '@codemirror/lang-cpp';
 import type { LangId } from '@/lib/lab/langs';
 
-/** The colours and indentation for a script's language (M444): MATLAB's own; Python's; C++'s (and Rust's, near enough); plain for R and Julia. */
+/** The colours and indentation for a script's language (M466): MATLAB's own; Python's; C++'s (and Rust's, near enough); plain for R and Julia. */
 const langExt = (l: LangId) => (l === 'matlab' ? [matlab, matlabIndent] : l === 'python' ? [python()] : l === 'cpp' || l === 'rust' ? [cpp()] : []);
 
 // M389: Hyperion's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
@@ -136,7 +136,7 @@ const look = (dark: boolean) => EditorView.theme({
 const NONE: number[] = [];
 
 export function LabEditor({ language = 'matlab', value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false, heat = null, jump = null }: {
-  /** The script's language (M444): MATLAB gets the checker, Explain and the engine's suggestions; the others colours only. */
+  /** The script's language (M466): MATLAB gets the checker, Explain and the engine's suggestions; the others colours only. */
   language?: LangId;
   value: string;
   onChange: (code: string) => void;

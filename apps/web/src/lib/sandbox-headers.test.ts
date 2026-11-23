@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { SANDBOX_CSP, securityHeaders } from '../../security-headers';
 
-// M445c: Hyperion's sealed runner (public/sandbox/run.html) carries its own policy, the same on Cloudflare's static
+// M469: Hyperion's sealed runner (public/sandbox/run.html) carries its own policy, the same on Cloudflare's static
 // files (public/_headers) and on the dev server (next.config.ts), and the site's own policy never takes in the
 // outside folders the runner may use.
 describe('Hyperion’s sealed runner and its policy', () => {

@@ -67,7 +67,7 @@ export const securityHeaders = [
   { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
 ];
 
-// Hyperion's sealed runner for Python and R (M445c, public/sandbox/run.html): the Code window frames it with
+// Hyperion's sealed runner for Python and R (M469, public/sandbox/run.html): the Code window frames it with
 // sandbox="allow-scripts" (an opaque origin, nothing of the site's reachable), so it may have what Pyodide's and webR's
 // WebAssembly loaders need (eval) while everything else stays shut: their own versioned folders only (not the whole of
 // jsDelivr, which serves anyone's packages), R's package repository, and only Hyperion may frame it. The same text is in

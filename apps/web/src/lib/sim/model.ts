@@ -19,7 +19,7 @@ export interface Model {
   custom?: CustomShape;
   /** Flat (plane stress, 2D) or a solid of the thickness (3D, M413). */
   dim?: '2d' | '3d';
-  /** The shaking swept in a harmonic response (M442). */
+  /** The shaking swept in a harmonic response (M463). */
   harmonic?: Harmonic;
 }
 
@@ -96,7 +96,7 @@ export function readModel(raw: unknown): Model {
   };
 }
 
-/** Kept sweep settings read back safely (M442). */
+/** Kept sweep settings read back safely (M463). */
 export function readHarmonic(raw: unknown): Harmonic {
   const h = (raw ?? {}) as Partial<Harmonic>, d = HARMONIC_START;
   const num = (v: unknown, def: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def);
@@ -116,7 +116,7 @@ export function modelProblem(m: Model, free = false): string | null {
   const p = partProblem(part);
   if (p) return p;
   if (!(m.thickness > 0)) return 'The thickness must be more than 0.';
-  // Natural frequencies need no support (M442: a part held nowhere vibrates freely); everything else does.
+  // Natural frequencies need no support (M463: a part held nowhere vibrates freely); everything else does.
   if (!free && !m.supports.some((s) => s.edges.length)) return 'Hold the part somewhere: add a support and pick its edge.';
   return null;
 }

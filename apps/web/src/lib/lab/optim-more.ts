@@ -1,9 +1,9 @@
 import { augLag, numGrad, type Constraints, type Fn, type Rand, type Result } from './optim';
 import type { MultiFn } from './optim-multi';
 
-// Hyperion's rarer solvers (M441), pure: Brent's root finder and minimiser (fzero, fminbnd), non-negative and
+// Hyperion's rarer solvers (M462), pure: Brent's root finder and minimiser (fzero, fminbnd), non-negative and
 // constrained linear least squares (lsqnonneg, lsqlin), goal attainment and minimax (fgoalattain, fminimax), pattern
-// search and simulated annealing (patternsearch, simulannealbnd). M447: complex roots (Muller), pattern search's other
+// search and simulated annealing (patternsearch, simulannealbnd). M471: complex roots (Muller), pattern search's other
 // polls (GPS N+1, GSS, MADS), complete polling and a Latin-hypercube search; annealing's temperature and step choices,
 // gradient-based reannealing and the person's own functions.
 
@@ -63,7 +63,7 @@ const cAbs = (a: C) => Math.hypot(a[0], a[1]);
 const cSqrt = (a: C): C => { const r = cAbs(a), re = Math.sqrt((r + a[0]) / 2), im = Math.sqrt(Math.max(0, (r - a[0]) / 2)); return [re, a[1] < 0 ? -im : im]; };
 
 /**
- * A root of a function of a complex number by Muller's method (M447): a parabola through the last three points, the
+ * A root of a function of a complex number by Muller's method (M471): a parabola through the last three points, the
  * step to its root nearer the newest point. From a real start it steps off the real line, so it finds complex roots
  * that a sign change never shows. Returns flag 1 when |Δz| ≤ tol·(1 + |z|), 0 at the iteration limit.
  */
@@ -193,7 +193,7 @@ export function goalAttain(F: MultiFn, x0: number[], goal: number[], weight: num
 export type Poll = 'gps2n' | 'gpsnp1' | 'gss2n' | 'gssnp1' | 'mads2n' | 'madsnp1';
 export interface PatternOpts {
   meshTol?: number; maxEvals?: number; onStep?: (x: number[], f: number, evals: number) => void;
-  /** M447: the poll's directions; complete polling (every direction, then the best); a Latin-hypercube search of 15n
+  /** M471: the poll's directions; complete polling (every direction, then the best); a Latin-hypercube search of 15n
    *  points before the first poll; the mesh's start, growth and shrink (MADS: ×4 and ÷4 unless given). */
   poll?: Poll; complete?: boolean; search?: 'none' | 'lhs'; mesh0?: number; expand?: number; contract?: number; rand?: Rand;
 }
@@ -203,7 +203,7 @@ function randomBasis(n: number, rand: Rand): number[][] {
   const u = v.map((x) => x / len);
   return Array.from({ length: n }, (_, j) => Array.from({ length: n }, (_, i) => (i === j ? 1 : 0) - 2 * u[i] * u[j]));
 }
-/** Generalised pattern search within bounds (M441; more polls M447). GPS polls ±each axis (2N) or each axis and
+/** Generalised pattern search within bounds (M462; more polls M471). GPS polls ±each axis (2N) or each axis and
  * −(1, …, 1) (N+1); GSS polls the same but a step that would cross a bound stops on it; MADS polls a fresh random
  * orthonormal basis each time. Opportunistic (the first better point) unless complete; the mesh grows after a success
  * and shrinks after a failure. */
@@ -252,7 +252,7 @@ const temps = (s: Schedule, T0: number, k: number[]) => (typeof s === 'function'
 /** k back from a temperature (for reannealing). */
 const kOf = (s: Schedule, T0: number, T: number) => (s === 'fast' ? T0 / T : s === 'boltz' ? Math.exp(T0 / T) : Math.log(T / T0) / Math.log(0.95));
 
-/** Simulated annealing within bounds (M441; MATLAB's choices M447): each step goes in a random direction, as far as the
+/** Simulated annealing within bounds (M462; MATLAB's choices M471): each step goes in a random direction, as far as the
  * temperature (annealingfast) or its square root (annealingboltz) per variable, or where the person's own function
  * says; worse points are kept with probability 1/(1 + exp(Δ/max T)); every ReannealInterval accepted points the
  * temperatures are raised by the gradient's sizes (k_i = log(T0/T_i · max s / s_i)), so variables the function barely

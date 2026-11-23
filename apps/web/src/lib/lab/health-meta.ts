@@ -1,4 +1,4 @@
-// Hyperion Learn → Machine health (M443): the features' names and the matching script, with no imports, so the page
+// Hyperion Learn → Machine health (M465): the features' names and the matching script, with no imports, so the page
 // can show them without loading the language (health.ts and its worker do the computing).
 
 export interface FeatureDef { id: string; name: string; group: 'Time' | 'Frequency'; needs?: 'speed' | 'bearing' }

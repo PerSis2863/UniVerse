@@ -8,7 +8,7 @@ import * as om from './optim-multi';
 import * as ox from './optim-more';
 
 // Hyperion's optimisation toolbox in the language (M422): fminsearch, fminunc, fmincon, linprog, intlinprog,
-// quadprog, lsqnonlin, lsqcurvefit, fsolve, ga, particleswarm, optimset and optimoptions; the rarer ones (M441): fzero,
+// quadprog, lsqnonlin, lsqcurvefit, fsolve, ga, particleswarm, optimset and optimoptions; the rarer ones (M462): fzero,
 // fminbnd, lsqlin, lsqnonneg, fminimax, fgoalattain, patternsearch, simulannealbnd. Display 'iter' prints each
 // step, 'PlotFcns', 'optimplotfval' draws the objective by iteration, and every output struct also carries `path` (a
 // row per iterate) so the way the solver went can be drawn over a contour.
@@ -173,7 +173,7 @@ def('particleswarm', (a, _n, lab) => {
   return [mat(1, n, r.x), num(r.f), num(r.flag), finish(lab, o, r, w, 'particle swarm', 'particleswarm')];
 });
 
-// ——— Several goals at once (M440) ———
+// ——— Several goals at once (M461) ———
 /** A function giving a row of goals for a row of variables. */
 function goals(lab: Lab, fn: Value, n: number): om.MultiFn {
   if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError('The goals must be a function giving a row of numbers, like @(x) [x(1)^2, (x(1)-2)^2].');
@@ -210,7 +210,7 @@ def('paretosearch', (a, nout, lab) => {
 });
 
 
-// ——— The rarer solvers (M441) ———
+// ——— The rarer solvers (M462) ———
 const scalarFn = (lab: Lab, fn: Value, what = 'The function') => {
   if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError(`${what} must be a function of one number, like @(x) cos(x) - x.`);
   return (x: number) => { const v = toMat(lab.callFn(fn, [num(x)])[0], what); if (v.d.length !== 1) throw new LabError(`${what} must give one number.`); return v.d[0]; };
@@ -219,7 +219,7 @@ const scalarOut = (r: ox.Scalar, algorithm: string, extra: [string, Value][] = [
 def('fzero', (a, _n, lab) => {
   if (a.length < 2) throw new LabError('fzero needs a function and a starting point or an interval: fzero(@(x) cos(x) - x, 1) or fzero(f, [0 2]).');
   const g = toMat(a[1], 'The starting point'), o = readOptions(a[2], 'notify');
-  // M447: a complex start looks for a complex root (Muller's method), as no sign change can show one.
+  // M471: a complex start looks for a complex root (Muller's method), as no sign change can show one.
   if (g.im && g.d.length === 1 && g.im[0] !== 0) {
     const fn = a[0];
     if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError('fzero needs a function, like @(z) z^2 + 1.');
@@ -288,7 +288,7 @@ def('fgoalattain', (a, _n, lab) => {
   const { r, output } = attain(lab, a[0], x0, goal, weight, k, o, 'fgoalattain');
   return [out(x0, r.x), mat(1, r.fval.length, r.fval), num(r.gamma), num(r.flag), output];
 });
-// ——— Pattern search's and annealing's choices (M447) ———
+// ——— Pattern search's and annealing's choices (M471) ———
 const optOf = (s: Struct | null, name: string) => s?.f.get(name);
 const optNum = (s: Struct | null, name: string) => { const v = optOf(s, name); return v && !isEmpty(v) ? toMat(v).d[0] : undefined; };
 const optName = (v: Value | undefined) => (!v ? '' : v.k === 'str' ? v.v : v.k === 'fn' ? v.name ?? '' : '').toLowerCase().replace(/^@/, '');
@@ -332,7 +332,7 @@ def('simulannealbnd', (a, _n, lab) => {
   const x0 = toMat(a[1], 'The starting point'), shape = shapeOf(x0), lb = vec(a[2], 'lb'), ub = vec(a[3], 'ub'), o = readOptions(a[4], 'final'), w = watcher(lab, o, ' Iteration  F-count   Best f(x)');
   if ((lb.length && lb.length !== x0.d.length) || (ub.length && ub.length !== x0.d.length)) throw new LabError(`lb and ub need ${x0.d.length} entries (or [] for none).`);
   const s = a[4] && a[4].k === 'struct' ? a[4] : null, T0 = optNum(s, 'InitialTemperature') ?? 100;
-  // M447: MATLAB's temperature and step choices, or the person's own functions (given what MATLAB gives them).
+  // M471: MATLAB's temperature and step choices, or the person's own functions (given what MATLAB gives them).
   const tf = optOf(s, 'TemperatureFcn'), af = optOf(s, 'AnnealingFcn'), tn = optName(tf), an = optName(af);
   const SCHED: Record<string, ox.Schedule> = { temperatureexp: 'exp', temperaturefast: 'fast', temperatureboltz: 'boltz' };
   const STEP: Record<string, ox.Stepper> = { annealingfast: 'fast', annealingboltz: 'boltz' };

@@ -13,7 +13,7 @@ import { shareFragment } from '@/lib/lab/share';
 import { NumField, ui } from '@/components/sim/bench-ui';
 import type { FromHealth, Source, ToHealth } from './health.worker';
 
-// Hyperion Learn → Machine health (M443, the owner, 23 Nov: "a point-and-click maintenance window"): a diagnostic
+// Hyperion Learn → Machine health (M465, the owner, 23 Nov: "a point-and-click maintenance window"): a diagnostic
 // feature designer without code. Pick a fleet of vibration recordings, look at any one (signal, spectrum, envelope
 // spectrum), see every feature computed from all of them and ranked (how well it tracks wear, or tells the faults
 // apart), follow the chosen one over each machine's life or across the kinds of fault, and test a remaining-life model

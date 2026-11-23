@@ -1,11 +1,11 @@
 import { oneLine, packagesIn, type LangInfo } from '@/lib/lab/langs';
 
-// Hyperion's other languages (M444–): Python and R run in a sealed frame (public/sandbox/run.html, M445c), an iframe
+// Hyperion's other languages (M466–): Python and R run in a sealed frame (public/sandbox/run.html, M469), an iframe
 // with sandbox="allow-scripts" and no allow-same-origin: an opaque origin of its own, so a script (one shared by link
 // too) can't read the site's storage, cookies or sign-in, or call its API as the person. This side sends it a script
 // and Hyperion's files, and turns what comes back into the Code window's text, error and line, figures and variables;
 // only messages from that frame are read, and every field is checked. Julia, C++ and Rust run in the computer app
-// (M446), which asks the person before a program runs on their computer.
+// (M470), which asks the person before a program runs on their computer.
 
 export interface LangVar { name: string; size: string; cls: string; value: string }
 export type LangEvent = { status: string } | { out: string; err?: boolean } | { done: true; error?: string; line?: number; figs: string[]; vars: LangVar[] };
@@ -13,7 +13,7 @@ export interface LangFile { name: string; bytes: Uint8Array }
 
 const RUNNER = '/sandbox/run.html';
 
-/** The computer app's bridge (desktop/hyperion/preload.js, M446): absent in a browser. */
+/** The computer app's bridge (desktop/hyperion/preload.js, M470): absent in a browser. */
 interface Desktop {
   run(lang: string, code: string): Promise<{ ok: boolean; exitCode?: number; error?: string; missing?: boolean; cancelled?: boolean; ms?: number }>;
   stop(): Promise<void>;
@@ -77,7 +77,7 @@ export class LangRunner {
     }, (err: unknown) => { this.stop(); this.on({ done: true, error: `${lang.name} couldn't start: ${err instanceof Error ? err.message : String(err)}.`, figs: [], vars: [] }); });
   }
 
-  /** Julia, C++ and Rust: built and run by the tools on the person's computer, through the computer app (M446). */
+  /** Julia, C++ and Rust: built and run by the tools on the person's computer, through the computer app (M470). */
   private native(lang: 'julia' | 'cpp' | 'rust', name: string, code: string) {
     const d = desktop();
     if (!d?.run || !d.onOutput) {

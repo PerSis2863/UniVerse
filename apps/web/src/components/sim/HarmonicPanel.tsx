@@ -7,7 +7,7 @@ import type { Harmonic } from '@/lib/sim/modal';
 import type { HarmonicOut } from './sim.worker';
 import { NumField, ui } from './bench-ui';
 
-// Hyperion Simulate → Vibration → Shaking (M442, the owner, 23 Nov: "more advanced vibration analysis"): Ansys's
+// Hyperion Simulate → Vibration → Shaking (M463, the owner, 23 Nov: "more advanced vibration analysis"): Ansys's
 // harmonic response. The part shaken steadily by its loads or through its supports, swept over a range of frequencies
 // with damping; the curve of how far it moves, its resonances, and the part at the chosen frequency.
 

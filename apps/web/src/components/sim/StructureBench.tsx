@@ -40,7 +40,7 @@ export function StructureBench() {
   const [showMesh, setShowMesh] = useState(false);
   const [playing, setPlaying] = useState(false);
   // M406: what is solved: stress and bending under the loads, or the part's natural vibrations (and which one is shown).
-  // M442: or the part shaken steadily over a range of frequencies (harmonic response), shown at one of them.
+  // M463: or the part shaken steadily over a range of frequencies (harmonic response), shown at one of them.
   const [analysis, setAnalysis] = useState<Analysis>('static');
   const [modeAt, setModeAt] = useState(0);
   const [atHz, setAtHz] = useState<number | undefined>(undefined);

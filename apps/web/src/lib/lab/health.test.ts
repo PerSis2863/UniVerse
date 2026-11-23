@@ -4,7 +4,7 @@ import { Graphics } from './plot';
 import './maint-lab';
 import * as h from './health';
 
-describe('Hyperion Learn → Machine health (M443)', () => {
+describe('Hyperion Learn → Machine health (M465)', () => {
   it('ranks the features that track a bearing’s wear above those that don’t, and predicts its remaining life', () => {
     const fleet = h.lifeFleet(1, 6), ids = h.featuresFor(fleet).map((f) => f.id), table = h.featureTable(fleet, ids);
     const ranked = h.rank(fleet, table, ids), pos = (id: string) => ranked.findIndex((r) => r.id === id);

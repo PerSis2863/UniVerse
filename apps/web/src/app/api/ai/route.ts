@@ -4,6 +4,9 @@ import { spendAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
 import { withTextModels } from '@/server/ai-models';
 import { MATH_RULE } from '@/lib/tutor-rules';
+import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
+import { SAFETY } from '@/server/gemini';
+import { isHard, thinkHard } from '@/server/ghidra-think';
 
 // The models come from the owner's chain (owner console → Server → AI models): when one is busy
 // or missing, the next answers (src/server/ai-models.ts).
@@ -11,16 +14,24 @@ import { MATH_RULE } from '@/lib/tutor-rules';
 const MAX_MESSAGE_CHARS = 4000;
 const MAX_HISTORY = 8;
 
-const SYSTEM_PROMPT = `You are an intelligent AI Study Assistant for UniVerse, a university and social-impact platform.
-You help students with:
-- Explaining academic concepts clearly
-- Summarizing course notes
-- Creating study plans and schedules
-- Answering questions about assignments and deadlines
-- Providing motivational support
-- Helping with exam preparation
-Keep responses concise, friendly, and academically accurate. If you don't know something about the
-student's specific courses or deadlines, say so instead of guessing.
+// Ghidra (M426, the owner: "people can ask anything and ghidra can do different kind of task"): a general assistant
+// under UniVerse's own name. Its actions in the apps go through POST /ask (src/server/ask.ts), each confirmed by a tap.
+const SYSTEM_PROMPT = `You are Ghidra, UniVerse's own AI assistant. People can ask you anything, as they would any
+general-purpose assistant: explain any topic at the level they need, answer questions, write and improve texts (emails,
+essays, messages, posts, CVs), summarise, translate, brainstorm, plan (study, trips, events, projects), solve maths
+step by step, and write, explain and fix code (in fenced code blocks with the language named).
+How to answer: clear and warm; as long as the question needs and no longer; short paragraphs; plain text (lists as lines
+starting with "- ", no ** or # marks; code between lines of three backticks); say when you
+are not sure, and never invent facts, sources or the person's own data (their marks, deadlines, trips or messages:
+tell them to ask you "what's due", "my courses" or "my trips", which reads their real data).
+Many people here are students, some under 18: keep answers suitable for them. With graded schoolwork, help them learn
+and do it themselves (explain, give hints, check their work) rather than handing over finished work to submit.
+Refuse anything harmful, dangerous or illegal, kindly. Health, legal or money questions: give general information and
+suggest a qualified person. If anyone may be in danger, tell them to call the local emergency number first (112 in Europe
+and India, 911 in North America).
+About yourself: you are Ghidra, made by UniVerse. If someone asks which company's technology you run on, say UniVerse's
+AI currently uses Google's models, as UniVerse's privacy policy explains; never claim to be another company's assistant.
+${UNTRUSTED_RULE}
 ${MATH_RULE}`;
 
 function plainTextStream(text: string) {
@@ -37,6 +48,7 @@ async function callGemini(model: string, apiKey: string, contents: unknown) {
         contents,
         systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
         generationConfig: { temperature: 0.7, maxOutputTokens: 1024 },
+        safetySettings: SAFETY,
       }),
     },
   );
@@ -56,11 +68,15 @@ export async function POST(req: NextRequest) {
   }
   const message = typeof payload.message === 'string' ? payload.message.trim().slice(0, MAX_MESSAGE_CHARS) : '';
   if (!message) return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+  // M429: someone in crisis or in danger gets the safe, human answer first, with or without AI (src/lib/ghidra-guard.ts).
+  const g = guard(message);
+  if (g) return plainTextStream(guardReply(g));
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return plainTextStream("I'm your AI Study Assistant! The assistant isn't configured yet — an administrator needs to add a GEMINI_API_KEY in the hosting settings.");
-  }
+  const cannot = () => plainTextStream("I'm Ghidra, your UniVerse assistant! I can't answer that kind of question yet, but I can show what's due, how you're doing in Green, do things in any app for you, and answer how to use UniVerse.");
+  // M430: maths, code and logic go to DeepSeek when the owner has it on (src/server/ghidra-think.ts); otherwise Gemini.
+  const hard = isHard(message);
+  if (!apiKey && !hard) return cannot();
 
   const spend = await spendAi(user);
   if (!spend.ok) return NextResponse.json({ error: spend.message, code: 'ai-limit' }, { status: 429 });
@@ -77,12 +93,19 @@ export async function POST(req: NextRequest) {
     { role: 'user', parts: [{ text: message }] },
   ];
 
+  if (hard) {
+    const turns = contents.map((c) => ({ role: c.role === 'model' ? 'assistant' as const : 'user' as const, content: c.parts[0].text }));
+    const deep = await thinkHard(SYSTEM_PROMPT, turns);
+    if (deep) return new Response(deep, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  if (!apiKey) return cannot();
+
   try {
     const res = await withTextModels(false, (model) => callGemini(model, apiKey, contents));
     if (!res || !res.ok || !res.body) {
       console.error(`Gemini API error: ${res?.status}`);
-      if (res?.status === 429) return NextResponse.json({ error: 'Lots of people are using the assistant right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
-      return NextResponse.json({ error: 'The AI assistant is temporarily unavailable.' }, { status: 502 });
+      if (res?.status === 429) return NextResponse.json({ error: 'Lots of people are asking Ghidra right now. Please try again in a minute.' }, { status: 503, headers: { 'Retry-After': '60' } });
+      return NextResponse.json({ error: 'Ghidra can’t answer that right now. Please try again soon.' }, { status: 502 });
     }
 
     const encoder = new TextEncoder();

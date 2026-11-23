@@ -3,7 +3,7 @@
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
-import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
@@ -22,13 +22,14 @@ import { printedUpTo, varsAt, type TraceStep } from '@/lib/lab/trace';
 import { forget, keep, keptFiles, MAX_FILE, pixelsOf, sizeText } from './lab-files';
 import { controlsOf, setControl, type Control } from '@/lib/lab/controls';
 import { LabEditor } from './LabEditor';
+import { LabAsk } from './LabAsk';
 import { FRAME_H, FRAME_W, LabSweep, type Sweep } from './LabSweep';
 import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
 import { builtinNames } from './matlab-lang';
 import { LANGS, langOf } from '@/lib/lab/langs';
 import { LangRunner, type LangEvent } from './lang-runner';
 
-/** Figures from the other languages (M444–) are numbered from here and shown as pictures, never put into the page. */
+/** Figures from the other languages (M466–) are numbered from here and shown as pictures, never put into the page. */
 const OTHER_FIG = 1_000_000;
 
 // M376: Hyperion's window: the command window, a script editor, the variables and the figures, like a desktop
@@ -90,7 +91,7 @@ export function LabApp() {
   const [open, setOpen] = useState(0);
   const [log, setLog] = useState<Line[]>([{ k: 'out', t: 'Hyperion: type a command and press Enter, or run a script. Try  x = magic(4)  or  plot(1:10)\n' }]);
   const [vars, setVars] = useState<VarRow[]>([]);
-  // Whose variables are listed (M444): Hyperion's engine (they open in the viewer) or another language's (shown only).
+  // Whose variables are listed (M466): Hyperion's engine (they open in the viewer) or another language's (shown only).
   const [varsFrom, setVarsFrom] = useState('MATLAB');
   const [figs, setFigs] = useState<FigOut[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
@@ -137,7 +138,7 @@ export function LabApp() {
   const keepTimer = useRef(0);
   const logBox = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
-  // M444–: Python, R, Julia, C++ and Rust scripts run outside the MATLAB engine.
+  // M466–: Python, R, Julia, C++ and Rust scripts run outside the MATLAB engine.
   const runner = useRef<LangRunner | null>(null);
 
   // Saved a moment after the last change (a slider sends many changes a second).
@@ -294,6 +295,7 @@ export function LabApp() {
   // M399: a name is a function when the help or the engine knows it (the checker and Explain).
   const isFn = (n: string) => HELP.has(n) || builtinNames.has(n);
   const [explainOn, setExplainOn] = useState(false);
+  const [askOn, setAskOn] = useState(false);  // M435: Hyperion's AI
   /** The variable viewer: open a variable (or a part of it), go further in, page through. */
   const inspect = (q: Inspect | null) => { looking.current = q; if (!q) { setShown(null); return; } worker.current?.postMessage({ inspect: q } satisfies ToLab); };
   const removeFile = (name: string) => {
@@ -549,6 +551,7 @@ export function LabApp() {
         <label className="flex min-w-[9rem] flex-1 items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400">Name
           <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
         </label>
+        <button type="button" className={cn(btn, askOn && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-expanded={askOn} onClick={() => setAskOn((v) => !v)} title="Ask Hyperion’s AI to write, explain or fix code"><Sparkles className="h-3.5 w-3.5" aria-hidden />Ask AI</button>
         <button type="button" className={btn} aria-expanded={sharing} onClick={() => setSharing((v) => !v)}><Share2 className="h-3.5 w-3.5" aria-hidden />Share</button>
         {mat && !noteView[open] && <button type="button" className={cn(btn, explainOn && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-pressed={explainOn} onClick={() => setExplainOn((v) => !v)} title="What each line does, in plain words under it"><Lightbulb className="h-3.5 w-3.5" aria-hidden />Explain</button>}
         {mat ? <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
@@ -568,6 +571,11 @@ export function LabApp() {
         {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
+      {askOn && (
+        <LabAsk code={script.code} error={codeError}
+          onNew={(code) => { const name = `ai${list.length + 1}.m`; save([...list, { name, code }]); setOpen(list.length); }}
+          onReplace={(code) => editScript(code)} />
+      )}
       {sharing && (
         <div role="group" aria-label="Share this script" className="flex flex-wrap items-start gap-3 border-b border-zinc-200/80 px-3 py-3 dark:border-white/10" data-no-motion>
           <div className="min-w-[14rem] flex-1 space-y-2">

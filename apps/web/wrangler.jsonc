@@ -40,6 +40,9 @@
       "migrations_dir": "prisma/migrations"
     }
   ],
+  // M430: Workers AI (Cloudflare's own AI models), for Ghidra's hard questions with DeepSeek (src/server/ghidra-think.ts),
+  // used only while the owner's "Ghidra thinks with DeepSeek" switch is on.
+  "ai": { "binding": "AI" },
   "ratelimits": [
     {
       // All API calls: 300 per minute per signed-in user (per IP address when signed out).

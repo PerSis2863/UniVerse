@@ -5,7 +5,7 @@ import { FEATURES } from './health-meta';
 
 export { FEATURES, healthScript, type FeatureDef } from './health-meta';
 
-// Hyperion Learn → Machine health (M443, the owner, 23 Nov: "a point-and-click maintenance window"): the engine of a
+// Hyperion Learn → Machine health (M465, the owner, 23 Nov: "a point-and-click maintenance window"): the engine of a
 // diagnostic feature designer. A fleet of vibration recordings (bearings run until they fail, a pump's kinds of fault,
 // or the person's own files), features computed from each (time and frequency), the features ranked (how well they
 // track wear, or how well they tell the faults apart), and a remaining-life test on a machine the model never saw.

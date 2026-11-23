@@ -7,7 +7,7 @@ the app the moment it is on the website.
 
 This folder is not part of the website's build (it is outside the pnpm workspace).
 
-## Julia, C++ and Rust (M446)
+## Julia, C++ and Rust (M470)
 
 In the app, Hyperion's Code window also runs `.jl`, `.cpp` and `.rs` scripts with the tools installed on the computer
 (`julia`; `g++` or `clang++`; `rustc`): `runner.js` writes the script to a fresh temporary folder, builds it (C++17

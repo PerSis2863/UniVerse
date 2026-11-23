@@ -1,4 +1,4 @@
-// Hyperion's radar, second wave (M439, the owner: "following targets over time, ground clutter, the radar used in cars
+// Hyperion's radar, second wave (M460, the owner: "following targets over time, ground clutter, the radar used in cars
 // (FMCW), merging detections"): CFAR hits grouped so one target is one detection, a moving-target-indication filter
 // that cancels still clutter, an FMCW radar's beat signal and its range–Doppler map, a constant-velocity Kalman filter,
 // and a multi-target tracker (gating, nearest-neighbour assignment, tracks started, confirmed and dropped). Our own code

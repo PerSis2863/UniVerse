@@ -1,4 +1,4 @@
-// Hyperion's languages (M444–, the owner, 23 Nov: Python, R, Julia, C++ and Rust beside MATLAB). A script's language is
+// Hyperion's languages (M466–, the owner, 23 Nov: Python, R, Julia, C++ and Rust beside MATLAB). A script's language is
 // its file ending. MATLAB runs on Hyperion's own engine; Python (Pyodide, with NumPy, SciPy, Pandas, Matplotlib) and R
 // (webR, with ggplot2) run inside the browser, nothing to install; Julia, C++ and Rust run in the computer app with the
 // copies installed on the person's computer.

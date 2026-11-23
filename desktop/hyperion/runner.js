@@ -1,4 +1,4 @@
-// Hyperion's computer app runs Julia, C++ and Rust with the copies installed on this computer (M446, the owner, 23 Nov:
+// Hyperion's computer app runs Julia, C++ and Rust with the copies installed on this computer (M470, the owner, 23 Nov:
 // "Julia, C++ and Rust will run in the downloaded app using the copies already installed on the person's computer").
 // Plain Node, used by main.js: find the tools, then write a script to a fresh folder, build it (C++, Rust) and run it,
 // with time and output limits, and remove the folder afterwards. What may call this is decided in main.js.

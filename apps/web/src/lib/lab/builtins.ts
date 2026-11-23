@@ -171,6 +171,12 @@ BUILTINS.tril = (a) => { const m = M(a[0]), k = S(a[1], 'k', 0); return [mat(m.r
 BUILTINS.triu = (a) => { const m = M(a[0]), k = S(a[1], 'k', 0); return [mat(m.r, m.c, m.d.map((x, idx) => (idx / m.r | 0) - (idx % m.r) >= k ? x : 0))]; };
 def('fliplr', (a) => { const m = M(a[0]); const o = mat(m.r, m.c); for (let j = 0; j < m.c; j++) for (let i = 0; i < m.r; i++) o.d[i + j * m.r] = m.d[i + (m.c - 1 - j) * m.r]; return [a[0].k === 'str' ? str([...(a[0] as { v: string }).v].reverse().join('')) : o]; });
 def('flipud', (a) => { const m = M(a[0]); const o = mat(m.r, m.c); for (let j = 0; j < m.c; j++) for (let i = 0; i < m.r; i++) o.d[i + j * m.r] = m.d[m.r - 1 - i + j * m.r]; return [o]; });
+def('flip', (a, n, lab) => {
+  // flip(A) reverses along the first dimension longer than 1; flip(A, 1) the rows, flip(A, 2) the columns
+  const m = a[0].k === 'str' ? null : M(a[0]);
+  const dim = a[1] ? S(a[1], 'The dimension') : m && m.r === 1 ? 2 : 1;
+  return BUILTINS[dim === 2 || a[0].k === 'str' ? 'fliplr' : 'flipud'](a.slice(0, 1), n, lab);
+});
 def('circshift', (a) => { const m = M(a[0]), k = S(a[1], 'The shift'); const n = m.d.length, o = mat(m.r, m.c); if (m.r === 1 || m.c === 1) { m.d.forEach((x, i) => { o.d[(((i + k) % n) + n) % n] = x; }); return [o]; } for (let j = 0; j < m.c; j++) for (let i = 0; i < m.r; i++) o.d[((((i + k) % m.r) + m.r) % m.r) + j * m.r] = m.d[i + j * m.r]; return [o]; });
 
 // ——— Size and type ———
@@ -292,6 +298,7 @@ two('bitand', (x, y) => x & y); two('bitor', (x, y) => x | y); two('bitxor', (x,
 def('primes', (a) => { const n = S(a[0], 'n'); const out: number[] = []; for (let i = 2; i <= n; i++) if (isPrime(i)) out.push(i); return [row(out)]; });
 def('mtimes', (a) => [matmul(M(a[0]), M(a[1]))]);
 def('mldivide', (a) => [solve(M(a[0]), M(a[1]))]);
+def('linsolve', (a) => [solve(M(a[0]), M(a[1]))]);
 def('not', (a) => [{ ...map1(M(a[0]), (x) => +(x === 0)), logical: true }]);
 def('and', (a) => [{ ...zip(M(a[0]), M(a[1]), (x, y) => +(x !== 0 && y !== 0)), logical: true }]);
 def('or', (a) => [{ ...zip(M(a[0]), M(a[1]), (x, y) => +(x !== 0 || y !== 0)), logical: true }]);
@@ -425,6 +432,22 @@ def('ismember', (a) => {
   const set = new Set(M(a[1]).d); const m = M(a[0]);
   return [{ ...map1(m, (x) => +set.has(x)), logical: true }];
 });
+/** intersect / union / setdiff of two numeric vectors or cell arrays of text: sorted, each value once; a column only
+ *  when both inputs are columns (as MATLAB). */
+function setOp(a: Value[], keep: (inA: boolean, inB: boolean) => boolean): Value[] {
+  if (a[0].k === 'cell' || a[1].k === 'cell') {
+    const list = (v: Value) => (v.k === 'cell' ? v.d.map((x) => textOf(x)) : [textOf(v)]);
+    const A = new Set(list(a[0])), B = new Set(list(a[1]));
+    const items = [...new Set([...A, ...B])].filter((x) => keep(A.has(x), B.has(x))).sort();
+    return [{ k: 'cell', r: 1, c: items.length, d: items.map(str) }];
+  }
+  const ma = M(a[0]), mb = M(a[1]), A = new Set(ma.d), B = new Set(mb.d);
+  const vals = [...new Set([...ma.d, ...mb.d])].filter((x) => keep(A.has(x), B.has(x))).sort((x, y) => x - y);
+  return [ma.c === 1 && mb.c === 1 && ma.r > 1 ? mat(vals.length, 1, vals) : row(vals)];
+}
+def('intersect', (a) => setOp(a, (x, y) => x && y));
+def('union', (a) => setOp(a, (x, y) => x || y));
+def('setdiff', (a) => setOp(a, (x, y) => x && !y));
 def('isequal', (a) => [bool(a.slice(1).every((b) => same(a[0], b)))]);
 def('nnz', (a) => [num(M(a[0]).d.filter((x) => x !== 0).length)]);
 def('numel', (a) => [num(numel(a[0]))]);

@@ -17,6 +17,7 @@ import { card, errorMessage, fetcher, field, refreshConsole, toastWithUndo } fro
 import { ConsoleSkeleton } from './shared';
 import { EmailScheduleCard } from './email-schedule';
 import { AiModelsCard } from './ai-models';
+import { GhidraCard } from './ghidra';
 import { useActivePoll } from '@/lib/realtime-client';
 import { TabPill, TabPanel } from '@/components/ui/Glide';
 
@@ -162,6 +163,7 @@ export function ServerPanel({ onTab }: { onTab: (t: 'people' | 'errors' | 'delet
           <div className="space-y-6">
             {data.ai && <AiCard key={`a-${data.control.updatedAt}`} ai={data.ai} onSaved={() => void mutate()} />}
             <AiModelsCard />
+            <GhidraCard />
             <VoiceSessionsCard />
             {data.adoption && <AdoptionCard adoption={data.adoption} />}
           </div>

@@ -19,7 +19,7 @@ export interface Mode {
 }
 export interface ModalResult {
   modes: Mode[]; steps: number;
-  /** Ways the part moves as a whole at 0 Hz (sliding, turning) when it is held nowhere or not firmly (M442). */
+  /** Ways the part moves as a whole at 0 Hz (sliding, turning) when it is held nowhere or not firmly (M463). */
   rigid: number;
 }
 
@@ -74,7 +74,7 @@ export interface Basis {
 
 /**
  * The lowest `count` modes by shift-invert Lanczos on (K − σM)⁻¹M with full reorthogonalisation. A held part uses σ = 0;
- * a part held nowhere (or able to slide or turn) is shifted below zero (M442), so its moves as a whole come out at 0 Hz
+ * a part held nowhere (or able to slide or turn) is shifted below zero (M463), so its moves as a whole come out at 0 Hz
  * and are counted apart from the modes.
  */
 export function modalBasis(mesh: Mesh, material: Material, t: number, supports: Support[], count = 6): Basis {
@@ -172,7 +172,7 @@ export function solveModes(mesh: Mesh, material: Material, t: number, supports: 
   return { modes, steps: b.steps, rigid: b.rigid };
 }
 
-// —— Harmonic response (M442): the part shaken steadily at one frequency after another, with damping. ——
+// —— Harmonic response (M463): the part shaken steadily at one frequency after another, with damping. ——
 
 export interface Harmonic {
   /** What shakes it: the study's loads, each swinging at the frequency ('loads'), or its supports ('base'). */

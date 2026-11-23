@@ -1290,7 +1290,7 @@ function InfoPanel({ data, me, onOpenChat, messages, onClose, onOpenImage, onCha
             {Object.entries(LANGUAGES).map(([code, l]) => <option key={code} value={code}>{l.name}</option>)}
           </select>
         </div>
-        <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">Messages from others appear in the language you choose. Only you see this setting. Messages are translated by AI (Google Gemini) and can contain mistakes — “Show original” shows what was sent.</p>
+        <p className="mt-2 text-[11px] leading-relaxed text-zinc-500">Messages from others appear in the language you choose. Only you see this setting. Messages are translated by Ghidra, UniVerse’s AI, and can contain mistakes — “Show original” shows what was sent.</p>
       </div>
 
       {starredHere.length > 0 && (

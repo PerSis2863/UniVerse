@@ -247,8 +247,8 @@ export function CommandPalette({ role = 'STUDENT' }: { role?: string }) {
     // Group in a fixed order so the list doesn't jump around while typing.
     const order = ['Documents', 'Tasks', 'Assignments', 'Courses', 'Materials', 'Pages', 'People', 'Events', 'Groups', 'NGO projects', 'Internships', 'Resources', 'Actions'];
     const sorted = [...ranked, ...peopleItems, ...foundItems].sort((a, b) => order.indexOf(a.group) - order.indexOf(b.group));
-    // Ask UniVerse (M30): a sentence can be done, not only found (first when it reads like a request).
-    const ask: Item = { id: 'ask', label: `Ask UniVerse: “${debounced}”`, hint: 'Log, post, check or open it for you', icon: Sparkles, group: 'Ask', run: () => { try { sessionStorage.setItem('uv-ask', debounced); } catch { /* storage unavailable */ } router.push('/hub'); } };
+    // Ghidra, the assistant (M422; Ask UniVerse, M30): a sentence can be done, not only found (first when it reads like a request).
+    const ask: Item = { id: 'ask', label: `Ask Ghidra: “${debounced}”`, hint: 'Answer, log, post, check or open it for you', icon: Sparkles, group: 'Ask', run: () => { try { sessionStorage.setItem('uv-ask', debounced); } catch { /* storage unavailable */ } router.push('/hub'); } };
     return debounced.split(/\s+/).length >= 3 ? [ask, ...sorted] : [...sorted, ask];
   }, [debounced, pages, courses, actions, peopleItems, foundItems, recents, recentFound, role, go, router]);
 

@@ -1,4 +1,4 @@
-// Hyperion's FFT (M378; moved here in M443 so pure methods use it without loading the language): radix-2 for powers of
+// Hyperion's FFT (M378; moved here in M465 so pure methods use it without loading the language): radix-2 for powers of
 // two, Bluestein's chirp-z for any other length.
 
 function fftPow2(re: Float64Array, im: Float64Array, inverse: boolean) {

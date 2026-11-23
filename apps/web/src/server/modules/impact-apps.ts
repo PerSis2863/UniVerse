@@ -8,7 +8,7 @@ import prisma from '@/lib/db';
 import { parseShownApps } from '@/lib/shown-apps-list';
 import { hubStats } from '../hub';
 import { impactWallet } from '../impact-wallet';
-import { askUniverse } from '../ask';
+import { askUniverse, reportAnswer } from '../ask';
 import { arrangeGet, arrangeOff, arrangePut } from '../arrange';
 import { createRoom, playLeaderboard, playMe, roomInfo, roomTicket, saveSoloScore } from '../play';
 import { clearReliefWatch, createReliefPost, reliefAction, reliefMap, reliefMine, reliefWatch, setReliefWatch } from '../relief';
@@ -61,8 +61,10 @@ export default function impactAppsModule(router: Router) {
   const hub = router.controller('hub');
   hub.get('', ({ user }) => hubStats(user));
   hub.get('wallet', ({ user }) => impactWallet(user));
-  // Ask UniVerse (M30): proposes one action; the box confirms it through the app's own routes.
+  // Ghidra, the assistant (M422; Ask UniVerse, M30): proposes one action; the chat confirms it through the app's own routes.
   router.controller('ask').post('', { status: 200 }, ({ user, body }) => askUniverse(user, body ?? {}));
+  // M429: an answer of Ghidra's reported, for the owner console's Moderation.
+  router.controller('ghidra').post('report', ({ user, body }) => reportAnswer(user, body ?? {}));
   // M166: a person's page arrangements on their other devices, when they turn it on (src/server/arrange.ts).
   const arrange = router.controller('arrange');
   arrange.get('', ({ user }) => arrangeGet(user));

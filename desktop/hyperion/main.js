@@ -53,7 +53,7 @@ function open() {
   void win.loadURL(SITE);
 }
 
-// Julia, C++ and Rust (M446): only Hyperion's own site, in the window's main frame (never a frame inside it), may ask,
+// Julia, C++ and Rust (M470): only Hyperion's own site, in the window's main frame (never a frame inside it), may ask,
 // and the person says yes before a program runs: once per program text, or for the rest of this visit when they tick
 // the box. A program run this way can do anything the person can, like any program they start themselves.
 const NAMES = { julia: 'Julia', cpp: 'C++', rust: 'Rust' };

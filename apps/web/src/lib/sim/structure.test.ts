@@ -143,7 +143,7 @@ describe('Hyperion Simulate: vibration (M406)', () => {
   });
 });
 
-describe('Hyperion Simulate: free parts and shaking (M442)', () => {
+describe('Hyperion Simulate: free parts and shaking (M463)', () => {
   it('a beam held nowhere rings at 4.730² · √(EI/ρAL⁴) / 2π, with its three moves as a whole left out', async () => {
     const { solveModes } = await import('./modal');
     const { mesh } = build('beam', { L: 200, H: 20 });

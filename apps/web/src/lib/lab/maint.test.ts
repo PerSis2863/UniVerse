@@ -89,7 +89,7 @@ describe('Hyperion predictive maintenance (M423): in the language', () => {
   });
 });
 
-describe('Hyperion vibration analysis (M442)', () => {
+describe('Hyperion vibration analysis (M463)', () => {
   it('modalfrf and modalfit find a mass on a spring’s frequency and damping from noise in, response out', () => {
     // A one-mode system (fn 50 Hz, ζ 2 %) driven by white noise, simulated exactly per sample by its digital twin.
     const r = run([

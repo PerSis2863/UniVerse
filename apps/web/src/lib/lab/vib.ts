@@ -1,6 +1,6 @@
 import { dft } from './fft';
 
-// Hyperion's vibration analysis (M442, the owner, 23 Nov: "more advanced vibration analysis"): what a test rig and a
+// Hyperion's vibration analysis (M463, the owner, 23 Nov: "more advanced vibration analysis"): what a test rig and a
 // maintenance engineer read from measured vibration. A structure's frequency response from a hammer or shaker test
 // (H1 from Welch's averages) and its modes picked from it; the spectral kurtosis and the kurtogram that find the band
 // where a bearing's impacts ring; time-synchronous averaging over a shaft's turns; and the order spectrum, the
