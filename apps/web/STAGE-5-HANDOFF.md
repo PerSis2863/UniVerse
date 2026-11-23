@@ -12504,3 +12504,24 @@ found by swalign, a five-species tree. Tests: textbook translations, ORFs on bot
 (the score recomputed from the alignment), a local match and one long affine gap, Wikipedia's UPGMA and
 neighbour-joining examples. Not built: multiple alignment (profiles, ClustalW-style), reading FASTA/GenBank files
 (fastaread), other genetic codes, BLAST-style database search, maximum-likelihood trees, PAM and other matrices.
+
+## M495 (23 Nov): Hyperion toolbox, chemistry and chemical engineering (sciences and industries, 4 of 14)
+
+`chem.ts` (pure) and `chem-lab.ts`. `parseMechanism` reads 'A + B -> C; 2 C <-> D' (arrows ->, =>, <->, <=>, =;
+';' or new lines between reactions; a coefficient before a name), species in the order they first appear; `rates` is
+mass action (a reversible reaction takes forward then backward k); `batch` (= `pfr`: at constant density a plug-flow
+reactor's concentrations at residence time τ are the batch's at t = τ) solved stiffly by `ros23`; `cstr` runs the
+tank's equations 40 τ from the inlet and polishes by Newton with the finite-difference Jacobian; `equilibrium` is damped
+Newton on ln K = Σ ν ln c over the extents, halving the step until every involved concentration stays positive (a
+product starting at zero is first given a hair of extent); `acidPH` bisects the charge-balance cubic with water's ions;
+`arrhenius` and `arrheniusFit` (ln k on 1/T). Language: MATLAB's `odeset` (RelTol, AbsTol; the rest kept but unused),
+`ode15s` and `ode23s` (both the same Rosenbrock 2(3), MATLAB's ode23s method; ode15s's variable-order NDF is not
+built: say so if someone compares step counts); our own `kineticsSim`, `batchReactor`, `pfrReactor`, `cstrReactor`
+(one row per τ), `arrhenius`, `arrheniusFit`, `chemEquilibrium`, `acidPH`. **Fixed in sci-num.ts on the way:** the
+stiff solver's first step came out ~1e-17 when a component started at 0 with a tight AbsTol and it gave up; the first
+step now has a floor of 1e-10 × the span, and both solvers' "step too small" test is relative to the span, not to 1
+(problems in nanoseconds work). Example `reactors.m`. Tests: Robertson's problem to Hairer–Wanner's values (0.7158,
+9.185e-6, 0.2842), first-order batch and CSTR closed forms, the second-order CSTR quadratic, Arrhenius fit, single,
+bimolecular and coupled equilibria, acetic acid pH 2.87. Not built: non-isothermal reactors (energy balances, runaway),
+reactors with pressure drop or changing volume, Langmuir–Hinshelwood or other non-mass-action rate laws, activity
+coefficients, polyprotic acids and buffers, a periodic table and molar masses.

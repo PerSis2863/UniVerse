@@ -30,4 +30,16 @@ seqpdist | D = seqpdist(seqs, 'Method', 'jukes-cantor', 'SquareForm', true) | Di
 seqlinkage | tree = seqlinkage(D, 'average', names) | A UPGMA tree from distances: a struct with its Newick text. Drawn without outputs.
 seqneighjoin | tree = seqneighjoin(D, 'equivar', names) | A neighbour-joining tree from distances (unequal rates allowed). Drawn without outputs.
 plottree | plottree(tree) | Draws a tree from seqlinkage or seqneighjoin, the leaves named.
+# Chemistry and reactors
+odeset | opts = odeset('RelTol', 1e-6, 'AbsTol', 1e-10) | Tolerances for the ODE solvers (ode15s, ode23s).
+ode15s | [t, y] = ode15s(@(t, y) f, [t0 tEnd], y0, opts) | Solves a stiff ODE (fast and slow parts together, as in chemistry) by a Rosenbrock 2(3) method with error control; given more than two times, reports at those.
+ode23s | [t, y] = ode23s(@(t, y) f, [t0 tEnd], y0, opts) | The same stiff solver as ode15s.
+kineticsSim | [t, C, names] = kineticsSim('A + B -> C; C <-> D', k, c0, tEnd) | A reaction mechanism by mass action: one rate constant per one-way reaction, two (forward, backward) per reversible one; c0 in the order the species first appear. Drawn without outputs.
+batchReactor | [t, C, names] = batchReactor(mechanism, k, c0, tEnd) | A well-mixed closed vessel: concentrations over time (isothermal).
+pfrReactor | [tau, C, names] = pfrReactor(mechanism, k, cin, tau) | A plug-flow reactor at constant density: concentrations along it by residence time V/Q.
+cstrReactor | [C, names] = cstrReactor(mechanism, k, cin, tau) | A continuously stirred tank's steady state for each residence time V/Q in tau (one row each).
+arrhenius | k = arrhenius(A, Ea, T) | Arrhenius' law k = A exp(−Ea/(R T)): Ea in J/mol, T in kelvin.
+arrheniusFit | [A, Ea, R2] = arrheniusFit(T, k) | A and Ea from rate constants at several temperatures (a straight line of ln k against 1/T). Drawn without outputs.
+chemEquilibrium | [c, extent, names] = chemEquilibrium('N2 + 3 H2 <-> 2 NH3', K, c0) | The equilibrium of one or more reactions (K = Π c^ν for each), from the starting concentrations.
+acidPH | pH = acidPH(Ka, C) | A weak acid's pH at concentration C (mol/L), water's own ions included (Ka = Inf for a strong acid).
 `;

@@ -54,7 +54,7 @@ export function rk45(f: Deriv, t0: number, tf: number, y0: number[], rtol = 1e-6
     } else failed++;
     const fac = err === 0 ? 5 : Math.min(5, Math.max(0.2, 0.9 * err ** -0.2));
     h *= Number.isFinite(fac) ? fac : 0.2;
-    if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new Error('The step size became too small: the problem may be stiff (try ode15s).');
+    if (Math.abs(h) < 16 * Number.EPSILON * Math.max(Math.abs(t), 1e-3 * Math.abs(tf - t0))) throw new Error('The step size became too small: the problem may be stiff (try ode15s).');
   }
   out.steps = steps; out.evals = evals; out.failed = failed;
   return out;
@@ -77,7 +77,7 @@ export function ros23(f: Deriv, t0: number, tf: number, y0: number[], rtol = 1e-
   // A first step from the size of the derivative.
   const f00 = f(t, y); evals++;
   const rate = Math.max(...f00.map((v, i) => Math.abs(v) / (atol + rtol * Math.abs(y[i]))), 1e-10);
-  h = Math.sign(tf - t0) * Math.min(Math.abs(tf - t0), 0.8 * rtol ** (1 / 3) / rate);
+  h = Math.sign(tf - t0) * Math.min(Math.abs(tf - t0), Math.max(1e-10 * Math.abs(tf - t0), 0.8 * rtol ** (1 / 3) / rate));
   while ((tf - t) * Math.sign(tf - t0) > 1e-12 * Math.max(1, Math.abs(tf)) && steps + failed < maxSteps) {
     if ((t + h - tf) * Math.sign(h) > 0) h = tf - t;
     const F0 = f(t, y), J = jacobian(f, t, y, F0); evals += 1 + n;
@@ -94,7 +94,7 @@ export function ros23(f: Deriv, t0: number, tf: number, y0: number[], rtol = 1e-
     if (err <= 1 && yn.every(Number.isFinite)) { t += h; y = yn; steps++; out.t.push(t); out.y.push(y.slice()); }
     else failed++;
     h *= Number.isFinite(err) ? Math.min(5, Math.max(0.2, 0.8 * (err || 1e-10) ** (-1 / 3))) : 0.2;
-    if (Math.abs(h) < 1e-14 * Math.max(1, Math.abs(t))) throw new Error('The step size became too small.');
+    if (Math.abs(h) < 16 * Number.EPSILON * Math.max(Math.abs(t), 1e-3 * Math.abs(tf - t0))) throw new Error('The step size became too small.');
   }
   out.steps = steps; out.evals = evals; out.failed = failed;
   return out;

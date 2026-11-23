@@ -67,4 +67,29 @@ names = {'Human', 'Chimp', 'Mouse', 'Chicken', 'Frog'};
 D = seqpdist(seqs, 'Method', 'p-distance');
 seqneighjoin(D, 'equivar', names)
 ` },
+  { name: 'reactors.m', code: `% Chemistry: a stiff mechanism, three reactors, temperature and equilibrium
+% 1. Robertson's reactions: one fast, one slow (stiff). ode15s takes it in its stride.
+f = @(t, y) [-0.04*y(1) + 1e4*y(2)*y(3); 0.04*y(1) - 1e4*y(2)*y(3) - 3e7*y(2)^2; 3e7*y(2)^2];
+[t, y] = ode15s(f, [0 40], [1 0 0], odeset('RelTol', 1e-5, 'AbsTol', 1e-10));
+fprintf('Robertson at t = 40: %.4f  %.3e  %.4f (%d steps)\\n', y(end, 1), y(end, 2), y(end, 3), numel(t))
+% 2. A -> B -> C: the middle product peaks, then is used up
+k1 = 1;     % slider 0.1 3
+k2 = 0.3;   % slider 0.05 3
+kineticsSim('A -> B; B -> C', [k1 k2], [1 0 0], 15)
+% 3. The same reaction in a stirred tank and a plug-flow pipe of the same size
+taus = linspace(0.1, 10, 40);
+Cs = cstrReactor('2 A -> B', 0.5, [1 0], taus);
+[tp, Cp] = pfrReactor('2 A -> B', 0.5, [1 0], 10);
+figure; plot(taus, 1 - Cs(:, 1), tp, 1 - Cp(:, 1), 'LineWidth', 2)
+legend('Stirred tank (CSTR)', 'Plug flow (PFR)'); xlabel('Residence time V/Q'); ylabel('Conversion of A'); grid on
+title('A plug-flow reactor converts more for the same size')
+% 4. Rate constants at four temperatures give the activation energy
+T = [298 308 318 328];
+k = arrhenius(4e8, 55e3, T) .* (1 + 0.03*randn(1, 4));
+figure; arrheniusFit(T, k)
+% 5. Ammonia: N2 + 3 H2 <-> 2 NH3 (K in concentration units, made up for the example)
+[c, ~, names] = chemEquilibrium('N2 + 3 H2 <-> 2 NH3', 0.5, [1 3 0]);
+fprintf('%s: %.3f mol/L\\n', names{1}, c(1), names{2}, c(2), names{3}, c(3))
+fprintf('Vinegar (0.8 M acetic acid): pH %.2f\\n', acidPH(1.8e-5, 0.8))
+` },
 ];
