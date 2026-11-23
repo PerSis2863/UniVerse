@@ -11322,6 +11322,13 @@ support, travel planner or itenary planner and other ai model which is needed in
   (3–5 tips, no prices or clock times), research (≥2 citations, only to sources given, every point cited, no markdown),
   posts (the platforms asked, X ≤ 280, no invented numbers or green claims). 40 requests per agent held back; the score
   prints passes per agent before and after.
+- **The run (23 Nov, A40, SCALE 0.5, one epoch):** 1,650 requests (Wikipedia was unreachable from the pod: no research
+  requests, so Research keeps Gemini), 1,142 lessons (support 546, travel 410, social 186); refused mostly "support: a
+  number not in the facts" (538: the rule also rejects numbered steps "1." the playbook asks for: loosen `nums` to ignore
+  list numbers next time) and "recall not first" (265). 67 steps. **Score: 97 → 103 of 120 passed their agent's rules
+  (81% → 86%; social 33 → 37, support 24 → 26, travel 40 → 40).** Uploaded as **`agents-20261123-0858`** (the test
+  question answered). [owner]: set `AGENTS_LORA=agents-20261123-0858`, turn on "Agents' own AI on Cloudflare". Pod
+  terminated after the score was read (started on CPUs: its A40 had been rented to someone else).
 - **Renting next time (the owner, 23 Nov: "next time rent like that you can connect with no problems"):** keep the
   results on a RunPod **network volume** (any card in that data centre can open it), not the pod's own disk: after the
   agents run ended, the stopped pod's A40 was rented to someone else and the score couldn't be read until it freed. Also
