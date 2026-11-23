@@ -11475,3 +11475,17 @@ voltage, following a sine), AC frequency and depth, Opposite; the motor's symbol
 an SVG <text> in a role=button broke axe's label-content-name-mismatch even with aria-hidden), rpm in "Now". Not built:
 three-phase inverters, AC (induction and synchronous) motors, dead time between a pair, field-oriented control.
 
+## M433 (23 Nov): Hyperion toolbox, battery ageing and temperature
+
+`src/lib/lab/battery.ts` (pure, on top of energy.ts's `Cell`): `cellAt` (R0 and R1 by Arrhenius at 19 kJ/mol, about ×2
+at 0 °C; C1 the other way so the RC time stays; capacity −0.4% a degree below 25 °C, at most half), `simulateThermal`
+(the same equivalent circuit as `simulateCell`, re-evaluated at the cell's temperature every step; heat I²R0 + v1²/R1;
+one lumped mass, 70 g × 1000 J/kg·K, cooled at 0.05 W/K), `cycleLoss` (Wang et al. 2011, LiFePO4: B(C)·exp(−(31700 −
+370.3C)/RT)·Ah^0.55 with Ah = cycles × depth × 2.2, B between their four fits), `calendarLoss` (0.15%·√days at 25 °C
+and half charge, Arrhenius 50 kJ/mol, × (0.6 + 0.8·SOC): our own simple model, say so if asked), `ageCell` (losses
+add; resistance grows by 1 + 2 × loss), `cycleLife` (bisection to the end of life, shelf time from cycles a day).
+`energy-lab.ts`: `batterySimulate` takes 'Ambient' / 'Temperature' / 'Cooling' and then returns T as a third output and
+draws a third panel; `batteryAge` returns a struct with the aged cell in `Cell`; `batteryLife`. Example battery.m.
+Tests in `energy.test.ts`. Not built: lithium plating when charging cold, thermal runaway, cell-to-cell spread in a pack,
+a thermal model with a core and a surface.
+

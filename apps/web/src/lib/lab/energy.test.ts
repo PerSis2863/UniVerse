@@ -64,3 +64,42 @@ describe('Hyperion energy (M425)', () => {
     expect(() => run("windTurbine('Cp', 0.7)")).toThrow(/Betz/);
   });
 });
+
+describe('battery ageing and temperature (M433)', () => {
+  it('cold raises the resistance (about twice at 0 °C), the cell warms to I²R/hA above the air', async () => {
+    const bt = await import('./battery'), en = await import('./energy');
+    const c0 = bt.cellAt(en.DEFAULT_CELL, 0), c25 = bt.cellAt(en.DEFAULT_CELL, 25);
+    expect(c25.r0).toBeCloseTo(en.DEFAULT_CELL.r0, 12);
+    expect(c0.r0 / c25.r0).toBeGreaterThan(1.9); expect(c0.r0 / c25.r0).toBeLessThan(2.1);
+    expect(c0.capacity).toBeCloseTo(en.DEFAULT_CELL.capacity * 0.9, 9);
+    // A steady 10 A for 3 hours (a full cell keeps going: the voltage isn't checked): the steady rise ≈ heat / hA.
+    const r = bt.simulateThermal(en.DEFAULT_CELL, new Array(10800).fill(10), 1, 1, 25, 25);
+    const heat = r.heat[r.heat.length - 1], rise = r.temp[r.temp.length - 1] - 25;
+    expect(rise).toBeCloseTo(heat / bt.DEFAULT_THERMAL.hA, 0);
+    expect(rise).toBeGreaterThan(20);
+  });
+  it('wear: Wang et al.’s cycling model, square-root calendar fade, warmer wears faster', async () => {
+    const bt = await import('./battery'), en = await import('./energy');
+    // By hand: 31630·exp(−(31700 − 185.15)/(R·298.15))·(1000·1·2.2)^0.55 = 6.6% after 1000 full cycles at C/2, 25 °C.
+    expect(bt.cycleLoss(1000, 1, 0.5, 25)).toBeCloseTo(0.0656, 3);
+    expect(bt.calendarLoss(1, 25, 0.5)).toBeCloseTo(0.0015 * Math.sqrt(365), 9);
+    expect(bt.calendarLoss(4, 25) / bt.calendarLoss(1, 25)).toBeCloseTo(2, 9);
+    expect(bt.cycleLoss(1000, 1, 1, 45)).toBeGreaterThan(2 * bt.cycleLoss(1000, 1, 1, 25));
+    const aged = bt.ageCell(en.DEFAULT_CELL, { ...bt.DEFAULT_USE, cycles: 1500, years: 3 });
+    expect(aged.soh).toBeCloseTo(1 - aged.cycleLoss - aged.calendarLoss, 12);
+    expect(aged.cell.capacity).toBeCloseTo(en.DEFAULT_CELL.capacity * aged.soh, 12);
+    const n = bt.cycleLife(en.DEFAULT_CELL, { dod: 0.8, cRate: 1, tempC: 25, storageSoc: 0.5 });
+    expect(bt.ageCell(en.DEFAULT_CELL, { ...bt.DEFAULT_USE, cycles: n, years: n / 365 }).soh).toBeCloseTo(0.8, 6);
+    expect(bt.cycleLife(en.DEFAULT_CELL, { dod: 0.8, cRate: 1, tempC: 40, storageSoc: 0.5 })).toBeLessThan(n);
+  });
+  it('in the language', () => {
+    const r = run("c = batteryCell;\n[v, soc, T] = batterySimulate(c, 20*ones(1, 600), 1, 1, 'Ambient', 25);\nrise = T(end) - T(1);\n[v0] = batterySimulate(c, 20*ones(1, 10), 1, 1, 'Ambient', -10);\ncold = v0(1) < v(1);\na = batteryAge(c, 'Cycles', 1000, 'DoD', 1, 'CRate', 0.5, 'Temperature', 25);\nsoh = a.SOH; cap = a.Cell.Capacity;\n[n, yrs] = batteryLife(c, 'DoD', 0.8, 'CRate', 1);\nbatteryLife(c)\nfigure; batterySimulate(c, 20*ones(1, 300), 1, 1, 'Ambient', 0)");
+    expect(r.d('rise')[0]).toBeGreaterThan(1);
+    expect(r.d('cold')).toEqual([1]);
+    expect(r.d('soh')[0]).toBeCloseTo(1 - 0.0656, 3);
+    expect(r.d('cap')[0]).toBeCloseTo(5 * r.d('soh')[0], 9);
+    expect(r.d('n')[0]).toBeGreaterThan(500); expect(r.d('yrs')[0]).toBeCloseTo(r.d('n')[0] / 365, 9);
+    expect(r.graphics.figures.length).toBe(2);
+    expect(() => run("batteryAge(batteryCell, 'DoD', 2)")).toThrow(/shares/);
+  });
+});

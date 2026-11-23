@@ -3,9 +3,11 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as en from './energy';
+import * as bt from './battery';
 
 // Hyperion's energy toolbox in the language (M425): batteryCell, batteryPack, batteryOCV, batterySimulate,
-// socEstimate (an extended Kalman filter), pvModule, pvCurve, windTurbine, windPower, windAEP.
+// socEstimate (an extended Kalman filter), pvModule, pvCurve, windTurbine, windPower, windAEP; M433: batterySimulate's
+// temperature ('Ambient', 'Temperature', 'Cooling'), batteryAge, batteryLife.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 0, lab);
@@ -50,13 +52,63 @@ def('batteryOCV', (a) => { const z = toMat(a[0], 'The state of charge'); return 
 def('batterySimulate', (a, nout, lab) => {
   const b = battery(a[0], 'batterySimulate');
   if (a.length < 3) throw new LabError('batterySimulate needs the battery, the current (A, + discharging) and the time step (s).');
-  const I = [...toMat(a[1], 'The current').d], dt = toMat(a[2]).d[0], soc0 = a[3] ? toMat(a[3]).d[0] : 1;
+  const I = [...toMat(a[1], 'The current').d], dt = toMat(a[2]).d[0], soc0 = a[3] && a[3].k === 'mat' ? toMat(a[3]).d[0] : 1;
   if (!(dt > 0)) throw new LabError('The time step must be positive.');
-  const r = en.simulateCell(b.cell, I.map((x) => x / b.parallel), dt, soc0), v = r.v.map((x) => x * b.series);
-  if (nout > 0) return [row(v), row(r.soc)];
-  const t = row(I.map((_, k) => (k * dt) / 60));
-  call(lab, 'subplot', num(2), num(1), num(1)); call(lab, 'plot', t, row(v)); call(lab, 'ylabel', str('Voltage (V)')); call(lab, 'grid', str('on')); call(lab, 'title', str('Battery under load'));
-  call(lab, 'subplot', num(2), num(1), num(2)); call(lab, 'plot', t, row(r.soc.map((z) => 100 * z))); call(lab, 'ylabel', str('State of charge (%)')); call(lab, 'xlabel', str('Minutes')); call(lab, 'grid', str('on'));
+  // M433: with 'Ambient' (°C), 'Temperature' (the start, °C) or 'Cooling' (W/K per cell) it warms as it works, and the
+  // resistance and capacity follow its temperature.
+  const o: Record<string, number> = {};
+  for (let i = a[3] && a[3].k === 'mat' ? 4 : 3; i + 1 < a.length; i += 2) {
+    const k = a[i].k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '';
+    if (!['ambient', 'temperature', 'cooling'].includes(k)) throw new LabError("batterySimulate's options are 'Ambient', 'Temperature' (°C) and 'Cooling' (W/K).");
+    o[k] = toMat(a[i + 1]).d[0];
+  }
+  const thermal = Object.keys(o).length > 0, amb = o.ambient ?? o.temperature ?? 25, t0 = o.temperature ?? amb;
+  if (o.cooling !== undefined && !(o.cooling > 0)) throw new LabError('Cooling must be positive (W/K).');
+  const r = thermal ? bt.simulateThermal(b.cell, I.map((x) => x / b.parallel), dt, soc0, t0, amb, { ...bt.DEFAULT_THERMAL, hA: o.cooling ?? bt.DEFAULT_THERMAL.hA }) : { ...en.simulateCell(b.cell, I.map((x) => x / b.parallel), dt, soc0), temp: [] as number[] };
+  const v = r.v.map((x) => x * b.series);
+  if (nout > 0) return [row(v), row(r.soc), ...(thermal ? [row(r.temp)] : [])];
+  const t = row(I.map((_, k) => (k * dt) / 60)), rows = thermal ? 3 : 2;
+  call(lab, 'subplot', num(rows), num(1), num(1)); call(lab, 'plot', t, row(v)); call(lab, 'ylabel', str('Voltage (V)')); call(lab, 'grid', str('on')); call(lab, 'title', str('Battery under load'));
+  call(lab, 'subplot', num(rows), num(1), num(2)); call(lab, 'plot', t, row(r.soc.map((z) => 100 * z))); call(lab, 'ylabel', str('State of charge (%)')); call(lab, 'grid', str('on'));
+  if (thermal) { call(lab, 'subplot', num(rows), num(1), num(3)); call(lab, 'plot', t, row(r.temp)); call(lab, 'ylabel', str('Temperature (°C)')); call(lab, 'grid', str('on')); }
+  call(lab, 'xlabel', str('Minutes'));
+  return [];
+});
+/** 'Cycles', 'DoD', 'CRate', 'Temperature', 'Years', 'StorageSOC', 'CyclesPerDay', 'EndOfLife' as name–value pairs. */
+function useOf(a: Value[], from: number, what: string) {
+  const names: Record<string, string> = { cycles: 'cycles', dod: 'dod', crate: 'cRate', temperature: 'tempC', years: 'years', storagesoc: 'storageSoc', cyclesperday: 'perDay', endoflife: 'end' };
+  const o: Record<string, number> = {};
+  for (let i = from; i < a.length; i += 2) {
+    const k = a[i]?.k === 'str' ? names[(a[i] as { v: string }).v.toLowerCase()] : undefined;
+    if (!k) throw new LabError(`${what} takes 'Cycles', 'DoD', 'CRate', 'Temperature', 'Years', 'StorageSOC'${what === 'batteryLife' ? ", 'CyclesPerDay', 'EndOfLife'" : ''}.`);
+    o[k] = toMat(a[i + 1] ?? num(NaN)).d[0];
+    if (!Number.isFinite(o[k]) || (k !== 'tempC' && o[k] < 0)) throw new LabError(`${(a[i] as { v: string }).v} must be a number${k !== 'tempC' ? ' of 0 or more' : ''}.`);
+  }
+  if ((o.dod ?? 0.8) > 1 || (o.storageSoc ?? 0.5) > 1 || (o.end ?? 0.8) >= 1) throw new LabError('DoD, StorageSOC and EndOfLife are shares from 0 to 1.');
+  return o;
+}
+def('batteryAge', (a) => {
+  const b = battery(a[0], 'batteryAge'), o = useOf(a, 1, 'batteryAge'), use = { ...bt.DEFAULT_USE, ...o } as bt.AgeUse, r = bt.ageCell(b.cell, use);
+  const aged = struct('batteryCell', [['Capacity', r.cell.capacity], ['R0', r.cell.r0], ['R1', r.cell.r1], ['C1', r.cell.c1]]);
+  const out = struct('batteryAge', [['SOH', r.soh], ['CapacityLoss', r.loss], ['CycleLoss', r.cycleLoss], ['CalendarLoss', r.calendarLoss], ['ResistanceGrowth', r.resistanceGrowth]]);
+  out.f.set('Cell', aged);
+  return [out];
+});
+def('batteryLife', (a, nout, lab) => {
+  const b = battery(a[0], 'batteryLife'), o = useOf(a, 1, 'batteryLife'), use = { ...bt.DEFAULT_USE, ...o }, per = o.perDay || 1, end = o.end ?? 0.8;
+  const n = bt.cycleLife(b.cell, use, per, end), years = n / (365 * per);
+  if (nout > 0) return [num(n), num(years)];
+  const top = Number.isFinite(n) ? n * 1.5 : 5000, cyc = Array.from({ length: 101 }, (_, i) => (i * top) / 100);
+  // The same use 15 °C cooler and warmer, for comparison.
+  [use.tempC - 15, use.tempC, use.tempC + 15].forEach((tempC, i) => {
+    call(lab, 'plot', row(cyc), row(cyc.map((c) => 100 * bt.ageCell(b.cell, { ...use, tempC, cycles: c, years: c / (365 * per) }).soh)), str(i === 1 ? '-' : '--'));
+    if (i === 0) call(lab, 'hold', str('on'));
+  });
+  call(lab, 'yline', num(100 * end), str(':'));
+  call(lab, 'hold', str('off'));
+  call(lab, 'legend', str(`${use.tempC - 15} °C`), str(`${use.tempC} °C`), str(`${use.tempC + 15} °C`));
+  call(lab, 'xlabel', str('Cycles')); call(lab, 'ylabel', str('State of health (%)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(Number.isFinite(n) ? `${Math.round(n)} cycles (${years.toFixed(1)} years) to ${Math.round(100 * end)}%` : 'It never reaches the end of life'));
   return [];
 });
 def('socEstimate', (a) => {
