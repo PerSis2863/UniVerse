@@ -12532,3 +12532,21 @@ Tests in `motor.test.ts` (steady speed and current by hand, dq of balanced phase
 i_q = T/Kt). Example motors.m. No window of its own: the control toolbox and Circuits (M432) already give the
 point-and-click side. Not built: field weakening and MTPA for salient motors, six-step (trapezoidal) BLDC commutation,
 space-vector PWM inside the motor model, stepper motors, motor heating.
+
+## M482b (23 Nov): Hyperion robot arms, arms that branch and collision checking
+
+The owner, 23 Nov ("please do all the left out work"), M482's left-outs. `robot.ts`: a `Link` may name its `parent`
+(an earlier link, −1 the base; the one before when absent), `parentOf`, `frames` builds each frame on its parent's,
+`chain(arm, tip)`; `fkine`, `jacobian`, `manipulability` and `ikine` (option `tip`) take any link as the tool (joints off
+the tool's chain give zero columns); `rne` runs on trees (each link starts from its parent's ω, α and acceleration; the
+backward pass adds every child's force and moment, all acting at the parent's far end). Collisions: each link a capsule
+round the segment from its parent's end to its own; `segDist` (Ericson's closest points), `boxDist`, a segment–box
+distance (33 samples then a ternary search near the best), `checkCollision` (pairs that share a joint point are skipped,
+so zero-length wrist links don't always "touch"; distances between surfaces). New arm `dualarm` (a turning waist, two
+three-joint arms: links 2–4 and 5–7). Language: `robotDH(..., 'Parent', [0 1 1])`, robot structs carry `Parent` (1-based,
+0 the base), `geometricJacobian(r, q, tool)`, `robotIK(..., 'EndEffector', k)`, `show` draws every branch and each tip's
+axes, `checkCollision(r, q, 'Spheres', …, 'Boxes', …, 'Radius', …)` → [hit, gap, selfPairs, obstacleHits]. Window:
+the arm is chosen from a list (five no longer fit as segments), Two arms with Left / Right hand, "A ball in the way"
+(12 cm, movable), the touching links red and a line naming them. Tests in `robot.test.ts` (each tip's Jacobian by finite
+differences and zero on the other arm, forward/inverse dynamics on the tree, mirrored gravity torques, capsule
+distances). Not built: meshes as collision shapes (capsules only), planning around obstacles in joint space, URDF files.

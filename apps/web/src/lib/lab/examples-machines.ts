@@ -22,6 +22,13 @@ two = loadrobot('twolink');
 f = @(t, x) [x(3:4); forwardDynamics(two, x(1:2)', x(3:4)', [0 0])'];
 [t, x] = ode45(f, [0 3], [0; 0; 0; 0]);
 figure; plot(t, x(:, 1), t, x(:, 2)); legend('shoulder', 'elbow'); xlabel('t (s)'); ylabel('angle (rad)'); grid on
+% Two arms on one waist: each hand is a tool of its own
+d = loadrobot('dualarm');
+q = [0.3 0.4 -0.8 0.6 -0.4 0.8 -0.6];
+figure; show(d, q)
+[qr, info] = robotIK(d, [0.35 -0.3 1.1], q, 'EndEffector', 7);   % the right hand reaches a point
+% Is anything in the way? A ball near the right hand, and the arm against itself
+[hit, gap] = checkCollision(d, qr, 'Spheres', [0.35 -0.3 1.1 0.1])
 ` },
   { name: 'robot_motion.m', code: `% Robot motion: smooth joint moves, planning through a warehouse, and driving the path
 % A joint moving 0 -> 90 deg -> 45 deg: cubic and quintic pieces, and a trapezoid with limits

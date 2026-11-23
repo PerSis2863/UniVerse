@@ -68,4 +68,44 @@ describe('Hyperion robot arms (M482)', () => {
     expect(d('g2')).toEqual(d('g'));
     expect(graphics.current).toBeTruthy();
   });
+  it('an arm that branches: each tip has its own Jacobian, dynamics stay consistent, the arms mirror', () => {
+    const arm = rb.ARMS.dualarm(), q = [0.2, 0.3, -0.5, 0.4, -0.3, 0.5, -0.4];
+    for (const tip of [3, 6]) {
+      const J = rb.jacobian(arm, q, tip), h = 1e-6, other = tip === 3 ? [4, 5, 6] : [1, 2, 3];
+      for (let j = 0; j < 7; j++) {
+        const qp = q.slice(); qp[j] += h;
+        const a = rb.origin(rb.fkine(arm, q, tip)), b = rb.origin(rb.fkine(arm, qp, tip));
+        for (let k = 0; k < 3; k++) expect(J[3 + k][j]).toBeCloseTo((b[k] - a[k]) / h, 4);
+      }
+      for (const j of other) expect(J.every((r) => r[j] === 0)).toBe(true);
+    }
+    const qd = [0.3, -0.2, 0.5, 1, -1, 0.4, 0.2], qdd = [1, 2, -1, 0.5, 0.2, -2, 1], tau = rb.rne(arm, q, qd, qdd);
+    rb.forwardDynamics(arm, q, qd, tau).forEach((v, i) => expect(v).toBeCloseTo(qdd[i], 8));
+    // The waist carries both arms: held level and mirrored, the arms' gravity torques are equal and opposite.
+    const g = rb.gravityTorque(arm, [0, 0, 0.3, 0.2, 0, -0.3, -0.2]);
+    expect(g[2]).toBeCloseTo(-g[5], 9); expect(g[3]).toBeCloseTo(-g[6], 9);
+    // Reaching with the right hand only moves the waist and the right arm.
+    const T = rb.fkine(arm, [0.1, 0, 0, 0, 0.4, 0.5, 0.3], 6), r = rb.ikine(arm, T, q, [0, 0, 0, 1, 1, 1], { tip: 6 });
+    expect(rb.origin(rb.fkine(arm, r.q, 6)).map((v, k) => v - rb.origin(T)[k]).every((d) => Math.abs(d) < 1e-5)).toBe(true);
+  });
+  it('collisions: capsules against each other, spheres and boxes', () => {
+    expect(rb.segDist([0, 0, 0], [1, 0, 0], [0.5, 1, -1], [0.5, 1, 1])).toBeCloseTo(1, 12);
+    expect(rb.segDist([0, 0, 0], [1, 0, 0], [2, 0, 0], [3, 0, 0])).toBeCloseTo(1, 12);
+    const two = rb.ARMS.twolink();
+    // Straight out, nothing touches.
+    expect(rb.checkCollision(two, [0, 0]).colliding).toBe(false);
+    const planar = rb.ARMS.planar3(), folded = rb.checkCollision(planar, [0, 3.0, 3.0]);
+    expect(folded.colliding).toBe(true); expect(folded.self).toEqual([[0, 2]]);
+    const ball = rb.checkCollision(two, [0, 0], { spheres: [[1.5, 0.2, 0, 0.1]], radius: 0.05 });
+    expect(ball.colliding).toBe(false); expect(ball.minDistance).toBeCloseTo(0.05, 9);
+    const box = rb.checkCollision(two, [0, 0], { boxes: [[1.8, -0.1, -0.1, 3, 0.1, 0.1]], radius: 0.05 });
+    expect(box.hits).toEqual([[1, 0]]);
+  });
+  it('in the language: Parent, the tool link and checkCollision', () => {
+    const { d } = run("r = loadrobot('dualarm'); p = r.Parent; J = geometricJacobian(r, zeros(1, 7), 4); [q, info] = robotIK(r, [0.3 0.5 1.2], zeros(1, 7), 'EndEffector', 4); x = tform2trvec(getTransform(r, q, 4)); mine = robotDH([1 0 0 0; 1 0 0 0; 1 0 0 0], 'Parent', [0 1 1]); [hit, sep, selfPairs, hits] = checkCollision(loadrobot('twolink'), [0 0], 'Spheres', [1.5 0 0 0.2]);");
+    expect(d('p')).toEqual([0, 1, 2, 3, 1, 5, 6]);
+    expect(d('J').slice(5 * 6)).toEqual(new Array(12).fill(0));
+    expect(d('x')).toEqual([0.3, 0.5, 1.2].map((v) => expect.closeTo(v, 4)));
+    expect(d('hit')).toEqual([1]); expect(d('hits')).toEqual([2, 1]);
+  });
 });

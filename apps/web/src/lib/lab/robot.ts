@@ -1,7 +1,9 @@
 // Hyperion's robot arms (M482), pure: arms described by Denavit–Hartenberg tables (standard DH: each joint's frame is
 // Rz(θ) · Tz(d) · Tx(a) · Rx(α) after the one before), forward kinematics, the geometric Jacobian ([angular; linear],
 // in the base frame), inverse kinematics by damped least squares, and the dynamics by recursive Newton–Euler worked
-// in the base frame (mass matrix, gravity torques, Coriolis and centrifugal torques, forward dynamics).
+// in the base frame (mass matrix, gravity torques, Coriolis and centrifugal torques, forward dynamics). M482b: links may
+// branch (each names the link it hangs from, so a torso can carry two arms), any link can be the tool, and links are
+// capsules for collision checks against each other and against spheres and boxes.
 // Poses are 4 × 4 row-major arrays here (the language turns them round).
 
 export type V3 = [number, number, number];
@@ -12,6 +14,8 @@ export interface Link {
   /** 'R' turns about z (θ is the joint), 'P' slides along z (d is the joint). */
   type: 'R' | 'P';
   mass: number; com: V3; inertia: V3; limits: [number, number];
+  /** The link it hangs from (M482b: arms that branch): an earlier link's index, −1 for the base; the one before if left out. */
+  parent?: number;
 }
 export interface Arm { name: string; links: Link[]; gravity: V3 }
 
@@ -27,13 +31,19 @@ export function linkT(l: Link, q: number): T4 {
   const ct = Math.cos(th), st = Math.sin(th), ca = Math.cos(l.alpha), sa = Math.sin(l.alpha);
   return [ct, -st * ca, st * sa, l.a * ct, st, ct * ca, -ct * sa, l.a * st, 0, sa, ca, d, 0, 0, 0, 1];
 }
-/** Every frame from the base: frames[0] is the base, frames[i] the frame after joint i. */
+/** The link link i hangs from (−1: the base). */
+export const parentOf = (arm: Arm, i: number) => arm.links[i].parent ?? i - 1;
+/** Every frame from the base: frames[0] is the base, frames[i + 1] the frame after joint i (its joint turns about the
+ * z of frames[parentOf(i) + 1]). */
 export function frames(arm: Arm, q: ArrayLike<number>): T4[] {
   const out: T4[] = [eye4()];
-  arm.links.forEach((l, i) => out.push(mul4(out[i], linkT(l, q[i] ?? 0))));
+  arm.links.forEach((l, i) => out.push(mul4(out[parentOf(arm, i) + 1], linkT(l, q[i] ?? 0))));
   return out;
 }
-export const fkine = (arm: Arm, q: ArrayLike<number>): T4 => frames(arm, q)[arm.links.length];
+/** The tool: the last link by default (an arm that branches has a tool at each tip). */
+export const fkine = (arm: Arm, q: ArrayLike<number>, tip = arm.links.length - 1): T4 => frames(arm, q)[tip + 1];
+/** The links from the base out to `tip`. */
+export function chain(arm: Arm, tip: number): number[] { const c: number[] = []; for (let i = tip; i >= 0; i = parentOf(arm, i)) c.unshift(i); return c; }
 
 const sub = (a: V3, b: V3): V3 => [a[0] - b[0], a[1] - b[1], a[2] - b[2]];
 const add = (a: V3, b: V3): V3 => [a[0] + b[0], a[1] + b[1], a[2] + b[2]];
@@ -48,10 +58,11 @@ const rv = (R: number[], v: V3): V3 => [R[0] * v[0] + R[1] * v[1] + R[2] * v[2],
 const rtv = (R: number[], v: V3): V3 => [R[0] * v[0] + R[3] * v[1] + R[6] * v[2], R[1] * v[0] + R[4] * v[1] + R[7] * v[2], R[2] * v[0] + R[5] * v[1] + R[8] * v[2]];
 
 /** The geometric Jacobian at the tool: 6 × n, rows [ωx ωy ωz vx vy vz], row-major. */
-export function jacobian(arm: Arm, q: ArrayLike<number>): number[][] {
-  const F = frames(arm, q), n = arm.links.length, pe = origin(F[n]), J = Array.from({ length: 6 }, () => new Array<number>(n).fill(0));
-  for (let i = 0; i < n; i++) {
-    const z = zAxis(F[i]), o = origin(F[i]);
+export function jacobian(arm: Arm, q: ArrayLike<number>, tip = arm.links.length - 1): number[][] {
+  const F = frames(arm, q), n = arm.links.length, pe = origin(F[tip + 1]), J = Array.from({ length: 6 }, () => new Array<number>(n).fill(0));
+  // Only the joints between the base and the tip move it.
+  for (const i of chain(arm, tip)) {
+    const z = zAxis(F[parentOf(arm, i) + 1]), o = origin(F[parentOf(arm, i) + 1]);
     const w: V3 = arm.links[i].type === 'R' ? z : [0, 0, 0], v = arm.links[i].type === 'R' ? cross(z, sub(pe, o)) : z;
     for (let r = 0; r < 3; r++) { J[r][i] = w[r]; J[r + 3][i] = v[r]; }
   }
@@ -95,9 +106,9 @@ export function solveN(A: number[][], b: number[]): number[] {
 export interface IkResult { q: number[]; iterations: number; error: number; success: boolean }
 /** Inverse kinematics by damped least squares (Levenberg–Marquardt), weights [wx wy wz px py pz] (orientation first,
  * as the Jacobian). Joints are kept inside their limits. Starts again from a few other guesses if it gets stuck. */
-export function ikine(arm: Arm, Td: T4, q0: ArrayLike<number>, weights: number[] = [1, 1, 1, 1, 1, 1], o: { maxIter?: number; tol?: number; restarts?: number } = {}): IkResult {
-  const n = arm.links.length, maxIter = o.maxIter ?? 300, tol = o.tol ?? 1e-6, Rd = rot(Td), pd = origin(Td);
-  const errOf = (q: number[]) => { const T = fkine(arm, q), e = [...rotError(rot(T), Rd), ...sub(pd, origin(T))]; return e.map((v, i) => v * weights[i]); };
+export function ikine(arm: Arm, Td: T4, q0: ArrayLike<number>, weights: number[] = [1, 1, 1, 1, 1, 1], o: { maxIter?: number; tol?: number; restarts?: number; tip?: number } = {}): IkResult {
+  const n = arm.links.length, tip = o.tip ?? n - 1, maxIter = o.maxIter ?? 300, tol = o.tol ?? 1e-6, Rd = rot(Td), pd = origin(Td);
+  const errOf = (q: number[]) => { const T = fkine(arm, q, tip), e = [...rotError(rot(T), Rd), ...sub(pd, origin(T))]; return e.map((v, i) => v * weights[i]); };
   const norm = (e: number[]) => Math.hypot(...e);
   const clamp = (q: number[]) => q.map((v, i) => Math.min(arm.links[i].limits[1], Math.max(arm.links[i].limits[0], v)));
   let best: IkResult = { q: clamp(Array.from({ length: n }, (_, i) => q0[i] ?? 0)), iterations: 0, error: Infinity, success: false };
@@ -109,7 +120,7 @@ export function ikine(arm: Arm, Td: T4, q0: ArrayLike<number>, weights: number[]
     let e = errOf(q), en = norm(e), lambda = 1e-2;
     for (let it = 0; it < maxIter && en > tol; it++) {
       total++;
-      const J = jacobian(arm, q).map((r, i) => r.map((v) => v * weights[i]));
+      const J = jacobian(arm, q, tip).map((r, i) => r.map((v) => v * weights[i]));
       // (JᵀJ + λ diag(JᵀJ) + λ I) dq = Jᵀ e
       const A = Array.from({ length: n }, (_, i) => Array.from({ length: n }, (_, j) => { let s = 0; for (let k = 0; k < 6; k++) s += J[k][i] * J[k][j]; return s; }));
       const g = Array.from({ length: n }, (_, i) => { let s = 0; for (let k = 0; k < 6; k++) s += J[k][i] * e[k]; return s; });
@@ -126,13 +137,14 @@ export function ikine(arm: Arm, Td: T4, q0: ArrayLike<number>, weights: number[]
 }
 
 /** Recursive Newton–Euler in the base frame: the joint torques (or forces) for positions, speeds and accelerations.
- * `gravity` false leaves gravity out (for the mass matrix and the velocity product). */
+ * `gravity` false leaves gravity out (for the mass matrix and the velocity product). Works for arms that branch: each
+ * link starts from its parent's motion, and a link carries the forces of all its children. */
 export function rne(arm: Arm, q: ArrayLike<number>, qd: ArrayLike<number>, qdd: ArrayLike<number>, gravity = true, gOverride?: V3): number[] {
-  const F = frames(arm, q), n = arm.links.length, g = gOverride ?? arm.gravity;
+  const F = frames(arm, q), n = arm.links.length, g = gOverride ?? arm.gravity, base: V3 = gravity ? sc(g, -1) : [0, 0, 0];
   const w: V3[] = [], al: V3[] = [], ao: V3[] = [], ac: V3[] = [], rc: V3[] = [];
-  let wPrev: V3 = [0, 0, 0], aPrev: V3 = [0, 0, 0], aoPrev: V3 = gravity ? sc(g, -1) : [0, 0, 0];
   for (let i = 0; i < n; i++) {
-    const l = arm.links[i], z = zAxis(F[i]), oPrev = origin(F[i]), oi = origin(F[i + 1]), p = sub(oi, oPrev), R = rot(F[i + 1]);
+    const l = arm.links[i], p0 = parentOf(arm, i), wPrev: V3 = p0 < 0 ? [0, 0, 0] : w[p0], aPrev: V3 = p0 < 0 ? [0, 0, 0] : al[p0], aoPrev = p0 < 0 ? base : ao[p0];
+    const z = zAxis(F[p0 + 1]), oPrev = origin(F[p0 + 1]), oi = origin(F[i + 1]), p = sub(oi, oPrev), R = rot(F[i + 1]);
     let wi: V3, ali: V3, aoi: V3;
     if (l.type === 'R') {
       wi = add(wPrev, sc(z, qd[i] ?? 0));
@@ -145,18 +157,17 @@ export function rne(arm: Arm, q: ArrayLike<number>, qd: ArrayLike<number>, qdd: 
     const rci = add(oi, rv(R, l.com)), d = sub(rci, oi);
     w.push(wi); al.push(ali); ao.push(aoi); rc.push(rci);
     ac.push(add(add(aoi, cross(ali, d)), cross(wi, cross(wi, d))));
-    wPrev = wi; aPrev = ali; aoPrev = aoi;
   }
-  const tau = new Array<number>(n).fill(0);
-  let f: V3 = [0, 0, 0], m: V3 = [0, 0, 0];
+  // Backwards: each link's own inertia plus the force and moment its children put on it (they all act at its far end).
+  const tau = new Array<number>(n).fill(0), childF: V3[] = Array.from({ length: n }, () => [0, 0, 0]), childM: V3[] = Array.from({ length: n }, () => [0, 0, 0]);
   for (let i = n - 1; i >= 0; i--) {
-    const l = arm.links[i], oPrev = origin(F[i]), oi = origin(F[i + 1]), R = rot(F[i + 1]);
+    const l = arm.links[i], p0 = parentOf(arm, i), oPrev = origin(F[p0 + 1]), oi = origin(F[i + 1]), R = rot(F[i + 1]);
     const Iw = (v: V3) => rv(R, [l.inertia[0] * rtv(R, v)[0], l.inertia[1] * rtv(R, v)[1], l.inertia[2] * rtv(R, v)[2]]);
-    const mac = sc(ac[i], l.mass);
+    const mac = sc(ac[i], l.mass), f = childF[i], m = childM[i];
     const fi = add(f, mac);
     const mi = add(add(add(add(m, cross(sub(oi, oPrev), f)), cross(sub(rc[i], oPrev), mac)), Iw(al[i])), cross(w[i], Iw(w[i])));
-    tau[i] = dot(zAxis(F[i]), l.type === 'R' ? mi : fi);
-    f = fi; m = mi;
+    tau[i] = dot(zAxis(F[p0 + 1]), l.type === 'R' ? mi : fi);
+    if (p0 >= 0) { childF[p0] = add(childF[p0], fi); childM[p0] = add(childM[p0], mi); }
   }
   return tau;
 }
@@ -176,8 +187,8 @@ export function forwardDynamics(arm: Arm, q: ArrayLike<number>, qd: ArrayLike<nu
 }
 
 /** Yoshikawa's manipulability √det(J Jᵀ) (0 at a singular pose), from the linear rows only when `position` is set. */
-export function manipulability(arm: Arm, q: ArrayLike<number>, position = false): number {
-  const J = jacobian(arm, q), rows = position ? J.slice(3) : J, m = rows.length;
+export function manipulability(arm: Arm, q: ArrayLike<number>, position = false, tip = arm.links.length - 1): number {
+  const J = jacobian(arm, q, tip), rows = position ? J.slice(3) : J, m = rows.length;
   const A = Array.from({ length: m }, (_, i) => Array.from({ length: m }, (_, j) => rows[i].reduce((s, v, k) => s + v * rows[j][k], 0)));
   // determinant by elimination
   let det = 1;
@@ -191,6 +202,63 @@ export function manipulability(arm: Arm, q: ArrayLike<number>, position = false)
     for (let r = c + 1; r < m; r++) { const f = M[r][c] / M[c][c]; for (let k = c; k < m; k++) M[r][k] -= f * M[c][k]; }
   }
   return Math.sqrt(Math.max(0, det));
+}
+
+// ——— Collisions (M482b): each link a capsule round the segment from its joint to the next ———
+/** The shortest distance between segments PQ and RS (Ericson's closest points). */
+export function segDist(P: V3, Q: V3, R: V3, S: V3): number {
+  const d1 = sub(Q, P), d2 = sub(S, R), r = sub(P, R), a = dot(d1, d1), e = dot(d2, d2), f = dot(d2, r);
+  let s1 = 0, t = 0;
+  if (a < 1e-12 && e < 1e-12) return Math.hypot(...r);
+  if (a < 1e-12) t = Math.min(1, Math.max(0, f / e));
+  else {
+    const c = dot(d1, r);
+    if (e < 1e-12) s1 = Math.min(1, Math.max(0, -c / a));
+    else {
+      const b = dot(d1, d2), den = a * e - b * b;
+      s1 = den > 1e-12 ? Math.min(1, Math.max(0, (b * f - c * e) / den)) : 0;
+      t = (b * s1 + f) / e;
+      if (t < 0) { t = 0; s1 = Math.min(1, Math.max(0, -c / a)); } else if (t > 1) { t = 1; s1 = Math.min(1, Math.max(0, (b - c) / a)); }
+    }
+  }
+  return Math.hypot(...sub(add(P, sc(d1, s1)), add(R, sc(d2, t))));
+}
+/** The distance from a point to an axis-aligned box [x1 y1 z1 x2 y2 z2] (0 inside). */
+export const boxDist = (p: V3, b: number[]) => Math.hypot(...[0, 1, 2].map((k) => Math.max(b[k] - p[k], 0, p[k] - b[k + 3])));
+/** The shortest distance from a segment to a box, to within a fraction of the segment (it's checked at 33 points and
+ * then refined around the nearest). */
+function segBoxDist(P: V3, Q: V3, b: number[]) {
+  const at = (u: number): V3 => add(P, sc(sub(Q, P), u));
+  let best = 0, bd = Infinity;
+  for (let k = 0; k <= 32; k++) { const d = boxDist(at(k / 32), b); if (d < bd) { bd = d; best = k / 32; } }
+  let lo = Math.max(0, best - 1 / 32), hi = Math.min(1, best + 1 / 32);
+  for (let it = 0; it < 30; it++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (boxDist(at(m1), b) < boxDist(at(m2), b)) hi = m2; else lo = m1; }
+  return Math.min(bd, boxDist(at((lo + hi) / 2), b));
+}
+export interface Collision { colliding: boolean; minDistance: number; self: [number, number][]; hits: [number, number][] }
+/** Checks the arm against itself (links that don't touch at a joint) and against spheres [x y z r] and boxes
+ * [x1 y1 z1 x2 y2 z2]. `hits` pair a link with an obstacle: spheres first, then boxes. Distances are between the
+ * capsules' surfaces (negative: they overlap). */
+export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: number | number[]; spheres?: number[][]; boxes?: number[][]; self?: boolean } = {}): Collision {
+  const F = frames(arm, q), n = arm.links.length, reach = arm.links.reduce((t, l) => t + Math.abs(l.a) + Math.abs(l.d), 0) || 1;
+  const rad = (i: number) => (Array.isArray(o.radius) ? o.radius[i] ?? 0 : o.radius ?? reach * 0.03);
+  const seg = (i: number): [V3, V3] => [origin(F[parentOf(arm, i) + 1]), origin(F[i + 1])];
+  const near = (a: V3, b: V3) => Math.hypot(...sub(a, b)) < 1e-9;
+  const out: Collision = { colliding: false, minDistance: Infinity, self: [], hits: [] };
+  const note = (d: number, pair: [number, number], list: [number, number][]) => { out.minDistance = Math.min(out.minDistance, d); if (d < 0) { list.push(pair); out.colliding = true; } };
+  if (o.self !== false) for (let i = 0; i < n; i++) for (let j = i + 1; j < n; j++) {
+    const [A, B] = seg(i), [C, D] = seg(j);
+    // Links that meet at a joint always touch there: not a collision.
+    if (near(A, C) || near(A, D) || near(B, C) || near(B, D)) continue;
+    note(segDist(A, B, C, D) - rad(i) - rad(j), [i, j], out.self);
+  }
+  const spheres = o.spheres ?? [], boxes = o.boxes ?? [];
+  for (let i = 0; i < n; i++) {
+    const [A, B] = seg(i);
+    spheres.forEach((sp, k) => note(segDist(A, B, [sp[0], sp[1], sp[2]], [sp[0], sp[1], sp[2]]) - sp[3] - rad(i), [i, k], out.hits));
+    boxes.forEach((bx, k) => note(segBoxDist(A, B, bx) - rad(i), [i, spheres.length + k], out.hits));
+  }
+  return out;
 }
 
 // ——— Rotations (ZYX Euler angles by default, as MATLAB's eul2rotm) ———
@@ -232,6 +300,19 @@ export const ARMS: Record<string, () => Arm> = {
       L(0, Math.PI / 2, 0.4318, 0.82, [0, 0.019, 0], [1.8e-3, 1.3e-3, 1.8e-3], [-1.92, 2.97]),
       L(0, -Math.PI / 2, 0, 0.34, [0, 0, 0], [0.3e-3, 0.4e-3, 0.3e-3], [-1.75, 1.75]),
       L(0, 0, 0.0563, 0.09, [0, 0, 0.032], [0.15e-3, 0.15e-3, 0.04e-3], [-4.64, 4.64]),
+    ],
+  }),
+  // A torso that turns at the waist, carrying two three-joint arms (M482b: an arm that branches). Links 2–4 are the
+  // left arm, 5–7 the right; each arm's last link is a tool.
+  dualarm: () => ({
+    name: 'dualarm', gravity: [0, 0, -9.81], links: [
+      L(0, 0, 0.8, 12, [0, 0, -0.4], [0.3, 0.3, 0.1], [-2.6, 2.6]),
+      { ...L(0.22, Math.PI / 2, 0.15, 1.5, [-0.11, 0, 0], [0.005, 0.01, 0.01], [-2.6, 2.6]), theta: Math.PI / 2, parent: 0 },
+      { ...L(0.3, 0, 0, 2, [-0.15, 0, 0], [0.004, 0.02, 0.02], [-2.6, 2.6]), parent: 1 },
+      { ...L(0.25, 0, 0, 1, [-0.125, 0, 0], [0.002, 0.008, 0.008], [-2.6, 2.6]), parent: 2 },
+      { ...L(0.22, -Math.PI / 2, 0.15, 1.5, [-0.11, 0, 0], [0.005, 0.01, 0.01], [-2.6, 2.6]), theta: -Math.PI / 2, parent: 0 },
+      { ...L(0.3, 0, 0, 2, [-0.15, 0, 0], [0.004, 0.02, 0.02], [-2.6, 2.6]), parent: 4 },
+      { ...L(0.25, 0, 0, 1, [-0.125, 0, 0], [0.002, 0.008, 0.008], [-2.6, 2.6]), parent: 5 },
     ],
   }),
   // A SCARA: two turning arms in a level plane, a sliding quill and a turning tool.

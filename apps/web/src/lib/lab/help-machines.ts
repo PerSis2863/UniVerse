@@ -3,12 +3,12 @@
 
 export const MACHINES_HELP = `
 # Robot arms
-loadrobot | r = loadrobot('sixaxis') | A ready arm as a struct: 'twolink' (two 1 m links, 1 kg at each tip, in a vertical plane), 'planar3', 'sixaxis' (shoulder, elbow, wrist: the PUMA 560's DH table) or 'scara'.
-robotDH | r = robotDH(dh, 'Joints', 'RRP', 'Mass', m, 'CoM', c, 'Inertia', I, 'Gravity', g, 'Limits', L) | An arm from a Denavit–Hartenberg table, one row [a alpha d theta] a joint (standard DH); CoM n × 3 in each link's frame, Inertia n × 3 (its principal moments).
+loadrobot | r = loadrobot('sixaxis') | A ready arm as a struct: 'twolink' (two 1 m links, 1 kg at each tip, in a vertical plane), 'planar3', 'sixaxis' (shoulder, elbow, wrist: the PUMA 560's DH table), 'scara' or 'dualarm' (a turning waist with two arms: links 2–4 left, 5–7 right).
+robotDH | r = robotDH(dh, 'Joints', 'RRP', 'Mass', m, 'CoM', c, 'Inertia', I, 'Gravity', g, 'Limits', L) | An arm from a Denavit–Hartenberg table, one row [a alpha d theta] a joint (standard DH); CoM n × 3 in each link's frame, Inertia n × 3 (its principal moments); 'Parent' the link each hangs from (0 the base), so an arm can branch.
 getTransform | T = getTransform(r, q, k) | Where the tool is (or frame k: 0 the base), as a 4 × 4 transform, for the joint positions q.
-geometricJacobian | J = geometricJacobian(r, q) | The 6 × n Jacobian at the tool in the base frame: rows [ωx ωy ωz vx vy vz] for each joint's speed.
+geometricJacobian | J = geometricJacobian(r, q, tool) | The 6 × n Jacobian at the tool in the base frame: rows [ωx ωy ωz vx vy vz] for each joint's speed (tool: which link's end, the last by default).
 manipulability | m = manipulability(r, q) | How freely the tool can move (√det(J Jᵀ)); 0 at a singular pose. 'position' uses only the position rows.
-robotIK | [q, info] = robotIK(r, T, q0, 'Weights', [1 1 1 1 1 1]) | Inverse kinematics: joint positions that put the tool at pose T (or position [x y z]), by damped least squares from q0, within the joints' limits; info.Status, info.PoseErrorNorm.
+robotIK | [q, info] = robotIK(r, T, q0, 'Weights', [1 1 1 1 1 1], 'EndEffector', k) | Inverse kinematics: joint positions that put the tool at pose T (or position [x y z]), by damped least squares from q0, within the joints' limits; info.Status, info.PoseErrorNorm.
 massMatrix | M = massMatrix(r, q) | The joint-space mass matrix M(q).
 gravityTorque | g = gravityTorque(r, q) | The torques that hold the arm still against gravity.
 velocityProduct | c = velocityProduct(r, q, qd) | The Coriolis and centrifugal torques C(q, q̇) q̇.
@@ -29,6 +29,7 @@ rotm2axang | v = rotm2axang(R) | A rotation as [x y z angle].
 rotx | R = rotx(deg) | A turn about x, in degrees.
 roty | R = roty(deg) | A turn about y, in degrees.
 rotz | R = rotz(deg) | A turn about z, in degrees.
+checkCollision | [hit, gap, selfPairs, obstacleHits] = checkCollision(r, q, 'Spheres', [x y z radius], 'Boxes', [x1 y1 z1 x2 y2 z2], 'Radius', 0.05) | Whether the arm touches itself or obstacles: each link a capsule round it. gap: the smallest distance between surfaces; the pairs of link numbers (and link, obstacle number) that touch.
 
 # Robot motion
 cubicpolytraj | [q, qd, qdd] = cubicpolytraj(wpts, tpts, t, 'VelocityBoundaryCondition', V) | A cubic piece between each pair of waypoints (one column each, at times tpts), sampled at t: still at every waypoint unless speeds are given.

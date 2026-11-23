@@ -26,7 +26,7 @@ export function robotStruct(arm: rb.Arm): Struct {
     ['Type', str('robot')], ['Name', str(arm.name)], ['NumJoints', num(n)], ['Joints', str(l.map((x) => x.type).join(''))],
     ['DH', fromRows(l.flatMap((x) => [x.a, x.alpha, x.d, x.theta]), n, 4)],
     ['Mass', row(l.map((x) => x.mass))], ['CoM', fromRows(l.flatMap((x) => x.com), n, 3)], ['Inertia', fromRows(l.flatMap((x) => x.inertia), n, 3)],
-    ['Limits', fromRows(l.flatMap((x) => x.limits), n, 2)], ['Gravity', row(arm.gravity)],
+    ['Limits', fromRows(l.flatMap((x) => x.limits), n, 2)], ['Gravity', row(arm.gravity)], ['Parent', row(l.map((_, i) => rb.parentOf(arm, i) + 1))],
   ]) };
 }
 /** The arm a struct describes (as robotDH or loadrobot made it). */
@@ -37,8 +37,16 @@ export function armOf(v: Value | undefined): rb.Arm {
   return { name: v.f.get('Name')?.k === 'str' ? textOf(v.f.get('Name')!) : 'robot', gravity: [g[0], g[1], g[2]], links: Array.from({ length: n }, (_, i) => ({
     a: rows[i * 4], alpha: rows[i * 4 + 1], d: rows[i * 4 + 2], theta: rows[i * 4 + 3], type: J[i] === 'P' ? 'P' : 'R',
     mass: m[i] ?? 0, com: [com[i * 3] ?? 0, com[i * 3 + 1] ?? 0, com[i * 3 + 2] ?? 0], inertia: [I[i * 3] ?? 0, I[i * 3 + 1] ?? 0, I[i * 3 + 2] ?? 0],
-    limits: [lim[i * 2] ?? -Math.PI, lim[i * 2 + 1] ?? Math.PI],
+    limits: [lim[i * 2] ?? -Math.PI, lim[i * 2 + 1] ?? Math.PI], parent: parentAt(v, i),
   })) };
+}
+/** Link i's parent from a robot struct's Parent row (1-based, 0 the base), checked to come earlier. */
+function parentAt(v: Struct, i: number) {
+  const P = v.f.get('Parent');
+  if (!P) return i - 1;
+  const p = Math.round(toMat(P).d[i] ?? i) - 1;
+  if (!(p >= -1 && p < i)) throw new LabError('Each link hangs from an earlier one (its Parent is 0 for the base, or a smaller link number).');
+  return p;
 }
 const joints = (arm: rb.Arm, v: Value | undefined, what = 'The joint positions') => {
   const q = vec(v, what);
@@ -72,9 +80,13 @@ def('robotDH', (a) => {
   if (!o.get('gravity')) g[2] = -9.81;
   const types = o.get('joints') ? textOf(o.get('joints')!).toUpperCase() : Array.from({ length: n }, (_, i) => (D.c > 4 && rows[i * D.c + 4] ? 'P' : 'R')).join('');
   if (types.length !== n || /[^RP]/.test(types)) throw new LabError("'Joints' is one letter a joint: R turns, P slides ('RRP').");
+  // 'Parent': the link each hangs from (0 the base), so an arm can branch; one after another if left out.
+  const par = o.get('parent') ? opt('parent', n, 0).map((p) => Math.round(p) - 1) : Array.from({ length: n }, (_, i) => i - 1);
+  if (par.some((p, i) => !(p >= -1 && p < i))) throw new LabError("'Parent' gives each link the number of an earlier link it hangs from, 0 for the base.");
   const arm: rb.Arm = { name: o.get('name') ? textOf(o.get('name')!) : 'robot', gravity: [g[0], g[1], g[2]], links: Array.from({ length: n }, (_, i) => ({
     a: rows[i * D.c], alpha: rows[i * D.c + 1], d: rows[i * D.c + 2], theta: rows[i * D.c + 3], type: types[i] as 'R' | 'P',
     mass: mass[i], com: [com[i * 3], com[i * 3 + 1], com[i * 3 + 2]], inertia: [I[i * 3], I[i * 3 + 1], I[i * 3 + 2]], limits: [lim[i * 2], lim[i * 2 + 1]],
+    parent: par[i],
   })) };
   return [robotStruct(arm)];
 });
@@ -83,7 +95,9 @@ def('getTransform', (a) => {
   if (!(k >= 0 && k <= arm.links.length)) throw new LabError(`getTransform's frame is 0 (the base) to ${arm.links.length} (the tool).`);
   return [fromRows(F[k], 4, 4)];
 });
-def('geometricJacobian', (a) => { const arm = armOf(a[0]); return [grid(rb.jacobian(arm, joints(arm, a[1])))]; });
+/** Which link is the tool (1-based in the language): the last unless given. */
+const tipOf = (arm: rb.Arm, v: Value | undefined) => { if (!v) return arm.links.length - 1; const k = Math.round(toMat(v).d[0]) - 1; if (!(k >= 0 && k < arm.links.length)) throw new LabError(`The tool is link 1 to ${arm.links.length}.`); return k; };
+def('geometricJacobian', (a) => { const arm = armOf(a[0]); return [grid(rb.jacobian(arm, joints(arm, a[1]), tipOf(arm, a[2])))]; });
 def('manipulability', (a) => { const arm = armOf(a[0]); return [num(rb.manipulability(arm, joints(arm, a[1]), !!(a[2] && textOf(a[2]).toLowerCase() === 'position')))]; });
 def('robotIK', (a) => {
   const arm = armOf(a[0]), T = pose(a[1]), q0 = a[2] && toMat(a[2]).d.length ? joints(arm, a[2], 'The first guess') : arm.links.map(() => 0), o = pairs(a, 3);
@@ -91,7 +105,7 @@ def('robotIK', (a) => {
   const posOnly = toMat(a[1] ?? mat(0, 0)).d.length === 3;
   const w = o.get('weights') ? vec(o.get('weights'), 'The weights') : posOnly ? [0, 0, 0, 1, 1, 1] : [1, 1, 1, 1, 1, 1];
   if (w.length !== 6) throw new LabError("'Weights' are six numbers: [orientation x y z, position x y z].");
-  const r = rb.ikine(arm, T, q0, w);
+  const r = rb.ikine(arm, T, q0, w, { tip: tipOf(arm, o.get('endeffector')) });
   const info: Struct = { k: 'struct', f: new Map<string, Value>([['Iterations', num(r.iterations)], ['PoseErrorNorm', num(r.error)], ['Status', str(r.success ? 'success' : 'best available')]]) };
   return [row(r.q), info];
 });
@@ -113,10 +127,18 @@ def('forwardDynamics', (a) => {
 export function drawArm(lab: Lab, arm: rb.Arm, q: number[], keep = false) {
   const F = rb.frames(arm, q), P = F.map(rb.origin), reach = arm.links.reduce((s, l) => s + Math.abs(l.a) + Math.abs(l.d) + (l.type === 'P' ? l.limits[1] : 0), 0) || 1;
   if (!keep) call(lab, 'hold', str('off'));
-  call(lab, 'plot3', row(P.map((p) => p[0])), row(P.map((p) => p[1])), row(P.map((p) => p[2])), str('-o'), str('LineWidth'), num(4), str('Color'), row([0.45, 0.45, 0.5]), str('MarkerSize'), num(7));
+  // Each link from its parent's end (an arm that branches draws each branch).
+  const X: number[] = [], Y: number[] = [], Z: number[] = [];
+  arm.links.forEach((_, i) => { const A = P[rb.parentOf(arm, i) + 1], B = P[i + 1]; X.push(A[0], B[0], NaN); Y.push(A[1], B[1], NaN); Z.push(A[2], B[2], NaN); });
+  call(lab, 'plot3', row(X), row(Y), row(Z), str('-o'), str('LineWidth'), num(4), str('Color'), row([0.45, 0.45, 0.5]), str('MarkerSize'), num(7));
   call(lab, 'hold', str('on'));
-  const T = F[F.length - 1], o = rb.origin(T), s = reach * 0.12;
-  ['r', 'g', 'b'].forEach((c, k) => call(lab, 'plot3', row([o[0], o[0] + s * T[k]]), row([o[1], o[1] + s * T[4 + k]]), row([o[2], o[2] + s * T[8 + k]]), str(c), str('LineWidth'), num(2)));
+  // Every tip (a link nothing hangs from) shows its axes.
+  const s = reach * 0.12;
+  arm.links.forEach((_, i) => {
+    if (arm.links.some((__, j) => rb.parentOf(arm, j) === i)) return;
+    const T = F[i + 1], o = rb.origin(T);
+    ['r', 'g', 'b'].forEach((c, k) => call(lab, 'plot3', row([o[0], o[0] + s * T[k]]), row([o[1], o[1] + s * T[4 + k]]), row([o[2], o[2] + s * T[8 + k]]), str(c), str('LineWidth'), num(2)));
+  });
   call(lab, 'plot3', row([0]), row([0]), row([0]), str('ks'), str('MarkerSize'), num(10));
   call(lab, 'hold', str('off'));
   call(lab, 'axis', str('equal')); call(lab, 'grid', str('on'));
@@ -128,6 +150,14 @@ def('show', (a, _n, lab) => {
   drawArm(lab, arm, q);
   call(lab, 'title', str(`${arm.name}: tool at [${rb.origin(rb.fkine(arm, q)).map((v) => v.toFixed(3)).join(' ')}] m`));
   return [];
+});
+def('checkCollision', (a) => {
+  const arm = armOf(a[0]), q = joints(arm, a[1]), o = pairs(a, 2);
+  const rowsOf = (k: string, c: number) => { const v = o.get(k); if (!v) return []; const m = toMat(v); if (m.d.length && m.c !== c) throw new LabError(`'${k}' are rows of ${c} numbers.`); return Array.from({ length: m.r }, (_, i) => Array.from({ length: c }, (_, j) => m.d[i + j * m.r])); };
+  const rad = o.get('radius') ? [...toMat(o.get('radius')!).d] : undefined;
+  const r = rb.checkCollision(arm, q, { radius: rad && rad.length === 1 ? rad[0] : rad, spheres: rowsOf('spheres', 4), boxes: rowsOf('boxes', 6), self: o.get('self') ? !!toMat(o.get('self')!).d[0] : true });
+  const pairsMat = (p: [number, number][]) => fromRows(p.flatMap(([x, y]) => [x + 1, y + 1]), p.length, 2);
+  return [mat(1, 1, [r.colliding ? 1 : 0], true), num(r.minDistance), pairsMat(r.self), pairsMat(r.hits)];
 });
 def('robotWorkspace', (a, nout, lab) => {
   const arm = armOf(a[0]), N = Math.min(20000, Math.max(10, Math.round(a[1] ? toMat(a[1]).d[0] : 3000)));
