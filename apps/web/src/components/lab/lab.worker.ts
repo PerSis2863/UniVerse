@@ -17,6 +17,7 @@ import '@/lib/lab/radar-lab';
 import '@/lib/lab/filters-lab';
 import '@/lib/lab/audio-lab';
 import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
+import { reportText, runScriptTests, testReports, type TestReport } from '@/lib/lab/verify-lab';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
@@ -29,7 +30,7 @@ import type { SweepFrame } from '@/lib/lab/sweep';
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
+export type ToLab = { run: string; id: number; test: string } | { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -43,6 +44,7 @@ export type FromLab =
   | { names: string[] }
   | { sound: { channels: Float32Array[]; fs: number } }
   | { serialOut: SerialOut }
+  | { tested: TestReport }
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
   | { profiled: Profile }
@@ -70,6 +72,7 @@ const host: Host = {
   sound: (channels, fs) => { flush(); postMessage({ sound: { channels, fs } } satisfies FromLab); },
 };
 const lab = new Lab(host);
+testReports.onReport = (r) => postMessage({ tested: r } satisfies FromLab);
 let size = { w: 720, h: 520 };
 // The editor colours and suggests the engine's functions (M389).
 postMessage({ names: Object.keys(BUILTINS).sort() } satisfies FromLab);
@@ -136,7 +139,10 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   if ('watch' in m) recorder = new Recorder(code, graphics);
   if ('profile' in m) { profiler = new Profiler(code, () => performance.now()); host.fnTimer = profiler; }
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
-  try { lab.run(code); } catch (err) {
+  try {
+    // M476: the Test button runs the script's %% sections (and test functions) as tests.
+    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else lab.run(code);
+  } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;
   }

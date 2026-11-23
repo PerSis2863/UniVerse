@@ -1,11 +1,13 @@
 'use client';
 
 import { SIGNAL_EXAMPLES } from './examples-signals';
+import { TestResults } from './TestResults';
+import type { TestReport } from '@/lib/lab/verify-lab';
 import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
-import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
+import { BookOpen, Sparkles, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, FlaskConical, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { cn } from '@/lib/utils';
@@ -40,7 +42,7 @@ const OTHER_FIG = 1_000_000;
 // Phones get the same parts as tabs.
 
 type Line = { k: 'in' | 'out' | 'err'; t: string };
-type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep';
+type From = 'cmd' | 'script' | 'live' | 'watch' | 'note' | 'profile' | 'sweep' | 'test';
 /** Watch it run (M393): a recorded run being played back. */
 interface Watch { steps: TraceStep[]; full: boolean; k: number; playing: boolean; speed: number; script: number }
 const SPEEDS = [1, 2, 4, 8, 16, 32];
@@ -138,6 +140,7 @@ export function LabApp() {
   const [jump, setJump] = useState<{ line: number; n: number } | null>(null);
   // Sweep (M402): a slider run through its range (the film and its table), and the form that starts one.
   const [sweep, setSweep] = useState<Sweep | null>(null);
+  const [tests, setTests] = useState<TestReport | null>(null);
   const [sweepAsk, setSweepAsk] = useState<{ name: string; from: string; to: string; n: number } | null>(null);
   const sweepUrls = useRef<string[]>([]);
   const [dragging, setDragging] = useState(false);
@@ -188,9 +191,10 @@ export function LabApp() {
     busyNow.current = true;
     setBusy(true);
     if (from === 'note') noteBuf.current = '';
-    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
+    else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : from === 'test' ? 'runtests' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
     else if (from === 'profile') { watchingScript.current = open; worker.current.postMessage({ profile: code, id } satisfies ToLab); }
+    else if (from === 'test') worker.current.postMessage({ run: code, id, test: list[open]?.name ?? 'tests' } satisfies ToLab);
     else worker.current.postMessage({ run: code, id } satisfies ToLab);
   };
   /** The next waiting notebook section, if any. */
@@ -215,6 +219,7 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      if ('tested' in m) { setTests(m.tested); return; }
       if ('serialOut' in m) { applySerialOut(m.serialOut); return; }
       if ('sound' in m) { playSound(m.sound.channels, m.sound.fs); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
@@ -584,6 +589,7 @@ export function LabApp() {
         </label>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
         {mat && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>}
+        {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'test')} title="Run its %% sections and test… functions as tests"><FlaskConical className="h-3.5 w-3.5" aria-hidden />Test</button>}
         {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
@@ -774,7 +780,9 @@ export function LabApp() {
       </div>
       {watching && figIndex >= 0 ? (
         traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
-      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : sweep ? (
+      ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : tests ? (
+        <TestResults report={tests} onClose={() => setTests(null)} onAgain={() => run(script.code, 'test')} busy={busy} />
+      ) : sweep ? (
         <LabSweep sweep={sweep} dark={dark} onClose={dropSweep} onUse={sweepSlider ? takeSwept : null} onDownload={download} />
       ) : fig && fig.id > OTHER_FIG && otherUrl ? (
         // Another language's figure: drawn by its own code, so only ever shown as a picture (no script in it can run).

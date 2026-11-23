@@ -318,6 +318,37 @@ readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 b
 writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
 writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
 
+# Unit tests
+runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.
+assertEqual | assertEqual(actual, expected, 'AbsTol', 1e-9) | Stops the test unless the values match (size, class and every element; within a tolerance when given). verifyEqual records the failure and goes on.
+verifyEqual | verifyEqual(tc, actual, expected, 'RelTol', 1e-6) | Like assertEqual, but the test goes on after a failure (every failed check is listed).
+assertTrue | assertTrue(condition, 'message') | Stops the test unless the condition is true.
+verifyTrue | verifyTrue(condition) | Records a failure unless the condition is true.
+assertFalse | assertFalse(condition) | Stops the test unless the condition is false.
+verifyFalse | verifyFalse(condition) | Records a failure unless the condition is false.
+assertNotEqual | assertNotEqual(a, b) | Stops the test if the values are the same.
+verifyNotEqual | verifyNotEqual(a, b) | Records a failure if the values are the same.
+assertEmpty | assertEmpty(x) | Stops the test unless x is empty.
+verifyEmpty | verifyEmpty(x) | Records a failure unless x is empty.
+assertNotEmpty | assertNotEmpty(x) | Stops the test if x is empty.
+verifyNotEmpty | verifyNotEmpty(x) | Records a failure if x is empty.
+assertSize | assertSize(x, [2 3]) | Stops the test unless x has that size.
+verifySize | verifySize(x, [2 3]) | Records a failure unless x has that size.
+assertClass | assertClass(x, 'double') | Stops the test unless x is of that class.
+verifyClass | verifyClass(x, 'char') | Records a failure unless x is of that class.
+assertLessThan | assertLessThan(x, limit) | Stops the test unless every element is below the limit.
+verifyLessThan | verifyLessThan(x, limit) | Records a failure unless every element is below the limit.
+assertLessThanOrEqual | assertLessThanOrEqual(x, limit) | Stops the test unless every element is at most the limit.
+verifyLessThanOrEqual | verifyLessThanOrEqual(x, limit) | Records a failure unless every element is at most the limit.
+assertGreaterThan | assertGreaterThan(x, limit) | Stops the test unless every element is above the limit.
+verifyGreaterThan | verifyGreaterThan(x, limit) | Records a failure unless every element is above the limit.
+assertGreaterThanOrEqual | assertGreaterThanOrEqual(x, limit) | Stops the test unless every element is at least the limit.
+verifyGreaterThanOrEqual | verifyGreaterThanOrEqual(x, limit) | Records a failure unless every element is at least the limit.
+assertError | assertError(@() f(x), 'part of the message') | Stops the test unless calling the function stops with an error (containing that text, when given).
+verifyError | verifyError(@() f(x)) | Records a failure unless calling the function stops with an error.
+assertFail | assertFail('why') | Fails the test there.
+verifyFail | verifyFail('why') | Fails the test there.
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).

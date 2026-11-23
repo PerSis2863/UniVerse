@@ -13,6 +13,7 @@ import './radar-lab';
 import './filters-lab';
 import './audio-lab';
 import './serial-lab';
+import './verify-lab';
 import './help-commands';
 import { BUILTINS } from './builtins';
 import { HELP, helpFor, lookFor } from './help';

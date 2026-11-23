@@ -12517,3 +12517,17 @@ simulated device posts from the browser to the same public address every 2 s (ma
 Not built: public (shared) channels, alerts on a threshold, reading a channel from a script (the engine runs scripts
 without waiting on the network: Open in Code saves the readings as a CSV in Hyperion's files), MQTT (browsers can't
 open raw TCP; HTTPS only).
+
+## M476 (23 Nov): Hyperion, unit tests and checks for scripts
+
+`src/lib/lab/verify.ts` (`differs`: why two values differ, down into cells and struct fields, with 'AbsTol' / 'RelTol';
+`sections`: a script's set-up and %% sections) and `verify-lab.ts`: `runScriptTests` (each section after the set-up in a
+fresh child `Lab` sharing the host and the script's functions; a section holding only function definitions isn't a test),
+`runFunctionTests` (local functions named test…, with setupOnce / setup / teardown / teardownOnce, each given a test case
+struct with TestName and IsTestCase), `runtests` (a file in Hyperion's files, or the test functions; prints the report,
+returns a table). `assertX` throws `AssertionFailed` (stops the test); `verifyX` adds to the running test's list and goes
+on (outside a test both stop the code); both take an optional test case first (MATLAB's verifyEqual(tc, …) and our
+assertEqual(…)). The window: a **Test** button beside Time it (`run(code, 'test')` → the worker's run with `test: name`
+→ `runScriptTests`); every report also goes to `testReports.onReport` → `{ tested }` → `TestResults.tsx`, shown in the
+figure's place (like Sweep). Browser check: `scripts/checks/hyperion-tests-ui.mjs`. MATLAB's matlab.unittest classes
+(class-based tests, TestData, parameterised tests, assume…, fixtures beyond the four functions) aren't here.
