@@ -5,7 +5,7 @@ import { HHMM, validZone } from '@/lib/local-time';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { assertInSchool, schoolsOf, usersIn, type SchoolIds } from './school-scope';
@@ -209,7 +209,7 @@ export async function guardMessage(m: { id: string; conversationId: string; body
     });
     const who = (id: string, name: string) => (id === from.id ? 'Writer' : name.split(/\s+/)[0]);
     const context = before.reverse().map((x) => `${who(x.senderId, x.sender.name)}: ${x.body.slice(0, 300)}`).join('\n');
-    verdict = await geminiJson<Verdict>(GUARD_SYSTEM, `Chat so far:\n${context || '(nothing before)'}\n\nNEW message from the Writer:\n${m.body.slice(0, 1000)}`, VERDICT_SCHEMA, 200, true).catch(() => null);
+    verdict = await ghidraJson<Verdict>('safety', GUARD_SYSTEM, `Chat so far:\n${context || '(nothing before)'}\n\nNEW message from the Writer:\n${m.body.slice(0, 1000)}`, VERDICT_SCHEMA, 200, true).catch(() => null);
     if (verdict && (!verdict.unsafe || verdict.kind === 'none')) return null;
   }
   // No AI answer: only the clearest danger signs are flagged.

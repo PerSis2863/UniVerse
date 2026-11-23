@@ -7,7 +7,7 @@ import { cleanRule, groupQuestions, MATH_RULE, tutorOff, type TutorMode } from '
 import { words } from '@/lib/text-search';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
-import { geminiJson, geminiJsonImage } from './gemini';
+import { ghidraJson, ghidraJsonImage } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException } from './http';
 import { indexClassSession } from './semester';
 import { aiOn, tutorClosed, type Access } from './tutor';
@@ -65,7 +65,7 @@ export async function homeworkPhoto(a: Access, user: SessionUser, b: Record<stri
   if (saved) return firstStep(ref, saved, a, mode);
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
-  const out = await geminiJsonImage<Homework>(homeworkSystem(a), 'The photo of the homework problem.', { mimeType, data }, {
+  const out = await ghidraJsonImage<Homework>('tutor', homeworkSystem(a), 'The photo of the homework problem.', { mimeType, data }, {
     type: 'OBJECT',
     properties: { readable: { type: 'BOOLEAN' }, problem: { type: 'STRING' }, topic: { type: 'STRING' }, hints: { type: 'ARRAY', items: { type: 'STRING' } }, answer: { type: 'STRING' } },
     required: ['readable', 'problem', 'topic', 'hints', 'answer'],
@@ -142,7 +142,7 @@ export async function practiceFromClasses(a: Access, user: SessionUser, topic: s
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'study', detail: `Practice from the classes${topic.trim() ? `: ${topic}` : ''}`, courseId: a.courseId });
   const cite = ps.map((p, i) => `[${i + 1}] (${p.title})\n${p.body}`).join('\n\n');
-  const out = await geminiJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>(
+  const out = await ghidraJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>('tutor', 
     `You write practice questions for students from what their teacher said in class. Make ${count} multiple-choice questions that test understanding of what was taught (not trivia about the class itself), each with 4 plausible options and exactly one correct answer, and a one- or two-sentence explanation. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`,
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nFrom the classes:\n${cite}`,
     {

@@ -2,7 +2,7 @@ import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { later, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { notifyMentioned } from './mentions';
@@ -349,7 +349,7 @@ export async function makeCallReport(cid: string, user: SessionUser) {
   let ai = false;
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(user)).ok) {
     const facts = JSON.stringify({ project: p.name, ngo: p.ngo?.name ?? null, description: p.description.slice(0, 400), period: { from: from.toISOString().slice(0, 10), to: to.toISOString().slice(0, 10) }, figures: figuresOut, call, highlights });
-    const out = await geminiJson<{ headline: string; narrative: string }>(NARRATIVE_SYSTEM, facts, NARRATIVE_SCHEMA, 600, true).catch(() => null);
+    const out = await ghidraJson<{ headline: string; narrative: string }>('impact-rooms', NARRATIVE_SYSTEM, facts, NARRATIVE_SCHEMA, 600, true).catch(() => null);
     if (out?.headline && out.narrative) { headline = out.headline.slice(0, 160); narrative = out.narrative.slice(0, 1200); ai = true; }
   }
 

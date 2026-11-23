@@ -12,7 +12,7 @@ import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import type { Body } from './body';
 import { later, notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ConflictException, ForbiddenException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -163,7 +163,7 @@ export async function interviewQuestions(user: SessionUser, b: Body) {
   if (!(await aiOn())) return { role, questions: builtInQuestions(role), ai: false };
   const spend = await spendAi(user);
   if (!spend.ok) return { role, questions: builtInQuestions(role), ai: false, note: spend.message };
-  const out = await geminiJson<{ questions: string[] }>(
+  const out = await ghidraJson<{ questions: string[] }>('careers', 
     'You are an interviewer preparing a student for a real interview. Write 6 interview questions for the role: 3 behavioural questions that invite a STAR answer (a real example) and 3 about the role\'s skills and motivation, from easy to harder. One sentence each, plain words, no numbering.',
     `Role: ${role}\n${about}`,
     { type: 'OBJECT', properties: { questions: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['questions'] },
@@ -202,7 +202,7 @@ export async function interviewFeedback(user: SessionUser, b: Body) {
     const spend = await spendAi(user);
     if (!spend.ok) note = spend.message;
     else {
-      const out = await geminiJson<Feedback>(
+      const out = await ghidraJson<Feedback>('careers', 
         'You coach a student for a job or internship interview. Judge the answer to the question for this role kindly and specifically. Give a score from 1 (weak) to 5 (excellent); up to 2 strengths and up to 2 things to improve, each one short sentence quoting or naming what they said; and an outline of a stronger answer in STAR form (Situation, Task, Action, Result), four short lines, using their own example where there is one and never inventing facts about them. The answer may come from speech recognition: ignore small recognition errors.',
         `Role: ${role}\nQuestion: ${question}\nAnswer: ${answer}`,
         FEEDBACK_SCHEMA, 700, true,

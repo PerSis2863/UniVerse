@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { requireAi } from './ai-budget';
 import { LANGUAGES, isLanguage } from '@/lib/languages';
 
@@ -53,7 +53,7 @@ function nothingToTranslate(text: string) {
 async function translateBatch(items: { id: string; text: string }[], to: string) {
   if (!items.length) return new Map<string, { lang: string; text: string }>();
   const prompt = `Target language: ${name(to)} (${to}).\nMessages (JSON):\n${JSON.stringify(items.map((i) => ({ id: i.id, text: i.text.slice(0, MAX_CHARS) })))}`;
-  const out = await geminiJson<{ items: { id: string; lang: string; text: string }[] }>(SYSTEM, prompt, SCHEMA, 4096, true);
+  const out = await ghidraJson<{ items: { id: string; lang: string; text: string }[] }>('translate', SYSTEM, prompt, SCHEMA, 4096, true);
   if (!out?.items) return null;
   const map = new Map<string, { lang: string; text: string }>();
   for (const r of out.items) {
@@ -181,7 +181,7 @@ export async function translateCaptions(callId: string, lines: { id: string; tex
   if (!lines.length) return {};
   await requireAi({ id: `cc:${callId}`, role: 'STAFF' });
   const prompt = `Target language: ${name(to)} (${to}).\nLines (JSON):\n${JSON.stringify(lines.map((l) => ({ id: l.id, text: l.text.slice(0, 300) })))}`;
-  const out = await geminiJson<{ items: { id: string; text: string }[] }>(CAPTION_SYSTEM, prompt, CAPTION_SCHEMA, 2048, true);
+  const out = await ghidraJson<{ items: { id: string; text: string }[] }>('translate', CAPTION_SYSTEM, prompt, CAPTION_SCHEMA, 2048, true);
   const result: Record<string, string> = {};
   for (const r of out?.items ?? []) if (lines.some((l) => l.id === r.id) && typeof r.text === 'string' && r.text.trim()) result[r.id] = r.text.trim().slice(0, 600);
   return result;

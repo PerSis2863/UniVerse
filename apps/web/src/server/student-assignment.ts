@@ -5,7 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { logAiUse } from './ai-receipts';
 import { spendAi } from './ai-budget';
 import { later, notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 
 // The student side of assignments (Stage 5 · B3.5): a signed receipt for each hand-in, the rubric in
@@ -77,7 +77,7 @@ export async function rubricHelp(assignmentId: string, user: SessionUser) {
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'rubric', detail: assignment.title, courseId: assignment.courseId });
-  const out = await geminiJson<{ criteria: { id: string; plain: string; great: string; weak: string }[] }>(
+  const out = await ghidraJson<{ criteria: { id: string; plain: string; great: string; weak: string }[] }>('student-work', 
     SYSTEM,
     `Assignment: ${assignment.title}\nInstructions: ${assignment.instructions.slice(0, 3000)}\nRubric:\n${rubric.map((r) => `- id ${r.id}: ${r.criterion} (${r.points} points)${r.description ? `: ${r.description}` : ''}`).join('\n')}`,
     { type: 'OBJECT', properties: { criteria: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, plain: { type: 'STRING' }, great: { type: 'STRING' }, weak: { type: 'STRING' } }, required: ['id', 'plain', 'great', 'weak'] } } }, required: ['criteria'] },

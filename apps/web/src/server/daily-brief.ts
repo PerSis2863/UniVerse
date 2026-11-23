@@ -4,7 +4,7 @@ import { validZone, wallClock as wall } from '@/lib/local-time';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, HttpException } from './http';
 import { featureOff } from './moderation';
 import { upcomingCalls } from './scheduled-calls';
@@ -247,7 +247,7 @@ export async function makeAiBrief(user: SessionUser, tzRaw: unknown): Promise<{ 
   if (!lines.length && !data.waiting.length && !data.due.length && !data.classes.length && !data.calls.length && !data.toGrade) return { ai: null };
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
-  const out = await geminiJson<AiBrief>(BRIEF_SYSTEM, prompt(data, lines, tz), AI_SCHEMA, 900);
+  const out = await ghidraJson<AiBrief>('daily-brief', BRIEF_SYSTEM, prompt(data, lines, tz), AI_SCHEMA, 900);
   if (!out?.summary) throw new HttpException('Couldn’t make your brief right now. Please try again.', 502);
   const ai: AiBrief = {
     summary: String(out.summary).slice(0, 600),

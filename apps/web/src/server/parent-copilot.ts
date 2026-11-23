@@ -7,7 +7,7 @@ import {
 } from '@/lib/parent-copilot';
 import type { SessionUser } from '@/lib/server-auth';
 import { sameQuestion, spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -152,7 +152,7 @@ export async function makeSummary(user: SessionUser, b: Record<string, unknown>)
   if (!(await aiReady())) return { summary: { text: templateSummary(facts), ai: false, at: new Date().toISOString() }, note: 'Written from the records in English: the AI writer isn’t available right now.' };
   const spend = await spendAi(user);
   if (!spend.ok) return { summary: { text: templateSummary(facts), ai: false, at: new Date().toISOString() }, note: spend.message };
-  const out = await geminiJson<{ text: string }>(SUMMARY_SYSTEM(prefs.lang), `Facts (JSON):\n${JSON.stringify(facts)}`, SUMMARY_SCHEMA, 900);
+  const out = await ghidraJson<{ text: string }>('parents', SUMMARY_SYSTEM(prefs.lang), `Facts (JSON):\n${JSON.stringify(facts)}`, SUMMARY_SCHEMA, 900);
   const text = typeof out?.text === 'string' ? out.text.trim().slice(0, 1500) : '';
   if (!text) return { summary: { text: templateSummary(facts), ai: false, at: new Date().toISOString() }, note: 'Couldn’t write it in your language right now. Try again in a moment.' };
   return save(text, true);
@@ -198,7 +198,7 @@ export async function askAboutChild(user: SessionUser, b: Record<string, unknown
     lateWork: facts.late,
     reportCard: card ? { title: card.run.title, comment: card.comment } : null,
   };
-  const out = await geminiJson<{ answer: string; used: string[] }>(ASK_SYSTEM(prefs.lang, courses), `Records (JSON):\n${JSON.stringify(records)}\n\nThe parent's question:\n${question}`, ASK_SCHEMA, 700);
+  const out = await ghidraJson<{ answer: string; used: string[] }>('parents', ASK_SYSTEM(prefs.lang, courses), `Records (JSON):\n${JSON.stringify(records)}\n\nThe parent's question:\n${question}`, ASK_SCHEMA, 700);
   const answer = typeof out?.answer === 'string' ? out.answer.trim().slice(0, 1200) : '';
   if (!answer) throw new HttpException('Couldn’t answer right now. Please try again in a moment.', 502);
   const used = cleanUsed(out?.used, courses);

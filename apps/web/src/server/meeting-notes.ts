@@ -8,7 +8,7 @@ import { afterSend } from './chat-notify';
 import { cleanTranscript, type TranscriptLine } from './class-companion';
 import { channelSendCheck } from './communities';
 import { notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { chatMuted, featureOff } from './moderation';
 import { groupAccess } from './spaces';
@@ -80,7 +80,7 @@ async function makeNotes(lines: TranscriptLine[], callTitle: string, durationSec
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const prompt = `Call: ${callTitle}\nToday: ${new Date().toISOString().slice(0, 10)}\nLength: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`;
-  return cleanNotes(await geminiJson<Partial<Notes>>(SYSTEM, prompt, SCHEMA, 3000), durationSec);
+  return cleanNotes(await ghidraJson<Partial<Notes>>('meetings', SYSTEM, prompt, SCHEMA, 3000), durationSec);
 }
 
 const noteData = (n: Notes) => ({ status: 'READY', title: n.title, summary: n.summary, decisions: JSON.stringify(n.decisions), actions: JSON.stringify(n.actions), chapters: JSON.stringify(n.chapters) });

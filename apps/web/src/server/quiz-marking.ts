@@ -5,7 +5,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { cleanGiven, keyText, loose, markAnswer, metaOf, typeOf, type Given, type Meta } from '@/lib/question-types';
 import { logAiUse } from './ai-receipts';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, HttpException, NotFoundException } from './http';
 
 // Short answers the key didn't expect (Stage 5 · B4.1): the teaching team sees each different answer
@@ -101,7 +101,7 @@ export async function suggestAccepted(quizId: string, user: SessionUser, b: Reco
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'marking', detail: quiz.title, courseId: quiz.courseId });
-  const out = await geminiJson<{ same: { n: number; reason: string }[] }>(
+  const out = await ghidraJson<{ same: { n: number; reason: string }[] }>('quiz-marking', 
     SYSTEM,
     `Question: ${q.question.slice(0, 1000)}\nAccepted: ${(metaOf(q).accepted ?? []).join(' | ').slice(0, 1000)}\nStudent answers:\n${wrong.map((w, i) => `${i + 1}. ${w.answer}`).join('\n')}`,
     { type: 'OBJECT', properties: { same: { type: 'ARRAY', items: { type: 'OBJECT', properties: { n: { type: 'INTEGER' }, reason: { type: 'STRING' } }, required: ['n', 'reason'] } } }, required: ['same'] },

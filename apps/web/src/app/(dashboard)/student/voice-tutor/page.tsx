@@ -88,9 +88,9 @@ export default function VoiceTutorPage() {
 
   return (
     <>
-      <Topbar title="AI tutor" subtitle="Talk through a topic out loud with your AI tutor" />
+      <Topbar title="Ghidra tutor" subtitle="Talk through a topic out loud with Ghidra" />
       <SectionTabs tabs={STUDENT_BOARD_TABS} />
-      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="AI tutor mode" />
+      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="Ghidra tutor mode" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5 stagger">
           <div className="rounded-3xl border border-zinc-200/80 dark:border-white/[0.07] bg-white/70 dark:bg-white/[0.03] p-6 text-center space-y-4">

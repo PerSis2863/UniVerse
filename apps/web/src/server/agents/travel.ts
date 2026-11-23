@@ -3,7 +3,7 @@ import type { AskPlan } from '@/lib/ask';
 import { spendAi } from '../ai-budget';
 import { featureOff } from '../moderation';
 import { placeOf } from '../travel';
-import { agentJson } from './own-model';
+import { ghidraAgent } from '../ghidra/own-model';
 
 // Ghidra's Travel Planner (M434, one of the owner's app agents, 22 Nov): "plan 3 days in Jaipur for 2 of us" becomes a
 // real trip: the place found in Travel's guides (Wikivoyage, placeOf), its days, the travellers, an honest travel agent's
@@ -18,7 +18,7 @@ export async function planTrip(u: SessionUser, plan: Extract<AskPlan, { action: 
   const days = plan.days ?? 3;
   let tips: string[] = [];
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(u)).ok) {
-    const out = await agentJson<{ tips?: unknown }>(u, 'travel', `Tips for ${days} days in ${place.name} for ${plan.travellers} ${plan.travellers === 1 ? 'person' : 'people'}${plan.startDate ? ` from ${plan.startDate}` : ''}.`, 500).catch(() => null);
+    const out = await ghidraAgent<{ tips?: unknown }>(u, 'travel', `Tips for ${days} days in ${place.name} for ${plan.travellers} ${plan.travellers === 1 ? 'person' : 'people'}${plan.startDate ? ` from ${plan.startDate}` : ''}.`, 500).catch(() => null);
     tips = Array.isArray(out?.tips) ? out.tips.filter((t): t is string => typeof t === 'string').map((t) => t.replace(/^\s*-\s*/, '').trim()).filter(Boolean).slice(0, 5) : [];
   }
   return {

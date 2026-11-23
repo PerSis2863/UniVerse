@@ -7,7 +7,7 @@ import { sameQuestion, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { breakoutOf } from './calls';
 import { later } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -45,7 +45,7 @@ type Citation = { n: number; title: string };
  */
 export async function taAnswer(course: { id: string; code: string; name: string }, question: string, heard: SentLine[]) {
   const { found, text } = await coursePassages(course.id, `${question} ${heard.slice(-6).map((l) => l.text).join(' ')}`, 6);
-  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>(
+  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>('whisper', 
     SYSTEM,
     [
       `Class: ${course.code} · ${course.name}`,

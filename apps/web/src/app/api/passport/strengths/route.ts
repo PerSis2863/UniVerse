@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { route } from '@/server/assignments';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
-import { geminiJson } from '@/server/gemini';
+import { ghidraJson } from '@/server/ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { getOrCreatePassport } from '@/server/passport';
@@ -21,7 +21,7 @@ export const POST = (req: Request) => route(req, async (user) => {
     if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('AI isn’t available right now. You can write the paragraph yourself.', 503);
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
-    const out = await geminiJson<{ paragraph: string }>(
+    const out = await ghidraJson<{ paragraph: string }>('passport', 
       'You write the short "strengths" paragraph of a student\'s public skills passport, for employers. Use only the evidence given; never invent experience, employers, grades or numbers. 2–3 sentences, third person, warm but factual, no superlatives, no bullet points. Mention the strongest skills and what backs them.',
       `Student: ${user.name}\nEvidence (skill: pieces, best level; examples):\n${facts}`,
       { type: 'OBJECT', properties: { paragraph: { type: 'STRING' } }, required: ['paragraph'] },

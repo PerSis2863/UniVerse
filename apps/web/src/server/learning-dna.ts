@@ -4,7 +4,7 @@ import { courseAccess } from '@/lib/course-access';
 import { bandOf, masteryOf, nextBest, reteach, type Mastery, type Observation } from '@/lib/mastery';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ConflictException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { CARD_OUTCOME, CARD_WEIGHT, matchConcept } from '@/lib/concept-match';
@@ -163,7 +163,7 @@ export async function suggestConcepts(user: SessionUser, courseId: string) {
     questions.length ? `Quiz questions: ${questions.map((q) => q.question.slice(0, 120)).join(' | ').slice(0, 2500)}` : '',
     existing.length ? `Already listed (don't repeat): ${existing.map((c) => c.name).join(', ')}` : '',
   ].filter(Boolean).join('\n');
-  const out = await geminiJson<{ concepts: { name: string; description: string; parent?: string }[] }>(
+  const out = await ghidraJson<{ concepts: { name: string; description: string; parent?: string }[] }>('concepts', 
     'You map what a course teaches into 8 to 16 concepts a student can master one by one: short names (2–5 words), a one-sentence description of what mastering it means, and optionally a broader concept from the same list as parent (at most two levels). In the order they are usually taught. Plain words, no numbering.',
     prompt,
     { type: 'object', properties: { concepts: { type: 'array', items: { type: 'object', properties: { name: { type: 'string' }, description: { type: 'string' }, parent: { type: 'string' } }, required: ['name', 'description'] } } }, required: ['concepts'] },
@@ -191,7 +191,7 @@ export async function suggestTags(user: SessionUser, courseId: string, b: Record
   } else throw new BadRequestException('Choose a quiz or an assignment.');
   if (!items.length) return { items: [] };
   await ai(user);
-  const out = await geminiJson<{ items: { n: number; concepts: number[] }[] }>(
+  const out = await ghidraJson<{ items: { n: number; concepts: number[] }[] }>('concepts', 
     'For each numbered item (a quiz question or a rubric criterion), list the numbers of the concepts it tests: usually one, at most three. Use only concept numbers from the list. Leave an item out if no concept fits.',
     `Concepts:\n${concepts.map((c, i) => `${i + 1}. ${c.name}${c.description ? `: ${c.description}` : ''}`).join('\n')}\n\nItems:\n${items.map((it, i) => `${i + 1}. ${it.text}`).join('\n')}`,
     { type: 'object', properties: { items: { type: 'array', items: { type: 'object', properties: { n: { type: 'integer' }, concepts: { type: 'array', items: { type: 'integer' } } }, required: ['n', 'concepts'] } } }, required: ['items'] },

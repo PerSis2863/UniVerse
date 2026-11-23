@@ -12,8 +12,8 @@ export const isAiPolicy = (x: unknown): x is AiPolicy => typeof x === 'string' &
 
 /** The kinds of AI help that are recorded (reading help such as translation and simpler words is not). */
 export const AI_USE_KINDS = {
-  assistant: 'AI assistant',
-  tutor: 'Course AI tutor',
+  assistant: 'Ghidra',
+  tutor: 'Ghidra tutor',
   homework: 'Homework photo help',
   voice: 'Voice tutor',
   writing: 'Writing helper (Docs)',
@@ -72,7 +72,7 @@ export function receiptProblem(policy: AiPolicy, input: { attach?: unknown; decl
   return null;
 }
 
-/** "Course AI tutor ×3 · Writing helper (Docs) ×1", most used first. */
+/** "Ghidra tutor ×3 · Writing helper (Docs) ×1", most used first. */
 export function usesSummary(uses: { kind: string }[]): string {
   const counts = new Map<string, number>();
   for (const u of uses) counts.set(u.kind, (counts.get(u.kind) ?? 0) + 1);

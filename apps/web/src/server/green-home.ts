@@ -7,7 +7,7 @@ import { oneOf, str, type Body } from './body';
 import { featureOff } from './moderation';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
-import { geminiJsonImage } from './gemini';
+import { ghidraJsonImage } from './ghidra/brain';
 
 // M317: home energy from bills (Green → Footprint). A person keeps each month's electricity, gas, oil or LPG
 // bill (the amount on it), and sees the kg CO₂e per month and per person, against the same month a year
@@ -85,7 +85,7 @@ export async function readHomeBill(u: SessionUser, b: Body) {
   const spend = await spendAi(u);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(u.id, { kind: 'home-bill', detail: 'Read an energy bill for Green' });
-  const out = await geminiJsonImage<Body>(SYSTEM, 'Read this bill.', { mimeType, data }, SCHEMA, 300);
+  const out = await ghidraJsonImage<Body>('home-energy', SYSTEM, 'Read this bill.', { mimeType, data }, SCHEMA, 300);
   const kind = oneOf(KINDS, out?.kind) ? out.kind : null;
   const units = kind ? (HOME_ENERGY[kind].units as readonly string[]) : [];
   const amount = Number(out?.amount);

@@ -12066,3 +12066,32 @@ The owner (23 Nov): "add a daily limit on AI spending for each user which should
 - The owner changes both in console → Server → AI use today ("Paid AI per person", "Paid AI, whole site");
   `AiLimits` gained `cloud` and `cloudSite` (old saved limits read with the defaults). `agentJson`, `thinkHard` and
   `thinkHardText` now take the person first. Test: `src/server/ai-budget.test.ts` (it unmocks the shared stand-in).
+
+## M443: Ghidra, the one AI, step 1: skills and one brain; the corner chat opens like RunPod's (23 Nov)
+
+The owner (23 Nov): "we need only ghidra as one main ai and i need it to do all the work in this project", then "yes save
+it and start step 1"; while it was built: "in 2nd photo how the runpod ai chat is opening so please make it like that"
+(and "write here more professionally": the old greeting). The plan is in `STAGE-5-PLAN.md`, "Ghidra, the one AI".
+
+- **Skills** (`src/server/ghidra/skills.ts`): every AI job is a skill (44: the assistant, the four agents, booking,
+  Hyperion, the tutor, marking, quiz drafts, translation, docs, boards, the owner console's diagnosis…), with its app,
+  what it does, and `own` for skills that try UniVerse's own Cloudflare model first. `SkillId` is the type.
+- **The brain** (`src/server/ghidra/brain.ts`): `ghidraJson` / `ghidraJsonImage` / `ghidraText` / `ghidraFileText` /
+  `ghidraAudioText` take a skill id first, then what `gemini*` took; each job's instructions get `GHIDRA_RULE` (who
+  answers) and `UNTRUSTED_RULE` (`asGhidra`). All 59 calls in 45 files moved; `agents/own-model.ts` is now
+  `ghidra/own-model.ts` (`ghidraAgent`, the agents' add-on; `ghidraCode`, Hyperion's route), with the same switches and
+  the paid-AI limit. **Trap:** `brain.ts` must stay light: `errors.ts` imports it and `instrumentation.ts` imports
+  `errors.ts`, compiled where `node:crypto` can't load (dev's webpack refused `moderation` → `auth` →
+  `session-token`). Cloudflare parts go in `own-model.ts`.
+- **The gate** (`src/server/ghidra/brain-gate.test.ts`): only `gemini.ts`, `brain.ts` and `api/ai/route.ts` (the
+  streaming chat, `SAFETY` only) may import `gemini`; every skill a call names must be in the list.
+- **Names people see:** "AI tutor" → "Ghidra tutor", "Ask AI" → "Ask Ghidra", Hyperion's AI → Ghidra (its prompt
+  starts "You are Ghidra… helping in Hyperion"), "Floating AI assistant" → "Ghidra in the corner"; the console's switch
+  hints too. Comments and the job titles list (`options/academic.ts`) untouched.
+- **The corner chat** (`AIStudyAssistant.tsx`): no greeting; opening shows three suggestions stacked over one question
+  box (`Ask Ghidra anything`, an arrow button), the round button turns into ×; Escape or a click outside closes it; a
+  suggestion or a question opens the conversation window, which gained **New chat** (back to the suggestions).
+  `scripts/checks/ghidra-open-ui.mjs` (axe at 390 and 1280, light and dark).
+- **Not yet in step 1:** the jobs' own instruction texts still sit in their feature files (only the agents' and
+  Hyperion's are shared); moving them into the skills list comes with step 2's exam, which needs them in one place.
+  The skill id isn't recorded anywhere yet (`void skill`): step 3's 👍 / 👎 keeps ratings per skill.

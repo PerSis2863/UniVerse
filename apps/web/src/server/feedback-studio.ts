@@ -4,7 +4,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { isAppFileUrl, readAppFile } from '@/lib/storage';
 import { spendAi } from './ai-budget';
 import { submissionForTeacher } from './assignments';
-import { geminiAudioText } from './gemini';
+import { ghidraAudioText } from './ghidra/brain';
 import { BadRequestException, HttpException } from './http';
 
 // Upgrade 8, feedback studio.
@@ -88,7 +88,7 @@ export async function transcribeFeedback(submissionId: string, user: SessionUser
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const file = await readAppFile(sub.feedbackMediaUrl);
   if (!file) throw new HttpException('The recording couldn’t be read.', 422);
-  const transcript = await geminiAudioText(file.bytes, (file.mime || 'audio/webm').split(';')[0]);
+  const transcript = await ghidraAudioText('feedback', file.bytes, (file.mime || 'audio/webm').split(';')[0]);
   if (!transcript) throw new HttpException('Couldn’t transcribe right now. Try again in a moment.', 503);
   await prisma.assignmentSubmission.update({ where: { id: sub.id }, data: { feedbackTranscript: transcript.slice(0, 6000) } });
   return { transcript };

@@ -1887,3 +1887,31 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
    computing (WebGPU), discrete-event simulation, unit tests and checks for scripts (verification), hardware support
    (Arduino and serial), reports (done in M397), deployment (share links M398, the computer app M412).
 | M442 | A daily limit on paid AI (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | 25 questions a person and 400 for the site each day on the paid Cloudflare models; past them Gemini answers, so nobody is cut off. Changeable in console → Server → AI use today. |
+| M443 | Ghidra, the one AI, step 1: skills, one brain, the RunPod-style opening (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | Every AI job is a Ghidra skill answered through one brain (60 calls moved, a test stops new direct Gemini calls); people see only the name Ghidra; the corner chat opens with suggestions over one question box. |
+
+### Ghidra, the one AI (the owner, 23 Nov: "we need only ghidra as one main ai and i need it to do all the work in this project")
+
+People meet one AI, Ghidra, everywhere. The app agents (Support, Travel, Social, Research), Hyperion's AI, the tutor and
+the ~45 other AI features become Ghidra's **skills**, chosen from the page and the question; no other AI names in what
+people see. Every answer goes through one brain: UniVerse's own add-on on Cloudflare where it scores higher, else Gemini
+(DeepSeek for hard maths and code, behind its switch), Ghidra 2 on the device when offline. Big asks are split into
+steps confirmed together (the chaining step, `ghidra-chain.ts`: the multi-agent system, invisible). One set of
+guardrails (`ghidra-guard.ts`); Ghidra sees and does only what the person may; actions wait for their tap.
+
+1. **Skills and the brain** (free, M443 done; the jobs' instruction texts move into the list with step 2): one list (`src/server/ghidra/skills.ts`), one brain (`src/server/ghidra/brain.ts`)
+   that every AI call goes through (nothing else imports `gemini.ts`, a test fails a break); the agents' and Hyperion's
+   own-model paths inside it; the old AI names in screens become Ghidra. Done when every AI feature answers through it.
+2. **One exam** (free): 50–150 questions per skill with pass / fail rules, one command prints Ghidra's score card
+   (the agents' rules first; loosen support's `nums` for numbered steps). Done when every skill has a starting score.
+3. **👍 / 👎 on every answer** (free): "What was wrong?", "Better answer"; no names, emails or phone numbers; kept 90
+   days; each person deletes theirs in Settings; each skill's rating in the console. Done when ratings come in.
+4. **Ghidra's add-on** (paid, ~US$10–20, [owner] yes first): a stronger open teacher (Qwen2.5-72B) writes lessons per
+   skill, kept only if they pass the rules, plus people's corrected answers; one add-on `GHIDRA_LORA` replaces
+   `AGENTS_LORA` and `HYPERION_LORA`; switched on per skill only where it scores higher. Results on a RunPod network
+   volume. No Gemini answers as lessons (Google's terms).
+5. **Ghidra offline** (paid, ~US$3): Ghidra 2 trained on the card with the same lessons, as the offline backup; the old
+   letter Ghidra removed.
+6. **Every month** (~US$5–15): new ratings, train, score, switch only on a win. The paid-AI daily limit (M442) stays.
+
+Later: web search stays behind its switch (off). Check the name "Ghidra" (also the NSA's free tool) before advertising
+it widely or putting it in the app stores.

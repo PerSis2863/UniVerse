@@ -57,7 +57,7 @@ export function CourseOralChecks({ courseId }: { courseId: string }) {
           </li>
         ))}
       </ul>
-    ) : <EmptyState icon={Mic} title="No oral checks" hint="When your teacher sets one, it shows here and on AI tutor → Oral practice." />;
+    ) : <EmptyState icon={Mic} title="No oral checks" hint="When your teacher sets one, it shows here and on Ghidra tutor → Oral practice." />;
   }
   if (openId) return <CheckDetail id={openId} enrolled={data.enrolled ?? 0} onBack={() => { setOpenId(null); void mutate(); }} />;
 

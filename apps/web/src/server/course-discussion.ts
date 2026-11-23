@@ -5,7 +5,7 @@ import { planLimits } from '@/lib/plan-limits';
 import { logAiUse } from './ai-receipts';
 import { spendAi } from './ai-budget';
 import { notify } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { publish } from './realtime';
 import { coursePassages } from './tutor';
@@ -262,7 +262,7 @@ export async function suggestAnswer(courseId: string, threadId: string, user: Se
   const spend = await spendAi(user);
   if (!spend.ok) return { draft: null, reason: 'limit' as const, message: spend.message };
   await logAiUse(user.id, { kind: 'discussion', detail: t.title, courseId });
-  const out = await geminiJson<{ draft: string; grounded: boolean }>(
+  const out = await ghidraJson<{ draft: string; grounded: boolean }>('discussion', 
     SUGGEST_SYSTEM,
     `Course: ${v.course.code} — ${v.course.name}\n\nCourse passages:\n${text}\n\nStudent's question: ${t.title}\n${t.body.slice(0, 2000)}`,
     { type: 'OBJECT', properties: { draft: { type: 'STRING' }, grounded: { type: 'BOOLEAN' } }, required: ['draft', 'grounded'] },

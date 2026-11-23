@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { ownerEmailList } from '@/lib/owner-emails';
 import { unsupportedBrowser, unsupportedNote } from '@/lib/browser-support';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { APP_URL, escapeHtml, sendEmail } from './email';
 
 // Automatic error monitoring. Browsers (src/lib/error-monitor.ts → POST /api/errors) and the server
@@ -188,7 +188,7 @@ export async function diagnoseErrors(opts: { ids?: string[]; limit?: number; mod
       `Message: ${r.message}`,
       r.stack ? `Stack:\n${r.stack.slice(0, 2500)}` : 'No stack trace.',
     ].filter(Boolean).join('\n');
-    const out = await geminiJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>(SYSTEM, prompt, SCHEMA, 800, true, opts.model);
+    const out = await ghidraJson<{ severity: string; summary: string; cause: string; where: string; fix: string }>('diagnose', SYSTEM, prompt, SCHEMA, 800, true, opts.model);
     if (!out) continue;
     await prisma.errorReport.update({
       where: { id: r.id },

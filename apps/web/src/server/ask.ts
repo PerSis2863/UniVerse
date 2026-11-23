@@ -9,7 +9,7 @@ import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { spendAi } from './ai-budget';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { isHard, thinkHardText } from './ghidra-think';
 import { askChain } from './ghidra-chain';
 import { research } from './agents/research';
@@ -191,7 +191,7 @@ export async function askOne(u: SessionUser, text: string, history: AskTurn[]): 
   const spend = await spendAi(u);
   if (!spend.ok) return local(spend.message);
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
-  const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
+  const out = await ghidraJson<Record<string, unknown>>('assistant', SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   if (!out) return local();
   const plan = await resolve(u, cleanPlan(out));
   // M430: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.

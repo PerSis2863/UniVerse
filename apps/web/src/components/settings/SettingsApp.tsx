@@ -631,8 +631,8 @@ function AiFeatures() {
   const { isChatbotEnabled, setChatbotEnabled } = useAiStore();
   return (
     <Card title="AI features" subtitle="Your assistants and tools">
-      <Row setting="assistant" icon={Sparkles} title="Floating AI assistant" desc="The assistant button in the corner of every page, for quick questions and help.">
-        <Switch checked={isChatbotEnabled} label="Floating AI assistant" onChange={(v) => { setChatbotEnabled(v); toast.success(v ? 'Assistant on' : 'Assistant off'); }} />
+      <Row setting="assistant" icon={Sparkles} title="Ghidra in the corner" desc="The assistant button in the corner of every page, for quick questions and help.">
+        <Switch checked={isChatbotEnabled} label="Ghidra in the corner" onChange={(v) => { setChatbotEnabled(v); toast.success(v ? 'Assistant on' : 'Assistant off'); }} />
       </Row>
       <MyAiUses />
     </Card>

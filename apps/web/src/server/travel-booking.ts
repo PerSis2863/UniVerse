@@ -5,7 +5,7 @@ import { text, type Body } from './body';
 import { featureOff } from './moderation';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 
 // M329: "if user had already booked the hotel somewhere then they can come in our website": a pasted booking
 // confirmation (the email's text) read into the hotel's name, address, town and dates, to fill the form that plans
@@ -24,7 +24,7 @@ export async function readBooking(u: SessionUser, b: Body) {
   const spend = await spendAi(u);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(u.id, { kind: 'booking', detail: 'Read a hotel booking for a trip plan' });
-  const out = await geminiJson<Body>(SYSTEM, said, SCHEMA, 300, true).catch(() => null);
+  const out = await ghidraJson<Body>('booking', SYSTEM, said, SCHEMA, 300, true).catch(() => null);
   if (!out) throw new HttpException('That couldn’t be read just now: type the hotel in instead.', 502);
   const checkIn = isDay(out.checkIn) ? out.checkIn : null, checkOut = isDay(out.checkOut) && (!checkIn || out.checkOut > checkIn) ? out.checkOut : null;
   const guests = Number(out.guests);

@@ -4,7 +4,7 @@ import { isRight, type Given } from '@/lib/question-types';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -127,7 +127,7 @@ export async function createSupportPlan(flagId: string, user: SessionUser, body:
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai'))) {
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
-    plan = cleanPlan(await geminiJson<Partial<PlanBody>>(SYSTEM, `Student first name: ${first}\nCourse: ${flag.course.code} ${flag.course.name}\nTeacher: ${user.name}\nWeak topics:\n${topics.length ? topics.map((t) => `- ${t}`).join('\n') : '- (none recorded yet)'}`, SCHEMA, 900, true));
+    plan = cleanPlan(await ghidraJson<Partial<PlanBody>>('support-plans', SYSTEM, `Student first name: ${first}\nCourse: ${flag.course.code} ${flag.course.name}\nTeacher: ${user.name}\nWeak topics:\n${topics.length ? topics.map((t) => `- ${t}`).join('\n') : '- (none recorded yet)'}`, SCHEMA, 900, true));
     usedAi = !!plan;
   }
   plan ??= simplePlan(first, flag.course.code, topics);

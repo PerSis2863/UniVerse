@@ -1,4 +1,4 @@
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import type { StudentProgress } from './student-progress';
 
 // The AI study planner: a 7-day plan from a student's grades and what's due. The plan is saved per
@@ -90,7 +90,7 @@ export async function makeStudyPlan(p: StudentProgress, today: string, tz: strin
     ...(due.length ? due : ['- Nothing due. Plan steady review, focusing on the weakest courses.']),
   ].join('\n');
 
-  const out = await geminiJson<{ summary?: unknown; days?: unknown }>(SYSTEM, prompt, SCHEMA, 3000);
+  const out = await ghidraJson<{ summary?: unknown; days?: unknown }>('study-plan', SYSTEM, prompt, SCHEMA, 3000);
   if (!out || !Array.isArray(out.days)) return null;
 
   // Keep the plan to the 7 dates asked for, with sensible numbers, whatever the model sent.

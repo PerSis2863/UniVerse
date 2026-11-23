@@ -4,7 +4,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { isLanguage } from '@/lib/languages';
 import { indexClassSession, indexLater } from './semester';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -168,7 +168,7 @@ async function makePack(lines: TranscriptLine[], courseName: string, durationSec
   const lost = pulseText(pulse);
   const prompt = `Course: ${courseName}\nClass length: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`
     + (lost ? `\n\nClass pulse (seconds · students who tapped "I'm lost" / "Got it"; counts only):\n${lost}` : '');
-  const raw = await geminiJson<Partial<Pack>>(SYSTEM, prompt, SCHEMA, 8000);
+  const raw = await ghidraJson<Partial<Pack>>('class-notes', SYSTEM, prompt, SCHEMA, 8000);
   return cleanPack(raw, durationSec);
 }
 
@@ -353,7 +353,7 @@ export async function translatePack(sessionId: string, user: SessionUser, to: st
   const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
   const original: PackText = { summary: s.summary ?? '', notes: parse(s.notes), keyMoments: parse(s.keyMoments), flashcards: parse(s.flashcards), chapters: parse(s.chapters), recap: s.recap ?? '', practice: parse(s.practice) };
   const forAi = { ...original, practice: original.practice.map(({ question, options, explain }) => ({ question, options, explain })) };
-  const raw = await geminiJson<Partial<PackText> & { from?: string }>(TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(forAi)}`, TR_SCHEMA, 8000);
+  const raw = await ghidraJson<Partial<PackText> & { from?: string }>('class-notes', TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(forAi)}`, TR_SCHEMA, 8000);
   if (!raw?.summary) throw new HttpException('Couldn’t translate the study pack. Please try again.', 502);
   const out = String(raw.from ?? '').toLowerCase().slice(0, 2) === to
     ? { same: true, pack: null }

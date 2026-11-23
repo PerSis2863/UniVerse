@@ -13,7 +13,7 @@ import { spendAi } from './ai-budget';
 import { logAiUse, makeReceipt, usesFor } from './ai-receipts';
 import { isAiPolicy, parseReceipt } from '@/lib/ai-receipt';
 import { notify, notifyMany } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ConflictException, HttpException, NotFoundException } from './http';
 import { liveToken } from './live-token';
 import { featureOff } from './moderation';
@@ -59,7 +59,7 @@ export async function scoreOral(o: { kind: OralKind; topic: string; lang: string
 Rubric (JSON): ${JSON.stringify(o.rubric)}
 Transcript:
 ${transcriptForScoring(o.lines)}`;
-  const out = await geminiJson<{ scores: unknown; summary: unknown; strengths: unknown; nextSteps: unknown }>(SCORE_SYSTEM, prompt, SCORE_SCHEMA, 2500);
+  const out = await ghidraJson<{ scores: unknown; summary: unknown; strengths: unknown; nextSteps: unknown }>('oral', SCORE_SYSTEM, prompt, SCORE_SCHEMA, 2500);
   if (!out) return null;
   const list = (v: unknown) => (Array.isArray(v) ? v : []).filter((x): x is string => typeof x === 'string' && !!x.trim()).slice(0, 3).map((x) => x.trim().slice(0, 300));
   return {

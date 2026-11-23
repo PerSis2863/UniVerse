@@ -47,7 +47,7 @@ export const INTERNSHIP_TABS: SectionTab[] = [
 
 export const STUDENT_BOARD_TABS: SectionTab[] = [
   { href: '/student/blackboard', label: 'Course board' },
-  { href: '/student/tutor', label: 'AI tutor', also: ['/student/voice-tutor', '/student/semester'] },
+  { href: '/student/tutor', label: 'Ghidra tutor', also: ['/student/voice-tutor', '/student/semester'] },
   { href: '/student/tutoring', label: 'Peer time-bank' },
   { href: '/student/reels', label: 'Revision reels' },
 ];
@@ -62,7 +62,7 @@ export const STUDENT_TUTOR_MODES: SectionTab[] = [
 
 export const TEACHER_BOARD_TABS: SectionTab[] = [
   { href: '/teacher/blackboard', label: 'Course board' },
-  { href: '/teacher/tutor', label: 'AI tutor' },
+  { href: '/teacher/tutor', label: 'Ghidra tutor' },
   { href: '/teacher/reels', label: 'Revision reels' },
 ];
 

@@ -4,7 +4,7 @@ import { courseAccess } from '@/lib/course-access';
 import type { SessionUser } from '@/lib/server-auth';
 import { logAiUse } from './ai-receipts';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { parseSkills } from './skill-evidence';
 
@@ -61,7 +61,7 @@ export async function draftSyllabus(courseId: string, user: SessionUser, b: Reco
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(user.id, { kind: 'syllabus', detail: course.name, courseId });
   const full = await prisma.course.findUnique({ where: { id: courseId }, select: { description: true, department: true } });
-  const out = await geminiJson<SyllabusDraft>(
+  const out = await ghidraJson<SyllabusDraft>('syllabus', 
     SYSTEM,
     `Course: ${course.code} — ${course.name}\nDepartment: ${full?.department ?? 'not given'}\nDescription: ${full?.description ?? 'not given'}\nLevel: ${LEVEL_TEXT[level]}\nWeeks: ${weeks}${notes ? `\nThe teacher adds: ${notes}` : ''}`,
     {

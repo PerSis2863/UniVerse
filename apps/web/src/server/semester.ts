@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { HttpException } from './http';
 import { featureOff } from './moderation';
 import { words } from '@/lib/text-search';
@@ -242,7 +242,7 @@ export async function askSemester(user: SessionUser, q: string, kindsRaw: unknow
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const passages = found.map((f, i) => `[${i + 1}] (${f.title}${f.day ? `, ${f.day}` : ''})\n${f.body}`).join('\n\n');
-  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[] }>(ASK_SYSTEM, `Passages:\n${passages}\n\nQuestion: ${question}`, {
+  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[] }>('semester', ASK_SYSTEM, `Passages:\n${passages}\n\nQuestion: ${question}`, {
     type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['answer', 'grounded', 'used'],
   }, 1200);
   if (!out) throw new HttpException('Couldn’t get an answer right now. Please try again.', 502);

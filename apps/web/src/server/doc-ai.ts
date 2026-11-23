@@ -3,7 +3,7 @@ import { DOC_AI_ACTIONS, isDocAiAction, type DocAiAction } from '@/lib/doc-ai';
 import { isLanguage, languageName } from '@/lib/languages';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
-import { geminiText } from './gemini';
+import { ghidraText } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException } from './http';
 import { featureOff } from './moderation';
 import { docRights } from './docs';
@@ -44,7 +44,7 @@ export async function docAi(docId: string, user: SessionUser, b: Record<string, 
   const prompt = action === 'translate' ? `Translate into ${languageName(lang!)}:\n\n${text}`
     : action === 'continue' ? `Document: ${title}\n\nThe writing so far (continue from its end):\n${text}`
     : text;
-  const out = await geminiText(SYSTEM[action], prompt, Math.min(2000, Math.max(300, Math.round(text.length / 2.5))), action === 'grammar' || action === 'translate');
+  const out = await ghidraText('docs', SYSTEM[action], prompt, Math.min(2000, Math.max(300, Math.round(text.length / 2.5))), action === 'grammar' || action === 'translate');
   const clean = out?.replace(/^["“]|["”]$/g, '').trim();
   if (!clean) throw new HttpException('The AI didn’t answer. Please try again.', 502);
   if (action !== 'continue') await saveAi(key, { text: clean });

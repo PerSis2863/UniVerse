@@ -57,7 +57,7 @@ async function callGemini(model: string, apiKey: string, contents: unknown) {
 export async function POST(req: NextRequest) {
   const user = await getSessionUser(req);
   if (!user) {
-    return NextResponse.json({ error: 'Please sign in to use the AI assistant.' }, { status: 401 });
+    return NextResponse.json({ error: 'Please sign in to ask Ghidra.' }, { status: 401 });
   }
 
   let payload: { message?: unknown; history?: unknown };

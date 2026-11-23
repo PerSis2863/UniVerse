@@ -5,7 +5,7 @@ import {
   type MetricHelp, type MetricId, type MetricParams, type MetricResult, type MetricRow, type Order,
 } from '@/lib/school-metrics';
 import { cachedAi, sameQuestion, saveAi, spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
 import { schoolSql, schoolsOf, type SchoolIds } from './school-scope';
@@ -288,7 +288,7 @@ export async function askSchool(user: SessionUser, question: string): Promise<Me
       const spend = await spendAi(user);
       if (spend.ok) {
         const measures = METRICS.map((m) => `- ${m.id}: ${m.title}. ${m.about}${m.range === 'window' ? ` Usual window ${m.days} days.` : ''}${m.department ? ' Can narrow to one department.' : ''}`).join('\n');
-        const out = await geminiJson<Pick>(SYSTEM, `Measures:\n${measures}\n\nDepartments: ${list.join(', ') || 'none yet'}\n\nQuestion: ${text}`, SCHEMA, 150, true);
+        const out = await ghidraJson<Pick>('school-insights', SYSTEM, `Measures:\n${measures}\n\nDepartments: ${list.join(', ') || 'none yet'}\n\nQuestion: ${text}`, SCHEMA, 150, true);
         if (validPick(out)) {
           pick = out;
           via = 'ai';

@@ -1,7 +1,7 @@
 import prisma from '@/lib/db';
 import { route } from '@/server/assignments';
 import { cachedAi, saveAi, spendAi } from '@/server/ai-budget';
-import { geminiJson } from '@/server/gemini';
+import { ghidraJson } from '@/server/ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { getOrCreatePassport } from '@/server/passport';
@@ -28,7 +28,7 @@ export const POST = (req: Request) => route(req, async (user) => {
     if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) throw new HttpException('AI isn’t available right now. Write a short summary yourself.', 503);
     const spend = await spendAi(user);
     if (!spend.ok) throw new HttpException(spend.message, 429);
-    const out = await geminiJson<{ summary: string }>(
+    const out = await ghidraJson<{ summary: string }>('passport', 
       'You write a 2–3 sentence ATS-friendly professional summary for a student CV. Use only the facts given. First person ("I"). No buzzwords, no invented employers or grades.',
       `Student: ${user.name}\nFacts:\n${facts}`,
       { type: 'OBJECT', properties: { summary: { type: 'STRING' } }, required: ['summary'] },

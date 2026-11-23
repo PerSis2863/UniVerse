@@ -2,7 +2,7 @@ import prisma from '@/lib/db';
 import { courseAccess } from '@/lib/course-access';
 import { route } from '@/server/assignments';
 import { spendAi } from '@/server/ai-budget';
-import { geminiJson } from '@/server/gemini';
+import { ghidraJson } from '@/server/ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from '@/server/http';
 import { featureOff } from '@/server/moderation';
 import { parseSkills } from '@/server/skill-evidence';
@@ -35,7 +35,7 @@ export const POST = (req: Request, { params }: Ctx) => route(req, async (user) =
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const full = await prisma.course.findUnique({ where: { id: course.id }, select: { description: true, department: true } });
-  const out = await geminiJson<{ skills: string[] }>(
+  const out = await ghidraJson<{ skills: string[] }>('course-skills', 
     'You suggest the skills a university course builds, as employers would list them on a job ad: short (1–4 words), concrete, mixing subject skills (e.g. "Data structures", "Statistical modelling") and transferable ones (e.g. "Technical writing"). Use the course\'s language.',
     `Course: ${course.code} ${course.name}\nDepartment: ${full?.department ?? 'unknown'}\nDescription: ${full?.description ?? 'none'}\n\nSuggest 5 skills.`,
     { type: 'OBJECT', properties: { skills: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['skills'] },

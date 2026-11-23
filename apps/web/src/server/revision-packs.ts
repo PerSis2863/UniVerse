@@ -5,7 +5,7 @@ import { MATH_RULE } from '@/lib/tutor-rules';
 import { cleanPack, joinSources, outlinePack, type RevisionPack } from '@/lib/revision-pack';
 import { BadRequestException, ForbiddenException, NotFoundException } from './http';
 import { str, strings, type Body } from './body';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { notifyMany } from './email';
@@ -77,7 +77,7 @@ export async function makePack(u: SessionUser, b: Body) {
     const spend = await spendAi(u);
     if (spend.ok) {
       await logAiUse(u.id, { kind: 'revision', detail: title, courseId });
-      pack = cleanPack(await geminiJson<unknown>(SYSTEM, `Course: ${a.course.code} — ${a.course.name}\n\n${joinSources(all)}`, SCHEMA, 6000));
+      pack = cleanPack(await ghidraJson<unknown>('revision', SYSTEM, `Course: ${a.course.code} — ${a.course.name}\n\n${joinSources(all)}`, SCHEMA, 6000));
       usedAi = pack.topics.length > 0;
     }
   }

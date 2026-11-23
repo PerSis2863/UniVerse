@@ -4,7 +4,7 @@ import { membership } from '@/lib/chat';
 import { readAppFile } from '@/lib/storage';
 import { route } from '@/server/assignments';
 import { spendAi } from '@/server/ai-budget';
-import { geminiAudioText } from '@/server/gemini';
+import { ghidraAudioText } from '@/server/ghidra/brain';
 import { BadRequestException, HttpException, NotFoundException } from '@/server/http';
 import { publishChat } from '@/server/realtime';
 
@@ -24,7 +24,7 @@ export const POST = (req: Request, { params }: { params: Promise<{ id: string }>
     const file = await readAppFile(msg.attachmentUrl);
     if (!file) throw new HttpException('This voice message couldn’t be read.', 422);
     const mime = (msg.attachmentMime || file.mime || 'audio/webm').split(';')[0];
-    const transcript = await geminiAudioText(file.bytes, mime);
+    const transcript = await ghidraAudioText('transcribe', file.bytes, mime);
     if (!transcript) throw new HttpException('Couldn’t transcribe right now. Try again in a moment.', 503);
     await prisma.message.update({ where: { id }, data: { metadata: { ...meta, transcript: transcript.slice(0, 4000) } as Prisma.InputJsonValue } });
     publishChat(msg.conversationId);

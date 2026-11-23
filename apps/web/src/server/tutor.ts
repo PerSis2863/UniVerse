@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import { logAiUse } from './ai-receipts';
-import { geminiFileText, geminiJson } from './gemini';
+import { ghidraFileText, ghidraJson } from './ghidra/brain';
 import { cachedAi, saveAi, sameQuestion, spendAi } from './ai-budget';
 import { readAppFile } from '@/lib/storage';
 import { words } from '@/lib/text-search';
@@ -65,7 +65,7 @@ export async function prepareSources(courseId: string, limit = 3, only?: string)
       const file = await readAppFile(m.fileUrl);
       if (!file) error = 'The file could not be opened (only files uploaded to UniVerse can be read).';
       else if (/pdf/.test(file.mime) || /\.pdf$/i.test(m.fileUrl)) {
-        const t = await geminiFileText(file.bytes, 'application/pdf');
+        const t = await ghidraFileText('tutor', file.bytes, 'application/pdf');
         if (t === null) error = 'The AI couldn’t read this PDF (it may be scanned images only, or too large).';
         else text = t;
       } else text = new TextDecoder().decode(file.bytes).replace(/<[^>]+>/g, ' ');
@@ -177,7 +177,7 @@ export async function askTutor(a: Access, question: string, history: { role: 'us
   if (!spend.ok) return { answer: null, reason: 'limit', message: spend.message, citations: [] };
   const context = history.slice(-4).map((h) => `${h.role === 'user' ? 'Student' : 'Tutor'}: ${h.text.slice(0, 600)}`).join('\n');
   const found = rank(passages(sources), `${history.filter((h) => h.role === 'user').slice(-1)[0]?.text ?? ''} ${question}`);
-  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[] }>(
+  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[] }>('tutor', 
     `${ASK_SYSTEM}\n${how}`,
     `Course: ${a.courseCode} — ${a.courseName}\n\nCourse passages:\n${cite(found) || '(none matched)'}\n\n${context ? `Conversation so far:\n${context}\n\n` : ''}Student's question: ${question.slice(0, 1500)}`,
     {
@@ -209,7 +209,7 @@ export async function practiceQuestions(a: Access, topic: string, count = 5) {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { questions: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
-  const out = await geminiJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>(
+  const out = await ghidraJson<{ questions: { question: string; options: string[]; answer: number; explanation: string; source: number }[] }>('tutor', 
     `You write practice questions for university students from course passages. Make ${count} multiple-choice questions that test understanding (not trivia), each with 4 plausible options and exactly one correct answer. The explanation says why the answer is right, in one or two sentences. "source" is the number of the passage the question comes from. Use the language of the passages. ${MATH_RULE}`,
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
     {
@@ -231,7 +231,7 @@ export async function makeFlashcards(a: Access, topic: string, count = 10) {
   const sources = await readySources(a.courseId);
   if (!sources.length) return { cards: null, reason: 'no-sources' as const };
   const ps = pick(sources, topic, 8);
-  const out = await geminiJson<{ cards: { front: string; back: string; source: number }[] }>(
+  const out = await ghidraJson<{ cards: { front: string; back: string; source: number }[] }>('tutor', 
     `You make study flashcards from course passages. Make up to ${count} cards: the front is a short question or term, the back a short, precise answer (max 40 words). Cover the key ideas, one idea per card. "source" is the passage number. Use the language of the passages. ${MATH_RULE}`,
     `Course: ${a.courseCode} — ${a.courseName}${topic ? `\nTopic: ${topic.slice(0, 200)}` : ''}\n\nPassages:\n${cite(ps)}`,
     {

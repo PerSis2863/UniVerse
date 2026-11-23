@@ -1,6 +1,6 @@
 import prisma from '@/lib/db';
 import { COMPANY } from '@/lib/company';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { emailDue, parseEmailSchedule } from '@/lib/feature-switches';
 import { ownerEmails } from './auth';
 import { APP_URL, escapeHtml, sendEmail } from './email';
@@ -116,7 +116,7 @@ export async function healthCheck(fresh = false): Promise<HealthReport> {
   const ruleScore = Math.max(0, 100 - findings.reduce((s, f) => s + (f.severity === 'high' ? 15 : f.severity === 'medium' ? 7 : 2), 0));
 
   // AI: ranks, merges and explains. Only counts, error messages and paths are sent (no personal data).
-  const ai = await geminiJson<{ score: number; summary: string; findings: Finding[] }>(
+  const ai = await ghidraJson<{ score: number; summary: string; findings: Finding[] }>('health', 
     'You are the security and reliability reviewer for UniVerse, a university platform on Cloudflare Workers with a D1 database, run by a non-technical owner. Given findings from automatic checks, recent open errors and usage numbers, return: score (0-100, 100 = all healthy), a 2-3 sentence plain-English summary of the most important things, and findings: the given findings rewritten in very simple words, merged where duplicated, ranked by real risk, plus at most 3 extra findings you can clearly infer from the errors (for example a broken page, a bug pattern, or a security smell in an error message). Never invent problems that the data does not show. Keep each fix to concrete steps the owner can take, or "Ask Claude to fix: ..." for code bugs.',
     JSON.stringify({ findings, passed, numbers, openErrors: topErrors.map((e) => ({ ...e, message: e.message.slice(0, 300) })) }),
     {

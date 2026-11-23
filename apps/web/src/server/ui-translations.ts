@@ -3,7 +3,7 @@ import { isAppLanguage, languageInfo, type Language } from '@/lib/i18n';
 import { CHUNKS, cleanChunk } from '@/lib/ui-dictionary';
 import type { User } from '@prisma/client';
 import { BadRequestException, HttpException } from './http';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { spendAi } from './ai-budget';
 import { featureOff } from './moderation';
 
@@ -79,7 +79,7 @@ export async function translateBatch(user: User, b: Record<string, unknown>) {
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
   const { name } = languageInfo(lang);
-  const res = await geminiJson<{ translations: string[] }>(
+  const res = await ghidraJson<{ translations: string[] }>('translate', 
     `You translate the user interface of UniVerse, an app for schools and universities (students, teachers, parents), from English into ${name}. ` +
       'Translate each item on its own, short and natural like a well-made app in that language (buttons stay short). Keep placeholders such as {0} and {1} exactly, ' +
       'keep emoji, symbols (· … → %), numbers, URLs and the names UniVerse, Google, Microsoft, Stripe unchanged. Return exactly one translation per item, in the same order.',

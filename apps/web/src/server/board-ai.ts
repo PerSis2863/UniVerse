@@ -2,7 +2,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { boardAccess, canEdit } from './boards';
-import { geminiJson, geminiJsonImage } from './gemini';
+import { ghidraJson, ghidraJsonImage } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 
@@ -79,7 +79,7 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
   if (action === 'themes') {
     if (texts.length < 3) throw new BadRequestException('Add at least 3 sticky notes first.');
     const list = texts.map((t, i) => `${i}. ${t}`).join('\n');
-    const out = await geminiJson<{ themes: { name: string; notes: number[] }[] }>(
+    const out = await ghidraJson<{ themes: { name: string; notes: number[] }[] }>('boards', 
       'You group sticky notes from a class workshop into themes. 2 to 6 themes, each with a short name (2–4 words). Every note goes in exactly one theme; use the note numbers given. Keep the language of the notes.',
       `Board: ${access.board.title}\nNotes:\n${list}`, THEMES, 1500, true,
     );
@@ -93,7 +93,7 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
   if (action === 'mindmap') {
     const topic = clip(b.topic, 200);
     if (!topic) throw new BadRequestException('What should the mind map be about?');
-    const out = await geminiJson<{ center: string; branches: { label: string; ideas: string[] }[] }>(
+    const out = await ghidraJson<{ center: string; branches: { label: string; ideas: string[] }[] }>('boards', 
       'You make a mind map for students. A short centre (the topic), 3 to 6 branches with short labels (1–4 words), each with up to 4 short ideas (2–6 words). Write in the language of the topic.',
       `Topic: ${topic}${texts.length ? `\nAlready on the board:\n${texts.slice(0, 40).join('\n')}` : ''}`, MINDMAP, 1200, true,
     );
@@ -101,13 +101,13 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
     return { center: clip(out.center, 60) || topic.slice(0, 60), branches: out.branches.slice(0, 6).map((br) => ({ label: clip(br.label, 40), ideas: (br.ideas ?? []).map((x) => clip(x, 60)).filter(Boolean).slice(0, 4) })).filter((br) => br.label) };
   }
   if (action === 'diagram') {
-    const out = await geminiJsonImage<Parameters<typeof tidyDiagram>[0]>(DIAGRAM_SYSTEM, `Board: ${access.board.title}${texts.length ? `\nTyped text in the sketch (to help reading it): ${texts.slice(0, 40).join(' | ')}` : ''}`, { mimeType: 'image/png', data: image }, DIAGRAM, 3000);
+    const out = await ghidraJsonImage<Parameters<typeof tidyDiagram>[0]>('boards', DIAGRAM_SYSTEM, `Board: ${access.board.title}${texts.length ? `\nTyped text in the sketch (to help reading it): ${texts.slice(0, 40).join(' | ')}` : ''}`, { mimeType: 'image/png', data: image }, DIAGRAM, 3000);
     const d = out ? tidyDiagram(out) : null;
     if (!d?.nodes.length) throw new HttpException('The AI couldn’t read a diagram in this sketch. Try selecting just the drawing.', 502);
     return d;
   }
   if (!texts.length) throw new BadRequestException('There’s no text on this board to summarise yet.');
-  const out = await geminiJson<{ title: string; summary: string; nextSteps: string[] }>(
+  const out = await ghidraJson<{ title: string; summary: string; nextSteps: string[] }>('boards', 
     'You summarise a whiteboard from a class or group session for the students. A short title, a summary of 2–4 sentences, and up to 5 concrete next steps. Use only what is on the board. Write in the language of the board.',
     `Board: ${access.board.title}\nText on the board:\n${texts.join('\n')}`, SUMMARY, 900, true,
   );

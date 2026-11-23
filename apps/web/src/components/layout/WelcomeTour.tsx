@@ -25,7 +25,7 @@ const STOPS: Record<string, Stop[]> = {
   STUDENT: [
     { title: 'Your home', text: 'Your day at a glance: classes, what’s due and the latest from your university.', href: '/student' },
     { title: 'Courses', text: 'Every course you take, with its materials, live classes and courses saved for offline.', href: '/student/courses' },
-    { title: 'Learn', text: 'Courses, assignments and grades, the course board with the AI tutor, and resources: everything for your classes in one group.', href: '/student/blackboard' },
+    { title: 'Learn', text: 'Courses, assignments and grades, the course board with the Ghidra tutor, and resources: everything for your classes in one group.', href: '/student/blackboard' },
     { title: 'Messages', text: 'Chats with classmates, teachers and groups, and your calls.', href: '/student/inbox' },
     { title: 'Careers & impact', text: 'Internships, projects and volunteering to join, your verified credentials and your skills passport.', href: '/student/impact/ngo-marketplace' },
     { title: 'Student life', text: 'Clubs, events and tickets, the campus board, rooms and the dining menu.', href: '/student/life/associations' },
@@ -36,7 +36,7 @@ const STOPS: Record<string, Stop[]> = {
   TEACHER: [
     { title: 'Your home', text: 'Your classes and what needs your attention today.', href: '/teacher' },
     { title: 'Courses', text: 'Your courses: materials, modules, live classes and the gradebook.', href: '/teacher/courses' },
-    { title: 'Blackboard', text: 'Post announcements and materials; the AI tutor answers your students from them.', href: '/teacher/blackboard' },
+    { title: 'Blackboard', text: 'Post announcements and materials; the Ghidra tutor answers your students from them.', href: '/teacher/blackboard' },
     { title: 'Students', text: 'Your students, early warnings, mastery and meetings with parents.', href: '/teacher/students' },
     { title: 'Marking & attendance', text: 'Assignments, quizzes, the gradebook and the register, as tabs in one place.', href: '/teacher/assignments' },
     { title: 'Messages', text: 'Chat with students, colleagues and parents, and your calls.', href: '/teacher/inbox' },

@@ -340,7 +340,7 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
     <div className={cn(card, 'p-6')}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-500" /> AI use today</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">
-        Every AI tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
+        Every Ghidra tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
       </p>
       <div className="flex items-baseline justify-between gap-2 text-sm">
         <span className="font-semibold text-zinc-900 dark:text-white tabular-nums">{ai.used.toLocaleString()} of {ai.limits.site.toLocaleString()} requests</span>

@@ -48,7 +48,7 @@ export const SETTINGS: SettingEntry[] = [
   { id: 'sign-ins', section: 'privacy', label: 'Recent sign-ins', keywords: 'login history activity security' },
   { id: 'family', section: 'family', label: 'Parents and guardians', keywords: 'family share progress parent', roles: ['STUDENT'] },
   { id: 'consents', section: 'consents', label: 'My consents', keywords: 'permissions agree forms' },
-  { id: 'assistant', section: 'ai', label: 'Floating AI assistant', keywords: 'chatbot button corner' },
+  { id: 'assistant', section: 'ai', label: 'Ghidra in the corner', keywords: 'chatbot button corner' },
   { id: 'ai-activity', section: 'ai', label: 'Your AI activity', keywords: 'ai history receipt record' },
   { id: 'organization', section: 'organization', label: 'School settings', keywords: 'school name organization demo sign in', roles: ['ADMIN'] },
   { id: 'offline', section: 'storage', label: 'Offline courses', keywords: 'download courses no internet', roles: ['STUDENT'] },
