@@ -2,6 +2,7 @@
 
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
+import NextImage from 'next/image';
 import { BookOpen, ChevronLeft, ChevronRight, Copy, Download, Eye, Film, Gauge, Lightbulb, Share2, File as FileIcon, Pause, SkipBack, SkipForward, X, FilePlus2, FileCode2, Image as ImageIcon, Play, Square, Trash2, Upload } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
@@ -24,6 +25,11 @@ import { LabEditor } from './LabEditor';
 import { FRAME_H, FRAME_W, LabSweep, type Sweep } from './LabSweep';
 import { MAX_FRAMES, sweepCodes, sweepValues } from '@/lib/lab/sweep';
 import { builtinNames } from './matlab-lang';
+import { LANGS, langOf } from '@/lib/lab/langs';
+import { LangRunner, type LangEvent } from './lang-runner';
+
+/** Figures from the other languages (M444–) are numbered from here and shown as pictures, never put into the page. */
+const OTHER_FIG = 1_000_000;
 
 // M376: Hyperion's window: the command window, a script editor, the variables and the figures, like a desktop
 // maths program. The engine (src/lib/lab) runs in a background worker (lab.worker.ts): the page never freezes and
@@ -65,6 +71,7 @@ const EXAMPLES: Script[] = [
   { name: 'vibration.m', code: "% Vibration analysis: a hammer test, and a bearing that is starting to fail\nrng(3); fs = 1000; n = 2^16; T = 1/fs;\n% A bracket with two modes (32 Hz at 2 % damping, 87 Hz at 3 %), shaken by random taps\nx = randn(n, 1);\nw1 = 2*pi*32; r1 = exp(-0.02*w1*T); w2 = 2*pi*87; r2 = exp(-0.03*w2*T);\ny = filter([0 r1*sin(w1*T)], [1 -2*r1*cos(w1*T) r1^2], x) + filter([0 r2*sin(w2*T)], [1 -2*r2*cos(w2*T) r2^2], x);\n[H, f] = modalfrf(x, y, fs, 4096);\n[fn, zeta] = modalfit(H, f, fs, 2)          % natural frequencies (Hz) and damping ratios\nsemilogy(f, abs(H)); grid on; xlim([0 200])\ntitle('Frequency response'); xlabel('Hz')\n\n% A bearing: steady noise plus impacts that ring near 3 kHz, 12 times a second\nfs = 20000; t = (0:1/fs:1-1/fs)';\nv = 0.3*randn(size(t));\nfor s = 1:round(fs/12):numel(t) - 300\n  k = (0:299)';\n  v(s + k) = v(s + k) + 2*exp(-k/40).*sin(2*pi*3000*k/fs);\nend\nfigure; kurtogram(v, fs, 7)                  % the band where the impacts ring\n[~, ~, ~, fc, ~, bw] = kurtogram(v, fs, 7);\nfprintf('Filter around %.0f Hz (%.0f Hz wide), then look at its envelope spectrum\\n', fc, bw)\n" },
   { name: 'learn.m', code: "% Machine learning: Fisher's iris flowers\nrng(1)                              % the same folds every run\nload fisheriris                     % meas: 150 flowers x 4 measurements (cm); species: their names\nk = 5;   % slider 1 15\nknn = fitcknn(meas, species, 'NumNeighbors', k);\ncv = crossval(knn, 'KFold', 5);\nfprintf('%d nearest neighbours: %.1f%% right on flowers they never saw\\n', k, 100*(1 - kfoldLoss(cv)))\nconfusionchart(species, kfoldPredict(cv))\nfigure; gscatter(meas(:,3), meas(:,4), species); xlabel('Petal length (cm)'); ylabel('Petal width (cm)')\ntree = fitctree(meas(:,3:4), species);\nlabel = predict(tree, [4.8 1.6])\nfigure; [~, score, ~, ~, explained] = pca(meas);\ngscatter(score(:,1), score(:,2), species); title(sprintf('The first two components: %.0f%% of the spread', sum(explained(1:2))))\n" },
   { name: 'surface.m', code: "% A surface you can turn, and its contours\n[X, Y, Z] = peaks(40);\nsubplot(1, 2, 1)\nsurf(X, Y, Z); shading interp; colorbar\ntitle('peaks'); xlabel('x'); ylabel('y')\nview(-30, 35)\nsubplot(1, 2, 2)\ncontourf(X, Y, Z, 12)\ntitle('from above')\n" },
+  { name: 'python_demo.py', code: "# Python inside Hyperion: NumPy, SciPy, Pandas and Matplotlib, nothing to install (the first run loads them)\nimport numpy as np\nimport pandas as pd\nfrom scipy import integrate, optimize\nimport matplotlib.pyplot as plt\n\n# A damped spring, solved by SciPy\ndef spring(t, y):\n    return [y[1], -4 * y[0] - 0.5 * y[1]]\n\nsol = integrate.solve_ivp(spring, [0, 20], [1, 0], max_step=0.05)\nplt.plot(sol.t, sol.y[0])\nplt.xlabel('t (s)'); plt.ylabel('x (m)'); plt.title('A damped spring (SciPy)')\n\n# Where cos(x) = x\nprint('cos(x) = x at', optimize.brentq(lambda x: np.cos(x) - x, 0, 1))\n\n# A small table with Pandas\ndf = pd.DataFrame({'day': range(1, 8), 'steps': np.random.default_rng(1).integers(3000, 12000, 7)})\nprint(df.describe().round(1))\n" },
 ];
 const read = (): Script[] => { try { const v = JSON.parse(localStorage.getItem(KEEP) ?? 'null'); return Array.isArray(v) && v.length ? v : EXAMPLES; } catch { return EXAMPLES; } };
 const lineOf = (code: string, at: number) => code.slice(0, at).split('\n').length;
@@ -82,6 +89,8 @@ export function LabApp() {
   const [open, setOpen] = useState(0);
   const [log, setLog] = useState<Line[]>([{ k: 'out', t: 'Hyperion: type a command and press Enter, or run a script. Try  x = magic(4)  or  plot(1:10)\n' }]);
   const [vars, setVars] = useState<VarRow[]>([]);
+  // Whose variables are listed (M444): Hyperion's engine (they open in the viewer) or another language's (shown only).
+  const [varsFrom, setVarsFrom] = useState('MATLAB');
   const [figs, setFigs] = useState<FigOut[]>([]);
   const [current, setCurrent] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
@@ -127,6 +136,8 @@ export function LabApp() {
   const keepTimer = useRef(0);
   const logBox = useRef<HTMLDivElement>(null);
   const seq = useRef(0);
+  // M444–: Python, R, Julia, C++ and Rust scripts run outside the MATLAB engine.
+  const runner = useRef<LangRunner | null>(null);
 
   // Saved a moment after the last change (a slider sends many changes a second).
   const save = (next: Script[]) => { setScripts(next); clearTimeout(keepTimer.current); keepTimer.current = window.setTimeout(() => { try { localStorage.setItem(KEEP, JSON.stringify(next)); } catch { /* private mode */ } }, 250); };
@@ -135,8 +146,30 @@ export function LabApp() {
     return [...prev.slice(-800), l];
   });
 
+  /** A script in another language: its thread prints, then hands back its error, figures and variables. */
+  const onLang = (e: LangEvent) => {
+    if ('status' in e) { print({ k: 'out', t: `${e.status}\n` }); return; }
+    if ('out' in e) { print({ k: e.err ? 'err' : 'out', t: e.out }); return; }
+    const p = pending.current;
+    if (e.error) print({ k: 'err', t: `Error${e.line ? ` (line ${e.line})` : ''}: ${e.error}\n` });
+    setCodeError(e.error && e.line ? { line: e.line, message: e.error } : null);
+    setVars(e.vars); setVarsFrom(langOf(list[open]?.name ?? '').name);
+    if (e.figs.length) { const out = e.figs.map((svgText, i) => ({ id: OTHER_FIG + i + 1, light: svgText, dark: svgText, tex: '' })); setFigs(out); setCurrent(out[out.length - 1].id); }
+    else if (p) { setFigs([]); setCurrent(null); }
+    pending.current = null; busyNow.current = false; setBusy(false);
+  };
   const run = (code: string, from: From) => {
     if (busyNow.current || !code.trim() || !worker.current) return;
+    const lang = langOf(list[open]?.name ?? '');
+    // A script in another language runs there; so does a command while one is open (Python, R and Julia keep a workspace).
+    if ((from === 'script' && lang.id !== 'matlab') || (from === 'cmd' && ['python', 'r', 'julia'].includes(lang.id))) {
+      const id = ++seq.current;
+      pending.current = { id, code, from };
+      busyNow.current = true; setBusy(true);
+      print({ k: 'in', t: from === 'cmd' ? code : `>> run ${list[open]?.name ?? 'script'} (${lang.name})` });
+      runner.current?.run(lang, code, [...fileData.current.values()].map((f) => ({ name: f.name, bytes: f.bytes })));
+      return;
+    }
     const id = ++seq.current;
     pending.current = { id, code, from };
     busyNow.current = true;
@@ -201,7 +234,7 @@ export function LabApp() {
       lastLiveError.current = errText; // a live run repeating the same error stays quiet
       // A script's error is marked on its line in the editor (until the code changes).
       setCodeError(m.error && p && p.from !== 'cmd' && p.from !== 'note' && m.at !== undefined ? { line: lineOf(p.code, m.at), message: m.error } : null);
-      setVars(m.vars);
+      setVars(m.vars); setVarsFrom('MATLAB');
       // Files the code wrote or deleted: kept on this device (or forgotten).
       for (const f of m.files) {
         if (f.bytes) { fileData.current.set(f.name, { name: f.name, bytes: f.bytes, pixels: f.pixels }); void keep(f.name, f.bytes); }
@@ -269,12 +302,17 @@ export function LabApp() {
     listFiles();
   };
   const boot = useEffectEvent(() => start());
-  useEffect(() => { boot(); return () => worker.current?.terminate(); }, []);
+  const onLangEvent = useEffectEvent((e: LangEvent) => onLang(e));
+  useEffect(() => {
+    boot();
+    runner.current = new LangRunner((e) => onLangEvent(e));
+    return () => { worker.current?.terminate(); runner.current?.stop(); };
+  }, []);
   useEffect(() => { logBox.current?.scrollTo({ top: logBox.current.scrollHeight }); }, [log]);
 
 
   const stop = () => {
-    worker.current?.terminate(); start();
+    worker.current?.terminate(); start(); runner.current?.stop();
     setBusy(false); setVars([]); pending.current = null; busyNow.current = false; queued.current = null;
     setSweep((s) => (s ? { ...s, done: true } : s));
     print({ k: 'err', t: 'Stopped. The variables were cleared (the engine was restarted).\n' });
@@ -304,7 +342,7 @@ export function LabApp() {
   const figId = fig?.id;
   useEffect(() => {
     const el = figBox.current;
-    if (!el || figId === undefined) return;
+    if (!el || figId === undefined || figId > OTHER_FIG) return;
     let t = 0;
     const ask = () => {
       const w = Math.round(el.clientWidth - 16), h = Math.round(Math.min(el.clientHeight - 16, w * 0.8));
@@ -318,6 +356,9 @@ export function LabApp() {
     return () => { ro.disconnect(); clearTimeout(t); };
   }, [figId]);
   const svg = fig ? (dark ? fig.dark : fig.light) : '';
+  const otherSvg = fig && fig.id > OTHER_FIG ? fig.light : '';
+  const otherUrl = useMemo(() => (otherSvg ? URL.createObjectURL(new Blob([otherSvg], { type: 'image/svg+xml' })) : ''), [otherSvg]);
+  useEffect(() => () => { if (otherUrl) URL.revokeObjectURL(otherUrl); }, [otherUrl]);
   const download = (name: string, body: BlobPart, type: string) => { const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([body], { type })); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 2000); };
   const png = async () => {
     if (!fig) return;
@@ -331,9 +372,10 @@ export function LabApp() {
   const copyTex = async () => { if (!fig) return; try { await navigator.clipboard.writeText(fig.tex); toast.success('LaTeX copied: paste it into your document (it needs \\usepackage{pgfplots}).'); } catch { download(`figure${fig.id}.tex`, fig.tex, 'text/x-tex'); } };
 
   const script = list[open] ?? list[0];
+  const lang = langOf(script.name), mat = lang.id === 'matlab';
   const editScript = (code: string) => { if (code === script.code) return; setCodeError(null); setWatch(null); save(list.map((s, i) => (i === open ? { ...s, code } : s))); };
-  const controls = controlsOf(script.code);
-  const noteSecs = noteView[open] ? notebookOf(script.code) : null;
+  const controls = mat ? controlsOf(script.code) : [];
+  const noteSecs = mat && noteView[open] ? notebookOf(script.code) : null;
   const runs = profs[open] ?? [], latest = runs[runs.length - 1];
   const timed = latest && latest.code === script.code ? latest : null;
   const before = timed && runs.length > 1 ? runs[runs.length - 2] : null;
@@ -457,7 +499,7 @@ export function LabApp() {
       </div>
       <div className="flex items-start gap-2 border-t border-zinc-200/80 px-3 py-2 font-mono text-[13px] dark:border-white/10">
         <span aria-hidden className="pt-1 text-zinc-500">&gt;&gt;</span>
-        <textarea value={cmd} rows={Math.min(6, cmd.split('\n').length)} onChange={(e) => setCmd(e.target.value)} aria-label="Command" spellCheck={false} placeholder="Type a command, then Enter"
+        <textarea value={cmd} rows={Math.min(6, cmd.split('\n').length)} onChange={(e) => setCmd(e.target.value)} aria-label="Command" spellCheck={false} placeholder={['python', 'r', 'julia'].includes(langOf(list[open]?.name ?? '').id) ? `Type ${langOf(list[open]?.name ?? '').name}, then Enter` : 'Type a command, then Enter'}
           onKeyDown={(e) => {
             if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
             else if (e.key === 'Tab' && !e.shiftKey) { e.preventDefault(); complete(e.currentTarget); }
@@ -507,12 +549,22 @@ export function LabApp() {
           <input value={script.name} onChange={(e) => save(list.map((s, i) => (i === open ? { ...s, name: e.target.value.replace(/[^\w.-]/g, '') || 'script.m' } : s)))} className="min-w-0 flex-1 bg-transparent font-mono text-zinc-800 outline-none dark:text-zinc-100" />
         </label>
         <button type="button" className={btn} aria-expanded={sharing} onClick={() => setSharing((v) => !v)}><Share2 className="h-3.5 w-3.5" aria-hidden />Share</button>
-        {!noteView[open] && <button type="button" className={cn(btn, explainOn && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-pressed={explainOn} onClick={() => setExplainOn((v) => !v)} title="What each line does, in plain words under it"><Lightbulb className="h-3.5 w-3.5" aria-hidden />Explain</button>}
-        <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
-        <button type="button" className={btn} onClick={() => { const name = `untitled${list.length + 1}.m`; save([...list, { name, code: '' }]); setOpen(list.length); }}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New</button>
+        {mat && !noteView[open] && <button type="button" className={cn(btn, explainOn && 'bg-violet-100 text-violet-900 dark:bg-violet-500/20 dark:text-violet-100')} aria-pressed={explainOn} onClick={() => setExplainOn((v) => !v)} title="What each line does, in plain words under it"><Lightbulb className="h-3.5 w-3.5" aria-hidden />Explain</button>}
+        {mat ? <Segmented<'code' | 'note'> label="Show the script as" value={noteView[open] ? 'note' : 'code'} onChange={(v) => setNoteView((nv) => ({ ...nv, [open]: v === 'note' }))} segments={[{ value: 'code', label: 'Code' }, { value: 'note', label: 'Notebook' }]} />
+          : <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-semibold text-violet-900 dark:bg-violet-500/20 dark:text-violet-100" title={lang.where === 'browser' ? `${lang.name} runs inside this browser: nothing to install` : `${lang.name} runs in Hyperion's computer app, with the ${lang.name} installed on this computer`}>{lang.name}</span>}
+        <label className={cn(btn, 'relative cursor-pointer')}><FilePlus2 className="h-3.5 w-3.5" aria-hidden />New
+          <select aria-label="New script in" value="" className="absolute inset-0 cursor-pointer opacity-0" onChange={(e) => {
+            const l = LANGS.find((x) => x.id === e.target.value);
+            if (!l) return;
+            save([...list, { name: `untitled${list.length + 1}${l.ext}`, code: l.starter }]); setOpen(list.length);
+          }}>
+            <option value="">New script in…</option>
+            {LANGS.map((l) => <option key={l.id} value={l.id}>{l.name} ({l.ext}){l.where === 'computer' ? ', in the computer app' : ''}</option>)}
+          </select>
+        </label>
         <button type="button" className={btn} disabled={list.length <= 1} onClick={() => { if (!confirm(`Delete ${script.name}?`)) return; save(list.filter((_, i) => i !== open)); setOpen(Math.max(0, open - 1)); }}><Trash2 className="h-3.5 w-3.5" aria-hidden />Delete</button>
-        <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>
-        {!noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
+        {mat && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'watch')} title="Run it step by step, then play it back"><Eye className="h-3.5 w-3.5" aria-hidden />Watch</button>}
+        {mat && !noteView[open] && <button type="button" className={btn} disabled={busy} onClick={() => run(script.code, 'profile')} title="Run it and time every line"><Gauge className="h-3.5 w-3.5" aria-hidden />Time it</button>}
         <button type="button" className="btn-primary btn-sm inline-flex items-center gap-1.5" disabled={busy} onClick={() => run(script.code, 'script')}><Play className="h-3.5 w-3.5" aria-hidden />Run</button>
       </div>
       {sharing && (
@@ -616,8 +668,8 @@ export function LabApp() {
         );
       })()}
       {noteSecs ? <LabNotebook name={script.name} sections={noteSecs} outs={noteSecs.map((sec) => noteOuts[noteKey(open, sec.code)])} running={noteState.running} waiting={noteState.waiting} busy={busy} dark={dark}
-          onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={open} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
-        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn} heat={heat} jump={jump}
+          onRun={runSection} onRunAll={runAllSections} onDownload={download} /> : <LabEditor key={`${open}:${lang.id}`} language={lang.id} value={script.code} onChange={editScript} onRun={() => run(script.code, 'script')} dark={dark} label={`Code of ${script.name}`}
+        vars={vars.map((v) => v.name)} describe={describe} error={codeError} namesVersion={namesVersion} isFn={isFn} explain={explainOn && mat} heat={heat} jump={jump}
         traceAt={watching && step ? step.line : null} breakpoints={marks}
         onToggleBreak={(line) => setBreakpoints((b) => { const now = b[open] ?? []; return { ...b, [open]: now.includes(line) ? now.filter((l) => l !== line) : [...now, line] }; })} />}
     </section>
@@ -630,7 +682,7 @@ export function LabApp() {
     <section className={cn(panel, 'h-full')} aria-label="Variables">
       <div className={head}>Variables{(traceVars ?? vars).length > 0 && <span className="font-normal text-zinc-500">{(traceVars ?? vars).length}</span>}{traceVars && <span className="ms-auto text-xs font-normal text-violet-700 dark:text-violet-300">at step {watch!.k + 1}</span>}</div>
       {traceVars ? (
-        <div className="min-h-0 flex-1 overflow-auto" data-no-motion>
+        <div className="min-h-0 flex-1 overflow-auto" tabIndex={0} role="region" aria-label="Variables at this step" data-no-motion>
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-white text-start text-xs text-zinc-500 dark:bg-[#1b1d22] dark:text-zinc-400"><tr><th className="px-3 py-1.5 text-start font-medium">Name</th><th className="px-2 py-1.5 text-start font-medium">Value</th></tr></thead>
             <tbody>
@@ -644,13 +696,13 @@ export function LabApp() {
           </table>
         </div>
       ) : vars.length ? (
-        <div className="min-h-0 flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto" tabIndex={0} role="region" aria-label="Variable list">
           <table className="w-full text-[13px]">
             <thead className="sticky top-0 bg-white text-start text-xs text-zinc-500 dark:bg-[#1b1d22] dark:text-zinc-400"><tr><th className="px-3 py-1.5 text-start font-medium">Name</th><th className="px-2 py-1.5 text-start font-medium">Value</th><th className="px-2 py-1.5 text-start font-medium">Size</th></tr></thead>
             <tbody>
               {vars.map((v) => (
                 <tr key={v.name} className="border-t border-zinc-100 dark:border-white/[0.06]">
-                  <td className="px-3 py-1.5"><button type="button" className="font-mono font-semibold text-zinc-900 hover:underline dark:text-white" onClick={() => inspect({ name: v.name, steps: [], page: 0, from: [0, 0] })} title={`${v.cls}: open ${v.name}`}>{v.name}</button></td>
+                  <td className="px-3 py-1.5">{varsFrom === 'MATLAB' ? <button type="button" className="font-mono font-semibold text-zinc-900 hover:underline dark:text-white" onClick={() => inspect({ name: v.name, steps: [], page: 0, from: [0, 0] })} title={`${v.cls}: open ${v.name}`}>{v.name}</button> : <span className="font-mono font-semibold text-zinc-900 dark:text-white" title={`${varsFrom} ${v.cls}`}>{v.name}</span>}</td>
                   <td className="max-w-[12rem] truncate px-2 py-1.5 font-mono text-zinc-700 dark:text-zinc-200" title={v.value}>{v.value}</td>
                   <td className="whitespace-nowrap px-2 py-1.5 tabular-nums text-zinc-500 dark:text-zinc-400">{v.size}</td>
                 </tr>
@@ -692,17 +744,20 @@ export function LabApp() {
         {sweep && !watching ? <span className="ms-auto text-xs font-normal text-zinc-500 dark:text-zinc-400" translate="no">Sweep of {sweep.name} in {sweep.scriptName}</span> : <span className="ms-auto flex flex-wrap gap-1">
           <button type="button" className={btn} disabled={!fig} onClick={() => void png()}><ImageIcon className="h-3.5 w-3.5" aria-hidden />PNG</button>
           <button type="button" className={btn} disabled={!fig} onClick={() => fig && download(`figure${fig.id}.svg`, fig.light, 'image/svg+xml')}><Download className="h-3.5 w-3.5" aria-hidden />SVG</button>
-          <button type="button" className={btn} disabled={!fig} onClick={() => void copyTex()}><Copy className="h-3.5 w-3.5" aria-hidden />LaTeX</button>
+          <button type="button" className={btn} disabled={!fig?.tex} onClick={() => void copyTex()}><Copy className="h-3.5 w-3.5" aria-hidden />LaTeX</button>
         </span>}
       </div>
       {watching && figIndex >= 0 ? (
         traceSvg[figIndex] ? <div ref={figBox} className="min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" role="img" aria-label={`The figure at step ${watch!.k + 1}`} dangerouslySetInnerHTML={{ __html: dark ? traceSvg[figIndex].dark : traceSvg[figIndex].light }} /> : <div ref={figBox} className="min-h-0 flex-1" />
       ) : watching ? <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">No figure yet at this step.</p> : sweep ? (
         <LabSweep sweep={sweep} dark={dark} onClose={dropSweep} onUse={sweepSlider ? takeSwept : null} onDownload={download} />
+      ) : fig && fig.id > OTHER_FIG && otherUrl ? (
+        // Another language's figure: drawn by its own code, so only ever shown as a picture (no script in it can run).
+        <div key={fig.id} ref={figBox} className="swap relative min-h-0 flex-1 m-2" data-dir="next"><NextImage src={otherUrl} alt={`Figure ${fig.id - OTHER_FIG} from ${lang.name}`} fill unoptimized className="rounded-xl bg-white object-contain" /></div>
       ) : fig ? (
         // Our own SVG (src/lib/lab/plot.ts), its text escaped there.
         <div key={fig.id} ref={figBox} className="swap min-h-0 flex-1 p-2 [&_svg]:h-auto [&_svg]:max-h-full [&_svg]:w-full" data-dir="next" role="img" aria-label={`Figure ${fig.id}`} dangerouslySetInnerHTML={{ __html: svg }} />
-      ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">Figures appear here. Try plot(1:10) in the command window.</p>}
+      ) : <p className="p-3 text-[13px] text-zinc-500 dark:text-zinc-400">{mat ? 'Figures appear here. Try plot(1:10) in the command window.' : `Figures appear here when the ${lang.name} script draws one.`}</p>}
     </section>
   );
 

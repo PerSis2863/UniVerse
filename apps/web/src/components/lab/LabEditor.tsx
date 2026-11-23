@@ -9,6 +9,12 @@ import { forceLinting, linter, lintGutter, type Diagnostic } from '@codemirror/l
 import { lintScript } from '@/lib/lab/lint';
 import { explainScript } from '@/lib/lab/explain';
 import { completions, highlight, matlab, matlabIndent } from './matlab-lang';
+import { python } from '@codemirror/lang-python';
+import { cpp } from '@codemirror/lang-cpp';
+import type { LangId } from '@/lib/lab/langs';
+
+/** The colours and indentation for a script's language (M444): MATLAB's own; Python's; C++'s (and Rust's, near enough); plain for R and Julia. */
+const langExt = (l: LangId) => (l === 'matlab' ? [matlab, matlabIndent] : l === 'python' ? [python()] : l === 'cpp' || l === 'rust' ? [cpp()] : []);
 
 // M389: Hyperion's script editor (CodeMirror 6): colours, line numbers, matching brackets, indentation that follows
 // if / for / end, suggestions as you type (functions with a line of help, keywords, the script's variables), find
@@ -129,7 +135,9 @@ const look = (dark: boolean) => EditorView.theme({
 
 const NONE: number[] = [];
 
-export function LabEditor({ value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false, heat = null, jump = null }: {
+export function LabEditor({ language = 'matlab', value, onChange, onRun, dark, label, vars, describe, error, namesVersion, traceAt = null, breakpoints = NONE, onToggleBreak, isFn, explain = false, heat = null, jump = null }: {
+  /** The script's language (M444): MATLAB gets the checker, Explain and the engine's suggestions; the others colours only. */
+  language?: LangId;
   value: string;
   onChange: (code: string) => void;
   onRun: () => void;
@@ -159,9 +167,9 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
 }) {
   const host = useRef<HTMLDivElement>(null), view = useRef<EditorView | null>(null);
   const slots = useRef({ theme: new Compartment(), lang: new Compartment(), label: new Compartment(), wrap: new Compartment() });
-  const live = useRef({ onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain });
+  const live = useRef({ onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain, language });
   const first = useRef({ value, dark, label });
-  useEffect(() => { live.current = { onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain }; });
+  useEffect(() => { live.current = { onChange, onRun, vars, describe, onToggleBreak, isFn, error, explain, language }; });
 
   // The editor is made once; later props reach it through the effects below.
   useEffect(() => {
@@ -182,14 +190,14 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
           // Ctrl / Cmd + Enter runs (before CodeMirror's own "insert a blank line").
           Prec.highest(keymap.of([{ key: 'Mod-Enter', run: () => { live.current.onRun(); return true; } }])),
           keymap.of([indentWithTab]),
-          s.lang.of([matlab, matlabIndent]),
+          s.lang.of(langExt(live.current.language)),
           matlab.data.of({ autocomplete: completions(() => live.current.vars, (n) => live.current.describe(n)) }),
           lintGutter(),
           // The checker (M399): a moment after typing stops, what a careful reader would point out, fixes included;
           // the last run's error stays on its line until the code changes.
           linter((v) => {
             const doc = v.state.doc, src = doc.toString(), out: Diagnostic[] = [];
-            for (const p of lintScript(src, live.current.isFn).problems) {
+            for (const p of live.current.language === 'matlab' ? lintScript(src, live.current.isFn).problems : []) {
               const fix = p.fix, d: Diagnostic = { from: p.from, to: Math.min(p.to, doc.length), severity: p.severity, message: p.message };
               if (fix) d.actions = [{ name: fix.label, apply: (view, from) => view.dispatch({ changes: { from: from + (fix.from - p.from), to: from + (fix.to - p.from), insert: fix.insert } }) }];
               out.push(d);
@@ -246,8 +254,8 @@ export function LabEditor({ value, onChange, onRun, dark, label, vars, describe,
     if (!v || !namesVersion) return;
     // The colours are worked out again now that the engine's function names are known.
     v.dispatch({ effects: slots.current.lang.reconfigure([]) });
-    v.dispatch({ effects: slots.current.lang.reconfigure([matlab, matlabIndent]) });
-  }, [namesVersion]);
+    v.dispatch({ effects: slots.current.lang.reconfigure(langExt(language)) });
+  }, [namesVersion, language]);
   useEffect(() => {
     const v = view.current;
     if (!v) return;

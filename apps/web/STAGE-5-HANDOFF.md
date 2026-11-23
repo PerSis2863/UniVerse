@@ -11667,3 +11667,25 @@ dots as zero-length round-capped strokes). Features (CSV) for Classify; Open in 
 fleet made in the language, the feature, monotonicity, a fitted model and `predictRUL`). Tests in `health.test.ts`.
 Not built: features of features (rolling windows), time-synchronous signals in the window, a classifier trained inside
 the window (the CSV goes to Classify), similarity and survival models, saving a session.
+
+## M444 (23 Nov): Hyperion runs Python, nothing to install
+
+The owner's list of 23 Nov ("the languages from your two pictures"), part 1. `src/lib/lab/langs.ts`: `LANGS` (MATLAB .m on
+the engine; Python .py and R .R in the browser; Julia .jl, C++ .cpp and Rust .rs in the computer app) and `langOf(name)`
+by the file's ending (anything else is MATLAB). `py.worker.ts`: Pyodide **0.29.5** imported with `webpackIgnore` from
+`https://cdn.jsdelivr.net/pyodide/v0.29.5/full/` on the first Python run (≈15 MB, the browser caches it), packages by
+`loadPackagesFromImports` (NumPy, SciPy, Pandas, Matplotlib…), `MPLBACKEND=AGG`, stdout and stderr batched to the
+command window, one workspace kept between runs (Stop ends the thread and the workspace), after each run Python's own
+`__hy_after()` returns the figures as SVG (then closes them) and the variables (name, shape or length, type, repr).
+Hyperion's files (fileData) are written to `/home/pyodide` before each run; files the code writes are not brought back
+yet. `lang-runner.ts` (`LangRunner`) owns the language threads; LabApp: a script not in MATLAB runs there, and a command
+too while a Python/R/Julia script is open; Watch, Time it, Notebook, Explain and live controls are MATLAB's only (hidden);
+New is a menu of the six languages with a starter each; the editor colours Python (lang-python) and C++/Rust
+(lang-cpp) and runs the checker only on MATLAB (`language` prop; keyed by script and language). Security: another
+language's figure is drawn by that language's code (a shared link's script could make any SVG), so it is shown only as
+an `<img>` from a blob URL (ids from `OTHER_FIG`), never put into the page; `security-headers.ts` `LANG_CODE` /
+`LANG_DATA` allow script and connect only for Pyodide's and webR's own versioned folders (not all of jsDelivr) plus
+repo.r-wasm.org. Testing here: the environment's network allows cdn.jsdelivr.net, webr.r-wasm.org and repo.r-wasm.org
+(added 23 Nov); Playwright needs `proxy: { server: process.env.https_proxy }` to reach them. A version bump means
+changing both `PYODIDE` and `LANG_CODE`. Not built: micropip (PyPI packages beyond Pyodide's), files written by Python
+saved back to Hyperion, plt.show() windows, interrupting a running Python loop without losing the workspace.
