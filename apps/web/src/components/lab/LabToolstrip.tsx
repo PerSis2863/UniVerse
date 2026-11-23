@@ -6,6 +6,8 @@ import {
   Activity, BookOpen, Box, BrainCircuit, ChartArea, ChartBar, ChartColumn, ChartLine, ChartPie, ChartScatter, ChartSpline, ChevronDown, ChevronUp, CircuitBoard, Compass, Eraser,
   Eye, FileCode, FileDown, FileInput, FilePlus, FolderOpen, GitCompareArrows, GraduationCap, Grid3x3, Image as ImageIcon, Layers, Mountain, PanelsTopLeft, Play, Save, ScanSearch,
   Search, Settings2, Sigma, Square, SquareTerminal, Thermometer, Timer, Wind, Workflow,
+  Download, Variable, List, NotebookPen, Lightbulb, PanelTop, Pin, PinOff, Grid2x2, Palette, Maximize2, Ratio, Heading, MoveHorizontal, MoveVertical, Tags, XSquare,
+  Calculator, TrendingUp, AudioWaveform, Spline, ArrowDownUp, Ruler, Shuffle, BarChart, Infinity as InfinityIcon, Gauge, Cpu, Radio, Radar, Zap, Battery, ScanEye, FunctionSquare,
 } from 'lucide-react';
 import { Menu, Popover } from '@/components/ui/Menu';
 import { cn } from '@/lib/utils';
@@ -19,7 +21,7 @@ import { findInScripts, lineDiff } from '@/lib/lab/diff';
 // the layout and preferences, help, examples and Learn. Plots: a gallery that draws the chosen variables. Apps:
 // Hyperion's windows. A search box for help at the end of the tab row. It folds away to one row.
 
-type Tab = 'home' | 'plots' | 'apps';
+type Tab = 'home' | 'plots' | 'analyse' | 'apps';
 export interface Layout { side: boolean; figure: boolean; codeSize: number }
 export const LAYOUT_START: Layout = { side: true, figure: true, codeSize: 13 };
 
@@ -46,25 +48,47 @@ interface Props {
   onStop: () => void;
   onHelp: (query: string) => void;
   onExample: (index: number) => void;
+  /** M472 (more): the script as a file, and the Notebook and Explain views of a MATLAB script. */
+  onDownload: () => void;
+  notebook: boolean; onNotebook: () => void;
+  explain: boolean; onExplain: () => void;
 }
 
 const KEEP = 'uv-lab-strip';
-const big = 'flex w-[4.25rem] flex-col items-center gap-1 rounded-lg px-1 py-1.5 text-center text-[11.5px] font-medium leading-tight text-zinc-700 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
-const small = 'flex w-full items-center gap-1.5 rounded-md px-1.5 py-1 text-start text-[12px] font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
-const iconBig = 'h-5 w-5 text-violet-600 dark:text-violet-300';
-const iconSmall = 'h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300';
+const big = 'flex min-w-[3.4rem] flex-col items-center gap-0.5 rounded-md px-1 py-1 text-center text-[11px] font-medium leading-[1.15] text-zinc-700 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
+const small = 'flex w-full items-center gap-1 rounded-md px-1 py-[3px] text-start text-[11px] leading-tight font-medium text-zinc-700 hover:bg-zinc-100 disabled:opacity-40 dark:text-zinc-200 dark:hover:bg-white/[0.08]';
+const iconBig = 'h-4 w-4 text-violet-600 dark:text-violet-300';
+const iconSmall = 'h-3 w-3 shrink-0 text-violet-600 dark:text-violet-300';
 
 function Group({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div role="group" aria-label={label} className="flex shrink-0 flex-col border-e border-zinc-200/80 px-2 last:border-e-0 dark:border-white/10">
-      <div className="flex min-h-[3.75rem] items-start gap-0.5">{children}</div>
-      <div className="pt-0.5 text-center text-[11px] text-zinc-500 dark:text-zinc-400">{label}</div>
+    <div role="group" aria-label={label} className="flex shrink-0 flex-col border-e border-zinc-200/80 px-1.5 last:border-e-0 dark:border-white/10">
+      <div className="flex min-h-[2.9rem] items-start gap-0">{children}</div>
+      <div className="text-center text-[11px] leading-tight text-zinc-500 dark:text-zinc-400">{label}</div>
     </div>
   );
 }
 /** The shared menu button's own size and padding taken off, so a menu looks like the strip's other buttons. */
 const bare = 'h-auto min-w-0 p-0 items-start justify-start hover:bg-transparent dark:hover:bg-transparent';
-const Stack = ({ children }: { children: ReactNode }) => <div className="flex w-36 flex-col gap-0">{children}</div>;
+const Stack = ({ children }: { children: ReactNode }) => <div className="flex w-[7.6rem] flex-col gap-0">{children}</div>;
+
+/** MATLAB text in quotes (a quote inside doubled). */
+const q = (t: string) => `'${t.replace(/'/g, "''")}'`;
+/** A tool that asks for one line first (a title, a variable), then runs. */
+function Ask({ label, icon, placeholder, hint, disabled, onRun }: { label: string; icon: ReactNode; placeholder: string; hint?: string; disabled?: boolean; onRun: (text: string) => void }) {
+  const [v, setV] = useState('');
+  return (
+    <Popover label={label} disabled={disabled} className={cn(bare, 'w-full')} button={<span className={small}>{icon}{label}</span>}>
+      {(close) => (
+        <form className="w-72 p-2" onSubmit={(e) => { e.preventDefault(); if (v.trim()) { onRun(v.trim()); close(); } }}>
+          <input autoFocus value={v} onChange={(e) => setV(e.target.value)} placeholder={placeholder} aria-label={label} className="input w-full font-mono text-[13px]" />
+          {hint && <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">{hint}</p>}
+          <button type="submit" className="btn-primary btn-sm mt-2">OK</button>
+        </form>
+      )}
+    </Popover>
+  );
+}
 
 /** The plot gallery: each kind, how many variables it needs, and the line it runs. */
 const PLOTS: { name: string; icon: ReactNode; cmd: (y: string, x: string) => string; needsX?: boolean; matrix?: boolean }[] = [
@@ -109,7 +133,7 @@ export function LabToolstrip(p: Props) {
   const diff = useMemo(() => (compareWith >= 0 ? lineDiff(p.scripts[compareWith].code, p.scripts[p.open]?.code ?? '') : []), [compareWith, p.scripts, p.open]);
   const go = (path: string, key: string, value: string) => { try { sessionStorage.setItem(key, value); } catch { /* private mode */ } router.push(path); };
 
-  const tabs: { id: Tab; label: string }[] = [{ id: 'home', label: 'Home' }, { id: 'plots', label: 'Plots' }, { id: 'apps', label: 'Apps' }];
+  const tabs: { id: Tab; label: string }[] = [{ id: 'home', label: 'Home' }, { id: 'plots', label: 'Plots' }, { id: 'analyse', label: 'Analyse' }, { id: 'apps', label: 'Apps' }];
   const home = (
     <>
       <Group label="File">
@@ -155,6 +179,7 @@ export function LabToolstrip(p: Props) {
               </div>
             )}
           </Popover>
+          <button type="button" className={small} onClick={p.onDownload}><Download className={iconSmall} aria-hidden />Download script</button>
         </Stack>
       </Group>
       <Group label="Data">
@@ -163,6 +188,10 @@ export function LabToolstrip(p: Props) {
           <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand("save('workspace.mat')")} title="Keeps every variable in workspace.mat, in Files"><Save className={iconSmall} aria-hidden />Save workspace</button>
           <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand("load('workspace.mat')")} title="Brings back the variables saved in workspace.mat"><FileDown className={iconSmall} aria-hidden />Load workspace</button>
           <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('clear')}><Eraser className={iconSmall} aria-hidden />Clear workspace</button>
+        </Stack>
+        <Stack>
+          <Ask label="New variable" icon={<Variable className={iconSmall} aria-hidden />} placeholder="a = [1 2 3; 4 5 6]" hint="A name, =, and its value." disabled={p.busy} onRun={(t) => p.onCommand(t.includes('=') ? t : `ans = ${t}`)} />
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('whos')}><List className={iconSmall} aria-hidden />List variables</button>
         </Stack>
       </Group>
       <Group label="Code">
@@ -175,6 +204,10 @@ export function LabToolstrip(p: Props) {
         <Stack>
           <button type="button" className={small} disabled={!p.busy} onClick={p.onStop}><Square className={iconSmall} aria-hidden />Stop</button>
           <button type="button" className={small} onClick={p.onClearLog}><SquareTerminal className={iconSmall} aria-hidden />Clear commands</button>
+          <button type="button" className={small} disabled={!p.matlab} aria-pressed={p.explain} onClick={p.onExplain}><Lightbulb className={iconSmall} aria-hidden />{p.explain ? 'Hide explanations' : 'Explain each line'}</button>
+        </Stack>
+        <Stack>
+          <button type="button" className={small} disabled={!p.matlab} aria-pressed={p.notebook} onClick={p.onNotebook}><NotebookPen className={iconSmall} aria-hidden />{p.notebook ? 'Back to the code' : 'Notebook view'}</button>
         </Stack>
       </Group>
       <Group label="Simulate">
@@ -200,19 +233,17 @@ export function LabToolstrip(p: Props) {
     </>
   );
 
-  const plots = (
-    <>
-      <Group label="Variables">
-        <div className="flex w-52 flex-col gap-1.5 pt-0.5 text-[12px] text-zinc-700 dark:text-zinc-200">
+  const varPicker = (
+        <div className="flex w-44 flex-col gap-1 text-[11px] text-zinc-700 dark:text-zinc-200">
           {plotVars.length ? (
             <>
               <label className="flex items-center gap-1.5">Draw
-                <select value={y} onChange={(e) => setPlotY(e.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/[0.06]" translate="no">
+                <select value={y} onChange={(e) => setPlotY(e.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-1 py-0 font-mono dark:border-white/15 dark:bg-white/[0.06]" translate="no">
                   {plotVars.map((v) => <option key={v.name} value={v.name}>{v.name} ({v.size})</option>)}
                 </select>
               </label>
               <label className="flex items-center gap-1.5">against
-                <select value={x} onChange={(e) => setPlotX(e.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-1.5 py-0.5 font-mono dark:border-white/15 dark:bg-white/[0.06]" translate="no">
+                <select value={x} onChange={(e) => setPlotX(e.target.value)} className="min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-1 py-0 font-mono dark:border-white/15 dark:bg-white/[0.06]" translate="no">
                   <option value="">its position</option>
                   {plotVars.filter((v) => v.name !== y).map((v) => <option key={v.name} value={v.name}>{v.name} ({v.size})</option>)}
                 </select>
@@ -220,6 +251,12 @@ export function LabToolstrip(p: Props) {
             </>
           ) : <p className="leading-snug text-zinc-500 dark:text-zinc-400">{p.varsAreMatlab ? 'Make a variable first, like x = linspace(0, 10, 100); y = sin(x)' : 'The gallery draws Hyperion’s own (MATLAB) variables: run a .m script first.'}</p>}
         </div>
+  );
+
+  const plots = (
+    <>
+      <Group label="Variables">
+        {varPicker}
       </Group>
       <Group label="Draw">
         <div className="flex gap-0.5">
@@ -231,6 +268,61 @@ export function LabToolstrip(p: Props) {
               </button>
             );
           })}
+        </div>
+      </Group>
+      <Group label="Figure">
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('figure')}><PanelTop className={iconSmall} aria-hidden />New figure</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('hold on')}><Pin className={iconSmall} aria-hidden />Hold on (add to it)</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('hold off')}><PinOff className={iconSmall} aria-hidden />Hold off</button>
+        </Stack>
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('grid on')}><Grid2x2 className={iconSmall} aria-hidden />Grid</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('colorbar')}><Palette className={iconSmall} aria-hidden />Colour bar</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('close all')}><XSquare className={iconSmall} aria-hidden />Close all</button>
+        </Stack>
+        <Stack>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('axis tight')}><Maximize2 className={iconSmall} aria-hidden />Axes fit the data</button>
+          <button type="button" className={small} disabled={p.busy} onClick={() => p.onCommand('axis equal')}><Ratio className={iconSmall} aria-hidden />Equal axes</button>
+        </Stack>
+      </Group>
+      <Group label="Labels">
+        <Stack>
+          <Ask label="Title" icon={<Heading className={iconSmall} aria-hidden />} placeholder="Temperature over a day" disabled={p.busy} onRun={(t) => p.onCommand(`title(${q(t)})`)} />
+          <Ask label="X label" icon={<MoveHorizontal className={iconSmall} aria-hidden />} placeholder="Time (s)" disabled={p.busy} onRun={(t) => p.onCommand(`xlabel(${q(t)})`)} />
+          <Ask label="Y label" icon={<MoveVertical className={iconSmall} aria-hidden />} placeholder="Height (m)" disabled={p.busy} onRun={(t) => p.onCommand(`ylabel(${q(t)})`)} />
+        </Stack>
+        <Stack>
+          <Ask label="Legend" icon={<Tags className={iconSmall} aria-hidden />} placeholder="data, fit" hint="The lines' names, separated by commas." disabled={p.busy} onRun={(t) => p.onCommand(`legend(${t.split(',').map((x) => q(x.trim())).join(', ')})`)} />
+        </Stack>
+      </Group>
+    </>
+  );
+
+  // Analyse (M472, more): one click on the chosen variable; results print and new variables appear.
+  const X = x || `(1:numel(${y}))`;
+  const ANALYSE: { name: string; icon: ReactNode; cmd: string; needsX?: boolean }[] = y ? [
+    { name: 'Statistics', icon: <Calculator className={iconBig} aria-hidden />, cmd: `fprintf('${y}: min %g, max %g, mean %g, median %g, std %g, rms %g\\n', min(${y}(:)), max(${y}(:)), mean(${y}(:)), median(${y}(:)), std(${y}(:)), rms(${y}(:)))` },
+    { name: 'Fit a line', icon: <TrendingUp className={iconBig} aria-hidden />, cmd: `p_${y} = polyfit(${X}(:), ${y}(:), 1); figure; scatter(${X}(:), ${y}(:)); hold on; plot(${X}(:), polyval(p_${y}, ${X}(:))); hold off; title(sprintf('y = %.4g x + %.4g', p_${y}(1), p_${y}(2)))` },
+    { name: 'Fit a curve', icon: <Spline className={iconBig} aria-hidden />, cmd: `p_${y} = polyfit(${X}(:), ${y}(:), 3); figure; scatter(${X}(:), ${y}(:)); hold on; plot(${X}(:), polyval(p_${y}, ${X}(:))); hold off; title('A cubic through the data')` },
+    { name: 'Spectrum', icon: <AudioWaveform className={iconBig} aria-hidden />, cmd: `S_${y} = abs(fft(${y}(:))); figure; plot(S_${y}(1:floor(end/2))); title('Spectrum (how much of each frequency)'); xlabel('Frequency bin')` },
+    { name: 'Smooth', icon: <ChartSpline className={iconBig} aria-hidden />, cmd: `${y}_smooth = movmean(${y}, 5); figure; plot(${y}); hold on; plot(${y}_smooth); hold off; legend('data', 'smoothed')` },
+    { name: 'Slope', icon: <TrendingUp className={iconBig} aria-hidden />, cmd: `${y}_slope = diff(${y}(:)) ./ diff(${X}(:)); figure; plot(${y}_slope); title('Slope (derivative)')` },
+    { name: 'Area under', icon: <ChartArea className={iconBig} aria-hidden />, cmd: `${y}_area = trapz(${X}(:), ${y}(:))` },
+    { name: 'Running total', icon: <Sigma className={iconBig} aria-hidden />, cmd: `${y}_total = cumsum(${y}); figure; plot(${y}_total); title('Running total')` },
+    { name: 'Sort', icon: <ArrowDownUp className={iconBig} aria-hidden />, cmd: `${y}_sorted = sort(${y})` },
+    { name: 'Counts', icon: <BarChart className={iconBig} aria-hidden />, cmd: `[${y}_counts, ${y}_edges] = histcounts(${y})` },
+    { name: 'Correlation', icon: <Shuffle className={iconBig} aria-hidden />, cmd: `R = corrcoef(${x}(:), ${y}(:))`, needsX: true },
+    { name: 'Range', icon: <Ruler className={iconBig} aria-hidden />, cmd: `${y}_range = max(${y}(:)) - min(${y}(:))` },
+  ] : [];
+  const analyse = (
+    <>
+      <Group label="Variables">{varPicker}</Group>
+      <Group label="Calculate">
+        <div className="flex gap-0">
+          {ANALYSE.length ? ANALYSE.map((k) => (
+            <button key={k.name} type="button" className={big} disabled={p.busy || (k.needsX && !x)} title={k.needsX && !x ? 'Choose what to compare it with ("against")' : k.cmd} onClick={() => p.onCommand(k.cmd)}>{k.icon}{k.name}</button>
+          )) : <p className="px-2 py-2 text-[11px] text-zinc-500 dark:text-zinc-400">Make a variable first (Home → New variable), then pick it here.</p>}
         </div>
       </Group>
     </>
@@ -247,6 +339,12 @@ export function LabToolstrip(p: Props) {
         <button type="button" className={big} onClick={() => go('/hyperion/learn', 'uv-learn-tab', 'classify')}><BrainCircuit className={iconBig} aria-hidden />Classify</button>
         <button type="button" className={big} onClick={() => go('/hyperion/learn', 'uv-learn-tab', 'health')}><Activity className={iconBig} aria-hidden />Machine health</button>
       </Group>
+      <Group label="Toolbox starters">
+        {([['symbolic.m', 'Symbolic maths', FunctionSquare], ['control.m', 'Control', Gauge], ['optim.m', 'Optimise', InfinityIcon], ['learn.m', 'Machine learning', Cpu], ['images.m', 'Images', ScanEye], ['vibration.m', 'Vibration', AudioWaveform], ['comms.m', 'Wireless', Radio], ['radar.m', 'Radar', Radar], ['energy.m', 'Energy', Battery], ['grid.m', 'Power grid', Zap], ['python_demo.py', 'Python', FileCode], ['r_demo.R', 'R', FileCode]] as const).map(([file, name, Icon]) => {
+          const i = p.examples.findIndex((e) => e.name === file);
+          return i < 0 ? null : <button key={file} type="button" className={big} onClick={() => p.onExample(i)} title={`Opens ${file}, a working example to start from`}><Icon className={iconBig} aria-hidden />{name}</button>;
+        })}
+      </Group>
       <Group label="In this window">
         <button type="button" className={big} onClick={() => p.onHelp('')}><Sigma className={iconBig} aria-hidden />Functions</button>
         <button type="button" className={big} onClick={p.onImport}><FileInput className={iconBig} aria-hidden />Import data</button>
@@ -260,24 +358,24 @@ export function LabToolstrip(p: Props) {
         <div role="tablist" aria-label="Tools" className="flex">
           {tabs.map((t) => (
             <button key={t.id} type="button" role="tab" id={`lab-tab-${t.id}`} aria-selected={tab === t.id} aria-controls="lab-strip-panel" onClick={() => { setTab(t.id); if (folded) setFolded(false); }}
-              className={cn('relative px-3 py-2 text-[13px] font-semibold', tab === t.id ? 'text-zinc-900 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-violet-600 dark:text-white dark:after:bg-violet-400' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100')}>
+              className={cn('relative px-2.5 py-1.5 text-[12px] font-semibold', tab === t.id ? 'text-zinc-900 after:absolute after:inset-x-2 after:bottom-0 after:h-0.5 after:rounded-full after:bg-violet-600 dark:text-white dark:after:bg-violet-400' : 'text-zinc-500 hover:text-zinc-800 dark:text-zinc-400 dark:hover:text-zinc-100')}>
               {t.label}
             </button>
           ))}
         </div>
         <form className="ms-auto flex items-center" role="search" onSubmit={(e) => { e.preventDefault(); p.onHelp(help); }}>
-          <label className="flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-2 py-1 dark:border-white/15 dark:bg-white/[0.06]">
+          <label className="flex items-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 py-0.5 dark:border-white/15 dark:bg-white/[0.06]">
             <Search className="h-3.5 w-3.5 text-zinc-500" aria-hidden />
-            <input value={help} onChange={(e) => setHelp(e.target.value)} placeholder="Search help" aria-label="Search help" className="w-44 bg-transparent text-[13px] outline-none placeholder:text-zinc-500" />
+            <input value={help} onChange={(e) => setHelp(e.target.value)} placeholder="Search help" aria-label="Search help" className="w-40 bg-transparent text-[12px] outline-none placeholder:text-zinc-500" />
           </label>
         </form>
-        <button type="button" className="rounded-md p-1.5 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/[0.08]" aria-expanded={!folded} aria-controls="lab-strip-panel" onClick={() => setFolded(!folded)} title={folded ? 'Show the tools' : 'Fold the tools away'}>
+        <button type="button" className="rounded-md p-1 text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-white/[0.08]" aria-expanded={!folded} aria-controls="lab-strip-panel" onClick={() => setFolded(!folded)} title={folded ? 'Show the tools' : 'Fold the tools away'}>
           {folded ? <ChevronDown className="h-4 w-4" aria-hidden /> : <ChevronUp className="h-4 w-4" aria-hidden />}<span className="sr-only">{folded ? 'Show the tools' : 'Fold the tools away'}</span>
         </button>
       </div>
       {!folded && (
-        <div id="lab-strip-panel" role="tabpanel" aria-labelledby={`lab-tab-${tab}`} className="flex items-stretch overflow-x-auto px-1 py-1.5 [scrollbar-width:thin]">
-          {tab === 'home' ? home : tab === 'plots' ? plots : apps}
+        <div id="lab-strip-panel" role="tabpanel" aria-labelledby={`lab-tab-${tab}`} className="flex items-stretch overflow-x-auto px-0.5 py-1 [scrollbar-width:thin]">
+          {tab === 'home' ? home : tab === 'plots' ? plots : tab === 'analyse' ? analyse : apps}
         </div>
       )}
     </section>

@@ -99,7 +99,7 @@ software or website in the main website… where they create a impact"). Each ap
   every function, watch it run (M393), symbolic maths set as real maths (M396, `sym*.ts`), notebook pages and reports (M397, `notebook.ts`), share by link
   and QR (M398, `share.ts`), a code checker and Explain (M399, `lint.ts`, `explain.ts`), Time it (M400–M401, `profile.ts`),
   Sweep (M402, `sweep.ts`, `gif.ts`: a slider run through its range, a film saved as a GIF, a table of where results peak);
-  the toolstrip over the Code window (M472, `LabToolstrip.tsx`: Home, Plots, Apps, help search);
+  the toolstrip over the Code window (M472–M473, `LabToolstrip.tsx`: Home, Plots, Analyse, Apps, help search);
   other languages by file ending (`langs.ts`, `lang-runner.ts`): Python in the browser (M466, Pyodide), R with ggplot2 (M467, webR), both only inside the sealed frame
   `public/sandbox/run.html` (M469: `sandbox="allow-scripts"`, its own `SANDBOX_CSP`; never give it allow-same-origin);
   Julia, C++ and Rust in the computer app with the person's own tools (M470, `desktop/hyperion/runner.js`, asked first);

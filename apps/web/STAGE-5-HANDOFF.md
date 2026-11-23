@@ -12495,3 +12495,16 @@ Simulate's benches and Learn's tabs, chosen through their sessionStorage keys (`
 toolstrip's lines run as `From` 'tool': like a command but always in the MATLAB engine, never marking the editor's
 lines. The shared `Menu`/`Popover` trigger keeps its 32 px height and padding unless given `bare` classes. Not built:
 the ribbon's other programs' extras (Set Path, Parallel, Add-Ons, Community), a current-folder bar (Files is it).
+
+## M473 (23 Nov): Hyperion's toolstrip, smaller and with more tools
+
+The owner, 23 Nov: "everything needs to be a little small so that more items can fit here", then "also add more
+fuctions and features there". `LabToolstrip.tsx`: big buttons ~3.4 rem with 16 px icons, small ones 12 px icons,
+text 11 px (the reading floor), tighter groups; the strip is about 100 px tall. New: Home → Download script, New
+variable (`Ask`: a one-line popover, then runs; text put in MATLAB quotes by `q`), List variables (`whos`), Explain each
+line and Notebook view toggles (props from LabApp); Plots → Figure (new, hold on/off, grid, colour bar, close all, axes
+fit / equal) and Labels (title, x and y labels, legend from comma-separated names); a new **Analyse** tab on the chosen
+variable (`varPicker`, shared with Plots): statistics, fit a line, a cubic, spectrum, smooth, slope, area under, running
+total, sort, counts, correlation (needs "against"), range: each one line in the engine, results as new variables
+(`<name>_smooth`, `p_<name>`…); Apps → Toolbox starters (12 examples opened as copies). Trap: commands are template
+literals inside TS, so MATLAB's `\n` must be written `\\n` there (one Statistics run failed on a real line break).

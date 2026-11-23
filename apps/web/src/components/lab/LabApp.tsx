@@ -803,6 +803,9 @@ export function LabApp() {
         onAnalyze={() => { const probs = lintScript(script.code, isFn).problems; print({ k: 'in', t: `>> analyse ${script.name}` }); print({ k: 'out', t: probs.length ? `${probs.map((q) => `Line ${lineOf(script.code, q.from)}: ${q.message}`).join('\n')}\n` : 'No problems found.\n' }); }}
         onRun={() => run(script.code, 'script')} onTime={() => run(script.code, 'profile')} onWatch={() => run(script.code, 'watch')} onStop={stop}
         onHelp={(q) => { setHelpQuery(q); setBrowsing(true); }}
+        onDownload={() => download(script.name, script.code, 'text/plain')}
+        notebook={!!noteView[open]} onNotebook={() => setNoteView((nv) => ({ ...nv, [open]: !nv[open] }))}
+        explain={explainOn} onExplain={() => setExplainOn((v) => !v)}
         onExample={(i) => { const e = EXAMPLES[i]; save([...list, { name: list.some((x) => x.name === e.name) ? e.name.replace(/(\.\w+)$/, `_copy$1`) : e.name, code: e.code }]); setOpen(list.length); }} />
       <div className={cn('grid min-h-0 flex-1 gap-3', layout.side && layout.figure ? 'grid-cols-[16rem_minmax(0,1fr)_minmax(22rem,30rem)]' : layout.side ? 'grid-cols-[16rem_minmax(0,1fr)]' : layout.figure ? 'grid-cols-[minmax(0,1fr)_minmax(22rem,34rem)]' : 'grid-cols-1')}
         style={{ '--lab-code': `${layout.codeSize}px` } as React.CSSProperties}>
