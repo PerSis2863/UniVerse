@@ -12707,3 +12707,27 @@ integral of 9, a linear and a quadratic equation, complex roots flagged, the cla
 determinant with a swap, eigenvalues 1 and 3, the language run end to end. Not built: limits with L'Hôpital steps,
 integration by parts shown as steps (the integrator does it silently), proofs, differential equations step by step,
 exercises with checking of a student's own answer.
+
+## M504 (23 Nov): Hyperion toolbox, semiconductors and materials (sciences and industries, 13 of 14)
+
+`matsci.ts` (pure) and `matsci-lab.ts`. Semiconductors (silicon; doping cm⁻³, lengths cm, energies eV): `siEg`
+(Varshni 1.17 − 4.73e-4 T²/(T + 636)), `siNi` from Nc, Nv ∝ T^1.5 (6.1e9 at 300 K by these textbook constants; the
+"1e10" often quoted is a rounded measurement), `pnJunction` (depletion approximation: Vbi, W, xn, xp, Emax; refuses
+forward bias at or past Vbi), `bands` (the parabolic potential in each depletion side; Ec, Ev and both Fermi levels),
+`diodeCurrent` (Shockley with Rs solved by Newton from the smaller of the two limits), `mosThreshold` (V_FB + 2φF +
+√(2εqNa·2φF)/Cox), `mosfetId` (square law with λ). Materials (MPa): `MATERIALS` (steel S355, aluminium 6061-T6,
+Ti-6Al-4V, annealed copper; rounded textbook figures, labelled "for teaching, not design data" in help and titles),
+`stressStrain` (Ramberg–Osgood to the UTS, then a necking tail to the elongation), `tensile` (E by a fit below 40% of the
+strength, the 0.2% offset crossing interpolated, UTS, plastic elongation, toughness by trapezoids), `basquinFit`,
+`cyclesToFailure` (Goodman), `rainflow` (ASTM E1049 three-point stack on turning points; the residue counted as halves),
+`minerDamage`. Mining: `variogram` (binned half mean squared differences), `spherical`, `krige` (ordinary kriging,
+the (n+1)² system solved per query point: fine to ~1,000 samples), `idw`. Language (our own names): `siliconNi`,
+`pnJunction` (band diagram), `diodeIV`, `mosfetVth`, `mosfetIV`, `materialCurve`, `tensileTest`, `basquinFit`,
+`fatigueLife`, `rainflowCount` (not `rainflow`: MATLAB's has another layout, and the signals branch may define it),
+`minerDamage`, `variogramExp`, `krigeGrade`, `idwGrade`. Example `materials.m`. Tests: Vbi and W by the formulas,
+charge balance, reverse bias widening, the band bending equal to Vbi, the diode equation satisfied with Rs, square-law
+saturation and continuity, a thinner oxide's lower threshold, the tensile test recovering E and the yield it was built
+with, Basquin round trip, Goodman shortening life, ASTM E1049's own example (ranges 3, 4, 6, 8, 9 counted ½, 1½, ½,
+1, ½), Miner on one cycle, kriging exact at data with zero variance, IDW at a sample. Not built: carrier transport
+(drift–diffusion), MOS capacitance curves, heterojunctions, plasticity in 3D, crack growth (Paris law), strain-life
+(Coffin–Manson), block models and ore reserve classification.

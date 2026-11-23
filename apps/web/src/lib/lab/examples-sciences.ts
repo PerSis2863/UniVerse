@@ -284,4 +284,32 @@ figure; riemannSum(@(t) exp(-t.^2), 0, 2, strips, 'Method', 'left')
 figure; newtonSteps(@(t) cos(t) - t, 1, 5)
 figure; taylorPlot(cos(x), 0, [2 4 8], [-7 7])
 ` },
+  { name: 'materials.m', code: `% Semiconductors and materials: a junction, a transistor, a metal under load, and ore in the ground
+% 1. A silicon pn junction and its band diagram; forward bias shrinks the barrier
+bias = 0;   % slider -5 0.6
+j = pnJunction(1e17, 1e16, 'V', bias);
+pnJunction(1e17, 1e16, 'V', bias)
+fprintf('Built-in potential %.3f V; depletion %.3f um; ni = %.2e per cm3\\n', j.Vbi, j.W*1e4, siliconNi(300))
+% 2. A diode with some series resistance, and a MOSFET's curves
+figure; subplot(1, 2, 1); diodeIV(linspace(0, 1, 200), 'Rs', 0.5)
+subplot(1, 2, 2); mosfetIV([1 1.5 2 2.5], linspace(0, 3, 100), 'Vth', mosfetVth(1e17, 10))
+% 3. Four metals pulled apart, and what a tensile test reads off
+figure; materialCurve('steel', 'aluminium', 'titanium', 'copper')
+[e, s] = materialCurve('aluminium');
+t = tensileTest(e, s)
+% 4. A bracket's load history: count its cycles and add up the damage
+rng(5)
+force = 120*sin(linspace(0, 40*pi, 4000)) + 60*randn(1, 4000);
+c = rainflowCount(force);
+[D, repeats] = minerDamage(c, 'steel');
+fprintf('Damage per history %.2e: it survives about %.0f repeats (Miner)\\n', D, repeats)
+% 5. Gold grades from 40 drill holes, estimated across the claim by kriging
+xy = 100*rand(40, 2);
+grade = 2 + 1.5*sin(xy(:, 1)/20) + 0.3*randn(40, 1);
+figure; variogramExp(xy, grade, 8, 10)
+[X, Y] = meshgrid(0:2:100);
+est = krigeGrade(xy, grade, [X(:) Y(:)], [0.08 1.1 60]);
+figure; contourf(X, Y, reshape(est, size(X)), 12); colorbar; hold on
+plot(xy(:, 1), xy(:, 2), 'k^'); hold off; axis equal; title('Kriged grade (g/t)')
+` },
 ];

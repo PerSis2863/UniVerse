@@ -12,3 +12,4 @@ import './medimg-lab';
 import './fin-lab';
 import './risk-lab';
 import './teach-lab';
+import './matsci-lab';

@@ -148,4 +148,19 @@ tangentLine | tangentLine(@(x) f, x0, [a b]) | A curve with its tangent at x0 an
 riemannSum | [S, exact] = riemannSum(@(x) f, a, b, n, 'Method', 'mid') | Strips under a curve ('left', 'right', 'mid', 'trap') against the integral. Drawn without outputs.
 newtonSteps | x = newtonSteps(@(x) f, x0, n) | Newton's method step by step: a table of x and f(x) and the tangents drawn down to the axis.
 taylorPlot | taylorPlot(f, x0, [1 3 5], [a b]) | A function (symbolic) with its Taylor polynomials about x0 of the given orders.
+# Semiconductors and materials
+siliconNi | ni = siliconNi(T) | Silicon's intrinsic carrier density (cm⁻³) at T kelvin (the band gap by Varshni's law).
+pnJunction | j = pnJunction(Na, Nd, 'V', 0, 'T', 300) | A silicon pn junction (doping in cm⁻³) by the depletion approximation: Vbi, the width W and its parts xn, xp (cm), the peak field Emax (V/cm). Draws the band diagram without outputs.
+diodeIV | I = diodeIV(V, 'Is', 1e-14, 'n', 1, 'Rs', 0.5, 'T', 300) | Shockley's diode current at each voltage, with series resistance solved exactly. Drawn on a log scale without outputs.
+mosfetVth | [Vth, Cox, phiF] = mosfetVth(Na, tox, 'Vfb', -0.9) | An n-MOSFET's threshold from its substrate doping (cm⁻³) and oxide thickness (nm).
+mosfetIV | Id = mosfetIV(Vgs, Vds, 'Vth', 0.7, 'k', 2e-3, 'lambda', 0.02) | Square-law drain current (rows by Vds, columns by Vgs); the family of curves without outputs.
+materialCurve | [strain, stress, m] = materialCurve('steel', 'aluminium') | Typical stress–strain curves (Ramberg–Osgood, MPa) of 'steel', 'aluminium', 'titanium', 'copper': for teaching, not design data.
+tensileTest | t = tensileTest(strain, stress) | From a tensile test: E, the 0.2% offset yield, UTS, the elongation at fracture and the toughness (MJ/m³).
+basquinFit | [sf, b] = basquinFit(N, Sa) | Basquin's fatigue line σa = σf′(2N)^b from tested (cycles, amplitude) pairs.
+fatigueLife | N = fatigueLife(Sa, 'steel', 'Mean', 50) | Cycles to failure at a stress amplitude (MPa), a mean stress corrected by Goodman.
+rainflowCount | c = rainflowCount(x) | Rainflow counting (ASTM E1049) of a load history: rows [range mean count], count 1 or ½. Drawn as a histogram without outputs.
+minerDamage | [D, repeats] = minerDamage(c, 'steel', 'Scale', 1) | Miner's rule: the damage of counted cycles (failure at 1) and how many times the history can repeat.
+variogramExp | [h, gamma, pairs] = variogramExp(xy, v, lag, nlags) | The experimental semivariogram of samples (rows [x y]) in distance bins. Drawn without outputs.
+krigeGrade | [est, var] = krigeGrade(xy, v, query, [nugget sill range]) | Ordinary kriging of grades at the query places with a spherical variogram: the estimate and its variance.
+idwGrade | est = idwGrade(xy, v, query, p) | Inverse distance weighting (power p, 2 unless given).
 `;
