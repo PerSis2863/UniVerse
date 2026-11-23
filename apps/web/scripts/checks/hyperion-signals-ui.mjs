@@ -6,7 +6,7 @@ import { launch, signedIn } from '../browser-session.mjs';
 const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
-const TABS = (process.env.TABS ?? 'Filter designer,Audio').split(',');
+const TABS = (process.env.TABS ?? 'Filter designer,Audio,Devices').split(',');
 const browser = await launch();
 const out = {}, errors = [];
 const axe = async (page) => { await page.addScriptTag({ path: AXE }); return page.evaluate(async () => (await window.axe.run(document, { resultTypes: ['violations'] })).violations.filter((v) => ['serious', 'critical'].includes(v.impact)).map((v) => `${v.id}: ${v.nodes.slice(0, 2).map((n) => n.target.join(' ')).join(', ')}`)); };
@@ -45,6 +45,28 @@ try {
         await page.getByRole('button', { name: 'Start logging' }).click();
         await page.waitForTimeout(1600);
         r.logged = await page.getByText(/readings$/).innerText();
+      }
+      if (tab === 'Devices') {
+        // The simulated Arduino: text lines plotted, a command answered; then Firmata pins.
+        await page.getByRole('button', { name: 'Try a simulated Arduino' }).click();
+        await page.locator('[data-series="temp"]').waitFor({ timeout: 10_000 });
+        await page.waitForTimeout(600);
+        r.temp = await page.locator('[data-series="temp"]').innerText();
+        await page.getByLabel('A command for the device').fill('LED ON');
+        await page.getByRole('button', { name: 'Send' }).click();
+        await page.getByText('ok: led on').waitFor({ timeout: 5000 });
+        r.answered = true;
+        if (shots) await page.screenshot({ path: `${shots}/signals-devices-text-${theme}.png` });
+        r['Devices text'] = await axe(page);
+        await page.getByRole('button', { name: 'Disconnect' }).click();
+        await page.getByRole('group', { name: 'Talk to it as' }).getByRole('button', { name: 'Firmata' }).click();
+        await page.getByRole('button', { name: 'Try a simulated Arduino' }).click();
+        await page.getByLabel('A0 mode').selectOption('analog');
+        await page.getByLabel('D13 mode').selectOption('output');
+        await page.getByRole('button', { name: 'Low (off)' }).click();
+        await page.waitForTimeout(500);
+        r.a0 = await page.locator('[data-pin="A0"]').innerText();
+        r.d13 = await page.getByRole('button', { name: 'High (on)' }).count();
       }
       if (shots) await page.screenshot({ path: `${shots}/signals-${tab.replace(/\W+/g, '-')}-${theme}.png` });
       r[tab] = await axe(page);

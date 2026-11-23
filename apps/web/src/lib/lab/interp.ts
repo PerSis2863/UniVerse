@@ -27,6 +27,8 @@ export interface Host {
   files?: unknown;
   /** sound / soundsc (M473): samples (one or two channels) to play at fs; the window plays them. */
   sound?(channels: Float32Array[], fs: number): void;
+  /** serialport / arduino writes (M474): passed to the device connected in Signals → Devices. */
+  serial?(m: unknown): void;
   /** Watch it run (M393): told before each statement where it is (a place in the code) and the variables it sees. */
   trace?(at: number, vars: Map<string, Value>, depth: number): void;
   /** Time it (M401): told when a function (built-in or the script's own) starts and finishes. */

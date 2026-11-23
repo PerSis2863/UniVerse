@@ -4,6 +4,7 @@ import { Graphics } from './plot';
 import { FileStore } from './files';
 import './filters-lab';
 import './audio-lab';
+import './serial-lab';
 import { SIGNAL_EXAMPLES } from '@/components/lab/examples-signals';
 
 // Every worked example of the signals and capabilities toolboxes (M472–) runs without an error.

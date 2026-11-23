@@ -16,6 +16,7 @@ import '@/lib/lab/image-lab';
 import '@/lib/lab/radar-lab';
 import '@/lib/lab/filters-lab';
 import '@/lib/lab/audio-lab';
+import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
 import '@/lib/lab/help-commands';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
@@ -28,7 +29,7 @@ import type { SweepFrame } from '@/lib/lab/sweep';
 // the worker). Text goes back in batches; after each run the variables and the figures (as SVG in both themes and
 // their LaTeX) follow.
 
-export type ToLab = { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
+export type ToLab = { serial: Parameters<typeof serialFeed>[0] } | { run: string; id: number } | { profile: string; id: number } | { figure: number; w: number; h: number } | { upload: FileIn[] } | { remove: string } | { inspect: Inspect } | { watch: string; id: number } | { traceFig: number; w: number; h: number } | { sweep: { codes: string[]; values: number[]; w: number; h: number }; id: number };
 /** The variable viewer's request (M390): a variable, a path into it, a page and a window. */
 export interface Inspect { name: string; steps: Step[]; page: number; from: [number, number] }
 /** A file going in (pictures come already decoded, as the worker can't decode them synchronously). */
@@ -41,6 +42,7 @@ export type FromLab =
   | { fig: FigOut }
   | { names: string[] }
   | { sound: { channels: Float32Array[]; fs: number } }
+  | { serialOut: SerialOut }
   | { trace: { steps: TraceStep[]; full: boolean } }
   | { traceFig: { index: number; light: string; dark: string } }
   | { profiled: Profile }
@@ -64,6 +66,7 @@ const host: Host = {
   graphics,
   files,
   now: () => performance.now(),
+  serial: (m) => { postMessage({ serialOut: m as SerialOut } satisfies FromLab); },
   sound: (channels, fs) => { flush(); postMessage({ sound: { channels, fs } } satisfies FromLab); },
 };
 const lab = new Lab(host);
@@ -106,6 +109,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
     postMessage({ done: m.id, vars: varRows(), figs: null, current: graphics.current?.id ?? null, files: written, drawn: [] } satisfies FromLab);
     return;
   }
+  if ('serial' in m) { serialFeed(m.serial); return; }
   if ('upload' in m) { for (const f of m.upload) files.load(f.name, { bytes: f.bytes, pixels: f.pixels }); return; }
   if ('remove' in m) { files.files.delete(m.remove); return; }
   if ('inspect' in m) {

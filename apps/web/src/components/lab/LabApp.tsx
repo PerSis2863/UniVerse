@@ -1,6 +1,7 @@
 'use client';
 
 import { SIGNAL_EXAMPLES } from './examples-signals';
+import { applySerialOut, bridgeToEngine, engineView, serialLink } from './serial-link';
 import { useEffect, useEffectEvent, useMemo, useRef, useState, useSyncExternalStore } from 'react';
 import { toast } from 'sonner';
 import NextImage from 'next/image';
@@ -214,6 +215,7 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      if ('serialOut' in m) { applySerialOut(m.serialOut); return; }
       if ('sound' in m) { playSound(m.sound.channels, m.sound.fs); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
@@ -269,6 +271,8 @@ export function LabApp() {
     worker.current = w;
     // A restarted engine (after Stop) gets the files again.
     if (fileData.current.size) w.postMessage({ upload: [...fileData.current.values()] } satisfies ToLab);
+    // A device connected in Signals → Devices (M474) is known to the new engine.
+    if (serialLink.state.open) w.postMessage({ serial: { state: engineView(serialLink.state) } } satisfies ToLab);
   };
   const listFiles = () => setFiles([...fileData.current.values()].map((f) => ({ name: f.name, size: f.bytes.length })).sort((a, b) => a.name.localeCompare(b.name)));
   const restore = useEffectEvent(async () => {
@@ -278,6 +282,7 @@ export function LabApp() {
     if (list.length) { worker.current?.postMessage({ upload: list } satisfies ToLab); listFiles(); }
   });
   useEffect(() => { void restore(); }, []);
+  useEffect(() => bridgeToEngine(() => worker.current), []);
   useEffect(() => {
     const readHash = () => { void readShare(window.location.hash).then((s) => { if (s) setIncoming(s); }); };
     readHash();

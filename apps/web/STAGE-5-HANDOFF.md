@@ -12479,3 +12479,24 @@ has no blob:) posts the samples in blocks of 4096; they are written as a 24-bit 
 (`hyperion-signals-ui.mjs`) uses the generator (no microphone in the test browser). Not built: two-channel inputs,
 choosing the input device, calibration to sound pressure (dB SPL needs a calibrated microphone), MATLAB's
 audioDeviceReader/audioPlayer objects (System objects the engine doesn't have).
+
+## M474 (23 Nov): Hyperion, serial devices and Arduino (Web Serial, Firmata, a simulated board)
+
+Signals → **Devices** (`SerialBench.tsx`). The connection is `serialLink` in `src/components/lab/serial-link.ts`, a
+module-level object, so it stays open while the person moves between Signals and the Code window (client-side
+navigation keeps modules). Web Serial (`navigator.serial.requestPort` shows the browser's chooser; Chrome, Edge, Opera
+on computers and the Electron app; Firefox and Safari have none: the page says so and the simulated board still works;
+the site's Permissions-Policy leaves `serial` at its default, self). **Text** mode decodes lines (keeps the last 10,000)
+and plots the Serial Plotter format (`parsePlotLine`: named "a:1,b:2" or plain "1 2 3", up to 6 series, last 300
+points); **Firmata** mode speaks StandardFirmata 2.x (`src/lib/lab/firmata.ts`: `encode`, a `Parser` that takes bytes
+in any pieces, sysex capability / analog-mapping / firmware / string replies), asks the board its pins and reports all
+three digital ports; analog reporting starts when a pin is set to analog. `SimBoard` is a byte-level simulated Uno
+running Firmata (pin 7 wired to pin 8, a button on pin 2, made-up sensors on A0–A5, A5 follows pin 9's PWM), and the text
+simulation prints `temp:…,light:…,knob:…,led:…` 20 times a second and answers `LED ON` / `LED OFF`.
+**Scripts** (`serial-lab.ts`): the engine can't hold a port (only the page can, and the engine runs a script straight
+through on its worker), so the window keeps the engine told (`bridgeToEngine` in `LabApp`, a `{ serial }` message:
+the device's state and new lines, between runs) and a script's writes go out through a new optional `Host.serial` →
+`{ serialOut }` → `applySerialOut`. So `readline` returns lines that arrived before the run (empty when none), pin reads
+return the last report; writes happen as the script runs. MATLAB's serialport and arduino objects are plain structs
+here. Not built: two devices at once, binary protocols beyond Firmata (I2C, SPI, Servo libraries' extras), USB (WebUSB is
+off by the site's policy), Bluetooth, an Arduino compiler/uploader (upload sketches with the Arduino IDE).

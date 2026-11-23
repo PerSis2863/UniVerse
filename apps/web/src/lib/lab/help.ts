@@ -303,6 +303,21 @@ sound | sound(y, fs) | Plays samples (−1 … 1) through the speakers.
 soundsc | soundsc(y, fs) | Plays samples scaled so the loudest is full volume.
 thd | r = thd(x, fs, n) | Total harmonic distortion in dB against the fundamental (harmonics 2 … n, 6 unless given).
 
+# Hardware: serial devices and Arduino
+serialportlist | serialportlist | The device connected in Signals → Devices (a real port or the simulated Arduino), as a cell of names.
+serialport | s = serialport(port, baudrate) | The serial device connected in Signals → Devices (connect it there first: browsers let only the page open ports).
+readline | line = readline(s) | The next line the device sent that the script hasn't read yet (empty when none: a script sees what arrived before it started).
+writeline | writeline(s, 'LED ON') | Sends text and a new line to the device.
+write | write(s, data, 'uint8') | Sends bytes (or 'string' text) to the device.
+flush | flush(s) | Forgets the lines not read yet.
+arduino | a = arduino() | The Arduino connected in Signals → Devices in Firmata mode (StandardFirmata uploaded), with its pins.
+configurePin | configurePin(a, 'D13', 'DigitalOutput') | Sets a pin's mode: 'DigitalOutput', 'DigitalInput', 'AnalogInput', 'PWM', 'Pullup' or 'Servo'; without a mode, says it.
+writeDigitalPin | writeDigitalPin(a, 'D13', 1) | Switches a digital pin high (1) or low (0).
+readDigitalPin | v = readDigitalPin(a, 'D2') | A digital pin's level, 0 or 1 (its last report before the script started).
+readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 bits).
+writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
+writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).
