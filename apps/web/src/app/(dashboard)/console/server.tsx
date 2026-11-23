@@ -35,7 +35,7 @@ export interface PlanUsage {
   daily?: { day: string; meters: UsageMeter[] } | null;
 }
 type Mode = 'LIVE' | 'READ_ONLY' | 'MAINTENANCE';
-interface AiLimits { student: number; staff: number; site: number }
+interface AiLimits { student: number; staff: number; site: number; cloud: number; cloudSite: number }
 interface AiToday { limits: AiLimits; used: number; top: { id: string; name: string; role: string | null; calls: number }[] }
 interface Control { mode: Mode; message: string | null; until: string | null; banner: string | null; switches: string | null; apps?: string | null; updatedAt: string }
 interface ServerData {
@@ -315,7 +315,7 @@ function VoiceSessionsCard() {
 function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
   const [limits, setLimits] = useState<AiLimits>(ai.limits);
   const [busy, setBusy] = useState(false);
-  const changed = (['student', 'staff', 'site'] as const).some((k) => limits[k] !== ai.limits[k]);
+  const changed = (['student', 'staff', 'site', 'cloud', 'cloudSite'] as const).some((k) => limits[k] !== ai.limits[k]);
   const pct = ai.limits.site ? Math.min(100, Math.round((ai.used / ai.limits.site) * 100)) : 100;
   const save = async () => {
     setBusy(true);
@@ -340,7 +340,7 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
     <div className={cn(card, 'p-6')}>
       <h2 className="text-lg font-semibold text-zinc-900 dark:text-white flex items-center gap-2"><Sparkles className="w-4 h-4 text-indigo-500" /> AI use today</h2>
       <p className="text-sm text-zinc-500 mt-1 mb-3">
-        Every AI tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
+        Every Ghidra tutor answer, summary, translation and report counts as one request. Answers many people ask for again (the same tutor question, a summary of the same file) are saved and don’t count. Limits reset at midnight UTC. You’re never limited.
       </p>
       <div className="flex items-baseline justify-between gap-2 text-sm">
         <span className="font-semibold text-zinc-900 dark:text-white tabular-nums">{ai.used.toLocaleString()} of {ai.limits.site.toLocaleString()} requests</span>
@@ -363,6 +363,13 @@ function AiCard({ ai, onSaved }: { ai: AiToday; onSaved: () => void }) {
         {input('student', 'Per student, each day')}
         {input('staff', 'Per teacher or admin, each day')}
         {input('site', 'Whole site, each day')}
+      </div>
+      <p className="mt-4 text-sm text-zinc-500">
+        Paid AI on Cloudflare (the agents’ and Hyperion’s own AI, DeepSeek): past these, Gemini answers instead. Cloudflare gives about 80 questions a day free, then about US$0.0015 a question.
+      </p>
+      <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {input('cloud', 'Paid AI per person, each day')}
+        {input('cloudSite', 'Paid AI, whole site, each day')}
       </div>
       <div className="mt-3 flex justify-end">
         <button onClick={() => void save()} disabled={busy || !changed} className="btn-primary">Save limits</button>

@@ -21,7 +21,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ courseI
   const question = typeof b.question === 'string' ? b.question.trim() : '';
   if (!question) return NextResponse.json({ error: 'Type a question.' }, { status: 400 });
   const history = Array.isArray(b.history) ? b.history.filter((h: { role?: unknown; text?: unknown }) => (h?.role === 'user' || h?.role === 'tutor') && typeof h.text === 'string').slice(-6) : [];
-  if (!(await aiOn())) return NextResponse.json({ error: 'The AI tutor isn’t available right now.' }, { status: 503 });
+  if (!(await aiOn())) return NextResponse.json({ error: 'The Ghidra tutor isn’t available right now.' }, { status: 503 });
   const r = await askTutor(a, question.slice(0, 1500), history, user, modeFor(b.mode, a.rule));
   if (r.reason === 'no-sources') return NextResponse.json({ error: 'This course has no materials the tutor can read yet.', code: 'no-sources' }, { status: 409 });
   if (r.reason === 'limit') return NextResponse.json({ error: r.message, code: 'ai-limit' }, { status: 429 });

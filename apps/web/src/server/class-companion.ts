@@ -4,7 +4,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { cachedAi, saveAi, spendAi } from './ai-budget';
 import { isLanguage } from '@/lib/languages';
 import { indexClassSession, indexLater } from './semester';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -40,7 +40,7 @@ export interface Practice { question: string; options: string[]; answer: number;
 export interface PulsePoint { t: number; lost: number; got: number; total: number }
 const MAX_PULSE = 2000;
 
-const SYSTEM = [
+export const SYSTEM = [
   'You turn the transcript of a university class into a study pack for the students who attended (or missed) it.',
   'The transcript comes from automatic captions: expect missing words and mistakes, and ignore small talk, greetings and technical problems ("can you hear me").',
   'Write in the language the class was taught in. Be accurate: only use what was said in the class; never invent facts, dates or numbers.',
@@ -55,7 +55,7 @@ const SYSTEM = [
   'reexplain (for the teacher only): when a "Class pulse" is given (how many students tapped "I\'m lost" or "Got it" over time), 0 to 4 topics worth re-explaining next class, where many students were lost: t = the seconds where the confusion started, topic = what to go over again, why = one short sentence on what seemed unclear, from what was being said at that moment. Leave it empty when there is no pulse or no clear confusion.',
 ].join(' ');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     summary: { type: 'STRING' },
@@ -168,7 +168,7 @@ async function makePack(lines: TranscriptLine[], courseName: string, durationSec
   const lost = pulseText(pulse);
   const prompt = `Course: ${courseName}\nClass length: ${clock(durationSec)}\n\nTranscript (seconds · speaker · words):\n${lines.map((l) => `${l.t} · ${l.who} · ${l.text}`).join('\n')}`
     + (lost ? `\n\nClass pulse (seconds · students who tapped "I'm lost" / "Got it"; counts only):\n${lost}` : '');
-  const raw = await geminiJson<Partial<Pack>>(SYSTEM, prompt, SCHEMA, 8000);
+  const raw = await ghidraJson<Partial<Pack>>('class-notes', SYSTEM, prompt, SCHEMA, 8000);
   return cleanPack(raw, durationSec);
 }
 
@@ -313,13 +313,13 @@ export interface PackText {
   chapters: { t: number; title: string }[]; recap: string; practice: Practice[];
 }
 
-const TR_SYSTEM = [
+export const TR_SYSTEM = [
   'You translate a study pack made from a university class into the target language, for a student who reads that language best.',
   'Translate every text field faithfully; keep technical terms (add the original term in brackets when it helps), names, numbers, formulas and code unchanged.',
   'Keep the same number of items in the same order, and copy every t value unchanged.',
   'from: the ISO 639-1 code of the language the pack is written in.',
 ].join(' ');
-const TR_SCHEMA = {
+export const TR_SCHEMA = {
   type: 'OBJECT',
   properties: {
     from: { type: 'STRING' },
@@ -353,7 +353,7 @@ export async function translatePack(sessionId: string, user: SessionUser, to: st
   const parse = <T,>(v: string): T[] => { try { const x = JSON.parse(v); return Array.isArray(x) ? x : []; } catch { return []; } };
   const original: PackText = { summary: s.summary ?? '', notes: parse(s.notes), keyMoments: parse(s.keyMoments), flashcards: parse(s.flashcards), chapters: parse(s.chapters), recap: s.recap ?? '', practice: parse(s.practice) };
   const forAi = { ...original, practice: original.practice.map(({ question, options, explain }) => ({ question, options, explain })) };
-  const raw = await geminiJson<Partial<PackText> & { from?: string }>(TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(forAi)}`, TR_SCHEMA, 8000);
+  const raw = await ghidraJson<Partial<PackText> & { from?: string }>('class-notes', TR_SYSTEM, `Target language: ${to}\n\nStudy pack (JSON):\n${JSON.stringify(forAi)}`, TR_SCHEMA, 8000);
   if (!raw?.summary) throw new HttpException('Couldn’t translate the study pack. Please try again.', 502);
   const out = String(raw.from ?? '').toLowerCase().slice(0, 2) === to
     ? { same: true, pack: null }

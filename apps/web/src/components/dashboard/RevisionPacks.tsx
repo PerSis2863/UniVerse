@@ -81,7 +81,7 @@ function NewPack({ courseId, sources, onClose, onMade }: { courseId: string; sou
         <Field label="Title">{(p) => <input {...p} className="input" maxLength={120} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Midterm revision" />}</Field>
         <fieldset>
           <legend className="label">Made from</legend>
-          {!sources.length ? <p className="text-sm text-zinc-600 dark:text-zinc-300">No materials with text yet. Upload materials (the AI tutor reads them), or the pack follows your modules.</p> : (
+          {!sources.length ? <p className="text-sm text-zinc-600 dark:text-zinc-300">No materials with text yet. Upload materials (the Ghidra tutor reads them), or the pack follows your modules.</p> : (
             <ul className="max-h-64 space-y-1 overflow-y-auto">
               {sources.map((s) => (
                 <li key={s.id}>

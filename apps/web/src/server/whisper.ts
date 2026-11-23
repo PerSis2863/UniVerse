@@ -7,7 +7,7 @@ import { sameQuestion, spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { breakoutOf } from './calls';
 import { later } from './email';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 import { publish } from './realtime';
@@ -29,7 +29,7 @@ const REUSE_MS = 15 * 60_000;
 const TOPICS_MS = 20 * 60_000;
 const HOUR = 3_600_000;
 
-const SYSTEM = `You are the quiet teaching assistant in a live university class on UniVerse. A student asks you privately during the class.
+export const SYSTEM = `You are the quiet teaching assistant in a live university class on UniVerse. A student asks you privately during the class.
 Answer from the numbered course passages and from what was said in the class in the last minutes (from automatic captions: expect missing words). Rules:
 - Be short: at most 120 words, plain sentences, no headings. The student is listening to the class at the same time.
 - Cite course passages you used with their numbers in square brackets, like [1]. Say "in class" when you rely on what was said.
@@ -39,13 +39,15 @@ Answer from the numbered course passages and from what was said in the class in 
 
 type Citation = { n: number; title: string };
 
+export const TA_ANSWER_SCHEMA = { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] };
+
 /**
  * The TA's answer to one question, from the course's materials and what was said lately (a class
  * call's captions, or the notes an in-person class takes, Stage 5 · Q22). Throws when it can't.
  */
 export async function taAnswer(course: { id: string; code: string; name: string }, question: string, heard: SentLine[]) {
   const { found, text } = await coursePassages(course.id, `${question} ${heard.slice(-6).map((l) => l.text).join(' ')}`, 6);
-  const out = await geminiJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>(
+  const out = await ghidraJson<{ answer: string; grounded: boolean; used: number[]; topic: string }>('whisper', 
     SYSTEM,
     [
       `Class: ${course.code} · ${course.name}`,
@@ -53,7 +55,7 @@ export async function taAnswer(course: { id: string; code: string; name: string 
       `What was said in the class in the last minutes:\n${heard.length ? heardText(heard) : '(no captions: the live transcript isn’t on)'}`,
       `The student's question: ${question}`,
     ].join('\n\n'),
-    { type: 'OBJECT', properties: { answer: { type: 'STRING' }, grounded: { type: 'BOOLEAN' }, used: { type: 'ARRAY', items: { type: 'INTEGER' } }, topic: { type: 'STRING' } }, required: ['answer', 'grounded', 'used', 'topic'] },
+    TA_ANSWER_SCHEMA,
     600,
     true,
   );

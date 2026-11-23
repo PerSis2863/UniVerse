@@ -2,7 +2,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
 import { logAiUse } from './ai-receipts';
 import { boardAccess, canEdit } from './boards';
-import { geminiJson, geminiJsonImage } from './gemini';
+import { ghidraJson, ghidraJsonImage } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { featureOff } from './moderation';
 
@@ -14,11 +14,11 @@ import { featureOff } from './moderation';
 //   diagram  a rough sketch (the selected shapes, or the whole board, as a small PNG the app makes)
 //            → a clean diagram: shapes with their text on a grid, and the arrows between them
 
-const THEMES = { type: 'OBJECT', properties: { themes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { name: { type: 'STRING' }, notes: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['name', 'notes'] } } }, required: ['themes'] };
-const MINDMAP = { type: 'OBJECT', properties: { center: { type: 'STRING' }, branches: { type: 'ARRAY', items: { type: 'OBJECT', properties: { label: { type: 'STRING' }, ideas: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['label', 'ideas'] } } }, required: ['center', 'branches'] };
-const SUMMARY = { type: 'OBJECT', properties: { title: { type: 'STRING' }, summary: { type: 'STRING' }, nextSteps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['title', 'summary', 'nextSteps'] };
+export const THEMES = { type: 'OBJECT', properties: { themes: { type: 'ARRAY', items: { type: 'OBJECT', properties: { name: { type: 'STRING' }, notes: { type: 'ARRAY', items: { type: 'INTEGER' } } }, required: ['name', 'notes'] } } }, required: ['themes'] };
+export const MINDMAP = { type: 'OBJECT', properties: { center: { type: 'STRING' }, branches: { type: 'ARRAY', items: { type: 'OBJECT', properties: { label: { type: 'STRING' }, ideas: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['label', 'ideas'] } } }, required: ['center', 'branches'] };
+export const SUMMARY = { type: 'OBJECT', properties: { title: { type: 'STRING' }, summary: { type: 'STRING' }, nextSteps: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['title', 'summary', 'nextSteps'] };
 
-const DIAGRAM = {
+export const DIAGRAM = {
   type: 'OBJECT',
   properties: {
     title: { type: 'STRING' },
@@ -27,7 +27,7 @@ const DIAGRAM = {
   },
   required: ['title', 'nodes', 'edges'],
 };
-const DIAGRAM_SYSTEM = `You turn a rough hand-drawn whiteboard sketch (a flowchart, a process, a concept map, a simple diagram) into a clean diagram.
+export const DIAGRAM_SYSTEM = `You turn a rough hand-drawn whiteboard sketch (a flowchart, a process, a concept map, a simple diagram) into a clean diagram.
 Read every shape with its text, and every arrow or line between shapes.
 - nodes: id ("n1", "n2"…), label (the shape's text, cleaned up and spelled correctly, short; keep the sketch's language), shape ("box" for rectangles, "round" for rounded boxes or steps, "diamond" for decisions or questions, "ellipse" for start/end, circles and bubbles), and row/col: where the shape sits in the sketch on a grid (row 0 = top, col 0 = left; shapes side by side share a row, shapes one above the other share a column).
 - edges: from/to node ids in the arrow's direction (for a plain line: top to bottom, or left to right), with the arrow's text as label if it has one.
@@ -59,6 +59,12 @@ function tidyDiagram(out: { title?: string; nodes?: { id: string; label: string;
   return { title: clip(out.title, 80), nodes, edges };
 }
 
+export const SUMMARY_SYSTEM = 'You summarise a whiteboard from a class or group session for the students. A short title, a summary of 2–4 sentences, and up to 5 concrete next steps. Use only what is on the board. Write in the language of the board.';
+
+export const MINDMAP_SYSTEM = 'You make a mind map for students. A short centre (the topic), 3 to 6 branches with short labels (1–4 words), each with up to 4 short ideas (2–6 words). Write in the language of the topic.';
+
+export const THEMES_SYSTEM = 'You group sticky notes from a class workshop into themes. 2 to 6 themes, each with a short name (2–4 words). Every note goes in exactly one theme; use the note numbers given. Keep the language of the notes.';
+
 /** POST /api/boards/:id/ai { action, texts?, topic? } */
 export async function boardAi(boardId: string, user: SessionUser, b: Record<string, unknown>) {
   const access = await boardAccess(boardId, user.id);
@@ -79,8 +85,8 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
   if (action === 'themes') {
     if (texts.length < 3) throw new BadRequestException('Add at least 3 sticky notes first.');
     const list = texts.map((t, i) => `${i}. ${t}`).join('\n');
-    const out = await geminiJson<{ themes: { name: string; notes: number[] }[] }>(
-      'You group sticky notes from a class workshop into themes. 2 to 6 themes, each with a short name (2–4 words). Every note goes in exactly one theme; use the note numbers given. Keep the language of the notes.',
+    const out = await ghidraJson<{ themes: { name: string; notes: number[] }[] }>('boards', 
+      THEMES_SYSTEM,
       `Board: ${access.board.title}\nNotes:\n${list}`, THEMES, 1500, true,
     );
     if (!out?.themes?.length) throw new HttpException('The AI didn’t answer. Please try again.', 502);
@@ -93,22 +99,22 @@ export async function boardAi(boardId: string, user: SessionUser, b: Record<stri
   if (action === 'mindmap') {
     const topic = clip(b.topic, 200);
     if (!topic) throw new BadRequestException('What should the mind map be about?');
-    const out = await geminiJson<{ center: string; branches: { label: string; ideas: string[] }[] }>(
-      'You make a mind map for students. A short centre (the topic), 3 to 6 branches with short labels (1–4 words), each with up to 4 short ideas (2–6 words). Write in the language of the topic.',
+    const out = await ghidraJson<{ center: string; branches: { label: string; ideas: string[] }[] }>('boards', 
+      MINDMAP_SYSTEM,
       `Topic: ${topic}${texts.length ? `\nAlready on the board:\n${texts.slice(0, 40).join('\n')}` : ''}`, MINDMAP, 1200, true,
     );
     if (!out?.branches?.length) throw new HttpException('The AI didn’t answer. Please try again.', 502);
     return { center: clip(out.center, 60) || topic.slice(0, 60), branches: out.branches.slice(0, 6).map((br) => ({ label: clip(br.label, 40), ideas: (br.ideas ?? []).map((x) => clip(x, 60)).filter(Boolean).slice(0, 4) })).filter((br) => br.label) };
   }
   if (action === 'diagram') {
-    const out = await geminiJsonImage<Parameters<typeof tidyDiagram>[0]>(DIAGRAM_SYSTEM, `Board: ${access.board.title}${texts.length ? `\nTyped text in the sketch (to help reading it): ${texts.slice(0, 40).join(' | ')}` : ''}`, { mimeType: 'image/png', data: image }, DIAGRAM, 3000);
+    const out = await ghidraJsonImage<Parameters<typeof tidyDiagram>[0]>('boards', DIAGRAM_SYSTEM, `Board: ${access.board.title}${texts.length ? `\nTyped text in the sketch (to help reading it): ${texts.slice(0, 40).join(' | ')}` : ''}`, { mimeType: 'image/png', data: image }, DIAGRAM, 3000);
     const d = out ? tidyDiagram(out) : null;
     if (!d?.nodes.length) throw new HttpException('The AI couldn’t read a diagram in this sketch. Try selecting just the drawing.', 502);
     return d;
   }
   if (!texts.length) throw new BadRequestException('There’s no text on this board to summarise yet.');
-  const out = await geminiJson<{ title: string; summary: string; nextSteps: string[] }>(
-    'You summarise a whiteboard from a class or group session for the students. A short title, a summary of 2–4 sentences, and up to 5 concrete next steps. Use only what is on the board. Write in the language of the board.',
+  const out = await ghidraJson<{ title: string; summary: string; nextSteps: string[] }>('boards', 
+    SUMMARY_SYSTEM,
     `Board: ${access.board.title}\nText on the board:\n${texts.join('\n')}`, SUMMARY, 900, true,
   );
   if (!out?.summary) throw new HttpException('The AI didn’t answer. Please try again.', 502);

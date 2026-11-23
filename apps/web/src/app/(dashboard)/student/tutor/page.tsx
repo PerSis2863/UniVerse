@@ -7,9 +7,9 @@ import { TutorStudio } from '@/components/tutor/TutorStudio';
 export default function TutorPage() {
   return (
     <>
-      <Topbar title="AI tutor" subtitle="Answers from your course materials, with sources · practice questions · flashcards" />
+      <Topbar title="Ghidra tutor" subtitle="Answers from your course materials, with sources · practice questions · flashcards" />
       <SectionTabs tabs={STUDENT_BOARD_TABS} />
-      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="AI tutor mode" />
+      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="Ghidra tutor mode" />
       <TutorStudio />
     </>
   );

@@ -30,7 +30,7 @@ def agents():
     p = subprocess.run(['node', 'scripts/ai/agents-lab.mjs'], cwd=WEB, capture_output=True, text=True, check=True)
     return json.loads(p.stdout)
 
-def system_of(A, kind):  # exactly what src/server/agents/own-model.ts sends
+def system_of(A, kind):  # exactly what src/server/ghidra/own-model.ts (ghidraAgent) sends
     return f"{A[kind]['system']}\n{A[kind]['rule']}"
 
 def json_list(text):

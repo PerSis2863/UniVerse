@@ -85,7 +85,7 @@ export function prompt(p: Playbook, format: string) {
 }
 
 /** What each agent is asked for and the shape of its answer (Gemini's schema style), shared by the agents, by their
- *  own model on Cloudflare (own-model.ts) and by the training kit (scripts/ai/agents-ai.py), so all three use the
+ *  own model on Cloudflare (../ghidra/own-model.ts, ghidraAgent) and by the training kit (scripts/ai/agents-ai.py), so all three use the
  *  same words. */
 const STR = { type: 'STRING' }, LIST = { type: 'ARRAY', items: STR };
 export const AGENTS = {

@@ -8483,3 +8483,30 @@ model GhidraReport {
   @@index([userId, createdAt])
   @@map("ghidra_reports")
 }
+
+model GhidraExamRun {
+  id         String             @id @default(cuid())
+  per        Int
+  total      Int
+  cursor     Int                @default(0)
+  status     String             @default("RUNNING")
+  startedAt  DateTime           @default(now())
+  finishedAt DateTime?
+  answers    GhidraExamAnswer[]
+
+  @@index([startedAt])
+  @@map("ghidra_exam_runs")
+}
+
+model GhidraExamAnswer {
+  id     String        @id @default(cuid())
+  runId  String
+  run    GhidraExamRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  skill  String
+  n      Int
+  failed String
+  answer String?
+
+  @@index([runId, skill])
+  @@map("ghidra_exam_answers")
+}

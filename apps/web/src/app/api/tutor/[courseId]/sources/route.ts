@@ -23,7 +23,7 @@ export async function POST(req: Request, { params }: Ctx) {
   if (!a) return NextResponse.json({ error: 'Course not found.' }, { status: 404 });
   const b = await req.json().catch(() => ({}));
   if (b.action === 'prepare') {
-    if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: 'The AI tutor isn’t set up yet.' }, { status: 503 });
+    if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: 'The Ghidra tutor isn’t set up yet.' }, { status: 503 });
     return NextResponse.json(await prepareSources(a.courseId));
   }
   if (a.role === 'STUDENT') return NextResponse.json({ error: 'Only the teacher can add notes.' }, { status: 403 });

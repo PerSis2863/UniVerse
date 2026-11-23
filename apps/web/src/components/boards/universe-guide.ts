@@ -132,7 +132,7 @@ function everyFeature() {
   s.raw({ type: 'ellipse', id: s.id('centre'), x: cx - 170, y: cy - 80, width: 340, height: 160, backgroundColor: C.owner, fillStyle: 'solid', label: { text: 'UniVerse', fontSize: 36 } } as El);
   const branches: [string, string, string][] = [
     ['Learning', C.student, bullets('Courses and the course marketplace', 'Blackboard: each course’s posts and materials', 'Assignments and grades, rubrics, feedback', 'Quizzes: 8 auto-marked types, maths answers,', '  question pools, exams, adaptive practice,', '  live quiz game, GIFT and QTI import', 'Copy a course to a new term; Common Cartridge')],
-    ['Study tools', C.student, bullets('AI tutor: homework photo hints, tutor modes', 'Voice tutor', 'Flashcards with spaced repetition (FSRS)', 'Practice tests, study planner', 'Maths and chemistry shown properly (KaTeX)')],
+    ['Study tools', C.student, bullets('Ghidra tutor: homework photo hints, tutor modes', 'Voice tutor', 'Flashcards with spaced repetition (FSRS)', 'Practice tests, study planner', 'Maths and chemistry shown properly (KaTeX)')],
     ['Collaborate', C.teacher, bullets('Spaces for classes and groups', 'Whiteboards: live, 10 templates, AI drawing', 'Docs, sheets and slides (Word, Excel, PowerPoint)', 'Files: folders that open, versions, previews', 'Tools, code and tasks')],
     ['Talk and stay informed', C.teacher, bullets('Messages, groups and communities', 'Calls and live classes', 'Notifications: push, daily digest, snooze', 'Announcements and the blog', 'Search everything (⌘K)')],
     ['Running the school', C.admin, bullets('Attendance: from calls, location check, seating chart', 'Timetable generator, calendar, exam timetable', 'Admissions, registers, staff, library desk', 'Fees and payments (the school’s own Razorpay/Stripe)', 'Early warning, safety reports, approvals', 'Import and export, LMS integration')],
@@ -185,7 +185,7 @@ function whereThingsStand() {
       'Watching the Cloudflare plan: the guard pauses at 90%',
     ]],
     ['Done', C.teacher, [
-      'Work queue Q1–Q23: courses, quizzes, attendance, calendar, AI tutor, search, notifications…',
+      'Work queue Q1–Q23: courses, quizzes, attendance, calendar, Ghidra tutor, search, notifications…',
       'Office suite (sheets, slides, Word) and security parts 1–7; payment keys encrypted',
       'The look: light trail, folders, code boxes, the owner console deck and feature flows',
       'Launch list and lean code: cookie choice, icons, contrast, broken links, pnpm lean',
@@ -232,7 +232,7 @@ function howItWasBuilt() {
   s.raw({ type: 'arrow', x: 0, y: 380, width: 2100, height: 0, points: [[0, 0], [2100, 0]], strokeWidth: 3 } as El);
   const events: [string, string][] = [
     ['Stages 1–4', 'The core: accounts and roles, courses, messages, groups, files, the student, teacher and admin areas, Global Impact'],
-    ['Stage 5 · Q1–Q23', 'The work queue: course copy, assignments, quizzes, live quiz, home pages, notifications, search, attendance, calendar, AI tutor, skills passport'],
+    ['Stage 5 · Q1–Q23', 'The work queue: course copy, assignments, quizzes, live quiz, home pages, notifications, search, attendance, calendar, Ghidra tutor, skills passport'],
     ['Office suite', 'Sheets, slides and Word features inside Collaborate → Docs'],
     ['Security', 'Parts 1–7 checked, payment keys encrypted, each admin limited to their school'],
     ['22 Oct 2026', 'Cloudflare Workers Paid: more time per request, a spending guard at 90%'],
@@ -295,7 +295,7 @@ function technical() {
     ['How do live updates work?', 'Durable Objects: one live “room” per chat, whiteboard or call. The server publishes changes; screens without live updates check back gently (no constant polling).'],
     ['How does sign-in work?', 'Firebase Authentication (email, Google, phone). Admins and the owner add a second step: a passkey or a 6-digit emailed code.'],
     ['Where are files?', 'In Cloudflare R2 storage. Folders, versions and previews; each person and space has a storage quota.'],
-    ['How is AI used?', 'Through the AI tutor, study tools, whiteboard drawing and the errors hub. Each person has a daily allowance, answers are cached, and the owner can switch AI off.'],
+    ['How is AI used?', 'Through the Ghidra tutor, study tools, whiteboard drawing and the errors hub. Each person has a daily allowance, answers are cached, and the owner can switch AI off.'],
     ['How is it kept safe?', 'Every route checks who is asking; request data is checked before use; strict browser security headers; payment keys encrypted (AES-256); each admin sees only their school.'],
     ['How does it stay cheap?', 'The $5 Workers Paid plan, a guard that pauses at 90% of it, no polling, small first downloads, and links that load only when you point at them.'],
     ['How do updates go live?', 'Code is saved in GitHub; merging builds and deploys it on Cloudflare, and new database changes are applied by themselves.'],
@@ -333,7 +333,7 @@ function demoPlan() {
   const s = section('lesson', '10 · Showing it to a school');
   s.box(0, 70, 1500, 190, `Learning aims (by the end, the school can…)\n\n${bullets('sign in as a student, teacher and admin', 'find any feature with search', 'set up its first course and class')}`, C.owner, { fontSize: 20 });
   s.box(0, 280, 480, 460, `Starter (10 min)\n\n${bullets('Open the public demo (no account needed)', 'Show a student’s home page and Up next', 'Switch to dark mode and another language')}`, C.admin, { fontSize: 20 });
-  s.box(510, 280, 480, 460, `Main activity (25 min)\n\n${bullets('Teacher: make a course, an assignment, a quiz', 'Student: hand it in, try the AI tutor', 'Everyone: a live whiteboard together', 'Admin: attendance and the timetable')}`, C.teacher, { fontSize: 20 });
+  s.box(510, 280, 480, 460, `Main activity (25 min)\n\n${bullets('Teacher: make a course, an assignment, a quiz', 'Student: hand it in, try the Ghidra tutor', 'Everyone: a live whiteboard together', 'Admin: attendance and the timetable')}`, C.teacher, { fontSize: 20 });
   s.box(1020, 280, 480, 460, `Plenary (10 min)\n\n${bullets('Show the grades a parent sees', 'Answer questions', 'Agree the next step: an admin account')}`, C.student, { fontSize: 20 });
   s.box(0, 760, 735, 250, `Resources\n\n${bullets('The demo site and its sample data', 'This whiteboard', 'Help pages and the blog')}`, C.grey, { fontSize: 20 });
   s.box(765, 760, 735, 250, `Checking understanding\n\n${bullets('Can they find “Attendance” with search?', 'Can a teacher grade a hand-in alone?', 'Do they know where to ask for help?')}`, C.warm, { fontSize: 20 });
@@ -410,7 +410,7 @@ function menu(key: string, name: string, title: string, colour: string, groups: 
 const students = () => menu('pg-student', '13 · Every page: students', 'Every page a student has', C.student, [
   ['Home', ['Dashboard: up next, goals, timetable', 'Inbox and calls', 'Notifications: snooze, mute, digest']],
   ['Schooling', ['Courses and the course marketplace', 'Groups and the blackboard', 'Assignments and grades', 'Quizzes and attendance', 'My choices (options)', 'Learning resources', 'Collaborate: boards, docs, files']],
-  ['Study tools', ['AI tutor and voice tutor', 'Flashcards and practice tests', 'Study planner', 'Scan from the teacher’s screen']],
+  ['Study tools', ['Ghidra tutor and voice tutor', 'Flashcards and practice tests', 'Study planner', 'Scan from the teacher’s screen']],
   ['Careers', ['Internships and skills match', 'Application tracker', 'Interview practice', 'Mentors and alumni', 'Skills passport and CV']],
   ['Global impact', ['AI project match', 'Opportunities with NGOs', 'Edu society', 'Credentials anyone can verify', 'Leaderboard, Impact rooms, League', 'My donations']],
   ['Campus life', ['Student life and community', 'Campus board: buy, sell, swap', 'Carpool, housing, food pre-orders', 'Room booking and campus map', 'Events, lost and found', 'Medical and disability']],
@@ -420,7 +420,7 @@ const students = () => menu('pg-student', '13 · Every page: students', 'Every p
 const teachers = () => menu('pg-teacher', '14 · Every page: teachers', 'Every page a teacher has', C.teacher, [
   ['Home', ['Dashboard: who needs attention', 'Messages, calls, notifications']],
   ['Teaching', ['My courses and the marketplace', 'Blackboard and students', 'Assignments, rubrics, feedback', 'Quizzes: 8 types, pools, exams', 'Live quiz game', 'Grades and report cards', 'Attendance from the class call', 'Live class and timetable']],
-  ['Tools', ['AI tutor from course sources', 'Send to phones with no internet', 'Collaborate and knowledge hub', 'Convert and compress files']],
+  ['Tools', ['Ghidra tutor from course sources', 'Send to phones with no internet', 'Collaborate and knowledge hub', 'Convert and compress files']],
   ['Global collaboration', ['Research between universities', 'NGO mentorship', 'Volunteer mentor', 'Impact rooms and League', 'My donations']],
   ['Campus', ['Room reservation', 'Campus map', 'Settings and profile']],
 ], 2);

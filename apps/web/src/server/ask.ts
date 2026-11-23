@@ -9,7 +9,7 @@ import { guard, guardReply, UNTRUSTED_RULE } from '@/lib/ghidra-guard';
 import { spendAi } from './ai-budget';
 import { BadRequestException } from './http';
 import { featureOff } from './moderation';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { isHard, thinkHardText } from './ghidra-think';
 import { askChain } from './ghidra-chain';
 import { research } from './agents/research';
@@ -27,7 +27,7 @@ import type { Body } from './body';
 // matcher answers. Every field AI returns is checked again (cleanPlan). The last few turns come along so follow-ups
 // work; they are the person's own words and Ghidra's replies, cut short, and only shape this one answer.
 
-const SYSTEM = [
+export const SYSTEM = [
   'You are Ghidra, the assistant of UniVerse Impact: one account with several apps: UniVersity (school), Trace (product',
   'passports), Relief (needs and offers of help on a map), Green (climate actions), Travel (places, guides and trips) and Games.',
   'Turn the person\'s latest request into exactly one action. Earlier turns are only context for follow-ups. Actions:',
@@ -52,7 +52,7 @@ const SYSTEM = [
   MATH_RULE,
 ].join('\n');
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     action: { type: 'STRING', enum: ['my_due', 'my_green', 'my_trips', 'my_courses', 'trip_new', 'message_draft', 'quiz_draft', 'research', 'social_posts', 'product_help', 'green_log', 'relief_post', 'trace_check', 'open', 'answer'] },
@@ -191,12 +191,12 @@ export async function askOne(u: SessionUser, text: string, history: AskTurn[]): 
   const spend = await spendAi(u);
   if (!spend.ok) return local(spend.message);
   const prompt = history.length ? `Earlier in this chat:\n${history.map((t) => `${t.who === 'me' ? 'Person' : 'Ghidra'}: ${t.text}`).join('\n')}\n\nLatest request: ${text}` : text;
-  const out = await geminiJson<Record<string, unknown>>(SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
+  const out = await ghidraJson<Record<string, unknown>>('assistant', SYSTEM, prompt, SCHEMA, 2000, true).catch(() => null);
   if (!out) return local();
   const plan = await resolve(u, cleanPlan(out));
   // M430: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.
   if (plan.action === 'answer' && isHard(text)) {
-    const deep = await thinkHardText(`You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
+    const deep = await thinkHardText(u, `You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
     if (deep) return { action: 'answer', say: deep.slice(0, 6000), ai: true };
   }
   return { ...plan, ai: true };

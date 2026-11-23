@@ -63,9 +63,9 @@ export default function OralPracticePage() {
   const checks = data?.checks ?? [];
   return (
     <>
-      <Topbar title="AI tutor" subtitle="Practise speaking: vivas, debates, language orals and interviews" />
+      <Topbar title="Ghidra tutor" subtitle="Practise speaking: vivas, debates, language orals and interviews" />
       <SectionTabs tabs={STUDENT_BOARD_TABS} />
-      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="AI tutor mode" />
+      <SectionTabs tabs={STUDENT_TUTOR_MODES} small label="Ghidra tutor mode" />
       <div className="flex-1 p-4 md:p-8 overflow-y-auto">
         <div className="max-w-2xl mx-auto space-y-5">
           {oral.phase !== 'idle' ? <OralRoom oral={oral} onBack={oral.reset} /> : (

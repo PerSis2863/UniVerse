@@ -20,6 +20,8 @@ import { aiModels, LIVE_MODELS, saveModels, TEXT_MODELS } from '../ai-models';
 import { repairSetup, startRepair } from '../repair-agents';
 import { cloudflareAccount } from '../cloudflare-account';
 import { healthCheck } from '../owner-health';
+import { workersPaid } from '@/lib/plan-limits';
+import { examState, startExam, stepExam, stopExam } from '../ghidra/exam-run';
 import { callHealth } from '../calls';
 import { CloudflareAdminError, emailCode, rollback } from '../cloudflare-admin';
 import { oneOf, strings } from '../body';
@@ -291,7 +293,7 @@ export default function ownerModule(router: Router) {
       countries: top(countries, (r: { country: string | null }) => r.country),
       devices: top(devices, (r: { device: string | null }) => r.device),
       // The spending guard (cloudflare/usage-guard.ts): this billing month's Cloudflare usage.
-      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: process.env.WORKERS_PAID?.trim().toLowerCase() === 'true', daily: guard.daily ? JSON.parse(guard.daily) : null },
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: workersPaid(), daily: guard.daily ? JSON.parse(guard.daily) : null },
     };
     cachedOverview = { at: Date.now(), data: result };
     return result;
@@ -318,7 +320,7 @@ export default function ownerModule(router: Router) {
     ]);
     return withOwnerPass(ctl.bypass, {
       control: publicControl(ctl),
-      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: process.env.WORKERS_PAID?.trim().toLowerCase() === 'true', daily: guard.daily ? JSON.parse(guard.daily) : null },
+      usage: guard && { paused: guard.paused, reason: guard.reason, resumeAt: guard.resumeAt, checkedAt: guard.checkedAt, error: guard.error, meters: guard.meters ? JSON.parse(guard.meters) : [], paid: workersPaid(), daily: guard.daily ? JSON.parse(guard.daily) : null },
       health: { people, activeToday, signInsToday, messagesToday, openErrors, newErrors, pendingDeletions, suspended },
       settings: serverSettings(),
       ai: await aiUsageToday().catch(() => null),
@@ -415,11 +417,11 @@ export default function ownerModule(router: Router) {
     let aiChange = '';
     if (body?.aiLimits !== undefined) {
       const v = body.aiLimits ?? {};
-      const bad = ['student', 'staff', 'site'].some((k) => v[k] !== undefined && !(Number.isInteger(v[k]) && v[k] >= 0 && v[k] <= 100_000));
+      const bad = ['student', 'staff', 'site', 'cloud', 'cloudSite'].some((k) => v[k] !== undefined && !(Number.isInteger(v[k]) && v[k] >= 0 && v[k] <= 100_000));
       if (bad) throw new BadRequestException('Limits must be whole numbers from 0 to 100,000');
       const limits = parseLimits(JSON.stringify(v));
       data.aiLimits = JSON.stringify(limits);
-      aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site`;
+      aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site; paid Cloudflare AI ${limits.cloud} a person, ${limits.cloudSite} for the site`;
     }
     // M203: the apps the website shows (at least one; every app is stored as none, so a new app shows).
     let appsChange = '';
@@ -749,6 +751,16 @@ export default function ownerModule(router: Router) {
 
   // The Health check tab: security and error checks, ranked and explained by AI.
   r.get('health', ({ query }) => healthCheck(query.fresh === '1'));
+
+  // ── Ghidra's exam (M445): a run asked a few questions at a time while the console is open ──
+  r.get('ghidra-exam', () => examState());
+  r.post('ghidra-exam', ({ body }) => {
+    const b = (body ?? {}) as Record<string, unknown>;
+    if (b.action === 'start') return startExam(b.per);
+    if (b.action === 'step') return stepExam(b.id);
+    if (b.action === 'stop') return stopExam(b.id);
+    throw new BadRequestException('Start, step or stop?');
+  });
 
   // Putting an earlier version live needs CF_ADMIN_TOKEN and an emailed code each time.
   r.post('cloudflare/code', async ({ user }) => {

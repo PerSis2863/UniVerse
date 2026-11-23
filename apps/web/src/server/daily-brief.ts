@@ -4,7 +4,7 @@ import { validZone, wallClock as wall } from '@/lib/local-time';
 import { planLimits } from '@/lib/plan-limits';
 import type { SessionUser } from '@/lib/server-auth';
 import { spendAi } from './ai-budget';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { BadRequestException, HttpException } from './http';
 import { featureOff } from './moderation';
 import { upcomingCalls } from './scheduled-calls';
@@ -206,13 +206,13 @@ async function chatter(user: SessionUser) {
   return rows.reverse().map((m) => `[${m.conversation.community ? `${m.conversation.community.name} › ` : ''}${m.conversation.name ?? 'Group'}] ${m.sender.name}: ${m.body.replace(/\s+/g, ' ').slice(0, 160)}`);
 }
 
-const BRIEF_SYSTEM = `You write a short morning brief for one person using a school app, from the data given: their classes today, what's due soon, scheduled calls, chats waiting for their reply, and recent messages in their group chats and channels.
+export const BRIEF_SYSTEM = `You write a short morning brief for one person using a school app, from the data given: their classes today, what's due soon, scheduled calls, chats waiting for their reply, and recent messages in their group chats and channels.
 - summary: 2 or 3 friendly sentences on what matters most today. Plain words, no greetings like "Good morning".
 - decisions: up to 4 decisions or agreements actually made in their group chats or channels (who decided what, and where). Leave it empty when there are none. Never count questions or plans that weren't agreed.
 - tasks: up to 5 concrete things they could do today or tomorrow (reply to someone, prepare for a deadline, follow up on a decision). Each: a short title under 70 characters starting with a verb, when ("today" or "tomorrow"), and why in under 80 characters.
 Use only what's in the data; never invent names, times or facts. Write in the language most of the data is in (English if unsure).`;
 
-const AI_SCHEMA = {
+export const AI_SCHEMA = {
   type: 'OBJECT',
   properties: {
     summary: { type: 'STRING' },
@@ -247,7 +247,7 @@ export async function makeAiBrief(user: SessionUser, tzRaw: unknown): Promise<{ 
   if (!lines.length && !data.waiting.length && !data.due.length && !data.classes.length && !data.calls.length && !data.toGrade) return { ai: null };
   const spend = await spendAi(user);
   if (!spend.ok) throw new HttpException(spend.message, 429);
-  const out = await geminiJson<AiBrief>(BRIEF_SYSTEM, prompt(data, lines, tz), AI_SCHEMA, 900);
+  const out = await ghidraJson<AiBrief>('daily-brief', BRIEF_SYSTEM, prompt(data, lines, tz), AI_SCHEMA, 900);
   if (!out?.summary) throw new HttpException('Couldn’t make your brief right now. Please try again.', 502);
   const ai: AiBrief = {
     summary: String(out.summary).slice(0, 600),

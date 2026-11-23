@@ -13,7 +13,7 @@ import { num, short } from './trace';
 import { notify } from './email';
 import { spendAi } from './ai-budget';
 import { featureOff } from './moderation';
-import { geminiJson, geminiJsonImage } from './gemini';
+import { ghidraJson, ghidraJsonImage } from './ghidra/brain';
 import { logAiUse } from './ai-receipts';
 
 // Green → Business (M269–M275): a company's carbon footprint, GHG Protocol scopes 1–3 (src/lib/carbon.ts). A company
@@ -291,10 +291,10 @@ async function roomFor(org: Org, periods: string[], adding: number) {
 }
 
 // ——— Reading a bill with AI (M270) ———
-const BILL_SYSTEM = `You read a company's utility bill, fuel receipt, travel invoice or expense report and list the activity in it for a carbon footprint.
+export const BILL_SYSTEM = `You read a company's utility bill, fuel receipt, travel invoice or expense report and list the activity in it for a carbon footprint.
 Only list amounts that are written on it. Categories (use the id): ${CATEGORIES.filter((c) => !MADE.includes(c.id)).map((c) => `${c.id} = ${c.label} (${c.unit === 'money' ? 'amount spent' : c.unit})`).join('; ')}.
 Give each line the month it covers as YYYY-MM (the end of the billing period), the quantity in the category's unit (convert units you are sure of: MWh to kWh ×1000, gallons to litres ×3.785, tonnes to kg ×1000), and a short note (the supplier and what it is). If nothing fits, return no lines.`;
-const BILL_SCHEMA = {
+export const BILL_SCHEMA = {
   type: 'OBJECT',
   properties: { lines: { type: 'ARRAY', items: { type: 'OBJECT', properties: { category: { type: 'STRING' }, period: { type: 'STRING' }, quantity: { type: 'NUMBER' }, note: { type: 'STRING' } }, required: ['category', 'period', 'quantity'] } } },
   required: ['lines'],
@@ -314,7 +314,7 @@ export async function readBill(u: SessionUser, id: string, b: Body) {
   if (!spend.ok) throw new HttpException(spend.message, 429);
   await logAiUse(u.id, { kind: 'carbon-bill', detail: 'Read a bill for Green → Business' });
   const prompt = `This year is ${thisYear()}. List the activity lines.${textIn ? `\n\n${textIn}` : ''}`;
-  const out = mime && data ? await geminiJsonImage<{ lines: Body[] }>(BILL_SYSTEM, prompt, { mimeType: mime, data }, BILL_SCHEMA, 1500) : await geminiJson<{ lines: Body[] }>(BILL_SYSTEM, prompt, BILL_SCHEMA, 1500);
+  const out = mime && data ? await ghidraJsonImage<{ lines: Body[] }>('carbon', BILL_SYSTEM, prompt, { mimeType: mime, data }, BILL_SCHEMA, 1500) : await ghidraJson<{ lines: Body[] }>('carbon', BILL_SYSTEM, prompt, BILL_SCHEMA, 1500);
   const lines = (out?.lines ?? []).slice(0, 40).map((l) => ({
     category: categoryById(l.category) && !MADE.includes(l.category as string) ? (l.category as string) : null,
     period: isPeriod(l.period) ? l.period : null, quantity: num(l.quantity, 0, 1e12), note: short(l.note, 200),

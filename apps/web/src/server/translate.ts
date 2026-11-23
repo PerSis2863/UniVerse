@@ -1,5 +1,5 @@
 import prisma from '@/lib/db';
-import { geminiJson } from './gemini';
+import { ghidraJson } from './ghidra/brain';
 import { requireAi } from './ai-budget';
 import { LANGUAGES, isLanguage } from '@/lib/languages';
 
@@ -17,14 +17,14 @@ export interface Translation { text: string; from: string; same: boolean }
 
 const MAX_BATCH = 20;
 const MAX_CHARS = 2000; // per message
-const SYSTEM = `You translate chat messages between students, teachers and NGO staff on UniVerse, a university platform.
+export const SYSTEM = `You translate chat messages between students, teachers and NGO staff on UniVerse, a university platform.
 For each message: detect its language (ISO 639-1 code) and translate it into the target language.
 Keep the meaning, tone and informality. Keep emoji, URLs, @mentions, numbers, names, and the chat formatting
 markers *bold*, _italic_, ~strike~ and \`code\` exactly as they are. Don't add notes or explanations.
 If a message is already in the target language (or has no words to translate, e.g. only emoji or a link),
 return an empty translation for it.`;
 
-const SCHEMA = {
+export const SCHEMA = {
   type: 'OBJECT',
   properties: {
     items: {
@@ -53,7 +53,7 @@ function nothingToTranslate(text: string) {
 async function translateBatch(items: { id: string; text: string }[], to: string) {
   if (!items.length) return new Map<string, { lang: string; text: string }>();
   const prompt = `Target language: ${name(to)} (${to}).\nMessages (JSON):\n${JSON.stringify(items.map((i) => ({ id: i.id, text: i.text.slice(0, MAX_CHARS) })))}`;
-  const out = await geminiJson<{ items: { id: string; lang: string; text: string }[] }>(SYSTEM, prompt, SCHEMA, 4096, true);
+  const out = await ghidraJson<{ items: { id: string; lang: string; text: string }[] }>('translate', SYSTEM, prompt, SCHEMA, 4096, true);
   if (!out?.items) return null;
   const map = new Map<string, { lang: string; text: string }>();
   for (const r of out.items) {
@@ -161,11 +161,11 @@ export async function translateDraft(text: string, to: string, who: AiUser): Pro
   return { text: r.text || text, from: r.lang };
 }
 
-const CAPTION_SYSTEM = `You translate live captions from a university class (automatic speech recognition: expect missing
+export const CAPTION_SYSTEM = `You translate live captions from a university class (automatic speech recognition: expect missing
 words and small mistakes). Translate each line into the target language so a student can follow the class.
 Keep it short and natural, keep names, numbers and technical terms. Don't add notes. If a line is already
 in the target language, return it unchanged.`;
-const CAPTION_SCHEMA = {
+export const CAPTION_SCHEMA = {
   type: 'OBJECT',
   properties: { items: { type: 'ARRAY', items: { type: 'OBJECT', properties: { id: { type: 'STRING' }, text: { type: 'STRING' } }, required: ['id', 'text'] } } },
   required: ['items'],
@@ -181,7 +181,7 @@ export async function translateCaptions(callId: string, lines: { id: string; tex
   if (!lines.length) return {};
   await requireAi({ id: `cc:${callId}`, role: 'STAFF' });
   const prompt = `Target language: ${name(to)} (${to}).\nLines (JSON):\n${JSON.stringify(lines.map((l) => ({ id: l.id, text: l.text.slice(0, 300) })))}`;
-  const out = await geminiJson<{ items: { id: string; text: string }[] }>(CAPTION_SYSTEM, prompt, CAPTION_SCHEMA, 2048, true);
+  const out = await ghidraJson<{ items: { id: string; text: string }[] }>('translate', CAPTION_SYSTEM, prompt, CAPTION_SCHEMA, 2048, true);
   const result: Record<string, string> = {};
   for (const r of out?.items ?? []) if (lines.some((l) => l.id === r.id) && typeof r.text === 'string' && r.text.trim()) result[r.id] = r.text.trim().slice(0, 600);
   return result;

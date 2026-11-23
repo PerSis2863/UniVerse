@@ -25,7 +25,7 @@ describe('honest AI receipts (Stage 5 · D12)', () => {
   });
 
   it('summarises the uses, most used first', () => {
-    expect(usesSummary([{ kind: 'writing' }, { kind: 'tutor' }, { kind: 'tutor' }, { kind: 'mystery' }])).toBe('Course AI tutor ×2 · Writing helper (Docs) ×1 · AI help ×1');
+    expect(usesSummary([{ kind: 'writing' }, { kind: 'tutor' }, { kind: 'tutor' }, { kind: 'mystery' }])).toBe('Ghidra tutor ×2 · Writing helper (Docs) ×1 · AI help ×1');
     expect(usesSummary([])).toBe('');
   });
 
@@ -48,7 +48,7 @@ describe('honest AI receipts (Stage 5 · D12)', () => {
       { ...base, auto: true },
       null,
     ]);
-    expect(s).toEqual({ total: 5, attached: 2, withUses: 1, declaredNone: 1, notes: 1, nothing: 2, uses: 2, byKind: 'Course AI tutor ×2' });
+    expect(s).toEqual({ total: 5, attached: 2, withUses: 1, declaredNone: 1, notes: 1, nothing: 2, uses: 2, byKind: 'Ghidra tutor ×2' });
     expect(parseReceipt(JSON.stringify({ ...base, auto: true, during: true }))).toMatchObject({ auto: true, during: true });
   });
 });

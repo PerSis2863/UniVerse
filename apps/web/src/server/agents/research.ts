@@ -2,7 +2,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import type { AskPlan } from '@/lib/ask';
 import { spendAi } from '../ai-budget';
 import { featureOff } from '../moderation';
-import { agentJson } from './own-model';
+import { ghidraAgent } from '../ghidra/own-model';
 
 // Ghidra's Research Assistant (M433, one of the owner's app agents, 22 Nov): for UniVersity and Green Business. It finds
 // sources on Wikipedia (free, no key: its REST search and page summaries; only the topic is sent, from the server, never
@@ -36,7 +36,7 @@ export async function research(u: SessionUser, topic: string): Promise<AskPlan> 
   const ai = process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(u)).ok;
   if (ai) {
     const text = sources.map((s) => `[${s.n}] ${s.title}: ${s.extract}`).join('\n\n');
-    const out = await agentJson<{ summary?: unknown; points?: unknown }>('research', `Topic: ${topic}\n\nSources:\n${text}`, 900).catch(() => null);
+    const out = await ghidraAgent<{ summary?: unknown; points?: unknown }>(u, 'research', `Topic: ${topic}\n\nSources:\n${text}`, 900).catch(() => null);
     if (out && typeof out.summary === 'string' && out.summary.trim()) {
       const points = Array.isArray(out.points) ? out.points.filter((p): p is string => typeof p === 'string').slice(0, 5) : [];
       const say = keepCitations([out.summary.trim(), ...points.map((p) => `- ${p.trim()}`)].join('\n'), sources.length).slice(0, 4000);

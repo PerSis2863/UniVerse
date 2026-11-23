@@ -241,7 +241,7 @@ export function MaterialReader({ courseId, materialId, title, onClose }: { cours
             : data.status !== 'READY' ? (
               <div className="max-w-md mx-auto text-center py-10 space-y-3">
                 <p className="text-sm text-zinc-700 dark:text-zinc-300">
-                  {data.status === 'FAILED' ? (data.error ?? 'This file couldn’t be read.') : data.canPrepare ? 'This file hasn’t been read yet. Reading it takes a few seconds and lets everyone in the course read it in their language and at their level (and ask the AI tutor about it).' : 'This file can’t be shown as text yet. Ask your teacher, or download the original.'}
+                  {data.status === 'FAILED' ? (data.error ?? 'This file couldn’t be read.') : data.canPrepare ? 'This file hasn’t been read yet. Reading it takes a few seconds and lets everyone in the course read it in their language and at their level (and ask the Ghidra tutor about it).' : 'This file can’t be shown as text yet. Ask your teacher, or download the original.'}
                 </p>
                 {data.canPrepare && data.status !== 'FAILED' && (
                   <button type="button" onClick={() => void prepare()} disabled={preparing} className="btn-primary">{preparing ? <Loader2 className="w-4 h-4 animate-spin" /> : <BookOpen className="w-4 h-4" />} Read the file now</button>

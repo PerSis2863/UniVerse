@@ -77,7 +77,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/student/attendance', label: 'Attendance', keywords: 'absences presence' },
     { href: '/student/quizzes', label: 'Quizzes', keywords: 'tests exams' },
     { href: '/student/assignments', label: 'Assignments', keywords: 'essay homework coursework hand in' },
-    { href: '/student/tutor', label: 'AI tutor', keywords: 'ai study flashcards practice' },
+    { href: '/student/tutor', label: 'Ghidra tutor', keywords: 'ai study flashcards practice' },
     { href: '/student/voice-tutor', label: 'Voice tutor', keywords: 'talk speak ai tutor voice' },
     { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
     { href: '/notifications', label: 'Notifications', keywords: 'alerts bell snooze mute push daily summary digest mark read' },
@@ -104,7 +104,7 @@ const campusSearch: Record<string, SearchPage[]> = {
     { href: '/studio?tool=compress', label: 'Compress files', keywords: 'compress reduce shrink smaller file size pdf photo image video zip' },
   ],
   TEACHER: [
-    { href: '/teacher/tutor', label: 'AI tutor', keywords: 'ai course sources flashcards' },
+    { href: '/teacher/tutor', label: 'Ghidra tutor', keywords: 'ai course sources flashcards' },
     { href: '/donations', label: 'My donations', keywords: 'donate donation give money ngo charity receipt 80g tax' },
     { href: '/teacher/live', label: 'Send to phones with no internet', keywords: 'offline no internet moving qr codes projector note quiz announcement class' },
     { href: '/calls', label: 'Meet & call', keywords: 'calls meeting meet zoom join code link voice room schedule call log phone video history missed' },
@@ -168,7 +168,7 @@ export const navByRole: Record<string, NavItem[]> = {
       subItems: [
         { href: '/student/courses', label: 'Courses', also: ['/student/live', '/student/offline', '/student/groups', '/marketplace'] },
         { href: '/student/assignments', label: 'Assignments & grades', also: ['/student/grades', '/student/attendance', '/student/quizzes', '/student/mastery'] },
-        { href: '/student/blackboard', label: 'Course board & AI tutor', also: ['/student/tutor', '/student/voice-tutor', '/student/oral-practice', '/student/semester', '/student/tutoring', '/student/reels'] },
+        { href: '/student/blackboard', label: 'Course board & Ghidra tutor', also: ['/student/tutor', '/student/voice-tutor', '/student/oral-practice', '/student/semester', '/student/tutoring', '/student/reels'] },
         { href: '/student/skills', label: 'Resources & library', also: ['/student/knowledge-hub', '/library'] },
       ]
     },
@@ -204,7 +204,7 @@ export const navByRole: Record<string, NavItem[]> = {
         { href: '/teacher/courses', label: 'Courses & live class', also: ['/teacher/live', '/marketplace'] },
         { href: '/teacher/assignments', label: 'Marking & attendance', also: ['/teacher/quizzes', '/teacher/grades', '/teacher/attendance'] },
         { href: '/teacher/students', label: 'nav.students', also: ['/teacher/early-warning', '/teacher/analytics', '/teacher/mastery', '/teacher/meetings', '/teacher/forms'] },
-        { href: '/teacher/blackboard', label: 'Course board & AI tutor', also: ['/teacher/tutor', '/teacher/reels'] },
+        { href: '/teacher/blackboard', label: 'Course board & Ghidra tutor', also: ['/teacher/tutor', '/teacher/reels'] },
         { href: '/teacher/calendar', label: 'nav.timetable', also: ['/teacher/staff'] },
       ]
     },

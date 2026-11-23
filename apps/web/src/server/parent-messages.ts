@@ -7,7 +7,7 @@ import type { SessionUser } from '@/lib/server-auth';
 import { afterSend } from './chat-notify';
 import { getSystemUser } from '@/lib/chat';
 import { spendAi } from './ai-budget';
-import { geminiAudioText } from './gemini';
+import { ghidraAudioText } from './ghidra/brain';
 import { BadRequestException, ForbiddenException, HttpException, NotFoundException } from './http';
 import { chatMuted, featureOff } from './moderation';
 import { publishChat } from './realtime';
@@ -279,7 +279,7 @@ async function voiceNote(user: SessionUser, conversationId: string, chatLang: st
   if (!transcript) {
     const file = await readAppFile(msg.attachmentUrl);
     if (!file) throw new HttpException('This voice note couldn’t be read.', 422);
-    transcript = (await geminiAudioText(file.bytes, (msg.attachmentMime || file.mime || 'audio/webm').split(';')[0]))?.slice(0, 4000) ?? null;
+    transcript = (await ghidraAudioText('parents', file.bytes, (msg.attachmentMime || file.mime || 'audio/webm').split(';')[0]))?.slice(0, 4000) ?? null;
     if (!transcript) throw new HttpException('Couldn’t write it out right now. Try again in a moment.', 503);
   }
   if (lang && translated === undefined) {

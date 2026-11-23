@@ -12052,6 +12052,138 @@ angle doesn't change any spectrum, so centring doesn't matter). Language in `rad
 `radar.test.ts`. Not built: adaptive beamformers over time (LMS, RLS), elevation scans, ESPRIT, coherent sources
 (spatial smoothing), mutual coupling. Next: M439 (tracking, clutter, FMCW, grouping detections).
 
+
+## M442: a daily limit on paid AI, per person and for the site (23 Nov)
+
+The owner (23 Nov): "add a daily limit on AI spending for each user which should be a good amount".
+
+- Everyone already had a daily AI allowance (`spendAi`: 20 a student, 50 a teacher or admin, 1,000 for the site, mostly
+  Gemini's free requests). New: **`spendCloudAi(who)`** in `src/server/ai-budget.ts` counts questions to the paid models
+  on Cloudflare (the agents' add-on in `agents/own-model.ts`, Hyperion's AI route, DeepSeek in `ghidra-think.ts`) in
+  `ai_usage` under `cf:<id>` and `cf:*` (no new table). Past **25 a person** or **400 for the site** a day, it returns
+  false and **Gemini answers instead**: nobody is refused. 400 a day is about US$0.50 at most past Workers AI's free
+  10,000 Neurons (~80 questions). The owner has no personal limit but counts toward the site's.
+- The owner changes both in console → Server → AI use today ("Paid AI per person", "Paid AI, whole site");
+  `AiLimits` gained `cloud` and `cloudSite` (old saved limits read with the defaults). `agentJson`, `thinkHard` and
+  `thinkHardText` now take the person first. Test: `src/server/ai-budget.test.ts` (it unmocks the shared stand-in).
+
+## M443: Ghidra, the one AI, step 1: skills and one brain; the corner chat opens like RunPod's (23 Nov)
+
+The owner (23 Nov): "we need only ghidra as one main ai and i need it to do all the work in this project", then "yes save
+it and start step 1"; while it was built: "in 2nd photo how the runpod ai chat is opening so please make it like that"
+(and "write here more professionally": the old greeting). The plan is in `STAGE-5-PLAN.md`, "Ghidra, the one AI".
+
+- **Skills** (`src/server/ghidra/skills.ts`): every AI job is a skill (44: the assistant, the four agents, booking,
+  Hyperion, the tutor, marking, quiz drafts, translation, docs, boards, the owner console's diagnosis…), with its app,
+  what it does, and `own` for skills that try UniVerse's own Cloudflare model first. `SkillId` is the type.
+- **The brain** (`src/server/ghidra/brain.ts`): `ghidraJson` / `ghidraJsonImage` / `ghidraText` / `ghidraFileText` /
+  `ghidraAudioText` take a skill id first, then what `gemini*` took; each job's instructions get `GHIDRA_RULE` (who
+  answers) and `UNTRUSTED_RULE` (`asGhidra`). All 59 calls in 45 files moved; `agents/own-model.ts` is now
+  `ghidra/own-model.ts` (`ghidraAgent`, the agents' add-on; `ghidraCode`, Hyperion's route), with the same switches and
+  the paid-AI limit. **Trap:** `brain.ts` must stay light: `errors.ts` imports it and `instrumentation.ts` imports
+  `errors.ts`, compiled where `node:crypto` can't load (dev's webpack refused `moderation` → `auth` →
+  `session-token`). Cloudflare parts go in `own-model.ts`.
+- **The gate** (`src/server/ghidra/brain-gate.test.ts`): only `gemini.ts`, `brain.ts` and `api/ai/route.ts` (the
+  streaming chat, `SAFETY` only) may import `gemini`; every skill a call names must be in the list.
+- **Names people see:** "AI tutor" → "Ghidra tutor", "Ask AI" → "Ask Ghidra", Hyperion's AI → Ghidra (its prompt
+  starts "You are Ghidra… helping in Hyperion"), "Floating AI assistant" → "Ghidra in the corner"; the console's switch
+  hints too. Comments and the job titles list (`options/academic.ts`) untouched.
+- **The corner chat** (`AIStudyAssistant.tsx`): no greeting; opening shows three suggestions stacked over one question
+  box (`Ask Ghidra anything`, an arrow button), the round button turns into ×; Escape or a click outside closes it; a
+  suggestion or a question opens the conversation window, which gained **New chat** (back to the suggestions).
+  `scripts/checks/ghidra-open-ui.mjs` (axe at 390 and 1280, light and dark).
+- **Not yet in step 1:** the jobs' own instruction texts still sit in their feature files (only the agents' and
+  Hyperion's are shared); moving them into the skills list comes with step 2's exam, which needs them in one place.
+  The skill id isn't recorded anywhere yet (`void skill`): step 3's 👍 / 👎 keeps ratings per skill.
+
+## M444: Ghidra, the one AI, step 2: the exam (23 Nov)
+
+The owner (23 Nov): "go for Step 2" (the plan in `STAGE-5-PLAN.md`, "Ghidra, the one AI").
+
+- **Each job's instructions are shared, not copied.** Every skill's system text and answer shape is now a named export
+  beside its code (`SYSTEM`, `SCHEMA`, `practiceSystem(count)`, `uiSystem(name)`…; inline ones were lifted out unchanged),
+  and the jobs asked from page routes (chat helpers, course skills, the passport's two) moved to
+  `src/server/ghidra/jobs.ts` (a Next.js route file may export only its handlers). The exam imports these, so it always
+  asks what the website asks. One wording fix: the chat's `/ask` no longer said "You are UniVerse AI".
+- **The exam** (`src/server/ghidra/exam/`): `kit.ts` (a question, its rules, a seeded dice so every run asks the same
+  questions, the shape check, `numbers`/`newNumbers`, a small language guess), `material.ts` (16 course passages with
+  questions and the words a right answer uses, products with and without recalls, cities, chats), and three papers
+  (`papers-apps.ts`: the four agents with the training kit's rules, support's numbers loosened for numbered steps,
+  booking, Hyperion, bills, Relief reports; `papers-learning.ts`: UniVersity; `papers-shared.ts`: the assistant, Messages,
+  translation, documents, boards, meetings, the brief, voice, the console). 43 skills, 50–80 questions each. Every
+  answer also gets **shape** (its schema) and **identity** (never another company's AI). `exam.test.ts` checks every
+  skill has a paper, papers don't repeat themselves, and the rules pass good answers and fail bad ones.
+- **The command** (`scripts/ai/ghidra-exam.mjs`, its usage in its header): `--via site` asks through Ghidra's own brain
+  (Gemini; needs `GEMINI_API_KEY` in the shell), `--via openai --url … --model …` asks any OpenAI-style model (vLLM on a
+  rented card, Workers AI's `/ai/v1`); `--skills`, `--per`, `--jobs`, `--rescore DIR` (mark saved answers again after a
+  rule changes). Pictures (bills) are drawn by the installed Chromium, recordings spoken by ffmpeg's flite voice
+  (word error rate ≤ 25%), Hyperion's replies run in Hyperion's engine (`hyperion-lab.mjs run`). Results go to
+  `exam-runs/<date>/` (not committed): `answers.jsonl`, `card.txt`, `card.json`.
+- `run-ts.mjs` gained `{ app: true }`: the website's server files bundle with the database client stubbed, `.wasm`
+  empty, `require`/`__dirname` defined, Playwright left outside (it is global).
+- **Not done yet:** the starting score. Nothing here can call a model for free (no key in this container, by the
+  rules), so the first run needs the owner's go: see the M444 reply's options. After it, read the most-failed rules in
+  `card.txt`; a rule that fails good answers is fixed and the run re-marked with `--rescore`, not asked again.
+- **Traps:** a paper's question must be the same on every run (seeded by the skill id: never use `Math.random`); a new
+  skill in `skills.ts` fails `exam.test.ts` until it has a paper; a feature's instruction text stays exported (the exam
+  imports it).
+
+## M445: Ghidra's exam, run three ways (23 Nov)
+
+The owner (23 Nov), offered three ways to run the exam's first time: "need to do all 1 to 3 so start working on it".
+
+- **1. The owner console** (Console → Health → Ghidra's exam, `console/ghidra-exam.tsx`, `src/server/ghidra/exam-run.ts`,
+  routes `GET/POST /owner/ghidra-exam` in the owner module; database update **0259**: `ghidra_exam_runs`,
+  `ghidra_exam_answers`). The owner picks 5, 10 or 20 questions per skill; the panel asks 6 at a time
+  (`POST {action:'step'}`) while it stays open, so no request runs long; closing it pauses the run (Continue). The cursor
+  is claimed with a conditional `updateMany` (no D1 transactions), so two tabs never ask the same questions. Through
+  Ghidra's own brain (Gemini) on the site's key; answers kept cut to 2,000 characters. The four skills that need a
+  picture, a voice or Hyperion's engine are left to the command. Checked: `scripts/checks/ghidra-exam-ui.mjs` (built
+  Worker, `--ai-placeholder --test-secret --owner-test`; the demo admin gets 404; axe at 390/1280, light/dark).
+- **2. Our own model, scored**: Qwen2.5-Coder-32B-Instruct (AWQ; the base Cloudflare runs for the agents and Hyperion,
+  without the add-on, which lives only on Cloudflare) on a rented A100 40 GB (RunPod, community, US$1.00/h; about
+  US$0.74 in all; the pod is deleted). 2,258 questions in 12 minutes. **80% (1,815 of 2,258).** Lowest: research 0%
+  (cites only in the points, never in the summary), class-notes 0% (recaps of 60–80 words, 220–320 asked),
+  impact-rooms 0% (names the student it was told not to), health 38%, passport 50% (CV summary not in the first
+  person), syllabus 62%, daily-brief 62%, boards 67%, social 67% (invents dates and times instead of [add …]). Full
+  marks: travel, oral, student-work, grading, course-skills, group-work, support-plans, safety, meetings. The failures
+  read were real; no rule changed after the run. These are what step 4's lessons should teach first.
+- **3. The owner's own computer**: `node scripts/ai/ghidra-exam.mjs --ask-key --per 10` asks for the Gemini key hidden
+  and keeps it only in memory; the steps in plain words are `scripts/ai/ghidra-exam.md`.
+- **Rule fixes from the trial**: identity now catches only "I am / as / made by …" claims (the health check is meant
+  to say "ask Claude to fix"); a model that can't see pictures gets "not asked", not "failed".
+- **Next:** the owner runs the console exam once (10 per skill, about 195 requests on the site's key) for the live
+  score; then step 3 (👍 / 👎).
+
+## M447 (in progress): Ghidra's add-on, step 4 (23 Nov)
+
+The owner (23 Nov): "I have added another 10 euro in the account so please start next process", then "Check the hyperion
+app as a lot things are added and pushed in github so that you can train ghidra accordingly". (Another session's branch
+used M446 for Hyperion's computer app running Julia, C++ and Rust; this branch's commit titled "M446 (in progress)" is
+part of M447.)
+
+- **The kit** (`scripts/ai/ghidra-gpu.sh`, `ghidra-ai.py`; the exam command's `--lessons requests|mark`, `--salt`,
+  `--material`): the teacher (Qwen2.5-72B, AWQ) writes new material (passages with questions, products, names; towns from
+  `destinations.json` not in the exam), the exam's papers make other questions from it (`questions(skill, paper, salt)`,
+  `swapMaterial`), never one the exam asks; two answers each, the first that passes its skill's rules is a lesson
+  (no Gemini answers: Google's terms); `hyperion-ai.py train --seq 4096`; the exam with and without the add-on
+  (`exam-base`, `exam-ghidra`, `wins.json`: skills it does better); upload as `ghidra-<date>` (`GHIDRA_LORA`).
+- **Hyperion**: the kit's engine (`hyperion-lab.mts`) now loads the eight toolboxes the window loads (`lab.worker.ts`);
+  without them toolbox code failed there (so M440's 94% never covered toolboxes). The Hyperion paper gained 13 toolbox
+  question kinds (92 questions), each checked to run in the newest engine; `HYPERION_FROM=<branch>` trains on an
+  unmerged branch's engine (`claude/funny-galileo-y4mz9r` this time).
+- **Running**: RunPod pod `p1l0yv2lj9hn4u` (A100 80GB PCIe, Secure, US$2.09/h, from 12:34 UTC; stops itself at the end
+  or after 4 h). Results land in `/workspace/ghidra-ai-out` on its volume.
+- **Not yet**: the brain's per-skill routing to `GHIDRA_LORA` (only skills in `wins.json`) comes once the scores exist.
+
+## M448: the owner console shows the paid Cloudflare plan (23 Nov)
+
+The owner (23 Nov, a screenshot of "Cloudflare free plan · today"): "please change it to paid plan in owner console".
+The account is on Workers Paid since 22 Oct and `wrangler.jsonc` sets `CF_PLAN=paid`, but the console's plan card
+(`/owner/server` and `/owner/overview` in `modules/owner.ts`) decided `paid` from the older `WORKERS_PAID` alone, so
+it showed the free plan's daily meters. Both now use `workersPaid()` (`src/lib/plan-limits.ts`), like the spending guard.
+
+
 ## M460 (committed as M439 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion toolbox, tracking, clutter, car radar and grouped detections
 
 The last of the owner's "please build all of these" list (M430–M438, M460). `radar.ts` `echoes(..., clutterDb)`: a Rayleigh
@@ -12282,3 +12414,26 @@ problem with lb and ub)), ReannealInterval, HybridFcn for both ('fminsearch', 'f
 patternsearch only without linear or nonlinear constraints; kept only when it improves). Tests in optim.test.ts. Not
 built: patternsearch's other search functions (Nelder–Mead, GA), cached polls, the 'TolBind'/'ScaleMesh' options,
 simulannealbnd's custom AcceptanceFcn.
+
+## M449: the installed Hyperion app keeps the whole site inside it (23 Nov)
+
+The owner (23 Nov, a screenshot of the installed Hyperion app in Brave showing a bar with https://www.universeimpact.com
+and a close button over the owner console): "why it is showing after the app download like this". The bar is the
+browser's out-of-scope bar: `public/hyperion/manifest.json` had `scope: /hyperion`, and Hyperion's top bar links to the
+console, Messages, Collaborate and Settings. Scope is now `/` (start and `id` still `/hyperion`, so it stays a separate
+app from UniVerse's own, `public/manifest.json`); `src/lib/hyperion-manifest.test.ts`. An installed app picks up the new
+manifest when the browser next checks it (on launch, usually within a day); reinstalling applies it at once.
+
+## M450: Hyperion as a real computer app, offered (23 Nov)
+
+The owner (23 Nov): "i need the hyperion to be a proper app like we download from the internet like for windows, linux,
+and mac os compatible". The computer app (M412, `desktop/hyperion`, Electron) was already built and published by the
+"Hyperion desktop" workflow (release `hyperion-latest`: Hyperion-Setup.exe, Hyperion-mac.dmg, Hyperion-linux.AppImage,
+updated 23 Nov 13:34 by the other session), but `InstallHyperion` showed the downloads only with
+`NEXT_PUBLIC_HYPERION_DOWNLOADS=1`, which was never set, and hid itself inside the browser-installed app. Now the
+downloads come first (the visitor's own system highlighted), with the browser's install as the second choice; inside the
+browser-installed app the button reads "Get the computer app"; only the computer app itself hides it. The Mac target is
+`universal` (Apple chips and Intel; the macos-latest runner built Apple chips only). Unsigned until the owner buys
+certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
+for the universal Mac build.
+

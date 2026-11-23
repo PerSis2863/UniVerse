@@ -48,7 +48,7 @@ describe('the agents’ own model (M437)', () => {
     expect(jsonSchema({ type: 'OBJECT', properties: { tips: { type: 'ARRAY', items: { type: 'STRING' } } }, required: ['tips'] }))
       .toEqual({ type: 'object', properties: { tips: { type: 'array', items: { type: 'string' } } }, required: ['tips'] });
     expect(jsonRule('travel')).toContain('"tips"');
-    const { jsonOf } = await import('./own-model');
+    const { jsonOf } = await import('../ghidra/own-model');
     expect(jsonOf({ response: 'Sure! {"tips": ["a"]} ' })).toEqual({ tips: ['a'] });
     expect(jsonOf({ response: { answer: 'x', answered: true } })).toEqual({ answer: 'x', answered: true });
     expect(jsonOf({ response: 'no json here' })).toBeNull();
