@@ -24,5 +24,19 @@
         ]
       }
     ]
+  },
+  "permissions": {
+    "allow": [
+      "mcp__runpod__exec-pod",
+      "mcp__runpod__stream-pod-logs",
+      "mcp__runpod__get-capacity",
+      "mcp__runpod__get-balance",
+      "mcp__runpod__get-pod",
+      "mcp__runpod__list-pods",
+      "mcp__runpod__list-secrets",
+      "mcp__runpod__describe-tool",
+      "mcp__runpod__search-concepts",
+      "mcp__Cloudflare_Developer_Platform__search_cloudflare_documentation"
+    ]
   }
 }
