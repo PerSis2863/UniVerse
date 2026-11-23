@@ -3,9 +3,11 @@ import { BUILTINS, type Builtin } from './builtins';
 import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as g from './grid';
+import * as st from './stability';
 
 // Hyperion's power systems and mixed-signal in the language (M426): powerflow, shortcircuit, adc, dac, snr, pll; M435:
-// transformer taps (a sixth line column, and 'TapControl' to hold voltages), unbalanced faults ('Type' LG, LL, LLG).
+// transformer taps (a sixth line column, and 'TapControl' to hold voltages), unbalanced faults ('Type' LG, LL, LLG);
+// M436: swing, criticalclearing, transientstability.
 // Buses as rows [type P Q V angle] (type 3 slack, 2 generator (PV), 1 load (PQ), as MATPOWER numbers them; P, Q
 // injections in per unit, angle in degrees) and lines as rows [from to r x b] (buses numbered from 1).
 
@@ -102,3 +104,67 @@ def('pll', (a, nout, lab) => {
   call(lab, 'legend', str('Input'), str('Locked oscillator')); call(lab, 'xlabel', str('Time (s)')); call(lab, 'ylabel', str('Frequency (Hz)')); call(lab, 'title', str('Phase-locked loop')); call(lab, 'grid', str('on'));
   return [];
 });
+
+// ——— Stability (M436) ———
+const named = (a: Value[], from: number, names: string[], what: string) => {
+  const o: Record<string, number> = {};
+  for (let i = from; i < a.length; i += 2) {
+    const k = a[i]?.k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '';
+    if (!names.includes(k)) throw new LabError(`${what} takes ${names.map((x) => `'${x[0].toUpperCase()}${x.slice(1)}'`).join(', ')}.`);
+    o[k] = toMat(a[i + 1] ?? num(NaN)).d[0];
+  }
+  return o;
+};
+const machine = (a: Value[], what: string) => {
+  const [H, Pm, Pmax] = [0, 1, 2].map((i) => toMat(a[i] ?? num(NaN)).d[0]);
+  if (!(H > 0 && Pm >= 0 && Pmax > Pm)) throw new LabError(`${what} needs the inertia H (s), the mechanical power Pm and the most power the line can carry Pmax (> Pm), per unit.`);
+  return { H, Pm, Pmax };
+};
+def('swing', (a, nout, lab) => {
+  const m = machine(a, 'swing'), o = named(a, 3, ['during', 'after', 'clear', 'damping', 'frequency', 'time'], 'swing');
+  const p = { ...m, during: o.during ?? 0, after: o.after ?? m.Pmax, clear: o.clear ?? 0.1, D: o.damping ?? 0, f: o.frequency ?? 50, T: Math.min(60, o.time ?? 3) };
+  const r = wrap(() => st.swing(p));
+  const deg = r.delta.map((d) => (d * 180) / Math.PI);
+  if (nout > 0) return [row(r.t), row(deg), row(r.omega)];
+  const tcr = st.criticalTime(p);
+  call(lab, 'plot', row(r.t), row(deg)); call(lab, 'hold', str('on')); call(lab, 'xline', num(p.clear), str('--')); call(lab, 'hold', str('off'));
+  call(lab, 'xlabel', str('Time (s)')); call(lab, 'ylabel', str('Rotor angle (°)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`${r.stable ? 'Stays in step' : 'Loses step'}: cleared at ${p.clear} s, critical ${Number.isFinite(tcr) ? tcr.toFixed(3) + ' s' : 'never'}`));
+  return [];
+});
+def('criticalclearing', (a, nout, lab) => {
+  const m = machine(a, 'criticalclearing'), during = toMat(a[3] ?? num(0)).d[0], after = a[4] ? toMat(a[4]).d[0] : m.Pmax, f = a[5] ? toMat(a[5]).d[0] : 50;
+  const dcr = st.criticalAngle(m.Pm, m.Pmax, during, after), tcr = st.criticalTime({ ...m, during, after, f });
+  if (nout > 0) return [num(tcr), num((dcr * 180) / Math.PI)];
+  // The power–angle curves and the angles that bound the equal areas.
+  const d = Array.from({ length: 181 }, (_, i) => i), r = (x: number) => (x * Math.PI) / 180;
+  call(lab, 'plot', row(d), row(d.map((x) => m.Pmax * Math.sin(r(x)))), row(d), row(d.map((x) => during * Math.sin(r(x)))), str('--'), row(d), row(d.map((x) => after * Math.sin(r(x)))));
+  call(lab, 'hold', str('on')); call(lab, 'yline', num(m.Pm), str(':'));
+  call(lab, 'xline', num((Math.asin(m.Pm / m.Pmax) * 180) / Math.PI), str(':')); if (Number.isFinite(dcr)) call(lab, 'xline', num((dcr * 180) / Math.PI), str('-'));
+  call(lab, 'hold', str('off'));
+  call(lab, 'legend', str('Before'), str('During the fault'), str('After'), str('Pm'));
+  call(lab, 'xlabel', str('Rotor angle (°)')); call(lab, 'ylabel', str('Electrical power (pu)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(Number.isFinite(dcr) ? `Clear by ${((dcr * 180) / Math.PI).toFixed(1)}° (${tcr.toFixed(3)} s)` : 'It can’t stay in step after this fault'));
+  return [];
+});
+def('transientstability', (a, nout, lab) => {
+  if (a.length < 5) throw new LabError("transientstability needs the buses, the lines, the generators [bus H xd' D], the faulted bus and the clearing time.");
+  const B = rows(a[0], 'The buses [type P Q V angle]', 5), types: Record<number, g.BusType> = { 1: 'PQ', 2: 'PV', 3: 'slack' };
+  const buses = B.map((r, i) => { const type = types[r[0]]; if (!type) throw new LabError(`Bus ${i + 1}'s type is 3, 2 or 1.`); return { type, P: r[1], Q: r[2], V: r[3] || 1, angle: (r[4] * Math.PI) / 180 }; });
+  const lines = linesOf(a[1], buses.length), G = rows(a[2], "The generators [bus H xd' D]", 3).map((r) => ({ bus: r[0] - 1, H: r[1], xd: r[2], D: r[3] ?? 0 }));
+  if (G.some((x) => !(x.bus >= 0 && x.bus < buses.length && x.H > 0 && x.xd > 0))) throw new LabError("Each generator is [bus H xd' D] on a bus that exists, with H and xd' above 0.");
+  const fault = Math.round(toMat(a[3]).d[0]) - 1, clear = toMat(a[4]).d[0], o = named(a, 5, ['trip', 'time', 'frequency'], 'transientstability');
+  if (!(fault >= 0 && fault < buses.length) || !(clear >= 0)) throw new LabError('The faulted bus must exist and the clearing time be 0 or more.');
+  if (o.trip !== undefined && !lines[o.trip - 1]) throw new LabError('Trip names a line that exists.');
+  const r = wrap(() => st.transient(buses, lines, G, fault, clear, { trip: o.trip ? o.trip - 1 : null, T: Math.min(30, o.time ?? 3), f: o.frequency ?? 50 }));
+  const A = mat(G.length, r.t.length);
+  r.angles.forEach((ang, i) => ang.forEach((x, k) => { A.d[i + k * G.length] = x; }));
+  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['Time', row(r.t)], ['Angles', A], ['Stable', { k: 'mat', r: 1, c: 1, d: Float64Array.of(r.stable ? 1 : 0), logical: true } as Mat], ['E', col(r.E)], ['Pm', col(r.Pm)]]) } satisfies Struct];
+  r.angles.forEach((ang, i) => { call(lab, 'plot', row(r.t), row(ang)); if (!i) call(lab, 'hold', str('on')); });
+  call(lab, 'xline', num(clear), str('--')); call(lab, 'hold', str('off'));
+  call(lab, 'legend', ...G.map((x) => str(`Generator at bus ${x.bus + 1}`)));
+  call(lab, 'xlabel', str('Time (s)')); call(lab, 'ylabel', str('Rotor angle from the centre of inertia (°)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`${r.stable ? 'Stays together' : 'Loses step'}: fault at bus ${fault + 1}, cleared at ${clear} s`));
+  return [];
+});
+

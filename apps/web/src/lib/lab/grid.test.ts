@@ -96,3 +96,36 @@ describe('unbalanced faults and transformer taps (M435)', () => {
     expect(r.d('ll')[0]).toBeCloseTo(Math.sqrt(3) / 0.4, 9);
   });
 });
+
+describe('grid stability (M436)', () => {
+  it('one machine: the equal-area angle and the critical clearing time agree with the textbook', async () => {
+    const st = await import('./stability');
+    // H = 5 s, 60 Hz, Pm = 0.8, Pmax = 2, a bolted fault (nothing passes during it), the line back after:
+    // δcr = acos((π − 2δ0)·sin δ0 − cos δ0) = 89.37°, t_cr = √(4H(δcr − δ0)/(ωs·Pm)) = 0.276 s.
+    const d0 = Math.asin(0.4), dcr = st.criticalAngle(0.8, 2, 0, 2);
+    expect((dcr * 180) / Math.PI).toBeCloseTo(89.37, 1);
+    const closed = Math.sqrt((4 * 5 * (dcr - d0)) / (2 * Math.PI * 60 * 0.8)), tcr = st.criticalTime({ H: 5, Pm: 0.8, Pmax: 2, during: 0, after: 2, f: 60 });
+    expect(Math.abs(tcr - closed)).toBeLessThan(0.003);
+    expect(st.swing({ H: 5, Pm: 0.8, Pmax: 2, during: 0, after: 2, clear: tcr - 0.01, f: 60 }).stable).toBe(true);
+    expect(st.swing({ H: 5, Pm: 0.8, Pmax: 2, during: 0, after: 2, clear: tcr + 0.01, f: 60 }).stable).toBe(false);
+  });
+  it('many machines: at rest before the fault, the load flow’s power on each shaft, longer faults swing further', async () => {
+    const st = await import('./stability');
+    const buses = [{ type: 'slack' as const, P: 0, Q: 0, V: 1.04, angle: 0 }, { type: 'PV' as const, P: 1.63, Q: 0, V: 1.025, angle: 0 }, { type: 'PV' as const, P: 0.85, Q: 0, V: 1.025, angle: 0 }, { type: 'PQ' as const, P: -1.25, Q: -0.5, V: 1, angle: 0 }, { type: 'PQ' as const, P: -0.9, Q: -0.3, V: 1, angle: 0 }, { type: 'PQ' as const, P: -1.0, Q: -0.35, V: 1, angle: 0 }];
+    const lines = [{ from: 0, to: 3, r: 0.01, x: 0.085, b: 0.176 }, { from: 0, to: 4, r: 0.017, x: 0.092, b: 0.158 }, { from: 3, to: 5, r: 0.032, x: 0.161, b: 0.306 }, { from: 4, to: 5, r: 0.039, x: 0.17, b: 0.358 }, { from: 1, to: 3, r: 0.0085, x: 0.072, b: 0.149 }, { from: 2, to: 4, r: 0.0119, x: 0.1008, b: 0.209 }, { from: 1, to: 5, r: 0.03, x: 0.12, b: 0.2 }];
+    const gens = [{ bus: 0, H: 23.64, xd: 0.0608 }, { bus: 1, H: 6.4, xd: 0.1198 }, { bus: 2, H: 3.01, xd: 0.1813 }];
+    const still = st.transient(buses, lines, gens, 3, 0, { T: 1 });
+    expect(Math.max(...still.angles.map((a) => Math.max(...a) - Math.min(...a)))).toBeLessThan(1e-9);
+    expect(still.Pm[1]).toBeCloseTo(1.63, 6); expect(still.Pm[2]).toBeCloseTo(0.85, 6);
+    const peak = (tc: number) => Math.max(...st.transient(buses, lines, gens, 5, tc, { T: 2, trip: 6 }).angles.map((a) => Math.max(...a.map(Math.abs))));
+    expect(peak(0.3)).toBeGreaterThan(peak(0.1));
+  });
+  it('in the language', () => {
+    const r = run("[t, d] = swing(5, 0.8, 2, 'During', 0, 'After', 2, 'Clear', 0.2, 'Frequency', 60);\nok = max(d) < 180;\n[tcr, dcr] = criticalclearing(5, 0.8, 2, 0, 2, 60);\nbus = [3 0 0 1.04 0; 2 1.63 0 1.025 0; 1 -1.25 -0.5 1 0];\nlines = [1 3 0.01 0.085 0.176; 2 3 0.0085 0.072 0.149; 1 2 0.03 0.12 0.2];\ns = transientstability(bus, lines, [1 20 0.06; 2 6.4 0.12], 3, 0.1, 'Trip', 3);\nst = s.Stable;\nswing(5, 0.8, 2, 'During', 0, 'Clear', 0.3, 'Frequency', 60)\nfigure; criticalclearing(5, 0.8, 2, 0.5, 1.5)\nfigure; transientstability(bus, lines, [1 20 0.06; 2 6.4 0.12], 3, 0.1)");
+    expect(r.d('ok')).toEqual([1]);
+    expect(r.d('tcr')[0]).toBeCloseTo(0.276, 2); expect(r.d('dcr')[0]).toBeCloseTo(89.37, 1);
+    expect(r.d('st')).toEqual([1]);
+    expect(r.graphics.figures.length).toBe(3);
+    expect(() => run('swing(5, 2, 1)')).toThrow(/Pmax/);
+  });
+});

@@ -11517,3 +11517,16 @@ way). Language in `grid-lab.ts`: lines' sixth column is the tap for `powerflow`,
 keeps its M426 answer for '3P' (BusVoltages a column) and gives n × 3 phase voltages for the others. Example faults.m.
 Not built: transformer winding connections in the zero sequence, phase-shifting transformers, protection relays.
 
+## M436 (23 Nov): Hyperion toolbox, grid stability
+
+`src/lib/lab/stability.ts` (pure, on grid.ts's `loadFlow` and `ybus`): `swing` (SMIB, (2H/ωs)δ'' = Pm − Pmax·sin δ − Dω,
+RK4 at 1 ms, the fault's network taken at each step's start; unstable once δ passes 180°), `criticalAngle` (the general
+equal-area formula with during- and after-fault Pmax), `criticalTime` (bisection on the simulation to 1 ms; there is no
+closed form unless the fault passes nothing), `transient` (the classical model: E' behind x'd from the load flow's
+currents, loads as constant admittances conj(S)/|V|², a generator bus keeps no load unless its injection is negative,
+Kron reduction to the internal nodes with a 1e7 shunt for a bolted fault and the tripped line left out after, Pm set to
+the pre-fault Pe so it starts exactly at rest, unstable when an angle leaves the centre of inertia by more than 180°).
+Language in `grid-lab.ts`: `swing`, `criticalclearing`, `transientstability` (gens [bus H xd' D]; buses and lines as for
+`powerflow`). Example stability.m. Tests in `grid.test.ts`. Not built: governors and exciters (AVR, PSS), detailed
+generator models (subtransient, saturation), frequency response after losing a generator, voltage stability (PV curves).
+
