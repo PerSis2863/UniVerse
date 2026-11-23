@@ -461,8 +461,11 @@ cla | cla | Clears the axes.
 close | close, close all | Closes figures.
 gcf | gcf | The current figure's number.
 gca | gca, set(gca, 'XLim', [0 10]) | The current axes (for set).
-set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on') | Changes the current axes' limits and grid.
-drawnow | drawnow | Draws now.
+set | set(gca, 'XLim', v, 'YLim', v, 'XGrid', 'on'), set(h, 'XData', x, 'YData', y) | Changes the current axes' limits and grid, or a line's points, colour and width by its handle (h = plot(…)).
+drawnow | drawnow | Shows the figure as it is now, while the script goes on: call it in a loop to animate.
+animatedline | h = animatedline('Color', 'r') | An empty line to grow point by point (addpoints) while a loop draws it.
+addpoints | addpoints(h, x, y) | Adds points to an animated line; drawnow shows them.
+clearpoints | clearpoints(h) | Empties an animated line.
 rlim | rlim([a b]) | A polar plot's radius limits.
 
 # 3D plots and colour
@@ -811,7 +814,7 @@ warning | warning('message') | Shows a warning and goes on.
 assert | assert(condition, 'message') | Stops when the condition is false.
 input | input('prompt') | (Not available in the browser: no keyboard prompt.)
 keyboard | keyboard | (Not available here.)
-pause | pause(s) | Waits (figures update).
+pause | pause(s) | Shows the figure as it is now and waits s seconds: a loop with pause(0.05) plays as an animation.
 tic | tic | Starts a stopwatch.
 toc | toc | Seconds since tic.
 clock | clock | [year month day hour minute seconds].

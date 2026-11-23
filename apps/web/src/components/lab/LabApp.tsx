@@ -47,6 +47,7 @@ interface Script { name: string; code: string }
 const KEEP = 'uv-lab-scripts';
 const EXAMPLES: Script[] = [
   { name: 'first_plot.m', code: "% A first plot: press Run (or Ctrl+Enter)\nx = linspace(0, 2*pi, 200);\nplot(x, sin(x), x, cos(x), '--')\ntitle('sin and cos')\nxlabel('x'); grid on\nlegend('sin', 'cos')\n" },
+  { name: 'animate.m', code: "% Animation: a pendulum swinging while the script runs (drawnow and pause show each frame)\ng = 9.81; L = 1; th = 1.2; w = 0; dt = 0.02;\nsubplot(1, 2, 2)\nh = animatedline('Color', 'b');      % its angle over time, growing as it goes\nfor k = 1:150\n  w = w - g/L*sin(th)*dt; th = th + w*dt;\n  subplot(1, 2, 1)\n  plot([0 L*sin(th)], [0 -L*cos(th)], 'k-o', 'LineWidth', 2)\n  axis([-1.2 1.2 -1.2 0.2]); axis equal; title(sprintf('t = %.1f s', k*dt))\n  subplot(1, 2, 2)\n  addpoints(h, k*dt, th); xlim([0 3]); ylim([-1.3 1.3]); title('angle (rad)')\n  pause(0.02)\nend\n" },
   { name: 'matrices.m', code: "% Solve A x = b\nA = [4 -2 1; -2 4 -2; 1 -2 4];\nb = [11; -16; 17];\nx = A \\ b\ncheck = A * x - b\nd = det(A)\n" },
   { name: 'spring.m', code: "% A damped spring with ode45\nf = @(t, y) [y(2); -4*y(1) - 0.5*y(2)];\n[t, y] = ode45(f, [0 20], [1; 0]);\nplot(t, y(:, 1)); grid on\ntitle('Position over time'); xlabel('t (s)'); ylabel('x (m)')\n" },
   { name: 'fit.m', code: "% Fit a line to measurements\nx = 0:10;\ny = 2.5*x + 1 + randn(1, 11);\np = polyfit(x, y, 1)\nscatter(x, y); hold on\nplot(x, polyval(p, x), 'r'); hold off\nlegend('data', 'fit'); title(sprintf('y = %.2f x + %.2f', p(1), p(2)))\n" },
@@ -182,7 +183,7 @@ export function LabApp() {
     else if (from !== 'live') print({ k: 'in', t: from === 'cmd' ? code : `>> ${from === 'watch' ? 'watch' : from === 'profile' ? 'time' : 'run'} ${list[open]?.name ?? 'script'}` });
     if (from === 'watch') { watchingScript.current = open; worker.current.postMessage({ watch: code, id } satisfies ToLab); }
     else if (from === 'profile') { watchingScript.current = open; worker.current.postMessage({ profile: code, id } satisfies ToLab); }
-    else worker.current.postMessage({ run: code, id } satisfies ToLab);
+    else worker.current.postMessage({ run: code, id, animate: from === 'cmd' || from === 'script' } satisfies ToLab);
   };
   /** The next waiting notebook section, if any. */
   const nextNote = () => {
@@ -206,6 +207,8 @@ export function LabApp() {
       // A live run (a control moved) keeps the command window quiet: the figure and variables show the change.
       if ('out' in m) { if (pending.current?.from === 'note') noteBuf.current += m.out; else if (pending.current?.from !== 'live') print({ k: 'out', t: m.out }); return; }
       if ('fig' in m) { setFigs((fs) => fs.map((f) => (f.id === m.fig.id ? m.fig : f))); return; }
+      // A frame of a running animation (M506): drawnow or pause showed the figure as it is now.
+      if ('live' in m) { setFigs((fs) => (fs.some((f) => f.id === m.live.id) ? fs.map((f) => (f.id === m.live.id ? m.live : f)) : [...fs, m.live])); setCurrent(m.live.id); return; }
       if ('names' in m) { for (const n of m.names) builtinNames.add(n); setNamesVersion((v) => v + 1); return; }
       if ('view' in m) { if (looking.current) setShown(m.view); return; }
       if ('traceFig' in m) { setTraceSvg((t) => ({ ...t, [m.traceFig.index]: { light: m.traceFig.light, dark: m.traceFig.dark } })); return; }

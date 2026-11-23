@@ -12768,3 +12768,22 @@ their tabs in the engine's thread (each must print its line, no error), checks t
 (MathML) and a figure shows; axe clean at 1280 dark and 1024 light, no sideways scroll, no page errors. It found one
 accessibility fault, fixed: a wide maths line in the command window (a matrix step) scrolls sideways but couldn't take
 the keyboard's focus (`LabText`'s maths span now has `tabIndex={0}`).
+
+## M506 (23 Nov): Hyperion, animation while a script runs
+
+The owner (23 Nov) asked for M492–M505's left-outs ("please work on this"); the first: no live animation while a script
+ran (Hyperion drew when it finished). Now `drawnow` and `pause` call the host's `frame()` (interp.ts `Host.frame`,
+`Host.wait`); the worker (`lab.worker.ts`) posts `{ live: FigOut }` for the current figure when it changed, at most every
+33 ms, and flushes printed text, so a loop plays in the figure pane and the command window fills as it goes. `pause(t)`
+really waits there: a busy wait in the engine's own thread (shortcut: `Atomics.wait` would need a cross-origin-isolated
+page, which the site isn't; the page stays free and Stop ends the worker), capped at an hour. Only runs from the command
+window or Run animate (`ToLab.run.animate`); live controls, notebook sections, Sweep, Watch it run, Time it and the tests
+neither send frames nor wait, so a slider never replays an animation slowly. The window upserts a live figure that
+didn't exist before the run (`'live' in m` in LabApp).
+
+Handles: `h = plot(…)` returns a handle per line (numbers from `HANDLE` = 1000, kept in `Graphics.handles`; figure
+numbers stay small); `set(h, 'XData', x, 'YData', y, 'Color', …)` changes the line (only pair names `isPairName`
+knows are applied: a bare `'Visible'` would otherwise read as a line spec); `animatedline` (respects hold like plot),
+`addpoints(h, x, y[, z])`, `clearpoints(h)`. The example `animate.m` (a pendulum and its angle growing) is in the
+examples list. Tests in `plot.test.ts` (M506). Not built: `getframe` / `movie` / `VideoWriter` (Sweep's GIF film covers
+saving a film), `set` on other objects (text, surfaces), `delete(h)`.
