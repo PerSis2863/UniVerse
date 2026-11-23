@@ -1,6 +1,8 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { HYPERION_AI_MODEL } from '@/lib/hyperion-ai';
 import { featureOff } from '../moderation';
+import { spendCloudAi } from '../ai-budget';
+import type { SessionUser } from '@/lib/server-auth';
 import { geminiJson } from '../gemini';
 import { AGENTS, jsonRule, jsonSchema, type AgentKind } from './playbooks';
 
@@ -22,11 +24,11 @@ export function jsonOf(out: unknown): Record<string, unknown> | null {
   try { const v: unknown = m ? JSON.parse(m[0]) : null; return v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : null; } catch { return null; }
 }
 
-async function onCloudflare(kind: AgentKind, prompt: string, maxTokens: number): Promise<Record<string, unknown> | null> {
+async function onCloudflare(who: SessionUser | null, kind: AgentKind, prompt: string, maxTokens: number): Promise<Record<string, unknown> | null> {
   let env: { AI?: AiBinding; AGENTS_LORA?: string };
   try { env = getCloudflareContext().env as typeof env; } catch { return null; }
   const lora = env.AGENTS_LORA?.trim();
-  if (!env.AI || !lora || (await featureOff('agents-ai'))) return null;
+  if (!env.AI || !lora || (await featureOff('agents-ai')) || !(await spendCloudAi(who))) return null;
   try {
     const out = await env.AI.run(HYPERION_AI_MODEL, {
       messages: [{ role: 'system', content: `${AGENTS[kind].system}\n${jsonRule(kind)}` }, { role: 'user', content: prompt }],
@@ -40,6 +42,6 @@ async function onCloudflare(kind: AgentKind, prompt: string, maxTokens: number):
 }
 
 /** An agent's answer as JSON: its own model on Cloudflare when switched on, otherwise (or on failure) Gemini. */
-export async function agentJson<T>(kind: AgentKind, prompt: string, maxTokens: number): Promise<T | null> {
-  return ((await onCloudflare(kind, prompt, maxTokens)) as T | null) ?? geminiJson<T>(AGENTS[kind].system, prompt, AGENTS[kind].schema, maxTokens, true);
+export async function agentJson<T>(who: SessionUser | null, kind: AgentKind, prompt: string, maxTokens: number): Promise<T | null> {
+  return ((await onCloudflare(who, kind, prompt, maxTokens)) as T | null) ?? geminiJson<T>(AGENTS[kind].system, prompt, AGENTS[kind].schema, maxTokens, true);
 }

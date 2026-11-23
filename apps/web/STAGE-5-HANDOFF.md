@@ -12052,3 +12052,17 @@ angle doesn't change any spectrum, so centring doesn't matter). Language in `rad
 `radar.test.ts`. Not built: adaptive beamformers over time (LMS, RLS), elevation scans, ESPRIT, coherent sources
 (spatial smoothing), mutual coupling. Next: M439 (tracking, clutter, FMCW, grouping detections).
 
+
+## M442: a daily limit on paid AI, per person and for the site (23 Nov)
+
+The owner (23 Nov): "add a daily limit on AI spending for each user which should be a good amount".
+
+- Everyone already had a daily AI allowance (`spendAi`: 20 a student, 50 a teacher or admin, 1,000 for the site, mostly
+  Gemini's free requests). New: **`spendCloudAi(who)`** in `src/server/ai-budget.ts` counts questions to the paid models
+  on Cloudflare (the agents' add-on in `agents/own-model.ts`, Hyperion's AI route, DeepSeek in `ghidra-think.ts`) in
+  `ai_usage` under `cf:<id>` and `cf:*` (no new table). Past **25 a person** or **400 for the site** a day, it returns
+  false and **Gemini answers instead**: nobody is refused. 400 a day is about US$0.50 at most past Workers AI's free
+  10,000 Neurons (~80 questions). The owner has no personal limit but counts toward the site's.
+- The owner changes both in console → Server → AI use today ("Paid AI per person", "Paid AI, whole site");
+  `AiLimits` gained `cloud` and `cloudSite` (old saved limits read with the defaults). `agentJson`, `thinkHard` and
+  `thinkHardText` now take the person first. Test: `src/server/ai-budget.test.ts` (it unmocks the shared stand-in).

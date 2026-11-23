@@ -1,5 +1,7 @@
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { featureOff } from './moderation';
+import { spendCloudAi } from './ai-budget';
+import type { SessionUser } from '@/lib/server-auth';
 
 // Ghidra thinks harder with DeepSeek (M430; the owner, 22 Nov: "use this model in the ai", DeepSeek-R1). R1 itself is too
 // big to run and Cloudflare stopped hosting its smaller copy on 20 Nov 2026; its successor with the same step-by-step
@@ -43,14 +45,16 @@ export function wholeAnswer(out: unknown): string {
 interface AiBinding { run(model: string, input: Record<string, unknown>): Promise<unknown> }
 type Turn = { role: 'user' | 'assistant'; content: string };
 
-async function binding(): Promise<AiBinding | null> {
+async function binding(who: SessionUser | null): Promise<AiBinding | null> {
   if (await featureOff('deepseek')) return null;
-  try { return (getCloudflareContext().env as { AI?: AiBinding }).AI ?? null; } catch { return null; }
+  let ai: AiBinding | null;
+  try { ai = (getCloudflareContext().env as { AI?: AiBinding }).AI ?? null; } catch { return null; }
+  return ai && (await spendCloudAi(who)) ? ai : null;  // past today's paid-AI limit (M442): Gemini answers
 }
 
 /** DeepSeek's answer as a stream of plain text, or null (off, not set up, busy, failed): then Gemini answers. */
-export async function thinkHard(system: string, turns: Turn[]): Promise<ReadableStream<Uint8Array> | null> {
-  const ai = await binding();
+export async function thinkHard(who: SessionUser | null, system: string, turns: Turn[]): Promise<ReadableStream<Uint8Array> | null> {
+  const ai = await binding(who);
   if (!ai) return null;
   let out: unknown;
   try { out = await ai.run(DEEPSEEK, { messages: [{ role: 'system', content: system }, ...turns], stream: true, max_tokens: 2048 }); } catch { return null; }
@@ -69,8 +73,8 @@ export async function thinkHard(system: string, turns: Turn[]): Promise<Readable
 }
 
 /** DeepSeek's whole answer, or null (then Gemini's stands). For the hub's chat, which answers in one piece. */
-export async function thinkHardText(system: string, turns: Turn[]): Promise<string | null> {
-  const ai = await binding();
+export async function thinkHardText(who: SessionUser | null, system: string, turns: Turn[]): Promise<string | null> {
+  const ai = await binding(who);
   if (!ai) return null;
   try { return wholeAnswer(await ai.run(DEEPSEEK, { messages: [{ role: 'system', content: system }, ...turns], max_tokens: 2048 })) || null; } catch { return null; }
 }

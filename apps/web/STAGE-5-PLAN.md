@@ -1886,4 +1886,4 @@ symbolic maths, signals and statistics basics, files), Simulate (structures, vib
 8. **Capabilities**: C code from scripts (embedded code generation), parallel computing (workers, `parfor`), GPU
    computing (WebGPU), discrete-event simulation, unit tests and checks for scripts (verification), hardware support
    (Arduino and serial), reports (done in M397), deployment (share links M398, the computer app M412).
-
+| M442 | A daily limit on paid AI (23 Nov) | **Done** (branch `claude/youthful-fermi-sbdtcp`) | 25 questions a person and 400 for the site each day on the paid Cloudflare models; past them Gemini answers, so nobody is cut off. Changeable in console → Server → AI use today. |

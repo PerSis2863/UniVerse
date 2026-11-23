@@ -196,7 +196,7 @@ export async function askOne(u: SessionUser, text: string, history: AskTurn[]): 
   const plan = await resolve(u, cleanPlan(out));
   // M430: a hard question (maths, code, logic) answered by DeepSeek when the owner has it on; Gemini's answer otherwise.
   if (plan.action === 'answer' && isHard(text)) {
-    const deep = await thinkHardText(`You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
+    const deep = await thinkHardText(u, `You are Ghidra, UniVerse's assistant. Answer fully and correctly, in plain text (lists as lines starting with "- "). Suitable for students; with graded schoolwork help them learn rather than handing over finished work. ${UNTRUSTED_RULE}`, [...history.map((t) => ({ role: t.who === 'me' ? 'user' as const : 'assistant' as const, content: t.text })), { role: 'user', content: text }]);
     if (deep) return { action: 'answer', say: deep.slice(0, 6000), ai: true };
   }
   return { ...plan, ai: true };

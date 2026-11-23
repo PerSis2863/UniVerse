@@ -18,7 +18,7 @@ export async function planTrip(u: SessionUser, plan: Extract<AskPlan, { action: 
   const days = plan.days ?? 3;
   let tips: string[] = [];
   if (process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(u)).ok) {
-    const out = await agentJson<{ tips?: unknown }>('travel', `Tips for ${days} days in ${place.name} for ${plan.travellers} ${plan.travellers === 1 ? 'person' : 'people'}${plan.startDate ? ` from ${plan.startDate}` : ''}.`, 500).catch(() => null);
+    const out = await agentJson<{ tips?: unknown }>(u, 'travel', `Tips for ${days} days in ${place.name} for ${plan.travellers} ${plan.travellers === 1 ? 'person' : 'people'}${plan.startDate ? ` from ${plan.startDate}` : ''}.`, 500).catch(() => null);
     tips = Array.isArray(out?.tips) ? out.tips.filter((t): t is string => typeof t === 'string').map((t) => t.replace(/^\s*-\s*/, '').trim()).filter(Boolean).slice(0, 5) : [];
   }
   return {

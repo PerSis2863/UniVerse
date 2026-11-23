@@ -415,11 +415,11 @@ export default function ownerModule(router: Router) {
     let aiChange = '';
     if (body?.aiLimits !== undefined) {
       const v = body.aiLimits ?? {};
-      const bad = ['student', 'staff', 'site'].some((k) => v[k] !== undefined && !(Number.isInteger(v[k]) && v[k] >= 0 && v[k] <= 100_000));
+      const bad = ['student', 'staff', 'site', 'cloud', 'cloudSite'].some((k) => v[k] !== undefined && !(Number.isInteger(v[k]) && v[k] >= 0 && v[k] <= 100_000));
       if (bad) throw new BadRequestException('Limits must be whole numbers from 0 to 100,000');
       const limits = parseLimits(JSON.stringify(v));
       data.aiLimits = JSON.stringify(limits);
-      aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site`;
+      aiChange = `AI limits: ${limits.student} a day per student, ${limits.staff} per teacher or admin, ${limits.site} for the whole site; paid Cloudflare AI ${limits.cloud} a person, ${limits.cloudSite} for the site`;
     }
     // M203: the apps the website shows (at least one; every app is stored as none, so a new app shows).
     let appsChange = '';

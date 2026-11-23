@@ -48,7 +48,7 @@ export async function socialPosts(u: SessionUser, topic: string, platforms: stri
   const as = await voices(u);
   const want = platforms.length ? platforms : ['Instagram', 'LinkedIn', 'X'];
   const prompt = `Topic: ${topic}\nPlatforms: ${want.join(', ')}\nHow many posts in all: ${Math.max(count, want.length)}\n${as.length ? `They post for: ${as.join('; ')}.` : 'They post for themselves.'}`;
-  const out = await agentJson<{ posts?: unknown }>('social', prompt, 1800).catch(() => null);
+  const out = await agentJson<{ posts?: unknown }>(u, 'social', prompt, 1800).catch(() => null);
   const posts = checkPosts(out?.posts, 6);
   if (!posts.length) return { action: 'answer', say: 'I couldn’t write good posts on that. Try saying what it’s about and where to post it.' };
   return { action: 'posts', say: `${posts.length} post${posts.length === 1 ? '' : 's'} ready to copy${as.length ? ` for ${as[0].replace(/^the (brand|organisation|school) /, '').replace(/ \(on \w+\)$/, '')}` : ''}. Check them, fill anything in [brackets], then post them yourself:`, posts };

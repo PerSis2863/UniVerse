@@ -50,7 +50,7 @@ export async function support(u: SessionUser, code: string, question: string): P
   if (!process.env.GEMINI_API_KEY || (await featureOff('ai'))) return { action: 'show', say: `I can’t answer questions right now. The passport has the product’s facts, and ${f.brand.name} can help.`, items: links };
   const spend = await spendAi(u);
   if (!spend.ok) return { action: 'show', say: spend.message ?? 'You’ve used today’s AI allowance.', items: links };
-  const out = await agentJson<{ answer?: unknown; answered?: unknown }>('support', `Product facts:\n${f.facts}\n\nThe buyer asks: ${question}`, 600).catch(() => null);
+  const out = await agentJson<{ answer?: unknown; answered?: unknown }>(u, 'support', `Product facts:\n${f.facts}\n\nThe buyer asks: ${question}`, 600).catch(() => null);
   const answer = typeof out?.answer === 'string' ? out.answer.trim().slice(0, 1500) : '';
   if (!answer) return { action: 'show', say: `I couldn’t answer that just now. ${f.brand.name} can help.`, items: links };
   return { action: 'show', say: out?.answered === false ? `${answer}\n\nFor this, please ask ${f.brand.name}.` : answer, items: links };

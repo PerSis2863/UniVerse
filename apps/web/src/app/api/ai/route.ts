@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
 
   if (hard) {
     const turns = contents.map((c) => ({ role: c.role === 'model' ? 'assistant' as const : 'user' as const, content: c.parts[0].text }));
-    const deep = await thinkHard(SYSTEM_PROMPT, turns);
+    const deep = await thinkHard(user, SYSTEM_PROMPT, turns);
     if (deep) return new Response(deep, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
   if (!apiKey) return cannot();

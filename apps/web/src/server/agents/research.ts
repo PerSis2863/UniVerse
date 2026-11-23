@@ -36,7 +36,7 @@ export async function research(u: SessionUser, topic: string): Promise<AskPlan> 
   const ai = process.env.GEMINI_API_KEY && !(await featureOff('ai')) && (await spendAi(u)).ok;
   if (ai) {
     const text = sources.map((s) => `[${s.n}] ${s.title}: ${s.extract}`).join('\n\n');
-    const out = await agentJson<{ summary?: unknown; points?: unknown }>('research', `Topic: ${topic}\n\nSources:\n${text}`, 900).catch(() => null);
+    const out = await agentJson<{ summary?: unknown; points?: unknown }>(u, 'research', `Topic: ${topic}\n\nSources:\n${text}`, 900).catch(() => null);
     if (out && typeof out.summary === 'string' && out.summary.trim()) {
       const points = Array.isArray(out.points) ? out.points.filter((p): p is string => typeof p === 'string').slice(0, 5) : [];
       const say = keepCitations([out.summary.trim(), ...points.map((p) => `- ${p.trim()}`)].join('\n'), sources.length).slice(0, 4000);

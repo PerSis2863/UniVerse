@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getCloudflareContext } from '@opennextjs/cloudflare';
 import { getSessionUser } from '@/lib/server-auth';
-import { spendAi } from '@/server/ai-budget';
+import { spendAi, spendCloudAi } from '@/server/ai-budget';
 import { logAiUse } from '@/server/ai-receipts';
 import { featureOff } from '@/server/moderation';
 import { geminiText } from '@/server/gemini';
@@ -25,11 +25,11 @@ function answerOf(out: unknown) {
   return typeof w === 'string' ? w.trim() : '';
 }
 
-async function onCloudflare(prompt: string): Promise<string | null> {
+async function onCloudflare(prompt: string, who: Awaited<ReturnType<typeof getSessionUser>>): Promise<string | null> {
   if (await featureOff('hyperion-ai')) return null;
   let env: { AI?: AiBinding; HYPERION_LORA?: string };
   try { env = getCloudflareContext().env as typeof env; } catch { return null; }
-  if (!env.AI) return null;
+  if (!env.AI || !(await spendCloudAi(who))) return null;  // past today's paid-AI limit (M442): Gemini answers
   const lora = env.HYPERION_LORA?.trim();
   const system = lora ? `${HYPERION_SYSTEM}\n${UNTRUSTED_RULE}` : rich();
   try {
@@ -57,7 +57,7 @@ export async function POST(req: NextRequest) {
   const prompt = code && error
     ? `This script gives an error in Hyperion:\n\`\`\`matlab\n${code}\n\`\`\`\nThe error: ${error}\n${question ? `They also say: ${question}\n` : ''}Fix it.`
     : code ? `${question}\n\nTheir script:\n\`\`\`matlab\n${code}\n\`\`\`` : question;
-  const answer = (await onCloudflare(prompt)) ?? (await geminiText(rich(), prompt, 1400));
+  const answer = (await onCloudflare(prompt, user)) ?? (await geminiText(rich(), prompt, 1400));
   if (!answer) return NextResponse.json({ error: 'Hyperion’s AI can’t answer right now. Please try again soon.' }, { status: 503 });
   return NextResponse.json({ answer });
 }
