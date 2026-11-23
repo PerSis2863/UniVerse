@@ -3,6 +3,7 @@ import { Lab } from './interp';
 import { Graphics } from './plot';
 import { FileStore } from './files';
 import './optim-lab';
+import './ml-lab';
 import './filters-lab';
 import './audio-lab';
 import './serial-lab';
@@ -11,6 +12,7 @@ import './parallel-lab';
 import './gpu-lab';
 import './des-lab';
 import './codegen-lab';
+import './embedded-lab';
 import { SIGNAL_EXAMPLES } from '@/components/lab/examples-signals';
 
 // Every worked example of the signals and capabilities toolboxes (M472–) runs without an error; the test script

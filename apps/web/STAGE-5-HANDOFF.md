@@ -12669,3 +12669,25 @@ testing my ai also it was so much slow and not providing answer properly". The l
   base scores (90–92%, social 67%) stand. The agents' add-on (AGENTS_LORA) was trained on the old research and social
   wording: its answers keep working (the rules didn't change), retrain when the agents are next trained.
 
+
+## M481 (23 Nov): Hyperion, embedded AI (models made small and written out as C)
+
+`src/lib/lab/embedded.ts` and `embedded-lab.ts`, for the toolbox's neural networks (ClassificationNeuralNetwork,
+RegressionNeuralNetwork) and trees (ClassificationTree, RegressionTree); other learners are refused with the reason.
+**Quantisation** is weight-only: each layer's weights become int8 with one symmetric scale (max |w| / 127), biases and
+the standardisation in float; activations stay in floating point (integer-only inference, with quantised activations
+and calibration data, isn't built). `quantizemodel(m, p)` returns a copy whose LayerWeights / CutPoint hold the
+round-tripped numbers, so `predict`, `loss` and the rest work unchanged and measure the real effect; `modelsize` counts
+the bytes on a chip; `embedreport` tries double, single and int8 (trees: double and single) through `loss`.
+`exportmodel(m, 'name', 'Precision', p)` writes `name.c` / `name.h` (row-major weight arrays, one predict function:
+classification returns the class's number in ClassNames' order and fills softmax scores; a tree walks `pred` / `cut` /
+`left` / `right` as `ml.treeLeaf` does, `x < cut` going left). `embedded.test.ts` compiles both with `cc -Wall -Werror`
+and checks every iris flower's class against Hyperion's. MATLAB's own names (quantize, dlquantizer, Coder's
+saveLearnerForCoder) work on its deep-network and learner objects; these are our names for the toolbox's plain models.
+Not built: SVMs, k-NN, ensembles and linear models in C; CMSIS-NN / TensorFlow Lite formats; pruning.
+
+**This branch's work is complete (M472–M481).** Shared files touched, kept to small added lines: `interp.ts` (the
+`Flow` pause, `execTop`, `parHook`, `opHooks`, `Host.sound` / `Host.serial`), `values.ts` (`gpu` and `fi` structs),
+`parse.ts` (`parfor`), `help.ts` (new sections after Signals), `lab.worker.ts`, `LabApp.tsx` (examples spread from
+`examples-signals.ts`, the Test button and results panel, sound, the serial bridge), `SimulateApp.tsx` (Queues),
+`Sidebar.tsx` / `app-tabs.ts` (Signals), `app.ts` (the iot module), `route-gates.test.ts`, `account-deletion.ts`.

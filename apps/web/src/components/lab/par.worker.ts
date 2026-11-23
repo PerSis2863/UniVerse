@@ -12,6 +12,9 @@ import '@/lib/lab/image-lab';
 import '@/lib/lab/radar-lab';
 import '@/lib/lab/filters-lab';
 import '@/lib/lab/audio-lab';
+import '@/lib/lab/codegen-lab';
+import '@/lib/lab/embedded-lab';
+import '@/lib/lab/des-lab';
 import { runTask, type Task } from '@/lib/lab/parallel-lab';
 
 // M477: one of Hyperion's parallel workers (started by the engine's own worker, lab.worker.ts): a whole engine that

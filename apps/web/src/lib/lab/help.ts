@@ -381,6 +381,12 @@ numerictype | t = numerictype(a) | A fi value's sign, word length and fraction l
 upperbound | u = upperbound(a) | The largest value a fi type can hold.
 lowerbound | l = lowerbound(a) | The smallest value a fi type can hold.
 
+# Embedded AI
+quantizemodel | q = quantizemodel(net, 'int8') | A trained network (fitcnet, fitrnet) or tree (fitctree, fitrtree) with its numbers as a small chip would hold them: 'int8' (8-bit weights, one scale per layer), 'single' or 'double'. predict and loss work on it as on the original.
+modelsize | b = modelsize(net, 'int8') | The bytes a model's numbers take in that precision.
+embedreport | T = embedreport(net, X, Y) | Size and accuracy (or RMSE) of the model in double, single and int8, tested on X and Y; drawn as bars without an output.
+exportmodel | exportmodel(net, 'mynet', 'Precision', 'int8') | Writes the model as plain C (mynet.c, mynet.h in Hyperion's files): its weights as constant arrays and mynet_predict(x, scores), giving the class's number (or the value). Trees take 'single' or 'double'.
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).
