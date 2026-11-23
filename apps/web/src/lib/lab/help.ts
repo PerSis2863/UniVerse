@@ -272,12 +272,28 @@ nextpow2 | nextpow2(n) | The next power of 2's exponent.
 filter | filter(b, a, x) | Runs x through a digital filter.
 conv2 | conv2(A, K, 'same') | 2D convolution.
 xcorr | [r, lags] = xcorr(x, y) | Cross-correlation.
-freqz | [h, w] = freqz(b, a, n) | A filter's frequency response.
 hann | hann(n) | Hann window.
 hanning | hanning(n) | Hann window (older name).
 hamming | hamming(n) | Hamming window.
 blackman | blackman(n) | Blackman window.
 rectwin | rectwin(n) | Rectangular window.
+freqz | [h, w] = freqz(b, a, n, fs) | A filter's frequency response at n points (512); drawn (magnitude in dB and phase) without outputs. Takes a designfilt filter too: freqz(d).
+butter | [b, a] = butter(n, Wn, 'high') | Butterworth filter of order n: flattest passband; Wn the −3 dB edge (1 = half the sample rate), two edges for a band ('bandpass', 'stop'); [z, p, k] with three outputs; 's' designs an analog one (Wn in rad/s).
+cheby1 | [b, a] = cheby1(n, Rp, Wp, type) | Chebyshev type I: ripple of Rp dB in the passband for a sharper edge at Wp.
+cheby2 | [b, a] = cheby2(n, Rs, Ws, type) | Chebyshev type II: flat passband, at least Rs dB down from the stopband edge Ws.
+ellip | [b, a] = ellip(n, Rp, Rs, Wp, type) | Elliptic (Cauer) filter: Rp dB ripple in the passband, Rs dB down in the stopband; the sharpest edge for its order.
+buttord | [n, Wn] = buttord(Wp, Ws, Rp, Rs) | The smallest Butterworth order that keeps the passband within Rp dB and the stopband Rs dB down.
+cheb1ord | [n, Wp] = cheb1ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev I order for the specification.
+cheb2ord | [n, Ws] = cheb2ord(Wp, Ws, Rp, Rs) | The smallest Chebyshev II order for the specification.
+ellipord | [n, Wp] = ellipord(Wp, Ws, Rp, Rs) | The smallest elliptic order for the specification.
+fir1 | b = fir1(n, Wn, 'high', win) | Windowed-sinc FIR filter of order n (Hamming window unless given); high-pass and band-stop need an even n.
+fir2 | b = fir2(n, f, m) | FIR filter by frequency sampling: gains m at frequencies f (0 … 1, a repeated f makes a jump).
+firpm | [b, err] = firpm(n, f, a, w) | Equiripple FIR (Parks–McClellan): bands as edge pairs f, gains a at each edge, a weight per band; err is the ripple.
+grpdelay | [gd, w] = grpdelay(b, a, n, fs) | Group delay in samples; drawn without outputs.
+filtfilt | y = filtfilt(b, a, x) | Filters forwards and backwards: no phase shift, the magnitude response squared. Takes a designfilt filter too.
+designfilt | d = designfilt('lowpassiir', 'FilterOrder', 8, 'HalfPowerFrequency', 0.2) | Designs a filter from a description ('lowpassfir', 'bandstopiir'…; 'PassbandFrequency', 'StopbandFrequency', 'PassbandRipple', 'StopbandAttenuation', 'CutoffFrequency', 'DesignMethod', 'SampleRate'); a struct that filter, filtfilt, freqz and grpdelay take.
+pwelch | [pxx, f] = pwelch(x, window, noverlap, nfft, fs) | Welch's power spectral density (averaged, windowed periodograms); drawn without outputs.
+spectrogram | [s, f, t, p] = spectrogram(x, window, noverlap, nfft, fs) | The short-time Fourier transform: how the spectrum changes over time; drawn as a picture without outputs.
 
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).

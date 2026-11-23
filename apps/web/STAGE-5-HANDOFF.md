@@ -12437,3 +12437,25 @@ browser-installed app the button reads "Get the computer app"; only the computer
 certificates (Windows SmartScreen and macOS Gatekeeper ask once). After merging, run the workflow with "publish" again
 for the universal Mac build.
 
+
+## M472 (23 Nov): Hyperion, the filter designer and signal analyser
+
+The owner (23 Nov): "help me to build what is left", group 5's signal analyser and filter designer. Three sessions build
+the rest in parallel: this branch (`claude/hyperion-signals-capabilities`) M472–M481, machines and vehicles M482–M491,
+sciences and industries M492–M505. Pure maths in `src/lib/lab/filters.ts`, the language in `filters-lab.ts` (loaded by
+`lab.worker.ts` and the tests): analog prototypes (Butterworth, Chebyshev I and II, elliptic by Landen's transform,
+after Orfanidis' notes), the low/high/band-pass/band-stop transformations and the bilinear transform with prewarping (fs
+= 2, as MATLAB, so edges are fractions of Nyquist); order estimates; `fir1` (windowed sinc, gain 1 in the first
+passband), `fir2` (frequency sampling), `firpm` (our own Remez exchange with barycentric interpolation, orders odd and
+even; no Hilbert or differentiator types); `freqz` moved here from `signal.ts` (draws magnitude and unwrapped phase
+without outputs; takes fs), `grpdelay`, `filtfilt` (odd reflection of 3·order samples, steady-state initial conditions),
+`designfilt` (a plain struct with Numerator and Denominator in place of MATLAB's digitalFilter object; `filter`,
+`filtfilt`, `freqz`, `grpdelay` take it; `filter` is wrapped here so `signal.ts` stays as it was), `pwelch` and
+`spectrogram` (MATLAB's defaults: 8 Hamming segments overlapping by half, nfft ≥ 256; one-sided PSD scaling).
+The window: Hyperion's new **Signals** page (`/hyperion/signals`, `SignalsTabs.tsx`, menu and phone tabs), its first
+tab `FilterDesigner.tsx`: designs on the page's thread (microseconds to milliseconds), edges dragged on the SVG
+(pointer capture, the neighbours' order kept) or moved with ‹ › buttons, Open in Code by `shareFragment`. The worked
+examples for this branch live in `src/components/lab/examples-signals.ts` (spread into `LabApp`'s list, so the three
+branches don't edit the same lines) and every one runs in `examples-signals.test.ts`. Browser check:
+`scripts/checks/hyperion-signals-ui.mjs` (TABS=… names the tabs to open). Not built: second-order sections (`sos`),
+`zplane`, `iirnotch`, filter quantisation, MATLAB's filterDesigner's import/export.
