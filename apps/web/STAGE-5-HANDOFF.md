@@ -11290,8 +11290,14 @@ RunPod secrets `cloudflare_token` (Workers AI: Edit) and `github_token` exist; t
   `/workspace`; a restart wipes the container disk (Node.js too). A stopped community pod can lose its card ("not enough
   free GPUs"): then rent a new one. `pkill -f <x>` inside `exec-pod` kills its own shell (kill by pid). The kits switch
   the pod off when they end (`runpodctl`, wrapped on the run-2 pod so the agents kit could follow).
-- **Run 2:** an A40 48 GB (secure, $0.59/h; no A100/H100 free), pod `mjk9dtu1pksktk`, started 01:13 UTC 23 Nov; results
-  below when in.
+- **Run 2/3** (A40 48 GB, secure, $0.59/h, pod `mjk9dtu1pksktk`): lessons 5,482 requests, **5,118 ran first time (93%,
+  was 82%)**, 5,316 lessons. Training died silently at step 191 of 328 (no error, no OOM in the cgroup's counters, no
+  checkpoint before step 200: lower `save_steps` next time); restarted for one epoch (164 steps, loss 2.0 → 0.19).
+  **Score: never-learnt functions 141 → 138 of 150 (94% → 92%); new requests on learnt functions 130 → 123 (87% → 82%).**
+  The fixes lifted the plain model from 80% to 94%; the add-on, learning from the same model's own answers, made it
+  slightly worse. **Decision: don't use it (leave `HYPERION_LORA` unset)**; "Hyperion's AI on Cloudflare" then runs the
+  plain model with the function list. The upload's test question also timed out (120 s; a first LoRA load is slow).
+  Distilling a model into itself doesn't teach it more: a better teacher (or the people's own corrected answers) would.
 
 ## M437: the app agents' own AI (23 Nov)
 
