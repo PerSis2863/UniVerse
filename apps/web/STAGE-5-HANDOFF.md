@@ -11572,3 +11572,20 @@ tracks in range–angle (polar) coordinates, FMCW angle from several receivers. 
 optimisation, rarer solver choices, advanced vibration analysis, a point-and-click maintenance window, then Python, R,
 Julia and C++/Rust in Hyperion and its computer app (M440–).
 
+## M440 (23 Nov): Hyperion toolbox, several goals at once
+
+The owner, 23 Nov (after M439): "optimising several goals at once, a few rarer solver choices, more advanced vibration
+analysis, a point-and-click maintenance window" (M440–M443), then the languages in their two pictures (Python, Julia,
+R, C++/Rust) in Hyperion and its computer app (M444–). Also that day: "please push and merge everything first", so
+M401–M438 went live in PR #149; M439 is on the branch.
+`src/lib/lab/optim-multi.ts` (pure): `nsga2` (fast non-dominated sorting, crowding, SBX and polynomial mutation within
+bounds; half the crossovers share one spread for every gene so children stay on the line through their parents: plain
+gene-by-gene SBX stalled on fronts that need the variables to move together; Deb's feasibility rules via `violation`),
+`polish` (MATLAB's hybrid step: each point pushed along the ray from just below the ideal point by Nelder–Mead on the
+augmented Chebyshev distance, in variables scaled to the bounds, constraints as a steep penalty), `paretoSearch` (a
+rough NSGA-II front, then one push per direction). Trap: polishing with the augmented Lagrangian took 12 s for 100
+points (every constraint call re-runs the goals in the interpreter); Nelder–Mead takes 0.25 s for the same accuracy.
+`optim-lab.ts`: `gamultiobj`, `paretosearch`, options `HybridFcn`, `ParetoSetSize` (added to `ALIASES` and `NAMES`).
+Example goals.m. Tests in `optim.test.ts`. Not built: goal attainment and minimax (M441), more than 3 goals drawn,
+the hypervolume measure.
+

@@ -93,3 +93,34 @@ describe('Hyperion optimisation (M422): in the language', () => {
     expect(legendSeries([...r.graphics.figures[0].axes.values()][0])).toHaveLength(2);
   });
 });
+
+describe('several goals at once (M440)', () => {
+  let seed = 5;
+  const rand = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32);
+  it('NSGA-II finds the ZDT1 front (f2 = 1 − √f1) end to end; Schaffer’s front is x in [0, 2]', async () => {
+    const om = await import('./optim-multi');
+    const zdt = (x: number[]) => { const g = 1 + (9 * x.slice(1).reduce((p, q) => p + q, 0)) / (x.length - 1); return [x[0], g * (1 - Math.sqrt(x[0] / g))]; };
+    const z = om.nsga2(zdt, 10, new Array(10).fill(0), new Array(10).fill(1), rand, { pop: 100, gens: 250 });
+    expect(Math.sqrt(z.reduce((s, p) => s + (p.f[1] - (1 - Math.sqrt(p.f[0]))) ** 2, 0) / z.length)).toBeLessThan(0.01);
+    expect(Math.min(...z.map((p) => p.f[0]))).toBeLessThan(0.01); expect(Math.max(...z.map((p) => p.f[0]))).toBeGreaterThan(0.95);
+    const s = om.nsga2((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, [-5], [5], rand, { pop: 60, gens: 80 });
+    expect(s.every((p) => p.x[0] > -0.01 && p.x[0] < 2.01)).toBe(true);
+    // A constraint (x ≥ 1) cuts the front to [1, 2].
+    const c = om.nsga2((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, [-5], [5], rand, { pop: 40, gens: 60, violation: (x) => Math.max(0, 1 - x[0]) });
+    expect(Math.min(...c.map((p) => p.x[0]))).toBeGreaterThan(0.999);
+  }, 30_000);
+  it('Pareto search puts every point exactly on the front', async () => {
+    const om = await import('./optim-multi');
+    const P = om.paretoSearch((x) => [x[0] ** 2, (x[0] - 2) ** 2], 1, { lb: [-5], ub: [5] }, rand, 20);
+    expect(P.length).toBeGreaterThan(15);
+    for (const p of P) expect(p.f[1]).toBeCloseTo((Math.sqrt(p.f[0]) - 2) ** 2, 5);
+  }, 30_000);
+  it('in the language', () => {
+    const r = run("rng(1); f = @(x) [x(1)^2 + x(2)^2, (x(1)-1)^2 + (x(2)-1)^2];\n[x, fv] = gamultiobj(f, 2, [], [], [], [], [-2 -2], [2 2], [], optimoptions('gamultiobj', 'PopulationSize', 60, 'MaxGenerations', 200));\ngap = max(fv(:,2) - 2*(1 - sqrt(fv(:,1)/2)).^2);\n[xp, fp] = paretosearch(f, 2, [], [], [], [], [-2 -2], [2 2]);\nn = size(fp, 1);\ngamultiobj(@(x) [x^2, (x-2)^2], 1, [], [], [], [], -5, 5)");
+    // The front of two squared distances: on the segment from (0, 0) to (1, 1), f2 = 2(1 − √(f1/2))².
+    expect(r.d('gap')[0]).toBeLessThan(0.02);
+    expect(r.d('n')[0]).toBeGreaterThan(10);
+    expect(r.graphics.figures.length).toBe(1);
+    expect(() => run('gamultiobj(@(x) [x, -x], 1)')).toThrow(/bounds/);
+  }, 30_000);
+});

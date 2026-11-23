@@ -635,6 +635,8 @@ lsqcurvefit | p = lsqcurvefit(@(p, x) model, p0, xdata, ydata, lb, ub) | Fits a 
 fsolve | x = fsolve(fun, x0) | Solves a system F(x) = 0 (as many equations as wanted).
 ga | [x, fval] = ga(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | A genetic algorithm: a population that breeds and mutates towards the best, for bumpy functions with many dips.
 particleswarm | [x, fval] = particleswarm(fun, nvars, lb, ub, options) | A swarm of points pulled towards their own best and the swarm's best.
+gamultiobj | [x, fval] = gamultiobj(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | Several goals at once (fun gives a row of them): the best trade-offs, the Pareto front, by a genetic algorithm (NSGA-II), each point then polished onto the true front (options HybridFcn 'none' skips that). Bounds are needed. Drawn without outputs.
+paretosearch | [x, fval] = paretosearch(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options) | The Pareto front point by point (options ParetoSetSize, 30 by default): each pushed as far as it goes along its own direction from the best values. Drawn without outputs.
 optimset | opts = optimset('Display', 'iter', 'TolX', 1e-8) | Options for the solvers: Display ('off', 'iter', 'final', 'notify'), StepTolerance (TolX), FunctionTolerance (TolFun), OptimalityTolerance, MaxIterations, MaxFunctionEvaluations, PlotFcns (@optimplotfval, @optimplotx), SpecifyObjectiveGradient, PopulationSize, MaxGenerations, SwarmSize.
 optimoptions | opts = optimoptions('fmincon', 'Display', 'iter') | The same as optimset (the solver's name first).
 

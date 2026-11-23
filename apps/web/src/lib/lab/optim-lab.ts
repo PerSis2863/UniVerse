@@ -4,6 +4,7 @@ import type { Lab } from './interp';
 import { textOf } from './interp';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
 import * as op from './optim';
+import * as om from './optim-multi';
 
 // Hyperion's optimisation toolbox in the language (M422): fminsearch, fminunc, fmincon, linprog, intlinprog,
 // quadprog, lsqnonlin, lsqcurvefit, fsolve, ga, particleswarm, optimset and optimoptions. Display 'iter' prints each
@@ -22,9 +23,9 @@ const ALIASES: Record<string, string> = {
   tolx: 'steptolerance', steptolerance: 'steptolerance', tolfun: 'functiontolerance', functiontolerance: 'functiontolerance', optimalitytolerance: 'optimalitytolerance',
   maxiter: 'maxiterations', maxiterations: 'maxiterations', maxfunevals: 'maxfunctionevaluations', maxfunctionevaluations: 'maxfunctionevaluations',
   display: 'display', plotfcns: 'plotfcns', plotfcn: 'plotfcns', gradobj: 'specifyobjectivegradient', specifyobjectivegradient: 'specifyobjectivegradient',
-  populationsize: 'populationsize', maxgenerations: 'maxgenerations', swarmsize: 'swarmsize',
+  populationsize: 'populationsize', maxgenerations: 'maxgenerations', swarmsize: 'swarmsize', hybridfcn: 'hybridfcn', paretosetsize: 'paretosetsize',
 };
-const NAMES: Record<string, string> = { steptolerance: 'StepTolerance', functiontolerance: 'FunctionTolerance', optimalitytolerance: 'OptimalityTolerance', maxiterations: 'MaxIterations', maxfunctionevaluations: 'MaxFunctionEvaluations', display: 'Display', plotfcns: 'PlotFcns', specifyobjectivegradient: 'SpecifyObjectiveGradient', populationsize: 'PopulationSize', maxgenerations: 'MaxGenerations', swarmsize: 'SwarmSize' };
+const NAMES: Record<string, string> = { steptolerance: 'StepTolerance', functiontolerance: 'FunctionTolerance', optimalitytolerance: 'OptimalityTolerance', maxiterations: 'MaxIterations', maxfunctionevaluations: 'MaxFunctionEvaluations', display: 'Display', plotfcns: 'PlotFcns', specifyobjectivegradient: 'SpecifyObjectiveGradient', populationsize: 'PopulationSize', maxgenerations: 'MaxGenerations', swarmsize: 'SwarmSize', hybridfcn: 'HybridFcn', paretosetsize: 'ParetoSetSize' };
 function makeOptions(a: Value[]): Struct {
   const f = new Map<string, Value>();
   let i = 0;
@@ -168,3 +169,40 @@ def('particleswarm', (a, _n, lab) => {
   const r = op.particleswarm(objective(lab, a[0], [1, n]), n, random, { lb: vec(a[2], 'lb'), ub: vec(a[3], 'ub'), size: o.pop, iters: o.maxIter, onIter: w.onIter });
   return [mat(1, n, r.x), num(r.f), num(r.flag), finish(lab, o, r, w, 'particle swarm', 'particleswarm')];
 });
+
+// ——— Several goals at once (M440) ———
+/** A function giving a row of goals for a row of variables. */
+function goals(lab: Lab, fn: Value, n: number): om.MultiFn {
+  if (fn.k !== 'fn' && fn.k !== 'str') throw new LabError('The goals must be a function giving a row of numbers, like @(x) [x(1)^2, (x(1)-2)^2].');
+  return (x) => [...toMat(lab.callFn(fn, [mat(1, n, x)])[0], 'The goals').d];
+}
+const frontOut = (P: { x: number[]; f: number[] }[], n: number) => [matRows(P.map((p) => p.x), n), matRows(P.map((p) => p.f), P[0]?.f.length ?? 0)];
+const drawFront = (lab: Lab, P: { f: number[] }[], name: string) => {
+  const m = P[0]?.f.length ?? 0;
+  if (m === 2) call(lab, 'plot', mat(1, P.length, P.map((p) => p.f[0])), mat(1, P.length, P.map((p) => p.f[1])), str('o'));
+  else if (m >= 3) call(lab, 'plot3', mat(1, P.length, P.map((p) => p.f[0])), mat(1, P.length, P.map((p) => p.f[1])), mat(1, P.length, P.map((p) => p.f[2])), str('o'));
+  call(lab, 'xlabel', str('Goal 1')); call(lab, 'ylabel', str('Goal 2')); if (m >= 3) call(lab, 'zlabel', str('Goal 3'));
+  call(lab, 'grid', str('on')); call(lab, 'title', str(`${name}: ${P.length} best trade-offs (the Pareto front)`));
+};
+def('gamultiobj', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError('gamultiobj needs the goals and the number of variables: gamultiobj(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const n = Math.round(toMat(a[1]).d[0]), k = constraintsOf(lab, a, 2, n, [1, n], a[8]), o = readOptions(a[9], 'off');
+  if (!k.lb?.length || !k.ub?.length || k.lb.some((v, i) => !(Number.isFinite(v) && Number.isFinite(k.ub![i]) && k.ub![i] > v))) throw new LabError('gamultiobj needs finite bounds lb and ub for every variable.');
+  const f = goals(lab, a[0], n), rough = om.nsga2(f, n, k.lb, k.ub, random, { pop: o.pop, gens: o.gens, violation: (x) => om.violation(k, x) });
+  // Polished onto the true front point by point (MATLAB's hybrid step) unless options say 'HybridFcn', 'none'.
+  const hy = a[9] && a[9].k === 'struct' ? a[9].f.get('HybridFcn') : undefined, P = hy && hy.k === 'str' && /^none$/i.test(hy.v) ? rough : om.polish(f, n, { ...k, lb: k.lb, ub: k.ub }, rough);
+  if (!P.length) throw new LabError('No point kept every constraint: loosen them or widen the bounds.');
+  if (nout === 0) { drawFront(lab, P, 'Genetic algorithm (NSGA-II)'); return []; }
+  return [...frontOut(P, n), num(1)];
+});
+def('paretosearch', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError('paretosearch needs the goals and the number of variables: paretosearch(fun, nvars, A, b, Aeq, beq, lb, ub, nonlcon, options).');
+  const n = Math.round(toMat(a[1]).d[0]), k = constraintsOf(lab, a, 2, n, [1, n], a[8]), s = a[9] && a[9].k === 'struct' ? a[9] : null;
+  if (!k.lb?.length || !k.ub?.length) throw new LabError('paretosearch needs bounds lb and ub for every variable.');
+  const size = s?.f.get('ParetoSetSize') ? Math.round(toMat(s.f.get('ParetoSetSize')!).d[0]) : 30;
+  const P = om.paretoSearch(goals(lab, a[0], n), n, { ...k, lb: k.lb, ub: k.ub }, random, Math.max(2, Math.min(200, size)));
+  if (!P.length) throw new LabError('No point kept every constraint: loosen them or widen the bounds.');
+  if (nout === 0) { drawFront(lab, P, 'Pareto search'); return []; }
+  return [...frontOut(P, n), num(1)];
+});
+
