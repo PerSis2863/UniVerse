@@ -3,7 +3,7 @@
 // (SNR, SINAD, THD, SFDR, ENOB, as IEEE 1241 defines them), INL and DNL measured from a sine's code histogram, and a
 // sigma-delta modulator (first or second order) with its sinc decimator. Our own code from the standard methods.
 
-import { dft } from './signal';
+import { dft } from './fft';
 
 export type Rand = () => number;
 const gauss = (rand: Rand) => { let u = 0; while (!u) u = rand(); return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand()); };

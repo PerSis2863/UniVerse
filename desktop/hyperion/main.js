@@ -2,7 +2,9 @@
 // all of these in the downloaded app"). A window of its own that opens Hyperion on the live site, so every new feature
 // reaches the app the moment it reaches the website. Safe by default: the page has no access to the computer beyond
 // what a browser gives it, other sites open in the normal browser, and only the site may use the camera or microphone.
-const { app, BrowserWindow, Menu, shell, session } = require('electron');
+const { app, BrowserWindow, Menu, dialog, ipcMain, shell, session } = require('electron');
+const crypto = require('node:crypto');
+const runner = require('./runner');
 const fs = require('node:fs');
 const path = require('node:path');
 
@@ -23,7 +25,9 @@ function open() {
   win = new BrowserWindow({
     ...b, minWidth: 1100, minHeight: 700, title: 'Hyperion', backgroundColor: '#f1f2f4', show: false,
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: true },
+    webPreferences: { contextIsolation: true, sandbox: true, nodeIntegration: false, spellcheck: true, preload: path.join(__dirname, 'preload.js') },
+    // Rounded window corners where the system offers them (macOS; Windows 11 rounds every window).
+    roundedCorners: true,
   });
   // A browser's own name (some sign-in pages refuse unknown app windows).
   win.webContents.setUserAgent(win.webContents.getUserAgent().replace(/\sElectron\/\S+/, '').replace(/\shyperion-desktop\/\S+/, ''));
@@ -49,13 +53,49 @@ function open() {
   void win.loadURL(SITE);
 }
 
+// Julia, C++ and Rust (M470): only Hyperion's own site, in the window's main frame (never a frame inside it), may ask,
+// and the person says yes before a program runs: once per program text, or for the rest of this visit when they tick
+// the box. A program run this way can do anything the person can, like any program they start themselves.
+const NAMES = { julia: 'Julia', cpp: 'C++', rust: 'Rust' };
+const trusted = (e) => !!win && e.sender === win.webContents && e.senderFrame === win.webContents.mainFrame && ours(e.senderFrame.url);
+const allowed = { all: new Set(), once: new Set() };
+async function mayRun(lang, code) {
+  const hash = crypto.createHash('sha256').update(`${lang}\0${code}`).digest('hex');
+  if (allowed.all.has(lang) || allowed.once.has(hash)) return true;
+  const { response, checkboxChecked } = await dialog.showMessageBox(win, {
+    type: 'warning', buttons: [`Run the ${NAMES[lang]} program`, 'Cancel'], defaultId: 1, cancelId: 1, noLink: true,
+    title: 'Run a program on this computer?',
+    message: `Run this ${NAMES[lang]} program on your computer?`,
+    detail: 'It runs with the same permissions as you, like any program you start yourself. Only run code you wrote or trust.',
+    checkboxLabel: `Don't ask again for ${NAMES[lang]} until Hyperion is closed`,
+  });
+  if (response !== 0) return false;
+  if (checkboxChecked) allowed.all.add(lang); else allowed.once.add(hash);
+  return true;
+}
+ipcMain.handle('hyperion:tools', async (e) => {
+  if (!trusted(e)) throw new Error('Not allowed.');
+  const t = await runner.tools();
+  return { ...t, how: { julia: runner.howTo('julia'), cpp: runner.howTo('cpp'), rust: runner.howTo('rust') } };
+});
+ipcMain.handle('hyperion:run', async (e, lang, code) => {
+  if (!trusted(e)) throw new Error('Not allowed.');
+  if (!NAMES[lang] || typeof code !== 'string') return { ok: false, error: 'Unknown language.' };
+  // Nothing to ask about when the tool isn't here: say how to install it.
+  if (!(await runner.tools())[lang]) return { ok: false, missing: true, error: `${lang === 'cpp' ? 'No C++ compiler' : NAMES[lang]} isn't installed on this computer. ${runner.howTo(lang)}` };
+  if (!(await mayRun(lang, code))) return { ok: false, cancelled: true, error: 'Not run: you chose Cancel.' };
+  const to = e.sender;
+  return runner.run(lang, code, (text, isError) => { if (!to.isDestroyed()) to.send('hyperion:out', text, isError); });
+});
+ipcMain.handle('hyperion:stop', (e) => { if (trusted(e)) runner.stop(); });
+
 app.whenReady().then(() => {
   // Only Hyperion's own site may ask for the camera, microphone, clipboard or notifications; nothing else.
   session.defaultSession.setPermissionRequestHandler((wc, permission, done) => done(ours(wc.getURL()) && ['media', 'clipboard-read', 'clipboard-sanitized-write', 'notifications', 'fullscreen'].includes(permission)));
   const mac = process.platform === 'darwin';
   Menu.setApplicationMenu(Menu.buildFromTemplate([
     ...(mac ? [{ role: 'appMenu' }] : []),
-    { label: 'File', submenu: [{ label: 'Code', accelerator: 'CmdOrCtrl+1', click: () => win?.loadURL(`${ORIGIN}/hyperion`) }, { label: 'Simulate', accelerator: 'CmdOrCtrl+2', click: () => win?.loadURL(`${ORIGIN}/hyperion/simulate`) }, { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
+    { label: 'File', submenu: [{ label: 'Code', accelerator: 'CmdOrCtrl+1', click: () => win?.loadURL(`${ORIGIN}/hyperion`) }, { label: 'Simulate', accelerator: 'CmdOrCtrl+2', click: () => win?.loadURL(`${ORIGIN}/hyperion/simulate`) }, { label: 'Learn', accelerator: 'CmdOrCtrl+3', click: () => win?.loadURL(`${ORIGIN}/hyperion/learn`) }, { type: 'separator' }, mac ? { role: 'close' } : { role: 'quit' }] },
     { role: 'editMenu' },
     { label: 'View', submenu: [{ role: 'reload' }, { type: 'separator' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { type: 'separator' }, { role: 'togglefullscreen' }] },
     { role: 'windowMenu' },
@@ -66,4 +106,4 @@ app.whenReady().then(() => {
   app.on('activate', () => { if (!BrowserWindow.getAllWindows().length) open(); });
 });
 app.on('second-instance', () => { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } });
-app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit(); });
+app.on('window-all-closed', () => { runner.stop(); if (process.platform !== 'darwin') app.quit(); });

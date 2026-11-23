@@ -85,7 +85,8 @@ export function bfgs(f0: Fn, x0: number[], o: Opts & { grad?: (x: number[]) => n
 export interface Constraints { A?: number[][]; b?: number[]; Aeq?: number[][]; beq?: number[]; lb?: number[]; ub?: number[]; nonlcon?: (x: number[]) => [number[], number[]] }
 /** Minimises f subject to A x ≤ b, Aeq x = beq, lb ≤ x ≤ ub and c(x) ≤ 0, ceq(x) = 0, by an augmented Lagrangian:
  * the constraints become penalties with multipliers, each round solved by the bound-projected BFGS above. */
-export function augLag(f0: Fn, x0: number[], k: Constraints, o: Opts & { grad?: (x: number[]) => number[] } = {}): Result {
+export type Inner = (f: Fn, x: number[], lb: number[], ub: number[], onStep: (y: number[]) => void) => Result;
+export function augLag(f0: Fn, x0: number[], k: Constraints, o: Opts & { grad?: (x: number[]) => number[]; inner?: Inner } = {}): Result {
   const lb = k.lb?.length ? k.lb : x0.map(() => -Infinity), ub = k.ub?.length ? k.ub : x0.map(() => Infinity);
   if (lb.some((v, i) => v > ub[i])) return { x: x0, f: NaN, iterations: 0, evals: 0, path: [x0], flag: -2, message: 'The bounds leave no room (a lower bound is above its upper bound).', violation: Infinity };
   let evals = 0;
@@ -101,7 +102,7 @@ export function augLag(f0: Fn, x0: number[], k: Constraints, o: Opts & { grad?: 
   const path = [x.slice()];
   let iterations = 0, last = viol(x);
   if (!c0.ineq.length && !c0.eq.length) {
-    const r = bfgs(f, x, { ...o, lb, ub, tolFun: 1e-14 });
+    const r = o.inner ? o.inner(f, x, lb, ub, (y) => path.push(y.slice())) : bfgs(f, x, { ...o, lb, ub, tolFun: 1e-14 });
     return { ...r, evals: evals, violation: 0 };
   }
   for (let round = 0; round < 30; round++) {
@@ -112,7 +113,7 @@ export function augLag(f0: Fn, x0: number[], k: Constraints, o: Opts & { grad?: 
       c.ineq.forEach((g, i) => { const m = Math.max(0, lam[i] + rho * g); v += (m * m - lam[i] * lam[i]) / (2 * rho); });
       return v;
     };
-    const r = bfgs(L, x, { lb, ub, maxIter: 300, tolOpt: 1e-9, tolX: 1e-12, tolFun: 1e-15, onIter: (_k, y) => path.push(y.slice()) });
+    const r = o.inner ? o.inner(L, x, lb, ub, (y) => path.push(y.slice())) : bfgs(L, x, { lb, ub, maxIter: 300, tolOpt: 1e-9, tolX: 1e-12, tolFun: 1e-15, onIter: (_k, y) => path.push(y.slice()) });
     iterations += r.iterations;
     const moved = norm(r.x.map((v, i) => v - x[i]));
     x = r.x;

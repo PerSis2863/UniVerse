@@ -253,7 +253,7 @@ export function BlocksBench() {
   const { label, small } = ui;
 
   return (
-    <div className="flex h-[calc(100dvh-13.5rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
+    <div className="flex h-[calc(100dvh-9rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Block diagram settings" data-no-motion>
         <div>
           <span className={label}>Add a block</span>

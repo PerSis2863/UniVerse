@@ -203,7 +203,13 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
   }
   let ax = 0, ay = 0;
   for (let n = 0; n < nn; n++) { ax += fx[n]; ay += fy[n]; }
-  // Stresses at each element's nodes, averaged where elements meet.
+  const { sx, sy, sxy, vm, s1, s2, safety } = stressOf(mesh, m, ux, uy);
+  return { ux, uy, u, sx, sy, sxy, vm, s1, s2, safety, reactions, applied: { fx: ax, fy: ay }, massKg: area * t * 1e-9 * m.rho, dofs: 2 * nn, profile: K.size };
+}
+
+/** The stresses at nodes for a movement (each element's own at its nodes, averaged where elements meet). */
+export function stressOf(mesh: Mesh, m: Material, ux: Float64Array, uy: Float64Array) {
+  const nn = mesh.x.length, ne = mesh.tri.length / 6;
   const { d11, d12, d33 } = elastic(m);
   const sx = new Float64Array(nn), sy = new Float64Array(nn), sxy = new Float64Array(nn), cnt = new Float64Array(nn);
   for (let e = 0; e < ne; e++) {
@@ -223,7 +229,7 @@ export function solveStatic(mesh: Mesh, study: Study): StaticResult {
     vm[n] = Math.sqrt(sx[n] ** 2 - sx[n] * sy[n] + sy[n] ** 2 + 3 * sxy[n] ** 2);
     safety[n] = Math.min(15, vm[n] > 0 ? m.yieldMPa / vm[n] : 15);
   }
-  return { ux, uy, u, sx, sy, sxy, vm, s1, s2, safety, reactions, applied: { fx: ax, fy: ay }, massKg: area * t * 1e-9 * m.rho, dofs: 2 * nn, profile: K.size };
+  return { sx, sy, sxy, vm, s1, s2, safety };
 }
 
 /** Where a field is largest: the node and its value. */

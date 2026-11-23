@@ -12183,3 +12183,234 @@ The account is on Workers Paid since 22 Oct and `wrangler.jsonc` sets `CF_PLAN=p
 (`/owner/server` and `/owner/overview` in `modules/owner.ts`) decided `paid` from the older `WORKERS_PAID` alone, so
 it showed the free plan's daily meters. Both now use `workersPaid()` (`src/lib/plan-limits.ts`), like the spending guard.
 
+
+## M460 (committed as M439 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion toolbox, tracking, clutter, car radar and grouped detections
+
+The last of the owner's "please build all of these" list (M430–M438, M460). `radar.ts` `echoes(..., clutterDb)`: a Rayleigh
+scatterer in every range cell past the pulse, 1 % of its power wandering by an AR(1) at ρ 0.95. `src/lib/lab/tracking.ts`
+(pure): `groupDetections` (image.ts's `label`, 8-connected, the strongest cell of each), `mti` (binomial cancellers down
+the slow-time columns), `fmcwBeat` (complex beat at 2BR/(cT) + 2v/λ with the range moving during and between chirps),
+`fmcwMap` (Hann both ways; positive beats only; range k·fs/N·cT/2B, speed from the chirp-to-chirp phase), `kalmanTrack`
+(state [x vx y vy], white-acceleration Q, started at the first measurement with velocity uncertainty vmax), `multiTrack`
+(χ²₂ 99 % gate 9.21, confirmed tracks pick first then nearest pairs (greedy GNN, not Hungarian), confirm after 3 hits,
+drop tentative after 2 misses and confirmed after 4). Language in `radar-lab.ts`; `trackmulti` takes a cell array of
+scans and returns a table. Example tracking.m. Tests in `radar.test.ts`. Not built: JPDA/MHT, IMM for manoeuvres,
+tracks in range–angle (polar) coordinates, FMCW angle from several receivers. Next (the owner, 23 Nov): multi-objective
+optimisation, rarer solver choices, advanced vibration analysis, a point-and-click maintenance window, then Python, R,
+Julia and C++/Rust in Hyperion and its computer app (M461–).
+
+## M461 (committed as M440 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion toolbox, several goals at once
+
+The owner, 23 Nov (after M460): "optimising several goals at once, a few rarer solver choices, more advanced vibration
+analysis, a point-and-click maintenance window" (M461–M465), then the languages in their two pictures (Python, Julia,
+R, C++/Rust) in Hyperion and its computer app (M466–). Also that day: "please push and merge everything first", so
+M401–M438 went live in PR #149; M460 is on the branch.
+`src/lib/lab/optim-multi.ts` (pure): `nsga2` (fast non-dominated sorting, crowding, SBX and polynomial mutation within
+bounds; half the crossovers share one spread for every gene so children stay on the line through their parents: plain
+gene-by-gene SBX stalled on fronts that need the variables to move together; Deb's feasibility rules via `violation`),
+`polish` (MATLAB's hybrid step: each point pushed along the ray from just below the ideal point by Nelder–Mead on the
+augmented Chebyshev distance, in variables scaled to the bounds, constraints as a steep penalty), `paretoSearch` (a
+rough NSGA-II front, then one push per direction). Trap: polishing with the augmented Lagrangian took 12 s for 100
+points (every constraint call re-runs the goals in the interpreter); Nelder–Mead takes 0.25 s for the same accuracy.
+`optim-lab.ts`: `gamultiobj`, `paretosearch`, options `HybridFcn`, `ParetoSetSize` (added to `ALIASES` and `NAMES`).
+Example goals.m. Tests in `optim.test.ts`. Not built: goal attainment and minimax (M462), more than 3 goals drawn,
+the hypervolume measure.
+
+## M462 (committed as M441 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion toolbox, the rarer solvers
+
+The owner's list of 23 Nov, item 2. `src/lib/lab/optim-more.ts` (pure): `brentZero` (zeroin) and `bracket` (fzero's
+widening by √2 around one guess), `brentMin` (fminbnd: golden sections plus parabolas), `nnls` (Lawson–Hanson active
+set, normal equations of the passive columns), `lsqlin` (½‖Cx − d‖² through `augLag` with its exact gradient),
+`goalAttain` (an extra variable γ, F(x) − w·γ ≤ goal as nonlinear constraints; fminimax is goal 0, weight 1),
+`patternSearch` (GPS, ±each axis, opportunistic, mesh ×2 / ×0.5, never polls outside the bounds) and `anneal` (step √T
+in a random direction, T0·0.95^k, k halved every 100 accepted points, a step past a bound lands between the point and
+the bound, stops when the best moves less than tolFun over 500·n iterations). `optim.ts` `augLag` takes an `inner`
+solver (`Inner`): patternsearch handles linear and nonlinear constraints as the inner solver of the same augmented
+Lagrangian. fzero and fminbnd moved from `builtins.ts` into `optim-lab.ts` (they now return flag and output and take
+options). New options `InitialTemperature`, `MeshTolerance`. Example solvers.m (a Rastrigin start slider: fminsearch
+stuck at ~18, annealing ~2, pattern search 0). Tests in `optim.test.ts`. Not built: fzero's complex roots,
+patternsearch's other polls (GSS, MADS) and search steps, simulannealbnd's gradient-based reannealing and custom
+annealing functions, lsqlin's interior-point and sparse C.
+
+## M463 (committed as M442 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion, more advanced vibration analysis
+
+The owner's list of 23 Nov, item 3. Simulate (`src/lib/sim/modal.ts`): `modalBasis` (shared by Vibration and Shaking)
+returns ω² and mass-normalised shapes over every unknown; a part held nowhere, or held but able to slide or turn (the
+factorisation throws `MechanismError`), is solved shifted, (K − σM) with σ = −1e-6 × the mean diagonal K/M, so its moves
+as a whole come out at ω² ≈ 0 (|λ| < 1e-6·|σ|) and are counted in `rigid`, not listed. `modelProblem(m, free)`: Vibration
+needs no support. **Shaking** (`solveHarmonic`, `harmonicField`, `HarmonicPanel.tsx`, the worker's analysis
+'harmonic' with `harmonic` settings kept in `Model.harmonic` and `at` the frequency shown): the loads swinging (gravity
+left out) or the supports shaken (−M·r·a, a in g), one damping ratio for every mode, by mode superposition over 24 modes
+with the static part exact (mode acceleration: K⁻¹F + Σ φ p (H − 1/λ)), so slow shaking gives exactly the static
+answer. The curve is the point that moves most at the strongest resonance in range (largest movement over a cycle: the
+ellipse's long half-axis), on 401 even points plus each mode and its half-power points; the automatic range is 1.5 ×
+the fourth mode. At a frequency: the shape when the watched point is furthest out, the swing, and the highest von
+Mises stress over 12 phases (`stressOf`, split out of `solveStatic`). The worker keeps the modes while only loads or
+sweep settings change. Tests: free-free beam (4.730², 3 rigid), static limit, peak ≈ 1/(2ζ) and halving ζ doubles it,
+base shaking slow = sagging under 1 g. Scripts (`src/lib/lab/vib.ts`, language in `maint-lab.ts`): `modalfrf` (H1 by
+Welch, Hann, 50 % overlap, with coherence), `modalfit` (peak picking, half-power damping; 'FreqRange'; only 'pp'),
+`pkurtosis` (STFT, hop nw/4), `kurtogram` (STFT-based, Antoni 2006: windows 8…2^(level+2), not MATLAB's filter-bank fast
+kurtogram), `tsa` (turns between pulses stretched alike; 'NumRotations'), `orderspectrum` (resampled at even angle).
+Example vibration.m. Not built: prestress (loads stiffening the modes), damping per mode or Rayleigh damping, random
+vibration (PSD), response spectra, modal shapes from `modalfit`, the LSCE/LSRF fit methods.
+
+## M464 (committed as M442b on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion fills the screen, with rounder corners
+
+The owner, 23 Nov, with a screenshot of Simulate: "there is a lot of gap here so please fill the area properly and make it
+look good and round corners everywhere in the hyperion website and also same do for the downloaded app". The empty row
+was the page's `Topbar` holding only Install Hyperion: with the menu across the top it now sits in `TopNav` (loaded with
+`dynamic` only when `appFor(path)` is `lab`), and `HyperionTopbar` passes it to the page's bar only with the side menu.
+Pages pad `px-3 pb-3 pt-2 sm:px-5 sm:pb-4`; heights: Code `100dvh − 6rem`, Learn `− 6.25rem`, Simulate's benches `− 9rem`
+(their tabs row), so each window ends ~16 px above the bottom at 900 px. Structures' outline may take 55 % of the side.
+Fluids: the tunnel box keeps its own shape (`aspect-ratio` NX / NY, at most 72 %) with 12 px inside it, and the colour
+key and the forces (numbers, a larger chart, the note) fill the strip under it instead of the sidebar. Rounded by
+`roundRect` clips: Learn's decision regions (10 px), the tunnel (12 px); CodeMirror's active line 6 px. A probe of every
+visible element in Hyperion's pages found nothing else square (the heat plate's corners are the part's own shape).
+Computer app 1.0.1: `preload.js` exposes `window.hyperionDesktop` ({ app, platform }; nothing that reaches the
+computer), `InstallHyperion` hides itself there; `roundedCorners: true`. The installers need rebuilding (GitHub →
+Actions → Hyperion desktop) for the marker; everything else reaches the app with the website.
+
+## M465 (committed as M443 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion Learn → Machine health, a point-and-click maintenance window
+
+The owner's list of 23 Nov, item 4 (a Diagnostic Feature Designer of our own). Learn has two tabs (`LearnTabs.tsx`,
+sessionStorage `uv-learn-tab`): Classify (M421) and Machine health (`HealthApp.tsx`, loaded on first use). Engine
+`src/lib/lab/health.ts` (pure, run in `health.worker.ts`): `lifeFleet` (8 bearings, a recording of 4,096 samples at
+10 kHz every 2 days until each fails on day 36–60; 25 Hz shaft and 2×, noise, outer-race impacts at BPFO ringing at 3
+kHz whose size grows exponentially from ~0.08 to ~1.4), `faultFleet` (healthy, imbalance 1×, misalignment 2× and 3×,
+bearing impacts; 20 each), `fileFleet` (the person's files, one recording each from the first column of numbers, at most
+400 files of 5 MB, grouped by the name up to the first _ or -; sample rate and shaft speed typed in; kind 'faults'),
+`featureValues` (11 time features, spectral centroid and dominant frequency, 1×/2×/3× amplitudes when the speed is
+known, the envelope spectrum at BPFO/BPFI when the bearing is, the highest spectral kurtosis), `rank` (life: the mean of
+monotonicity, trendability, prognosability; faults: η² of the one-way ANOVA, F kept in `parts`), `lifeTest` (an
+exponential model from the other machines with φ just under the smallest value, a falling feature turned round, the
+threshold the training machines' mean last value, updated with each reading of the test machine; predictions capped at
+3 × its life). Trap: `health-meta.ts` holds `FEATURES` and `healthScript` with no imports, because importing health.ts
+into the page pulled `maint.ts → signal.ts → builtins` and hit the language's import cycle ("Cannot access BUILTINS
+before initialization"); for the same reason the FFT moved to `fft.ts` (pure) and every pure method imports `dft` from
+there, not from signal.ts. The window: three panels filling the screen (settings and feature ticks; the recording as
+signal, spectrum or envelope spectrum over the chosen feature by machine or by kind; the ranking, top 6 with Show all,
+then the remaining-life test or a by-kind table), charts as SVG that stretch with the panel (`vector-effect`,
+dots as zero-length round-capped strokes). Features (CSV) for Classify; Open in Code writes `healthScript` (a small
+fleet made in the language, the feature, monotonicity, a fitted model and `predictRUL`). Tests in `health.test.ts`.
+Not built: features of features (rolling windows), time-synchronous signals in the window, a classifier trained inside
+the window (the CSV goes to Classify), similarity and survival models, saving a session.
+
+## M466 (committed as M444 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion runs Python, nothing to install
+
+The owner's list of 23 Nov ("the languages from your two pictures"), part 1. `src/lib/lab/langs.ts`: `LANGS` (MATLAB .m on
+the engine; Python .py and R .R in the browser; Julia .jl, C++ .cpp and Rust .rs in the computer app) and `langOf(name)`
+by the file's ending (anything else is MATLAB). `py.worker.ts`: Pyodide **0.29.5** imported with `webpackIgnore` from
+`https://cdn.jsdelivr.net/pyodide/v0.29.5/full/` on the first Python run (≈15 MB, the browser caches it), packages by
+`loadPackagesFromImports` (NumPy, SciPy, Pandas, Matplotlib…), `MPLBACKEND=AGG`, stdout and stderr batched to the
+command window, one workspace kept between runs (Stop ends the thread and the workspace), after each run Python's own
+`__hy_after()` returns the figures as SVG (then closes them) and the variables (name, shape or length, type, repr).
+Hyperion's files (fileData) are written to `/home/pyodide` before each run; files the code writes are not brought back
+yet. `lang-runner.ts` (`LangRunner`) owns the language threads; LabApp: a script not in MATLAB runs there, and a command
+too while a Python/R/Julia script is open; Watch, Time it, Notebook, Explain and live controls are MATLAB's only (hidden);
+New is a menu of the six languages with a starter each; the editor colours Python (lang-python) and C++/Rust
+(lang-cpp) and runs the checker only on MATLAB (`language` prop; keyed by script and language). Security: another
+language's figure is drawn by that language's code (a shared link's script could make any SVG), so it is shown only as
+an `<img>` from a blob URL (ids from `OTHER_FIG`), never put into the page; `security-headers.ts` `LANG_CODE` /
+`LANG_DATA` allow script and connect only for Pyodide's and webR's own versioned folders (not all of jsDelivr) plus
+repo.r-wasm.org. Testing here: the environment's network allows cdn.jsdelivr.net, webr.r-wasm.org and repo.r-wasm.org
+(added 23 Nov); Playwright needs `proxy: { server: process.env.https_proxy }` to reach them. A version bump means
+changing both `PYODIDE` and `LANG_CODE`. Not built: micropip (PyPI packages beyond Pyodide's), files written by Python
+saved back to Hyperion, plt.show() windows, interrupting a running Python loop without losing the workspace.
+
+## M467 (committed as M445 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion runs R, with ggplot2
+
+The languages, part 2. `r-runner.ts` (`RRunner`, imported by `LangRunner` only when an R script first runs): webR
+**0.6.0** imported with `webpackIgnore` from `https://webr.r-wasm.org/v0.6.0/` (`WEBR`; keep it and `LANG_CODE` in
+security-headers.ts in step), `ChannelType.PostMessage` (no cross-origin isolation needed; it can't interrupt a
+running loop: Stop closes R and the workspace), started once a visit. Before each run: Hyperion's files to
+`/home/web_user`, the packages in `packagesIn(code)` (library, require, requireNamespace, pkg::; R's own left out; at
+most 20) installed from repo.r-wasm.org when `requireNamespace` says they're missing, and for a ggplot2 script
+`theme_grey(base_size = 16)` set once (its 11 pt text was unreadable in the panel). A `Shelter` runs the script with
+`captureR` (autoprint, streams, graphics 640 × 460 at pointsize 16); each captured ImageBitmap becomes a PNG inside an
+SVG (`asSvg`, so PNG/SVG downloads and the picture-only display work as for Python); errors lose their "Error:" and take
+a line from `<text>:N:`; the variables from one R call (`ls`, dim or length, class, the first line of `str`). Example
+r_demo.R. Test: `packagesIn` in langs.test.ts. Not built: interrupting R without losing the workspace (needs
+SharedArrayBuffer and cross-origin isolation, which would break the site's other embeds), Shiny, files written by R saved
+back, plots sized to the panel.
+
+## M468 (committed as M445b on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion measured precisely; the editor's typing fixed (a site-wide fix in `Segmented`)
+
+The owner, 23 Nov: "make sure everything is ultra smooth and fast check it precisely". Measured on `local:build` +
+`local:serve` (the dev server is unoptimised) with a Playwright script: per step the main thread's long tasks (>50 ms,
+PerformanceObserver) and every frame (rAF deltas; >34 ms is a visible stutter), at 1440 × 900, CPU ×1 and ×4 (CDP
+`Emulation.setCPUThrottlingRate`). At ×1: no long task in any step (open each page, idle, switch scripts, run, type,
+Vibration, Shaking, Heat, Fluids live, Circuits live, Blocks, Learn, Machine health, its views and data). At ×4 the
+one real problem was typing in the editor: 13 long tasks, frames up to 117 ms. A CPU profile with call stacks showed
+framer-motion's layout projection (`willUpdate → updateScroll`, forced layout) under `getSnapshotBeforeUpdate`: the
+Code/Notebook `Segmented` thumb (`layoutId`) re-rendered with LabApp on every keystroke and measured the page each time
+(the live wind tunnel's settings re-render 4× a second did the same). `Segmented` is now an outer component that keeps
+the newest `onChange` in a ref (a stable callback) around a `memo`'d view compared by value, label, size, class and its
+segments (plain-text labels and icons by value; JSX ones always redraw), so a skipped redraw can never keep an old
+onChange. After: typing 0 long tasks, worst frame 67 ms at ×4. Rule for code that builds on it: any framer-motion
+`layout`/`layoutId` element must not sit in a component that re-renders per keystroke or per frame; memo it or move
+it out. Left as is (×4 numbers, ≈ a quarter at ×1): opening a page 200–280 ms of hydration, switching scripts ~200 ms
+(a new CodeMirror), the first figure ~170 ms. Headless Chromium paints in software, so paint-heavy numbers here are
+worse than on a real computer's graphics chip.
+
+## M469 (committed as M445c on `claude/funny-galileo-y4mz9r`) (23 Nov): Python and R run in a sealed frame
+
+Found during M468's measuring: on the production build R never started (webR's Emscripten loader uses eval, which the
+site's policy rightly refuses), and the M466/M467 design was unsafe: Pyodide ran in a worker of the site's own origin
+and webR in the page, so a script shared by link could reach the origin's IndexedDB (Firebase keeps its sign-in there)
+and call the API as the person (Pyodide's `js` module, webR's `eval_js`). Now: `public/sandbox/run.html` (static, plain
+JS: Pyodide in a blob worker of the frame, webR on the frame's own thread with its own worker; the Python worker's code
+is its `pythonWorker` function turned into a blob) is framed by `LangRunner` (`lang-runner.ts`; `py.worker.ts` and
+`r-runner.ts` are gone) with `sandbox="allow-scripts"` and never allow-same-origin: an opaque origin. Messages: the frame
+reads only `e.source === parent`, the page only `e.source === frame.contentWindow`, every field type-checked and capped
+(20 figures of ≤ 8 MB, 500 variables); the page sends {id, lang, code, files, packages} (`packagesIn` moved to
+langs.ts, computed by the page); only the newest id is listened to; Stop removes the frame (both workspaces). Policies:
+`SANDBOX_CSP` in security-headers.ts (default none; script: inline, eval, wasm-eval, blob and the two versioned folders;
+worker blob; connect blob, data, the folders and repo.r-wasm.org; frame-ancestors 'self'), sent by next.config for
+`/sandbox/*` (excluded from the site's rules) and by `public/_headers` for Cloudflare's static file under both
+`/sandbox/run` and `/sandbox/run.html` (production redirects .html to the bare path; `sandbox-headers.test.ts` keeps the
+text equal); the site's own CSP is back without Pyodide, webR or eval. Checked in a browser: Python in the frame sees
+origin `null`; IndexedDB, the site's API and example.com all throw. Measured on the production build: loading and
+running Python and R, 0 long tasks at CPU ×1 (first loads ~30 s and ~60 s through this container's proxy; cached after).
+Test harnesses: `signedIn`'s init script touches localStorage in every frame, so a sealed frame logs "Access is denied"
+from the harness, not from the app. Version bumps: the folder in run.html, `SANDBOX_CSP` and `_headers` together.
+
+## M470 (committed as M446 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion's computer app runs Julia, C++ and Rust
+
+The languages, part 3. `desktop/hyperion/runner.js` (plain Node, tested directly): `tools()` (`--version` of julia, g++
+then clang++, rustc, with a PATH that adds ~/.cargo/bin, ~/.juliaup/bin, Homebrew and MSYS2, as desktop-started apps
+don't get the shell's PATH), `run(lang, code, onOut)` (≤ 1 MB of code; a `mkdtemp` folder; Julia `--startup-file=no`;
+C++ `-std=c++17 -O2`; Rust `-O --edition 2021`; build ≤ 2 min, run ≤ 5 min, output ≤ 2 MB then killed; one at a time;
+the folder removed), `stop()`, `howTo(lang)` (install steps per system). `main.js`: `ipcMain.handle` for
+`hyperion:tools`, `hyperion:run`, `hyperion:stop`, each refused unless the sender is the window's own webContents, its
+main frame and Hyperion's origin (`trusted`); a missing tool returns its install steps without asking; otherwise
+`dialog.showMessageBox` asks before a program runs, remembered per sha256 of language + code for the visit, or for the
+whole language until Hyperion closes when the person ticks the box; output streams back as `hyperion:out`. `preload.js`
+exposes `hyperionDesktop.{app, platform, tools, run, stop, onOutput}` (main frame only: Electron doesn't run preloads in
+subframes). Website: `LangRunner.native` uses the bridge when present (status line, streamed output, `errorLine` for
+main.cpp:L:C error / --> main.rs:L:C / main.jl:L), and in a browser explains that these need the computer app. App
+1.1.0 (menu File → Learn too; `runner.js` in the package's files). Tested in the real Electron app under xvfb with
+Playwright's `_electron` (the dialog answered by replacing `dialog.showMessageBox` from the main process): C++ and Rust
+ran, Julia (not installed here) gave its steps without asking, a Rust error marked line 2, `hyperionDesktop` is
+undefined inside the sealed frame. Not built: Julia's plots and variables (text only), several files per program,
+Cargo crates, input from the keyboard while a program runs, a debugger. [owner]: GitHub → Actions → "Hyperion desktop"
+→ Run workflow with "publish" ticked, so the downloads have 1.1.0.
+
+## M471 (committed as M447 on `claude/funny-galileo-y4mz9r`) (23 Nov): Hyperion, the solvers' left-out choices
+
+The rest of M462's "not built". `optim-more.ts`: `muller(f, z0)` (complex numbers as [re, im]; a parabola through the
+last three points, the root nearer the newest; it starts off the real line so it finds complex roots; flag 1 when
+|Δz| ≤ tol·(1 + |z|)); `fzero` uses it when x0 is complex (a root with a negligible imaginary part comes back real;
+output.algorithm "Muller's method (complex)"). `patternSearch` options `poll` ('gps2n' | 'gpsnp1' | 'gss2n' | 'gssnp1' |
+'mads2n' | 'madsnp1': GSS cuts a step that would cross a bound to land on it, MADS polls a fresh random orthonormal basis
+from a Householder reflection each time with mesh ×4 / ÷4), `complete`, `search: 'lhs'` (15n Latin-hypercube points
+before the first poll, ±1 around the start where a bound is missing), `mesh0`, `expand`, `contract`, `rand`. `anneal`:
+per-variable annealing parameters k, `temperature` ('exp' T0·0.95^k, 'fast' T0/k, 'boltz' T0/ln k, or a function of k),
+`step` ('fast': as far as T, now MATLAB's default, was √T; 'boltz': √T; or a function of x and T), reannealing every
+`reanneal` accepted points by k_i = log(T0/T_i · max s / s_i) from a central-difference gradient (only ever raising a
+temperature), acceptance against the largest temperature. Language (`optim-lab.ts`): options PollMethod,
+UseCompletePoll, SearchFcn, InitialMeshSize, MeshExpansionFactor, MeshContractionFactor, TemperatureFcn, AnnealingFcn
+(names or @ functions: TemperatureFcn(optimValues with k, options), AnnealingFcn(optimValues with x and temperature,
+problem with lb and ub)), ReannealInterval, HybridFcn for both ('fminsearch', 'fminunc', 'fmincon', 'patternsearch'; for
+patternsearch only without linear or nonlinear constraints; kept only when it improves). Tests in optim.test.ts. Not
+built: patternsearch's other search functions (Nelder–Mead, GA), cached polls, the 'TolBind'/'ScaleMesh' options,
+simulannealbnd's custom AcceptanceFcn.

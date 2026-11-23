@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Hyperion runner</title>
+<!--
+  Hyperion's sealed runner for Python and R (M469). The Code window loads this page in an iframe with
+  sandbox="allow-scripts" and no allow-same-origin, so it runs in an opaque origin of its own: it can't read the
+  site's storage, cookies or sign-in, and it can't call the site's API as the person. A script someone shares by link
+  can therefore do nothing here but compute. Its own security policy (public/_headers, and next.config.ts for the
+  dev server) lets in only Pyodide's and webR's versioned folders, and the eval their WebAssembly loaders need.
+  Messages come only from the page that framed it; the page accepts messages only from this frame.
+-->
+</head>
+<body>
+<script>
+'use strict';
+const PYODIDE = 'https://cdn.jsdelivr.net/pyodide/v0.29.5/full/';
+const WEBR = 'https://webr.r-wasm.org/v0.6.0/';
+const send = (m) => parent.postMessage(m, '*');
+
+// ——— Python: Pyodide in a worker of this frame (heavy work never touches the page's thread) ———
+function pythonWorker(PYODIDE) {
+  const AFTER = `
+def __hy_after():
+    import io, json, sys
+    figs = []
+    if 'matplotlib.pyplot' in sys.modules:
+        plt = sys.modules['matplotlib.pyplot']
+        for n in plt.get_fignums():
+            b = io.StringIO()
+            plt.figure(n).savefig(b, format='svg', bbox_inches='tight')
+            figs.append(b.getvalue())
+        plt.close('all')
+    rows = []
+    for k, v in list(globals().items()):
+        if k.startswith('_') or type(v).__name__ in ('module', 'function', 'builtin_function_or_method', 'type', 'method'):
+            continue
+        shape = getattr(v, 'shape', None)
+        if isinstance(shape, tuple):
+            size = '×'.join(str(s) for s in shape) or '1'
+        elif hasattr(v, '__len__') and not isinstance(v, str):
+            size = str(len(v))
+        else:
+            size = '1'
+        try:
+            r = repr(v)
+        except Exception:
+            r = '…'
+        rows.append([k, size, type(v).__name__, r[:400]])
+    return json.dumps({'figs': figs, 'vars': rows})
+`;
+  let py = null;
+  const post = (m) => postMessage(m);
+  const load = () => {
+    if (py) return py;
+    py = (async () => {
+      post({ status: 'Loading Python (once a visit, about 15 MB)…' });
+      const mod = await import(PYODIDE + 'pyodide.mjs');
+      const p = await mod.loadPyodide({ indexURL: PYODIDE });
+      p.setStdout({ batched: (s) => post({ out: s + '\n' }) });
+      p.setStderr({ batched: (s) => post({ out: s + '\n', err: true }) });
+      p.runPython("import os, warnings\nos.environ['MPLBACKEND'] = 'AGG'\nwarnings.filterwarnings('ignore', message='.*non-interactive.*')\n" + AFTER);
+      p.FS.mkdirTree('/home/pyodide');
+      return p;
+    })();
+    py.catch(() => { py = null; });
+    return py;
+  };
+  const pyError = (e) => {
+    const text = e && e.message ? e.message : String(e), lines = text.trim().split('\n');
+    const at = [...text.matchAll(/File "<exec>", line (\d+)/g)].pop();
+    let k = -1;
+    for (let i = lines.length - 1; i >= 0; i--) if (/^\w*(Error|Exception|Exit|Interrupt)\b/.test(lines[i])) { k = i; break; }
+    return { error: k >= 0 ? lines.slice(k).join('\n') : lines[lines.length - 1], line: at ? Number(at[1]) : undefined };
+  };
+  onmessage = async (e) => {
+    const { code, files } = e.data;
+    let p;
+    try { p = await load(); } catch (err) { post({ done: true, error: "Python couldn't load: " + (err && err.message ? err.message : String(err)) + '. Check the connection and try again.', figs: [], vars: [] }); return; }
+    for (const f of files || []) { try { p.FS.writeFile('/home/pyodide/' + f.name, f.bytes); } catch { /* a name Python's files can't hold */ } }
+    let error = null;
+    try {
+      await p.loadPackagesFromImports(code, { messageCallback: (s) => { if (/^Loading /.test(s)) post({ status: s }); }, errorCallback: () => {} });
+      await p.runPythonAsync(code, { filename: '<exec>' });
+    } catch (err) { error = pyError(err); }
+    let figs = [], vars = [];
+    try { const a = JSON.parse(String(p.runPython('__hy_after()'))); figs = a.figs; vars = a.vars; } catch { /* the workspace couldn't be read */ }
+    post(Object.assign({ done: true, figs, vars }, error || {}));
+  };
+}
+let pyWorker = null, pyId = 0;
+function runPython(id, code, files) {
+  if (!pyWorker) {
+    const src = '(' + pythonWorker.toString() + ')(' + JSON.stringify(PYODIDE) + ')';
+    pyWorker = new Worker(URL.createObjectURL(new Blob([src], { type: 'text/javascript' })));
+    pyWorker.onmessage = (e) => send(Object.assign({ id: pyId }, e.data));
+    pyWorker.onerror = () => { send({ id: pyId, done: true, error: 'Python stopped unexpectedly. Run again to start it afresh.', figs: [], vars: [] }); pyWorker.terminate(); pyWorker = null; };
+  }
+  pyId = id;
+  pyWorker.postMessage({ code, files });
+}
+
+// ——— R: webR (it starts R in a worker of its own) ———
+let webR = null;
+async function loadR() {
+  if (webR) return webR;
+  webR = (async () => {
+    const mod = await import(WEBR + 'webr.mjs');
+    const w = new mod.WebR({ baseUrl: WEBR, channelType: mod.ChannelType.PostMessage, interactive: false });
+    await w.init();
+    return w;
+  })();
+  webR.catch(() => { webR = null; });
+  return webR;
+}
+async function asSvg(img) {
+  const c = new OffscreenCanvas(img.width, img.height), g = c.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, img.width, img.height); g.drawImage(img, 0, 0);
+  const bytes = new Uint8Array(await (await c.convertToBlob({ type: 'image/png' })).arrayBuffer());
+  let bin = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return '<svg xmlns="http://www.w3.org/2000/svg" width="' + img.width + '" height="' + img.height + '" viewBox="0 0 ' + img.width + ' ' + img.height + '"><image width="' + img.width + '" height="' + img.height + '" href="data:image/png;base64,' + btoa(bin) + '"/></svg>';
+}
+const R_VARS = 'local({ nm <- ls(globalenv()); vapply(nm, function(n) { v <- get(n, envir = globalenv()); d <- if (is.null(dim(v))) as.character(length(v)) else paste(dim(v), collapse = "\\u00d7"); s <- tryCatch(paste(utils::capture.output(utils::str(v, max.level = 1, give.attr = FALSE, vec.len = 3))[1], collapse = " "), error = function(e) ""); paste(n, d, class(v)[1], s, sep = "\\t") }, "") })';
+async function runR(id, code, files, packages) {
+  const say = (m) => send(Object.assign({ id }, m));
+  let w;
+  if (!webR) say({ status: 'Loading R (once a visit, about 20 MB)…' });
+  try { w = await loadR(); } catch (err) { say({ done: true, error: "R couldn't load: " + (err && err.message ? err.message : String(err)) + '. Check the connection and try again.', figs: [], vars: [] }); return; }
+  for (const f of files || []) await w.FS.writeFile('/home/web_user/' + f.name, f.bytes).catch(() => {});
+  const missing = [];
+  for (const p of packages || []) if (/^[A-Za-z][\w.]*$/.test(p) && !(await w.evalRBoolean('requireNamespace("' + p + '", quietly = TRUE)').catch(() => false))) missing.push(p);
+  if (missing.length) { say({ status: 'Loading ' + missing.join(', ') + ' (once a visit)…' }); await w.installPackages(missing, { quiet: true }).catch(() => {}); }
+  // ggplot2 draws its text at 11 pt whatever the device says: a little larger, to read in the figure panel.
+  if (/\bggplot2\b/.test(code)) await w.evalRBoolean('if (requireNamespace("ggplot2", quietly = TRUE) && !isTRUE(getOption("hyperion.gg"))) { ggplot2::theme_set(ggplot2::theme_grey(base_size = 16)); options(hyperion.gg = TRUE) }; TRUE').catch(() => false);
+  const shelter = await new w.Shelter();
+  let error, line;
+  const figs = [];
+  try {
+    const cap = await shelter.captureR(code, { withAutoprint: true, captureStreams: true, captureConditions: false, captureGraphics: { width: 640, height: 460, bg: 'white', pointsize: 16 } });
+    let text = '';
+    for (const o of cap.output) if (o.type === 'stdout' || o.type === 'stderr') text += String(o.data) + '\n';
+    if (text) say({ out: text });
+    for (const img of cap.images) figs.push(await asSvg(img));
+  } catch (err) {
+    error = (err && err.message ? err.message : String(err)).replace(/^Error:\s*/, '');
+    const at = /<text>:(\d+):/.exec(error);
+    if (at) line = Number(at[1]);
+  }
+  let vars = [];
+  try {
+    const rows = (await (await shelter.evalR(R_VARS)).toJs()).values || [];
+    vars = rows.map((r) => { const [name, size, cls, value] = String(r).split('\t'); return [name, size, cls, value || '']; });
+  } catch { /* the workspace couldn't be listed */ }
+  await shelter.purge().catch(() => {});
+  say({ done: true, error, line, figs, vars });
+}
+
+addEventListener('message', (e) => {
+  if (e.source !== parent) return;
+  const m = e.data;
+  if (!m || typeof m.id !== 'number' || typeof m.code !== 'string') return;
+  if (m.lang === 'python') runPython(m.id, m.code, m.files);
+  else if (m.lang === 'r') runR(m.id, m.code, m.files, m.packages).catch((err) => send({ id: m.id, done: true, error: String(err && err.message ? err.message : err), figs: [], vars: [] }));
+});
+send({ ready: true });
+</script>
+</body>
+</html>

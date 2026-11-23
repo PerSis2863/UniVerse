@@ -143,6 +143,50 @@ describe('Hyperion Simulate: vibration (M406)', () => {
   });
 });
 
+describe('Hyperion Simulate: free parts and shaking (M463)', () => {
+  it('a beam held nowhere rings at 4.730² · √(EI/ρAL⁴) / 2π, with its three moves as a whole left out', async () => {
+    const { solveModes } = await import('./modal');
+    const { mesh } = build('beam', { L: 200, H: 20 });
+    const r = solveModes(mesh, steel, 10, [], 2);
+    const EI = steel.E * ((10 * 20 ** 3) / 12), rhoA = steel.rho * 1e-12 * 200, k = Math.sqrt(EI / (rhoA * 200 ** 4)) / (2 * Math.PI);
+    expect(r.rigid).toBe(3);
+    expect(r.modes[0].freq / (4.730041 ** 2 * k)).toBeGreaterThan(0.96);
+    expect(r.modes[0].freq / (4.730041 ** 2 * k)).toBeLessThan(1.01);
+  });
+  it('a shaken cantilever: the static answer when slow, a resonance at mode 1 that halving the damping doubles', async () => {
+    const { modalBasis, solveHarmonic, harmonicField } = await import('./modal');
+    const { mesh, byName } = build('beam', { L: 200, H: 20 }, 6);
+    const study: Study = { thickness: 10, material: steel, supports: [{ id: 'fix', kind: 'fixed', edges: byName('Left end') }], loads: [{ id: 'f', kind: 'force', edges: byName('Right end'), F: 500, angle: -90 }], gravity: false };
+    const b = modalBasis(mesh, steel, 10, study.supports, 12), f1 = Math.sqrt(b.lambda[0]) / (2 * Math.PI);
+    const h = { drive: 'loads' as const, dir: 'y' as const, g: 1, zeta: 0.02, fMin: 0, fMax: f1 * 1.5 };
+    const r = solveHarmonic(mesh, study, h, b), st = solveStatic(mesh, study);
+    expect(r.amp[0] / st.u[r.watch]).toBeCloseTo(1, 6);
+    expect(r.peaks[0].mode).toBe(0);
+    expect(Math.abs(r.peaks[0].f / f1 - 1)).toBeLessThan(0.005);
+    // About 1 / (2ζ) = 25 times the static movement for a mode that carries most of the response.
+    expect(r.peaks[0].amp / r.amp[0]).toBeGreaterThan(20);
+    expect(r.peaks[0].amp / r.amp[0]).toBeLessThan(30);
+    const half = solveHarmonic(mesh, study, { ...h, zeta: 0.01 }, b);
+    expect(half.peaks[0].amp / r.peaks[0].amp).toBeGreaterThan(1.9);
+    expect(half.peaks[0].amp / r.peaks[0].amp).toBeLessThan(2.1);
+    // The field at the peak: its largest swing is the curve's, and a stress at the fixed end.
+    const fld = harmonicField(mesh, study, h, b, r.peaks[0].f, r.watch);
+    expect(peak(fld.swing).value / r.peaks[0].amp).toBeCloseTo(1, 3);
+    expect(peak(fld.vm).value).toBeGreaterThan(peak(st.vm).value * 15);
+  });
+  it('shaking the supports moves a cantilever like a base excitation: almost nothing when slow', async () => {
+    const { modalBasis, solveHarmonic } = await import('./modal');
+    const { mesh, byName } = build('beam', { L: 200, H: 20 }, 6);
+    const study: Study = { thickness: 10, material: steel, supports: [{ id: 'fix', kind: 'fixed', edges: byName('Left end') }], loads: [], gravity: false };
+    const b = modalBasis(mesh, steel, 10, study.supports, 8);
+    const r = solveHarmonic(mesh, study, { drive: 'base', dir: 'y', g: 1, zeta: 0.05, fMin: 0, fMax: 0 }, b);
+    // Slow shaking: the beam sags under 1 g of its own weight (relative to its support) and no more.
+    const st = solveStatic(mesh, { ...study, gravity: true });
+    expect(r.amp[0] / peak(st.u).value).toBeCloseTo(1, 4);
+    expect(r.peaks[0].amp / r.amp[0]).toBeGreaterThan(5);
+  });
+});
+
 describe('Hyperion Simulate: the note a mode rings at (M406)', () => {
   it('names the nearest note and how far off it is', async () => {
     const { noteOf } = await import('./model');

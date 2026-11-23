@@ -1,11 +1,21 @@
 # Hyperion for computers
 
 Hyperion's own app for Windows, Mac and Linux (M412). It opens Hyperion (`https://universeimpact.com/hyperion`) in a
-window of its own, with its Σ icon, menus (File → Code, Simulate), an offline page and safe defaults: other sites open
+window of its own, with its Σ icon, menus (File → Code, Simulate, Learn), an offline page and safe defaults: other sites open
 in the normal browser, and only Hyperion's site may use the camera or microphone. Every new Hyperion feature reaches
 the app the moment it is on the website.
 
 This folder is not part of the website's build (it is outside the pnpm workspace).
+
+## Julia, C++ and Rust (M470)
+
+In the app, Hyperion's Code window also runs `.jl`, `.cpp` and `.rs` scripts with the tools installed on the computer
+(`julia`; `g++` or `clang++`; `rustc`): `runner.js` writes the script to a fresh temporary folder, builds it (C++17
+with -O2, Rust 2021 with -O), runs it for at most 5 minutes with at most 2 MB of output, streams the output back and
+deletes the folder. Only Hyperion's own site, in the window's main frame, may ask (`preload.js`, checked in `main.js`),
+and the person is asked before each new program runs (or ticks "Don't ask again for … until Hyperion is closed").
+When a tool is missing, Hyperion says how to install it for that system. Python and R need nothing installed: they run
+inside Hyperion itself, sealed off from the site (`public/sandbox/run.html` in the website).
 
 ## Build the installers
 

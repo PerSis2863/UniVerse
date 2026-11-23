@@ -1,4 +1,4 @@
-import { dft } from './signal';
+import { dft } from './fft';
 
 // Hyperion's predictive maintenance (M423, the owner's list: "Predictive Maintenance"): telling a machine's health from
 // its signals and when it will need fixing. Our own code from the standard formulas: the analytic signal (Hilbert),
