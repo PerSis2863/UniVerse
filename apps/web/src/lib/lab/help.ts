@@ -349,6 +349,16 @@ verifyError | verifyError(@() f(x)) | Records a failure unless calling the funct
 assertFail | assertFail('why') | Fails the test there.
 verifyFail | verifyFail('why') | Fails the test there.
 
+# Parallel computing
+parfor | parfor i = 1:n … end | A loop whose passes are independent: at a script's top level they are shared among the pool's workers (one fewer than the computer's cores, up to 8) and the speed-up is printed; arrays indexed by i, sums (s = s + …), products and [c, x] joins come back; other variables set inside stay inside. Inside a function it runs in order.
+parfeval | F(k) = parfeval(@f, nout, x, y) | Runs f(x, y) on a pool worker while the script goes on; gives a future (its number). Collect with fetchOutputs or fetchNext (in a loop of their own: the run waits there for every unfinished future, then that statement runs again).
+fetchOutputs | [a, b] = fetchOutputs(F) | The outputs of finished futures (several futures: one row each).
+fetchNext | [k, v] = fetchNext(F) | The next future not read yet: its place in F and its outputs.
+wait | wait(F) | Waits until the futures are finished.
+cancel | cancel(F) | Forgets futures (their results are dropped).
+parpool | p = parpool(4) | How many of the pool's workers parfor uses (the pool starts itself; p.NumWorkers).
+gcp | p = gcp | The pool: p.NumWorkers (gcp('nocreate') is empty when there is none).
+
 # Text
 sprintf | sprintf(format, …) | Formatted text (%d %f %.2f %s %e %g %x %%).
 fprintf | fprintf(format, …), fprintf(fid, format, …) | Prints formatted text (or writes it to a file).

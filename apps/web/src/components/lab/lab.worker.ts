@@ -19,6 +19,7 @@ import '@/lib/lab/audio-lab';
 import { serialFeed, type SerialOut } from '@/lib/lab/serial-lab';
 import { reportText, runScriptTests, testReports, type TestReport } from '@/lib/lab/verify-lab';
 import '@/lib/lab/help-commands';
+import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@/lib/lab/parallel-lab';
 import { resolve, view, type Step, type View } from '@/lib/lab/inspect';
 import { pages as pagesOf } from '@/lib/lab/values';
 import { Profiler, type Profile } from '@/lib/lab/profile';
@@ -72,6 +73,33 @@ const host: Host = {
   sound: (channels, fs) => { flush(); postMessage({ sound: { channels, fs } } satisfies FromLab); },
 };
 const lab = new Lab(host);
+// M477: a pool of engines for parfor and parfeval (one fewer than the computer's cores, at most 8), started the first
+// time a script asks; each runs one task at a time.
+class WorkerPool implements Pool {
+  private idle: Worker[] = [];
+  private all: Worker[] = [];
+  private queue: { task: Task; done: (r: TaskResult) => void }[] = [];
+  private waiting = new Map<number, (r: TaskResult) => void>();
+  private seq = 0;
+  constructor(readonly size: number) {}
+  run(task: Task) { return new Promise<TaskResult>((done) => { this.queue.push({ task, done }); this.next(); }); }
+  private next() {
+    while (this.queue.length) {
+      let w = this.idle.pop();
+      if (!w && this.all.length < this.size) {
+        w = new Worker(new URL('./par.worker.ts', import.meta.url));
+        w.onmessage = (ev: MessageEvent<{ id: number; result: TaskResult }>) => { const d = this.waiting.get(ev.data.id); this.waiting.delete(ev.data.id); this.idle.push(ev.target as Worker); d?.(ev.data.result); this.next(); };
+        this.all.push(w);
+      }
+      if (!w) return;
+      const job = this.queue.shift()!, id = ++this.seq;
+      this.waiting.set(id, job.done);
+      w.postMessage({ id, task: job.task });
+    }
+  }
+}
+const cores = typeof navigator !== 'undefined' ? navigator.hardwareConcurrency || 2 : 2;
+if (typeof Worker !== 'undefined' && cores > 2) parallel.pool = new WorkerPool(Math.min(8, cores - 1));
 testReports.onReport = (r) => postMessage({ tested: r } satisfies FromLab);
 let size = { w: 720, h: 520 };
 // The editor colours and suggests the engine's functions (M389).
@@ -104,7 +132,7 @@ function sweep(codes: string[], values: number[], w: number, h: number) {
   });
 }
 
-self.onmessage = (e: MessageEvent<ToLab>) => {
+self.onmessage = async (e: MessageEvent<ToLab>) => {
   const m = e.data;
   if ('sweep' in m) {
     sweep(m.sweep.codes, m.sweep.values, m.sweep.w, m.sweep.h);
@@ -141,7 +169,7 @@ self.onmessage = (e: MessageEvent<ToLab>) => {
   graphics.onChange = () => { touched = true; if (graphics.current) drawn.add(graphics.current.id); recorder?.figureChanged(); };
   try {
     // M476: the Test button runs the script's %% sections (and test functions) as tests.
-    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else lab.run(code);
+    if ('test' in m) { const r = runScriptTests(lab, code, m.test); host.out(reportText(r)); testReports.onReport?.(r); } else if ('run' in m) await runResumable(lab, code); else lab.run(code);
   } catch (err) {
     error = err instanceof Error ? err.message : String(err);
     if (err instanceof LabError && err.at >= 0) at = err.at;

@@ -7,6 +7,7 @@ import './filters-lab';
 import './audio-lab';
 import './serial-lab';
 import { runScriptTests } from './verify-lab';
+import './parallel-lab';
 import { SIGNAL_EXAMPLES } from '@/components/lab/examples-signals';
 
 // Every worked example of the signals and capabilities toolboxes (M472–) runs without an error; the test script

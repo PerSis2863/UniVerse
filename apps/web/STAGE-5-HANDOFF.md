@@ -12531,3 +12531,25 @@ assertEqual(…)). The window: a **Test** button beside Time it (`run(code, 'tes
 → `runScriptTests`); every report also goes to `testReports.onReport` → `{ tested }` → `TestResults.tsx`, shown in the
 figure's place (like Sweep). Browser check: `scripts/checks/hyperion-tests-ui.mjs`. MATLAB's matlab.unittest classes
 (class-based tests, TestData, parameterised tests, assume…, fixtures beyond the four functions) aren't here.
+
+## M477 (23 Nov): Hyperion, parallel computing (parfor, parfeval on Web Workers)
+
+`src/lib/lab/parallel-lab.ts`. The engine runs a script synchronously on its worker, and a thread can block on another
+only on a cross-origin-isolated site (this one isn't: no COEP; don't add it, it would break embeds), so parallel work
+**pauses** the run: `Flow` (now exported) has a new kind `'pause'`; `Pause` carries `wait()` and whether to re-run the
+statement. `runResumable(lab, src)` (used by `lab.worker.ts` for plain runs; Watch, Time it, Test and the command
+window's other paths stay synchronous, so parfor runs in order there) executes the top-level statements one at a time
+(`Lab.execTop`) and on a pause awaits, then goes on. **parfor** (parser: `parfor` keyword, `{ s: 'for', par: true }`,
+`parfor (i = …, M)` reads and ignores M; interp: `parHook.parfor` at depth 0) works only for top-level statements
+(`topLevel` set): `classify` sorts the body's assignments (indexed → merged element by element against the value before
+the loop by `mergeSliced`, so new arrays and cells grow to the largest size; `x = x + …`, `-`, `*`, `.*`, `&`, `|`,
+`[x, …]` / `[x; …]` → reductions started at their identity in each worker and combined in order; other names →
+temporaries, dropped). Iterations are split into one chunk per worker (`par.worker.ts`: a whole engine with the
+toolboxes, no files and no figures). **parfeval** posts the call at once; a future is its number (MATLAB's Future
+objects aren't in the engine, so `F(k) = parfeval(…)` makes a numeric array); `fetchOutputs` / `fetchNext` / `wait` on an
+unfinished one pauses with `rerun`, waits for every outstanding future, then runs that top-level statement again (so
+fetches belong in their own loop; side effects before the fetch in that statement repeat once). With no pool (tests, the
+Learn and health workers, 2 cores or fewer) parfeval runs the call at once and parfor in order. The pool
+(`WorkerPool` in `lab.worker.ts`) starts on first use and stays; Stop ends it with the engine. Browser check:
+`scripts/checks/hyperion-parallel-ui.mjs`. Not built: spmd, distributed arrays, parfor's sliced inputs (the whole
+workspace is sent), backgroundPool, afterEach / afterAll.

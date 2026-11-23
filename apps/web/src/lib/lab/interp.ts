@@ -35,7 +35,10 @@ export interface Host {
   fnTimer?: { enter(name: string): void; leave(): void };
 }
 
-class Flow { constructor(readonly kind: 'break' | 'continue' | 'return') {} }
+/** break / continue / return, and 'pause' (M477: a run waiting for parallel work, resumed by parallel-lab.ts). */
+export class Flow { constructor(readonly kind: 'break' | 'continue' | 'return' | 'pause') {} }
+/** M477: a parfor at a script's top level may be run on other workers (parallel-lab.ts sets this). */
+export const parHook: { parfor: ((lab: Lab, st: Extract<Stmt, { s: 'for' }>, vars: Map<string, Value>) => boolean) | null } = { parfor: null };
 interface Frame { vars: Map<string, Value>; nargin: number; nargout: number; depth: number }
 type Idx = 'all' | number[]; // 0-based positions
 
@@ -57,6 +60,9 @@ export class Lab {
     for (const [k, f] of prog.fns) this.fns.set(k, f);
     this.exec(prog.body, { vars: this.vars, nargin: 0, nargout: 0, depth: 0 });
   }
+
+  /** Runs parsed top-level statements in the workspace (M477: a run resumed after parallel work). */
+  execTop(body: Stmt[]) { this.exec(body, { vars: this.vars, nargin: 0, nargout: 0, depth: 0 }); }
 
   // ——— Statements ———
   private exec(body: Stmt[], f: Frame) {
@@ -104,6 +110,7 @@ export class Lab {
         if (st.other) this.exec(st.other, f);
         return;
       case 'for': {
+        if (st.par && f.depth === 0 && parHook.parfor?.(this, st, f.vars)) return;
         const v = this.ev(st.e, f);
         const [r, c0] = sizeOf(v), c = c0 * pages(v); // a 3D array's pages continue its columns
         for (let j = 0; j < c; j++) {
