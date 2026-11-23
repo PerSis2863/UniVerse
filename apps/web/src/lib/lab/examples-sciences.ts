@@ -207,4 +207,33 @@ fprintf('Skull: %.0f mL\\n', skullmL)
 L = bwlabel(ctWindow(s, 'brain') > 0.9);
 fprintf('Bright regions in slice 26: %d\\n', max(L(:)))
 ` },
+  { name: 'options.m', code: `% Finance: pricing options and bonds (a teaching example, not investment advice)
+S = 100; K = 105; r = 0.04; T = 0.5;
+sigma = 0.25;   % slider 0.05 0.8
+[c, p] = blsprice(S, K, r, T, sigma);
+fprintf('Black-Scholes: call %.3f, put %.3f\\n', c, p)
+[dc, dp] = blsdelta(S, K, r, T, sigma);
+fprintf('Delta %.3f / %.3f, gamma %.4f, vega %.2f\\n', dc, dp, blsgamma(S, K, r, T, sigma), blsvega(S, K, r, T, sigma))
+% The price and delta across spot prices
+spot = 60:1:150;
+[cs, ps] = blsprice(spot, K, r, T, sigma);
+subplot(1, 2, 1); plot(spot, cs, spot, ps, spot, max(spot - K, 0), ':'); legend('Call', 'Put', 'Payoff at expiry'); xlabel('Spot'); grid on
+subplot(1, 2, 2); plot(spot, blsdelta(spot, K, r, T, sigma)); xlabel('Spot'); ylabel('Call delta'); grid on
+% A binomial tree with early exercise, and Monte Carlo for path-dependent options
+[~, V] = binprice(S, K, r, T, T/200, sigma, 0);
+fprintf('American put (tree): %.3f, European put: %.3f\\n', V(1, 1), p)
+rng(3)
+[asian, se] = mcOptionPrice(S, K, r, T, sigma, 'Paths', 40000, 'Payoff', 'asian', 'Steps', 126);
+fprintf('Asian call (Monte Carlo): %.3f +/- %.3f\\n', asian, 1.96*se)
+% Implied volatility from a market price
+fprintf('A market call price of 6.00 implies %.1f%% volatility\\n', 100*blsimpv(S, K, r, T, 6))
+% Bonds and the yield curve
+P = bondPrice(100, 0.05, 10, 0.06);
+[mac, md, cv] = bondDuration(100, 0.05, 10, 0.06);
+fprintf('10-year 5%% bond at a 6%% yield: %.2f; duration %.2f years, convexity %.1f\\n', P, mac, cv)
+t = [0.25 0.5 1 2 3 5 7 10 20 30];
+y = [5.30 5.28 5.10 4.70 4.45 4.25 4.22 4.25 4.50 4.45]/100;
+figure; nelsonSiegelFit(t, y)
+figure; zeroCurve([0.051 0.047 0.0445 0.043 0.0425 0.0423 0.0424], 1)
+` },
 ];

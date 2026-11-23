@@ -12638,3 +12638,26 @@ undefined-length sequence, refusing junk, the windowing rule, the phantom's skul
 staying outside the head, a series round trip in the language to 0 HU. Not built: compressed DICOM (JPEG, JPEG 2000,
 RLE: needs decoders), DICOMDIR and folders, multi-frame enhanced objects, RGB ultrasound, 3D volume rendering,
 registration, MRI-specific tools.
+
+## M501 (23 Nov): Hyperion toolbox, finance: pricing (sciences and industries, 10 of 14)
+
+`fin.ts` (pure) and `fin-lab.ts`. `ncdf` is Hart's double-precision algorithm (West 2005; ~1e-15 absolute, 1e-8
+relative in the far tail past 7.07); `bs` is Black–Scholes–Merton with a continuous dividend yield, all Greeks
+(theta per year, vega per 1.00 of volatility, as MATLAB's), and the intrinsic limit at T = 0 or σ = 0;
+`impliedVol` is Newton kept in a bracket by bisection (NaN outside what any σ in (1e-6, 10) gives); `crr` the
+Cox–Ross–Rubinstein tree (rows nodes, columns steps; NaN below the diagonal, zeros in the language as MATLAB's);
+`monteCarlo` GBM paths with antithetic pairs, European in one step, Asian (arithmetic average) and knock-out barriers
+(up-and-out when the barrier is above the spot, down-and-out below) on `steps` steps, with the standard error. Bonds
+use per-period compounding at the coupon frequency and whole periods (`flows`): `bondPrice`, `bondYield` (bisection),
+`bondRisk` (Macaulay, modified, convexity), `bootstrap` (par → discount factors → zero rates), `nelsonSiegel` and
+`fitNelsonSiegel` (LM from five τ starts, bounded). Language: MATLAB's `blsprice`, `blsdelta`, `blsgamma`, `blsvega`,
+`blstheta`, `blsrho`, `blsimpv` (name–value 'Yield', 'Class'), `binprice` (American, Flag 1 call / 0 put, MATLAB's
+output layout), all element by element; our own `mcOptionPrice`, `bondPrice`, `bondYield`, `bondDuration`,
+`zeroCurve`, `nelsonSiegel`, `nelsonSiegelFit` (MATLAB's bond functions are date-based and its curves objects; ours
+take years). Example `options.m` (says teaching, not investment advice). Tests: Φ to 14 digits, Hull's 4.76 / 0.81,
+put–call parity with dividends, every Greek against finite differences, implied vol round trip, the tree converging
+to BS, Hull's two-step American put 7.43, no early exercise of a call without dividends, Monte Carlo within 4 standard
+errors, par bonds at 100, a zero's duration = maturity, duration + convexity predicting a 1% move, bootstrapped par
+bonds repricing to 1, Nelson–Siegel recovering a known curve. Not built: day counts and real dates (settlement,
+accrued interest), stochastic volatility (Heston), local volatility, interest-rate trees (Hull–White, BDT), credit
+spreads, exotic payoffs beyond these three.

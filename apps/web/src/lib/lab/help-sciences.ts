@@ -105,4 +105,20 @@ headPhantom | [V, spacing] = headPhantom(n, slices) | A made-up head CT in Houns
 orthoSlices | orthoSlices(V, [row col page], spacing, 'Window', 'brain') | Axial, coronal and sagittal slices through a point of a volume, at their true proportions.
 regionGrow | mask = regionGrow(V, [row col page], tol) | The connected region around a seed whose values are within tol of the seed's (6-connected in 3D).
 segmentHU | [mask, mL] = segmentHU(V, [low high], 'Largest', true, 'Spacing', [dy dx dz]) | Voxels between two HU values (the largest connected part by default) and their volume in millilitres.
+# Finance: pricing
+blsprice | [call, put] = blsprice(S, K, r, T, sigma, q) | Black–Scholes prices of European options: spot S, strike K, continuous rate r, T years, volatility sigma, dividend yield q (0 if left out).
+blsdelta | [dc, dp] = blsdelta(S, K, r, T, sigma, q) | How much the call and put move per unit of the spot.
+blsgamma | g = blsgamma(S, K, r, T, sigma, q) | How fast delta changes with the spot (the same for calls and puts).
+blsvega | v = blsvega(S, K, r, T, sigma, q) | The change in price per unit of volatility (per 1.00, not per 1%).
+blstheta | [tc, tp] = blstheta(S, K, r, T, sigma, q) | The change in price per year as time passes (usually negative).
+blsrho | [rc, rp] = blsrho(S, K, r, T, sigma, q) | The change in price per unit of the interest rate.
+blsimpv | v = blsimpv(S, K, r, T, value, 'Yield', q, 'Class', 'put') | The implied volatility: the sigma at which Black–Scholes gives the market price (NaN if none does).
+binprice | [asset, value] = binprice(S, K, r, T, dt, sigma, flag, q) | A Cox–Ross–Rubinstein tree with American exercise (flag 1 a call, 0 a put): the asset's and the option's value at every node; value(1, 1) is the price.
+mcOptionPrice | [price, se] = mcOptionPrice(S, K, r, T, sigma, 'Paths', 1e5, 'Type', 'put', 'Payoff', 'asian', 'Barrier', B, 'Steps', 252) | Monte Carlo prices of European, Asian (average) and knock-out barrier options, with antithetic paths and the standard error.
+bondPrice | P = bondPrice(face, coupon, years, yield, f) | A bond's price from its yield (coupons f times a year, 2 unless given).
+bondYield | y = bondYield(price, face, coupon, years, f) | The yield to maturity that gives the price.
+bondDuration | [mac, mod, conv] = bondDuration(face, coupon, years, yield, f) | Macaulay duration (years), modified duration and convexity: how the price moves with the yield.
+zeroCurve | [zero, df, t] = zeroCurve(par, f) | Zero rates and discount factors bootstrapped from par yields at 1/f, 2/f, … years. Drawn without outputs.
+nelsonSiegel | y = nelsonSiegel([b0 b1 b2 tau], t) | The Nelson–Siegel yield curve at maturities t.
+nelsonSiegelFit | [p, rmse] = nelsonSiegelFit(t, y) | Fits a Nelson–Siegel curve to yields at maturities t. Drawn without outputs.
 `;
