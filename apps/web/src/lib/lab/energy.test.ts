@@ -103,3 +103,52 @@ describe('battery ageing and temperature (M433)', () => {
     expect(() => run("batteryAge(batteryCell, 'DoD', 2)")).toThrow(/shares/);
   });
 });
+
+describe('the sun through the day and wind farms (M434)', () => {
+  it('the sun: Greenwich at midsummer noon, the declination, the equation of time', async () => {
+    const rn = await import('./renew');
+    const p = rn.sunPosition(51.4769, 0, [2026, 6, 21], 12.03, 0);
+    // 90 − 51.48 + 23.44 = 61.96° at solar noon, due south.
+    expect(p.elevation).toBeCloseTo(61.96, 1); expect(Math.abs(p.azimuth - 180)).toBeLessThan(1);
+    expect(p.declination).toBeCloseTo(23.44, 1);
+    expect(rn.sunPosition(0, 0, [2026, 11, 3], 12).eqTime).toBeCloseTo(16.4, 0);
+    expect(rn.sunPosition(0, 0, [2026, 2, 11], 12).eqTime).toBeCloseTo(-14.2, 0);
+    expect(rn.sunPosition(51.48, 0, [2026, 6, 21], 0).elevation).toBeLessThan(0);
+    // With the sun overhead: air mass 1, direct 1353 × 0.7 W/m².
+    expect(rn.clearSky(90).dni).toBeCloseTo(947.1, 0);
+    expect(rn.onPanel(90, 180, 0, 180)).toBeCloseTo(rn.clearSky(90).ghi, 6);
+  });
+  it('a panel through a day: nothing at night, most near noon, a sensible day’s energy', async () => {
+    const rn = await import('./renew'), en = await import('./energy');
+    const d = rn.pvDay(en.DEFAULT_MODULE, 28.6, 77.2, [2026, 3, 20], { tz: 5.5 });
+    expect(d.power[0]).toBe(0);
+    const peak = d.hours[d.power.indexOf(Math.max(...d.power))];
+    expect(Math.abs(peak - 12.3)).toBeLessThan(0.6); // Delhi's solar noon ≈ 12:19 IST in March
+    expect(d.wh / 1000).toBeGreaterThan(1.3); expect(d.wh / 1000).toBeLessThan(2.6);
+  });
+  it('wakes: the Jensen deficit behind a turbine, the overlap of circles, none across the wind', async () => {
+    const rn = await import('./renew'), en = await import('./energy'), t = en.DEFAULT_TURBINE;
+    expect(rn.overlap(1, 1, 1)).toBeCloseTo((2 * Math.acos(0.5) - 0.5 * Math.sqrt(3)) / Math.PI, 9);
+    expect(rn.overlap(1, 2, 0)).toBe(1);
+    // Two turbines 7 diameters apart, the wind straight down the line (from the west).
+    const f = rn.windFarm(t, [[0, 0], [700, 0]], 8, 270);
+    const ct = rn.thrust(t, 8), deficit = (1 - Math.sqrt(1 - ct)) * (50 / (50 + 0.075 * 700)) ** 2;
+    expect(f.speed[1]).toBeCloseTo(8 * (1 - deficit), 9);
+    expect(rn.windFarm(t, [[0, 0], [700, 0]], 8, 0).efficiency).toBe(1); // from the north: side by side
+    // Betz: the most a rotor takes, a = 1/3, means Ct = 8/9.
+    expect(rn.thrust({ ...t, cp: 16 / 27, rated: 1e12 }, 8)).toBeCloseTo(8 / 9, 6);
+    const one = rn.windFarmYear(t, [[0, 0]], 2, 8, [270], [1]);
+    expect(one.wakeLoss).toBeCloseTo(0, 9);
+    expect(one.aepMWh / en.windYear(t, 2, 8).aepMWh).toBeCloseTo(1, 2);
+    expect(rn.windFarmYear(t, [[0, 0], [500, 0], [1000, 0]], 2, 8, [270, 90, 0], [1, 1, 1]).wakeLoss).toBeGreaterThan(0.02);
+  });
+  it('in the language', () => {
+    const r = run("[el, az] = sunPosition(51.4769, 0, [2026 6 21], 12.03);\nm = pvModule;\n[P, h, wh] = pvDay(m, 28.6, 77.2, [2026 3 20], 'TimeZone', 5.5, 'Tilt', 28);\nt = windTurbine;\nf = windFarm(t, [0 0; 700 0; 1400 0], 8, 270);\neff = f.Efficiency; v3 = f.Speed(3);\n[aep, loss] = windFarmAEP(t, [0 0; 700 0], 2, 8, [270 90], [1 1]);\npvDay(m, 28.6, 77.2, [2026 6 21], 'TimeZone', 5.5)\nfigure; windFarm(t, [0 0; 700 0; 0 700; 700 700], 9, 225)");
+    expect(r.d('el')[0]).toBeCloseTo(61.96, 1);
+    expect(r.d('wh')[0]).toBeGreaterThan(1000);
+    expect(r.d('eff')[0]).toBeLessThan(1); expect(r.d('v3')[0]).toBeLessThan(8);
+    expect(r.d('loss')[0]).toBeGreaterThan(0); expect(r.d('aep')[0]).toBeGreaterThan(0);
+    expect(r.graphics.figures.length).toBe(2);
+    expect(() => run('sunPosition(95, 0, [2026 1 1])')).toThrow(/latitude/);
+  });
+});

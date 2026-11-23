@@ -11489,3 +11489,17 @@ draws a third panel; `batteryAge` returns a struct with the aged cell in `Cell`;
 Tests in `energy.test.ts`. Not built: lithium plating when charging cold, thermal runaway, cell-to-cell spread in a pack,
 a thermal model with a core and a surface.
 
+## M434 (23 Nov): Hyperion toolbox, the sun through the day and wind-farm wakes
+
+`src/lib/lab/renew.ts` (pure): `julianDay`, `sunPosition` (NOAA's spreadsheet equations: elevation, azimuth clockwise
+from north, declination, equation of time; local clock hour and a time zone in hours), `clearSky` (Meinel's
+1353 × 0.7^(AM^0.678) with Kasten–Young's air mass, diffuse a tenth), `onPanel` (direct on the face + isotropic sky +
+ground at albedo 0.2), `pvDay` (energy.ts's `pvCurve` at each 15 minutes' sunshine and NOCT-45 cell temperature; the
+panel tilts by the latitude and faces the equator unless told), `overlap` (two circles' shared area), `thrust` (Ct from
+the turbine's own Cp at that wind: Cp = 4a(1 − a)², Ct = 4a(1 − a)), `windFarm` (Jensen: turbines taken upwind first,
+each wake (1 − √(1 − Ct))(R/(R + kx))² × the rotor's overlap × its own wind's share of the free wind, wakes combined
+as the root of the sum of squares; wind direction is where it comes FROM), `windFarmYear`. Language in energy-lab.ts
+(`sunPosition`, `pvDay`, `windFarm`, `windFarmAEP`; dates are [y m d] or a datenum). Example sunwind.m. Tests in
+`energy.test.ts`. Not built: clouds and real weather years, shading between rows of panels, wake meandering and
+turbulence, yaw steering, terrain.
+

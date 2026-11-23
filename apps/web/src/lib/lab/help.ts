@@ -670,6 +670,10 @@ pvCurve | [V, I, P, mpp] = pvCurve(module, G, T) | The current and power against
 windTurbine | w = windTurbine('Diameter', 100, 'RatedPower', 2.5e6, 'CutIn', 3, 'CutOut', 25, 'Cp', 0.45) | A wind turbine (metres, watts, m/s; Cp at most Betz's 0.593).
 windPower | windPower(turbine, v) | Its power (W) at each wind speed: ½ρAC_p v³, held at rated, nothing outside cut-in to cut-out.
 windAEP | [MWh, cf, meanWind] = windAEP(turbine, k, c) | A year's energy and the capacity factor over Weibull winds (shape k; k = 2 is Rayleigh; scale c in m/s).
+sunPosition | [elevation, azimuth] = sunPosition(lat, lon, [y m d], hours, tz) | Where the sun is (degrees above the horizon, and clockwise from north) at local clock hours in time zone tz (hours from UTC), by NOAA's equations.
+pvDay | [P, hours, Wh] = pvDay(module, lat, lon, [y m d], 'Tilt', 30, 'Azimuth', 180, 'TimeZone', tz, 'Air', 25) | A module through a clear day: the sun on its tilted face, its cells' temperature and its power every 15 minutes, and the day's energy. Drawn without outputs.
+windFarm | f = windFarm(turbine, xy, v, dir, 'Decay', 0.075) | Turbines at rows [x y] (m, x east) with the wind at v m/s from dir degrees: each one's wind and power with the others' wakes (the Jensen model), and the farm's share of its unshaded power. Drawn without outputs.
+windFarmAEP | [MWh, loss] = windFarmAEP(turbine, xy, k, c, dirs, shares) | The farm's year over Weibull winds (shape k, scale c) from those directions with those shares, and the share the wakes cost.
 
 # Power systems and mixed-signal
 powerflow | r = powerflow(buses, lines) | A load flow by Newton–Raphson: buses as rows [type P Q V angle] (type 3 slack, 2 generator, 1 load; P, Q injections in per unit), lines as rows [from to r x b]; gives V, AngleDeg, P, Q, LineFlows, Losses.

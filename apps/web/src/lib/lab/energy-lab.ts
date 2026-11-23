@@ -4,10 +4,12 @@ import { textOf, type Lab } from './interp';
 import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as en from './energy';
 import * as bt from './battery';
+import * as rn from './renew';
 
 // Hyperion's energy toolbox in the language (M425): batteryCell, batteryPack, batteryOCV, batterySimulate,
 // socEstimate (an extended Kalman filter), pvModule, pvCurve, windTurbine, windPower, windAEP; M433: batterySimulate's
-// temperature ('Ambient', 'Temperature', 'Cooling'), batteryAge, batteryLife.
+// temperature ('Ambient', 'Temperature', 'Cooling'), batteryAge, batteryLife; M434: sunPosition, pvDay, windFarm,
+// windFarmAEP.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 0, lab);
@@ -158,3 +160,70 @@ def('windAEP', (a) => {
   const r = en.windYear(t, k, c);
   return [num(r.aepMWh), num(r.capacityFactor), num(r.meanWind)];
 });
+
+// ——— The sun through the day, wind farms (M434) ———
+/** A date as [year month day] (or a datenum, as now() gives). */
+function dateOf(v: Value | undefined): [number, number, number] {
+  const d = v ? [...toMat(v, 'The date').d] : [];
+  if (d.length === 1 && d[0] > 700_000) { const t = new Date((d[0] - 719_529) * 86_400_000); return [t.getUTCFullYear(), t.getUTCMonth() + 1, t.getUTCDate()]; }
+  if (d.length < 3 || !(d[1] >= 1 && d[1] <= 12 && d[2] >= 1 && d[2] <= 31)) throw new LabError('A date is [year month day], like [2026 6 21].');
+  return [d[0], d[1], d[2]];
+}
+const place = (a: Value[], name: string) => {
+  const lat = toMat(a[0] ?? num(NaN)).d[0], lon = toMat(a[1] ?? num(NaN)).d[0];
+  if (!(Math.abs(lat) <= 90 && Math.abs(lon) <= 180)) throw new LabError(`${name} needs a latitude (−90 to 90) and a longitude (−180 to 180), in degrees.`);
+  return [lat, lon];
+};
+const opts = (a: Value[], from: number, names: string[], what: string) => {
+  const o: Record<string, number> = {};
+  for (let i = from; i < a.length; i += 2) {
+    const k = a[i]?.k === 'str' ? (a[i] as { v: string }).v.toLowerCase() : '';
+    if (!names.includes(k)) throw new LabError(`${what} takes ${names.map((n) => `'${n[0].toUpperCase()}${n.slice(1)}'`).join(', ')}.`);
+    o[k] = toMat(a[i + 1] ?? num(NaN)).d[0];
+  }
+  return o;
+};
+def('sunPosition', (a) => {
+  const [lat, lon] = place(a, 'sunPosition'), date = dateOf(a[2]), h = toMat(a[3] ?? num(12), 'The hours'), tz = a[4] ? toMat(a[4]).d[0] : 0;
+  const p = [...h.d].map((x) => rn.sunPosition(lat, lon, date, x, tz));
+  return [mat(h.r, h.c, p.map((x) => x.elevation)), mat(h.r, h.c, p.map((x) => x.azimuth))];
+});
+def('pvDay', (a, nout, lab) => {
+  if (kindOf(a[0]) !== 'pvModule') throw new LabError('pvDay needs a module from pvModule: pvDay(pvModule, lat, lon, [2026 6 21]).');
+  const s = a[0] as Struct, m: en.Module = { ...en.DEFAULT_MODULE, isc: fieldNum(s, 'Isc'), voc: fieldNum(s, 'Voc'), ns: fieldNum(s, 'Ns'), n: fieldNum(s, 'n'), rs: fieldNum(s, 'Rs'), rsh: fieldNum(s, 'Rsh') };
+  const [lat, lon] = place(a.slice(1), 'pvDay'), date = dateOf(a[3]), o = opts(a, 4, ['tilt', 'azimuth', 'timezone', 'air'], 'pvDay');
+  const r = rn.pvDay(m, lat, lon, date, { tilt: o.tilt, facing: o.azimuth, tz: o.timezone, air: o.air });
+  if (nout > 0) return [row(r.power), row(r.hours), num(r.wh)];
+  call(lab, 'yyaxis', str('left')); call(lab, 'plot', row(r.hours), row(r.power)); call(lab, 'ylabel', str('Power (W)'));
+  call(lab, 'yyaxis', str('right')); call(lab, 'plot', row(r.hours), row(r.elev.map((e) => Math.max(0, e)))); call(lab, 'ylabel', str('Sun above the horizon (°)'));
+  call(lab, 'xlabel', str('Hour (local)')); call(lab, 'xlim', row([0, 24])); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`${(r.wh / 1000).toFixed(2)} kWh on a clear ${date.join('-')}`));
+  return [];
+});
+const layout = (v: Value | undefined): [number, number][] => {
+  const m = toMat(v ?? num(NaN), 'The positions');
+  if (m.c !== 2 || !m.r) throw new LabError('The turbines are rows [x y] in metres (x east, y north).');
+  return Array.from({ length: m.r }, (_, i) => [m.d[i], m.d[i + m.r]]);
+};
+def('windFarm', (a, nout, lab) => {
+  const t = turbine(a[0]), xy = layout(a[1]), v = toMat(a[2] ?? num(10)).d[0], dir = a[3] ? toMat(a[3]).d[0] : 270, o = opts(a, 4, ['decay'], 'windFarm');
+  if (!(v > 0)) throw new LabError('The wind speed must be above 0.');
+  const r = rn.windFarm(t, xy, v, dir, o.decay ?? 0.075);
+  if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['Speed', mat(xy.length, 1, r.speed)], ['Power', mat(xy.length, 1, r.power)], ['Efficiency', num(r.efficiency)]]) } satisfies Struct];
+  const x = row(xy.map((p) => p[0])), y = row(xy.map((p) => p[1]));
+  call(lab, 'scatter', x, y, num(120), row(r.speed.map((s) => s / v)), str('filled'));
+  call(lab, 'colorbar'); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on'));
+  call(lab, 'xlabel', str('East (m)')); call(lab, 'ylabel', str('North (m)'));
+  call(lab, 'title', str(`Wind ${v} m/s from ${dir}°: the farm makes ${(100 * r.efficiency).toFixed(1)}% of what it would unshaded`));
+  return [];
+});
+def('windFarmAEP', (a) => {
+  const t = turbine(a[0]), xy = layout(a[1]), k = toMat(a[2] ?? num(2)).d[0], c = toMat(a[3] ?? num(8)).d[0];
+  const dirs = a[4] ? [...toMat(a[4]).d] : [270], w = a[5] ? [...toMat(a[5]).d] : dirs.map(() => 1), o = opts(a, 6, ['decay'], 'windFarmAEP');
+  if (!(k > 0 && c > 0)) throw new LabError('The Weibull shape and scale must be positive.');
+  if (w.length !== dirs.length) throw new LabError('Give one share for each direction.');
+  if (xy.length * dirs.length > 4000) throw new LabError('That is a lot to work out: up to 4000 turbines × directions.');
+  const r = rn.windFarmYear(t, xy, k, c, dirs, w, o.decay ?? 0.075);
+  return [num(r.aepMWh), num(r.wakeLoss)];
+});
+
