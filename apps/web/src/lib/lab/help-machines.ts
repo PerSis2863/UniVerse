@@ -42,4 +42,11 @@ shortenPath | p = shortenPath(path, map, res) | Cuts the corners a straight line
 diffdriveStep | pose = diffdriveStep(pose, v, w, dt) | A differential-drive robot after dt seconds at speed v and turn rate w (pose [x y heading]).
 purePursuit | [v, w, target] = purePursuit(pose, path, lookahead, speed) | The turn that curves the robot onto the point of the path lookahead metres ahead.
 followPath | [poses, t] = followPath(path, 'LookAhead', 0.8, 'Speed', 0.6, 'MaxTurnRate', 2, 'Map', map, 'Resolution', res) | Drives a differential-drive robot along the path by pure pursuit; drawn (on the map if given) without outputs.
+
+# Robot sensing
+lidarSim | [ranges, angles] = lidarSim(map, pose, 'Resolution', res, 'Beams', 180, 'MaxRange', 8, 'FieldOfView', 2*pi, 'Noise', 0.02) | A lidar's scan from a pose [x y heading] on a map (each beam to the first wall, max range if none). Drawn with its beams without outputs.
+robotRun | run = robotRun(map, path, 'Resolution', res, 'Beams', 90, 'OdometryNoise', 0.05) | A robot driven along a path: run.True (where it really was), run.Odometry (what its wheels say, drifting), run.Scans (one row of ranges a step), run.Angles.
+mclLocalize | [poses, info] = mclLocalize(map, run, 'Resolution', res, 'Particles', 5000, 'Start', pose) | Monte Carlo localisation (a particle filter): where the robot is from its odometry and scans. Without 'Start' it begins knowing nothing (particles everywhere). Drawn without outputs.
+slamGrid | [M, poses, origin] = slamGrid(run, 'Resolution', 4) | SLAM: builds the map and corrects the poses together, each scan matched to the map so far. M: the chance each cell is blocked (row 1 at the top), origin [x y] of its corner. Also slamGrid(odometry, scans, angles).
+buildMap | [M, origin] = buildMap(scans, poses, angles, res, maxRange) | An occupancy map from scans taken at known poses (log-odds: free along each beam, blocked where it ends).
 `;

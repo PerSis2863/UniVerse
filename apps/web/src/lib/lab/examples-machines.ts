@@ -42,4 +42,19 @@ p = shortenPath(p, grown, res);
 lookahead = 1;   % slider 0.3 3
 figure; followPath(p, 'LookAhead', lookahead, 'Speed', 0.8, 'Map', map, 'Resolution', res)
 ` },
+  { name: 'robot_sensing.m', code: `% Robot sensing: a lidar, finding where you are, and building a map as you go
+[map, res] = robotMap('rooms');
+lidarSim(map, [4 17 0.3], 'Resolution', res, 'Beams', 120)
+% Drive across the building (planned with room to spare), recording odometry and scans
+safe = inflateMap(map, 0.7, res);
+path = shortenPath(astarGrid(safe, [3 3], [22 22], 'Resolution', res), safe, res);
+run = robotRun(map, path, 'Resolution', res, 'OdometryNoise', 0.08);
+% Localisation from nowhere: 5000 particles spread over the free space
+figure; mclLocalize(map, run, 'Resolution', res)
+% SLAM: no map at all, only the scans and the drifting odometry
+figure; slamGrid(run)
+[M, poses] = slamGrid(run);
+odometryMiss = norm(run.Odometry(end, 1:2) - run.True(end, 1:2))
+slamMiss = norm(poses(end, 1:2) - run.True(end, 1:2))
+` },
 ];

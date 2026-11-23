@@ -12488,3 +12488,28 @@ arm's `show` is kept for structs). Window: Machines → **Path planner** (`Plann
 the robot's radius (the light band), the cells looked at or the tree, the cut path, Drive it (pure pursuit, 4 × real
 time). Tests in `robot-motion.test.ts`. Example robot_motion.m. Not built: Hybrid A* and car-like (Reeds–Shepp) paths,
 3D maps, dynamic obstacles, model-predictive control, trajectory time-scaling under torque limits.
+
+## M484 (23 Nov): Hyperion toolbox, robot sensing
+
+`src/lib/lab/robot-sense.ts` (pure): `castRay` (Amanatides–Woo through the cells; the map's edge counts as a wall),
+`scan`, `beams`, `distanceField` (two-pass 3–4 chamfer), `simulateRun` (pure pursuit with a 0.5 m look-ahead; odometry
+from each step's turn–drive–turn with a few % slip and a steady heading drift; a step that would enter a wall is held),
+`mcl` (odometry motion model; a likelihood field with a 10 % uniform part; the scan's log-likelihood **tempered** to
+count as about 2 beams, otherwise one scan makes the filter certain at once, often wrongly; resampling only when the
+effective number falls under N/2 (low variance); augmented MCL: a short and a long average of the fit, and when the
+short falls below the long, up to 25 % of the particles thrown anywhere free), occupancy mapping (`addScan` log-odds
++0.85 / −0.4, capped at ±6; the beam's end marked half a cell past it, so a wall met from either side marks the same
+cell: without that the map was a cell off for beams going left or down and SLAM drifted), `buildMap`, `slam` (each
+pose: the odometry's step from the last corrected pose, then a coarse-to-fine search in x, y and heading scoring the
+scan against a distance field of the map so far (−0.5 for an end in space already seen empty) minus a pull towards the
+odometry; no matching when under 60 % of the scan lands on mapped walls, i.e. in a new room). Traps found by the tests:
+a simulated robot clipping a door frame teleports and ruins SLAM (plan with a 0.7 m margin), and a turn on the spot
+gives a meaningless "direction of travel" (under 1 cm of travel it is all second turn). Results on the rooms map (8 %
+slip): the filter finds the robot from nowhere in 6 of 6 seeds with 5,000 particles; SLAM ends ~0.25 m off where
+odometry is 2–3 m off. Language in `robot-sense-lab.ts` (our names; MATLAB uses objects): `lidarSim`, `robotRun`
+(struct True, Odometry, Scans, Angles, MaxRange), `mclLocalize`, `slamGrid`, `buildMap` (MATLAB's name; ranges as rows
+not lidarScan objects). Window: Machines → **Sensing** (`SensingBench.tsx`, the run worked out in machines.worker.ts,
+then replayed 3 × real time): particles closing in on the known map, and the SLAM map growing with its path against
+the odometry's. Tests in `robot-sense.test.ts`. Example robot_sensing.m. Not built: loop closure and pose-graph
+optimisation, landmark (EKF) SLAM, 3D lidar, KLD-adaptive particle counts, the warehouse map's symmetry is left as a
+lesson (the filter can settle in the wrong aisle).
