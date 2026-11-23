@@ -1,6 +1,7 @@
 import type { Fineness } from './mesh';
 import { CUSTOM_START, customPart, edgesOf, groupedEdges, MAX_CORNERS, MAX_HOLES, partProblem, TEMPLATES, type CustomShape, type Edge, type Part, type Pt, type TemplateParam } from './part';
 import { MATERIALS, type Load, type Study, type Support, type SupportKind } from './structure';
+import { HARMONIC_START, type Harmonic } from './modal';
 
 // Hyperion Simulate (M404): what the Structures workbench keeps (on this device): the part (a ready-made shape and its
 // sizes), its thickness and material, the mesh's fineness, the supports and the loads, each on edges named by place.
@@ -18,6 +19,8 @@ export interface Model {
   custom?: CustomShape;
   /** Flat (plane stress, 2D) or a solid of the thickness (3D, M413). */
   dim?: '2d' | '3d';
+  /** The shaking swept in a harmonic response (M442). */
+  harmonic?: Harmonic;
 }
 
 /** A ready-made shape's name and sizes, or the hand-drawn one's (no sizes: its corners are drawn). */
@@ -86,9 +89,20 @@ export function readModel(raw: unknown): Model {
     fineness: (['coarse', 'medium', 'fine', 'finest'] as const).find((f) => f === m.fineness) ?? base.fineness,
     gravity: m.gravity === true,
     dim: m.dim === '3d' ? '3d' : '2d',
+    harmonic: readHarmonic(m.harmonic),
     ...(m.template === 'custom' ? { custom: readCustom(m.custom) } : {}),
     supports: Array.isArray(m.supports) ? m.supports.filter((s) => s && ['fixed', 'slideX', 'slideY'].includes(s.kind)).map((s) => ({ id: String(s.id), kind: s.kind, edges: strs(s.edges) })) : base.supports,
     loads: Array.isArray(m.loads) ? m.loads.filter((l) => l && ['force', 'pressure', 'bearing'].includes(l.kind)).map((l): Load => (l.kind === 'pressure' ? { id: String(l.id), kind: 'pressure', edges: strs(l.edges), p: num(l.p, 1) } : { id: String(l.id), kind: l.kind, edges: strs(l.edges), F: num(l.F, 1000), angle: num(l.angle, -90) })) : base.loads,
+  };
+}
+
+/** Kept sweep settings read back safely (M442). */
+export function readHarmonic(raw: unknown): Harmonic {
+  const h = (raw ?? {}) as Partial<Harmonic>, d = HARMONIC_START;
+  const num = (v: unknown, def: number, lo: number, hi: number) => (typeof v === 'number' && Number.isFinite(v) ? Math.max(lo, Math.min(hi, v)) : def);
+  return {
+    drive: h.drive === 'base' ? 'base' : 'loads', dir: h.dir === 'x' ? 'x' : 'y', g: num(h.g, d.g, 0, 1000), zeta: num(h.zeta, d.zeta, 0.0001, 0.5),
+    fMin: num(h.fMin, d.fMin, 0, 1e6), fMax: num(h.fMax, d.fMax, 0, 1e6),
   };
 }
 
@@ -97,12 +111,13 @@ export function studyOf(m: Model): Study {
 }
 
 /** What stops a solve, in plain words (null when it can run). */
-export function modelProblem(m: Model): string | null {
+export function modelProblem(m: Model, free = false): string | null {
   const { part } = partOf(m);
   const p = partProblem(part);
   if (p) return p;
   if (!(m.thickness > 0)) return 'The thickness must be more than 0.';
-  if (!m.supports.some((s) => s.edges.length)) return 'Hold the part somewhere: add a support and pick its edge.';
+  // Natural frequencies need no support (M442: a part held nowhere vibrates freely); everything else does.
+  if (!free && !m.supports.some((s) => s.edges.length)) return 'Hold the part somewhere: add a support and pick its edge.';
   return null;
 }
 

@@ -11605,3 +11605,24 @@ stuck at ~18, annealing ~2, pattern search 0). Tests in `optim.test.ts`. Not bui
 patternsearch's other polls (GSS, MADS) and search steps, simulannealbnd's gradient-based reannealing and custom
 annealing functions, lsqlin's interior-point and sparse C.
 
+## M442 (23 Nov): Hyperion, more advanced vibration analysis
+
+The owner's list of 23 Nov, item 3. Simulate (`src/lib/sim/modal.ts`): `modalBasis` (shared by Vibration and Shaking)
+returns ω² and mass-normalised shapes over every unknown; a part held nowhere, or held but able to slide or turn (the
+factorisation throws `MechanismError`), is solved shifted, (K − σM) with σ = −1e-6 × the mean diagonal K/M, so its moves
+as a whole come out at ω² ≈ 0 (|λ| < 1e-6·|σ|) and are counted in `rigid`, not listed. `modelProblem(m, free)`: Vibration
+needs no support. **Shaking** (`solveHarmonic`, `harmonicField`, `HarmonicPanel.tsx`, the worker's analysis
+'harmonic' with `harmonic` settings kept in `Model.harmonic` and `at` the frequency shown): the loads swinging (gravity
+left out) or the supports shaken (−M·r·a, a in g), one damping ratio for every mode, by mode superposition over 24 modes
+with the static part exact (mode acceleration: K⁻¹F + Σ φ p (H − 1/λ)), so slow shaking gives exactly the static
+answer. The curve is the point that moves most at the strongest resonance in range (largest movement over a cycle: the
+ellipse's long half-axis), on 401 even points plus each mode and its half-power points; the automatic range is 1.5 ×
+the fourth mode. At a frequency: the shape when the watched point is furthest out, the swing, and the highest von
+Mises stress over 12 phases (`stressOf`, split out of `solveStatic`). The worker keeps the modes while only loads or
+sweep settings change. Tests: free-free beam (4.730², 3 rigid), static limit, peak ≈ 1/(2ζ) and halving ζ doubles it,
+base shaking slow = sagging under 1 g. Scripts (`src/lib/lab/vib.ts`, language in `maint-lab.ts`): `modalfrf` (H1 by
+Welch, Hann, 50 % overlap, with coherence), `modalfit` (peak picking, half-power damping; 'FreqRange'; only 'pp'),
+`pkurtosis` (STFT, hop nw/4), `kurtogram` (STFT-based, Antoni 2006: windows 8…2^(level+2), not MATLAB's filter-bank fast
+kurtogram), `tsa` (turns between pulses stretched alike; 'NumRotations'), `orderspectrum` (resampled at even angle).
+Example vibration.m. Not built: prestress (loads stiffening the modes), damping per mode or Rayleigh damping, random
+vibration (PSD), response spectra, modal shapes from `modalfit`, the LSCE/LSRF fit methods.

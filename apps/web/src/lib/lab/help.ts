@@ -664,6 +664,12 @@ linearDegradationModel | mdl = linearDegradationModel | Wear that grows in a str
 fit | mdl = fit(mdl, {[t1 y1], [t2 y2], …}) | Learns a degradation model from past machines' histories ([time value] each, or tables).
 update | mdl = update(mdl, [t y]) | The model after seeing one machine's readings so far.
 predictRUL | [rul, ci, pdf] = predictRUL(mdl, [t y], threshold) | The remaining useful life: when the level will reach the threshold, a 90% range and the spread of possible times.
+modalfrf | [frf, f, coh] = modalfrf(x, y, fs, window, noverlap) | A structure's frequency response from a hammer or shaker test: the H1 estimate (Welch's averages of output against input) and the coherence. Without outputs, drawn.
+modalfit | [fn, dr] = modalfit(frf, f, fs, mnum, 'FreqRange', [lo hi]) | The natural frequencies and damping ratios of the mnum tallest peaks (peak picking; damping from the half-power width).
+pkurtosis | [sk, f] = pkurtosis(x, fs, window) | The spectral kurtosis: high in the band where a damaged bearing's impacts ring, near 0 for steady noise.
+kurtogram | [K, f, w, fc, wc, bw] = kurtogram(x, fs, level) | The spectral kurtosis for windows of 8 to 2^(level+2) samples: the best band's centre fc and width bw, to filter before an envelope spectrum.
+tsa | [ta, t, rpm] = tsa(x, fs, tPulse, 'NumRotations', 1) | Time-synchronous averaging: the turns between tachometer pulses stretched alike and averaged, so only what turns with the shaft is left.
+orderspectrum | [spec, order] = orderspectrum(x, fs, rpm) | The spectrum against orders (cycles per shaft turn), the signal resampled at even steps of angle so a run-up keeps each order in one place.
 
 # Energy: batteries, solar and wind
 batteryCell | c = batteryCell('Capacity', 5, 'R0', 0.012, 'R1', 0.008, 'C1', 2500) | A lithium-ion cell as an equivalent circuit: its open-circuit voltage by state of charge, a series resistance and one RC pair (capacity in Ah, ohms, farads).
