@@ -86,4 +86,13 @@ utm2ll | [lat, lon] = utm2ll(E, N, zone, 'south') | UTM back to latitude and lon
 fractalTerrain | Z = fractalTerrain(k, 'Roughness', 0.8, 'Relief', 1000) | A made-up landscape of (2^k + 1)² heights (the diamond-square method). Drawn as a contour map without outputs.
 slopeAspect | [slope, aspect] = slopeAspect(Z, cell) | Each cell's slope (degrees) and the way it faces (degrees from north); rows run north to south.
 hillshade | H = hillshade(Z, cell, 'Azimuth', 315, 'Altitude', 45) | How brightly the sun lights each cell (0 to 1): relief made visible. Drawn without outputs.
+# ECG and biosignals (for learning, not diagnosis)
+ecgSynth | [x, t, beats] = ecgSynth(fs, T, hr, 'RSA', 0.04, 'Noise', 0.02, 'Wander', 0.2, 'Mains', 0.05) | A made-up ECG (mV): P, QRS and T waves, the beat interval swaying with breathing; baseline wander and mains hum if asked. beats are the true R times.
+panTompkins | [idx, times, rr] = panTompkins(x, fs) | QRS detection by Pan and Tompkins (band-pass 5–15 Hz, derivative, square, 150 ms integration, adaptive thresholds, search back): the R peaks and RR intervals (s). Drawn without outputs.
+hrvMetrics | h = hrvMetrics(rr) | Heart rate variability from RR intervals (s): HeartRate, MeanRR, SDNN, RMSSD, pNN50 and the LF and HF powers (ms²) with LF/HF.
+eegSynth | x = eegSynth(fs, T, [freq amp; …], background) | A made-up EEG (µV): a wandering background plus rhythms (10 Hz alpha unless given).
+eegBandPower | [p, rel] = eegBandPower(x, fs) | Delta, theta, alpha, beta and gamma power (Welch's spectrum, 2 s segments) and their shares. Drawn without outputs.
+patientMonitor | patientMonitor(ecg, fs, 'SpO2', 98, 'Resp', 15, 'BP', [120 80]) | A bedside-monitor-style view of the last 6 seconds: the ECG with its heart rate, a pleth wave and breathing. For learning, not diagnosis.
+wdrc | y = wdrc(x, fs, threshold, ratio, 'Attack', 0.005, 'Release', 0.05, 'Gain', 10) | Wide dynamic range compression: above the threshold (dB re full scale) loudness grows 1/ratio as fast.
+hearingAid | y = hearingAid(x, fs, 'Edges', [500 1000 2000 4000], 'Gains', [5 10 20 25 30], 'Threshold', -30, 'Ratio', 2) | A multi-band hearing aid: each band its own gain, all compressed. Drawn without outputs.
 `;

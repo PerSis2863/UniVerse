@@ -12591,3 +12591,27 @@ Vincenty's Flinders Peak–Buninyong 54,972.271 m, Mercator, Lambert's radius-2 
 (north and south), slope and aspect of planes, flat hillshade = sin(altitude). Not built: travel times through a
 layered Earth (only a uniform speed), focal mechanisms, real map data (coastlines, DEM files: GeoTIFF reading),
 gravity and magnetic surveys, well logs.
+
+## M499 (23 Nov): Hyperion toolbox, ECG and biosignals (sciences and industries, 8 of 14)
+
+`biosig.ts` (pure; randomness passed in) and `biosig-lab.ts`. For learning, not diagnosis: said in the help section's
+title, `patientMonitor`'s title, `panTompkins`' drawing and the example. Filters: our own second-order Butterworth
+biquads (bilinear with pre-warping; −3 dB at fc, tested) and `zeroPhase` (forwards and backwards). **Not defined on
+purpose:** `butter`, `filtfilt`, `pwelch`, `findpeaks`: the signals branch (M472–M481, "a signal analyser and filter
+designer") is likely to add them, and two `def`s of one name would silently replace each other at merge; after both
+merge, these toolboxes may switch to theirs. `ecgSynth`: Gaussian P, Q, R, S, T per beat, intervals with respiratory
+sinus arrhythmia (0.25 Hz) and jitter, QT scaled by √RR (Bazett), noise, baseline wander, 50 Hz hum. `panTompkins`:
+band-pass 5–15 Hz, the five-point derivative, squaring, 150 ms moving-window integration, peaks 200 ms apart,
+SPKI/NPKI thresholds learnt on the first 2 s and updated (1/8), search back past 1.66 × the mean of the last 8 RR at
+half the threshold, the R peak placed at the band-passed maximum in the integration window. `hrv`: SDNN, RMSSD,
+pNN50, and LF (0.04–0.15) / HF (0.15–0.4) by resampling the tachogram at 4 Hz and `welch` (Hann, half overlap,
+one-sided, density). `eegBands` (Welch with 2 s segments, five bands), `eegSynth` (AR(1) background + rhythms).
+`wdrc`: a 10 ms mean-square level read as a sine's peak, the gain smoothed with attack and release (an envelope
+follower on |x| was biased high by its fast attack: 1.4 dB too much compression; fixed this way); `hearingAid`:
+bands split at the edges by zero-phase pairs, each band compressed with its own gain, summed. Language (our own
+names): `ecgSynth`, `panTompkins`, `hrvMetrics`, `eegSynth`, `eegBandPower`, `patientMonitor`, `wdrc`, `hearingAid`.
+Example `ecg.m`. Tests: biquads at −3 dB, Pan–Tompkins > 98% of beats within 30 ms at 60 and 110 bpm with noise,
+wander and hum, HRV time measures by hand and HF ≫ LF for breathing-paced RR, a 10 Hz sine is alpha with A²/2,
+2:1 compression 20 dB over gives 10 dB over, unity hearing aid passes through. Not built: arrhythmia
+classification, reading real ECG files (WFDB/EDF), 12-lead views, SpO₂ from red and infrared light, EEG artefact
+removal (ICA), feedback cancellation and noise reduction in the hearing aid, audiogram fitting rules (NAL, DSL).

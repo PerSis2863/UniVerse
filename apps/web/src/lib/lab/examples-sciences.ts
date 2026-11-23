@@ -161,4 +161,24 @@ figure; subplot(1, 2, 1); contour(Z, 16); axis equal; title('Contours')
 sunFrom = 315;   % slider 0 360
 subplot(1, 2, 2); hillshade(Z, 30, 'Azimuth', sunFrom)
 ` },
+  { name: 'ecg.m', code: `% ECG and biosignals (for learning, not diagnosis)
+rng(7); fs = 360;
+rate = 72;    % slider 40 160
+[x, t] = ecgSynth(fs, 60, rate, 'Noise', 0.05, 'Wander', 0.3, 'Mains', 0.05);
+[idx, beats, rr] = panTompkins(x, fs);                % Pan-Tompkins QRS detection
+patientMonitor(x, fs, 'SpO2', 97, 'Resp', 14)
+h = hrvMetrics(rr);
+fprintf('%d beats, %.0f a minute. HRV: SDNN %.0f ms, RMSSD %.0f ms, LF/HF %.2f\\n', numel(beats), h.HeartRate, h.SDNN, h.RMSSD, h.LFHF)
+figure; plot(beats(2:end), 60./rr, '.-'); xlabel('Time (s)'); ylabel('Beats a minute'); title('Heart rate, beat by beat (it rises as you breathe in)'); grid on
+% EEG: eyes closed (strong alpha) against eyes open (beta)
+closed = eegSynth(256, 30, [10 25; 20 4]);
+open = eegSynth(256, 30, [10 5; 20 8]);
+[~, rc] = eegBandPower(closed, 256); [~, ro] = eegBandPower(open, 256);
+fprintf('Alpha share: %.0f%% eyes closed, %.0f%% eyes open\\n', 100*rc(3), 100*ro(3))
+figure; eegBandPower(closed, 256)
+% A hearing aid: quiet speech-like sounds lifted, loud ones held back
+fs2 = 16000; tt = (0:fs2-1)/fs2;
+sound = (0.02 + 0.5*(tt > 0.5)) .* sin(2*pi*1500*tt);
+figure; hearingAid(sound, fs2, 'Gains', [5 10 20 25 30], 'Threshold', -30, 'Ratio', 3)
+` },
 ];
