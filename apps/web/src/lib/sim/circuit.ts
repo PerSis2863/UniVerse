@@ -16,7 +16,7 @@ export type Part =
   /** A diode, anode a, cathode b. */
   | { id: string; kind: 'D'; a: string; b: string }
   /** A switch driven by a PWM signal (a MOSFET with its gate driver, M424): on for `duty` of each period at `freq` Hz. */
-  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number }
+  | { id: string; kind: 'S'; a: string; b: string; duty: number; freq: number; hold?: Hold }
   /** An n-channel MOSFET (M430): drain a, source b, gate g. It turns on above its threshold `vth` (volts); `k` (A/V²)
    * sets how hard (the on-resistance is about 1 / (k (Vgs − Vth))); `lambda` (1/V) lets the current rise a little
    * with Vds when saturated. A body diode runs from source to drain, as in every power MOSFET. */
@@ -48,7 +48,19 @@ const junctions = (parts: Part[]) => parts.flatMap((p): [string, string][] => (p
 
 /** A switch's resistance: 10 mΩ on, 10 MΩ off. */
 export const RON = 0.01, ROFF = 1e7;
-export const switchOn = (p: Extract<Part, { kind: 'S' }>, t: number) => ((t * p.freq) % 1 + 1) % 1 < p.duty;
+export const switchOn = (p: Extract<Part, { kind: 'S' }>, t: number, duty = p.duty) => ((t * p.freq) % 1 + 1) % 1 < duty;
+/** A PWM switch's next edge (turning on or off) after time t (M431). Steps are split there, so a duty isn't rounded to
+ * whole time steps (that made a regulated output jump as rounding drifted). */
+export function nextEdge(freq: number, duty: number, t: number) {
+  const ph = t * freq, k = Math.floor(ph);
+  for (const e of [k + duty, k + 1, k + 1 + duty]) if (e > ph + 1e-9) return e / freq;
+  return Infinity;
+}
+/** A switch that holds a voltage (M431): once a period it reads `node` and moves its duty towards `target` volts by
+ * an integral controller (duty changes by `gain` × the error as a share of the target, per second), from 0 with the
+ * target ramped up over `soft` seconds so the start doesn't overshoot; the duty stays within 0 … `max`. */
+export interface Hold { node: string; target: number; gain: number; soft: number; max: number }
+export const HOLD = { gain: 150, soft: 2e-3, max: 0.9 };
 
 export function sourceAt(p: Extract<Part, { kind: 'V' }>, t: number) {
   if (p.wave === 'sine') return p.value * Math.sin(2 * Math.PI * p.freq * t);
@@ -115,9 +127,29 @@ export class Circuit {
     if (p.kind === 'V' || p.kind === 'L') return this.x[this.branch.get(p.id)!];
     if (p.kind === 'C') return this.ic.get(p.id) ?? 0;
     if (p.kind === 'I') return -p.value;
-    if (p.kind === 'S') return vd / (switchOn(p, this.t) ? RON : ROFF);
+    if (p.kind === 'S') return vd / (switchOn(p, this.t - this.lastH / 2, this.dutyOf(p)) ? RON : ROFF);
     if (p.kind === 'M') return mosfet(this.v(p.g) - this.v(p.b), vd, p.vth, p.k, p.lambda).id - diodeI(-vd);
     return diodeI(vd);
+  }
+  /** Regulated switches' duty now and the period it was last set in. */
+  private held = new Map<string, { duty: number; period: number }>();
+  private lastH = 0;
+  private swState = new Map<string, boolean>();
+  /** A switch's duty now (its own, or what its controller has set). */
+  dutyOf(p: Extract<Part, { kind: 'S' }>) { return p.hold ? this.held.get(p.id)?.duty ?? 0 : p.duty; }
+  /** Each regulated switch, at the start of a new period, reads its node and moves its duty. */
+  private regulate() {
+    for (const p of this.parts) {
+      if (p.kind !== 'S' || !p.hold) continue;
+      const period = Math.floor(this.t * p.freq + 1e-9), st = this.held.get(p.id) ?? { duty: 0, period: -1 };
+      if (period !== st.period) {
+        const h = p.hold, target = h.target * Math.min(1, this.t / h.soft), sign = Math.sign(h.target) || 1;
+        const e = (sign * (target - this.v(h.node))) / Math.max(1e-9, Math.abs(h.target));
+        st.duty = Math.max(0, Math.min(h.max, st.duty + (h.gain * e) / p.freq));
+        st.period = period;
+        this.held.set(p.id, st);
+      }
+    }
   }
   /** The power a part takes in now (W): positive for what it uses or stores, negative for what it gives (a source). */
   power(p: Part) { return (this.v(p.a) - this.v(p.b)) * this.current(p); }
@@ -146,7 +178,7 @@ export class Circuit {
           const G = (trap ? 2 : 1) * p.value / h, Ieq = G * vPrev + (trap ? this.ic.get(p.id) ?? 0 : 0);
           g(a, b, G); inj(a, b, Ieq);
         } else if (p.kind === 'I') inj(a, b, p.value);
-        else if (p.kind === 'S') g(a, b, 1 / (switchOn(p, h === null ? this.t : this.t + h) ? RON : ROFF));
+        else if (p.kind === 'S') g(a, b, 1 / (switchOn(p, h === null ? this.t : this.t + h / 2, this.dutyOf(p)) ? RON : ROFF));
         else if (p.kind === 'V' || p.kind === 'L') {
           const k = this.branch.get(p.id)!;
           if (a >= 0) { A[a][k] += 1; A[k][a] += 1; }
@@ -204,6 +236,26 @@ export class Circuit {
 
   /** Moves on by h seconds. */
   step(h: number) {
+    // Split the step at any switch's edge inside it. Edges closer than a millionth of the step to either end are
+    // left out (a near-zero step makes the trapezoidal rule ring), and the clock lands exactly on each piece's end.
+    const end = this.t + h, tol = h * 1e-6;
+    for (let guard = 0; guard < 64 && end - this.t > tol; guard++) {
+      this.regulate();
+      let next = end;
+      for (const p of this.parts) if (p.kind === 'S') { const e = nextEdge(p.freq, this.dutyOf(p), this.t + tol); if (e < next - tol) next = e; }
+      // Right after a switch flips, one backward-Euler step (as SPICE does at a breakpoint) so nothing rings.
+      for (const p of this.parts) {
+        if (p.kind !== 'S') continue;
+        const on = switchOn(p, (this.t + next) / 2, this.dutyOf(p));
+        if (this.swState.get(p.id) !== on) { if (this.swState.has(p.id)) this.first = true; this.swState.set(p.id, on); }
+      }
+      this.advance(next - this.t);
+      this.t = next;
+    }
+    this.t = end;
+    return this;
+  }
+  private advance(h: number) {
     const prev = this.x, trap = !this.first;
     const x = this.solve(h, trap);
     // Each capacitor's current for the next step: i = G(v¹ − v⁰) − i⁰ (trapezoidal) or C(v¹ − v⁰)/h.
@@ -213,7 +265,7 @@ export class Circuit {
       const v1 = (a >= 0 ? x[a] : 0) - (b >= 0 ? x[b] : 0), v0 = (a >= 0 ? prev[a] : 0) - (b >= 0 ? prev[b] : 0);
       this.ic.set(p.id, trap ? ((2 * p.value) / h) * (v1 - v0) - (this.ic.get(p.id) ?? 0) : (p.value / h) * (v1 - v0));
     }
-    this.x = x; this.t += h; this.first = false;
+    this.x = x; this.t += h; this.first = false; this.lastH = h;
     return this;
   }
 }

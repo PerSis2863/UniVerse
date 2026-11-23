@@ -1,11 +1,12 @@
-import type { Part, Wave } from './circuit';
+import { HOLD, type Part, type Wave } from './circuit';
 
 // Hyperion Simulate → Circuits (M410): the drawing board. Parts and wires join grid points; points joined by wires are
 // one node; a ground symbol makes its point node "0"; probes show a node on the oscilloscope. `netlist` turns the board
 // into the simulator's parts. Kept on this device (`uv-sim-circuit`).
 
 export type ItemKind = 'wire' | 'R' | 'C' | 'L' | 'V' | 'I' | 'D' | 'S' | 'M';
-export interface Item { id: string; kind: ItemKind; x1: number; y1: number; x2: number; y2: number; value: number; wave: Wave; freq: number }
+/** `hold` and `sense` (M431): a switch that holds `hold` volts at the probe `sense` (a mark's id); 0 or none: off. */
+export interface Item { id: string; kind: ItemKind; x1: number; y1: number; x2: number; y2: number; value: number; wave: Wave; freq: number; hold?: number; sense?: string }
 export interface Mark { id: string; kind: 'ground' | 'probe'; x: number; y: number }
 export interface Board { items: Item[]; marks: Mark[]; dt: number; window: number }
 
@@ -47,14 +48,18 @@ export function netlist(board: Board) {
     // A transistor's value is its threshold voltage; its gate is the point beside it.
     if (it.kind === 'M') { const gp = gatePoint(it); return { id: it.id, kind: 'M', a, b, g: node(gp.x, gp.y), vth: Math.max(0, it.value), k: MOS_K, lambda: MOS_LAMBDA }; }
     // A switch's value is its duty (the share of each period it is on).
-    if (it.kind === 'S') return { id: it.id, kind: 'S', a, b, duty: Math.max(0, Math.min(1, it.value)), freq: it.freq };
+    if (it.kind === 'S') {
+      const probe = it.hold ? board.marks.find((m) => m.id === it.sense && m.kind === 'probe') : undefined;
+      return { id: it.id, kind: 'S', a, b, duty: Math.max(0, Math.min(1, it.value)), freq: it.freq, ...(probe ? { hold: { node: node(probe.x, probe.y), target: it.hold!, ...HOLD } } : {}) };
+    }
     return { id: it.id, kind: it.kind as 'R' | 'C' | 'L' | 'I', a, b, value: it.value };
   });
   const probes = board.marks.filter((m) => m.kind === 'probe').map((m, i) => ({ id: m.id, node: node(m.x, m.y), label: `P${i + 1}`, colour: PROBE_COLOURS[i % PROBE_COLOURS.length] }));
   return { parts, node, probes, grounded: board.marks.some((m) => m.kind === 'ground') };
 }
 
-const it = (kind: ItemKind, x1: number, y1: number, x2: number, y2: number, value?: number, wave: Wave = 'dc', freq = 50): Item => ({ ...newItem(kind, x1, y1, x2, y2), ...(value !== undefined ? { value } : {}), wave, freq });
+const it = (kind: ItemKind, x1: number, y1: number, x2: number, y2: number, value?: number, wave: Wave = 'dc', freq = 50, extra: Partial<Item> = {}): Item => ({ ...it0(kind, x1, y1, x2, y2, value, wave, freq), ...extra });
+const it0 = (kind: ItemKind, x1: number, y1: number, x2: number, y2: number, value?: number, wave: Wave = 'dc', freq = 50): Item => ({ ...newItem(kind, x1, y1, x2, y2), ...(value !== undefined ? { value } : {}), wave, freq });
 const mk = (kind: Mark['kind'], x: number, y: number): Mark => ({ id: itemId(kind), kind, x, y });
 
 /** Ready-made circuits to start from. */
@@ -70,6 +75,9 @@ export const EXAMPLES: { id: string; name: string; make: () => Board }[] = [
   // conducts from drain to source.
   { id: 'mosfet-boost', name: 'Boost with a transistor (MOSFET)', make: () => ({ dt: 1e-6, window: 0.01, items: [it('V', 4, 4, 4, 10, 5), it('L', 4, 4, 12, 4, 100e-6), it('M', 12, 4, 12, 10, 2), it('V', 7, 7, 7, 10, 10, 'square', 50_000), it('wire', 7, 7, 10, 7), it('D', 12, 4, 18, 4), it('C', 18, 4, 18, 10, 100e-6), it('wire', 18, 4, 24, 4), it('R', 24, 4, 24, 10, 20), it('wire', 4, 10, 7, 10), it('wire', 7, 10, 12, 10), it('wire', 12, 10, 18, 10), it('wire', 18, 10, 24, 10)], marks: [mk('ground', 4, 10), mk('probe', 12, 4), mk('probe', 18, 4)] }) },
   { id: 'mosfet-switch', name: 'A transistor switching a lamp', make: () => ({ dt: 1e-4, window: 1, items: [it('V', 4, 3, 4, 11, 12), it('wire', 4, 3, 14, 3), it('R', 14, 3, 14, 6, 24), it('M', 14, 6, 14, 11, 2), it('V', 9, 9, 9, 11, 5, 'square', 2), it('wire', 9, 9, 12, 9), it('wire', 4, 11, 9, 11), it('wire', 9, 11, 14, 11)], marks: [mk('ground', 4, 11), mk('probe', 14, 6), mk('probe', 12, 9)] }) },
+  // M431: the same converters holding their own voltage: the switch reads the probe and sets its own duty.
+  { id: 'reg-buck', name: 'A regulated 5 V supply (buck holding 5 V)', make: () => { const out = mk('probe', 18, 4); return { dt: 1e-6, window: 0.03, items: [it('V', 4, 4, 4, 10, 12), it('S', 4, 4, 10, 4, 0.5, 'dc', 50_000, { hold: 5, sense: out.id }), it('D', 10, 10, 10, 4), it('L', 10, 4, 18, 4, 100e-6), it('C', 18, 4, 18, 10, 100e-6), it('wire', 18, 4, 24, 4), it('R', 24, 4, 24, 10, 10), it('wire', 4, 10, 10, 10), it('wire', 10, 10, 18, 10), it('wire', 18, 10, 24, 10)], marks: [mk('ground', 4, 10), out] }; } },
+  { id: 'reg-boost', name: 'A regulated 12 V from 5 V (boost holding 12 V)', make: () => { const out = mk('probe', 18, 4); return { dt: 1e-6, window: 0.03, items: [it('V', 4, 4, 4, 10, 5), it('L', 4, 4, 12, 4, 100e-6), it('S', 12, 4, 12, 10, 0.5, 'dc', 50_000, { hold: 12, sense: out.id }), it('D', 12, 4, 18, 4), it('C', 18, 4, 18, 10, 100e-6), it('wire', 18, 4, 24, 4), it('R', 24, 4, 24, 10, 30), it('wire', 4, 10, 12, 10), it('wire', 12, 10, 18, 10), it('wire', 18, 10, 24, 10)], marks: [mk('ground', 4, 10), out] }; } },
   { id: 'divider', name: 'A voltage divider', make: () => ({ dt: 1e-4, window: 0.01, items: [it('V', 4, 4, 4, 10, 9), it('R', 4, 4, 12, 4, 1000), it('R', 12, 4, 12, 10, 2000), it('wire', 4, 10, 12, 10)], marks: [mk('ground', 4, 10), mk('probe', 12, 4)] }) },
 ];
 
@@ -81,7 +89,7 @@ export function readBoard(raw: unknown): Board {
   const kinds: ItemKind[] = ['wire', 'R', 'C', 'L', 'V', 'I', 'D', 'S', 'M'];
   return {
     dt: Math.max(1e-7, Math.min(1e-2, num(b.dt, 1e-5))), window: Math.max(1e-4, Math.min(5, num(b.window, 0.03))),
-    items: b.items.filter((x) => x && kinds.includes(x.kind)).slice(0, 200).map((x) => ({ id: String(x.id), kind: x.kind, x1: num(x.x1, 0), y1: num(x.y1, 0), x2: num(x.x2, 0), y2: num(x.y2, 0), value: num(x.value, x.kind === 'wire' ? 0 : DEFAULTS[x.kind]), wave: (['dc', 'sine', 'square'] as const).find((w) => w === x.wave) ?? 'dc', freq: Math.max(0.01, Math.min(1e7, num(x.freq, x.kind === 'S' ? 50_000 : 50))) })),
+    items: b.items.filter((x) => x && kinds.includes(x.kind)).slice(0, 200).map((x) => ({ id: String(x.id), kind: x.kind, x1: num(x.x1, 0), y1: num(x.y1, 0), x2: num(x.x2, 0), y2: num(x.y2, 0), value: num(x.value, x.kind === 'wire' ? 0 : DEFAULTS[x.kind]), ...(x.kind === 'S' && typeof x.hold === 'number' && Number.isFinite(x.hold) && x.hold !== 0 && typeof x.sense === 'string' ? { hold: Math.max(-1000, Math.min(1000, x.hold)), sense: x.sense.slice(0, 80) } : {}), wave: (['dc', 'sine', 'square'] as const).find((w) => w === x.wave) ?? 'dc', freq: Math.max(0.01, Math.min(1e7, num(x.freq, x.kind === 'S' ? 50_000 : 50))) })),
     marks: b.marks.filter((m) => m && (m.kind === 'ground' || m.kind === 'probe')).slice(0, 40).map((m) => ({ id: String(m.id), kind: m.kind, x: num(m.x, 0), y: num(m.y, 0) })),
   };
 }

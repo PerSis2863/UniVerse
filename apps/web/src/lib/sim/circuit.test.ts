@@ -154,3 +154,41 @@ describe('the transistor (M430)', () => {
     expect(avg('M')).toBeGreaterThan(0); expect(avg('M')).toBeLessThan(0.05 * input);
   });
 });
+
+describe('converters that hold their voltage (M431)', () => {
+  const settle = async (id: string, until: number) => {
+    const { netlist, EXAMPLES } = await import('./schematic');
+    const board = EXAMPLES.find((e) => e.id === id)!.make(), net = netlist(board), c = new Circuit(net.parts);
+    let peak = 0;
+    while (c.t < until) { c.step(board.dt); peak = Math.max(peak, c.v(net.probes[0].node)); }
+    let sum = 0, n = 0;
+    while (c.t < until + 0.002) { c.step(board.dt); sum += c.v(net.probes[0].node); n++; }
+    return { v: sum / n, peak, sw: net.parts.find((p) => p.kind === 'S')! };
+  };
+  it('a switch edge splits the step, so a duty isn’t rounded to whole steps', async () => {
+    const { nextEdge } = await import('./circuit');
+    expect(nextEdge(50_000, 0.463, 0)).toBeCloseTo(0.463 / 50_000, 15);
+    expect(nextEdge(50_000, 0.463, 0.463 / 50_000)).toBeCloseTo(1 / 50_000, 15);
+  });
+  it('the buck holds 5 V from 12 V, the boost 12 V from 5 V, without a big overshoot', async () => {
+    const b = await settle('reg-buck', 0.025);
+    expect(Math.abs(b.v - 5)).toBeLessThan(0.02); expect(b.peak).toBeLessThan(5.3);
+    expect(b.sw).toMatchObject({ kind: 'S', hold: { target: 5 } });
+    const u = await settle('reg-boost', 0.035);
+    expect(Math.abs(u.v - 12)).toBeLessThan(0.1); expect(u.peak).toBeLessThan(13.5);
+  });
+  it('stays steady for a long run (no near-zero steps at the edges, no ringing after a flip)', async () => {
+    const { netlist, EXAMPLES } = await import('./schematic');
+    const board = EXAMPLES.find((e) => e.id === 'reg-buck')!.make(), net = netlist(board), c = new Circuit(net.parts), node = net.probes[0].node;
+    while (c.t < 0.13) c.step(board.dt);
+    let mn = Infinity, mx = -Infinity;
+    while (c.t < 0.15) { c.step(board.dt); mn = Math.min(mn, c.v(node)); mx = Math.max(mx, c.v(node)); }
+    expect(mx - mn).toBeLessThan(0.05);
+    expect(Math.abs(c.t - 0.15)).toBeLessThan(2e-6);
+  }, 60_000);
+  it('a kept board keeps a switch’s hold; nonsense is dropped', async () => {
+    const { readBoard } = await import('./schematic');
+    const b = readBoard({ items: [{ kind: 'S', x1: 1, y1: 1, x2: 3, y2: 1, hold: 5, sense: 'p1' }, { kind: 'S', x1: 1, y1: 2, x2: 3, y2: 2, hold: 'x', sense: 'p1' }], marks: [] });
+    expect(b.items[0]).toMatchObject({ hold: 5, sense: 'p1' }); expect(b.items[1].hold).toBeUndefined();
+  });
+});

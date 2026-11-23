@@ -11445,3 +11445,19 @@ in the symbol's frame), energy summed every step and averaged over each screen's
 start-up; that's why charging coils and capacitors get their own line and the efficiency leaves them out. Not built:
 p-channel and bipolar transistors, gate charge and switching losses (the switch is instant), thermal limits.
 
+## M431 (23 Nov): Hyperion Circuits, converters that hold their own voltage
+
+`circuit.ts`: a PWM switch Part may carry `hold` ({ node, target, gain, soft, max }; defaults `HOLD`: gain 150 a second,
+2 ms soft start, duty ≤ 0.9); `regulate()` runs at the start of every step piece and, once per period, moves the duty
+by gain × (error ÷ target) ÷ freq (the target's sign decides which way); `dutyOf(p)` is the duty now. Exact switching,
+which the regulation needed: `step(h)` splits the step at every switch edge (`nextEdge`, looked for from just after
+now), ignores edges within a millionth of the step of either end, sets the clock to each piece's end exactly, and makes
+the piece after any switch flips backward Euler (`swState`, `first`). Traps found on the way, keep them fixed: (1) a
+switch tested only at step ends rounds its duty to whole steps (5% jumps at 20 steps a period); (2) averaging a
+switch's conductance over a step is wrong (a partly-on step acts fully on); (3) rounding left the time grid 0.1 ps off,
+so each period got a ~1e-13 s step: the trapezoidal rule's companion values blow up there and a steady output broke
+into a ±0.4 V oscillation after ~120 ms (`circuit.test.ts` "stays steady for a long run" guards it). `schematic.ts`:
+items carry `hold` and `sense` (a probe's id), kept by `readBoard`; examples `reg-buck`, `reg-boost`. `CircuitBench`:
+"Hold a voltage", Volts, At (a probe), the duty it has set. Not built: current-mode control, a load you can switch while
+it runs (changing a part rebuilds the circuit), compensator design (the gain is fixed).
+

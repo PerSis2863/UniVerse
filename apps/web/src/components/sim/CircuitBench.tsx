@@ -181,7 +181,7 @@ export function CircuitBench() {
   const setItem = (id: string, patch: Partial<Item>) => setBoard((b) => ({ ...b, items: b.items.map((i) => (i.id === id ? { ...i, ...patch } : i)) }));
   const part = sel && c ? net.parts.find((p) => p.id === sel.id) : undefined;
   const across = sel ? nodeV(sel.x1, sel.y1) - nodeV(sel.x2, sel.y2) : 0, through = part && c ? c.current(part) : 0;
-  const describe = (it: Item) => (it.kind === 'M' ? `on above ${si(it.value, 'V')}` : it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
+  const describe = (it: Item) => (it.kind === 'M' ? `on above ${si(it.value, 'V')}` : it.kind === 'S' && it.hold ? `holds ${si(it.hold, 'V')} · ${si(it.freq, 'Hz')}` : it.kind === 'S' ? `PWM ${si(it.freq, 'Hz')} · ${Math.round(it.value * 100)}%` : it.kind === 'V' ? (it.wave === 'dc' ? `${si(it.value, 'V')}` : `${si(it.value, 'V')} ${it.wave === 'sine' ? '~' : '⊓'} ${si(it.freq, 'Hz')}`) : it.kind === 'D' || it.kind === 'wire' ? '' : si(it.value, UNITS[it.kind]));
   const X = (gx: number) => PAD + gx * G, Y = (gy: number) => PAD + gy * G;
   /** A transistor's gate dot in its own drawing's frame (along the part, then across). */
   const local = (it: Item): [number, number] => {
@@ -218,10 +218,26 @@ export function CircuitBench() {
           <div className="space-y-2 rounded-lg border border-zinc-200 p-3 dark:border-white/10" aria-live="polite">
             <p className="text-[13px] font-semibold text-zinc-900 dark:text-white">{sel ? NAMES[sel.kind] : selMark!.kind === 'ground' ? 'Ground' : 'Probe'}</p>
             {sel?.kind === 'S' && (
-              <div className="grid grid-cols-2 gap-2">
-                <label className={label}>Frequency (Hz)<input type="number" min={1} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0 && n <= 1e7) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>
-                <label className={label}>On for (%)<input type="number" min={0} max={100} step="any" value={Math.round(sel.value * 1000) / 10} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 100) setItem(sel.id, { value: n / 100 }); }} className={ui.input} /></label>
-              </div>
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <label className={label}>Frequency (Hz)<input type="number" min={1} step="any" value={sel.freq} onChange={(e) => { const n = Number(e.target.value); if (n > 0 && n <= 1e7) setItem(sel.id, { freq: n }); }} className={ui.input} /></label>
+                  {sel.hold ? <p className={label}>On for (%)<span className="mt-1 block py-1.5 font-mono text-sm tabular-nums text-zinc-900 dark:text-white">{part?.kind === 'S' && c ? `${(c.dutyOf(part) * 100).toFixed(1)}%` : '–'}</span></p>
+                    : <label className={label}>On for (%)<input type="number" min={0} max={100} step="any" value={Math.round(sel.value * 1000) / 10} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n >= 0 && n <= 100) setItem(sel.id, { value: n / 100 }); }} className={ui.input} /></label>}
+                </div>
+                {/* M431: the switch can hold a voltage itself, reading a probe once a period. */}
+                <label className="flex items-center gap-2 text-xs text-zinc-800 dark:text-zinc-100">
+                  <input type="checkbox" checked={!!sel.hold} disabled={!net.probes.length} onChange={(e) => setItem(sel.id, e.target.checked ? { hold: 5, sense: net.probes[net.probes.length - 1].id } : { hold: undefined, sense: undefined })} />
+                  Hold a voltage {net.probes.length ? <span className="text-zinc-500 dark:text-zinc-400">(sets its own on-time)</span> : <span className="text-zinc-500 dark:text-zinc-400">(add a probe first)</span>}
+                </label>
+                {!!sel.hold && (
+                  <div className="grid grid-cols-2 gap-2">
+                    <label className={label}>Volts<input type="number" step="any" value={sel.hold} onChange={(e) => { const n = Number(e.target.value); if (e.target.value !== '' && n !== 0 && Math.abs(n) <= 1000) setItem(sel.id, { hold: n }); }} className={ui.input} /></label>
+                    <label className={label}>At
+                      <select value={sel.sense} onChange={(e) => setItem(sel.id, { sense: e.target.value })} className="input mt-1 w-full">{net.probes.map((p) => <option key={p.id} value={p.id}>{p.label}</option>)}</select>
+                    </label>
+                  </div>
+                )}
+              </>
             )}
             {sel && sel.kind !== 'wire' && sel.kind !== 'D' && sel.kind !== 'S' && (
               <label className={label}>{sel.kind === 'M' ? 'Turns on above (gate to source)' : sel.kind === 'V' && sel.wave !== 'dc' ? 'Peak' : 'Value'} <span className="font-normal text-zinc-500 dark:text-zinc-400">({UNITS[sel.kind]}; 4.7k, 10u, 2m…)</span>
