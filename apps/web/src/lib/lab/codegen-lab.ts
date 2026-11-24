@@ -3,7 +3,7 @@ import { BUILTINS, type Builtin } from './builtins';
 import { indexHooks, opHooks, textOf, type Lab } from './interp';
 import { FileStore } from './files';
 import { mat, num, str, toMat, type Mat, type Struct, type Value } from './values';
-import { CodegenError, generate, type Cls, type Ty } from './codegen';
+import { CodegenError, generate, quotientType, type Cls, type Ty } from './codegen';
 import * as X from './fixed';
 
 // Hyperion's embedded code in the language (M480): codegen turns a function of the script into C (name.c and name.h
@@ -65,10 +65,45 @@ opHooks.binop = (op, a, b) => {
   if (op === '+' || op === '-') t = X.sumType(na, nb);
   else if (op === '.*' || (op === '*' && (qa.d.length === 1 || qb.d.length === 1))) t = X.productType(na, nb);
   else if (op === '*') { const k = qa.c; t = X.productType(na, nb); t = { ...t, wl: Math.min(128, t.wl + Math.ceil(Math.log2(Math.max(2, k)))) }; }
+  else if (op === './' || op === '/') {
+    if (op === '/' && qb.d.length > 1) throw new LabError('/ by a fi matrix isn’t here: use ./ (element by element).');
+    return fiDiv(qa, na, qb, nb, quotientType(na, nb));
+  }
   else if (['<', '<=', '>', '>=', '==', '~=', '!='].includes(op)) return compare(op, qa, qb);
-  else throw new LabError(`${op} on fi values isn’t here: + − .* * (or double(x) first).`);
+  else throw new LabError(`${op} on fi values isn’t here: + − .* * ./ (or double(x) first).`);
   return make(toMat(fiArith(op, qa, qb)), t);
 };
+/** M527: a ./ b in type t, exactly as the C (fx_div): the stored quotient rounded to the nearest (halves up) and held in
+ * range; dividing by zero gives the top (or bottom) of the range, 0 / 0 gives 0. Worked in BigInt. */
+function fiDiv(a: Mat, na: X.Nt, b: Mat, nb: X.Nt, t: X.Nt): Struct {
+  if (a.d.length > 1 && b.d.length > 1 && (a.r !== b.r || a.c !== b.c)) throw new LabError(`The sizes must agree: ${a.r}×${a.c} and ${b.r}×${b.c}.`);
+  const shape = a.d.length >= b.d.length ? a : b, at = (m: Mat, i: number) => m.d[m.d.length === 1 ? 0 : i];
+  const s = t.fl - na.fl + nb.fl, one = BigInt(1), zero = BigInt(0), two = BigInt(2);
+  const w = BigInt(t.wl), lo = t.signed ? -(one << (w - one)) : zero, hi = t.signed ? (one << (w - one)) - one : (one << w) - one;
+  const out = Array.from({ length: shape.d.length }, (_, i) => {
+    let p = BigInt(X.stored(at(a, i), na)), q = BigInt(X.stored(at(b, i), nb));
+    let r: bigint;
+    if (q === zero) r = p > zero ? hi : p < zero ? lo : zero;
+    else {
+      if (q < zero) { p = -p; q = -q; }
+      if (s >= 0) p *= one << BigInt(s); else q *= one << BigInt(-s);
+      const top = two * p + q, m = two * q;
+      r = top / m;
+      if (top % m !== zero && top < zero) r -= one;
+      r = r < lo ? lo : r > hi ? hi : r;
+    }
+    return Number(r) / 2 ** t.fl;
+  });
+  return make(mat(shape.r, shape.c, out), t);
+}
+def('divide', (a) => {
+  if (!isFi(a[0])) throw new LabError('divide(T, a, b): T is the answer’s type, numerictype(s, w, f) or a fi value.');
+  if (!isFi(a[1]) && !isFi(a[2])) throw new LabError('divide(T, a, b): a or b must be a fi value.');
+  const like = typeOf((isFi(a[1]) ? a[1] : a[2]) as Struct);
+  const side = (v: Value): [Mat, X.Nt] => { if (isFi(v)) return [valuesOf(v), typeOf(v)]; const m = toMat(v); return [m, { ...like, fl: X.bestFl(m.d, like.signed, like.wl) }]; };
+  const [ma, na] = side(a[1]), [mb, nb] = side(a[2]);
+  return [fiDiv(ma, na, mb, nb, typeOf(a[0]))];
+});
 /** M524: fi values compared by their values (a logical array). */
 function compare(op: string, a: Mat, b: Mat): Value {
   if (a.d.length > 1 && b.d.length > 1 && (a.r !== b.r || a.c !== b.c)) throw new LabError(`The sizes must agree: ${a.r}×${a.c} and ${b.r}×${b.c}.`);
@@ -102,7 +137,10 @@ indexHooks.set = (base, _idx, v, plain) => {
 def('storedInteger', (a) => { if (!isFi(a[0])) throw new LabError('storedInteger takes a fi value.'); const t = typeOf(a[0]), m = valuesOf(a[0]); return [mat(m.r, m.c, [...m.d].map((x) => X.stored(x, t)))]; });
 def('bin', (a) => { if (!isFi(a[0])) throw new LabError('bin takes a fi value.'); const t = typeOf(a[0]); return [str([...valuesOf(a[0]).d].map((x) => X.bits(x, t)).join('   '))]; });
 def('hex', (a) => { if (!isFi(a[0])) throw new LabError('hex takes a fi value.'); const t = typeOf(a[0]); return [str([...valuesOf(a[0]).d].map((x) => X.hex(x, t)).join('   '))]; });
-def('numerictype', (a) => { if (!isFi(a[0])) throw new LabError('numerictype takes a fi value.'); const t = typeOf(a[0]); return [str(`${t.signed ? 'Signed' : 'Unsigned'}, word length ${t.wl}, fraction length ${t.fl}`)]; });
+def('numerictype', (a) => {
+  // M527: numerictype(s, w, f) is a type to divide into (here a fi zero of that type).
+  if (a.length === 3 && !isFi(a[0])) return [make(mat(1, 1, [0]), { signed: !!toMat(a[0]).d[0], wl: toMat(a[1]).d[0], fl: toMat(a[2]).d[0] })];
+  if (!isFi(a[0])) throw new LabError('numerictype takes a fi value.'); const t = typeOf(a[0]); return [str(`${t.signed ? 'Signed' : 'Unsigned'}, word length ${t.wl}, fraction length ${t.fl}`)]; });
 def('upperbound', (a) => { if (!isFi(a[0])) throw new LabError('upperbound takes a fi value.'); const t = typeOf(a[0]); return [num(X.limits(t)[1] / 2 ** t.fl)]; });
 def('lowerbound', (a) => { if (!isFi(a[0])) throw new LabError('lowerbound takes a fi value.'); const t = typeOf(a[0]); return [num(X.limits(t)[0] / 2 ** t.fl)]; });
 for (const name of ['double', 'single']) {

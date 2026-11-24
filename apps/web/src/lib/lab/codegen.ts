@@ -20,13 +20,31 @@ export class CodegenError extends Error {}
 const CTYPE: Record<Cls, string> = { double: 'double', single: 'float', logical: 'bool', int8: 'int8_t', uint8: 'uint8_t', int16: 'int16_t', uint16: 'uint16_t', int32: 'int32_t', uint32: 'uint32_t', int64: 'int64_t', uint64: 'uint64_t', fixed: 'int64_t' };
 const isInt = (c: Cls) => c.includes('int');
 const isFx = (t: Ty) => t.cls === 'fixed';
-const MAX_FX = 62;
-const fxC = (t: Nt) => `${t.signed ? '' : 'u'}int${t.wl <= 8 ? 8 : t.wl <= 16 ? 16 : t.wl <= 32 ? 32 : 64}_t`;
+// M527: up to 62 bits the work is in int64_t; wider types (to 126 bits) are held and worked in 128-bit integers
+// (fx128_t: GCC and Clang on 64-bit computers), so a sum, a product or an alignment still never overflows.
+const NARROW_FX = 62, MAX_FX = 126;
+const fxC = (t: Nt) => (t.wl > 64 ? `${t.signed ? '' : 'u'}fx128_t` : `${t.signed ? '' : 'u'}int${t.wl <= 8 ? 8 : t.wl <= 16 ? 16 : t.wl <= 32 ? 32 : 64}_t`);
 const cty = (t: Ty) => (isFx(t) ? fxC(t.fx!) : CTYPE[t.cls]);
 const sameFx = (a: Ty, b: Ty) => !!a.fx && !!b.fx && a.fx.signed === b.fx.signed && a.fx.wl === b.fx.wl && a.fx.fl === b.fx.fl;
 const fxText = (t: Nt) => `fi(${t.signed ? 'signed' : 'unsigned'}, ${t.wl} bits, ${t.fl} fraction)`;
 const tyText = (t: Ty) => (isFx(t) ? fxText(t.fx!) : t.cls);
 const big = (v: number) => `INT64_C(${v})`;
+/** M527: a stored whole number as exact C, also past 2^53 (a double's whole numbers there are m·2^e with m at most 2^53). */
+function bigX(v: number): string {
+  if (Math.abs(v) <= 2 ** 52) return big(v);
+  const e = Math.ceil(Math.log2(Math.abs(v))) - 53;
+  return `((fxw_t)${big(v / 2 ** e)} * ((fxw_t)1 << ${e}))`;
+}
+const p2 = (d: number) => (d <= 52 ? big(2 ** d) : `((fxw_t)1 << ${d})`);
+/** M527: a fixed type's range as exact C. */
+function lim(t: Nt): [string, string] {
+  if (t.wl <= 52) return limits(t).map(big) as [string, string];
+  return t.signed ? [`(-((fxw_t)1 << ${t.wl - 1}))`, `(((fxw_t)1 << ${t.wl - 1}) - 1)`] : ['0', `(((fxw_t)1 << ${t.wl}) - 1)`];
+}
+/** M527: the quotient's fraction and the bits its working needs (numerator scaled up, or denominator). */
+const divPlan = (a: Nt, b: Nt, to: Nt) => { const s = to.fl - a.fl + b.fl; return { s, need: Math.max(a.wl + Math.max(s, 0), b.wl + Math.max(-s, 0)) + 2 }; };
+/** M527: a ./ b's own type: the larger word, the fraction a's minus b's (divide(T, a, b) chooses another). */
+export const quotientType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.max(a.wl, b.wl), fl: a.fl - b.fl });
 const scalar = (t: Ty) => t.r === 1 && t.c === 1;
 const n = (t: Ty) => t.r * t.c;
 const sizeText = (t: Ty) => `${t.r}×${t.c}`;
@@ -47,6 +65,7 @@ interface Fn { def: FnDef; args: Ty[]; outs: Ty[]; cname: string; code: string[]
 
 export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { c: string; h: string } {
   const helpers = new Set<string>(), made = new Map<string, Fn>(), order: Fn[] = [];
+  let wide = false; // M527: some fixed-point work needs 128-bit integers
   let tmp = 0;
 
   function make(name: string, argTypes: Ty[], from: string[]): Fn {
@@ -86,6 +105,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     // ——— Fixed point (M524) ———
     function fxTy(fx: Nt, r = 1, c = 1): Ty {
       if (!(fx.wl >= 2 && fx.wl <= MAX_FX && Number.isInteger(fx.wl) && Number.isInteger(fx.fl))) fail(`a fixed-point value of ${fx.wl} bits: C here works up to ${MAX_FX} bits (sums and products grow: give the accumulator a type with acc(:) = …).`);
+      if (fx.wl > NARROW_FX) wide = true;
       return { cls: 'fixed', r, c, fx };
     }
     /** A number written in the code, met by a fixed-point value: it takes that value's word and sign, its own best fraction. */
@@ -95,13 +115,13 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
       const v = literal(e);
       if (v === null) fail('a fixed-point value meets a number that isn’t written in the code: make it fixed point too, with fi(x, s, w, f).');
       const nt: Nt = { signed: like.signed, wl: like.wl, fl: bestFl([v!], like.signed, like.wl) };
-      return { nt, code: () => big(stored(v!, nt)) };
+      return { nt, code: () => bigX(stored(v!, nt)) };
     }
     function fxBin(e: Extract<Expr, { k: 'bin' }>, a: Ty, b: Ty): { t: Ty; code: (k: string | null) => string } {
       const like = (isFx(a) ? a : b).fx!, A = fxSide(e.a, a, like), B = fxSide(e.b, b, like);
       const shape = scalar(a) ? b : a;
       if (!scalar(a) && !scalar(b) && !(e.op === '*') && (a.r !== b.r || a.c !== b.c)) fail(`the sizes don’t agree: ${sizeText(a)} ${e.op} ${sizeText(b)}.`);
-      const at = (side: typeof A, fl: number, k: string | null) => { const d = fl - side.nt.fl; return d ? `(int64_t)${side.code(k)} * ${big(2 ** d)}` : `(int64_t)${side.code(k)}`; };
+      const at = (side: typeof A, fl: number, k: string | null) => { const d = fl - side.nt.fl; return d ? `(fxw_t)${side.code(k)} * ${p2(d)}` : `(fxw_t)${side.code(k)}`; };
       if (CMP[e.op]) {
         if (!scalar(a) || !scalar(b)) fail(`compare single numbers in conditions (here ${sizeText(a)} ${e.op} ${sizeText(b)}).`);
         const fl = Math.max(A.nt.fl, B.nt.fl);
@@ -113,7 +133,12 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
       }
       if (e.op === '.*' || (e.op === '*' && (scalar(a) || scalar(b)))) {
         const nt = productType(A.nt, B.nt), t = fxTy(nt, shape.r, shape.c);
-        return { t, code: (k) => `(${fxC(nt)})((int64_t)${A.code(k)} * (int64_t)${B.code(k)})` };
+        return { t, code: (k) => `(${fxC(nt)})((fxw_t)${A.code(k)} * (fxw_t)${B.code(k)})` };
+      }
+      if (e.op === './' || e.op === '/') {
+        if (e.op === '/' && !scalar(b)) fail('/ by a fixed-point matrix can’t become C here (use ./).');
+        const nt = quotientType(A.nt, B.nt);
+        return { t: fxTy(nt, shape.r, shape.c), code: (k) => fxDivCode(nt, A, B, k) };
       }
       if (e.op === '*') {
         if (!isFx(a) || !isFx(b)) fail('a matrix product of fixed-point values needs both fixed point.');
@@ -121,17 +146,26 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         const p = productType(a.fx!, b.fx!), nt = { ...p, wl: p.wl + Math.ceil(Math.log2(Math.max(2, a.c))) };
         return { t: fxTy(nt, a.r, b.c), code: () => fail('a matrix product where one number is needed.') };
       }
-      return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * and comparisons).`);
+      return fail(`${e.op} on fixed-point values can’t become C here (+ − .* * ./ and comparisons).`);
+    }
+    /** M527: a quotient rounded to the nearest step of its type (halves up) and held in its range; dividing by zero gives the top or bottom (0 / 0 is 0). */
+    function fxDivCode(to: Nt, A: { nt: Nt; code: (k: string | null) => string }, B: { nt: Nt; code: (k: string | null) => string }, k: string | null): string {
+      const { s, need } = divPlan(A.nt, B.nt, to);
+      if (need > MAX_FX + 1) fail(`a fixed-point division that needs ${need} bits of working: choose a type with fewer fraction bits (divide(T, a, b)).`);
+      if (need > NARROW_FX + 1) wide = true;
+      helpers.add('fx_div'); helpers.add('fx_sat');
+      const [lo, hi] = lim(to);
+      return `(${fxC(to)})fx_div((fxw_t)${A.code(k)}, (fxw_t)${B.code(k)}, ${s}, ${lo}, ${hi})`;
     }
     /** A value converted to a fixed-point type: rounded to the nearest step (halves up) and held in range. */
     function toFx(to: Nt, x: { code: string; t: Ty }): string {
-      const [lo, hi] = limits(to);
+      const [lo, hi] = lim(to);
       if (!isFx(x.t)) helpers.add('fx_from');
-      if (!isFx(x.t)) return `(${fxC(to)})fx_from_double((double)${x.code}, ${to.fl}, ${big(lo)}, ${big(hi)})`;
+      if (!isFx(x.t)) return `(${fxC(to)})fx_from_double((double)${x.code}, ${to.fl}, ${lo}, ${hi})`;
       const from = x.t.fx!;
       if (from.signed === to.signed && from.wl === to.wl && from.fl === to.fl) return x.code;
       helpers.add('fx_shift'); helpers.add('fx_sat');
-      return `(${fxC(to)})fx_shift((int64_t)${x.code}, ${to.fl - from.fl}, ${big(lo)}, ${big(hi)})`;
+      return `(${fxC(to)})fx_shift((fxw_t)${x.code}, ${to.fl - from.fl}, ${lo}, ${hi})`;
     }
 
     // ——— Types ———
@@ -188,6 +222,17 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         if (a.length !== 4) fail('fi(x, signed, wordLength, fractionLength) here: all four, so the type is known.');
         const fx: Nt = { signed: !!constant(a[1]), wl: constant(a[2]), fl: constant(a[3]) };
         return fxTy(fx, t[0].r, t[0].c);
+      }
+      if (fname === 'numerictype' && !fns.has(fname)) {
+        if (a.length !== 3) fail('numerictype(signed, wordLength, fractionLength) here: all three, so the type is known.');
+        return fxTy({ signed: !!constant(a[0]), wl: constant(a[1]), fl: constant(a[2]) });
+      }
+      if (fname === 'divide' && !fns.has(fname)) {
+        if (a.length !== 3 || !isFx(t[0]) || !scalar(t[0])) fail('divide(T, a, b): T a type (numerictype(s, w, f) or a fi value), then a and b.');
+        if (!isFx(t[1]) && !isFx(t[2])) fail('divide(T, a, b): a or b must be fixed point.');
+        if (!scalar(t[1]) && !scalar(t[2]) && (t[1].r !== t[2].r || t[1].c !== t[2].c)) fail(`the sizes don’t agree: ${sizeText(t[1])} and ${sizeText(t[2])}.`);
+        const shape = scalar(t[1]) ? t[2] : t[1];
+        return fxTy(t[0].fx!, shape.r, shape.c);
       }
       if (t.some(isFx) && !fns.has(fname)) {
         if (fname === 'double' || fname === 'single') return { cls: fname, r: t[0].r, c: t[0].c };
@@ -257,7 +302,7 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         }
         case 'un': {
           const a = scal(e.a, k);
-          if (e.op === '-' && isFx(a.t)) { helpers.add('fx_sat'); const [lo, hi] = limits(a.t.fx!); return { code: `(${fxC(a.t.fx!)})fx_sat(-(int64_t)${a.code}, ${big(lo)}, ${big(hi)})`, t: a.t }; }
+          if (e.op === '-' && isFx(a.t)) { helpers.add('fx_sat'); const [lo, hi] = lim(a.t.fx!); return { code: `(${fxC(a.t.fx!)})fx_sat(-(fxw_t)${a.code}, ${lo}, ${hi})`, t: a.t }; }
           if (e.op === '-') return { code: isInt(a.t.cls) ? satCall(a.t.cls, `-(double)${a.code}`) : `(-${a.code})`, t: a.t };
           if (e.op === '~' || e.op === '!') return { code: `(!${a.code})`, t: { ...a.t, cls: 'logical' } };
           return a;
@@ -279,6 +324,12 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
     function call(fname: string, a: Expr[], k: string | null): { code: string; t: Ty } {
       const t = callType(fname, a);
       if (fname === 'fi') { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: toFx(t.fx!, x), t: { ...t, r: 1, c: 1 } }; }
+      if (fname === 'numerictype' && !fns.has(fname)) return { code: '0', t };
+      if (fname === 'divide' && !fns.has(fname)) {
+        const ta = typeOf(a[1]), tb = typeOf(a[2]), like = (isFx(ta) ? ta : tb).fx!;
+        const A = fxSide(a[1], ta, like), B = fxSide(a[2], tb, like);
+        return { code: fxDivCode(t.fx!, { nt: A.nt, code: (kk) => A.code(scalar(ta) ? null : kk) }, { nt: B.nt, code: (kk) => B.code(scalar(tb) ? null : kk) }, k), t: { ...t, r: 1, c: 1 } };
+      }
       if ((fname === 'double' || fname === 'single') && isFx(typeOf(a[0]))) { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: `${fname === 'single' ? '(float)' : ''}ldexp((double)${x.code}, ${-x.t.fx!.fl})`, t: { ...t, r: 1, c: 1 } }; }
       if (FN1[fname]) { const x = scal(a[0], scalar(typeOf(a[0])) ? null : k); return { code: isInt(t.cls) ? satCall(t.cls, `${FN1[fname]}((double)${x.code})`) : `${FN1[fname]}(${x.code})`, t }; }
       if (FN2[fname]) { const [x, y] = a.map((v) => scal(v)); return { code: `${FN2[fname]}(${x.code}, ${y.code})`, t }; }
@@ -327,8 +378,8 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
         const fx = isFx(t) ? typeOf(e) : null;
         out(`for (int j = 0; j < ${bt.c}; j++) {`);
         out(`  for (int i = 0; i < ${at.r}; i++) {`);
-        out(fx ? '    int64_t s = 0;' : `    double s = 0.0;`);
-        out(`    for (int p = 0; p < ${at.c}; p++) s += ${fx ? '(int64_t)' : ''}${A}[i + p * ${at.r}] * ${fx ? '(int64_t)' : ''}${B}[p + j * ${bt.r}];`);
+        out(fx ? '    fxw_t s = 0;' : `    double s = 0.0;`);
+        out(`    for (int p = 0; p < ${at.c}; p++) s += ${fx ? '(fxw_t)' : ''}${A}[i + p * ${at.r}] * ${fx ? '(fxw_t)' : ''}${B}[p + j * ${bt.r}];`);
         out(`    ${into}[i + j * ${at.r}] = ${fx ? cast(t, { code: 's', t: fx }) : cast(t, { code: 's', t: { cls: 'double', r: 1, c: 1 } })};`);
         out('  }');
         out('}');
@@ -469,32 +520,43 @@ export function generate(fns: Map<string, FnDef>, entry: string, args: Ty[]): { 
   const inc = ['#include <math.h>', '#include <stdbool.h>', '#include <stdint.h>', ...(helpers.has('stdio') ? ['#include <stdio.h>'] : [])];
   const help: string[] = [];
   for (const c of Object.keys(RANGE) as Cls[]) if (helpers.has(c)) { const [lo, hi] = RANGE[c]!; help.push(`/* ${c}: rounded to the nearest (halves away from zero) and held in range, as MATLAB does */\nstatic ${CTYPE[c]} sat_${c}(double v) {\n  if (isnan(v)) return 0;\n  v = round(v);\n  if (v <= ${lo}) return (${CTYPE[c]})${lo};\n  if (v >= ${hi}) return (${CTYPE[c]})${hi};\n  return (${CTYPE[c]})v;\n}`); }
+  const anyFx = helpers.has('fx_sat') || helpers.has('fx_from') || order.some((f) => [...f.args, ...f.outs, ...f.decls.values()].some(isFx));
   const fxNote = `/* Fixed point: held in range, moved to another fraction length (rounded to the nearest step, halves up, as MATLAB's
- * fi does), made from a double. Worked in 64-bit integers; every type here has at most ${MAX_FX} bits. */`;
-  if (helpers.has('fx_sat') || helpers.has('fx_from')) help.push(fxNote);
-  if (helpers.has('fx_sat')) help.push('static int64_t fx_sat(int64_t v, int64_t lo, int64_t hi) { return v < lo ? lo : v > hi ? hi : v; }');
-  if (helpers.has('fx_shift')) help.push(`static int64_t fx_shift(int64_t v, int d, int64_t lo, int64_t hi) {
+ * fi does), made from a double, divided. Worked in ${wide ? '128' : '64'}-bit integers (fxw_t); every type here has at most ${wide ? MAX_FX : NARROW_FX} bits. */`;
+  if (anyFx) help.push(fxNote, `typedef ${wide ? 'fx128_t' : 'int64_t'} fxw_t;`);
+  if (helpers.has('fx_sat')) help.push('static fxw_t fx_sat(fxw_t v, fxw_t lo, fxw_t hi) { return v < lo ? lo : v > hi ? hi : v; }');
+  if (helpers.has('fx_shift')) help.push(`static fxw_t fx_shift(fxw_t v, int d, fxw_t lo, fxw_t hi) {
   if (d >= 0) {
-    int64_t m = (int64_t)1 << d;
+    fxw_t m = (fxw_t)1 << d;
     if (v > hi / m) return hi;
     if (v < lo / m) return lo;
     return v * m;
   }
-  int64_t m = (int64_t)1 << -d, t = v + m / 2, q = t / m;
+  fxw_t m = (fxw_t)1 << -d, t = v + m / 2, q = t / m;
   if (t % m != 0 && t < 0) q -= 1;
   return fx_sat(q, lo, hi);
 }`);
-  if (helpers.has('fx_from')) help.push(`static int64_t fx_from_double(double x, int fl, int64_t lo, int64_t hi) {
+  if (helpers.has('fx_div')) help.push(`/* a / b as the stored number of a type s fraction bits finer than a's less b's: rounded to the nearest (halves up) */
+static fxw_t fx_div(fxw_t a, fxw_t b, int s, fxw_t lo, fxw_t hi) {
+  if (b == 0) return a > 0 ? hi : a < 0 ? lo : 0;
+  if (b < 0) { a = -a; b = -b; }
+  if (s >= 0) a *= (fxw_t)1 << s; else b *= (fxw_t)1 << -s;
+  fxw_t t = 2 * a + b, m = 2 * b, q = t / m;
+  if (t % m != 0 && t < 0) q -= 1;
+  return fx_sat(q, lo, hi);
+}`);
+  if (helpers.has('fx_from')) help.push(`static fxw_t fx_from_double(double x, int fl, fxw_t lo, fxw_t hi) {
   if (isnan(x)) return 0;
   double s = floor(ldexp(x, fl) + 0.5);
   if (s <= (double)lo) return lo;
   if (s >= (double)hi) return hi;
-  return (int64_t)s;
+  return (fxw_t)s;
 }`);
   if (helpers.has('mod')) help.push('/* mod: the remainder with the sign of the divisor */\nstatic double mod_d(double a, double b) {\n  if (b == 0.0) return a;\n  double r = fmod(a, b);\n  return (r != 0.0 && ((r < 0) != (b < 0))) ? r + b : r;\n}');
   if (helpers.has('rem')) help.push('/* rem: the remainder with the sign of the dividend */\nstatic double rem_d(double a, double b) { return b == 0.0 ? a : fmod(a, b); }');
   const others = order.filter((f) => f !== main);
   const c = [`/* ${entry}.c: generated by Hyperion from ${entry}.m. Plain C99, no memory allocated while it runs.`, ' * Arrays are stored column by column, as in Hyperion: element (i, j) of an r-row matrix is x[(i-1) + (j-1)*r]. */', ...inc, `#include "${entry}.h"`, '', ...help.flatMap((h) => [h, '']), ...others.map((f) => `${sig(f, true)};`), ...(others.length ? [''] : []), ...order.flatMap((f) => [body(f), ''])].join('\n');
-  const h = [`/* ${entry}.h: generated by Hyperion */`, `#ifndef ${guard}`, `#define ${guard}`, '#include <stdbool.h>', '#include <stdint.h>', '', `${sig(main, false)};`, '', `#endif /* ${guard} */`, ''].join('\n');
+  const wideH = wide ? ['#if !defined(__SIZEOF_INT128__)', '#error "this code uses fixed-point types over 62 bits: it needs 128-bit integers (GCC or Clang on a 64-bit computer); keep every type at 62 bits for small chips"', '#endif', '__extension__ typedef __int128 fx128_t;', '__extension__ typedef unsigned __int128 ufx128_t;', ''] : [];
+  const h = [`/* ${entry}.h: generated by Hyperion */`, `#ifndef ${guard}`, `#define ${guard}`, '#include <stdbool.h>', '#include <stdint.h>', '', ...wideH, `${sig(main, false)};`, '', `#endif /* ${guard} */`, ''].join('\n');
   return { c, h };
 }

@@ -163,4 +163,63 @@ int main(void) {
     const got = execFileSync(join(dir, 'run')).toString().trim().split(/\s+/).map(Number);
     expect(got).toEqual([...v('ys'), ...v('as'), ...v('z1'), ...v('z2')]);
   });
+  const DIV = `function q = ratiofx(a, b)
+  q = a ./ b;
+end
+function q = scalefx(a, b)
+  q = divide(numerictype(1, 24, 16), a, b);
+end
+function z = widefx(a, b, c)
+  z = a * b + c;   % 40 + 40 bits: an 80-bit product, worked in 128 bits
+end`;
+  it('M527: fixed-point division and types over 62 bits in Hyperion', () => {
+    const l = new Lab({ out: () => {}, files: new FileStore() });
+    l.run(DIV);
+    l.run(`r = ratiofx(fi(1.75, 1, 16, 12), fi(-0.5, 1, 12, 8)); rt = numerictype(r); rs = storedInteger(r);
+      d = scalefx(fi(1, 1, 16, 12), fi(3, 1, 16, 12)); z0 = storedInteger(scalefx(fi(1, 1, 16, 12), fi(0, 1, 16, 12)));
+      w = widefx(fi(3.25, 1, 40, 30), fi(-2.5, 1, 40, 30), fi(1, 1, 40, 30)); ww = w.WordLength;`);
+    expect((l.vars.get('rt') as { v: string }).v).toBe('Signed, word length 16, fraction length 4');
+    expect(toMat(l.vars.get('rs')!).d[0]).toBe(-56); // -3.5 × 2^4
+    expect(toMat((l.vars.get('d') as unknown as { f: Map<string, never> }).f.get('Value')!).d[0]).toBe(Math.floor(2 ** 16 / 3 + 0.5) / 2 ** 16);
+    expect(toMat(l.vars.get('z0')!).d[0]).toBe(2 ** 23 - 1); // 1 / 0: the top of the range
+    expect(toMat(l.vars.get('ww')!).d[0]).toBe(81);
+    expect(toMat((l.vars.get('w') as unknown as { f: Map<string, never> }).f.get('Value')!).d[0]).toBe(-7.125);
+  });
+  it.skipIf(!hasCc)('M527: the C for ./, divide and an 81-bit sum gives exactly Hyperion’s stored integers', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run(DIV);
+    const pairs = [[1.75, -0.5], [-7.3, 0.9], [0.4, 0], [-0.4, 0], [0, 0], [5.5, 0.75], [-1.0625, -2.5]];
+    l.run(`codegen('ratiofx', {fi(0, 1, 16, 12), fi(0, 1, 12, 8)}); codegen('scalefx', {fi(0, 1, 16, 12), fi(0, 1, 16, 12)});
+      codegen('widefx', {fi(0, 1, 40, 30), fi(0, 1, 40, 30), fi(0, 1, 40, 30)});`);
+    const ins: number[][] = [], want: number[] = [];
+    const st = (v: string) => toMat(l.run(`zz = storedInteger(${v});`) === undefined ? l.vars.get('zz')! : l.vars.get('zz')!).d[0];
+    for (const [x, y] of pairs) {
+      const a = `fi(${x}, 1, 16, 12)`, b = `fi(${y}, 1, 12, 8)`, b2 = `fi(${y}, 1, 16, 12)`;
+      ins.push([st(a), st(b), st(b2)]);
+      want.push(st(`ratiofx(${a}, ${b})`), st(`scalefx(${a}, ${b2})`));
+    }
+    const wa = st('fi(3.25, 1, 40, 30)'), wb = st('fi(-2.5, 1, 40, 30)'), wc = st('fi(1, 1, 40, 30)');
+    const wz = BigInt(wa) * BigInt(wb) + BigInt(wc) * (BigInt(1) << BigInt(30));
+    expect(Number(wz) / 2 ** 60).toBe(st('widefx(fi(3.25, 1, 40, 30), fi(-2.5, 1, 40, 30), fi(1, 1, 40, 30))') / 2 ** 60);
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fxdiv-'));
+    for (const f of ['ratiofx', 'scalefx', 'widefx']) { writeFileSync(join(dir, `${f}.c`), files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), files.text(`${f}.h`)); }
+    expect(files.text('widefx.h')).toContain('fx128_t widefx(int64_t a, int64_t b, int64_t c);');
+    expect(files.text('ratiofx.c')).toContain('typedef int64_t fxw_t;');
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "ratiofx.h"
+#include "scalefx.h"
+#include "widefx.h"
+int main(void) {
+  int16_t a[] = {${ins.map((r) => r[0]).join(', ')}}, b[] = {${ins.map((r) => r[1]).join(', ')}}, b2[] = {${ins.map((r) => r[2]).join(', ')}};
+  for (int i = 0; i < ${ins.length}; i++) printf("%d %d ", (int)ratiofx(a[i], b[i]), (int)scalefx(a[i], b2[i]));
+  fx128_t z = widefx(${wa}, ${wb}, ${wc});
+  printf("%lld %llu", (long long)(z >> 64), (unsigned long long)z);
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'ratiofx.c'), join(dir, 'scalefx.c'), join(dir, 'widefx.c'), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split(/\s+/);
+    expect(got.slice(0, -2).map(Number)).toEqual(want);
+    const hiW = BigInt(got[got.length - 2]), loW = BigInt(got[got.length - 1]);
+    expect((hiW << BigInt(64)) + loW).toBe(wz);
+  });
 });
