@@ -242,5 +242,10 @@ fprintf('Freight stalled %.1f km along the mountain line\\n', info.StalledAt/100
 [h1, n1] = railHeadway(trainModel('intercity'), 200);
 [h2, n2] = railHeadway(trainModel('intercity'), 200, 'Moving', 1);
 fprintf('Fixed blocks: %.0f trains an hour; moving block: %.0f\\n', n1, n2)
+% Five metro trains 90 s apart, 400 m blocks: the train graph shows them bunching
+figure; railLine('metro', trainModel('metro'), (0:4)*90, 'Signals', 'fixed', 'Block', 400)
+lt = railLine('metro', trainModel('metro'), (0:4)*90, 'Signals', 'moving')   % Delay and Held in minutes
+% A slow freight train ahead of an intercity: it can't pass
+mix = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300])
 ` },
 ];

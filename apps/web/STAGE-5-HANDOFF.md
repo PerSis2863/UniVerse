@@ -12866,6 +12866,28 @@ run); with it the last fact is how fast they tip the orbit, from 30 days with an
 ms in a LEO, step period/40). Example orbits.m. Not built: air drag, solar radiation pressure, eclipses, the Earth's
 higher gravity terms, precession and nutation (the frame is the equator of date, near enough for these).
 
+
+## M491b (24 Nov): Hyperion railways, several trains on one line
+
+`rail.ts`: `lineFor` (the line as a train sees it every 5 m, taken out of `railRun`, which now uses it), `railLine(route,
+trains, o)`: time steps of 0.5 s; trains in departure order on one track (no passing, so the train ahead is the one
+before in the list); each may run up to its **authority**, the nearer of the next station and the signals: fixed blocks
+(`blocks` every `block` m; up to the entrance of the last block the tail of the train ahead, less the overlap, has
+cleared) or moving block (the tail of the train ahead less `margin`); its speed is the lower of the limit held over its
+length, a service-braking curve to the authority, and what traction (`tractive · volt`, the volt share being M491c's)
+allows; it never brakes harder than service + 0.5 m/s² (a signal it can't stop for is passed only up to the authority).
+Stations: stop, dwell, go. `held` counts the time the signals' curve was the tighter one; `alone` is the same train on an
+empty line **by the same steps** (memoised per train; `railRun`'s 5 m grid differs ~2%, which showed early arrivals as
+negative delays). `power` per step: traction / η, braking × η × regen as negative (for M491c). Checked: 3 minutes apart
+no one waits; a minute apart with 400 m blocks the 4th metro loses >30 s, with moving block less than half that; moving
+block never closer than the margin; an intercity 5 minutes behind a freight train is held >20 minutes. Language
+`railLine(route, train or {trains}, departs, 'Signals', 'Block', 'Margin')` → a table (Delay, Held in minutes) and a cell
+of runs, or the train graph. Window: Railway → a Trains switch (One train / Several trains) wrapping `OneTrainBench`
+(the old view) and `LineBench.tsx` (metro or intercity, signals, 2–8 trains, minutes apart, block length, a slow freight
+train first; the train graph with blocks and stations; static). Browser check tab `line`. Example railways.m. Not built:
+timetables and their conflicts at junctions, two directions on single track with passing loops, the train ahead's own
+delays spreading (each train leaves on time).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

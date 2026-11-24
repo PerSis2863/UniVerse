@@ -1,10 +1,11 @@
 'use client';
 
-import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react';
+import { useEffect, useEffectEvent, useMemo, useRef, useState, type ReactNode } from 'react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { ROUTES, TRAINS, headway, railRun, routeLength, sectionAt } from '@/lib/lab/rail';
 import { ui } from './bench-ui';
+import { LineBench } from './LineBench';
 
 // Hyperion Simulate → Machines → Railway (M491): a train (metro, intercity, freight) along a line (metro stops, an
 // intercity line with hills, a mountain line), driven the fastest way or to save energy (cruising under the limits and
@@ -15,7 +16,15 @@ type RouteName = 'metro' | 'intercity' | 'mountain';
 type TrainName = 'metro' | 'intercity' | 'freight';
 const MODE_COLOUR = { power: '#16a34a', cruise: '#2563eb', coast: '#f59e0b', brake: '#dc2626', stop: '#71717a' } as const;
 
+// One train (M491) or several sharing the line (M491b, LineBench): one switch at the top of either settings panel.
+type View = 'one' | 'many';
 export function RailBench() {
+  const [view, setView] = useState<View>('one');
+  const switcher = <Segmented<View> label="Trains" value={view} onChange={setView} segments={[{ value: 'one', label: 'One train' }, { value: 'many', label: 'Several trains' }]} />;
+  return view === 'one' ? <OneTrainBench switcher={switcher} /> : <LineBench switcher={switcher} />;
+}
+
+function OneTrainBench({ switcher }: { switcher: ReactNode }) {
   const dark = useDarkMode();
   const [routeName, setRouteName] = useState<RouteName>('metro');
   const [trainName, setTrainName] = useState<TrainName>('metro');
@@ -83,6 +92,7 @@ export function RailBench() {
   return (
     <div className="flex h-[calc(100dvh-12rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
       <aside className="panel flex min-h-0 w-[22rem] shrink-0 flex-col gap-4 overflow-y-auto p-4" aria-label="Railway settings" data-no-motion>
+        {switcher}
         <div className="space-y-2">
           <span className={label}>Line</span>
           <Segmented<RouteName> label="Line" value={routeName} onChange={setRouteName} segments={[{ value: 'metro', label: 'Metro' }, { value: 'intercity', label: 'Intercity' }, { value: 'mountain', label: 'Mountain' }]} />

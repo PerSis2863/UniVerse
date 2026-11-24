@@ -79,3 +79,35 @@ def('railHeadway', (a) => {
   const h = rl.headway(t, v, { block: opt('block'), blocks: opt('blocks'), overlap: opt('overlap'), reaction: opt('reaction'), moving: !!opt('moving'), margin: opt('margin') });
   return [num(h.headway), num(h.perHour), num(h.brakeDist)];
 });
+
+// Several trains on one line (M491b): railLine(route, trains, departs, 'Signals', 'fixed' or 'moving', 'Block', m,
+// 'Margin', m). One train for all, or a cell of them (one per departure).
+function lineTrains(a: Value[]): rl.LineTrain[] {
+  const dep = toMat(a[2] ?? num(NaN), 'The departures (s)'), list = a[1]?.k === 'cell' ? a[1].d.map(trainOf) : null;
+  if (!dep.d.length || [...dep.d].some((x) => !(x >= 0))) throw new LabError('The departures are times in seconds from 0.');
+  if (list && list.length !== dep.d.length) throw new LabError('Give one train for all the departures, or a cell with one train per departure.');
+  if (dep.d.length > 12) throw new LabError('railLine runs up to 12 trains.');
+  const t = list ? null : trainOf(a[1]);
+  return [...dep.d].map((d, k) => ({ train: list ? list[k] : t!, depart: d })).sort((x, y) => x.depart - y.depart);
+}
+function lineOpts(o: Map<string, Value>) {
+  const sig = o.get('signals') ? textOf(o.get('signals')!).toLowerCase() : 'fixed';
+  if (sig !== 'fixed' && sig !== 'moving') throw new LabError("'Signals' is 'fixed' (blocks) or 'moving' (moving block).");
+  const n = (k: string, lo: number, hi: number, what: string) => { if (!o.get(k)) return undefined; const x = toMat(o.get(k)!).d[0]; if (!(x >= lo && x <= hi)) throw new LabError(`${what} is ${lo} to ${hi} m.`); return x; };
+  return { signals: sig as 'fixed' | 'moving', block: n('block', 100, 10000, "'Block'"), margin: n('margin', 0, 2000, "'Margin'") };
+}
+const lineTable = (run: rl.LineRun) => table([['Name', { k: 'cell', r: run.trains.length, c: 1, d: run.trains.map((x) => str(x.name)) }], ['Depart', col(run.trains.map((x) => x.depart / 60))], ['Arrive', col(run.trains.map((x) => x.arrive / 60))], ['Minutes', col(run.trains.map((x) => (x.arrive - x.depart) / 60))], ['Delay', col(run.trains.map((x) => (x.arrive - x.depart - x.alone) / 60))], ['Held', col(run.trains.map((x) => x.held / 60))]]);
+def('railLine', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError("railLine needs the route, the train (or a cell of trains) and the departures in seconds: railLine('metro', trainModel('metro'), [0 90 180], 'Signals', 'fixed', 'Block', 400).");
+  const r = routeOf(a[0]), run = rl.railLine(r, lineTrains(a), lineOpts(pairs(a, 3)));
+  if (nout > 0) return [lineTable(run), { k: 'cell', r: 1, c: run.trains.length, d: run.trains.map((x) => table([['Time', col(x.t)], ['Position', col(x.s)], ['Speed', col(x.v.map((v) => v * 3.6))], ['Power', col(x.power.map((p) => p / 1000))]])) }];
+  // The train graph: distance against time, one line per train, stations as dashed lines.
+  call(lab, 'hold', str('on'));
+  for (const x of run.trains) call(lab, 'plot', row(x.t.map((t) => t / 60)), row(x.s.map((s) => s / 1000)), str('LineWidth'), num(1.5));
+  const tEnd = Math.max(...run.trains.map((x) => x.t[x.t.length - 1])) / 60;
+  for (const s of r.stations) call(lab, 'plot', row([0, tEnd]), row([s / 1000, s / 1000]), str('--'), str('Color'), row([0.6, 0.6, 0.6]));
+  call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'xlabel', str('time (min)')); call(lab, 'ylabel', str('distance (km)'));
+  const late = run.trains.reduce((m, x) => Math.max(m, x.arrive - x.depart - x.alone), 0);
+  call(lab, 'title', str(`${run.trains.length} trains, ${run.signals === 'fixed' ? 'fixed blocks' : 'moving block'}: the latest ${(late / 60).toFixed(1)} min behind its time alone`));
+  return [];
+});

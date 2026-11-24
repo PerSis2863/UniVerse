@@ -47,12 +47,18 @@ export interface RailRun { stalled: number; s: number[]; v: number[]; t: number[
 /** Runs the train along the route, 5 m at a time. `coast` (0–0.3) is the driving style: 0 the fastest, more cruises that
  * share under each limit and coasts into every brake, from cruise down to (1 − 2·coast) of it. `stalled` is where a
  * slope too steep for the train stopped it (NaN when it gets through; the time is then Infinity). */
-export function railRun(t: Train, r: Route, o: { coast?: number; ds?: number } = {}): RailRun {
-  const ds = o.ds ?? 5, L = routeLength(r), n = Math.round(L / ds) + 1, coast = Math.max(0, Math.min(0.3, o.coast ?? 0)), m = t.mass * 1000, me = m * t.rot;
-  const S = Array.from({ length: n }, (_, i) => Math.min(L, i * ds));
+/** The line as this train sees it every ds metres: positions, limits, the limit held over its length, gradient (‰,
+ * with curves). */
+function lineFor(t: Train, r: Route, ds: number) {
+  const L = routeLength(r), n = Math.round(L / ds) + 1, S = Array.from({ length: n }, (_, i) => Math.min(L, i * ds));
   const lim = S.map((s) => Math.min(t.vmax, sectionAt(r, s).limit)), gradeOf = S.map((s) => { const x = sectionAt(r, s); return x.grade + curveRes(x.radius); });
   // The train's front clears a lower limit only when its tail has: a limit holds back over the train's length.
   const limTail = lim.map((_, i) => { let v = lim[i]; for (let j = i; j >= Math.max(0, i - Math.round(t.length / ds)); j--) v = Math.min(v, lim[j]); return v; });
+  return { L, n, S, lim, gradeOf, limTail };
+}
+export function railRun(t: Train, r: Route, o: { coast?: number; ds?: number } = {}): RailRun {
+  const ds = o.ds ?? 5, { L, n, S, lim, gradeOf, limTail } = lineFor(t, r, ds), coast = Math.max(0, Math.min(0.3, o.coast ?? 0)), m = t.mass * 1000, me = m * t.rot;
+  void L;
   const stops = new Set(r.stations.map((s) => Math.round(s / ds)));
   const cap = limTail.map((v) => v * (1 - coast));
   // Backward: braking curves (service braking, the slope helping or not) from every stop and every lower limit ahead.
@@ -118,4 +124,72 @@ export function headway(t: Train, v: number, o: { block?: number; blocks?: numbe
   const gap = o.moving ? brakeDist + (o.margin ?? 50) : Math.max((o.blocks ?? 3) * (o.block ?? 1500), brakeDist + (o.block ?? 1500)) + (o.overlap ?? 200);
   const h = (gap + t.length) / Math.max(v, 1) + react;
   return { headway: h, perHour: 3600 / h, gap, brakeDist };
+}
+
+// ——— Several trains on one line (M491b) ———
+export interface LineTrain { train: Train; depart: number }
+export interface TrainTrace { name: string; depart: number; t: number[]; s: number[]; v: number[]; power: number[]; arrive: number; held: number; alone: number }
+export interface LineRun { trains: TrainTrace[]; blocks: number[]; signals: 'fixed' | 'moving'; dt: number }
+/** Runs trains one after another along the same track (they can't pass), each leaving the first station at its time
+ * and stopping at every station. Signalling: fixed blocks (a train may run only up to the entrance of the first block
+ * ahead with any part of another train in it, braking to stop there) or moving block (up to the tail of the train ahead
+ * less a margin). Steps of `dt` seconds. Each train's `held` is the time it ran slower than it would alone (its
+ * signals were the tighter limit), `alone` its time on an empty line. `power` is what it draws from the line (W, at the
+ * pantograph: traction / η; braking given back as negative). */
+export function railLine(r: Route, trains: LineTrain[], o: { signals?: 'fixed' | 'moving'; block?: number; overlap?: number; margin?: number; dt?: number; until?: number; supply?: (s: number[], p: number[]) => number[] } = {}): LineRun {
+  const dt = o.dt ?? 0.5, ds = 5, signals = o.signals ?? 'fixed', block = o.block ?? 1500, overlap = o.overlap ?? 100, margin = o.margin ?? 50;
+  const L = routeLength(r), blocks = Array.from({ length: Math.ceil(L / block) + 1 }, (_, i) => Math.min(L, i * block));
+  const lines = trains.map((x) => lineFor(x.train, r, ds)), stations = [...r.stations].sort((a, b) => a - b);
+  const st = trains.map(() => ({ s: 0, v: 0, dwell: 0, next: 1, started: false, done: false, arrive: NaN, held: 0, volt: 1 }));
+  // Its time on an empty line, by the same steps (so a train nobody holds up shows no delay).
+  const seen = new Map<Train, number>();
+  const alone = (x: LineTrain) => {
+    if (trains.length === 1 && !o.supply) return NaN;
+    if (!seen.has(x.train)) seen.set(x.train, railLine(r, [{ train: x.train, depart: 0 }], { ...o, supply: undefined, until: undefined }).trains[0].arrive);
+    return seen.get(x.train)!;
+  };
+  const out: TrainTrace[] = trains.map((x) => ({ name: x.train.name, depart: x.depart, t: [], s: [], v: [], power: [], arrive: NaN, held: 0, alone: alone(x) }));
+  const until = o.until ?? Math.max(...trains.map((x) => x.depart)) + 6 * Math.max(...trains.map((x) => { const w = railRun(x.train, r).time; return Number.isFinite(w) ? w : 3600; }));
+  const at = (k: number, s: number) => Math.min(lines[k].n - 1, Math.max(0, Math.round(s / ds)));
+  for (let time = 0; time <= until; time += dt) {
+    if (st.every((x) => x.done)) break;
+    // The line's voltage at each train (M491c): a share of full power where it sags.
+    if (o.supply) { const v = o.supply(st.map((x) => x.s), out.map((x) => (x.power.length ? x.power[x.power.length - 1] : 0))); v.forEach((u, k) => { st[k].volt = u; }); }
+    for (let k = 0; k < trains.length; k++) {
+      const x = st[k], tr = trains[k].train, ln = lines[k], m = tr.mass * 1000, me = m * tr.rot;
+      let P = 0;
+      if (!x.done && time >= trains[k].depart) {
+        // How far it may go: the next station, and the signals for the train ahead.
+        let auth = stations[x.next] ?? L;
+        const ahead = k > 0 ? st[k - 1] : null;
+        if (ahead && !ahead.done) {
+          const tail = ahead.s - trains[k - 1].train.length;
+          if (signals === 'moving') auth = Math.min(auth, tail - margin);
+          else { const b = blocks.findLast((y) => y <= tail - overlap) ?? 0; auth = Math.min(auth, Math.max(b, x.s <= b ? b : x.s)); }
+        }
+        if (!x.started) { if (auth - x.s < 1 && x.next < stations.length) { record(); continue; } x.started = true; }
+        if (x.dwell > 0) { x.dwell -= dt; } else {
+          const i = at(k, x.s), g = ln.gradeOf[i], a = ((tractive(tr, x.v) * x.volt) - resistance(tr, x.v) - (m * G * g) / 1000) / me;
+          const toAuth = Math.max(0, auth - x.s), stopV = Math.sqrt(2 * tr.brake * toAuth), alone = Math.min(ln.limTail[Math.min(ln.n - 1, i + 1)], Math.sqrt(2 * tr.brake * Math.max(0, (stations[x.next] ?? L) - x.s)));
+          const ceil = Math.min(ln.limTail[Math.min(ln.n - 1, i + 1)], stopV);
+          // Never braking harder than it can (a little past service braking): a signal it can't stop for is passed at most to it.
+          const nv = Math.max(0, Math.min(x.v + a * dt, ceil), x.v - (tr.brake + 0.5) * dt);
+          if (stopV < alone - 0.5 && nv < alone - 0.5) x.held += dt;
+          const F = me * ((nv - x.v) / dt) + resistance(tr, (nv + x.v) / 2) + (m * G * g) / 1000, vm = (nv + x.v) / 2;
+          P = F > 0 ? (F * vm) / tr.eta : F * vm * tr.eta * tr.regen;
+          x.s = Math.min(auth, x.s + vm * dt); x.v = nv;
+          // At a station: stop there and wait; at the end: done.
+          const stop = stations[x.next];
+          if (stop !== undefined && x.s >= stop - 0.5) {
+            x.s = stop; x.v = 0;
+            if (x.next === stations.length - 1 || stop >= L - 0.5) { x.done = true; x.arrive = time; } else { x.dwell = r.dwell; x.next++; }
+          } else if (x.s >= L - 0.5) { x.done = true; x.arrive = time; }
+        }
+      }
+      record();
+      function record() { const o2 = out[k]; o2.t.push(time); o2.s.push(x.s); o2.v.push(x.v); o2.power.push(P); }
+    }
+  }
+  out.forEach((o2, k) => { o2.arrive = st[k].arrive; o2.held = st[k].held; if (Number.isNaN(o2.alone)) o2.alone = o2.arrive - o2.depart; });
+  return { trains: out, blocks, signals, dt };
 }

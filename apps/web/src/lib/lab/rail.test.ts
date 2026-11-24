@@ -33,10 +33,28 @@ describe('Hyperion railways (M491)', () => {
     expect(moving.headway).toBeLessThan(fixed.headway);
     expect(fixed.brakeDist).toBeCloseTo((200 / 3.6) ** 2 / (2 * t.brake), 6);
   });
+  it('several trains on one line (M491b): signals space them, moving block lets them run closer, a slow train holds up a fast one', () => {
+    const r = rl.ROUTES.metro(), t = rl.TRAINS.metro, four = (gap: number) => [0, 1, 2, 3].map((k) => ({ train: t, depart: k * gap }));
+    const late = (run: rl.LineRun) => run.trains.map((x) => x.arrive - x.depart - x.alone);
+    // Far apart nobody waits; a minute apart with 400 m blocks each train loses time to the one before.
+    expect(Math.max(...late(rl.railLine(r, four(180), { block: 400 })).map(Math.abs))).toBeLessThan(1);
+    const fixed = late(rl.railLine(r, four(60), { block: 400 })), moving = late(rl.railLine(r, four(60), { signals: 'moving' }));
+    expect(fixed[0]).toBeCloseTo(0, 5); expect(fixed[3]).toBeGreaterThan(30); expect(moving[3]).toBeLessThan(fixed[3] / 2);
+    // Moving block: never closer than the margin behind the tail of the train ahead.
+    const mv = rl.railLine(r, four(60), { signals: 'moving', margin: 50 });
+    for (let k = 1; k < 4; k++) for (let i = 0; i < mv.trains[k].s.length; i++) {
+      const head = mv.trains[k].s[i], tail = mv.trains[k - 1].s[i] - t.length;
+      if (head > 0 && mv.trains[k - 1].s[i] < rl.routeLength(r) - 1) expect(tail - head).toBeGreaterThan(49);
+    }
+    // An intercity five minutes behind a freight train can't pass: it arrives far later than alone.
+    const mix = rl.railLine(rl.ROUTES.intercity(), [{ train: rl.TRAINS.freight, depart: 0 }, { train: rl.TRAINS.intercity, depart: 300 }]);
+    expect(mix.trains[1].held).toBeGreaterThan(1200); expect(mix.trains[1].arrive).toBeGreaterThan(mix.trains[0].arrive);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
-    lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed;");
+    lab.run("t = trainModel('metro'); r = railRoute('metro'); [x, info] = trainRun(t, r, 'Coast', 0.1); m = info.Minutes; mine = railRoute([1000 0 0 80; 500 10 400 60], [0 1500]); [y, yi] = trainRun(t, mine); [h, n] = railHeadway(trainModel('intercity'), 200, 'Moving', 1); figure; trainRun(trainModel('intercity'), 'intercity'); vmax = t.MaxSpeed; [lt, lruns] = railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'fixed', 'Block', 400); dl = lt.Delay; nr = numel(lruns); figure; railLine('metro', trainModel('metro'), [0 60 120], 'Signals', 'moving'); lm = railLine('intercity', {trainModel('freight'), trainModel('intercity')}, [0 300]); hm = lm.Held;");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('m')[0]).toBeGreaterThan(7); expect(d('vmax')[0]).toBeCloseTo(80, 9); expect(d('n')[0]).toBeGreaterThan(30);
+    expect(d('dl')[0]).toBeCloseTo(0, 5); expect(d('dl')[2]).toBeGreaterThan(0.3); expect(d('nr')).toEqual([3]); expect(d('hm')[1]).toBeGreaterThan(20);
   });
 });
