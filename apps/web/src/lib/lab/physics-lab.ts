@@ -1,12 +1,17 @@
 import { LabError } from './parse';
+import { random } from './builtins';
 import { type Lab } from './interp';
 import { mat, num, str, toMat, type Value } from './values';
 import * as ph from './physics';
-import { call, col, def, need, nums, options, optNum, record, row, rows } from './sci-kit';
+import * as pp from './physics-plus';
+import { call, col, def, lines, need, nums, one, options, optNum, record, row, rows } from './sci-kit';
 
 // Hyperion's physics in the language (M497): projectile, pendulum, pendulumPeriod, doublePendulum, nbody,
 // chargedParticle, stringWave, slitPattern, waveField, efield. Our own names (MATLAB has no physics toolbox functions
 // like these). Each drawing takes 'At', t: the state at that moment, so a live slider on t (and Sweep) animates it.
+// M515: bfield, fieldLines, opticsSystem, rayTrace, lensImage, gaussianBeam, lorentzTransform, velocityAdd,
+// relativistic, minkowskiDiagram, chargedParticle's 'Relativistic', schrodinger1D, finiteWell, tunneling,
+// transmission, rigidBody, collide1d, diskCollisions.
 
 const grid = (Z: number[][]) => { const m = mat(Z.length, Z[0]?.length ?? 0); Z.forEach((r, i) => r.forEach((v, j) => { m.d[i + j * Z.length] = v; })); return m; };
 const marker = (lab: Lab, x: number, y: number) => { call(lab, 'hold', str('on')); call(lab, 'plot', num(x), num(y), str('o'), str('MarkerSize'), num(10), str('MarkerFaceColor'), str('r')); call(lab, 'hold', str('off')); };
@@ -88,7 +93,9 @@ def('chargedParticle', (a, nout, lab) => {
   const q = need(a[0], 'The charge'), m = need(a[1], 'The mass'), v3 = (v: Value, w: string) => { const x = nums(v, w); if (x.length !== 3) throw new LabError(`${w} is [x y z].`); return x; };
   const E = v3(a[2], 'E'), B = v3(a[3], 'B'), r0 = v3(a[4], 'The start'), v0 = v3(a[5], 'The velocity'), T = need(a[6], 'The time'), dt = need(a[7], 'The step');
   if (!(m > 0 && T > 0 && dt > 0 && T / dt <= 2e6)) throw new LabError('The mass, time and step must be positive, at most 2 million steps.');
-  const r = ph.chargedParticle(q, m, E, B, r0, v0, T, dt);
+  const rel = one(options(a, 8, ['Relativistic'], 'chargedParticle').get('Relativistic'), 0) !== 0;
+  let r: { t: number[]; r: number[][] };
+  try { r = rel ? pp.relativisticParticle(q, m, E, B, r0, v0, T, dt) : ph.chargedParticle(q, m, E, B, r0, v0, T, dt); } catch (e) { throw new LabError(e instanceof Error ? e.message : String(e)); }
   if (nout > 0) return [col(r.t), rows(r.r)];
   const every = Math.max(1, Math.floor(r.r.length / 4000)), pts = r.r.filter((_, i) => i % every === 0);
   call(lab, 'plot3', row(pts.map((p) => p[0])), row(pts.map((p) => p[1])), row(pts.map((p) => p[2])), str('LineWidth'), num(1.5));
@@ -139,5 +146,214 @@ def('efield', (a, nout, lab) => {
   call(lab, 'plot', row(ch.filter((c) => c[2] > 0).map((c) => c[0])), row(ch.filter((c) => c[2] > 0).map((c) => c[1])), str('ro'), str('MarkerFaceColor'), str('r'));
   call(lab, 'plot', row(ch.filter((c) => c[2] < 0).map((c) => c[0])), row(ch.filter((c) => c[2] < 0).map((c) => c[1])), str('bo'), str('MarkerFaceColor'), str('b'));
   call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'title', str('Field direction and equipotentials (red +, blue −)'));
+  return [];
+});
+
+// ——— M515 ———
+const wrap = <T>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof LabError) throw e; throw new LabError(e instanceof Error ? e.message : String(e)); } };
+const rowsOf = (v: Value | undefined, c: number, what: string) => {
+  const M = toMat(v ?? mat(0, 0), what);
+  if (M.c !== c || M.r < 1) throw new LabError(`${what} is rows of ${c} numbers.`);
+  return Array.from({ length: M.r }, (_, i) => Array.from({ length: c }, (_, j) => M.d[i + j * M.r]));
+};
+const draw3 = (lab: Lab, pts: number[][], spec: string, width = 1) => call(lab, 'plot3', row(pts.map((p) => p[0])), row(pts.map((p) => p[1])), row(pts.map((p) => p[2])), str(spec), str('LineWidth'), num(width));
+function linesFrom(lab: Lab, F: (p: number[]) => number[], seeds: number[][], h: number, box: number, stops: number[][], both: boolean) {
+  call(lab, 'hold', str('on'));
+  for (const s of seeds) draw3(lab, pp.fieldLine(F, s, h, 3000, box, stops, both), 'b-');
+}
+def('bfield', (a, nout, lab) => {
+  const wire = rowsOf(a[0], 3, 'The wire (points [x y z], m)'), I = need(a[1], 'The current (A)');
+  if (wire.length < 2 || wire.length > 20000) throw new LabError('The wire has 2 to 20,000 points.');
+  if (nout > 0 || a[2]) {
+    const P = rowsOf(a[2], 3, 'The points (rows [x y z])');
+    if (P.length * wire.length > 2e7) throw new LabError('Too many points for that wire.');
+    return [rows(P.map((p) => pp.biotSavart(wire, I, p)))];
+  }
+  const lo = [0, 1, 2].map((i) => Math.min(...wire.map((p) => p[i]))), hi = [0, 1, 2].map((i) => Math.max(...wire.map((p) => p[i])));
+  const c = lo.map((v, i) => (v + hi[i]) / 2), size = Math.max(...hi.map((v, i) => v - lo[i])) || 1;
+  // Seeds along a line from the wire's middle, across its width (a loop's lines then thread it; a straight wire's ring it).
+  const near = wire.reduce((b, p) => (Math.hypot(...p.map((v, i) => v - c[i])) < Math.hypot(...b.map((v, i) => v - c[i])) ? p : b), wire[0]);
+  const seeds = Array.from({ length: 6 }, (_, k) => c.map((v, i) => v + ((near[i] - v) * (k + 0.5)) / 6 + (i === 0 && near[0] === c[0] && near[1] === c[1] ? (size * (k + 1)) / 20 : 0)));
+  draw3(lab, wire, 'r-', 3);
+  linesFrom(lab, (p) => pp.biotSavart(wire, I, p), seeds, size / 100, 3 * size + Math.max(...c.map(Math.abs)), [], false);
+  call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'axis', str('equal'));
+  call(lab, 'xlabel', str('x (m)')); call(lab, 'ylabel', str('y (m)')); call(lab, 'zlabel', str('z (m)')); call(lab, 'title', str(`Magnetic field lines of ${I} A (Biot–Savart)`));
+  return [];
+});
+def('fieldLines', (a, nout, lab) => {
+  const Q = rowsOf(a[0], 4, 'The charges (rows [x y z q])'), o = options(a, 1, ['Seeds', 'Lines'], 'fieldLines');
+  const span = Math.max(1e-9, ...Q.flatMap((p) => Q.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2])))), core = span / 50;
+  const src = Q.filter((q) => q[3] > 0).length ? Q.filter((q) => q[3] > 0) : Q, n = Math.max(4, Math.min(40, Math.round(optNum(o, 'Lines', 14))));
+  // Seeds on a small sphere round each source (a golden-angle spiral).
+  const seeds = o.has('Seeds') ? rowsOf(o.get('Seeds'), 3, "'Seeds'") : src.flatMap((q) => Array.from({ length: n }, (_, k) => { const z = 1 - (2 * (k + 0.5)) / n, r = Math.sqrt(1 - z * z), th = k * 2.399963; return [q[0] + 1.5 * core * r * Math.cos(th), q[1] + 1.5 * core * r * Math.sin(th), q[2] + 1.5 * core * z]; }));
+  const F = (p: number[]) => pp.coulomb3(Q, p, core), sinks = Q.filter((q) => q[3] * (src[0]?.[3] ?? 1) < 0);
+  const L = seeds.map((s) => pp.fieldLine((p) => (src[0][3] > 0 ? F(p) : F(p).map((x) => -x)), s, span / 100, 3000, 4 * span + Math.max(...Q.flatMap((q) => q.slice(0, 3).map(Math.abs))), sinks, false));
+  if (nout > 0) return [{ k: 'cell', r: 1, c: L.length, d: L.map((l) => rows(l)) }];
+  call(lab, 'hold', str('on'));
+  for (const l of L) draw3(lab, l, 'b-');
+  for (const q of Q) call(lab, 'plot3', num(q[0]), num(q[1]), num(q[2]), str(q[3] > 0 ? 'ro' : 'ko'), str('MarkerSize'), num(10), str('MarkerFaceColor'), str(q[3] > 0 ? 'r' : 'k'));
+  call(lab, 'hold', str('off')); call(lab, 'grid', str('on')); call(lab, 'axis', str('equal')); call(lab, 'title', str('Electric field lines in 3D (red +, black −)'));
+  return [];
+});
+const optics = (v: Value | undefined) => { if (v?.k !== 'str') throw new LabError("The system is text: 'd 100; f 50; d 100' (d distance, f thin lens, s R n1 n2 a surface, m R a mirror)."); return wrap(() => pp.parseOptics((v as { v: string }).v)); };
+def('opticsSystem', (a, nout, lab) => {
+  const s = pp.system(optics(a[0]));
+  if (nout === 0) { lab.host.out(`ABCD = [${s.M.map((x) => x.toPrecision(6)).join(' ')}]\nFocal length ${s.efl.toPrecision(6)}, back focal distance ${s.bfl.toPrecision(6)}, front ${s.ffl.toPrecision(6)}\n`); return []; }
+  return [num(s.efl), num(s.bfl), num(s.ffl), mat(2, 2, [s.M[0], s.M[2], s.M[1], s.M[3]])];
+});
+def('rayTrace', (a, nout, lab) => {
+  const els = optics(a[0]), o = options(a, 1, ['Heights', 'Angles'], 'rayTrace');
+  const h = o.has('Heights') ? nums(o.get('Heights')) : [-1, -0.5, 0, 0.5, 1], an = o.has('Angles') ? nums(o.get('Angles')) : [0];
+  const rays = h.flatMap((y) => an.map((t) => [y, t] as [number, number]));
+  if (rays.length > 400) throw new LabError('At most 400 rays.');
+  const r = pp.traceRays(els, rays);
+  if (nout > 0) return [row(r.z), rows(r.ys)];
+  lines(lab, r.z, r.ys, [], 'Along the axis', 'Height', 'Rays through the system');
+  const top = Math.max(1e-9, ...r.ys.flat().map(Math.abs)) * 1.1;
+  call(lab, 'hold', str('on'));
+  els.forEach((e, i) => { if (e.kind !== 'd') call(lab, 'plot', row([r.z[i], r.z[i]]), row([-top, top]), str('k-'), str('LineWidth'), num(2)); });
+  call(lab, 'plot', row([r.z[0], r.z[r.z.length - 1]]), row([0, 0]), str('k:')); call(lab, 'hold', str('off'));
+  return [];
+});
+def('lensImage', (a, nout, lab) => {
+  const f = need(a[0], 'The focal length'), so = need(a[1], 'The object distance'), ho = one(a[2], 1);
+  if (!(so > 0) || !f) throw new LabError('The object distance is positive and the focal length not zero (negative: a diverging lens).');
+  const im = pp.system([{ kind: 'f', a: f }]).image(so);
+  if (nout > 0) return [num(im.si), num(im.mag)];
+  const hi = ho * im.mag, far = Math.max(Math.abs(im.si), 2 * Math.abs(f), so) * 1.2;
+  // The three rays every textbook draws: parallel then through the focus, through the centre, through the near focus.
+  call(lab, 'plot', row([-so, 0, far]), row([ho, ho, ho - (ho / f) * far]), str('b-')); call(lab, 'hold', str('on'));
+  call(lab, 'plot', row([-so, far]), row([ho, ho - (ho / so) * (so + far)]), str('g-'));
+  if (Math.abs(so - f) > 1e-9 * Math.abs(f)) call(lab, 'plot', row([-so, 0, far]), row([ho, hi, hi]), str('m-'));
+  if (im.si < 0) call(lab, 'plot', row([im.si, 0]), row([hi, hi]), str('m--'));
+  call(lab, 'plot', row([-so, -so]), row([0, ho]), str('k-'), str('LineWidth'), num(3));
+  if (Number.isFinite(im.si)) call(lab, 'plot', row([im.si, im.si]), row([0, hi]), str(im.si > 0 ? 'r-' : 'r--'), str('LineWidth'), num(3));
+  const top = Math.max(Math.abs(ho), Math.abs(hi)) * 1.3;
+  call(lab, 'plot', row([0, 0]), row([-top, top]), str('k-'), str('LineWidth'), num(2)); call(lab, 'plot', row([-far, far]), row([0, 0]), str('k:'));
+  call(lab, 'plot', row([-f, f]), row([0, 0]), str('ko')); call(lab, 'hold', str('off'));
+  call(lab, 'title', str(Number.isFinite(im.si) ? `Image at ${im.si.toPrecision(4)} (${im.si > 0 ? 'real' : 'virtual'}), magnification ${im.mag.toPrecision(3)}` : 'Object at the focus: the image is at infinity'));
+  return [];
+});
+def('gaussianBeam', (a, nout, lab) => {
+  const w0 = need(a[0], 'The waist radius'), lam = need(a[1], 'The wavelength (same unit)'), els = optics(a[2]);
+  if (!(w0 > 0 && lam > 0)) throw new LabError('The waist and the wavelength are positive.');
+  if (els.some((e) => e.kind === 's' && e.n1 !== e.n2)) throw new LabError('gaussianBeam takes d, f and m elements (in air).');
+  const r = pp.gaussianBeam(els, w0, lam);
+  if (nout > 0) return [col(r.z), col(r.w), num(r.waistAt), num(r.waistRadius)];
+  lines(lab, r.z, [r.w, r.w.map((x) => -x)], [], 'Along the axis', 'Beam radius', `After the last element the waist is ${r.waistRadius.toPrecision(3)} at ${r.waistAt.toPrecision(4)} further on`);
+  return [];
+});
+def('lorentzTransform', (a) => {
+  const b = need(a[0], 'β = v/c'), ct = toMat(a[1] ?? num(NaN), 'ct'), x = toMat(a[2] ?? num(NaN), 'x');
+  if (!(Math.abs(b) < 1)) throw new LabError('β = v/c is between −1 and 1.');
+  if (ct.d.length !== x.d.length) throw new LabError('ct and x have the same size.');
+  const out = [...ct.d].map((c, i) => pp.lorentz(b, c, x.d[i]));
+  return [mat(ct.r, ct.c, out.map((p) => p[0])), mat(ct.r, ct.c, out.map((p) => p[1]))];
+});
+def('velocityAdd', (a) => { const u = toMat(a[0] ?? num(NaN), 'u'), v = need(a[1], 'v'), c = one(a[2], pp.C_LIGHT); return [mat(u.r, u.c, [...u.d].map((x) => pp.addVelocity(x, v, c)))]; });
+def('relativistic', (a) => {
+  const m = need(a[0], 'The mass (kg)'), v = need(a[1], 'The speed (m/s)'), c = pp.C_LIGHT;
+  if (!(m >= 0 && Math.abs(v) < c)) throw new LabError('The mass is ≥ 0 and the speed below c.');
+  const g = pp.gammaOf(v / c);
+  return [record([['Beta', v / c], ['Gamma', g], ['Energy', g * m * c * c], ['RestEnergy', m * c * c], ['Kinetic', (g - 1) * m * c * c], ['Momentum', g * m * v]])];
+});
+def('minkowskiDiagram', (a, _n, lab) => {
+  const b = need(a[0], 'β = v/c'), ev = a[1] ? rowsOf(a[1], 2, 'The events (rows [ct x])') : [];
+  if (!(Math.abs(b) < 1)) throw new LabError('β is between −1 and 1.');
+  const L = Math.max(3, ...ev.flat().map((v) => Math.abs(v) * 1.3));
+  call(lab, 'plot', row([-L, L]), row([0, 0]), str('k-'), str('LineWidth'), num(1.5)); call(lab, 'hold', str('on'));
+  call(lab, 'plot', row([0, 0]), row([-L, L]), str('k-'), str('LineWidth'), num(1.5));
+  call(lab, 'plot', row([-L, L]), row([-L, L]), str('y--')); call(lab, 'plot', row([-L, L]), row([L, -L]), str('y--'));
+  call(lab, 'plot', row([-L * b, L * b]), row([-L, L]), str('b-'), str('LineWidth'), num(1.5));
+  call(lab, 'plot', row([-L, L]), row([-L * b, L * b]), str('b-'), str('LineWidth'), num(1.5));
+  for (const [ct, x] of ev) {
+    call(lab, 'plot', num(x), num(ct), str('ro'), str('MarkerFaceColor'), str('r'));
+    const [c2, x2] = pp.lorentz(b, ct, x);
+    lab.host.out(`Event (ct ${ct}, x ${x}) is at ct' = ${c2.toPrecision(4)}, x' = ${x2.toPrecision(4)} in the moving frame\n`);
+  }
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal'));
+  call(lab, 'xlabel', str('x')); call(lab, 'ylabel', str('ct')); call(lab, 'title', str(`Black: at rest; blue: moving at ${b}c (γ = ${pp.gammaOf(b).toPrecision(4)}); light dashed`));
+  return [];
+});
+const qOpts = (a: Value[], from: number, name: string, more: string[] = []) => { const o = options(a, from, ['Mass', ...more], name), m = optNum(o, 'Mass', 1); if (!(m > 0)) throw new LabError("'Mass' (in electron masses) is positive."); return { o, m }; };
+def('schrodinger1D', (a, nout, lab) => {
+  const x = nums(a[0], 'x (nm)'), V = nums(a[1], 'V (eV)'), { o, m } = qOpts(a, 2, 'schrodinger1D', ['States']);
+  const n = Math.round(optNum(o, 'States', 5));
+  if (x.length < 3 || x.length > 50000 || V.length !== x.length) throw new LabError('x (an even grid in nm, 3 to 50,000 points) and V (eV) of the same length.');
+  const dx = x[1] - x[0];
+  if (!(dx > 0) || x.some((v, i) => i && Math.abs(v - x[i - 1] - dx) > 1e-6 * dx)) throw new LabError('x is an evenly spaced, rising grid.');
+  if (!(n >= 1 && n <= 50)) throw new LabError("'States' is 1 to 50.");
+  const r = pp.schrodinger(x, V, m, n);
+  if (nout > 0) return [col(r.E), rows(x.map((_, i) => r.psi.map((p) => p[i])))];
+  const gap = r.E.length > 1 ? (r.E[r.E.length - 1] - r.E[0]) / (r.E.length - 1) : Math.max(...V) - Math.min(...V) || 1;
+  const big = Math.max(...r.psi.flat().map(Math.abs)) || 1, k = (0.4 * gap) / big;
+  call(lab, 'plot', row(x), row(V), str('k-'), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
+  r.E.forEach((E, j) => { call(lab, 'plot', row([x[0], x[x.length - 1]]), row([E, E]), str(':')); call(lab, 'plot', row(x), row(r.psi[j].map((p) => E + k * p)), str('LineWidth'), num(1.5)); });
+  call(lab, 'hold', str('off'));
+  const top = Math.min(Math.max(...V), r.E[r.E.length - 1] + 1.5 * gap);
+  call(lab, 'ylim', row([Math.min(...V) - 0.1 * gap, top])); call(lab, 'xlabel', str('x (nm)')); call(lab, 'ylabel', str('Energy (eV)'));
+  call(lab, 'title', str(`Lowest ${r.E.length} states: ${r.E.slice(0, 4).map((e) => e.toPrecision(4)).join(', ')}${r.E.length > 4 ? ', …' : ''} eV`));
+  return [];
+});
+def('finiteWell', (a) => {
+  const V0 = need(a[0], 'The depth V0 (eV)'), w = need(a[1], 'The width (nm)'), { m } = qOpts(a, 2, 'finiteWell');
+  if (!(V0 > 0 && w > 0)) throw new LabError('The depth and the width are positive.');
+  return [row(pp.finiteWell(V0, w, m))];
+});
+def('tunneling', (a, nout, lab) => {
+  const E = nums(a[0], 'The energies (eV)'), V0 = need(a[1], 'The barrier height V0 (eV)'), w = need(a[2], 'The width (nm)'), { m } = qOpts(a, 3, 'tunneling');
+  if (!(V0 >= 0 && w > 0)) throw new LabError('The barrier height is ≥ 0 and its width positive.');
+  const T = E.map((e) => pp.barrier(e, V0, w, m));
+  if (nout > 0 || E.length < 2) return [row(T)];
+  lines(lab, E, [T], [], 'Energy (eV)', 'Transmission', `A ${V0} eV barrier ${w} nm wide`); call(lab, 'xline', num(V0), str('--'));
+  return [];
+});
+def('transmission', (a, nout, lab) => {
+  const x = nums(a[0], 'x (nm)'), V = nums(a[1], 'V (eV)'), { o, m } = qOpts(a, 2, 'transmission', ['Energies']);
+  if (x.length < 2 || x.length > 20000 || V.length !== x.length || x.some((v, i) => i && !(v > x[i - 1]))) throw new LabError('x (rising, nm) and V (eV) of the same length, 2 to 20,000 points.');
+  const top = Math.max(...V), E = o.has('Energies') ? nums(o.get('Energies')) : Array.from({ length: 400 }, (_, i) => (1.5 * Math.max(top, 0.01) * (i + 1)) / 400);
+  const T = E.map((e) => pp.transmission(x, V, e, m));
+  if (nout > 0) return [row(E), row(T)];
+  call(lab, 'subplot', num(2), num(1), num(1)); lines(lab, x, [V], [], 'x (nm)', 'V (eV)', 'The potential');
+  call(lab, 'subplot', num(2), num(1), num(2)); lines(lab, E, [T], [], 'Energy (eV)', 'Transmission', 'How much gets through');
+  return [];
+});
+def('rigidBody', (a, nout, lab) => {
+  const I = nums(a[0], 'The principal moments [I1 I2 I3]'), w0 = nums(a[1], 'The angular velocity [w1 w2 w3]'), T = need(a[2], 'The time');
+  if (I.length !== 3 || I.some((x) => !(x > 0)) || w0.length !== 3 || !(T > 0)) throw new LabError('rigidBody([I1 I2 I3], [w1 w2 w3], T): positive moments and time.');
+  const r = pp.eulerSpin(I, w0, steps(T, 1000));
+  if (nout > 0) return [col(r.t), rows(r.w)];
+  lines(lab, r.t, [0, 1, 2].map((i) => r.w.map((w) => w[i])), ['ω1', 'ω2', 'ω3'], 'Time', 'Angular velocity', 'A body spinning freely (Euler’s equations)');
+  const dE = Math.max(...r.energy) - Math.min(...r.energy), dL = Math.max(...r.L) - Math.min(...r.L);
+  lab.host.out(`Energy ${r.energy[0].toPrecision(6)} (drift ${dE.toExponential(1)}), |L| ${r.L[0].toPrecision(6)} (drift ${dL.toExponential(1)})\n`);
+  return [];
+});
+def('collide1d', (a) => {
+  const m1 = need(a[0], 'm1'), m2 = need(a[1], 'm2'), u1 = need(a[2], 'u1'), u2 = need(a[3], 'u2'), e = one(a[4], 1);
+  if (!(m1 > 0 && m2 > 0 && e >= 0 && e <= 1)) throw new LabError('Masses are positive and the restitution between 0 and 1.');
+  return [row(pp.collide1d(m1, m2, u1, u2, e))];
+});
+def('diskCollisions', (a, nout, lab) => {
+  const n = Math.round(need(a[0], 'The number of disks')), o = options(a, 1, ['Box', 'Time', 'Radius', 'Speed', 'Restitution', 'At', 'Mass'], 'diskCollisions');
+  const box = o.has('Box') ? nums(o.get('Box')) : [10, 10], T = optNum(o, 'Time', 10), r = optNum(o, 'Radius', 0.3), e = optNum(o, 'Restitution', 1), sp = optNum(o, 'Speed', 1);
+  if (!(n >= 1 && n <= 300 && box.length === 2 && box[0] > 2 * r && box[1] > 2 * r && T > 0 && r > 0 && e >= 0 && e <= 1)) throw new LabError("diskCollisions(n): 1 to 300 disks; 'Box' [W H], 'Time', 'Radius', 'Restitution' 0 to 1.");
+  // A square lattice start (no overlaps), random directions from the engine's random numbers.
+  const per = Math.max(1, Math.floor(Math.min(box[0], box[1]) / (2.2 * r))), cols = Math.min(per, Math.ceil(Math.sqrt(n)));
+  if (Math.ceil(n / cols) * 2.2 * r > box[1] || cols * 2.2 * r > box[0]) throw new LabError('Those disks don’t fit in the box.');
+  const pos = Array.from({ length: n }, (_, i) => [((i % cols) + 0.5) * (box[0] / cols), (Math.floor(i / cols) + 0.5) * (box[1] / Math.ceil(n / cols))]);
+  const vel = pos.map(() => { const th = 2 * Math.PI * random(); return [sp * Math.cos(th), sp * Math.sin(th)]; }), ms = o.has('Mass') ? nums(o.get('Mass')) : [1];
+  const mass = pos.map((_, i) => ms[i % ms.length]), at = Math.min(T, Math.max(0, optNum(o, 'At', T)));
+  const frames = steps(T, 200).filter((t) => t <= at).concat(at > 0 && !steps(T, 200).includes(at) ? [at] : []).sort((p, q) => p - q);
+  const res = wrap(() => pp.disks(pos, vel, new Array(n).fill(r), mass, box[0], box[1], frames, e));
+  const last = res.frames[res.frames.length - 1];
+  if (nout > 0) return [rows(last), rows(res.velocities), record([['Walls', res.hits.walls], ['Pairs', res.hits.pairs]])];
+  const ring = Array.from({ length: 25 }, (_, k) => (2 * Math.PI * k) / 24);
+  call(lab, 'plot', row([0, box[0], box[0], 0, 0]), row([0, 0, box[1], box[1], 0]), str('k-'), str('LineWidth'), num(2)); call(lab, 'hold', str('on'));
+  for (let i = 0; i < n; i++) {
+    call(lab, 'plot', row(res.frames.map((f) => f[i][0])), row(res.frames.map((f) => f[i][1])), str(':'));
+    call(lab, 'plot', row(ring.map((t) => last[i][0] + r * Math.cos(t))), row(ring.map((t) => last[i][1] + r * Math.sin(t))), str('k-'));
+  }
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal'));
+  call(lab, 'title', str(`t = ${at.toPrecision(3)}: ${res.hits.pairs} collisions between disks, ${res.hits.walls} with the walls`));
   return [];
 });

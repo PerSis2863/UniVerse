@@ -195,6 +195,31 @@ figure; chargedParticle(-1.602e-19, 9.109e-31, [0 0 0], [0 0 1e-3], [0 0 0], [1e
 figure; subplot(1, 2, 1); slitPattern(633e-9, 0.25e-3, 0.05e-3, 2, 1.5)
 subplot(1, 2, 2); efield([-0.5 0 1e-9; 0.5 0 -1e-9], linspace(-2, 2, 61), linspace(-1.5, 1.5, 45))
 ` },
+  { name: 'physics2.m', code: `% Physics: currents and their fields, lenses and lasers, relativity, quantum wells, spinning and colliding
+% 1. A loop of wire: its field lines thread through it
+th = linspace(0, 2*pi, 121)';
+bfield([0.1*cos(th) 0.1*sin(th) 0*th], 10)
+fprintf('At the centre: %.3g T (mu0 I / 2R = %.3g T)\\n', norm(bfield([0.1*cos(th) 0.1*sin(th) 0*th], 10, [0 0 0])), 4e-7*pi*10/0.2)
+figure; fieldLines([-1 0 0 1; 1 0 0 -1])
+% 2. Lenses: an image, rays through two lenses, and a laser focused
+figure; lensImage(50, 120, 10)
+opticsSystem('f 50; d 20; f 100')
+figure; rayTrace('d 50; f 50; d 30; f -40; d 150', 'Heights', -1:0.5:1)
+figure; gaussianBeam(1, 633e-6, 'd 500; f 200; d 400')   % mm: a red laser 2 mm across
+% 3. Relativity: a moving frame's view, and a fast electron's circle
+figure; minkowskiDiagram(0.5, [2 1; 1 2; 3 0])
+e = relativistic(9.109e-31, 0.9*299792458); fprintf('An electron at 0.9c: gamma %.3f, kinetic energy %.0f keV\\n', e.Gamma, e.Kinetic/1.602e-16)
+% 4. Quantum: a harmonic well's evenly spaced levels, and tunnelling through two barriers
+x = linspace(-4, 4, 801);
+figure; schrodinger1D(x, 0.5*x.^2, 'States', 5)
+fprintf('A 0.3 eV, 5 nm GaAs well holds %d states\\n', numel(finiteWell(0.3, 5, 'Mass', 0.067)))
+x = 0:0.05:8; V = 0.4*((x > 1 & x < 2) | (x > 5 & x < 6));
+figure; transmission(x, V, 'Mass', 0.067)
+% 5. A book spun about its middle axis tumbles; disks collide in a box
+figure; rigidBody([1 2 3], [0.01 1 0.01], 60)
+t = 10;   % slider 0 10
+figure; diskCollisions(25, 'Time', 10, 'At', t)
+` },
   { name: 'quake.m', code: `% Geoscience: find an earthquake from four seismometers, then map the land around it
 rng(4)
 stations = [0 0; 90 15; 35 100; -60 70];       % km east and north

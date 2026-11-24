@@ -12972,3 +12972,35 @@ over 60% of weights near 0 or the maximum after 1000 s (1.4 s to run); two simul
 told apart (> 95%). Not built: branched morphologies (SWC files), channels other than HH's, synapses on the cable,
 plasticity rules other than pair-based additive STDP, filtering raw recordings before sorting (pass a band-passed
 signal), reading electrophysiology files (ABF, NWB).
+
+## M515 (24 Nov): Hyperion physics, the left-outs
+
+From M497's "Not built". `physics-plus.ts` (pure) and its language part at the end of `physics-lab.ts`. **Currents:**
+`biotSavart` is exact per straight piece (μ0I/(4πd)(sB/√(sB²+d²) − sA/√(sA²+d²)) round u × −d̂), so a polygon of 720
+sides matches a loop to 1e-4; `coulomb3` in 3D; `fieldLine` is RK4 along the unit field direction, stopping on leaving
+the box, near a sink, when the field vanishes or when it closes on its seed. `bfield`'s drawing seeds along a line from
+the wire's middle toward its nearest point (a straight wire on its axis gets an offset), so a loop's lines thread it.
+**Optics:** a system is text ('d L; f F; s R n1 n2; m R'), rays [height; angle], matrices multiplied last-first;
+focal length −1/C, back −A/C, front −D/C, an image at si = −(A so + B)/(C so + D); the mirror is unfolded (R < 0
+concave, focal length −R/2 comes out as efl = R/2 with the sign convention of the matrix [1 0; −2/R 1]: concave R = −100
+gives −50, said in the test). `gaussianBeam` propagates q (complex, written out) through d, f and m only (no index
+changes) and reports the last waist. **Relativity:** `relativisticParticle` is the Boris push on u = γv (the rotation
+with t = qBdt/(2mγ⁻)); the speed is kept exactly in a pure B field and stays below c under any E; `chargedParticle(…,
+'Relativistic', true)`. `lorentz`, `addVelocity`, `relativistic`, `minkowskiDiagram`. **Quantum** (eV, nm, electron
+masses; ħ²/2mₑ = 0.0380998212 eV·nm²): `schrodinger` builds the three-point Hamiltonian (ψ = 0 beyond the grid) and
+`tridiagEigen` finds the lowest states by Sturm bisection and inverse iteration (tridiagonal, any size to 50,000);
+`finiteWell` solves the even and odd transcendental equations branch by branch; `barrier` in closed form (E = V0 as its
+limit); `transmission` walks transfer matrices from the right lead (outgoing wave only) to the left, each region with
+its own local origin so evanescent stretches don't overflow early, regions bounded half way between samples and the
+first and last samples as the leads. **Rigid bodies:** `eulerSpin` (rk45 at 1e-10 on the given times), `collide1d`,
+`disks`: event-driven hard disks (the next wall or contact solved exactly, all pairs each event: n ≤ 300), walls
+elastic, pairs with restitution e along the line of centres, positions at the frame times; `diskCollisions` starts on a
+lattice with directions from the engine's `random` (so `rng` repeats it) and takes 'At' for a slider. Example
+`physics2.m`. Tests: a long wire's 2e-5 T, a loop's centre and axis; a wire's field line closing and a dipole's ending on
+−; two lenses' f1f2/(f1 + f2 − d), the lensmaker's 50 from two surfaces, imaging at 2f, a beam's √2 at zR and its focus
+by the formula; the interval, 0.5c ⊕ 0.5c, an electron's γmv/(qB) at 0.9c, a proton pushed by 1 GV/m never at c; the
+infinite well to 1e-5, the oscillator to 1e-4, the finite well against the grid, `transmission` = `barrier` to 1e-9 and
+resonant tunnelling through two barriers; the middle-axis flip with energy and |L| to 1e-8; head-on exchange, energy
+kept through 30 disks' collisions with no overlaps, energy lost at e = 0.5. Not built: rigid bodies' orientation
+(quaternions) and contact between shapes other than disks, field lines of currents in a chosen plane only, thick-lens
+apertures and aberrations, general relativity, time-dependent quantum wave packets, potentials in 2D and 3D.
