@@ -13128,6 +13128,19 @@ leaving 20 min ahead of an intercity (priority 3) makes it ~21 min late first co
 42 km and the intercity is on time and arrives first; a 400 m metro train delays its follower more than a 0 m one.
 Window: Single track → "The first train out is a slow freight train". Not built: loops too short for a long train.
 
+## M491i (24 Nov): Hyperion railways, rail-to-earth voltage and storage on AC lines
+
+`rail.ts`: `railVolts` (the rails' voltage to earth at each train on an AC line: the ground-returning share, the same
+screening factor, of each train's current, through rails as a leaky line, Z0 = √(|z|·r_e) with z 0.15 + j0.55 Ω/km and
+r_e 5 Ω·km, I·Z0/2 decaying as e^(−d·√(|z|/r_e)); typical figures; `RAIL_LIMIT` 60 V, EN 50122-1), returned by
+`solveAc` as `rail` and logged as `maxRail` (~200 V with rail return, far less with BT and AT). **Storage on AC**
+(`acWithStorage`): the units are extra loads at their places (at unity power factor; `solveAc`'s `trainsOnly` keeps
+their Q at 0), each giving below 92% of nominal and refilling (up to 30% of its power) above v0 − 2%, solved 8 times with
+half steps; `storageFor` picks those thresholds for an AC supply. Checked: rail volts by hand, BT and AT lower; fed only
+from the ends, two 4 MW / 200 kWh units hold the lowest voltage >1 kV higher and cut the tripped time. Language:
+'Storage' works on AC; info MaxRailVolts. Window: Several trains → the power supply → Storage on AC too, "Rails to
+earth, most". Not built: the rails' bonding to earth at substations, stray currents on DC lines.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

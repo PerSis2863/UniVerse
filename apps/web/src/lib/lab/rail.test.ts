@@ -218,4 +218,21 @@ describe('Hyperion railways (M491)', () => {
     const m = rl.ROUTES.metro(), go = (len: number) => rl.railSingle(m, [0, 90].map((depart) => ({ train: { ...rl.TRAINS.metro, length: len }, dir: 1 as const, depart }))).trains[1];
     expect(go(400).arrive).toBeGreaterThan(go(0).arrive);
   });
+  it('rail-to-earth voltage and storage on AC lines (M491i)', { timeout: 60_000 }, () => {
+    const R = rl.ROUTES.intercity(), T = rl.TRAINS.intercity, L = rl.routeLength(R);
+    // One train by hand: I·Z0/2 times the share returning through the ground.
+    const ac = rl.SUPPLIES.ac25(L);
+    expect(rl.railVolts(ac, [5000], [300])[0]).toBeCloseTo((Math.sqrt(rl.RAIL_Z * rl.RAIL_RE) / 2) * 0.5 * 300, 9);
+    const run = (k: string, ends = false, store = false) => {
+      const sup = { ...rl.SUPPLIES[k](L), ...(ends ? { subs: [0, L] } : {}) };
+      if (store) sup.storage = rl.storageFor(sup, [L / 4, (3 * L) / 4], 4e6, 200);
+      const f = rl.supplyFor(sup, 0.5); rl.railLine(R, [0, 200, 400].map((depart) => ({ train: T, depart })), { supply: f.step }); return f.log;
+    };
+    const rr = run('ac25'), bt = run('ac25bt'), at = run('ac25at');
+    expect(rr.maxRail).toBeGreaterThan(rl.RAIL_LIMIT); expect(bt.maxRail).toBeLessThan(rr.maxRail / 2); expect(at.maxRail).toBeLessThan(bt.maxRail);
+    // Fed only from the ends, storage holds the voltage up and trains trip for less time.
+    const weak = run('ac25', true), held = run('ac25', true, true);
+    expect(Math.min(...held.minVolt)).toBeGreaterThan(Math.min(...weak.minVolt) + 1000); expect(held.tripped).toBeLessThan(weak.tripped);
+    expect(held.storedKwh).toBeGreaterThan(0); expect(held.returnedKwh).toBeGreaterThan(0);
+  });
 });
