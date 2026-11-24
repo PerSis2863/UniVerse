@@ -12678,6 +12678,31 @@ f)`. Tests: depths of a point and a segment in a cube, a link 0.1 m into a box; 
 the same mean i_q and more ripple; six-step with 20 kHz PWM ends within 5 % of the averaged speed. Not built: dead
 time, switching losses, the overlap's direction.
 
+## M486 (24 Nov): Hyperion toolbox, vehicle dynamics
+
+Group 6's vehicles, first item. `src/lib/lab/vehicle.ts` (pure): `Vehicle` (mass, yaw inertia, lf, lr, CG height, each
+axle's cornering stiffness, μ, drag, area, rolling, power, driven axle, 'linear' or 'magic' tyres, steering limit;
+`CAR_DEFAULT` a 1.5 t rear-driven saloon, K ≈ 0.0034 rad/(m/s²) ≈ 1.9°/g), `magic` (Pacejka; C = 1.3, E = −0.6, B set so
+the slope at zero is the cornering stiffness, which scales with the axle's load), `sideForce` (the friction ellipse:
+the peak shrinks to √((μFz)² − Fx²)), the single-track model in the body frame (forward and side speed, yaw rate, where
+it is) by RK4 at 1 ms with the axle loads shifted by last step's acceleration, driving limited by power and the driven
+axle's grip, braking shared by load and capped at grip (ideal ABS), drag, rolling, slope; `vehicleSim` (a speed held by
+a firm P controller on the force, or a force; `spun` when the body slip passes 15°), `handling` (K, yaw gain
+u / (L + K u²), characteristic or critical speed), `steerForCircle`, `accelRun` (0–100 and top speed by bisection),
+`brakingDistance`, the tests `stepSteer`, `rampSteer`, `sineWithDwell` (FMVSS 126 / UN R140 shape). **Trap:** the sine
+with dwell must be run coasting (`force: () => 0`): holding the speed with a rear-driven car spends the rear tyres' grip
+and spins even the understeering car. Lateral load transfer and roll are not modelled (one tyre per axle). Language in
+`vehicle-lab.ts` (MATLAB has Vehicle Dynamics Blockset blocks): `vehicle` (struct, with UndersteerGradient,
+CharacteristicSpeed, CriticalSpeed), `vehicleSim(c, steer, T, …)` (steer a number, @(t) or 'step' / 'ramp' /
+'sinedwell' with 'Amplitude'; 'Speed' or 'Force', 'Grade', 'InitialSpeed') → table and info (Spun, PeakSideSlip,
+PeakLateralAccel), `vehicleHandling`, `magicFormula`, `accelRun`, `brakingDistance`. Window: Machines → **Vehicle**
+(`VehicleBench.tsx`: Sine / Step / Ramp / Circle, Dry / Wet / Snow, Understeer / Neutral / Oversteer by the rear
+stiffness, speed and steering sliders; worked out at once on the page, replayed in real time, at its end with Reduce
+Motion; the path, the car red once spun, steering and yaw rate below; facts). The browser check
+`hyperion-machines-ui.mjs` has the vehicle tab and now waits for a tab's button to load before clicking it. Tests in
+`vehicle.test.ts`. Example vehicles.m. Not built: four wheels with load transfer, roll, suspension, gears, stability
+control itself (M487 drives the car).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -125,4 +125,24 @@ figure; motorHeat(b.R, @(t) 8*(t < 1200) + 2*(t >= 1200), 3600, 'Phases', 2)
 [~, info] = motorHeat(b.R, 0, 1, 'Phases', 2);
 fprintf('Continuous rating: %.1f A\\n', info.Continuous)
 ` },
+  { name: 'vehicles.m', code: `% Vehicle dynamics: how a car steers, accelerates and stops
+c = vehicle();                          % a 1.5 t saloon, rear-driven, slightly understeering
+h = vehicleHandling(c)                  % understeer gradient, characteristic speed
+figure; vehicleHandling(c)
+% A step of steering at 72 km/h: the yaw rate overshoots a little and settles
+figure; vehicleSim(c, 'step', 3, 'Amplitude', 0.03, 'Speed', 20)
+% The stability-control test at 100 km/h, coasting: this car stays straight...
+figure; vehicleSim(c, 'sinedwell', 4, 'Amplitude', 0.06, 'InitialSpeed', 27.8, 'Force', 0)
+% ...a car with weak rear tyres spins
+loose = vehicle('Cr', 40000);
+[r, info] = vehicleSim(loose, 'sinedwell', 4, 'Amplitude', 0.06, 'InitialSpeed', 27.8, 'Force', 0);
+fprintf('Weak rear tyres: spun = %d, body slip up to %.0f degrees\\n', info.Spun, info.PeakSideSlip*180/pi)
+% Straight lines: 0-100 km/h and the shortest stop from 100 km/h, dry and on snow
+figure; accelRun(c)
+[d, t] = brakingDistance(c, 27.78)
+dSnow = brakingDistance(vehicle('Mu', 0.3), 27.78)
+% The tyre's curve
+a = linspace(-0.3, 0.3, 200);
+figure; plot(a*180/pi, magicFormula(a, 10, 1.3, 1, -0.6)); grid on; xlabel('slip angle (deg)'); ylabel('side force / load')
+` },
 ];

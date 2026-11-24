@@ -8,7 +8,7 @@ const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
 // The tab, its label, and the button that shows it working.
-const ALL = { arm: ['Robot arm', 'Reach it'], planner: ['Path planner', 'Drive it'], sensing: ['Sensing', 'Replay'] };
+const ALL = { arm: ['Robot arm', 'Reach it'], planner: ['Path planner', 'Drive it'], sensing: ['Sensing', 'Replay'], vehicle: ['Vehicle', 'Replay'] };
 const tabs = (process.env.TABS ?? Object.keys(ALL).join(',')).split(',');
 const browser = await launch();
 const out = {}, errors = [];
@@ -24,7 +24,8 @@ try {
     for (const tab of tabs) {
       const [name, button] = ALL[tab], r = (out[`${theme} ${tab}`] = {});
       const seg = page.getByRole('button', { name, exact: true }).first();
-      if (await seg.count()) await seg.click();
+      await seg.waitFor({ timeout: 120_000 });
+      await seg.click();
       const btn = page.getByRole('button', { name: button });
       await btn.waitFor({ timeout: 120_000 });
       await page.waitForTimeout(1500);

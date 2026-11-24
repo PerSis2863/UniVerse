@@ -1,0 +1,163 @@
+// Hyperion's vehicle dynamics (M486), pure. A car as the single-track ("bicycle") model with three degrees of freedom
+// in the plane (forward and sideways speed, yaw rate) plus where it is: each axle's tyres as one, their side force from
+// the slip angle by a linear law or Pacejka's Magic Formula with the grip shared with driving and braking (a friction
+// ellipse), the axle loads shifting with acceleration, air drag, rolling resistance and the road's slope. Also the
+// steady-state handling numbers (understeer gradient, yaw gain, characteristic or critical speed), straight-line
+// acceleration limited by power and grip, top speed, and the standard steering tests (step, ramp, sine with dwell).
+
+export interface Vehicle {
+  /** Mass (kg), yaw inertia (kg·m²), centre of mass to front and rear axle (m), its height (m). */
+  m: number; iz: number; lf: number; lr: number; h: number;
+  /** Each axle's cornering stiffness (N/rad, both tyres together) at its static load. */
+  cf: number; cr: number;
+  /** Road grip, drag coefficient, frontal area (m²), rolling resistance, peak power (W), driven axle. */
+  mu: number; cd: number; area: number; crr: number; power: number; drive: 'front' | 'rear' | 'all';
+  /** The tyres' law and the most the front wheels turn (rad). */
+  tyre: 'linear' | 'magic'; maxSteer: number;
+}
+/** A mid-size saloon, rear-driven, slightly understeering. */
+export const CAR_DEFAULT: Vehicle = { m: 1500, iz: 2500, lf: 1.2, lr: 1.5, h: 0.55, cf: 80000, cr: 95000, mu: 1, cd: 0.3, area: 2.2, crr: 0.012, power: 110e3, drive: 'rear', tyre: 'magic', maxSteer: 0.6 };
+export const G = 9.81, RHO = 1.2;
+const L = (v: Vehicle) => v.lf + v.lr;
+/** Static axle loads (N). */
+export const staticLoads = (v: Vehicle): [number, number] => [(v.m * G * v.lr) / L(v), (v.m * G * v.lf) / L(v)];
+
+/** Pacejka's Magic Formula: F = D sin(C atan(Bx − E(Bx − atan Bx))). */
+export const magic = (x: number, B: number, C: number, D: number, E: number) => D * Math.sin(C * Math.atan(B * x - E * (B * x - Math.atan(B * x))));
+const MF_C = 1.3, MF_E = -0.6;
+/** An axle's side force (N) at slip angle α with load fz and a driving or braking force fx already using some grip. */
+export function sideForce(v: Vehicle, axle: 0 | 1, alpha: number, fz: number, fx = 0) {
+  const fz0 = staticLoads(v)[axle], c = (axle === 0 ? v.cf : v.cr) * (fz / fz0), peak = v.mu * fz, room = Math.sqrt(Math.max(0, peak * peak - fx * fx));
+  if (v.tyre === 'linear') return Math.max(-room, Math.min(room, c * alpha)) * (room > 0 ? 1 : 0) || 0;
+  if (room <= 0) return 0;
+  // B chosen so the slope at zero slip is the cornering stiffness (scaled by the grip left).
+  const D = room, B = c / (MF_C * peak || 1);
+  return magic(alpha, B, MF_C, D, MF_E);
+}
+
+export interface VState { x: number; y: number; psi: number; vx: number; vy: number; r: number }
+export interface VInput { steer: number; force: number; grade?: number }
+/** The forces on the car now: longitudinal force split to the axles (driving limited by power and grip, braking by
+ * the loads), loads shifted by the last acceleration `ax`. */
+function forces(v: Vehicle, s: VState, u: VInput, ax: number) {
+  const vx = Math.max(s.vx, 0.5), Lw = L(v), fzf = Math.max(0, (v.m * (G * v.lr - ax * v.h)) / Lw), fzr = Math.max(0, (v.m * (G * v.lf + ax * v.h)) / Lw);
+  const d = Math.max(-v.maxSteer, Math.min(v.maxSteer, u.steer));
+  let fxf = 0, fxr = 0;
+  if (u.force >= 0) {
+    const want = Math.min(u.force, v.power / vx);
+    if (v.drive === 'front') fxf = Math.min(want, v.mu * fzf);
+    else if (v.drive === 'rear') fxr = Math.min(want, v.mu * fzr);
+    else { const k = fzf / (fzf + fzr || 1); fxf = Math.min(want * k, v.mu * fzf); fxr = Math.min(want * (1 - k), v.mu * fzr); }
+  } else {
+    // Braking shared by load (an ideal brake balance), never past the grip (as with ABS).
+    const k = fzf / (fzf + fzr || 1);
+    fxf = Math.max(u.force * k, -v.mu * fzf); fxr = Math.max(u.force * (1 - k), -v.mu * fzr);
+  }
+  const af = d - Math.atan2(s.vy + v.lf * s.r, vx), ar = -Math.atan2(s.vy - v.lr * s.r, vx);
+  const fyf = sideForce(v, 0, af, fzf, fxf), fyr = sideForce(v, 1, ar, fzr, fxr);
+  const drag = 0.5 * RHO * v.cd * v.area * s.vx * Math.abs(s.vx), roll = s.vx > 0.05 ? v.crr * v.m * G : 0, slope = v.m * G * Math.sin(u.grade ?? 0);
+  const FX = fxf * Math.cos(d) - fyf * Math.sin(d) + fxr - drag - roll - slope, FY = fxf * Math.sin(d) + fyf * Math.cos(d) + fyr, MZ = v.lf * (fxf * Math.sin(d) + fyf * Math.cos(d)) - v.lr * fyr;
+  return { FX, FY, MZ, af, ar, fzf, fzr, fyf, fyr, d };
+}
+function deriv(v: Vehicle, s: VState, u: VInput, ax: number): VState {
+  const f = forces(v, s, u, ax);
+  return {
+    x: s.vx * Math.cos(s.psi) - s.vy * Math.sin(s.psi), y: s.vx * Math.sin(s.psi) + s.vy * Math.cos(s.psi), psi: s.r,
+    vx: f.FX / v.m + s.vy * s.r, vy: f.FY / v.m - s.vx * s.r, r: f.MZ / v.iz,
+  };
+}
+const addS = (a: VState, b: VState, k: number): VState => ({ x: a.x + k * b.x, y: a.y + k * b.y, psi: a.psi + k * b.psi, vx: a.vx + k * b.vx, vy: a.vy + k * b.vy, r: a.r + k * b.r });
+/** One Runge–Kutta step; `ax` the forward acceleration felt last step (for the load shift). */
+export function vehicleStep(v: Vehicle, s: VState, u: VInput, dt: number, ax = 0): VState {
+  const k1 = deriv(v, s, u, ax), k2 = deriv(v, addS(s, k1, dt / 2), u, ax), k3 = deriv(v, addS(s, k2, dt / 2), u, ax), k4 = deriv(v, addS(s, k3, dt), u, ax);
+  const n = addS(s, { x: k1.x + 2 * k2.x + 2 * k3.x + k4.x, y: k1.y + 2 * k2.y + 2 * k3.y + k4.y, psi: k1.psi + 2 * k2.psi + 2 * k3.psi + k4.psi, vx: k1.vx + 2 * k2.vx + 2 * k3.vx + k4.vx, vy: k1.vy + 2 * k2.vy + 2 * k3.vy + k4.vy, r: k1.r + 2 * k2.r + 2 * k3.r + k4.r }, dt / 6);
+  // It doesn't roll backwards on its own (braking to a stop stops).
+  if (n.vx < 0 && s.vx >= 0 && u.force <= 0) { n.vx = 0; n.vy = 0; n.r = 0; }
+  return n;
+}
+
+export interface VRun { t: number[]; x: number[]; y: number[]; psi: number[]; vx: number[]; vy: number[]; r: number[]; ay: number[]; ax: number[]; beta: number[]; steer: number[]; af: number[]; ar: number[]; spun: boolean }
+/** Drives the car: steering δ(t) at the wheels (rad), and either a speed to hold (a controller on the force) or a
+ * force (N, negative brakes). 1 ms steps. A car whose body slip passes 15° or whose yaw turns past 1.5 rad/s past
+ * what the steering asks is reported as spun. */
+export function vehicleSim(v: Vehicle, steer: (t: number) => number, T: number, o: { speed?: number | ((t: number) => number); force?: (t: number) => number; v0?: number; grade?: (t: number) => number; points?: number } = {}): VRun {
+  const dt = 1e-3, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1200)));
+  const target = typeof o.speed === 'number' ? (() => o.speed as number) : o.speed;
+  let s: VState = { x: 0, y: 0, psi: 0, vx: o.v0 ?? (typeof o.speed === 'number' ? o.speed : 0), vy: 0, r: 0 }, ax = 0, spun = false;
+  const out: VRun = { t: [], x: [], y: [], psi: [], vx: [], vy: [], r: [], ay: [], ax: [], beta: [], steer: [], af: [], ar: [], spun: false };
+  const rec = (t: number, u: VInput, f: ReturnType<typeof forces>) => {
+    out.t.push(t); out.x.push(s.x); out.y.push(s.y); out.psi.push(s.psi); out.vx.push(s.vx); out.vy.push(s.vy); out.r.push(s.r);
+    out.ay.push(f.FY / v.m); out.ax.push(f.FX / v.m); out.beta.push(Math.atan2(s.vy, Math.max(s.vx, 0.1))); out.steer.push(u.steer); out.af.push(f.af); out.ar.push(f.ar);
+  };
+  for (let k = 0; k <= n; k++) {
+    const t = k * dt, grade = o.grade ? o.grade(t) : 0;
+    // Holding a speed: a firm P controller on the force (a driver keeping the pedal right), limited later by power and grip.
+    const force = target ? v.m * 2 * (target(t) - s.vx) + 0.5 * RHO * v.cd * v.area * s.vx * s.vx + v.crr * v.m * G + v.m * G * Math.sin(grade) : o.force ? o.force(t) : 0;
+    const u: VInput = { steer: steer(t), force, grade };
+    const f = forces(v, s, u, ax);
+    if (k % every === 0 || k === n) rec(t, u, f);
+    if (Math.abs(Math.atan2(s.vy, Math.max(s.vx, 0.1))) > (15 * Math.PI) / 180) spun = true;
+    if (k === n) break;
+    ax = f.FX / v.m;
+    s = vehicleStep(v, s, u, dt, ax);
+  }
+  return { ...out, spun };
+}
+
+// ——— Steady state ———
+/** The understeer gradient K (rad per m/s² of side acceleration; above 0 understeers), the yaw-rate gain at a speed
+ * (r/δ = u / (L + K u²)), and the characteristic speed (the most yaw gain, understeer) or critical speed (unstable past
+ * it, oversteer). */
+export function handling(v: Vehicle) {
+  const [fzf, fzr] = staticLoads(v), K = (fzf / G) / v.cf - (fzr / G) / v.cr, Lw = L(v);
+  return { K, characteristic: K > 0 ? Math.sqrt(Lw / K) : NaN, critical: K < 0 ? Math.sqrt(-Lw / K) : NaN, yawGain: (u: number) => u / (Lw + K * u * u), wheelbase: Lw };
+}
+/** The steady circle: steering needed for radius R at speed u (rad), by the linear model: δ = L/R + K u²/R. */
+export const steerForCircle = (v: Vehicle, R: number, u: number) => L(v) / R + (handling(v).K * u * u) / R;
+
+// ——— Straight-line performance ———
+/** Full power from rest on a level road: time, speed and distance, limited by power, the driven axle's grip (with the
+ * load moving back) and the drag. Also the top speed, where power meets the drag and rolling. */
+export function accelRun(v: Vehicle, upTo = 100 / 3.6, T = 60) {
+  const dt = 0.01, out = { t: [0], v: [0], d: [0] };
+  let u = 0, d = 0, ax = 0, t = 0, reach = NaN;
+  while (t < T) {
+    const Lw = L(v), fzf = (v.m * (G * v.lr - ax * v.h)) / Lw, fzr = (v.m * (G * v.lf + ax * v.h)) / Lw;
+    const grip = v.drive === 'front' ? v.mu * fzf : v.drive === 'rear' ? v.mu * fzr : v.mu * (fzf + fzr);
+    const F = Math.min(v.power / Math.max(u, 1), grip) - 0.5 * RHO * v.cd * v.area * u * u - v.crr * v.m * G;
+    ax = F / v.m; u = Math.max(0, u + ax * dt); d += u * dt; t += dt;
+    out.t.push(t); out.v.push(u); out.d.push(d);
+    if (Number.isNaN(reach) && u >= upTo) reach = t;
+    if (!Number.isNaN(reach) && t > reach + 0.5 && u >= upTo) break;
+  }
+  // Top speed: P = (½ρCdA u² + Crr m g) u, solved by bisection.
+  let lo = 0, hi = 200;
+  for (let i = 0; i < 80; i++) { const m2 = (lo + hi) / 2; if ((0.5 * RHO * v.cd * v.area * m2 * m2 + v.crr * v.m * G) * m2 < v.power) lo = m2; else hi = m2; }
+  return { ...out, time: reach, top: lo };
+}
+/** The shortest stop from speed u on a level road (all wheels at the grip limit, drag helping): distance and time. */
+export function brakingDistance(v: Vehicle, u: number) {
+  let s = 0, t = 0, w = u;
+  const dt = 0.001;
+  while (w > 0) { const a = v.mu * G + (0.5 * RHO * v.cd * v.area * w * w) / v.m + v.crr * G; w -= a * dt; s += Math.max(w, 0) * dt; t += dt; }
+  return { distance: s, time: t };
+}
+
+// ——— The standard steering tests (at the wheels, rad) ———
+/** A step of `amp` after `at` seconds, ramped over 0.15 s as a driver can. */
+export const stepSteer = (amp: number, at = 0.5) => (t: number) => (t < at ? 0 : t < at + 0.15 ? (amp * (t - at)) / 0.15 : amp);
+/** A slow ramp, `rate` rad/s, from `at` seconds (for the understeer curve). */
+export const rampSteer = (rate: number, at = 0.5) => (t: number) => Math.max(0, (t - at) * rate);
+/** The sine with dwell of the electronic-stability test (FMVSS 126 / UN R140): 0.7 Hz, a 0.5 s hold at the second
+ * peak, starting at `at`. */
+export function sineWithDwell(amp: number, at = 0.5, f = 0.7) {
+  const w = 2 * Math.PI * f, t1 = 0.75 / f, dwell = 0.5;
+  return (t: number) => {
+    const s = t - at;
+    if (s < 0) return 0;
+    if (s < t1) return amp * Math.sin(w * s);
+    if (s < t1 + dwell) return -amp;
+    if (s < 1 / f + dwell) return amp * Math.sin(w * (s - dwell));
+    return 0;
+  };
+}
