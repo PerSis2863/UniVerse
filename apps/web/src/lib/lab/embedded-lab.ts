@@ -15,7 +15,8 @@ import { planTree, runTree, treeBytes, treeInput, treeIntC } from './embedded-tr
 // and linear models (fitlm), in single or double; and networks wholly in 8 bits ('int8full', embedded.ts).
 // M529: and SVMs for many classes (fitcecoc), naive Bayes (fitcnb) and linear discriminants (fitcdiscr); M530: those three
 // also in 8 bits (their numbers whole from −127 to 127 with a scale; embedreport measures it, exportmodel writes it).
-// M539: trees and tree ensembles wholly in whole numbers ('int8full', embedded-trees.ts).
+// M539: trees and tree ensembles wholly in whole numbers ('int8full', embedded-trees.ts). M541: logistic models (fitglm,
+// binomial) with their link: the chance and the class, in single, double and whole numbers.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 1, lab);
@@ -27,7 +28,6 @@ function modelOf(v: Value | undefined): Struct {
   if (v?.k !== 'struct' || v.f.get('Type')?.k !== 'str') throw new LabError('Give a trained model (from fitcnet, fitrnet, fitctree, fitrtree, fitcsvm, fitcecoc, fitcnb, fitcdiscr, fitcknn, fitcensemble, fitrensemble, TreeBagger or fitlm).');
   const t = textOf(v.f.get('Type')!);
   if (!NETS.has(t) && !TREES.has(t) && !OTHERS.has(t)) throw new LabError(`${t} isn’t made embedded here: neural networks, decision trees, SVMs (two classes or many), naive Bayes, discriminants, k-nearest neighbours, tree ensembles and linear models are.`);
-  if (t === 'GeneralizedLinearModel' && v.f.has('ClassNames')) throw new LabError('A logistic model isn’t made embedded here (a linear one is).');
   return v;
 }
 const namesOf = (v: Value | undefined): string[] | null => (!v ? null : v.k === 'cell' ? v.d.map((x) => textOf(x)) : [...toMat(v).d].map(String));
@@ -39,7 +39,8 @@ const METHOD: Record<string, 'bag' | 'adaboostm1' | 'adaboostm2' | 'lsboost'> = 
 export function specOf(m: Struct): Spec {
   const t = textOf(fld(m, 'Type')), classes = namesOf(m.f.get('ClassNames'));
   const inputs = toMat(fld(m, 'X')).c;
-  if (t === 'LinearModel' || t === 'GeneralizedLinearModel') return { kind: 'linear', beta: [...toMat(fld(m, 'Beta')).d], intercept: !!toMat(fld(m, 'Intercept')).d[0], inputs };
+  // M541: a logistic model (binomial fitglm: always an intercept) carries its link and two classes.
+  if (t === 'LinearModel' || t === 'GeneralizedLinearModel') return { kind: 'linear', beta: [...toMat(fld(m, 'Beta')).d], intercept: m.f.has('Intercept') ? !!toMat(fld(m, 'Intercept')).d[0] : true, inputs, ...(classes ? { link: 'logit' as const, classes } : {}) };
   if (t === 'ClassificationSVM') {
     const { mu, sigma } = stdOf(m), a = toMat(fld(m, 'Alpha')).d, y = toMat(fld(m, 'SupportVectorLabels')).d;
     return { kind: 'svm', sv: rowsOf(toMat(fld(m, 'SupportVectors'))), coef: [...a].map((v, i) => v * y[i]), bias: toMat(fld(m, 'Bias')).d[0], kernel: textOf(fld(m, 'KernelFunction')) as 'rbf', scale: toMat(fld(m, 'KernelScale')).d[0], order: toMat(fld(m, 'PolynomialOrder')).d[0], mu, sigma, classes: classes! };
@@ -121,7 +122,7 @@ def('modelsize', (a) => [num(bytes(specOf(modelOf(a[0])), precOf(a[1] ?? str('do
 def('embedreport', (a, nout, lab) => {
   const m = modelOf(a[0]);
   if (!a[1] || !a[2]) throw new LabError('embedreport(model, X, Y): rows to test on and their answers.');
-  const spec = specOf(m), precs: Prec[] = spec.kind === 'net' ? ['double', 'single', 'int8'] : ['double', 'single'], classes = spec.kind === 'svm' || spec.kind === 'knn' || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' || ((spec.kind === 'net' || spec.kind === 'tree' || spec.kind === 'ensemble') && !!spec.classes);
+  const spec = specOf(m), precs: Prec[] = spec.kind === 'net' ? ['double', 'single', 'int8'] : ['double', 'single'], classes = spec.kind === 'svm' || spec.kind === 'knn' || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' || ((spec.kind === 'net' || spec.kind === 'tree' || spec.kind === 'ensemble' || spec.kind === 'linear') && !!spec.classes);
   const rows = precs.map((p) => ({ p: p as string, size: bytes(spec, p), err: toMat(call(lab, 'loss', quantized(m, p), a[1], a[2])[0]).d[0] }));
   // M525: the network wholly in 8 bits, run exactly as its C would.
   if (spec.kind === 'net') rows.push({ p: 'int8full', size: bytes(spec, 'int8full'), err: fullLoss(spec, toMat(fld(m, 'X')), toMat(a[1]), a[2]) });
@@ -145,8 +146,10 @@ def('embedreport', (a, nout, lab) => {
   }
   // M537: a linear model wholly in whole numbers: its answer F · S, run as its C.
   if (spec.kind === 'linear') {
-    const plan = planInt(spec, rowsOf(toMat(fld(m, 'X')))), X = rowsOf(toMat(a[1])), t = toMat(a[2]).d;
-    rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (Number(runInt(plan, intInput(plan, x)).F[0]) * plan.S - t[i]) ** 2, 0) / X.length });
+    const plan = planInt(spec, rowsOf(toMat(fld(m, 'X')))), X = rowsOf(toMat(a[1])), F = (x: number[]) => runInt(plan, intInput(plan, x)).F[0];
+    // M541: a logistic model decides by the sign of F (its chance at least ½)
+    if (spec.classes) { const names = spec.classes, Y = a[2], truth = Y.k === 'cell' ? Y.d.map((v) => names.indexOf(textOf(v))) : [...toMat(Y).d].map((v) => names.indexOf(String(v))); rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + ((F(x) >= BigInt(0) ? 1 : 0) === truth[i] ? 0 : 1), 0) / X.length }); }
+    else { const t = toMat(a[2]).d; rows.push({ p: 'int8full', size: intBytes(plan), err: X.reduce((n, x, i) => n + (Number(F(x)) * plan.S - t[i]) ** 2, 0) / X.length }); }
   }
   const score = (e: number) => (classes ? 100 * (1 - e) : Math.sqrt(e));
   const col = (xs: number[]): Mat => mat(xs.length, 1, xs);
@@ -190,6 +193,6 @@ def('exportmodel', (a, nout, lab) => {
   const fs = (lab.host as { files?: unknown }).files;
   if (fs instanceof FileStore) { fs.putText(`${name}.c`, out.c); fs.putText(`${name}.h`, out.h); }
   if (nout > 0) return [{ k: 'struct', f: new Map<string, Value>([['C', str(out.c)], ['H', str(out.h)], ['Bytes', num(size)]]) } satisfies Struct];
-  lab.host.out(`Wrote ${name}.c and ${name}.h (${size.toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' ? ', scores' : spec.kind === 'svm' ? ', &score' : ''}).\n`);
+  lab.host.out(`Wrote ${name}.c and ${name}.h (${size.toLocaleString()} bytes of ${p} numbers): call ${name}_predict(x${(spec.kind === 'net' && spec.classes && p !== 'int8full') || (spec.kind === 'ensemble' && spec.classes) || spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr' ? ', scores' : spec.kind === 'svm' ? ', &score' : spec.kind === 'linear' && spec.link ? ', &prob' : ''}).\n`);
   return [];
 });

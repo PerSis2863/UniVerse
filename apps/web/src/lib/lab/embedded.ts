@@ -16,7 +16,8 @@ export interface TreeSpec { kind: 'tree'; pred: number[]; cut: number[]; left: n
 export interface SvmSpec { kind: 'svm'; sv: number[][]; coef: number[]; bias: number; kernel: 'linear' | 'rbf' | 'polynomial'; scale: number; order: number; mu: number[] | null; sigma: number[] | null; classes: string[] }
 export interface KnnSpec { kind: 'knn'; train: number[][]; label: number[]; k: number; K: number; mu: number[] | null; sigma: number[] | null; classes: string[] }
 export interface EnsSpec { kind: 'ensemble'; trees: { pred: number[]; cut: number[]; left: number[]; right: number[]; value: number[]; probs: number[][] }[]; alpha: number[]; method: 'bag' | 'adaboostm1' | 'adaboostm2' | 'lsboost'; K: number; init: number; classes: string[] | null; inputs: number }
-export interface LinSpec { kind: 'linear'; beta: number[]; intercept: boolean; inputs: number }
+/** M541: a logistic model (fitglm, binomial) is a linear one with the logit link: its chance 1 / (1 + e^−η), class 1 when ≥ ½. */
+export interface LinSpec { kind: 'linear'; beta: number[]; intercept: boolean; inputs: number; link?: 'logit'; classes?: string[] }
 /** M529: fitcecoc's SVMs, one per pair of classes (each its own support vectors and standardising), CODE[class][learner] = −1, 0 or 1. */
 export interface EcocSpec { kind: 'ecoc'; learners: { sv: number[][]; coef: number[]; bias: number; mu: number[] | null; sigma: number[] | null }[]; code: number[][]; kernel: 'linear' | 'rbf' | 'polynomial'; scale: number; order: number; inputs: number; classes: string[] }
 /** M529: naive Bayes (a bell curve per class and input): its means, spreads and priors. */
@@ -147,8 +148,15 @@ function otherC(s: SvmSpec | KnnSpec | EnsSpec | LinSpec | EcocSpec | BayesSpec 
   if (s.kind === 'ecoc') return ecocC(s, name, p, T, fn, v);
   if (s.kind === 'bayes' || s.kind === 'discr') return scoreC(s, name, p, T, fn, v);
   if (s.kind === 'linear') {
-    const lines = [`${T} ${name}_predict(const ${T} x[${s.inputs}]) {`, `  ${T} s = 0;`, `  for (int j = 0; j < ${s.inputs}; j++) s += x[j] * B[j + ${s.intercept ? 1 : 0}];`, `  return ${s.intercept ? 'B[0] + s' : 's'};`, '}'];
-    return { c: [...head(name, `a linear model, ${p}`), `static const ${T} B[${s.beta.length}] = { ${s.beta.map(v).join(', ')} };`, '', ...lines, ''].join('\n'), h: header(name, `${T} ${name}_predict(const ${T} x[${s.inputs}]);`, '') };
+    const sum = [`  ${T} s = 0;`, `  for (int j = 0; j < ${s.inputs}; j++) s += x[j] * B[j + ${s.intercept ? 1 : 0}];`];
+    const B = `static const ${T} B[${s.beta.length}] = { ${s.beta.map(v).join(', ')} };`;
+    if (s.link === 'logit') {
+      // M541: the logit link: the chance of the second class, and that class when it is at least ½.
+      const notes = classNote(s.classes ?? null), lines = [`/* the chance of class 1 (1 / (1 + e^-(B·x))) in *prob if asked; the class (1 when the chance is at least 1/2) */`, `int ${name}_predict(const ${T} x[${s.inputs}], ${T} *prob) {`, ...sum, `  ${T} q = 1 / (1 + ${fn('exp')}(-(${s.intercept ? 'B[0] + s' : 's'})));`, '  if (prob) *prob = q;', `  return q >= ${p === 'double' ? '0.5' : '0.5f'};`, '}'];
+      return { c: [...head(name, `a logistic model, ${p}`), notes + B, '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${s.inputs}], ${T} *prob);`, notes) };
+    }
+    const lines = [`${T} ${name}_predict(const ${T} x[${s.inputs}]) {`, ...sum, `  return ${s.intercept ? 'B[0] + s' : 's'};`, '}'];
+    return { c: [...head(name, `a linear model, ${p}`), B, '', ...lines, ''].join('\n'), h: header(name, `${T} ${name}_predict(const ${T} x[${s.inputs}]);`, '') };
   }
   if (s.kind === 'svm') {
     const P = s.sv[0]?.length ?? 0, N = s.sv.length, st = std(T, s.mu, s.sigma, p, P);

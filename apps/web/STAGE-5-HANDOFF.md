@@ -13205,3 +13205,19 @@ The owner pasted M538–M539's "left out" list and "push all": both parts built.
   two warnings on stderr (fixed point and plain).
 - **Trap:** lsqminnorm's working grows fast (H = G_PᵀG_P's minors): even 6-bit values in a 4×3 system go past 64 bits.
 
+## M541 (24 Nov): Hyperion logistic models in C, with their link
+
+The last of M534–M537's "left out" list: a generalised linear model's link step.
+
+- **What was missing:** a logistic model (`fitglm(…, 'Distribution', 'binomial')`) was refused by the embedded tools; a
+  normal one (identity link) was already a linear model. Hyperion's fitglm has only these two, so the logit is the link.
+- **Single / double** (`embedded.ts`): `LinSpec` carries `link: 'logit'` and the two classes; the C is
+  `int name_predict(x, &prob)`: η = B·x, the chance 1 / (1 + e^−η) in `*prob`, class 1 when it is at least ½ (as predict).
+- **Wholly in whole numbers** (`embedded-int.ts`, `logit` on the plan): the same linear unit as M537 gives the log-odds as
+  F (× S); the class is F's sign (no exp, no floating point); the wrapper's chance is the only other float.
+  embedreport's int8full row scores the class from the sign.
+- **Checked:** `embedded.test.ts` M541: versicolor against virginica on petal length and width: the double C's chance within
+  1e-12 of Hyperion's predict and the same class on every row, single within 1e-5, the whole-number core equal to the twin
+  and its class from the sign; int8full within 3 points of double's accuracy.
+- **Left out:** links Hyperion's fitglm doesn't have (Poisson's log, probit…).
+

@@ -351,4 +351,50 @@ int main(void) {
       expect(got[i].slice(10)).toEqual([rt.F, ls.F, rb.F]);
     });
   });
+  it.skipIf(!hasCc)('M541: a logistic model in C with its link: chance and class in double and single, the sign in whole numbers', () => {
+    const t = make();
+    t.l.run(`load fisheriris; k = ~strcmp(species, 'setosa'); X = meas(k, 3:4); y = species(k);
+      g = fitglm(X, strcmp(y, 'virginica'), 'Distribution', 'binomial');
+      pr = predict(g, X); exportmodel(g, 'l_d', 'Precision', 'double'); exportmodel(g, 'l_s', 'Precision', 'single');
+      exportmodel(g, 'l_i', 'Precision', 'int8full'); r = embedreport(g, X, strcmp(y, 'virginica'));`);
+    const acc = [...toMat((t.l.vars.get('r') as unknown as { f: Map<string, never> }).f.get('Accuracy')!).d];
+    expect(acc).toHaveLength(3); // double, single, int8full
+    expect(acc[0]).toBeGreaterThan(90); expect(acc[2]).toBeGreaterThan(acc[0] - 3);
+    expect(t.files.text('l_i.c')).not.toMatch(/double|float B\[/);
+    expect(t.out()).toContain('&prob');
+    const Xm = toMat(t.l.vars.get('X')!), rows = Array.from({ length: Xm.r }, (_, i) => [0, 1].map((j) => Xm.d[i + j * Xm.r]));
+    const spec = specOf(t.l.vars.get('g') as Struct) as LinSpec, plan = planInt(spec, rows), xq = rows.map((x) => intInput(plan, x));
+    expect(spec.link).toBe('logit');
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m541-'));
+    for (const f of ['l_d', 'l_s', 'l_i']) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+#include "l_d.h"
+#include "l_s.h"
+#include "l_i.h"
+static const double X[${rows.length}][2] = {${rows.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+static const int8_t Q[${rows.length}][2] = {${xq.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+int main(void) {
+  for (int i = 0; i < ${rows.length}; i++) {
+    double pd; float ps, pi, xf[2] = {(float)X[i][0], (float)X[i][1]};
+    int cd = l_d_predict(X[i], &pd), cs = l_s_predict(xf, &ps), ci = l_i_predict(xf, &pi);
+    printf("%d %.15g %d %.7g %lld %d %.7g\\n", cd, pd, cs, ps, (long long)l_i_predict_q(Q[i]), ci, pi);
+  }
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), join(dir, 'l_d.c'), join(dir, 'l_s.c'), join(dir, 'l_i.c'), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.trim().split(' ').map(Number));
+    const pr = toMat(t.l.vars.get('pr')!);
+    expect(spec.classes).toHaveLength(2);
+    rows.forEach((_, i) => {
+      const [cd, pd, cs, ps, F, ci, pi] = got[i], want = pr.d[i];
+      expect(Math.abs(pd - want)).toBeLessThan(1e-12); // double: Hyperion's chance
+      expect(cd).toBe(want >= 0.5 ? 1 : 0); // and its class
+      expect(Math.abs(ps - want)).toBeLessThan(1e-5);
+      if (Math.abs(want - 0.5) > 1e-5) expect(cs).toBe(cd); // single: the same class, but at a near tie
+      const tw = runInt(plan, xq[i]).F[0];
+      expect(BigInt(F)).toBe(tw); // the integer core: exactly the twin
+      expect(ci).toBe(tw >= BigInt(0) ? 1 : 0);
+      expect(Math.abs(pi - 1 / (1 + Math.exp(-Number(tw) * plan.S)))).toBeLessThan(1e-5);
+    });
+  });
 });

@@ -6,7 +6,8 @@ import { classNote, head, header, list, num, quantizeLayer, quantizePositive, ty
 // m · 2^-sh. Each "unit" (a class's score, or one SVM of the many-class set) gives a whole number F on one shared scale S
 // (its real value ≈ F · S). The C and the twin here (BigInt) give the same whole numbers.
 // M537: and linear models (fitlm), which predict a number: one linear unit, the answer F · S. Polynomial kernels of any
-// order (the powers worked as fractions of their largest value), and up to 65,536 inputs.
+// order (the powers worked as fractions of their largest value), and up to 65,536 inputs. M541: logistic models: the same
+// linear unit gives the log-odds, the class is its sign.
 
 type Q = { q: Int8Array; scale: number };
 /** A linear unit: F = b + requant(Σ w·xq). A distance unit: F = b − requant(Σ ((xq − c)·r)²). An SVM with a Gaussian
@@ -17,7 +18,7 @@ export type IntUnit =
   | { kind: 'dist'; c: Int8Array; r: Int8Array; m: number; sh: number; b: number }
   | { kind: 'rbf'; c: Int8Array; r: Int8Array; coef: Int8Array; mt: number; sht: number; m: number; sh: number; b: number }
   | { kind: 'poly'; u: Int8Array; a: number[]; vmax: number; coef: Int8Array; mt: number; sht: number; mz: number; shz: number; m: number; sh: number; b: number };
-export interface IntPlan { model: 'ecoc' | 'bayes' | 'discr' | 'linear'; P: number; classes: string[]; centre: number[]; step: number[]; S: number; units: IntUnit[]; code: number[][] | null; one: number; order: number }
+export interface IntPlan { model: 'ecoc' | 'bayes' | 'discr' | 'linear'; P: number; classes: string[]; centre: number[]; step: number[]; S: number; units: IntUnit[]; code: number[][] | null; one: number; order: number; logit?: boolean }
 
 const MAX_IN = 65536; // M537: 127 · 127 · 65536 stays inside a 32-bit sum (256 before)
 const ZQ = 30; // M537: a polynomial kernel's base as a fraction of its largest value, in Q30
@@ -91,7 +92,7 @@ export function planInt(s: EcocSpec | BayesSpec | DiscrSpec | LinSpec, rows: num
   // The shared scale: the largest unit value on the training rows, twice over, as 2^24.
   const big = Math.max(1e-9, ...rows.flatMap((x) => reals.map((r) => Math.abs(r.f(xq(x))))), ...(s.kind === 'ecoc' ? [1] : []));
   const S = (2 * big) / 2 ** 24;
-  return { model: s.kind, P, classes: s.kind === 'linear' ? [] : s.classes, centre, step, S, units: reals.map((r) => r.make(S)), code: s.kind === 'ecoc' ? s.code : null, one: Math.round(1 / S), order: s.kind === 'ecoc' ? s.order : 0 };
+  return { model: s.kind, P, classes: s.kind === 'linear' ? s.classes ?? [] : s.classes, logit: s.kind === 'linear' && s.link === 'logit', centre, step, S, units: reals.map((r) => r.make(S)), code: s.kind === 'ecoc' ? s.code : null, one: Math.round(1 / S), order: s.kind === 'ecoc' ? s.order : 0 };
 }
 const renamed = (x: { m: number; sh: number }) => ({ mt: x.m, sht: x.sh });
 
@@ -174,6 +175,12 @@ export function intModelC(p: IntPlan, name: string): { c: string; h: string } {
     const lin = [`/* The integer core: 8-bit inputs in, the answer as a whole number F out (the answer is F × ${S}). */`, `int64_t ${name}_predict_q(const int8_t xq[${P}]) {`, '  int64_t F[1];', ...core, '  return F[0];', '}'];
     const lw = [`float ${name}_predict(const float x[${P}]) {`, `  int8_t xq[${P}];`, `  for (int j = 0; j < ${P}; j++) { float q = floorf((x[j] - CENTRE[j]) / STEP[j] + 0.5f); xq[j] = (int8_t)(q < -127 ? -127 : q > 127 ? 127 : q); }`, `  return (float)${name}_predict_q(xq) * ${S};`, '}'];
     const pr = `int64_t ${name}_predict_q(const int8_t xq[${P}]);\nfloat ${name}_predict(const float x[${P}]);`;
+    if (p.logit) {
+      // M541: the logit link: F is the log-odds (× S), so the class is F's sign, whole numbers only; the chance in float.
+      const notes = classNote(p.classes), lg = [`/* From the sensor's numbers: each input made 8-bit, the integer core, the class from F's sign (the chance at least 1/2); the chance in *prob if asked (the only other floating point). */`,
+        `int ${name}_predict(const float x[${P}], float *prob) {`, `  int8_t xq[${P}];`, '  int64_t F;', lw[2], `  F = ${name}_predict_q(xq);`, `  if (prob) *prob = 1.0f / (1.0f + expf(-(float)F * ${S}));`, '  return F >= 0;', '}'];
+      return { c: [...head(name, 'a logistic model, wholly in whole numbers: 8-bit weights and inputs, a 32-bit sum, the class from the sign'), notes + arrays.join('\n'), '', ...helpers, '', ...lin.map((l) => l.replace('the answer as a whole number F out (the answer is F', 'the log-odds as a whole number F out (they are F')), '', ...lg, ''].join('\n'), h: header(name, `int64_t ${name}_predict_q(const int8_t xq[${P}]);\nint ${name}_predict(const float x[${P}], float *prob);`, notes) };
+    }
     return { c: [...head(name, 'a linear model, wholly in whole numbers: 8-bit weights and inputs, a 32-bit sum'), arrays.join('\n'), '', ...helpers, '', ...lin, '', '/* From the sensor\'s numbers: each input made 8-bit (the only floating point, with the answer), then the integer core. */', ...lw, ''].join('\n'), h: header(name, pr, '') };
   }
   const wrap = [`int ${name}_predict(const float x[${P}], float scores[${K}]) {`, `  int8_t xq[${P}];`, `  int64_t sums[${K}];`, `  int n[${K}], top;`,
