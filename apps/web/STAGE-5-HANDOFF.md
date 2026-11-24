@@ -13152,6 +13152,20 @@ the formula at 30 m, the medium values, gustier along the way at 60 m than 800 m
 'TurbulenceWind20'. Window: All six → Rough → "Near the ground (60 m)". Not built: the propeller's gyroscopic load on
 the engine mount, turbulence's rotational parts (p, q, r gusts).
 
+## M486e (24 Nov): Hyperion vehicles, the roof crushing and the car turning as it tumbles
+
+`vehicle.ts` (`tumble`): each roof edge holds at most `swr` × the car's weight (3, FMVSS 216), stiffening as it folds
+(doubling every 10 cm); past that the edge moves in for good (`crushed[side]`, capped at 0.6 of the roof's height) and
+the force is capped there, so the energy goes into crush. **Trap:** first the crush grew by (N − strength)/K with N
+including the damper: at impact speeds it collapsed by centimetres a step; then with a flat strength all vertical energy
+went into the roof (vans to the cap): now only the spring part counts and the roof stiffens. Yaw: the yaw rate goes on
+(`st.r`; from `vehicleSim` the car's own, in the tumble's frame), slowed by body friction × total load × a quarter of the
+car's length over `iz`, and turning the axes (vf += r·vy, vy −= r·vf). `Tumble` gains `psi[]`, `crush`, `spin`.
+Checked: crush falls as the roof gets stronger, none when it rocks back; a yawing trip turns (0.1–1 rad), a still one
+doesn't; the fishhook van turns and its roof edge gives. Language: vehicleTrip 'RoofStrength', 'YawRate',
+'ForwardSpeed'; info RoofCrush, Spin (also in vehicleSim's). Window: Kerb shows "roof crushed"; Hook's result says how
+far. Not built: drawing the crushed roof, the windows breaking, people inside.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -159,7 +159,7 @@ export function vehicleSim(v: Vehicle, steer: (t: number) => number, T: number, 
         // M486d: it goes on tumbling, sideways across the road, until it comes to rest. The tumble's +y is the way it
         // tips (away from the turn's centre, −side in the car's own y), starting on its outer wheels' contact line.
         const sh = shape(v), out2 = -side;
-        out.tumble = tumble(v, { th, w: thd, vy: out2 * s.vy, vf: s.vx, pivot: [sh.t / 2, -v.h] });
+        out.tumble = tumble(v, { th, w: thd, vy: out2 * s.vy, vf: s.vx, r: out2 * s.r, pivot: [sh.t / 2, -v.h] });
         break;
       }
     }
@@ -182,7 +182,7 @@ export const GROUNDS: Record<string, Ground> = {
   grass: { wheel: 0.5, body: 0.35, name: 'grass' },
   soil: { wheel: 1.5, body: 0.6, name: 'soft soil' },
 };
-export interface Tumble { t: number[]; y: number[]; z: number[]; th: number[]; w: number[]; quarters: number; rests: 'wheels' | 'side' | 'roof'; slid: number; time: number; peakRate: number; tripped: boolean }
+export interface Tumble { t: number[]; y: number[]; z: number[]; th: number[]; w: number[]; psi: number[]; crush: number; spin: number; quarters: number; rests: 'wheels' | 'side' | 'roof'; slid: number; time: number; peakRate: number; tripped: boolean }
 /** The outline across the car: track, roof height and width (m). */
 export function shape(v: Vehicle) {
   const R = v.roll ?? ROLL_DEFAULT;
@@ -191,10 +191,18 @@ export function shape(v: Vehicle) {
 /** Tumbles from a start: angle θ (rad, + towards +y), its rate, sideways and forward speed (m/s), and the point it's
  * pivoting on (body coordinates: across, up from the centre of mass), which is on the ground (at height `kerb` past
  * `kerbAt`). */
-export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: number; pivot: [number, number]; vz?: number }, o: { ground?: Ground; kerb?: number; T?: number } = {}): Tumble {
+// M486e: the roof crushes, and the car turns as it tumbles. A roof edge pushed harder than the roof's strength (`swr`,
+// its strength-to-weight ratio: FMVSS 216 asks 3 times the car's weight per side) gives way: the edge moves in as far
+// as it is pushed past that, for good (the energy is spent), stiffening as it folds. The car's yaw rate goes on, slowed by the ground's
+// friction across its length (about a quarter of it as the arm), and turning the car's own axes: sliding forwards
+// becomes sliding sideways (more rolls) and back.
+export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: number; pivot: [number, number]; vz?: number; r?: number }, o: { ground?: Ground; kerb?: number; T?: number; swr?: number } = {}): Tumble {
   const sh = shape(v), gr = o.ground ?? GROUNDS.tarmac, kerb = o.kerb ?? 0, m = v.m, I = sh.ix, dt = 1e-4, T = o.T ?? 12;
-  // The corners (across, up from the centre of mass): the outer and inner wheels, the roof's outer and inner edges.
-  const pts: [number, number, boolean][] = [[sh.t / 2, -v.h, true], [-sh.t / 2, -v.h, true], [sh.roofW / 2, sh.roof - v.h, false], [-sh.roofW / 2, sh.roof - v.h, false]];
+  const Fy0 = (o.swr ?? 3) * m * G, arm = (v.lf + v.lr + 1.8) / 4, crushed = [0, 0];
+  // The corners (across, up from the centre of mass): the outer and inner wheels, the roof's outer and inner edges
+  // (the roof's last field: which side's crush moves it).
+  const pts: [number, number, boolean, number][] = [[sh.t / 2, -v.h, true, -1], [-sh.t / 2, -v.h, true, -1], [sh.roofW / 2, sh.roof - v.h, false, 0], [-sh.roofW / 2, sh.roof - v.h, false, 1]];
+  let r = st.r ?? 0, psi = 0;
   const rot = (a: number, b: number, th: number): [number, number] => [a * Math.cos(th) + b * Math.sin(th), -a * Math.sin(th) + b * Math.cos(th)];
   const pv = rot(st.pivot[0], st.pivot[1], st.th);
   // The centre of mass above the pivot on the ground; a kerb's ground is `kerb` high from the pivot on.
@@ -202,50 +210,60 @@ export function tumble(v: Vehicle, st: { th: number; w: number; vy: number; vf: 
   let y = -pv[0], z = kerb - pv[1], th = st.th, w = st.w, vy = st.vy + w * -pv[1], vz = (st.vz ?? 0) - w * -pv[0], vf = st.vf, still = 0;
   const kerbAt = kerb ? -0.05 : -Infinity, groundAt = (py: number) => (py >= kerbAt ? kerb : 0);
   const K = 4e6, C = 2 * 0.45 * Math.sqrt(K * m / 4);
-  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: 0, tripped: false };
+  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: 0, tripped: false };
   const y0 = y;
   for (let k = 0; k * dt <= T; k++) {
-    let Fy = 0, Fz = -m * G, tq = 0, Ff = 0;
-    for (const [a, b, wheel] of pts) {
+    let Fy = 0, Fz = -m * G, tq = 0, Ff = 0, Ntot = 0;
+    for (const [a, b0, wheel, side] of pts) {
+      const b = side >= 0 ? b0 - crushed[side] : b0;
       const [ry, rz] = rot(a, b, th), py = y + ry, pz = z + rz, pen = groundAt(py) - pz;
       if (pen <= 0) continue;
-      const vpy = vy + w * rz, vpz = vz - w * ry, N = Math.max(0, K * pen - C * vpz), mu = wheel ? gr.wheel : gr.body;
+      const vpy = vy + w * rz, vpz = vz - w * ry, mu = wheel ? gr.wheel : gr.body;
+      let N = Math.max(0, K * pen - C * vpz);
+      // The roof gives way past its strength: the edge sinks in until its spring holds just that (and no more is felt).
+      // It stiffens as it folds (pillars and sills join in): the strength doubles every 10 cm of crush.
+      const Fr = Fy0 * (1 + (side >= 0 ? crushed[side] : 0) / 0.1);
+      if (side >= 0 && K * pen > Fr) { crushed[side] = Math.min(0.6 * sh.roof, crushed[side] + pen - Fr / K); N = Math.min(N, Fr); }
+      else if (side >= 0) N = Math.min(N, Fr);
+      Ntot += N;
       // Friction against the corner's slide (forward and across), smoothed near a standstill.
       const sp = Math.hypot(vf, vpy), f = (mu * N) / Math.max(sp, 0.05);
       const fy = -f * vpy, ff = -f * vf;
       Fy += fy; Fz += N; Ff += ff; tq += fy * rz - N * ry;
     }
-    if (k % 100 === 0) { out.t.push(k * dt); out.y.push(y - y0); out.z.push(z); out.th.push(th); out.w.push(w); }
+    if (k % 100 === 0) { out.t.push(k * dt); out.y.push(y - y0); out.z.push(z); out.th.push(th); out.w.push(w); out.psi.push(psi); }
     out.peakRate = Math.max(out.peakRate, Math.abs(w));
-    vy += (Fy / m) * dt; vz += (Fz / m) * dt; w += (tq / I) * dt; vf = vf > 0 ? Math.max(0, vf + (Ff / m) * dt) : Math.min(0, vf + (Ff / m) * dt);
-    y += vy * dt; z += vz * dt; th += w * dt;
-    still = Math.abs(w) < 0.05 && Math.hypot(vy, vz) < 0.1 && Math.abs(vf) < 0.2 ? still + dt : 0;
+    // Yaw: friction across the car's length slows it; the axes turning swap forward and sideways speed.
+    const tz = (-gr.body * Ntot * arm * r) / Math.max(Math.abs(r), 0.05);
+    vy += (Fy / m - r * vf) * dt; vz += (Fz / m) * dt; w += (tq / I) * dt; vf += (Ff / m + r * vy) * dt; r += (tz / v.iz) * dt;
+    y += vy * dt; z += vz * dt; th += w * dt; psi += r * dt;
+    still = Math.abs(w) < 0.05 && Math.hypot(vy, vz) < 0.1 && Math.abs(vf) < 0.2 && Math.abs(r) < 0.05 ? still + dt : 0;
     if (still > 0.5) break;
   }
   // Where it ended: the nearest quarter turn, and what it lies on.
-  const q = Math.round(th / (Math.PI / 2)), r = ((q % 4) + 4) % 4;
-  out.quarters = Math.abs(q); out.rests = r === 0 ? 'wheels' : r === 2 ? 'roof' : 'side';
-  out.slid = y - y0; out.time = out.t[out.t.length - 1]; out.tripped = out.quarters > 0;
+  const q = Math.round(th / (Math.PI / 2)), qr = ((q % 4) + 4) % 4;
+  out.quarters = Math.abs(q); out.rests = qr === 0 ? 'wheels' : qr === 2 ? 'roof' : 'side';
+  out.slid = y - y0; out.time = out.t[out.t.length - 1]; out.tripped = out.quarters > 0; out.crush = Math.max(...crushed); out.spin = psi;
   return out;
 }
 /** The car sliding sideways at `vlat` (m/s) into a kerb `kerb` metres high (its leading wheels stop at the kerb's
  * edge), or across soft ground at no kerb: the tumble that follows. */
-export function kerbTrip(v: Vehicle, vlat: number, kerb = 0.15, ground: Ground = GROUNDS.tarmac): Tumble {
+export function kerbTrip(v: Vehicle, vlat: number, kerb = 0.15, ground: Ground = GROUNDS.tarmac, o: { swr?: number; r?: number; vf?: number } = {}): Tumble {
   const sh = shape(v), hh = v.h - kerb;
-  if (kerb <= 0) return tumble(v, { th: 0, w: 0, vy: vlat, vf: 0, pivot: [sh.t / 2, -v.h] }, { ground });
+  if (kerb <= 0) return tumble(v, { th: 0, w: 0, vy: vlat, vf: o.vf ?? 0, r: o.r, pivot: [sh.t / 2, -v.h] }, { ground, swr: o.swr });
   // The impact: angular momentum about the kerb's edge kept. Then it turns about the edge (gravity's moment m·g·(its
   // centre's offset across from the edge)) until it falls back or its centre passes over the edge.
   const Ie = sh.ix + v.m * ((sh.t / 2) ** 2 + hh * hh), dt = 1e-4;
   let phi = 0, w = (v.m * vlat * hh) / Ie, t = 0;
-  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: Math.abs(w), tripped: false };
+  const out: Tumble = { t: [], y: [], z: [], th: [], w: [], psi: [], crush: 0, spin: 0, quarters: 0, rests: 'wheels', slid: 0, time: 0, peakRate: Math.abs(w), tripped: false };
   for (let k = 0; t < 10; k++, t += dt) {
     const ry = -(sh.t / 2) * Math.cos(phi) + hh * Math.sin(phi), rz = (sh.t / 2) * Math.sin(phi) + hh * Math.cos(phi);
-    if (k % 100 === 0) { out.t.push(t); out.y.push(ry); out.z.push(kerb + rz); out.th.push(phi); out.w.push(w); }
+    if (k % 100 === 0) { out.t.push(t); out.y.push(ry); out.z.push(kerb + rz); out.th.push(phi); out.w.push(w); out.psi.push(0); }
     if (ry > 0) {
       // Over the edge: it tumbles on, from the kerb.
-      const rest = tumble(v, { th: phi, w, vy: 0, vf: 0, pivot: [sh.t / 2, -v.h] }, { ground, kerb });
+      const rest = tumble(v, { th: phi, w, vy: 0, vf: o.vf ?? 0, r: o.r, pivot: [sh.t / 2, -v.h] }, { ground, kerb, swr: o.swr });
       // y is the centre's place across, the kerb's edge at 0 (it started at −track/2).
-      return { ...rest, t: [...out.t, ...rest.t.map((x) => x + t)], y: [...out.y, ...rest.y.map((x) => x + ry)], z: [...out.z, ...rest.z], th: [...out.th, ...rest.th], w: [...out.w, ...rest.w], time: rest.time + t, slid: rest.slid + ry + sh.t / 2, peakRate: Math.max(out.peakRate, rest.peakRate), tripped: true };
+      return { ...rest, t: [...out.t, ...rest.t.map((x) => x + t)], y: [...out.y, ...rest.y.map((x) => x + ry)], z: [...out.z, ...rest.z], th: [...out.th, ...rest.th], w: [...out.w, ...rest.w], psi: [...out.psi, ...rest.psi], time: rest.time + t, slid: rest.slid + ry + sh.t / 2, peakRate: Math.max(out.peakRate, rest.peakRate), tripped: true };
     }
     if (phi < 0) break;
     w += ((v.m * G * ry) / Ie) * dt; phi += w * dt;

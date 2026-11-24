@@ -119,4 +119,21 @@ describe('Hyperion vehicle dynamics (M486)', () => {
     const f = (n: string, k: string) => (lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!;
     expect(toMat(f('i', 'Rolls')).d[0]).toBeGreaterThan(0); expect(toMat(f('j', 'Tripped')).d[0]).toBe(1); expect(toMat(f('j', 'TripSpeed')).d[0]).toBeCloseTo(v0, 6);
   });
+  it('the roof crushing and the car turning as it tumbles (M486e)', { timeout: 60_000 }, () => {
+    const saloon = { ...vd.CAR_DEFAULT, roll: vd.ROLL_DEFAULT }, van = { ...vd.CAR_DEFAULT, h: 1.2, m: 2500, roll: { ...vd.ROLL_DEFAULT, track: 1.6, ix: 1400 } };
+    // A stronger roof crushes less; a car that rocks back onto its wheels isn't crushed at all.
+    const c = (swr: number) => vd.kerbTrip(saloon, 18, 0.15, vd.GROUNDS.tarmac, { swr }).crush;
+    expect(c(1.5)).toBeGreaterThan(c(3)); expect(c(3)).toBeGreaterThan(c(5)); expect(c(5)).toBeGreaterThan(0);
+    expect(vd.kerbTrip(saloon, 6).crush).toBe(0);
+    // Yawing as it trips, it turns while it tumbles (slowed by the ground); without yaw it doesn't.
+    const still = vd.kerbTrip(saloon, 12, 0.15, vd.GROUNDS.tarmac, { vf: 15 }), spun = vd.kerbTrip(saloon, 12, 0.15, vd.GROUNDS.tarmac, { vf: 15, r: 1 });
+    expect(still.spin).toBe(0); expect(Math.abs(spun.spin)).toBeGreaterThan(0.1); expect(Math.abs(spun.spin)).toBeLessThan(1);
+    // The fishhook van rolls with its yaw rate: it turns as it tumbles and its roof edge gives.
+    const fh = vd.vehicleSim(van, vd.fishhook(0.12), 6, { v0: 22, force: () => 0, points: 600 }).tumble!;
+    expect(Math.abs(fh.spin)).toBeGreaterThan(0.01); expect(fh.crush).toBeGreaterThan(0);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, a] = vehicleTrip(vehicle('Roll', true), 18, 'Kerb', 0.15, 'RoofStrength', 1.5); [~, b] = vehicleTrip(vehicle('Roll', true), 12, 'Kerb', 0.15, 'YawRate', 1, 'ForwardSpeed', 15);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('a', 'RoofCrush')).toBeCloseTo(c(1.5), 9); expect(Math.abs(f('b', 'Spin'))).toBeGreaterThan(5);
+  });
 });

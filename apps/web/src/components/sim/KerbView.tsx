@@ -89,7 +89,7 @@ export function KerbView({ car }: { car: Vehicle }) {
     ['Result', tb.tripped ? `Tripped: ${tb.quarters} quarter turn${tb.quarters === 1 ? '' : 's'}, on its ${tb.rests}` : 'Fell back onto its wheels'],
     ['Trips over this kerb from', Number.isFinite(v0) ? `${v0.toFixed(0)} km/h sideways` : 'no kerb'],
     ['Slid across · took', `${tb.slid.toFixed(1)} m · ${tb.time.toFixed(1)} s`],
-    ['Fastest roll', `${((tb.peakRate * 180) / Math.PI).toFixed(0)}°/s`],
+    ['Fastest roll · roof crushed', `${((tb.peakRate * 180) / Math.PI).toFixed(0)}°/s · ${(tb.crush * 100).toFixed(0)} cm`],
   ];
   return (
     <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The car sliding into a kerb, from behind">
