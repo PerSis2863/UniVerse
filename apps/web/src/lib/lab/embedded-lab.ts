@@ -4,18 +4,20 @@ import { textOf, type Lab } from './interp';
 import { FileStore } from './files';
 import { mat, num, str, toMat, type Cell, type Mat, type Struct, type Value } from './values';
 import { inverse } from './ml';
-import { bytes, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFullInt, type NetSpec, type Prec, type Spec } from './embedded';
+import { bytes, classOf, eightOf, fullIntC, modelC, planFullInt, quantizeInput, roundTrip, runFullInt, type NetSpec, type Prec, type Spec } from './embedded';
 
 // Hyperion's embedded AI in the language (M481): quantizemodel, modelsize, embedreport and exportmodel, for the neural
 // networks (fitcnet, fitrnet) and decision trees (fitctree, fitrtree) of the machine-learning toolbox. MATLAB does this
 // with quantize / dlquantizer for deep networks and Coder for learners; these are our own names for plain models.
 // M525: also SVMs (fitcsvm), k-nearest neighbours (fitcknn), tree ensembles (fitcensemble, fitrensemble, TreeBagger)
 // and linear models (fitlm), in single or double; and networks wholly in 8 bits ('int8full', embedded.ts).
-// M529: and SVMs for many classes (fitcecoc), naive Bayes (fitcnb) and linear discriminants (fitcdiscr).
+// M529: and SVMs for many classes (fitcecoc), naive Bayes (fitcnb) and linear discriminants (fitcdiscr); M530: those three
+// also in 8 bits (their numbers whole from −127 to 127 with a scale; embedreport measures it, exportmodel writes it).
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
 const call = (lab: Lab, name: string, ...args: Value[]) => BUILTINS[name](args, 1, lab);
 const fld = (m: Struct, k: string) => { const v = m.f.get(k); if (!v) throw new LabError(`This model has no ${k}.`); return v; };
+const EIGHT = new Set(['ClassificationECOC', 'ClassificationNaiveBayes', 'ClassificationDiscriminant']);
 const NETS = new Set(['ClassificationNeuralNetwork', 'RegressionNeuralNetwork']), TREES = new Set(['ClassificationTree', 'RegressionTree']);
 const OTHERS = new Set(['ClassificationSVM', 'ClassificationECOC', 'ClassificationNaiveBayes', 'ClassificationDiscriminant', 'ClassificationKNN', 'ClassificationEnsemble', 'RegressionEnsemble', 'TreeBagger', 'LinearModel', 'GeneralizedLinearModel']);
 function modelOf(v: Value | undefined): Struct {
@@ -31,7 +33,7 @@ const rowsOf = (m: Mat): number[][] => Array.from({ length: m.r }, (_, i) => Arr
 const treeAt = (t: Struct) => { const pred = [...toMat(fld(t, 'CutPredictorIndex')).d].map((p) => p - 1), ch = toMat(fld(t, 'Children')), n = pred.length; return { pred, cut: [...toMat(fld(t, 'CutPoint')).d], left: pred.map((_, i) => ch.d[i] - 1), right: pred.map((_, i) => ch.d[i + n] - 1) }; };
 const stdOf = (m: Struct) => { const on = m.f.get('Standardize') && toMat(m.f.get('Standardize')!).d[0] && toMat(fld(m, 'Mu')).d.length; return on ? { mu: [...toMat(fld(m, 'Mu')).d], sigma: [...toMat(fld(m, 'Sigma')).d] } : { mu: null, sigma: null }; };
 const METHOD: Record<string, 'bag' | 'adaboostm1' | 'adaboostm2' | 'lsboost'> = { bag: 'bag', adaboostm1: 'adaboostm1', adaboostm2: 'adaboostm2', lsboost: 'lsboost' };
-function specOf(m: Struct): Spec {
+export function specOf(m: Struct): Spec {
   const t = textOf(fld(m, 'Type')), classes = namesOf(m.f.get('ClassNames'));
   const inputs = toMat(fld(m, 'X')).c;
   if (t === 'LinearModel' || t === 'GeneralizedLinearModel') return { kind: 'linear', beta: [...toMat(fld(m, 'Beta')).d], intercept: !!toMat(fld(m, 'Intercept')).d[0], inputs };
@@ -83,6 +85,7 @@ function quantized(m: Struct, p: Prec): Struct {
   const out: Struct = { k: 'struct', f: new Map(m.f) }, t = textOf(fld(m, 'Type'));
   if (p === 'int8full') throw new LabError("A network wholly in 8 bits runs in C (exportmodel); embedreport measures it. quantizemodel takes 'int8', 'single' or 'double'.");
   if (OTHERS.has(t)) {
+    if (p === 'int8' && EIGHT.has(t)) throw new LabError(`A ${t} in 8 bits runs in C (exportmodel with 'Precision', 'int8'); embedreport measures it. quantizemodel takes 'single' or 'double' for it.`);
     if (p === 'int8') throw new LabError(`A ${t} keeps its numbers as 'single' or 'double'.`);
     const round = (k: string) => { const x = m.f.get(k); if (x?.k === 'mat') out.f.set(k, { ...x, d: roundTrip(x.d, p) }); };
     for (const k of ['SupportVectors', 'Alpha', 'Bias', 'KernelScale', 'Mu', 'Sigma', 'Beta', 'X']) round(k);
@@ -119,6 +122,11 @@ def('embedreport', (a, nout, lab) => {
   const rows = precs.map((p) => ({ p: p as string, size: bytes(spec, p), err: toMat(call(lab, 'loss', quantized(m, p), a[1], a[2])[0]).d[0] }));
   // M525: the network wholly in 8 bits, run exactly as its C would.
   if (spec.kind === 'net') rows.push({ p: 'int8full', size: bytes(spec, 'int8full'), err: fullLoss(spec, toMat(fld(m, 'X')), toMat(a[1]), a[2]) });
+  // M530: these three in 8 bits, run as their C would (classOf, the C's twin).
+  if (spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr') {
+    const e = eightOf(spec).spec, X = rowsOf(toMat(a[1])), Y = a[2], truth = Y.k === 'cell' ? Y.d.map((v) => spec.classes.indexOf(textOf(v))) : [...toMat(Y).d].map((v) => spec.classes.indexOf(String(v)));
+    rows.push({ p: 'int8', size: bytes(spec, 'int8'), err: X.reduce((n, x, i) => n + (classOf(e, x) === truth[i] ? 0 : 1), 0) / X.length });
+  }
   const score = (e: number) => (classes ? 100 * (1 - e) : Math.sqrt(e));
   const col = (xs: number[]): Mat => mat(xs.length, 1, xs);
   const T: Struct = { k: 'struct', table: true, f: new Map<string, Value>([['Precision', { k: 'cell', r: rows.length, c: 1, d: rows.map((r) => str(r.p)) }], ['Bytes', col(rows.map((r) => r.size))], [classes ? 'Accuracy' : 'RMSE', col(rows.map((r) => score(r.err)))]]) };
@@ -146,7 +154,8 @@ def('exportmodel', (a, nout, lab) => {
   // (M525: SVMs, k-NN, ensembles and linear models default to single; M529: many-class SVMs, naive Bayes, discriminants too.)
   for (let i = 2; i + 1 < a.length; i += 2) { if (textOf(a[i]).toLowerCase() !== 'precision') throw new LabError("exportmodel takes 'Precision' ('double', 'single' or 'int8')."); p = precOf(a[i + 1]); }
   const spec = specOf(m);
-  if (spec.kind !== 'net') { if (p === 'int8' || p === 'int8full') { if (a.length > 2) throw new LabError(`This model is written with 'single' or 'double' numbers.`); p = 'single'; } }
+  const eight = spec.kind === 'ecoc' || spec.kind === 'bayes' || spec.kind === 'discr';
+  if (spec.kind !== 'net' && (p === 'int8full' || (p === 'int8' && !(eight && a.length > 2)))) { if (a.length > 2) throw new LabError(`This model is written with ${eight ? "'int8', " : ''}'single' or 'double' numbers.`); p = 'single'; }
   let out: { c: string; h: string };
   try { out = spec.kind === 'net' && p === 'int8full' ? fullIntC(planFullInt(spec, rowsOf(toMat(fld(m, 'X')))), name) : modelC(spec, name, p); } catch (e) { throw new LabError((e as Error).message); }
   const fs = (lab.host as { files?: unknown }).files;

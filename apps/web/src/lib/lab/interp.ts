@@ -39,7 +39,7 @@ export interface Host {
 export class Flow { constructor(readonly kind: 'break' | 'continue' | 'return' | 'pause') {} }
 /** M477: a parfor at a script's top level may be run on other workers (parallel-lab.ts sets this). */
 /** M478: arithmetic for gpuArray values (gpu-lab.ts sets it); M480: and fixed-point fi values (fixed-lab.ts). */
-export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null; neg?: (a: Value) => Value | null } = { binop: null };
+export const opHooks: { binop: ((op: string, a: Value, b: Value) => Value | null) | null; neg?: (a: Value) => Value | null; post?: (a: Value) => Value | null } = { binop: null };
 /** M523: obj.name(args) on a struct without that field: a method of a test case (verify-lab.ts), when it says so. */
 export const methodHook: { call: ((lab: Lab, obj: Struct, name: string, args: Value[], nout: number) => Value[] | null) | null } = { call: null };
 /** M524: indexing a value the engine doesn't know (a fi): x(i) and x(i) = v, given the plain operations on its numbers. */
@@ -252,7 +252,12 @@ export class Lab {
         if (e.op === '-') { const m = toMat(a); if (m.cls) return [cast({ ...m, d: m.d.map((x) => -x), im: m.im?.map((x) => -x) }, m.cls)]; return [m.im ? cmat(m.r, m.c, m.d.map((x) => -x), m.im.map((x) => -x)) : map1(m, (x) => -x)]; }
         return [{ ...map1(toMat(a), (x) => (x === 0 ? 1 : 0)), logical: true }];
       }
-      case 'post': { const v = transpose(this.ev(e.a, f)); return [e.op === "'" && v.k === 'mat' && v.im ? { ...v, im: v.im.map((x) => -x) } : v]; }
+      case 'post': {
+        const a = this.ev(e.a, f);
+        if (a.k === 'struct' && opHooks.post) { const h = opHooks.post(a); if (h) return [h]; } // M530: a fi's transpose
+        const v = transpose(a);
+        return [e.op === "'" && v.k === 'mat' && v.im ? { ...v, im: v.im.map((x) => -x) } : v];
+      }
       case 'range': {
         const a = scalar(this.ev(e.from, f), 'The start of a range'), s = e.step ? scalar(this.ev(e.step, f), 'The step of a range') : 1, b = scalar(this.ev(e.to, f), 'The end of a range');
         return [range(a, s, b)];

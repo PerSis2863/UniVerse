@@ -12967,3 +12967,45 @@ In-app and push stay as M522 made them. Checked: `iot.test.ts` (off: `email: fal
 - **Left out:** 8-bit versions of these (their numbers are 'single' or 'double'), quadratic discriminants (not in the
   toolbox), ECOC with learners other than SVMs, one-vs-all coding.
 
+
+## M530 (24 Nov): Hyperion fimath, fixed-point matrix division, 128-bit C on small chips, 8-bit many-class models
+
+The owner pasted M528–M529's "left out" list after them; this builds all three.
+
+- **fimath** (`fixed.ts`: `Rm`, `Om`, `roundBy`, `wrapInt`, `rdivBig`, `fitBig`, `fmOf`): a type (`Nt`) may carry `rm`
+  (Nearest, Floor, Ceiling, Zero, Round, Convergent) and `om` (Saturate, Wrap); left out they are Nearest and Saturate,
+  so everything before is unchanged. A fi keeps them as the fields `RoundingMethod` / `OverflowAction` only when set.
+  Sums and products stay full precision and take the first operand's fimath (`fmOf`); the methods act where a value is
+  put into a type: `fi(…)`, `x(:) = …`, `x(i) = …`, division, `−x`. `fi(v, s, w, f, F)` or name–value pairs; `fimath`,
+  `setfimath`, `removefimath`, `fimath(x)`. `divide(T, a, b)` uses T's fimath, else a's. In codegen `F = fimath(…)` is
+  kept at generation time (`fmVars`, no C) and read by `fi` / `setfimath`.
+- **Matrix division** (`codegen-lab.ts` `fiSolve`, `solveStored`; codegen `solveInto`): `A \ B`, `B / A` (as
+  `(A.' \ B.').'`), `mldivide(A, B, T)`, `mrdivide(B, A, T)` for a square fi A. Fraction-free Gauss–Jordan on the stored
+  integers (every division exact, checked on 200 random systems) leaves det·x; each answer is then one `fx_div`, so it is
+  rounded once. Singular A gives zeros. The answer's type is ./'s rule (`quotientType(B, A)`: fraction B's less A's,
+  often 0: pass T). The working needs 2·(n·w + ⌈n/2·log2 n⌉) + 2 bits (Hadamard; `solvePlan`): a 2×2 of 16 bits already
+  needs 128-bit working; past 128 it's refused naming shorter words. `y'` of a fi now works (`opHooks.post`).
+- **The C** (`codegen.ts`): the helpers are one text written with `fxw_` operations (`fx_rdiv` rounds t/m by the method,
+  `fx_fit` holds or wraps, `fx_shift`, `fx_div`, `fx_from_double`), the method and action passed as `FX_FLOOR` …,
+  `FX_WRAP`. Up to 62 bits the expressions stay plain int64_t operators and `fxw_` is static inline on int64_t. Past it
+  generation runs twice (`generate` → `emit(…, W)`): the first pass finds `wide`, the second writes every expression with
+  `fxw_add`, `fxw_mul`, `fxw_cmp` … (`fxEmit`). The header's `FX128_H` (guarded, so several headers go together) makes
+  `fx128_t` `__int128` (`HYPERION_FX128_NATIVE`) or, without it or with `-DHYPERION_FX_PORTABLE`, a struct of two
+  uint64_t with its own add, multiply (32-bit pieces), shift-and-subtract division and correctly rounded double
+  conversion. Every stored type over 64 bits is `fx128_t` (no `ufx128_t` now); a 63–64-bit unsigned one is `uint64_t`
+  via `fxw_ofu` / `fxw_lou`. Scalars of `fx128_t` start `= {0}`; a variable only ever set (a type holder for divide)
+  gets `(void)v;` for `-Wall -Werror`. fprintf of a fi prints its value. A fixed `sum` works (its temp had no type).
+- **8 bits for fitcecoc, fitcnb, fitcdiscr** (`embedded.ts` `eightOf`, `classOf`): ECOC's support vectors and
+  coefficients int8 with a scale per learner (`SVS`, `CS`); naive Bayes' means and 1 / spread int8 (1 / spread never 0:
+  `quantizePositive`) with BASE worked from the spreads as held; the discriminant's weights int8 with one scale. The
+  arithmetic stays float, as a network's 'int8'. `classOf` is the C's twin in doubles; `embedreport` adds its 'int8' row
+  with it, `exportmodel(…, 'Precision', 'int8')` writes it; `quantizemodel(…, 'int8')` refuses (a discriminant's predict
+  works from Mu and Sigma, not its weights). `specOf` is exported for the tests.
+- **Checked:** `codegen.test.ts` (each method by hand, wrap, setfimath, A \ b, b / A, mldivide with a type, singular;
+  the elimination on random systems; the too-big refusal; 12 method × overflow functions, a 2×2 8-bit solve in 64-bit
+  working, 3×3 16-bit `mldivide` and `/` and a 100-bit Convergent divide in 128-bit working, compiled native and with
+  `-DHYPERION_FX_PORTABLE`, all equal to Hyperion's stored integers or BigInt); `embedded.test.ts` (four 8-bit models in
+  C against `classOf`, at most one near tie, over 90% right, within 3 points of double); `embedded.m` and
+  `embedded_ai.m` show both.
+- **Left out:** fimath's ProductMode / SumMode other than full precision (MATLAB's KeepLSB etc.), least-squares `A \ b`
+  for a non-square A, per-class or per-channel 8-bit scales, 8-bit arithmetic inside these models (only their numbers).

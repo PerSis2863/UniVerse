@@ -8,6 +8,7 @@ import { FileStore } from './files';
 import { toMat } from './values';
 import './codegen-lab';
 import * as X from './fixed';
+import * as Fx from './fixed';
 
 const SRC = `function [y, total] = smooth3(x, k)
   y = zeros(1, 8);
@@ -221,5 +222,150 @@ int main(void) {
     expect(got.slice(0, -2).map(Number)).toEqual(want);
     const hiW = BigInt(got[got.length - 2]), loW = BigInt(got[got.length - 1]);
     expect((hiW << BigInt(64)) + loW).toBe(wz);
+  });
+});
+
+describe('M530: fimath, matrix division and 128-bit numbers on small chips', () => {
+  const RMS = ['Nearest', 'Floor', 'Ceiling', 'Zero', 'Round', 'Convergent'], OMS = ['Saturate', 'Wrap'];
+  const modes = RMS.flatMap((rm) => OMS.map((om) => [rm, om]));
+  const MODES = modes.map(([rm, om]) => `function [p, q, r, s, t] = m_${rm}_${om}(x, a, b)
+  F = fimath('RoundingMethod', '${rm}', 'OverflowAction', '${om}');
+  p = fi(x, 1, 8, 2, F);
+  q = fi(0, 1, 6, 1, F); q(:) = a;
+  r = fi(0, 1, 8, 6, F); r(:) = a;
+  s = divide(fi(0, 1, 8, 2, F), a, b);
+  t = -setfimath(fi(-8, 1, 8, 4), F);
+end`).join('\n');
+  const SOLVE = `function x = solve2(A, b)
+  x = A \\ b;
+end
+function x = solveT(A, b)
+  x = mldivide(A, b, numerictype(1, 24, 16));
+end
+function x = rsolve(b, A)
+  x = b / A;
+end
+function q = widediv(a, b)
+  T = fi(0, 1, 100, 60, 'RoundingMethod', 'Convergent');
+  q = divide(T, a, b);
+end`;
+  const st = (l: Lab, e: string) => { l.run(`zz = storedInteger(${e});`); return [...toMat(l.vars.get('zz')!).d]; };
+  it('Hyperion: each rounding method, wrap, setfimath, A \\ b, b / A and mldivide with a type', () => {
+    const l = new Lab({ out: () => {} });
+    expect(st(l, "fi([-2.5 -1.5 -0.5 0.5 1.5 2.5], 1, 8, 0, 'RoundingMethod', 'Convergent')")).toEqual([-2, -2, 0, 0, 2, 2]);
+    expect(st(l, "fi([-2.5 -1.5 0.5 1.5], 1, 8, 0, 'RoundingMethod', 'Round')")).toEqual([-3, -2, 1, 2]);
+    expect(st(l, "fi([-2.5 -1.5 0.5 1.5], 1, 8, 0, 'RoundingMethod', 'Nearest')")).toEqual([-2, -1, 1, 2]);
+    expect(st(l, "fi([-2.7 2.7], 1, 8, 0, 'RoundingMethod', 'Zero')")).toEqual([-2, 2]);
+    expect(st(l, "fi([-2.2 2.2], 1, 8, 0, 'RoundingMethod', 'Ceiling')")).toEqual([-2, 3]);
+    expect(st(l, "fi([130 -129 200], 1, 8, 0, fimath('OverflowAction', 'Wrap'))")).toEqual([-126, 127, -56]);
+    expect(st(l, "-fi(-128, 1, 8, 0, 'OverflowAction', 'Wrap')")).toEqual([-128]);
+    l.run("F = fimath('RoundingMethod', 'Floor'); a = setfimath(fi(1, 1, 16, 8), F); b = a ./ fi(3, 1, 16, 8); rm = b.RoundingMethod; c = removefimath(a); has = isfield(c, 'RoundingMethod');");
+    expect((l.vars.get('rm') as { v: string }).v).toBe('Floor');
+    expect(toMat(l.vars.get('has')!).d[0]).toBe(0);
+    l.run("A = fi([4 1; 2 3], 1, 16, 8); y = fi([1; 2], 1, 16, 8); x = A \\ y; xt = mldivide(A, y, numerictype(1, 24, 16)); z = y' / A;");
+    expect(st(l, 'x')).toEqual([0, 1]); // 0.1 and 0.6 in whole numbers (fraction 8 − 8)
+    expect(st(l, 'xt')).toEqual([Math.floor(0.1 * 2 ** 16 + 0.5), Math.floor(0.6 * 2 ** 16 + 0.5)]);
+    expect(st(l, 'mrdivide(y\', A, numerictype(1, 24, 16))')).toEqual([Math.floor(-0.1 * 2 ** 16 + 0.5), Math.floor(0.7 * 2 ** 16 + 0.5)]);
+    expect(st(l, 'fi([1 2; 2 4], 1, 16, 8) \\ y')).toEqual([0, 0]); // singular: zeros
+  });
+  it('the exact elimination leaves det · x on the right for any whole-number system', async () => {
+    const { solveStored } = await import('./codegen-lab');
+    let seed = 7;
+    const rnd = () => { seed = (seed * 1103515245 + 12345) % 2 ** 31; return BigInt((seed % 2001) - 1000); };
+    for (let t = 0; t < 200; t++) {
+      const n = 1 + (t % 5), A = Array.from({ length: n * n }, rnd), B = Array.from({ length: n * 2 }, rnd), r = solveStored(A, B, n, 2);
+      if (r.det === BigInt(0)) continue;
+      for (let j = 0; j < 2; j++) for (let i = 0; i < n; i++) {
+        let s = BigInt(0);
+        for (let p = 0; p < n; p++) s += A[i + p * n] * r.rhs[p + j * n];
+        expect(s).toBe(B[i + j * n] * r.det);
+      }
+    }
+  });
+  it('refuses a matrix division too big to work exactly, naming the fix', () => {
+    const l = new Lab({ out: () => {}, files: new FileStore() });
+    l.run(SOLVE);
+    expect(() => l.run("codegen('solve2', {fi(zeros(5), 1, 32, 16), fi(zeros(5, 1), 1, 32, 16)})")).toThrow(/needs \d+ bits of working .*shorter words/);
+  });
+  it.skipIf(!hasCc)('the C gives exactly Hyperion’s stored integers: every method, wrap, matrix division; 64-bit, 128-bit and two-half working', () => {
+    const files = new FileStore(), l = new Lab({ out: () => {}, files });
+    l.run(MODES + '\n' + SOLVE);
+    const xs = [-2.375, -1.125, -0.625, 0.125, 0.375, 0.625, 1.125, 2.875, 40, -40, 31.9, -32.1, 0.5, -0.5];
+    const as = [1.0625, -1.0625, 2.1875, -2.1875, 0.9375, 300.5, -300.5, 0.25];
+    const bs = [0.375, -0.375, 3, -2.625, 0.125, 0.5, 0, 1];
+    for (const [rm, om] of modes) l.run(`codegen('m_${rm}_${om}', {0, fi(0, 1, 16, 4), fi(0, 1, 12, 3)});`);
+    const want: number[] = [], ins: number[][] = [];
+    for (let i = 0; i < xs.length; i++) {
+      const x = xs[i], a = `fi(${as[i % as.length]}, 1, 16, 4)`, b = `fi(${bs[i % bs.length]}, 1, 12, 3)`;
+      ins.push([x, st(l, a)[0], st(l, b)[0]]);
+      for (const [rm, om] of modes) { l.run(`[p, q, r, s, t] = m_${rm}_${om}(${x}, ${a}, ${b});`); for (const v of 'pqrst') want.push(st(l, v)[0]); }
+    }
+    // matrix division: 2×2 of 8 bits (64-bit working), 3×3 of 16 bits (128-bit working), b / A, a singular A
+    const A3 = [[3.5, -1.25, 0.75], [1, 2.25, -0.5], [-0.75, 0.5, 4]], B3 = [[1, -2], [0.5, 3.25], [-1.5, 0.25]];
+    const m = (rows: number[][]) => `[${rows.map((r) => r.join(' ')).join('; ')}]`;
+    l.run(`codegen('solve2', {fi(zeros(2), 1, 8, 4), fi(zeros(2, 1), 1, 8, 4)}); codegen('solveT', {fi(zeros(3), 1, 16, 10), fi(zeros(3, 2), 1, 16, 10)});
+      codegen('rsolve', {fi(zeros(2, 3), 1, 16, 10), fi(zeros(3), 1, 16, 10)});
+      codegen('widediv', {fi(0, 1, 60, 30), fi(0, 1, 60, 30)});`);
+    expect(files.text('solve2.c')).toContain('typedef int64_t fxw_t;');
+    expect(files.text('solveT.c')).toContain('typedef fx128_t fxw_t;');
+    const sA2 = st(l, 'fi([1.5 -0.25; 0.75 2], 1, 8, 4)'), sb2 = st(l, 'fi([1; -0.5], 1, 8, 4)'), sS2 = st(l, 'fi([1 2; 2 4], 1, 8, 4)');
+    const sA3 = st(l, `fi(${m(A3)}, 1, 16, 10)`), sB3 = st(l, `fi(${m(B3)}, 1, 16, 10)`), sR = st(l, `fi(${m(B3)}', 1, 16, 10)`);
+    const solved = [...st(l, `solve2(fi([1.5 -0.25; 0.75 2], 1, 8, 4), fi([1; -0.5], 1, 8, 4))`), ...st(l, `solve2(fi([1 2; 2 4], 1, 8, 4), fi([1; -0.5], 1, 8, 4))`),
+      ...st(l, `solveT(fi(${m(A3)}, 1, 16, 10), fi(${m(B3)}, 1, 16, 10))`), ...st(l, `rsolve(fi(${m(B3)}', 1, 16, 10), fi(${m(A3)}, 1, 16, 10))`)];
+    expect(solved.slice(2, 4)).toEqual([0, 0]); // the singular A
+    // A and B are whole steps, so the answer is the true solution rounded once to 2^-16
+    [0.351030, -0.002433, -0.308883, -0.033637, 1.432104, -0.122820].forEach((x, i) => expect(Math.abs(solved[4 + i] / 2 ** 16 - x)).toBeLessThan(2 ** -16));
+    // the wide division's stored answers, worked here in BigInt: 1/3, −7/0.25, 5/−0.75, 1/0
+    const X = (v: number) => BigInt(Math.round(v * 2 ** 30)), pairs: [number, number][] = [[1, 3], [-7, 0.25], [5, -0.75], [1, 0]];
+    const wideWant = pairs.map(([a, b]) => {
+      const one = BigInt(1), lo = -(one << BigInt(99)), hi = (one << BigInt(99)) - one;
+      let p = X(a), q = X(b);
+      if (q === BigInt(0)) return p > 0 ? hi : lo;
+      if (q < 0) { p = -p; q = -q; }
+      return Fx.fitBig(Fx.rdivBig(p * (one << BigInt(60)), q, 'Convergent'), { signed: true, wl: 100, fl: 60 });
+    });
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-fx530-'));
+    const names = [...modes.map(([rm, om]) => `m_${rm}_${om}`), 'solve2', 'solveT', 'rsolve', 'widediv'];
+    for (const f of names) { writeFileSync(join(dir, `${f}.c`), files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), files.text(`${f}.h`)); }
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${names.map((f) => `#include "${f}.h"`).join('\n')}
+#ifdef HYPERION_FX128_NATIVE
+#define HI(z) (long long)(z >> 64)
+#define LO(z) (unsigned long long)z
+#else
+#define HI(z) (long long)(int64_t)z.hi
+#define LO(z) (unsigned long long)z.lo
+#endif
+int main(void) {
+  double xs[] = {${ins.map((r) => r[0]).join(', ')}};
+  int16_t as[] = {${ins.map((r) => r[1]).join(', ')}}, bs[] = {${ins.map((r) => r[2]).join(', ')}};
+  int8_t p, q, r, s, t;
+  for (int i = 0; i < ${ins.length}; i++) {
+${modes.map(([rm, om]) => `    m_${rm}_${om}(xs[i], as[i], bs[i], &p, &q, &r, &s, &t); printf("%d %d %d %d %d ", p, q, r, s, t);`).join('\n')}
+  }
+  int8_t A2[] = {${sA2.join(', ')}}, b2[] = {${sb2.join(', ')}}, S2[] = {${sS2.join(', ')}}, x2[2];
+  int16_t A3[] = {${sA3.join(', ')}}, B3[] = {${sB3.join(', ')}}, R[] = {${sR.join(', ')}};
+  int32_t x3[6];
+  int16_t xr[6];
+  solve2(A2, b2, x2); printf("%d %d ", x2[0], x2[1]);
+  solve2(S2, b2, x2); printf("%d %d ", x2[0], x2[1]);
+  solveT(A3, B3, x3); for (int i = 0; i < 6; i++) printf("%d ", (int)x3[i]);
+  rsolve(R, A3, xr); for (int i = 0; i < 6; i++) printf("%d ", (int)xr[i]);
+  int64_t wa[] = {${pairs.map(([a]) => X(a)).join(', ')}}, wb[] = {${pairs.map(([, b]) => X(b)).join(', ')}};
+  for (int i = 0; i < ${pairs.length}; i++) { fx128_t z = widediv(wa[i], wb[i]); printf("%lld %llu ", HI(z), LO(z)); }
+  return 0;
+}`);
+    const run = (portable: boolean) => {
+      const exe = join(dir, portable ? 'run-p' : 'run-n');
+      execFileSync('cc', ['-std=c99', '-Wall', '-Werror', ...(portable ? ['-DHYPERION_FX_PORTABLE'] : []), '-o', exe, join(dir, 'main.c'), ...names.map((f) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+      return execFileSync(exe).toString().trim().split(/\s+/);
+    };
+    for (const portable of [false, true]) {
+      const got = run(portable), nFx = want.length, nSolve = solved.length;
+      expect(got.slice(0, nFx).map(Number)).toEqual(want);
+      expect(got.slice(nFx, nFx + nSolve).map(Number)).toEqual(solved);
+      const wide = got.slice(nFx + nSolve);
+      expect(pairs.map((_, i) => (BigInt(wide[2 * i]) << BigInt(64)) + BigInt(wide[2 * i + 1]))).toEqual(wideWant);
+    }
   });
 });

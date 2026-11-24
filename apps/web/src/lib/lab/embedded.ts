@@ -50,6 +50,9 @@ export function bytes(s: Spec, p: Prec): number {
   if (s.kind === 'svm') return (s.sv.length * (s.sv[0]?.length ?? 0) + s.coef.length + 1 + (s.mu ? 2 * s.mu.length : 0)) * f;
   if (s.kind === 'knn') return s.train.length * (s.train[0]?.length ?? 0) * f + s.train.length + (s.mu ? 2 * s.mu.length * f : 0);
   if (s.kind === 'linear') return s.beta.length * f;
+  if (p === 'int8' && s.kind === 'ecoc') { const sv = s.learners.reduce((a, l) => a + l.sv.length, 0); return sv * s.inputs + sv + 4 * s.learners.length * 3 + (s.learners.some((l) => l.mu) ? 8 * s.learners.length * s.inputs : 0) + 4 + s.code.length * s.learners.length; }
+  if (p === 'int8' && s.kind === 'bayes') return 2 * s.mu.length * (s.mu[0]?.length ?? 0) + 8 + 4 * s.prior.length;
+  if (p === 'int8' && s.kind === 'discr') return s.w.length * (s.w[0]?.length ?? 0) + 4 + 4 * s.c.length;
   if (s.kind === 'ecoc') return s.learners.reduce((a, l) => a + l.sv.length * s.inputs + l.coef.length + 1 + (l.mu ? 2 * s.inputs : 0), 0) * f + s.code.length * s.learners.length;
   if (s.kind === 'bayes') return (2 * s.mu.length * (s.mu[0]?.length ?? 0) + s.prior.length) * f;
   if (s.kind === 'discr') return (s.w.length * (s.w[0]?.length ?? 0) + s.c.length) * f;
@@ -138,8 +141,9 @@ const KIND_NAME: Record<string, string> = { svm: 'An SVM', knn: 'A k-nearest-nei
 /** The first largest of K scores (an earlier class wins a tie, as Hyperion's predict). */
 const pickTop = (K: number, arr: string) => ['  int top = 0;', `  for (int k = 1; k < ${K}; k++) if (${arr}[k] > ${arr}[top]) top = k;`];
 function otherC(s: SvmSpec | KnnSpec | EnsSpec | LinSpec | EcocSpec | BayesSpec | DiscrSpec, name: string, p: Prec): { c: string; h: string } {
-  if (p === 'int8' || p === 'int8full') throw new Error(`${KIND_NAME[s.kind]} is written with 'single' or 'double' numbers.`);
-  const T = p === 'double' ? 'double' : 'float', fn = (f: string) => (p === 'double' ? f : `${f}f`), v = (x: number) => num(x, p);
+  const eight = p === 'int8' && (s.kind === 'ecoc' || s.kind === 'bayes' || s.kind === 'discr');
+  if ((p === 'int8' && !eight) || p === 'int8full') throw new Error(`${KIND_NAME[s.kind]} is written with ${s.kind === 'ecoc' || s.kind === 'bayes' || s.kind === 'discr' ? "'int8', 'single' or 'double'" : "'single' or 'double'"} numbers.`);
+  const T = p === 'double' ? 'double' : 'float', fn = (f: string) => (p === 'double' ? f : `${f}f`), v = (x: number) => num(x, p === 'int8' ? 'single' : p);
   if (s.kind === 'ecoc') return ecocC(s, name, p, T, fn, v);
   if (s.kind === 'bayes' || s.kind === 'discr') return scoreC(s, name, p, T, fn, v);
   if (s.kind === 'linear') {
@@ -203,9 +207,18 @@ function ecocC(s: EcocSpec, name: string, p: Prec, T: string, fn: (f: string) =>
   for (const n of svs) { starts.push(at); at += n; }
   const anyStd = s.learners.some((l) => l.mu && l.sigma);
   const ker = s.kernel === 'rbf' ? `${fn('exp')}(-d / (SCALE * SCALE))` : s.kernel === 'polynomial' ? `${fn('pow')}(1 + d / (SCALE * SCALE), ${s.order})` : 'd / (SCALE * SCALE)';
+  // M530: in 8 bits, each learner's support vectors and coefficients are whole numbers with a scale of their own.
+  const q8 = p === 'int8' ? s.learners.map((l) => ({ sv: quantizeLayer(l.sv.flat()), coef: quantizeLayer(l.coef) })) : null;
   const arrays = [
-    `static const ${T} SV[${at * P}] = {\n${list(s.learners.flatMap((l) => l.sv.flat()), v)}\n};`,
-    `static const ${T} COEF[${at}] = {\n${list(s.learners.flatMap((l) => l.coef), v)}\n};`,
+    ...(q8 ? [
+      `static const int8_t SV[${at * P}] = {\n${list(q8.flatMap((l) => [...l.sv.q]), String, 16)}\n};`,
+      `static const float SVS[${L}] = { ${q8.map((l) => v(l.sv.scale)).join(', ')} };`,
+      `static const int8_t COEF[${at}] = {\n${list(q8.flatMap((l) => [...l.coef.q]), String, 16)}\n};`,
+      `static const float CS[${L}] = { ${q8.map((l) => v(l.coef.scale)).join(', ')} };`,
+    ] : [
+      `static const ${T} SV[${at * P}] = {\n${list(s.learners.flatMap((l) => l.sv.flat()), v)}\n};`,
+      `static const ${T} COEF[${at}] = {\n${list(s.learners.flatMap((l) => l.coef), v)}\n};`,
+    ]),
     `static const int32_t START[${L + 1}] = { ${[...starts, at].join(', ')} };`,
     `static const ${T} BIAS[${L}] = { ${s.learners.map((l) => v(l.bias)).join(', ')} };`,
     `static const ${T} SCALE = ${v(s.scale)};`,
@@ -217,33 +230,77 @@ function ecocC(s: EcocSpec, name: string, p: Prec, T: string, fn: (f: string) =>
     `  for (int l = 0; l < ${L}; l++) {`,
     anyStd ? `    for (int j = 0; j < ${P}; j++) z[j] = (x[j] - MU[l * ${P} + j]) / SIGMA[l * ${P} + j];` : `    for (int j = 0; j < ${P}; j++) z[j] = x[j];`,
     '    f[l] = BIAS[l];', '    for (int q = START[l]; q < START[l + 1]; q++) {', `      ${T} d = 0;`,
-    s.kernel === 'rbf' ? `      for (int j = 0; j < ${P}; j++) { ${T} e = SV[q * ${P} + j] - z[j]; d += e * e; }` : `      for (int j = 0; j < ${P}; j++) d += SV[q * ${P} + j] * z[j];`,
-    `      f[l] += COEF[q] * ${ker};`, '    }', '  }',
+    s.kernel === 'rbf' ? `      for (int j = 0; j < ${P}; j++) { ${T} e = ${q8 ? 'SVS[l] * ' : ''}SV[q * ${P} + j] - z[j]; d += e * e; }` : `      for (int j = 0; j < ${P}; j++) d += SV[q * ${P} + j] * z[j];${q8 ? '\n      d *= SVS[l];' : ''}`,
+    `      f[l] += ${q8 ? 'CS[l] * ' : ''}COEF[q] * ${ker};`, '    }', '  }',
     '  /* hinge-loss decoding: each class\'s average loss over the learners that know it; the smallest wins */',
     `  for (int k = 0; k < ${K}; k++) {`, `    ${T} sum = 0;`, '    int n = 0;',
     `    for (int l = 0; l < ${L}; l++) { int c = CODE[k * ${L} + l]; if (c) { ${T} h = 1 - c * f[l]; sum += (h > 0 ? h : 0) / 2; n++; } }`,
     '    loss[k] = -sum / (n ? n : 1);', '    if (scores) scores[k] = loss[k];', '  }',
     ...pickTop(K, 'loss'), '  return top;', '}',
   ];
-  return { c: [...head(name, `${L} support vector machines for ${K} classes, one per pair (${s.kernel} kernel), ${p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
+  return { c: [...head(name, `${L} support vector machines for ${K} classes, one per pair (${s.kernel} kernel), ${p === 'int8' ? '8-bit support vectors and coefficients' : p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
 }
 function scoreC(s: BayesSpec | DiscrSpec, name: string, p: Prec, T: string, fn: (f: string) => string, v: (x: number) => string): { c: string; h: string } {
   const K = s.classes.length, bayes = s.kind === 'bayes', P = bayes ? s.mu[0].length : s.w[0].length;
   // Naive Bayes: log prior − Σ log spread (a constant per class), then − ½ ((x − mean) / spread)² per input.
-  const arrays = bayes
-    ? [`static const ${T} MU[${K * P}] = {\n${list(s.mu.flat(), v)}\n};`, `static const ${T} SD[${K * P}] = {\n${list(s.sd.flat(), v)}\n};`, `static const ${T} BASE[${K}] = { ${s.prior.map((pk, k) => v(Math.log(pk) - s.sd[k].reduce((a, d) => a + Math.log(d), 0))).join(', ')} };`]
-    : [`static const ${T} W[${K * P}] = {\n${list(s.w.flat(), v)}\n};`, `static const ${T} C[${K}] = { ${s.c.map(v).join(', ')} };`];
+  // M530: in 8 bits the means and 1 / spread (naive Bayes) or the weights (discriminant) are whole numbers with one scale;
+  // BASE is then worked out from the spreads as the chip holds them.
+  const e8 = p === 'int8' ? eightOf(s) : null;
+  const arrays = e8?.kind === 'bayes'
+    ? [`static const int8_t MU[${K * P}] = {\n${list(e8.mu.q, String, 16)}\n};`, `static const float MS = ${v(e8.mu.scale)};`, `static const int8_t PREC[${K * P}] = {\n${list(e8.prec.q, String, 16)}\n};`, `static const float PS = ${v(e8.prec.scale)};`, `static const float BASE[${K}] = { ${e8.spec.prior.map((pk, k) => v(Math.log(pk) - e8.spec.sd[k].reduce((a, d) => a + Math.log(d), 0))).join(', ')} };`]
+    : e8?.kind === 'discr'
+      ? [`static const int8_t W[${K * P}] = {\n${list(e8.w.q, String, 16)}\n};`, `static const float WS = ${v(e8.w.scale)};`, `static const float C[${K}] = { ${e8.spec.c.map(v).join(', ')} };`]
+      : bayes
+        ? [`static const ${T} MU[${K * P}] = {\n${list(s.mu.flat(), v)}\n};`, `static const ${T} SD[${K * P}] = {\n${list(s.sd.flat(), v)}\n};`, `static const ${T} BASE[${K}] = { ${s.prior.map((pk, k) => v(Math.log(pk) - s.sd[k].reduce((a, d) => a + Math.log(d), 0))).join(', ')} };`]
+        : [`static const ${T} W[${K * P}] = {\n${list(s.w.flat(), v)}\n};`, `static const ${T} C[${K}] = { ${s.c.map(v).join(', ')} };`];
   const lines = [
     `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]) {`, `  ${T} g[${K}], top_g, sum = 0;`,
     `  for (int k = 0; k < ${K}; k++) {`,
-    bayes ? `    ${T} t = BASE[k];` : `    ${T} t = C[k];`,
-    bayes ? `    for (int j = 0; j < ${P}; j++) { ${T} e = (x[j] - MU[k * ${P} + j]) / SD[k * ${P} + j]; t -= ${p === 'double' ? '0.5' : '0.5f'} * e * e; }` : `    for (int j = 0; j < ${P}; j++) t += W[k * ${P} + j] * x[j];`,
+    bayes ? `    ${T} t = BASE[k];` : `    ${T} t = C[k]${e8 ? ', w = 0' : ''};`,
+    bayes
+      ? `    for (int j = 0; j < ${P}; j++) { ${T} e = ${e8 ? `(x[j] - MS * MU[k * ${P} + j]) * (PS * PREC[k * ${P} + j])` : `(x[j] - MU[k * ${P} + j]) / SD[k * ${P} + j]`}; t -= ${p === 'double' ? '0.5' : '0.5f'} * e * e; }`
+      : e8 ? `    for (int j = 0; j < ${P}; j++) w += W[k * ${P} + j] * x[j];\n    t += WS * w;` : `    for (int j = 0; j < ${P}; j++) t += W[k * ${P} + j] * x[j];`,
     '    g[k] = t;', '  }', ...pickTop(K, 'g'),
     '  /* the chances of each class (softmax), if asked */', '  if (scores) {', '    top_g = g[top];',
     `    for (int k = 0; k < ${K}; k++) { scores[k] = ${fn('exp')}(g[k] - top_g); sum += scores[k]; }`,
     `    for (int k = 0; k < ${K}; k++) scores[k] /= sum;`, '  }', '  return top;', '}',
   ];
-  return { c: [...head(name, `${bayes ? 'naive Bayes, a bell curve per class and input' : 'a linear discriminant'}, ${p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
+  return { c: [...head(name, `${bayes ? 'naive Bayes, a bell curve per class and input' : 'a linear discriminant'}, ${p === 'int8' ? (bayes ? '8-bit means and spreads' : '8-bit weights') : p}`), classNote(s.classes) + arrays.join('\n'), '', ...lines, ''].join('\n'), h: header(name, `int ${name}_predict(const ${T} x[${P}], ${T} scores[${K}]);`, classNote(s.classes)) };
+}
+
+// ——— M530: many-class SVMs, naive Bayes and discriminants in 8 bits ———
+/** Positive numbers (1 / spread) as 8-bit whole numbers: never 0, so no spread becomes endless. */
+function quantizePositive(w: ArrayLike<number>): { q: Int8Array; scale: number } {
+  const r = quantizeLayer(w);
+  for (let i = 0; i < r.q.length; i++) if (r.q[i] < 1) r.q[i] = 1;
+  return r;
+}
+type Eight = { kind: 'bayes'; mu: { q: Int8Array; scale: number }; prec: { q: Int8Array; scale: number }; spec: BayesSpec } | { kind: 'discr'; w: { q: Int8Array; scale: number }; spec: DiscrSpec } | { kind: 'ecoc'; spec: EcocSpec };
+/** The 8-bit numbers and the model they stand for (each number back as scale × whole number), for the C and its twin. */
+export function eightOf(s: EcocSpec | BayesSpec | DiscrSpec): Eight {
+  const back = ({ q, scale }: { q: Int8Array; scale: number }) => Array.from(q, (x) => x * scale);
+  const rows = (xs: number[], c: number) => Array.from({ length: xs.length / c }, (_, i) => xs.slice(i * c, i * c + c));
+  if (s.kind === 'bayes') {
+    const P = s.mu[0].length, mu = quantizeLayer(s.mu.flat()), prec = quantizePositive(s.sd.flat().map((d) => 1 / d));
+    return { kind: 'bayes', mu, prec, spec: { ...s, mu: rows(back(mu), P), sd: rows(back(prec).map((x) => 1 / x), P) } };
+  }
+  if (s.kind === 'discr') { const w = quantizeLayer(s.w.flat()); return { kind: 'discr', w, spec: { ...s, w: rows(back(w), s.w[0].length) } }; }
+  return { kind: 'ecoc', spec: { ...s, learners: s.learners.map((l) => ({ ...l, sv: rows(back(quantizeLayer(l.sv.flat())), s.inputs), coef: back(quantizeLayer(l.coef)) })) } };
+}
+/** The class these models give a row (an earlier class wins a tie): Hyperion's twin of their C, in doubles. */
+export function classOf(s: EcocSpec | BayesSpec | DiscrSpec, x: number[]): number {
+  const first = (g: number[], better: (a: number, b: number) => boolean) => g.reduce((top, v, k) => (better(v, g[top]) ? k : top), 0);
+  if (s.kind === 'discr') return first(s.w.map((w, k) => s.c[k] + w.reduce((a, wj, j) => a + wj * x[j], 0)), (a, b) => a > b);
+  if (s.kind === 'bayes') return first(s.mu.map((mu, k) => mu.reduce((t, m, j) => t - 0.5 * ((x[j] - m) / s.sd[k][j]) ** 2, Math.log(s.prior[k]) - s.sd[k].reduce((a, d) => a + Math.log(d), 0))), (a, b) => a > b);
+  const f = s.learners.map((l) => {
+    const z = x.map((v, j) => (l.mu && l.sigma ? (v - l.mu[j]) / l.sigma[j] : v)), S2 = s.scale * s.scale;
+    return l.sv.reduce((acc, sv, q) => {
+      const d = s.kernel === 'rbf' ? sv.reduce((a, v, j) => a + (v - z[j]) ** 2, 0) : sv.reduce((a, v, j) => a + v * z[j], 0);
+      return acc + l.coef[q] * (s.kernel === 'rbf' ? Math.exp(-d / S2) : s.kernel === 'polynomial' ? (1 + d / S2) ** s.order : d / S2);
+    }, l.bias);
+  });
+  const loss = s.code.map((row) => { let sum = 0, n = 0; row.forEach((c, l) => { if (c) { sum += Math.max(0, 1 - c * f[l]) / 2; n++; } }); return sum / (n || 1); });
+  return first(loss, (a, b) => a < b);
 }
 
 // ——— M525: a wholly 8-bit network ———

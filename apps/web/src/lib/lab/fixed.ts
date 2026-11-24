@@ -3,14 +3,42 @@
 // up, MATLAB's 'Nearest') and holding the range ('saturate'). Sums and products grow their words so nothing is lost,
 // as MATLAB's full precision does. Our own code.
 
-export interface Nt { signed: boolean; wl: number; fl: number }
+// M530: a type may carry MATLAB's fimath: how a value is rounded to a step (rm) and what happens past the range (om).
+// Left out, they are Nearest and Saturate (as before). Sums and products stay full precision, so these matter where a
+// value is put into a type: fi(…), x(:) = …, x(i) = …, division and −x.
+export type Rm = 'Nearest' | 'Floor' | 'Ceiling' | 'Zero' | 'Round' | 'Convergent';
+export type Om = 'Saturate' | 'Wrap';
+export const RMS: Rm[] = ['Nearest', 'Floor', 'Ceiling', 'Zero', 'Round', 'Convergent'];
+export interface Nt { signed: boolean; wl: number; fl: number; rm?: Rm; om?: Om }
 export const limits = (t: Nt): [number, number] => (t.signed ? [-(2 ** (t.wl - 1)), 2 ** (t.wl - 1) - 1] : [0, 2 ** t.wl - 1]);
-/** The stored whole number for a value (rounded to the nearest step, held in range). */
+/** M530: a number of steps rounded to a whole one by the type's method (the same arithmetic as the C's fx_from_double). */
+export function roundBy(y: number, rm: Rm = 'Nearest'): number {
+  if (rm === 'Floor') return Math.floor(y);
+  if (rm === 'Ceiling') return Math.ceil(y);
+  if (rm === 'Zero') return Math.trunc(y);
+  if (rm === 'Round') return y < 0 ? -Math.floor(-y + 0.5) : Math.floor(y + 0.5);
+  if (rm === 'Convergent') { const r = Math.floor(y), d = y - r; return d > 0.5 || (d === 0.5 && r % 2 !== 0) ? r + 1 : r; }
+  return Math.floor(y + 0.5);
+}
+/** M530: a whole number past the range wrapped round it (two's complement), worked exactly in BigInt. */
+export function wrapInt(q: number, t: Nt): number {
+  const one = BigInt(1), w = one << BigInt(t.wl), lo = t.signed ? -(one << BigInt(t.wl - 1)) : BigInt(0);
+  let r = (BigInt(q) - lo) % w;
+  if (r < BigInt(0)) r += w;
+  return Number(r + lo);
+}
+/** The stored whole number for a value (rounded to a step by the type's method, held in range or wrapped). */
 export function stored(v: number, t: Nt): number {
   if (Number.isNaN(v)) return 0;
-  const [lo, hi] = limits(t), q = Math.floor(v * 2 ** t.fl + 0.5);
+  const [lo, hi] = limits(t), q = roundBy(v * 2 ** t.fl, t.rm);
+  if (t.om === 'Wrap' && Number.isFinite(q) && (q < lo || q > hi)) return wrapInt(q, t);
   return Math.min(hi, Math.max(lo, q));
 }
+/** M530: the fimath a result keeps: the first operand's, else the second's. */
+export const fmOf = (a: Nt, b: Nt): Pick<Nt, 'rm' | 'om'> => {
+  const rm = a.rm ?? b.rm, om = a.om ?? b.om;
+  return { ...(rm ? { rm } : {}), ...(om ? { om } : {}) };
+};
 export const quantize = (v: number, t: Nt) => stored(v, t) / 2 ** t.fl;
 /** The most fraction bits that still hold the largest value (MATLAB's best precision). */
 export function bestFl(values: ArrayLike<number>, signed: boolean, wl: number): number {
@@ -26,12 +54,36 @@ export function bestFl(values: ArrayLike<number>, signed: boolean, wl: number): 
 /** Full-precision result types (MATLAB): a sum keeps the larger fraction and one more integer bit; a product adds both. */
 export function sumType(a: Nt, b: Nt): Nt {
   const fl = Math.max(a.fl, b.fl), signed = a.signed || b.signed, ib = Math.max(a.wl - a.fl - (a.signed ? 1 : 0), b.wl - b.fl - (b.signed ? 1 : 0)) + 1;
-  return { signed, fl, wl: Math.min(128, ib + fl + (signed ? 1 : 0)) };
+  return { signed, fl, wl: Math.min(128, ib + fl + (signed ? 1 : 0)), ...fmOf(a, b) };
 }
-export const productType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.min(128, a.wl + b.wl), fl: a.fl + b.fl });
+export const productType = (a: Nt, b: Nt): Nt => ({ signed: a.signed || b.signed, wl: Math.min(128, a.wl + b.wl), fl: a.fl + b.fl, ...fmOf(a, b) });
 /** The stored integer's bits, most significant first (two's complement for negatives). */
 export function bits(v: number, t: Nt): string {
   const one = BigInt(1), zero = BigInt(0), s = BigInt(stored(v, t)), w = BigInt(t.wl), m = (one << w) - one;
   return ((s < zero ? (one << w) + s : s) & m).toString(2).padStart(t.wl, '0');
 }
 export const hex = (v: number, t: Nt) => BigInt(`0b${bits(v, t)}`).toString(16).padStart(Math.ceil(t.wl / 4), '0');
+/** M530: t / m (m > 0) rounded to a whole number by the method, exactly (BigInt), as the C's fx_rdiv. */
+export function rdivBig(t: bigint, m: bigint, rm: Rm = 'Nearest'): bigint {
+  const zero = BigInt(0), one = BigInt(1);
+  let q = t / m, r = t % m;
+  if (r < zero) { q -= one; r += m; }
+  if (r === zero) return q;
+  const c = r - (m - r); // the sign of 2r − m: past, at or before the half
+  if (rm === 'Floor') return q;
+  if (rm === 'Ceiling') return q + one;
+  if (rm === 'Zero') return q < zero ? q + one : q;
+  if (rm === 'Round') return c > zero || (c === zero && q >= zero) ? q + one : q;
+  if (rm === 'Convergent') return c > zero || (c === zero && q % BigInt(2) !== zero) ? q + one : q;
+  return c >= zero ? q + one : q;
+}
+/** M530: a whole number put into a type's range: held (Saturate) or wrapped (Wrap). */
+export function fitBig(r: bigint, t: Nt): bigint {
+  const one = BigInt(1), w = BigInt(t.wl), lo = t.signed ? -(one << (w - one)) : BigInt(0), hi = t.signed ? (one << (w - one)) - one : (one << w) - one;
+  if (r >= lo && r <= hi) return r;
+  if (t.om !== 'Wrap') return r < lo ? lo : hi;
+  const span = one << w;
+  let k = (r - lo) % span;
+  if (k < BigInt(0)) k += span;
+  return k + lo;
+}

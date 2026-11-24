@@ -9,7 +9,9 @@ import { Graphics } from './plot';
 import { toMat } from './values';
 import './ml-lab';
 import './embedded-lab';
-import { quantizeLayer } from './embedded';
+import { classOf, eightOf, quantizeLayer, type BayesSpec, type DiscrSpec, type EcocSpec } from './embedded';
+import { specOf } from './embedded-lab';
+import type { Struct } from './values';
 
 let hasCc = true;
 try { execFileSync('cc', ['--version'], { stdio: 'ignore' }); } catch { hasCc = false; }
@@ -163,5 +165,42 @@ int main(void) {
     const want = ['p1', 'p2', 'p3', 'p4'].map((n) => txt(n).map((c) => names.indexOf(c)));
     for (let k = 0; k < 3; k++) expect(got.map((g) => g[k])).toEqual(want[k]); // double: exactly Hyperion's
     expect(got.filter((g, i) => g[3] === want[3][i]).length).toBeGreaterThanOrEqual(X.r - 1); // single: at most a near tie apart
+  });
+  it.skipIf(!hasCc)('M530: many-class SVMs, naive Bayes and discriminants in 8 bits: C as its twin, about as right as double', () => {
+    const t = make();
+    t.l.run(`rng(5); load fisheriris;
+      ec = fitcecoc(meas, species, 'Learners', templateSVM('KernelFunction', 'rbf', 'Standardize', true));
+      el = fitcecoc(meas, species); nb = fitcnb(meas, species); da = fitcdiscr(meas, species);
+      exportmodel(ec, 'q_ecoc', 'Precision', 'int8'); exportmodel(el, 'q_ecocl', 'Precision', 'int8');
+      exportmodel(nb, 'q_nb', 'Precision', 'int8'); exportmodel(da, 'q_da', 'Precision', 'int8');
+      r = embedreport(nb, meas, species); rd = embedreport(da, meas, species); s8 = modelsize(nb, 'int8'); s4 = modelsize(nb, 'single');
+      names = ec.ClassNames;`);
+    expect(t.v('s8')[0]).toBeLessThan(t.v('s4')[0] / 2);
+    const acc = (n: string) => [...toMat((t.l.vars.get(n) as unknown as { f: Map<string, never> }).f.get('Accuracy')!).d];
+    expect(acc('r')).toHaveLength(3); // double, single, int8
+    expect(acc('r')[2]).toBeGreaterThan(acc('r')[0] - 3);
+    expect(acc('rd')[2]).toBeGreaterThan(acc('rd')[0] - 3);
+    expect(t.files.text('q_nb.c')).toContain('static const int8_t PREC[12]');
+    expect(t.files.text('q_ecoc.c')).toContain('static const float SVS[3]');
+    expect(() => t.l.run("quantizemodel(nb, 'int8')")).toThrow(/exportmodel/);
+    const dir = mkdtempSync(join(tmpdir(), 'hyp-m530-')), all = ['q_ecoc', 'q_ecocl', 'q_nb', 'q_da'];
+    for (const f of all) { writeFileSync(join(dir, `${f}.c`), t.files.text(`${f}.c`)); writeFileSync(join(dir, `${f}.h`), t.files.text(`${f}.h`)); }
+    const X = toMat(t.l.vars.get('meas')!), rows = Array.from({ length: X.r }, (_, i) => [0, 1, 2, 3].map((j) => X.d[i + j * X.r]));
+    writeFileSync(join(dir, 'main.c'), `#include <stdio.h>
+${all.map((f) => `#include "${f}.h"`).join('\n')}
+static const float X[${X.r}][4] = {${rows.map((r) => `{${r.join(', ')}}`).join(',\n')}};
+int main(void) {
+  for (int i = 0; i < ${X.r}; i++) printf("%d %d %d %d\\n", q_ecoc_predict(X[i], 0), q_ecocl_predict(X[i], 0), q_nb_predict(X[i], 0), q_da_predict(X[i], 0));
+  return 0;
+}`);
+    execFileSync('cc', ['-std=c99', '-Wall', '-Werror', '-o', join(dir, 'run'), join(dir, 'main.c'), ...all.map((f) => join(dir, `${f}.c`)), '-lm'], { cwd: dir });
+    const got = execFileSync(join(dir, 'run')).toString().trim().split('\n').map((l) => l.split(' ').map(Number));
+    const names = (t.l.vars.get('names') as unknown as { d: { v: string }[] }).d.map((x) => x.v), species = (t.l.vars.get('species') as unknown as { d: { v: string }[] }).d.map((x) => names.indexOf(x.v));
+    ['ec', 'el', 'nb', 'da'].forEach((m, k) => {
+      const twin = eightOf(specOf(t.l.vars.get(m) as Struct) as EcocSpec | BayesSpec | DiscrSpec).spec;
+      const want = rows.map((x) => classOf(twin, x));
+      expect(got.filter((g, i) => g[k] === want[i]).length).toBeGreaterThanOrEqual(X.r - 1); // float against the twin's doubles: at most a near tie
+      expect(got.filter((g, i) => g[k] === species[i]).length).toBeGreaterThan(0.9 * X.r);
+    });
   });
 });
