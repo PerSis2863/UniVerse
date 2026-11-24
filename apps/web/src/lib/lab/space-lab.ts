@@ -29,13 +29,28 @@ def('ijk2keplerian', (a) => {
   const el = sp.toElements(v3(a[0], 'The position'), v3(a[1], 'The velocity'));
   return [num(el.a * 1000), num(el.e), num(el.i / D), num(el.raan / D), num(el.argp / D), num(el.nu / D)];
 });
+/** A Julian date from a number (already one) or a date vector [Y M D h m s] (UTC). */
+function julianOf(x: Value): number {
+  const d = toMat(x, 'The date').d;
+  if (d.length === 1) { if (!(d[0] > 0)) throw new LabError('A Julian date is above 0 (2451545 is 1 Jan 2000, noon).'); return d[0]; }
+  if (d.length < 3 || d.length > 6) throw new LabError('A date is [year month day] with hours, minutes and seconds if wanted, or a Julian date.');
+  return sp.julianDate(d[0], d[1], d[2], d[3] ?? 0, d[4] ?? 0, d[5] ?? 0);
+}
+def('juliandate', (a) => [num(julianOf(a.length > 1 ? row(a.map((x) => toMat(x, 'The date').d[0])) : (a[0] ?? num(NaN))))]);
+// Where the Sun and the Moon are (m, Earth-centred, equatorial) at a date, by short series (~0.01° and a few minutes of arc).
+def('sunPosition', (a) => [col(sp.sunPosition(julianOf(a[0] ?? num(NaN))).map((x) => x * 1000))]);
+def('moonPosition', (a) => [col(sp.moonPosition(julianOf(a[0] ?? num(NaN))).map((x) => x * 1000))]);
 def('orbitPropagate', (a, nout, lab) => {
   if (a.length < 3) throw new LabError("orbitPropagate needs the position (m), velocity (m/s) and the time (s): orbitPropagate(r, v, 86400, 'J2', 1).");
   const r = v3(a[0], 'The position'), v = v3(a[1], 'The velocity'), T = n1(a[2], 'The time'), o = opts(a, 3);
-  if (!(T > 0 && T <= 30 * 86400)) throw new LabError('orbitPropagate runs up to 30 days.');
+  if (!(T > 0 && T <= 400 * 86400)) throw new LabError('orbitPropagate runs up to 400 days.');
   const dt = o.get('step') ? n1(o.get('step'), 'The step') : 10;
   if (!(dt >= 0.1 && dt <= 600) || T / dt > 2e6) throw new LabError("'Step' is 0.1 to 600 s, and at most two million steps.");
-  const run = sp.propagate(r, v, T, { j2: o.get('j2') ? !!toMat(o.get('j2')!).d[0] : true, dt });
+  // The Sun's and Moon's pull (M490b) and the start date ('Epoch': a Julian date or [Y M D h m s] in UTC), which also
+  // sets the Earth's rotation angle for the ground track.
+  const flag = (k: string) => (o.get(k) ? !!toMat(o.get(k)!).d[0] : false), ep = o.get('epoch');
+  const jd0 = ep ? julianOf(ep) : undefined;
+  const run = sp.propagate(r, v, T, { j2: o.get('j2') ? !!toMat(o.get('j2')!).d[0] : true, dt, sun: flag('sun'), moon: flag('moon'), jd0 });
   const c = (k: 0 | 1 | 2, of: sp.V3[]) => col(of.map((p) => p[k] * 1000));
   if (nout > 0) return [table([['Time', col(run.t)], ['X', c(0, run.r)], ['Y', c(1, run.r)], ['Z', c(2, run.r)], ['Vx', c(0, run.v)], ['Vy', c(1, run.v)], ['Vz', c(2, run.v)], ['Lat', col(run.lat.map((x) => x / D))], ['Lon', col(run.lon.map((x) => x / D))], ['Alt', col(run.alt.map((x) => x * 1000))]]), num(run.crashed ? 1 : 0)];
   call(lab, 'subplot', num(1), num(2), num(1));

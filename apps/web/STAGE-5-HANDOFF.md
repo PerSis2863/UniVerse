@@ -12848,6 +12848,24 @@ yaw damper; speed and most bank; from above, the wings drawn shorter as it banks
 `hyperion-machines-ui.mjs` takes a third entry per tab, a choice pressed first (`roll`: Tall van, `turning`).
 Example flight.m. Not built: the full six-degree-of-freedom aeroplane, wind and gusts, engine-out yaw.
 
+
+## M490b (24 Nov): Hyperion orbits, the Sun's and Moon's pull
+
+`space.ts`: `julianDate` (Meeus, Gregorian; 1 Jan 2000 12:00 = 2451545), `gmst` (the Earth's rotation angle by date: a
+date given to `propagate` as `jd0` now also places the ground track at real longitudes, unless `gst0` is given),
+`sunPosition` (the Astronomical Almanac's short formula, ~0.01°), `moonPosition` (Montenbruck and Gill's
+low-precision series; Meeus' example 47.a to 0.1° and ~50 km), both rotated from the ecliptic by the obliquity of
+date; `thirdBody` (the pull on the satellite less the pull on the Earth: μ((s − r)/|s − r|³ − s/|s|³)). `propagate`
+takes `sun`, `moon` and `jd0`; their positions are found once at a step's start, middle and end (RK4 needs no more:
+they move ~0.5° an hour). Checked: a geostationary satellite from 1 Jan 2026 tips 0.08–0.18° in 60 days against the
+same run without them (~0.7°/yr; the textbook 0.75–0.95°/yr depends on where the Moon's node is). Language:
+`orbitPropagate(..., 'Sun', 1, 'Moon', 1, 'Epoch', [Y M D h m s] or a Julian date)`, now up to 400 days (the 2-million
+step limit still holds); `juliandate` (MATLAB's name, a vector or separate numbers), `sunPosition`, `moonPosition`
+(metres). Window: Orbit → "The Sun's and Moon's pull (from 1 Jan 2026)" (a fixed date, so a choice always gives the same
+run); with it the last fact is how fast they tip the orbit, from 30 days with and without them scaled to a year (~150
+ms in a LEO, step period/40). Example orbits.m. Not built: air drag, solar radiation pressure, eclipses, the Earth's
+higher gravity terms, precession and nutation (the frame is the equator of date, near enough for these).
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

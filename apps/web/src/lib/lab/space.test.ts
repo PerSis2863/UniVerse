@@ -40,10 +40,11 @@ describe('Hyperion space flight (M490)', () => {
   });
   it('in the language (metres, m/s, degrees)', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
-    lab.run("[r, v] = keplerian2ijk(7000e3, 0.01, 51.6, 10, 20, 30); [a, e, i, O, w, nu] = ijk2keplerian(r, v); [dv1, dv2, t] = hohmannTransfer(6678e3, 42164e3); [v1, v2] = lambertSolve([5000 10000 2100]*1e3, [-14600 2500 7000]*1e3, 3600); [dvT, each] = rocketDeltaV([400000 25000 290; 100000 6000 340], 15000); ss = sunSyncInclination(700e3); [tr, fell] = orbitPropagate(r, v, 6000); figure; orbitPropagate(r, v, 3*5900);");
+    lab.run("[r, v] = keplerian2ijk(7000e3, 0.01, 51.6, 10, 20, 30); [a, e, i, O, w, nu] = ijk2keplerian(r, v); [dv1, dv2, t] = hohmannTransfer(6678e3, 42164e3); [v1, v2] = lambertSolve([5000 10000 2100]*1e3, [-14600 2500 7000]*1e3, 3600); [dvT, each] = rocketDeltaV([400000 25000 290; 100000 6000 340], 15000); ss = sunSyncInclination(700e3); [tr, fell] = orbitPropagate(r, v, 6000); figure; orbitPropagate(r, v, 3*5900); jd = juliandate([2026 3 20 14 46 0]); jd2 = juliandate(2000, 1, 1, 12, 0, 0); mp = moonPosition([1992 4 12]); [gr, gv] = keplerian2ijk(42164170, 0, 0.001, 0, 0, 0); tb = orbitPropagate(gr, gv, 5*86400, 'Step', 120, 'Sun', 1, 'Moon', 1, 'Epoch', [2026 1 1]); figure; orbitPropagate(gr, gv, 86400, 'Step', 120, 'Sun', 1, 'Moon', 1, 'Epoch', jd);");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('a')[0]).toBeCloseTo(7000e3, 0); expect(d('i')[0]).toBeCloseTo(51.6, 8); expect(d('nu')[0]).toBeCloseTo(30, 6);
     expect(d('dv1')[0] + d('dv2')[0]).toBeCloseTo(3893, -1); expect(d('v1')[0]).toBeCloseTo(-5992.5, 0);
     expect(d('ss')[0]).toBeCloseTo(98.19, 1); expect(d('fell')).toEqual([0]);
+    expect(d('jd2')[0]).toBe(2451545); expect(d('jd')[0]).toBeGreaterThan(2461119); expect(Math.hypot(...d('mp')) / 1000).toBeCloseTo(368410, -3);
   });
 });

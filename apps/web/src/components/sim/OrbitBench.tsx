@@ -5,7 +5,7 @@ import { Pause, Play } from 'lucide-react';
 import { Segmented } from '@/components/ui/Segmented';
 import { useDarkMode } from '@/lib/use-dark';
 import { useMedia } from '@/lib/use-media';
-import { RE, hohmann, nodalDrift, period, propagate, toState, type Elements } from '@/lib/lab/space';
+import { RE, hohmann, julianDate, nodalDrift, period, propagate, toElements, toState, type Elements } from '@/lib/lab/space';
 import { ui } from './bench-ui';
 
 // Hyperion Simulate → Machines → Orbit (M490): a satellite round the Earth (the space station's orbit, a
@@ -15,6 +15,8 @@ import { ui } from './bench-ui';
 
 type Preset = 'iss' | 'sso' | 'molniya' | 'geo';
 const D = Math.PI / 180;
+// The Sun's and Moon's pull (M490b) needs a date: a fixed one, so the same choices give the same run.
+const JD0 = julianDate(2026, 1, 1, 12);
 const PRESETS: Record<Preset, { label: string; el: Elements; text: string }> = {
   iss: { label: 'Station', el: { a: RE + 420, e: 0.0005, i: 51.64 * D, raan: 0, argp: 0, nu: 0 }, text: 'Low, 420 km up, round in 93 minutes: the track drifts west each turn as the Earth spins under it.' },
   sso: { label: 'Sun-sync', el: { a: RE + 700, e: 0.001, i: 98.19 * D, raan: 0, argp: 0, nu: 0 }, text: 'Over the poles, tilted just past 90° so the bulge turns its plane once a year: it passes each place at the same local time.' },
@@ -27,6 +29,7 @@ export function OrbitBench() {
   const [preset, setPreset] = useState<Preset>('iss');
   const [turns, setTurns] = useState(3);
   const [j2, setJ2] = useState(true);
+  const [third, setThird] = useState(false);
   const [k, setK] = useState(0);
   const [playing, setPlaying] = useState(false);
   const [earth, setEarth] = useState<HTMLImageElement | null>(null);
@@ -36,8 +39,15 @@ export function OrbitBench() {
   const p = PRESETS[preset];
   const run = useMemo(() => {
     const s = toState(p.el), T = Math.min(5 * 86400, turns * period(p.el.a));
-    return propagate(s.r, s.v, T, { j2, dt: p.el.a > 20000 ? 60 : 10, points: 1500 });
-  }, [p, turns, j2]);
+    return propagate(s.r, s.v, T, { j2, dt: p.el.a > 20000 ? 60 : 10, points: 1500, jd0: JD0, sun: third, moon: third });
+  }, [p, turns, j2, third]);
+  // How fast the Sun and Moon tip the orbit: 30 days with and without them, the difference in tilt scaled to a year.
+  const tilt = useMemo(() => {
+    if (!third) return null;
+    const s = toState(p.el), dt = Math.min(300, period(p.el.a) / 40), o = { j2, dt, points: 2, jd0: JD0 };
+    const iOf = (r: ReturnType<typeof propagate>) => toElements(r.r[r.r.length - 1], r.v[r.v.length - 1]).i;
+    return ((iOf(propagate(s.r, s.v, 30 * 86400, { ...o, sun: true, moon: true })) - iOf(propagate(s.r, s.v, 30 * 86400, o))) / D) * (365.25 / 30);
+  }, [p, j2, third]);
   const n = run.t.length;
   const cost = useMemo(() => {
     const ra = p.el.a * (1 + p.el.e), h = hohmann(RE + 300, ra);
@@ -111,7 +121,7 @@ export function OrbitBench() {
     ['Height now', `${run.alt[k].toFixed(0)} km`],
     ['Round in', hours(period(p.el.a))],
     ['From a 300 km orbit (Hohmann)', `${(cost.h.total * 1000).toFixed(0)} m/s, ${hours(cost.h.time)}`],
-    ['Its plane turns', `${cost.drift.toFixed(2)}° a day`],
+    tilt === null ? ['Its plane turns', `${cost.drift.toFixed(2)}° a day`] : ['The Sun and Moon tip it', `${tilt >= 0 ? '+' : ''}${tilt.toFixed(2)}° a year`],
   ];
   return (
     <div className="flex h-[calc(100dvh-12rem+var(--bare-gain,0px))] min-h-[34rem] gap-3">
@@ -125,6 +135,7 @@ export function OrbitBench() {
           <input type="range" min={1} max={15} step={1} value={turns} onChange={(e) => setTurns(Number(e.target.value))} className="mt-1 w-full accent-violet-600" />
         </label>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={j2} onChange={(e) => setJ2(e.target.checked)} className="h-4 w-4 accent-violet-600" />The Earth’s bulge (J2)</label>
+        <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={third} onChange={(e) => setThird(e.target.checked)} className="h-4 w-4 accent-violet-600" />The Sun’s and Moon’s pull (from 1 Jan 2026)</label>
         <button type="button" className={small} onClick={() => { if (k >= n - 1) setK(0); setPlaying((q) => !q); }}>{playing ? <Pause className="h-3.5 w-3.5" aria-hidden /> : <Play className="h-3.5 w-3.5" aria-hidden />}{playing ? 'Pause' : 'Replay'}</button>
         <label className={label}>Time <span className="font-mono tabular-nums text-zinc-900 dark:text-white">{hours(run.t[k])}</span>
           <input type="range" min={0} max={n - 1} step={1} value={k} onChange={(e) => { setPlaying(false); setK(Number(e.target.value)); }} className="mt-1 w-full accent-violet-600" />

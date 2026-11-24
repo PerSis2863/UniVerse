@@ -213,6 +213,14 @@ fprintf('Hohmann to GEO: %.0f + %.0f m/s, %.1f hours\\n', dv1, dv2, t/3600)
 [v1, v2] = lambertSolve([5000 10000 2100]*1e3, [-14600 2500 7000]*1e3, 3600)
 % A two-stage rocket with 15 t on top
 [dv, each] = rocketDeltaV([400000 25000 290; 100000 6000 340], 15000)
+% The Sun and the Moon tip a geostationary orbit: 60 days with and without their pull
+[gr, gv] = keplerian2ijk(42164.17e3, 0, 0.001, 0, 0, 0);
+a1 = orbitPropagate(gr, gv, 60*86400, 'Step', 120, 'Epoch', [2026 1 1]);
+a2 = orbitPropagate(gr, gv, 60*86400, 'Step', 120, 'Epoch', [2026 1 1], 'Sun', 1, 'Moon', 1);
+[~, ~, i1] = ijk2keplerian([a1.X(end) a1.Y(end) a1.Z(end)], [a1.Vx(end) a1.Vy(end) a1.Vz(end)]);
+[~, ~, i2] = ijk2keplerian([a2.X(end) a2.Y(end) a2.Z(end)], [a2.Vx(end) a2.Vy(end) a2.Vz(end)]);
+fprintf('In 60 days the Sun and Moon tip it %.3f degrees (about %.2f a year)\\n', i2 - i1, (i2 - i1)*365.25/60)
+moonPosition([2026 1 1])                       % where the Moon is (m)
 ` },
   { name: 'railways.m', code: `% Railways: running a train along a line, driving to save energy, and how close trains can follow
 t = trainModel('metro');

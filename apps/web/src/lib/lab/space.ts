@@ -64,23 +64,68 @@ export function gravity(r: V3, j2 = true, mu = MU): V3 {
   const k = (1.5 * J2 * mu * RE * RE) / rn ** 5, z2 = (5 * r[2] * r[2]) / (rn * rn);
   return add(g, [k * r[0] * (z2 - 1), k * r[1] * (z2 - 1), k * r[2] * (z2 - 3)]);
 }
+// ——— The Sun and the Moon (M490b) ———
+export const MU_SUN = 1.32712440018e11, MU_MOON = 4902.800066, AU = 149597870.7, JD2000 = 2451545;
+const DEG = Math.PI / 180;
+/** The Julian date of a calendar date and time in UTC (as MATLAB's juliandate; the Gregorian calendar). */
+export function julianDate(Y: number, M: number, D: number, h = 0, m = 0, s = 0) {
+  const y = M <= 2 ? Y - 1 : Y, mo = M <= 2 ? M + 12 : M, A = Math.floor(y / 100), B = 2 - A + Math.floor(A / 4);
+  return Math.floor(365.25 * (y + 4716)) + Math.floor(30.6001 * (mo + 1)) + D + B - 1524.5 + (h + m / 60 + s / 3600) / 24;
+}
+/** The Earth's rotation angle at a Julian date (rad): Greenwich mean sidereal time, so ground tracks fall at their real
+ * longitudes. */
+export const gmst = (jd: number) => mod((280.46061837 + 360.98564736629 * (jd - JD2000)) * DEG);
+const obliquity = (jd: number) => (23.439291 - 0.0130042 * ((jd - JD2000) / 36525)) * DEG;
+const fromEcliptic = (lon: number, lat: number, r: number, jd: number): V3 => {
+  const e = obliquity(jd), x = r * Math.cos(lat) * Math.cos(lon), y = r * Math.cos(lat) * Math.sin(lon), z = r * Math.sin(lat);
+  return [x, y * Math.cos(e) - z * Math.sin(e), y * Math.sin(e) + z * Math.cos(e)];
+};
+/** Where the Sun is (km, Earth-centred equatorial) at a Julian date: the Astronomical Almanac's short formula, ~0.01°. */
+export function sunPosition(jd: number): V3 {
+  const n = jd - JD2000, L = (280.46 + 0.9856474 * n) * DEG, g = (357.528 + 0.9856003 * n) * DEG;
+  const lam = L + (1.915 * Math.sin(g) + 0.02 * Math.sin(2 * g)) * DEG, R = (1.00014 - 0.01671 * Math.cos(g) - 0.00014 * Math.cos(2 * g)) * AU;
+  return fromEcliptic(lam, 0, R, jd);
+}
+/** Where the Moon is (km) at a Julian date: Montenbruck and Gill's low-precision series (a few minutes of arc, ~500 km). */
+export function moonPosition(jd: number): V3 {
+  const T = (jd - JD2000) / 36525, d = (x: number) => x * DEG, sin = Math.sin, cos = Math.cos;
+  const L0 = d(218.31617 + 481267.88088 * T - 1.3972 * T), l = d(134.96292 + 477198.86753 * T), lp = d(357.52543 + 35999.04944 * T), F = d(93.27283 + 483202.01873 * T), D = d(297.85027 + 445267.11135 * T);
+  const dl = 22640 * sin(l) + 769 * sin(2 * l) - 4586 * sin(l - 2 * D) + 2370 * sin(2 * D) - 668 * sin(lp) - 412 * sin(2 * F) - 212 * sin(2 * l - 2 * D) - 206 * sin(l + lp - 2 * D) + 192 * sin(l + 2 * D) - 165 * sin(lp - 2 * D) + 148 * sin(l - lp) - 125 * sin(D) - 110 * sin(l + lp) - 55 * sin(2 * F - 2 * D);
+  const lon = L0 + d(dl / 3600), S = F + d((dl + 412 * sin(2 * F) + 541 * sin(lp)) / 3600), h = F - 2 * D;
+  const lat = d((18520 * sin(S) - 526 * sin(h) + 44 * sin(l + h) - 31 * sin(-l + h) - 25 * sin(-2 * l + F) - 23 * sin(lp + h) + 21 * sin(-l + F) + 11 * sin(-lp + h)) / 3600);
+  const r = 385000 - 20905 * cos(l) - 3699 * cos(2 * D - l) - 2956 * cos(2 * D) - 570 * cos(2 * l) + 246 * cos(2 * l - 2 * D) - 205 * cos(lp - 2 * D) - 171 * cos(l + 2 * D) - 152 * cos(l + lp - 2 * D);
+  return fromEcliptic(lon, lat, r, jd);
+}
+/** A third body's pull on a satellite at r, relative to the Earth (which that body pulls too): μ((s − r)/|s − r|³ − s/|s|³). */
+export function thirdBody(r: V3, s: V3, mu: number): V3 {
+  const d: V3 = [s[0] - r[0], s[1] - r[1], s[2] - r[2]], dn = norm(d) ** 3, sn = norm(s) ** 3;
+  return [mu * (d[0] / dn - s[0] / sn), mu * (d[1] / dn - s[1] / sn), mu * (d[2] / dn - s[2] / sn)];
+}
+
 export interface OrbitRun { t: number[]; r: V3[]; v: V3[]; lat: number[]; lon: number[]; alt: number[]; raan: number[]; crashed: boolean }
-/** Propagates position and velocity for T seconds (RK4, step dt), with the ground track (the Earth turning under it). */
-export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number } = {}): OrbitRun {
+/** Propagates position and velocity for T seconds (RK4, step dt), with the ground track (the Earth turning under it).
+ * With a start date `jd0` (Julian) the Earth's rotation angle comes from it (unless `gst0` is given), and `sun` and
+ * `moon` add their pull, found where they are at each moment. */
+export function propagate(r0: V3, v0: V3, T: number, o: { j2?: boolean; dt?: number; points?: number; gst0?: number; jd0?: number; sun?: boolean; moon?: boolean } = {}): OrbitRun {
   // The step shrunk a little so the last one lands exactly at T.
   const n = Math.max(1, Math.ceil(T / (o.dt ?? 10))), dt = T / n, every = Math.max(1, Math.floor(n / (o.points ?? 2000))), j2 = o.j2 ?? true;
   let r = r0, v = v0, crashed = false;
   const out: OrbitRun = { t: [], r: [], v: [], lat: [], lon: [], alt: [], raan: [], crashed: false };
-  const f = (x: V3, y: V3): [V3, V3] => [y, gravity(x, j2)];
+  const jd0 = o.jd0 ?? JD2000, gst0 = o.gst0 ?? (o.jd0 !== undefined ? gmst(o.jd0) : 0);
+  // The Sun and Moon move little in a step: found once at its start, middle and end.
+  let bodies: [V3, number][][] = [];
+  const at = (t: number): [V3, number][] => [...(o.sun ? [[sunPosition(jd0 + t / 86400), MU_SUN] as [V3, number]] : []), ...(o.moon ? [[moonPosition(jd0 + t / 86400), MU_MOON] as [V3, number]] : [])];
+  const f = (x: V3, y: V3, which: number): [V3, V3] => { let g = gravity(x, j2); for (const [s, mu] of bodies[which] ?? []) g = add(g, thirdBody(x, s, mu)); return [y, g]; };
   for (let k = 0; k <= n; k++) {
     const t = k * dt;
     if (k % every === 0 || k === n) {
-      const rn = norm(r), lat = Math.asin(r[2] / rn), lon = Math.atan2(r[1], r[0]) - ((o.gst0 ?? 0) + WE * t);
+      const rn = norm(r), lat = Math.asin(r[2] / rn), lon = Math.atan2(r[1], r[0]) - (gst0 + WE * t);
       out.t.push(t); out.r.push(r); out.v.push(v); out.lat.push(lat); out.lon.push(Math.atan2(Math.sin(lon), Math.cos(lon))); out.alt.push(rn - RE); out.raan.push(toElements(r, v).raan);
     }
     if (k === n) break;
     if (norm(r) < RE) { crashed = true; break; }
-    const [a1, b1] = f(r, v), [a2, b2] = f(add(r, sc(a1, dt / 2)), add(v, sc(b1, dt / 2))), [a3, b3] = f(add(r, sc(a2, dt / 2)), add(v, sc(b2, dt / 2))), [a4, b4] = f(add(r, sc(a3, dt)), add(v, sc(b3, dt)));
+    if (o.sun || o.moon) bodies = [at(t), at(t + dt / 2), at(t + dt)];
+    const [a1, b1] = f(r, v, 0), [a2, b2] = f(add(r, sc(a1, dt / 2)), add(v, sc(b1, dt / 2)), 1), [a3, b3] = f(add(r, sc(a2, dt / 2)), add(v, sc(b2, dt / 2)), 1), [a4, b4] = f(add(r, sc(a3, dt)), add(v, sc(b3, dt)), 2);
     r = add(r, sc(add(add(a1, sc(a2, 2)), add(sc(a3, 2), a4)), dt / 6));
     v = add(v, sc(add(add(b1, sc(b2, 2)), add(sc(b3, 2), b4)), dt / 6));
   }
