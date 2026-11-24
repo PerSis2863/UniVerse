@@ -5,7 +5,7 @@ import { Segmented } from '@/components/ui/Segmented';
 import dynamic from 'next/dynamic';
 import { FilterDesigner } from './FilterDesigner';
 
-// Hyperion Signals' windows (M472–): the Filter designer, Audio (M473), Devices (M474), IoT (M475). The one in use is remembered for the visit.
+// Hyperion Signals' windows (M472–): the Filter designer, Audio (M473), Devices (M474), IoT (M475). The one in use is remembered for the visit; ?tab=iot opens one (M522: an IoT alert's link).
 type Tab = 'filters' | 'audio' | 'devices' | 'iot';
 const KEEP = 'uv-signals-tab';
 const TABS: { value: Tab; label: string }[] = [{ value: 'filters', label: 'Filter designer' }, { value: 'audio', label: 'Audio' }, { value: 'devices', label: 'Devices' }, { value: 'iot', label: 'IoT' }];
@@ -15,7 +15,7 @@ const IotBench = dynamic(() => import('./IotBench').then((m) => m.IotBench), { s
 const AudioBench = dynamic(() => import('./AudioBench').then((m) => m.AudioBench), { ssr: false, loading: () => skeleton });
 
 export function SignalsTabs() {
-  const [tab, setTabNow] = useState<Tab>(() => { try { const v = sessionStorage.getItem(KEEP); return TABS.some((t) => t.value === v) ? (v as Tab) : 'filters'; } catch { return 'filters'; } });
+  const [tab, setTabNow] = useState<Tab>(() => { try { const v = new URLSearchParams(window.location.search).get('tab') ?? sessionStorage.getItem(KEEP); return TABS.some((t) => t.value === v) ? (v as Tab) : 'filters'; } catch { return 'filters'; } });
   const setTab = (t: Tab) => { setTabNow(t); try { sessionStorage.setItem(KEEP, t); } catch { /* private mode */ } };
   return (
     <div className="space-y-3">

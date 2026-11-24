@@ -322,6 +322,8 @@ readDigitalPin | v = readDigitalPin(a, 'D2') | A digital pin's level, 0 or 1 (it
 readVoltage | v = readVoltage(a, 'A0') | An analog pin's voltage, 0 to 5 V (10 bits).
 writePWMDutyCycle | writePWMDutyCycle(a, 'D9', 0.5) | PWM on a pin: the share of time it is on, 0 to 1.
 writePWMVoltage | writePWMVoltage(a, 'D9', 2.5) | PWM on a pin as an average voltage, 0 to 5 V.
+iotread | [data, t, names] = iotread('Greenhouse', 'NumPoints', 100, 'Fields', [1 2]) | A Signals → IoT channel's newest readings, read while the script runs (by its name or id): one row per reading, NaN where a field was missing; t in seconds since 1970. Needs Chrome, Edge, Firefox or the computer app.
+iotwrite | r = iotwrite(key, [21.5 40]) | Sends a reading to a channel with its write key, as a device would (one a second at most); r.ok says whether it was taken. Its alerts are checked.
 
 # Unit tests
 runtests | results = runtests('t_math.m') | Runs tests: a test script's %% sections (each after the set-up code, in its own workspace), or with no file the local functions named test… (with setupOnce, setup, teardown, teardownOnce). Prints a report and gives a table (Name, Passed, Failed, Duration, Details). The Test button runs the open script.

@@ -15,3 +15,5 @@ export function sampleIotEntries() {
     }),
   };
 }
+/** GET /iot/channels/:id/alerts (M522) */
+export const sampleIotAlerts = () => ({ alerts: [{ id: 'smp-alert', field: 1, op: '>', value: 30, note: 'Too warm for the seedlings', quietMinutes: 15, lastFiredAt: null, fired: 0 }], max: 10 });

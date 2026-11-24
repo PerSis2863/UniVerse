@@ -23,6 +23,7 @@ import '@/lib/lab/help-commands';
 import { parallel, runResumable, type Pool, type Task, type TaskResult } from '@/lib/lab/parallel-lab';
 import '@/lib/lab/gpu-lab';
 import '@/lib/lab/des-lab';
+import '@/lib/lab/iot-lab';
 import '@/lib/lab/codegen-lab';
 import '@/lib/lab/embedded-lab';
 import { initGpu } from '@/lib/lab/gpu';

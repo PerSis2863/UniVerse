@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { shareFragment } from '@/lib/lab/share';
 import { ui } from '@/components/sim/bench-ui';
 import { keep } from './lab-files';
+import { IotAlerts } from './IotAlerts';
 
 // Hyperion Signals → IoT (M475): channels that devices send readings to (src/server/iot.ts). Make a channel with up
 // to 8 fields, copy its write key into the device's code (curl, an ESP32 sketch or Python, filled in for you), and
@@ -138,6 +139,7 @@ export function IotBench() {
               })}
             </div>
             {!rows.length && <p className="text-center text-xs text-zinc-500 dark:text-zinc-400">No readings yet: send one with the code on the right, or start the simulated device.</p>}
+            <IotAlerts key={channel.id} channelId={channel.id} fields={channel.fields} />
           </>
         )}
       </section>

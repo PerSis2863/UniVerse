@@ -8526,9 +8526,28 @@ model IotChannel {
   lastEntryAt DateTime?
   createdAt   DateTime   @default(now())
   readings    IotEntry[]
+  alerts      IotAlert[]
 
   @@index([userId])
   @@map("iot_channels")
+}
+
+/// M522: a rule on a channel's field; a reading that breaks it tells the owner (at most once per quietMinutes).
+model IotAlert {
+  id           String     @id @default(cuid())
+  channelId    String
+  channel      IotChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+  field        Int
+  op           String
+  value        Float
+  note         String?
+  quietMinutes Int        @default(15)
+  lastFiredAt  DateTime?
+  fired        Int        @default(0)
+  createdAt    DateTime   @default(now())
+
+  @@index([channelId])
+  @@map("iot_alerts")
 }
 
 /// M475: one reading a device sent: up to 8 numbers.

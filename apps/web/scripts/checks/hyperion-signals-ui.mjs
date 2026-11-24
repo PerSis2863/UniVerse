@@ -72,14 +72,27 @@ try {
       if (tab === 'IoT') {
         // A channel, its key shown once, the simulated device's readings arriving through the public address.
         const nameBox = page.getByLabel('Name');
-        await nameBox.fill(`Check ${theme} ${Date.now() % 100000}`);
+        const cname = `Check ${theme} ${Date.now() % 100000}`;
+        await nameBox.fill(cname);
         await page.getByRole('button', { name: 'Make the channel' }).click();
         await page.locator('[data-write-key]').waitFor({ timeout: 20_000 });
         r.key = /^[A-Z2-9]{20}$/.test(await page.locator('[data-write-key]').innerText());
+        // M522: an alert any reading breaks: the owner is told once (the rule's quiet time).
+        const alerts = page.getByRole('group', { name: 'Alerts' });
+        await alerts.getByLabel('is').selectOption('<');
+        await alerts.getByLabel('Value').fill('100000');
+        await alerts.getByLabel(/Message/).fill('Check alert');
+        await alerts.getByRole('button', { name: 'Add alert' }).click();
+        await alerts.locator('[data-alert]').waitFor({ timeout: 10_000 });
         await page.getByRole('button', { name: 'Start a simulated device' }).click();
         await page.waitForFunction(() => [...document.querySelectorAll('[data-field]')].some((e) => e.textContent !== '–'), null, { timeout: 30_000 });
         r.reading = await page.locator('[data-field]').first().innerText();
+        await page.waitForTimeout(5000);
         await page.getByRole('button', { name: 'Stop the simulated device' }).click();
+        await page.reload();
+        await page.getByRole('group', { name: 'Signals' }).getByRole('button', { name: 'IoT' }).click();
+        await page.getByRole('button', { name: cname }).click({ timeout: 20_000 });
+        r.alertTold = await page.getByRole('group', { name: 'Alerts' }).locator('[data-alert]').first().innerText({ timeout: 20_000 });
       }
       if (shots) await page.screenshot({ path: `${shots}/signals-${tab.replace(/\W+/g, '-')}-${theme}.png` });
       r[tab] = await axe(page);

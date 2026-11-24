@@ -12786,3 +12786,20 @@ Now **Hyperion's pages are cross-origin isolated** (`security-headers.ts` `isola
 - **Left out:** Safari waits as before (no isolation there); `pause` is left to the sciences branch (M506); a pool
   answer over 32 MB is refused with a message.
 
+## M522 (24 Nov): Hyperion IoT in scripts and IoT alerts
+
+- **In scripts** (`src/lib/lab/iot-lab.ts`): `[data, t, names] = iotread(channel, 'NumPoints', n, 'Fields', f)` reads a
+  channel's newest readings mid-run by name or id: asked of the signed-in page (`answers('iot')` in `page-answers.ts`
+  calls `/iot/channels` and `/entries` with the person's own sign-in), so it needs M521's waiting (a clear message
+  otherwise). `r = iotwrite(key, values)` posts to the public `/iot/write/:key` with a synchronous request from the
+  engine's thread (allowed in workers: every browser), so the script goes on once the channel answered.
+- **Alerts** (database update **0261**, `iot_alerts`, `IotAlert`): field, op (`>`, `<`, `>=`, `<=`), value, note,
+  quietMinutes (15), lastFiredAt, fired. `writeEntry` checks the channel's rules after storing the reading; a broken
+  rule is claimed with a conditional `updateMany` (lastFiredAt older than the quiet time) and tells the owner with
+  `notify(…, { email: false })` and `pushService.sendToMany` (no emails, per the rules). Routes: `GET`/`POST
+  /iot/channels/:id/alerts`, `DELETE /iot/alerts/:id` (owner only, at most 10 a channel; sample answer
+  `sampleIotAlerts`). The window: `IotAlerts.tsx` under the charts; the notification links to `/hyperion/signals?tab=iot`
+  (`SignalsTabs` reads `?tab=`). Account erasure takes alerts with their channels (cascade).
+- **Checked:** `iot.test.ts` (fires only when broken, once per quiet time, owner only), `iot-lab.test.ts`; in Chromium
+  `hyperion-signals-ui.mjs` (an alert added, the simulated device breaks it, "told 1×", notifications stored, axe clean
+  light and dark) and `hyperion-wait-ui.mjs` (`iotread` of a channel mid-run).

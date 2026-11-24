@@ -5,6 +5,8 @@ import { BadRequestException, NotFoundException } from './http';
 import { strings, type Body } from './body';
 import { num, short } from './trace';
 import { publish } from './realtime';
+import { notify } from './email';
+import { pushService } from './services/push.service';
 
 // Hyperion Signals → IoT (M475): a person's channels, each with up to 8 named fields, and the readings devices send
 // with the channel's write key over HTTPS (POST JSON, or a plain GET for the smallest boards). The key is shown once
@@ -97,5 +99,53 @@ export async function writeEntry(key: string, body: Body) {
     if (edge) { const gone = await prisma.iotEntry.deleteMany({ where: { channelId: c.id, id: { lte: edge.id } } }); await prisma.iotChannel.update({ where: { id: c.id }, data: { entries: { decrement: gone.count } } }); }
   }
   publish([c.userId], { type: 'refresh', keys: [`/iot/channels/${c.id}*`, '/iot/channels'] });
+  await checkAlerts(c.id, c.userId, JSON.parse(c.fields) as string[], vals, now);
   return { ok: true, entry: e.id };
+}
+
+// ——— M522: alerts ———
+export const MAX_ALERTS = 10;
+const OPS = ['>', '<', '>=', '<='] as const;
+type Op = (typeof OPS)[number];
+const breaks = (op: string, x: number, v: number) => (op === '>' ? x > v : op === '<' ? x < v : op === '>=' ? x >= v : x <= v);
+const alertView = (a: { id: string; field: number; op: string; value: number; note: string | null; quietMinutes: number; lastFiredAt: Date | null; fired: number }) =>
+  ({ id: a.id, field: a.field, op: a.op, value: a.value, note: a.note, quietMinutes: a.quietMinutes, lastFiredAt: a.lastFiredAt, fired: a.fired });
+/** A reading's rules: each one it breaks tells the owner, claimed by a conditional update so two readings at once tell once. */
+async function checkAlerts(channelId: string, userId: string, fields: string[], vals: (number | null)[], now: Date) {
+  const rules = await prisma.iotAlert.findMany({ where: { channelId } });
+  for (const a of rules) {
+    const x = vals[a.field - 1];
+    if (x === null || x === undefined || !breaks(a.op, x, a.value)) continue;
+    const quiet = new Date(now.getTime() - a.quietMinutes * 60_000);
+    const claimed = await prisma.iotAlert.updateMany({ where: { id: a.id, OR: [{ lastFiredAt: null }, { lastFiredAt: { lt: quiet } }] }, data: { lastFiredAt: now, fired: { increment: 1 } } });
+    if (!claimed.count) continue;
+    const name = fields[a.field - 1] ?? `field ${a.field}`, title = `${name} is ${x} (${a.op} ${a.value})`, body = a.note || `A reading on your IoT channel broke the rule ${name} ${a.op} ${a.value}.`;
+    await notify(userId, { title, body, link: '/hyperion/signals?tab=iot', type: 'info', email: false });
+    await pushService.sendToMany([userId], { title, body, url: '/hyperion/signals?tab=iot', tag: `iot-${a.id}` }).catch(() => 0);
+  }
+}
+/** GET /iot/channels/:id/alerts */
+export async function channelAlerts(user: SessionUser, id: string) {
+  await own(user, id);
+  const list = await prisma.iotAlert.findMany({ where: { channelId: id }, orderBy: { createdAt: 'asc' } });
+  return { alerts: list.map(alertView), max: MAX_ALERTS };
+}
+/** POST /iot/channels/:id/alerts { field (1–8), op ('>', '<', '>=', '<='), value, note?, quietMinutes? } */
+export async function addAlert(user: SessionUser, id: string, body: Body) {
+  const c = await own(user, id), n = (JSON.parse(c.fields) as string[]).length;
+  const field = num(body.field, 1, n), value = num(body.value, -1e15, 1e15), op = OPS.find((o) => o === body.op) as Op | undefined;
+  if (field === null || !Number.isInteger(field)) throw new BadRequestException(`Choose one of the channel's fields (1 to ${n}).`);
+  if (!op) throw new BadRequestException('The rule is above (>) or below (<) a value.');
+  if (value === null) throw new BadRequestException('Give the value the reading is compared with.');
+  if ((await prisma.iotAlert.count({ where: { channelId: id } })) >= MAX_ALERTS) throw new BadRequestException(`A channel has at most ${MAX_ALERTS} alerts: delete one first.`);
+  const quiet = num(body.quietMinutes, 1, 1440);
+  const a = await prisma.iotAlert.create({ data: { channelId: id, field, op, value, note: short(body.note, 200), quietMinutes: quiet === null ? 15 : Math.round(quiet) } });
+  return { alert: alertView(a) };
+}
+/** DELETE /iot/alerts/:id (only the channel owner's). */
+export async function deleteAlert(user: SessionUser, alertId: string) {
+  const a = await prisma.iotAlert.findFirst({ where: { id: alertId, channel: { userId: user.id } }, select: { id: true } });
+  if (!a) throw new NotFoundException('That alert isn’t yours or doesn’t exist.');
+  await prisma.iotAlert.delete({ where: { id: alertId } });
+  return { ok: true };
 }

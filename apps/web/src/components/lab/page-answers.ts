@@ -37,3 +37,13 @@ answers('serial', async (body, ms) => {
   return { lines: heldLines.splice(0), state: engineView(serialLink.state) };
 });
 
+// M522: a channel's newest readings (the page is signed in; the engine isn't).
+answers('iot', async (body) => {
+  const { channel, n } = body as { channel: string; n: number };
+  const { api } = await import('@/lib/api');
+  const all = (await api.get<{ channels: { id: string; name: string; fields: string[] }[] }>('/iot/channels')).data.channels;
+  const c = all.find((x) => x.id === channel) ?? all.find((x) => x.name.toLowerCase() === channel.toLowerCase());
+  if (!c) throw new Error(`There’s no channel “${channel}”: yours are ${all.map((x) => x.name).join(', ') || 'none yet (make one in Signals → IoT)'}.`);
+  const r = (await api.get<{ entries: { at: string; values: (number | null)[] }[] }>(`/iot/channels/${c.id}/entries?limit=${n}`)).data;
+  return { fields: c.fields, entries: r.entries };
+});
