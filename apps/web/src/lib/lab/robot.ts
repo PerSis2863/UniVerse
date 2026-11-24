@@ -3,7 +3,8 @@
 // in the base frame), inverse kinematics by damped least squares, and the dynamics by recursive Newton–Euler worked
 // in the base frame (mass matrix, gravity torques, Coriolis and centrifugal torques, forward dynamics). M482b: links may
 // branch (each names the link it hangs from, so a torso can carry two arms), any link can be the tool, and links are
-// capsules for collision checks against each other and against spheres and boxes.
+// capsules for collision checks against each other and against spheres and boxes; M482c adds cylinders and convex
+// meshes (GJK).
 // Poses are 4 × 4 row-major arrays here (the language turns them round).
 
 export type V3 = [number, number, number];
@@ -235,11 +236,69 @@ function segBoxDist(P: V3, Q: V3, b: number[]) {
   for (let it = 0; it < 30; it++) { const m1 = lo + (hi - lo) / 3, m2 = hi - (hi - lo) / 3; if (boxDist(at(m1), b) < boxDist(at(m2), b)) hi = m2; else lo = m1; }
   return Math.min(bd, boxDist(at((lo + hi) / 2), b));
 }
+// ——— Convex shapes (M482c): GJK distance between a link's segment and any convex shape given by its corners ———
+/** The point of the simplex (1–4 points) nearest the origin, and the smallest sub-simplex that holds it. */
+function nearestOnSimplex(S: V3[]): { p: V3; keep: V3[] } {
+  if (S.length === 1) return { p: S[0], keep: S };
+  if (S.length === 2) {
+    const [A, B] = S, ab = sub(B, A), t = Math.min(1, Math.max(0, -dot(A, ab) / (dot(ab, ab) || 1)));
+    return { p: add(A, sc(ab, t)), keep: t <= 0 ? [A] : t >= 1 ? [B] : S };
+  }
+  if (S.length === 3) return triNearest(S[0], S[1], S[2]);
+  // A tetrahedron: the origin inside it means the shapes overlap; otherwise the nearest of its faces.
+  const [A, B, C, D] = S, side = (P: V3, Q: V3, R: V3, O: V3) => { const n = cross(sub(Q, P), sub(R, P)); return dot(n, sc(P, -1)) * dot(n, sub(O, P)) >= 0; };
+  if (side(A, B, C, D) && side(A, B, D, C) && side(A, C, D, B) && side(B, C, D, A)) return { p: [0, 0, 0], keep: S };
+  let best = triNearest(A, B, C);
+  for (const f of [[A, B, D], [A, C, D], [B, C, D]] as [V3, V3, V3][]) { const r = triNearest(...f); if (dot(r.p, r.p) < dot(best.p, best.p)) best = r; }
+  return best;
+}
+/** Ericson's closest point on a triangle to the origin, with the vertices that span it. */
+function triNearest(A: V3, B: V3, C: V3): { p: V3; keep: V3[] } {
+  const ab = sub(B, A), ac = sub(C, A), ap = sc(A, -1), d1 = dot(ab, ap), d2 = dot(ac, ap);
+  if (d1 <= 0 && d2 <= 0) return { p: A, keep: [A] };
+  const bp = sc(B, -1), d3 = dot(ab, bp), d4 = dot(ac, bp);
+  if (d3 >= 0 && d4 <= d3) return { p: B, keep: [B] };
+  const vc = d1 * d4 - d3 * d2;
+  if (vc <= 0 && d1 >= 0 && d3 <= 0) return { p: add(A, sc(ab, d1 / (d1 - d3))), keep: [A, B] };
+  const cp = sc(C, -1), d5 = dot(ab, cp), d6 = dot(ac, cp);
+  if (d6 >= 0 && d5 <= d6) return { p: C, keep: [C] };
+  const vb = d5 * d2 - d1 * d6;
+  if (vb <= 0 && d2 >= 0 && d6 <= 0) return { p: add(A, sc(ac, d2 / (d2 - d6))), keep: [A, C] };
+  const va = d3 * d6 - d5 * d4;
+  if (va <= 0 && d4 - d3 >= 0 && d5 - d6 >= 0) return { p: add(B, sc(sub(C, B), (d4 - d3) / (d4 - d3 + (d5 - d6)))), keep: [B, C] };
+  const den = 1 / (va + vb + vc);
+  return { p: add(A, add(sc(ab, vb * den), sc(ac, vc * den))), keep: [A, B, C] };
+}
+const far = (pts: V3[], d: V3) => { let b = pts[0], bd = -Infinity; for (const p of pts) { const v = dot(p, d); if (v > bd) { bd = v; b = p; } } return b; };
+/** The distance between two convex shapes, each the hull of its points (0 when they touch or overlap): GJK on their
+ * Minkowski difference. A segment is the hull of its two ends, a point of one. */
+export function convexDist(P: V3[], Q: V3[]): number {
+  const supp = (d: V3) => sub(far(P, d), far(Q, sc(d, -1)));
+  let S: V3[] = [supp([1, 0, 0])], v = S[0];
+  for (let it = 0; it < 64; it++) {
+    const vv = dot(v, v);
+    if (vv < 1e-18) return 0;
+    const w = supp(sc(v, -1));
+    if (vv - dot(v, w) <= 1e-10 * Math.max(1, vv)) return Math.sqrt(vv);
+    const r = nearestOnSimplex([...S, w]);
+    S = r.keep; v = r.p;
+    if (S.length === 4) return 0;
+  }
+  return Math.sqrt(dot(v, v));
+}
+/** A vertical cylinder [x y z1 z2 r] as the corners of the 24-sided prism round it (so it is never smaller). */
+export function cylinderPoints(c: number[]): V3[] {
+  const R = c[4] / Math.cos(Math.PI / 24), out: V3[] = [];
+  for (let k = 0; k < 24; k++) { const a = (2 * Math.PI * k) / 24; for (const z of [c[2], c[3]]) out.push([c[0] + R * Math.cos(a), c[1] + R * Math.sin(a), z]); }
+  return out;
+}
 export interface Collision { colliding: boolean; minDistance: number; self: [number, number][]; hits: [number, number][] }
-/** Checks the arm against itself (links that don't touch at a joint) and against spheres [x y z r] and boxes
- * [x1 y1 z1 x2 y2 z2]. `hits` pair a link with an obstacle: spheres first, then boxes. Distances are between the
- * capsules' surfaces (negative: they overlap). */
-export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: number | number[]; spheres?: number[][]; boxes?: number[][]; self?: boolean } = {}): Collision {
+/** Checks the arm against itself (links that don't touch at a joint) and against spheres [x y z r], boxes
+ * [x1 y1 z1 x2 y2 z2], vertical cylinders [x y z1 z2 r] and convex meshes (each a list of its corners; a shape that
+ * isn't convex counts as its hull). `hits` pair a link with an obstacle numbered spheres, boxes, cylinders, meshes.
+ * Distances are between the capsules' surfaces (negative: they overlap; a capsule inside a cylinder or mesh counts
+ * as −its radius, the overlap's depth isn't measured). */
+export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: number | number[]; spheres?: number[][]; boxes?: number[][]; cylinders?: number[][]; meshes?: V3[][]; self?: boolean } = {}): Collision {
   const F = frames(arm, q), n = arm.links.length, reach = arm.links.reduce((t, l) => t + Math.abs(l.a) + Math.abs(l.d), 0) || 1;
   const rad = (i: number) => (Array.isArray(o.radius) ? o.radius[i] ?? 0 : o.radius ?? reach * 0.03);
   const seg = (i: number): [V3, V3] => [origin(F[parentOf(arm, i) + 1]), origin(F[i + 1])];
@@ -252,11 +311,12 @@ export function checkCollision(arm: Arm, q: ArrayLike<number>, o: { radius?: num
     if (near(A, C) || near(A, D) || near(B, C) || near(B, D)) continue;
     note(segDist(A, B, C, D) - rad(i) - rad(j), [i, j], out.self);
   }
-  const spheres = o.spheres ?? [], boxes = o.boxes ?? [];
+  const spheres = o.spheres ?? [], boxes = o.boxes ?? [], hulls = [...(o.cylinders ?? []).map(cylinderPoints), ...(o.meshes ?? [])];
   for (let i = 0; i < n; i++) {
     const [A, B] = seg(i);
     spheres.forEach((sp, k) => note(segDist(A, B, [sp[0], sp[1], sp[2]], [sp[0], sp[1], sp[2]]) - sp[3] - rad(i), [i, k], out.hits));
     boxes.forEach((bx, k) => note(segBoxDist(A, B, bx) - rad(i), [i, spheres.length + k], out.hits));
+    hulls.forEach((h, k) => note(convexDist([A, B], h) - rad(i), [i, spheres.length + boxes.length + k], out.hits));
   }
   return out;
 }

@@ -79,11 +79,47 @@ describe('Hyperion motors: field weakening, MTPA and steppers (M485b)', () => {
     const po = mo.pullOut(m, [200, 4000]);
     expect(po[0]).toBeGreaterThan(0.1); expect(po[1]).toBeLessThan(po[0]);
   });
+  it('six-step brushless: the right phases per Hall sector, steady speed, a commutation dip, the speed loop (M485c)', () => {
+    // Each sector drives the two phases whose back-EMFs are flat and opposite.
+    expect(mo.SIX_STEP).toEqual([[0, 1], [0, 2], [1, 2], [1, 0], [2, 0], [2, 1]]);
+    const m = mo.BLDC_DEFAULT, mean = (v: number[], from: number) => { const x = v.slice(from); return x.reduce((s, y) => s + y, 0) / x.length; };
+    const free = mo.bldcSimulate(m, 0.4);
+    // No load: back-EMF across two phases nearly meets the supply (friction takes a little).
+    expect(free.w.at(-1)!).toBeGreaterThan(0.95 * m.vdc / (2 * m.ke)); expect(free.w.at(-1)!).toBeLessThan(m.vdc / (2 * m.ke));
+    // Loaded at half duty: torque balances the load, and the currents add to zero.
+    const r = mo.bldcSimulate(m, 0.4, { duty: () => 0.5, load: () => 0.05 }), k = Math.floor(r.t.length * 0.75);
+    expect(mean(r.torque, k)).toBeCloseTo(0.05 + m.b * mean(r.w, k), 2);
+    expect(Math.max(...r.ia.map((a, j) => Math.abs(a + r.ib[j] + r.ic[j])))).toBeLessThan(1e-9);
+    // Halls 20° off: the same load needs more current (torque ripple grows).
+    const off = mo.bldcSimulate(m, 0.4, { duty: () => 0.5, load: () => 0.05, hallOffset: (20 * Math.PI) / 180 });
+    const spread = (v: number[]) => Math.max(...v.slice(k)) - Math.min(...v.slice(k));
+    expect(spread(off.torque)).toBeGreaterThan(spread(r.torque));
+    // A speed loop on the duty holds 200 rad/s.
+    const sp = mo.bldcSimulate(m, 0.5, { speed: () => 200, load: () => 0.03 });
+    expect(mean(sp.w, Math.floor(sp.t.length * 0.8))).toBeCloseTo(200, -1);
+  });
+  it('motor heating: the steady temperature by hand, the continuous rating, the time to the limit (M485c)', () => {
+    const th = mo.THERMAL_DEFAULT;
+    // Without copper's rise, T = Tamb + P·Rth; with it, a little hotter.
+    const s = mo.heatSteady(th, 1, 5);
+    expect(s.winding).toBeGreaterThan(25 + 25 * 1.8); expect(s.winding).toBeLessThan(25 + 25 * 1.8 * 1.4);
+    expect((s.winding - 25) * 1 - 25 * (1 + 0.00393 * (s.winding - 25)) * 1.8).toBeCloseTo(0, 6);
+    const c = mo.heatSteady(th, 1, 1).continuous;
+    expect(mo.heatSteady(th, 1, c).winding).toBeCloseTo(th.tmax, 6);
+    // The simulation settles where the formula says; at twice the rating it passes the limit after a while.
+    const sim = mo.heatSimulate(th, 1, () => 5, 20000);
+    expect(sim.winding.at(-1)!).toBeCloseTo(s.winding, 0);
+    const hot = mo.heatSimulate(th, 1, () => 2 * c, 20000);
+    expect(hot.overAt).toBeGreaterThan(10); expect(hot.overAt).toBeLessThan(2000);
+  });
   it('in the language', { timeout: 30_000 }, () => {
     const lab = new Lab({ out: () => {}, graphics: new Graphics() });
     lab.run("s = stepper(); [r, lost] = stepperSim(s, @(t) min(400, 2000*t), 0.3, 'Microsteps', 8); h = s.HoldingTorque; p = pmsm(); f = focSim(p, 160, 0.5); w = f.Speed(end); g = focSim(p, 160, 0.5, 'FieldWeakening', 0); w0 = g.Speed(end);");
     const d = (n: string) => [...toMat(lab.vars.get(n)!).d];
     expect(d('lost')).toEqual([0]); expect(d('h')[0]).toBeCloseTo(0.3 * 1.5 * Math.SQRT2, 9);
     expect(d('w')[0]).toBeCloseTo(160, 0); expect(d('w0')[0]).toBeLessThan(140);
+    lab.run("b = bldc(); r = bldcSim(b, 0.3, 'Duty', 0.5); wb = r.Speed(end); kt = b.TorqueConstant; [h, info] = motorHeat(1, 5, 3000); Ic = info.Continuous; tw = h.Winding(end);");
+    expect(d('wb')[0]).toBeGreaterThan(150); expect(d('kt')).toEqual([0.06]);
+    expect(d('Ic')[0]).toBeGreaterThan(5); expect(d('tw')[0]).toBeGreaterThan(40);
   });
 });

@@ -12609,6 +12609,61 @@ resonance shows as a dip, as in real steppers). Language in `motor-lab.ts`: `foc
 'MTPA', 0/1)`, `stepper`, `stepperSim` (a table and the steps lost), `stepperPullout`. Tests in `motor.test.ts`.
 Example motors.m. Not built: six-step (trapezoidal) BLDC commutation with Hall sensors, space-vector PWM inside the
 motor model, motor heating, closed-loop steppers.
+## M482c (24 Nov): Hyperion robot arms, cylinders and convex meshes as obstacles
+
+M482b's left-out ("meshes as collision shapes"). `robot.ts`: `convexDist(P, Q)` (GJK on the Minkowski difference of two
+point sets' hulls; the nearest point of each simplex by Ericson's triangle routine, a tetrahedron holding the origin
+means overlap; 64 steps at most; a link is the hull of its segment's two ends), `cylinderPoints` (an upright cylinder
+[x y z1 z2 r] as the 24-sided prism round it, so never smaller), `checkCollision(..., { cylinders, meshes })`: obstacles
+numbered spheres, boxes, cylinders, meshes. A capsule whose core is inside a hull counts as −radius (the depth isn't
+measured: EPA is not built). Language: `checkCollision(r, q, 'Cylinders', [x y z1 z2 r], 'Meshes', {N×3 corners, …})`
+(one matrix or a cell array). Tests in `robot.test.ts` (point–cube distances, GJK against `segDist`, a segment through
+a tetrahedron, cylinder clearance). Example robot_arm.m. Not built: the overlap's depth (EPA), concave meshes split
+into convex parts, STL files, shapes in the Robot arm window (it keeps its ball).
+
+## M483c (24 Nov): Hyperion car routes, Reeds–Shepp curves
+
+M483b's left-out. `car-path.ts`: `reedsShepp(a, b, R)` (Reeds and Shepp's 1990 formulas in OMPL's arrangement: the
+CSC, CCC, CCCC, CCSC and CCSCC families, each base solver run as is, time-flipped (lengths negated), reflected (L ↔ R)
+and both; CCC and CCSC also on the "backwards" pose; candidates sorted by length and the first that `driveRS` really
+brings to b wins, as `dubins` guards its branches), `driveRS` (poses and a reversing flag per pose). `hybridAstar` takes
+a Reeds–Shepp shot when reversing is allowed (Dubins when not), the tail's reversing flags kept: the car-park search
+fell from ~2–3 s to ~0.25 s. Language: `reedsSheppPath(start, goal, R)` → [poses with a ±1 column, length, word,
+signed lengths] or drawn (MATLAB: reedsSheppConnection); `drawCarPath` can skip the outlines. Tests in
+`car-path.test.ts` (300 random pairs: never longer than Dubins, at least the straight distance, the same both ways;
+straight back is a 3 m reverse; a sideways shuffle reverses). Over 2,000 random pairs every one joined. Not built:
+trailers, smoothing the route afterwards, the guide (heuristic) using Reeds–Shepp lengths (each costs a verify drive).
+
+## M484c (24 Nov): Hyperion SLAM guarded against a wrong loop match
+
+M484b's left-out. `pose-graph.ts`: an `Edge` may be `robust`; `dcsWeights` (dynamic covariance scaling: weight
+min(1, 2Φ/(Φ + χ²))²); `optimise(..., { phi })` re-weighs robust edges each step and **anneals** Φ from 10⁴ times its
+value down to it (halving each step, 40 steps when any edge is robust): plain DCS trusts the starting poses, so with a
+2.7 m drift it dismissed the good closure as well (found by the test). `robot-sense.ts` `slam`: closures are robust
+(`CLOSURE_PHI` = 10: a right closure's χ² is ~2), and one left under 0.1 of its weight is dropped (`rejected`).
+Language: `optimizePoseGraph(P, E, 'Robust', true, 'Phi', 1)` (edges between non-neighbours are the robust ones) → [Q, w]
+with each edge's final weight; `slamGrid`'s 5th output the rejected closures. Tests in `pose-graph.test.ts` (a square
+with a true and a 3 m-wrong closure: plain 0.8 m+ off, robust under 0.3 m, the wrong edge's weight under 0.05; the SLAM
+loop test still passes). Example robot_sensing.m. Not built: switchable constraints, place recognition by scan
+descriptors, 3D pose graphs.
+
+## M485c (24 Nov): Hyperion six-step brushless motors and motor heating
+
+M485's left-outs. `motor.ts`: `Bldc` (per-phase r, l, ke, pole pairs, j, b, vdc; `BLDC_DEFAULT` a small 24 V motor,
+0.06 N·m/A, ~400 rad/s free), `trapezoid` (flat ±1 for 120°), `hallSector` (with a sensor offset), `SIX_STEP` (each
+sector's high and low phase, worked out from the back-EMFs at the sector's middle: A+B−, A+C−, B+C−, B+A−, C+A−, C+B−),
+`bldcSimulate` (2 µs steps; the high phase at the PWM average, the low at 0 V; the floating phase carries on through its
+diode, clamped to the opposite rail, with the star point at the terminals' average, until its current crosses zero; a
+fixed duty or a speed PI on the duty with the integrator held at 0 and 1). Motor heating: `Thermal` (winding and housing,
+K/W and J/K, class F 155 °C), `heatSimulate` (copper's 0.393 %/K, a loss factor `k`, extra losses), `heatSteady` (the
+steady winding temperature solved with the resistance's rise, runaway as Infinity, and the continuous current rating).
+Language in `motor-lab.ts`: `bldc` (struct with TorqueConstant, NoLoadSpeed, StallCurrent), `bldcSim` ('Duty' or
+'Speed', 'Load', 'HallOffset' in electrical degrees; table with Sector 1–6), `motorHeat(R, I, T, …)` → table and info
+(Continuous, SteadyWinding, OverLimitAt). Tests in `motor.test.ts` (the commutation table, free speed under Vdc/2Ke,
+torque meets the load, currents sum to 0, misplaced Halls ripple more, the speed loop; the steady temperature by hand,
+the rating gives the limit, the simulation settles there). Example motors.m. Not built: sensorless (back-EMF zero
+crossing) starting, real PWM switching inside the motor model, iron losses from speed, a window of its own.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -26,6 +26,27 @@ describe('Hyperion loop closure and pose graphs (M484b)', () => {
     // Edges that already agree leave the poses where they are.
     expect(worst(pg.optimise(truth, edges.slice(0, 40).map((e, k) => ({ ...e, z: pg.relative(truth[k], truth[k + 1]) }))))).toBeLessThan(1e-9);
   });
+  it('a wrong loop closure marked robust is weighed down instead of bending the square (M484c)', () => {
+    const truth: pg.Pose[] = [[0, 0, 0]];
+    for (let k = 1; k <= 40; k++) truth.push(pg.compose(truth[k - 1], [1, 0, k % 10 === 0 ? Math.PI / 2 : 0]));
+    let seed = 2;
+    const r = () => ((seed = (Math.imul(seed, 1103515245) + 12345) >>> 0) / 2 ** 32 - 0.5);
+    const edges: pg.Edge[] = [], est: pg.Pose[] = [truth[0]];
+    for (let k = 1; k <= 40; k++) {
+      const z = pg.relative(truth[k - 1], truth[k]), zn: pg.Pose = [z[0] + 0.02 * r(), z[1] + 0.02 * r(), z[2] + 0.01 + 0.01 * r()];
+      edges.push({ i: k - 1, j: k, z: zn, info: [2500, 2500, 10000] }); est.push(pg.compose(est[k - 1], zn));
+    }
+    const worst = (P: pg.Pose[]) => Math.max(...P.map((p, k) => Math.hypot(p[0] - truth[k][0], p[1] - truth[k][1])));
+    const good: pg.Edge = { i: 0, j: 40, z: pg.relative(truth[0], truth[40]), info: [150, 150, 2500], robust: true };
+    // A wrong match: pose 25 "recognised" as the place of pose 5, metres away across the square.
+    const bad: pg.Edge = { i: 5, j: 25, z: [0, 0, 0], info: [150, 150, 2500], robust: true };
+    const plain = pg.optimise(est, [...edges, { ...good, robust: false }, { ...bad, robust: false }]);
+    const robust = pg.optimise(est, [...edges, good, bad], { phi: 10 });
+    expect(worst(plain)).toBeGreaterThan(0.8);
+    expect(worst(robust)).toBeLessThan(0.3);
+    const w = pg.dcsWeights(robust, [good, bad], 10);
+    expect(w[0]).toBeGreaterThan(0.5); expect(w[1]).toBeLessThan(0.05);
+  });
   it('a robot follows a path that crosses itself in order (pure pursuit looks ahead only)', () => {
     const m = mo.sampleMap('rooms'), safe = mo.inflate(m, 0.7), wp: [number, number][] = [[4, 5], [12, 7], [13, 20], [5, 17], [4, 5], [12, 7]];
     let path: [number, number][] = [];
@@ -54,5 +75,8 @@ describe('Hyperion loop closure and pose graphs (M484b)', () => {
     lab.run('P = [0 0 0; 1.1 0 0; 2.2 0 0]; E = [1 2 1 0 0 100 100 1000; 2 3 1 0 0 100 100 1000; 1 3 2 0 0 1000 1000 1000]; Q = optimizePoseGraph(P, E);');
     const Q = [...toMat(lab.vars.get('Q')!).d];
     expect(Q[2]).toBeCloseTo(2, 2); expect(Q[1]).toBeCloseTo(1, 2);
+    lab.run("E2 = [E; 1 3 5 0 0 1000 1000 1000]; [R, w] = optimizePoseGraph(P, E2, 'Robust', true, 'Phi', 1);");
+    const w = [...toMat(lab.vars.get('w')!).d];
+    expect(w.slice(0, 2)).toEqual([1, 1]); expect(w[2]).toBeGreaterThan(0.3); expect(w[3]).toBeLessThan(0.01);
   });
 });

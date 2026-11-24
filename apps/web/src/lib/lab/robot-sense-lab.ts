@@ -94,7 +94,7 @@ def('slamGrid', (a, nout, lab) => {
   if (!(recent >= 0)) throw new LabError("'Recent' is how many earlier scans each is matched against (0: the whole map).");
   const loopOn = o.get('loopclosure') ? !!toMat(o.get('loopclosure')!).d[0] : recent > 0;
   const s = se.slam(run.scans, run.odom, run.angles, res, maxR, { recent: recent || undefined, loopClosure: loopOn });
-  if (nout > 0) return [probMat(s.map), posesMat(s.poses), row([s.map.x0, s.map.y0]), fromRows(s.closures.flatMap((c) => [c.from + 1, c.to + 1]), s.closures.length, 2)];
+  if (nout > 0) return [probMat(s.map), posesMat(s.poses), row([s.map.x0, s.map.y0]), fromRows(s.closures.flatMap((c) => [c.from + 1, c.to + 1]), s.closures.length, 2), fromRows(s.rejected.flatMap((c) => [c.from + 1, c.to + 1]), s.rejected.length, 2)];
   drawProb(lab, s.map, se.probability(s.map)); call(lab, 'hold', str('on'));
   line(lab, run.odom, '--', [0.85, 0.3, 0.3]); line(lab, s.poses, '-', [0.49, 0.23, 0.93], 2);
   for (const c of s.closures) line(lab, [s.poses[c.from], s.poses[c.to]], ':', [0.09, 0.64, 0.29], 2);
@@ -103,16 +103,20 @@ def('slamGrid', (a, nout, lab) => {
   call(lab, 'title', str('SLAM: the map and the path, built together'));
   return [];
 });
-def('optimizePoseGraph', (a) => {
+def('optimizePoseGraph', (a, nout) => {
   if (a.length < 2) throw new LabError('optimizePoseGraph needs the poses (rows [x y heading]) and the edges (rows [i j dx dy dtheta], or with three weights after).');
-  const nodes = posesOf(a[0]), E = rowsOf(toMat(a[1], 'The edges'));
+  const nodes = posesOf(a[0]), E = rowsOf(toMat(a[1], 'The edges')), o = pairs(a, 2);
+  // M484c: 'Robust' true weighs down loop closures (edges between poses that aren't neighbours) that disagree.
+  const robust = o.get('robust') ? !!toMat(o.get('robust')!).d[0] : false, phi = numOpt(o, 'phi', 1);
+  if (!(phi > 0)) throw new LabError("'Phi' is how much disagreement a robust edge may have before it is weighed down: above 0.");
   if (E.length && E[0].length !== 5 && E[0].length !== 8) throw new LabError('Each edge is [i j dx dy dtheta] (the move from pose i to pose j, in i\'s frame), with [wx wy wtheta] weights after if wanted.');
   const edges = E.map((e) => {
     const i = Math.round(e[0]) - 1, j = Math.round(e[1]) - 1;
     if (!(i >= 0 && j >= 0 && i < nodes.length && j < nodes.length)) throw new LabError('An edge names a pose that isn\'t there.');
-    return { i, j, z: [e[2], e[3], e[4]] as Pose, info: (e.length === 8 ? [e[5], e[6], e[7]] : [100, 100, 1000]) as [number, number, number] };
+    return { i, j, z: [e[2], e[3], e[4]] as Pose, info: (e.length === 8 ? [e[5], e[6], e[7]] : [100, 100, 1000]) as [number, number, number], robust: robust && Math.abs(j - i) !== 1 };
   });
-  return [posesMat(pg.optimise(nodes, edges))];
+  const out = pg.optimise(nodes, edges, { phi });
+  return nout > 1 ? [posesMat(out), row(pg.dcsWeights(out, edges, phi))] : [posesMat(out)];
 });
 def('buildMap', (a, nout, lab) => {
   if (a.length < 3) throw new LabError('buildMap needs the scans, the poses and the beam angles (then the resolution and the range).');

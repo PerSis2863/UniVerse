@@ -153,3 +153,105 @@ export function pullOut(m: Stepper, rates: number[], micro = 8) {
     return lo;
   });
 }
+
+// ——— Six-step (trapezoidal) brushless motors with Hall sensors (M485c) ———
+/** A brushless DC motor with trapezoidal back-EMF, star-connected. Per phase: r (Ω), l (H), ke (V·s/rad: each phase's
+ * flat-top back-EMF per mechanical rad/s, so torque is 2·ke·i with two phases on), p pole pairs, j, b, vdc (V). */
+export interface Bldc { r: number; l: number; ke: number; p: number; j: number; b: number; vdc: number }
+/** A small 24 V, 4-pole-pair motor: 0.06 N·m/A (two phases on) and about 400 rad/s (3,800 rpm) with no load. */
+export const BLDC_DEFAULT: Bldc = { r: 0.3, l: 0.2e-3, ke: 0.03, p: 4, j: 3e-5, b: 2e-5, vdc: 24 };
+/** The trapezoid: +1 flat from 30° to 150°, −1 from 210° to 330°, straight between (electrical angle). */
+export function trapezoid(th: number) {
+  const a = ((th % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), d = (a * 180) / Math.PI;
+  if (d < 30) return d / 30;
+  if (d < 150) return 1;
+  if (d < 210) return 1 - (d - 150) / 30;
+  if (d < 330) return -1;
+  return -1 + (d - 330) / 30;
+}
+const backEmfShape = (th: number): [number, number, number] => [trapezoid(th), trapezoid(th - (2 * Math.PI) / 3), trapezoid(th - (4 * Math.PI) / 3)];
+/** Which of the six 60° sectors the Hall sensors read (0–5), with the sensors misplaced by `offset` electrical radians. */
+export const hallSector = (th: number, offset = 0) => Math.floor((((th + offset - Math.PI / 6) % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI) / (Math.PI / 3)) % 6;
+/** The phase driven high and the one driven low in each sector: the pair whose back-EMFs are flat and opposite there. */
+export const SIX_STEP: [number, number][] = Array.from({ length: 6 }, (_, s) => {
+  const e = backEmfShape(Math.PI / 6 + (s + 0.5) * (Math.PI / 3));
+  return [e.indexOf(Math.max(...e)), e.indexOf(Math.min(...e))];
+});
+/** Six-step drive: in each Hall sector one phase is switched to the supply (PWM at `duty`, as its average) and one to
+ * ground; the third floats, but carries on through its diode until its current dies away (that's the commutation dip
+ * in torque). Either a fixed duty or a speed PI on the duty (0–1). 2 µs steps. */
+export function bldcSimulate(m: Bldc, T: number, o: { duty?: (t: number) => number; speed?: (t: number) => number; load?: (t: number) => number; hallOffset?: number; kp?: number; ki?: number; points?: number } = {}) {
+  const dt = 2e-6, n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500))), load = o.load ?? (() => 0), half = m.vdc / 2;
+  const i = [0, 0, 0];
+  let w = 0, th = 0, integ = 0, duty = 0;
+  const kp = o.kp ?? 0.02, ki = o.ki ?? 0.5;
+  const out = { t: [0], w: [0], ia: [0], ib: [0], ic: [0], torque: [0], duty: [0], sector: [hallSector(0, o.hallOffset)] };
+  for (let s = 1; s <= n; s++) {
+    const t = (s - 1) * dt;
+    if (o.speed) {
+      const err = o.speed(t) - w, u = kp * err + integ;
+      duty = Math.max(0, Math.min(1, u));
+      if (u === duty) integ += ki * err * dt; // the integrator stops while the duty is held at 0 or 1
+    } else duty = Math.max(0, Math.min(1, o.duty ? o.duty(t) : 1));
+    const the = m.p * th, sec = hallSector(the, o.hallOffset), [hi, lo] = SIX_STEP[sec], fl = 3 - hi - lo;
+    const f = backEmfShape(the), e = f.map((x) => m.ke * w * x);
+    // Terminal voltages (about the supply's middle): high side at the PWM average, low side at 0 V.
+    const v = [0, 0, 0];
+    v[hi] = duty * m.vdc - half; v[lo] = -half;
+    if (Math.abs(i[fl]) > 1e-9) {
+      // The floating phase's current flows on through a diode: into the motor through the low one (−Vdc/2), out
+      // through the high one (+Vdc/2). All three terminals are set, so the star point floats to their average.
+      v[fl] = i[fl] > 0 ? -half : half;
+      const vn = (v[0] + v[1] + v[2] - (e[0] + e[1] + e[2])) / 3;
+      const before = i[fl];
+      for (let k = 0; k < 3; k++) i[k] += (dt * (v[k] - vn - m.r * i[k] - e[k])) / m.l;
+      if (Math.sign(i[fl]) !== Math.sign(before)) { const extra = i[fl]; i[fl] = 0; i[hi] += extra / 2; i[lo] += extra / 2; }
+    } else {
+      // Two phases in series, the third open.
+      const ip = i[hi];
+      const di = (dt * (v[hi] - v[lo] - 2 * m.r * ip - (e[hi] - e[lo]))) / (2 * m.l);
+      i[hi] = ip + di; i[lo] = -i[hi]; i[fl] = 0;
+    }
+    const te = m.ke * (f[0] * i[0] + f[1] * i[1] + f[2] * i[2]);
+    const tl = load(t), fr = Math.abs(w) > 1e-6 ? Math.sign(w) * tl : Math.max(-tl, Math.min(tl, te));
+    w += (dt * (te - m.b * w - fr)) / m.j;
+    th += w * dt;
+    if (s % every === 0 || s === n) { out.t.push(s * dt); out.w.push(w); out.ia.push(i[0]); out.ib.push(i[1]); out.ic.push(i[2]); out.torque.push(te); out.duty.push(duty); out.sector.push(sec); }
+  }
+  return out;
+}
+
+// ——— Motor heating (M485c) ———
+/** Two bodies: the winding (heated by its copper loss) and the housing (cooled by the air). R in K/W, C in J/K; copper's
+ * resistance rises 0.393 % a kelvin; `tmax` the insulation's limit (class F: 155 °C). */
+export interface Thermal { rwh: number; rha: number; cw: number; ch: number; tamb: number; tmax: number }
+export const THERMAL_DEFAULT: Thermal = { rwh: 0.6, rha: 1.2, cw: 60, ch: 900, tamb: 25, tmax: 155 };
+const ALPHA_CU = 0.00393;
+/** Winding and housing temperatures for a current that changes over time (`k`: loss = k·R(T)·I², 1 for a DC motor,
+ * 1.5 for a three-phase motor with I the dq amplitude, 2 for six-step with I the phase current). `extra` adds losses
+ * that don't depend on the current (iron, friction) in W. */
+export function heatSimulate(th: Thermal, r0: number, current: (t: number) => number, T: number, o: { k?: number; extra?: (t: number) => number; points?: number } = {}) {
+  const k = o.k ?? 1, extra = o.extra ?? (() => 0);
+  const dt = Math.min(1, th.rwh * th.cw / 20, th.rha * th.ch / 20), n = Math.ceil(T / dt), every = Math.max(1, Math.floor(n / (o.points ?? 1500)));
+  let tw = th.tamb, tc = th.tamb, over = NaN;
+  const out = { t: [0], winding: [tw], housing: [tc], loss: [0] };
+  for (let s = 1; s <= n; s++) {
+    const t = (s - 1) * dt, I = current(t), P = k * r0 * (1 + ALPHA_CU * (tw - 25)) * I * I + extra(t);
+    const qwh = (tw - tc) / th.rwh, qha = (tc - th.tamb) / th.rha;
+    tw += (dt * (P - qwh)) / th.cw;
+    tc += (dt * (qwh - qha)) / th.ch;
+    if (Number.isNaN(over) && tw >= th.tmax) over = s * dt;
+    if (s % every === 0 || s === n) { out.t.push(s * dt); out.winding.push(tw); out.housing.push(tc); out.loss.push(P); }
+  }
+  return { ...out, overAt: over };
+}
+/** The steady winding temperature at a steady current, and the most current the motor carries for ever without the
+ * winding passing its limit (the continuous rating). */
+export function heatSteady(th: Thermal, r0: number, I: number, k = 1) {
+  // T = Tamb + k R0 (1 + α(T − 25)) I² Rth, solved for T (thermal runaway when the loss grows faster than it is shed).
+  const Rth = th.rwh + th.rha, a = k * r0 * I * I * Rth, den = 1 - a * ALPHA_CU;
+  const winding = den > 0 ? (th.tamb + a * (1 - ALPHA_CU * 25)) / den : Infinity;
+  const housing = th.tamb + (winding - th.tamb) * (th.rha / Rth);
+  const continuous = Math.sqrt((th.tmax - th.tamb) / Rth / (k * r0 * (1 + ALPHA_CU * (th.tmax - 25))));
+  return { winding, housing, continuous };
+}

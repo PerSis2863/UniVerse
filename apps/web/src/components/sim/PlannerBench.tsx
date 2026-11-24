@@ -166,7 +166,7 @@ export function PlannerBench() {
           <>
             {range('Start heading', heads[0], -180, 180, 5, '°', (n) => setHeads((h) => [n, h[1]]))}
             {range('Goal heading', heads[1], -180, 180, 5, '°', (n) => setHeads((h) => [h[0], n]))}
-            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">A car 4.5 m long that turns no tighter than 5 m. Hybrid A* drives short arcs forwards and backwards (orange) and finishes with the shortest forward curve (a Dubins path) when one fits.</p>
+            <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">A car 4.5 m long that turns no tighter than 5 m. Hybrid A* drives short arcs forwards and backwards (orange) and finishes with the shortest curve that may reverse (a Reeds–Shepp path) when one fits.</p>
           </>
         ) : (
           <>
@@ -175,7 +175,7 @@ export function PlannerBench() {
           </>
         )}
         <button type="button" className="btn-primary btn-sm" disabled={!found} onClick={drive}><Play className="h-4 w-4" aria-hidden />Drive it</button>
-        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">robotMap</span>, <span className="font-mono">astarGrid</span>, <span className="font-mono">rrtPlan</span>, <span className="font-mono">shortenPath</span>, <span className="font-mono">followPath</span>, <span className="font-mono">hybridAstar</span>, <span className="font-mono">dubinsPath</span> (example: robot_motion.m).</p>
+        <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">In code: <span className="font-mono">robotMap</span>, <span className="font-mono">astarGrid</span>, <span className="font-mono">rrtPlan</span>, <span className="font-mono">shortenPath</span>, <span className="font-mono">followPath</span>, <span className="font-mono">hybridAstar</span>, <span className="font-mono">dubinsPath</span>, <span className="font-mono">reedsSheppPath</span> (example: robot_motion.m).</p>
       </aside>
       <section className="panel relative flex min-w-0 flex-1 flex-col overflow-hidden p-0" aria-label="The map">
         <div ref={box} className="flex min-h-0 flex-1 items-center justify-center p-3">

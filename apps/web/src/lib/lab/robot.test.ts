@@ -101,11 +101,30 @@ describe('Hyperion robot arms (M482)', () => {
     const box = rb.checkCollision(two, [0, 0], { boxes: [[1.8, -0.1, -0.1, 3, 0.1, 0.1]], radius: 0.05 });
     expect(box.hits).toEqual([[1, 0]]);
   });
+  it('convex shapes by GJK: segments, cubes, cylinders and meshes (M482c)', () => {
+    const cube: rb.V3[] = [];
+    for (const x of [0, 1]) for (const y of [0, 1]) for (const z of [0, 1]) cube.push([x, y, z]);
+    expect(rb.convexDist([[3, 0.5, 0.5]], cube)).toBeCloseTo(2, 9);
+    expect(rb.convexDist([[2, 2, 2]], cube)).toBeCloseTo(Math.sqrt(3), 9);
+    expect(rb.convexDist([[0.5, 0.5, 0.5]], cube)).toBe(0);
+    // A segment against a segment agrees with Ericson's closest points.
+    for (const [P, Q, R, S] of [[[0, 0, 0], [1, 0, 0], [0.5, 1, -1], [0.5, 1, 1]], [[0, 0, 0], [1, 1, 0], [2, 0, 1], [0, 2, 3]], [[0, 0, 0], [1, 0, 0], [2, 0.5, 0], [3, 0, 0.2]]] as rb.V3[][])
+      expect(rb.convexDist([P, Q], [R, S])).toBeCloseTo(rb.segDist(P, Q, R, S), 7);
+    // A tetrahedron a segment passes through.
+    expect(rb.convexDist([[0.2, 0.2, -1], [0.2, 0.2, 1]], [[0, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1]])).toBe(0);
+    const two = rb.ARMS.twolink(), cyl = rb.checkCollision(two, [0, 0], { cylinders: [[1.5, 0.3, -1, 1, 0.1]], radius: 0.05 });
+    expect(cyl.colliding).toBe(false); expect(cyl.minDistance).toBeGreaterThan(0.14); expect(cyl.minDistance).toBeLessThan(0.151);
+    const hit = rb.checkCollision(two, [0, 0], { cylinders: [[1.5, 0.12, -1, 1, 0.1]], meshes: [cube.map(([x, y, z]): rb.V3 => [x + 2.5, y - 0.5, z - 0.5])], radius: 0.05 });
+    expect(hit.hits).toEqual([[1, 0]]);
+    const touch = rb.checkCollision(two, [0, 0], { meshes: [cube.map(([x, y, z]): rb.V3 => [x + 1.5, y - 0.5, z - 0.5])], radius: 0.05 });
+    expect(touch.hits).toEqual([[1, 0]]);
+  });
   it('in the language: Parent, the tool link and checkCollision', () => {
-    const { d } = run("r = loadrobot('dualarm'); p = r.Parent; J = geometricJacobian(r, zeros(1, 7), 4); [q, info] = robotIK(r, [0.3 0.5 1.2], zeros(1, 7), 'EndEffector', 4); x = tform2trvec(getTransform(r, q, 4)); mine = robotDH([1 0 0 0; 1 0 0 0; 1 0 0 0], 'Parent', [0 1 1]); [hit, sep, selfPairs, hits] = checkCollision(loadrobot('twolink'), [0 0], 'Spheres', [1.5 0 0 0.2]);");
+    const { d } = run("r = loadrobot('dualarm'); p = r.Parent; J = geometricJacobian(r, zeros(1, 7), 4); [q, info] = robotIK(r, [0.3 0.5 1.2], zeros(1, 7), 'EndEffector', 4); x = tform2trvec(getTransform(r, q, 4)); mine = robotDH([1 0 0 0; 1 0 0 0; 1 0 0 0], 'Parent', [0 1 1]); [hit, sep, selfPairs, hits] = checkCollision(loadrobot('twolink'), [0 0], 'Spheres', [1.5 0 0 0.2]); [h2, g2, s2, o2] = checkCollision(loadrobot('twolink'), [0 0], 'Self', 0, 'Cylinders', [5 0 0 1 0.1], 'Meshes', {[1.5 -0.1 -0.1; 1.7 -0.1 -0.1; 1.6 0.2 -0.1; 1.6 0 0.2]});");
     expect(d('p')).toEqual([0, 1, 2, 3, 1, 5, 6]);
     expect(d('J').slice(5 * 6)).toEqual(new Array(12).fill(0));
     expect(d('x')).toEqual([0.3, 0.5, 1.2].map((v) => expect.closeTo(v, 4)));
     expect(d('hit')).toEqual([1]); expect(d('hits')).toEqual([2, 1]);
+    expect(d('h2')).toEqual([1]); expect(d('o2')).toEqual([2, 2]);
   });
 });

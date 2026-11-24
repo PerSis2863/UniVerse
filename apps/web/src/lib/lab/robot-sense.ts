@@ -5,7 +5,10 @@
 // before it is added. Maps and positions as robot-motion.ts (metres, origin bottom-left, row 0 at the top).
 
 import { blocked, cellOf, followPath, freeAt, type Grid, type Pose } from './robot-motion';
-import { optimise, relative, type Edge } from './pose-graph';
+import { dcsWeights, optimise, relative, type Edge } from './pose-graph';
+
+/** How much disagreement (χ²) a loop closure may have before DCS starts weighing it down (M484c). */
+export const CLOSURE_PHI = 10;
 
 export type Rand = () => number;
 export const lcg = (seed = 1): Rand => { let s = seed >>> 0 || 1; return () => ((s = (Math.imul(s, 1103515245) + 12345) >>> 0) / 2 ** 32); };
@@ -217,7 +220,7 @@ export function slam(scans: number[][], odom: Pose[], angles: number[], res: num
   const xs = odom.map((p) => p[0]), ys = odom.map((p) => p[1]), pad = maxR + 2;
   const x0 = Math.min(...xs) - pad, y0 = Math.min(...ys) - pad, m = emptyMap(Math.max(...xs) - x0 + pad, Math.max(...ys) - y0 + pad, res, x0, y0);
   let poses: Pose[] = [odom[0]];
-  const snaps: { k: number; p: Float32Array }[] = [], win = o.window ?? 0.2, edges: Edge[] = [], closures: LoopClosure[] = [];
+  const snaps: { k: number; p: Float32Array }[] = [], win = o.window ?? 0.2, edges: Edge[] = [], closures: LoopClosure[] = [], rejected: LoopClosure[] = [];
   addScan(m, odom[0], scans[0], angles, maxR);
   let lastClosure = -Infinity;
   for (let k = 1; k < odom.length; k++) {
@@ -268,16 +271,22 @@ export function slam(scans: number[][], odom: Pose[], angles: number[], res: num
         const moved = Math.hypot(r.pose[0] - guess[0], r.pose[1] - guess[1]), turned = Math.abs(wrap(r.pose[2] - guess[2]));
         const drift = 0.15 + 0.01 * (k - cand);
         if (r.share > 0.85 && r.share >= r.shareAtGuess + 0.05 && moved < Math.min(1, drift) && turned < Math.min(0.2, drift / 3)) {
-          edges.push({ i: cand, j: k, z: relative(poses[cand], r.pose), info: [150, 150, 2500] });
-          closures.push({ from: cand, to: k, z: edges[edges.length - 1].z });
-          poses = optimise(poses, edges);
-          lastClosure = k;
-          m.L.fill(0);
-          poses.forEach((pp, j) => addScan(m, pp, scans[j], angles, maxR));
+          // M484c: the closure is robust (DCS), so if it disagrees with the rest of the graph it fades instead of bending
+          // the map; one left with under a tenth of its weight is dropped.
+          const ed: Edge = { i: cand, j: k, z: relative(poses[cand], r.pose), info: [150, 150, 2500], robust: true };
+          edges.push(ed);
+          const solved = optimise(poses, edges, { phi: CLOSURE_PHI });
+          if (dcsWeights(solved, [ed], CLOSURE_PHI)[0] < 0.1) { edges.pop(); rejected.push({ from: cand, to: k, z: ed.z }); } else {
+            closures.push({ from: cand, to: k, z: ed.z });
+            poses = solved;
+            lastClosure = k;
+            m.L.fill(0);
+            poses.forEach((pp, j) => addScan(m, pp, scans[j], angles, maxR));
+          }
         }
       }
     }
     if (o.snapshots && (k % Math.max(1, Math.floor(odom.length / o.snapshots)) === 0 || k === odom.length - 1)) snaps.push({ k, p: probability(m) });
   }
-  return { map: m, poses, snaps, closures };
+  return { map: m, poses, snaps, closures, rejected };
 }

@@ -155,7 +155,9 @@ def('checkCollision', (a) => {
   const arm = armOf(a[0]), q = joints(arm, a[1]), o = pairs(a, 2);
   const rowsOf = (k: string, c: number) => { const v = o.get(k); if (!v) return []; const m = toMat(v); if (m.d.length && m.c !== c) throw new LabError(`'${k}' are rows of ${c} numbers.`); return Array.from({ length: m.r }, (_, i) => Array.from({ length: c }, (_, j) => m.d[i + j * m.r])); };
   const rad = o.get('radius') ? [...toMat(o.get('radius')!).d] : undefined;
-  const r = rb.checkCollision(arm, q, { radius: rad && rad.length === 1 ? rad[0] : rad, spheres: rowsOf('spheres', 4), boxes: rowsOf('boxes', 6), self: o.get('self') ? !!toMat(o.get('self')!).d[0] : true });
+  const mv = o.get('meshes'), meshList = !mv ? [] : mv.k === 'cell' ? mv.d : [mv];
+  const meshes = meshList.map((v) => { const m = toMat(v, 'A mesh'); if (m.c !== 3 || m.r < 1) throw new LabError("'Meshes' are lists of corners, one [x y z] row each (a cell array for several)."); return Array.from({ length: m.r }, (_, i): rb.V3 => [m.d[i], m.d[i + m.r], m.d[i + 2 * m.r]]); });
+  const r = rb.checkCollision(arm, q, { radius: rad && rad.length === 1 ? rad[0] : rad, spheres: rowsOf('spheres', 4), boxes: rowsOf('boxes', 6), cylinders: rowsOf('cylinders', 5), meshes, self: o.get('self') ? !!toMat(o.get('self')!).d[0] : true });
   const pairsMat = (p: [number, number][]) => fromRows(p.flatMap(([x, y]) => [x + 1, y + 1]), p.length, 2);
   return [mat(1, 1, [r.colliding ? 1 : 0], true), num(r.minDistance), pairsMat(r.self), pairsMat(r.hits)];
 });

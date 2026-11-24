@@ -6,7 +6,7 @@ import * as cp from './car-path';
 import { fromRows } from './robot-lab';
 import { drawMap, gridOf } from './robot-motion-lab';
 
-// Car-style route planning in the language (M483b): dubinsPath and hybridAstar. MATLAB keeps these in objects
+// Car-style route planning in the language (M483b): dubinsPath and hybridAstar; reedsSheppPath (M483c). MATLAB keeps these in objects
 // (dubinsConnection, plannerHybridAStar with a validatorVehicleCostmap); here they are functions on the same plain maps
 // as astarGrid (a logical matrix and its resolution). Poses are [x y heading] with x, y at the rear axle.
 
@@ -26,13 +26,14 @@ const outline = ([x, y, th]: cp.Pose, car: cp.Car) => {
   const c = Math.cos(th), s = Math.sin(th), w = car.width / 2, b = -0.9, f = car.length - 0.9;
   return [[b, -w], [f, -w], [f, w], [b, w], [b, -w]].map(([u, v]) => [x + u * c - v * s, y + u * s + v * c]);
 };
-function drawCarPath(lab: Lab, P: cp.Pose[], back: boolean[], car: cp.Car) {
+function drawCarPath(lab: Lab, P: cp.Pose[], back: boolean[], car: cp.Car, outlines = true) {
   // Forwards in violet, backwards in orange.
   for (const rev of [false, true]) {
     const xs: number[] = [], ys: number[] = [];
     for (let k = 1; k < P.length; k++) { if (back[k] !== rev) { xs.push(NaN); ys.push(NaN); continue; } xs.push(P[k - 1][0], P[k][0]); ys.push(P[k - 1][1], P[k][1]); }
     if (xs.some(Number.isFinite)) call(lab, 'plot', row(xs), row(ys), str('Color'), row(rev ? [0.96, 0.62, 0.04] : [0.49, 0.23, 0.93]), str('LineWidth'), num(2.5));
   }
+  if (!outlines) return;
   let since = Infinity;
   P.forEach((p, k) => {
     since += k ? Math.hypot(p[0] - P[k - 1][0], p[1] - P[k - 1][1]) : 0;
@@ -55,6 +56,22 @@ def('dubinsPath', (a, nout, lab) => {
   for (const p of [s, g]) call(lab, 'quiver', row([p[0]]), row([p[1]]), row([Math.cos(p[2]) * R * 0.6]), row([Math.sin(p[2]) * R * 0.6]), num(0), str('k'), str('LineWidth'), num(2));
   call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on'));
   call(lab, 'title', str(`Dubins ${d.word}: ${d.length.toFixed(2)} m (turning radius ${R} m)`));
+  return [];
+});
+def('reedsSheppPath', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError('reedsSheppPath needs the start and goal poses [x y heading] and the turning radius.');
+  const s = poseOf(a[0], 'The start'), g = poseOf(a[1], 'The goal'), R = toMat(a[2]).d[0];
+  if (!(R > 0)) throw new LabError('The turning radius must be above 0.');
+  const rs = cp.reedsShepp(s, g, R);
+  if (!rs) throw new LabError('No Reeds–Shepp path joins those poses.');
+  const { poses: P, reverse } = cp.driveRS(s, rs, R, Math.max(R / 20, Math.hypot(g[0] - s[0], g[1] - s[1]) / 400));
+  const word = rs.segs.map((q) => q.ch).join('');
+  if (nout > 0) return [fromRows(P.flatMap((p, k) => [...p, reverse[k] ? -1 : 1]), P.length, 4), num(rs.length), str(word), row(rs.segs.map((q) => q.len))];
+  call(lab, 'hold', str('on'));
+  drawCarPath(lab, P, reverse, { ...cp.CAR, radius: R }, false);
+  for (const p of [s, g]) call(lab, 'quiver', row([p[0]]), row([p[1]]), row([Math.cos(p[2]) * R * 0.6]), row([Math.sin(p[2]) * R * 0.6]), num(0), str('k'), str('LineWidth'), num(2));
+  call(lab, 'hold', str('off')); call(lab, 'axis', str('equal')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`Reeds–Shepp ${word}: ${rs.length.toFixed(2)} m (violet forwards, orange backwards)`));
   return [];
 });
 def('hybridAstar', (a, nout, lab) => {

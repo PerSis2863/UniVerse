@@ -10,7 +10,7 @@ import { rowsOf } from './robot-motion-lab';
 
 // Hyperion's mechatronics in the language (M485): dcmotor, dcmotorTF (a transfer function for the control toolbox,
 // M414: step, bode, pid, feedback work on it), dcmotorSim, pmsm, focTune, focSim, clarke, invclarke, park, invpark,
-// gearReflect, encoderSim. MATLAB keeps motors and controllers in Simscape and Motor Control Blockset blocks; here
+// gearReflect, encoderSim; M485c: bldc, bldcSim (six-step with Hall sensors), motorHeat. MATLAB keeps motors and controllers in Simscape and Motor Control Blockset blocks; here
 // motors are plain structs and the simulations are functions.
 
 const def = (names: string, fn: Builtin) => { for (const n of names.split(' ')) BUILTINS[n] = fn; };
@@ -158,5 +158,47 @@ def('stepperPullout', (a, nout, lab) => {
   if (nout > 0) return [row(T)];
   call(lab, 'plot', row(rates), row(T), str('-o')); call(lab, 'xlabel', str('step rate (full steps/s)')); call(lab, 'ylabel', str('pull-out torque (N·m)')); call(lab, 'grid', str('on'));
   call(lab, 'title', str('Stepper pull-out torque: the most load it carries without losing steps'));
+  return [];
+});
+
+// ——— Six-step brushless motors and heating (M485c) ———
+const BLDC_NAMES = { r: 'r', l: 'l', ke: 'ke', polepairs: 'p', j: 'j', b: 'b', vdc: 'vdc' } as const;
+const bldcOf = (v: Value | undefined): mo.Bldc => { if (kindOf(v) !== 'bldc') throw new LabError("A brushless motor was expected: bldc('Ke', 0.03)."); const s = v as Struct; return { r: f(s, 'R'), l: f(s, 'L'), ke: f(s, 'Ke'), p: f(s, 'PolePairs'), j: f(s, 'J'), b: f(s, 'B'), vdc: f(s, 'Vdc') }; };
+def('bldc', (a) => {
+  const m = settings(a, 0, mo.BLDC_DEFAULT, BLDC_NAMES, 'bldc');
+  if (!(m.r > 0 && m.l > 0 && m.ke > 0 && m.j > 0 && m.vdc > 0 && m.p >= 1)) throw new LabError('R, L, Ke, J and Vdc must be above 0, PolePairs at least 1.');
+  return [struct('bldc', [['R', m.r], ['L', m.l], ['Ke', m.ke], ['PolePairs', Math.round(m.p)], ['J', m.j], ['B', m.b], ['Vdc', m.vdc], ['TorqueConstant', 2 * m.ke], ['NoLoadSpeed', m.vdc / (2 * m.ke)], ['StallCurrent', m.vdc / (2 * m.r)]])];
+});
+def('bldcSim', (a, nout, lab) => {
+  if (a.length < 2) throw new LabError("bldcSim needs the motor and the time: bldcSim(bldc(), 0.3, 'Duty', 0.5) or 'Speed', 200.");
+  const m = bldcOf(a[0]), T = toMat(a[1]).d[0], o = pairs(a, 2);
+  if (!(T > 0 && T <= 2)) throw new LabError('bldcSim runs up to 2 s (steps of 2 µs).');
+  if (o.get('duty') && o.get('speed')) throw new LabError("Give 'Duty' or 'Speed', not both.");
+  const off = o.get('halloffset') ? (toMat(o.get('halloffset')!).d[0] * Math.PI) / 180 : 0;
+  const r = mo.bldcSimulate(m, T, { duty: o.get('duty') ? ofTime(lab, o.get('duty'), 1, 'The duty') : undefined, speed: o.get('speed') ? ofTime(lab, o.get('speed'), 0, 'The speed') : undefined, load: loadOf(lab, o), hallOffset: off });
+  if (nout > 0) return [table([['Time', col(r.t)], ['Speed', col(r.w)], ['Ia', col(r.ia)], ['Ib', col(r.ib)], ['Ic', col(r.ic)], ['Torque', col(r.torque)], ['Duty', col(r.duty)], ['Sector', col(r.sector.map((s) => s + 1))]])];
+  call(lab, 'subplot', num(3), num(1), num(1)); call(lab, 'plot', row(r.t), row(r.w)); call(lab, 'ylabel', str('speed (rad/s)')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(`Six-step brushless drive${off ? ` (Halls ${(off * 180 / Math.PI).toFixed(0)}° off)` : ''}`));
+  call(lab, 'subplot', num(3), num(1), num(2)); call(lab, 'plot', row(r.t), row(r.ia), row(r.t), row(r.ib), row(r.t), row(r.ic)); call(lab, 'ylabel', str('phase current (A)')); call(lab, 'legend', str('A'), str('B'), str('C')); call(lab, 'grid', str('on'));
+  call(lab, 'subplot', num(3), num(1), num(3)); call(lab, 'plot', row(r.t), row(r.torque)); call(lab, 'ylabel', str('torque (N·m)')); call(lab, 'xlabel', str('t (s)')); call(lab, 'grid', str('on'));
+  return [];
+});
+def('motorHeat', (a, nout, lab) => {
+  if (a.length < 3) throw new LabError("motorHeat needs the winding's resistance at 25 °C, the current (a number or @(t) …) and the time in seconds: motorHeat(1.2, 5, 1800).");
+  const r0 = toMat(a[0]).d[0], T = toMat(a[2]).d[0], o = pairs(a, 3);
+  if (!(r0 > 0)) throw new LabError("The winding's resistance must be above 0.");
+  if (!(T > 0 && T <= 86400)) throw new LabError('motorHeat runs up to a day (86,400 s).');
+  const num0 = (k: string, d: number) => { const v = o.get(k); if (!v) return d; const x = toMat(v).d[0]; if (!Number.isFinite(x)) throw new LabError(`'${k}' must be a number.`); return x; };
+  const th: mo.Thermal = { rwh: num0('rwh', mo.THERMAL_DEFAULT.rwh), rha: num0('rha', mo.THERMAL_DEFAULT.rha), cw: num0('cw', mo.THERMAL_DEFAULT.cw), ch: num0('ch', mo.THERMAL_DEFAULT.ch), tamb: num0('ambient', mo.THERMAL_DEFAULT.tamb), tmax: num0('limit', mo.THERMAL_DEFAULT.tmax) };
+  if (!(th.rwh > 0 && th.rha > 0 && th.cw > 0 && th.ch > 0 && th.tmax > th.tamb)) throw new LabError("'Rwh', 'Rha', 'Cw' and 'Ch' must be above 0 and the 'Limit' above the 'Ambient'.");
+  const k = num0('phases', 1), I = ofTime(lab, a[1], 0, 'The current'), extra = ofTime(lab, o.get('extraloss'), 0, 'The extra loss');
+  if (!(k > 0)) throw new LabError("'Phases' is the loss factor: 1 for a DC motor, 1.5 for a three-phase motor (dq amplitude), 2 for six-step.");
+  const r = mo.heatSimulate(th, r0, (t) => I(Math.round(t * 1e4) / 1e4), T, { k, extra });
+  const steadyI = a[1].k === 'fn' ? NaN : toMat(a[1]).d[0], st = mo.heatSteady(th, r0, Number.isNaN(steadyI) ? 0 : steadyI, k);
+  const info: Struct = { k: 'struct', f: new Map<string, Value>([['Continuous', num(st.continuous)], ['SteadyWinding', num(Number.isNaN(steadyI) ? NaN : st.winding)], ['OverLimitAt', num(r.overAt)]]) };
+  if (nout > 0) return [table([['Time', col(r.t)], ['Winding', col(r.winding)], ['Housing', col(r.housing)], ['Loss', col(r.loss)]]), info];
+  call(lab, 'plot', row(r.t), row(r.winding), row(r.t), row(r.housing), row([0, T]), row([th.tmax, th.tmax]), str('--'));
+  call(lab, 'xlabel', str('t (s)')); call(lab, 'ylabel', str('temperature (°C)')); call(lab, 'legend', str('winding'), str('housing'), str('limit')); call(lab, 'grid', str('on'));
+  call(lab, 'title', str(Number.isNaN(r.overAt) ? `Motor heating: the winding peaks at ${Math.max(...r.winding).toFixed(0)} °C (continuous rating ${st.continuous.toFixed(2)} A)` : `Motor heating: past the ${th.tmax} °C limit after ${r.overAt.toFixed(0)} s`));
   return [];
 });

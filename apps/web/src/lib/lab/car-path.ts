@@ -2,7 +2,8 @@
 // its turning radius. Dubins paths are the shortest forward-only ways between two poses (three pieces: left, straight,
 // right arcs, six kinds); Hybrid A* searches poses (x, y, heading) by driving short arcs forwards and, if allowed,
 // backwards, keeping one pose per cell and heading, guided by the distance round the walls and finished by a Dubins
-// shot when one fits. The car is checked as three discs along its length. Maps as robot-motion.ts.
+// shot when one fits (M483c: a Reeds–Shepp shot, which may reverse, when the car may). The car is checked as three discs
+// along its length. Maps as robot-motion.ts.
 
 import { blocked, cellOf, freeAt, type Grid } from './robot-motion';
 import { distanceField } from './robot-sense';
@@ -47,6 +48,118 @@ export function drive(a: Pose, p: Dubins, R: number, step: number): Pose[] {
     pose = arc(pose, k, L);
   });
   return out;
+}
+
+// ——— Reeds–Shepp (M483c): the shortest paths when the car may also reverse ———
+// The formulas of Reeds and Shepp (1990) as OMPL arranges them: five families (CSC, CCC, CCCC, CCSC, CCSCC), each
+// solved in the start's frame scaled to R = 1 and mirrored in time and in y; a negative length drives backwards.
+export interface ReedsShepp { segs: { ch: 'L' | 'R' | 'S'; len: number }[]; length: number }
+const ZERO = 1e-9, PI = Math.PI;
+const polar = (x: number, y: number): [number, number] => [Math.hypot(x, y), Math.atan2(y, x)];
+function tauOmega(u: number, v: number, xi: number, eta: number, phi: number): [number, number] {
+  const delta = mod(u - v), A = Math.sin(u) - Math.sin(delta), B = Math.cos(u) - Math.cos(delta) - 1;
+  const t1 = Math.atan2(eta * A - xi * B, xi * A + eta * B), t2 = 2 * (Math.cos(delta) - Math.cos(v) - Math.cos(u)) + 3;
+  const tau = t2 < 0 ? mod(t1 + PI) : mod(t1);
+  return [tau, mod(tau - u + v - phi)];
+}
+type Sol = number[] | null;
+const LpSpLp = (x: number, y: number, phi: number): Sol => { const [u, t] = polar(x - Math.sin(phi), y - 1 + Math.cos(phi)); if (t < -ZERO) return null; const v = mod(phi - t); return v >= -ZERO ? [t, u, v] : null; };
+const LpSpRp = (x: number, y: number, phi: number): Sol => {
+  const [r1, t1] = polar(x + Math.sin(phi), y - 1 - Math.cos(phi)), u1 = r1 * r1;
+  if (u1 < 4) return null;
+  const u = Math.sqrt(u1 - 4), t = mod(t1 + Math.atan2(2, u)), v = mod(t - phi);
+  return t >= -ZERO && v >= -ZERO ? [t, u, v] : null;
+};
+const LpRmL = (x: number, y: number, phi: number): Sol => {
+  const [u1, th] = polar(x - Math.sin(phi), y - 1 + Math.cos(phi));
+  if (u1 > 4) return null;
+  const u = -2 * Math.asin(u1 / 4), t = mod(th + u / 2 + PI), v = mod(phi - t + u);
+  return t >= -ZERO && u <= ZERO ? [t, u, v] : null;
+};
+const LpRupLumRm = (x: number, y: number, phi: number): Sol => {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi), rho = 0.25 * (2 + Math.hypot(xi, eta));
+  if (rho > 1) return null;
+  const u = Math.acos(rho), [t, v] = tauOmega(u, -u, xi, eta, phi);
+  return t >= -ZERO && v <= ZERO ? [t, u, v] : null;
+};
+const LpRumLumRp = (x: number, y: number, phi: number): Sol => {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi), rho = (20 - xi * xi - eta * eta) / 16;
+  if (rho < 0 || rho > 1) return null;
+  const u = -Math.acos(rho);
+  if (u < -PI / 2) return null;
+  const [t, v] = tauOmega(u, u, xi, eta, phi);
+  return t >= -ZERO && v >= -ZERO ? [t, u, v] : null;
+};
+const LpRmSmLm = (x: number, y: number, phi: number): Sol => {
+  const [rho, th] = polar(x - Math.sin(phi), y - 1 + Math.cos(phi));
+  if (rho < 2) return null;
+  const r = Math.sqrt(rho * rho - 4), u = 2 - r, t = mod(th + Math.atan2(r, -2)), v = mod(phi - PI / 2 - t);
+  return t >= -ZERO && u <= ZERO && v <= ZERO ? [t, u, v] : null;
+};
+const LpRmSmRm = (x: number, y: number, phi: number): Sol => {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi), [rho, th] = polar(-eta, xi);
+  if (rho < 2) return null;
+  const t = th, u = 2 - rho, v = mod(t + PI / 2 - phi);
+  return t >= -ZERO && u <= ZERO && v <= ZERO ? [t, u, v] : null;
+};
+const LpRmSLmRp = (x: number, y: number, phi: number): Sol => {
+  const xi = x + Math.sin(phi), eta = y - 1 - Math.cos(phi), [rho] = polar(xi, eta);
+  if (rho < 2) return null;
+  const u = 4 - Math.sqrt(rho * rho - 4);
+  if (u > ZERO) return null;
+  const t = mod(Math.atan2((4 - u) * xi - 2 * eta, -2 * xi + (u - 4) * eta)), v = mod(t - phi);
+  return t >= -ZERO && v >= -ZERO ? [t, u, v] : null;
+};
+/** Every Reeds–Shepp candidate in the normalised frame: a word and its signed lengths (in turning radii). */
+function rsCandidates(x: number, y: number, phi: number): [string, number[]][] {
+  const out: [string, number[]][] = [];
+  const flipLR = (w: string) => w.replace(/[LR]/g, (c) => (c === 'L' ? 'R' : 'L'));
+  // Each base solver run four ways: as is, time-flipped (lengths negated), reflected (L ↔ R), and both.
+  const four = (f: (x: number, y: number, phi: number) => Sol, xx: number, yy: number, word: string, lens: (s: number[]) => number[]) => {
+    const add = (r: Sol, w: string, neg: boolean) => { if (r) out.push([w, lens(r).map((v) => (neg ? -v : v))]); };
+    add(f(xx, yy, phi), word, false);
+    add(f(-xx, yy, -phi), word, true);
+    add(f(xx, -yy, -phi), flipLR(word), false);
+    add(f(-xx, -yy, phi), flipLR(word), true);
+  };
+  const xb = x * Math.cos(phi) + y * Math.sin(phi), yb = x * Math.sin(phi) - y * Math.cos(phi);
+  four(LpSpLp, x, y, 'LSL', ([t, u, v]) => [t, u, v]);
+  four(LpSpRp, x, y, 'LSR', ([t, u, v]) => [t, u, v]);
+  four(LpRmL, x, y, 'LRL', ([t, u, v]) => [t, u, v]);
+  four(LpRmL, xb, yb, 'LRL', ([t, u, v]) => [v, u, t]);
+  four(LpRupLumRm, x, y, 'LRLR', ([t, u, v]) => [t, u, -u, v]);
+  four(LpRumLumRp, x, y, 'LRLR', ([t, u, v]) => [t, u, u, v]);
+  four(LpRmSmLm, x, y, 'LRSL', ([t, u, v]) => [t, -PI / 2, u, v]);
+  four(LpRmSmRm, x, y, 'LRSR', ([t, u, v]) => [t, -PI / 2, u, v]);
+  four(LpRmSmLm, xb, yb, 'LSRL', ([t, u, v]) => [v, u, -PI / 2, t]);
+  four(LpRmSmRm, xb, yb, 'RSRL', ([t, u, v]) => [v, u, -PI / 2, t]);
+  four(LpRmSLmRp, x, y, 'LRSLR', ([t, u, v]) => [t, -PI / 2, u, -PI / 2, v]);
+  return out;
+}
+/** The shortest Reeds–Shepp path from a to b for turning radius R (segment lengths in metres, negative backwards).
+ * As with Dubins, every candidate is driven out and kept only if it really ends at b. */
+export function reedsShepp(a: Pose, b: Pose, R: number): ReedsShepp | null {
+  const dx = (b[0] - a[0]) / R, dy = (b[1] - a[1]) / R, c = Math.cos(a[2]), s = Math.sin(a[2]);
+  const x = c * dx + s * dy, y = -s * dx + c * dy, phi = wrap(b[2] - a[2]);
+  const cands = rsCandidates(x, y, phi).map(([w, lens]): ReedsShepp => ({ segs: lens.map((len, i) => ({ ch: w[i] as 'L' | 'R' | 'S', len: len * R })), length: lens.reduce((t, v) => t + Math.abs(v), 0) * R }))
+    .sort((p, q) => p.length - q.length);
+  for (const cand of cands) {
+    const e = driveRS(a, cand, R, Math.max(R / 50, 1e-3)).poses.at(-1)!;
+    if (Math.hypot(e[0] - b[0], e[1] - b[1]) < 1e-6 * Math.max(1, R) + 1e-6 && Math.abs(wrap(e[2] - b[2])) < 1e-6) return cand;
+  }
+  return null;
+}
+/** The poses along a Reeds–Shepp path every `step` metres, and whether each was reached reversing. */
+export function driveRS(a: Pose, p: ReedsShepp, R: number, step: number): { poses: Pose[]; reverse: boolean[] } {
+  const poses: Pose[] = [a], reverse: boolean[] = [p.segs.find((g) => Math.abs(g.len) > 1e-9)?.len !== undefined && p.segs.find((g) => Math.abs(g.len) > 1e-9)!.len < 0];
+  let pose = a;
+  for (const g of p.segs) {
+    if (Math.abs(g.len) < 1e-12) continue;
+    const k = g.ch === 'L' ? 1 / R : g.ch === 'R' ? -1 / R : 0, n = Math.max(1, Math.ceil(Math.abs(g.len) / step));
+    for (let j = 1; j <= n; j++) { poses.push(arc(pose, k, (g.len * j) / n)); reverse.push(g.len < 0); }
+    pose = arc(pose, k, g.len);
+  }
+  return { poses, reverse };
 }
 
 // ——— The car's footprint ———
@@ -124,13 +237,13 @@ export function hybridAstar(g: Grid, start: Pose, goal: Pose, o: HybridOptions =
   const steers = [-1 / R, -0.5 / R, 0, 0.5 / R, 1 / R];
   const tree: number[] = [];
   let expansions = 0;
-  const finish = (i: number, tail: Pose[]) => {
+  const finish = (i: number, tail: Pose[], tailRev: boolean[] = []) => {
     const poses: Pose[] = [], dirs: boolean[] = [];
     for (let j = i; j > 0; j = nodes[j].parent) { const n = nodes[j]; for (let k = n.path.length - 1; k >= 1; k--) { poses.push(n.path[k]); dirs.push(n.rev); } }
     poses.push(start); dirs.push(false);
     poses.reverse(); dirs.reverse();
     if (dirs.length > 1) dirs[0] = dirs[1];
-    tail.slice(1).forEach((p) => { poses.push(p); dirs.push(false); });
+    tail.slice(1).forEach((p, k) => { poses.push(p); dirs.push(tailRev[k + 1] ?? false); });
     let L = 0; for (let k = 1; k < poses.length; k++) L += Math.hypot(poses[k][0] - poses[k - 1][0], poses[k][1] - poses[k - 1][1]);
     return { poses, reverse: dirs, length: L, expansions, found: true, tree };
   };
@@ -140,10 +253,17 @@ export function hybridAstar(g: Grid, start: Pose, goal: Pose, o: HybridOptions =
     closed.add(k); expansions++;
     // Close enough to the goal: within a cell and a few degrees.
     if (Math.hypot(n.p[0] - goal[0], n.p[1] - goal[1]) < keyCell && Math.abs(wrap(n.p[2] - goal[2])) < TAU / H) return finish(i, [goal]);
-    // Every few nodes (and always near the goal) try the Dubins shot straight in.
+    // Every few nodes (and always near the goal) try the analytic shot straight in: Reeds–Shepp when the car may
+    // reverse (M483c), Dubins when it may not.
     if (expansions % 8 === 0 || Math.hypot(n.p[0] - goal[0], n.p[1] - goal[1]) < 4 * R) {
-      const db = dubins(n.p, goal, R);
-      if (db && db.length < 6 * R + Math.hypot(n.p[0] - goal[0], n.p[1] - goal[1])) { const shot = drive(n.p, db, R, cell); if (shot.every(fits)) return finish(i, shot); }
+      const near = 6 * R + Math.hypot(n.p[0] - goal[0], n.p[1] - goal[1]);
+      if (rev) {
+        const rs = reedsShepp(n.p, goal, R);
+        if (rs && rs.length < near) { const shot = driveRS(n.p, rs, R, cell); if (shot.poses.every(fits)) return finish(i, shot.poses, shot.reverse); }
+      } else {
+        const db = dubins(n.p, goal, R);
+        if (db && db.length < near) { const shot = drive(n.p, db, R, cell); if (shot.every(fits)) return finish(i, shot); }
+      }
     }
     for (const back of rev ? [false, true] : [false]) for (const k2 of steers) {
       const path: Pose[] = [n.p];

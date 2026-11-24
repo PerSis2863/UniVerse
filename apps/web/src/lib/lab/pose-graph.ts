@@ -2,10 +2,16 @@
 // Gauss–Newton to find the poses that agree best with every edge at once. Used by SLAM when the robot recognises a place
 // it has been before (a loop closure): that one extra edge pulls the whole path, and so the map, back into shape.
 // The normal equations are sparse (one 3 × 3 block per node and per edge), solved by conjugate gradients with a
-// block-diagonal preconditioner, so graphs of thousands of poses take milliseconds.
+// block-diagonal preconditioner, so graphs of thousands of poses take milliseconds. M484c: loop closures may be marked
+// robust, and then a wrong one is weighed down (dynamic covariance scaling) instead of bending the map.
 
 export type Pose = [number, number, number];
-export interface Edge { i: number; j: number; z: Pose; info: [number, number, number] }
+export interface Edge {
+  i: number; j: number; z: Pose; info: [number, number, number];
+  /** M484c: a loop closure that might be wrong. Such edges are weighed down by dynamic covariance scaling (DCS) when
+   * they disagree with the rest of the graph, so one bad match can't bend the whole map. */
+  robust?: boolean;
+}
 const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
 
 /** Pose b seen from pose a (in a's frame). */
@@ -23,26 +29,35 @@ export function graphError(nodes: Pose[], edges: Edge[]) {
   return e2;
 }
 
-/** Gauss–Newton on the graph, node `fixed` held where it is. Returns new poses. */
-export function optimise(start: Pose[], edges: Edge[], o: { iterations?: number; fixed?: number } = {}): Pose[] {
-  const n = start.length, N = 3 * n, fixed = o.fixed ?? 0;
+const chi2 = (nodes: Pose[], ed: Edge) => { const r = relative(nodes[ed.i], nodes[ed.j]), e = [r[0] - ed.z[0], r[1] - ed.z[1], wrap(r[2] - ed.z[2])]; return ed.info[0] * e[0] ** 2 + ed.info[1] * e[1] ** 2 + ed.info[2] * e[2] ** 2; };
+/** Dynamic covariance scaling (Agarwal et al., 2013): a robust edge's weight is s² with s = min(1, 2Φ / (Φ + χ²)), so an
+ * edge that agrees keeps its full weight and one far off fades towards nothing. Plain edges keep 1. Plain DCS trusts
+ * the starting poses; `optimise` anneals Φ so a badly drifted start doesn't dismiss the good closures too. */
+export const dcsWeights = (nodes: Pose[], edges: Edge[], phi = 1) => edges.map((ed) => (ed.robust ? Math.min(1, (2 * phi) / (phi + chi2(nodes, ed))) ** 2 : 1));
+/** Gauss–Newton on the graph, node `fixed` held where it is. Returns new poses. Robust edges are re-weighed by DCS at
+ * every step (`phi`, default 1: about one standard deviation's worth of disagreement is tolerated in full). */
+export function optimise(start: Pose[], edges: Edge[], o: { iterations?: number; fixed?: number; phi?: number } = {}): Pose[] {
+  const n = start.length, N = 3 * n, fixed = o.fixed ?? 0, anyRobust = edges.some((e) => e.robust);
   let x = start.map((p) => [...p] as Pose);
-  for (let it = 0; it < (o.iterations ?? 8); it++) {
+  for (let it = 0; it < (o.iterations ?? (anyRobust ? 40 : 8)); it++) {
+    // Graduated: Φ starts ten thousand times larger and halves each step down to its value, so a closure isn't
+    // dismissed only because the path it should fix starts far off; the wrong ones stand out as the rest agree.
+    const phiNow = (o.phi ?? 1) * Math.max(1, 1e4 * 0.5 ** it), wts = anyRobust ? dcsWeights(x, edges, phiNow) : null;
     // Blocks of H: the diagonal per node, one off-diagonal per edge.
     const diag = Array.from({ length: n }, () => new Float64Array(9)), off: { i: number; j: number; B: Float64Array }[] = [], b = new Float64Array(N);
-    for (const ed of edges) {
+    edges.forEach((ed, q) => {
       const a = x[ed.i], c = x[ed.j], ca = Math.cos(a[2]), sa = Math.sin(a[2]), dx = c[0] - a[0], dy = c[1] - a[1];
       const r: Pose = [ca * dx + sa * dy, -sa * dx + ca * dy, wrap(c[2] - a[2])], e = [r[0] - ed.z[0], r[1] - ed.z[1], wrap(r[2] - ed.z[2])];
       // ∂e/∂a and ∂e/∂c (rows: x, y, θ of the error; columns: x, y, θ of the pose).
       const A = [-ca, -sa, -sa * dx + ca * dy, sa, -ca, -ca * dx - sa * dy, 0, 0, -1];
       const C = [ca, sa, 0, -sa, ca, 0, 0, 0, 1];
-      const W = ed.info;
+      const W = wts ? ed.info.map((v) => v * wts[q]) : ed.info;
       const JtWJ = (P: number[], Q: number[]) => { const o2 = new Float64Array(9); for (let r1 = 0; r1 < 3; r1++) for (let c1 = 0; c1 < 3; c1++) { let s = 0; for (let k = 0; k < 3; k++) s += P[k * 3 + r1] * W[k] * Q[k * 3 + c1]; o2[r1 * 3 + c1] = s; } return o2; };
       const Haa = JtWJ(A, A), Hcc = JtWJ(C, C), Hac = JtWJ(A, C);
       for (let k = 0; k < 9; k++) { diag[ed.i][k] += Haa[k]; diag[ed.j][k] += Hcc[k]; }
       off.push({ i: ed.i, j: ed.j, B: Hac });
       for (let r1 = 0; r1 < 3; r1++) { let sa2 = 0, sc2 = 0; for (let k = 0; k < 3; k++) { sa2 += A[k * 3 + r1] * W[k] * e[k]; sc2 += C[k * 3 + r1] * W[k] * e[k]; } b[3 * ed.i + r1] += sa2; b[3 * ed.j + r1] += sc2; }
-    }
+    });
     // Hold the fixed node: a stiff prior keeps it where it is.
     for (let k = 0; k < 3; k++) diag[fixed][k * 4] += 1e9;
     const mul = (v: Float64Array) => {
@@ -72,7 +87,7 @@ export function optimise(start: Pose[], edges: Edge[], o: { iterations?: number;
       rz = rz2;
     }
     x = x.map((pp, i) => [pp[0] + dxv[3 * i], pp[1] + dxv[3 * i + 1], wrap(pp[2] + dxv[3 * i + 2])] as Pose);
-    if (Math.max(...Array.from(dxv, Math.abs)) < 1e-6) break;
+    if (Math.max(...Array.from(dxv, Math.abs)) < 1e-6 && phiNow === (o.phi ?? 1)) break;
   }
   return x;
 }

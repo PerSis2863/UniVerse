@@ -29,6 +29,9 @@ figure; show(d, q)
 [qr, info] = robotIK(d, [0.35 -0.3 1.1], q, 'EndEffector', 7);   % the right hand reaches a point
 % Is anything in the way? A ball near the right hand, and the arm against itself
 [hit, gap] = checkCollision(d, qr, 'Spheres', [0.35 -0.3 1.1 0.1])
+% A post and a wedge (any convex shape by its corners) near the left arm
+wedge = [0.2 0.4 0.9; 0.5 0.4 0.9; 0.35 0.7 0.9; 0.35 0.55 1.3];
+[hit, gap, selfPairs, hits] = checkCollision(d, q, 'Cylinders', [0.6 0 0 1.5 0.05], 'Meshes', {wedge})
 ` },
   { name: 'robot_motion.m', code: `% Robot motion: smooth joint moves, planning through a warehouse, and driving the path
 % A joint moving 0 -> 90 deg -> 45 deg: cubic and quintic pieces, and a trapezoid with limits
@@ -50,6 +53,8 @@ lookahead = 1;   % slider 0.3 3
 figure; followPath(p, 'LookAhead', lookahead, 'Speed', 0.8, 'Map', map, 'Resolution', res)
 % A car can't turn on the spot: the shortest forward-only way between two poses (a Dubins path)
 figure; dubinsPath([0 0 0], [12 4 pi], 3)
+% Allowed to reverse (Reeds–Shepp), a one-metre shuffle sideways is a short wiggle, not a loop
+figure; reedsSheppPath([0 0 0], [0 1 0], 3)
 % Parking: Hybrid A* drives arcs forwards and backwards and reverses into the empty bay
 [park, r] = robotMap('parking');
 figure; hybridAstar(park, [3 10 0], [18.9 3.2 pi/2], 'Resolution', r)
@@ -78,6 +83,13 @@ for i = 1:size(loop, 1) - 1
 end
 run2 = robotRun(map, path2, 'Resolution', res, 'OdometryNoise', 0.15);
 figure; slamGrid(run2, 'Recent', 10)
+% A pose graph with one wrong loop closure (pose 3 "seen" again at pose 7, but it's somewhere else):
+% marked robust, the wrong edge is weighed down to almost nothing
+P = [0 0 0; 1 0 0; 2 0 0; 3 0 0; 3 1 pi/2; 3 2 pi/2; 2 2 pi; 1 2 pi];
+E = [(1:7)' (2:8)' [1 0 0; 1 0 0; 1 0 0; 0 1 pi/2; 1 0 0; 0 1 pi/2; 1 0 0] repmat([500 500 5000], 7, 1)];
+E = [E; 1 8 1 2 pi 500 500 5000; 3 7 0 0 0 500 500 5000];
+[Q, w] = optimizePoseGraph(P, E, 'Robust', true, 'Phi', 5);
+disp(w(end-1:end))   % the true closure keeps its weight, the wrong one doesn't
 ` },
   { name: 'motors.m', code: `% Mechatronics: a DC motor with a speed controller, and a brushless motor under field-oriented control
 m = dcmotor();                         % a small 24 V motor
@@ -103,5 +115,14 @@ s = stepper();
 figure; stepperSim(s, @(t) min(400, 2000*t), 0.4, 'Microsteps', 8)
 figure; stepperSim(s, 3000, 0.2, 'Microsteps', 8)
 figure; stepperPullout(s, [100 300 600 1000 1500 2000])
+% A brushless motor driven six-step by its Hall sensors, holding 250 rad/s against a load
+b = bldc();
+figure; bldcSim(b, 0.3, 'Speed', 250, 'Load', 0.04)
+% The same with the Halls 20 degrees off: more torque ripple
+figure; bldcSim(b, 0.3, 'Speed', 250, 'Load', 0.04, 'HallOffset', 20)
+% Heating: 8 A for 20 minutes, then 2 A (six-step: two phases carry the current)
+figure; motorHeat(b.R, @(t) 8*(t < 1200) + 2*(t >= 1200), 3600, 'Phases', 2)
+[~, info] = motorHeat(b.R, 0, 1, 'Phases', 2);
+fprintf('Continuous rating: %.1f A\\n', info.Continuous)
 ` },
 ];
