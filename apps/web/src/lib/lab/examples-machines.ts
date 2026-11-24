@@ -175,4 +175,18 @@ fprintf('City without regen: %.0f Wh/km; with the heating on: %.0f Wh/km\\n', a.
 figure; evMotorMap(e)
 figure; evCharge(e, 150)
 ` },
+  { name: 'flight.m', code: `% Flight dynamics: the atmosphere, level flight, the natural modes and an autopilot
+h = 0:1000:20000;
+[T, a, P, rho] = atmosisa(h);
+figure; plot(rho, h/1000); grid on; xlabel('density (kg/m^3)'); ylabel('height (km)'); title('The standard atmosphere')
+ac = aircraft();                              % a light four-seater
+tr = aircraftTrim(ac, 50, 1000)               % level at 50 m/s (97 knots), 1,000 m
+m = aircraftModes(ac, 50, 1000)               % short period and phugoid
+% A short nudge of the elevator: the nose bobs, then the slow phugoid trades height for speed
+figure; aircraftSim(ac, 120, 'Elevator', @(t) -0.03*(t > 1 & t < 2))
+% The autopilot climbs 150 m and holds the speed
+figure; aircraftSim(ac, 90, 'HoldHeight', @(t) 1000 + 150*(t > 5), 'HoldSpeed', 50)
+figure; aircraftPerformance(ac)
+[n, R, t] = levelTurn(50, 45)                 % a 45-degree banked turn
+` },
 ];

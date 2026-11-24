@@ -12743,6 +12743,26 @@ charge curve; static). The browser check finds a tab's control as a button or a 
 Example electric_car.m. Not built: battery temperature and ageing in the car (M433 has ageing), two motors, gears,
 heat pumps, the official cycles' tables.
 
+## M489 (24 Nov): Hyperion toolbox, flight dynamics
+
+`src/lib/lab/flight.ts`: `isa` (ISA to 32 km: troposphere lapse, isothermal to 20 km, +1 K/km above; matches the
+tables to 4 figures), `Aircraft` (mass, wing, chord, Iyy, lift CL0/CLα/CLδe/CLq with a stall angle past which CL falls
+3/rad to at most 45 % less, drag polar CD0 + k·CL² plus separated drag past the stall, Cm0/Cmα/Cmq/Cmδe, power with
+Gagg–Ferrar lapse, propeller efficiency, static thrust cap; `PLANE_DEFAULT` a light four-seater with textbook-typical
+coefficients, not a maker's data, said so in help and the window), the longitudinal equations in body axes (u, w, q, θ,
+x, h) by RK4 at 10 ms, `trim` (moment zero and lift balance solved for α and δe, thrust from the X balance, iterated;
+`ok` false below the stall, past the throttle or the elevator), `modes` (central-difference Jacobian of [u w q θ],
+`eigvals` from complex.ts; pairs sorted by size: short period ~1.6 s ζ 0.57, phugoid ~27 s ζ 0.1 at 50 m/s, close to
+√2·π·V/g), `flightSim` (elevator and throttle added to the trim, or an autopilot: height → climb rate → pitch → elevator,
+speed by a PI on throttle; `stalled` when α passes the stall), `performance` (stall speed, best glide speed and L/D max,
+best climb by sweeping speed, top speed where climb reaches 0, service ceiling at 0.5 m/s), `turn`. Language in
+`flight-lab.ts` (MATLAB keeps aeroplanes in Aerospace Blockset): `atmosisa` (MATLAB's name and outputs), `aircraft`
+(refuses Cmα ≥ 0), `aircraftTrim`, `aircraftModes` (a table), `aircraftSim`, `aircraftPerformance`, `levelTurn`.
+Window: Machines → **Aeroplane** (`FlightBench.tsx`: Nudge / Power / Climb / Stall, speed and height; a side view
+with heights stretched so metres show, the plane drawn at its real pitch, red while stalled; speed and angle of attack
+below; replayed 4× real time). Tests in `flight.test.ts`. Example flight.m. Not built: the lateral motion (roll, yaw,
+Dutch roll, spiral), wind and gusts, flaps, landing gear and the take-off run.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

@@ -7,3 +7,4 @@ import './car-path-lab';
 import './vehicle-lab';
 import './driving-lab';
 import './ev-lab';
+import './flight-lab';
