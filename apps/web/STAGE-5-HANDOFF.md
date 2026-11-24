@@ -12781,6 +12781,30 @@ over `/geo/earth-2048.jpg` (the landing globe's flat map); facts: height, period
 Tests in `space.test.ts`. Example orbits.m. Not built: the Moon and Sun's pull, drag, eclipses, launch trajectories,
 porkchop plots, the Earth's real rotation angle by date.
 
+## M491 (24 Nov): Hyperion toolbox, railways (group 6 complete)
+
+`src/lib/lab/rail.ts` (pure): `Train` (t, rotating-mass factor, length, Davis A + Bv + Cv², max tractive effort and
+power, top speed, service braking, efficiency, regen share; `TRAINS` metro 200 t / intercity 400 t / freight 2,000 t),
+`curveRes` (Röckl, ‰), `Route` (sections: length, gradient ‰, curve radius, limit; stations; dwell; `ROUTES` metro,
+intercity 100 km, mountain 25 ‰), `railRun` on a 5 m grid: a lower limit holds over the train's length (its tail),
+backward braking curves from every stop and the next point's ceiling (the slope helping), forward full power to the
+lowest of cap and brake; energy-saving style `coast` (0–0.3): cruise at (1 − coast)·limit and coast into each brake,
+the coast curve seeded only where the brake curve is above (1 − 2·coast)·cruise, and **only once the train has
+cruised since the last stop** (first try coasted from standstill: the metro run took twice as long); **stall
+detection** (the freight train can't climb 25 ‰: 490 kN of slope against 400 kN of pull; first try counted the stall
+as zero time) gives `stalled` (m) and time Infinity; energy at the line (traction / η, braking × η × regen). Results:
+metro +4 % time for −23 % energy at coast 0.1; intercity +14 % for −28 %. `headway` (fixed blocks: the larger of n blocks
+and braking + one block, plus overlap and the train, over speed plus reaction; moving block: braking + margin).
+Language in `rail-lab.ts` (our names; MATLAB has no railway toolbox; speeds in km/h and gradients in ‰ as railways
+write them): `trainModel`, `railRoute` (a name or sections and stations), `trainRun` (table or drawn: speed with limits,
+the line's height), `railHeadway`. Window: Machines → **Railway** (`RailBench.tsx`: line, train, driving style; speed
+along the line coloured by power / cruise / coast / brake over the dashed limits, height with curves marked; facts with
+the change against the fastest run; static). Tests in `rail.test.ts`. Example railways.m. Not built: several trains
+on one line, timetables and their conflicts, the power supply (substations, voltage drop), adhesion and wheel slip.
+
+Group 6 is done: M482–M491 and their left-outs (b, c, d). The Machines window has ten tabs (Robot arm, Path planner,
+Sensing, Vehicle, Driving, Electric car, Aeroplane, Orbit, Railway); `hyperion-machines-ui.mjs` checks every one.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

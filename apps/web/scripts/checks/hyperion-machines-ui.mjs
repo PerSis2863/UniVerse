@@ -8,7 +8,7 @@ const require = createRequire(new URL('../../package.json', import.meta.url));
 const AXE = require.resolve('axe-core/axe.min.js');
 const base = process.env.BASE ?? 'http://localhost:8787', shots = process.env.SHOTS;
 // The tab, its label, and the button that shows it working.
-const ALL = { arm: ['Robot arm', 'Reach it'], planner: ['Path planner', 'Drive it'], sensing: ['Sensing', 'Replay'], vehicle: ['Vehicle', 'Replay'], driving: ['Driving', 'Replay'], ev: ['Electric car', 'Regenerative braking'], flight: ['Aeroplane', 'Replay'], orbit: ['Orbit', 'Replay'] };
+const ALL = { arm: ['Robot arm', 'Reach it'], planner: ['Path planner', 'Drive it'], sensing: ['Sensing', 'Replay'], vehicle: ['Vehicle', 'Replay'], driving: ['Driving', 'Replay'], ev: ['Electric car', 'Regenerative braking'], flight: ['Aeroplane', 'Replay'], orbit: ['Orbit', 'Replay'], rail: ['Railway', 'Freight'] };
 const tabs = (process.env.TABS ?? Object.keys(ALL).join(',')).split(',');
 const browser = await launch();
 const out = {}, errors = [];

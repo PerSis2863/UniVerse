@@ -204,4 +204,25 @@ fprintf('Hohmann to GEO: %.0f + %.0f m/s, %.1f hours\\n', dv1, dv2, t/3600)
 % A two-stage rocket with 15 t on top
 [dv, each] = rocketDeltaV([400000 25000 290; 100000 6000 340], 15000)
 ` },
+  { name: 'railways.m', code: `% Railways: running a train along a line, driving to save energy, and how close trains can follow
+t = trainModel('metro');
+r = railRoute('metro');                       % six stations about a kilometre apart
+figure; trainRun(t, r)                        % the fastest run
+for c = [0 0.1 0.2]
+  [~, info] = trainRun(t, r, 'Coast', c);
+  fprintf('Coast %.1f: %.1f min, %.1f kWh\\n', c, info.Minutes, info.EnergyKWh)
+end
+% An intercity line with hills and curves
+figure; trainRun(trainModel('intercity'), railRoute('intercity'), 'Coast', 0.1)
+% Your own line: 2 km level at 100 km/h, then 1 km climbing 20 per thousand round a 500 m curve at 70 km/h
+mine = railRoute([2000 0 0 100; 1000 20 500 70], [0 3000]);
+[~, info] = trainRun(trainModel('metro'), mine)
+% A 2,000-tonne freight train can't climb 25 per thousand on its own
+[~, info] = trainRun(trainModel('freight'), railRoute('mountain'));
+fprintf('Freight stalled %.1f km along the mountain line\\n', info.StalledAt/1000)
+% Signalling: fixed blocks against moving block at 200 km/h
+[h1, n1] = railHeadway(trainModel('intercity'), 200);
+[h2, n2] = railHeadway(trainModel('intercity'), 200, 'Moving', 1);
+fprintf('Fixed blocks: %.0f trains an hour; moving block: %.0f\\n', n1, n2)
+` },
 ];
