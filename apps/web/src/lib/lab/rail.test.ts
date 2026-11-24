@@ -246,4 +246,21 @@ describe('Hyperion railways (M491)', () => {
     // Loops long enough change nothing.
     expect(rl.railSingle(r, two, { loops, loopLength: 1000 }).trains.map((t) => t.arrive)).toEqual(long.trains.map((t) => t.arrive));
   });
+  it('rails bonded to earth at substations, and DC stray currents (M491k)', { timeout: 60_000 }, () => {
+    // AC: a train 500 m from its substation; bonding the rails there cuts their voltage by 1 − e^(−2·g·0.5 km), and to 0 at the bond.
+    const L = 100000, sup = rl.SUPPLIES.ac25(L), g = Math.sqrt(rl.RAIL_Z / rl.RAIL_RE), free = rl.railVolts(sup, [500], [300])[0];
+    sup.ac!.bonded = true;
+    expect(rl.railVolts(sup, [500], [300])[0]).toBeCloseTo(free * (1 - Math.exp(-2 * g * 0.5)), 9);
+    expect(rl.railVolts(sup, [0, 500], [0, 300])[0]).toBeCloseTo(0, 9);
+    // DC: I·r·d/2 under the train, I·r·d²/(8·R) leaking, by hand; leakier track (2 Ω·km) leaks five times as much.
+    const m = { ...rl.SUPPLIES.metro(5200), subs: [0, 5200] }, dc = rl.dcStray({ ...m, leak: 10 }, [1000], [2000]), rr = 0.4 * m.rline;
+    expect(dc.rail[0]).toBeCloseTo((2000 * rr * 1) / 2, 9); expect(dc.stray).toBeCloseTo((2000 * rr) / 80, 9);
+    const run = (leak: number) => { const f = rl.supplyFor({ ...rl.SUPPLIES.metro(rl.routeLength(rl.ROUTES.metro())), leak }, 0.5); rl.railLine(rl.ROUTES.metro(), [0, 90, 180].map((depart) => ({ train: rl.TRAINS.metro, depart })), { supply: f.step }); return f.log; };
+    const a = run(10), b = run(2);
+    expect(a.maxRail).toBeGreaterThan(5); expect(b.strayAs).toBeCloseTo(5 * a.strayAs, 6);
+    const lab = new Lab({ out: () => {}, graphics: new Graphics() });
+    lab.run("[~, ~, s] = railLine('metro', trainModel('metro'), [0 90 180], 'Supply', 'metro', 'Leakage', 2); [~, ~, q] = railLine('intercity', trainModel('intercity'), [0 300], 'Supply', 'ac25', 'Bonded', 1);");
+    const f = (n: string, k: string) => toMat((lab.vars.get(n) as unknown as { f: Map<string, never> }).f.get(k)!).d[0];
+    expect(f('s', 'StrayCurrent')).toBeGreaterThan(0); expect(f('s', 'IronLossKgPerYear')).toBeCloseTo(f('s', 'StrayCurrent') * rl.IRON_KG_PER_AYEAR, 9); expect(f('q', 'MaxRailVolts')).toBeGreaterThan(0);
+  });
 });

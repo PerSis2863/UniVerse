@@ -205,7 +205,9 @@ export interface Supply {
   vnom: number; v0: number; vmin: number; vmax: number; rs: number; rline: number; subs: number[];
   /** A 25 kV AC line (M491d): each substation's transformer reactance (Ω), the line's reactance (Ω/km), the trains'
    * power factor drawing power, and the neutral section's length (m) midway between substations. */
-  ac?: { xs: number; xline: number; pf: number; neutral: number; screen?: number };
+  ac?: { xs: number; xline: number; pf: number; neutral: number; screen?: number; bonded?: boolean };
+  /** DC rails' leakage to earth (Ω·km, M491k): 10 new track, 1–3 old or wet; the rails' own resistance is 0.4 of rline. */
+  leak?: number;
   /** Storage on the line (M491g, DC): units at positions (m), each able to take or give `power` (W) and hold
    * `energy` (J); it charges when the line is above `vcharge` (a braking train lifting it) and supports below
    * `vsupport`, each way at `eta`. Batteries or supercapacitors in lineside cabinets. */
@@ -232,7 +234,7 @@ export const SUPPLIES: Record<string, (L: number) => Supply> = {
 };
 /** Substations every `every` metres from the start, the last at the end. */
 export function spaced(L: number, every: number) { const n = Math.max(1, Math.round(L / every)); return Array.from({ length: n + 1 }, (_, i) => (L * i) / n); }
-export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number; soc: number[][]; storedKwh: number; returnedKwh: number; emf: number[]; maxEmf: number; maxRail: number }
+export interface SupplyLog { t: number[]; volts: number[][]; minVolt: number[]; subPower: number[][]; lossKw: number[]; fromSubsKwh: number; lossKwh: number; regenUsedKwh: number; regenWastedKwh: number; tripped: number; neutral: number; stuck: number; soc: number[][]; storedKwh: number; returnedKwh: number; emf: number[]; maxEmf: number; maxRail: number; strayAs: number }
 /** One moment: the voltage at each train and what each substation gives, for trains at `s` drawing `p` (W). */
 export function solveSupply(sup: Supply, s: number[], p: number[], soc: number[] = [], cable?: Cable) {
   if (sup.ac) return sup.storage ? acWithStorage(sup, s, p, soc, cable) : solveAc(sup, s, p, cable);
@@ -298,11 +300,12 @@ export function solveSupply(sup: Supply, s: number[], p: number[], soc: number[]
     else { volts[nd.k] = V[i]; if (chop[nd.k]) given[nd.k] = Math.min(0, p[nd.k] + GC * Math.max(0, V[i] - sup.vmax) * V[i]); }
     if (i < n - 1) loss += G[i] * (V[i] - V[i + 1]) ** 2;
   });
-  return { volts, subPower: subP, loss, given, storePower, emf: 0, rail: [] as number[] };
+  const dc = dcStray(sup, s, s.map((_, k) => (given[k] > 0 ? given[k] / Math.max(volts[k], 1) : 0)));
+  return { volts, subPower: subP, loss, given, storePower, emf: 0, rail: dc.rail, stray: dc.stray };
 }
 /** A supply for `railLine`: returns the step function it calls and the log it fills. */
 export function supplyFor(sup: Supply, dt: number, cable?: Cable) {
-  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0, soc: [], storedKwh: 0, returnedKwh: 0, emf: [], maxEmf: 0, maxRail: 0 };
+  const log: SupplyLog = { t: [], volts: [], minVolt: [], subPower: [], lossKw: [], fromSubsKwh: 0, lossKwh: 0, regenUsedKwh: 0, regenWastedKwh: 0, tripped: 0, neutral: 0, stuck: 0, soc: [], storedKwh: 0, returnedKwh: 0, emf: [], maxEmf: 0, maxRail: 0, strayAs: 0 };
   let time = 0;
   const gap: number[] = [], soc = (sup.storage?.at ?? []).map(() => 0.5);
   const step = (s: number[], p: number[]) => {
@@ -316,7 +319,7 @@ export function supplyFor(sup: Supply, dt: number, cable?: Cable) {
       });
       log.soc.push(soc.slice());
     }
-    log.emf.push(r.emf); log.maxEmf = Math.max(log.maxEmf, r.emf); log.maxRail = Math.max(log.maxRail, ...r.rail);
+    log.emf.push(r.emf); log.maxEmf = Math.max(log.maxEmf, r.emf); log.maxRail = Math.max(log.maxRail, ...r.rail); log.strayAs += r.stray * dt;
     const back = p.reduce((q, x) => q + Math.max(0, -x), 0), givenBack = r.given.reduce((q, x) => q + Math.max(0, -x), 0);
     log.t.push(time); log.volts.push(r.volts); log.subPower.push(r.subPower.map((x) => x / 1000)); log.lossKw.push(r.loss / 1000);
     const running = r.volts.filter((_, k) => p[k] !== 0);
@@ -381,9 +384,25 @@ export function faultEmf(sup: Supply, c: Cable) {
 // figures). EN 50122-1 allows 60 V where people can touch the rails for long.
 export const RAIL_Z = Math.hypot(0.15, 0.55), RAIL_RE = 5, RAIL_LIMIT = 60;
 export function railVolts(sup: Supply, s: number[], amps: number[]) {
-  const k = sup.ac?.screen ?? 0.5, z0 = Math.sqrt(RAIL_Z * RAIL_RE), g = Math.sqrt(RAIL_Z / RAIL_RE);
-  return s.map((x) => s.reduce((v, y, j) => v + (z0 / 2) * k * amps[j] * Math.exp((-g * Math.abs(x - y)) / 1000), 0));
+  const k = sup.ac?.screen ?? 0.5, z0 = Math.sqrt(RAIL_Z * RAIL_RE), g = Math.sqrt(RAIL_Z / RAIL_RE) / 1000;
+  // Bonded to earth at each substation (M491k): an image current there holds the rails at 0 at the bond nearest
+  // each train (the one feeding it).
+  const bond = (x: number) => sup.subs.reduce((b, y) => (Math.abs(y - x) < Math.abs(b - x) ? y : b), sup.subs[0]);
+  return s.map((x) => s.reduce((v, y, j) => {
+    const b = bond(y), img = sup.ac?.bonded ? Math.exp(-g * Math.abs(x - b) - g * Math.abs(b - y)) : 0;
+    return v + (z0 / 2) * k * amps[j] * Math.abs(Math.exp(-g * Math.abs(x - y)) - img);
+  }, 0));
 }
+// DC stray current (M491k): the current returning along the rails to the substation feeding a train drops I·r·d
+// over d km, so floating rails sit at +I·r·d/2 under the train and −I·r·d/2 at the substation, and leak
+// I·r·d² / (8·R_leak) into the ground on the way: that current eats the rails, pipes and reinforcement where it
+// leaves them (Faraday: about 9.1 kg of iron per ampere-year). EN 50122-2 keeps it small by insulating the rails.
+export function dcStray(sup: Supply, s: number[], amps: number[]) {
+  const rr = 0.4 * sup.rline, R = sup.leak ?? 10;
+  const d = s.map((x) => Math.min(...sup.subs.map((y) => Math.abs(y - x))) / 1000);
+  return { rail: amps.map((I, k) => (I * rr * d[k]) / 2), stray: amps.reduce((q, I, k) => q + (I * rr * d[k] * d[k]) / (8 * R), 0) };
+}
+export const IRON_KG_PER_AYEAR = 9.13;
 /** AC with storage units: each unit a load at its place (+ charging, − giving), its power from the voltage there, the
  * line solved again until they agree (8 passes, half steps). The units draw at unity power factor. */
 function acWithStorage(sup: Supply, s: number[], p: number[], soc: number[], cable?: Cable) {
@@ -450,7 +469,7 @@ function solveAc(sup: Supply, s: number[], p: number[], cable: Cable = { sep: 30
     }
   });
   // A substation's power from the grid: Re(E·conj(I)); negative while braking trains feed back more than others draw.
-  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given, storePower: [] as number[], emf, rail: railVolts(sup, s, I.map(cabs)) };
+  return { volts: V.map(cabs), subPower: subI.map((c) => sup.v0 * c[0]), loss, given, storePower: [] as number[], emf, rail: railVolts(sup, s, I.map(cabs)), stray: 0 };
 }
 
 // ——— Single track both ways, with a timetable (M491e) ———

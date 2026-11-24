@@ -31,6 +31,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
   // M491g: lineside storage midway between substations (DC), and how far a telephone cable runs from an AC line.
   const [store, setStore] = useState(false);
   const [cableM, setCableM] = useState(30);
+  const [bonded, setBonded] = useState(false);
   const graph = useRef<HTMLCanvasElement>(null), volts = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const route = useMemo(() => ROUTES[routeName](), [routeName]), L = routeLength(route);
@@ -40,9 +41,10 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     const ac = routeName === 'intercity' && kind !== 'dc', sup = power ? { ...SUPPLIES[ac ? kind : routeName](L), subs: spaced(L, subKm * (routeName === 'metro' ? 1000 : ac ? 20000 : 7500)) } : null;
     // Storage: one unit midway between each pair of substations (1 MW, 10 kWh on the metro; 3 MW, 50 kWh on 3 kV).
     if (sup && store) sup.storage = storageFor(sup, sup.subs.slice(1).map((x, k) => (x + sup.subs[k]) / 2), routeName === 'metro' ? 1e6 : ac ? 4e6 : 3e6, routeName === 'metro' ? 10 : ac ? 200 : 50);
+    if (sup?.ac && bonded) sup.ac = { ...sup.ac, bonded: true };
     const cable = { sep: cableM, rho: 100 }, feed = sup ? supplyFor(sup, 0.5, cable) : null;
     return { ...railLine(route, list, { signals, block: routeName === 'metro' ? block : block * 4, supply: feed?.step }), log: feed?.log ?? null, sup, fault: sup?.ac ? Math.max(...faultEmf(sup, cable).map((x) => x.emf)) : 0 };
-  }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm, kind, store, cableM]);
+  }, [route, routeName, L, count, gap, signals, block, freightFirst, power, subKm, kind, store, cableM, bonded]);
 
   const draw = useEffectEvent(() => {
     const b = box.current;
@@ -108,6 +110,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
     ['Most delayed', `${(Math.max(...late) / 60).toFixed(1)} min (train ${late.indexOf(Math.max(...late)) + 1})`],
     ['Lowest voltage', `${run.sup?.ac ? `${(Math.min(...lg.minVolt) / 1000).toFixed(1)} kV` : `${Math.min(...lg.minVolt).toFixed(0)} V`}${lg.tripped > 0 ? `, tripped ${lg.tripped.toFixed(0)} s` : ''}`],
     ['From the substations · lost', `${lg.fromSubsKwh.toFixed(0)} kWh · ${lg.lossKwh.toFixed(0)} kWh`],
+    ...(run.sup && !run.sup.ac ? [['Rails to earth · stray current', `${lg.maxRail.toFixed(0)} V · ${((lg.strayAs / Math.max(lg.t.length * 0.5, 1e-9)) * 1000).toFixed(0)} mA`] as [string, string]] : []),
     ...(run.sup?.ac ? [['Rails to earth, most', `${lg.maxRail.toFixed(0)} V${lg.maxRail > RAIL_LIMIT ? ' (over 60)' : ''}`] as [string, string]] : []),
     run.sup?.ac ? ['In a cable beside it, running · a fault', `${lg.maxEmf.toFixed(0)} V${lg.maxEmf > EMF_LIMIT ? ' (over 60)' : ''} · ${run.fault.toFixed(0)} V${run.fault > EMF_FAULT_LIMIT ? ' (over 430)' : ''}`]
       : run.sup?.storage ? ['Braking reused · burnt · stored', `${lg.regenUsedKwh.toFixed(0)} · ${lg.regenWastedKwh.toFixed(0)} · ${lg.storedKwh.toFixed(0)} kWh`]
@@ -138,6 +141,7 @@ export function LineBench({ switcher }: { switcher: ReactNode }) {
         {power && routeName === 'intercity' && <Segmented<Kind> label="Supply" value={kind} onChange={setKind} segments={[{ value: 'dc', label: '3 kV DC' }, { value: 'ac25', label: '25 kV AC' }, { value: 'ac25at', label: '2 × 25 kV' }]} />}
         {power && range('Substations every', subKm, 1, 5, 1, `${routeName === 'metro' ? subKm : routeName === 'intercity' && kind !== 'dc' ? subKm * 20 : subKm * 7.5} km`, setSubKm)}
         {power && routeName === 'intercity' && kind !== 'dc' && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">Each substation feeds its own stretch out to the neutral sections midway to its neighbours (red: they’re on different phases, so trains coast through with their power off). The line’s reactance sags the voltage more than its resistance; {kind === 'ac25at' ? 'autotransformers feed at 50 kV, so trains see about a third of the drop' : 'the current returns through the rails'}. Under 17.5 kV trains trip; the grid takes back all braking.</p>}
+        {power && routeName === 'intercity' && kind !== 'dc' && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={bonded} onChange={(e) => setBonded(e.target.checked)} className="h-4 w-4 accent-violet-600" />Rails bonded to earth at the substations</label>}
         {power && routeName === 'intercity' && kind !== 'dc' && range('A telephone cable beside it, at', cableM, 10, 300, 10, `${cableM} m`, setCableM)}
         {power && routeName === 'intercity' && kind !== 'dc' && <p className="text-xs leading-relaxed text-zinc-600 dark:text-zinc-300">The line’s current, returning partly through the ground, induces a voltage along the cable ({kind === 'ac25at' ? 'autotransformers cancel about nine tenths of it' : 'the rails cancel about half'}). Allowed: 60 V while trains run, 430 V during a fault (shown for a short at the far end of a section).</p>}
         {power && <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={store} onChange={(e) => setStore(e.target.checked)} className="h-4 w-4 accent-violet-600" />Storage between substations ({routeName === 'metro' ? '1 MW, 10 kWh' : kind !== 'dc' ? '4 MW, 200 kWh: it props up the voltage where it sags' : '3 MW, 50 kWh'})</label>}

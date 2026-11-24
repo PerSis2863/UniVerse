@@ -118,6 +118,9 @@ function supplyOf(o: Map<string, Value>, r: rl.Route): rl.Supply | undefined {
   if (o.get('substationspacing')) { const e = toMat(o.get('substationspacing')!).d[0]; if (!(e >= 200)) throw new LabError("'SubstationSpacing' is at least 200 m."); sup.subs = rl.spaced(L, e); }
   if (!(sup.vmin > 0 && sup.vmin < sup.vnom && sup.vnom <= sup.v0 && sup.v0 < sup.vmax && sup.rs > 0 && sup.rline > 0)) throw new LabError('The supply needs 0 < Vmin < Vnom ≤ V0 < Vmax, and Rs and Rline above 0.');
   if (!sup.subs.length || sup.subs.some((s) => !(s >= 0 && s <= L))) throw new LabError(`The substations are positions along the line, 0 to ${L} m.`);
+  // M491k: 'Leakage' (DC rails to earth, Ω·km) and 'Bonded' (AC rails bonded to earth at the substations).
+  if (o.get('leakage')) { const lk = toMat(o.get('leakage')!).d[0]; if (!(lk >= 0.1 && lk <= 1000)) throw new LabError("'Leakage' is the rails' leakage resistance to earth, 0.1 to 1,000 Ω·km (10 new track)."); sup.leak = lk; }
+  if (o.get('bonded') && sup.ac) sup.ac = { ...sup.ac, bonded: !!toMat(o.get('bonded')!).d[0] };
   // Storage on the line (M491g; on AC lines too, M491i, where it shaves the peaks): 'Storage', positions in m (1 MW, 10 kWh each) or a struct At, Power (W),
   // Energy (kWh), VCharge, VSupport.
   const so = o.get('storage');
@@ -154,6 +157,7 @@ def('railLine', (a, nout, lab) => {
   const run = rl.railLine(r, lineTrains(a), { ...lineOpts(o), supply: feed?.step });
   const lg = feed?.log, info: Struct | undefined = lg && { k: 'struct', f: new Map<string, Value>([['MinVoltage', num(Math.min(...lg.minVolt))], ['FromSubstationsKWh', num(lg.fromSubsKwh)], ['LossKWh', num(lg.lossKwh)], ['RegenUsedKWh', num(lg.regenUsedKwh)], ['RegenWastedKWh', num(lg.regenWastedKwh)], ['TrippedSeconds', num(lg.tripped)], ['NeutralSeconds', num(lg.neutral)], ['Time', col(lg.t)], ['LowestVoltage', col(lg.minVolt)],
     ...(sup?.storage ? [['StoredKWh', num(lg.storedKwh)], ['ReturnedKWh', num(lg.returnedKwh)], ['Charge', mat(lg.soc.length, sup.storage.at.length, Float64Array.from({ length: lg.soc.length * sup.storage.at.length }, (_, q) => lg.soc[q % lg.soc.length][Math.floor(q / lg.soc.length)]))]] as [string, Value][] : []),
+    ...(sup && !sup.ac ? [['MaxRailVolts', num(lg.maxRail)], ['StrayCurrent', num(lg.strayAs / Math.max(lg.t.length * 0.5, 1e-9))], ['IronLossKgPerYear', num((lg.strayAs / Math.max(lg.t.length * 0.5, 1e-9)) * rl.IRON_KG_PER_AYEAR)]] as [string, Value][] : []),
     ...(sup?.ac ? [['MaxRailVolts', num(lg.maxRail)], ['MaxInducedVolts', num(lg.maxEmf)], ['FaultInducedVolts', num(Math.max(...rl.faultEmf(sup, cable ?? { sep: 30, rho: 100 }).map((x) => x.emf)))], ['InducedVolts', col(lg.emf)]] as [string, Value][] : [])]) };
   if (nout > 0) return [lineTable(run), { k: 'cell', r: 1, c: run.trains.length, d: run.trains.map((x) => table([['Time', col(x.t)], ['Position', col(x.s)], ['Speed', col(x.v.map((v) => v * 3.6))], ['Power', col(x.power.map((p) => p / 1000))]])) }, ...(info ? [info] : [])];
   // The train graph: distance against time, one line per train, stations as dashed lines (with a supply, the lowest

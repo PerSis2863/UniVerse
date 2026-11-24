@@ -13176,6 +13176,18 @@ intercity with 400 m loops never waits in one and the meet moves to the 42 km st
 Language 'LoopLength'; window Single track → "Loops only 400 m long". Shortcut: the dispatcher is asked only about the
 first of the two sections.
 
+## M491k (24 Nov): Hyperion railways, rails bonded to earth, and DC stray currents
+
+`rail.ts`. AC: `Supply.ac.bonded` ties the rails to earth at each substation: `railVolts` subtracts an image current at
+the bond nearest each train (the feeding one), so the rails are at 0 there and lower within a few km (far from the bond
+almost unchanged: e.g. 208 → 207 V for trains tens of km out; 500 m out × (1 − e^(−2g·0.5))). DC: `dcStray` (each
+train's current I = power / its volts, braking left out (shortcut), to its nearest substation d km away; rails 0.4 of
+rline; `Supply.leak` Ω·km, 10 by default): rails at I·r·d/2 under the train, stray current I·r·d²/(8·R); `solveSupply`
+returns `rail` and `stray` for DC too, the log `strayAs` (A·s); `IRON_KG_PER_AYEAR` 9.13. Checked by hand both ways; 2
+Ω·km leaks five times 10. Language 'Leakage', 'Bonded'; info StrayCurrent, IronLossKgPerYear, MaxRailVolts (DC).
+Window: Several trains → power supply → DC "Rails to earth · stray current", AC "Rails bonded to earth at the
+substations". Not built: rails cross-bonded between tracks, drainage bonds, the earth's own resistance.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."
