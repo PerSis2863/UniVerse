@@ -13024,3 +13024,34 @@ Davies'). Example `beds.m`. Tests: NaCl's γ± 0.657 and φ 0.936 at 1 mol/kg, 0
 (1 + ε) ln(1/(1 − X)) − εX = kW/v0 and v/v0 = 1 + X; LH by hand; a Michaelis-like batch against its closed form. Not
 built: non-isothermal packed beds, mixed electrolytes in Pitzer's model (θ and ψ terms) and temperatures other than
 25 °C, Pitzer inside `solvePH`.
+
+## M517 (24 Nov): Hyperion neuroscience, more left-outs
+
+From M514's "Not built". `neuro-tree.ts` (pure), `neuro-files.ts` (readers), the language part at the end of
+`neuro-lab.ts`. **Branches:** `parseSWC` (id type x y z radius parent; `#` comments), `buildTree`: the root is a cylinder
+as long as it is wide (a sphere's area), every other point ends a piece from its parent cut to at most 'MaxLength' µm
+(20), breadth-first so a parent always comes before its children; one root only, at most 20,000 compartments.
+`treeNeuron` works in nF, µS, mV, ms and nA: backward Euler, Hines' two sweeps (up the tree eliminating, down it
+substituting), HH by exponential Euler only where `active(type)` says ('none', 'soma', 'axon' = soma and axon, 'all'),
+else a leak of 1/Rm at rest; synapses are one event each (kernel from `neuro-plus.ts`, nS, implicit in V);
+`cableTerms` gives the axial conductance from the two half pieces' resistances. An SWC id names the last piece ending at
+that point. **Cleaning:** Butterworth by RBJ biquads at Q = 1/(2cos((2k−1)π/2N)) (even orders 2–8), notches (Q 30)
+at the mains and its harmonics up to 5× below the band's top, `zeroPhase` with odd reflection at both ends long enough to
+settle (3 periods of the low edge, 5 notch time constants), each section started at its DC steady state;
+`commonAverage` takes the median across channels. detectSpikes and spikeSort take 'Band', 'Notch', 'Order'. **Files:**
+`readAbf`: ABF2 only (ABF 1 refused with how to convert), offsets as pyabf documents them (header: episodes @12, data
+format @30, sections of 16 bytes from @76: protocol, ADC @92, strings @220, data @236; protocol: mode @0, interval µs @2,
+ADC range @110, resolution @118; ADC entry: instrument scale @40, signal gain @48, programmable gain @28, telegraph gain
+@6 when enabled @2, offsets @44 − @52, name and unit string indices @74, @78 counted from the 'clampex'/'clampfit'/
+'axoscope'/'patchxpress' string). Checked against a file laid out the same way in the test, not yet against a real
+Clampex recording. `readNwb`: series under /acquisition and /stimulus/presentation with a numeric `data`, scaled by
+`conversion` and `offset`, `starting_time` and its `rate`, or `timestamps`. **hdf5.ts** now reads variable-length string
+attributes (the global heap, 'GCOL'), which h5py and the NWB tools write; the fixture `fixtures/nwb-small.nwb` was
+written with h5py (gzip chunks, int16, a vlen unit). Language: `swcRead`, `treeNeuron`, `filterRecording`, `abfload`
+(MATLAB's File Exchange name: d, si in µs, h), `nwbRead`. Example `branches.m`. Tests: an unbranched tree equals
+`cable()` to 1e-6; Rall's 3/2 rule (two daughters of the right size and length give the soma the same voltage as one
+cylinder, within 1%); a spike reaching an active axon's end, later than its middle; a distal EPSP over halved at the
+soma; 1 kHz kept and 50 Hz cut by the band-pass, the notch alone killing 50 and keeping 130; spikes under 300 mV of
+4 Hz and 80 mV of hum sorted after filtering (> 85% found, > 90% agreeing); ABF2 and NWB read back. Not built: ABF 1,
+NWB's processing modules and units tables, channel types other than HH's on the tree, 3D views of the morphology (drawn
+from above), spines.

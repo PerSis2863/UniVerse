@@ -1,15 +1,19 @@
 import { LabError } from './parse';
 import { random } from './builtins';
 import { textOf, type Lab } from './interp';
-import { mat, num, str, toMat, type Value } from './values';
+import { mat, num, str, toMat, type Struct, type Value } from './values';
 import * as nr from './neuro';
 import * as np from './neuro-plus';
+import * as nt from './neuro-tree';
+import * as nf from './neuro-files';
+import { FileStore, fileText } from './files';
 import { call, col, def, lines, need, nums, one, options, optNum, optText, record, row, rows } from './sci-kit';
 
 // Hyperion's neuroscience in the language (M496): hodgkinHuxley, lifNeuron, lifRate, izhikevich, izhNetwork,
 // lifNetwork, poissonSpikes, spikeTimes, isiStats, fanoFactor, psth, rasterPlot, spikeXcorr; M514: cableNeuron,
 // synapseConductance, stdpWindow, stdpNeuron, detectSpikes, spikeSort. Our own names (MATLAB has
-// no neuron models; its spike-train tools are third-party).
+// no neuron models; its spike-train tools are third-party). M517: swcRead, treeNeuron, filterRecording, abfload,
+// nwbRead; detectSpikes and spikeSort take 'Band' and 'Notch' to clean a raw recording first.
 
 /** The current: a number (a step from 'Start' to 'Stop' ms), or one value per time step. */
 function current(v: Value | undefined, o: Map<string, Value>, T: number, dt: number): nr.Input {
@@ -189,7 +193,7 @@ def('stdpNeuron', (a, nout, lab) => {
   lines(lab, r.rate.map((_, i) => i + 1), [r.rate], [], 'Time (s)', 'Output (Hz)', 'The neuron settles as its inputs compete');
   return [];
 });
-const sortKeys = ['Threshold', 'Polarity', 'Pre', 'Post', 'DeadTime', 'Clusters'];
+const sortKeys = ['Threshold', 'Polarity', 'Pre', 'Post', 'DeadTime', 'Clusters', 'Band', 'Notch', 'Order'];
 function sortOpts(a: Value[], name: string): np.SortOpts {
   const o = options(a, 2, sortKeys, name), d = np.SORT, pol = optText(o, 'Polarity', d.polarity).toLowerCase();
   if (pol !== 'neg' && pol !== 'pos' && pol !== 'both') throw new LabError("'Polarity' is 'neg', 'pos' or 'both'.");
@@ -203,11 +207,11 @@ const recording = (a: Value[]) => {
   return { x, fs };
 };
 def('detectSpikes', (a) => {
-  const { x, fs } = recording(a), r = np.detect(x, fs, sortOpts(a, 'detectSpikes'));
+  const { x, fs } = cleaned(a, 'detectSpikes'), r = np.detect(x, fs, sortOpts(a, 'detectSpikes'));
   return [col(r.peaks.map((p) => p / fs)), rows(r.waves.length ? r.waves : [[]]), num(r.threshold)];
 });
 def('spikeSort', (a, nout, lab) => {
-  const { x, fs } = recording(a), o = sortOpts(a, 'spikeSort'), r = np.sortSpikes(x, fs, o, random);
+  const { x, fs } = cleaned(a, 'spikeSort'), o = sortOpts(a, 'spikeSort'), r = np.sortSpikes(x, fs, o, random);
   if (r.peaks.length > 20000) throw new LabError(`${r.peaks.length} crossings: raise 'Threshold' or sort a shorter piece.`);
   if (nout > 0) return [col(r.peaks.map((p) => p / fs)), col(r.cluster), rows(r.waves.length ? r.waves : [[]]), rows(r.score.length ? r.score : [[]])];
   const tw = r.waves[0]?.map((_, j) => ((j - r.pre) * 1000) / fs) ?? [];
@@ -222,4 +226,104 @@ def('spikeSort', (a, nout, lab) => {
   }
   call(lab, 'xlabel', str('PC 1')); call(lab, 'ylabel', str('PC 2')); call(lab, 'title', str('Waveforms by their principal components')); call(lab, 'grid', str('on'));
   return [];
+});
+
+// ——— M517: branching neurons, cleaning recordings, reading ABF and NWB files ———
+function cleanOpts(o: Map<string, Value>, fs: number, name: string): nt.Clean | null {
+  if (!o.has('Band') && !o.has('Notch')) return null;
+  const band = o.has('Band') ? nums(o.get('Band')) : undefined, notch = o.has('Notch') ? optNum(o, 'Notch', 0) : undefined, order = Math.round(optNum(o, 'Order', 4));
+  if (band && !(band.length === 2 && band[0] >= 0 && band[1] > band[0])) throw new LabError(`${name}: 'Band' is [low high] in Hz (300 6000 for spikes; 0 for no low edge).`);
+  if (band && band[0] >= fs / 2) throw new LabError(`${name}: the band's low edge must sit below half the sampling rate (${fs / 2} Hz).`);
+  if (notch !== undefined && !(notch > 0 && notch < fs / 2)) throw new LabError(`${name}: 'Notch' is the mains frequency (50 or 60 Hz).`);
+  if (![2, 4, 6, 8].includes(order)) throw new LabError(`${name}: 'Order' is 2, 4, 6 or 8.`);
+  return { band: band as [number, number] | undefined, notch, order };
+}
+const cleaned = (a: Value[], name: string) => {
+  const r = recording(a), c = cleanOpts(options(a, 2, sortKeys, name), r.fs, name);
+  return c ? { x: Array.from(nt.cleanRecording(r.x, r.fs, c)), fs: r.fs } : r;
+};
+def('filterRecording', (a) => {
+  const X = toMat(a[0] ?? mat(0, 0), 'The recording'), fs = need(a[1], 'The sampling rate (Hz)');
+  if (!(fs > 0) || X.d.length < 4) throw new LabError('filterRecording needs a recording (a vector, or one column per channel) and its sampling rate in Hz.');
+  const o = options(a, 2, ['Band', 'Notch', 'Order', 'CommonAverage'], 'filterRecording'), c = cleanOpts(o, fs, 'filterRecording') ?? { band: [300, 6000] as [number, number], order: 4 };
+  const vec = X.r === 1 || X.c === 1, n = vec ? X.d.length : X.r, k = vec ? 1 : X.c;
+  let ch = Array.from({ length: k }, (_, j) => Array.from(X.d.subarray(j * n, (j + 1) * n)));
+  if (one(o.get('CommonAverage'), 0) !== 0) { if (k < 3) throw new LabError("'CommonAverage' needs three or more channels (columns)."); ch = nt.commonAverage(ch); }
+  const out = ch.map((x) => nt.cleanRecording(x, fs, c));
+  return [vec ? mat(X.r, X.c, out[0]) : mat(n, k, out.flatMap((v) => Array.from(v)))];
+});
+
+const swcText = (lab: Lab, v: Value | undefined) => {
+  if (v?.k !== 'str') throw new LabError('An SWC file name (from Files) or its text.');
+  return /\n/.test(v.v) || /^\s*[#\d]/.test(v.v) && !/\.swc$/i.test(v.v.trim()) ? v.v : fileText(lab, v.v);
+};
+const samplesOf = (lab: Lab, v: Value | undefined) => {
+  if (v?.k === 'mat') {
+    if (v.c !== 7 || !v.r) throw new LabError('An SWC matrix has 7 columns: id, type, x, y, z, radius, parent.');
+    return Array.from({ length: v.r }, (_, i) => { const g = (j: number) => v.d[i + j * v.r]; return { id: g(0), type: g(1), x: g(2), y: g(3), z: g(4), r: g(5), parent: g(6) }; });
+  }
+  return wrapN(() => nt.parseSWC(swcText(lab, v)));
+};
+const wrapN = <T>(f: () => T): T => { try { return f(); } catch (e) { if (e instanceof LabError) throw e; throw new LabError(e instanceof Error ? e.message : String(e)); } };
+def('swcRead', (a, _n, lab) => {
+  const s = samplesOf(lab, a[0]);
+  return [mat(s.length, 7, [...s.map((p) => p.id), ...s.map((p) => p.type), ...s.map((p) => p.x), ...s.map((p) => p.y), ...s.map((p) => p.z), ...s.map((p) => p.r), ...s.map((p) => p.parent)])];
+});
+def('treeNeuron', (a, nout, lab) => {
+  const o = options(a, 1, ['Active', 'Current', 'At', 'Start', 'Stop', 'Time', 'Step', 'Ri', 'Rm', 'Cm', 'Celsius', 'Rest', 'MaxLength', 'Synapses', 'Record'], 'treeNeuron');
+  const tree = wrapN(() => nt.buildTree(samplesOf(lab, a[0]), optNum(o, 'MaxLength', 20)));
+  const node = (id: number, what: string) => { const i = tree.id.lastIndexOf(id); if (i < 0) throw new LabError(`${what}: there's no SWC point ${id}.`); return i; };
+  const act = optText(o, 'Active', 'none').toLowerCase(), types: Record<string, (t: number) => boolean> = { none: () => false, all: () => true, soma: (t) => t === 1, axon: (t) => t === 1 || t === 2 };
+  if (!types[act]) throw new LabError("'Active' is 'none' (passive), 'soma', 'axon' (the soma and axon) or 'all': where the HH channels are.");
+  const d = nt.TREE, I = optNum(o, 'Current', 0), at = o.has('At') ? node(optNum(o, 'At', 0), "'At'") : 0;
+  const syn: nt.Synapse[] = [];
+  if (o.has('Synapses')) {
+    const S = toMat(o.get('Synapses')!, "'Synapses'");
+    if (S.c !== 6) throw new LabError("'Synapses' has a row per event: [swcId time(ms) gmax(nS) rise(ms) decay(ms) E(mV)].");
+    for (let i = 0; i < S.r; i++) { const g = (j: number) => S.d[i + j * S.r]; if (!(g(2) >= 0 && g(3) >= 0 && g(4) > 0)) throw new LabError("'Synapses': gmax ≥ 0, rise ≥ 0 and decay > 0."); syn.push({ node: node(g(0), "'Synapses'"), times: [g(1)], gmax: g(2), rise: g(3), decay: g(4), E: g(5) }); }
+    if (syn.length > 2000) throw new LabError("'Synapses' takes up to 2000 events.");
+  }
+  const far = (() => { const p = nt.pathLength(tree); return p.indexOf(Math.max(...p)); })();
+  const recNodes = o.has('Record') ? nums(o.get('Record')).map((x) => node(x, "'Record'")) : [...new Set([0, far])];
+  const opts: nt.TreeOpts = {
+    Ri: optNum(o, 'Ri', d.Ri), Cm: optNum(o, 'Cm', d.Cm), Rm: optNum(o, 'Rm', d.Rm), rest: optNum(o, 'Rest', d.rest), celsius: optNum(o, 'Celsius', d.celsius), T: optNum(o, 'Time', d.T), dt: optNum(o, 'Step', d.dt),
+    active: types[act], stim: I ? [{ node: at, I, start: optNum(o, 'Start', 5), stop: optNum(o, 'Stop', Infinity) }] : [], synapses: syn, record: recNodes,
+  };
+  if (!(opts.Ri > 0 && opts.Cm > 0 && opts.Rm > 0 && opts.T > 0 && opts.dt > 0 && opts.dt <= 0.1)) throw new LabError("'Ri', 'Rm', 'Cm' and 'Time' are positive; 'Step' at most 0.1 ms.");
+  if ((opts.T / opts.dt) * tree.parent.length > 6e7) throw new LabError(`${tree.parent.length} compartments for ${opts.T} ms is too much here: a shorter time, a larger 'Step' or a larger 'MaxLength'.`);
+  const r = nt.treeNeuron(tree, opts);
+  if (nout > 0) return [col(r.t), rows(r.V), col(r.peak), record([['Compartments', tree.parent.length], ['Id', col(Array.from(tree.id))], ['Parent', col(Array.from(tree.parent, (p) => p + 1))], ['Length', col(Array.from(tree.len))], ['Diameter', col(Array.from(tree.diam))], ['X', col(Array.from(tree.x))], ['Y', col(Array.from(tree.y))], ['Z', col(Array.from(tree.z))], ['Arrival', col(r.arrival)]])];
+  call(lab, 'subplot', num(1), num(2), num(1));
+  const xs: number[] = [], ys: number[] = [];
+  for (let i = 1; i < tree.parent.length; i++) { xs.push(tree.px[i], tree.x[i], NaN); ys.push(tree.py[i], tree.y[i], NaN); }
+  call(lab, 'plot', row(xs), row(ys), str('Color'), row([0.6, 0.6, 0.6])); call(lab, 'hold', str('on'));
+  call(lab, 'scatter', row(Array.from(tree.x)), row(Array.from(tree.y)), num(12), row(r.peak), str('filled')); call(lab, 'hold', str('off'));
+  call(lab, 'colorbar'); call(lab, 'axis', str('equal')); call(lab, 'xlabel', str('µm')); call(lab, 'ylabel', str('µm'));
+  call(lab, 'title', str(`${tree.parent.length} compartments, coloured by the highest voltage (mV)`));
+  call(lab, 'subplot', num(1), num(2), num(2));
+  lines(lab, r.t, recNodes.map((_, j) => r.V.map((v) => v[j])), recNodes.map((i) => (i === 0 ? 'Soma (root)' : `Point ${tree.id[i]}`)), 'Time (ms)', 'mV', 'Voltage');
+  return [];
+});
+
+const store = (lab: Lab): FileStore => { const s = (lab.host as { files?: unknown }).files; if (!(s instanceof FileStore)) throw new LabError('Files aren’t available here.'); return s; };
+def('abfload', (a, nout, lab) => {
+  if (a[0]?.k !== 'str') throw new LabError("abfload takes a file's name from Files: [d, si, h] = abfload('cell1.abf').");
+  const r = wrapN(() => nf.readAbf(store(lab).get(a[0].k === 'str' ? a[0].v : '').bytes)), n = r.data[0][0].length, k = r.channels.length;
+  const d = new Float64Array(n * k * r.sweeps);
+  for (let s = 0; s < r.sweeps; s++) for (let c = 0; c < k; c++) d.set(r.data[c][s], s * n * k + c * n);
+  const h: Struct = record([['Rate', r.rate], ['Sweeps', r.sweeps], ['Mode', r.mode === 3 ? 'gap-free' : r.mode === 5 ? 'episodic' : String(r.mode)], ['Channels', { k: 'cell', r: 1, c: k, d: r.channels.map(str) }], ['Units', { k: 'cell', r: 1, c: k, d: r.units.map(str) }]]);
+  if (nout === 0) lab.host.out(`${k} channel${k > 1 ? 's' : ''} (${r.channels.join(', ')}), ${r.sweeps} sweep${r.sweeps > 1 ? 's' : ''} of ${n} samples at ${r.rate} Hz\n`);
+  return [mat(n, k, d), num(1e6 / r.rate), h];
+});
+def('nwbRead', (a, _n, lab) => {
+  if (a[0]?.k !== 'str') throw new LabError("nwbRead takes a file's name from Files: s = nwbRead('session.nwb').");
+  const series = wrapN(() => nf.readNwb(store(lab).get(a[0].k === 'str' ? a[0].v : '').bytes));
+  const f = new Map<string, Value>();
+  for (const s of series) {
+    let key = s.name.replace(/[^A-Za-z0-9_]/g, '_').replace(/^[^A-Za-z]/, 'x$&') || 'series';
+    while (f.has(key)) key += '_';
+    const n = s.data[0].length;
+    f.set(key, record([['Data', mat(n, s.data.length, s.data.flat())], ['Rate', s.rate], ['StartTime', s.start], ['Unit', s.unit], ...(s.timestamps ? [['Timestamps', col(s.timestamps)] as [string, Value]] : [])]));
+  }
+  return [{ k: 'struct', f }];
 });

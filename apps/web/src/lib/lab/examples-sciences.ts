@@ -191,6 +191,23 @@ for s = 1:60:numel(x)-5000
 end
 figure; spikeSort(x, fs)
 ` },
+  { name: 'branches.m', code: `% Neuroscience: a neuron with branches, and a raw recording cleaned before sorting
+% 1. A small neuron in SWC (the format of NeuroMorpho's 200,000 reconstructions): a soma, an axon, two dendrites
+swc = sprintf(['1 1 0 0 0 10 -1\\n', '2 2 60 0 0 0.6 1\\n', '3 2 300 0 0 0.5 2\\n', '4 2 600 0 0 0.5 3\\n', ...
+               '5 3 -80 60 0 1.5 1\\n', '6 3 -200 160 0 1 5\\n', '7 3 -120 -150 0 1 1\\n', '8 3 -260 -260 0 0.7 7\\n']);
+% A current into the soma fires a spike that runs down the axon (channels in the soma and axon only)
+treeNeuron(swc, 'Active', 'axon', 'Current', 1.5, 'Start', 2, 'Stop', 3, 'Time', 12, 'Celsius', 20, 'Record', [1 4])
+% 2. A synapse far out on a dendrite: its voltage fades on the way to the soma
+far = 80;   % slider 0 300
+figure; treeNeuron(swc, 'Synapses', [6 5 far/100 0.5 3 0], 'Time', 30, 'Record', [6 1])
+% 3. A raw recording: slow waves and mains hum swamp the spikes until it is filtered
+rng(2); fs = 24000; t = (0:fs*3-1)/fs;
+x = 10*randn(size(t)) + 300*sin(2*pi*4*t) + 80*sin(2*pi*50*t);
+x(1000:2400:end) = x(1000:2400:end) - 150;
+y = filterRecording(x, fs, 'Band', [300 6000], 'Notch', 50);
+figure; plot(t(1:6000), x(1:6000), t(1:6000), y(1:6000)); legend('Raw', 'Filtered'); xlabel('s'); grid on
+figure; spikeSort(x, fs, 'Band', [300 6000], 'Notch', 50)
+` },
   { name: 'physics.m', code: `% Physics: throws, swings, orbits, waves and fields
 % Drag the time slider, or press Sweep on it to film the motion as a GIF.
 t = 0.8;   % slider 0 4
