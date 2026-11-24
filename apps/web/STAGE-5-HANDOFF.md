@@ -13117,6 +13117,17 @@ Language: vehicleSim info Rolls, RestsOn, TumbleDistance, TumbleTime; `vehicleTr
 Vehicle → Kerb (`KerbView.tsx`, seen from behind). Not built: the roof crushing, yaw while tumbling. **Full `pnpm check`
 not run** (stopped at the owner's request; types, lint of changed files, the lab tests and lean passed).
 
+## M491h (24 Nov): Hyperion railways, overtaking and the train's length
+
+The owner, 24 Nov: "build them all and push" (M486d's left-outs). `railSingle`'s dispatcher (`yields`) now also holds a
+train for a better-ranked one **behind it going the same way** that would reach the section before it is through: it
+waits in the loop or station and is overtaken (a train standing at the same place counts as behind). Sections are freed
+once the **tail** has left them (`tails`: [section, head position + length]) or when the train stops in the next place
+(a loop or platform holds the whole train). First come is unchanged except for the length. Checked: a freight train
+leaving 20 min ahead of an intercity (priority 3) makes it ~21 min late first come; by priority the freight waits at
+42 km and the intercity is on time and arrives first; a 400 m metro train delays its follower more than a 0 m one.
+Window: Single track → "The first train out is a slow freight train". Not built: loops too short for a long train.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

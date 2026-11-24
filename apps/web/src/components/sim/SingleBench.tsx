@@ -30,6 +30,7 @@ export function SingleBench({ switcher }: { switcher: ReactNode }) {
   const [express, setExpress] = useState(false);
   const [branch, setBranch] = useState(false);
   const [dispatch, setDispatch] = useState<Dispatch>('fcfs');
+  const [freight, setFreight] = useState(false);
   const graph = useRef<HTMLCanvasElement>(null), box = useRef<HTMLDivElement>(null);
 
   const route = useMemo(() => ROUTES[routeName](), [routeName]), L = routeLength(route);
@@ -40,14 +41,16 @@ export function SingleBench({ switcher }: { switcher: ReactNode }) {
     for (let k = 0; k < each; k++) {
       // The second outbound train is the express: it stops only at the ends.
       const fast = express && k === 1;
-      list.push({ train: t, dir: 1, depart: k * gap * unit, late: k === 0 ? late * unit : 0, skip: fast ? route.stations.map((_, j) => j).slice(1, -1) : [], priority: fast ? 2 : 1 });
+      // M491h: the first train out a slow freight train, which faster ones may overtake.
+      const slow = freight && k === 0;
+      list.push({ train: slow ? TRAINS.freight : t, dir: 1, depart: k * gap * unit, late: k === 0 ? late * unit : 0, skip: fast ? route.stations.map((_, j) => j).slice(1, -1) : [], priority: fast ? 2 : slow ? 0.5 : 1 });
       list.push({ train: t, dir: -1, depart: (k * gap + offset) * unit });
     }
     // A branch train joins the line at the middle station, half a gap after the first, and runs out to the end.
     if (branch) list.push({ train: t, dir: 1, depart: (gap / 2) * unit, from: mid, priority: 2 });
     const st = [...route.stations].sort((a, b) => a - b), loops = loopsOn ? st.slice(1).map((x, j) => Math.round((x + st[j]) / 2)) : [];
     return railSingle(route, list, { tracks, pad: pad / 100, loops, dispatch });
-  }, [route, routeName, each, gap, offset, late, tracks, pad, unit, loopsOn, express, branch, dispatch]);
+  }, [route, routeName, each, gap, offset, late, tracks, pad, unit, loopsOn, express, branch, dispatch, freight]);
 
   const draw = useEffectEvent(() => {
     const b = box.current, c = graph.current;
@@ -127,6 +130,7 @@ export function SingleBench({ switcher }: { switcher: ReactNode }) {
         </div>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={loopsOn} onChange={(e) => setLoopsOn(e.target.checked)} className="h-4 w-4 accent-violet-600" />Passing loops midway between stations</label>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={express} disabled={each < 2} onChange={(e) => setExpress(e.target.checked)} className="h-4 w-4 accent-violet-600" />The second train out is an express (ends only)</label>
+        <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={freight} onChange={(e) => setFreight(e.target.checked)} className="h-4 w-4 accent-violet-600" />The first train out is a slow freight train (by priority, faster trains overtake it in a loop or station)</label>
         <label className="flex items-center gap-2 text-[13px] text-zinc-700 dark:text-zinc-200"><input type="checkbox" checked={branch} onChange={(e) => setBranch(e.target.checked)} className="h-4 w-4 accent-violet-600" />A branch train joins at the middle station</label>
         <div className="space-y-2">
           <span className={label}>Who goes first</span>

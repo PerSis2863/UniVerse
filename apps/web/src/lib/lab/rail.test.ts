@@ -207,4 +207,15 @@ describe('Hyperion railways (M491)', () => {
     expect(f('s1', 'StoredKWh')).toBeGreaterThan(0); expect(f('s2', 'MaxInducedVolts')).toBeCloseTo(rail, 6); expect(f('s2', 'FaultInducedVolts')).toBeGreaterThan(1000);
     expect(toMat(lab.vars.get('e')!).d[0]).toBeCloseTo(Math.hypot(...zm) * 0.5 * 200 * 25, 6);
   });
+  it("overtaking at loops and stations, and the train's length (M491h)", { timeout: 60_000 }, () => {
+    const r = rl.ROUTES.intercity(), loops = [21000, 71000];
+    const two = [{ train: rl.TRAINS.freight, dir: 1 as const, depart: 0 }, { train: rl.TRAINS.intercity, dir: 1 as const, depart: 1200, priority: 3 }];
+    // First come: the intercity is stuck behind the freight train; by priority the freight waits at 42 km and is overtaken.
+    const fc = rl.railSingle(r, two, { loops }), pr = rl.railSingle(r, two, { loops, dispatch: 'priority' });
+    expect(fc.trains[1].delay).toBeGreaterThan(900); expect(pr.trains[1].delay).toBeLessThan(60);
+    expect(pr.trains[1].arrive).toBeLessThan(pr.trains[0].arrive); expect(pr.trains[0].waits.some((x) => x.at === 42000)).toBe(true);
+    // A long train holds the section behind it until its tail is out: a follower waits longer.
+    const m = rl.ROUTES.metro(), go = (len: number) => rl.railSingle(m, [0, 90].map((depart) => ({ train: { ...rl.TRAINS.metro, length: len }, dir: 1 as const, depart }))).trains[1];
+    expect(go(400).arrive).toBeGreaterThan(go(0).arrive);
+  });
 });

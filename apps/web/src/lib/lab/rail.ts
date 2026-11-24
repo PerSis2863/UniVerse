@@ -536,9 +536,12 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
   const yields = (k: number, sec: number, time: number, clear: number) => {
     if (!rank) return false;
     for (let q = 0; q < trains.length; q++) {
-      if (q === k || st[q].done || rank[q] > rank[k] || trains[q].dir === trains[k].dir) continue;
+      if (q === k || st[q].done || rank[q] > rank[k]) continue;
       const { seq } = paths[q], ia = seq.indexOf(trains[q].dir === 1 ? sec : sec + 1), passed = st[q].i + st[q].res;
       if (ia < 0 || ia + 1 >= seq.length || ia < passed) continue;
+      // The same way (M491h): only a train behind it, which would catch it up in this section: k waits in the loop and
+      // is overtaken (a train standing at the same place is behind too, if it ranks higher).
+      if (trains[q].dir === trains[k].dir && (st[q].i > paths[q].seq.indexOf(paths[k].seq[st[k].i]) || paths[q].seq.indexOf(paths[k].seq[st[k].i]) < 0)) continue;
       if (Math.max(time, plan[q][ia] + late(q)) < clear) return true;
     }
     return false;
@@ -553,6 +556,7 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
     return true;
   };
   const order = trains.map((_, k) => k).sort((a, b) => (rank ? rank[a] - rank[b] : plan[a][0] - plan[b][0]));
+  const tails: [number, number][][] = trains.map(() => []);
   let stuckFor = 0, deadlock = NaN;
   const until = Math.max(...plan.map((p) => p[p.length - 1])) * 3 + 7200;
   for (let time = 0; time <= until; time += dt) {
@@ -585,10 +589,12 @@ function singleRun(r: Route, trains: SingleTrain[], o: SingleOpts, rank: number[
         const e = x.i + x.res, stopped = step(k, x, at[e]);
         // Passing a place: the section behind is free.
         while (x.res > 0 && (x.s >= at[x.i + 1] - 1e-9) && (x.i + 1 < e || stopped)) {
-          owner[secOf(k, x.i)] = -1; x.i++; x.res--; out[k].actual.push(time);
+          // The section behind is freed once the train's tail has left it (M491h), or as it stops in the place.
+          tails[k].push([secOf(k, x.i), at[x.i + 1] + trains[k].train.length]); x.i++; x.res--; out[k].actual.push(time);
           if (x.res > 0) { /* ran through */ } else if (x.i === seq.length - 1) { x.done = true; out[k].arrive = time; out[k].delay = time - plan[k][seq.length - 1]; holding[seq[x.i]]--; } else x.ready = time + (paths[k].stop[x.i] ? r.dwell : 0);
         }
       }
+      tails[k] = tails[k].filter(([sec, end]) => { const gone = x.res === 0 || x.s >= end; if (gone) owner[sec] = -1; return !gone; });
       out[k].t.push(time); out[k].s.push(trains[k].dir === 1 ? x.s : L - x.s);
     }
     // Nothing moving and nobody waiting on the clock: stuck for good.
