@@ -12763,6 +12763,24 @@ with heights stretched so metres show, the plane drawn at its real pitch, red wh
 below; replayed 4× real time). Tests in `flight.test.ts`. Example flight.m. Not built: the lateral motion (roll, yaw,
 Dutch roll, spiral), wind and gusts, flaps, landing gear and the take-off run.
 
+## M490 (24 Nov): Hyperion toolbox, space flight
+
+`src/lib/lab/space.ts` (pure, km and s; μ, Re, J2, ωE as WGS-84 / EGM): `toState` / `toElements` (classical elements ↔
+ECI; circular or equatorial orbits put the undefined angles at 0), `keplerE` (Newton), `period`, `nuAfter`, `gravity`
+(two-body plus J2), `propagate` (RK4; **the step is shrunk so the last lands exactly at T**: with a whole number of
+steps past T a closed orbit missed by ~4 km in the test; ground track with Greenwich turning at ωE from `gst0`;
+`crashed` below Re), `nodalDrift` and `sunSyncInclination` (98.19° at 700 km), `hohmann` (LEO 300 km → GEO 3.89 km/s),
+`biElliptic`, `planeChange`, `lambert` (universal variables, bisection on z; Vallado's example to 4 figures, and flying
+its answer arrives within 1 km), `rocket` (staged Tsiolkovsky). Language in `space-lab.ts` **in MATLAB's units**
+(metres, m/s, degrees), so `keplerian2ijk(a, ecc, incl, RAAN, argp, nu)` and `ijk2keplerian` (MATLAB's names and order)
+behave as people expect: also `orbitPropagate` (table or drawn: plot3 with a mesh Earth, the ground track with breaks
+at ±180°), `hohmannTransfer`, `biEllipticTransfer`, `lambertSolve` ('LongWay'), `rocketDeltaV`, `sunSyncInclination`,
+`nodalPrecession`. Window: Machines → **Orbit** (`OrbitBench.tsx`: Station / Sun-sync / Molniya / GEO, turns, J2;
+from space, 15° off the north pole turned 50°, the far half faint and the dot faint behind the Earth; the ground track
+over `/geo/earth-2048.jpg` (the landing globe's flat map); facts: height, period, Hohmann cost from 300 km, node drift).
+Tests in `space.test.ts`. Example orbits.m. Not built: the Moon and Sun's pull, drag, eclipses, launch trajectories,
+porkchop plots, the Earth's real rotation angle by date.
+
 ## M452: the owner's handwritten style for headings (23 Nov)
 
 The owner (23 Nov, a picture of a pink banner, "Skip the marking. We'll mark your students work automatically for you."

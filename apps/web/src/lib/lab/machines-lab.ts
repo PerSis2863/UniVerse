@@ -8,3 +8,4 @@ import './vehicle-lab';
 import './driving-lab';
 import './ev-lab';
 import './flight-lab';
+import './space-lab';

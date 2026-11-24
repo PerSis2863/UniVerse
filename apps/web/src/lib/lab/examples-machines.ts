@@ -189,4 +189,19 @@ figure; aircraftSim(ac, 90, 'HoldHeight', @(t) 1000 + 150*(t > 5), 'HoldSpeed', 
 figure; aircraftPerformance(ac)
 [n, R, t] = levelTurn(50, 45)                 % a 45-degree banked turn
 ` },
+  { name: 'orbits.m', code: `% Space flight: orbits, ground tracks, transfers and rockets (metres, m/s, degrees)
+Re = 6378137;
+[r, v] = keplerian2ijk(Re + 420e3, 0.0005, 51.64, 0, 0, 0);   % the space station's orbit
+figure; orbitPropagate(r, v, 3*5560)                         % three turns and the ground track
+[a, e, i, raan, argp, nu] = ijk2keplerian(r, v)
+fprintf('Its plane turns %.2f degrees a day\\n', nodalPrecession(Re + 420e3, 0.0005, 51.64))
+fprintf('Sun-synchronous at 700 km: %.2f degrees\\n', sunSyncInclination(700e3))
+% From a 300 km parking orbit to geostationary
+[dv1, dv2, t] = hohmannTransfer(Re + 300e3, 42164e3);
+fprintf('Hohmann to GEO: %.0f + %.0f m/s, %.1f hours\\n', dv1, dv2, t/3600)
+% Two positions an hour apart: which velocities join them? (Vallado's example)
+[v1, v2] = lambertSolve([5000 10000 2100]*1e3, [-14600 2500 7000]*1e3, 3600)
+% A two-stage rocket with 15 t on top
+[dv, each] = rocketDeltaV([400000 25000 290; 100000 6000 340], 15000)
+` },
 ];
