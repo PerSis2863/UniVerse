@@ -12862,3 +12862,21 @@ the value: a flat path gives exactly `carbonStress`'s answer (tested). Several r
 without outputs it draws bars. The Portfolios window's carbon view has "Carbon prices": one price, NGFS Net Zero 2050
 low end or high end (with "Emissions cut each year"), and prints the source. Not built: downloading from NGFS inside
 Hyperion (people fetch the file; the explorer needs its own sign-in), GDP or physical-risk variables in the stress.
+
+## M510 (24 Nov): Hyperion epidemics, the left-outs
+
+The owner, 24 Nov: work through "the toolbox gaps from the M492–M505 notes", a few at a time from M510 (the order:
+each note's "Not built" list, M492 first). `epi.ts` / `epi-lab.ts`: `sirGillespie(β, γ, [S I R], days, 'Runs', n)`,
+Gillespie's exact method (one infection or recovery at a time, exponential waits, the state read at whole days, stops
+when nobody is infectious or at 5 million events), random numbers from the engine's `random` (so `rng(seed)` repeats
+it); at most 1,000,000 people and runs × people 20 million. Drawn as grey runs against the smooth SIR, printing how
+many died out early against theory (γ/β)^I0. `seihrd(β, σ, γ, [S E I H R D], days, 'Hospital', 'StayDays',
+'Fatality', 'Beds', 'FatalityNoBed', + sir's 'Intervention' / 'Vaccinate')`: a share of those leaving I goes to H, a
+share of those leaving H dies; patients past the beds die at FatalityNoBed (deaths = 1/stay × (m·min(H, B) + m'·
+(H − B)⁺)); the fourth output is daily admissions. `epiOptions` now takes extra option names (and a parsed map) so a
+model can add its own. `fitEpidemic` gives 95% intervals from the curvature at the best fit (s²(JᵀJ)⁻¹ on the logs,
+Student's t by Hill's expansion, `studentT975`), lopsided after exp; R0's from var(log β − log γ); [NaN NaN] when JᵀJ
+is singular. Tests: half of single-case outbreaks at R0 2 die out, the big ones reach the final size, no person lost;
+SEIHRD without hospital equals SEIR, deaths = fatality × admissions, too few beds means 1.5× the deaths; the intervals
+hold the truth on noisy data. Not built: spatial spread (a metapopulation between cities is the natural next step).
+

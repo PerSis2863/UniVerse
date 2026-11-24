@@ -3,7 +3,7 @@
 // transmission for a while (a lockdown, masks) and vaccination, the basic reproduction number (from the next-generation
 // matrix for age groups), the final size and herd-immunity threshold, fitting a model to daily case counts (Levenberg–Marquardt), and the
 // reproduction number over time from cases (the renewal equation, as in Cori et al. 2013). Pure: no language values.
-import { levenbergMarquardt } from './optim';
+import { levenbergMarquardt, solve } from './optim';
 import { rk4Grid, root } from './sci-num';
 
 /** A stretch of days when transmission is cut by `cut` (0.3 = 30% fewer infections). */
@@ -85,7 +85,7 @@ export const finalSize = (R0: number) => (R0 <= 1 ? 0 : root((z) => z - 1 + Math
 /** The share that must be immune to stop growth: 1 − 1 / R0. */
 export const herdImmunity = (R0: number) => Math.max(0, 1 - 1 / R0);
 
-export interface Fit { beta: number; gamma: number; i0: number; sigma?: number; r0: number; rmse: number; model: number[]; iterations: number }
+export interface Fit { beta: number; gamma: number; i0: number; sigma?: number; r0: number; rmse: number; model: number[]; iterations: number; ci: { beta: [number, number]; gamma: [number, number]; i0: [number, number]; r0: [number, number] } }
 
 /** Fits SIR (or SEIR with σ fixed) to daily new cases: β, γ and the first infected, by least squares on their logs,
  * against log(1 + cases) so the small early counts count as much as the peak. `report` is the share of infections
@@ -108,7 +108,28 @@ export function fitEpidemic(cases: number[], N: number, kind: 'SIR' | 'SEIR' = '
   best = levenbergMarquardt(resid(0.05), best.x, { maxIter: 100, lb: [-12, -12, -5], ub: [5, 5, 18] });
   const [beta, gamma, i0] = best.x.map(Math.exp), m = model(best.x);
   const rmse = Math.sqrt(m.slice(1).reduce((s, x, k) => s + (x - cases[k + 1]) ** 2, 0) / Math.max(1, days));
-  return { beta, gamma, i0, ...(kind === 'SEIR' ? { sigma } : {}), r0: beta / gamma, rmse, model: m, iterations: best.iterations };
+  return { beta, gamma, i0, ...(kind === 'SEIR' ? { sigma } : {}), r0: beta / gamma, rmse, model: m, iterations: best.iterations, ci: intervals(resid(0.05), best.x, best.f) };
+}
+
+/** 95% intervals from the curvature at the best fit (M510): the covariance s² (JᵀJ)⁻¹ of the log-parameters, s² the
+ * residual variance, turned back from logs (so the intervals are lopsided, as they should be for rates); R0's from
+ * var(log β − log γ). An interval is [NaN NaN] when the data can't pin the parameters apart (JᵀJ singular). */
+function intervals(F: (p: number[]) => number[], x: number[], cost: number) {
+  const r = F(x), n = x.length, m = r.length;
+  const J = x.map((v, i) => { const h = 1e-5 * Math.max(1, Math.abs(v)), y = x.slice(); y[i] += h; const ry = F(y); return ry.map((q, j) => (q - r[j]) / h); });
+  const A = Array.from({ length: n }, (_, a) => Array.from({ length: n }, (_, b) => J[a].reduce((s, q, k) => s + q * J[b][k], 0)));
+  const s2 = cost / Math.max(1, m - n), z = studentT975(Math.max(1, m - n));
+  const cov = Array.from({ length: n }, (_, i) => solve(A, A.map((_, k) => (k === i ? 1 : 0))));
+  const nan: [number, number] = [NaN, NaN];
+  const band = (mu: number, v: number): [number, number] => (v >= 0 && Number.isFinite(v) ? [Math.exp(mu - z * Math.sqrt(v)), Math.exp(mu + z * Math.sqrt(v))] : nan);
+  if (cov.some((c) => !c)) return { beta: nan, gamma: nan, i0: nan, r0: nan };
+  const C = (cov as number[][]).map((c) => c.map((q) => q * s2));
+  return { beta: band(x[0], C[0][0]), gamma: band(x[1], C[1][1]), i0: band(x[2], C[2][2]), r0: band(x[0] - x[1], C[0][0] + C[1][1] - 2 * C[0][1]) };
+}
+/** Student's t at 97.5% for `df` degrees of freedom (Hill's expansion; within 1e-4 from df = 3). */
+export function studentT975(df: number): number {
+  const z = 1.959963984540054, z3 = z ** 3, z5 = z ** 5, z7 = z ** 7;
+  return z + (z3 + z) / (4 * df) + (5 * z5 + 16 * z3 + 3 * z) / (96 * df * df) + (3 * z7 + 19 * z5 + 17 * z3 - 15 * z) / (384 * df ** 3);
 }
 
 /** A gamma distribution's weights on days 1…max (the serial interval: days from one case to the case it causes). */
@@ -145,4 +166,39 @@ export function rt(cases: number[], mean: number, sd: number, win = 7): { r: num
     r.push(m); lo.push(Math.max(0, m - 1.96 * sdev)); hi.push(m + 1.96 * sdev);
   }
   return { r, lo, hi };
+}
+
+/** A stochastic SIR outbreak (M510), Gillespie's exact method: one infection (rate β S I / N) or one recovery (γ I) at a
+ * time, waiting an exponential time between them, so small outbreaks can die out by chance. The state is read at each
+ * whole day; `rand` gives uniform numbers in [0, 1). Stops early when nobody is infectious, or after `maxEvents`. */
+export function sirGillespie(beta: number, gamma: number, y0: [number, number, number], days: number, rand: () => number, maxEvents = 5_000_000): { t: number[]; y: number[][]; events: number } {
+  const N = y0[0] + y0[1] + y0[2];
+  let [S, I, R] = y0, t = 0, events = 0, next = 0;
+  const y: number[][] = [];
+  while (next <= days) {
+    const a1 = (beta * S * I) / N, a2 = gamma * I, a = a1 + a2;
+    const dt = a > 0 && events < maxEvents ? -Math.log(1 - rand()) / a : Infinity;
+    while (next <= days && next < t + dt) { y.push([S, I, R]); next++; }
+    if (!Number.isFinite(dt)) break;
+    t += dt; events++;
+    if (rand() * a < a1) { S--; I++; } else { I--; R++; }
+  }
+  return { t: y.map((_, k) => k), y, events };
+}
+
+export interface CareOptions extends EpiOptions { hospital?: number; stay?: number; fatality?: number; beds?: number; fatalityNoBed?: number }
+/** SEIHRD (M510): SEIR where a share `hospital` of those leaving I goes to hospital H for `stay` days on average; of
+ * those leaving hospital a share `fatality` dies (D), the rest recover. Past `beds` patients, the ones without a bed
+ * die at `fatalityNoBed`. State [S E I H R D]; the day's new admissions come back as `admissions`. */
+export function seihrd(beta: number, sigma: number, gamma: number, y0: number[], days: number, o: CareOptions = {}): EpiRun & { admissions: number[] } {
+  const N = y0.reduce((s, x) => s + x, 0), h = o.hospital ?? 0.05, d = 1 / (o.stay ?? 10), m = o.fatality ?? 0.15, B = o.beds ?? Infinity, mo = o.fatalityNoBed ?? m;
+  const v = o.vaccinate ?? 0, vFrom = o.vaccineFrom ?? 0;
+  const f = (t: number, [S, E, I, H]: number[]) => {
+    const inf = (beta * left(t, o.interventions) * (S * I)) / N, vac = t >= vFrom ? v * S : 0;
+    const out = d * H, inBed = Math.min(H, B), die = d * (m * inBed + mo * Math.max(0, H - B));
+    return [-inf - vac, inf - sigma * E, sigma * E - gamma * I, h * gamma * I - out, (1 - h) * gamma * I + vac + out - die, die, h * gamma * I, inf];
+  };
+  const r = rk4Grid(f, grid(days), [...y0, 0, 0], o.step ?? 0.05);
+  const adm = r.y.map((s, k) => (k ? s[6] - r.y[k - 1][6] : 0));
+  return { t: r.t, y: r.y.map((s) => s.slice(0, 6)), names: ['S', 'E', 'I', 'H', 'R', 'D'], incidence: incidenceOf(r.y), admissions: adm };
 }

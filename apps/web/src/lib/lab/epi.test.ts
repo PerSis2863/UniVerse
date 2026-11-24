@@ -79,3 +79,44 @@ describe('Hyperion epidemics (M492)', () => {
     expect(r.graphics.figures.length).toBeGreaterThan(0);
   });
 });
+
+describe('Hyperion epidemics, the left-outs (M510)', () => {
+  let seed = 7;
+  const rand = () => ((seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0) / 2 ** 32);
+  it('Gillespie: about 1/R0 of single-case outbreaks die out, the rest reach the final size, nobody is lost', () => {
+    const runs = Array.from({ length: 400 }, () => ep.sirGillespie(0.2, 0.1, [999, 1, 0], 400, rand));
+    runs.forEach((r) => r.y.forEach(([S, I, R]) => expect(S + I + R).toBe(1000)));
+    const ever = runs.map((r) => 1000 - r.y[r.y.length - 1][0]), big = ever.filter((x) => x > 100);
+    expect(Math.abs(1 - big.length / 400 - 0.5)).toBeLessThan(0.08);
+    expect(Math.abs(big.reduce((s, x) => s + x, 0) / big.length / 1000 - ep.finalSize(2))).toBeLessThan(0.03);
+  });
+  it('SEIHRD: no hospital is SEIR; everyone kept; too few beds means more deaths', () => {
+    const y0 = [1e5 - 10, 0, 10, 0, 0, 0], plain = ep.seir(0.4, 0.2, 0.15, [1e5 - 10, 0, 10, 0], 200);
+    const none = ep.seihrd(0.4, 0.2, 0.15, y0, 200, { hospital: 0 });
+    expect(none.y[150][2]).toBeCloseTo(plain.y[150][2], 6);
+    const roomy = ep.seihrd(0.4, 0.2, 0.15, y0, 300, { hospital: 0.05, fatality: 0.1 });
+    roomy.y.forEach((s) => expect(s.reduce((a, b) => a + b, 0)).toBeCloseTo(1e5, 4));
+    // Everyone who went to hospital leaves it eventually: deaths = fatality × admissions.
+    const adm = roomy.admissions.reduce((s, x) => s + x, 0), D = roomy.y[300][5];
+    expect(D / adm).toBeCloseTo(0.1, 2);
+    const tight = ep.seihrd(0.4, 0.2, 0.15, y0, 300, { hospital: 0.05, fatality: 0.1, beds: 200, fatalityNoBed: 0.6 });
+    expect(tight.y[300][5]).toBeGreaterThan(1.5 * D);
+  });
+  it('fitEpidemic gives 95% intervals that hold the truth', () => {
+    const made = ep.sir(0.32, 0.12, [1e6 - 30, 30, 0], 120).incidence;
+    let s2 = 3;
+    const noisy = made.map((x) => { s2 = (Math.imul(s2, 1664525) + 1013904223) >>> 0; return Math.max(0, Math.round(x * (1 + 0.1 * (s2 / 2 ** 32 - 0.5)))); });
+    const f = ep.fitEpidemic(noisy, 1e6);
+    expect(f.ci.r0[0]).toBeLessThan(0.32 / 0.12); expect(f.ci.r0[1]).toBeGreaterThan(0.32 / 0.12);
+    expect(f.ci.beta[0]).toBeLessThan(f.beta); expect(f.ci.beta[1]).toBeGreaterThan(f.beta);
+    expect(ep.studentT975(10)).toBeCloseTo(2.228, 2);
+  });
+  it('in the language', () => {
+    const r = run("rng(1); [t, I, ever] = sirGillespie(0.3, 0.1, [499 1 0], 100, 'Runs', 5); sirGillespie(0.3, 0.1, [499 1 0], 100, 'Runs', 5)\n[t2, y] = seihrd(0.4, 0.2, 0.15, [99990 0 10 0 0 0], 200, 'Beds', 100);\nseihrd(0.4, 0.2, 0.15, [99990 0 10 0 0 0], 200, 'Beds', 100, 'Intervention', [30 90 0.4])");
+    expect(r.d('I').length).toBe(101 * 5);
+    expect(r.d('y').length).toBe(201 * 6);
+    expect(r.out).toMatch(/died out early/);
+    expect(r.out).toMatch(/over for \d+ day/);
+    expect(r.graphics.figures.length).toBeGreaterThan(0);
+  });
+});

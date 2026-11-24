@@ -25,6 +25,12 @@ C = [12 4 1; 4 9 2; 1 2 4];               % daily contacts by age group
 Ng = [2e5 6e5 2e5];
 figure; sirAge(0.015, C, 0.1, Ng, [5 5 0], 250)
 fprintf('R0 by age groups: %.2f\\n', epiR0(0.015, 0.1, C, Ng))
+% Chance: in a village of 2,000, one case may or may not start an outbreak
+figure; sirGillespie(0.25, 0.1, [1999 1 0], 150, 'Runs', 30)
+% Hospitals: what happens when patients outnumber the beds
+figure; seihrd(0.4, 0.2, 0.15, [N-20 0 20 0 0 0], 250, 'Hospital', 0.04, 'Fatality', 0.15, 'Beds', 2500, 'FatalityNoBed', 0.5)
+f = fitEpidemic(cases, N, 'Model', 'SEIR', 'Sigma', 0.2);
+fprintf('R0 = %.2f, 95%% interval %.2f to %.2f\\n', f.R0, f.R0CI)
 ` },
   { name: 'dosing.m', code: `% Pharmacokinetics: how much of a drug, how often (a teaching example, not medical advice)
 % A drug with clearance 4 L/h, volume 40 L (half-life about 7 h), taken by mouth (ka 1/h, 85% absorbed)
